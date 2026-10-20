@@ -5,6 +5,7 @@ loco.rs (Axum 0.8) service on PostgreSQL 18. Read [`spec/index.md`](spec/index.m
 - **Status**: scaffold. Built: app wiring, secure-by-default PASETO guard (`src/auth.rs`), `POST
   /api/patients/compare` over the matcher, the append-only `audit_events` migration. Not built: patient storage,
   the resource store, FHIR endpoints, the policy engine, audit of any route but compare.
+- **Two token kinds**: `v4.…` goes to the PASETO verifier, anything else to Keycloak (when `EPR_KEYCLOAK_URL` is set). Never route one to the other. Keycloak roles are not consulted until SE-1. See `operations/keycloak/README.md`.
 - **Auth is on unless explicitly off.** `settings.require_auth: false` is set only in development/test config.
   The service refuses to start with login off in `production`, and with login on and no keys or key URL.
 - **Append-only.** No migration may add a delete path for clinical data. `audit_events` has triggers refusing

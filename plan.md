@@ -241,7 +241,7 @@ in the workspace.
 
 ### 6.4 Authentication
 
-- Staff: OIDC (Entra ID / Keycloak / NHS CIS2) to the authentication service,
+- Staff: OIDC (Entra ID / Keycloak / NHS CIS2). **Keycloak is built** (2026-10-20): the API verifies its access tokens directly (`operations/keycloak/README.md`); the rest goes through the authentication service,
   which issues PASETO v4.public tokens. The service verifies them offline. MFA
   is required. Passkeys are supported. Fast user switching is a UI concern.
 - SMART on FHIR: an authorisation server maps SMART scopes to the same policy

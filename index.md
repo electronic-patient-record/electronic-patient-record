@@ -11,4 +11,5 @@
 | [electronic-patient-record-matcher-with-rust/index.md](electronic-patient-record-matcher-with-rust/index.md) | Matcher library docs |
 | [electronic-patient-record-service-with-rust/index.md](electronic-patient-record-service-with-rust/index.md) | API service docs |
 | [electronic-patient-record-ui-with-svelte/index.md](electronic-patient-record-ui-with-svelte/index.md) | UI docs |
+| [operations/keycloak/README.md](operations/keycloak/README.md) | Keycloak under Podman, token rules, standalone PostgreSQL and Redis |
 | [CHANGELOG.md](CHANGELOG.md) | What changed, and what was not done |

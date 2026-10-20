@@ -9,6 +9,7 @@ the cross-subproject contract.
 |---|---|---|
 | Login enforcement | On unless `settings.require_auth: false` or `EPR_REQUIRE_AUTH=false`; an explicit env value wins over config | `auth::tests::auth_is_on_by_default` |
 | Startup gate | Refuses to start in `production` with login off; or with login on, no keys and no `EPR_PASETO_KEYS_URL` | `auth::tests::startup_gate`; run by hand |
+| Keycloak | With `EPR_KEYCLOAK_URL` set, a bearer token that does not start `v4.` is verified against the realm (signature, issuer `{url}/realms/{realm}`, audience, expiry, verified email); the caller is the token `sub`. Half-configured Keycloak, a remote `http://` URL, no audience, or a bad role map: refuses to start | `tests/keycloak_guard.rs` (8, DB-free, local OIDC stand-in); run by hand against Keycloak 26.3.0 under Podman |
 | Public paths | `/_health`, `/_ping`, `/_readiness` only | `auth::tests` |
 | Fail closed | Before the guard is initialised every non-public request gets 503 | by construction |
 | Compare | `POST /api/patients/compare` takes `{a, b}` (matcher `Patient`) and returns a matcher `MatchResult` | `controllers::patients::tests` |
@@ -26,4 +27,4 @@ the cross-subproject contract.
 
 Patient storage and CRUD; the resource store; FHIR endpoints and the CapabilityStatement; the policy engine;
 consent; break-the-glass; an HTTP endpoint to verify the chain (AU-2); audit of denied requests (401/403); refusing to start in `production` without an integrity key (it only warns); adopting a key on a chain that already has unkeyed rows (they would fail verification; set the key before the first write); OpenAPI; rate limiting; CORS allow-list; the search index.
-A valid token is currently enough to call any route.
+A valid token (PASETO or Keycloak) is currently enough to call any route; Keycloak roles are not consulted.

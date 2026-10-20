@@ -31,6 +31,8 @@ Checked by tests where a test is named (this is a pre-release scaffold, see
   token verification keys, and refuses `production` with login off
   (`auth::tests`).
 - Health probes are the only unauthenticated paths (`auth::tests`).
+- Keycloak access tokens are accepted only with the right signature, issuer, audience, expiry and verified email, and a
+  half-configured Keycloak stops the service starting (`tests/keycloak_guard.rs`).
 - The audit table refuses `UPDATE`, `DELETE` and `TRUNCATE`
   (`tests/audit_immutable.rs`, needs Postgres).
 - Security headers and a strict Content Security Policy on the UI

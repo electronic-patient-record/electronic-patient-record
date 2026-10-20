@@ -14,6 +14,9 @@
 # NOT FOR CLINICAL USE. This is a scaffold: there is no clinical record yet, and authorization
 # beyond "has a valid token" (roles, consent, break-the-glass) is not built (tasks SE-1 to SE-4).
 #
+# Keycloak is the compose profile `keycloak`, development only (operations/keycloak/README.md). The standalone
+# scripts/podman-postgres.sh and scripts/podman-redis.sh run those two services without compose.
+#
 # The UI is the compose profile `ui` (http://localhost:3000):
 #
 #   podman compose --profile ui up -d --build --wait
@@ -121,6 +124,42 @@ services:
     depends_on:
       api:
         condition: service_healthy
+
+  # ---- Keycloak (profile `keycloak`): DEVELOPMENT ONLY ---------------------------------------------
+  # `start-dev` over plain HTTP on 127.0.0.1:8081, state in the `keycloak` database on the PostgreSQL
+  # above, realm `epr` imported from operations/keycloak/epr-realm.json. The API refuses plain-HTTP
+  # Keycloak URLs unless they are loopback, so run the API on the host against http://127.0.0.1:8081
+  # (operations/keycloak/README.md). A production Keycloak sits behind TLS and is not built here.
+  #
+  #   podman compose --profile keycloak up -d --wait postgres keycloak
+  keycloak:
+    profiles: ["keycloak"]
+    image: quay.io/keycloak/keycloak:26.3.0
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: epr
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-${POSTGRES_PASSWORD}}
+      KC_HOSTNAME: http://127.0.0.1:8081
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "127.0.0.1:8081:8080"
+    volumes:
+      - ./operations/keycloak/epr-realm.json:/opt/keycloak/data/import/epr-realm.json:ro,z
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      # The image has no curl; ask the management port (9000) over a bash TCP socket.
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q '\"status\": \"UP\"' <&3"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+      start_period: 30s
 
 volumes:
   postgres-data:

@@ -212,6 +212,20 @@ Conventions:
   documented, ZAP baseline in CI, cargo-deny, SBOM.
   **Acceptance:** the ZAP job has no high or medium findings. The SBOM check passes.
 
+- [x] **SE-8 (M) — Keycloak token verification.** **Landed 2026-10-20.** The guard accepts Keycloak access tokens
+  (`EPR_KEYCLOAK_*`), routes by token shape (`v4.` to PASETO, else Keycloak), and records the token `sub` as the audit
+  agent. A development realm and compose profile run Keycloak 26.3.0 on the shared PostgreSQL under Podman.
+  **Acceptance (met):** 8 DB-free tests with a local OIDC provider; by hand against the real Keycloak, a token gets 200 and no
+  token, garbage and a PASETO-shaped token get 401; four bad configurations each refuse to start; `cargo deny` clean.
+  **Not built:** roles are not consulted (SE-1); TLS or a Keycloak reachable from inside compose; brokering to Entra ID;
+  testing beyond Keycloak 26.3.0 `start-dev`.
+
+- [ ] **SE-9 (L) — UI sign-in with Keycloak.** Authorization code flow with PKCE through the `epr-web` client, in the UI's
+  backend-for-frontend: the browser holds one opaque `httpOnly` session cookie, the server holds the tokens and sends the
+  access token to the API, refresh and sign-out work, and an idle session ends.
+  **Acceptance:** a Playwright run against a Keycloak container signs in, calls a protected API route, and signs out; a
+  tampered or expired session is refused; no token is readable by page scripts.
+
 ## M4 — Documentation
 
 - [ ] **DO-1 (L) — Clinical notes.**

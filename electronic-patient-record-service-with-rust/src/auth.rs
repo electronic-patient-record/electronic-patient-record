@@ -2,14 +2,22 @@
 //!
 //! Login enforcement is ON unless a deployment says otherwise
 //! (`settings.require_auth: false` in config, or `EPR_REQUIRE_AUTH=false`).
-//! Tokens are PASETO v4.public, verified offline against the authentication
-//! service's published Ed25519 keys. The service refuses to start when
-//! enforcement is off in production, or on with no keys and no key URL.
+//! Two kinds of bearer token are accepted. A token starting `v4.` is a PASETO v4.public, verified
+//! offline against the authentication service's published Ed25519 keys. Any other token is offered
+//! to Keycloak, when `EPR_KEYCLOAK_URL` is set: its signature is checked against the realm's keys,
+//! its issuer must be `{url}/realms/{realm}`, it must carry one of `EPR_KEYCLOAK_AUDIENCES`, and
+//! an `email` claim must be verified. Both yield the same caller identity (`sub`).
+//! The service refuses to start when enforcement is off in production, or on with no keys, no key
+//! URL and no Keycloak.
+//!
+//! Keycloak roles are **not** consulted yet: they map to attributes only through
+//! `EPR_KEYCLOAK_ROLE_MAP`, and nothing reads attributes until the policy engine (SE-1).
 //!
 //! Not built yet: authorization (RBAC, ABAC, consent). A valid token is
 //! currently enough. See tasks SE-1 to SE-4.
 
 use authentication_verifier::Verifier;
+use authentication_verifier::keycloak::{KeycloakSettings, KeycloakVerifier};
 use axum::http::{HeaderMap, StatusCode, header::AUTHORIZATION};
 use std::sync::OnceLock;
 
@@ -25,6 +33,7 @@ pub struct Agent(pub String);
 pub const ANONYMOUS: &str = "anonymous";
 
 static VERIFIER: OnceLock<Verifier> = OnceLock::new();
+static KEYCLOAK: OnceLock<KeycloakVerifier> = OnceLock::new();
 static REQUIRE_AUTH: OnceLock<bool> = OnceLock::new();
 
 /// Paths that never need a token: health probes only.
@@ -55,19 +64,20 @@ pub fn resolve_require_auth(config: Option<bool>, env: Option<&str>) -> bool {
 ///
 /// # Errors
 ///
-/// Enforcement off in production; or on with no keys and no key URL.
+/// Enforcement off in production; or on with no PASETO keys, no key URL and no Keycloak.
 pub fn check_startup(
     production: bool,
     require_auth: bool,
     keys: usize,
     keys_url_set: bool,
+    keycloak: bool,
 ) -> Result<(), String> {
     if production && !require_auth {
         return Err("login enforcement is off in production; refusing to start".into());
     }
-    if require_auth && keys == 0 && !keys_url_set {
+    if require_auth && keys == 0 && !keys_url_set && !keycloak {
         return Err("login enforcement is on but no token keys are configured \
-             (set EPR_PASETO_KEYS or EPR_PASETO_KEYS_URL); refusing to start"
+             (set EPR_PASETO_KEYS, EPR_PASETO_KEYS_URL or EPR_KEYCLOAK_URL); refusing to start"
             .into());
     }
     Ok(())
@@ -109,10 +119,34 @@ pub async fn init(production: bool, config_require_auth: Option<bool>) -> Result
             }
         }
     }
-    check_startup(production, require, verifier.key_count(), url.is_some())?;
+    let keycloak = init_keycloak()?;
+    check_startup(
+        production,
+        require,
+        verifier.key_count(),
+        url.is_some(),
+        keycloak,
+    )?;
     let _ = VERIFIER.set(verifier);
     let _ = REQUIRE_AUTH.set(require);
     Ok(())
+}
+
+/// Build the process-wide Keycloak verifier from `EPR_KEYCLOAK_*`, and say whether one exists.
+///
+/// Fails closed and loudly: `EPR_KEYCLOAK_URL` unset leaves Keycloak off; a half-configured or
+/// invalid realm (no realm, no audiences, a non-HTTPS URL that is not loopback, a bad role map) is
+/// an error the service refuses to start on, because the operator asked for Keycloak and would
+/// otherwise get a service that quietly rejects everyone.
+fn init_keycloak() -> Result<bool, String> {
+    let Some(settings) = KeycloakSettings::from_env("EPR").map_err(|e| e.to_string())? else {
+        return Ok(false);
+    };
+    let issuer = settings.expected_issuer();
+    let verifier = KeycloakVerifier::new(settings).map_err(|e| e.to_string())?;
+    tracing::info!(%issuer, "auth: Keycloak access tokens accepted");
+    let _ = KEYCLOAK.set(verifier);
+    Ok(true)
 }
 
 /// The bearer token from the `Authorization` header.
@@ -134,25 +168,43 @@ fn bearer_token(headers: &HeaderMap) -> Result<&str, (StatusCode, String)> {
         ))
 }
 
-/// The decision, pure: `Ok(agent)` lets the request through; `Err((401, why))` rejects.
+/// The decision: `Ok(agent)` lets the request through; `Err((401, why))` rejects.
+///
+/// A token starting `v4.` is a PASETO and goes to `paseto`. Any other token goes to `keycloak` when
+/// one is configured; when none is, it is refused. A PASETO-shaped token is never offered to
+/// Keycloak and a Keycloak token is never offered to PASETO.
 ///
 /// # Errors
 ///
-/// `401` when enforcement is on, the path is not public, and the bearer token
-/// is missing or fails verification.
-pub fn enforce(
+/// `401` when enforcement is on, the path is not public, and the bearer token is missing, is of a
+/// kind no configured verifier accepts, or fails verification.
+pub async fn enforce(
     require_auth: bool,
     path: &str,
     headers: &HeaderMap,
-    verifier: &Verifier,
+    paseto: &Verifier,
+    keycloak: Option<&KeycloakVerifier>,
 ) -> Result<Agent, (StatusCode, String)> {
     if !require_auth || is_public_path(path) {
         return Ok(Agent(ANONYMOUS.to_string()));
     }
-    verifier
-        .verify(bearer_token(headers)?)
-        .map(|claims| Agent(claims.sub))
-        .map_err(|e| (StatusCode::UNAUTHORIZED, e.to_string()))
+    let token = bearer_token(headers)?;
+    let unauthorized = |e: String| (StatusCode::UNAUTHORIZED, e);
+    let claims = if token.starts_with("v4.") {
+        paseto
+            .verify(token)
+            .map_err(|e| unauthorized(e.to_string()))?
+    } else if let Some(keycloak) = keycloak {
+        keycloak
+            .verify(token)
+            .await
+            .map_err(|e| unauthorized(e.to_string()))?
+    } else {
+        return Err(unauthorized(
+            "no verifier accepts this kind of token".into(),
+        ));
+    };
+    Ok(Agent(claims.sub))
 }
 
 /// Axum middleware over the process-wide guard. Fails closed: before `init`
@@ -164,7 +216,14 @@ pub async fn require_auth_mw(
     use axum::response::IntoResponse;
     let decision = match (REQUIRE_AUTH.get(), VERIFIER.get()) {
         (Some(&require), Some(verifier)) => {
-            enforce(require, req.uri().path(), req.headers(), verifier)
+            enforce(
+                require,
+                req.uri().path(),
+                req.headers(),
+                verifier,
+                KEYCLOAK.get(),
+            )
+            .await
         }
         _ if is_public_path(req.uri().path()) => Ok(Agent(ANONYMOUS.to_string())),
         _ => Err((
@@ -202,37 +261,46 @@ mod tests {
 
     #[test]
     fn startup_gate() {
-        assert!(check_startup(true, false, 1, true).is_err());
-        assert!(check_startup(false, true, 0, false).is_err());
-        assert!(check_startup(false, true, 0, true).is_ok());
-        assert!(check_startup(false, true, 1, false).is_ok());
-        assert!(check_startup(false, false, 0, false).is_ok());
+        assert!(check_startup(true, false, 1, true, false).is_err());
+        assert!(check_startup(false, true, 0, false, false).is_err());
+        assert!(check_startup(false, true, 0, true, false).is_ok());
+        assert!(check_startup(false, true, 1, false, false).is_ok());
+        // Keycloak alone is enough to start with login on.
+        assert!(check_startup(false, true, 0, false, true).is_ok());
+        // ...but not in production with login off.
+        assert!(check_startup(true, false, 0, false, true).is_err());
+        assert!(check_startup(false, false, 0, false, false).is_ok());
     }
 
-    #[test]
-    fn health_is_public_everything_else_needs_a_token() {
+    #[tokio::test]
+    async fn health_is_public_everything_else_needs_a_token() {
         let v = empty_verifier();
         let h = HeaderMap::new();
         assert_eq!(
-            enforce(true, "/_health", &h, &v).unwrap(),
+            enforce(true, "/_health", &h, &v, None).await.unwrap(),
             Agent(ANONYMOUS.into())
         );
         assert_eq!(
-            enforce(true, "/api/patients/compare", &h, &v)
+            enforce(true, "/api/patients/compare", &h, &v, None)
+                .await
                 .unwrap_err()
                 .0,
             StatusCode::UNAUTHORIZED
         );
-        assert!(enforce(false, "/api/patients/compare", &h, &v).is_ok());
+        assert!(
+            enforce(false, "/api/patients/compare", &h, &v, None)
+                .await
+                .is_ok()
+        );
     }
 
-    #[test]
-    fn bad_bearer_is_rejected() {
+    #[tokio::test]
+    async fn bad_bearer_is_rejected() {
         let v = empty_verifier();
         let mut h = HeaderMap::new();
         h.insert(AUTHORIZATION, HeaderValue::from_static("Basic abc"));
         assert_eq!(
-            enforce(true, "/api/x", &h, &v).unwrap_err().0,
+            enforce(true, "/api/x", &h, &v, None).await.unwrap_err().0,
             StatusCode::UNAUTHORIZED
         );
         h.insert(
@@ -240,7 +308,7 @@ mod tests {
             HeaderValue::from_static("Bearer v4.public.not-a-token"),
         );
         assert_eq!(
-            enforce(true, "/api/x", &h, &v).unwrap_err().0,
+            enforce(true, "/api/x", &h, &v, None).await.unwrap_err().0,
             StatusCode::UNAUTHORIZED
         );
     }

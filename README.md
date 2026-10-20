@@ -26,6 +26,8 @@ POSTGRES_PASSWORD=change-me EPR_PASETO_KEYS_URL=https://auth.example.com/.well-k
 curl -fsS http://localhost:5150/_health
 ```
 
+Keycloak (development) and standalone PostgreSQL/Redis under Podman: [`operations/keycloak/README.md`](operations/keycloak/README.md).
+
 ## Where things live
 
 - [`spec/`](spec/index.md): the living specification (start at `spec/index.md`).
