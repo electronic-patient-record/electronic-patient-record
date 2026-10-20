@@ -1,9 +1,12 @@
 //! Patient identity endpoints. The request and response bodies are the
 //! matcher's own types: there is no adapter layer.
 
-use axum::{extract::Json, response::Response};
+use crate::audit::{self, Action, AuditError, Chain, Event};
+use crate::auth::Agent;
+use axum::{Extension, extract::Json, response::Response};
 use electronic_patient_record_matcher::{MatchResult, MatchingEngine, Patient};
 use loco_rs::prelude::*;
+use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};
 
 /// Two patients to compare.
@@ -22,8 +25,42 @@ pub fn compare_patients(request: &CompareRequest) -> MatchResult {
     MatchingEngine::default().compare(&request.a, &request.b)
 }
 
-async fn compare(Json(request): Json<CompareRequest>) -> Result<Response> {
-    format::json(compare_patients(&request))
+/// Compare, and audit the access **before** returning the result. The audit detail records the
+/// decision and score, never the demographics supplied. If the audit cannot be written, no
+/// result is returned: an access that cannot be audited does not happen.
+///
+/// # Errors
+///
+/// When the audit row cannot be appended.
+pub async fn compare_audited(
+    db: &DatabaseConnection,
+    chain: &Chain,
+    agent: &Agent,
+    request: &CompareRequest,
+) -> Result<MatchResult, AuditError> {
+    let result = compare_patients(request);
+    let mut event = Event::new(Action::Execute, agent.0.clone());
+    event.resource_ref = Some("Patient/$compare".to_string());
+    event.detail = Some(serde_json::json!({
+        "decision": result.decision,
+        "score": result.score,
+    }));
+    audit::append(db, chain, &event).await?;
+    Ok(result)
+}
+
+async fn compare(
+    State(ctx): State<AppContext>,
+    Extension(agent): Extension<Agent>,
+    Json(request): Json<CompareRequest>,
+) -> Result<Response> {
+    match compare_audited(&ctx.db, audit::chain(), &agent, &request).await {
+        Ok(result) => format::json(result),
+        Err(e) => {
+            tracing::error!(error = %e, "refusing to answer: the access could not be audited");
+            Err(Error::InternalServerError)
+        }
+    }
 }
 
 /// Routes under `/api/patients`.

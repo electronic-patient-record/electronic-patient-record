@@ -16,6 +16,14 @@ use std::sync::OnceLock;
 const DEFAULT_ISSUER: &str = "authentication-service";
 const DEFAULT_AUDIENCE: &str = "electronic-patient-record";
 
+/// Who is calling: the token's `sub`, or `anonymous` when login is off or the path is public.
+/// The middleware puts one in every request's extensions; handlers use it for the audit trail.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Agent(pub String);
+
+/// The agent recorded when no token was required.
+pub const ANONYMOUS: &str = "anonymous";
+
 static VERIFIER: OnceLock<Verifier> = OnceLock::new();
 static REQUIRE_AUTH: OnceLock<bool> = OnceLock::new();
 
@@ -126,7 +134,7 @@ fn bearer_token(headers: &HeaderMap) -> Result<&str, (StatusCode, String)> {
         ))
 }
 
-/// The decision, pure: `Ok` lets the request through; `Err((401, why))` rejects.
+/// The decision, pure: `Ok(agent)` lets the request through; `Err((401, why))` rejects.
 ///
 /// # Errors
 ///
@@ -137,13 +145,13 @@ pub fn enforce(
     path: &str,
     headers: &HeaderMap,
     verifier: &Verifier,
-) -> Result<(), (StatusCode, String)> {
+) -> Result<Agent, (StatusCode, String)> {
     if !require_auth || is_public_path(path) {
-        return Ok(());
+        return Ok(Agent(ANONYMOUS.to_string()));
     }
     verifier
         .verify(bearer_token(headers)?)
-        .map(|_| ())
+        .map(|claims| Agent(claims.sub))
         .map_err(|e| (StatusCode::UNAUTHORIZED, e.to_string()))
 }
 
@@ -158,14 +166,18 @@ pub async fn require_auth_mw(
         (Some(&require), Some(verifier)) => {
             enforce(require, req.uri().path(), req.headers(), verifier)
         }
-        _ if is_public_path(req.uri().path()) => Ok(()),
+        _ if is_public_path(req.uri().path()) => Ok(Agent(ANONYMOUS.to_string())),
         _ => Err((
             StatusCode::SERVICE_UNAVAILABLE,
             "authentication not initialised".to_string(),
         )),
     };
     match decision {
-        Ok(()) => next.run(req).await,
+        Ok(agent) => {
+            let mut req = req;
+            req.extensions_mut().insert(agent);
+            next.run(req).await
+        }
         Err((status, msg)) => (status, msg).into_response(),
     }
 }
@@ -201,7 +213,10 @@ mod tests {
     fn health_is_public_everything_else_needs_a_token() {
         let v = empty_verifier();
         let h = HeaderMap::new();
-        assert!(enforce(true, "/_health", &h, &v).is_ok());
+        assert_eq!(
+            enforce(true, "/_health", &h, &v).unwrap(),
+            Agent(ANONYMOUS.into())
+        );
         assert_eq!(
             enforce(true, "/api/patients/compare", &h, &v)
                 .unwrap_err()

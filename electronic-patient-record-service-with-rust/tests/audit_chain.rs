@@ -1,0 +1,254 @@
+//! DB-gated: the audit writer appends a verifiable hash chain.
+//!
+//! Each test gets its own scratch database, so rows written by other tests cannot affect the chain.
+//!
+//! ```text
+//! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
+//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//!   cargo test --test audit_chain -- --ignored --test-threads=1
+//! ```
+
+use electronic_patient_record::audit::{self, Action, Chain, Event, Verdict};
+use electronic_patient_record::auth::Agent;
+use electronic_patient_record::controllers::patients::{CompareRequest, compare_audited};
+use electronic_patient_record_matcher::{HumanName, Patient};
+use electronic_patient_record_migration::{Migrator, MigratorTrait};
+use integrity_mac::{KeyConfig, KeySet};
+use sea_orm::{ConnectionTrait, Database, DatabaseConnection};
+
+const KEY: &str = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+const OTHER_KEY: &str = "1f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+
+fn keyed(key: &str) -> Chain {
+    Chain::new(KeySet::load(&KeyConfig::new("t", "T"), Some(key), None))
+}
+
+/// A migrated scratch database, dropped when the test ends (best effort).
+struct Scratch {
+    db: DatabaseConnection,
+    admin: DatabaseConnection,
+    name: String,
+}
+
+impl Scratch {
+    async fn new() -> Self {
+        let url =
+            std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
+        let (base, _) = url.rsplit_once('/').expect("a database URL");
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let name = format!("epr_scratch_{}_{}", std::process::id(), nanos);
+        let admin = Database::connect(url.clone()).await.expect("connect admin");
+        admin
+            .execute_unprepared(&format!("CREATE DATABASE {name}"))
+            .await
+            .expect("create scratch db");
+        let db = Database::connect(format!("{base}/{name}"))
+            .await
+            .expect("connect scratch");
+        Migrator::up(&db, None).await.expect("migrate");
+        Self { db, admin, name }
+    }
+
+    /// Turn the immutability triggers off, to simulate someone with database ownership.
+    async fn tamper(&self, sql: &str) {
+        self.db
+            .execute_unprepared("ALTER TABLE audit_events DISABLE TRIGGER USER")
+            .await
+            .unwrap();
+        self.db.execute_unprepared(sql).await.unwrap();
+        self.db
+            .execute_unprepared("ALTER TABLE audit_events ENABLE TRIGGER USER")
+            .await
+            .unwrap();
+    }
+
+    async fn finish(self) {
+        let Scratch { db, admin, name } = self;
+        drop(db);
+        let _ = admin
+            .execute_unprepared(&format!("DROP DATABASE IF EXISTS {name} WITH (FORCE)"))
+            .await;
+    }
+}
+
+fn event(n: usize) -> Event {
+    let mut e = Event::new(
+        if n.is_multiple_of(2) {
+            Action::Read
+        } else {
+            Action::Update
+        },
+        format!("user-{n}"),
+    );
+    e.patient_ref = Some(format!("Patient/{n}"));
+    e.detail = Some(serde_json::json!({ "n": n, "note": "café" }));
+    e
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn appended_rows_form_an_intact_chain_keyed_and_unkeyed() {
+    for chain in [keyed(KEY), Chain::unkeyed()] {
+        let s = Scratch::new().await;
+        for n in 0..5 {
+            audit::append(&s.db, &chain, &event(n)).await.unwrap();
+        }
+        assert_eq!(
+            audit::verify(&s.db, &chain).await.unwrap(),
+            Verdict::Intact { rows: 5 }
+        );
+        s.finish().await;
+    }
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn an_empty_table_is_intact() {
+    let s = Scratch::new().await;
+    assert_eq!(
+        audit::verify(&s.db, &Chain::unkeyed()).await.unwrap(),
+        Verdict::Intact { rows: 0 }
+    );
+    s.finish().await;
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn editing_a_row_breaks_the_chain_at_that_row() {
+    let chain = keyed(KEY);
+    let s = Scratch::new().await;
+    let mut ids = vec![];
+    for n in 0..4 {
+        ids.push(audit::append(&s.db, &chain, &event(n)).await.unwrap());
+    }
+    s.tamper(&format!(
+        "UPDATE audit_events SET agent = 'mallory' WHERE id = {}",
+        ids[2]
+    ))
+    .await;
+    match audit::verify(&s.db, &chain).await.unwrap() {
+        Verdict::Broken { id, .. } => assert_eq!(id, ids[2]),
+        other => panic!("expected the chain to break, got {other:?}"),
+    }
+    s.finish().await;
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn deleting_a_row_breaks_the_chain_at_the_next_row() {
+    let chain = keyed(KEY);
+    let s = Scratch::new().await;
+    let mut ids = vec![];
+    for n in 0..4 {
+        ids.push(audit::append(&s.db, &chain, &event(n)).await.unwrap());
+    }
+    s.tamper(&format!("DELETE FROM audit_events WHERE id = {}", ids[1]))
+        .await;
+    match audit::verify(&s.db, &chain).await.unwrap() {
+        Verdict::Broken { id, .. } => assert_eq!(id, ids[2]),
+        other => panic!("expected the chain to break, got {other:?}"),
+    }
+    s.finish().await;
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn recomputing_digests_without_the_key_is_detected() {
+    // Someone with only the database edits a row and recomputes its digest as plain SHA-256.
+    let chain = keyed(KEY);
+    let s = Scratch::new().await;
+    let id = audit::append(&s.db, &chain, &event(0)).await.unwrap();
+    s.tamper(&format!(
+        "UPDATE audit_events SET digest = 'sha256:' || repeat('0', 64) WHERE id = {id}"
+    ))
+    .await;
+    assert!(matches!(
+        audit::verify(&s.db, &chain).await.unwrap(),
+        Verdict::Broken { .. }
+    ));
+    // And a chain checked with the wrong key does not verify.
+    let s2 = Scratch::new().await;
+    audit::append(&s2.db, &chain, &event(0)).await.unwrap();
+    assert!(matches!(
+        audit::verify(&s2.db, &keyed(OTHER_KEY)).await.unwrap(),
+        Verdict::Broken { .. }
+    ));
+    s.finish().await;
+    s2.finish().await;
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn concurrent_appends_do_not_fork_the_chain() {
+    let s = Scratch::new().await;
+    let chain = std::sync::Arc::new(keyed(KEY));
+    let mut tasks = vec![];
+    for n in 0..20 {
+        let (db, chain) = (s.db.clone(), chain.clone());
+        tasks.push(tokio::spawn(async move {
+            audit::append(&db, &chain, &event(n)).await.unwrap()
+        }));
+    }
+    for t in tasks {
+        t.await.unwrap();
+    }
+    assert_eq!(
+        audit::verify(&s.db, &chain).await.unwrap(),
+        Verdict::Intact { rows: 20 }
+    );
+    s.finish().await;
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn comparing_patients_writes_an_audit_row_without_the_demographics() {
+    let chain = keyed(KEY);
+    let s = Scratch::new().await;
+    let patient = |family: &str| Patient {
+        names: vec![HumanName {
+            family: Some(family.into()),
+            given: vec!["Zebediah".into()],
+        }],
+        birth_date: Some("1971-02-03".into()),
+        ..Default::default()
+    };
+    let request = CompareRequest {
+        a: patient("Quimby"),
+        b: patient("Quimby"),
+    };
+    let result = compare_audited(&s.db, &chain, &Agent("user-42".into()), &request)
+        .await
+        .unwrap();
+    assert_eq!(serde_json::to_value(result.decision).unwrap(), "auto_link");
+
+    let row = s
+        .db
+        .query_one_raw(sea_orm::Statement::from_string(
+            sea_orm::DbBackend::Postgres,
+            "SELECT action::text AS action, agent, resource_ref, detail::text AS detail FROM audit_events",
+        ))
+        .await
+        .unwrap()
+        .expect("one audit row");
+    assert_eq!(row.try_get::<String>("", "action").unwrap(), "E");
+    assert_eq!(row.try_get::<String>("", "agent").unwrap(), "user-42");
+    assert_eq!(
+        row.try_get::<String>("", "resource_ref").unwrap(),
+        "Patient/$compare"
+    );
+    let detail = row.try_get::<String>("", "detail").unwrap();
+    for secret in ["Quimby", "Zebediah", "1971"] {
+        assert!(
+            !detail.contains(secret),
+            "audit detail leaked {secret}: {detail}"
+        );
+    }
+    assert_eq!(
+        audit::verify(&s.db, &chain).await.unwrap(),
+        Verdict::Intact { rows: 1 }
+    );
+    s.finish().await;
+}

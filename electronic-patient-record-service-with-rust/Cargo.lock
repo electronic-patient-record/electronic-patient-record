@@ -1727,10 +1727,12 @@ dependencies = [
  "axum",
  "electronic-patient-record-matcher",
  "electronic-patient-record-migration",
+ "integrity-mac",
  "loco-rs",
  "sea-orm",
  "serde",
  "serde_json",
+ "sha2 0.11.1",
  "tokio",
  "tracing",
 ]
@@ -2620,6 +2622,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c033f80b2c113cdf91ab7a33faa9cbc014726dcad99880c8609af2a370edf37d"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "integrity-mac"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b432025607a8cf6d948d4b37d6fbe25a46144fb16ac05e7202c2cf7178da666c"
+dependencies = [
+ "getrandom 0.4.3",
+ "hkdf",
+ "hmac",
+ "sha2 0.11.1",
+ "zeroize",
 ]
 
 [[package]]

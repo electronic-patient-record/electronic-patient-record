@@ -5,7 +5,7 @@
 | Area | State |
 |---|---|
 | Matcher | Built: `Patient`, engine, NHS number validation. Missing: labelled corpus, fuzz, benches |
-| Service | Built: app wiring, auth guard and startup gate, compare endpoint, `audit_events` table. Missing: everything else |
+| Service | Built: app wiring, auth guard and startup gate, compare endpoint, `audit_events` table, hash-chained audit writer and verifier (compare is audited). Missing: patient storage and everything clinical |
 | UI | Built: shell, locale URLs, headers/CSP, proxy, compare page. Missing: sign-in, patient pages, widgets, translations |
 | CI, release, compose, Containerfiles | Written; see the changelog for what was run |
 
@@ -22,7 +22,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | Front-end version | 0.1.0 | `version` in the front-end `package.json` |
 | Migrations | 1 | files named `m2*.rs` in `migration/src` |
 | Route registrations | 1 | `.add(` calls in `src/controllers/*.rs` |
-| Service tests | 8, plus 2 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
+| Service tests | 21, plus 9 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
 | Matcher tests | 13, plus 0 `#[ignore]`d | the same patterns in the matcher |
 | Front-end unit tests (vitest) | 26 | `it(` / `test(` lines in `tests/unit` |
 | Front-end end-to-end tests (Playwright) | 6 | `test(` lines in `tests/e2e` |

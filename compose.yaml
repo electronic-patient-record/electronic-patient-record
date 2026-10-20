@@ -27,6 +27,9 @@ x-api-environment: &api-environment
   EPR_REDIS_URL: redis://:${EPR_REDIS_PASSWORD:-${POSTGRES_PASSWORD}}@redis:6379/0
   EPR_PASETO_KEYS_URL: ${EPR_PASETO_KEYS_URL:-}
   EPR_PASETO_KEYS: ${EPR_PASETO_KEYS:-}
+  # Audit hash-chain key (32+ bytes of hex). Set it BEFORE the first write: rows written without one
+  # are unkeyed SHA-256 and cannot be verified under a key later (a downgrade would otherwise be possible).
+  EPR_INTEGRITY_MAC_KEY: ${EPR_INTEGRITY_MAC_KEY:-}
   EPR_TOKEN_ISSUER: ${EPR_TOKEN_ISSUER:-authentication-service}
   EPR_TOKEN_AUDIENCE: ${EPR_TOKEN_AUDIENCE:-electronic-patient-record}
   SMTP_HOST: ${SMTP_HOST:-localhost}

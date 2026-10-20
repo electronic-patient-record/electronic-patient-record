@@ -13,16 +13,17 @@ the cross-subproject contract.
 | Fail closed | Before the guard is initialised every non-public request gets 503 | by construction |
 | Compare | `POST /api/patients/compare` takes `{a, b}` (matcher `Patient`) and returns a matcher `MatchResult` | `controllers::patients::tests` |
 | Audit table | `audit_events`, append-only; action in C/R/U/D/E; outcome in 0/4/8/12; triggers refuse UPDATE, DELETE, TRUNCATE | `tests/audit_immutable.rs` (Postgres) |
+| Audit writer | `audit::append` adds a row in its own transaction under an advisory lock; each `digest` covers the previous row's `digest` (keyed MAC via `integrity-mac` when `EPR_INTEGRITY_MAC_KEY` is set, else unkeyed SHA-256, with a startup warning); `audit::verify` recomputes the whole chain and names the first broken row | `audit::tests` (6); `tests/audit_chain.rs` (7, Postgres): intact chain keyed and unkeyed, edit and delete detected, a recomputed digest without the key detected, 20 concurrent appends do not fork |
+| Compare is audited | `POST /api/patients/compare` appends an `E` row (agent = token `sub`, or `anonymous` with login off; detail = decision and score only, never demographics) **before** returning; if the append fails the request fails (500) and no result is returned | `tests/audit_chain.rs`; run by hand with the audit table missing |
 
 ## 2. Configuration
 
-`EPR_REQUIRE_AUTH`, `EPR_PASETO_KEYS` (inline JSON key set), `EPR_PASETO_KEYS_URL`, `EPR_TOKEN_ISSUER`
+`EPR_REQUIRE_AUTH`, `EPR_PASETO_KEYS` (inline JSON key set), `EPR_PASETO_KEYS_URL`, `EPR_INTEGRITY_MAC_KEY` / `EPR_INTEGRITY_MAC_KEY_FILE` (audit chain key), `EPR_TOKEN_ISSUER`
 (default `authentication-service`), `EPR_TOKEN_AUDIENCE` (default `electronic-patient-record`), `EPR_REDIS_URL`
 (production cache), `DATABASE_URL`, `PORT`.
 
 ## 3. Not built
 
 Patient storage and CRUD; the resource store; FHIR endpoints and the CapabilityStatement; the policy engine;
-consent; break-the-glass; any write to `audit_events`; the hash chain (the `digest` and `prev_digest` columns exist
-but nothing computes them); OpenAPI; rate limiting; CORS allow-list; the search index.
+consent; break-the-glass; an HTTP endpoint to verify the chain (AU-2); audit of denied requests (401/403); refusing to start in `production` without an integrity key (it only warns); adopting a key on a chain that already has unkeyed rows (they would fail verification; set the key before the first write); OpenAPI; rate limiting; CORS allow-list; the search index.
 A valid token is currently enough to call any route.

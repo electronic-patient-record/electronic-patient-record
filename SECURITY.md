@@ -43,7 +43,7 @@ Checked by tests where a test is named (this is a pre-release scaffold, see
 **This software is not for clinical use and holds no clinical record yet.** No
 third party has audited it, and no certification (ONC, DTAC, DSPT, DCB0129,
 HIPAA) is claimed. Authorization beyond "has a valid token" (roles, consent,
-break-the-glass), audit writing on every access, and sign-in are planned and
+break-the-glass), audit of every access (only the compare route writes an audit row today), and sign-in are planned and
 not built (`tasks.md`: SE-*, AU-*). A deployer is responsible for their own
 configuration, keys, backups and assessment.
 

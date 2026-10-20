@@ -18,6 +18,13 @@ Milestone M0, scaffold. **Not for clinical use.**
   security headers, proxy that only forwards `/api`, a compare page; 26 unit tests, 7 browser tests with axe.
 - CI, release workflow, root `compose.yaml`, Containerfiles, scripts.
 
+### Added after the first cut: audit writer (AU-1, partly)
+
+- `audit::append` / `audit::verify`: hash-chained, keyed with `EPR_INTEGRITY_MAC_KEY` when set. `compare` now writes an
+  audit row before answering and returns 500, with no result, if it cannot. 6 unit and 7 Postgres tests.
+- Found and fixed while testing by hand: my first key variable name was wrong (`EPR_INTEGRITY_KEY`; the crate derives
+  `EPR_INTEGRITY_MAC_KEY`), so the chain silently stayed unkeyed. A unit test now pins the names.
+
 ### Changed after the first cut
 
 - The matcher is published as `electronic-patient-record-matcher` 0.1.0 on crates.io; the service depends on it from
@@ -29,7 +36,9 @@ Milestone M0, scaffold. **Not for clinical use.**
 ### Not done or not verified
 
 - No clinical record, no FHIR endpoints, no patient storage, no patient CRUD, no merge.
-- The audit table exists but **nothing writes to it yet** (AU-1). The compare endpoint reads no stored data.
+- Audit: no verify endpoint, denied requests are not audited, no other route is audited (none reads stored data), and
+  an existing unkeyed chain cannot adopt a key later. Without `EPR_INTEGRITY_MAC_KEY` the chain is unkeyed SHA-256
+  (warned at startup), so someone who can write SQL can recompute it.
 - Authorization beyond "valid token" (roles, consent, break-the-glass) is not built (SE-*). Sign-in is not built;
   the UI proxy sends no token, so it only works against an API with login off (development).
 - The matcher has 13 hand-written tests, not the 200-pair labelled corpus the acceptance criterion in ID-1 asks

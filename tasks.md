@@ -132,7 +132,7 @@ Conventions:
   `/patients/[id]` demographics with the persistent banner (photo, name, two
   identifiers, age, allergies status).
   **Acceptance:** Playwright plus axe pass. The banner is visible on every patient route (test).
-- [ ] **AU-1 (L) — Audit writer.** One AuditEvent per access, using the BALP
+- [ ] **AU-1 (L) — Audit writer.** **Partly landed 2026-10-20** (`src/audit.rs`; 6 unit tests, 7 Postgres tests in `tests/audit_chain.rs`): rows are hash-chained (keyed MAC when `EPR_INTEGRITY_MAC_KEY` is set), appended under an advisory lock, verified by `audit::verify`; `POST /api/patients/compare` is audited before it answers and fails closed. **Not built:** a verify *endpoint* (the acceptance says endpoint; see AU-2), audit of denied requests, audit on any other route (none read stored data yet), BALP/FHIR `AuditEvent` output, refusing to start in production without a key. Left open. Original description: One AuditEvent per access, using the BALP
   shape: agent, patient, entity, action (C/R/U/D/E), outcome, purpose of
   use, network address, break-the-glass flag. Rows are append-only and
   hash-chained with `integrity-mac`.
