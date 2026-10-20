@@ -1,0 +1,76 @@
+# Multi-stage container build for the Electronic Patient Record service.
+#
+# BUILD CONTEXT IS THE REPOSITORY ROOT (the root rust-toolchain.toml is read from it). The matcher,
+# `authentication-verifier` and the rest come from crates.io, so the build needs registry access:
+#
+#   podman build -f electronic-patient-record-service-with-rust/Containerfile \
+#     -t electronic-patient-record-service .
+#
+# VERSION: pass `--build-arg VERSION=<x.y.z>` (the release workflow does, from the tag); the build
+# fails unless it equals the crate's `version`. The base image tag must equal `channel` in the root
+# rust-toolchain.toml; the first RUN step fails the build if they drift.
+
+FROM docker.io/library/rust:1.99.1-slim AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates pkg-config libssl-dev libpq-dev perl make gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY rust-toolchain.toml /tmp/rust-toolchain.toml
+RUN want="$(sed -n 's/^channel *= *"\(.*\)"/\1/p' /tmp/rust-toolchain.toml)" \
+    && have="$(rustc --version | cut -d' ' -f2)" \
+    && echo "pinned toolchain ${want}, builder rustc ${have}" \
+    && test "${want}" = "${have}"
+
+WORKDIR /app
+COPY electronic-patient-record-service-with-rust/Cargo.toml electronic-patient-record-service-with-rust/Cargo.lock electronic-patient-record-service-with-rust/
+COPY electronic-patient-record-service-with-rust/migration electronic-patient-record-service-with-rust/migration
+COPY electronic-patient-record-service-with-rust/src electronic-patient-record-service-with-rust/src
+
+WORKDIR /app/electronic-patient-record-service-with-rust
+
+ARG VERSION=""
+RUN crate="$(sed -n 's/^version *= *"\(.*\)"/\1/p' Cargo.toml | head -1)" \
+    && echo "crate version ${crate}, VERSION argument '${VERSION}'" \
+    && { [ -z "${VERSION}" ] || [ "${VERSION}" = "${crate}" ]; }
+
+# Migrations are compiled into the binary; the same binary runs them (`... db migrate`).
+RUN cargo build --release --locked --bin electronic-patient-record
+
+# ---- runtime ---------------------------------------------------------------
+FROM docker.io/library/debian:13-slim
+
+ARG VERSION=""
+ARG REVISION=""
+LABEL org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.title="electronic-patient-record" \
+      org.opencontainers.image.description="Electronic patient record service (loco.rs, PostgreSQL)" \
+      org.opencontainers.image.source="" \
+      org.opencontainers.image.licenses="MIT OR Apache-2.0 OR BSD-3-Clause OR GPL-2.0-only OR GPL-3.0-only" \
+      org.opencontainers.image.revision="${REVISION}"
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libpq5 libssl3 ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd --create-home --uid 1000 --shell /usr/sbin/nologin epr
+
+WORKDIR /app
+COPY --from=builder --chown=epr:epr \
+    /app/electronic-patient-record-service-with-rust/target/release/electronic-patient-record \
+    /app/electronic-patient-record
+# loco reads config/<LOCO_ENV>.yaml at run time (it is not baked into the binary).
+COPY --chown=epr:epr electronic-patient-record-service-with-rust/config ./config
+RUN chown -R epr:epr /app
+
+USER epr
+EXPOSE 5150
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD curl --silent --fail http://localhost:5150/_health || exit 1
+
+# config/production.yaml; requires DATABASE_URL and EPR_REDIS_URL. See /compose.yaml.
+ENV LOCO_ENV=production \
+    PORT=5150
+
+CMD ["/app/electronic-patient-record", "start"]

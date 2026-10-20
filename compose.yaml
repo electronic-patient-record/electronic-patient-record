@@ -1,0 +1,123 @@
+# Run the Electronic Patient Record API with its database.
+#
+#   POSTGRES_PASSWORD=change-me EPR_PASETO_KEYS_URL=https://auth.example.com/.well-known/paseto-keys \
+#     podman compose up -d --build --wait
+#   curl -fsS http://localhost:5150/_health
+#   podman compose down -v                     # stop and delete the database volume
+#
+# SAFE BY DEFAULT: login enforcement is ON. Every route except /_health, /_ping and /_readiness
+# demands a valid PASETO v4.public bearer token, so the API needs the public keys of whatever
+# issues your tokens (EPR_PASETO_KEYS_URL, or EPR_PASETO_KEYS inline). With neither set the
+# service REFUSES TO START, which is the safe failure. It also refuses to start in `production`
+# with login off.
+#
+# NOT FOR CLINICAL USE. This is a scaffold: there is no clinical record yet, and authorization
+# beyond "has a valid token" (roles, consent, break-the-glass) is not built (tasks SE-1 to SE-4).
+#
+# The UI is the compose profile `ui` (http://localhost:3000):
+#
+#   podman compose --profile ui up -d --build --wait
+
+name: electronic-patient-record
+
+x-api-environment: &api-environment
+  LOCO_ENV: production
+  PORT: "5150"
+  DATABASE_URL: postgres://epr:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD (any value for local use)}@postgres:5432/electronic_patient_record
+  EPR_REDIS_URL: redis://:${EPR_REDIS_PASSWORD:-${POSTGRES_PASSWORD}}@redis:6379/0
+  EPR_PASETO_KEYS_URL: ${EPR_PASETO_KEYS_URL:-}
+  EPR_PASETO_KEYS: ${EPR_PASETO_KEYS:-}
+  EPR_TOKEN_ISSUER: ${EPR_TOKEN_ISSUER:-authentication-service}
+  EPR_TOKEN_AUDIENCE: ${EPR_TOKEN_AUDIENCE:-electronic-patient-record}
+  SMTP_HOST: ${SMTP_HOST:-localhost}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  SMTP_USER: ${SMTP_USER:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+
+x-api-build: &api-build
+  context: .
+  dockerfile: electronic-patient-record-service-with-rust/Containerfile
+
+services:
+  postgres:
+    image: docker.io/library/postgres:18-alpine
+    environment:
+      POSTGRES_USER: epr
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD (any value for local use)}
+      POSTGRES_DB: electronic_patient_record
+    volumes:
+      - postgres-data:/var/lib/postgresql
+      - ./ci/postgres-init:/docker-entrypoint-initdb.d:ro,z
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U epr -d electronic_patient_record"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+
+  # The cache. Not published on the host. It holds nothing that cannot be rebuilt.
+  redis:
+    image: docker.io/library/redis:7-alpine
+    command: ["redis-server", "--requirepass", "${EPR_REDIS_PASSWORD:-${POSTGRES_PASSWORD}}", "--save", "", "--appendonly", "no", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASS\" --no-auth-warning ping | grep -q PONG"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    environment:
+      REDIS_PASS: ${EPR_REDIS_PASSWORD:-${POSTGRES_PASSWORD}}
+
+  # One-shot: applies the migrations compiled into the binary, then exits.
+  # (config/production.yaml sets auto_migrate: false on purpose.)
+  migrate:
+    build: *api-build
+    image: electronic-patient-record-service:local
+    command: ["/app/electronic-patient-record", "db", "migrate"]
+    environment: *api-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build: *api-build
+    image: electronic-patient-record-service:local
+    environment:
+      <<: *api-environment
+      EPR_REQUIRE_AUTH: "true"
+    ports:
+      - "5150:5150"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "--silent", "--fail", "http://localhost:5150/_health"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  ui:
+    profiles: ["ui"]
+    build:
+      context: .
+      dockerfile: electronic-patient-record-ui-with-svelte/Containerfile
+    image: electronic-patient-record-ui:local
+    environment:
+      EPR_API_URL: http://api:5150
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.status<500?0:1),()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  postgres-data:

@@ -1,0 +1,33 @@
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /electronic-patient-record-service-with-rust
+    schedule:
+      interval: weekly
+    groups:
+      cargo-api:
+        patterns: ["*"]
+    ignore:
+      # loco-rs 1.2 depends on axum-test 17 and jsonwebtoken 9; do not bump them alone.
+      - dependency-name: axum-test
+        update-types: ["version-update:semver-major"]
+      - dependency-name: jsonwebtoken
+        update-types: ["version-update:semver-major"]
+  - package-ecosystem: cargo
+    directory: /electronic-patient-record-matcher-with-rust
+    schedule:
+      interval: weekly
+    groups:
+      cargo-matcher:
+        patterns: ["*"]
+  - package-ecosystem: npm
+    directory: /electronic-patient-record-ui-with-svelte
+    schedule:
+      interval: weekly
+    groups:
+      npm-ui:
+        patterns: ["*"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

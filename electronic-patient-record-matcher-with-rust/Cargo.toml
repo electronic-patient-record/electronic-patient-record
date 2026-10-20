@@ -1,0 +1,25 @@
+[package]
+name = "electronic-patient-record-matcher"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.96"
+authors = ["Joel Parker Henderson <joel@joelparkerhenderson.com>"]
+description = "Electronic patient record matcher: pure, deterministic, explainable patient identity matching for a master patient index"
+license = "MIT OR Apache-2.0 OR BSD-3-Clause OR GPL-2.0-only OR GPL-3.0-only"
+keywords = ["patient", "healthcare", "matching", "identity", "mpi"]
+categories = ["algorithms", "text-processing"]
+
+[lib]
+name = "electronic_patient_record_matcher"
+path = "src/lib.rs"
+
+[[bin]]
+name = "electronic-patient-record-matcher"
+path = "src/main.rs"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", features = ["float_roundtrip", "arbitrary_precision"] }
+strsim = "0.11"
+unicode-normalization = "0.1"
+thiserror = "2.0"

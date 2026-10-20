@@ -1,0 +1,185 @@
+name: Release
+
+# Push a tag `vX.Y.Z` to publish a release. The tag must equal the API crate's
+# version; the matcher and UI versions are reported (they version independently).
+# Action pinning: major-version tags; full-SHA pinning is the stricter option.
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  API: electronic-patient-record-service-with-rust
+  MATCHER: electronic-patient-record-matcher-with-rust
+  UI: electronic-patient-record-ui-with-svelte
+
+jobs:
+  verify:
+    name: Verify tag and versions
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      major_minor: ${{ steps.v.outputs.major_minor }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: v
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          version="${tag#v}"
+          crate_version() { sed -n 's/^version *= *"\(.*\)"/\1/p' "$1" | head -1; }
+          api="$(crate_version "$API/Cargo.toml")"
+          matcher="$(crate_version "$MATCHER/Cargo.toml")"
+          ui="$(sed -n 's/^ *"version": *"\(.*\)",*/\1/p' "$UI/package.json" | head -1)"
+          echo "tag=$version api=$api matcher=$matcher ui=$ui"
+          if [ "$version" != "$api" ]; then
+            echo "::error::tag $tag does not match the API crate version $api"
+            exit 1
+          fi
+          # The UI is released with the service, so its version must agree too (HD-8).
+          if [ "$version" != "$ui" ]; then
+            echo "::error::tag $tag does not match the UI package version $ui"
+            exit 1
+          fi
+          # The matcher crate is versioned independently; surface its value.
+          echo "::notice::matcher crate $matcher, UI package $ui"
+          # Release notes must exist (also proves the CHANGELOG has the section).
+          scripts/release-notes.sh "$tag" "$API/CHANGELOG.md" >/dev/null
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "major_minor=${version%.*}" >> "$GITHUB_OUTPUT"
+
+  deny:
+    name: cargo deny
+    needs: verify
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        crate:
+          - electronic-patient-record-service-with-rust
+          - electronic-patient-record-matcher-with-rust
+    steps:
+      - uses: actions/checkout@v7
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          manifest-path: ${{ matrix.crate }}/Cargo.toml
+          arguments: --all-features
+          command: check
+
+  image:
+    name: Build and push the container image
+    needs: [verify, deny]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write       # provenance / attestation signing
+      attestations: write
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v7
+      # Podman is preinstalled on ubuntu-latest. QEMU user emulation builds the arm64 image.
+      - run: sudo apt-get update && sudo apt-get install -y qemu-user-static
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - id: push
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}
+          VERSION: ${{ needs.verify.outputs.version }}
+          MAJOR_MINOR: ${{ needs.verify.outputs.major_minor }}
+        run: |
+          set -euo pipefail
+          image="${IMAGE,,}"   # registry names are lowercase
+          # `--format docker` keeps the HEALTHCHECK, which the OCI format drops.
+          # The build fails unless VERSION equals the crate's version (see the Containerfile).
+          podman build --format docker \
+            --platform linux/amd64,linux/arm64 \
+            --manifest "$image:$VERSION" \
+            --build-arg "VERSION=$VERSION" --build-arg "REVISION=${{ github.sha }}" \
+            -f "$API/Containerfile" .
+          podman manifest push --all --digestfile digest.txt "$image:$VERSION" "docker://$image:$VERSION"
+          podman manifest push --all "$image:$VERSION" "docker://$image:$MAJOR_MINOR"
+          podman manifest push --all "$image:$VERSION" "docker://$image:sha-${{ github.sha }}"
+          echo "digest=$(cat digest.txt)" >> "$GITHUB_OUTPUT"
+      - uses: actions/attest-build-provenance@v4
+        with:
+          subject-name: ghcr.io/${{ github.repository }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+      - run: echo "Pushed ghcr.io/${{ github.repository }}@${{ steps.push.outputs.digest }}" >> "$GITHUB_STEP_SUMMARY"
+
+  sbom:
+    name: CycloneDX SBOMs
+    needs: [verify, deny]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@1.99.1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            ${{ env.API }}
+            ${{ env.MATCHER }}
+      - run: cargo install cargo-cyclonedx --locked
+      - name: Rust SBOMs
+        run: |
+          set -euo pipefail
+          mkdir -p sbom
+          for crate in "$API" "$MATCHER"; do
+            (cd "$crate" && cargo cyclonedx --format json --override-filename "$crate.cdx")
+            mv "$crate/$crate.cdx.json" "sbom/$crate.cdx.json"
+            python3 scripts/check-sbom.py "sbom/$crate.cdx.json" "$crate/Cargo.lock"
+          done
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+      - name: UI SBOM
+        working-directory: ${{ env.UI }}
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+          # `pnpm sbom` reads pnpm's own lock file (cyclonedx-npm refuses to run under pnpm).
+          # No --prod: the app bundles its development-time dependencies into what ships.
+          pnpm sbom --sbom-format cyclonedx > "$GITHUB_WORKSPACE/sbom/$UI.cdx.json"
+          python3 "$GITHUB_WORKSPACE/scripts/check-sbom.py" "$GITHUB_WORKSPACE/sbom/$UI.cdx.json" pnpm-lock.yaml
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sbom
+          path: sbom/*.cdx.json
+          if-no-files-found: error
+
+  release:
+    name: Create the GitHub release
+    needs: [verify, image, sbom]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: sbom
+          path: sbom
+      - name: Extract notes from CHANGELOG.md
+        run: scripts/release-notes.sh "$GITHUB_REF_NAME" "$API/CHANGELOG.md" > release-notes.md
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo
+            echo "Container image: \`ghcr.io/${{ github.repository }}:${{ needs.verify.outputs.version }}\` (digest \`${{ needs.image.outputs.digest }}\`)"
+          } >> release-notes.md
+          gh release create "$GITHUB_REF_NAME" sbom/*.cdx.json \
+            --title "$GITHUB_REF_NAME" --notes-file release-notes.md --verify-tag

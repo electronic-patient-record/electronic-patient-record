@@ -1,0 +1,34 @@
+cff-version: 1.2.0
+title: "Electronic Patient Record"
+message: >-
+  If you use this work and you want to cite it,
+  then you can use the metadata from this file.
+type: software
+authors:
+  - given-names: Joel Parker
+    family-names: Henderson
+    email: joel@joelparkerhenderson.com
+    affiliation: joelparkerhenderson.com
+    orcid: 'https://orcid.org/0009-0000-4681-282X'
+identifiers:
+  - type: url
+    value: 'https://github.com/electronic-patient-record/electronic-patient-record'
+    description: Electronic Patient Record
+repository-code: 'https://github.com/electronic-patient-record/electronic-patient-record'
+abstract: >-
+  Open-source electronic patient record software: a safe, append-only, audited
+  longitudinal patient record with a FHIR R4 facade and explainable patient identity
+  matching. A Rust matcher library, a Rust REST service and a SvelteKit front end.
+  Pre-release scaffold; not for clinical use.
+keywords:
+  - electronic patient record
+  - FHIR
+  - patient identity matching
+  - Rust
+  - Svelte
+license:
+  - MIT
+  - Apache-2.0
+  - BSD-3-Clause
+  - GPL-2.0-only
+  - GPL-3.0-only

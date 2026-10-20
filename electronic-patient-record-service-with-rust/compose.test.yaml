@@ -1,0 +1,71 @@
+# Postgres (and Redis) for this service's DB-gated test suite.
+#
+# From this crate's directory:
+#
+#   podman compose -f compose.test.yaml up -d --wait
+#   DATABASE_URL=postgres://loco:loco@localhost:5432/electronic_patient_record_test \
+#     cargo test --test mod -- --ignored --test-threads=1
+#   podman compose -f compose.test.yaml down -v
+#
+# Redis (the production cache provider) is started with Postgres, on 127.0.0.1:6379 with the password `loco`
+# (override the port with TEST_REDIS_PORT). The tests keep the in-memory cache (config/test.yaml) and do not
+# need it; it is there to run the service against Redis by hand:
+#
+#   EPR_REDIS_URL=redis://:loco@127.0.0.1:6379/0 LOCO_ENV=production ...
+#
+# The file is plain Compose spec.
+#
+# The connection details deliberately match what CI provides
+# (/.github/workflows/ci.yml job `api-db`): superuser `loco`/`loco` on 5432.
+# A database a test passes against locally but CI cannot reproduce is
+# worse than no local database.
+services:
+  postgres:
+    # Fully qualified: podman refuses a short name (or prompts for a
+    # registry), which would hang an unattended run.
+    image: docker.io/library/postgres:18-alpine
+    container_name: mxi-electronic-patient-record-test-db
+    environment:
+      POSTGRES_USER: loco
+      POSTGRES_PASSWORD: loco
+      # Matches config/test.yaml, so a bare `cargo test -- --ignored`
+      # finds its database.
+      POSTGRES_DB: electronic_patient_record_test
+    ports:
+      # Override to run two services' databases side by side:
+      #   TEST_DB_PORT=5433 podman compose -f compose.test.yaml up -d
+      - "${TEST_DB_PORT:-5432}:5432"
+    volumes:
+      # One shared init script rather than a copy per service; it enables
+      # the extensions in template1, so every database created later
+      # inherits them.
+      - ../ci/postgres-init:/docker-entrypoint-initdb.d:ro,z
+    tmpfs:
+      # PGDATA lives under /var/lib/postgresql in the 18 image
+      # (/var/lib/postgresql/18/docker — *not* the /var/lib/postgresql/data
+      # of earlier majors, which is why an earlier tmpfs mount at that path
+      # silently did nothing). In RAM: a test database is disposable, and
+      # every `up` should start from a clean initdb.
+      - /var/lib/postgresql
+    healthcheck:
+      # `up --wait` waits on this, so a test run cannot start
+      # against a database that is still initializing.
+      test: ["CMD-SHELL", "pg_isready -U loco -d electronic_patient_record_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+
+  # The production cache provider, for running the service against Redis locally. Throwaway: nothing is
+  # saved to disk. Bound to the loopback address only.
+  redis:
+    image: docker.io/library/redis:7-alpine
+    container_name: mxi-electronic-patient-record-test-redis
+    command: ["redis-server", "--requirepass", "loco", "--save", "", "--appendonly", "no", "--maxmemory", "64mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "127.0.0.1:${TEST_REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a loco --no-auth-warning ping | grep -q PONG"]
+      interval: 2s
+      timeout: 3s
+      retries: 30

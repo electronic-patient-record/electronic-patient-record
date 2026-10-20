@@ -1,0 +1,206 @@
+name: CI
+
+# One workflow for the whole repository. Branch protection should require the single aggregate
+# check `ci-ok`. Third-party actions are pinned to a major version tag; Dependabot keeps them current.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Must equal `channel` in rust-toolchain.toml (the fresh-clone job checks it).
+  RUST_TOOLCHAIN: "1.99.1"
+  CARGO_TERM_COLOR: always
+  API: electronic-patient-record-service-with-rust
+  MATCHER: electronic-patient-record-matcher-with-rust
+  UI: electronic-patient-record-ui-with-svelte
+
+jobs:
+  matcher:
+    name: Matcher (fmt, clippy, tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: electronic-patient-record-matcher-with-rust
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@1.99.1
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ${{ env.MATCHER }}
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets --all-features -- -D warnings
+      - run: cargo test
+
+  api:
+    name: API (fmt, clippy, database-free tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: electronic-patient-record-service-with-rust
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@1.99.1
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ${{ env.API }}
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets --all-features -- -D warnings
+      - run: cargo test --lib
+
+  api-db:
+    name: API (Postgres 18 tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: electronic-patient-record-service-with-rust
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: loco
+          POSTGRES_PASSWORD: loco
+          POSTGRES_DB: electronic_patient_record_test
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd "pg_isready -U loco -d electronic_patient_record_test"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgres://loco:loco@localhost:5432/electronic_patient_record_test
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@1.99.1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ${{ env.API }}
+      - name: Every DB-gated test binary
+        run: |
+          set -euo pipefail
+          for f in tests/*.rs; do
+            name="$(basename "$f" .rs)"
+            echo "::group::cargo test --test $name -- --ignored"
+            cargo test --test "$name" -- --ignored --test-threads=1
+            echo "::endgroup::"
+          done
+
+  deny:
+    name: cargo deny
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        crate:
+          - electronic-patient-record-service-with-rust
+          - electronic-patient-record-matcher-with-rust
+    steps:
+      - uses: actions/checkout@v7
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          manifest-path: ${{ matrix.crate }}/Cargo.toml
+          arguments: --all-features
+          command: check
+
+  ui:
+    name: UI (check, unit tests, browser tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: electronic-patient-record-ui-with-svelte
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: pnpm
+          cache-dependency-path: electronic-patient-record-ui-with-svelte/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run check
+      - run: pnpm exec vitest run
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright test
+        env:
+          CI: "true"
+
+  docs:
+    name: Docs (links, status, special files)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: python3 scripts/check-links.py .
+      - run: sh scripts/generate-status.sh --check
+
+  container:
+    name: Container images build (Podman)
+    runs-on: ubuntu-latest
+    env:
+      # `podman compose` would pick the preinstalled docker-compose first; name the Podman-native provider.
+      PODMAN_COMPOSE_PROVIDER: podman-compose
+      POSTGRES_PASSWORD: ci-only
+    steps:
+      - uses: actions/checkout@v7
+      - run: pipx install podman-compose
+      - name: API image
+        run: podman build -f ${{ env.API }}/Containerfile -t epr-api:ci .
+      - name: UI image
+        run: podman build -f ${{ env.UI }}/Containerfile -t epr-ui:ci .
+      - name: The API refuses to start with login on and no keys
+        run: |
+          set -u
+          podman compose up -d
+          for i in $(seq 1 60); do
+            state="$(podman inspect -f '{{.State.Status}}' electronic-patient-record_api_1 2>/dev/null || echo missing)"
+            [ "$state" = exited ] && break
+            sleep 2
+          done
+          if [ "$state" != exited ]; then
+            echo "::error::the API did not refuse to start with no token keys (state: $state)"
+            podman compose down -v; exit 1
+          fi
+          podman logs electronic-patient-record_api_1 2>&1 | grep "refusing to start"
+          podman compose down -v
+      - name: The API starts, and demands a token, with keys set
+        env:
+          EPR_PASETO_KEYS: '{"keys":[{"kty":"OKP","crv":"Ed25519","use":"sig","kid":"sUcFiI9KaDkaCapZaN0l0Ww7unuzttFb81TY3KroWkc","x":"11l5O7wTooGagnx2rbb7qKSa7gB_SfLQmS2ZuCWtLEg"}]}'
+        run: |
+          set -eu
+          podman compose up -d
+          for i in $(seq 1 60); do curl -fsS http://127.0.0.1:5150/_health && break; sleep 2; done
+          curl -fsS http://127.0.0.1:5150/_health
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:5150/api/patients/compare)" = 401
+          podman compose down -v
+
+  fresh-clone:
+    name: Toolchain pin matches CI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: |
+          want="$(sed -n 's/^channel *= *"\(.*\)"/\1/p' rust-toolchain.toml)"
+          echo "rust-toolchain.toml=$want CI=$RUST_TOOLCHAIN"
+          test "$want" = "$RUST_TOOLCHAIN"
+
+  ci-ok:
+    name: ci-ok
+    if: always()
+    needs: [matcher, api, api-db, deny, ui, docs, container, fresh-clone]
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo '${{ toJSON(needs) }}'
+          test "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" = "false"

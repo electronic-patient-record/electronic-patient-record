@@ -1,0 +1,44 @@
+[workspace]
+
+[package]
+name = "electronic-patient-record"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.96"
+publish = true
+default-run = "electronic-patient-record"
+authors = ["Joel Parker Henderson <joel@joelparkerhenderson.com>"]
+description = "Electronic patient record service: the clinical record, audit, consent and a FHIR R4 facade (patient identity first)"
+readme = "README.md"
+license = "MIT OR Apache-2.0 OR BSD-3-Clause OR GPL-2.0-only OR GPL-3.0-only"
+keywords = ["patient", "healthcare", "fhir", "ehr", "epr"]
+categories = ["web-programming", "development-tools"]
+include = ["src/**/*", "README.md"]
+
+[[bin]]
+name = "electronic-patient-record"
+path = "src/bin/main.rs"
+
+[workspace.dependencies]
+# `auth` is deliberately absent: it is loco's JWT support (`jsonwebtoken`, `rsa`).
+# This family issues PASETO v4.public, verified by `authentication-verifier`.
+loco-rs = { version = "1.2.0", default-features = false, features = ["cli", "with-db", "cache_inmem", "cache_redis", "worker"] }
+
+[dependencies]
+loco-rs = { workspace = true }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["float_roundtrip", "arbitrary_precision"] }
+tokio = { version = "1.53", default-features = false, features = ["rt-multi-thread", "sync", "time", "net"] }
+async-trait = { version = "0.1" }
+axum = { version = "0.8" }
+tracing = { version = "0.1" }
+sea-orm = { version = "2.0", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-rustls", "macros"] }
+electronic-patient-record-migration = { version = "0.1.0", path = "migration" }
+# The matcher's `Patient` is the API identity DTO, with no adapter layer. Published crate.
+electronic-patient-record-matcher = "0.1.0"
+# Offline PASETO v4.public verification against the authentication service's Ed25519 keys.
+authentication-verifier = { version = "0.9.1", default-features = false, features = ["paseto", "fetch"] }
+
+[dev-dependencies]
+authentication-verifier = { version = "0.9.1", default-features = false, features = ["test-idp"] }
+loco-rs = { workspace = true, features = ["testing"] }
