@@ -12,3 +12,20 @@
 
 All routes except the three probes require a valid bearer token (built). A census test will keep the mounted FHIR routes
 and the CapabilityStatement equal (IO-1).
+
+### API versioning
+
+The REST API lives at `/api` and is versioned by a request header, `Accepts-version`, never by the path. Do **not**
+add `/api/v1`, `/api/v2` or any other version segment to a route. A new version of a route changes behaviour behind the
+same path, chosen by the header.
+
+- The header carries the version the client was written for. Naming the values and the default (what a request with no
+  header gets) is part of the first change that needs a second version; until then there is one version and the header
+  is not read.
+- A version the server does not know is refused, not silently served as another one.
+- The route table, the census test and the audit `resource_ref` use the unversioned path, so one route has one policy
+  entry whatever its version.
+- `/fhir/R4` is not this API's version: `R4` is the FHIR release the endpoints implement, fixed by that standard's
+  base-URL convention. A different FHIR release would be a separate mount, not an API version.
+
+**Not built:** reading the header, the list of versions, and the refusal of an unknown one. This is the rule, not code.

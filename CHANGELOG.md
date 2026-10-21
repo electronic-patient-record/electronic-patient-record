@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-21 - API versioning rule
+
+- `spec/09-api-surface.md` and the root `AGENTS.md` now say: version the REST API with the `Accepts-version` request header
+  on `/api`, and never with `/api/v1`, `/api/v2` or any path segment. `/fhir/R4` is the FHIR release, not an API version.
+- **Not done:** the rule is not enforced. Nothing reads the header, there is no list of versions or default, and no check
+  refuses a route that has a version segment (the route census would not notice one).
+
 ## 2026-10-21 - Break-the-glass (SE-3)
 
 - A treating clinician (clinician, nurse, pharmacist, allied health) with no care relationship who is refused clinical
