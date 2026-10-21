@@ -2,6 +2,23 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-21 - A patient's consents, allergies, relationships and links seek an index (CQ-9, in part)
+
+- `consent_current`, `allergy_current`, `relationship_current` and `patient_link_current` were `DISTINCT ON` the
+  record's own id. A page asks for one patient's records, and Postgres cannot push that filter below `DISTINCT ON`, so
+  every such read built the current version of every record in the table first. Migration 11 replaces the four views
+  with an anti-join (a version with no later version of the same record). Same columns, same rows; the patient filter
+  now uses the versions table's patient index. `spec/10-persistence.md` states the rule.
+- Tests (`tests/current_views.rs`, Postgres):
+  - each new view equals the old `DISTINCT ON` form, by `EXCEPT` both ways. The test data has 8, 20, 4 and 183
+    records with several versions;
+  - a patient filter on each view gives an `Index Cond` and no `Unique` step. This test failed before the migration.
+  - 161 unit and 67 Postgres tests pass.
+- **Not done:**
+  - `down()` (it restores the old views) was not run;
+  - nothing was measured on a large table;
+  - the search indexes on identifiers, birth date and folded family name are still missing.
+
 ## 2026-10-21 - Ids are compared as UUIDs, so lookups can seek the index (CQ-9, in part)
 
 - 14 queries compared an id column as text (`patient_id::text = lower($1)`, `… = ANY($1::text[])`). That hides the

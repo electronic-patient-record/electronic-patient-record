@@ -463,7 +463,7 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
 
 ### Service
 
-- [ ] **CQ-9 (S/M) — Typed ids and indexes.** **Casts landed 2026-10-21** (14 queries bind `$n::uuid`; `ids::uuid`; a source census; a Postgres EXPLAIN test). **Open:** the `DISTINCT ON` views that cannot push a `patient_id` filter down (consent, allergy, relationship), and the search indexes. Parse ids to `Uuid` and bind `$1::uuid` instead of
+- [ ] **CQ-9 (S/M) — Typed ids and indexes.** **Casts landed 2026-10-21** (14 queries bind `$n::uuid`; `ids::uuid`; a source census; a Postgres EXPLAIN test). **Views landed 2026-10-21** (migration 11: the consent, allergy, relationship and link views as anti-joins; equivalence and plan tests). **Open:** the search indexes. Parse ids to `Uuid` and bind `$1::uuid` instead of
   `patient_id::text = lower($1)` (11 queries). Add search indexes on identifiers, birth date and folded family name;
   review the `DISTINCT ON` `*_current` views.
   **Acceptance:** `EXPLAIN` of a patient read and a search uses an index (DB-gated test asserting no seq scan on a
