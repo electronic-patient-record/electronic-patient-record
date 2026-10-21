@@ -15,7 +15,7 @@ use loco_rs::{
 };
 use std::path::Path;
 
-use crate::{auth, controllers};
+use crate::{auth, authz, controllers};
 
 /// The loco.rs application hooks.
 pub struct App;
@@ -49,7 +49,7 @@ impl Hooks for App {
     }
 
     fn routes(_ctx: &AppContext) -> AppRoutes {
-        AppRoutes::with_default_routes().add_route(controllers::patients::routes())
+        controllers::all_routes()
     }
 
     async fn after_routes(router: AxumRouter, ctx: &AppContext) -> Result<AxumRouter> {
@@ -62,7 +62,14 @@ impl Hooks for App {
         auth::init(ctx.environment == Environment::Production, config_require)
             .await
             .map_err(loco_rs::Error::Message)?;
-        Ok(router.layer(axum::middleware::from_fn(auth::require_auth_mw)))
+        // The last layer added runs first: authenticate, then authorize.
+        let gate = authz::Authz { db: ctx.db.clone() };
+        Ok(router
+            .layer(axum::middleware::from_fn_with_state(
+                gate,
+                authz::authorize_mw,
+            ))
+            .layer(axum::middleware::from_fn(auth::require_auth_mw)))
     }
 
     async fn connect_workers(_ctx: &AppContext, _queue: &Queue) -> Result<()> {

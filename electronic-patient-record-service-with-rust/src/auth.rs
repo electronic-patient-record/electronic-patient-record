@@ -10,12 +10,15 @@
 //! The service refuses to start when enforcement is off in production, or on with no keys, no key
 //! URL and no Keycloak.
 //!
-//! Keycloak roles are **not** consulted yet: they map to attributes only through
-//! `EPR_KEYCLOAK_ROLE_MAP`, and nothing reads attributes until the policy engine (SE-1).
+//! Authentication yields who the caller is (`Agent`) and what the token says about them
+//! (`Subject`: the roles in its `role` attribute; Keycloak roles reach it through
+//! `EPR_KEYCLOAK_ROLE_MAP_FILE`). What they may do is decided in [`crate::authz`] and
+//! [`crate::policy`]. With login off there is no subject and no authorization either; that is
+//! for development only and the service refuses to start that way in production.
 //!
-//! Not built yet: authorization (RBAC, ABAC, consent). A valid token is
-//! currently enough. See tasks SE-1 to SE-4.
+//! Not built yet: consent, break-the-glass grants, record-level decisions. See tasks SE-2 to SE-4.
 
+use crate::policy::Subject;
 use authentication_verifier::Verifier;
 use authentication_verifier::keycloak::{KeycloakSettings, KeycloakVerifier};
 use axum::http::{HeaderMap, StatusCode, header::AUTHORIZATION};
@@ -168,6 +171,12 @@ fn bearer_token(headers: &HeaderMap) -> Result<&str, (StatusCode, String)> {
         ))
 }
 
+/// Whether login is enforced. Fails closed: before `init` has run, it is.
+#[must_use]
+pub fn authentication_enforced() -> bool {
+    REQUIRE_AUTH.get().copied().unwrap_or(true)
+}
+
 /// The decision: `Ok(agent)` lets the request through; `Err((401, why))` rejects.
 ///
 /// A token starting `v4.` is a PASETO and goes to `paseto`. Any other token goes to `keycloak` when
@@ -185,8 +194,26 @@ pub async fn enforce(
     paseto: &Verifier,
     keycloak: Option<&KeycloakVerifier>,
 ) -> Result<Agent, (StatusCode, String)> {
+    authenticate(require_auth, path, headers, paseto, keycloak)
+        .await
+        .map(|(agent, _)| agent)
+}
+
+/// [`enforce`], also returning the subject (roles) the token carries. Anonymous callers (login
+/// off, or a public path) get an empty subject.
+///
+/// # Errors
+///
+/// As [`enforce`].
+pub async fn authenticate(
+    require_auth: bool,
+    path: &str,
+    headers: &HeaderMap,
+    paseto: &Verifier,
+    keycloak: Option<&KeycloakVerifier>,
+) -> Result<(Agent, Subject), (StatusCode, String)> {
     if !require_auth || is_public_path(path) {
-        return Ok(Agent(ANONYMOUS.to_string()));
+        return Ok((Agent(ANONYMOUS.to_string()), Subject::default()));
     }
     let token = bearer_token(headers)?;
     let unauthorized = |e: String| (StatusCode::UNAUTHORIZED, e);
@@ -204,7 +231,8 @@ pub async fn enforce(
             "no verifier accepts this kind of token".into(),
         ));
     };
-    Ok(Agent(claims.sub))
+    let subject = Subject::from_attrs(&claims.attrs);
+    Ok((Agent(claims.sub), subject))
 }
 
 /// Axum middleware over the process-wide guard. Fails closed: before `init`
@@ -216,7 +244,7 @@ pub async fn require_auth_mw(
     use axum::response::IntoResponse;
     let decision = match (REQUIRE_AUTH.get(), VERIFIER.get()) {
         (Some(&require), Some(verifier)) => {
-            enforce(
+            authenticate(
                 require,
                 req.uri().path(),
                 req.headers(),
@@ -225,16 +253,19 @@ pub async fn require_auth_mw(
             )
             .await
         }
-        _ if is_public_path(req.uri().path()) => Ok(Agent(ANONYMOUS.to_string())),
+        _ if is_public_path(req.uri().path()) => {
+            Ok((Agent(ANONYMOUS.to_string()), Subject::default()))
+        }
         _ => Err((
             StatusCode::SERVICE_UNAVAILABLE,
             "authentication not initialised".to_string(),
         )),
     };
     match decision {
-        Ok(agent) => {
+        Ok((agent, subject)) => {
             let mut req = req;
             req.extensions_mut().insert(agent);
+            req.extensions_mut().insert(subject);
             next.run(req).await
         }
         Err((status, msg)) => (status, msg).into_response(),

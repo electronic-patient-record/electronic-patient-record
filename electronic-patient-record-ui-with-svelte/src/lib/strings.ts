@@ -23,6 +23,7 @@ export const STRINGS = {
   notAvailable: "not available",
   conflicts: "Reasons this cannot be linked automatically",
   error: "The comparison failed.",
+  forbidden: "Your role does not allow this.",
   signInRequired: "Sign in to continue.",
   signIn: "Sign in",
   signOut: "Sign out",

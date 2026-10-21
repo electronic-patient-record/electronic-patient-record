@@ -50,6 +50,21 @@ Milestone M0, scaffold. **Not for clinical use.**
   the access token on every call); no front-channel or back-channel logout from Keycloak into the UI; the Keycloak end-to-end run is
   not in CI; no Entra ID; the sign-in and sign-out text is English only.
 
+### Added after the first cut: policy engine and route gate (SE-1, in part)
+
+- `policy.rs`: ten roles, nine resource kinds, six actions (no delete), care relationship, security labels, purpose of use, consent and
+  break-the-glass, as a pure engine. `authz.rs` gates every route on the token's `role` attribute; a route with no entry in
+  `routes.rs` is 403 for everyone; each refusal is audited (route template, method and roles, never the body). `tests/route_census.rs`
+  fails when the served routes and the table disagree (checked by emptying the table). Keycloak realm roles map to policy roles through
+  `operations/keycloak/role-map.json`; `scripts/keycloak-dev-user.sh` takes a role.
+- Tested: 15 engine tests including a 907,200-request matrix checked against invariants; 9 DB-free guard tests; 3 Postgres tests of the
+  gate and its audit rows. By hand against Keycloak 26.3.0 and the real API: clinician 200, auditor 403, no role 403, unlisted route 403, no
+  token 401; the UI shows "Your role does not allow this." for the no-role user (6 end-to-end tests passed).
+- **Behaviour change:** a valid Keycloak or PASETO token with no recognised role used to be enough for `compare`; it now gets 403.
+- **Not done:** the record-level `evaluate` is called by no handler; no consent store, break-the-glass grant store or masking (SE-2 to SE-4);
+  no care-relationship lookup. **The permission table, label lists and purpose rules are an engineer's first draft that no clinical safety
+  officer or privacy officer has reviewed.** With login off there is no authorization (development only). 401s are not audited.
+
 ### Changed after the first cut
 
 - The matcher is published as `electronic-patient-record-matcher` 0.1.0 on crates.io; the service depends on it from
@@ -64,7 +79,7 @@ Milestone M0, scaffold. **Not for clinical use.**
 - Audit: no verify endpoint, denied requests are not audited, no other route is audited (none reads stored data), and
   an existing unkeyed chain cannot adopt a key later. Without `EPR_INTEGRITY_MAC_KEY` the chain is unkeyed SHA-256
   (warned at startup), so someone who can write SQL can recompute it.
-- Authorization beyond "valid token" (roles, consent, break-the-glass) is not built (SE-*). The UI signs in through
+- Authorization is a role gate per route only; consent, break-the-glass and masking are not built (SE-2 to SE-4). The UI signs in through
   Keycloak, but with sign-in off (no `EPR_OIDC_ISSUER`) its proxy sends no token and only works against an API with login off.
 - The matcher has 13 hand-written tests, not the 200-pair labelled corpus the acceptance criterion in ID-1 asks
   for, and no fuzz target. Its thresholds are unvalidated guesses.

@@ -61,6 +61,7 @@ jobs:
       - run: cargo clippy --all-targets --all-features -- -D warnings
       - run: cargo test --lib
       - run: cargo test --test keycloak_guard
+      - run: cargo test --test route_census
 
   api-db:
     name: API (Postgres 18 tests)

@@ -184,11 +184,12 @@ Conventions:
 
 ## M3 — Security, access control, consent
 
-- [ ] **SE-1 (L) — Policy engine.** Combines RBAC roles (plan.md §6.3) with
+- [x] **SE-1 (L) — Policy engine.** **Landed 2026-10-21, in part.** Combines RBAC roles (plan.md §6.3) with
   ABAC attributes (care team or legitimate relationship, encounter,
   location, purpose of use, security labels). It is evaluated in the service
   on every read and write.
-  **Acceptance:** a policy matrix test covers each role × resource × label combination. The UI cannot bypass the engine because no endpoint skips it (route census test).
+  **Acceptance (met):** a policy matrix test covers each role × resource × label combination (`policy::tests::invariants_hold_across_the_whole_matrix`). The UI cannot bypass the engine because no endpoint skips it (`tests/route_census.rs`; the middleware refuses any route without a table entry).
+  **Not built:** no handler calls the record-level `evaluate` yet (none reads a stored record); no care-relationship lookup, consent store, break-the-glass store or masking (SE-2 to SE-4); no ABAC on location or encounter beyond a relationship value; the permission table, label lists and purpose rules are unreviewed by a clinical safety officer or privacy officer and need that before real use; authorization is off when login is off (development only); 401s are not audited.
 - [ ] **SE-2 (M) — Consent.** FHIR `Consent` (permit/deny provisions by
   actor, purpose, data class and period). National data opt-out for
   secondary use. 42 CFR Part 2 segmentation via the `SUD` label.

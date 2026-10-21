@@ -15,6 +15,7 @@
   let result = $state<Result | null>(null);
   let failed = $state(false);
   let signInRequired = $state(false);
+  let forbidden = $state(false);
 
   const patient = (p: { family: string; given: string; birth: string }) => ({
     names: [{ family: p.family || null, given: p.given ? [p.given] : [] }],
@@ -25,6 +26,7 @@
     event.preventDefault();
     failed = false;
     signInRequired = false;
+    forbidden = false;
     try {
       const res = await fetch("/api/proxy/api/patients/compare", {
         method: "POST",
@@ -33,6 +35,11 @@
       });
       if (res.status === 401) {
         signInRequired = true;
+        result = null;
+        return;
+      }
+      if (res.status === 403) {
+        forbidden = true;
         result = null;
         return;
       }
@@ -65,6 +72,10 @@
   </div>
   <button type="submit">{STRINGS.compare}</button>
 </form>
+
+{#if forbidden}
+  <p role="alert">{STRINGS.forbidden}</p>
+{/if}
 
 {#if signInRequired}
   <p role="alert">{STRINGS.signInRequired}</p>

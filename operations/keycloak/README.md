@@ -62,7 +62,7 @@ No user is committed. Make one, then get a token:
 
 ```sh
 export DEV_USER_PASSWORD=throwaway-pw
-sh scripts/keycloak-dev-user.sh                 # user dev.clinician, verified email, no roles
+sh scripts/keycloak-dev-user.sh dev.clinician clinician   # verified email, realm role clinician (omit the role for none: the API answers 403)
 sh scripts/keycloak-dev-token.sh                # prints an access token
 ```
 
@@ -71,7 +71,7 @@ Run the API on the **host** against it (the API refuses a plain-HTTP Keycloak UR
 
 ```sh
 EPR_REQUIRE_AUTH=true EPR_KEYCLOAK_URL=http://127.0.0.1:8081 EPR_KEYCLOAK_REALM=epr EPR_KEYCLOAK_AUDIENCES=epr-api \
-  DATABASE_URL=… cargo run -- start
+  EPR_KEYCLOAK_ROLE_MAP_FILE=$PWD/operations/keycloak/role-map.json DATABASE_URL=… cargo run -- start --binding 127.0.0.1
 curl -X POST http://127.0.0.1:5150/api/patients/compare -H "authorization: Bearer $(sh scripts/keycloak-dev-token.sh)" \
   -H 'content-type: application/json' -d '{"a":{},"b":{}}'
 ```
@@ -89,8 +89,10 @@ Ports, names and the database are set by `EPR_PG_*` and `EPR_REDIS_*` (see the s
 
 ## What is not built
 
-- **Roles do nothing yet.** Keycloak roles become attributes only through the role map, and nothing reads attributes until the
-  policy engine (SE-1). Today any valid, correctly-audienced token is enough to call any route.
+- **Roles gate routes, nothing finer.** With `EPR_KEYCLOAK_ROLE_MAP_FILE=operations/keycloak/role-map.json`, a realm role named
+  like a policy role (`clinician`, `nurse`, …) becomes the token attribute `role=<name>`, and the API's route gate (SE-1) checks it. A
+  valid token with no mapped role is authenticated but gets 403 everywhere; **without the role-map variable every Keycloak user gets
+  403**. Consent, break-the-glass and masking are not built (SE-2 to SE-4).
 - **UI sign-in is limited.** The UI signs in through `epr-web` (SE-9), but keeps sessions in process memory (a restart signs
   everyone out; two replicas cannot share them), does not react to Keycloak-initiated logout, and its end-to-end run is not in CI.
 - **Not tested against a Keycloak that has been upgraded, clustered, put behind TLS or brokered to Entra ID.** The development

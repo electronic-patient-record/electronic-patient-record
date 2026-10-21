@@ -1,0 +1,52 @@
+{
+  "clinician": {
+    "role": [
+      "clinician"
+    ]
+  },
+  "nurse": {
+    "role": [
+      "nurse"
+    ]
+  },
+  "pharmacist": {
+    "role": [
+      "pharmacist"
+    ]
+  },
+  "allied-health": {
+    "role": [
+      "allied-health"
+    ]
+  },
+  "receptionist": {
+    "role": [
+      "receptionist"
+    ]
+  },
+  "clinical-admin": {
+    "role": [
+      "clinical-admin"
+    ]
+  },
+  "patient": {
+    "role": [
+      "patient"
+    ]
+  },
+  "proxy": {
+    "role": [
+      "proxy"
+    ]
+  },
+  "auditor": {
+    "role": [
+      "auditor"
+    ]
+  },
+  "integrator": {
+    "role": [
+      "integrator"
+    ]
+  }
+}

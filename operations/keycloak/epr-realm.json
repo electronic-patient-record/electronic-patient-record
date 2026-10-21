@@ -13,15 +13,43 @@
     "realm": [
       {
         "name": "clinician",
-        "description": "Reserved for the policy engine (SE-1); not consulted yet"
+        "description": "EPR policy role (SE-1). Mapped to the token attribute role=clinician by role-map.json; the API reads nothing else."
+      },
+      {
+        "name": "nurse",
+        "description": "EPR policy role (SE-1). Mapped to the token attribute role=nurse by role-map.json; the API reads nothing else."
+      },
+      {
+        "name": "pharmacist",
+        "description": "EPR policy role (SE-1). Mapped to the token attribute role=pharmacist by role-map.json; the API reads nothing else."
+      },
+      {
+        "name": "allied-health",
+        "description": "EPR policy role (SE-1). Mapped to the token attribute role=allied-health by role-map.json; the API reads nothing else."
+      },
+      {
+        "name": "receptionist",
+        "description": "EPR policy role (SE-1). Mapped to the token attribute role=receptionist by role-map.json; the API reads nothing else."
+      },
+      {
+        "name": "clinical-admin",
+        "description": "EPR policy role (SE-1). Mapped to the token attribute role=clinical-admin by role-map.json; the API reads nothing else."
+      },
+      {
+        "name": "patient",
+        "description": "EPR policy role (SE-1). Mapped to the token attribute role=patient by role-map.json; the API reads nothing else."
+      },
+      {
+        "name": "proxy",
+        "description": "EPR policy role (SE-1). Mapped to the token attribute role=proxy by role-map.json; the API reads nothing else."
       },
       {
         "name": "auditor",
-        "description": "Reserved for the policy engine (SE-1); not consulted yet"
+        "description": "EPR policy role (SE-1). Mapped to the token attribute role=auditor by role-map.json; the API reads nothing else."
       },
       {
-        "name": "administrator",
-        "description": "Reserved for the policy engine (SE-1); not consulted yet"
+        "name": "integrator",
+        "description": "EPR policy role (SE-1). Mapped to the token attribute role=integrator by role-map.json; the API reads nothing else."
       }
     ]
   },

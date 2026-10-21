@@ -46,3 +46,4 @@ authentication-verifier = { version = "0.9.1", default-features = false, feature
 [dev-dependencies]
 authentication-verifier = { version = "0.9.1", default-features = false, features = ["test-idp"] }
 loco-rs = { workspace = true, features = ["testing"] }
+tower = { version = "0.5", features = ["util"] }

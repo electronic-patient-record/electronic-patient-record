@@ -9,10 +9,14 @@ use authentication_verifier::Verifier;
 use authentication_verifier::keycloak::{KeycloakSettings, KeycloakVerifier};
 use authentication_verifier::test_idp::{AUDIENCE, REALM, TestIdp};
 use axum::http::header::AUTHORIZATION;
-use axum::http::{HeaderMap, StatusCode};
+use axum::http::{HeaderMap, Method, StatusCode};
 use electronic_patient_record::auth::{self, Agent};
+use electronic_patient_record::authz::{self, Refusal};
+use electronic_patient_record::policy::{Role, Subject};
 use serde_json::json;
+use std::collections::{BTreeMap, BTreeSet};
 
+const COMPARE: &str = "/api/patients/compare";
 const SUB: &str = "0c4f1e2a-0000-4000-8000-000000000001";
 
 fn bearer(token: &str) -> HeaderMap {
@@ -34,6 +38,12 @@ async fn keycloak(idp: &TestIdp) -> KeycloakVerifier {
         require_verified_email: true,
     })
     .expect("settings are valid")
+}
+
+async fn authenticate(keycloak: Option<&KeycloakVerifier>, token: &str) -> (Agent, Subject) {
+    auth::authenticate(true, COMPARE, &bearer(token), &no_paseto_keys(), keycloak)
+        .await
+        .expect("the token is valid")
 }
 
 async fn decide(
@@ -66,11 +76,73 @@ async fn a_valid_keycloak_token_is_accepted_and_identifies_the_caller() {
 }
 
 #[tokio::test]
-async fn a_token_with_no_roles_still_authenticates_because_roles_are_not_consulted_yet() {
+async fn a_token_with_no_roles_authenticates_but_the_gate_refuses_it() {
     let idp = TestIdp::start().await;
     let kc = keycloak(&idp).await;
     let token = idp.token(|c| c["realm_access"] = json!({ "roles": [] }));
-    assert!(decide(Some(&kc), &bearer(&token)).await.is_ok());
+    let (_, subject) = authenticate(Some(&kc), &token).await;
+    assert!(subject.roles.is_empty());
+    assert_eq!(
+        authz::check(true, &Method::POST, COMPARE, Some(&subject))
+            .unwrap_err()
+            .0,
+        Refusal::NotPermitted
+    );
+}
+
+#[tokio::test]
+async fn mapped_realm_roles_become_the_subject_and_open_only_what_the_table_allows() {
+    let idp = TestIdp::start().await;
+    let map = |pairs: &[(&str, &str)]| {
+        pairs
+            .iter()
+            .map(|(realm_role, role)| {
+                (
+                    (*realm_role).to_string(),
+                    BTreeMap::from([("role".to_string(), vec![(*role).to_string()])]),
+                )
+            })
+            .collect()
+    };
+    let kc = KeycloakVerifier::new(KeycloakSettings {
+        url: idp.base_url.clone(),
+        realm: REALM.to_string(),
+        audiences: vec![AUDIENCE.to_string()],
+        role_map: map(&[
+            ("clinician", "clinician"),
+            ("auditor", "auditor"),
+            ("odd", "superuser"),
+        ]),
+        require_verified_email: true,
+    })
+    .expect("settings are valid");
+
+    let as_clinician = idp.token(|c| c["realm_access"] = json!({ "roles": ["clinician"] }));
+    let (_, s) = authenticate(Some(&kc), &as_clinician).await;
+    assert_eq!(s.roles, BTreeSet::from([Role::Clinician]));
+    assert!(authz::check(true, &Method::POST, COMPARE, Some(&s)).is_ok());
+    // The same clinician has no route to anything else: there is none in the table.
+    assert_eq!(
+        authz::check(true, &Method::GET, "/api/patients/1", Some(&s))
+            .unwrap_err()
+            .0,
+        Refusal::NoPolicy
+    );
+
+    let as_auditor = idp.token(|c| c["realm_access"] = json!({ "roles": ["auditor"] }));
+    let (_, s) = authenticate(Some(&kc), &as_auditor).await;
+    assert_eq!(
+        authz::check(true, &Method::POST, COMPARE, Some(&s))
+            .unwrap_err()
+            .0,
+        Refusal::NotPermitted,
+        "an auditor reads the audit trail, not patients"
+    );
+
+    // A role the engine does not know is dropped, not trusted.
+    let odd = idp.token(|c| c["realm_access"] = json!({ "roles": ["odd"] }));
+    let (_, s) = authenticate(Some(&kc), &odd).await;
+    assert!(s.roles.is_empty());
 }
 
 #[tokio::test]

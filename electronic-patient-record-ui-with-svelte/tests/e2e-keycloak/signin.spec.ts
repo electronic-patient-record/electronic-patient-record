@@ -2,6 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 
 const USERNAME = process.env.EPR_E2E_USERNAME ?? "dev.clinician";
 const PASSWORD = process.env.EPR_E2E_PASSWORD ?? "";
+// A second user who can sign in but holds no role (optional).
+const NOROLE = process.env.EPR_E2E_NOROLE_USERNAME ?? "";
 
 test.skip(
   !PASSWORD,
@@ -20,10 +22,10 @@ async function compare(page: Page) {
   });
 }
 
-async function signIn(page: Page) {
+async function signIn(page: Page, username = USERNAME) {
   await page.goto("/en-001/patients");
   await page.getByRole("link", { name: "Sign in" }).click();
-  await page.locator("#username").fill(USERNAME);
+  await page.locator("#username").fill(username);
   await page.locator("#password").fill(PASSWORD);
   await page.locator("#kc-login").click();
   await expect(page).toHaveURL(/\/en-001\/patients$/);
@@ -70,6 +72,22 @@ test("signs in, calls the protected route, and signs out", async ({
   expect(await compare(page)).toBe(401);
   await context.addCookies([{ ...session!, value: stale }]);
   expect(await compare(page)).toBe(401);
+});
+
+test("a signed-in user with no role is refused by the API, and the page says so", async ({
+  page,
+}) => {
+  test.skip(
+    !NOROLE,
+    "set EPR_E2E_NOROLE_USERNAME to a user with no realm role",
+  );
+  await signIn(page, NOROLE);
+  // Authenticated (the token is valid) but not authorized: 403, not 401.
+  expect(await compare(page)).toBe(403);
+  await page.getByRole("button", { name: "Compare" }).click();
+  await expect(page.getByRole("alert")).toHaveText(
+    "Your role does not allow this.",
+  );
 });
 
 test("a tampered session cookie is refused", async ({ page, context }) => {
