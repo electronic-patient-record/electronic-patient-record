@@ -298,8 +298,12 @@ test("my record asks for patient-access and shows the linked record read-only", 
   });
   await page.goto("/en-001/my-record");
   await expect(
-    page.getByRole("heading", { level: 2, name: "Smith, Ann" }),
+    page.getByRole("heading", { level: 2, name: "Smith, Ann", exact: true }),
   ).toBeVisible();
+  // The same banner as on the staff page: two records, two banners.
+  await expect(
+    page.getByRole("region", { name: "Patient banner" }),
+  ).toHaveCount(2);
   await expect(
     page.getByText("You are viewing this record as a proxy."),
   ).toBeVisible();
@@ -447,4 +451,57 @@ test("my record shows who has accessed it, on request, as staff without names", 
     page.getByRole("button", { name: "Show older entries" }),
   ).toHaveCount(0);
   expect(urls[1]).toContain("before=9");
+});
+
+test("the patient banner shows who is on record, says allergies are unknown, and ignores what is being typed", async ({
+  page,
+}) => {
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, ANN),
+  );
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  const banner = page.getByRole("region", { name: "Patient banner" });
+  await expect(banner).toBeVisible();
+  await expect(
+    banner.getByRole("heading", { name: "SMITH, Ann" }),
+  ).toBeVisible();
+  await expect(banner).toContainText("Born: 1980-03-14");
+  await expect(banner).toContainText("Age: ");
+  await expect(banner).toContainText("NHS number: 943 476 5919");
+  await expect(banner).toContainText("Other identifier: none recorded");
+  await expect(banner).toContainText("No photo held");
+  // Not "none": the system holds no allergy data, and the banner says that in words.
+  await expect(banner).toContainText(
+    "Allergies: Not recorded in this system. This does not mean there are none.",
+  );
+  // The banner is what is on record: typing in the form does not change it.
+  await page.getByLabel("Family name").fill("Someone Else");
+  await expect(
+    banner.getByRole("heading", { name: "SMITH, Ann" }),
+  ).toBeVisible();
+  await axe(page);
+});
+
+test("a record with little on it still gets a banner that says what is missing", async ({
+  page,
+}) => {
+  const bare = {
+    ...ANN,
+    patient: {
+      id: ANN.id,
+      names: [],
+      identifiers: [],
+      addresses: [],
+      telecom: [],
+    },
+  };
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, bare),
+  );
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  const banner = page.getByRole("region", { name: "Patient banner" });
+  await expect(banner).toContainText("Birth date not recorded");
+  await expect(banner).toContainText("NHS number: none recorded");
+  await expect(banner).toContainText("Allergies: Not recorded");
+  await axe(page);
 });

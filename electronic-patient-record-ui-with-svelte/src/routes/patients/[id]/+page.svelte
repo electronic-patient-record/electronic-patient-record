@@ -2,6 +2,7 @@
   import { page } from "$app/state";
   import { call, commonProblem } from "#lib/api.js";
   import { DEFAULT_LOCALE, localizePath } from "#lib/locales.js";
+  import PatientBanner from "#lib/PatientBanner.svelte";
   import PatientFields from "#lib/PatientFields.svelte";
   import {
     emptyForm,
@@ -99,6 +100,7 @@
 {/if}
 
 {#if stored}
+  <PatientBanner {stored} />
   <p>
     {STRINGS.version}: {stored.version} · {STRINGS.recordedBy}: {stored.author}
   </p>

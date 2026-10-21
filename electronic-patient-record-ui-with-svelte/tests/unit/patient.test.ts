@@ -175,3 +175,71 @@ describe("isRestricted", () => {
     ).toBe(false);
   });
 });
+
+import { ageOn, nhsDisplay } from "../../src/lib/patient";
+
+describe("banner helpers", () => {
+  const day = (s: string) => new Date(`${s}T12:00:00Z`);
+  it("writes an NHS number the way people read it, and leaves anything else alone", () => {
+    expect(nhsDisplay("9434765919")).toBe("943 476 5919");
+    expect(nhsDisplay("12345")).toBe("12345");
+    expect(nhsDisplay("")).toBe("");
+  });
+  it("gives whole years from a full birth date, counting the birthday itself", () => {
+    expect(ageOn("1980-03-14", day("2026-03-13"))).toEqual({
+      years: 45,
+      approximate: false,
+    });
+    expect(ageOn("1980-03-14", day("2026-03-14"))).toEqual({
+      years: 46,
+      approximate: false,
+    });
+    expect(ageOn("2000-02-29", day("2026-02-28"))).toEqual({
+      years: 25,
+      approximate: false,
+    });
+    expect(ageOn("2000-02-29", day("2026-03-01"))).toEqual({
+      years: 26,
+      approximate: false,
+    });
+  });
+  it("gives months under two years, never a fractional or negative age", () => {
+    expect(ageOn("2026-02-01", day("2026-10-21"))).toEqual({
+      months: 8,
+      approximate: false,
+    });
+    expect(ageOn("2025-10-22", day("2026-10-21"))).toEqual({
+      months: 11,
+      approximate: false,
+    });
+    expect(ageOn("2026-10-21", day("2026-10-21"))).toEqual({
+      months: 0,
+      approximate: false,
+    });
+    expect(ageOn("2024-10-21", day("2026-10-21"))).toEqual({
+      years: 2,
+      approximate: false,
+    });
+  });
+  it("marks a partial birth date approximate and refuses what it cannot read", () => {
+    expect(ageOn("1980", day("2026-10-21"))).toEqual({
+      years: 46,
+      approximate: true,
+    });
+    expect(ageOn("1980-03", day("2026-10-21"))).toEqual({
+      years: 46,
+      approximate: true,
+    });
+    for (const bad of [
+      undefined,
+      "",
+      "yesterday",
+      "1980-13-01",
+      "1980-02-30",
+      "2999-01-01",
+      "2026-12-25",
+    ]) {
+      expect(ageOn(bad, day("2026-10-21")), String(bad)).toBeNull();
+    }
+  });
+});

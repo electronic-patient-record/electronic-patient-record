@@ -101,6 +101,17 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
   and a patient-facing use of this search (the patient log, SE-6, has its own narrower endpoint). The gate's 403 is a plain
   `forbidden`, not an `OperationOutcome`, on the FHIR routes.
 
+## 2026-10-21 - Patient banner (ID-7, in part)
+
+- `PatientBanner.svelte` on the patient page and on each `/my-record` record: name, birth date, age, sex, NHS number,
+  one other identifier, photo status and allergy status, from the stored record only. `ageOn` and `nhsDisplay` in
+  `patient.ts`. Hazard H-016 added to the log in the same commit. 5 vitest, 2 stubbed Playwright tests (with axe), and the
+  my-record test now expects a banner per record.
+- **Not done:** no photo; the allergy line is a fixed "not recorded" placeholder until allergies exist (RC-5); the banner
+  does not refresh when another user edits (a stale save is still refused); not run against the real Keycloak stack;
+  ages use UTC dates; the ten locales share the English strings (machine-written, unreviewed); the compare page and
+  `/patients/new` have no banner because no stored patient is shown there. The task stays open.
+
 ## [0.1.0] - 2026-10-20
 
 Milestone M0, scaffold. **Not for clinical use.**

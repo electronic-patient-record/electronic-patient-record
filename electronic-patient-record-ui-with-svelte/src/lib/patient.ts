@@ -75,6 +75,49 @@ const blankToNull = (s: string): string | null => s.trim() || null;
 /** An NHS number is written "943 476 5919"; the API stores and checks the digits. */
 export const nhsDigits = (s: string): string => s.replace(/[\s-]/g, "");
 
+/** An NHS number as people read it: "9434765919" is "943 476 5919". Anything else is shown as given. */
+export const nhsDisplay = (digits: string): string =>
+  /^\d{10}$/.test(digits)
+    ? `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`
+    : digits;
+
+/**
+ * Age on `today` from a stored birth date, which may be partial ("1980-03" or "1980"). A full date
+ * gives whole years, or whole months under two years. A partial date gives only the year and is
+ * marked approximate; nothing recorded, or nothing readable, or a date in the future gives `null`.
+ * Never a guess: a banner that shows a wrong age is a wrong-patient hazard.
+ */
+export function ageOn(
+  birthDate: string | null | undefined,
+  today: Date,
+): { years?: number; months?: number; approximate: boolean } | null {
+  const m = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/.exec(birthDate ?? "");
+  if (!m) return null;
+  const year = Number(m[1]);
+  const ty = today.getUTCFullYear();
+  if (year > ty) return null;
+  if (m[2] === undefined || m[3] === undefined) {
+    return { years: ty - year, approximate: true };
+  }
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  const probe = new Date(Date.UTC(year, month - 1, day));
+  if (
+    month < 1 ||
+    month > 12 ||
+    probe.getUTCMonth() !== month - 1 ||
+    probe.getUTCDate() !== day
+  )
+    return null;
+  const tm = today.getUTCMonth() + 1;
+  const td = today.getUTCDate();
+  let months = (ty - year) * 12 + (tm - month) - (td < day ? 1 : 0);
+  if (months < 0) return null;
+  return months < 24
+    ? { months, approximate: false }
+    : { years: Math.floor(months / 12), approximate: false };
+}
+
 /** The form's view of a record: the first name, the NHS number, the first postcode. */
 export function patientToForm(p: PatientRecord): PatientForm {
   const name = p.names[0];

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { call, commonProblem } from "#lib/api.js";
+  import PatientBanner from "#lib/PatientBanner.svelte";
   import { describe, whenText, type LogPage } from "#lib/access-log.js";
   import { patientToForm, type Stored } from "#lib/patient.js";
   import { STRINGS } from "#lib/strings.js";
@@ -94,6 +95,7 @@
           .filter(Boolean)
           .join(", ")}
       </h2>
+      <PatientBanner stored={entry.patient} />
       {#if entry.relationship === "proxy"}<p>{STRINGS.myRecordProxy}</p>{/if}
       <dl>
         {#each fields(entry.patient) as [label, value] (label)}
