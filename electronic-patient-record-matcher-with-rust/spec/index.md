@@ -30,7 +30,7 @@ Weighted mean of per-field similarities over the fields present on both records.
 |---|---|---|
 | family name | 0.25 | best Jaro-Winkler over name pairs |
 | given name | 0.20 | per token best match, averaged over the shorter list (with lists of equal length, averaged both ways and the lower kept, so order never raises the score); an initial matching a token's first letter scores 0.8 |
-| birth date | 0.30 | exact 1.0; day and month swapped 0.8; one component typo 0.6; partial dates by shared precision; else 0.0 |
+| birth date | 0.30 | exact 1.0; day and month swapped 0.8; one component differing by a keying slip (one digit, or two adjacent digits swapped, written as `DD`, `MM` or `YYYY`) 0.6; partial dates by shared precision; else 0.0. A date the calendar does not have (`2020-02-31`, `1900-02-29`) is absent |
 | sex | 0.05 | equal 1.0, different 0.0; `unknown` counts as absent |
 | postcode | 0.10 | any folded postcode in common |
 | telecom | 0.10 | any phone (digits) or email (lowercase) in common |

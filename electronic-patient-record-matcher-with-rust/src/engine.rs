@@ -368,13 +368,13 @@ fn birth_date_similarity(a: &Patient, b: &Patient) -> Option<f64> {
         match (month_known, day_known) {
             (Some((mx, my)), Some((dx, dy))) => {
                 if mx == my {
-                    return Some(0.6); // day typo
+                    return Some(typo(dx.into(), dy.into(), 2)); // day typo
                 }
                 if mx == dy && my == dx {
                     return Some(0.8); // day and month swapped
                 }
                 if dx == dy {
-                    return Some(0.6); // month typo
+                    return Some(typo(mx.into(), my.into(), 2)); // month typo
                 }
                 return Some(0.0);
             }
@@ -386,9 +386,23 @@ fn birth_date_similarity(a: &Patient, b: &Patient) -> Option<f64> {
         && mx == my
         && dx == dy
     {
-        return Some(0.6); // year typo
+        return Some(typo(x.year, y.year, 4)); // year typo
     }
     Some(0.0)
+}
+
+/// 0.6 when two different values, written with `width` digits, differ in one digit or by
+/// swapping two adjacent digits (a keying slip); otherwise 0.0.
+fn typo(x: u16, y: u16, width: usize) -> f64 {
+    let (a, b) = (format!("{x:0width$}"), format!("{y:0width$}"));
+    let (a, b) = (a.as_bytes(), b.as_bytes());
+    let diff: Vec<usize> = (0..a.len()).filter(|&i| a[i] != b[i]).collect();
+    let slip = match diff.as_slice() {
+        [_] => true,
+        [i, j] => *j == i + 1 && a[*i] == b[*j] && a[*j] == b[*i],
+        _ => false,
+    };
+    if slip { 0.6 } else { 0.0 }
 }
 
 fn sex_similarity(a: &Patient, b: &Patient) -> Option<f64> {

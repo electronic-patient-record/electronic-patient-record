@@ -436,7 +436,7 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
   conflict only when similarity is below 0.5; spec §4 says any two different full dates go to Review. Drop the
   threshold (or change the spec and record why).
   **Acceptance:** shared NHS number with `1980-01-01` vs `1980-01-28` gives Review with a conflict (test).
-- [ ] **CQ-4 (S) — Birth-date typo rule and impossible dates.** **Clinical.** Give typo credit only for a one-digit
+- [x] **CQ-4 (S) — Birth-date typo rule and impossible dates.** **Landed 2026-10-21** in the matcher (digit-slip rule, calendar check, 2 tests, H-001); reaches the service with matcher 0.2.0. **Clinical.** Give typo credit only for a one-digit
   edit or an adjacent-digit or day/month swap (`src/engine.rs:350`); reject impossible dates such as `2020-02-31`
   (`src/normalize.rs:55`).
   **Acceptance:** 1950 vs 2010 scores as a mismatch; `2020-02-31` is absent with a reason; each branch has a test.

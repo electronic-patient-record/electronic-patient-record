@@ -281,3 +281,49 @@ fn shared_nhs_number_with_any_different_full_birth_date_goes_to_review() {
         );
     }
 }
+
+fn birth_date_score(x: &str, y: &str) -> Option<f64> {
+    let e = MatchingEngine::default();
+    let r = e.compare(
+        &patient("Smith", &["John"], x, M),
+        &patient("Smith", &["John"], y, M),
+    );
+    r.fields
+        .into_iter()
+        .find(|f| f.field == "birth_date")
+        .unwrap()
+        .similarity
+}
+
+#[test]
+fn birth_date_typo_credit_needs_a_one_digit_slip() {
+    // Regression (CQ-4): any different day, month or year was scored as a typo (0.6).
+    for (x, y) in [
+        ("1980-03-14", "1980-03-15"), // day, one digit
+        ("1980-03-12", "1980-03-21"), // day, digits swapped
+        ("1980-03-14", "1980-08-14"), // month, one digit
+        ("1980-03-14", "1981-03-14"), // year, one digit
+        ("1980-03-14", "1908-03-14"), // year, adjacent digits swapped
+    ] {
+        assert_eq!(birth_date_score(x, y), Some(0.6), "{x} vs {y}");
+    }
+    for (x, y) in [
+        ("1980-03-14", "1980-03-27"), // day, both digits
+        ("1950-06-02", "2010-06-02"), // parent and child sharing a birthday
+        ("1980-03-14", "1980-12-14"), // month, both digits
+    ] {
+        assert_eq!(birth_date_score(x, y), Some(0.0), "{x} vs {y}");
+    }
+    // Day and month swapped keeps its own credit.
+    assert_eq!(birth_date_score("1980-03-04", "1980-04-03"), Some(0.8));
+}
+
+#[test]
+fn impossible_dates_are_absent() {
+    for bad in ["2020-02-31", "2021-02-29", "1980-04-31", "1900-02-29"] {
+        assert_eq!(birth_date_score("1980-03-14", bad), None, "{bad}");
+    }
+    // Leap days that exist.
+    assert_eq!(birth_date_score("2020-02-29", "2020-02-29"), Some(1.0));
+    assert_eq!(birth_date_score("2000-02-29", "2000-02-29"), Some(1.0));
+}

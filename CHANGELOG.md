@@ -2,6 +2,19 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-21 - Birth-date typo rule and impossible dates (CQ-4)
+
+- The matcher gave "typo" credit (0.6) for any different day, any different month or any different year, so a parent
+  and a child sharing a birthday 60 years apart scored as a keying slip. Credit now needs a slip: one digit different,
+  or two adjacent digits swapped, with the day and month written as two digits and the year as four. Day and month
+  swapped keeps its 0.8.
+- The matcher's date parser accepted days the month does not have (`2020-02-31`). Such a date is now absent, so it
+  blocks an automatic link instead of scoring. The service already refused these dates at registration; the gap was for
+  records arriving any other way. Hazard H-001 updated.
+- Tests: two tests (10 pairs scored, 4 impossible dates, 2 real leap days); both failed before the change.
+- **Not done:** a slip in more than one component still scores 0 (a date with two slips needs a person anyway);
+  reaching the service, which needs matcher 0.2.0.
+
 ## 2026-10-21 - Shared NHS number with a different birth date (CQ-3)
 
 - The matcher spec (§4) says a shared NHS number with two different full birth dates goes to Review. The code added

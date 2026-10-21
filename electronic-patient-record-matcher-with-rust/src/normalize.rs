@@ -57,5 +57,21 @@ pub fn parse_date(s: &str) -> Option<PartialDate> {
     if parts.next().is_some() || (month.is_none() && day.is_some()) {
         return None;
     }
+    if let (Some(m), Some(d)) = (month, day)
+        && d > days_in_month(year, m)
+    {
+        return None;
+    }
     Some(PartialDate { year, month, day })
+}
+
+fn days_in_month(year: u16, month: u8) -> u8 {
+    match month {
+        4 | 6 | 9 | 11 => 30,
+        2 if year.is_multiple_of(4) && (!year.is_multiple_of(100) || year.is_multiple_of(400)) => {
+            29
+        }
+        2 => 28,
+        _ => 31,
+    }
 }
