@@ -120,6 +120,17 @@ Milestone M0, scaffold. **Not for clinical use.**
   (the response says so); no handler-level automated test (the endpoint logic is tested, the HTTP wiring only by hand); no search API over the log (AU-2); no UI; verifying a very long chain is a
   full scan with no rate limit.
 
+### Added after the first cut: care-relationship lookup (SE-1 gap)
+
+- `relationships.rs`, `controllers/relationships.rs`, migration `…000004`, policy resource `CareRelationship` (clinical-admin only; the matrix is now 10 × 10 × 6 × 8 × 5 × 3 × 7 × 2 = 1,008,000 requests).
+  `authorize` looks up the caller's relationship to the patient on every patient, consent and relationship route, so the `patient` and `proxy` roles are no longer refused by construction.
+- Tested: 3 unit and 3 Postgres tests; by hand against Keycloak and the API with a patient-role user: refused before a link (403), self-grant refused by the route gate, linked by an administrator
+  (201), reads own record with `patient-access` (200) but not with the default purpose, not another patient's, a second patient user not A's, manages own consent and is not stopped by their own
+  deny, refused again once the relationship is ended; a change of subject is 400.
+- **Not done:** relationships are only what an administrator types: nothing derives care team or encounter from clinical activity, there is no expiry job (periods are checked at read time), no
+  UI, and the service cannot check that the `sub` is the patient. The UI proxy does not send `X-Purpose-Of-Use`, so a patient cannot read through the UI yet. One extra query per request, unmeasured.
+  Care-team access still has nothing to gate (no clinical content); break-the-glass (SE-3) is still not built.
+
 ### Changed after the first cut
 
 - The matcher is published as `electronic-patient-record-matcher` 0.1.0 on crates.io; the service depends on it from

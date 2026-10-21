@@ -123,11 +123,13 @@ pub enum Resource {
     Consent,
     /// FHIR `AuditEvent`: the access log.
     AuditLog,
+    /// Who is on a patient's care team, and who is the patient or their proxy (`relationships.rs`).
+    CareRelationship,
 }
 
 impl Resource {
     /// Every resource kind, in a fixed order.
-    pub const ALL: [Resource; 9] = [
+    pub const ALL: [Resource; 10] = [
         Resource::PatientIdentity,
         Resource::Encounter,
         Resource::Condition,
@@ -137,6 +139,7 @@ impl Resource {
         Resource::Document,
         Resource::Consent,
         Resource::AuditLog,
+        Resource::CareRelationship,
     ];
 
     /// A stable name for audit rows and route tables.
@@ -152,6 +155,7 @@ impl Resource {
             Resource::Document => "Document",
             Resource::Consent => "Consent",
             Resource::AuditLog => "AuditLog",
+            Resource::CareRelationship => "CareRelationship",
         }
     }
 
@@ -166,7 +170,10 @@ impl Resource {
     pub fn clinical(self) -> bool {
         !matches!(
             self,
-            Resource::PatientIdentity | Resource::Consent | Resource::AuditLog
+            Resource::PatientIdentity
+                | Resource::Consent
+                | Resource::AuditLog
+                | Resource::CareRelationship
         )
     }
 }
@@ -446,8 +453,9 @@ impl Decision {
 fn permitted(role: Role, resource: Resource) -> &'static [Action] {
     use Action::{Create, Export, MarkEnteredInError as Eie, Read, Search, Update};
     use Resource::{
-        AllergyIntolerance as Allergy, AuditLog, Condition, Consent as Cons, Document, Encounter,
-        MedicationRequest as Meds, Observation, PatientIdentity as Identity,
+        AllergyIntolerance as Allergy, AuditLog, CareRelationship as Rel, Condition,
+        Consent as Cons, Document, Encounter, MedicationRequest as Meds, Observation,
+        PatientIdentity as Identity,
     };
     match (role, resource) {
         // Clinicians: full clinical work, and register or correct identity.
@@ -478,6 +486,9 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         // relationship an administrator does not have.
         (Role::ClinicalAdmin, Identity) => &[Read, Search, Create, Update],
         (Role::ClinicalAdmin, Cons) => &[Read, Search, Create, Update],
+        // Only an administrator says who is a patient's team, self or proxy: never the person
+        // who would gain access by it.
+        (Role::ClinicalAdmin, Rel) => &[Read, Search, Create, Update],
         // The patient: read their own record and manage their own consent; see who looked.
         (Role::Patient, Identity) => &[Read],
         (Role::Patient, Encounter | Condition | Observation | Meds | Allergy | Document) => {
@@ -1065,8 +1076,8 @@ mod tests {
                 }
             }
         }
-        // 10 × 9 × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
-        assert_eq!(cells, 10 * 9 * 6 * 8 * 5 * 3 * 7 * 2);
+        // 10 × 10 × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
+        assert_eq!(cells, 10 * 10 * 6 * 8 * 5 * 3 * 7 * 2);
         assert!(allows > 0);
     }
 }

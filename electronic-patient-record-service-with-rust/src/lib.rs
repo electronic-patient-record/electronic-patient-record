@@ -16,4 +16,5 @@ pub mod consents_store;
 pub mod controllers;
 pub mod patients_store;
 pub mod policy;
+pub mod relationships;
 pub mod routes;

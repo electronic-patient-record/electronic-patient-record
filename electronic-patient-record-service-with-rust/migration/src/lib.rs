@@ -11,6 +11,7 @@ pub use sea_orm_migration::prelude::*;
 mod m20261020_000001_audit_events;
 mod m20261021_000002_patient_versions;
 mod m20261021_000003_consent_versions;
+mod m20261021_000004_relationship_versions;
 
 /// Runs the ordered list of migrations.
 pub struct Migrator;
@@ -22,6 +23,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261020_000001_audit_events::Migration),
             Box::new(m20261021_000002_patient_versions::Migration),
             Box::new(m20261021_000003_consent_versions::Migration),
+            Box::new(m20261021_000004_relationship_versions::Migration),
         ]
     }
 }

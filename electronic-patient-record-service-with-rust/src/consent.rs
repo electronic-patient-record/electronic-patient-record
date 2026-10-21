@@ -150,7 +150,7 @@ pub fn day_start(date: &str) -> Option<i64> {
 }
 
 /// Whether `now` (unix seconds) lies in the period. `None` if a date does not parse.
-fn in_period(period: Option<&Period>, now: i64) -> Option<bool> {
+pub(crate) fn in_period(period: Option<&Period>, now: i64) -> Option<bool> {
     let Some(p) = period else {
         return Some(true);
     };

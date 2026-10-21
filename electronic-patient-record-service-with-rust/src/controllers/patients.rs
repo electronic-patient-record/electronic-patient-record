@@ -7,6 +7,7 @@ use crate::consent;
 use crate::consents_store;
 use crate::patients_store::{self as store, Search, StoreError};
 use crate::policy::{self, Consent, Purpose, Relationship, Resource, Subject};
+use crate::relationships;
 use axum::{
     Extension,
     extract::{Json, Path, Query},
@@ -217,14 +218,20 @@ pub(super) async fn authorize(
             verdict = v;
         }
     }
+    // The subject's relationship to this patient, from the recorded relationships. A failed lookup
+    // fails the request: assuming "none" would be safe, but would hide an outage as a refusal.
+    let relationship = match patient_id {
+        Some(id) => relationships::lookup(db, id, &agent.0, time_now())
+            .await
+            .map_err(|e| Box::new(store_failure(&e)))?,
+        None => Relationship::None,
+    };
     let decision = policy::evaluate(&policy::Request {
         subject: subject.clone(),
         resource,
         action,
         labels: std::collections::BTreeSet::new(),
-        // No care-relationship lookup exists yet, and identity is not clinical content, so none is
-        // asserted. The patient and proxy roles need one, so they are refused here.
-        relationship: Relationship::None,
+        relationship,
         purpose,
         consent: verdict.consent,
         break_glass: None,
@@ -692,6 +699,12 @@ pub fn routes() -> Routes {
         .add("/{id}/consents", post(super::consents::create))
         .add("/{id}/consents", get(super::consents::list))
         .add("/{id}/consents/{consent_id}", put(super::consents::update))
+        .add("/{id}/relationships", post(super::relationships::create))
+        .add("/{id}/relationships", get(super::relationships::list))
+        .add(
+            "/{id}/relationships/{relationship_id}",
+            put(super::relationships::update),
+        )
 }
 
 #[cfg(test)]

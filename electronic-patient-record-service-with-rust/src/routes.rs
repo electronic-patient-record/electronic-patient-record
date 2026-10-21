@@ -67,6 +67,24 @@ pub const TABLE: &[(&str, &str, Resource, Action)] = &[
         Resource::Consent,
         Action::Update,
     ),
+    (
+        "POST",
+        "/api/patients/{id}/relationships",
+        Resource::CareRelationship,
+        Action::Create,
+    ),
+    (
+        "GET",
+        "/api/patients/{id}/relationships",
+        Resource::CareRelationship,
+        Action::Read,
+    ),
+    (
+        "PUT",
+        "/api/patients/{id}/relationships/{relationship_id}",
+        Resource::CareRelationship,
+        Action::Update,
+    ),
 ];
 
 /// Whether `path` matches `template`.

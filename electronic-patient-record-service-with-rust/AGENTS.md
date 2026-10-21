@@ -8,7 +8,7 @@ loco.rs (Axum 0.8) service on PostgreSQL 18. Read [`spec/index.md`](spec/index.m
   (`src/patients_store.rs`, `src/controllers/patients.rs`), and patient consent (`src/consent.rs` the rules,
   `src/consents_store.rs` the append-only versions, `src/controllers/consents.rs`; a refusal hides a patient's identity
   from the named roles). Not built: the rest of the resource store, FHIR endpoints, break-the-glass grants, masking, a
-  care-relationship lookup, any export.
+  any export. Care relationships (`src/relationships.rs`) are recorded by an administrator; nothing derives them from encounters.
 - **Two token kinds**: `v4.…` goes to the PASETO verifier, anything else to Keycloak (when `EPR_KEYCLOAK_URL` is set). Never route one to the other. The token's `role` attribute (Keycloak: `EPR_KEYCLOAK_ROLE_MAP_FILE=operations/keycloak/role-map.json`) is the only thing authorization reads. See `operations/keycloak/README.md`.
 - **Auth is on unless explicitly off.** `settings.require_auth: false` is set only in development/test config.
   The service refuses to start with login off in `production`, and with login on and no keys or key URL.

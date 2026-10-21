@@ -3,6 +3,7 @@
 pub mod audit;
 pub mod consents;
 pub mod patients;
+pub mod relationships;
 
 use loco_rs::controller::AppRoutes;
 
