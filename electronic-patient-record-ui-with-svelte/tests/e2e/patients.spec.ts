@@ -412,6 +412,8 @@ test("my record shows who has accessed it, on request, as staff without names", 
                   id: 9,
                   at: "2026-10-21T09:00:12.000000Z",
                   by: "staff",
+                  roles: ["clinician"],
+                  organisations: ["riverside"],
                   did: "viewed",
                   what: "identity record",
                   refused: false,
@@ -432,7 +434,7 @@ test("my record shows who has accessed it, on request, as staff without names", 
     .click();
   await expect(
     page.getByText(
-      "A member of staff viewed your identity record. Purpose: treatment.",
+      "A member of staff (clinician, riverside) viewed your identity record. Purpose: treatment.",
     ),
   ).toBeVisible();
   await expect(page.getByText("2026-10-21 09:00 UTC")).toBeVisible();

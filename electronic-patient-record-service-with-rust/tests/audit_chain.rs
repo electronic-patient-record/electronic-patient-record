@@ -445,7 +445,21 @@ async fn the_patient_log_is_one_patients_rows_newest_first_in_pages_without_deta
             e.patient_ref = Some(format!("Patient/{}", mine.to_uppercase()));
         }
         e.detail = Some(serde_json::json!({ "secret": "do-not-show" }));
-        ids.push(audit::append(&s.db, &chain, &e).await.unwrap());
+        // Only the newest row is written inside a request, so it alone records an actor.
+        let actor = audit::Actor {
+            roles: vec!["clinician".into()],
+            organisations: vec!["riverside".into()],
+        };
+        if n == 4 {
+            ids.push(
+                audit::ACTOR
+                    .scope(actor, audit::append(&s.db, &chain, &e))
+                    .await
+                    .unwrap(),
+            );
+        } else {
+            ids.push(audit::append(&s.db, &chain, &e).await.unwrap());
+        }
     }
     let page = audit::patient_log(&s.db, mine, None, 3).await.unwrap();
     assert_eq!(
@@ -458,5 +472,13 @@ async fn the_patient_log_is_one_patients_rows_newest_first_in_pages_without_deta
         .unwrap();
     assert_eq!(rest.iter().map(|r| r.id).collect::<Vec<_>>(), vec![ids[0]]);
     assert!(!format!("{page:?}").contains("do-not-show"));
+    assert_eq!(page[0].roles, vec!["clinician".to_string()]);
+    assert_eq!(page[0].organisations, vec!["riverside".to_string()]);
+    assert!(page[1].roles.is_empty(), "an older row has no roles");
+    // The chain still verifies with the actor inside the hashed detail.
+    assert_eq!(
+        audit::verify(&s.db, &chain).await.unwrap(),
+        Verdict::Intact { rows: 5 }
+    );
     s.finish().await;
 }

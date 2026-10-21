@@ -48,5 +48,10 @@
     "role": [
       "integrator"
     ]
+  },
+  "org-riverside": {
+    "organisation": [
+      "riverside"
+    ]
   }
 }

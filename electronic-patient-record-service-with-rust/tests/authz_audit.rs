@@ -28,9 +28,14 @@ async fn db() -> DatabaseConnection {
 
 /// The app as the middleware sees it: a caller with the given roles, already authenticated.
 fn app(db: DatabaseConnection, agent: &str, roles: &[Role]) -> Router {
+    app_in(db, agent, roles, &[])
+}
+
+fn app_in(db: DatabaseConnection, agent: &str, roles: &[Role], organisations: &[&str]) -> Router {
     let agent = Agent(agent.to_string());
     let subject = Subject {
         roles: roles.iter().copied().collect(),
+        organisations: organisations.iter().map(|o| (*o).to_string()).collect(),
     };
     Router::new()
         .route("/api/patients/compare", post(|| async { "compared" }))
@@ -154,4 +159,36 @@ async fn a_permitted_role_passes_through_and_the_gate_writes_nothing() {
     assert_eq!(status, StatusCode::OK);
     // The handler audits its own access; the gate adds nothing for an allow.
     assert!(rows_for(&db, &agent).await.is_empty());
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn a_row_written_while_handling_a_request_records_the_callers_roles_and_organisations() {
+    let db = db().await;
+    let agent = unique("receptionist");
+    // A refusal: the gate writes the row inside the request.
+    let status = call(
+        app_in(
+            db.clone(),
+            &agent,
+            &[Role::Receptionist, Role::Nurse],
+            &["riverside"],
+        ),
+        Method::GET,
+        "/api/unlisted",
+        "",
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    let rows = rows_for(&db, &agent).await;
+    assert_eq!(rows.len(), 1);
+    let detail: serde_json::Value = serde_json::from_str(&rows[0].2).unwrap();
+    assert_eq!(
+        detail["actor"]["roles"],
+        serde_json::json!(["nurse", "receptionist"])
+    );
+    assert_eq!(
+        detail["actor"]["organisations"],
+        serde_json::json!(["riverside"])
+    );
 }

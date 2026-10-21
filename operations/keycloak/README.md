@@ -93,6 +93,10 @@ Ports, names and the database are set by `EPR_PG_*` and `EPR_REDIS_*` (see the s
   like a policy role (`clinician`, `nurse`, …) becomes the token attribute `role=<name>`, and the API's route gate (SE-1) checks it. A
   valid token with no mapped role is authenticated but gets 403 everywhere; **without the role-map variable every Keycloak user gets
   403**. Consent, break-the-glass and masking are not built (SE-2 to SE-4).
+- **Organisation is a role.** The audit trail and the patient's access log (SE-6) record the caller's roles and organisations. With
+  Keycloak, an organisation is a realm role that `role-map.json` maps to `{"organisation": ["riverside"]}` (the development realm has
+  `org-riverside`; `keycloak-dev-user.sh dev.clinician clinician,org-riverside` gives both). It grants nothing by itself. Only short
+  lowercase tokens are kept.
 - **UI sign-in is limited.** The UI signs in through `epr-web` (SE-9), but keeps sessions in process memory (a restart signs
   everyone out; two replicas cannot share them), does not react to Keycloak-initiated logout, and its end-to-end run is not in CI.
 - **Not tested against a Keycloak that has been upgraded, clustered, put behind TLS or brokered to Entra ID.** The development

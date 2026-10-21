@@ -76,6 +76,20 @@ pub fn check(
 
 /// Axum middleware over the route table and the engine.
 pub async fn authorize_mw(State(authz): State<Authz>, req: Request, next: Next) -> Response {
+    let actor = req
+        .extensions()
+        .get::<Subject>()
+        .map(|s| audit::Actor {
+            roles: s.roles.iter().map(|r| r.as_str().to_string()).collect(),
+            organisations: s.organisations.iter().cloned().collect(),
+        })
+        .unwrap_or_default();
+    audit::ACTOR
+        .scope(actor, authorize_inner(authz, req, next))
+        .await
+}
+
+async fn authorize_inner(authz: Authz, req: Request, next: Next) -> Response {
     let method = req.method().clone();
     let path = req.uri().path().to_string();
     let subject = req.extensions().get::<Subject>().cloned();
@@ -138,6 +152,7 @@ mod tests {
     fn with(roles: &[Role]) -> Subject {
         Subject {
             roles: roles.iter().copied().collect(),
+            ..Subject::default()
         }
     }
 

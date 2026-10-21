@@ -385,6 +385,11 @@ pub struct BreakGlass {
 pub struct Subject {
     /// Roles held. Values the engine does not know were dropped, so they grant nothing.
     pub roles: BTreeSet<Role>,
+    /// Organisations the token names, from its `organisation` attribute: short lowercase tokens
+    /// only (anything else is dropped, since it ends up in the audit trail and the patient's log).
+    /// With Keycloak the attribute comes from the role map, so an organisation is a realm role
+    /// that `role-map.json` maps to `{"organisation": ["…"]}`.
+    pub organisations: BTreeSet<String>,
 }
 
 impl Subject {
@@ -397,7 +402,22 @@ impl Subject {
             .flatten()
             .filter_map(|v| Role::parse(v))
             .collect();
-        Subject { roles }
+        let organisations = attrs
+            .get("organisation")
+            .into_iter()
+            .flatten()
+            .filter(|v| {
+                !v.is_empty()
+                    && v.len() <= 64
+                    && v.bytes()
+                        .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+            })
+            .cloned()
+            .collect();
+        Subject {
+            roles,
+            organisations,
+        }
     }
 }
 
@@ -678,6 +698,7 @@ mod tests {
     fn subject(roles: &[Role]) -> Subject {
         Subject {
             roles: roles.iter().copied().collect(),
+            ..Subject::default()
         }
     }
 
@@ -1079,5 +1100,33 @@ mod tests {
         // 10 × 10 × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
         assert_eq!(cells, 10 * 10 * 6 * 8 * 5 * 3 * 7 * 2);
         assert!(allows > 0);
+    }
+
+    #[test]
+    fn organisations_come_from_the_token_and_only_short_lowercase_tokens_survive() {
+        let mut attrs = BTreeMap::new();
+        attrs.insert(
+            "organisation".to_string(),
+            vec![
+                "riverside".to_string(),
+                "Riverside Clinic".to_string(),
+                String::new(),
+                "x".repeat(65),
+                "a-1".to_string(),
+            ],
+        );
+        let s = Subject::from_attrs(&attrs);
+        assert_eq!(
+            s.organisations
+                .iter()
+                .map(String::as_str)
+                .collect::<Vec<_>>(),
+            vec!["a-1", "riverside"]
+        );
+        assert!(
+            Subject::from_attrs(&BTreeMap::new())
+                .organisations
+                .is_empty()
+        );
     }
 }

@@ -5,7 +5,7 @@
 #
 # No password is committed anywhere: you choose both. The user gets a verified email (the API
 # requires one) and, if you name one, a realm role such as clinician, nurse or auditor (the roles
-# in operations/keycloak/role-map.json). With no role the user can sign in but the API refuses
+# in operations/keycloak/role-map.json; several roles may be given comma-separated). With no role the user can sign in but the API refuses
 # every request (403). Fictitious people only; never run this against a real Keycloak.
 set -eu
 user=${1:-dev.clinician}
@@ -20,7 +20,11 @@ if [ -z "$(kc get users -r epr -q "username=$user" --fields id --format csv --no
 fi
 kc set-password -r epr --username "$user" --new-password "$DEV_USER_PASSWORD"
 if [ -n "$role" ]; then
-  kc add-roles -r epr --uusername "$user" --rolename "$role"
+  # A comma-separated list gives several roles, e.g. clinician,org-riverside (an organisation is a role too).
+  for r in $(echo "$role" | tr ',' ' '); do
+    kc create roles -r epr -s "name=$r" >/dev/null 2>&1 || true   # ignore "already exists"
+    kc add-roles -r epr --uusername "$user" --rolename "$r"
+  done
   echo "user $user ready in realm epr with role $role"
 else
   echo "user $user ready in realm epr with no role (the API will answer 403)"

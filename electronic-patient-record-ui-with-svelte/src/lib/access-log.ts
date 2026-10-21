@@ -5,6 +5,8 @@ export type LogEntry = {
   id: number;
   at: string;
   by: "you" | "staff";
+  roles?: string[];
+  organisations?: string[];
   did: string;
   what: string;
   refused: boolean;
@@ -23,9 +25,22 @@ export function whenText(at: string): string {
   return m ? `${m[1]} ${m[2]} UTC` : at;
 }
 
+const ROLE = STRINGS.roleNames as Record<string, string>;
+
+/** "A member of staff (clinician, riverside)": the role and organisation the token carried, if recorded. */
+function staff(e: LogEntry): string {
+  const bits = [
+    ...(e.roles ?? []).map((r) => ROLE[r] ?? r),
+    ...(e.organisations ?? []),
+  ];
+  return bits.length > 0
+    ? `${STRINGS.accessLogStaff} (${bits.join(", ")})`
+    : STRINGS.accessLogStaff;
+}
+
 /** One entry as a sentence. Unknown words from a newer API are shown, not hidden. */
 export function describe(e: LogEntry): string {
-  const who = e.by === "you" ? STRINGS.accessLogYou : STRINGS.accessLogStaff;
+  const who = e.by === "you" ? STRINGS.accessLogYou : staff(e);
   const did = DID[e.did] ?? e.did;
   const what = WHAT[e.what] ?? e.what;
   const parts = [`${who} ${did} ${STRINGS.accessLogYour} ${what}.`];

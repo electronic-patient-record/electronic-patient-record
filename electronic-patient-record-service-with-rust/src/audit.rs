@@ -235,6 +235,41 @@ fn err(e: impl std::fmt::Display) -> AuditError {
     AuditError(e.to_string())
 }
 
+/// Who the current request's caller is, for the audit trail: their roles and organisations.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Actor {
+    /// Role codes, sorted.
+    pub roles: Vec<String>,
+    /// Organisation tokens, sorted.
+    pub organisations: Vec<String>,
+}
+
+tokio::task_local! {
+    /// Set by the authorization middleware around each request, so every audit row written while
+    /// handling it carries the caller's roles and organisations without each call site passing
+    /// them. Rows written outside a request (tests, jobs) carry no `actor`.
+    pub static ACTOR: Actor;
+}
+
+/// `event`'s detail with the current request's [`ACTOR`] added under `"actor"`. An existing
+/// `actor` key is overwritten: the trail records what the token said, not what a handler wrote.
+fn with_actor(event: &Event) -> Event {
+    let mut event = event.clone();
+    let Ok(actor) = ACTOR.try_with(Clone::clone) else {
+        return event;
+    };
+    let value = serde_json::json!({ "roles": actor.roles, "organisations": actor.organisations });
+    match event.detail.take() {
+        None => event.detail = Some(serde_json::json!({ "actor": value })),
+        Some(serde_json::Value::Object(mut m)) => {
+            m.insert("actor".into(), value);
+            event.detail = Some(serde_json::Value::Object(m));
+        }
+        other => event.detail = other,
+    }
+    event
+}
+
 /// Append `event` to the chain, in its own transaction, and return the new row's id.
 ///
 /// Appends are serialised by a transaction-scoped advisory lock, so two
@@ -249,6 +284,7 @@ pub async fn append(
     chain: &Chain,
     event: &Event,
 ) -> Result<i64, AuditError> {
+    let event = &with_actor(event);
     let tx = db.begin().await.map_err(err)?;
     tx.execute_raw(pg(
         "SELECT pg_advisory_xact_lock($1)",
@@ -347,6 +383,24 @@ pub struct PatientLogRow {
     pub purpose: Option<String>,
     /// Whether the access was a break-the-glass override.
     pub break_glass: bool,
+    /// The caller's roles when the row was written. Empty for rows from before roles were
+    /// recorded, and for rows written outside a request.
+    pub roles: Vec<String>,
+    /// The caller's organisations, as for `roles`.
+    pub organisations: Vec<String>,
+}
+
+/// The string values of `actor[key]`, or none if it is absent or not a list of strings.
+fn strings(actor: &serde_json::Value, key: &str) -> Vec<String> {
+    actor
+        .get(key)
+        .and_then(serde_json::Value::as_array)
+        .map(|a| {
+            a.iter()
+                .filter_map(|v| v.as_str().map(str::to_string))
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// The newest audit rows naming `Patient/<patient_id>`, newest first, at most `limit`, older than
@@ -365,7 +419,8 @@ pub async fn patient_log(
         .query_all_raw(pg(
             &format!(
                 "SELECT id, to_char(recorded_at AT TIME ZONE 'UTC', '{TS_FORMAT}') AS ts,
-                        action::text AS action, outcome, agent, resource_ref, purpose_of_use, break_glass
+                        action::text AS action, outcome, agent, resource_ref, purpose_of_use, break_glass,
+                        detail->'actor' AS actor
                  FROM audit_events
                  WHERE lower(patient_ref) = lower($1) AND ($2::bigint IS NULL OR id < $2)
                  ORDER BY id DESC LIMIT $3"
@@ -380,6 +435,8 @@ pub async fn patient_log(
         .map_err(err)?;
     rows.iter()
         .map(|r| {
+            let actor: Option<serde_json::Value> = r.try_get("", "actor").map_err(err)?;
+            let actor = actor.unwrap_or_default();
             Ok(PatientLogRow {
                 id: r.try_get("", "id").map_err(err)?,
                 at: r.try_get("", "ts").map_err(err)?,
@@ -389,6 +446,8 @@ pub async fn patient_log(
                 resource: r.try_get("", "resource_ref").map_err(err)?,
                 purpose: r.try_get("", "purpose_of_use").map_err(err)?,
                 break_glass: r.try_get("", "break_glass").map_err(err)?,
+                roles: strings(&actor, "roles"),
+                organisations: strings(&actor, "organisations"),
             })
         })
         .collect()
@@ -628,5 +687,37 @@ mod tests {
     fn the_key_variables_are_the_documented_ones() {
         assert_eq!(KEY_CONFIG.key_env(), "EPR_INTEGRITY_MAC_KEY");
         assert_eq!(KEY_CONFIG.key_file_env(), "EPR_INTEGRITY_MAC_KEY_FILE");
+    }
+
+    fn actor() -> Actor {
+        Actor {
+            roles: vec!["clinician".into()],
+            organisations: vec!["riverside".into()],
+        }
+    }
+
+    #[test]
+    fn the_request_actor_is_added_to_the_detail_and_overwrites_a_handlers_claim() {
+        let mut e = ev();
+        e.detail = Some(serde_json::json!({"n": 1, "actor": {"roles": ["admin"]}}));
+        let out = ACTOR.sync_scope(actor(), || with_actor(&e));
+        let d = out.detail.unwrap();
+        assert_eq!(d["n"], 1);
+        assert_eq!(d["actor"]["roles"], serde_json::json!(["clinician"]));
+        assert_eq!(
+            d["actor"]["organisations"],
+            serde_json::json!(["riverside"])
+        );
+        // No detail: one is made.
+        let mut bare = ev();
+        bare.detail = None;
+        let out = ACTOR.sync_scope(actor(), || with_actor(&bare));
+        assert_eq!(out.detail.unwrap()["actor"]["roles"][0], "clinician");
+    }
+
+    #[test]
+    fn outside_a_request_the_event_is_unchanged() {
+        let e = ev();
+        assert_eq!(with_actor(&e), e);
     }
 }

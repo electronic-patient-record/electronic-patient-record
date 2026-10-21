@@ -12,6 +12,10 @@
   "roles": {
     "realm": [
       {
+        "name": "org-riverside",
+        "description": "Development organisation (audit trail and patient access log). Mapped to the token attribute organisation=riverside by role-map.json; grants no access by itself."
+      },
+      {
         "name": "clinician",
         "description": "EPR policy role (SE-1). Mapped to the token attribute role=clinician by role-map.json; the API reads nothing else."
       },

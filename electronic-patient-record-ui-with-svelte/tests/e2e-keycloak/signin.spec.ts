@@ -395,7 +395,7 @@ test("a patient sees that a clinician viewed their record, as staff without a na
     .click();
   await expect(
     page.getByText(
-      "A member of staff viewed your identity record. Purpose: treatment.",
+      /A member of staff \(clinician(, [a-z-]+)?\) viewed your identity record\. Purpose: treatment\./,
     ),
   ).toBeVisible();
   // No staff identifier reaches the page.

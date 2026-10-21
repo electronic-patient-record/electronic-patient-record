@@ -89,8 +89,8 @@ struct LogQuery {
 }
 
 /// One access, in words a patient can read. Who did it is never a staff identifier: `you` is the
-/// caller's own activity, everything else is `staff`. Role and organisation are not shown because
-/// audit rows do not record them (see the changelog).
+/// caller's own activity, everything else is `staff` with the roles and organisations the token
+/// carried when the row was written (none for older rows).
 fn entry(row: &PatientLogRow, caller: &str) -> serde_json::Value {
     let refused = row.outcome != 0;
     let what = match row.resource.as_deref().unwrap_or("") {
@@ -111,6 +111,9 @@ fn entry(row: &PatientLogRow, caller: &str) -> serde_json::Value {
         "id": row.id,
         "at": row.at,
         "by": if row.agent == caller { "you" } else { "staff" },
+        // What the token said at the time. Empty for older rows: the page then says "staff".
+        "roles": if row.agent == caller { Vec::new() } else { row.roles.clone() },
+        "organisations": if row.agent == caller { Vec::new() } else { row.organisations.clone() },
         "did": did,
         "what": what,
         "refused": refused,
@@ -227,6 +230,8 @@ mod tests {
             resource: Some(resource.into()),
             purpose: Some("treatment".into()),
             break_glass: false,
+            roles: vec!["clinician".into()],
+            organisations: vec!["riverside".into()],
         }
     }
 
@@ -234,6 +239,8 @@ mod tests {
     fn a_clinicians_view_reads_as_staff_viewed_and_never_names_them() {
         let e = entry(&row("clinician-sub-123", "R", 0, "Patient"), "patient-sub");
         assert_eq!(e["by"], "staff");
+        assert_eq!(e["roles"], serde_json::json!(["clinician"]));
+        assert_eq!(e["organisations"], serde_json::json!(["riverside"]));
         assert_eq!(e["did"], "viewed");
         assert_eq!(e["what"], "identity record");
         assert_eq!(e["refused"], false);
@@ -245,6 +252,7 @@ mod tests {
     fn the_callers_own_activity_is_you_and_refusals_are_marked() {
         let own = entry(&row("patient-sub", "R", 0, "AccessLog"), "patient-sub");
         assert_eq!(own["by"], "you");
+        assert_eq!(own["roles"], serde_json::json!([]));
         let refused = entry(&row("x", "E", 4, "PatientIdentity/Read"), "patient-sub");
         assert_eq!(refused["refused"], true);
         assert_eq!(refused["did"], "was refused access to");

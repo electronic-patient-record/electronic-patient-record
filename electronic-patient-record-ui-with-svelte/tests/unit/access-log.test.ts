@@ -19,6 +19,14 @@ suite("access log text", () => {
       "A member of staff viewed your identity record. Purpose: treatment.",
     );
   });
+  it("adds the role and organisation the token carried, when recorded", () => {
+    expect(
+      describe(e({ roles: ["clinician"], organisations: ["riverside"] })),
+    ).toBe(
+      "A member of staff (clinician, riverside) viewed your identity record. Purpose: treatment.",
+    );
+    expect(describe(e({ roles: ["new-role"] }))).toContain("(new-role)");
+  });
   it("says you when it was you, and says a refusal plainly", () => {
     expect(describe(e({ by: "you", purpose: null }))).toBe(
       "You viewed your identity record.",

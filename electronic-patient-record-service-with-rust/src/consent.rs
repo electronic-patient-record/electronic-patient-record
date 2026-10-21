@@ -687,6 +687,7 @@ mod tests {
         let request = |consent, labels: &[Label]| policy::Request {
             subject: policy::Subject {
                 roles: BTreeSet::from([Role::Clinician]),
+                ..policy::Subject::default()
             },
             resource: Resource::Condition,
             action: policy::Action::Read,
