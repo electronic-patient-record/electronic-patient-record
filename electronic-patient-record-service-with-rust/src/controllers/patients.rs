@@ -258,6 +258,30 @@ pub(super) async fn authorize(
     )))
 }
 
+/// Start the transaction a write and its audit row share (see [`audit::append`]).
+pub(super) async fn begin(
+    db: &sea_orm::DatabaseConnection,
+) -> Result<sea_orm::DatabaseTransaction, Box<Response>> {
+    sea_orm::TransactionTrait::begin(db).await.map_err(|e| {
+        tracing::error!(error = %e, "could not start a transaction");
+        Box::new(json_error(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            serde_json::json!({"error": "internal error"}),
+        ))
+    })
+}
+
+/// Commit it. A failure means the write did not happen, so the request fails.
+pub(super) async fn commit(tx: sea_orm::DatabaseTransaction) -> Result<(), Box<Response>> {
+    sea_orm::TransactionSession::commit(tx).await.map_err(|e| {
+        tracing::error!(error = %e, "could not commit a write and its audit row");
+        Box::new(json_error(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            serde_json::json!({"error": "internal error"}),
+        ))
+    })
+}
+
 pub(super) fn time_now() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -266,7 +290,7 @@ pub(super) fn time_now() -> i64 {
 
 /// Write the audit row for a completed access to a patient. Never put demographics in `detail`.
 async fn audit_access(
-    db: &sea_orm::DatabaseConnection,
+    db: &(impl sea_orm::ConnectionTrait + sea_orm::TransactionTrait),
     agent: &Agent,
     action: Action,
     outcome: i16,
@@ -295,7 +319,7 @@ pub(super) struct Access<'a> {
 
 /// Write the audit row for an access. Never put demographics or consent content in `detail`.
 pub(super) async fn audit_resource(
-    db: &sea_orm::DatabaseConnection,
+    db: &(impl sea_orm::ConnectionTrait + sea_orm::TransactionTrait),
     agent: &Agent,
     access: Access<'_>,
     detail: serde_json::Value,
@@ -436,13 +460,19 @@ pub(super) async fn create(
         (Some(o), None) => Some(format!("duplicate override: {o}")),
         (None, r) => r.map(str::to_string),
     };
-    let stored =
-        match store::create(&ctx.db, &agent.0, kept_reason.as_deref(), &request.patient).await {
-            Ok(s) => s,
-            Err(e) => return store_failure(&e),
-        };
+    // The new version and its audit row are one transaction: if the row cannot be written, the
+    // patient is not created.
+    let tx = match begin(&ctx.db).await {
+        Ok(t) => t,
+        Err(r) => return *r,
+    };
+    let stored = match store::create(&tx, &agent.0, kept_reason.as_deref(), &request.patient).await
+    {
+        Ok(s) => s,
+        Err(e) => return store_failure(&e),
+    };
     if let Err(r) = audit_access(
-        &ctx.db,
+        &tx,
         &agent,
         Action::Create,
         0,
@@ -457,6 +487,9 @@ pub(super) async fn create(
     )
     .await
     {
+        return *r;
+    }
+    if let Err(r) = commit(tx).await {
         return *r;
     }
     (StatusCode::CREATED, Json(stored)).into_response()
@@ -557,8 +590,12 @@ pub(super) async fn update(
             serde_json::json!({"errors": problems}),
         );
     }
+    let tx = match begin(&ctx.db).await {
+        Ok(t) => t,
+        Err(r) => return *r,
+    };
     match store::update(
-        &ctx.db,
+        &tx,
         &id,
         request.expected_version,
         &agent.0,
@@ -569,7 +606,7 @@ pub(super) async fn update(
     {
         Ok(stored) => {
             if let Err(r) = audit_access(
-                &ctx.db,
+                &tx,
                 &agent,
                 Action::Update,
                 0,
@@ -581,9 +618,14 @@ pub(super) async fn update(
             {
                 return *r;
             }
+            if let Err(r) = commit(tx).await {
+                return *r;
+            }
             Json(stored).into_response()
         }
         Err(e @ (StoreError::Conflict { .. } | StoreError::NotFound)) => {
+            // Nothing was written; end the transaction before the refusal is audited.
+            let _ = sea_orm::TransactionSession::rollback(tx).await;
             if let Err(r) = audit_access(
                 &ctx.db,
                 &agent,

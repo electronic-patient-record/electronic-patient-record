@@ -11,7 +11,10 @@
 //! migration), so the chain is a second line of defence.
 
 use integrity_mac::{KeyConfig, KeySet};
-use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, Statement, TransactionTrait, Value};
+use sea_orm::{
+    ConnectionTrait, DatabaseConnection, DbBackend, Statement, TransactionSession,
+    TransactionTrait, Value,
+};
 use sha2::{Digest, Sha256};
 use std::fmt::Write as _;
 use std::sync::OnceLock;
@@ -331,6 +334,11 @@ fn with_actor(event: &Event) -> Event {
 
 /// Append `event` to the chain, in its own transaction, and return the new row's id.
 ///
+/// Given a transaction instead of a connection, the append joins it (as a savepoint): the audit
+/// row and the write it records commit or roll back together, so a write that cannot be audited
+/// does not happen. The advisory lock is then held until that outer transaction ends, so do the
+/// append last.
+///
 /// Appends are serialised by a transaction-scoped advisory lock, so two
 /// concurrent callers cannot both extend the same predecessor.
 ///
@@ -339,7 +347,7 @@ fn with_actor(event: &Event) -> Event {
 /// When the database refuses. Callers must treat that as a failure of the whole
 /// request: an access that cannot be audited does not happen.
 pub async fn append(
-    db: &DatabaseConnection,
+    db: &(impl ConnectionTrait + TransactionTrait),
     chain: &Chain,
     event: &Event,
 ) -> Result<i64, AuditError> {

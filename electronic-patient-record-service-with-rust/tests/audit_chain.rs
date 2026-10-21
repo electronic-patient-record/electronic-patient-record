@@ -689,3 +689,99 @@ async fn the_audit_search_filters_pages_newest_first_and_refuses_bad_criteria() 
     assert_eq!(page.len() as i64, audit::SEARCH_LIMIT + 1);
     s.finish().await;
 }
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn a_write_and_its_audit_row_commit_or_roll_back_together() {
+    use electronic_patient_record::patients_store::{self as patients, StoreError};
+    use electronic_patient_record_matcher::{HumanName, Patient};
+    use sea_orm::{ConnectionTrait, TransactionTrait};
+
+    let person = |family: &str| Patient {
+        names: vec![HumanName {
+            family: Some(family.into()),
+            given: vec!["Tx".into()],
+        }],
+        birth_date: Some("1970-01-01".into()),
+        ..Default::default()
+    };
+    let chain = Chain::unkeyed();
+    let s = Scratch::new().await;
+
+    // Both land when the transaction commits.
+    let tx = s.db.begin().await.unwrap();
+    let made = patients::create(&tx, "a", None, &person("Both"))
+        .await
+        .unwrap();
+    audit::append(&tx, &chain, &event(0)).await.unwrap();
+    tx.commit().await.unwrap();
+    assert_eq!(patients::current(&s.db, &made.id).await.unwrap().version, 1);
+    assert_eq!(
+        audit::verify(&s.db, &chain).await.unwrap(),
+        Verdict::Intact { rows: 1 }
+    );
+
+    // If the audit row cannot be written, the patient is not created.
+    s.db.execute_unprepared(
+        "CREATE FUNCTION refuse_test_agent() RETURNS trigger AS $$
+         BEGIN IF NEW.agent = 'cannot-be-audited' THEN RAISE EXCEPTION 'audit refused'; END IF; RETURN NEW; END
+         $$ LANGUAGE plpgsql",
+    )
+    .await
+    .unwrap();
+    s.db.execute_unprepared(
+        "CREATE TRIGGER refuse_test_agent BEFORE INSERT ON audit_events
+         FOR EACH ROW EXECUTE FUNCTION refuse_test_agent()",
+    )
+    .await
+    .unwrap();
+    let tx = s.db.begin().await.unwrap();
+    let doomed = patients::create(&tx, "a", None, &person("Doomed"))
+        .await
+        .unwrap();
+    let mut bad = event(1);
+    bad.agent = "cannot-be-audited".into();
+    assert!(audit::append(&tx, &chain, &bad).await.is_err());
+    drop(tx); // the handler returns 500 and the transaction ends without a commit
+    assert_eq!(
+        patients::current(&s.db, &doomed.id).await,
+        Err(StoreError::NotFound),
+        "an access that cannot be audited does not happen"
+    );
+    assert_eq!(
+        audit::verify(&s.db, &chain).await.unwrap(),
+        Verdict::Intact { rows: 1 }
+    );
+
+    // A stale update inside a transaction does not poison it: the audit row can still be written.
+    let tx = s.db.begin().await.unwrap();
+    let v2 = patients::update(&tx, &made.id, 1, "a", None, &person("Both"))
+        .await
+        .unwrap();
+    assert_eq!(v2.version, 2);
+    assert_eq!(
+        patients::update(&tx, &made.id, 1, "b", None, &person("Both")).await,
+        Err(StoreError::Conflict { current: 2 })
+    );
+    audit::append(&tx, &chain, &event(2)).await.unwrap();
+    tx.commit().await.unwrap();
+    assert_eq!(patients::current(&s.db, &made.id).await.unwrap().version, 2);
+    assert_eq!(
+        audit::verify(&s.db, &chain).await.unwrap(),
+        Verdict::Intact { rows: 2 }
+    );
+
+    // A write that is rolled back leaves no audit row and no version.
+    let tx = s.db.begin().await.unwrap();
+    patients::update(&tx, &made.id, 2, "a", None, &person("Rolled"))
+        .await
+        .unwrap();
+    audit::append(&tx, &chain, &event(3)).await.unwrap();
+    tx.rollback().await.unwrap();
+    assert_eq!(patients::current(&s.db, &made.id).await.unwrap().version, 2);
+    assert_eq!(
+        audit::verify(&s.db, &chain).await.unwrap(),
+        Verdict::Intact { rows: 2 }
+    );
+    s.finish().await;
+}

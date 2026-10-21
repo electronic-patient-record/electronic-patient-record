@@ -112,6 +112,20 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
   ages use UTC dates; the ten locales share the English strings (machine-written, unreviewed); the compare page and
   `/patients/new` have no banner because no stored patient is shown there. The task stays open.
 
+## 2026-10-21 - A write and its audit row are one transaction
+
+- Patient, consent and relationship create and update now write the new version and its audit row in one transaction
+  (idea 3 of `spec/interoperability/openehr-comparison.md`; hazard H-010). `audit::append` is generic over a connection or a
+  transaction and joins the latter as a savepoint; the three stores' write functions are generic too, and each `update`
+  runs its insert in a savepoint so a lost version race does not abort the caller's transaction. 1 new Postgres test (a
+  trigger makes the audit insert fail: the patient is not created; a stale update inside a transaction leaves it usable;
+  a rolled-back write leaves no audit row). Run through all six handlers by the real-Keycloak suite (11 passed).
+- **Not done:** reads, refusals, `compare`, verify and search rows are still written in their own transaction (a read
+  that cannot be audited still answers 500 by the existing rule, but it is not atomic with anything). One audit row for a
+  set of writes (the openEHR "contribution") is not modelled. The advisory lock is now held a little longer on writes. No
+  handler-level automated test in `cargo test`. I did not read the status of the last verify call on the final run.
+  The test-side `exact: true` change fixes a heading clash my banner caused in the Keycloak suite.
+
 ## [0.1.0] - 2026-10-20
 
 Milestone M0, scaffold. **Not for clinical use.**

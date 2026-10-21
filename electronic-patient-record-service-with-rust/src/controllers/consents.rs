@@ -5,7 +5,9 @@
 //! withdrawing a consent is an update to `status: inactive`. Audit rows carry ids, versions and
 //! counts, never the provisions.
 
-use super::patients::{Access, audit_resource, authorize, json_error, purpose_of, store_failure};
+use super::patients::{
+    Access, audit_resource, authorize, begin, commit, json_error, purpose_of, store_failure,
+};
 use crate::audit::Action;
 use crate::auth::Agent;
 use crate::consent::{self, ConsentRecord};
@@ -79,8 +81,12 @@ pub(super) async fn create(
     if !problems.is_empty() {
         return invalid(&problems);
     }
+    let tx = match begin(&ctx.db).await {
+        Ok(t) => t,
+        Err(r) => return *r,
+    };
     match store::create(
-        &ctx.db,
+        &tx,
         &patient,
         &agent.0,
         request.reason.as_deref(),
@@ -90,7 +96,7 @@ pub(super) async fn create(
     {
         Ok(stored) => {
             if let Err(r) = audit_resource(
-                &ctx.db,
+                &tx,
                 &agent,
                 Access {
                     action: Action::Create,
@@ -109,9 +115,16 @@ pub(super) async fn create(
             {
                 return *r;
             }
+            if let Err(r) = commit(tx).await {
+                return *r;
+            }
             (StatusCode::CREATED, Json(stored)).into_response()
         }
-        Err(e) => refused(&ctx, &agent, purpose, Action::Create, &e).await,
+        Err(e) => {
+            // Nothing was written; end the transaction before the refusal is audited.
+            let _ = sea_orm::TransactionSession::rollback(tx).await;
+            refused(&ctx, &agent, purpose, Action::Create, &e).await
+        }
     }
 }
 
@@ -197,8 +210,12 @@ pub(super) async fn update(
     if !problems.is_empty() {
         return invalid(&problems);
     }
+    let tx = match begin(&ctx.db).await {
+        Ok(t) => t,
+        Err(r) => return *r,
+    };
     match store::update(
-        &ctx.db,
+        &tx,
         &patient,
         &consent_id,
         request.expected_version,
@@ -210,7 +227,7 @@ pub(super) async fn update(
     {
         Ok(stored) => {
             if let Err(r) = audit_resource(
-                &ctx.db,
+                &tx,
                 &agent,
                 Access {
                     action: Action::Update,
@@ -229,9 +246,16 @@ pub(super) async fn update(
             {
                 return *r;
             }
+            if let Err(r) = commit(tx).await {
+                return *r;
+            }
             Json(stored).into_response()
         }
-        Err(e) => refused(&ctx, &agent, purpose, Action::Update, &e).await,
+        Err(e) => {
+            // Nothing was written; end the transaction before the refusal is audited.
+            let _ = sea_orm::TransactionSession::rollback(tx).await;
+            refused(&ctx, &agent, purpose, Action::Update, &e).await
+        }
     }
 }
 

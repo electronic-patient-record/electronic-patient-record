@@ -4,7 +4,10 @@
 //! change the same version collide on the primary key and the loser gets [`StoreError::Conflict`].
 
 use electronic_patient_record_matcher::{NHS_NUMBER_SYSTEM, Patient, is_valid_nhs_number};
-use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, Statement, Value};
+use sea_orm::{
+    ConnectionTrait, DatabaseConnection, DbBackend, Statement, TransactionSession,
+    TransactionTrait, Value,
+};
 
 /// A stored patient at one version.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -137,7 +140,7 @@ const COLUMNS: &str = "patient_id::text AS id, version, author, body";
 ///
 /// [`StoreError::Db`] when the insert fails.
 pub async fn create(
-    db: &DatabaseConnection,
+    db: &impl ConnectionTrait,
     author: &str,
     reason: Option<&str>,
     patient: &Patient,
@@ -167,7 +170,7 @@ pub async fn create(
 /// # Errors
 ///
 /// [`StoreError::NotFound`] for an unknown or malformed id.
-pub async fn current(db: &DatabaseConnection, id: &str) -> Result<Stored, StoreError> {
+pub async fn current(db: &impl ConnectionTrait, id: &str) -> Result<Stored, StoreError> {
     let row = db
         .query_one_raw(pg(
             &format!("SELECT {COLUMNS} FROM patient_current WHERE patient_id::text = lower($1)"),
@@ -186,7 +189,7 @@ pub async fn current(db: &DatabaseConnection, id: &str) -> Result<Stored, StoreE
 /// [`StoreError::NotFound`] for an unknown id; [`StoreError::Conflict`] when `expected_version` is
 /// not the current version, including when a concurrent writer got there first.
 pub async fn update(
-    db: &DatabaseConnection,
+    db: &(impl ConnectionTrait + TransactionTrait),
     id: &str,
     expected_version: i32,
     author: &str,
@@ -201,7 +204,8 @@ pub async fn update(
     }
     let mut body = patient.clone();
     body.id = None;
-    let inserted = db
+    let sp = db.begin().await.map_err(db_err)?;
+    let inserted = sp
         .query_one_raw(pg(
             &format!(
                 "INSERT INTO patient_versions (patient_id, version, author, reason, body)
@@ -216,6 +220,18 @@ pub async fn update(
             ],
         ))
         .await;
+    let inserted = match inserted {
+        Ok(v) => {
+            sp.commit().await.map_err(db_err)?;
+            Ok(v)
+        }
+        Err(e) => {
+            // A failed statement aborts a PostgreSQL transaction; only the savepoint is lost, so the
+            // caller's transaction (if any) can still read the current version below.
+            let _ = sp.rollback().await;
+            Err(e)
+        }
+    };
     match inserted {
         Ok(Some(row)) => row_to_stored(&row),
         Ok(None) => Err(StoreError::Db("insert returned no row".into())),

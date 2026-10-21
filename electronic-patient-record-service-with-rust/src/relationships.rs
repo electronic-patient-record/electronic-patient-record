@@ -11,7 +11,10 @@
 use crate::consent::{Period, in_period};
 use crate::patients_store::{self, StoreError};
 use crate::policy::Relationship;
-use sea_orm::{DatabaseConnection, DbBackend, Statement, Value};
+use sea_orm::{
+    ConnectionTrait, DatabaseConnection, DbBackend, Statement, TransactionSession,
+    TransactionTrait, Value,
+};
 use serde::{Deserialize, Serialize};
 
 /// What the subject is to the patient.
@@ -173,7 +176,7 @@ fn row_to_stored(row: &sea_orm::QueryResult) -> Result<StoredRelationship, Store
 ///
 /// [`StoreError::NotFound`] when the patient does not exist.
 pub async fn create(
-    db: &DatabaseConnection,
+    db: &impl ConnectionTrait,
     patient_id: &str,
     author: &str,
     reason: Option<&str>,
@@ -235,7 +238,7 @@ pub async fn list(
 ///
 /// [`StoreError::NotFound`] when there is none.
 pub async fn current(
-    db: &DatabaseConnection,
+    db: &impl ConnectionTrait,
     patient_id: &str,
     id: &str,
 ) -> Result<StoredRelationship, StoreError> {
@@ -263,7 +266,7 @@ pub async fn current(
 /// [`StoreError::NotFound`], [`StoreError::Conflict`] (stale or racing version), or
 /// [`StoreError::BadQuery`] when the subject or kind differs from the stored one.
 pub async fn update(
-    db: &DatabaseConnection,
+    db: &(impl ConnectionTrait + TransactionTrait),
     patient_id: &str,
     id: &str,
     expected_version: i32,
@@ -282,8 +285,9 @@ pub async fn update(
             "the subject and kind cannot change: end this relationship and record another".into(),
         ));
     }
+    let sp = db.begin().await.map_err(db_err)?;
     let inserted = sea_orm::ConnectionTrait::query_one_raw(
-        db,
+        &sp,
         pg(
             &format!(
                 "INSERT INTO relationship_versions
@@ -304,6 +308,18 @@ pub async fn update(
         ),
     )
     .await;
+    let inserted = match inserted {
+        Ok(v) => {
+            sp.commit().await.map_err(db_err)?;
+            Ok(v)
+        }
+        Err(e) => {
+            // A failed statement aborts a PostgreSQL transaction; only the savepoint is lost, so the
+            // caller's transaction (if any) can still read the current version below.
+            let _ = sp.rollback().await;
+            Err(e)
+        }
+    };
     match inserted {
         Ok(Some(row)) => row_to_stored(&row),
         Ok(None) => Err(StoreError::Db("insert returned no row".into())),

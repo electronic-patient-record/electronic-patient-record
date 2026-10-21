@@ -237,7 +237,11 @@ test("a patient signs in, sees only the record an administrator linked to them, 
   expect(link.status).toBe(201);
   await page.reload();
   await expect(
-    page.getByRole("heading", { level: 2, name: `${family}, Pat` }),
+    page.getByRole("heading", {
+      level: 2,
+      name: `${family}, Pat`,
+      exact: true,
+    }),
   ).toBeVisible();
   await expect(page.getByText(family + "x")).toHaveCount(0);
 
