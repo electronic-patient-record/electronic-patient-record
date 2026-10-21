@@ -2,6 +2,16 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-21 - The status page counts every task prefix (CQ-29, in part)
+
+- `scripts/generate-status.sh` counted ten fixed prefixes, so the 35 `CQ-` tasks were missing from the totals in
+  `spec/14-implementation-status.md`. It now counts `CQ` (9 ticked, 26 open; 20 and 111 in all), and fails (exit 2)
+  when `tasks.md` uses a prefix it does not count, so a new prefix cannot go missing. A probe task with prefix `ZZ`
+  was refused.
+- **Not done:** trimming the five task entries of 1,500 to 2,300 characters to a status line and a changelog link.
+  Their "Not built" lists are the record of what is open, and each must be checked against its changelog entry
+  first.
+
 ## 2026-10-21 - CI runs every test without naming files (CQ-24)
 
 - The `api` job named three test targets (`--lib`, `keycloak_guard`, `route_census`). A new test file whose tests need

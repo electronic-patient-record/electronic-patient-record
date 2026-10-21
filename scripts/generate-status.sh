@@ -28,6 +28,8 @@ count_ts() {
   pat=$1; shift
   find "$@" -name '*.ts' -not -path '*/node_modules/*' -not -path '*/.svelte-kit/*' -print0 | xargs -0 cat | grep -cE "$pat" || true
 }
+# The task prefixes, in the order of the table in tasks.md. A new prefix goes here too.
+PREFIXES="SF ID AU RC SE DO OR IO CA AS CQ"
 task_count() { # <prefix> <x| >
   grep -cE "^- \\[$2\\] \\*\\*$1-[0-9]" "$TASKS" || true
 }
@@ -69,7 +71,7 @@ generate() {
   echo "| Prefix | Ticked | Open |"
   echo "|---|---|---|"
   tt=0; to=0
-  for p in SF ID AU RC SE DO OR IO CA AS; do
+  for p in $PREFIXES; do
     t=$(task_count "$p" x); o=$(task_count "$p" ' ')
     tt=$((tt + t)); to=$((to + o))
     echo "| $p | $t | $o |"
@@ -87,6 +89,10 @@ splice() { # <status file> <block file> -> stdout
 }
 
 grep -qF "$START" "$STATUS" && grep -qF "$END" "$STATUS" || { echo "markers missing in $STATUS" >&2; exit 2; }
+# Every prefix used by a task box must be counted, or its boxes silently go missing from the totals.
+unknown=$(grep -oE '^- \[[ x]\] \*\*[A-Z]+-[0-9]' "$TASKS" | sed -E 's/.*\*\*([A-Z]+)-.*/\1/' | sort -u |
+  grep -vxF -e "$(echo "$PREFIXES" | tr ' ' '\n')" || true)
+[ -z "$unknown" ] || { echo "tasks.md uses prefix(es) not in PREFIXES: $unknown" >&2; exit 2; }
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
 generate > "$tmp/block"
 splice "$STATUS" "$tmp/block" > "$tmp/new"

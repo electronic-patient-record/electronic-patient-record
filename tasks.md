@@ -418,7 +418,7 @@ From [plan.md §14](plan.md#14-research-pass-2026-10-21-code-quality-and-new-cap
 except for `pnpm run check` and a throwaway matcher probe; each defect below must be reproduced by a failing test
 before it is fixed. Items marked **clinical** change what a clinician sees or what the matcher decides: they need a
 hazard-log row (AS-1) in the same commit. Keep each entry to description, acceptance and status; put history in
-`CHANGELOG.md`. `scripts/generate-status.sh` does not yet count the `CQ` prefix (CQ-29).
+`CHANGELOG.md`. `scripts/generate-status.sh` counts the `CQ` prefix.
 
 ### Patient-safety defects (do first)
 
@@ -581,7 +581,7 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
   - the plan.md header ("no code exists").
 
   **Acceptance:** `check-links.py` passes and a reviewer finds no contradiction among the files listed.
-- [ ] **CQ-29 (S) — Status generator and tasks hygiene.** Add `CQ` to the prefix loop in
+- [ ] **CQ-29 (S) — Status generator and tasks hygiene.** **Generator part landed 2026-10-21** (`CQ` counted; an unknown prefix fails the generator). **Open:** trimming the long entries, each checked against its changelog entry so no "Not built" item is lost. Add `CQ` to the prefix loop in
   `scripts/generate-status.sh:72`; trim the long inline status logs in tasks.md (ID-3, ID-4, SE-2, OR-3 and others,
   up to 2,266 characters each) to a status line plus a CHANGELOG link; optionally warn on very long lines.
   **Acceptance:** `generate-status.sh --check` passes and counts CQ.
