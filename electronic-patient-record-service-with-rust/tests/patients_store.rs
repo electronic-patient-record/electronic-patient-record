@@ -1,0 +1,261 @@
+//! DB-gated: patient versions are append-only, updates are optimistic, and search finds current
+//! versions only.
+//!
+//! ```text
+//! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
+//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//!   cargo test --test patients_store -- --ignored --test-threads=1
+//! ```
+
+use electronic_patient_record::patients_store::{self as store, Search, StoreError};
+use electronic_patient_record_matcher::{HumanName, Identifier, Patient};
+use electronic_patient_record_migration::{Migrator, MigratorTrait};
+use sea_orm::{ConnectionTrait, Database, DatabaseConnection};
+
+async fn db() -> DatabaseConnection {
+    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
+    let db = Database::connect(url).await.expect("connect");
+    Migrator::up(&db, None).await.expect("migrate");
+    db
+}
+
+/// A family name no other test uses, so searches see only this test's rows.
+fn tag(label: &str) -> String {
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    format!("Zz{label}{nanos}")
+}
+
+fn patient(family: &str, dob: &str) -> Patient {
+    Patient {
+        names: vec![HumanName {
+            family: Some(family.into()),
+            given: vec!["Test".into()],
+        }],
+        birth_date: Some(dob.into()),
+        ..Default::default()
+    }
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn create_assigns_an_id_and_version_one_and_ignores_a_supplied_id() {
+    let db = db().await;
+    let mut p = patient(&tag("create"), "1980-03-14");
+    p.id = Some("client-chosen".into());
+    let s = store::create(&db, "tester", Some("registration"), &p)
+        .await
+        .unwrap();
+    assert_eq!(s.version, 1);
+    assert_ne!(s.id, "client-chosen");
+    assert_eq!(s.patient.id.as_deref(), Some(s.id.as_str()));
+    assert_eq!(store::current(&db, &s.id).await.unwrap(), s);
+    assert_eq!(
+        store::current(&db, "not-a-uuid").await,
+        Err(StoreError::NotFound)
+    );
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn an_update_appends_a_version_and_keeps_the_old_one() {
+    let db = db().await;
+    let family = tag("update");
+    let v1 = store::create(&db, "alice", None, &patient(&family, "1980-03-14"))
+        .await
+        .unwrap();
+    let v2 = store::update(
+        &db,
+        &v1.id,
+        1,
+        "bob",
+        Some("corrected birth date"),
+        &patient(&family, "1980-03-15"),
+    )
+    .await
+    .unwrap();
+    assert_eq!(v2.version, 2);
+    assert_eq!(v2.author, "bob");
+    assert_eq!(v2.patient.birth_date.as_deref(), Some("1980-03-15"));
+    // The current view shows v2; both versions are still in the table with their authors.
+    assert_eq!(store::current(&db, &v1.id).await.unwrap().version, 2);
+    let rows = db
+        .query_all_raw(sea_orm::Statement::from_sql_and_values(
+            sea_orm::DbBackend::Postgres,
+            "SELECT version, author, reason FROM patient_versions WHERE patient_id = $1::uuid ORDER BY version",
+            [v1.id.clone().into()],
+        ))
+        .await
+        .unwrap();
+    assert_eq!(rows.len(), 2);
+    assert_eq!(rows[0].try_get::<String>("", "author").unwrap(), "alice");
+    assert_eq!(
+        rows[1]
+            .try_get::<Option<String>>("", "reason")
+            .unwrap()
+            .as_deref(),
+        Some("corrected birth date")
+    );
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn a_stale_update_is_a_conflict_and_changes_nothing() {
+    let db = db().await;
+    let family = tag("stale");
+    let v1 = store::create(&db, "a", None, &patient(&family, "1980"))
+        .await
+        .unwrap();
+    store::update(&db, &v1.id, 1, "a", None, &patient(&family, "1981"))
+        .await
+        .unwrap();
+    let late = store::update(&db, &v1.id, 1, "b", None, &patient(&family, "1999")).await;
+    assert_eq!(late, Err(StoreError::Conflict { current: 2 }));
+    assert_eq!(
+        store::current(&db, &v1.id)
+            .await
+            .unwrap()
+            .patient
+            .birth_date
+            .as_deref(),
+        Some("1981")
+    );
+    assert_eq!(
+        store::update(
+            &db,
+            "00000000-0000-4000-8000-000000000000",
+            1,
+            "a",
+            None,
+            &patient(&family, "1980")
+        )
+        .await,
+        Err(StoreError::NotFound)
+    );
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn two_writers_racing_for_the_same_version_get_one_winner() {
+    let db = db().await;
+    let family = tag("race");
+    let v1 = store::create(&db, "a", None, &patient(&family, "1980"))
+        .await
+        .unwrap();
+    let (pa, pb) = (patient(&family, "1981"), patient(&family, "1982"));
+    let (a, b) = tokio::join!(
+        store::update(&db, &v1.id, 1, "a", None, &pa),
+        store::update(&db, &v1.id, 1, "b", None, &pb),
+    );
+    assert_eq!(
+        [a.is_ok(), b.is_ok()].iter().filter(|ok| **ok).count(),
+        1,
+        "exactly one writer wins: {a:?} / {b:?}"
+    );
+    assert_eq!(store::current(&db, &v1.id).await.unwrap().version, 2);
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn versions_cannot_be_changed_or_removed() {
+    let db = db().await;
+    let s = store::create(&db, "a", None, &patient(&tag("immutable"), "1980"))
+        .await
+        .unwrap();
+    for sql in [
+        format!(
+            "UPDATE patient_versions SET author = 'x' WHERE patient_id = '{}'",
+            s.id
+        ),
+        format!("DELETE FROM patient_versions WHERE patient_id = '{}'", s.id),
+        "TRUNCATE patient_versions".to_string(),
+    ] {
+        let e = db.execute_unprepared(&sql).await.unwrap_err().to_string();
+        assert!(e.contains("append-only"), "{sql}: {e}");
+    }
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn search_finds_current_versions_by_name_prefix_birth_date_and_identifier() {
+    let db = db().await;
+    let family = tag("search");
+    let mut p = patient(&family, "1975-06-01");
+    p.identifiers = vec![Identifier {
+        system: "urn:example:mrn".into(),
+        value: family.clone(),
+    }];
+    let v1 = store::create(&db, "a", None, &p).await.unwrap();
+    // Change the name: the old name must no longer find the patient.
+    let renamed = tag("renamed");
+    let mut p2 = p.clone();
+    p2.names[0].family = Some(renamed.clone());
+    store::update(&db, &v1.id, 1, "a", None, &p2).await.unwrap();
+
+    let by = |family: Option<&str>, dob: Option<&str>, ident: Option<String>| Search {
+        family: family.map(Into::into),
+        birth_date: dob.map(Into::into),
+        identifier: ident,
+    };
+    assert!(
+        store::search(&db, &by(Some(&family), None, None))
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    let hit = store::search(
+        &db,
+        &by(
+            Some(&renamed[..renamed.len() - 3].to_lowercase()),
+            Some("1975-06-01"),
+            None,
+        ),
+    )
+    .await
+    .unwrap();
+    assert_eq!(hit.len(), 1, "prefix, case-insensitive, with birth date");
+    assert_eq!(hit[0].id, v1.id);
+    assert_eq!(hit[0].version, 2);
+    let by_ident = store::search(
+        &db,
+        &by(None, None, Some(format!("urn:example:mrn|{family}"))),
+    )
+    .await
+    .unwrap();
+    assert_eq!(by_ident.len(), 1);
+    assert!(
+        store::search(&db, &by(None, None, Some("urn:example:mrn|nobody".into())))
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    assert!(matches!(
+        store::search(&db, &by(None, None, Some("no-bar".into()))).await,
+        Err(StoreError::BadQuery(_))
+    ));
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn wildcards_in_a_search_are_literal_and_results_are_capped() {
+    let db = db().await;
+    let base = tag("many");
+    for i in 0..55 {
+        store::create(&db, "a", None, &patient(&format!("{base}{i:02}"), "1990"))
+            .await
+            .unwrap();
+    }
+    let q = Search {
+        family: Some(base.clone()),
+        ..Default::default()
+    };
+    assert_eq!(store::search(&db, &q).await.unwrap().len(), 50);
+    // "%" must not match everything.
+    let q = Search {
+        family: Some("%".into()),
+        ..Default::default()
+    };
+    assert!(store::search(&db, &q).await.unwrap().is_empty());
+}

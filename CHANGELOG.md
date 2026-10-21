@@ -65,6 +65,16 @@ Milestone M0, scaffold. **Not for clinical use.**
   no care-relationship lookup. **The permission table, label lists and purpose rules are an engineer's first draft that no clinical safety
   officer or privacy officer has reviewed.** With login off there is no authorization (development only). 401s are not audited.
 
+### Added after the first cut: patient create, read, update, search (ID-3, in part)
+
+- Migration `patient_versions` (append-only, triggers) and view `patient_current`; `POST/GET /api/patients`, `GET/PUT /api/patients/{id}`. Gated by role and by
+  `policy::evaluate` (the engine's first caller), validated (NHS number check digit, real birth dates), every access audited without demographics.
+- Tested: 7 Postgres tests (versions, stale and racing writers, immutability, search, wildcards, the 50-row cap); 4 validation tests. By hand against Keycloak 26.3.0
+  and the real API: 201, 422, 200, 409, 403 for patient role, auditor and a research purpose.
+- **Not done:** FHIR `Patient`; phonetic and typeahead search; no load test (the 200 ms p95 target is unmeasured, and search scans); the write and its audit row are
+  separate transactions; 422 and 400 are not audited; patient and proxy roles cannot read their own record (no relationship lookup); no UI page; no duplicate check at
+  registration (ID-4), so the same person can be registered twice.
+
 ### Changed after the first cut
 
 - The matcher is published as `electronic-patient-record-matcher` 0.1.0 on crates.io; the service depends on it from

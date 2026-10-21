@@ -17,12 +17,38 @@ pub struct Requirement {
 
 /// `(method, path template, requirement)`. A `{name}` segment matches one non-empty segment.
 /// Health probes are not here: they are public (`auth::is_public_path`).
-pub const TABLE: &[(&str, &str, Resource, Action)] = &[(
-    "POST",
-    "/api/patients/compare",
-    Resource::PatientIdentity,
-    Action::Search,
-)];
+pub const TABLE: &[(&str, &str, Resource, Action)] = &[
+    (
+        "POST",
+        "/api/patients/compare",
+        Resource::PatientIdentity,
+        Action::Search,
+    ),
+    (
+        "POST",
+        "/api/patients",
+        Resource::PatientIdentity,
+        Action::Create,
+    ),
+    (
+        "GET",
+        "/api/patients",
+        Resource::PatientIdentity,
+        Action::Search,
+    ),
+    (
+        "GET",
+        "/api/patients/{id}",
+        Resource::PatientIdentity,
+        Action::Read,
+    ),
+    (
+        "PUT",
+        "/api/patients/{id}",
+        Resource::PatientIdentity,
+        Action::Update,
+    ),
+];
 
 /// Whether `path` matches `template`.
 #[must_use]
@@ -102,7 +128,11 @@ mod tests {
     #[test]
     fn lookup_is_by_method_and_path() {
         assert!(lookup(&Method::POST, "/api/patients/compare").is_some());
-        assert!(lookup(&Method::GET, "/api/patients/compare").is_none());
+        assert!(lookup(&Method::DELETE, "/api/patients/compare").is_none());
+        assert!(
+            lookup(&Method::DELETE, "/api/patients/42").is_none(),
+            "there is no delete"
+        );
         assert!(lookup(&Method::POST, "/api/unknown").is_none());
         // Traversal-ish paths do not match a table entry by accident.
         assert!(lookup(&Method::POST, "/api/patients/compare/../x").is_none());

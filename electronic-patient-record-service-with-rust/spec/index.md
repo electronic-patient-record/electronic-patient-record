@@ -21,6 +21,8 @@ the cross-subproject contract.
 | Route gate | `authz::authorize_mw` runs after authentication on every request: public paths and login-off pass; a route with no entry in `routes::TABLE` is 403 for everyone; a caller whose roles do not permit the entry's resource and action is 403. Each refusal is audited (outcome 4; route template, method and roles only, never the body) | `authz::tests`, `tests/keycloak_guard.rs` (9), `tests/authz_audit.rs` (3, Postgres); run by hand against Keycloak 26.3.0: clinician 200, auditor 403, no role 403, unlisted route 403, no token 401 |
 | Route census | Every served route is public (the three health probes) or in `routes::TABLE`, and every table entry is served | `tests/route_census.rs` (3); fails when the table is emptied |
 
+| Patients (ID-3) | `POST /api/patients`, `GET /api/patients?family=&birth_date=&identifier=`, `GET`/`PUT /api/patients/{id}` over append-only `patient_versions` (+ view `patient_current`). `PUT` carries `expected_version`; a stale or racing write is 409. Search needs at least one criterion, returns at most 50, escapes wildcards. Validation: a family name, a real `YYYY[-MM[-DD]]` birth date, NHS number modulus 11 (other identifier systems kept as given). `X-Purpose-Of-Use` (default `operations`) feeds `policy::evaluate`. Every success and refusal is audited; search and read rows carry no demographics | `patients_store::tests` (4); `tests/patients_store.rs` (7, Postgres); run by hand against Keycloak 26.3.0 |
+
 With login off (development only) there is no subject and the gate stands aside, as authentication does.
 
 ## 2. Configuration
@@ -31,7 +33,7 @@ With login off (development only) there is no subject and the gate stands aside,
 
 ## 3. Not built
 
-Patient storage and CRUD; the resource store; FHIR endpoints and the CapabilityStatement; consent records (SE-2: the engine takes
+FHIR `Patient`, phonetic search, any load test of search; the rest of the resource store; FHIR endpoints and the CapabilityStatement; consent records (SE-2: the engine takes
 a consent value but nothing stores or looks one up); break-the-glass grants (SE-3: the engine checks a grant but nothing creates,
 stores or expires one, and the privacy-officer notification is only an obligation); masking (SE-4: the engine says what to hide,
 nothing hides it); the care-relationship lookup; the record-level `evaluate` is called by no handler yet because no handler reads a stored record;

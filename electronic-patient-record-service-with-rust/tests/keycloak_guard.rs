@@ -123,7 +123,7 @@ async fn mapped_realm_roles_become_the_subject_and_open_only_what_the_table_allo
     assert!(authz::check(true, &Method::POST, COMPARE, Some(&s)).is_ok());
     // The same clinician has no route to anything else: there is none in the table.
     assert_eq!(
-        authz::check(true, &Method::GET, "/api/patients/1", Some(&s))
+        authz::check(true, &Method::GET, "/api/encounters/1", Some(&s))
             .unwrap_err()
             .0,
         Refusal::NoPolicy

@@ -2,9 +2,11 @@
 
 loco.rs (Axum 0.8) service on PostgreSQL 18. Read [`spec/index.md`](spec/index.md) first.
 
-- **Status**: scaffold. Built: app wiring, secure-by-default PASETO guard (`src/auth.rs`), `POST
-  /api/patients/compare` over the matcher, the append-only `audit_events` migration. Not built: patient storage,
-  the resource store, FHIR endpoints, consent, break-the-glass grants, record-level policy decisions. Built: the policy engine (`src/policy.rs`) and its route gate (`src/authz.rs`, `src/routes.rs`).
+- **Status**: early. Built: app wiring, secure-by-default PASETO and Keycloak guard (`src/auth.rs`), the policy engine and
+  its route gate (`src/policy.rs`, `src/authz.rs`, `src/routes.rs`), the hash-chained audit (`src/audit.rs`),
+  `POST /api/patients/compare`, and patient create, read, update and search over append-only versions
+  (`src/patients_store.rs`, `src/controllers/patients.rs`). Not built: the rest of the resource store, FHIR endpoints,
+  consent, break-the-glass grants, masking, a care-relationship lookup.
 - **Two token kinds**: `v4.…` goes to the PASETO verifier, anything else to Keycloak (when `EPR_KEYCLOAK_URL` is set). Never route one to the other. The token's `role` attribute (Keycloak: `EPR_KEYCLOAK_ROLE_MAP_FILE=operations/keycloak/role-map.json`) is the only thing authorization reads. See `operations/keycloak/README.md`.
 - **Auth is on unless explicitly off.** `settings.require_auth: false` is set only in development/test config.
   The service refuses to start with login off in `production`, and with login on and no keys or key URL.

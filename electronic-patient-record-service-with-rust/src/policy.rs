@@ -310,6 +310,37 @@ pub enum Purpose {
     Audit,
 }
 
+impl Purpose {
+    /// Parse a purpose-of-use code as sent in `X-Purpose-Of-Use`.
+    #[must_use]
+    pub fn parse(code: &str) -> Option<Purpose> {
+        Some(match code {
+            "treatment" => Purpose::Treatment,
+            "emergency" => Purpose::Emergency,
+            "operations" => Purpose::Operations,
+            "payment" => Purpose::Payment,
+            "research" => Purpose::Research,
+            "patient-access" => Purpose::PatientAccess,
+            "audit" => Purpose::Audit,
+            _ => return None,
+        })
+    }
+
+    /// The code, as recorded in the audit trail.
+    #[must_use]
+    pub fn code(self) -> &'static str {
+        match self {
+            Purpose::Treatment => "treatment",
+            Purpose::Emergency => "emergency",
+            Purpose::Operations => "operations",
+            Purpose::Payment => "payment",
+            Purpose::Research => "research",
+            Purpose::PatientAccess => "patient-access",
+            Purpose::Audit => "audit",
+        }
+    }
+}
+
 /// The patient's recorded consent for this access.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Consent {

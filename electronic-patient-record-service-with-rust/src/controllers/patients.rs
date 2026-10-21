@@ -2,8 +2,15 @@
 //! matcher's own types: there is no adapter layer.
 
 use crate::audit::{self, Action, AuditError, Chain, Event};
-use crate::auth::Agent;
-use axum::{Extension, extract::Json, response::Response};
+use crate::auth::{self, Agent};
+use crate::patients_store::{self as store, Search, StoreError};
+use crate::policy::{self, Consent, Purpose, Relationship, Subject};
+use axum::{
+    Extension,
+    extract::{Json, Path, Query},
+    http::{HeaderMap, StatusCode},
+    response::{IntoResponse, Response},
+};
 use electronic_patient_record_matcher::{MatchResult, MatchingEngine, Patient};
 use loco_rs::prelude::*;
 use sea_orm::DatabaseConnection;
@@ -63,12 +70,415 @@ async fn compare(
     }
 }
 
+/// A new patient.
+#[derive(Debug, Deserialize)]
+pub struct CreateRequest {
+    /// The identity record. Any `id` is ignored: the server assigns one.
+    pub patient: Patient,
+    /// Why, for the version history.
+    #[serde(default)]
+    pub reason: Option<String>,
+}
+
+/// A change to a patient: a new version.
+#[derive(Debug, Deserialize)]
+pub struct UpdateRequest {
+    /// The whole new identity record.
+    pub patient: Patient,
+    /// The version this change was made from; anything else is a 409.
+    pub expected_version: i32,
+    /// Why, for the version history.
+    #[serde(default)]
+    pub reason: Option<String>,
+}
+
+fn json_error(status: StatusCode, body: serde_json::Value) -> Response {
+    (status, Json(body)).into_response()
+}
+
+/// The purpose of use the caller declared, `operations` by default. An unknown code is a 400.
+fn purpose_of(headers: &HeaderMap) -> Result<Purpose, Box<Response>> {
+    match headers.get("x-purpose-of-use") {
+        None => Ok(Purpose::Operations),
+        Some(v) => v.to_str().ok().and_then(Purpose::parse).ok_or_else(|| {
+            Box::new(json_error(
+                StatusCode::BAD_REQUEST,
+                serde_json::json!({"error": "unknown X-Purpose-Of-Use"}),
+            ))
+        }),
+    }
+}
+
+fn audit_failed(e: &AuditError) -> Response {
+    tracing::error!(error = %e, "refusing to answer: the access could not be audited");
+    json_error(
+        StatusCode::INTERNAL_SERVER_ERROR,
+        serde_json::json!({"error": "internal error"}),
+    )
+}
+
+/// The record-level decision for an identity access. With login off (development only) there is no
+/// subject and nothing to decide. On a refusal the refusal is audited and the 403 is returned.
+async fn authorize(
+    db: &sea_orm::DatabaseConnection,
+    agent: &Agent,
+    subject: &Subject,
+    action: policy::Action,
+    purpose: Purpose,
+    patient_ref: Option<String>,
+) -> Result<(), Box<Response>> {
+    if !auth::authentication_enforced() {
+        return Ok(());
+    }
+    let decision = policy::evaluate(&policy::Request {
+        subject: subject.clone(),
+        resource: policy::Resource::PatientIdentity,
+        action,
+        labels: std::collections::BTreeSet::new(),
+        // No care-relationship lookup exists yet, and identity is not clinical content, so none is
+        // asserted. The patient and proxy roles need one, so they are refused here.
+        relationship: Relationship::None,
+        purpose,
+        consent: Consent::NotRecorded,
+        break_glass: None,
+        now: time_now(),
+    });
+    if decision.allowed() {
+        return Ok(());
+    }
+    let mut event = Event::new(Action::Execute, agent.0.clone());
+    event.outcome = 4;
+    event.patient_ref = patient_ref;
+    event.resource_ref = Some(format!("PatientIdentity/{}", action.name()));
+    event.purpose_of_use = Some(purpose.code().to_string());
+    event.detail = Some(serde_json::json!({ "denied": format!("{decision:?}") }));
+    if let Err(e) = audit::append(db, audit::chain(), &event).await {
+        tracing::error!(error = %e, "a refusal could not be audited");
+    }
+    Err(Box::new(json_error(
+        StatusCode::FORBIDDEN,
+        serde_json::json!({"error": "forbidden"}),
+    )))
+}
+
+fn time_now() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| i64::try_from(d.as_secs()).unwrap_or(i64::MAX))
+}
+
+/// Write the audit row for a completed access. Never put demographics in `detail`.
+async fn audit_access(
+    db: &sea_orm::DatabaseConnection,
+    agent: &Agent,
+    action: Action,
+    outcome: i16,
+    purpose: Purpose,
+    patient_id: Option<&str>,
+    detail: serde_json::Value,
+) -> Result<(), Box<Response>> {
+    let mut event = Event::new(action, agent.0.clone());
+    event.outcome = outcome;
+    event.patient_ref = patient_id.map(|id| format!("Patient/{id}"));
+    event.resource_ref = Some("Patient".to_string());
+    event.purpose_of_use = Some(purpose.code().to_string());
+    event.detail = Some(detail);
+    audit::append(db, audit::chain(), &event)
+        .await
+        .map(|_| ())
+        .map_err(|e| Box::new(audit_failed(&e)))
+}
+
+fn store_failure(e: &StoreError) -> Response {
+    match e {
+        StoreError::NotFound => json_error(
+            StatusCode::NOT_FOUND,
+            serde_json::json!({"error": "not found"}),
+        ),
+        StoreError::Conflict { current } => json_error(
+            StatusCode::CONFLICT,
+            serde_json::json!({"error": "version conflict", "current_version": current}),
+        ),
+        StoreError::BadQuery(m) => {
+            json_error(StatusCode::BAD_REQUEST, serde_json::json!({"error": m}))
+        }
+        StoreError::Db(m) => {
+            tracing::error!(error = %m, "patient store failed");
+            json_error(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                serde_json::json!({"error": "internal error"}),
+            )
+        }
+    }
+}
+
+async fn create(
+    State(ctx): State<AppContext>,
+    Extension(agent): Extension<Agent>,
+    Extension(subject): Extension<Subject>,
+    headers: HeaderMap,
+    Json(request): Json<CreateRequest>,
+) -> Response {
+    let purpose = match purpose_of(&headers) {
+        Ok(p) => p,
+        Err(r) => return *r,
+    };
+    if let Err(r) = authorize(
+        &ctx.db,
+        &agent,
+        &subject,
+        policy::Action::Create,
+        purpose,
+        None,
+    )
+    .await
+    {
+        return *r;
+    }
+    let problems = store::validate(&request.patient);
+    if !problems.is_empty() {
+        return json_error(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            serde_json::json!({"errors": problems}),
+        );
+    }
+    let stored = match store::create(
+        &ctx.db,
+        &agent.0,
+        request.reason.as_deref(),
+        &request.patient,
+    )
+    .await
+    {
+        Ok(s) => s,
+        Err(e) => return store_failure(&e),
+    };
+    if let Err(r) = audit_access(
+        &ctx.db,
+        &agent,
+        Action::Create,
+        0,
+        purpose,
+        Some(&stored.id),
+        serde_json::json!({"version": stored.version}),
+    )
+    .await
+    {
+        return *r;
+    }
+    (StatusCode::CREATED, Json(stored)).into_response()
+}
+
+async fn read(
+    State(ctx): State<AppContext>,
+    Extension(agent): Extension<Agent>,
+    Extension(subject): Extension<Subject>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Response {
+    let purpose = match purpose_of(&headers) {
+        Ok(p) => p,
+        Err(r) => return *r,
+    };
+    if let Err(r) = authorize(
+        &ctx.db,
+        &agent,
+        &subject,
+        policy::Action::Read,
+        purpose,
+        Some(format!("Patient/{id}")),
+    )
+    .await
+    {
+        return *r;
+    }
+    match store::current(&ctx.db, &id).await {
+        Ok(stored) => {
+            // Audit before the data leaves.
+            if let Err(r) = audit_access(
+                &ctx.db,
+                &agent,
+                Action::Read,
+                0,
+                purpose,
+                Some(&stored.id),
+                serde_json::json!({"version": stored.version}),
+            )
+            .await
+            {
+                return *r;
+            }
+            Json(stored).into_response()
+        }
+        Err(StoreError::NotFound) => {
+            // A miss is an access too. Only a well-formed id is recorded as the patient reference.
+            if let Err(r) = audit_access(
+                &ctx.db,
+                &agent,
+                Action::Read,
+                4,
+                purpose,
+                None,
+                serde_json::json!({"found": false}),
+            )
+            .await
+            {
+                return *r;
+            }
+            store_failure(&StoreError::NotFound)
+        }
+        Err(e) => store_failure(&e),
+    }
+}
+
+async fn update(
+    State(ctx): State<AppContext>,
+    Extension(agent): Extension<Agent>,
+    Extension(subject): Extension<Subject>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(request): Json<UpdateRequest>,
+) -> Response {
+    let purpose = match purpose_of(&headers) {
+        Ok(p) => p,
+        Err(r) => return *r,
+    };
+    if let Err(r) = authorize(
+        &ctx.db,
+        &agent,
+        &subject,
+        policy::Action::Update,
+        purpose,
+        Some(format!("Patient/{id}")),
+    )
+    .await
+    {
+        return *r;
+    }
+    let problems = store::validate(&request.patient);
+    if !problems.is_empty() {
+        return json_error(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            serde_json::json!({"errors": problems}),
+        );
+    }
+    match store::update(
+        &ctx.db,
+        &id,
+        request.expected_version,
+        &agent.0,
+        request.reason.as_deref(),
+        &request.patient,
+    )
+    .await
+    {
+        Ok(stored) => {
+            if let Err(r) = audit_access(
+                &ctx.db,
+                &agent,
+                Action::Update,
+                0,
+                purpose,
+                Some(&stored.id),
+                serde_json::json!({"version": stored.version}),
+            )
+            .await
+            {
+                return *r;
+            }
+            Json(stored).into_response()
+        }
+        Err(e @ (StoreError::Conflict { .. } | StoreError::NotFound)) => {
+            if let Err(r) = audit_access(
+                &ctx.db,
+                &agent,
+                Action::Update,
+                4,
+                purpose,
+                None,
+                serde_json::json!({"refused": e.to_string()}),
+            )
+            .await
+            {
+                return *r;
+            }
+            store_failure(&e)
+        }
+        Err(e) => store_failure(&e),
+    }
+}
+
+async fn search(
+    State(ctx): State<AppContext>,
+    Extension(agent): Extension<Agent>,
+    Extension(subject): Extension<Subject>,
+    headers: HeaderMap,
+    Query(query): Query<Search>,
+) -> Response {
+    let purpose = match purpose_of(&headers) {
+        Ok(p) => p,
+        Err(r) => return *r,
+    };
+    if let Err(r) = authorize(
+        &ctx.db,
+        &agent,
+        &subject,
+        policy::Action::Search,
+        purpose,
+        None,
+    )
+    .await
+    {
+        return *r;
+    }
+    if !query.any() {
+        return json_error(
+            StatusCode::BAD_REQUEST,
+            serde_json::json!({"error": "give at least one of family, birth_date, identifier"}),
+        );
+    }
+    match store::search(&ctx.db, &query).await {
+        Ok(found) => {
+            // The criteria are demographics, so only which kinds were used and how many matched.
+            let used: Vec<&str> = [
+                ("family", &query.family),
+                ("birth_date", &query.birth_date),
+                ("identifier", &query.identifier),
+            ]
+            .into_iter()
+            .filter(|(_, v)| v.as_deref().is_some_and(|s| !s.trim().is_empty()))
+            .map(|(k, _)| k)
+            .collect();
+            if let Err(r) = audit_access(
+                &ctx.db,
+                &agent,
+                Action::Read,
+                0,
+                purpose,
+                None,
+                serde_json::json!({"search": used, "results": found.len()}),
+            )
+            .await
+            {
+                return *r;
+            }
+            Json(serde_json::json!({"results": found, "limit": store::SEARCH_LIMIT}))
+                .into_response()
+        }
+        Err(e) => store_failure(&e),
+    }
+}
+
 /// Routes under `/api/patients`.
 #[must_use]
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("api/patients")
         .add("/compare", post(compare))
+        .add("/", post(create))
+        .add("/", get(search))
+        .add("/{id}", get(read))
+        .add("/{id}", put(update))
 }
 
 #[cfg(test)]

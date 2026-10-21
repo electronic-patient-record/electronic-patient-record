@@ -157,7 +157,7 @@ mod tests {
             Refusal::NoPolicy
         );
         assert_eq!(
-            check(true, &Method::GET, "/api/patients/compare", Some(&all))
+            check(true, &Method::DELETE, "/api/patients/42", Some(&all))
                 .unwrap_err()
                 .0,
             Refusal::NoPolicy,

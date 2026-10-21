@@ -12,5 +12,6 @@ pub mod audit;
 pub mod auth;
 pub mod authz;
 pub mod controllers;
+pub mod patients_store;
 pub mod policy;
 pub mod routes;
