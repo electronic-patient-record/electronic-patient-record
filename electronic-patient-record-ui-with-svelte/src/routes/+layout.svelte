@@ -15,6 +15,21 @@
     <a href={localizePath("/", locale)}>{STRINGS.navHome}</a>
     <a href={localizePath("/patients", locale)}>{STRINGS.navPatients}</a>
   </nav>
+  {#if page.data.signIn?.enabled}
+    {#if page.data.signIn.name}
+      <form method="POST" action="/auth/logout" class="account">
+        <span>{STRINGS.signedInAs} {page.data.signIn.name}</span>
+        <button type="submit">{STRINGS.signOut}</button>
+      </form>
+    {:else}
+      <a
+        class="account"
+        data-sveltekit-reload
+        href="/auth/login?returnTo={encodeURIComponent(page.url.pathname + page.url.search)}"
+        >{STRINGS.signIn}</a
+      >
+    {/if}
+  {/if}
 </header>
 <p class="notice" role="note">{STRINGS.notClinical}</p>
 <main id="main">

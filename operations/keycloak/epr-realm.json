@@ -11,9 +11,18 @@
   "accessTokenLifespan": 300,
   "roles": {
     "realm": [
-      { "name": "clinician", "description": "Reserved for the policy engine (SE-1); not consulted yet" },
-      { "name": "auditor", "description": "Reserved for the policy engine (SE-1); not consulted yet" },
-      { "name": "administrator", "description": "Reserved for the policy engine (SE-1); not consulted yet" }
+      {
+        "name": "clinician",
+        "description": "Reserved for the policy engine (SE-1); not consulted yet"
+      },
+      {
+        "name": "auditor",
+        "description": "Reserved for the policy engine (SE-1); not consulted yet"
+      },
+      {
+        "name": "administrator",
+        "description": "Reserved for the policy engine (SE-1); not consulted yet"
+      }
     ]
   },
   "clients": [
@@ -27,21 +36,36 @@
     {
       "clientId": "epr-web",
       "name": "Electronic Patient Record UI",
-      "description": "The browser UI (authorization code flow with PKCE). Sign-in in the UI is not built yet.",
+      "description": "The browser UI (authorization code flow with PKCE), used by the UI's backend-for-frontend sign-in (SE-9). Port 4310 is the end-to-end test port.",
       "enabled": true,
       "publicClient": true,
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
       "implicitFlowEnabled": false,
-      "redirectUris": ["http://localhost:3000/*", "http://127.0.0.1:3000/*", "http://localhost:5173/*", "http://127.0.0.1:5173/*"],
-      "webOrigins": ["+"],
-      "attributes": { "pkce.code.challenge.method": "S256" },
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://127.0.0.1:3000/*",
+        "http://localhost:4310/*",
+        "http://127.0.0.1:4310/*",
+        "http://localhost:5173/*",
+        "http://127.0.0.1:5173/*"
+      ],
+      "webOrigins": [
+        "+"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
       "protocolMappers": [
         {
           "name": "epr-api-audience",
           "protocol": "openid-connect",
           "protocolMapper": "oidc-audience-mapper",
-          "config": { "included.client.audience": "epr-api", "id.token.claim": "false", "access.token.claim": "true" }
+          "config": {
+            "included.client.audience": "epr-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
         }
       ]
     },
@@ -58,7 +82,11 @@
           "name": "epr-api-audience",
           "protocol": "openid-connect",
           "protocolMapper": "oidc-audience-mapper",
-          "config": { "included.client.audience": "epr-api", "id.token.claim": "false", "access.token.claim": "true" }
+          "config": {
+            "included.client.audience": "epr-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
         }
       ]
     }

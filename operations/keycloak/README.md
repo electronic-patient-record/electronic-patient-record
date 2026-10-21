@@ -43,6 +43,21 @@ flow with PKCE), and `epr-dev-cli` (**development only**, password grant for scr
 token's audience; realm roles `clinician`, `auditor`, `administrator` (reserved, see below). Admin console:
 http://127.0.0.1:8081 as `admin` with `KEYCLOAK_ADMIN_PASSWORD` (default: the PostgreSQL password).
 
+## Sign in to the UI
+
+The UI's `epr-web` client signs readers in (task SE-9). Start the API as below, then the UI on a port the client allows (3000, 4310 or
+5173 on `127.0.0.1` or `localhost`; see `epr-realm.json`):
+
+```sh
+cd electronic-patient-record-ui-with-svelte && pnpm run build
+EPR_API_URL=http://127.0.0.1:5150 EPR_OIDC_ISSUER=http://127.0.0.1:8081/realms/epr EPR_PUBLIC_URL=http://127.0.0.1:4310 \
+  pnpm exec vite preview --host 127.0.0.1 --port 4310 --strictPort
+# end-to-end, with the dev user from below: EPR_E2E_API_URL=… EPR_E2E_PASSWORD=$DEV_USER_PASSWORD \
+#   pnpm exec playwright test -c playwright.keycloak.config.ts
+```
+
+Use `127.0.0.1` for both the UI and Keycloak, and pass `--binding 127.0.0.1` to the API if `localhost` resolves to `::1` here.
+
 No user is committed. Make one, then get a token:
 
 ```sh
@@ -76,8 +91,8 @@ Ports, names and the database are set by `EPR_PG_*` and `EPR_REDIS_*` (see the s
 
 - **Roles do nothing yet.** Keycloak roles become attributes only through the role map, and nothing reads attributes until the
   policy engine (SE-1). Today any valid, correctly-audienced token is enough to call any route.
-- **The UI cannot sign in.** The UI's proxy sends no token. Authorization code flow with PKCE through the `epr-web` client is
-  task SE-9.
+- **UI sign-in is limited.** The UI signs in through `epr-web` (SE-9), but keeps sessions in process memory (a restart signs
+  everyone out; two replicas cannot share them), does not react to Keycloak-initiated logout, and its end-to-end run is not in CI.
 - **Not tested against a Keycloak that has been upgraded, clustered, put behind TLS or brokered to Entra ID.** The development
   realm was exercised only on Keycloak 26.3.0, `start-dev`, one node.
 - Production hardening of Keycloak itself (TLS, hostname, secrets, backups, realm export policy) is a deployer's job.

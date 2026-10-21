@@ -1,4 +1,5 @@
-import type { Handle } from "@sveltejs/kit/hooks";
+import type { Handle, ServerInit } from "@sveltejs/kit/hooks";
+import { getAuth, sessionFrom } from "#lib/auth-instance.js";
 import { redirect } from "@sveltejs/kit";
 import {
   DEFAULT_LOCALE,
@@ -14,12 +15,24 @@ import { applySecurityHeaders, isHttps } from "#lib/security-headers.js";
 /** Remembers the reader's locale, to choose one for a bare, unprefixed URL. */
 export const LOCALE_COOKIE = "locale";
 
-// BFF entry point. The browser holds no token. Sign-in and the session cookie
-// are not built yet (tasks SE-7, SF-4); until then the API runs with login off
-// in development only.
+// A bad sign-in configuration stops the server at startup rather than at the first request.
+export const init: ServerInit = () => {
+  getAuth();
+};
+
+// BFF entry point. The browser holds one opaque session cookie and no token; the
+// tokens stay in the server's session store (src/lib/session.ts).
 export const handle: Handle = async (input) => {
-  const response = await localeHandle(input);
   const { event } = input;
+  const secure = isHttps(
+    event.url,
+    event.request.headers.get("x-forwarded-proto"),
+  );
+  const session = sessionFrom(getAuth(), event.cookies, secure);
+  event.locals.user = session
+    ? { subject: session.subject, name: session.name }
+    : null;
+  const response = await localeHandle(input);
   try {
     applySecurityHeaders(
       response.headers,
@@ -35,11 +48,14 @@ const localeHandle: Handle = async ({ event, resolve }) => {
   const { pathname, search } = event.url;
   if (!isUnlocalized(pathname)) {
     const { locale, rest } = splitPath(pathname);
-    const reading = event.request.method === "GET" || event.request.method === "HEAD";
+    const reading =
+      event.request.method === "GET" || event.request.method === "HEAD";
     if (!locale && reading) {
       const to =
         normalizeLocale(event.cookies.get(LOCALE_COOKIE)) ??
-        localeFromAcceptLanguage(event.request.headers.get("accept-language")) ??
+        localeFromAcceptLanguage(
+          event.request.headers.get("accept-language"),
+        ) ??
         DEFAULT_LOCALE;
       redirect(302, `${localizePath(rest, to)}${search}`);
     }

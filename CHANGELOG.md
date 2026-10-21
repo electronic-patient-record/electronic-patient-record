@@ -34,6 +34,22 @@ Milestone M0, scaffold. **Not for clinical use.**
 - **Not done:** roles are not consulted; the UI cannot sign in (SE-9); the API cannot reach a plain-HTTP Keycloak from inside compose
   (it needs HTTPS); the CI container job does not exercise Keycloak; tested only on one node, `start-dev`.
 
+### Added after the first cut: UI sign-in (SE-9)
+
+- The UI signs readers in through Keycloak (`epr-web`, authorization code flow with PKCE) in its backend-for-frontend. The browser holds one
+  opaque `httpOnly`, `SameSite=Lax` session cookie (`__Host-` prefixed over HTTPS); the tokens stay in the server's session store, which
+  sends the access token to the API, refreshes it before it expires, ends idle (15 min) and over-long (8 h) sessions, and signs out
+  locally first and then at Keycloak. Cross-site POSTs to the proxy and to sign-out are refused. Off unless `EPR_OIDC_ISSUER` is set;
+  a bad value stops the UI at startup. 24 new unit tests (50 in all).
+- Verified by hand on 2026-10-21 against Keycloak 26.3.0 and the real API (`playwright.keycloak.config.ts`, 5 passed, 1 skipped): sign-in, a
+  protected call that returned 200 with the audit row's agent set to the Keycloak `sub`, sign-out, a tampered cookie, a replayed
+  pre-sign-out cookie, a forged callback, and cross-site POSTs.
+- **Not done:** the session store is in process memory, so a restart signs everyone out and two UI replicas cannot share sessions; token
+  refresh and idle expiry are tested with a stub provider only (Keycloak's access token lives 300 s and the run did not wait); the
+  ID token is decoded, not signature-checked (allowed for a token straight from the token endpoint, OIDC Core 3.1.3.7; the API checks
+  the access token on every call); no front-channel or back-channel logout from Keycloak into the UI; the Keycloak end-to-end run is
+  not in CI; no Entra ID; the sign-in and sign-out text is English only.
+
 ### Changed after the first cut
 
 - The matcher is published as `electronic-patient-record-matcher` 0.1.0 on crates.io; the service depends on it from
@@ -48,8 +64,8 @@ Milestone M0, scaffold. **Not for clinical use.**
 - Audit: no verify endpoint, denied requests are not audited, no other route is audited (none reads stored data), and
   an existing unkeyed chain cannot adopt a key later. Without `EPR_INTEGRITY_MAC_KEY` the chain is unkeyed SHA-256
   (warned at startup), so someone who can write SQL can recompute it.
-- Authorization beyond "valid token" (roles, consent, break-the-glass) is not built (SE-*). Sign-in is not built;
-  the UI proxy sends no token, so it only works against an API with login off (development).
+- Authorization beyond "valid token" (roles, consent, break-the-glass) is not built (SE-*). The UI signs in through
+  Keycloak, but with sign-in off (no `EPR_OIDC_ISSUER`) its proxy sends no token and only works against an API with login off.
 - The matcher has 13 hand-written tests, not the 200-pair labelled corpus the acceptance criterion in ID-1 asks
   for, and no fuzz target. Its thresholds are unvalidated guesses.
 - Only English strings exist; the other nine locales fall back to English. No Lily widgets are used yet.

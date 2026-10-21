@@ -9,6 +9,8 @@ declare global {
     // absent on an unlocalized path (`/api/…`).
     interface Locals {
       locale?: import("#lib/locales.js").Locale;
+      // The signed-in reader, or null. Never holds a token.
+      user: { subject: string; name: string | null } | null;
     }
     interface PageData {
       title?: string;

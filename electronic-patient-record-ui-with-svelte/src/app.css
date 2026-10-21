@@ -22,7 +22,9 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--fg);
-  font: 16px/1.5 system-ui, sans-serif;
+  font:
+    16px/1.5 system-ui,
+    sans-serif;
 }
 .app-root {
   max-width: 60rem;
@@ -59,6 +61,12 @@ header.site {
   align-items: baseline;
   border-bottom: 1px solid var(--border);
   padding: 0.75rem 0;
+}
+header.site .account {
+  margin-inline-start: auto;
+  display: flex;
+  gap: 0.75rem;
+  align-items: baseline;
 }
 header.site nav {
   display: flex;

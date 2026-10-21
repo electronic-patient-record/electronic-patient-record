@@ -14,6 +14,7 @@
   let b = $state({ family: "", given: "", birth: "" });
   let result = $state<Result | null>(null);
   let failed = $state(false);
+  let signInRequired = $state(false);
 
   const patient = (p: { family: string; given: string; birth: string }) => ({
     names: [{ family: p.family || null, given: p.given ? [p.given] : [] }],
@@ -23,12 +24,18 @@
   async function submit(event: SubmitEvent) {
     event.preventDefault();
     failed = false;
+    signInRequired = false;
     try {
       const res = await fetch("/api/proxy/api/patients/compare", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ a: patient(a), b: patient(b) }),
       });
+      if (res.status === 401) {
+        signInRequired = true;
+        result = null;
+        return;
+      }
       if (!res.ok) throw new Error(String(res.status));
       result = (await res.json()) as Result;
     } catch {
@@ -58,6 +65,10 @@
   </div>
   <button type="submit">{STRINGS.compare}</button>
 </form>
+
+{#if signInRequired}
+  <p role="alert">{STRINGS.signInRequired}</p>
+{/if}
 
 {#if failed}
   <p role="alert">{STRINGS.error}</p>

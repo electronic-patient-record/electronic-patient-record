@@ -220,11 +220,14 @@ Conventions:
   **Not built:** roles are not consulted (SE-1); TLS or a Keycloak reachable from inside compose; brokering to Entra ID;
   testing beyond Keycloak 26.3.0 `start-dev`.
 
-- [ ] **SE-9 (L) — UI sign-in with Keycloak.** Authorization code flow with PKCE through the `epr-web` client, in the UI's
+- [x] **SE-9 (L) — UI sign-in with Keycloak.** **Landed 2026-10-21.** Authorization code flow with PKCE through the `epr-web` client, in the UI's
   backend-for-frontend: the browser holds one opaque `httpOnly` session cookie, the server holds the tokens and sends the
   access token to the API, refresh and sign-out work, and an idle session ends.
   **Acceptance:** a Playwright run against a Keycloak container signs in, calls a protected API route, and signs out; a
   tampered or expired session is refused; no token is readable by page scripts.
+  **Met by hand** (`playwright.keycloak.config.ts`: 5 passed, 1 skipped) except expiry, which is unit-tested with a stub provider.
+  **Not built:** a shared session store (it is in process memory); the end-to-end run in CI; Keycloak-initiated logout; Entra ID;
+  translated sign-in strings.
 
 ## M4 — Documentation
 

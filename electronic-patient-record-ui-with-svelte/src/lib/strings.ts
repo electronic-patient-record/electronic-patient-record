@@ -23,6 +23,10 @@ export const STRINGS = {
   notAvailable: "not available",
   conflicts: "Reasons this cannot be linked automatically",
   error: "The comparison failed.",
+  signInRequired: "Sign in to continue.",
+  signIn: "Sign in",
+  signOut: "Sign out",
+  signedInAs: "Signed in as",
   decisions: {
     auto_link: "Automatic link",
     review: "Needs human review",
