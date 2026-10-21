@@ -15,6 +15,7 @@ mod m20261021_000004_relationship_versions;
 mod m20261021_000005_audit_patient_log_index;
 mod m20261021_000006_patient_photos;
 mod m20261021_000007_allergies;
+mod m20261021_000008_patient_links;
 
 /// Runs the ordered list of migrations.
 pub struct Migrator;
@@ -30,6 +31,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261021_000005_audit_patient_log_index::Migration),
             Box::new(m20261021_000006_patient_photos::Migration),
             Box::new(m20261021_000007_allergies::Migration),
+            Box::new(m20261021_000008_patient_links::Migration),
         ]
     }
 }

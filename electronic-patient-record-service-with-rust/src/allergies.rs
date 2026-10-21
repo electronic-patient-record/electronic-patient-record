@@ -14,6 +14,7 @@
 //! Nothing is ever deleted: ending an allergy or marking it entered-in-error is a new version, and
 //! entered-in-error is final.
 
+use crate::links;
 use crate::patients_store::{self, StoreError};
 use sea_orm::{ConnectionTrait, DbBackend, Statement, TransactionSession, TransactionTrait, Value};
 use serde::{Deserialize, Serialize};
@@ -349,7 +350,10 @@ pub async fn create(
     row_to_allergy(&row)
 }
 
-/// The current version of every allergy of a patient, every status, oldest first.
+/// The current version of every allergy of a patient, every status, oldest first. It includes the
+/// allergies recorded against any record **merged into** this one (their `patient_id` still names
+/// the record they were made on): a person's allergies must not disappear because two records were
+/// joined. After an unmerge they are the other record's again, untouched.
 ///
 /// # Errors
 ///
@@ -359,20 +363,22 @@ pub async fn list(
     patient_id: &str,
 ) -> Result<Vec<StoredAllergy>, StoreError> {
     let patient = patients_store::current(db, patient_id).await?;
+    let ids = links::linked_ids(db, &patient.id).await?;
     let rows = db
         .query_all_raw(pg(
             &format!(
-                "SELECT {} FROM allergy_current WHERE patient_id = $1::uuid ORDER BY recorded_at, allergy_id",
+                "SELECT {} FROM allergy_current WHERE patient_id::text = ANY($1::text[])
+                 ORDER BY recorded_at, allergy_id",
                 columns()
             ),
-            vec![patient.id.into()],
+            vec![ids.into()],
         ))
         .await
         .map_err(db_err)?;
     rows.iter().map(row_to_allergy).collect()
 }
 
-/// One allergy's current version.
+/// One allergy's current version, found under the patient or under a record merged into it.
 ///
 /// # Errors
 ///
@@ -382,14 +388,15 @@ pub async fn current(
     patient_id: &str,
     allergy_id: &str,
 ) -> Result<StoredAllergy, StoreError> {
+    let ids = links::linked_ids(db, patient_id).await?;
     let row = db
         .query_one_raw(pg(
             &format!(
                 "SELECT {} FROM allergy_current
-                 WHERE allergy_id::text = lower($1) AND patient_id::text = lower($2)",
+                 WHERE allergy_id::text = lower($1) AND patient_id::text = ANY($2::text[])",
                 columns()
             ),
-            vec![allergy_id.into(), patient_id.into()],
+            vec![allergy_id.into(), ids.into()],
         ))
         .await
         .map_err(db_err)?

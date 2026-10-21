@@ -4,6 +4,7 @@
   import { DEFAULT_LOCALE, localizePath } from "#lib/locales.js";
   import AllergySection from "#lib/AllergySection.svelte";
   import { loadAllergies, type AllergyLoad } from "#lib/allergies.js";
+  import MergeSection from "#lib/MergeSection.svelte";
   import PatientBanner from "#lib/PatientBanner.svelte";
   import PatientFields from "#lib/PatientFields.svelte";
   import {
@@ -207,6 +208,16 @@
 
 {#if stored}
   <PatientBanner stored={latest ?? stored} {allergies} />
+  {#if stored.replaced_by}
+    <div role="alert">
+      <p>{STRINGS.mergedNotice}</p>
+      <p>
+        <a href={localizePath(`/patients/${stored.replaced_by}`, locale)}>
+          {STRINGS.mergedOpen}
+        </a>
+      </p>
+    </div>
+  {/if}
   {#if latest}
     <div role="alert">
       <p>{STRINGS.changedElsewhere.replace("{v}", String(latest.version))}</p>
@@ -218,11 +229,20 @@
   <p>
     {STRINGS.version}: {stored.version} · {STRINGS.recordedBy}: {stored.author}
   </p>
+  <!-- A record merged into another is read-only: its changes go to the surviving record. -->
+  {#if !stored.replaced_by}
   {#if allergies?.status === 200 && allergies.data}
     <AllergySection
       patientId={stored.id}
       data={allergies.data}
       onchange={reloadAllergies}
+    />
+  {/if}
+  {#if !stored.replaced_by}
+    <MergeSection
+      patientId={stored.id}
+      replaces={stored.replaces ?? []}
+      onchange={load}
     />
   {/if}
   <section aria-labelledby="photo-h">
@@ -248,6 +268,7 @@
     <input id="e-reason" bind:value={reason} autocomplete="off" />
     <button type="submit">{STRINGS.save}</button>
   </form>
+  {/if}
 {/if}
 
 {#if saved}

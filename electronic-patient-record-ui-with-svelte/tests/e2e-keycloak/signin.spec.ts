@@ -820,3 +820,239 @@ test("an administrator grants, ends and restricts access through the page, and t
   );
   expect(await read()).toBe(403);
 });
+
+test("merging two records is a link: allergies and consent follow it, the old record goes read-only, and unmerging restores both", async () => {
+  test.skip(
+    !ADMIN || !AUDITOR,
+    "set EPR_E2E_ADMIN_USERNAME and EPR_E2E_AUDITOR_USERNAME",
+  );
+  const [admin, clinician, auditor] = await Promise.all([
+    devToken(ADMIN),
+    devToken(USERNAME),
+    devToken(AUDITOR),
+  ]);
+  const subOf = (t: string) =>
+    JSON.parse(Buffer.from(t.split(".")[1]!, "base64url").toString())
+      .sub as string;
+  const api = async (
+    token: string,
+    method: string,
+    path: string,
+    body?: unknown,
+    purpose = "operations",
+  ) => {
+    const res = await fetch(`${API}${path}`, {
+      method,
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+        "x-purpose-of-use": purpose,
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const text = await res.text();
+    let parsed: any = text;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      /* plain text */
+    }
+    return { status: res.status, body: parsed };
+  };
+  const family = `Zmerge${Date.now()}`;
+  const dob = `19${40 + Math.floor(Math.random() * 40)}-0${1 + Math.floor(Math.random() * 9)}-${10 + Math.floor(Math.random() * 18)}`;
+  const person = { names: [{ family, given: ["Robin"] }], birth_date: dob };
+  const first = await api(admin, "POST", "/api/patients", { patient: person });
+  expect(first.status).toBe(201);
+  // The second registration is a duplicate; registering anyway needs a reason.
+  const second = await api(admin, "POST", "/api/patients", {
+    patient: person,
+    override_reason: "e2e: a deliberate duplicate to merge",
+  });
+  expect(second.status).toBe(201);
+  const [target, source] = [first.body.id as string, second.body.id as string];
+  const link = (id: string) =>
+    api(admin, "POST", `/api/patients/${id}/relationships`, {
+      relationship: {
+        subject: subOf(clinician),
+        kind: "care-team",
+        status: "active",
+      },
+      reason: "e2e",
+    });
+  expect((await link(target)).status).toBe(201);
+  expect((await link(source)).status).toBe(201);
+
+  // An allergy is recorded on the record that will be merged away.
+  const allergy = await api(
+    clinician,
+    "POST",
+    `/api/patients/${source}/allergies`,
+    {
+      allergy: {
+        substance: "Penicillin",
+        criticality: "high",
+        status: "active",
+      },
+    },
+    "treatment",
+  );
+  expect(allergy.status).toBe(201);
+  const allergiesOf = async (id: string) =>
+    (
+      await api(
+        clinician,
+        "GET",
+        `/api/patients/${id}/allergies`,
+        undefined,
+        "treatment",
+      )
+    ).body;
+  expect((await allergiesOf(target)).allergies).toHaveLength(0);
+
+  // Only an administrator merges; a clinician is refused by the gate.
+  expect(
+    (
+      await api(clinician, "POST", `/api/patients/${target}/merge`, {
+        source,
+        reason: "x",
+      })
+    ).status,
+  ).toBe(403);
+  // A reason is required, and a different person is refused with the matcher's words.
+  expect(
+    (
+      await api(admin, "POST", `/api/patients/${target}/merge`, {
+        source,
+        reason: "  ",
+      })
+    ).status,
+  ).toBe(422);
+  const stranger = await api(admin, "POST", "/api/patients", {
+    patient: {
+      names: [{ family: `Zother${Date.now()}`, given: ["Quinn"] }],
+      birth_date: "1999-12-31",
+    },
+  });
+  const refused = await api(admin, "POST", `/api/patients/${target}/merge`, {
+    source: stranger.body.id,
+    reason: "wrong",
+  });
+  expect(refused.status).toBe(422);
+  expect(refused.body.errors[0]).toContain("do not look like the same person");
+
+  const merged = await api(admin, "POST", `/api/patients/${target}/merge`, {
+    source,
+    reason: "e2e: same person registered twice",
+  });
+  expect(merged.status).toBe(201);
+  expect(merged.body.status).toBe("active");
+
+  // The surviving record now shows the allergy, which still names the record it was made on.
+  const after = await allergiesOf(target);
+  expect(after.summary.state).toBe("active");
+  expect(after.allergies[0].patient_id).toBe(source);
+  // The old record says where it went, is not found by search, and refuses changes.
+  const old = await api(admin, "GET", `/api/patients/${source}`);
+  expect(old.body.replaced_by).toBe(target);
+  expect(
+    (await api(admin, "GET", `/api/patients/${target}`)).body.replaces,
+  ).toEqual([source]);
+  const found = await api(admin, "GET", `/api/patients?family=${family}`);
+  expect(found.body.results.map((r: any) => r.id)).toEqual([target]);
+  const edit = await api(admin, "PUT", `/api/patients/${source}`, {
+    patient: person,
+    expected_version: 1,
+  });
+  expect(edit.status).toBe(409);
+  expect(edit.body.replaced_by).toBe(target);
+  // FHIR says the same.
+  const fhir = await fetch(`${API}/fhir/R4/Patient/${source}`, {
+    headers: { authorization: `Bearer ${admin}` },
+  });
+  const fhirBody = (await fhir.json()) as any;
+  expect(fhirBody.active).toBe(false);
+  expect(fhirBody.link[0]).toMatchObject({
+    type: "replaced-by",
+    other: { reference: `Patient/${target}` },
+  });
+
+  // A refusal recorded on the old record still protects the surviving one.
+  const deny = await api(admin, "POST", `/api/patients/${source}/consents`, {
+    consent: {
+      kind: "general",
+      status: "active",
+      provisions: [
+        {
+          effect: "deny",
+          actors: ["clinician"],
+          purposes: [],
+          resources: [],
+          labels: [],
+        },
+      ],
+    },
+  });
+  expect(deny.status).toBe(201);
+  expect(
+    (
+      await api(
+        clinician,
+        "GET",
+        `/api/patients/${target}/allergies`,
+        undefined,
+        "treatment",
+      )
+    ).status,
+  ).toBe(403);
+  const withdrawn = await api(
+    admin,
+    "PUT",
+    `/api/patients/${source}/consents/${deny.body.id}`,
+    {
+      consent: { ...deny.body.consent, status: "inactive" },
+      expected_version: 1,
+    },
+  );
+  expect(withdrawn.status).toBe(200);
+  expect((await allergiesOf(target)).allergies).toHaveLength(1);
+
+  // Unmerge: both records are exactly as they were.
+  const undone = await api(admin, "POST", `/api/patients/${target}/unmerge`, {
+    source,
+    reason: "e2e: undo",
+  });
+  expect(undone.status).toBe(200);
+  expect(undone.body.status).toBe("reversed");
+  expect((await allergiesOf(target)).allergies).toHaveLength(0);
+  expect((await allergiesOf(source)).allergies).toHaveLength(1);
+  expect(
+    (await api(admin, "GET", `/api/patients/${source}`)).body.replaced_by,
+  ).toBeNull();
+  const again = await api(admin, "GET", `/api/patients?family=${family}`);
+  expect(again.body.results).toHaveLength(2);
+  expect(
+    (
+      await api(admin, "PUT", `/api/patients/${source}`, {
+        patient: person,
+        expected_version: 1,
+      })
+    ).status,
+  ).toBe(200);
+
+  // Merge and unmerge are in the trail, with no demographics and no reason text.
+  const trail = await api(
+    auditor,
+    "GET",
+    `/api/audit?patient=${target}`,
+    undefined,
+    "audit",
+  );
+  const rows = trail.body.events.filter(
+    (e: any) => e.resource === "PatientLink",
+  );
+  expect(rows.length).toBeGreaterThanOrEqual(2);
+  const text = JSON.stringify(trail.body);
+  expect(text).not.toContain(family);
+  expect(text).not.toContain("same person registered twice");
+});

@@ -4,6 +4,7 @@ pub mod allergies;
 pub mod audit;
 pub mod consents;
 pub mod fhir;
+pub mod links;
 pub mod me;
 pub mod patients;
 pub mod photos;

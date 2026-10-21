@@ -161,6 +161,21 @@ export const STRINGS = {
   anyLabel: "any label",
   accessSaved: "Saved.",
   accessChanged: "That changed meanwhile. The list was reloaded.",
+  bannerMerged:
+    "THIS RECORD WAS MERGED INTO ANOTHER. Do not use it; open the surviving record.",
+  mergedNotice:
+    "This record was merged into another record and is read-only. Open the surviving record.",
+  mergedOpen: "Open the surviving record",
+  mergeTitle: "Merge records",
+  mergeIntro:
+    "Merging links another record to this one: nothing is deleted or moved, and it can be undone. Only do this when they are the same person.",
+  mergeSource: "Id of the record to merge into this one",
+  mergeWhy: "Why are these the same person? (required)",
+  mergeDo: "Merge into this record",
+  mergedIn: "Records merged into this one",
+  mergeUndo: "Undo this merge",
+  mergeDone: "Merged.",
+  mergeUndone: "Merge undone.",
   bannerLabel: "Patient banner",
   bannerBorn: "Born",
   bannerAge: "Age",

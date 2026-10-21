@@ -159,6 +159,13 @@ small {
 .banner p {
   margin: 0;
 }
+.banner .merged {
+  grid-column: 1 / -1;
+  font-weight: 700;
+  padding: 0.25rem 0.5rem;
+  border-left: 4px solid var(--warn-border);
+  background: var(--warn-bg);
+}
 .banner .photo {
   grid-row: span 3;
   width: 6rem;

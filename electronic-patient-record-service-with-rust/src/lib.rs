@@ -16,6 +16,7 @@ pub mod consent;
 pub mod consents_store;
 pub mod controllers;
 pub mod interop;
+pub mod links;
 pub mod patients_store;
 pub mod photos_store;
 pub mod policy;

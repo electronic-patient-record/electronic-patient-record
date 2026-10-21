@@ -27,6 +27,10 @@ export interface Stored {
   patient: PatientRecord;
   /** The photo version to fetch, or null/absent when there is no photo. */
   photo_version?: number | null;
+  /** Set when this record was merged away: the surviving record's id. */
+  replaced_by?: string | null;
+  /** The records merged into this one and still merged. */
+  replaces?: string[];
 }
 
 export interface MatchResult {

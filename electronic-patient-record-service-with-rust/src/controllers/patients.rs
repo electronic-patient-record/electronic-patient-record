@@ -5,6 +5,7 @@ use crate::audit::{self, Action, AuditError, Chain, Event};
 use crate::auth::{self, Agent};
 use crate::consent;
 use crate::consents_store;
+use crate::links;
 use crate::patients_store::{self as store, Search, StoreError};
 use crate::policy::{self, Consent, Purpose, Relationship, Resource, Subject};
 use crate::relationships;
@@ -176,9 +177,26 @@ pub(super) async fn consent_verdicts(
         return Ok(verdicts);
     }
     let ids: Vec<String> = patient_ids.iter().map(|i| i.to_lowercase()).collect();
-    let active = consents_store::active_for(db, &ids)
+    let mut active = consents_store::active_for(db, &ids)
         .await
         .map_err(|e| Box::new(store_failure(&e)))?;
+    // A refusal on a record that was merged into this one stands for this one too: the person's
+    // choice does not lapse because two records were joined.
+    for id in &ids {
+        let sources = links::sources_of(db, id)
+            .await
+            .map_err(|e| Box::new(store_failure(&e)))?;
+        if sources.is_empty() {
+            continue;
+        }
+        let inherited = consents_store::active_for(db, &sources)
+            .await
+            .map_err(|e| Box::new(store_failure(&e)))?;
+        active
+            .entry(id.clone())
+            .or_default()
+            .extend(inherited.into_values().flatten());
+    }
     let ctx = consent::Context {
         roles: subject.roles.clone(),
         purpose,
@@ -222,6 +240,23 @@ pub(super) async fn authorize(
         if let Some(v) = all.remove(&id.to_lowercase()) {
             verdict = v;
         }
+    }
+    // A record merged into another is read-only: changes go to the surviving record. (Consent and
+    // relationship changes are allowed, so a refusal on the old record can still be withdrawn.)
+    if !action.reads()
+        && (resource == Resource::PatientIdentity || resource.clinical())
+        && let Some(id) = patient_id
+        && let Some(into) = links::merged_into(db, id)
+            .await
+            .map_err(|e| Box::new(store_failure(&e)))?
+    {
+        return Err(Box::new(json_error(
+            StatusCode::CONFLICT,
+            serde_json::json!({
+                "error": "this record was merged into another: change that one",
+                "replaced_by": into,
+            }),
+        )));
     }
     // The subject's relationship to this patient, from the recorded relationships. A failed lookup
     // fails the request: assuming "none" would be safe, but would hide an outage as a refusal.
@@ -548,6 +583,18 @@ pub(super) async fn read(
             };
             let mut body = serde_json::to_value(&stored).unwrap_or(serde_json::Value::Null);
             body["photo_version"] = serde_json::json!(photo_version);
+            // Merge status (ID-5): a record merged away says where it went; a surviving record
+            // says what was merged into it. A failed lookup fails the read.
+            let replaced_by = match links::merged_into(&ctx.db, &stored.id).await {
+                Ok(r) => r,
+                Err(e) => return store_failure(&e),
+            };
+            let replaces = match links::sources_of(&ctx.db, &stored.id).await {
+                Ok(r) => r,
+                Err(e) => return store_failure(&e),
+            };
+            body["replaced_by"] = serde_json::json!(replaced_by);
+            body["replaces"] = serde_json::json!(replaces);
             Json(body).into_response()
         }
         Err(StoreError::NotFound) => {
@@ -751,6 +798,9 @@ pub fn routes() -> Routes {
         .add("/", get(search))
         .add("/{id}", get(read))
         .add("/{id}", put(update))
+        .add("/{id}/merge", post(super::links::merge))
+        .add("/{id}/unmerge", post(super::links::unmerge))
+        .add("/{id}/links", get(super::links::list))
         .add("/{id}/allergies", get(super::allergies::list))
         .add("/{id}/allergies", post(super::allergies::create))
         .add(

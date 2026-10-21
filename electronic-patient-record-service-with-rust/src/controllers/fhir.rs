@@ -130,16 +130,54 @@ fn internal(why: &str) -> Response {
     )
 }
 
+/// A merged record says where it went, and a surviving one what it replaced (task ID-5): `active`
+/// is false and `link` holds `replaced-by` for the old record, `replaces` for the new. The result is
+/// checked against the typed R4 model again.
+fn with_links(
+    mut json: serde_json::Value,
+    replaced_by: Option<&str>,
+    replaces: &[String],
+) -> Result<serde_json::Value, String> {
+    let mut links = Vec::new();
+    if let Some(to) = replaced_by {
+        links.push(serde_json::json!({ "other": { "reference": format!("Patient/{to}") }, "type": "replaced-by" }));
+        json["active"] = serde_json::json!(false);
+    }
+    for from in replaces {
+        links.push(serde_json::json!({ "other": { "reference": format!("Patient/{from}") }, "type": "replaces" }));
+    }
+    if links.is_empty() {
+        return Ok(json);
+    }
+    json["link"] = serde_json::Value::Array(links);
+    serde_json::from_value::<fhir::r4::resources::Resource>(json.clone())
+        .map_err(|e| e.to_string())?;
+    Ok(json)
+}
+
 /// Turn the JSON API's single-patient answer into FHIR.
 async fn one(response: Response, success: StatusCode, update: bool) -> Response {
     let (status, body) = read_back(response).await;
     if status != StatusCode::OK && status != StatusCode::CREATED {
         return error_outcome(status, &body, update);
     }
+    let replaced_by = body
+        .get("replaced_by")
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_string);
+    let replaces: Vec<String> = body
+        .get("replaces")
+        .and_then(serde_json::Value::as_array)
+        .map(|a| {
+            a.iter()
+                .filter_map(|v| v.as_str().map(str::to_string))
+                .collect()
+        })
+        .unwrap_or_default();
     let Ok(stored) = serde_json::from_value::<Stored>(body) else {
         return internal("unreadable stored patient");
     };
-    match patient_json(&stored) {
+    match patient_json(&stored).and_then(|j| with_links(j, replaced_by.as_deref(), &replaces)) {
         Ok(json) => {
             let mut response = fhir(success, &json, Some(stored.version));
             if success == StatusCode::CREATED
@@ -774,5 +812,32 @@ mod tests {
         ] {
             assert!(audit_query_from(&pairs(&[bad])).is_err(), "{bad:?}");
         }
+    }
+
+    #[test]
+    fn merge_status_becomes_fhir_links_and_an_inactive_old_record() {
+        let base = patient_json(&stored("11111111-1111-4111-8111-111111111111", "Smith")).unwrap();
+        // Live and unmerged: unchanged.
+        assert_eq!(with_links(base.clone(), None, &[]).unwrap(), base);
+        let old = with_links(
+            base.clone(),
+            Some("22222222-2222-4222-8222-222222222222"),
+            &[],
+        )
+        .unwrap();
+        assert_eq!(old["active"], false);
+        assert_eq!(old["link"][0]["type"], "replaced-by");
+        assert_eq!(
+            old["link"][0]["other"]["reference"],
+            "Patient/22222222-2222-4222-8222-222222222222"
+        );
+        let new = with_links(
+            base,
+            None,
+            &["33333333-3333-4333-8333-333333333333".to_string()],
+        )
+        .unwrap();
+        assert!(new.get("active").is_none());
+        assert_eq!(new["link"][0]["type"], "replaces");
     }
 }

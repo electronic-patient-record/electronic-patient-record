@@ -192,6 +192,20 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
   people are token ids, not names, and there is no picker; not linked from `/my-record`, so a patient cannot yet use it for
   their own consent; the opt-out remains local only; no FHIR `Consent`.
 
+## 2026-10-21 - Merge and unmerge (ID-5, in part)
+
+- A merge is a link (`patient_link_versions`, append-only), so nothing moves and unmerging restores both records exactly.
+  `links.rs` holds the rules, the routes are `POST …/merge`, `POST …/unmerge`, `GET …/links`, and the policy table gains
+  `PatientLink` (11 resources; the matrix test is now 1,108,800 requests). Effects are all reads of the link: the old
+  record is read-only and out of search and the duplicate check, the survivor shows the merged-in allergies, consent
+  refusals on either record apply to both, the FHIR Patient carries `active:false` and `link`. A page section merges and
+  undoes. Hazard H-020 added. 3 + 7 + 2 tests plus a real-Keycloak test; mutation checks: dropping the union, and
+  leaving the link active on unmerge, each made tests fail.
+- **Not done:** the review queue for uncertain pairs and any screen that finds candidates; a second person confirming a
+  merge; photos, relationships and the no-known-allergies statement do not follow a merge; any future clinical content
+  must be taught to follow it (H-020 says so); the matcher threshold is unvalidated; FHIR `$merge` operations;
+  merging more than two at once is by repeating.
+
 ## [0.1.0] - 2026-10-20
 
 Milestone M0, scaffold. **Not for clinical use.**

@@ -1027,3 +1027,91 @@ test("a role that may not manage access is told so instead of seeing forms", asy
   ).toHaveCount(0);
   await axe(page);
 });
+
+test("a record merged away says so everywhere and cannot be edited; the surviving record merges and unmerges", async ({
+  page,
+}) => {
+  const TARGET = "33333333-3333-4333-8333-333333333333";
+  await stubAllergies(page);
+  // The merged-away record.
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, { ...ANN, replaced_by: TARGET, replaces: [] }),
+  );
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  const banner = page.getByRole("region", { name: "Patient banner" });
+  await expect(banner).toContainText("THIS RECORD WAS MERGED INTO ANOTHER");
+  await expect(
+    page.getByRole("link", { name: "Open the surviving record" }),
+  ).toHaveAttribute("href", `/en-001/patients/${TARGET}`);
+  await expect(page.getByRole("button", { name: "Save changes" })).toHaveCount(
+    0,
+  );
+  await expect(
+    page.getByRole("button", { name: "Merge into this record" }),
+  ).toHaveCount(0);
+  await axe(page);
+});
+
+test("merging and unmerging send the reason, show the server's refusal, and reload", async ({
+  page,
+}) => {
+  const OLD = "44444444-4444-4444-8444-444444444444";
+  const sent: { path: string; body: any }[] = [];
+  let replaces: string[] = [];
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, { ...ANN, replaced_by: null, replaces }),
+  );
+  await page.route(`**/api/proxy/api/patients/${ANN.id}/merge`, (route) => {
+    const body = route.request().postDataJSON();
+    sent.push({ path: "merge", body });
+    if (body.source === "refuse-me") {
+      return json(route, 422, {
+        errors: ["these do not look like the same person (match score 0.10)"],
+      });
+    }
+    replaces = [OLD];
+    return json(route, 201, { id: "l1", version: 1, status: "active" });
+  });
+  await page.route(`**/api/proxy/api/patients/${ANN.id}/unmerge`, (route) => {
+    sent.push({ path: "unmerge", body: route.request().postDataJSON() });
+    replaces = [];
+    return json(route, 200, { id: "l1", version: 2, status: "reversed" });
+  });
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  const mergeBtn = page.getByRole("button", { name: "Merge into this record" });
+  await expect(mergeBtn).toBeDisabled();
+  await page.getByLabel(/^Id of the record/).fill("refuse-me");
+  await mergeBtn.click();
+  await expect(
+    page.getByText(/Why are these the same person/).last(),
+  ).toBeVisible();
+  expect(sent).toHaveLength(0); // no reason, nothing sent
+  await page
+    .getByLabel(/^Why are these the same person/)
+    .fill("same NHS number, duplicate registration");
+  await mergeBtn.click();
+  await expect(
+    page.getByText(/do not look like the same person/),
+  ).toBeVisible();
+  expect(sent[0].body).toEqual({
+    source: "refuse-me",
+    reason: "same NHS number, duplicate registration",
+  });
+
+  await page.getByLabel(/^Id of the record/).fill(OLD);
+  await mergeBtn.click();
+  await expect(page.getByText("Records merged into this one")).toBeVisible();
+  await expect(page.getByText(OLD)).toBeVisible();
+  await axe(page);
+
+  await page
+    .getByLabel(/^Why are these the same person/)
+    .fill("they are two people");
+  await page.getByRole("button", { name: "Undo this merge" }).click();
+  await expect(page.getByText("Records merged into this one")).toHaveCount(0);
+  expect(sent[2]).toEqual({
+    path: "unmerge",
+    body: { source: OLD, reason: "they are two people" },
+  });
+});

@@ -125,11 +125,13 @@ pub enum Resource {
     AuditLog,
     /// Who is on a patient's care team, and who is the patient or their proxy (`relationships.rs`).
     CareRelationship,
+    /// A merge of two patient records, and its reversal (`links.rs`).
+    PatientLink,
 }
 
 impl Resource {
     /// Every resource kind, in a fixed order.
-    pub const ALL: [Resource; 10] = [
+    pub const ALL: [Resource; 11] = [
         Resource::PatientIdentity,
         Resource::Encounter,
         Resource::Condition,
@@ -140,6 +142,7 @@ impl Resource {
         Resource::Consent,
         Resource::AuditLog,
         Resource::CareRelationship,
+        Resource::PatientLink,
     ];
 
     /// A stable name for audit rows and route tables.
@@ -156,6 +159,7 @@ impl Resource {
             Resource::Consent => "Consent",
             Resource::AuditLog => "AuditLog",
             Resource::CareRelationship => "CareRelationship",
+            Resource::PatientLink => "PatientLink",
         }
     }
 
@@ -174,6 +178,7 @@ impl Resource {
                 | Resource::Consent
                 | Resource::AuditLog
                 | Resource::CareRelationship
+                | Resource::PatientLink
         )
     }
 }
@@ -475,7 +480,7 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
     use Resource::{
         AllergyIntolerance as Allergy, AuditLog, CareRelationship as Rel, Condition,
         Consent as Cons, Document, Encounter, MedicationRequest as Meds, Observation,
-        PatientIdentity as Identity,
+        PatientIdentity as Identity, PatientLink as Link,
     };
     match (role, resource) {
         // Clinicians: full clinical work, and register or correct identity.
@@ -509,6 +514,9 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         // Only an administrator says who is a patient's team, self or proxy: never the person
         // who would gain access by it.
         (Role::ClinicalAdmin, Rel) => &[Read, Search, Create, Update],
+        // Merging two records is an administrator's act; a clinician may see that one happened.
+        (Role::ClinicalAdmin, Link) => &[Read, Search, Create, Update],
+        (Role::Clinician, Link) => &[Read],
         // The patient: read their own record and manage their own consent; see who looked.
         (Role::Patient, Identity) => &[Read],
         (Role::Patient, Encounter | Condition | Observation | Meds | Allergy | Document) => {
@@ -1097,8 +1105,8 @@ mod tests {
                 }
             }
         }
-        // 10 × 10 × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
-        assert_eq!(cells, 10 * 10 * 6 * 8 * 5 * 3 * 7 * 2);
+        // 10 roles × 11 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
+        assert_eq!(cells, 10 * 11 * 6 * 8 * 5 * 3 * 7 * 2);
         assert!(allows > 0);
     }
 

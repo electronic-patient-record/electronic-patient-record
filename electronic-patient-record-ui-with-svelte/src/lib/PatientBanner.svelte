@@ -87,6 +87,9 @@
 
 <section class="banner" aria-label={STRINGS.bannerLabel}>
   <h2>{name || STRINGS.notAvailable}</h2>
+  {#if stored.replaced_by}
+    <p class="merged" role="alert">{STRINGS.bannerMerged}</p>
+  {/if}
   <p>
     {STRINGS.bannerBorn}: {p.birth_date ?? STRINGS.bannerNoBirthDate}
     · {STRINGS.bannerAge}: {age}

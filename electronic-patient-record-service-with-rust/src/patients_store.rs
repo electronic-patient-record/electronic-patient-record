@@ -132,6 +132,12 @@ fn row_to_stored(row: &sea_orm::QueryResult) -> Result<Stored, StoreError> {
     })
 }
 
+/// A record merged into another is not a live patient: it is left out of search and of the
+/// duplicate check (the surviving record is found instead). Its own rows and reads are unchanged.
+const NOT_MERGED_AWAY: &str = "NOT EXISTS (
+    SELECT 1 FROM patient_link_current l
+    WHERE l.source_patient_id = patient_current.patient_id AND l.status = 'active')";
+
 const COLUMNS: &str = "patient_id::text AS id, version, author, body";
 
 /// Create a patient at version 1. The server assigns the id; any `id` in `patient` is ignored.
@@ -278,11 +284,12 @@ pub async fn candidates(
         .query_all_raw(pg(
             &format!(
                 "SELECT {COLUMNS} FROM patient_current
-                 WHERE EXISTS (SELECT 1 FROM jsonb_array_elements($1::jsonb) i
-                               WHERE body->'identifiers' @> jsonb_build_array(i))
+                 WHERE (EXISTS (SELECT 1 FROM jsonb_array_elements($1::jsonb) i
+                                WHERE body->'identifiers' @> jsonb_build_array(i))
                     OR ($2::text IS NOT NULL AND body->>'birth_date' = $2)
                     OR EXISTS (SELECT 1 FROM jsonb_array_elements(body->'names') n
-                               WHERE lower(trim(n->>'family')) = ANY($3::text[]))
+                               WHERE lower(trim(n->>'family')) = ANY($3::text[])))
+                   AND {NOT_MERGED_AWAY}
                  ORDER BY patient_id
                  LIMIT {CANDIDATE_LIMIT}"
             ),
@@ -369,6 +376,7 @@ pub async fn search(db: &DatabaseConnection, q: &Search) -> Result<Vec<Stored>, 
                          WHERE lower(n->>'family') LIKE lower($1) ESCAPE '\\'))
                    AND ($2::text IS NULL OR body->>'birth_date' = $2)
                    AND ($3::jsonb IS NULL OR body->'identifiers' @> $3::jsonb)
+                   AND {NOT_MERGED_AWAY}
                  ORDER BY lower(body->'names'->0->>'family'), patient_id
                  LIMIT {SEARCH_LIMIT}"
             ),
