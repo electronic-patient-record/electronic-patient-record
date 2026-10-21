@@ -401,3 +401,72 @@ test("a patient sees that a clinician viewed their record, as staff without a na
   // No staff identifier reaches the page.
   expect(await page.content()).not.toContain(await sub(clinician));
 });
+
+test("the FHIR Patient endpoint creates, reads, searches and refuses a stale update", async () => {
+  test.skip(!ADMIN, "set EPR_E2E_ADMIN_USERNAME");
+  const admin = await devToken(ADMIN);
+  const fhir = async (
+    method: string,
+    path: string,
+    body?: unknown,
+    headers: Record<string, string> = {},
+  ) => {
+    const res = await fetch(`${API}/fhir/R4${path}`, {
+      method,
+      headers: {
+        authorization: `Bearer ${admin}`,
+        "content-type": "application/fhir+json",
+        ...headers,
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    return {
+      status: res.status,
+      etag: res.headers.get("etag"),
+      body: (await res.json()) as any,
+    };
+  };
+  const family = `Zfhir${Date.now()}`;
+  const patient = {
+    resourceType: "Patient",
+    name: [{ family, given: ["Ada"] }],
+    birthDate: "1971-01-02",
+  };
+  const made = await fhir("POST", "/Patient", patient);
+  expect(made.status).toBe(201);
+  expect(made.etag).toBe('W/"1"');
+  const id = made.body.id as string;
+
+  const read = await fhir("GET", `/Patient/${id}`);
+  expect(read.status).toBe(200);
+  expect(read.body.resourceType).toBe("Patient");
+
+  const found = await fhir("GET", `/Patient?family=${family}`);
+  expect(found.body.resourceType).toBe("Bundle");
+  expect(found.body.entry).toHaveLength(1);
+
+  // A possible duplicate is refused without showing the other record.
+  const dup = await fhir("POST", "/Patient", patient);
+  expect(dup.status).toBe(409);
+  expect(JSON.stringify(dup.body)).not.toContain(id);
+
+  // Elements the record cannot hold are refused, not dropped.
+  const extra = await fhir("POST", "/Patient", {
+    ...patient,
+    name: [{ family: family + "x" }],
+    maritalStatus: { text: "M" },
+  });
+  expect(extra.status).toBe(422);
+
+  const changed = { ...patient, birthDate: "1971-01-03" };
+  expect((await fhir("PUT", `/Patient/${id}`, changed)).status).toBe(428);
+  const ok = await fhir("PUT", `/Patient/${id}`, changed, {
+    "if-match": 'W/"1"',
+  });
+  expect(ok.status).toBe(200);
+  expect(ok.etag).toBe('W/"2"');
+  const stale = await fhir("PUT", `/Patient/${id}`, changed, {
+    "if-match": 'W/"1"',
+  });
+  expect(stale.status).toBe(412);
+});

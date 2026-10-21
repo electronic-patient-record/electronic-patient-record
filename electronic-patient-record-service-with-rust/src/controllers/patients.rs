@@ -335,7 +335,7 @@ pub(super) fn store_failure(e: &StoreError) -> Response {
     }
 }
 
-async fn create(
+pub(super) async fn create(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
     Extension(subject): Extension<Subject>,
@@ -462,7 +462,7 @@ async fn create(
     (StatusCode::CREATED, Json(stored)).into_response()
 }
 
-async fn read(
+pub(super) async fn read(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
     Extension(subject): Extension<Subject>,
@@ -525,7 +525,7 @@ async fn read(
     }
 }
 
-async fn update(
+pub(super) async fn update(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
     Extension(subject): Extension<Subject>,
@@ -603,7 +603,7 @@ async fn update(
     }
 }
 
-async fn search(
+pub(super) async fn search(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
     Extension(subject): Extension<Subject>,

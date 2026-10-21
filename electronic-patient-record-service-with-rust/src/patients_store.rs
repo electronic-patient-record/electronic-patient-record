@@ -7,7 +7,7 @@ use electronic_patient_record_matcher::{NHS_NUMBER_SYSTEM, Patient, is_valid_nhs
 use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, Statement, Value};
 
 /// A stored patient at one version.
-#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Stored {
     /// The server-assigned id (a UUID).
     pub id: String,

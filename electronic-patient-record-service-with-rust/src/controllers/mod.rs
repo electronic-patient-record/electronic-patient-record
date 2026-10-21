@@ -2,6 +2,7 @@
 
 pub mod audit;
 pub mod consents;
+pub mod fhir;
 pub mod me;
 pub mod patients;
 pub mod relationships;
@@ -16,4 +17,5 @@ pub fn all_routes() -> AppRoutes {
         .add_route(patients::routes())
         .add_route(audit::routes())
         .add_route(me::routes())
+        .add_route(fhir::routes())
 }

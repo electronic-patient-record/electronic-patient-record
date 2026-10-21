@@ -49,6 +49,20 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
   future jobs) have none. Roles are recorded as the token said at that moment, not checked against a directory. Staff
   names are still not recorded or shown. The hash chain covers `actor` (it is in `detail`); no chain format change.
 
+## 2026-10-21 - FHIR Patient endpoint (ID-3, in part)
+
+- `GET/POST /fhir/R4/Patient`, `GET/PUT /fhir/R4/Patient/{id}` and `GET /fhir/R4/metadata`, over the existing
+  `interop::fhir_patient` mapping. The controller only translates: it calls the `/api/patients` handlers, so access
+  control, consent and the audit row are the same code. `Stored` is now `Deserialize`. 7 unit tests; run by hand and in the
+  real-Keycloak suite (create 201 with `ETag` and `Location`, read, search Bundle, duplicate 409 without candidates,
+  `maritalStatus` 422, no `If-Match` 428, stale 412, exact-date-only search 400). The route table and census know the five
+  routes.
+- **Not done:** FHIR `_history`, `vread`, delete, conditional create/update, `_include`, paging, `_count`, `_sort` and
+  date prefixes; Patient elements beyond identity (those are refused, not stored); no US Core or UK Core profile claim and
+  no conformance run (e.g. Inspector or a validator); `metadata` needs a token (it is not public). No handler-level
+  automated test in `cargo test` (no `AppContext` harness): the translation is unit tested and the whole path is run
+  against Keycloak by hand and in the opt-in browser suite.
+
 ## [0.1.0] - 2026-10-20
 
 Milestone M0, scaffold. **Not for clinical use.**

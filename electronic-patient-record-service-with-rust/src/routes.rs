@@ -87,6 +87,36 @@ pub const TABLE: &[(&str, &str, Resource, Action)] = &[
     ),
     (
         "GET",
+        "/fhir/R4/metadata",
+        Resource::PatientIdentity,
+        Action::Read,
+    ),
+    (
+        "GET",
+        "/fhir/R4/Patient",
+        Resource::PatientIdentity,
+        Action::Search,
+    ),
+    (
+        "POST",
+        "/fhir/R4/Patient",
+        Resource::PatientIdentity,
+        Action::Create,
+    ),
+    (
+        "GET",
+        "/fhir/R4/Patient/{id}",
+        Resource::PatientIdentity,
+        Action::Read,
+    ),
+    (
+        "PUT",
+        "/fhir/R4/Patient/{id}",
+        Resource::PatientIdentity,
+        Action::Update,
+    ),
+    (
+        "GET",
         "/api/me/patients",
         Resource::PatientIdentity,
         Action::Read,
