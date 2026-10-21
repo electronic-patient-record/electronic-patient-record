@@ -173,6 +173,15 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
   when an allergy is ended; the substance list is free text. The statement voids on any later allergy version, including
   one entered in error (conservative: it falls back to what the records show).
 
+## 2026-10-21 - Decision: reads and refusals stay in their own audit transaction
+
+- Asked to put reads, refusals and the verify and search rows in a transaction. There is nothing to make atomic: those
+  paths write nothing but the audit row, which is already written before the data leaves and fails the request (500, no
+  disclosure) when it cannot be written. The earlier changelog line calling this a remaining gap overstated it; the
+  service spec and `tasks.md` now say it is by design. The writes that had two transactions (patient, consent,
+  relationship, photo, allergy) are single ones.
+- **Not done:** a consistent snapshot between the data a read returns and the audit row (nothing requires one).
+
 ## [0.1.0] - 2026-10-20
 
 Milestone M0, scaffold. **Not for clinical use.**
