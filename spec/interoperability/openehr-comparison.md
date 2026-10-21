@@ -16,8 +16,9 @@ The crate does not change that:
 - It models the openEHR *Reference Model*. This project stores FHIR-shaped resources (plan §6.2), so
   adopting the types would mean a second clinical model next to the first, with a mapping between
   them that nobody has specified.
-- It needs Rust **1.97**. This repository documents a minimum of **1.96**. The pinned toolchain
-  (1.99.1) would build it, but adding it would make that documented minimum untrue.
+- It needs Rust **1.97**. This repository documented a minimum of 1.96 when this was written; on
+  2026-10-21 the minimum became 1.97 (the current release, 1.99, minus two), so the version is no
+  longer an objection. The other reasons below still hold.
 - There is nothing for it to hold yet: no clinical content exists here (RC-1 onwards).
 - It is small to carry (7 direct dependencies, 40 crates in all, no network code), so the cost of
   waiting is low.

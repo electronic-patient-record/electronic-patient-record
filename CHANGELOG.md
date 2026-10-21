@@ -14,6 +14,13 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
   where the database owner cannot write; without one the answer still says so. Not run by hand against Keycloak; the
   query-string handler is not covered by an automated test (the logic is).
 
+## 2026-10-21 - Documented minimum Rust is 1.97
+
+- `rust-version` is now 1.97 in the service, migration and matcher `Cargo.toml`, and in `AGENTS.md` and `plan.md`: the
+  current release (1.99) minus two. The pinned toolchain is unchanged (1.99.1).
+- **Not done:** CI has no job that builds with exactly 1.97, so the minimum is declared, not tested. The matcher on
+  crates.io still says 1.96 until it is republished.
+
 ## [0.1.0] - 2026-10-20
 
 Milestone M0, scaffold. **Not for clinical use.**

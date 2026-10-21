@@ -69,7 +69,7 @@ safety incident.
 
 | Layer | Choice |
 |---|---|
-| Rust | 1.99.1 pinned in `rust-toolchain.toml`, MSRV 1.96, edition 2024 |
+| Rust | 1.99.1 pinned in `rust-toolchain.toml`, MSRV 1.97, edition 2024 |
 | Service framework | loco-rs 1.2 (Axum 0.8), `default-features = false`, **no `auth` feature** (no JWT / `rsa`) |
 | ORM / DB | SeaORM 2.0, PostgreSQL 18, migrations crate `electronic-patient-record-migration` |
 | Auth | PASETO v4.public verified offline with `authentication-verifier` (Ed25519 key set URL); OIDC upstream; SMART on FHIR 2.2 authorisation layered on top (see §6.4) |
