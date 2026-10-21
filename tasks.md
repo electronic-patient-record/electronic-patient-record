@@ -443,7 +443,7 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
 - [x] **CQ-5 (S) — Empty given name is absent, not zero.** **Landed 2026-10-21** in the matcher (1 test, H-001); reaches the service with matcher 0.2.0. **Clinical.** Filter tokens whose fold is empty in
   `given_similarity`, as `family_similarity` already does.
   **Acceptance:** given `["-"]` yields `None` for the given-name field (test).
-- [ ] **CQ-6 (S) — Wrong-patient display on navigation.** **Clinical.** `patients/[id]/+page.svelte:41` keeps the
+- [x] **CQ-6 (S) — Wrong-patient display on navigation.** **Landed 2026-10-21** for `/patients/[id]` (state cleared on change, stale answers dropped, 2 Playwright tests, H-016). **Not built:** the same guard on `/patients/[id]/access` and `/my-record`. **Clinical.** `patients/[id]/+page.svelte:41` keeps the
   previous patient's banner and allergies until the next response arrives, and a late response can overwrite the
   current patient. Clear state when `id` changes and drop any response whose id is no longer current (as
   `PatientBanner` does for the photo); same for `reloadAllergies` and `look()`.

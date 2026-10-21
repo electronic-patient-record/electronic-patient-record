@@ -2,6 +2,21 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-21 - Wrong patient on screen while moving between records (CQ-6)
+
+- Following a link from one patient's page to another (a merged record to the surviving one, say) reuses the page. The
+  previous patient's banner and allergies stayed on screen under the new address until the new record arrived, and an
+  answer for the previous patient that arrived late was shown for the new one: a test reproduced Bob's banner reading
+  "Allergies: Penicillin (high risk)", which was Ann's. The page now clears the previous patient's state at once and
+  drops any answer that is not for the patient on screen or not the latest asked for (the record, allergies, the
+  minute look, save and photo). Hazard H-016 updated; UI spec "Moving between patients".
+- The first version of the fix made the loading effect depend on page state, so the page reloaded in a loop; four
+  existing end-to-end tests caught it. The effect now depends on the patient id only (`untrack`).
+- Tests: two Playwright tests with held responses (the second patient loading; a late allergy answer for the first);
+  both failed before the change. The whole suite passes: `pnpm run check` 0 errors, 92 vitest, 42 Playwright.
+- **Not done:** the same guard on the other pages that load by patient id (`/patients/[id]/access`, `/my-record`); the
+  idle-session poll (CQ-8); the Svelte autofixer was not run on the page.
+
 ## 2026-10-21 - An empty given name is absent (CQ-5)
 
 - A given name such as `-` or spaces folds to nothing. The family name already skipped such values; the given name

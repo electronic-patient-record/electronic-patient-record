@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from "svelte";
   import { page } from "$app/state";
   import { call, commonProblem, sendBytes } from "#lib/api.js";
   import { DEFAULT_LOCALE, localizePath } from "#lib/locales.js";
@@ -34,16 +35,42 @@
   let allergies = $state<AllergyLoad | null>(null);
   // When emergency access opened on this page ends, kept after the form has gone.
   let glassUntil = $state<string | null>(null);
+
+  // Wrong-patient guard (CQ-6, hazard H-016): the page is reused when the address moves to another
+  // patient, so every answer is checked against the patient now on screen before it is used, and the
+  // previous patient's state is cleared at once rather than left showing until the next answer.
+  let loadTicket = 0;
+  let allergyTicket = 0;
+  const current = (forId: string | undefined) => forId === id;
+
   async function reloadAllergies() {
-    allergies = await loadAllergies(id ?? "");
+    const forId = id;
+    const ticket = ++allergyTicket;
+    const res = await loadAllergies(forId ?? "");
+    if (current(forId) && ticket === allergyTicket) allergies = res;
   }
 
   async function load() {
+    const forId = id;
+    const ticket = ++loadTicket;
+    if (stored?.id !== forId) {
+      stored = null;
+      allergies = null;
+      form = emptyForm();
+      reason = "";
+      glassUntil = null;
+      saved = null;
+      problems = [];
+      photoFile = null;
+      photoReason = "";
+      photoMessage = null;
+    }
     loading = true;
     message = null;
     conflict = false;
     latest = null;
-    const res = await call<Stored>("GET", `/api/patients/${id}`);
+    const res = await call<Stored>("GET", `/api/patients/${forId}`);
+    if (!current(forId) || ticket !== loadTicket) return;
     loading = false;
     const common = commonProblem(res.status);
     if (common) {
@@ -64,9 +91,11 @@
     }
   }
 
+  // Load when, and only when, the patient changes: `load` reads page state, which must not become
+  // a dependency of this effect (each answer would start another load).
   $effect(() => {
     void id;
-    void load();
+    untrack(() => void load());
   });
 
   // Someone else may edit while this page is open. The page looks again when the tab comes back
@@ -82,10 +111,17 @@
 
   async function look() {
     if (!stored || document.hidden || loading) return;
+    const forId = stored.id;
     // Allergies can change without the identity record changing, so they are looked at too.
     void reloadAllergies();
-    const res = await call<Stored>("GET", `/api/patients/${stored.id}`);
-    if (res.status !== 200 || !stored || res.body.version === stored.version) {
+    const res = await call<Stored>("GET", `/api/patients/${forId}`);
+    if (
+      res.status !== 200 ||
+      !stored ||
+      stored.id !== forId ||
+      !current(forId) ||
+      res.body.version === stored.version
+    ) {
       return;
     }
     if (dirty) {
@@ -133,15 +169,17 @@
         return;
       }
     }
+    const forId = stored.id;
     const q = new URLSearchParams({
       expected_version: String(stored.photo_version ?? 0),
     });
     if (photoReason.trim()) q.set("reason", photoReason.trim());
     const res = await sendBytes<{ errors?: string[] }>(
       withdraw ? "POST" : "PUT",
-      `/api/patients/${stored.id}/photo${withdraw ? "/withdraw" : ""}?${q}`,
+      `/api/patients/${forId}/photo${withdraw ? "/withdraw" : ""}?${q}`,
       withdraw ? null : photoFile,
     );
+    if (stored?.id !== forId) return;
     const common = commonProblem(res.status);
     if (common) photoMessage = STRINGS[common];
     else if (res.status === 200) {
@@ -149,8 +187,8 @@
       photoFile = null;
       photoReason = "";
       // The photo version moved; read the record again, but keep what is being typed.
-      const fresh = await call<Stored>("GET", `/api/patients/${stored.id}`);
-      if (fresh.status === 200 && stored) {
+      const fresh = await call<Stored>("GET", `/api/patients/${forId}`);
+      if (fresh.status === 200 && stored?.id === forId) {
         stored = { ...stored, photo_version: fresh.body.photo_version };
         if (latest) latest = { ...latest, photo_version: fresh.body.photo_version };
       }
@@ -167,15 +205,17 @@
     problems = [];
     saved = null;
     conflict = false;
+    const forId = stored.id;
     const res = await call<Stored & { errors?: string[] }>(
       "PUT",
-      `/api/patients/${stored.id}`,
+      `/api/patients/${forId}`,
       {
         patient: formToPatient(form, stored.patient),
         expected_version: stored.version,
         reason: reason.trim() || undefined,
       },
     );
+    if (stored?.id !== forId) return;
     const common = commonProblem(res.status);
     if (common) {
       message = STRINGS[common];

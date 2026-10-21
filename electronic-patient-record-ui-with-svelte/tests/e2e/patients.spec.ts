@@ -1375,3 +1375,106 @@ test("the auditor sees the emergency access nobody has reviewed and records a ve
     { outcome: "inappropriate", note: "no emergency found" },
   ]);
 });
+
+// CQ-6: moving from one patient to another must never show the first under the second's address.
+const BOB = {
+  ...ANN,
+  id: "22222222-2222-4222-8222-222222222222",
+  version: 1,
+  replaced_by: null,
+  replaces: [],
+  patient: {
+    ...ANN.patient,
+    id: "22222222-2222-4222-8222-222222222222",
+    names: [{ family: "Okafor", given: ["Bob"] }],
+    identifiers: [],
+  },
+};
+const allergyOf = (substance: string) => ({
+  allergies: [],
+  statement: null,
+  summary: { state: "active", items: [{ substance, criticality: "high" }] },
+});
+const gate = () => {
+  let open!: () => void;
+  const opened = new Promise<void>((r) => (open = r));
+  return { open, opened };
+};
+
+test("moving to another patient clears the first while the second loads", async ({
+  page,
+}) => {
+  const bobArrives = gate();
+  await page.route("**/api/proxy/api/patients/*/allergies", (route) =>
+    json(
+      route,
+      200,
+      allergyOf(
+        route.request().url().includes(ANN.id) ? "Penicillin" : "Latex",
+      ),
+    ),
+  );
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, { ...ANN, replaced_by: BOB.id, replaces: [] }),
+  );
+  await page.route(`**/api/proxy/api/patients/${BOB.id}`, async (route) => {
+    await bobArrives.opened;
+    await json(route, 200, BOB);
+  });
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  const banner = page.getByRole("region", { name: "Patient banner" });
+  await expect(
+    banner.getByRole("heading", { name: "SMITH, Ann" }),
+  ).toBeVisible();
+  await expect(banner).toContainText("Penicillin");
+
+  await page.getByRole("link", { name: "Open the surviving record" }).click();
+  await expect(page).toHaveURL(new RegExp(`/patients/${BOB.id}$`));
+  // Bob has not arrived: nothing of Ann's may be on screen under Bob's address.
+  await expect(page.getByText("Loading…")).toBeVisible();
+  await expect(page.getByText("SMITH, Ann")).toHaveCount(0);
+  await expect(page.getByText("Penicillin")).toHaveCount(0);
+
+  bobArrives.open();
+  await expect(
+    banner.getByRole("heading", { name: "OKAFOR, Bob" }),
+  ).toBeVisible();
+  await expect(banner).toContainText("Latex");
+  await expect(page.getByText("Penicillin")).toHaveCount(0);
+});
+
+test("a late answer for the previous patient never lands on the current one", async ({
+  page,
+}) => {
+  const annAllergiesArrive = gate();
+  await page.route("**/api/proxy/api/patients/*/allergies", async (route) => {
+    if (route.request().url().includes(ANN.id)) {
+      await annAllergiesArrive.opened;
+      await json(route, 200, allergyOf("Penicillin"));
+    } else {
+      await json(route, 200, allergyOf("Latex"));
+    }
+  });
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, { ...ANN, replaced_by: BOB.id, replaces: [] }),
+  );
+  await page.route(`**/api/proxy/api/patients/${BOB.id}`, (route) =>
+    json(route, 200, BOB),
+  );
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  const banner = page.getByRole("region", { name: "Patient banner" });
+  await expect(
+    banner.getByRole("heading", { name: "SMITH, Ann" }),
+  ).toBeVisible();
+
+  await page.getByRole("link", { name: "Open the surviving record" }).click();
+  await expect(
+    banner.getByRole("heading", { name: "OKAFOR, Bob" }),
+  ).toBeVisible();
+  await expect(banner).toContainText("Latex");
+  // Ann's allergy answer arrives after Bob is on screen; it must be dropped.
+  annAllergiesArrive.open();
+  await page.waitForTimeout(300);
+  await expect(banner).toContainText("Latex");
+  await expect(page.getByText("Penicillin")).toHaveCount(0);
+});
