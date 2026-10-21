@@ -2,6 +2,17 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-21 - The service uses matcher 0.2.0 (closes CQ-2)
+
+- Matcher 0.2.0 is published, and its source on crates.io is identical to this repository's. The service now depends
+  on it, so the CQ-1 to CQ-5 matching fixes reach registration, the duplicate check, merge and the HL7 feed.
+  Registration refuses a repeated-digit placeholder NHS number with its own message ("NHS number is a placeholder…"),
+  not the modulus-11 message, which a placeholder passes. Hazard H-001 no longer says the controls are missing from
+  the service.
+- Tests: one service unit test for the placeholder message; all 154 unit and 64 Postgres tests pass on 0.2.0.
+- **Not done:** the UI shows the server's message as it comes. No UI test covers the new message, and none is
+  translated.
+
 ## 2026-10-21 - Two registrations of one person at once make one record (CQ-7)
 
 - The duplicate check ran before the creating transaction and nothing serialised registration, so two registrations

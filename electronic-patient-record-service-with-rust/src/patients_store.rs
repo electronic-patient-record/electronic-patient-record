@@ -3,7 +3,9 @@
 //! No function here updates or deletes a row. A change is a new version; two writers racing to
 //! change the same version collide on the primary key and the loser gets [`StoreError::Conflict`].
 
-use electronic_patient_record_matcher::{NHS_NUMBER_SYSTEM, Patient, is_valid_nhs_number};
+use electronic_patient_record_matcher::{
+    NHS_NUMBER_SYSTEM, Patient, is_placeholder_nhs_number, is_valid_nhs_number,
+};
 use sea_orm::{
     ConnectionTrait, DatabaseConnection, DbBackend, Statement, TransactionSession,
     TransactionTrait, Value,
@@ -80,7 +82,12 @@ pub fn validate(patient: &Patient) -> Vec<String> {
         ));
     }
     for id in &patient.identifiers {
-        if id.system == NHS_NUMBER_SYSTEM && !is_valid_nhs_number(&id.value) {
+        if id.system == NHS_NUMBER_SYSTEM && is_placeholder_nhs_number(&id.value) {
+            problems.push(
+                "NHS number is a placeholder (ten copies of one digit), not an issued number"
+                    .to_string(),
+            );
+        } else if id.system == NHS_NUMBER_SYSTEM && !is_valid_nhs_number(&id.value) {
             problems.push("NHS number fails the modulus 11 check".to_string());
         }
         if id.system.trim().is_empty() || id.value.trim().is_empty() {
@@ -460,6 +467,17 @@ mod tests {
         assert!(validate(&p).is_empty());
         p.identifiers[0].value = "9434765910".into();
         assert!(validate(&p).iter().any(|e| e.contains("modulus 11")));
+        // CQ-2: a placeholder passes modulus 11 but is refused, with its own reason.
+        p.identifiers[0].value = "000 000 0000".into();
+        let problems = validate(&p);
+        assert!(
+            problems.iter().any(|e| e.contains("placeholder")),
+            "{problems:?}"
+        );
+        assert!(
+            !problems.iter().any(|e| e.contains("modulus 11")),
+            "{problems:?}"
+        );
         p.identifiers = vec![Identifier {
             system: "urn:example:mrn".into(),
             value: "anything".into(),

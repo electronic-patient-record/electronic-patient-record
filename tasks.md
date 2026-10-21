@@ -427,20 +427,20 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
   Score both directions and take the minimum (or a symmetric assignment).
   **Acceptance:** a proptest asserts `compare(a, b) == compare(b, a)` over generated patients with valid dates; the
   `["John","J"]` vs `["John","Smith"]` case is a named regression test.
-- [ ] **CQ-2 (S) — Placeholder NHS numbers.** **Matcher part landed 2026-10-21** (repeated-digit numbers invalid; shared NHS number with both names disagreeing goes to Review; 4 tests, H-001). **Open until** the service uses matcher 0.2.0 and refuses a placeholder at registration with its own message. **Clinical.** `is_valid_nhs_number` (`src/nhs.rs:9`) accepts
+- [x] **CQ-2 (S) — Placeholder NHS numbers.** **Landed 2026-10-21** (repeated-digit numbers invalid; shared NHS number with both names disagreeing goes to Review; 4 matcher tests; the service on matcher 0.2.0 refuses a placeholder at registration with its own message, 1 test; H-001). **Clinical.** `is_valid_nhs_number` (`src/nhs.rs:9`) accepts
   `0000000000`, `1111111111`, `9999999999` and other repeated-digit numbers. Reject them (and any configured
   placeholder list) as identifiers that can decide a link; add a conflict when a shared NHS number comes with very
   different names. Keep the 999 test range valid for demo data (AS-8).
   **Acceptance:** two different people carrying `0000000000` and the same birth date are not AutoLinked (test).
-- [x] **CQ-3 (S) — NHS number plus different birth date.** **Landed 2026-10-21** in the matcher (threshold removed, 1 test over 4 dates, H-001); reaches the service with matcher 0.2.0. **Clinical.** `src/engine.rs:180` adds the birth-date
+- [x] **CQ-3 (S) — NHS number plus different birth date.** **Landed 2026-10-21** in the matcher (threshold removed, 1 test over 4 dates, H-001); in the service from matcher 0.2.0. **Clinical.** `src/engine.rs:180` adds the birth-date
   conflict only when similarity is below 0.5; spec §4 says any two different full dates go to Review. Drop the
   threshold (or change the spec and record why).
   **Acceptance:** shared NHS number with `1980-01-01` vs `1980-01-28` gives Review with a conflict (test).
-- [x] **CQ-4 (S) — Birth-date typo rule and impossible dates.** **Landed 2026-10-21** in the matcher (digit-slip rule, calendar check, 2 tests, H-001); reaches the service with matcher 0.2.0. **Clinical.** Give typo credit only for a one-digit
+- [x] **CQ-4 (S) — Birth-date typo rule and impossible dates.** **Landed 2026-10-21** in the matcher (digit-slip rule, calendar check, 2 tests, H-001); in the service from matcher 0.2.0. **Clinical.** Give typo credit only for a one-digit
   edit or an adjacent-digit or day/month swap (`src/engine.rs:350`); reject impossible dates such as `2020-02-31`
   (`src/normalize.rs:55`).
   **Acceptance:** 1950 vs 2010 scores as a mismatch; `2020-02-31` is absent with a reason; each branch has a test.
-- [x] **CQ-5 (S) — Empty given name is absent, not zero.** **Landed 2026-10-21** in the matcher (1 test, H-001); reaches the service with matcher 0.2.0. **Clinical.** Filter tokens whose fold is empty in
+- [x] **CQ-5 (S) — Empty given name is absent, not zero.** **Landed 2026-10-21** in the matcher (1 test, H-001); in the service from matcher 0.2.0. **Clinical.** Filter tokens whose fold is empty in
   `given_similarity`, as `family_similarity` already does.
   **Acceptance:** given `["-"]` yields `None` for the given-name field (test).
 - [x] **CQ-6 (S) — Wrong-patient display on navigation.** **Landed 2026-10-21** for `/patients/[id]` (state cleared on change, stale answers dropped, 2 Playwright tests, H-016). **Not built:** the same guard on `/patients/[id]/access` and `/my-record`. **Clinical.** `patients/[id]/+page.svelte:41` keeps the
