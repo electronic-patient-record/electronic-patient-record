@@ -23,7 +23,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | Migrations | 10 | files named `m2*.rs` in `migration/src` |
 | Route registrations | 41 | `.add(` calls in `src/controllers/*.rs` |
 | Service tests | 220, plus 63 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
-| Matcher tests | 13, plus 0 `#[ignore]`d | the same patterns in the matcher |
+| Matcher tests | 15, plus 0 `#[ignore]`d | the same patterns in the matcher |
 | Front-end unit tests (vitest) | 92 | `it(` / `test(` lines in `tests/unit` |
 | Front-end end-to-end tests (Playwright) | 37 | `test(` lines in `tests/e2e` |
 | Locales | 10 | entries of `LOCALES` in `src/lib/locales.ts` |
@@ -33,15 +33,15 @@ no network, database or compilation; counts are source lines, not test runs):
 | Prefix | Ticked | Open |
 |---|---|---|
 | SF | 5 | 4 |
-| ID | 2 | 5 |
-| AU | 1 | 1 |
-| RC | 0 | 9 |
-| SE | 3 | 6 |
-| DO | 0 | 6 |
-| OR | 0 | 7 |
-| IO | 0 | 8 |
-| CA | 0 | 7 |
-| AS | 0 | 11 |
-| **Total** | **11** | **64** |
+| ID | 2 | 6 |
+| AU | 1 | 2 |
+| RC | 0 | 12 |
+| SE | 3 | 9 |
+| DO | 0 | 8 |
+| OR | 0 | 9 |
+| IO | 0 | 15 |
+| CA | 0 | 8 |
+| AS | 0 | 12 |
+| **Total** | **11** | **85** |
 
 <!-- generated:end -->

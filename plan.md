@@ -390,3 +390,163 @@ count.
   Steinkamp 2022 (JAMA Netw Open); JMIR Med Inform 2020;8(7):e15653; Bates
   2003 (JAMIA); ECRI Top 10 Hazards 2026; NISTIR 7804 / 7804-1 / 7741 / 7742 /
   7865; Lukac et al. 2025 (NEJM AI); AMIA 25×5.
+
+## 14. Research pass 2026-10-21: code quality and new capabilities
+
+> **Status (2026-10-21).** §1–13 above were written before any code existed;
+> their "no code exists" note is out of date (identity, audit, consent,
+> break-the-glass, allergies, HL7 v2 ADT and the patient pages now exist). This
+> section records a second pass: a read-only review of the code as it stands
+> at `c361a8e`, and web research on capabilities that no task covers. The
+> work items are in [tasks.md](tasks.md) under "Research 2026-10-21" (`CQ-`
+> for code quality; new capabilities under their area prefix).
+
+Evidence base, stated plainly: the source tree was read, not run, except
+that `pnpm run check` passed and the matcher was exercised by a throwaway
+probe crate outside the repository. No database test, no `EXPLAIN`, no CI run
+(there is no remote, so CI has never run). Web facts marked **[uncertain]**
+come from secondary sources only.
+
+### 14.1 Patient-safety defects found (fix first)
+
+These alter what a clinician sees or what the matcher decides, so each fix
+needs a hazard-log row (AS-1) in the same commit.
+
+| # | Defect | Evidence |
+|---|---|---|
+| 1 | `compare(a, b)` is not symmetric: with given-name lists of equal length the per-token average runs only from `a`, so `["John","J"]` vs `["John","Smith"]` is AutoLink one way (0.975) and Review the other (0.875). The only symmetry test uses an invalid date. | matcher `src/engine.rs:309`, `tests/matching.rs:60` |
+| 2 | Placeholder NHS numbers (`0000000000`, `1111111111`, `9999999999` …) pass modulus 11 and count as a shared verified identifier, so two people carrying the same dummy number and birth date AutoLink with no name check. | matcher `src/nhs.rs:9` |
+| 3 | A shared NHS number with two different full birth dates AutoLinks unless date similarity is below 0.5; spec §4 says any difference goes to Review. | matcher `src/engine.rs:180` |
+| 4 | Birth-date "typo" credit (0.6) is given for any day, month or year difference (1950 vs 2010), and impossible dates (`2020-02-31`) parse. | matcher `src/engine.rs:350`, `src/normalize.rs:55` |
+| 5 | A given name that folds to nothing scores `Some(0.0)` instead of `None`, breaking "absent is not zero". | matcher `src/engine.rs:302` |
+| 6 | Wrong-patient display: moving from patient A to B leaves A's banner and allergies under B's URL until B loads, and a slow A response can overwrite B (no stale-response guard). `PatientBanner` already guards its photo correctly. | UI `src/routes/patients/[id]/+page.svelte:41` |
+| 7 | Duplicate-creation race: the duplicate check runs outside the transaction and nothing serialises creation, so two concurrent registrations or ADT A04s (MLLP serves 8 connections) both create a record. | service `src/controllers/patients.rs:473`, `src/adt_feed.rs:272` |
+| 8 | The once-a-minute background poll refreshes the BFF session, so an unattended workstation never reaches the 15-minute idle timeout. | UI `+page.svelte:100`, `src/lib/server/session.ts:72` |
+
+### 14.2 Code-quality findings
+
+**Service.** Non-test code has no `unwrap`/`expect`/`panic`, and all SQL is
+parameterised. The main debts are:
+
+- **Indexes defeated by casts.** Eleven lookups compare `patient_id::text = lower($1)`, which defeats the primary-key and lookup indexes. `*_current` views run `DISTINCT ON` over whole version tables.
+- **N+1 consent checks.** These run per search result: about 100 queries for 50 results.
+- **Misplaced shared plumbing.** Shared controller helpers live in `controllers/patients.rs`, and errors are hand-built `json!` bodies inside `Box<Response>`.
+- **Copied store boilerplate.** It is copied six times, and version conflicts are detected by matching `"_pkey"` in the error text.
+- **FHIR re-parses JSON responses.** The FHIR layer calls the JSON handlers and parses their HTTP responses back, with `unwrap_or_default` turning failures into `null`.
+- **Malformed FHIR query.** A malformed `AuditEvent` query becomes an unfiltered search.
+- **Audit export gaps.** The NDJSON export drops rows that fail to serialise, leaving a gap in a chain meant to be re-verified.
+- **Inconsistent error bodies.** The route gate returns `text/plain` even on `/fhir/R4`.
+- **Down migrations are a delete path.** `down()` drops clinical tables, and triggers do not fire on `DROP`.
+- **No handler-level tests.** Controller wiring is checked only by hand.
+- **No observability.** There are no request ids, spans or metrics.
+- **Audit lock is a throughput ceiling.** One global advisory lock serialises every audited request.
+
+**Matcher.** Beyond §14.1:
+
+- **Name matching.** Jaro-Winkler prefix bias (`Smith-Jones` vs `Smithson` passes the family guard). `John` vs `John Paul` AutoLinks, a twins risk. There is no transliteration, no nickname or phonetic matching, and no given/family swap.
+- **Name folding.** `fold_name` splits Indic and Persian names on combining marks.
+- **Phone numbers.** They are not E.164-normalised, and a shared household phone or postcode counts as strong evidence.
+- **Free-text output.** Conflicts and notes are free English strings.
+- **Configuration.** `MatchConfig` is unvalidated, and `min_evidence_weight` cannot bind with the default weights.
+- **Tests.** There are 13 example tests and no property, mutation or fuzz tests.
+
+**UI.**
+
+- **Proxy errors.** The upstream call in the proxy has no timeout, and a transport error throws a bare 500.
+- **Refresh failures.** Any refresh failure, including a network blip, deletes the session.
+- **Unchecked response shapes.** API responses are cast (`as T`), not decoded.
+- **Repeated status handling.** Each page repeats the status-code chain.
+- **In-flight buttons.** Buttons are not disabled while a request is in flight.
+- **Layout and accessibility.** Physical CSS `left` properties are used under `dir="rtl"`, and the loading text has no `role="status"`.
+- **Localisation.** One English `STRINGS` object ignores the locale, and times are shown as UTC text, a misread risk in BST.
+- **Versioning header.** `Accepts-version` is neither sent nor forwarded.
+- **Forwarded headers.** `isHttps` trusts a client-supplied `X-Forwarded-Proto`.
+- **Test gaps.** There are no component tests, and the proxy handler and hooks are untested.
+
+**Infrastructure and documents.**
+
+- **CI has never run.** Some action versions may not exist.
+- **Hazard-log job.** It ignores a `clinical-impact` label added after the PR opens, because there is no `labeled` trigger. `reviewed_by` is free text with no Clinical Safety Officer allow-list. CODEOWNERS has no clinical-safety entry.
+- **Release.** It never builds the UI image.
+- **Pinning.** Actions and base images are pinned by tag, not by SHA or digest, and Dependabot has no `docker` ecosystem.
+- **Missing gates.**
+  - an MSRV check;
+  - a ZAP scan;
+  - image scanning;
+  - signing and SBOM attestation;
+  - `pnpm audit`;
+  - coverage;
+  - cargo-mutants;
+  - CodeQL.
+- **Playwright.** It never meets the real API or Keycloak.
+- **Compose.** There is no `read_only`, `cap_drop` or `no-new-privileges`. The test Postgres binds `0.0.0.0` with a known password.
+- **Test selection.** CI hard-codes test files, so a new non-ignored test file runs nowhere.
+- **Stale documents.**
+  - The hand-written table in `spec/14` still says "Missing: patient storage".
+  - The UI `AGENTS.md` still says patient pages are not built.
+  - The `compose.yaml` comment still says break-the-glass is not built.
+  - Per-crate changelogs, which the release notes read, stop at 0.1.0.
+- **Long task entries.** Several `tasks.md` entries are over 2,000 characters of inline status log.
+
+### 14.3 New capabilities (no task yet)
+
+Ranked by value to this project and by how firm the evidence is.
+
+| Rank | Capability | Why | Depends on |
+|---|---|---|---|
+| 1 | Medication reconciliation (admit, transfer, discharge) | In 1.0 scope (§7.1) but no task; NHS DAPB4013 medicine and allergy transfer standard | RC-5, CA-1, RC-3 |
+| 2 | FHIR `AuditEvent` with IHE BALP, and IHE PDQm/PIXm | Decided in §4 but no task; audit stays required in the UK and under HIPAA whatever HTI-5 does | AU-1, AU-2, ID-6 |
+| 3 | Passkeys / phishing-resistant MFA, fast user switching | §6.4 promises passkeys; NIST SP 800-63-4 asks AAL2 to offer a phishing-resistant option **[uncertain wording]** | SE-9, SE-7 |
+| 4 | SDC adaptive forms with `$populate` / `$extract` | SDC STU4 published 2025; makes DO-4 concrete and is a prerequisite for DTR | DO-4 |
+| 5 | Ambient AI scribe governance (capture consent, transcript-beside-draft review, agent Provenance, DCB0160 template) | NHS England guidance on AI ambient scribing; MHRA treats a diagnosis-suggesting scribe as a device **[uncertain: version]** | DO-6, SE-2, AS-1 |
+| 6 | AI agent / MCP access boundary (agents as principals, per-tool scopes, audited) | Medplum ships an MCP server; Epic agent roadmap (HIMSS26); ECRI 2026 hazard #1 is AI | SE-1, IO-2, AU-1 |
+| 7 | NHS national APIs: PDS FHIR, GP Connect Access Record Structured (STU3 adapter), NRL, BaRS | Named in §3.3, no tasks | ID-2, ID-6, CA-3 |
+| 8 | SMART Health Links / Cards for patient-shared summaries at check-in | HL7 SHC&L IG STU1; CMS "kill the clipboard" pledges | IO-5, CA-5, ID-4 |
+| 9 | EHDS / European Patient Summary on IPS 2.0 | Regulation (EU) 2025/327; cross-border summary due 2029 **[uncertain: dates]** | IO-5, IO-3 |
+| 10 | Post-quantum readiness: crypto inventory and algorithm agility for audit MAC, PASETO, TLS | NCSC timeline: plan by 2028, migrate 2028–2031, done by 2035; long-retention records | AU-1, SE-7 |
+| 11 | Patient-generated and device observations, quarantined until reviewed | Home BP and glucose via the portal | RC-6, DO-5, CA-5 |
+| 12 | Accessibility conformance evidence for the portal (screen-reader audit, ACR) | HHS Section 504 rule requires WCAG 2.1 AA **[uncertain: deadline moved to 2027]** | CA-5, AS-4 |
+| 13 | Da Vinci CRD/DTR/PAS (electronic prior authorisation) | HTI-4 final (g)(31)–(g)(33); CMS-0057-F API by 2027 **[uncertain]**. US market only (OQ-4) | OR-5, DO-4 |
+| 14 | Single Patient Record (England) outbound feed | NHS Modernisation Bill (May 2026) **[uncertain: status; no spec yet]**. Watch, then build | IO-4, IO-6 |
+| 15 | TEFCA participation via Facilitated FHIR | SOP 2.0 effective March 2026 **[uncertain: final text]**. US only | IO-2, ID-6 |
+| 16 | UK EPS FHIR Prescribing API | EPS split into prescribing and dispensing FHIR APIs; §7.2 excludes it from 1.0, so post-1.0 | OR-1, OR-6 |
+| 17 | Digital quality measures (CQL on QI-Core) outside the clinical database | CMS moving eCQMs to FHIR dQMs **[uncertain: 2030]**; §7.2 excludes eCQM reporting from 1.0 | IO-7, IO-4 |
+| 18 | Offline-first entry spike (client outbox, Provenance-based merge) | OpenMRS O3 ships offline mode; resolves OQ-5 | CA-7, RC-1 |
+| 19 | Genomics reporting (FHIR Genomics Reporting STU3) | Post-1.0, low priority | RC-6, OR-4 |
+| 20 | FHIR R6 | Still in ballot (ballot5, July 2026). Spec note only: keep storage version-neutral | IO-1, RC-1 |
+
+Already covered, nothing to add: topic-based Subscriptions (IO-6). openEHR:
+no new evidence to change the M6 "revisit" decision. HTI-5 (proposed) would
+remove 34 of 60 criteria, including CDS, MFA and audit reports; do not drop
+those features on its account.
+
+### 14.4 Order of work
+
+1. **Safety defects (§14.1).** CQ-1 to CQ-8, each with its hazard row.
+2. **Make the gates real.** Push to a remote and get CI green (CQ-20), fix the hazard-log trigger (CQ-21), and fix test selection (CQ-24).
+3. **Service structure.** Typed ids and indexes (CQ-9), `ApiError` and the shared module (CQ-11, CQ-12), then handler-level tests (CQ-16), which the later refactors need as a net.
+4. **Capabilities in the order of §14.3.** Fit them into the milestones they depend on.
+
+### 14.5 Sources (this pass)
+
+- data.standards.nhs.uk/published-standards/medicine-and-allergyintolerance-data-transfer
+- england.nhs.uk/long-read/guidance-on-the-use-of-ai-enabled-ambient-scribing-products-in-health-and-care-settings
+- healthit.gov/resources/hti-4-final-rule-electronic-prescribing-real-time-prescription-benefit-and-electronic-prior-authorization/
+- healthit.gov/resources/hti-5-proposed-rule-chart/
+- hl7.org/fhir/uv/sdc/en/changes.html
+- hl7.org/fhir/uv/smart-health-cards-and-links/STU1/history.html
+- build.fhir.org/ig/HL7/fhir-ips/en/changes.html
+- hl7.org/fhir/6.0.0-ballot5/
+- hl7.org/fhir/uv/genomics-reporting/STU3/
+- ncsc.gov.uk/guidance/pqc-migration-timelines
+- medplum.com/docs/ai/mcp
+- fiercehealthcare.com (HIMSS26 Epic AI roadmap)
+- ecqi.healthit.gov/fhir/about
+- openmrs.atlassian.net (Offline and Internet Connection FAQs)
+- rce.sequoiaproject.org (Facilitated FHIR SOP 2.0 draft)
+- Secondary sources only, so treat as **[uncertain]**:
+  - corbado.com (NIST 800-63-4 passkeys)
+  - accessibilitychecker.org (HHS Section 504 dates)
+  - freevacy.com (NHS Modernisation Bill)
+  - capminds.com (CMS-0057-F)
+  - Wikipedia (EHDS)

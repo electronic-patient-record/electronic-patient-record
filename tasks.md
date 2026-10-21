@@ -18,6 +18,7 @@ IDs are grouped by prefix so they do not collide with the numbered build-out in
 | `IO-` | Interoperability, apps, export | M6 |
 | `CA-` | Care coordination, scheduling, portal, downtime | M7 |
 | `AS-` | Assurance: safety, usability, compliance, operations | M0–M8 |
+| `CQ-` | Code quality and defects found in review (research 2026-10-21) | any |
 
 Sizes: S ≈ one business day, M ≈ a few business days, L ≈ a business week or
 more.
@@ -408,3 +409,290 @@ Conventions:
   **Acceptance:** each claim is sourced or marked unverified.
 - [ ] **AS-11 (S) — Primary-source checks.** Resolve the plan.md §12 list.
   **Acceptance:** each item is confirmed, corrected or dropped, with a source link.
+
+---
+
+## Research 2026-10-21 — code quality and new capabilities
+
+From [plan.md §14](plan.md#14-research-pass-2026-10-21-code-quality-and-new-capabilities). The code was read, not run,
+except for `pnpm run check` and a throwaway matcher probe; each defect below must be reproduced by a failing test
+before it is fixed. Items marked **clinical** change what a clinician sees or what the matcher decides: they need a
+hazard-log row (AS-1) in the same commit. Keep each entry to description, acceptance and status; put history in
+`CHANGELOG.md`. `scripts/generate-status.sh` does not yet count the `CQ` prefix (CQ-29).
+
+### Patient-safety defects (do first)
+
+- [ ] **CQ-1 (S) — Matcher symmetry.** **Clinical.** `given_similarity` (`src/engine.rs:309`) averages from `a` when both
+  given-name lists have equal length, so `compare(a, b)` and `compare(b, a)` can reach different decisions.
+  Score both directions and take the minimum (or a symmetric assignment).
+  **Acceptance:** a proptest asserts `compare(a, b) == compare(b, a)` over generated patients with valid dates; the
+  `["John","J"]` vs `["John","Smith"]` case is a named regression test.
+- [ ] **CQ-2 (S) — Placeholder NHS numbers.** **Clinical.** `is_valid_nhs_number` (`src/nhs.rs:9`) accepts
+  `0000000000`, `1111111111`, `9999999999` and other repeated-digit numbers. Reject them (and any configured
+  placeholder list) as identifiers that can decide a link; add a conflict when a shared NHS number comes with very
+  different names. Keep the 999 test range valid for demo data (AS-8).
+  **Acceptance:** two different people carrying `0000000000` and the same birth date are not AutoLinked (test).
+- [ ] **CQ-3 (S) — NHS number plus different birth date.** **Clinical.** `src/engine.rs:180` adds the birth-date
+  conflict only when similarity is below 0.5; spec §4 says any two different full dates go to Review. Drop the
+  threshold (or change the spec and record why).
+  **Acceptance:** shared NHS number with `1980-01-01` vs `1980-01-28` gives Review with a conflict (test).
+- [ ] **CQ-4 (S) — Birth-date typo rule and impossible dates.** **Clinical.** Give typo credit only for a one-digit
+  edit or an adjacent-digit or day/month swap (`src/engine.rs:350`); reject impossible dates such as `2020-02-31`
+  (`src/normalize.rs:55`).
+  **Acceptance:** 1950 vs 2010 scores as a mismatch; `2020-02-31` is absent with a reason; each branch has a test.
+- [ ] **CQ-5 (S) — Empty given name is absent, not zero.** **Clinical.** Filter tokens whose fold is empty in
+  `given_similarity`, as `family_similarity` already does.
+  **Acceptance:** given `["-"]` yields `None` for the given-name field (test).
+- [ ] **CQ-6 (S) — Wrong-patient display on navigation.** **Clinical.** `patients/[id]/+page.svelte:41` keeps the
+  previous patient's banner and allergies until the next response arrives, and a late response can overwrite the
+  current patient. Clear state when `id` changes and drop any response whose id is no longer current (as
+  `PatientBanner` does for the photo); same for `reloadAllergies` and `look()`.
+  **Acceptance:** a Playwright test with a delayed route for patient A, navigating to B, never shows A's name or
+  allergies under B's URL.
+- [ ] **CQ-7 (M) — Duplicate-creation race.** **Clinical.** The duplicate check (`controllers/patients.rs:473`,
+  `adt_feed.rs:272`) runs outside the creating transaction. Inside the transaction take
+  `pg_advisory_xact_lock` per identifier (or per family name and birth date when there is none), re-run the
+  candidate search on the transaction, then insert.
+  **Acceptance:** a DB-gated test fires two concurrent creates for the same person and gets one record plus one
+  duplicate warning.
+- [ ] **CQ-8 (S) — Background poll keeps the session alive.** The 60-second `look()` poll refreshes `lastSeen`
+  (`src/lib/server/session.ts:72`), so the 15-minute idle timeout never fires on an open page. Mark background
+  requests so the BFF does not count them as activity, and warn before the idle timeout.
+  **Acceptance:** a unit test shows a background request does not extend the session; an e2e test sees the
+  warning.
+
+### Service
+
+- [ ] **CQ-9 (S/M) — Typed ids and indexes.** Parse ids to `Uuid` and bind `$1::uuid` instead of
+  `patient_id::text = lower($1)` (11 queries). Add search indexes on identifiers, birth date and folded family name;
+  review the `DISTINCT ON` `*_current` views.
+  **Acceptance:** `EXPLAIN` of a patient read and a search uses an index (DB-gated test asserting no seq scan on a
+  seeded table); a malformed id returns 404 without a query.
+- [ ] **CQ-10 (M) — Batch consent checks.** Replace the per-patient `links::sources_of` + `active_for` loop
+  (`controllers/patients.rs:180`) with one query over `uuid[]`.
+  **Acceptance:** a 50-result search issues a constant number of queries (counted in a DB-gated test), with the
+  same verdicts as before.
+- [ ] **CQ-11 (M) — `ApiError` and a shared controller module.** Move the 14 shared helpers out of
+  `controllers/patients.rs` into `controllers/common.rs`; add an `ApiError` enum implementing `IntoResponse` so
+  handlers use `?` and every body has one shape. Make the route gate's refusal path-aware (an `OperationOutcome`
+  on `/fhir/R4`, JSON on `/api`, not `text/plain`).
+  **Acceptance:** no handler builds `json!({"error": …})` by hand (grep census test); the FHIR 403 is an
+  `OperationOutcome` (test).
+- [ ] **CQ-12 (M) — Store helpers and typed conflicts.** One `append_version` helper for the six stores; keep the
+  `DbErr` cause instead of `Db(String)`; detect version conflicts by `SqlErr::UniqueConstraintViolation`, not by
+  matching `"_pkey"` in the message.
+  **Acceptance:** a store test forces a conflict in each store and gets `Conflict`; the error log names the store.
+- [ ] **CQ-13 (L) — Typed service layer under JSON and FHIR.** Split each handler into a service function returning
+  `Result<Domain, ApiError>`, rendered by the JSON and FHIR controllers; remove `read_back`
+  (`controllers/fhir.rs:69`) and its `unwrap_or_default` fallbacks. Depends on CQ-11 and CQ-16.
+  **Acceptance:** `fhir.rs` no longer calls JSON handlers; FHIR tests unchanged and green.
+- [ ] **CQ-14 (S) — Fail loudly on bad input and export.** A malformed `AuditEvent` query (`fhir.rs:472`) returns
+  400 `OperationOutcome`, not an unfiltered search; the NDJSON audit export (`controllers/audit.rs:269`) fails
+  instead of dropping a row; invalid `EPR_PASETO_KEYS` JSON fails startup (`auth.rs:110`); document or separate the
+  CSV formula guard so the exported value still matches its digest; `merged_into` past `MAX_DEPTH` is an error.
+  **Acceptance:** one test per path.
+- [ ] **CQ-15 (S) — No delete path in down migrations.** `down()` drops clinical tables (patient, consent,
+  relationship, allergy, photo, link, audit). Make it refuse for clinical tables, or allow it only in development
+  behind an explicit check.
+  **Acceptance:** a test runs `down` with a production environment and gets an error; the tables remain.
+- [ ] **CQ-16 (M/L) — Handler-level tests.** DB-gated `tests/http_*.rs` that drive `controllers::all_routes()` with
+  `loco_rs::testing` and PASETO test keys: consent masking of duplicate candidates, 409 shapes, the break-glass
+  flag, FHIR mapping of refusals.
+  **Acceptance:** each path listed as by-hand-only in `spec/index.md` has an automated test, or is listed as still
+  untested.
+- [ ] **CQ-17 (M) — Observability.** tower-http `TraceLayer`, `x-request-id` carried into the audit `detail`, and
+  Prometheus counters for audit-append failures, unaudited refusals and refused feed messages.
+  **Acceptance:** a test sees the request id in an audit row; `/metrics` exposes the counters.
+- [ ] **CQ-18 (L) — Audit chain throughput.** One global advisory lock (`audit.rs:25`) is held until the outer
+  commit, so audited requests run one at a time. Measure it (AS-6), then decide: a shorter critical section, or a
+  chain per partition with a periodic anchor. Spec change first.
+  **Acceptance:** the measured audited-write rate is recorded in `BENCHMARKS.md` with the decision.
+
+### Matcher
+
+- [ ] **CQ-19 (M/L) — Real-world names.** **Clinical.**
+  - Per-token family matching, so `Smith-Jones` does not match `Smithson`.
+  - Stop the average over the shorter given-name list from auto-linking `John` with `John Paul` (a twins risk).
+  - A nickname table.
+  - A phonetic signal, kept separate from string similarity.
+  - Transliteration (`Müller`/`Mueller`).
+  - Given/family swap detection.
+  - A `\p{M}`-aware fold, so Indic and Persian names are not split.
+  - E.164 phone normalisation.
+  - Shared phone or postcode counted as weak household evidence.
+  - `enum` codes for fields and conflicts instead of English strings.
+  - `MatchConfig::validate()`.
+
+  **Acceptance:** each rule has a named test, and the ID-1 labelled corpus shows no increase in false AutoLinks.
+- [ ] **CQ-30 (M) — Matcher test depth.** proptest for symmetry, totality and "removing a field never raises the
+  decision"; cargo-mutants on `engine.rs` and `nhs.rs`; a `cargo fuzz` target (closes part of SF-2).
+  **Acceptance:** surviving mutants are fixed or listed with a reason.
+
+### CI, release and documents
+
+- [ ] **CQ-20 (S) — Run CI for the first time.** Add a remote, push, and get `ci-ok` green; confirm every action
+  version exists (`checkout@v7`, `upload-artifact@v7`, `download-artifact@v8`, `attest-build-provenance@v4`).
+  **Acceptance:** a green run linked from `CHANGELOG.md`; SF-5 and SF-9 updated.
+- [ ] **CQ-21 (S/M) — Hazard-log gate.** Add `types: [opened, synchronize, reopened, labeled, unlabeled]` to the
+  `pull_request` trigger (ci.yml:9); fail a PR that moves a hazard to `accepted` or `closed` unless its author is on
+  a Clinical Safety Officer allow-list; a CODEOWNERS entry for `governance/clinical-safety/`; validate ISO dates.
+  **Acceptance:** fixture tests for `check-hazard-log.py` cover each rule.
+- [ ] **CQ-22 (S/M) — Release the UI image.** `release.yml` builds and pushes only the API image; add the UI with
+  provenance; set `org.opencontainers.image.source`.
+  **Acceptance:** a dry-run release produces both images.
+- [ ] **CQ-23 (M) — Supply chain.** Pin actions by SHA (Dependabot keeps them current), pin base images by digest,
+  add Dependabot `docker` entries, pin one pnpm version for CI and the Containerfile; give each `deny.toml` ignore a
+  crate, reason and re-check date, and set unknown sources to `deny`.
+  **Acceptance:** a CI check fails on an unpinned `uses:` line.
+- [ ] **CQ-24 (S) — Test selection.** The `api` job hard-codes `--test` names (ci.yml:63), so a new non-ignored test
+  file runs nowhere; use `cargo test --workspace --locked` and keep the `--ignored` job. Apply `ci/postgres-init` in
+  the CI Postgres.
+  **Acceptance:** a new test file runs in CI without a workflow edit.
+- [ ] **CQ-25 (M) — Missing gates.** Adds the gates that SF-5 and SE-7 call for. Each lands as its own job, and each job is a commit:
+  - an MSRV check (`cargo +1.97 check`);
+  - a ZAP baseline;
+  - Trivy or Grype on the images;
+  - an SBOM attestation and a cosign signature;
+  - `pnpm audit` or OSV;
+  - coverage reports (`cargo llvm-cov`, vitest);
+  - a weekly cargo-mutants run on the matcher and the policy engine;
+  - CodeQL and secret scanning.
+
+  **Acceptance:** all eight jobs exist and are green.
+- [ ] **CQ-26 (L) — Real-stack end-to-end.** A CI job runs compose with the Keycloak and UI profiles and a small
+  Playwright suite that does not stub the API.
+  - It covers sign-in, the BFF proxy, the CSP and one patient read.
+  - Playwright uses `127.0.0.1`, sets `retries` so traces are captured, and uploads its report when a test fails.
+
+  **Acceptance:** the job is green, and a deliberately broken proxy makes it fail.
+- [ ] **CQ-27 (S/M) — Container and compose hardening.** Hardens the containers and compose services:
+  - `read_only`, `cap_drop: [ALL]`, `no-new-privileges` and tmpfs for api, ui and migrate;
+  - an explicit UID for the UI image;
+  - the test Postgres and the API bound to `127.0.0.1`;
+  - a health check without `curl` in the runtime image.
+
+  **Acceptance:** the stack boots under compose with these settings, and `/_health` returns 200.
+- [ ] **CQ-28 (S) — Stale documents.** Brings these documents up to date:
+  - the hand-written area table in `spec/14-implementation-status.md`: generate it or delete it;
+  - the UI `AGENTS.md` ("patient pages not built");
+  - the `compose.yaml` break-the-glass comment;
+  - the `compose.test.yaml` `--test mod` instruction and its `mxi-` container names;
+  - the per-crate changelogs, which release notes read and which stop at 0.1.0, or else point release notes at the root changelog;
+  - the plan.md header ("no code exists").
+
+  **Acceptance:** `check-links.py` passes and a reviewer finds no contradiction among the files listed.
+- [ ] **CQ-29 (S) — Status generator and tasks hygiene.** Add `CQ` to the prefix loop in
+  `scripts/generate-status.sh:72`; trim the long inline status logs in tasks.md (ID-3, ID-4, SE-2, OR-3 and others,
+  up to 2,266 characters each) to a status line plus a CHANGELOG link; optionally warn on very long lines.
+  **Acceptance:** `generate-status.sh --check` passes and counts CQ.
+
+### UI
+
+- [ ] **CQ-31 (S) — Proxy and session resilience.** Adds `AbortSignal.timeout` to the upstream call
+  (`api/proxy/[...path]/+server.ts:43`).
+  - Transport errors map to 502 or 504 JSON.
+  - A session is kept on a transient refresh failure (`auth.ts:156`); it is deleted only on `invalid_grant`.
+  - The proxy forwards `Accepts-version`.
+  - `X-Forwarded-Proto` is trusted only behind a configured proxy.
+
+  **Acceptance:** each case has a unit test of the handler.
+- [ ] **CQ-32 (M) — Decoded responses and one request core.** Merge `call` and `sendBytes` (`src/lib/api.ts`), decode
+  each response against a schema instead of `as T`, and move the compare page onto it.
+  - One `handle(res, {ok, conflict, invalid})` helper replaces the status chains repeated on each page.
+
+  **Acceptance:** no `as T` on response bodies (grep census test); a malformed response shows an error, not a blank
+  field.
+- [ ] **CQ-33 (S) — In-flight and accessibility states.** Disable save, upload and withdraw while busy; give the loading
+  text `role="status"` and `aria-busy`; replace physical `left`/`right` CSS with logical properties for `dir="rtl"`.
+  **Acceptance:** an e2e double-click test makes one request; axe passes with `ar-001`.
+- [ ] **CQ-34 (M) — Translation readiness and local time.** **Clinical** (times). A message catalogue keyed by locale
+  with ICU plurals and placeholders instead of `STRINGS` and `.replace`.
+  - Times are shown with `Intl.DateTimeFormat` in local time, with the zone.
+  - Error codes come from the API, not raw English.
+
+  Translations stay marked machine-written.
+  **Acceptance:** a summer timestamp shows BST in `en-GB` (test).
+- [ ] **CQ-35 (M) — Component and server tests.** Component tests for the patient page and banner, plus tests for the
+  proxy handler and `hooks.server.ts`; split the photo and edit form out of `[id]/+page.svelte`.
+  **Acceptance:** each new test fails under a deliberate mutation of the code it covers.
+
+### New capabilities
+
+These are ranked in plan.md §14.3. Where a source is secondary only, the item says **[uncertain]**, and AS-11
+confirms it before anything depends on it.
+
+- [ ] **RC-10 (L) — Medication reconciliation.** **Clinical.** On admission, transfer and discharge, show the external
+  list (GP Connect, IPS or CCD) beside the local one.
+  - Each line is marked continue, stop or modify, with who decided, when and why (Provenance).
+  - It follows NHS DAPB4013 for the UK.
+  - It depends on RC-5, CA-1 and RC-3.
+
+  **Acceptance:** an e2e test reconciles a three-line list. Every decision is in the audit and in Provenance, and
+  an unreconciled line blocks "complete".
+- [ ] **AU-3 (M) — FHIR `AuditEvent` on IHE BALP.** `/fhir/R4/AuditEvent` read and search, profiled on BALP.
+  **Acceptance:** responses validate against BALP profiles in CI.
+- [ ] **ID-8 (M) — IHE PDQm and PIXm.** PDQm search and `$match`, and PIXm `$ihe-pix` over the matcher and the link
+  table (ID-5, ID-6).
+  **Acceptance:** the IHE Gazelle or Touchstone test scripts pass, or the gaps are listed.
+- [ ] **SE-10 (S/M) — Passkeys and fast user switching.** A Keycloak WebAuthn policy for clinicians, with tap-to-unlock
+  user switching on a shared workstation and an AAL mapping in the spec. NIST SP 800-63-4 wording is
+  **[uncertain]**.
+  **Acceptance:** a real-Keycloak test signs in with a virtual authenticator, and switching user ends the
+  previous session.
+- [ ] **DO-7 (M) — SDC adaptive forms.** `$populate` from the chart, `$extract` to Observations, and
+  `$next-question`, on SDC STU4. This scopes DO-4.
+  **Acceptance:** a form prefills from the record, and `$extract` writes Observations with Provenance.
+- [ ] **DO-8 (M) — Ambient scribe governance.** **Clinical.** A capture-consent record, and a required review with the
+  transcript beside the draft.
+  - Every AI-drafted note carries agent Provenance, and a DCB0160 deployer template is included.
+  - It builds on DO-6. The current NHS England and MHRA guidance version is **[uncertain]**.
+
+  **Acceptance:** a note drafted by an agent cannot be signed until its review is recorded (test).
+- [ ] **SE-11 (M) — AI agent / MCP access boundary.** **Clinical.** Agents are their own principal type, with per-tool
+  scopes.
+  - Every call passes the policy engine, consent and audit.
+  - A FHIR-scoped MCP server is read-only first.
+
+  **Acceptance:** an agent without the scope gets 403 (audited), and an agent read is shown in the patient
+  access log as an agent.
+- [ ] **IO-9 (L) — NHS national APIs.** Split into one item per API before it is scheduled: PDS FHIR (with ID-2), GP
+  Connect Access Record Structured (STU3 adapter), NRL and BaRS (with CA-3). Current NRL and BaRS versions are
+  **[uncertain]**.
+  **Acceptance:** each sub-item passes the NHS sandbox conformance tests.
+- [ ] **IO-10 (M) — SMART Health Links and Cards.** The portal issues an encrypted link or QR code to the patient's IPS,
+  and registration can scan one into the duplicate check (ID-4).
+  **Acceptance:** a link round-trips, expires on time, and every access is audited.
+- [ ] **IO-11 (S/M) — European Patient Summary.** Validate `$summary` against IPS 2.0 and HL7 Europe EPS, ahead of
+  EHDS. Dates are **[uncertain]**.
+  **Acceptance:** the validator passes in CI on demo patients.
+- [ ] **SE-12 (S then M) — Post-quantum readiness.** A crypto inventory (audit MAC, PASETO, TLS, at-rest keys) and an
+  algorithm identifier on every signed or MACed artefact, so it can be migrated later, following the NCSC 2028/2031/2035 timeline.
+  **Acceptance:** the inventory is in `spec/`, and the audit chain verifies across an algorithm change in a test.
+- [ ] **RC-11 (M) — Patient-generated and device observations.** **Clinical.** Readings from the portal or a device
+  gateway are tagged by source. They stay out of flowsheets and early-warning scores until a clinician accepts them.
+  **Acceptance:** an unaccepted reading never changes NEWS2 (test).
+- [ ] **AS-12 (S) — Accessibility conformance evidence.** A manual screen-reader audit (NVDA, VoiceOver), an ACR or
+  VPAT, and the accessibility statement for the portal. The HHS Section 504 dates are **[uncertain]**.
+  **Acceptance:** the report is in `governance/` with its remediation list.
+- [ ] **OR-8 (L) — Electronic prior authorisation (US).** Da Vinci CRD through CDS Hooks `order-sign`, DTR on DO-7, and
+  PAS submission. US only (OQ-4), and the dates are **[uncertain]**.
+  **Acceptance:** the Da Vinci reference implementations accept a round trip.
+- [ ] **IO-12 (M) — Single Patient Record feed (England).** Watch item until a specification exists, then an outbound
+  feed through IO-4 and IO-6. Bill status is **[uncertain]**.
+  **Acceptance:** an OQ entry records the decision. Build only once a specification is published.
+- [ ] **IO-13 (L) — TEFCA via Facilitated FHIR (US).** Participant or subparticipant query for Treatment and IAS, using
+  IO-2 with UDAP. The SOP text is **[uncertain]**.
+  **Acceptance:** a connection test against a QHIN sandbox.
+- [ ] **OR-9 (L) — UK EPS FHIR Prescribing (post-1.0).** Prescribe, cancel and sign through the EPS Prescribing API.
+  It needs CIS2 high assurance. §7.2 keeps it out of 1.0.
+  **Acceptance:** EPS sandbox conformance.
+- [ ] **IO-14 (M) — Digital quality measures (post-1.0).** CQL on QI-Core, run over SQL-on-FHIR (IO-7) or Bulk
+  export (IO-4) and never against the clinical database. The CMS dates are **[uncertain]**.
+  **Acceptance:** one published dQM gives the expected counts on demo data.
+- [ ] **CA-8 (M) — Offline-first entry spike.** A client outbox of append-only writes, merged with conflict review by
+  Provenance. This resolves OQ-5.
+  **Acceptance:** a written spike result, with a decision recorded in `spec/16-open-questions.md`.
+- [ ] **RC-12 (M) — Genomics reporting (post-1.0).** FHIR Genomics Reporting STU3 results in the results inbox (OR-4).
+  **Acceptance:** an example report renders, and its variants are searchable.
+- [ ] **IO-15 (S) — FHIR R6 watch.** A spec note that keeps storage version-neutral, revisited when R6 is final.
+  **Acceptance:** the note is in `spec/09-api-surface.md`, with a re-check date.
