@@ -88,6 +88,19 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
   remote) and the label has to be applied by a person. Seven hazards are `open` with no adequate control (e.g. H-008,
   no emergency access).
 
+## 2026-10-21 - Audit read API (AU-2)
+
+- `GET /api/audit` and `GET /fhir/R4/AuditEvent`: search the audit trail, auditor role only, newest first, 50 per page.
+  `audit::search` builds one parameterised query (no string-built SQL; dates are checked by the database before use, so a
+  bad date is 400, not 500). A search writes its own audit row with the names of the criteria, not their values. New
+  `interop::fhir_audit` (typed R4 `AuditEvent`, validated). The route table and census know the two routes.
+  Tests: 1 Postgres (every filter, paging, blank criteria, injection-shaped input), 3 + 1 unit, and by hand and in the
+  real-Keycloak suite (no token 401, clinician 403 with the refusal visible to the auditor, auditor 200).
+- **Not done:** `le`/`gt` date prefixes (the store compares whole instants), full-text search of `detail`, export, an
+  AuditEvent `read` by id, the digests in the output, any IHE BALP conformance claim (purpose-of-use codes are local),
+  and a patient-facing use of this search (the patient log, SE-6, has its own narrower endpoint). The gate's 403 is a plain
+  `forbidden`, not an `OperationOutcome`, on the FHIR routes.
+
 ## [0.1.0] - 2026-10-20
 
 Milestone M0, scaffold. **Not for clinical use.**

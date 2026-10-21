@@ -568,3 +568,124 @@ async fn rows_under_a_key_we_do_not_hold_are_unchecked_not_broken_and_a_real_bre
     assert!(head.is_some());
     s.finish().await;
 }
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn the_audit_search_filters_pages_newest_first_and_refuses_bad_criteria() {
+    use electronic_patient_record::audit::{AuditQuery, SearchError, search};
+
+    let chain = Chain::unkeyed();
+    let s = Scratch::new().await;
+    let p1 = "3b0c6f0e-2222-4222-8222-000000000001";
+    let mut ids = vec![];
+    for n in 0..6 {
+        let mut e = event(n); // agents user-0.., actions alternate R and U
+        e.patient_ref = Some(format!("Patient/{}", if n < 4 { p1 } else { "other" }));
+        e.purpose_of_use = Some(if n == 2 { "emergency" } else { "treatment" }.into());
+        e.break_glass = n == 2;
+        e.outcome = if n == 5 { 4 } else { 0 };
+        ids.push(audit::append(&s.db, &chain, &e).await.unwrap());
+    }
+    let ids_of = |rows: Vec<electronic_patient_record::audit::AuditRow>| -> Vec<i64> {
+        rows.into_iter().map(|r| r.id).collect()
+    };
+    let q = |f: &dyn Fn(&mut AuditQuery)| {
+        let mut q = AuditQuery::default();
+        f(&mut q);
+        q
+    };
+    // Newest first; no criteria returns everything (here, 6 rows).
+    let all = search(&s.db, &AuditQuery::default()).await.unwrap();
+    assert_eq!(ids_of(all), ids.iter().rev().copied().collect::<Vec<_>>());
+    // One criterion at a time.
+    let by_agent = search(&s.db, &q(&|q| q.agent = Some("user-1".into())))
+        .await
+        .unwrap();
+    assert_eq!(ids_of(by_agent), vec![ids[1]]);
+    let by_patient = search(&s.db, &q(&|q| q.patient = Some(p1.to_uppercase())))
+        .await
+        .unwrap();
+    assert_eq!(ids_of(by_patient), vec![ids[3], ids[2], ids[1], ids[0]]);
+    let by_action = search(&s.db, &q(&|q| q.action = Some("U".into())))
+        .await
+        .unwrap();
+    assert_eq!(ids_of(by_action), vec![ids[5], ids[3], ids[1]]);
+    let by_outcome = search(&s.db, &q(&|q| q.outcome = Some(4))).await.unwrap();
+    assert_eq!(ids_of(by_outcome), vec![ids[5]]);
+    let glass = search(&s.db, &q(&|q| q.break_glass = Some(true)))
+        .await
+        .unwrap();
+    assert_eq!(ids_of(glass), vec![ids[2]]);
+    let purpose = search(&s.db, &q(&|q| q.purpose = Some("emergency".into())))
+        .await
+        .unwrap();
+    assert_eq!(ids_of(purpose), vec![ids[2]]);
+    // Combined, and paged by `before`.
+    let both = search(
+        &s.db,
+        &q(&|q| {
+            q.patient = Some(p1.into());
+            q.action = Some("R".into());
+        }),
+    )
+    .await
+    .unwrap();
+    assert_eq!(ids_of(both), vec![ids[2], ids[0]]);
+    let older = search(&s.db, &q(&|q| q.before = Some(ids[3])))
+        .await
+        .unwrap();
+    assert_eq!(ids_of(older), vec![ids[2], ids[1], ids[0]]);
+    // Dates: everything happened today; nothing before 2000, everything from 2000, none from 2999.
+    assert!(
+        search(&s.db, &q(&|q| q.to = Some("2000-01-01".into())))
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    assert_eq!(
+        search(&s.db, &q(&|q| q.from = Some("2000-01-01T00:00:00Z".into())))
+            .await
+            .unwrap()
+            .len(),
+        6
+    );
+    assert!(
+        search(&s.db, &q(&|q| q.from = Some("2999-01-01".into())))
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    // A blank text criterion (an empty form field) is no criterion.
+    let blank = q(&|q| {
+        q.agent = Some(String::new());
+        q.purpose = Some("  ".into());
+        q.from = Some(String::new());
+    });
+    assert_eq!(search(&s.db, &blank).await.unwrap().len(), 6);
+    assert!(blank.normalized().used().is_empty());
+    // Bad criteria are a BadQuery, not a database error.
+    for bad in [
+        q(&|q| q.action = Some("X".into())),
+        q(&|q| q.outcome = Some(5)),
+        q(&|q| q.from = Some("yesterday".into())),
+        q(&|q| q.to = Some("2026-02-30".into())),
+        q(&|q| q.from = Some("2026-01-01'; DROP TABLE audit_events; --".into())),
+    ] {
+        assert!(
+            matches!(search(&s.db, &bad).await, Err(SearchError::BadQuery(_))),
+            "{bad:?}"
+        );
+    }
+    // The search is read-only and the table is intact.
+    assert_eq!(
+        audit::verify(&s.db, &chain).await.unwrap(),
+        Verdict::Intact { rows: 6 }
+    );
+    // A page is at most SEARCH_LIMIT + 1 rows: the extra one says there is more.
+    for n in 6..(6 + audit::SEARCH_LIMIT as usize) {
+        audit::append(&s.db, &chain, &event(n)).await.unwrap();
+    }
+    let page = search(&s.db, &AuditQuery::default()).await.unwrap();
+    assert_eq!(page.len() as i64, audit::SEARCH_LIMIT + 1);
+    s.finish().await;
+}

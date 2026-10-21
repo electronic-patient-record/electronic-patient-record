@@ -48,6 +48,13 @@ pub const TABLE: &[(&str, &str, Resource, Action)] = &[
         Resource::PatientIdentity,
         Action::Update,
     ),
+    ("GET", "/api/audit", Resource::AuditLog, Action::Search),
+    (
+        "GET",
+        "/fhir/R4/AuditEvent",
+        Resource::AuditLog,
+        Action::Search,
+    ),
     ("GET", "/api/audit/verify", Resource::AuditLog, Action::Read),
     (
         "POST",

@@ -470,3 +470,43 @@ test("the FHIR Patient endpoint creates, reads, searches and refuses a stale upd
   });
   expect(stale.status).toBe(412);
 });
+
+const AUDITOR = process.env.EPR_E2E_AUDITOR_USERNAME ?? "";
+
+test("only an auditor can search the audit trail, and each search is itself recorded", async () => {
+  test.skip(
+    !ADMIN || !AUDITOR,
+    "set EPR_E2E_ADMIN_USERNAME and EPR_E2E_AUDITOR_USERNAME",
+  );
+  const get = async (user: string, path: string) => {
+    const res = await fetch(`${API}${path}`, {
+      headers: { authorization: `Bearer ${await devToken(user)}` },
+    });
+    return {
+      status: res.status,
+      body: (await res.json().catch(() => null)) as any,
+    };
+  };
+  // A non-auditor is refused, and the refusal is in the trail the auditor then reads.
+  expect((await get(ADMIN, "/api/audit")).status).toBe(403);
+  expect((await get(ADMIN, "/fhir/R4/AuditEvent")).status).toBe(403);
+  const refused = await get(AUDITOR, "/api/audit?outcome=4&purpose=");
+  expect(refused.status).toBe(200);
+  expect(
+    refused.body.events.some(
+      (e: any) => e.resource === "/api/audit" && e.outcome === 4,
+    ),
+  ).toBe(true);
+
+  // The auditor's own search wrote a row naming the criteria, not their values.
+  const mine = await get(AUDITOR, "/api/audit?action=R");
+  const search = mine.body.events.find(
+    (e: any) =>
+      e.resource === "AuditLog" && e.detail?.search?.includes("outcome"),
+  );
+  expect(search?.detail.search).toEqual(["outcome"]);
+
+  const fhir = await get(AUDITOR, "/fhir/R4/AuditEvent?outcome=4");
+  expect(fhir.body.resourceType).toBe("Bundle");
+  expect(fhir.body.entry[0].resource.resourceType).toBe("AuditEvent");
+});

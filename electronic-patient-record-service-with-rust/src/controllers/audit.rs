@@ -3,6 +3,10 @@
 //! `GET /api/audit/verify` recomputes the hash chain and reports whether it is intact. It is for
 //! the `auditor` role. Verifying is itself an access to the audit log, so it writes its own audit
 //! row (and answers 500 without a result if it cannot).
+//!
+//! `GET /api/audit` searches the trail (task AU-2), newest first, 50 per page. Auditor only. A
+//! search is an access to the audit log, so it writes its own row naming which criteria were used
+//! and how many rows came back, not their values.
 
 use super::patients::{authorize, json_error};
 use crate::audit::{self, Action, Chain, Event, Head, Verdict};
@@ -139,6 +143,73 @@ pub async fn verify_audited(
     Ok((status, body))
 }
 
+/// Search the audit trail and audit the search. Shared by the JSON and FHIR endpoints, which only
+/// differ in how the rows are shown.
+pub(super) async fn search_audited(
+    db: &DatabaseConnection,
+    agent: &Agent,
+    query: &audit::AuditQuery,
+) -> Result<(Vec<audit::AuditRow>, Option<i64>), Result<String, audit::AuditError>> {
+    let query = &query.normalized();
+    let mut rows = audit::search(db, query).await.map_err(|e| match e {
+        audit::SearchError::BadQuery(m) => Ok(m),
+        audit::SearchError::Audit(a) => Err(a),
+    })?;
+    let page = usize::try_from(audit::SEARCH_LIMIT).unwrap_or(usize::MAX);
+    let more = rows.len() > page;
+    rows.truncate(page);
+    let next = if more {
+        rows.last().map(|r| r.id)
+    } else {
+        None
+    };
+    let mut event = Event::new(Action::Read, agent.0.clone());
+    event.resource_ref = Some("AuditLog".to_string());
+    event.purpose_of_use = Some(Purpose::Audit.code().to_string());
+    event.detail = Some(serde_json::json!({ "search": query.used(), "results": rows.len() }));
+    audit::append(db, audit::chain(), &event)
+        .await
+        .map_err(Err)?;
+    Ok((rows, next))
+}
+
+async fn search(
+    State(ctx): State<AppContext>,
+    Extension(agent): Extension<Agent>,
+    Extension(subject): Extension<Subject>,
+    Query(query): Query<audit::AuditQuery>,
+) -> Response {
+    if let Err(r) = authorize(
+        &ctx.db,
+        &agent,
+        &subject,
+        Resource::AuditLog,
+        policy::Action::Search,
+        Purpose::Audit,
+        None,
+    )
+    .await
+    {
+        return *r;
+    }
+    match search_audited(&ctx.db, &agent, &query).await {
+        Ok((rows, next)) => {
+            axum::Json(serde_json::json!({ "events": rows, "next": next })).into_response()
+        }
+        Err(Ok(message)) => json_error(
+            StatusCode::BAD_REQUEST,
+            serde_json::json!({ "error": message }),
+        ),
+        Err(Err(e)) => {
+            tracing::error!(error = %e, "audit search failed");
+            json_error(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                serde_json::json!({"error": "internal error"}),
+            )
+        }
+    }
+}
+
 async fn verify(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -180,5 +251,6 @@ async fn verify(
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("api/audit")
+        .add("/", get(search))
         .add("/verify", get(verify))
 }

@@ -525,6 +525,208 @@ pub async fn patient_log(
         .collect()
 }
 
+/// Criteria for [`search`]. Every field narrows; none set returns the newest rows.
+#[derive(Debug, Default, Clone, PartialEq, Eq, serde::Deserialize)]
+pub struct AuditQuery {
+    /// Who did it: the token `sub`, exactly.
+    pub agent: Option<String>,
+    /// The patient: a bare id, matched case-insensitively against `Patient/<id>`.
+    pub patient: Option<String>,
+    /// `C`, `R`, `U`, `D` or `E`.
+    pub action: Option<String>,
+    /// 0, 4, 8 or 12.
+    pub outcome: Option<i16>,
+    /// A purpose-of-use code, exactly.
+    pub purpose: Option<String>,
+    /// Only break-the-glass rows (`true`) or only the others (`false`).
+    pub break_glass: Option<bool>,
+    /// Not before this instant: `YYYY-MM-DD` or `YYYY-MM-DDTHH:MM:SSZ`, inclusive.
+    pub from: Option<String>,
+    /// Before this instant, same formats, exclusive.
+    pub to: Option<String>,
+    /// Rows older than this id (the previous page's `next`).
+    pub before: Option<i64>,
+}
+
+impl AuditQuery {
+    /// The same query with blank text criteria removed, so `?agent=` (an empty form field) means
+    /// "no criterion" rather than "no row".
+    #[must_use]
+    pub fn normalized(&self) -> AuditQuery {
+        let keep = |v: &Option<String>| v.clone().filter(|s| !s.trim().is_empty());
+        AuditQuery {
+            agent: keep(&self.agent),
+            patient: keep(&self.patient),
+            action: keep(&self.action),
+            outcome: self.outcome,
+            purpose: keep(&self.purpose),
+            break_glass: self.break_glass,
+            from: keep(&self.from),
+            to: keep(&self.to),
+            before: self.before,
+        }
+    }
+
+    /// The names of the criteria that were set, for the audit row of the search itself (the values
+    /// are identifiers and stay out of it).
+    #[must_use]
+    pub fn used(&self) -> Vec<&'static str> {
+        [
+            ("agent", self.agent.is_some()),
+            ("patient", self.patient.is_some()),
+            ("action", self.action.is_some()),
+            ("outcome", self.outcome.is_some()),
+            ("purpose", self.purpose.is_some()),
+            ("break_glass", self.break_glass.is_some()),
+            ("from", self.from.is_some()),
+            ("to", self.to.is_some()),
+            ("before", self.before.is_some()),
+        ]
+        .into_iter()
+        .filter_map(|(k, set)| set.then_some(k))
+        .collect()
+    }
+}
+
+/// One audit row as an auditor sees it. The digests are left out: use the verify endpoint.
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+pub struct AuditRow {
+    /// Row id.
+    pub id: i64,
+    /// When, UTC with microseconds.
+    pub at: String,
+    /// `C`, `R`, `U`, `D` or `E`.
+    pub action: String,
+    /// 0, 4, 8 or 12.
+    pub outcome: i16,
+    /// The token `sub`.
+    pub agent: String,
+    /// `Patient/<id>` when the access named one.
+    pub patient: Option<String>,
+    /// What was accessed.
+    pub resource: Option<String>,
+    /// The declared purpose of use.
+    pub purpose: Option<String>,
+    /// Whether break-the-glass was used.
+    pub break_glass: bool,
+    /// Caller's address, when recorded.
+    pub network_address: Option<String>,
+    /// Structured detail; never holds demographics or consent content by rule.
+    pub detail: Option<serde_json::Value>,
+}
+
+/// Why a search failed.
+#[derive(Debug)]
+pub enum SearchError {
+    /// The criteria were not understood; the message says which.
+    BadQuery(String),
+    /// The rows could not be read.
+    Audit(AuditError),
+}
+
+/// The most rows [`search`] returns.
+pub const SEARCH_LIMIT: i64 = 50;
+
+/// Newest-first rows matching `q`, at most [`SEARCH_LIMIT`] + 1 (the extra row tells the caller
+/// there is another page).
+///
+/// # Errors
+///
+/// [`SearchError::BadQuery`] for an unknown action, outcome or date; [`SearchError::Audit`] when
+/// the rows cannot be read.
+pub async fn search(db: &DatabaseConnection, q: &AuditQuery) -> Result<Vec<AuditRow>, SearchError> {
+    let q = &q.normalized();
+    if let Some(a) = &q.action
+        && !matches!(a.as_str(), "C" | "R" | "U" | "D" | "E")
+    {
+        return Err(SearchError::BadQuery(
+            "action must be one of C, R, U, D, E".into(),
+        ));
+    }
+    if let Some(o) = q.outcome
+        && !matches!(o, 0 | 4 | 8 | 12)
+    {
+        return Err(SearchError::BadQuery(
+            "outcome must be 0, 4, 8 or 12".into(),
+        ));
+    }
+    for (name, v) in [("from", &q.from), ("to", &q.to)] {
+        if let Some(v) = v {
+            let shaped = v.len() >= 10
+                && v.is_char_boundary(10)
+                && v[..10].bytes().enumerate().all(|(i, b)| {
+                    if i == 4 || i == 7 {
+                        b == b'-'
+                    } else {
+                        b.is_ascii_digit()
+                    }
+                })
+                && (v.len() == 10 || (v.as_bytes()[10] == b'T' && v.ends_with('Z')));
+            let valid = shaped
+                && db
+                    .query_one_raw(pg("SELECT $1::timestamptz AS t", vec![v.clone().into()]))
+                    .await
+                    .is_ok();
+            if !valid {
+                return Err(SearchError::BadQuery(format!(
+                    "{name} must be YYYY-MM-DD or YYYY-MM-DDTHH:MM:SSZ"
+                )));
+            }
+        }
+    }
+    let rows = db
+        .query_all_raw(pg(
+            &format!(
+                "SELECT id, to_char(recorded_at AT TIME ZONE 'UTC', '{TS_FORMAT}') AS ts,
+                        action::text AS action, outcome, agent, patient_ref, resource_ref,
+                        purpose_of_use, break_glass, network_address, detail
+                 FROM audit_events
+                 WHERE ($1::text IS NULL OR agent = $1)
+                   AND ($2::text IS NULL OR lower(patient_ref) = 'patient/' || lower($2))
+                   AND ($3::text IS NULL OR action::text = $3)
+                   AND ($4::smallint IS NULL OR outcome = $4)
+                   AND ($5::text IS NULL OR purpose_of_use = $5)
+                   AND ($6::boolean IS NULL OR break_glass = $6)
+                   AND ($7::text IS NULL OR recorded_at >= $7::timestamptz)
+                   AND ($8::text IS NULL OR recorded_at < $8::timestamptz)
+                   AND ($9::bigint IS NULL OR id < $9)
+                 ORDER BY id DESC LIMIT $10"
+            ),
+            vec![
+                q.agent.clone().into(),
+                q.patient.clone().into(),
+                q.action.clone().into(),
+                q.outcome.into(),
+                q.purpose.clone().into(),
+                q.break_glass.into(),
+                q.from.clone().into(),
+                q.to.clone().into(),
+                q.before.into(),
+                (SEARCH_LIMIT + 1).into(),
+            ],
+        ))
+        .await
+        .map_err(|e| SearchError::Audit(err(e)))?;
+    rows.iter()
+        .map(|r| {
+            let e = |x| SearchError::Audit(err(x));
+            Ok(AuditRow {
+                id: r.try_get("", "id").map_err(e)?,
+                at: r.try_get("", "ts").map_err(e)?,
+                action: r.try_get("", "action").map_err(e)?,
+                outcome: r.try_get("", "outcome").map_err(e)?,
+                agent: r.try_get("", "agent").map_err(e)?,
+                patient: r.try_get("", "patient_ref").map_err(e)?,
+                resource: r.try_get("", "resource_ref").map_err(e)?,
+                purpose: r.try_get("", "purpose_of_use").map_err(e)?,
+                break_glass: r.try_get("", "break_glass").map_err(e)?,
+                network_address: r.try_get("", "network_address").map_err(e)?,
+                detail: r.try_get("", "detail").map_err(e)?,
+            })
+        })
+        .collect()
+}
+
 /// A row's id and digest: the chain's head at some moment. Published somewhere the database's
 /// owner cannot write, it is what lets a later check notice that the newest rows were removed.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

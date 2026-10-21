@@ -1,4 +1,4 @@
-//! `/fhir/R4/Patient`: the identity record as a FHIR R4 `Patient` (task ID-3).
+//! `/fhir/R4/Patient` (task ID-3) and `/fhir/R4/AuditEvent` (task AU-2).
 //!
 //! A thin translation over the JSON handlers in `patients.rs`: each request is turned into the
 //! JSON request, the *same handler* runs (so the role gate, relationship, consent, purpose of use
@@ -12,14 +12,18 @@
 //! silently dropped. A possible duplicate is refused (409) without the candidates: override it
 //! through `/api/patients`, where the reason is recorded.
 
+use super::audit::search_audited;
+use super::patients::authorize;
 use super::patients::{self, CreateRequest, UpdateRequest};
 use crate::auth::Agent;
+use crate::interop::fhir_audit;
 use crate::interop::fhir_patient::{from_fhir_json, to_fhir};
 use crate::patients_store::{Search, Stored};
 use crate::policy::Subject;
+use crate::policy::{self, Purpose, Resource};
 use axum::{
     Extension,
-    extract::{Json, Path, Query},
+    extract::{Json, Path, Query, RawQuery},
     http::{HeaderMap, HeaderValue, StatusCode, header},
     response::{IntoResponse, Response},
 };
@@ -371,6 +375,119 @@ async fn update_patient(
     one(r, StatusCode::OK, true).await
 }
 
+/// AuditEvent search parameters as audit criteria. `date` may repeat with `ge` and `lt` prefixes
+/// (an inclusive start and an exclusive end); `le` and `gt` are refused because the store compares
+/// whole instants and an exact answer needs the other bound. `patient` takes a bare id or
+/// `Patient/<id>`. Unknown parameters are ignored.
+fn audit_query_from(pairs: &[(String, String)]) -> Result<crate::audit::AuditQuery, String> {
+    let mut q = crate::audit::AuditQuery::default();
+    for (key, value) in pairs {
+        match key.as_str() {
+            "agent" => q.agent = Some(value.clone()),
+            "patient" => {
+                q.patient = Some(value.strip_prefix("Patient/").unwrap_or(value).to_string())
+            }
+            "action" => q.action = Some(value.clone()),
+            "outcome" => {
+                q.outcome = Some(
+                    value
+                        .parse()
+                        .map_err(|_| "outcome must be 0, 4, 8 or 12".to_string())?,
+                );
+            }
+            "_before" => {
+                q.before = Some(
+                    value
+                        .parse()
+                        .map_err(|_| "_before must be a row id".to_string())?,
+                );
+            }
+            "date" => {
+                if let Some(v) = value.strip_prefix("ge") {
+                    q.from = Some(v.to_string());
+                } else if let Some(v) = value.strip_prefix("lt") {
+                    q.to = Some(v.to_string());
+                } else {
+                    return Err("date supports only the ge and lt prefixes".to_string());
+                }
+            }
+            _ => {}
+        }
+    }
+    Ok(q)
+}
+
+async fn search_audit_events(
+    State(ctx): State<AppContext>,
+    Extension(agent): Extension<Agent>,
+    Extension(subject): Extension<Subject>,
+    RawQuery(raw): RawQuery,
+) -> Response {
+    let raw = raw.unwrap_or_default();
+    let pairs: Vec<(String, String)> = serde_urlencoded::from_str(&raw).unwrap_or_default();
+    let query = match audit_query_from(&pairs) {
+        Ok(q) => q,
+        Err(m) => return outcome(StatusCode::BAD_REQUEST, "not-supported", &m),
+    };
+    if let Err(r) = authorize(
+        &ctx.db,
+        &agent,
+        &subject,
+        Resource::AuditLog,
+        policy::Action::Search,
+        Purpose::Audit,
+        None,
+    )
+    .await
+    {
+        let (status, body) = read_back(*r).await;
+        return error_outcome(status, &body, false);
+    }
+    match search_audited(&ctx.db, &agent, &query).await {
+        Ok((rows, next)) => {
+            let entries: Result<Vec<_>, String> = rows
+                .iter()
+                .map(|r| {
+                    let resource = fhir_audit::to_fhir(r)?;
+                    Ok(serde_json::json!({
+                        "fullUrl": format!("{BASE}/AuditEvent/{}", r.id),
+                        "resource": serde_json::to_value(resource).map_err(|e| e.to_string())?,
+                        "search": { "mode": "match" },
+                    }))
+                })
+                .collect();
+            let Ok(entries) = entries else {
+                return internal("an audit row the FHIR model rejects");
+            };
+            let mut bundle = serde_json::json!({
+                "resourceType": "Bundle", "type": "searchset", "entry": entries,
+            });
+            if let Some(id) = next {
+                let kept: Vec<(String, String)> =
+                    pairs.into_iter().filter(|(k, _)| k != "_before").collect();
+                let mut qs = serde_urlencoded::to_string(&kept).unwrap_or_default();
+                if !qs.is_empty() {
+                    qs.push('&');
+                }
+                bundle["link"] = serde_json::json!([{
+                    "relation": "next",
+                    "url": format!("{BASE}/AuditEvent?{qs}_before={id}"),
+                }]);
+            }
+            fhir(StatusCode::OK, &bundle, None)
+        }
+        Err(Ok(message)) => outcome(StatusCode::BAD_REQUEST, "invalid", &message),
+        Err(Err(e)) => {
+            tracing::error!(error = %e, "audit search failed");
+            outcome(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "exception",
+                "internal error",
+            )
+        }
+    }
+}
+
 /// What this server does, as a FHIR `CapabilityStatement`.
 fn capability() -> serde_json::Value {
     serde_json::json!({
@@ -401,6 +518,17 @@ fn capability() -> serde_json::Value {
                     { "name": "birthdate", "type": "date", "documentation": "exact date only" },
                     { "name": "identifier", "type": "token" },
                 ],
+            }, {
+                "type": "AuditEvent",
+                "interaction": [{ "code": "search-type" }],
+                "documentation": "Auditor role only. Every search is itself audited.",
+                "searchParam": [
+                    { "name": "agent", "type": "token", "documentation": "the token subject, exactly" },
+                    { "name": "patient", "type": "reference" },
+                    { "name": "action", "type": "token" },
+                    { "name": "outcome", "type": "token" },
+                    { "name": "date", "type": "date", "documentation": "ge and lt prefixes only" },
+                ],
             }],
         }],
     })
@@ -420,6 +548,7 @@ pub fn routes() -> Routes {
         .add("/Patient", post(create_patient))
         .add("/Patient/{id}", get(read_patient))
         .add("/Patient/{id}", put(update_patient))
+        .add("/AuditEvent", get(search_audit_events))
 }
 
 #[cfg(test)]
@@ -601,5 +730,38 @@ mod tests {
         let resource: Result<fhir::r4::resources::Resource, _> =
             serde_json::from_value(capability());
         assert!(resource.is_ok(), "{:?}", resource.err());
+    }
+
+    #[test]
+    fn audit_search_parameters_map_and_unsupported_date_prefixes_are_refused() {
+        let pairs = |v: &[(&str, &str)]| -> Vec<(String, String)> {
+            v.iter().map(|(k, v)| ((*k).into(), (*v).into())).collect()
+        };
+        let q = audit_query_from(&pairs(&[
+            ("agent", "sub-1"),
+            ("patient", "Patient/abc"),
+            ("action", "R"),
+            ("outcome", "4"),
+            ("date", "ge2026-10-01"),
+            ("date", "lt2026-11-01"),
+            ("_before", "90"),
+            ("_count", "5"),
+        ]))
+        .unwrap();
+        assert_eq!(q.agent.as_deref(), Some("sub-1"));
+        assert_eq!(q.patient.as_deref(), Some("abc"));
+        assert_eq!((q.action.as_deref(), q.outcome), (Some("R"), Some(4)));
+        assert_eq!(q.from.as_deref(), Some("2026-10-01"));
+        assert_eq!(q.to.as_deref(), Some("2026-11-01"));
+        assert_eq!(q.before, Some(90));
+        for bad in [
+            ("date", "le2026-10-01"),
+            ("date", "gt2026-10-01"),
+            ("date", "2026-10-01"),
+            ("outcome", "x"),
+            ("_before", "x"),
+        ] {
+            assert!(audit_query_from(&pairs(&[bad])).is_err(), "{bad:?}");
+        }
     }
 }
