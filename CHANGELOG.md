@@ -2,6 +2,32 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-21 - The duplicate check keeps the strongest candidates when it must cut (CQ-36)
+
+- The duplicate check compared at most 200 candidates, taken in patient-id order, which is arbitrary. When more than
+  200 records shared the birth date or the family name, the real duplicate could be dropped without notice (found by
+  the CQ-10 test). Candidates are now ranked before the cut:
+  1. a shared identifier;
+  2. the same family name and birth date together;
+  3. birth date alone;
+  4. family name alone.
+
+  The query fetches one more than the limit, so it knows when it cut. `candidates_ranked` returns the list and the
+  flag; `candidates` keeps its signature.
+- A cut list is reported: `candidates_cut` in the 409, in the registration's audit row (refused or overridden) and in
+  the HL7 feed's audit row. The registration page then adds "only the closest 200 were compared… search before
+  registering anyway". Hazard H-002 updated.
+- Tests:
+  - a Postgres test puts 250 records on one birth date. The record sharing the NHS number ranks first, the one with
+    the same family name and birth date second, and the cut is reported. It failed with the old ordering;
+  - a Playwright test with axe: the note appears for a cut list and not otherwise.
+  - 161 unit and 70 Postgres tests pass; check clean, 98 vitest, 43 Playwright.
+- **Not done:**
+  - a record sharing only a name or only a birth date can still be cut. A Smith with a mistyped birth date is the
+    case that matters, and catching it needs proper blocking keys (RC-2);
+  - an HL7 create with a cut list is not refused (that would refuse every common family name). It is only flagged in
+    the audit row.
+
 ## 2026-10-21 - Consent for many patients in two queries (CQ-10)
 
 - The consent check behind search and the duplicate check read each patient's merged-in records and their consents

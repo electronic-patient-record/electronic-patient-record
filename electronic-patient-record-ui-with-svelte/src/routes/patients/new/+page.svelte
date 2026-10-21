@@ -22,6 +22,8 @@
   let problems = $state<string[]>([]);
   let message = $state<string | null>(null);
   let candidates = $state<Candidate[]>([]);
+  // More records matched than the server compares; only the closest were (CQ-36).
+  let candidatesCut = $state(false);
   // What was submitted, so the side-by-side view does not change while the form is edited.
   let submitted = $state<PatientForm>(emptyForm());
   let busy = $state(false);
@@ -36,10 +38,15 @@
     busy = true;
     if (!override) {
       candidates = [];
+      candidatesCut = false;
       submitted = { ...form };
     }
     const res = await call<
-      Stored & { errors?: string[]; candidates?: Candidate[] }
+      Stored & {
+        errors?: string[];
+        candidates?: Candidate[];
+        candidates_cut?: boolean;
+      }
     >("POST", "/api/patients", {
       patient: formToPatient(override ? submitted : form),
       reason: reason.trim() || undefined,
@@ -53,6 +60,7 @@
       await goto(localizePath(`/patients/${res.body.id}`, locale));
     } else if (res.status === 409 && res.body.candidates) {
       candidates = res.body.candidates;
+      candidatesCut = res.body.candidates_cut === true;
     } else if (res.status === 422 && res.body.errors) {
       problems = res.body.errors;
     } else {
@@ -105,6 +113,7 @@
   <section aria-labelledby="dup-title" aria-live="polite">
     <h2 id="dup-title">{STRINGS.duplicateTitle}</h2>
     <p>{STRINGS.duplicateIntro}</p>
+    {#if candidatesCut}<p>{STRINGS.candidatesCut}</p>{/if}
     {#each candidates as c, i (isRestricted(c) ? `restricted-${i}` : c.existing.id)}
       {#if isRestricted(c)}
         <article class="candidate">

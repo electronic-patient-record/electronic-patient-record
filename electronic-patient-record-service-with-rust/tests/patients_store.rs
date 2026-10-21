@@ -382,3 +382,93 @@ async fn ids_are_found_in_any_case_and_looked_up_by_index() {
         "{plan:#?}"
     );
 }
+
+/// A valid, non-placeholder NHS number from `seed`.
+fn nhs(seed: u64) -> String {
+    let mut s = seed;
+    loop {
+        let digits: Vec<u32> = format!("{:09}", s % 1_000_000_000)
+            .bytes()
+            .map(|b| u32::from(b - b'0'))
+            .collect();
+        let sum: u32 = digits
+            .iter()
+            .enumerate()
+            .map(|(i, d)| d * (10 - i as u32))
+            .sum();
+        let check = match 11 - sum % 11 {
+            11 => 0,
+            10 => {
+                s += 1;
+                continue;
+            }
+            n => n,
+        };
+        let n = format!(
+            "{}{check}",
+            digits.iter().map(u32::to_string).collect::<String>()
+        );
+        if !electronic_patient_record_matcher::is_placeholder_nhs_number(&n) {
+            return n;
+        }
+        s += 1;
+    }
+}
+
+/// CQ-36: with more than the candidate limit sharing a birth date, the strongest candidates (a
+/// shared identifier; the same family name and birth date) are still found, and the cut is reported.
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn the_strongest_candidates_survive_a_crowded_birth_date() {
+    let db = db().await;
+    let nanos = u64::try_from(
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+            % 1_000_000_000_000,
+    )
+    .unwrap();
+    // A birth date nobody else uses, shared by more people than the limit.
+    let dob = format!(
+        "18{:02}-{:02}-{:02}",
+        nanos % 100,
+        1 + nanos / 100 % 12,
+        1 + nanos / 1200 % 28
+    );
+    let crowd = usize::try_from(store::CANDIDATE_LIMIT).unwrap() + 50;
+    for i in 0..crowd {
+        store::create(&db, "t", None, &patient(&tag(&format!("crowd{i}")), &dob))
+            .await
+            .unwrap();
+    }
+    let family = tag("same");
+    let number = nhs(nanos);
+    let mut by_number = patient(&tag("other"), "1950-01-01");
+    by_number.identifiers.push(Identifier {
+        system: electronic_patient_record_matcher::NHS_NUMBER_SYSTEM.into(),
+        value: number.clone(),
+    });
+    let by_number = store::create(&db, "t", None, &by_number).await.unwrap();
+    let by_name = store::create(&db, "t", None, &patient(&family, &dob))
+        .await
+        .unwrap();
+
+    let mut probe = patient(&family, &dob);
+    probe.identifiers.push(Identifier {
+        system: electronic_patient_record_matcher::NHS_NUMBER_SYSTEM.into(),
+        value: number,
+    });
+    let (found, cut) = store::candidates_ranked(&db, &probe).await.unwrap();
+    let ids: Vec<&str> = found.iter().map(|s| s.id.as_str()).collect();
+    assert!(cut, "more than the limit matched");
+    assert_eq!(
+        found.len(),
+        usize::try_from(store::CANDIDATE_LIMIT).unwrap()
+    );
+    assert_eq!(ids[0], by_number.id, "a shared identifier ranks first");
+    assert_eq!(
+        ids[1], by_name.id,
+        "then family name and birth date together"
+    );
+}

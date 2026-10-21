@@ -24,7 +24,7 @@ cross-subproject contract.
   (default `epr-web`), `EPR_PUBLIC_URL` (required with an issuer; its origin must be one the client allows).
 - **Pages**: home; `/patients` searches (family-name prefix, birth date, NHS number; an empty search is never sent) and lists up to 50
   matches; `/patients/new` registers, and on a 409 shows each possible duplicate beside the entered record with the matcher's score and
-  reasons, registering anyway only with a typed reason; `/patients/[id]` shows and edits a record, sending the version it was read at
+  reasons, registering anyway only with a typed reason (when the 409 says `candidates_cut`, the page adds that only the closest 200 were compared and to search first); `/patients/[id]` shows and edits a record, sending the version it was read at
   (a stale save is reported, never overwritten); `/patients/compare` compares two patients and renders the decision, the score, the per-field
   table and the reasons a link cannot be automatic. A missing similarity renders "not available". The edit form changes only the fields it
   shows and carries every other name, identifier, address and contact detail into the new version.

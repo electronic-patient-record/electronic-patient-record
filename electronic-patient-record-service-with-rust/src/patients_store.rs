@@ -286,7 +286,7 @@ pub const CANDIDATE_LIMIT: i64 = 200;
 /// Current patients that share an identifier, a birth date or a family name (case-insensitive,
 /// exact) with `patient`: the pool the matcher then scores. A pair sharing none of these is not
 /// compared, so a duplicate with a misspelt name, a different birth date and no common identifier
-/// is **not** found.
+/// is **not** found. At most [`CANDIDATE_LIMIT`], strongest first; see [`candidates_ranked`].
 ///
 /// # Errors
 ///
@@ -295,6 +295,20 @@ pub async fn candidates(
     db: &impl ConnectionTrait,
     patient: &Patient,
 ) -> Result<Vec<Stored>, StoreError> {
+    Ok(candidates_ranked(db, patient).await?.0)
+}
+
+/// [`candidates`], and whether more matched than [`CANDIDATE_LIMIT`] (CQ-36). When the list is cut,
+/// the strongest evidence is kept: a shared identifier first, then the same family name and birth
+/// date together, then a birth date alone, then a family name alone. Within a rank, patient id.
+///
+/// # Errors
+///
+/// [`StoreError::Db`] on a database failure.
+pub async fn candidates_ranked(
+    db: &impl ConnectionTrait,
+    patient: &Patient,
+) -> Result<(Vec<Stored>, bool), StoreError> {
     let identifiers: Vec<serde_json::Value> = patient
         .identifiers
         .iter()
@@ -308,20 +322,23 @@ pub async fn candidates(
         .filter(|f| !f.is_empty())
         .collect();
     if identifiers.is_empty() && families.is_empty() && patient.birth_date.is_none() {
-        return Ok(Vec::new());
+        return Ok((Vec::new(), false));
     }
+    let by_identifier = "EXISTS (SELECT 1 FROM jsonb_array_elements($1::jsonb) i
+                                 WHERE body->'identifiers' @> jsonb_build_array(i))";
+    let by_birth = "($2::text IS NOT NULL AND body->>'birth_date' = $2)";
+    let by_family = "EXISTS (SELECT 1 FROM jsonb_array_elements(body->'names') n
+                             WHERE lower(trim(n->>'family')) = ANY($3::text[]))";
     let rows = db
         .query_all_raw(pg(
             &format!(
                 "SELECT {COLUMNS} FROM patient_current
-                 WHERE (EXISTS (SELECT 1 FROM jsonb_array_elements($1::jsonb) i
-                                WHERE body->'identifiers' @> jsonb_build_array(i))
-                    OR ($2::text IS NOT NULL AND body->>'birth_date' = $2)
-                    OR EXISTS (SELECT 1 FROM jsonb_array_elements(body->'names') n
-                               WHERE lower(trim(n->>'family')) = ANY($3::text[])))
+                 WHERE ({by_identifier} OR {by_birth} OR {by_family})
                    AND {NOT_MERGED_AWAY}
-                 ORDER BY patient_id
-                 LIMIT {CANDIDATE_LIMIT}"
+                 ORDER BY {by_identifier} DESC, ({by_birth} AND {by_family}) DESC,
+                          {by_birth} DESC, {by_family} DESC, patient_id
+                 LIMIT {}",
+                CANDIDATE_LIMIT + 1
             ),
             vec![
                 serde_json::Value::Array(identifiers).into(),
@@ -331,7 +348,13 @@ pub async fn candidates(
         ))
         .await
         .map_err(db_err)?;
-    rows.iter().map(row_to_stored).collect()
+    let mut found = rows
+        .iter()
+        .map(row_to_stored)
+        .collect::<Result<Vec<_>, _>>()?;
+    let cut = found.len() > usize::try_from(CANDIDATE_LIMIT).unwrap_or(usize::MAX);
+    found.truncate(usize::try_from(CANDIDATE_LIMIT).unwrap_or(usize::MAX));
+    Ok((found, cut))
 }
 
 /// Search criteria. At least one must be set: there is no "list everyone".

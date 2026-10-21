@@ -455,7 +455,7 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
   candidate search on the transaction, then insert.
   **Acceptance:** a DB-gated test fires two concurrent creates for the same person and gets one record plus one
   duplicate warning.
-- [ ] **CQ-36 (S/M) — The duplicate check drops candidates past 200.** **Clinical.** `patients_store::candidates`
+- [x] **CQ-36 (S/M) — The duplicate check drops candidates past 200.** **Landed 2026-10-21** (ranked by evidence before the cut; `candidates_cut` in the 409, audit rows and the page; Postgres and Playwright tests; H-002). **Not covered:** a name-only or birth-date-only match can still be cut (RC-2). **Clinical.** `patients_store::candidates`
   takes `LIMIT 200` ordered by patient id. When more than 200 records share a birth date (a large population) or a
   family name, the real duplicate can be cut, and nothing says so (found by CQ-10's test). Rank the strongest evidence
   first (a shared identifier, then family name and birth date together), and say when the list was cut.

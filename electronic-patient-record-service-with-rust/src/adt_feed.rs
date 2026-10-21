@@ -276,6 +276,8 @@ pub async fn apply(
         .begin()
         .await
         .map_err(|e| temporary(&StoreError::Db(e.to_string())))?;
+    // Whether the duplicate check saw only the strongest CANDIDATE_LIMIT of more matches (CQ-36).
+    let mut candidates_cut = false;
     let (applied, audit_action) = match plan {
         Plan::Nothing { id } => (Applied::Unchanged { id }, Action::Read),
         Plan::Update { id, version, next } => {
@@ -301,9 +303,10 @@ pub async fn apply(
             store::lock_registration(&tx)
                 .await
                 .map_err(|e| temporary(&e))?;
-            let pool = store::candidates(&tx, &inbound.patient)
+            let (pool, cut) = store::candidates_ranked(&tx, &inbound.patient)
                 .await
                 .map_err(|e| temporary(&e))?;
+            candidates_cut = cut;
             let likely = likely_duplicates(&inbound.patient, pool);
             if !likely.is_empty() {
                 return Err(Refusal::Conflict(vec![format!(
@@ -336,6 +339,7 @@ pub async fn apply(
             Applied::Unchanged { .. } => "unchanged",
         },
         "warnings": inbound.warnings.len(),
+        "candidates_cut": candidates_cut,
     }));
     audit::append(&tx, audit::chain(), &event)
         .await

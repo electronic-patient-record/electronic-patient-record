@@ -464,8 +464,9 @@ pub(super) async fn create(
     if let Err(e) = store::lock_registration(&tx).await {
         return store_failure(&e);
     }
-    let duplicates = match store::candidates(&tx, &request.patient).await {
-        Ok(pool) => likely_duplicates(&request.patient, pool),
+    // More matches than the limit: only the strongest were compared, and the answer says so (CQ-36).
+    let (duplicates, candidates_cut) = match store::candidates_ranked(&tx, &request.patient).await {
+        Ok((pool, cut)) => (likely_duplicates(&request.patient, pool), cut),
         // An unchecked registration is how duplicates happen: fail rather than skip the check.
         Err(e) => return store_failure(&e),
     };
@@ -512,7 +513,11 @@ pub(super) async fn create(
             4,
             purpose,
             None,
-            serde_json::json!({"refused": "possible duplicate", "candidates": ids}),
+            serde_json::json!({
+                "refused": "possible duplicate",
+                "candidates": ids,
+                "candidates_cut": candidates_cut,
+            }),
         )
         .await
         {
@@ -526,6 +531,7 @@ pub(super) async fn create(
             serde_json::json!({
                 "error": "possible duplicate; resend with override_reason to register anyway",
                 "candidates": shown,
+                "candidates_cut": candidates_cut,
             }),
         );
     }
@@ -551,6 +557,7 @@ pub(super) async fn create(
             "version": stored.version,
             "duplicate_override": !ids.is_empty(),
             "candidates": ids,
+            "candidates_cut": candidates_cut,
         }),
     )
     .await

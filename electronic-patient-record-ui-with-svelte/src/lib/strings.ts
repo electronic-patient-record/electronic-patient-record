@@ -53,6 +53,8 @@ export const STRINGS = {
   reason: "Reason (kept in the version history)",
   problems: "Please correct the following",
   duplicateTitle: "This patient may already be registered",
+  candidatesCut:
+    "Many records matched; only the closest 200 were compared. A record that shares only a name or only a birth date may not be shown: search before registering anyway.",
   duplicateIntro:
     "Check each record below. If this is the same person, open the existing record instead of registering again.",
   entered: "As entered",

@@ -1478,3 +1478,36 @@ test("a late answer for the previous patient never lands on the current one", as
   await expect(banner).toContainText("Latex");
   await expect(page.getByText("Penicillin")).toHaveCount(0);
 });
+
+// CQ-36: when more records matched than the server compares, the page says only the closest were.
+test("a cut candidate list says that only the closest records were compared", async ({
+  page,
+}) => {
+  let cut = true;
+  await page.route("**/api/proxy/api/patients", (route) =>
+    json(route, 409, {
+      error: "possible duplicate",
+      candidates: [CANDIDATE],
+      candidates_cut: cut,
+    }),
+  );
+  await page.goto("/en-001/patients/new");
+  await page.getByLabel("Family name").fill("Smith");
+  await page.getByLabel("Birth date").fill("1980-03-14");
+  await page.getByRole("button", { name: "Register", exact: true }).click();
+  const note = page.getByText(
+    "Many records matched; only the closest 200 were compared.",
+    { exact: false },
+  );
+  await expect(note).toBeVisible();
+  await axe(page);
+
+  cut = false;
+  await page.getByRole("button", { name: "Register", exact: true }).click();
+  await expect(
+    page.getByRole("heading", {
+      name: "This patient may already be registered",
+    }),
+  ).toBeVisible();
+  await expect(note).toHaveCount(0);
+});
