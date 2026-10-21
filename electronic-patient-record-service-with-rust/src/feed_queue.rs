@@ -11,6 +11,7 @@
 //! Messages refused as *transient* (`Temporary`) are not queued: the sender is told to retry, and
 //! nothing about them is wrong.
 
+use crate::ids;
 use crate::patients_store::StoreError;
 use sea_orm::{ConnectionTrait, DbBackend, Statement, Value};
 use serde::{Deserialize, Serialize};
@@ -250,27 +251,16 @@ pub async fn count_open(db: &impl ConnectionTrait) -> Result<i64, StoreError> {
 ///
 /// [`StoreError::NotFound`] when there is no such refusal (or the id is not a UUID).
 pub async fn get(db: &impl ConnectionTrait, id: &str) -> Result<Entry, StoreError> {
-    if uuid_like(id).is_none() {
-        return Err(StoreError::NotFound);
-    }
+    let id = ids::uuid(id).ok_or(StoreError::NotFound)?;
     let row = db
         .query_one_raw(pg(
-            &format!("{} WHERE f.refusal_id::text = $1", select(true)),
-            vec![id.to_lowercase().into()],
+            &format!("{} WHERE f.refusal_id = $1::uuid", select(true)),
+            vec![id.into()],
         ))
         .await
         .map_err(db_err)?
         .ok_or(StoreError::NotFound)?;
     to_entry(&row)
-}
-
-fn uuid_like(id: &str) -> Option<()> {
-    let ok = id.len() == 36
-        && id.chars().enumerate().all(|(i, c)| match i {
-            8 | 13 | 18 | 23 => c == '-',
-            _ => c.is_ascii_hexdigit(),
-        });
-    ok.then_some(())
 }
 
 /// Close a refusal. A reason is required. A refusal closes once.

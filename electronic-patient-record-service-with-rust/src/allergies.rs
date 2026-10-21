@@ -14,6 +14,7 @@
 //! Nothing is ever deleted: ending an allergy or marking it entered-in-error is a new version, and
 //! entered-in-error is final.
 
+use crate::ids;
 use crate::links;
 use crate::patients_store::{self, StoreError};
 use sea_orm::{ConnectionTrait, DbBackend, Statement, TransactionSession, TransactionTrait, Value};
@@ -363,15 +364,15 @@ pub async fn list(
     patient_id: &str,
 ) -> Result<Vec<StoredAllergy>, StoreError> {
     let patient = patients_store::current(db, patient_id).await?;
-    let ids = links::linked_ids(db, &patient.id).await?;
+    let linked = ids::uuids(&links::linked_ids(db, &patient.id).await?);
     let rows = db
         .query_all_raw(pg(
             &format!(
-                "SELECT {} FROM allergy_current WHERE patient_id::text = ANY($1::text[])
+                "SELECT {} FROM allergy_current WHERE patient_id = ANY($1::uuid[])
                  ORDER BY recorded_at, allergy_id",
                 columns()
             ),
-            vec![ids.into()],
+            vec![linked.into()],
         ))
         .await
         .map_err(db_err)?;
@@ -388,15 +389,16 @@ pub async fn current(
     patient_id: &str,
     allergy_id: &str,
 ) -> Result<StoredAllergy, StoreError> {
-    let ids = links::linked_ids(db, patient_id).await?;
+    let allergy_id = ids::uuid(allergy_id).ok_or(StoreError::NotFound)?;
+    let linked = ids::uuids(&links::linked_ids(db, patient_id).await?);
     let row = db
         .query_one_raw(pg(
             &format!(
                 "SELECT {} FROM allergy_current
-                 WHERE allergy_id::text = lower($1) AND patient_id::text = ANY($2::text[])",
+                 WHERE allergy_id = $1::uuid AND patient_id = ANY($2::uuid[])",
                 columns()
             ),
-            vec![allergy_id.into(), ids.into()],
+            vec![allergy_id.into(), linked.into()],
         ))
         .await
         .map_err(db_err)?

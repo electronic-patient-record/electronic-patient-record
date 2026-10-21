@@ -5,6 +5,7 @@
 //! [`StoreError::Conflict`]. Only the *current* version of each consent counts for a decision.
 
 use crate::consent::ConsentRecord;
+use crate::ids;
 use crate::patients_store::{self, StoreError};
 use sea_orm::{
     ConnectionTrait, DatabaseConnection, DbBackend, Statement, TransactionSession,
@@ -96,12 +97,15 @@ pub async fn list(
     db: &DatabaseConnection,
     patient_id: &str,
 ) -> Result<Vec<StoredConsent>, StoreError> {
+    let Some(patient_id) = ids::uuid(patient_id) else {
+        return Ok(Vec::new());
+    };
     let rows = sea_orm::ConnectionTrait::query_all_raw(
         db,
         pg(
             &format!(
                 "SELECT {COLUMNS} FROM consent_current
-                 WHERE patient_id::text = lower($1) ORDER BY recorded_at, consent_id"
+                 WHERE patient_id = $1::uuid ORDER BY recorded_at, consent_id"
             ),
             vec![patient_id.into()],
         ),
@@ -122,6 +126,7 @@ pub async fn active_for(
     patient_ids: &[String],
 ) -> Result<HashMap<String, Vec<StoredConsent>>, StoreError> {
     let mut by_patient: HashMap<String, Vec<StoredConsent>> = HashMap::new();
+    let patient_ids = ids::uuids(patient_ids);
     if patient_ids.is_empty() {
         return Ok(by_patient);
     }
@@ -130,10 +135,10 @@ pub async fn active_for(
         pg(
             &format!(
                 "SELECT {COLUMNS} FROM consent_current
-                 WHERE status = 'active' AND patient_id::text = ANY($1::text[])
+                 WHERE status = 'active' AND patient_id = ANY($1::uuid[])
                  ORDER BY consent_id"
             ),
-            vec![patient_ids.to_vec().into()],
+            vec![patient_ids.into()],
         ),
     )
     .await
@@ -158,12 +163,16 @@ pub async fn current(
     patient_id: &str,
     consent_id: &str,
 ) -> Result<StoredConsent, StoreError> {
+    let (Some(patient_id), Some(consent_id)) = (ids::uuid(patient_id), ids::uuid(consent_id))
+    else {
+        return Err(StoreError::NotFound);
+    };
     let row = sea_orm::ConnectionTrait::query_one_raw(
         db,
         pg(
             &format!(
                 "SELECT {COLUMNS} FROM consent_current
-                 WHERE consent_id::text = lower($1) AND patient_id::text = lower($2)"
+                 WHERE consent_id = $1::uuid AND patient_id = $2::uuid"
             ),
             vec![consent_id.into(), patient_id.into()],
         ),

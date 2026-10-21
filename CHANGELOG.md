@@ -2,6 +2,26 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-21 - Ids are compared as UUIDs, so lookups can seek the index (CQ-9, in part)
+
+- 14 queries compared an id column as text (`patient_id::text = lower($1)`, `… = ANY($1::text[])`). That hides the
+  column from its index, so a lookup scans the whole index and filters. On the test database (461 patient versions)
+  the plan for a patient read went from cost 114 to 8. Every one now binds `$n::uuid` or `$n::uuid[]`.
+- A new `ids::uuid` checks an id from a URL first, so a malformed id is still "not found" (or an empty list) and never
+  a database error, and an upper-case id is still found. The feed queue's own copy of that check is gone.
+- Tests:
+  - a source census (`tests/sql_census.rs`, no database) fails on any `_id::text =`. It listed all 14 before the
+    change;
+  - 3 unit tests for `ids`;
+  - a Postgres test: an upper-case id is found, malformed ids are not, and `patient_current` seeks on the id
+    (`Index Cond`).
+  - The new tests and the existing 157 unit and 64 Postgres tests pass.
+- **Found, not fixed here:** `consent_current`, `allergy_current` and `relationship_current` are `DISTINCT ON` the
+  record's own id, so a filter on `patient_id` cannot be pushed below it. Postgres still builds the current version of
+  every consent, allergy or relationship before it filters (checked with EXPLAIN). That needs the views changed, in a
+  migration.
+- **Not done:** the search indexes (identifiers, birth date, folded family name).
+
 ## 2026-10-21 - The status page counts every task prefix (CQ-29, in part)
 
 - `scripts/generate-status.sh` counted ten fixed prefixes, so the 35 `CQ-` tasks were missing from the totals in

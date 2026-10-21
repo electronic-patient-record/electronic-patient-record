@@ -18,6 +18,7 @@
 //! A care relationship on the source does **not** carry over: access to the surviving record needs a
 //! relationship to it. Consent does carry over, and a refusal on either record stands.
 
+use crate::ids;
 use crate::patients_store::{self, StoreError};
 use electronic_patient_record_matcher::{Decision, MatchingEngine, Patient};
 use sea_orm::{ConnectionTrait, DbBackend, Statement, Value};
@@ -123,11 +124,14 @@ pub async fn merged_into(
     db: &impl ConnectionTrait,
     patient_id: &str,
 ) -> Result<Option<String>, StoreError> {
+    let Some(patient_id) = ids::uuid(patient_id) else {
+        return Ok(None);
+    };
     let row = db
         .query_one_raw(pg(
             "WITH RECURSIVE up(id, depth) AS (
                  SELECT target_patient_id, 1 FROM patient_link_current
-                 WHERE source_patient_id::text = lower($1) AND status = 'active'
+                 WHERE source_patient_id = $1::uuid AND status = 'active'
                UNION ALL
                  SELECT l.target_patient_id, up.depth + 1
                  FROM patient_link_current l JOIN up ON l.source_patient_id = up.id
@@ -150,11 +154,14 @@ pub async fn sources_of(
     db: &impl ConnectionTrait,
     target: &str,
 ) -> Result<Vec<String>, StoreError> {
+    let Some(target) = ids::uuid(target) else {
+        return Ok(Vec::new());
+    };
     let rows = db
         .query_all_raw(pg(
             "WITH RECURSIVE src(id) AS (
                  SELECT source_patient_id FROM patient_link_current
-                 WHERE target_patient_id::text = lower($1) AND status = 'active'
+                 WHERE target_patient_id = $1::uuid AND status = 'active'
                UNION
                  SELECT l.source_patient_id FROM patient_link_current l
                  JOIN src ON l.target_patient_id = src.id WHERE l.status = 'active'

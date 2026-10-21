@@ -11,6 +11,7 @@
 //! There is no real-time notification to a privacy officer: nothing here can send one. The unreviewed
 //! queue and its count are what exists.
 
+use crate::ids;
 use crate::patients_store::{self, StoreError};
 use sea_orm::{ConnectionTrait, DbBackend, Statement, Value};
 use serde::{Deserialize, Serialize};
@@ -131,10 +132,13 @@ pub async fn active(
     patient_id: &str,
     subject: &str,
 ) -> Result<Option<Grant>, StoreError> {
+    let Some(patient_id) = ids::uuid(patient_id) else {
+        return Ok(None);
+    };
     let row = db
         .query_one_raw(pg(
             &format!(
-                "{} WHERE g.patient_id::text = lower($1) AND g.subject = $2 AND g.expires_at > now()
+                "{} WHERE g.patient_id = $1::uuid AND g.subject = $2 AND g.expires_at > now()
                  ORDER BY g.expires_at DESC LIMIT 1",
                 select()
             ),
@@ -193,9 +197,10 @@ pub async fn open(
 ///
 /// [`StoreError::NotFound`] (also for an id that is not a UUID).
 pub async fn get(db: &impl ConnectionTrait, id: &str) -> Result<Grant, StoreError> {
+    let id = ids::uuid(id).ok_or(StoreError::NotFound)?;
     let row = db
         .query_one_raw(pg(
-            &format!("{} WHERE g.grant_id::text = lower($1)", select()),
+            &format!("{} WHERE g.grant_id = $1::uuid", select()),
             vec![id.into()],
         ))
         .await

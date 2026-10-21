@@ -9,6 +9,7 @@
 //! the administrator's identity check, outside this service.
 
 use crate::consent::{Period, in_period};
+use crate::ids;
 use crate::patients_store::{self, StoreError};
 use crate::policy::Relationship;
 use sea_orm::{
@@ -217,12 +218,15 @@ pub async fn list(
     db: &DatabaseConnection,
     patient_id: &str,
 ) -> Result<Vec<StoredRelationship>, StoreError> {
+    let Some(patient_id) = ids::uuid(patient_id) else {
+        return Ok(Vec::new());
+    };
     let rows = sea_orm::ConnectionTrait::query_all_raw(
         db,
         pg(
             &format!(
                 "SELECT {COLUMNS} FROM relationship_current
-                 WHERE patient_id::text = lower($1) ORDER BY recorded_at, relationship_id"
+                 WHERE patient_id = $1::uuid ORDER BY recorded_at, relationship_id"
             ),
             vec![patient_id.into()],
         ),
@@ -242,12 +246,15 @@ pub async fn current(
     patient_id: &str,
     id: &str,
 ) -> Result<StoredRelationship, StoreError> {
+    let (Some(patient_id), Some(id)) = (ids::uuid(patient_id), ids::uuid(id)) else {
+        return Err(StoreError::NotFound);
+    };
     let row = sea_orm::ConnectionTrait::query_one_raw(
         db,
         pg(
             &format!(
                 "SELECT {COLUMNS} FROM relationship_current
-                 WHERE relationship_id::text = lower($1) AND patient_id::text = lower($2)"
+                 WHERE relationship_id = $1::uuid AND patient_id = $2::uuid"
             ),
             vec![id.into(), patient_id.into()],
         ),
@@ -342,11 +349,14 @@ pub async fn lookup(
     subject: &str,
     now: i64,
 ) -> Result<Relationship, StoreError> {
+    let Some(patient_id) = ids::uuid(patient_id) else {
+        return Ok(resolve(&[], now));
+    };
     let rows = sea_orm::ConnectionTrait::query_all_raw(
         db,
         pg(
             "SELECT body FROM relationship_current
-             WHERE patient_id::text = lower($1) AND subject = $2 AND status = 'active'",
+             WHERE patient_id = $1::uuid AND subject = $2 AND status = 'active'",
             vec![patient_id.into(), subject.into()],
         ),
     )

@@ -342,3 +342,43 @@ async fn concurrent_registrations_of_one_person_create_one_record() {
         1
     );
 }
+
+/// CQ-9: an id in upper case is found, a malformed one is not, and the lookup seeks the index.
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn ids_are_found_in_any_case_and_looked_up_by_index() {
+    let db = db().await;
+    let s = store::create(&db, "tester", None, &patient(&tag("case"), "1980-03-14"))
+        .await
+        .unwrap();
+    assert_eq!(store::current(&db, &s.id.to_uppercase()).await.unwrap(), s);
+    for bad in ["not-a-uuid", "", "44839249b00a4b9ab092675a7a42e324"] {
+        assert_eq!(
+            store::current(&db, bad).await,
+            Err(StoreError::NotFound),
+            "{bad:?}"
+        );
+    }
+    // The shape every id lookup now has: the plan must seek on the id, not filter a whole scan. A
+    // small test table would be scanned anyway, so sequential scans are off for this transaction.
+    use sea_orm::TransactionTrait;
+    let tx = db.begin().await.unwrap();
+    tx.execute_unprepared("SET LOCAL enable_seqscan = off")
+        .await
+        .unwrap();
+    let plan: Vec<String> = tx
+        .query_all_raw(sea_orm::Statement::from_sql_and_values(
+            sea_orm::DbBackend::Postgres,
+            "EXPLAIN SELECT * FROM patient_current WHERE patient_id = $1::uuid",
+            [s.id.clone().into()],
+        ))
+        .await
+        .unwrap()
+        .iter()
+        .map(|r| r.try_get_by_index::<String>(0).unwrap())
+        .collect();
+    assert!(
+        plan.iter().any(|l| l.contains("Index Cond: (patient_id =")),
+        "{plan:#?}"
+    );
+}

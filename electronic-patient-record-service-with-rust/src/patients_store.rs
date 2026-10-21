@@ -3,6 +3,7 @@
 //! No function here updates or deletes a row. A change is a new version; two writers racing to
 //! change the same version collide on the primary key and the loser gets [`StoreError::Conflict`].
 
+use crate::ids;
 use electronic_patient_record_matcher::{
     NHS_NUMBER_SYSTEM, Patient, is_placeholder_nhs_number, is_valid_nhs_number,
 };
@@ -205,9 +206,10 @@ pub async fn lock_registration(db: &impl ConnectionTrait) -> Result<(), StoreErr
 ///
 /// [`StoreError::NotFound`] for an unknown or malformed id.
 pub async fn current(db: &impl ConnectionTrait, id: &str) -> Result<Stored, StoreError> {
+    let id = ids::uuid(id).ok_or(StoreError::NotFound)?;
     let row = db
         .query_one_raw(pg(
-            &format!("SELECT {COLUMNS} FROM patient_current WHERE patient_id::text = lower($1)"),
+            &format!("SELECT {COLUMNS} FROM patient_current WHERE patient_id = $1::uuid"),
             vec![id.into()],
         ))
         .await
