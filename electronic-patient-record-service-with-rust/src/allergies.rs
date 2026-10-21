@@ -151,7 +151,7 @@ pub fn validate(r: &AllergyRecord) -> Vec<String> {
 }
 
 /// An allergy as stored.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StoredAllergy {
     /// Server id, the same for every version.
     pub id: String,
@@ -181,7 +181,7 @@ pub struct Assertion {
 }
 
 /// What the banner should say.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "state", rename_all = "kebab-case")]
 pub enum Summary {
     /// At least one active allergy.
@@ -206,7 +206,7 @@ pub enum Summary {
 }
 
 /// One line of the active list.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SummaryItem {
     /// The substance in words.
     pub substance: String,

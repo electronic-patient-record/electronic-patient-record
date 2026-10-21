@@ -2,6 +2,22 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-21 - FHIR AllergyIntolerance (read-only)
+
+- `GET /fhir/R4/AllergyIntolerance?patient=` (the `Patient/` prefix is accepted) returns a `searchset` of the patient's
+  allergies, from the same handler as `/api/patients/{id}/allergies`, so the role gate, care relationship, purpose of
+  use, consent and audit row are identical. `interop::fhir_allergy` maps each record and checks it against the typed R4
+  model. `/fhir/R4/metadata` lists it.
+- What is not said: `verificationStatus` and `type` are not recorded so are left out; an unstated criticality is left
+  out, never `low`; an allergy entered in error is not exported.
+- An empty or inactive-only result carries an `OperationOutcome` entry (`search.mode` outcome) saying it does not mean
+  there are none; a refusal is a 403 `OperationOutcome` with the same sentence, never an empty bundle. Only a standing
+  clinician statement is exported, as SNOMED CT `716186003`.
+- 10 new unit tests (5 for the mapping, 5 for the bundle, one of them a round trip of the handler's own answer). Hazard H-022.
+- **Not done:** the profile validation the RC-5 acceptance asks for (no UK Core or US Core check and no HAPI run, so
+  that acceptance is **not met**); read by id; create or update through FHIR; reading FHIR allergies in; `recorder`;
+  no run against the real Keycloak stack (the unit tests do not exercise the HTTP layer).
+
 ## 2026-10-21 - Audit-head checkpoint
 
 - `GET /api/audit/verify` returns `head` (id and digest of the newest row checked) and accepts

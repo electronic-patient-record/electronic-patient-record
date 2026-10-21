@@ -1,4 +1,5 @@
-//! `/fhir/R4/Patient` (task ID-3) and `/fhir/R4/AuditEvent` (task AU-2).
+//! `/fhir/R4/Patient` (task ID-3), `/fhir/R4/AllergyIntolerance` (task RC-5, read-only) and
+//! `/fhir/R4/AuditEvent` (task AU-2).
 //!
 //! A thin translation over the JSON handlers in `patients.rs`: each request is turned into the
 //! JSON request, the *same handler* runs (so the role gate, relationship, consent, purpose of use
@@ -15,9 +16,10 @@
 use super::audit::search_audited;
 use super::patients::authorize;
 use super::patients::{self, CreateRequest, UpdateRequest};
+use crate::allergies::{StoredAllergy, Summary};
 use crate::auth::Agent;
-use crate::interop::fhir_audit;
 use crate::interop::fhir_patient::{from_fhir_json, to_fhir};
+use crate::interop::{fhir_allergy, fhir_audit};
 use crate::patients_store::{Search, Stored};
 use crate::policy::Subject;
 use crate::policy::{self, Purpose, Resource};
@@ -531,6 +533,109 @@ async fn search_audit_events(
     }
 }
 
+/// An `OperationOutcome` entry saying that an empty or partial list is not "none". Allergy data
+/// that is missing must never read as an allergy that is absent.
+fn not_a_statement_of_none(why: &str) -> serde_json::Value {
+    serde_json::json!({
+        "resource": {
+            "resourceType": "OperationOutcome",
+            "issue": [{
+                "severity": "warning",
+                "code": "incomplete",
+                "diagnostics": format!("{why} This does not mean the patient has no allergies."),
+            }],
+        },
+        "search": { "mode": "outcome" },
+    })
+}
+
+/// A `searchset` of the patient's allergies, built from the JSON handler's answer.
+fn allergy_bundle(patient: &str, body: &serde_json::Value) -> Result<serde_json::Value, String> {
+    let all: Vec<StoredAllergy> =
+        serde_json::from_value(body.get("allergies").cloned().unwrap_or_default())
+            .map_err(|e| e.to_string())?;
+    let summary: Summary = serde_json::from_value(body.get("summary").cloned().unwrap_or_default())
+        .map_err(|e| e.to_string())?;
+    let mut entries = Vec::new();
+    for a in &all {
+        if let Some(r) = fhir_allergy::to_fhir(a, patient)? {
+            entries.push(serde_json::json!({
+                "fullUrl": format!("{BASE}/AllergyIntolerance/{}", a.id),
+                "resource": r,
+                "search": { "mode": "match" },
+            }));
+        }
+    }
+    match &summary {
+        Summary::NoKnown { asserted_at, .. } => {
+            let r = fhir_allergy::no_known_allergies(patient, asserted_at)?;
+            entries.push(serde_json::json!({
+                "resource": r,
+                "search": { "mode": "match" },
+            }));
+        }
+        Summary::NotRecorded => entries.push(not_a_statement_of_none(
+            "No allergy information has been recorded.",
+        )),
+        Summary::NoneActive { .. } => entries.push(not_a_statement_of_none(
+            "No allergy is active, but nobody has stated that there are none known.",
+        )),
+        Summary::Active { .. } => {}
+    }
+    Ok(serde_json::json!({
+        "resourceType": "Bundle",
+        "type": "searchset",
+        "entry": entries,
+    }))
+}
+
+/// `GET /fhir/R4/AllergyIntolerance?patient=` : the same handler, so the same gate, care
+/// relationship, purpose of use, consent and audit row as `/api/patients/{id}/allergies`.
+async fn search_allergies(
+    State(ctx): State<AppContext>,
+    Extension(agent): Extension<Agent>,
+    Extension(subject): Extension<Subject>,
+    headers: HeaderMap,
+    Query(params): Query<HashMap<String, String>>,
+) -> Response {
+    let Some(patient) = params
+        .get("patient")
+        .map(|p| p.strip_prefix("Patient/").unwrap_or(p).to_string())
+        .filter(|p| !p.is_empty())
+    else {
+        return outcome(
+            StatusCode::BAD_REQUEST,
+            "required",
+            "the patient search parameter is required",
+        );
+    };
+    let r = super::allergies::list(
+        State(ctx),
+        Extension(agent),
+        Extension(subject),
+        headers,
+        Path(patient.clone()),
+    )
+    .await;
+    let (status, body) = read_back(r).await;
+    if status != StatusCode::OK {
+        // A refusal, a consent refusal or a failure: say that this is not an empty list.
+        let mut response = error_outcome(status, &body, false);
+        if status == StatusCode::FORBIDDEN {
+            response = outcome(
+                status,
+                "forbidden",
+                "forbidden. This does not mean the patient has no allergies.",
+            );
+        }
+        return response;
+    }
+    match allergy_bundle(&patient, &body) {
+        Ok(b) => fhir(StatusCode::OK, &b, None),
+        Err(e) => internal(&e),
+    }
+}
+
 /// What this server does, as a FHIR `CapabilityStatement`.
 fn capability() -> serde_json::Value {
     serde_json::json!({
@@ -542,7 +647,7 @@ fn capability() -> serde_json::Value {
         "software": { "name": "electronic-patient-record", "version": env!("CARGO_PKG_VERSION") },
         "fhirVersion": "4.0.1",
         "format": ["json"],
-        "description": "NOT FOR CLINICAL USE. Patient identity only: read, search-type, create and update with If-Match. No history, delete, conditional create, paging or search prefixes.",
+        "description": "NOT FOR CLINICAL USE. Patient identity (read, search-type, create and update with If-Match), allergies (search by patient, read-only) and audit events. No history, delete, conditional create, paging or search prefixes.",
         "rest": [{
             "mode": "server",
             "resource": [{
@@ -560,6 +665,13 @@ fn capability() -> serde_json::Value {
                     { "name": "family", "type": "string" },
                     { "name": "birthdate", "type": "date", "documentation": "exact date only" },
                     { "name": "identifier", "type": "token" },
+                ],
+            }, {
+                "type": "AllergyIntolerance",
+                "interaction": [{ "code": "search-type" }],
+                "documentation": "Search by patient only; read-only. Allergies entered in error are not returned. A result with no allergy in it is never a statement that there are none: it carries an OperationOutcome saying so, unless a clinician has stated no known allergies. verificationStatus and type are not recorded, so are not returned.",
+                "searchParam": [
+                    { "name": "patient", "type": "reference", "documentation": "required" },
                 ],
             }, {
                 "type": "AuditEvent",
@@ -591,6 +703,7 @@ pub fn routes() -> Routes {
         .add("/Patient", post(create_patient))
         .add("/Patient/{id}", get(read_patient))
         .add("/Patient/{id}", put(update_patient))
+        .add("/AllergyIntolerance", get(search_allergies))
         .add("/AuditEvent", get(search_audit_events))
 }
 
@@ -618,6 +731,125 @@ mod tests {
 
     async fn body_of(r: Response) -> serde_json::Value {
         read_back(r).await.1
+    }
+
+    fn allergy_body(summary: serde_json::Value, status: &str) -> serde_json::Value {
+        serde_json::json!({
+            "allergies": [{
+                "id": "22222222-2222-4222-8222-222222222222",
+                "patient_id": "11111111-1111-4111-8111-111111111111",
+                "version": 1, "author": "a", "recorded_at": "2026-10-21T09:30:00.000000Z",
+                "allergy": { "substance": "Penicillin", "status": status },
+            }],
+            "summary": summary,
+        })
+    }
+
+    fn kinds(b: &serde_json::Value) -> Vec<(String, String)> {
+        b["entry"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|e| {
+                (
+                    e["resource"]["resourceType"].as_str().unwrap().to_string(),
+                    e["search"]["mode"].as_str().unwrap().to_string(),
+                )
+            })
+            .collect()
+    }
+
+    #[test]
+    fn an_active_allergy_is_a_match_and_needs_no_warning() {
+        let body = allergy_body(
+            serde_json::json!({ "state": "active", "items": [] }),
+            "active",
+        );
+        let b = allergy_bundle("P1", &body).unwrap();
+        assert_eq!(b["type"], "searchset");
+        assert_eq!(
+            kinds(&b),
+            vec![("AllergyIntolerance".to_string(), "match".to_string())]
+        );
+    }
+
+    #[test]
+    fn an_empty_or_inactive_list_is_never_a_statement_of_none() {
+        for summary in [
+            serde_json::json!({ "state": "not-recorded" }),
+            serde_json::json!({ "state": "none-active", "inactive": 1 }),
+        ] {
+            let mut body = allergy_body(summary, "inactive");
+            if body["summary"]["state"] == "not-recorded" {
+                body["allergies"] = serde_json::json!([]);
+            }
+            let b = allergy_bundle("P1", &body).unwrap();
+            let last = b["entry"].as_array().unwrap().last().unwrap().clone();
+            assert_eq!(last["search"]["mode"], "outcome", "{b}");
+            let said = last["resource"]["issue"][0]["diagnostics"]
+                .as_str()
+                .unwrap();
+            assert!(said.contains("does not mean"), "{said}");
+        }
+    }
+
+    #[test]
+    fn only_a_standing_statement_becomes_no_known_allergies() {
+        let body = serde_json::json!({
+            "allergies": [],
+            "summary": { "state": "no-known", "asserted_at": "2026-10-21T09:30:00Z", "asserted_by": "x" },
+        });
+        let b = allergy_bundle("P1", &body).unwrap();
+        let e = &b["entry"][0]["resource"];
+        assert_eq!(e["code"]["coding"][0]["code"], "716186003");
+        assert_eq!(kinds(&b).len(), 1);
+    }
+
+    #[test]
+    fn an_allergy_entered_in_error_is_not_exported() {
+        let body = allergy_body(
+            serde_json::json!({ "state": "not-recorded" }),
+            "entered-in-error",
+        );
+        let b = allergy_bundle("P1", &body).unwrap();
+        assert!(
+            kinds(&b).iter().all(|(t, _)| t != "AllergyIntolerance"),
+            "{b}"
+        );
+    }
+
+    #[test]
+    fn the_json_handlers_own_answer_round_trips_into_the_bundle() {
+        use crate::allergies::{
+            AllergyRecord, Criticality, Status, StoredAllergy, Summary, SummaryItem,
+        };
+        let stored = StoredAllergy {
+            id: "22222222-2222-4222-8222-222222222222".into(),
+            patient_id: "11111111-1111-4111-8111-111111111111".into(),
+            version: 1,
+            author: "a".into(),
+            recorded_at: "2026-10-21T09:30:00.000000Z".into(),
+            allergy: AllergyRecord {
+                substance: "Peanut".into(),
+                coding: None,
+                category: None,
+                criticality: Some(Criticality::High),
+                reaction: None,
+                onset: None,
+                status: Status::Active,
+            },
+        };
+        let summary = Summary::Active {
+            items: vec![SummaryItem {
+                substance: "Peanut".into(),
+                criticality: Some(Criticality::High),
+            }],
+        };
+        // Exactly what `allergies::list` puts in its answer.
+        let body =
+            serde_json::json!({ "allergies": [stored], "statement": null, "summary": summary });
+        let b = allergy_bundle("P1", &body).unwrap();
+        assert_eq!(b["entry"][0]["resource"]["criticality"], "high");
     }
 
     #[tokio::test]

@@ -129,6 +129,12 @@ pub const TABLE: &[(&str, &str, Resource, Action)] = &[
         Action::Update,
     ),
     (
+        "GET",
+        "/fhir/R4/AllergyIntolerance",
+        Resource::AllergyIntolerance,
+        Action::Read,
+    ),
+    (
         "POST",
         "/api/patients/{id}/merge",
         Resource::PatientLink,
