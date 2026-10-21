@@ -36,6 +36,19 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
   branch is covered by the policy engine refusing earlier. The new Keycloak test needs a fresh database or new data: the
   older ones re-run only on one.
 
+## 2026-10-21 - Roles and organisations in audit rows and the patient's log
+
+- Every audit row written while handling a request records the caller's roles and organisations in `detail.actor`
+  (`audit::ACTOR`, a task-local set by the route-gate middleware, so the ~17 call sites did not change). `Subject` gained
+  `organisations`, from the token attribute `organisation` (short lowercase tokens only). The patient's access log shows
+  "A member of staff (clinician, riverside) viewed your identity record." Development: realm role `org-riverside`, mapped
+  in `role-map.json`; `keycloak-dev-user.sh` takes comma-separated roles. Tests: 2 audit and 1 policy unit tests, 1
+  `authz_audit` and the extended `patient_log` Postgres tests, 1 vitest, stubbed and real-Keycloak browser tests updated;
+  by hand the row for a clinician with `org-riverside` read `{"roles":["clinician"],"organisations":["riverside"]}`.
+- **Not done:** rows written before this change have no actor and read "staff". Rows written outside a request (tests,
+  future jobs) have none. Roles are recorded as the token said at that moment, not checked against a directory. Staff
+  names are still not recorded or shown. The hash chain covers `actor` (it is in `detail`); no chain format change.
+
 ## [0.1.0] - 2026-10-20
 
 Milestone M0, scaffold. **Not for clinical use.**

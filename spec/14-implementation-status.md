@@ -22,9 +22,9 @@ no network, database or compilation; counts are source lines, not test runs):
 | Front-end version | 0.1.0 | `version` in the front-end `package.json` |
 | Migrations | 5 | files named `m2*.rs` in `migration/src` |
 | Route registrations | 14 | `.add(` calls in `src/controllers/*.rs` |
-| Service tests | 127, plus 33 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
+| Service tests | 131, plus 34 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
 | Matcher tests | 13, plus 0 `#[ignore]`d | the same patterns in the matcher |
-| Front-end unit tests (vitest) | 75 | `it(` / `test(` lines in `tests/unit` |
+| Front-end unit tests (vitest) | 76 | `it(` / `test(` lines in `tests/unit` |
 | Front-end end-to-end tests (Playwright) | 19 | `test(` lines in `tests/e2e` |
 | Locales | 10 | entries of `LOCALES` in `src/lib/locales.ts` |
 
