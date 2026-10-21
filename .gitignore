@@ -7,6 +7,8 @@ playwright-report/
 build/
 dist/
 .vite/
+__pycache__/
+*.pyc
 
 # Local environment and secrets (examples stay tracked).
 .env
