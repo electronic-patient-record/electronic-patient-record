@@ -63,6 +63,17 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
   automated test in `cargo test` (no `AppContext` harness): the translation is unit tested and the whole path is run
   against Keycloak by hand and in the opt-in browser suite.
 
+## 2026-10-21 - An unheld key is a key problem, not tampering
+
+- `Chain::check` tells "the digest is wrong" (`Mismatch`) from "this process cannot check it" (`KeyNotHeld`,
+  `SchemeUnknown`). `GET /api/audit/verify` answers **424** with `tampering_found:false`, the unchecked count, the first
+  unchecked row and the causes, instead of 409 naming a row as broken. The scan continues past such rows, so a real break
+  further down still gives 409. Idea 2 of `spec/interoperability/openehr-comparison.md`. Tests: 2 unit, 1 Postgres
+  (rotation without keeping the old key, the endpoint answer, the held-but-wrong key, a break behind unchecked rows).
+- **Not done:** an unkeyed `sha256:` row in a keyed chain is still 409, so enabling a key on an existing chain makes the old
+  rows read as broken; the openEHR "unkeyed only" state is not modelled. Not run by hand against Keycloak or a rotated
+  key in the real service. A monitor that treats every non-200 the same will not notice the difference.
+
 ## [0.1.0] - 2026-10-20
 
 Milestone M0, scaffold. **Not for clinical use.**

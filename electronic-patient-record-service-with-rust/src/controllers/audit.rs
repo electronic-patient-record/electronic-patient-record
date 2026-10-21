@@ -85,6 +85,28 @@ pub async fn verify_audited(
                 "assurance": assurance,
             }),
         ),
+        Verdict::Unchecked {
+            rows,
+            unchecked,
+            first_id,
+            causes,
+        } => (
+            // Not 409: nothing was found wrong, so a monitor must not read this as tampering. Not
+            // 200 either: the chain was not fully checked.
+            StatusCode::FAILED_DEPENDENCY,
+            serde_json::json!({
+                "intact": false,
+                "tampering_found": false,
+                "error": "key-not-held",
+                "rows": rows,
+                "unchecked": unchecked,
+                "first_unchecked_id": first_id,
+                "causes": causes,
+                "keyed": chain.keyed(),
+                "head": head,
+                "assurance": "No row was found altered, but the rows listed could not be checked because this service does not hold the key that made their digest. This is a key problem, not evidence of tampering: configure the missing key (EPR_INTEGRITY_MAC_KEY, or EPR_INTEGRITY_MAC_KEYS_RETIRED for an old one) or upgrade the service, then verify again.",
+            }),
+        ),
         Verdict::Broken { id, reason } => (
             StatusCode::CONFLICT,
             serde_json::json!({
@@ -102,6 +124,16 @@ pub async fn verify_audited(
     event.detail = Some(match &verdict {
         Verdict::Intact { rows } => serde_json::json!({ "intact": true, "rows": rows }),
         Verdict::Broken { id, .. } => serde_json::json!({ "intact": false, "first_broken_id": id }),
+        Verdict::Unchecked {
+            unchecked,
+            first_id,
+            ..
+        } => serde_json::json!({
+            "intact": false,
+            "tampering_found": false,
+            "unchecked": unchecked,
+            "first_unchecked_id": first_id,
+        }),
     });
     audit::append(db, chain, &event).await?;
     Ok((status, body))

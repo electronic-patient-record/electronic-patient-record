@@ -482,3 +482,89 @@ async fn the_patient_log_is_one_patients_rows_newest_first_in_pages_without_deta
     );
     s.finish().await;
 }
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn rows_under_a_key_we_do_not_hold_are_unchecked_not_broken_and_a_real_break_still_wins() {
+    use electronic_patient_record::audit::verify_against;
+    use electronic_patient_record::controllers::audit::verify_audited;
+
+    let key_as = |id: &str| {
+        Chain::new(KeySet::load_with_domains(
+            &KeyConfig::new("t", "T"),
+            Some(KEY),
+            None,
+            Some(id),
+            &[],
+        ))
+    };
+    let (old, new) = (key_as("k1"), key_as("k2"));
+    let s = Scratch::new().await;
+    let mut ids = vec![];
+    // Two rows under the old key, then the key is rotated and two more are written under k2.
+    for n in 0..2 {
+        ids.push(audit::append(&s.db, &old, &event(n)).await.unwrap());
+    }
+    for n in 2..4 {
+        ids.push(audit::append(&s.db, &new, &event(n)).await.unwrap());
+    }
+    // The operator forgot to keep the old key: the first two rows cannot be checked.
+    match audit::verify(&s.db, &new).await.unwrap() {
+        Verdict::Unchecked {
+            rows,
+            unchecked,
+            first_id,
+            causes,
+        } => {
+            assert_eq!((rows, unchecked, first_id), (4, 2, ids[0]));
+            assert_eq!(causes, vec!["key k1 is not held".to_string()]);
+        }
+        other => panic!("expected Unchecked, got {other:?}"),
+    }
+    // The endpoint says so without calling it tampering: 424, not 409, and names the cause.
+    let who = Agent("auditor-3".into());
+    let (status, body) = verify_audited(&s.db, &new, &who, None).await.unwrap();
+    assert_eq!(status, axum::http::StatusCode::FAILED_DEPENDENCY);
+    assert_eq!(body["tampering_found"], false);
+    assert_eq!(body["error"], "key-not-held");
+    assert!(
+        body["assurance"]
+            .as_str()
+            .unwrap()
+            .contains("not evidence of tampering")
+    );
+    // With the old key kept as retired, the whole chain is intact.
+    let both = Chain::new(KeySet::load_with_domains(
+        &KeyConfig::new("t", "T"),
+        Some(OTHER_KEY),
+        Some(&format!("k1:{KEY}")),
+        Some("k2"),
+        &[],
+    ));
+    // (That key set holds k1 = KEY and k2 = OTHER_KEY, which is not what wrote k2 above, so the
+    // two k2 rows are now a mismatch: a held key that disagrees is tampering evidence.)
+    assert!(matches!(
+        audit::verify(&s.db, &both).await.unwrap(),
+        Verdict::Broken { id, .. } if id == ids[2]
+    ));
+    // A row that cannot be checked does not hide a break further down the chain.
+    s.tamper(&format!(
+        "UPDATE audit_events SET agent = 'mallory' WHERE id = {}",
+        ids[3]
+    ))
+    .await;
+    assert!(matches!(
+        audit::verify(&s.db, &new).await.unwrap(),
+        Verdict::Broken { id, .. } if id == ids[3]
+    ));
+    // With no key at all every row is unchecked (the four above and the verify row the endpoint wrote), and a head is still reported: it needs no key.
+    let (v, head) = verify_against(&s.db, &Chain::unkeyed(), 2, None)
+        .await
+        .unwrap();
+    assert!(
+        matches!(v, Verdict::Unchecked { unchecked: 5, .. }),
+        "{v:?}"
+    );
+    assert!(head.is_some());
+    s.finish().await;
+}

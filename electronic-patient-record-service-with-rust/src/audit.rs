@@ -138,15 +138,74 @@ impl Chain {
         recorded_at: &str,
         event: &Event,
     ) -> bool {
+        self.check(stored, prev, recorded_at, event) == RowCheck::Valid
+    }
+
+    /// Check `stored` against the given inputs, telling "the content does not match" apart from
+    /// "this service cannot check it": a row MACed under a key (or by a scheme) that this process
+    /// does not hold is neither confirmed nor refuted, and is not evidence of tampering.
+    ///
+    /// A `sha256:` row in a keyed chain is a [`RowCheck::Mismatch`]: someone without the key can
+    /// write one, so accepting it would defeat the key. That also means rows written before a key
+    /// was configured read as broken; see the audit spec.
+    #[must_use]
+    pub fn check(
+        &self,
+        stored: &str,
+        prev: Option<&str>,
+        recorded_at: &str,
+        event: &Event,
+    ) -> RowCheck {
         let preimage = preimage(prev, recorded_at, event);
         if stored.starts_with("sha256:") {
-            return !self.keyed()
-                && stored == format!("sha256:{}", hex(&Sha256::digest(&preimage)));
+            let same = stored == format!("sha256:{}", hex(&Sha256::digest(&preimage)));
+            return if !self.keyed() && same {
+                RowCheck::Valid
+            } else {
+                RowCheck::Mismatch
+            };
         }
-        self.keys.as_ref().is_some_and(|k| {
-            k.verify(DOMAIN, Some(stored), &preimage) == integrity_mac::MacVerdict::Valid
-        })
+        match &self.keys {
+            Some(k) => match k.verify(DOMAIN, Some(stored), &preimage) {
+                integrity_mac::MacVerdict::Valid => RowCheck::Valid,
+                integrity_mac::MacVerdict::UnknownKey(id) if !id.is_empty() => {
+                    RowCheck::KeyNotHeld(id)
+                }
+                integrity_mac::MacVerdict::UnknownScheme(s) => RowCheck::SchemeUnknown(s),
+                _ => RowCheck::Mismatch,
+            },
+            // No key at all: a well-formed `[<scheme>.]<id>:<hex>` names a key we do not hold.
+            None => match stored
+                .split_once(':')
+                .filter(|(p, h)| !p.is_empty() && !h.is_empty())
+            {
+                Some((prefix, _)) => match prefix.split_once('.') {
+                    Some((scheme, _)) if scheme != integrity_mac::SCHEME => {
+                        RowCheck::SchemeUnknown(scheme.to_string())
+                    }
+                    Some((_, id)) => RowCheck::KeyNotHeld(id.to_string()),
+                    None => RowCheck::KeyNotHeld(prefix.to_string()),
+                },
+                None => RowCheck::Mismatch,
+            },
+        }
     }
+}
+
+/// What checking one row's digest found.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RowCheck {
+    /// The digest is right.
+    Valid,
+    /// The digest is wrong: the row's content changed (or the digest was written without the key).
+    Mismatch,
+    /// The digest was made with a key this process does not hold. Not a mismatch: it can be neither
+    /// confirmed nor refuted. The fix is the key (`EPR_INTEGRITY_MAC_KEY`, or the old one in
+    /// `EPR_INTEGRITY_MAC_KEYS_RETIRED`), not an investigation of the data.
+    KeyNotHeld(String),
+    /// The digest names a key-derivation scheme this build does not implement: the binary is older
+    /// than the row. The fix is to upgrade it.
+    SchemeUnknown(String),
 }
 
 fn hex(bytes: &[u8]) -> String {
@@ -361,6 +420,19 @@ pub enum Verdict {
         /// What is wrong with it.
         reason: String,
     },
+    /// No row is wrong, but some could not be checked because this process does not hold the key
+    /// (or does not know the scheme) that made their digest. This is a **key problem, not
+    /// evidence of tampering**; every row that could be checked, and every link, was fine.
+    Unchecked {
+        /// Rows read.
+        rows: usize,
+        /// How many of them could not be checked.
+        unchecked: usize,
+        /// The first row that could not be checked.
+        first_id: i64,
+        /// Why, once per cause, sorted: e.g. `key k1 is not held`.
+        causes: Vec<String>,
+    },
 }
 
 /// One audit row about a patient, with only the fields a patient may be shown. `detail`,
@@ -518,6 +590,9 @@ pub async fn verify_against(
         ),
     };
     let mut head: Option<Head> = None;
+    let mut unchecked: usize = 0;
+    let mut first_unchecked: Option<i64> = None;
+    let mut causes = std::collections::BTreeSet::new();
     let mut previous: Option<String> = None;
     let mut last_id: i64 = 0;
     let mut checked: usize = 0;
@@ -540,7 +615,16 @@ pub async fn verify_against(
             {
                 return Ok((missing(c), head));
             }
-            return Ok((Verdict::Intact { rows: checked }, head));
+            let verdict = match first_unchecked {
+                None => Verdict::Intact { rows: checked },
+                Some(first_id) => Verdict::Unchecked {
+                    rows: checked,
+                    unchecked,
+                    first_id,
+                    causes: causes.into_iter().collect(),
+                },
+            };
+            return Ok((verdict, head));
         }
         for r in &rows {
             checked += 1;
@@ -582,14 +666,29 @@ pub async fn verify_against(
                 detail: r.try_get("", "detail").map_err(err)?,
             };
             let ts: String = r.try_get("", "ts").map_err(err)?;
-            if !chain.matches(&digest, previous.as_deref(), &ts, &event) {
-                return Ok((
-                    Verdict::Broken {
-                        id,
-                        reason: format!("digest of row {checked} does not match its content"),
-                    },
-                    head,
-                ));
+            match chain.check(&digest, previous.as_deref(), &ts, &event) {
+                RowCheck::Valid => {}
+                RowCheck::Mismatch => {
+                    return Ok((
+                        Verdict::Broken {
+                            id,
+                            reason: format!("digest of row {checked} does not match its content"),
+                        },
+                        head,
+                    ));
+                }
+                // The link to the previous row was already checked from the stored digests, so
+                // the scan goes on: a break further down is still found.
+                RowCheck::KeyNotHeld(key) => {
+                    unchecked += 1;
+                    first_unchecked.get_or_insert(id);
+                    causes.insert(format!("key {key} is not held"));
+                }
+                RowCheck::SchemeUnknown(scheme) => {
+                    unchecked += 1;
+                    first_unchecked.get_or_insert(id);
+                    causes.insert(format!("scheme {scheme} is not understood by this build"));
+                }
             }
             if let Some(c) = checkpoint
                 && c.id == id
@@ -719,5 +818,66 @@ mod tests {
     fn outside_a_request_the_event_is_unchanged() {
         let e = ev();
         assert_eq!(with_actor(&e), e);
+    }
+
+    /// A chain whose only key has the id `id`.
+    fn keyed_as(id: &str) -> Chain {
+        Chain::new(KeySet::load_with_domains(
+            &KeyConfig::new("t", "T"),
+            Some(KEY),
+            None,
+            Some(id),
+            &[],
+        ))
+    }
+
+    #[test]
+    fn a_row_under_a_key_we_do_not_hold_is_not_a_mismatch() {
+        let e = ev();
+        let digest = keyed_as("k1").digest(None, "2026-01-01T00:00:00.000000Z", &e);
+        assert!(digest.starts_with("d1.k1:"), "{digest}");
+        let check = |c: &Chain, d: &str| c.check(d, None, "2026-01-01T00:00:00.000000Z", &e);
+        assert_eq!(check(&keyed_as("k1"), &digest), RowCheck::Valid);
+        // Another key id: cannot be checked, which is not evidence of tampering.
+        assert_eq!(
+            check(&keyed_as("k2"), &digest),
+            RowCheck::KeyNotHeld("k1".into())
+        );
+        // No key at all: the same.
+        assert_eq!(
+            check(&Chain::unkeyed(), &digest),
+            RowCheck::KeyNotHeld("k1".into())
+        );
+        // A scheme this build does not know.
+        let future = digest.replacen("d1.", "d9.", 1);
+        assert_eq!(
+            check(&keyed_as("k1"), &future),
+            RowCheck::SchemeUnknown("d9".into())
+        );
+        assert_eq!(
+            check(&Chain::unkeyed(), &future),
+            RowCheck::SchemeUnknown("d9".into())
+        );
+    }
+
+    #[test]
+    fn a_wrong_mac_under_a_held_key_and_garbage_are_still_mismatches() {
+        let e = ev();
+        let at = "2026-01-01T00:00:00.000000Z";
+        let c = keyed_as("k1");
+        let digest = c.digest(None, at, &e);
+        let mut other = e.clone();
+        other.agent = "someone-else".into();
+        assert_eq!(c.check(&digest, None, at, &other), RowCheck::Mismatch);
+        for junk in ["", "nonsense", "d1.k1:", ":abcd", "d1.k1:zz"] {
+            assert_eq!(c.check(junk, None, at, &e), RowCheck::Mismatch, "{junk:?}");
+        }
+        assert_eq!(
+            Chain::unkeyed().check("nonsense", None, at, &e),
+            RowCheck::Mismatch
+        );
+        // An unkeyed digest in a keyed chain is a downgrade someone without the key can write.
+        let plain = Chain::unkeyed().digest(None, at, &e);
+        assert_eq!(c.check(&plain, None, at, &e), RowCheck::Mismatch);
     }
 }
