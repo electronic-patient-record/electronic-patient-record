@@ -310,19 +310,25 @@ fn given_token_sim(x: &str, y: &str) -> f64 {
 
 fn given_similarity(a: &Patient, b: &Patient) -> Option<f64> {
     let mut best: Option<f64> = None;
-    for na in &a.names {
-        for nb in &b.names {
-            if na.given.is_empty() || nb.given.is_empty() {
+    // A token that folds to nothing (`-`, spaces) is absent, not a name that disagrees.
+    let tokens = |given: &[String]| -> Vec<String> {
+        given
+            .iter()
+            .filter(|t| !fold_name(t).is_empty())
+            .cloned()
+            .collect()
+    };
+    for na in a.names.iter().map(|n| tokens(&n.given)) {
+        for nb in b.names.iter().map(|n| tokens(&n.given)) {
+            if na.is_empty() || nb.is_empty() {
                 continue;
             }
             // Average over the shorter list; with equal lengths, average both ways and keep the
             // lower, so the order of the records never raises the score.
-            let s = match na.given.len().cmp(&nb.given.len()) {
-                std::cmp::Ordering::Less => given_average(&na.given, &nb.given),
-                std::cmp::Ordering::Greater => given_average(&nb.given, &na.given),
-                std::cmp::Ordering::Equal => {
-                    given_average(&na.given, &nb.given).min(given_average(&nb.given, &na.given))
-                }
+            let s = match na.len().cmp(&nb.len()) {
+                std::cmp::Ordering::Less => given_average(&na, &nb),
+                std::cmp::Ordering::Greater => given_average(&nb, &na),
+                std::cmp::Ordering::Equal => given_average(&na, &nb).min(given_average(&nb, &na)),
             };
             best = Some(best.map_or(s, |b: f64| b.max(s)));
         }

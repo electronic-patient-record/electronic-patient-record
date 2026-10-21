@@ -2,6 +2,15 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-21 - An empty given name is absent (CQ-5)
+
+- A given name such as `-` or spaces folds to nothing. The family name already skipped such values; the given name
+  scored them as `Some(0.0)`, breaking "absent is not zero", and an empty token beside a real one halved its score.
+  Such tokens are now dropped, so a list of only empty tokens is absent. Spec invariant 4 says so. Hazard H-001
+  updated.
+- Tests: one test (three empty forms, and a real token beside an empty one); it failed before the change.
+- **Not done:** reaching the service, which needs matcher 0.2.0.
+
 ## 2026-10-21 - Birth-date typo rule and impossible dates (CQ-4)
 
 - The matcher gave "typo" credit (0.6) for any different day, any different month or any different year, so a parent

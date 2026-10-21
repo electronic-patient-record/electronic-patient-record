@@ -440,7 +440,7 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
   edit or an adjacent-digit or day/month swap (`src/engine.rs:350`); reject impossible dates such as `2020-02-31`
   (`src/normalize.rs:55`).
   **Acceptance:** 1950 vs 2010 scores as a mismatch; `2020-02-31` is absent with a reason; each branch has a test.
-- [ ] **CQ-5 (S) — Empty given name is absent, not zero.** **Clinical.** Filter tokens whose fold is empty in
+- [x] **CQ-5 (S) — Empty given name is absent, not zero.** **Landed 2026-10-21** in the matcher (1 test, H-001); reaches the service with matcher 0.2.0. **Clinical.** Filter tokens whose fold is empty in
   `given_similarity`, as `family_similarity` already does.
   **Acceptance:** given `["-"]` yields `None` for the given-name field (test).
 - [ ] **CQ-6 (S) — Wrong-patient display on navigation.** **Clinical.** `patients/[id]/+page.svelte:41` keeps the

@@ -327,3 +327,23 @@ fn impossible_dates_are_absent() {
     assert_eq!(birth_date_score("2020-02-29", "2020-02-29"), Some(1.0));
     assert_eq!(birth_date_score("2000-02-29", "2000-02-29"), Some(1.0));
 }
+
+#[test]
+fn given_name_that_folds_to_nothing_is_absent() {
+    // Regression (CQ-5): `["-"]` scored Some(0.0); absent is not zero.
+    let e = MatchingEngine::default();
+    for empty in [&["-"][..], &["  "], &["-", "'"]] {
+        let a = patient("Smith", &["John"], "1980-03-14", M);
+        let b = patient("Smith", empty, "1980-03-14", M);
+        let r = e.compare(&a, &b);
+        let given = r.fields.iter().find(|f| f.field == "given_name").unwrap();
+        assert_eq!(given.similarity, None, "{empty:?}: {r:?}");
+        assert_ne!(r.decision, Decision::AutoLink);
+    }
+    // A real token beside an empty one still counts, and the empty one does not dilute it.
+    let a = patient("Smith", &["John"], "1980-03-14", M);
+    let b = patient("Smith", &["John", "-"], "1980-03-14", M);
+    let r = e.compare(&a, &b);
+    let given = r.fields.iter().find(|f| f.field == "given_name").unwrap();
+    assert_eq!(given.similarity, Some(1.0), "{r:?}");
+}

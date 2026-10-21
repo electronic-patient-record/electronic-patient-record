@@ -15,7 +15,7 @@ reviewer can see why two records were or were not linked.
    variants).
 3. **Deterministic.** Same input, same output (tested).
 4. **Absent is not zero.** A field missing on either side has `similarity: None` and is excluded from the weighted
-   average; the note says why.
+   average; the note says why. A name token that folds to nothing (`-`, spaces) is missing, not a token that disagrees.
 5. **Missing evidence blocks automatic linking.** `AutoLink` additionally requires given name, family name and
    birth date to be present and above their minimums (`min_given_for_auto` 0.85, `min_family_for_auto` 0.85,
    `min_birth_date_for_auto` 0.99), and at least `min_evidence_weight` (0.5) of the total weight present. Otherwise the
