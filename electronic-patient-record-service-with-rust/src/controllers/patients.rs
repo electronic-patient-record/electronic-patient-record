@@ -212,7 +212,12 @@ pub(super) async fn authorize(
         consent: Consent::NotRecorded,
         decided_by: Vec::new(),
     };
-    if let (true, Resource::PatientIdentity, Some(id)) = (action.reads(), resource, patient_id) {
+    // The patient's consent is looked up for every read of one patient's identity or clinical data.
+    if let (true, true, Some(id)) = (
+        action.reads(),
+        resource == Resource::PatientIdentity || resource.clinical(),
+        patient_id,
+    ) {
         let mut all = consent_verdicts(db, subject, purpose, resource, &[id.to_string()]).await?;
         if let Some(v) = all.remove(&id.to_lowercase()) {
             verdict = v;
@@ -746,6 +751,13 @@ pub fn routes() -> Routes {
         .add("/", get(search))
         .add("/{id}", get(read))
         .add("/{id}", put(update))
+        .add("/{id}/allergies", get(super::allergies::list))
+        .add("/{id}/allergies", post(super::allergies::create))
+        .add(
+            "/{id}/allergies/{allergy_id}",
+            put(super::allergies::update),
+        )
+        .add("/{id}/allergy-statement", put(super::allergies::statement))
         .add("/{id}/photo", get(super::photos::read))
         .add("/{id}/photo", put(super::photos::put))
         .add("/{id}/photo/withdraw", post(super::photos::withdraw))

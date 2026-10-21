@@ -7,6 +7,7 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
+pub mod allergies;
 pub mod app;
 pub mod audit;
 pub mod auth;

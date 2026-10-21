@@ -591,3 +591,161 @@ test("a patient's photo is stored as bytes, refused if it is not an image, and s
   expect(raw.headers.get("cache-control")).toContain("no-store");
   expect(Buffer.from(await raw.arrayBuffer()).equals(png)).toBe(true);
 });
+
+test("allergies are clinical content: a care relationship is needed, the patient sees them in their banner, and the audit rows hold no substance", async ({
+  page,
+}) => {
+  test.skip(
+    !ADMIN || !PATIENT || !AUDITOR,
+    "set EPR_E2E_ADMIN_USERNAME, EPR_E2E_PATIENT_USERNAME and EPR_E2E_AUDITOR_USERNAME",
+  );
+  const subOf = (t: string) =>
+    JSON.parse(Buffer.from(t.split(".")[1]!, "base64url").toString())
+      .sub as string;
+  const [admin, clinician, patientToken, auditor] = await Promise.all([
+    devToken(ADMIN),
+    devToken(USERNAME),
+    devToken(PATIENT),
+    devToken(AUDITOR),
+  ]);
+  const api = async (
+    token: string,
+    method: string,
+    path: string,
+    body?: unknown,
+    purpose = "operations",
+  ) => {
+    const res = await fetch(`${API}${path}`, {
+      method,
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+        "x-purpose-of-use": purpose,
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    // The route gate answers a plain "forbidden", not JSON.
+    const text = await res.text();
+    let parsed: any = text;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      /* plain text */
+    }
+    return { status: res.status, body: parsed };
+  };
+  // A birth date no earlier run used, so the duplicate check stays quiet.
+  const dob = () =>
+    `19${40 + Math.floor(Math.random() * 40)}-0${1 + Math.floor(Math.random() * 9)}-${10 + Math.floor(Math.random() * 18)}`;
+  const make = async (given: string, _unused?: string) => {
+    const r = await api(admin, "POST", "/api/patients", {
+      patient: {
+        names: [{ family: `Zallergy${Date.now()}${given}`, given: [given] }],
+        birth_date: dob(),
+      },
+    });
+    expect(r.status).toBe(201);
+    return r.body.id as string;
+  };
+  const withRel = async (id: string, subject: string, kind: string) =>
+    expect(
+      (
+        await api(admin, "POST", `/api/patients/${id}/relationships`, {
+          relationship: { subject, kind, status: "active" },
+          reason: "e2e",
+        })
+      ).status,
+    ).toBe(201);
+
+  const id = await make("Alex", "1949-04-04");
+  const stranger = await make("Blair", "1950-05-05");
+  await withRel(id, subOf(patientToken), "self");
+  await withRel(id, subOf(clinician), "care-team");
+
+  // The clinician with a relationship records a high-risk allergy, declaring treatment.
+  const made = await api(
+    clinician,
+    "POST",
+    `/api/patients/${id}/allergies`,
+    {
+      allergy: {
+        substance: "Penicillin",
+        criticality: "high",
+        category: "medication",
+        status: "active",
+      },
+    },
+    "treatment",
+  );
+  expect(made.status).toBe(201);
+  const read = await api(
+    clinician,
+    "GET",
+    `/api/patients/${id}/allergies`,
+    undefined,
+    "treatment",
+  );
+  expect(read.body.summary.state).toBe("active");
+  // "No known allergies" cannot contradict the record.
+  const none = await api(
+    clinician,
+    "PUT",
+    `/api/patients/${id}/allergy-statement`,
+    { none_known: true, expected_version: 0 },
+    "treatment",
+  );
+  expect(none.status).toBe(422);
+
+  // An administrator has no allergy permission; a clinician with no relationship is refused.
+  expect(
+    (await api(admin, "GET", `/api/patients/${id}/allergies`)).status,
+  ).toBe(403);
+  expect(
+    (
+      await api(
+        clinician,
+        "GET",
+        `/api/patients/${stranger}/allergies`,
+        undefined,
+        "treatment",
+      )
+    ).status,
+  ).toBe(403);
+
+  // The patient's own banner carries it.
+  await signIn(page, PATIENT);
+  await page.goto("/en-001/my-record");
+  await expect(
+    page
+      .locator(`section[aria-labelledby="rec-${id}"]`)
+      .getByRole("region", { name: "Patient banner" })
+      .locator("p.allergies"),
+  ).toHaveText("Allergies: Penicillin (high risk)");
+
+  // The trail records the access, and not the substance.
+  const trail = await api(
+    auditor,
+    "GET",
+    `/api/audit?patient=${id}`,
+    undefined,
+    "audit",
+  );
+  const rows = trail.body.events.filter((e: any) =>
+    e.resource?.startsWith("AllergyIntolerance"),
+  );
+  expect(rows.length).toBeGreaterThanOrEqual(3);
+  expect(JSON.stringify(trail.body)).not.toContain("Penicillin");
+  // The clinician's refused read of a stranger's allergies is in the trail too.
+  const refused = await api(
+    auditor,
+    "GET",
+    `/api/audit?patient=${stranger}&outcome=4`,
+    undefined,
+    "audit",
+  );
+  expect(
+    refused.body.events.some((e: any) =>
+      String(e.resource).startsWith("AllergyIntolerance"),
+    ),
+  ).toBe(true);
+});

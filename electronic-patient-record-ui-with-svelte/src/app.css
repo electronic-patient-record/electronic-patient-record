@@ -166,6 +166,11 @@ small {
   object-fit: cover;
   border: 1px solid var(--fg);
 }
+.banner .allergies.high {
+  padding-left: 0.5rem;
+  border-left: 4px solid var(--warn-border);
+  background: var(--warn-bg);
+}
 .banner .allergies {
   font-weight: 600;
 }

@@ -9,6 +9,7 @@
     nhsDisplay,
     type Stored,
   } from "./patient.js";
+  import { bannerAllergies, type AllergyLoad } from "./allergies.js";
   import { fetchBlob } from "./api.js";
   import { STRINGS } from "./strings.js";
 
@@ -18,7 +19,16 @@
     stored,
     today = new Date(),
     purpose,
-  }: { stored: Stored; today?: Date; purpose?: string } = $props();
+    allergies = null,
+  }: {
+    stored: Stored;
+    today?: Date;
+    purpose?: string;
+    // What the allergy call returned, or null while it is still loading. The page makes the call
+    // (once) and hands it to the banner and the allergy section.
+    allergies?: AllergyLoad | null;
+  } = $props();
+  const allergyLine = $derived(bannerAllergies(allergies));
 
   // The photo is fetched with the page's own call (so it carries the purpose of use) and shown from
   // an object URL that is revoked when the photo changes or the banner goes. The server serves it
@@ -93,7 +103,7 @@
   {:else}
     <p>{STRINGS.bannerPhoto}</p>
   {/if}
-  <p class="allergies">
-    {STRINGS.bannerAllergies}: {STRINGS.bannerAllergiesUnknown}
+  <p class="allergies" class:high={allergyLine.high}>
+    {STRINGS.bannerAllergies}: {allergyLine.text}
   </p>
 </section>

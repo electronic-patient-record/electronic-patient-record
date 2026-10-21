@@ -31,6 +31,22 @@ const CANDIDATE = {
 const json = (route: Route, status: number, body: unknown) =>
   route.fulfill({ status, json: body });
 
+const NOT_RECORDED = {
+  allergies: [],
+  statement: null,
+  summary: { state: "not-recorded" },
+};
+const stubAllergies = (
+  page: Page,
+  body: unknown = NOT_RECORDED,
+  status = 200,
+) =>
+  page.route("**/api/proxy/api/patients/*/allergies", (route) =>
+    route.request().method() === "GET"
+      ? json(route, status, body)
+      : route.fallback(),
+  );
+
 async function axe(page: Page) {
   const r = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag22aa"])
@@ -456,6 +472,7 @@ test("my record shows who has accessed it, on request, as staff without names", 
 test("the patient banner shows who is on record, says allergies are unknown, and ignores what is being typed", async ({
   page,
 }) => {
+  await stubAllergies(page);
   await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
     json(route, 200, ANN),
   );
@@ -485,6 +502,7 @@ test("the patient banner shows who is on record, says allergies are unknown, and
 test("a record with little on it still gets a banner that says what is missing", async ({
   page,
 }) => {
+  await stubAllergies(page);
   const bare = {
     ...ANN,
     patient: {
@@ -669,4 +687,216 @@ test("a file that is not a small PNG or JPEG is refused in the page before it is
     page.getByText("That file is larger than 512 KiB."),
   ).toBeVisible();
   expect(sent).toBe(0);
+});
+
+test("the banner's allergy line says exactly what is known, and never reads as none when it is not", async ({
+  page,
+}) => {
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, ANN),
+  );
+  const banner = page.getByRole("region", { name: "Patient banner" });
+  const line = banner.locator("p.allergies");
+  const data = (summary: unknown, allergies: unknown[] = []) => ({
+    allergies,
+    statement: null,
+    summary,
+  });
+  const cases: [number, unknown, RegExp, boolean][] = [
+    [
+      200,
+      data({
+        state: "active",
+        items: [
+          { substance: "Penicillin", criticality: "high" },
+          { substance: "Latex", criticality: null },
+        ],
+      }),
+      /^Allergies: Penicillin \(high risk\), Latex$/,
+      true,
+    ],
+    [
+      200,
+      data({
+        state: "no-known",
+        asserted_at: "2026-10-21T09:00:12.000000Z",
+        asserted_by: "x",
+      }),
+      /^Allergies: No known allergies \(stated 2026-10-21 09:00 UTC\)\.$/,
+      false,
+    ],
+    [
+      200,
+      data({ state: "none-active", inactive: 2 }),
+      /Not confirmed as none known/,
+      false,
+    ],
+    [
+      200,
+      data({ state: "not-recorded" }),
+      /does not mean there are none/,
+      false,
+    ],
+    [
+      403,
+      { error: "forbidden" },
+      /Not shown to you for this patient\. This does not mean/,
+      false,
+    ],
+    [
+      500,
+      { error: "internal error" },
+      /Could not be loaded\. This does not mean/,
+      false,
+    ],
+  ];
+  for (const [status, body, expected, high] of cases) {
+    await page.unroute("**/api/proxy/api/patients/*/allergies");
+    await stubAllergies(page, body, status);
+    await page.goto(`/en-001/patients/${ANN.id}`);
+    await expect(line).toHaveText(expected);
+    await expect(line).toHaveClass(high ? /high/ : /^((?!high).)*$/);
+    await axe(page);
+  }
+});
+
+test("a clinician records, ends and retracts an allergy and states none known; the banner follows", async ({
+  page,
+}) => {
+  const sent: { method: string; url: string; body: any }[] = [];
+  let state: any = {
+    allergies: [],
+    statement: null,
+    summary: { state: "not-recorded" },
+  };
+  const A = (status: string, version: number) => ({
+    id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    patient_id: ANN.id,
+    version,
+    author: "dr",
+    recorded_at: "2026-10-21T09:00:00.000000Z",
+    allergy: { substance: "Penicillin", criticality: "high", status },
+  });
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, ANN),
+  );
+  await page.route("**/api/proxy/api/patients/*/allergies**", (route) => {
+    const req = route.request();
+    if (req.method() === "GET") return json(route, 200, state);
+    sent.push({
+      method: req.method(),
+      url: req.url(),
+      body: req.postDataJSON(),
+    });
+    state = {
+      allergies: [A("active", 1)],
+      statement: null,
+      summary: {
+        state: "active",
+        items: [{ substance: "Penicillin", criticality: "high" }],
+      },
+    };
+    return json(route, 201, A("active", 1));
+  });
+  await page.route("**/api/proxy/api/patients/*/allergies/*", (route) => {
+    const req = route.request();
+    sent.push({
+      method: req.method(),
+      url: req.url(),
+      body: req.postDataJSON(),
+    });
+    const status = req.postDataJSON().allergy.status;
+    state = {
+      allergies: [A(status, 2)],
+      statement: null,
+      summary: {
+        state: status === "inactive" ? "none-active" : "not-recorded",
+        inactive: 1,
+      },
+    };
+    return json(route, 200, A(status, 2));
+  });
+  await page.route("**/api/proxy/api/patients/*/allergy-statement", (route) => {
+    sent.push({
+      method: "PUT",
+      url: route.request().url(),
+      body: route.request().postDataJSON(),
+    });
+    state = {
+      allergies: [],
+      statement: {
+        version: 1,
+        author: "dr",
+        recorded_at: "2026-10-21T11:00:00.000000Z",
+        no_known_allergies: true,
+      },
+      summary: {
+        state: "no-known",
+        asserted_at: "2026-10-21T11:00:00.000000Z",
+        asserted_by: "dr",
+      },
+    };
+    return json(route, 200, state.statement);
+  });
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  const line = page
+    .getByRole("region", { name: "Patient banner" })
+    .locator("p.allergies");
+  await expect(line).toContainText("Not recorded in this system");
+  await axe(page);
+
+  await page.getByLabel("Substance").fill("Penicillin");
+  await page.getByLabel("Risk").selectOption("high");
+  await page.getByRole("button", { name: "Record allergy" }).click();
+  await expect(line).toHaveText("Allergies: Penicillin (high risk)");
+  expect(sent[0].method).toBe("POST");
+  expect(sent[0].body.allergy).toEqual({
+    substance: "Penicillin",
+    status: "active",
+    criticality: "high",
+  });
+
+  await page.getByRole("button", { name: "No longer applies" }).click();
+  await expect(line).toContainText(
+    "No active allergies are recorded (1 inactive)",
+  );
+  expect(sent[1].method).toBe("PUT");
+  expect(sent[1].body.expected_version).toBe(1);
+  expect(sent[1].body.allergy.status).toBe("inactive");
+
+  await page.getByRole("button", { name: "Entered in error" }).click();
+  await expect(line).toContainText("Not recorded in this system");
+  // The page sends the version it last saw: the list had been reloaded at version 2.
+  expect(sent[2].body.expected_version).toBe(2);
+  expect(sent[2].body.allergy.status).toBe("entered-in-error");
+
+  await page
+    .getByRole("button", { name: "Record: no known allergies" })
+    .click();
+  await expect(line).toContainText(
+    "No known allergies (stated 2026-10-21 11:00 UTC)",
+  );
+  expect(sent[3].body).toEqual({ none_known: true, expected_version: 0 });
+  await expect(
+    page.getByRole("button", {
+      name: "Withdraw the no-known-allergies statement",
+    }),
+  ).toBeVisible();
+  await axe(page);
+});
+
+test("a role that may not read allergies sees no allergy section and a banner that says so", async ({
+  page,
+}) => {
+  await stubAllergies(page, { error: "forbidden" }, 403);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, ANN),
+  );
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  await expect(
+    page.getByRole("region", { name: "Patient banner" }),
+  ).toContainText("Not shown to you for this patient");
+  await expect(
+    page.getByRole("heading", { name: "Allergies and intolerances" }),
+  ).toHaveCount(0);
 });

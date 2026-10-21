@@ -1,5 +1,6 @@
 <script lang="ts">
   import { call, commonProblem } from "#lib/api.js";
+  import { loadAllergies, type AllergyLoad } from "#lib/allergies.js";
   import PatientBanner from "#lib/PatientBanner.svelte";
   import { describe, whenText, type LogPage } from "#lib/access-log.js";
   import { patientToForm, type Stored } from "#lib/patient.js";
@@ -10,6 +11,7 @@
   let records = $state<Entry[] | null>(null);
   let message = $state<string | null>(null);
   let loading = $state(true);
+  let allergyById = $state<Record<string, AllergyLoad>>({});
 
   // This page is for the signed-in patient or proxy, so it always says so: the purpose of use is
   // `patient-access`, and the API fixes it for this endpoint too.
@@ -23,7 +25,15 @@
     loading = false;
     const problem = commonProblem(res.status);
     if (problem) message = STRINGS[problem];
-    else if (res.status === 200) records = res.body.records;
+    else if (res.status === 200) {
+      records = res.body.records;
+      // One allergy call per record, under the patient-access purpose.
+      for (const r of res.body.records) {
+        void loadAllergies(r.patient.id, "patient-access").then((l) => {
+          allergyById[r.patient.id] = l;
+        });
+      }
+    }
     else message = STRINGS.error;
   }
 
@@ -95,7 +105,7 @@
           .filter(Boolean)
           .join(", ")}
       </h2>
-      <PatientBanner stored={{ ...entry.patient, photo_version: entry.photo_version }} purpose="patient-access" />
+      <PatientBanner stored={{ ...entry.patient, photo_version: entry.photo_version }} purpose="patient-access" allergies={allergyById[entry.patient.id] ?? null} />
       {#if entry.relationship === "proxy"}<p>{STRINGS.myRecordProxy}</p>{/if}
       <dl>
         {#each fields(entry.patient) as [label, value] (label)}

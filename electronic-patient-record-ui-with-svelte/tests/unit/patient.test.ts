@@ -243,3 +243,64 @@ describe("banner helpers", () => {
     }
   });
 });
+
+import { bannerAllergies, type AllergyData } from "../../src/lib/allergies";
+
+describe("banner allergy line", () => {
+  const ok = (summary: AllergyData["summary"]) => ({
+    status: 200,
+    data: { allergies: [], statement: null, summary },
+  });
+  it("lists active allergies, naming the risk, and flags a high-risk one", () => {
+    const l = bannerAllergies(
+      ok({
+        state: "active",
+        items: [
+          { substance: "Penicillin", criticality: "high" },
+          { substance: "Latex", criticality: "low" },
+          { substance: "Pollen", criticality: null },
+          { substance: "Iodine", criticality: "unable-to-assess" },
+        ],
+      }),
+    );
+    expect(l.text).toBe(
+      "Penicillin (high risk), Latex (low risk), Pollen, Iodine (risk not assessed)",
+    );
+    expect(l.high).toBe(true);
+    expect(
+      bannerAllergies(
+        ok({
+          state: "active",
+          items: [{ substance: "Latex", criticality: "low" }],
+        }),
+      ).high,
+    ).toBe(false);
+  });
+  it("says none known only when a clinician stated it, and with the time", () => {
+    expect(
+      bannerAllergies(
+        ok({
+          state: "no-known",
+          asserted_at: "2026-10-21T09:00:12.000000Z",
+          asserted_by: "x",
+        }),
+      ).text,
+    ).toBe("No known allergies (stated 2026-10-21 09:00 UTC).");
+  });
+  it("never reads as none when the system does not know", () => {
+    const unknown = [
+      bannerAllergies(ok({ state: "not-recorded" })).text,
+      bannerAllergies(ok({ state: "none-active", inactive: 2 })).text,
+      bannerAllergies({ status: 403, data: null }).text,
+      bannerAllergies({ status: 500, data: null }).text,
+      bannerAllergies({ status: 0, data: null }).text,
+    ];
+    for (const t of unknown)
+      expect(t.toLowerCase(), t).not.toMatch(/^no known allergies/);
+    expect(unknown[0]).toContain("does not mean there are none");
+    expect(unknown[2]).toContain("does not mean there are none");
+    expect(unknown[3]).toContain("does not mean there are none");
+    expect(unknown[1]).toContain("Not confirmed as none known");
+    expect(bannerAllergies(null).text).toBe("Checking…");
+  });
+});

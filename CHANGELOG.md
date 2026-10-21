@@ -158,6 +158,21 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
   hostile metadata inside a PNG or JPEG is stored as it came; the banner on the staff pages fetches under the picker's
   purpose.
 
+## 2026-10-21 - Allergies (RC-5, in part): the banner now has real allergy data
+
+- The first clinical content: `allergy_versions` and `allergy_assertion_versions` (append-only), the four routes above,
+  an allergy section on the patient page, and the banner line driven by one shared answer. The patient's consent now
+  applies to every clinical read (it covered only identity before). Hazards H-018 and H-019 added; H-008 notes that a
+  clinician without a care relationship has no override. 6 + 4 + 3 tests (unit, Postgres, vitest), 4 stubbed Playwright
+  tests with axe, and a real-Keycloak test: a care-team clinician records a high-risk allergy under `treatment`; "none known"
+  is refused (422); an administrator is refused by the gate and a clinician with no relationship is refused by the record
+  decision; the patient's banner shows "Penicillin (high risk)"; an auditor finds the rows and none holds the substance.
+- **Not done:** problems, medications, immunisations; FHIR `AllergyIntolerance` and the profile validation the RC-5
+  acceptance asks for (not met); a medicines or drug-class check at prescribing (OR-6); break-the-glass; verification status;
+  duplicate detection between two allergies recorded in different words; a history screen; no pharmacist or patient alert
+  when an allergy is ended; the substance list is free text. The statement voids on any later allergy version, including
+  one entered in error (conservative: it falls back to what the records show).
+
 ## [0.1.0] - 2026-10-20
 
 Milestone M0, scaffold. **Not for clinical use.**

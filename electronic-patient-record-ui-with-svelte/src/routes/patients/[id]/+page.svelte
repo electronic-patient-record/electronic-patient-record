@@ -2,6 +2,8 @@
   import { page } from "$app/state";
   import { call, commonProblem, sendBytes } from "#lib/api.js";
   import { DEFAULT_LOCALE, localizePath } from "#lib/locales.js";
+  import AllergySection from "#lib/AllergySection.svelte";
+  import { loadAllergies, type AllergyLoad } from "#lib/allergies.js";
   import PatientBanner from "#lib/PatientBanner.svelte";
   import PatientFields from "#lib/PatientFields.svelte";
   import {
@@ -24,6 +26,13 @@
   let conflict = $state(false);
   let saved = $state<string | null>(null);
 
+  // One allergy call per look, shared by the banner and the allergy section: each is an audited
+  // read, and two views of the same answer must not disagree.
+  let allergies = $state<AllergyLoad | null>(null);
+  async function reloadAllergies() {
+    allergies = await loadAllergies(id ?? "");
+  }
+
   async function load() {
     loading = true;
     message = null;
@@ -42,6 +51,8 @@
       stored = res.body;
       form = patientToForm(res.body.patient);
       reason = "";
+      allergies = null;
+      void reloadAllergies();
     } else {
       stored = null;
       message = STRINGS.error;
@@ -66,6 +77,8 @@
 
   async function look() {
     if (!stored || document.hidden || loading) return;
+    // Allergies can change without the identity record changing, so they are looked at too.
+    void reloadAllergies();
     const res = await call<Stored>("GET", `/api/patients/${stored.id}`);
     if (res.status !== 200 || !stored || res.body.version === stored.version) {
       return;
@@ -190,7 +203,7 @@
 {/if}
 
 {#if stored}
-  <PatientBanner stored={latest ?? stored} />
+  <PatientBanner stored={latest ?? stored} {allergies} />
   {#if latest}
     <div role="alert">
       <p>{STRINGS.changedElsewhere.replace("{v}", String(latest.version))}</p>
@@ -202,6 +215,13 @@
   <p>
     {STRINGS.version}: {stored.version} · {STRINGS.recordedBy}: {stored.author}
   </p>
+  {#if allergies?.status === 200 && allergies.data}
+    <AllergySection
+      patientId={stored.id}
+      data={allergies.data}
+      onchange={reloadAllergies}
+    />
+  {/if}
   <section aria-labelledby="photo-h">
     <h2 id="photo-h">{STRINGS.photoTitle}</h2>
     <label for="photo-file">{STRINGS.photoFile}</label>
