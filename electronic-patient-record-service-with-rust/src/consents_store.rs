@@ -118,7 +118,7 @@ pub async fn list(
 ///
 /// [`StoreError::Db`] on a database failure.
 pub async fn active_for(
-    db: &DatabaseConnection,
+    db: &impl ConnectionTrait,
     patient_ids: &[String],
 ) -> Result<HashMap<String, Vec<StoredConsent>>, StoreError> {
     let mut by_patient: HashMap<String, Vec<StoredConsent>> = HashMap::new();

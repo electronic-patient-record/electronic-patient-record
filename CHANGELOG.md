@@ -2,6 +2,28 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-21 - Two registrations of one person at once make one record (CQ-7)
+
+- The duplicate check ran before the creating transaction and nothing serialised registration, so two registrations
+  of the same person at the same moment (two clerks, a clerk and the HL7 feed, two of the feed's eight connections)
+  both found no candidate and both created a record. Registration (`POST /api/patients`, and so the FHIR create) and
+  the HL7 ADT create now take a transaction-scoped advisory lock (`patients_store::lock_registration`, "EPRR") and run
+  the check on that transaction. The ADT path's earlier check outside the transaction is gone (it ran twice).
+- The first version of the handler change held the transaction and then used the pool for the consent check and the
+  refusal's audit row. With the development pool of one connection, every registration would have hung. The feed
+  tests' one-connection pool (and their comment) showed it before it ran. Both now use the transaction, and a refusal
+  commits its audit row alone. Lock order is registration, then audit, everywhere.
+- Hazard H-002 updated; service spec row "Duplicate check" updated.
+- Tests: a Postgres test races two creators for one person through the lock; without the lock (a no-op stub) both
+  created, with it one does. All 64 database tests and the unit tests pass; clippy clean.
+- **By hand**, in development (one-connection pool) against the test database: two concurrent `POST /api/patients` for
+  one person gave one 201 and one 409 naming the first; a third gave 409; one record exists; the two refusals' audit
+  rows were committed.
+- **Not done:**
+  - an automated handler-level test (CQ-16);
+  - a measurement of the cost of serialising registration (one at a time; registration is low-volume);
+  - the same protection for merge-then-register orderings, not examined.
+
 ## 2026-10-21 - The idle sign-out holds on an open patient page (CQ-8)
 
 - The patient page looks at the record and its allergies once a minute, and every proxied request counted as activity,

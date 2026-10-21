@@ -171,6 +171,27 @@ pub async fn create(
     row_to_stored(&row)
 }
 
+/// Postgres advisory-lock key serialising patient registration ("EPRR" in ASCII).
+const REGISTRATION_LOCK: i64 = 0x4550_5252;
+
+/// Serialise registration: take this inside the creating transaction, then look for duplicates
+/// with [`candidates`] on the same transaction, then [`create`]. Two registrations of one person
+/// can then never both find no candidate. The lock lasts until the transaction ends; take it before
+/// any audit append so the lock order is always registration, then audit.
+///
+/// # Errors
+///
+/// [`StoreError::Db`] when the lock cannot be taken.
+pub async fn lock_registration(db: &impl ConnectionTrait) -> Result<(), StoreError> {
+    db.execute_raw(pg(
+        "SELECT pg_advisory_xact_lock($1)",
+        vec![REGISTRATION_LOCK.into()],
+    ))
+    .await
+    .map(|_| ())
+    .map_err(db_err)
+}
+
 /// The current version of a patient.
 ///
 /// # Errors
@@ -262,7 +283,7 @@ pub const CANDIDATE_LIMIT: i64 = 200;
 ///
 /// [`StoreError::Db`] on a database failure.
 pub async fn candidates(
-    db: &DatabaseConnection,
+    db: &impl ConnectionTrait,
     patient: &Patient,
 ) -> Result<Vec<Stored>, StoreError> {
     let identifiers: Vec<serde_json::Value> = patient

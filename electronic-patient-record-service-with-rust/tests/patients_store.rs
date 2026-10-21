@@ -298,3 +298,47 @@ async fn candidates_share_an_identifier_a_birth_date_or_a_family_name() {
     let q = patient(&family, "2001-01-01");
     assert!(!ids(store::candidates(&db, &q).await.unwrap()).contains(&stored.id));
 }
+
+/// CQ-7: two registrations of the same person at once. Each takes the registration lock, looks for
+/// candidates on its own transaction and creates only if there are none, as the handler and the HL7
+/// feed do. Without the lock both see nothing and both create.
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn concurrent_registrations_of_one_person_create_one_record() {
+    use sea_orm::TransactionTrait;
+    let db = db().await;
+    let family = tag("race");
+    let person = patient(&family, "1980-03-14");
+    // Candidates also match on birth date, which earlier tests share: count only this test's rows.
+    let ours = |rows: Vec<store::Stored>, family: &str| {
+        rows.into_iter()
+            .filter(|r| r.patient.names[0].family.as_deref() == Some(family))
+            .count()
+    };
+    let attempt = |db: DatabaseConnection, p: Patient, family: String| async move {
+        let tx = db.begin().await.unwrap();
+        store::lock_registration(&tx).await.unwrap();
+        let found = ours(store::candidates(&tx, &p).await.unwrap(), &family);
+        // Widen the window: without the lock the other attempt searches now and sees nothing.
+        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+        let created = if found == 0 {
+            store::create(&tx, "tester", Some("race"), &p)
+                .await
+                .unwrap();
+            true
+        } else {
+            false
+        };
+        tx.commit().await.unwrap();
+        created
+    };
+    let (a, b) = tokio::join!(
+        attempt(db.clone(), person.clone(), family.clone()),
+        attempt(db.clone(), person.clone(), family.clone())
+    );
+    assert!(a ^ b, "exactly one attempt creates: {a} {b}");
+    assert_eq!(
+        ours(store::candidates(&db, &person).await.unwrap(), &family),
+        1
+    );
+}

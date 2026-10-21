@@ -449,7 +449,7 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
   `PatientBanner` does for the photo); same for `reloadAllergies` and `look()`.
   **Acceptance:** a Playwright test with a delayed route for patient A, navigating to B, never shows A's name or
   allergies under B's URL.
-- [ ] **CQ-7 (M) — Duplicate-creation race.** **Clinical.** The duplicate check (`controllers/patients.rs:473`,
+- [x] **CQ-7 (M) — Duplicate-creation race.** **Landed 2026-10-21:** one registration lock for every patient creation (registration and HL7 ADT), check on the transaction; a Postgres race test, and the handler checked by hand under a one-connection pool (no handler-level test yet: CQ-16); H-002. **Clinical.** The duplicate check (`controllers/patients.rs:473`,
   `adt_feed.rs:272`) runs outside the creating transaction. Inside the transaction take
   `pg_advisory_xact_lock` per identifier (or per family name and birth date when there is none), re-run the
   candidate search on the transaction, then insert.

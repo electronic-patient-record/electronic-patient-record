@@ -267,20 +267,9 @@ pub async fn apply(
                 }
             }
         }
-        None => {
-            // A new patient the matcher thinks may already exist waits for a person.
-            let pool = store::candidates(db, &inbound.patient)
-                .await
-                .map_err(|e| temporary(&e))?;
-            let likely = likely_duplicates(&inbound.patient, pool);
-            if !likely.is_empty() {
-                return Err(Refusal::Conflict(vec![format!(
-                    "{} existing patient(s) may be the same person: a person must decide whether to link or register",
-                    likely.len()
-                )]));
-            }
-            Plan::Create
-        }
+        // A new patient the matcher thinks may already exist waits for a person; that check runs in
+        // the transaction, under the registration lock.
+        None => Plan::Create,
     };
     let reason = format!("HL7 ADT {} {}", inbound.event, inbound.control_id);
     let tx = db
@@ -307,6 +296,21 @@ pub async fn apply(
             }
         }
         Plan::Create => {
+            // Under the registration lock (CQ-7), so another registration of this person, by a
+            // person or a second feed connection, cannot pass the same check at the same time.
+            store::lock_registration(&tx)
+                .await
+                .map_err(|e| temporary(&e))?;
+            let pool = store::candidates(&tx, &inbound.patient)
+                .await
+                .map_err(|e| temporary(&e))?;
+            let likely = likely_duplicates(&inbound.patient, pool);
+            if !likely.is_empty() {
+                return Err(Refusal::Conflict(vec![format!(
+                    "{} existing patient(s) may be the same person: a person must decide whether to link or register",
+                    likely.len()
+                )]));
+            }
             match store::create(&tx, &who.agent, Some(&reason), &inbound.patient).await {
                 Ok(s) => (Applied::Created { id: s.id }, Action::Create),
                 Err(e) => return Err(temporary(&e)),

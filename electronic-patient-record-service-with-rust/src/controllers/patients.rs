@@ -166,7 +166,7 @@ pub(super) fn audit_failed(e: &AuditError) -> Response {
 /// subject and nothing is looked up. A failed lookup fails the request: an unchecked disclosure is
 /// how a refusal gets ignored.
 pub(super) async fn consent_verdicts(
-    db: &sea_orm::DatabaseConnection,
+    db: &impl sea_orm::ConnectionTrait,
     subject: &Subject,
     purpose: Purpose,
     resource: Resource,
@@ -470,7 +470,17 @@ pub(super) async fn create(
         .as_deref()
         .map(str::trim)
         .filter(|r| !r.is_empty());
-    let duplicates = match store::candidates(&ctx.db, &request.patient).await {
+    // The duplicate check, the new version and its audit row are one transaction under the
+    // registration lock (CQ-7): two registrations of one person can never both pass the check, and
+    // if the audit row cannot be written the patient is not created.
+    let tx = match begin(&ctx.db).await {
+        Ok(t) => t,
+        Err(r) => return *r,
+    };
+    if let Err(e) = store::lock_registration(&tx).await {
+        return store_failure(&e);
+    }
+    let duplicates = match store::candidates(&tx, &request.patient).await {
         Ok(pool) => likely_duplicates(&request.patient, pool),
         // An unchecked registration is how duplicates happen: fail rather than skip the check.
         Err(e) => return store_failure(&e),
@@ -480,8 +490,9 @@ pub(super) async fn create(
     // subject is not shown to them: the candidate is reported as restricted, with no record,
     // score or breakdown.
     let existing_ids: Vec<String> = duplicates.iter().map(|c| c.existing.id.clone()).collect();
+    // On the transaction: it holds a connection, and the development pool has only one.
     let verdicts = match consent_verdicts(
-        &ctx.db,
+        &tx,
         &subject,
         purpose,
         Resource::PatientIdentity,
@@ -508,9 +519,10 @@ pub(super) async fn create(
         })
         .collect();
     if !duplicates.is_empty() && override_reason.is_none() {
-        // Showing the candidates discloses them, so this is an audited access.
+        // Showing the candidates discloses them, so this is an audited access. The row is written on
+        // the transaction (nothing else has been written to it) and committed before the refusal.
         if let Err(r) = audit_access(
-            &ctx.db,
+            &tx,
             &agent,
             Action::Create,
             4,
@@ -520,6 +532,9 @@ pub(super) async fn create(
         )
         .await
         {
+            return *r;
+        }
+        if let Err(r) = commit(tx).await {
             return *r;
         }
         return json_error(
@@ -534,12 +549,6 @@ pub(super) async fn create(
         (Some(o), Some(r)) => Some(format!("{r}; duplicate override: {o}")),
         (Some(o), None) => Some(format!("duplicate override: {o}")),
         (None, r) => r.map(str::to_string),
-    };
-    // The new version and its audit row are one transaction: if the row cannot be written, the
-    // patient is not created.
-    let tx = match begin(&ctx.db).await {
-        Ok(t) => t,
-        Err(r) => return *r,
     };
     let stored = match store::create(&tx, &agent.0, kept_reason.as_deref(), &request.patient).await
     {
