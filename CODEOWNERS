@@ -1,2 +1,6 @@
 # Every path is owned by the sole maintainer (see MAINTAINERS.md).
 * joel@joelparkerhenderson.com
+
+# Clinical safety: the hazard log, risk management plan and reviewer allow-list. The Clinical Safety
+# Officer is to be added here when named (OQ-2); until then the maintainer owns it.
+/governance/clinical-safety/ joel@joelparkerhenderson.com

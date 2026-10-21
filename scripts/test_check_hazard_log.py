@@ -53,6 +53,46 @@ class HazardLog(unittest.TestCase):
     def test_wrong_columns_are_caught(self):
         self.assertTrue(chk.problems([], ["id"], ROOT))
 
+    def test_added_must_be_a_real_iso_date(self):
+        for bad in ("21/10/2026", "2026-13-01", "2026-02-30", "yesterday"):
+            self.assertTrue(any("added" in p for p in self.check(row(added=bad))), bad)
+        self.assertEqual(self.check(row(added="2024-02-29")), [])
+
+
+class Transitions(unittest.TestCase):
+    """CQ-21: only a named reviewer may accept or close a hazard, judged against the base revision."""
+
+    def test_unchanged_and_ordinary_edits_pass(self):
+        base = [row()]
+        self.assertEqual(chk.transitions(base, [row(controls="more")], "anyone", set()), [])
+        self.assertEqual(chk.transitions(base, [row(), row(id="H-002")], "anyone", set()), [])
+
+    def test_accepting_or_closing_needs_an_allowed_author(self):
+        for status in ("accepted", "closed"):
+            head = [row(status=status, reviewed_by="A. Person")]
+            self.assertTrue(chk.transitions([row()], head, "agent", set()), status)
+            self.assertTrue(chk.transitions([row()], head, "agent", {"cso"}), status)
+            self.assertEqual(chk.transitions([row()], head, "cso", {"cso"}), [], status)
+
+    def test_a_new_hazard_cannot_arrive_accepted(self):
+        head = [row(), row(id="H-002", status="closed", reviewed_by="A. Person")]
+        self.assertTrue(chk.transitions([row()], head, "agent", set()))
+
+    def test_changing_the_reviewer_needs_an_allowed_author(self):
+        base = [row(status="accepted", reviewed_by="A. Person")]
+        head = [row(status="accepted", reviewed_by="Someone Else")]
+        self.assertTrue(chk.transitions(base, head, "agent", set()))
+
+    def test_reopening_is_allowed_to_anyone(self):
+        base = [row(status="closed", reviewed_by="A. Person")]
+        self.assertEqual(chk.transitions(base, [row(status="open", reviewed_by="A. Person")], "agent", set()), [])
+
+    def test_removing_a_hazard_is_refused(self):
+        self.assertTrue(chk.transitions([row(), row(id="H-002")], [row()], "agent", {"agent"}))
+
+    def test_the_allow_list_ignores_comments_and_blanks(self):
+        self.assertEqual(chk.parse_reviewers("# the CSO\n\n  cso-login  \n"), {"cso-login"})
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -7,6 +7,9 @@ on:
   push:
     branches: [main]
   pull_request:
+    # `labeled` and `unlabeled` too: a `clinical-impact` label added after the PR opened must re-run
+    # the hazard-log job (CQ-21).
+    types: [opened, synchronize, reopened, labeled, unlabeled]
   workflow_dispatch:
 
 concurrency:
@@ -160,6 +163,22 @@ jobs:
           fetch-depth: 0
       - run: sh scripts/check-clinical-impact.sh "origin/${{ github.base_ref }}"
 
+  # Every pull request: only a reviewer on the base branch's allow-list may accept or close a hazard,
+  # change `reviewed_by`, or remove a row (CQ-21).
+  hazard-signoff:
+    name: Hazard log sign-off
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      # Through the environment, not `${{ }}` in the script, so a branch name cannot inject shell.
+      - env:
+          BASE_REF: ${{ github.base_ref }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: python3 scripts/check-hazard-log.py --base "origin/$BASE_REF" --author "$AUTHOR"
+
   container:
     name: Container images build (Podman)
     runs-on: ubuntu-latest
@@ -213,7 +232,7 @@ jobs:
   ci-ok:
     name: ci-ok
     if: always()
-    needs: [matcher, api, api-db, deny, ui, docs, hazard-log, container, fresh-clone]
+    needs: [matcher, api, api-db, deny, ui, docs, hazard-log, hazard-signoff, container, fresh-clone]
     runs-on: ubuntu-latest
     steps:
       - run: |

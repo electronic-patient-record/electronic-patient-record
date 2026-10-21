@@ -26,7 +26,10 @@ identity, consent, care relationships, an audit trail and a clinician and patien
 3. **Control.** Name each control and point at the evidence (a test or a file). A control with no evidence is not a control.
 4. **Residual.** Say what is left: what the controls do not cover. This column is never empty.
 5. **Review.** Only the CSO sets a hazard to `accepted` or `closed`, and records their name in `reviewed_by`.
-   `scripts/check-hazard-log.py` refuses either status without a name.
+   `scripts/check-hazard-log.py` refuses either status without a name. On every pull request it also compares the log
+   with the base branch and fails a change that sets either status, adds a hazard in either status or changes
+   `reviewed_by`, unless the author is in `reviewers.txt` as it is on the base branch (empty until a CSO is named), and
+   fails any change that removes a hazard.
 6. **Keep current.** A change that could alter what a clinician sees, decides or signs is labelled `clinical-impact` and
    must change the hazard log (`scripts/check-clinical-impact.sh`). When unsure, treat it as clinical.
 

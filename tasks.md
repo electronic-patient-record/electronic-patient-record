@@ -533,7 +533,7 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
 - [ ] **CQ-20 (S) — Run CI for the first time.** Add a remote, push, and get `ci-ok` green; confirm every action
   version exists (`checkout@v7`, `upload-artifact@v7`, `download-artifact@v8`, `attest-build-provenance@v4`).
   **Acceptance:** a green run linked from `CHANGELOG.md`; SF-5 and SF-9 updated.
-- [ ] **CQ-21 (S/M) — Hazard-log gate.** Add `types: [opened, synchronize, reopened, labeled, unlabeled]` to the
+- [x] **CQ-21 (S/M) — Hazard-log gate.** **Landed 2026-10-21** (label trigger; `--base/--author` sign-off check against a base-branch allow-list, empty until a CSO is named; no row removed; ISO dates; CODEOWNERS entry; 8 checker tests). **Not run on GitHub** (CQ-20). Add `types: [opened, synchronize, reopened, labeled, unlabeled]` to the
   `pull_request` trigger (ci.yml:9); fail a PR that moves a hazard to `accepted` or `closed` unless its author is on
   a Clinical Safety Officer allow-list; a CODEOWNERS entry for `governance/clinical-safety/`; validate ISO dates.
   **Acceptance:** fixture tests for `check-hazard-log.py` cover each rule.

@@ -2,6 +2,26 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-21 - Hazard-log gate: label trigger and sign-off by reviewer only (CQ-21)
+
+- The `clinical-impact` hazard-log job ran only on the default pull-request events, so a label added after a PR was
+  opened was never checked. The trigger now includes `labeled` and `unlabeled`.
+- `check-hazard-log.py` only required `reviewed_by` to be non-empty, so any author, an agent included, could type a
+  name and close a hazard. With `--base <ref> --author <login>` it now compares the log with the base revision. It
+  fails a change that sets `accepted` or `closed`, adds a hazard in either status, or changes `reviewed_by`, unless the
+  author is in `governance/clinical-safety/reviewers.txt` as that file is on the base branch, so a PR cannot add itself.
+  It fails any change that removes a hazard. The allow-list is empty, as no Clinical Safety Officer is named (OQ-2).
+  A new CI job `hazard-signoff` runs this on every PR and is part of `ci-ok`.
+- The checker now requires `added` to be a real `YYYY-MM-DD` date. CODEOWNERS has an explicit
+  `governance/clinical-safety/` entry, for the CSO to be added. The risk management plan says all this.
+- Tests: 8 new checker tests (dates; sign-off, new rows, reviewer changes, reopening, removal, the allow-list
+  parser), all failing before the change. A by-hand run that closed H-025 as "Mallory" was refused.
+- **Not done:**
+  - CI has never run (CQ-20), so neither job has run on GitHub, and the workflow was not checked with actionlint.
+  - A GitHub login is not a person's identity check. Branch protection and the CODEOWNERS review are still needed
+    (not configured: there is no remote).
+  - Nothing warns when clinical paths change without the label.
+
 ## 2026-10-21 - The service uses matcher 0.2.0 (closes CQ-2)
 
 - Matcher 0.2.0 is published, and its source on crates.io is identical to this repository's. The service now depends

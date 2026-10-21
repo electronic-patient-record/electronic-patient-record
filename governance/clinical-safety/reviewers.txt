@@ -1,0 +1,6 @@
+# GitHub logins allowed to set a hazard to `accepted` or `closed`, or to change `reviewed_by`, in
+# hazard-log.csv (scripts/check-hazard-log.py --base, task CQ-21). One login per line.
+#
+# Only the Clinical Safety Officer belongs here, and none is named yet (OQ-2), so the list is empty
+# and every such change fails CI. The check reads this file from the base branch, so a pull request
+# cannot add its own author. Adding a name is a governance decision, not an engineering one.
