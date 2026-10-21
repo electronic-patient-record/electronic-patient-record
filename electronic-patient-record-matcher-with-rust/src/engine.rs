@@ -306,24 +306,32 @@ fn given_similarity(a: &Patient, b: &Patient) -> Option<f64> {
             if na.given.is_empty() || nb.given.is_empty() {
                 continue;
             }
-            let (short, long) = if na.given.len() <= nb.given.len() {
-                (&na.given, &nb.given)
-            } else {
-                (&nb.given, &na.given)
+            // Average over the shorter list; with equal lengths, average both ways and keep the
+            // lower, so the order of the records never raises the score.
+            let s = match na.given.len().cmp(&nb.given.len()) {
+                std::cmp::Ordering::Less => given_average(&na.given, &nb.given),
+                std::cmp::Ordering::Greater => given_average(&nb.given, &na.given),
+                std::cmp::Ordering::Equal => {
+                    given_average(&na.given, &nb.given).min(given_average(&nb.given, &na.given))
+                }
             };
-            let total: f64 = short
-                .iter()
-                .map(|s| {
-                    long.iter()
-                        .map(|l| given_token_sim(s, l))
-                        .fold(0.0, f64::max)
-                })
-                .sum();
-            let s = total / short.len() as f64;
             best = Some(best.map_or(s, |b: f64| b.max(s)));
         }
     }
     best
+}
+
+/// Each token of `short` takes its best match in `long`; the mean of those.
+fn given_average(short: &[String], long: &[String]) -> f64 {
+    let total: f64 = short
+        .iter()
+        .map(|s| {
+            long.iter()
+                .map(|l| given_token_sim(s, l))
+                .fold(0.0, f64::max)
+        })
+        .sum();
+    total / short.len() as f64
 }
 
 fn full_date(p: &Patient) -> Option<PartialDate> {

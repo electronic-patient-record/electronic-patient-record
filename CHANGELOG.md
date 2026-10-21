@@ -2,6 +2,18 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-21 - Matcher symmetry (CQ-1)
+
+- `compare(a, b)` and `compare(b, a)` could reach different decisions: with given-name lists of equal length the
+  per-token average ran from `a` only, so `["John","J"]` against `["John","Smith"]` (same family name, birth date and
+  sex) was AutoLink (0.975) one way and Review (0.875) the other. With equal lengths the average now runs both ways and
+  the lower is kept, so the order never raises a score; that pair is now Review both ways. Hazard H-001 updated.
+- Tests: a named regression test and a grid test over 122,500 ordered pairs (5 family names, 7 given-name lists
+  including empty and `-`, 5 dates including invalid and partial, 2 sexes). Both failed before the change.
+- **Not done:** proptest over generated patients (CQ-30; the grid needs no new dependency); the related twins risk
+  where `John` against `John Paul` still AutoLinks because the shorter list is averaged (CQ-19); any evaluation on real
+  data (ID-1).
+
 ## 2026-10-21 - API versioning rule
 
 - `spec/09-api-surface.md` and the root `AGENTS.md` now say: version the REST API with the `Accepts-version` request header

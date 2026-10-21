@@ -168,3 +168,46 @@ fn json_roundtrip() {
     let json = serde_json::to_string(&a).unwrap();
     assert_eq!(serde_json::from_str::<Patient>(&json).unwrap(), a);
 }
+
+#[test]
+fn equal_length_given_names_are_symmetric() {
+    // Regression (CQ-1): with given-name lists of equal length the average ran from `a` only.
+    let e = MatchingEngine::default();
+    let a = patient("Smith", &["John", "J"], "1980-03-14", M);
+    let b = patient("Smith", &["John", "Smith"], "1980-03-14", M);
+    let (ab, ba) = (e.compare(&a, &b), e.compare(&b, &a));
+    assert_eq!(ab, ba);
+    assert_ne!(ab.decision, Decision::AutoLink, "{ab:?}");
+}
+
+#[test]
+fn compare_is_symmetric_over_a_grid() {
+    // Every ordered pair from a grid of name, date and sex variants, with valid and partial dates.
+    let e = MatchingEngine::default();
+    let families = ["Smith", "Smyth", "Smith-Jones", "", "Müller"];
+    let givens: [&[&str]; 7] = [
+        &["John"],
+        &["John", "J"],
+        &["John", "Smith"],
+        &["J", "John"],
+        &["Jon", "Paul"],
+        &[],
+        &["-"],
+    ];
+    let dates = ["1980-03-14", "1980-14-03", "1980-03", "1980", "1980-03-15"];
+    let mut people = Vec::new();
+    for f in families {
+        for g in givens {
+            for d in dates {
+                for s in [M, F] {
+                    people.push(patient(f, g, d, s));
+                }
+            }
+        }
+    }
+    for a in &people {
+        for b in &people {
+            assert_eq!(e.compare(a, b), e.compare(b, a), "{a:?} vs {b:?}");
+        }
+    }
+}

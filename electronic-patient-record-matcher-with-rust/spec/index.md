@@ -11,7 +11,8 @@ reviewer can see why two records were or were not linked.
 ## 2. Invariants
 
 1. **Total and pure.** No IO, clocks, randomness or panics. Any pair of values gives a result.
-2. **Symmetric.** `compare(a, b) == compare(b, a)` (tested).
+2. **Symmetric.** `compare(a, b) == compare(b, a)` (tested over a grid of 122,500 ordered pairs of name, date and sex
+   variants).
 3. **Deterministic.** Same input, same output (tested).
 4. **Absent is not zero.** A field missing on either side has `similarity: None` and is excluded from the weighted
    average; the note says why.
@@ -28,7 +29,7 @@ Weighted mean of per-field similarities over the fields present on both records.
 | Field | Weight | Similarity |
 |---|---|---|
 | family name | 0.25 | best Jaro-Winkler over name pairs |
-| given name | 0.20 | per token best match, averaged over the shorter list; an initial matching a token's first letter scores 0.8 |
+| given name | 0.20 | per token best match, averaged over the shorter list (with lists of equal length, averaged both ways and the lower kept, so order never raises the score); an initial matching a token's first letter scores 0.8 |
 | birth date | 0.30 | exact 1.0; day and month swapped 0.8; one component typo 0.6; partial dates by shared precision; else 0.0 |
 | sex | 0.05 | equal 1.0, different 0.0; `unknown` counts as absent |
 | postcode | 0.10 | any folded postcode in common |

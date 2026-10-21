@@ -422,7 +422,7 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
 
 ### Patient-safety defects (do first)
 
-- [ ] **CQ-1 (S) — Matcher symmetry.** **Clinical.** `given_similarity` (`src/engine.rs:309`) averages from `a` when both
+- [x] **CQ-1 (S) — Matcher symmetry.** **Landed 2026-10-21:** equal-length given names are averaged both ways and the lower kept; a regression test and a 122,500-pair grid test (not proptest: that is CQ-30), H-001 updated. **Clinical.** `given_similarity` (`src/engine.rs:309`) averages from `a` when both
   given-name lists have equal length, so `compare(a, b)` and `compare(b, a)` can reach different decisions.
   Score both directions and take the minimum (or a symmetric assignment).
   **Acceptance:** a proptest asserts `compare(a, b) == compare(b, a)` over generated patients with valid dates; the
