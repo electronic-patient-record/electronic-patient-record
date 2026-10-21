@@ -74,6 +74,20 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
   rows read as broken; the openEHR "unkeyed only" state is not modelled. Not run by hand against Keycloak or a rotated
   key in the real service. A monitor that treats every non-200 the same will not notice the difference.
 
+## 2026-10-21 - Clinical hazard log (AS-1, partly)
+
+- `governance/clinical-safety/hazard-log.csv`: 15 hazards for what the code does today (wrong-patient link, missed
+  duplicate, NHS number, lost update, unentitled access, ignored consent, unmasked sensitive data, no emergency access,
+  audit tamper and gaps, wrong relationship, bad ingestion, misleading access log, unreviewed translations, use before
+  ready), each with cause, effect, 1-5 ratings, controls, evidence paths and residual risk. Plus an unsigned risk
+  management plan and safety case report template. `scripts/check-hazard-log.py` (shape, score arithmetic, evidence
+  paths exist, no `accepted`/`closed` without a named reviewer; 9 unit tests) runs in the docs job;
+  `scripts/check-clinical-impact.sh` and a `hazard-log` job fail a `clinical-impact` PR that leaves the log alone.
+- **Not done:** the ratings are the author's proposals and were reviewed by nobody; there is no named Clinical Safety
+  Officer (OQ-2) and no safety case report; this is not DCB0129 compliance. The workflow job has not run on GitHub (no
+  remote) and the label has to be applied by a person. Seven hazards are `open` with no adequate control (e.g. H-008,
+  no emergency access).
+
 ## [0.1.0] - 2026-10-20
 
 Milestone M0, scaffold. **Not for clinical use.**

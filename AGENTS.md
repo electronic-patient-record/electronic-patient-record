@@ -18,8 +18,7 @@ Version 0.1.0. Rust 1.99.1 (pinned in `rust-toolchain.toml`; minimum supported 1
 2. **One item, one commit, one push**, then look at CI. Stage named files, never `git add -A`.
 3. **Say plainly what is not built or not tested.** Every change to `CHANGELOG.md` states what was not done or not
    verified. Never weaken a guard or a census test to get green; fix the cause or record why.
-4. **Clinical risk.** If a change could alter what a clinician sees, decides or signs, say so and update the hazard
-   log (task AS-1) in the same commit. When unsure, treat it as clinical.
+4. **Clinical risk.** If a change could alter what a clinician sees, decides or signs, say so and update `governance/clinical-safety/hazard-log.csv` (task AS-1) in the same commit; a `clinical-impact` PR without that change fails CI. Never set a hazard to `accepted` or `closed`: only the Clinical Safety Officer does. When unsure, treat it as clinical.
 5. **Run the gates before pushing** (below), and `sh scripts/generate-status.sh` after adding tests or ticking tasks,
    or the docs job fails.
 
