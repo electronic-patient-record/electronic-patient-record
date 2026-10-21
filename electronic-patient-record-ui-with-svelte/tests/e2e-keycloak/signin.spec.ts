@@ -1110,3 +1110,278 @@ test("a refused HL7 message waits in the queue for an administrator, and a clini
   await expect(page.getByText("Closed.")).toBeVisible();
   await expect(page.locator("li", { hasText: control })).toHaveCount(0);
 });
+
+// Break-the-glass (SE-3) over the real stack. A clinician with no care relationship is refused the
+// allergies with an offer, opens a grant with a reason, then reads; every audit row of the read is
+// flagged and names the grant; the grant waits for review; the clinician can not review it; the auditor
+// can, once.
+test("break-the-glass: refused with an offer, opened with a reason, read and audited with the flag, reviewed once by the auditor", async () => {
+  test.skip(
+    !ADMIN || !AUDITOR,
+    "set EPR_E2E_ADMIN_USERNAME and EPR_E2E_AUDITOR_USERNAME",
+  );
+  const admin = await devToken(ADMIN);
+  const clinician = await devToken(USERNAME);
+  const auditor = await devToken(AUDITOR);
+  const call = async (
+    token: string,
+    method: string,
+    path: string,
+    body?: unknown,
+    purpose = "operations",
+  ) => {
+    const res = await fetch(`${API}${path}`, {
+      method,
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+        "x-purpose-of-use": purpose,
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    return {
+      status: res.status,
+      body: (await res.json().catch(() => null)) as any,
+    };
+  };
+  const made = await call(admin, "POST", "/api/patients", {
+    patient: {
+      names: [{ family: `Zglass${Date.now()}`, given: ["Gus"] }],
+      birth_date: `19${50 + (Date.now() % 40)}-0${1 + (Date.now() % 9)}-1${Date.now() % 9}`,
+    },
+  });
+  expect(made.status).toBe(201);
+  const id = made.body.id as string;
+
+  // No relationship: refused, and break-the-glass is offered.
+  const refused = await call(
+    clinician,
+    "GET",
+    `/api/patients/${id}/allergies`,
+    undefined,
+    "treatment",
+  );
+  expect(refused.status).toBe(403);
+  expect(refused.body.break_glass_offer).toBe(true);
+
+  // A reason is required; a role with no treating duty can not open a grant.
+  expect(
+    (
+      await call(clinician, "POST", `/api/patients/${id}/break-glass`, {
+        reason: "  ",
+      })
+    ).status,
+  ).toBe(422);
+  expect(
+    (
+      await call(admin, "POST", `/api/patients/${id}/break-glass`, {
+        reason: "curious",
+      })
+    ).status,
+  ).toBe(403);
+  expect(
+    (
+      await call(auditor, "POST", `/api/patients/${id}/break-glass`, {
+        reason: "curious",
+      })
+    ).status,
+  ).toBe(403);
+
+  const opened = await call(
+    clinician,
+    "POST",
+    `/api/patients/${id}/break-glass`,
+    {
+      reason: "collapsed in the corridor",
+    },
+  );
+  expect(opened.status).toBe(201);
+  const left = Date.parse(opened.body.expires_at) - Date.now();
+  expect(left).toBeGreaterThan(3.9 * 3600 * 1000);
+  expect(left).toBeLessThan(4.01 * 3600 * 1000);
+  // Asking again returns the same grant, not a longer one.
+  const again = await call(
+    clinician,
+    "POST",
+    `/api/patients/${id}/break-glass`,
+    { reason: "again" },
+  );
+  expect(again.status).toBe(200);
+  expect(again.body.id).toBe(opened.body.id);
+  expect(again.body.expires_at).toBe(opened.body.expires_at);
+
+  // Now the read is allowed.
+  const read = await call(
+    clinician,
+    "GET",
+    `/api/patients/${id}/allergies`,
+    undefined,
+    "treatment",
+  );
+  expect(read.status).toBe(200);
+  // The grant does not open anything else that needs a relationship the clinician lacks: writing.
+  const write = await call(
+    clinician,
+    "POST",
+    `/api/patients/${id}/allergies`,
+    {
+      allergy: { substance: "Latex", status: "active" },
+    },
+    "treatment",
+  );
+  expect(write.status).toBe(403);
+
+  // The trail: the read is flagged and names the grant; the refusal before it is not.
+  const trail = await call(
+    auditor,
+    "GET",
+    `/api/audit?patient=${id}`,
+    undefined,
+    "audit",
+  );
+  expect(trail.status).toBe(200);
+  const rows = trail.body.events as any[];
+  const flagged = rows.filter((r) => r.break_glass === true);
+  expect(flagged.length).toBeGreaterThanOrEqual(2); // the opening and the read
+  expect(
+    flagged.every((r) => r.detail?.break_glass_grant === opened.body.id),
+  ).toBe(true);
+  expect(rows.some((r) => r.outcome === 4 && r.break_glass === false)).toBe(
+    true,
+  );
+  // The successful read of the allergies is itself flagged and names the grant.
+  const reads = rows.filter(
+    (r) => r.resource?.startsWith("AllergyIntolerance") && r.outcome === 0,
+  );
+  expect(reads.length).toBeGreaterThanOrEqual(1);
+  expect(
+    reads.every(
+      (r) =>
+        r.break_glass === true &&
+        r.detail?.break_glass_grant === opened.body.id,
+    ),
+  ).toBe(true);
+
+  // Review: the clinician can not; the auditor can, once, with a note.
+  expect(
+    (await call(clinician, "GET", "/api/break-glass/reviews")).status,
+  ).toBe(403);
+  const queue = await call(
+    auditor,
+    "GET",
+    "/api/break-glass/reviews",
+    undefined,
+    "audit",
+  );
+  expect(queue.status).toBe(200);
+  expect(queue.body.grants.some((g: any) => g.id === opened.body.id)).toBe(
+    true,
+  );
+  expect(
+    (
+      await call(
+        auditor,
+        "POST",
+        `/api/break-glass/reviews/${opened.body.id}`,
+        { outcome: "appropriate", note: " " },
+        "audit",
+      )
+    ).status,
+  ).toBe(422);
+  const done = await call(
+    auditor,
+    "POST",
+    `/api/break-glass/reviews/${opened.body.id}`,
+    {
+      outcome: "appropriate",
+      note: "ward round confirms a collapse",
+    },
+    "audit",
+  );
+  expect(done.status).toBe(200);
+  expect(done.body.review.outcome).toBe("appropriate");
+  expect(
+    (
+      await call(
+        auditor,
+        "POST",
+        `/api/break-glass/reviews/${opened.body.id}`,
+        { outcome: "appropriate", note: "again" },
+        "audit",
+      )
+    ).status,
+  ).toBe(409);
+  const after = await call(
+    auditor,
+    "GET",
+    "/api/break-glass/reviews",
+    undefined,
+    "audit",
+  );
+  expect(after.body.grants.some((g: any) => g.id === opened.body.id)).toBe(
+    false,
+  );
+});
+
+// A grant lifts the missing care relationship and nothing else: the patient's refusal still holds.
+test("break-the-glass does not override a patient's refusal of consent", async () => {
+  test.skip(!ADMIN, "set EPR_E2E_ADMIN_USERNAME");
+  const admin = await devToken(ADMIN);
+  const clinician = await devToken(USERNAME);
+  const call = async (
+    token: string,
+    method: string,
+    path: string,
+    body?: unknown,
+  ) => {
+    const res = await fetch(`${API}${path}`, {
+      method,
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+        "x-purpose-of-use": "treatment",
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    return {
+      status: res.status,
+      body: (await res.json().catch(() => null)) as any,
+    };
+  };
+  const made = await call(admin, "POST", "/api/patients", {
+    patient: {
+      names: [{ family: `Zrefuse${Date.now()}`, given: ["Rae"] }],
+      birth_date: `19${40 + (Date.now() % 50)}-1${Date.now() % 3}-0${1 + (Date.now() % 9)}`,
+    },
+  });
+  expect(made.status).toBe(201);
+  const id = made.body.id as string;
+  const consent = await call(admin, "POST", `/api/patients/${id}/consents`, {
+    consent: {
+      kind: "general",
+      status: "active",
+      provisions: [
+        {
+          effect: "deny",
+          actors: ["clinician"],
+          purposes: [],
+          resources: [],
+          labels: [],
+          period: null,
+        },
+      ],
+    },
+  });
+  expect(consent.status).toBe(201);
+  expect(
+    (
+      await call(clinician, "POST", `/api/patients/${id}/break-glass`, {
+        reason: "emergency",
+      })
+    ).status,
+  ).toBe(201);
+  const read = await call(clinician, "GET", `/api/patients/${id}/allergies`);
+  expect(read.status).toBe(403);
+  // No offer: break-the-glass can not lift this one.
+  expect(read.body.break_glass_offer).toBeUndefined();
+});

@@ -84,8 +84,11 @@ pub async fn authorize_mw(State(authz): State<Authz>, req: Request, next: Next) 
             organisations: s.organisations.iter().cloned().collect(),
         })
         .unwrap_or_default();
-    audit::ACTOR
-        .scope(actor, authorize_inner(authz, req, next))
+    audit::GLASS
+        .scope(
+            std::sync::Mutex::new(None),
+            audit::ACTOR.scope(actor, authorize_inner(authz, req, next)),
+        )
         .await
 }
 

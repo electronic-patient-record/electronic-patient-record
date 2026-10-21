@@ -130,11 +130,14 @@ pub enum Resource {
     /// HL7 messages the feed refused, waiting for a person (`feed_queue.rs`). They hold patient
     /// data but belong to no patient on record, so no care relationship applies.
     FeedQueue,
+    /// Emergency access to a record without a care relationship, and the review of it
+    /// (`break_glass.rs`).
+    BreakGlass,
 }
 
 impl Resource {
     /// Every resource kind, in a fixed order.
-    pub const ALL: [Resource; 12] = [
+    pub const ALL: [Resource; 13] = [
         Resource::PatientIdentity,
         Resource::Encounter,
         Resource::Condition,
@@ -147,6 +150,7 @@ impl Resource {
         Resource::CareRelationship,
         Resource::PatientLink,
         Resource::FeedQueue,
+        Resource::BreakGlass,
     ];
 
     /// A stable name for audit rows and route tables.
@@ -165,6 +169,7 @@ impl Resource {
             Resource::CareRelationship => "CareRelationship",
             Resource::PatientLink => "PatientLink",
             Resource::FeedQueue => "FeedQueue",
+            Resource::BreakGlass => "BreakGlass",
         }
     }
 
@@ -185,6 +190,7 @@ impl Resource {
                 | Resource::CareRelationship
                 | Resource::PatientLink
                 | Resource::FeedQueue
+                | Resource::BreakGlass
         )
     }
 }
@@ -382,7 +388,7 @@ pub enum Consent {
     Deny,
 }
 
-/// A time-boxed break-the-glass grant (SE-3 creates and stores these; here it is only checked).
+/// A time-boxed break-the-glass grant (`break_glass.rs` stores them; here it is only checked).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BreakGlass {
     /// The reason the subject gave. Must not be blank.
@@ -484,9 +490,9 @@ impl Decision {
 fn permitted(role: Role, resource: Resource) -> &'static [Action] {
     use Action::{Create, Export, MarkEnteredInError as Eie, Read, Search, Update};
     use Resource::{
-        AllergyIntolerance as Allergy, AuditLog, CareRelationship as Rel, Condition,
-        Consent as Cons, Document, Encounter, FeedQueue as Queue, MedicationRequest as Meds,
-        Observation, PatientIdentity as Identity, PatientLink as Link,
+        AllergyIntolerance as Allergy, AuditLog, BreakGlass as Glass, CareRelationship as Rel,
+        Condition, Consent as Cons, Document, Encounter, FeedQueue as Queue,
+        MedicationRequest as Meds, Observation, PatientIdentity as Identity, PatientLink as Link,
     };
     match (role, resource) {
         // Clinicians: full clinical work, and register or correct identity.
@@ -526,6 +532,10 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         // Refused feed messages: an administrator reads and closes them. They are patient data, so
         // no one else sees them, and the feed itself can never read its own refusals back.
         (Role::ClinicalAdmin, Queue) => &[Read, Search, Update],
+        // Break-the-glass: a treating role may open a grant (the engine then lifts only the missing
+        // care relationship). Reviewing grants is the auditor's, who also sees the access trail.
+        (Role::Clinician | Role::Nurse | Role::Pharmacist | Role::AlliedHealth, Glass) => &[Create],
+        (Role::Auditor, Glass) => &[Read, Search, Update],
         // The patient: read their own record and manage their own consent; see who looked.
         (Role::Patient, Identity) => &[Read],
         (Role::Patient, Encounter | Condition | Observation | Meds | Allergy | Document) => {
@@ -1118,8 +1128,8 @@ mod tests {
                 }
             }
         }
-        // 10 roles × 12 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
-        assert_eq!(cells, 10 * 12 * 6 * 8 * 5 * 3 * 7 * 2);
+        // 10 roles × 13 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
+        assert_eq!(cells, 10 * 13 * 6 * 8 * 5 * 3 * 7 * 2);
         assert!(allows > 0);
     }
 

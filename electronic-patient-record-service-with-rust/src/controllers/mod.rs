@@ -2,6 +2,7 @@
 
 pub mod allergies;
 pub mod audit;
+pub mod break_glass;
 pub mod consents;
 pub mod feed;
 pub mod fhir;
@@ -23,4 +24,5 @@ pub fn all_routes() -> AppRoutes {
         .add_route(me::routes())
         .add_route(fhir::routes())
         .add_route(feed::routes())
+        .add_route(break_glass::routes())
 }

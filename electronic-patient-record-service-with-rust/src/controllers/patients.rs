@@ -266,6 +266,20 @@ pub(super) async fn authorize(
             .map_err(|e| Box::new(store_failure(&e)))?,
         None => Relationship::None,
     };
+    // A grant matters only to a treating role reading clinical content without a care relationship.
+    let grant = match patient_id {
+        Some(id)
+            if action.reads()
+                && resource.clinical()
+                && !relationship.treating()
+                && subject.roles.iter().any(|r| r.treats()) =>
+        {
+            crate::break_glass::active(db, id, &agent.0)
+                .await
+                .map_err(|e| Box::new(store_failure(&e)))?
+        }
+        _ => None,
+    };
     let decision = policy::evaluate(&policy::Request {
         subject: subject.clone(),
         resource,
@@ -274,9 +288,27 @@ pub(super) async fn authorize(
         relationship,
         purpose,
         consent: verdict.consent,
-        break_glass: None,
+        break_glass: grant.as_ref().map(|g| policy::BreakGlass {
+            reason: g.reason.clone(),
+            expires_at: g.expires_unix,
+        }),
         now: time_now(),
     });
+    if let (Some(g), policy::Decision::Allow(obligations)) = (&grant, &decision)
+        && obligations
+            .iter()
+            .any(|o| matches!(o, policy::Obligation::BreakTheGlass(_)))
+    {
+        // From here every audit row of this request is flagged and names the grant.
+        audit::note_break_glass(&g.id);
+    }
+    let offer = matches!(
+        decision,
+        policy::Decision::Deny {
+            btg_offer: true,
+            ..
+        }
+    );
     if decision.allowed() {
         return Ok(());
     }
@@ -292,10 +324,13 @@ pub(super) async fn authorize(
     if let Err(e) = audit::append(db, audit::chain(), &event).await {
         tracing::error!(error = %e, "a refusal could not be audited");
     }
-    Err(Box::new(json_error(
-        StatusCode::FORBIDDEN,
-        serde_json::json!({"error": "forbidden"}),
-    )))
+    // A refusal that break-the-glass could lift says so, so the screen can offer it.
+    let body = if offer {
+        serde_json::json!({"error": "forbidden", "break_glass_offer": true})
+    } else {
+        serde_json::json!({"error": "forbidden"})
+    };
+    Err(Box::new(json_error(StatusCode::FORBIDDEN, body)))
 }
 
 /// Start the transaction a write and its audit row share (see [`audit::append`]).

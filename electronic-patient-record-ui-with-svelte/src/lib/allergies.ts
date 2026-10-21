@@ -53,6 +53,8 @@ export interface AllergyData {
 export interface AllergyLoad {
   status: number;
   data: AllergyData | null;
+  /** On a 403: the API says break-the-glass could lift the refusal. */
+  offer?: boolean;
 }
 
 export async function loadAllergies(
@@ -65,7 +67,15 @@ export async function loadAllergies(
     undefined,
     purpose,
   );
-  return { status: res.status, data: res.status === 200 ? res.body : null };
+  const offer =
+    res.status === 403 &&
+    (res.body as { break_glass_offer?: boolean } | null)?.break_glass_offer ===
+      true;
+  return {
+    status: res.status,
+    data: res.status === 200 ? res.body : null,
+    ...(offer ? { offer: true } : {}),
+  };
 }
 
 const RISK: Record<string, string> = {

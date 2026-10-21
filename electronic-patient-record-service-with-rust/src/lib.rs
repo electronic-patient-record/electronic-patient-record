@@ -13,6 +13,7 @@ pub mod app;
 pub mod audit;
 pub mod auth;
 pub mod authz;
+pub mod break_glass;
 pub mod consent;
 pub mod consents_store;
 pub mod controllers;

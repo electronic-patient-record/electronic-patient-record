@@ -2,6 +2,41 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-21 - Break-the-glass (SE-3)
+
+- A treating clinician (clinician, nurse, pharmacist, allied health) with no care relationship who is refused clinical
+  content gets a 403 with `break_glass_offer: true`. `POST /api/patients/{id}/break-glass` with a reason opens a grant for
+  4 hours (fixed; asking again returns the same grant and does not extend it). `break_glass_grants` and
+  `break_glass_reviews` (migration 10) are append-only.
+- What a grant lifts is the policy engine's decision, unchanged: only the missing care relationship, only for reads of
+  clinical content, only for a treating role, only until it expires. It does not lift a patient's refusal of consent
+  (checked live: no offer is made), and a write without a relationship is still refused (checked live).
+- Every audit row written while a request is served under a grant is flagged `break_glass` and carries the grant's id
+  (`audit::GLASS`, set by the access check); the opening of a grant is itself a flagged row. The patient's access log
+  already shows the flag. The audit row holds ids and times, never the free-text reason (the grant holds it).
+- Review: `GET /api/break-glass/reviews` (unreviewed, oldest first), `GET /api/break-glass/reviews/count` and
+  `POST /api/break-glass/reviews/{id}` (verdict `appropriate` or `inappropriate`, with a note). New policy resource
+  `BreakGlass` (13 resources; the matrix test is now 1,310,400 requests): treating roles may open a grant; the auditor
+  reads, searches and reviews. A grant is reviewed once, and not by the person who opened it.
+- UI: an "Emergency access" section on the patient page when (and only when) the API makes the offer: a reason and a
+  tick are required before anything is sent; the page reads again under the grant and keeps saying when it ends.
+  `/admin/break-glass` ("Emergency access reviews") is the auditor's queue. A test found that the confirmation vanished
+  with the form once the grant opened; it now stays on the page.
+- Tests: 4 + 1 unit (audit flag), 5 Postgres tests (4 hours, not extended, expiry, reason, review rules, immutability),
+  3 stubbed Playwright tests with axe, 2 real-stack tests (Keycloak, API): refused with an offer, opened, read, the read's
+  audit rows flagged and naming the grant, reviewed once by the auditor; and a refusal of consent still holds. I removed
+  the line that flags the audit rows and the real-stack test failed; restored, it passes. The whole real-stack suite
+  passes (18, 2 skipped as before).
+- **Not done:** the real-time notification to a privacy officer the task asks for (nothing here can send one); a count
+  or alert for the review queue (the count route exists and the UI does not use it, so the queue is silent until the
+  auditor opens the page); ending a grant early; a choice of duration; sensitive-record masking (SE-4), so a grant shows
+  everything the role may read; detection of patterns (one clinician opening many grants); a break-glass grant for
+  writes, for export or for a patient's refusal (deliberately not); the staff purpose picker still does not offer
+  `emergency`; translations; a run with the exact Rust 1.97. The SE-3 acceptance (403 with an offer; after the grant,
+  access and an audit row with the flag and reason; expiry) is met except that the audit row names the grant instead of
+  holding the reason, and expiry is tested in the store only (a past `expires_at` is not active), not by waiting four
+  hours.
+
 ## 2026-10-21 - Count of waiting refused messages on the admin pages
 
 - `GET /api/feed/refusals/count` returns `{open}` (no ids, no text); same gate as the listing (`FeedQueue`, search) and

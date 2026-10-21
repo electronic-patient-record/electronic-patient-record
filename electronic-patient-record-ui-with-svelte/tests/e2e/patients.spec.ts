@@ -1263,3 +1263,115 @@ test("the count of refused messages shows on the admin pages only, and not for a
     page.getByRole("navigation", { name: "Main" }).getByText("(3 waiting)"),
   ).toHaveCount(0);
 });
+
+test("emergency access is offered only when the API offers it, needs a reason and a tick, and then shows the allergies", async ({
+  page,
+}) => {
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, ANN),
+  );
+  let granted = false;
+  await page.route("**/api/proxy/api/patients/*/allergies", (route) =>
+    granted
+      ? json(route, 200, {
+          allergies: [],
+          statement: null,
+          summary: {
+            state: "active",
+            items: [{ substance: "Penicillin", criticality: "high" }],
+          },
+        })
+      : json(route, 403, { error: "forbidden", break_glass_offer: true }),
+  );
+  const sent: any[] = [];
+  await page.route("**/api/proxy/api/patients/*/break-glass", (route) => {
+    sent.push(route.request().postDataJSON());
+    granted = true;
+    return json(route, 201, {
+      id: "g1",
+      patient_id: ANN.id,
+      expires_at: "2026-10-21T13:00:00.000000Z",
+    });
+  });
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  await expect(
+    page.getByRole("heading", { name: "Emergency access" }),
+  ).toBeVisible();
+  await axe(page);
+
+  // Neither a reason alone nor a tick alone sends anything.
+  await page.getByLabel(/^Reason for emergency access/).fill("collapsed");
+  await page.getByRole("button", { name: /Open emergency access/ }).click();
+  await expect(page.getByText(/Give a reason and tick the box/)).toBeVisible();
+  expect(sent).toHaveLength(0);
+
+  await page.getByLabel("I understand this is recorded and reviewed").check();
+  await page.getByRole("button", { name: /Open emergency access/ }).click();
+  await expect(
+    page.getByText("Emergency access is open until 2026-10-21 13:00 UTC."),
+  ).toBeVisible();
+  expect(sent).toEqual([{ reason: "collapsed" }]);
+  // The page read again under the grant, and the banner now shows the allergy.
+  await expect(
+    page.getByRole("region", { name: "Patient banner" }),
+  ).toContainText("Penicillin");
+});
+
+test("a refusal that break-the-glass cannot lift shows no emergency form", async ({
+  page,
+}) => {
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, ANN),
+  );
+  await stubAllergies(page, { error: "forbidden" }, 403);
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  await expect(
+    page.getByText(/Not shown to you for this patient/).first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Emergency access" }),
+  ).toHaveCount(0);
+});
+
+test("the auditor sees the emergency access nobody has reviewed and records a verdict with a note", async ({
+  page,
+}) => {
+  let grants = [
+    {
+      id: "g1",
+      patient_id: ANN.id,
+      subject: "sub-dr",
+      reason: "collapsed in corridor",
+      granted_at: "2026-10-21T09:00:12.000000Z",
+      expires_at: "2026-10-21T13:00:12.000000Z",
+    },
+  ];
+  const sent: any[] = [];
+  await page.route("**/api/proxy/api/break-glass/reviews", (route) =>
+    json(route, 200, { grants, limit: 50 }),
+  );
+  await page.route("**/api/proxy/api/break-glass/reviews/g1", (route) => {
+    sent.push(route.request().postDataJSON());
+    grants = [];
+    return json(route, 200, { id: "g1" });
+  });
+  await page.goto("/en-001/admin/break-glass");
+  await expect(page.getByText("collapsed in corridor")).toBeVisible();
+  await axe(page);
+  await page.getByRole("button", { name: "Review", exact: true }).click();
+  await page.getByRole("button", { name: "Record the review" }).click();
+  await expect(
+    page.getByText("Write a note to record the review."),
+  ).toBeVisible();
+  expect(sent).toHaveLength(0);
+  await page.getByLabel("Verdict").selectOption("inappropriate");
+  await page.getByLabel("Note (required)").fill("no emergency found");
+  await page.getByRole("button", { name: "Record the review" }).click();
+  await expect(page.getByText("Review recorded.")).toBeVisible();
+  await expect(
+    page.getByText("No emergency access is waiting for review."),
+  ).toBeVisible();
+  expect(sent).toEqual([
+    { outcome: "inappropriate", note: "no emergency found" },
+  ]);
+});

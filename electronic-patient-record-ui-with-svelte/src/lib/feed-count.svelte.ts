@@ -3,10 +3,14 @@
 // may not see the queue (any status but 200) shows nothing.
 import { call } from "./api.js";
 
-/** Whether a path is an admin page: the queue itself, or a patient's access and consent page. */
+/**
+ * Whether the refused-message count is fetched on this path: the queue itself and a patient's access
+ * page. Not the emergency-access review page, which is the auditor's: the auditor's role is refused the
+ * count, and every refusal is an audit row.
+ */
 export function isAdminPage(pathname: string): boolean {
   return (
-    /\/admin(\/|$)/.test(pathname) ||
+    /\/admin\/feed\/?$/.test(pathname) ||
     /\/patients\/[^/]+\/access\/?$/.test(pathname)
   );
 }

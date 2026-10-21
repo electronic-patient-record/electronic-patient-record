@@ -51,6 +51,7 @@
     <a href={localizePath("/patients/new", locale)}>{STRINGS.registerLink}</a>
     <a href={localizePath("/admin/feed", locale)}>{STRINGS.navFeed}{#if adminPage && feedCount.open}
         <span class="count">({STRINGS.feedCount.replace("{n}", String(feedCount.open))})</span>{/if}</a>
+    <a href={localizePath("/admin/break-glass", locale)}>{STRINGS.navGlass}</a>
     <a href={localizePath("/my-record", locale)}>{STRINGS.navMyRecord}</a>
   </nav>
   {#if staffPage}

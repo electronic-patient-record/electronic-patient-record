@@ -3,6 +3,8 @@
   import { call, commonProblem, sendBytes } from "#lib/api.js";
   import { DEFAULT_LOCALE, localizePath } from "#lib/locales.js";
   import AllergySection from "#lib/AllergySection.svelte";
+  import BreakGlassSection from "#lib/BreakGlassSection.svelte";
+  import { whenText } from "#lib/access-log.js";
   import { loadAllergies, type AllergyLoad } from "#lib/allergies.js";
   import MergeSection from "#lib/MergeSection.svelte";
   import PatientBanner from "#lib/PatientBanner.svelte";
@@ -30,6 +32,8 @@
   // One allergy call per look, shared by the banner and the allergy section: each is an audited
   // read, and two views of the same answer must not disagree.
   let allergies = $state<AllergyLoad | null>(null);
+  // When emergency access opened on this page ends, kept after the form has gone.
+  let glassUntil = $state<string | null>(null);
   async function reloadAllergies() {
     allergies = await loadAllergies(id ?? "");
   }
@@ -231,6 +235,20 @@
   </p>
   <!-- A record merged into another is read-only: its changes go to the surviving record. -->
   {#if !stored.replaced_by}
+  {#if allergies?.status === 403 && allergies.offer}
+    <BreakGlassSection
+      patientId={stored.id}
+      onopened={async (until) => {
+        glassUntil = until;
+        await reloadAllergies();
+      }}
+    />
+  {/if}
+  {#if glassUntil}
+    <p role="status">
+      {STRINGS.glassOpened.replace("{until}", whenText(glassUntil))}
+    </p>
+  {/if}
   {#if allergies?.status === 200 && allergies.data}
     <AllergySection
       patientId={stored.id}

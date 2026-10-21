@@ -313,6 +313,45 @@ tokio::task_local! {
     pub static ACTOR: Actor;
 }
 
+tokio::task_local! {
+    /// The id of the break-the-glass grant the current request is being served under, once the access
+    /// check has found one that lifted a refusal. Every audit row written afterwards in the request is
+    /// flagged `break_glass` and names the grant, so the access, the flag and the review queue agree.
+    pub static GLASS: std::sync::Mutex<Option<String>>;
+}
+
+/// Record that the current request is served under break-the-glass grant `grant_id`. Outside a
+/// request (tests, jobs) this does nothing.
+pub fn note_break_glass(grant_id: &str) {
+    let _ = GLASS.try_with(|g| {
+        if let Ok(mut slot) = g.lock() {
+            *slot = Some(grant_id.to_string());
+        }
+    });
+}
+
+/// `event` flagged and tagged when the request is served under a grant.
+fn with_glass(event: &Event) -> Event {
+    let mut event = event.clone();
+    let Some(grant) = GLASS
+        .try_with(|g| g.lock().ok().and_then(|slot| slot.clone()))
+        .ok()
+        .flatten()
+    else {
+        return event;
+    };
+    event.break_glass = true;
+    match event.detail.take() {
+        None => event.detail = Some(serde_json::json!({ "break_glass_grant": grant })),
+        Some(serde_json::Value::Object(mut m)) => {
+            m.insert("break_glass_grant".into(), grant.into());
+            event.detail = Some(serde_json::Value::Object(m));
+        }
+        other => event.detail = other,
+    }
+    event
+}
+
 /// `event`'s detail with the current request's [`ACTOR`] added under `"actor"`. An existing
 /// `actor` key is overwritten: the trail records what the token said, not what a handler wrote.
 fn with_actor(event: &Event) -> Event {
@@ -351,7 +390,7 @@ pub async fn append(
     chain: &Chain,
     event: &Event,
 ) -> Result<i64, AuditError> {
-    let event = &with_actor(event);
+    let event = &with_glass(&with_actor(event));
     let tx = db.begin().await.map_err(err)?;
     tx.execute_raw(pg(
         "SELECT pg_advisory_xact_lock($1)",
@@ -1198,5 +1237,20 @@ mod tests {
         // An unkeyed digest in a keyed chain is a downgrade someone without the key can write.
         let plain = Chain::unkeyed().digest(None, at, &e);
         assert_eq!(c.check(&plain, None, at, &e), RowCheck::Mismatch);
+    }
+
+    #[test]
+    fn a_request_served_under_a_grant_flags_and_names_it_on_every_row() {
+        let e = Event::new(Action::Read, "dr");
+        // Outside a request, or before a grant was found: unchanged.
+        assert_eq!(with_glass(&e), e);
+        let flagged = GLASS.sync_scope(std::sync::Mutex::new(None), || {
+            let before = with_glass(&e);
+            note_break_glass("grant-1");
+            (before, with_glass(&e))
+        });
+        assert!(!flagged.0.break_glass);
+        assert!(flagged.1.break_glass);
+        assert_eq!(flagged.1.detail.unwrap()["break_glass_grant"], "grant-1");
     }
 }

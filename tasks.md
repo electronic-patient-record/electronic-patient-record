@@ -198,7 +198,7 @@ Conventions:
   actor, purpose, data class and period). National data opt-out for
   secondary use. 42 CFR Part 2 segmentation via the `SUD` label.
   **Acceptance:** a denied provision hides the data and audits the denial. Bulk export honours consent.
-- [ ] **SE-3 (M) — Break-the-glass.** A mandatory reason, a time-boxed grant
+- [ ] **SE-3 (M) — Break-the-glass.** **Landed 2026-10-21 except the notification** (grant, 4 hours, reason, flagged audit rows, auditor review queue and UI; hazards H-008 and H-024; see CHANGELOG for what is not done: no real-time notification to a privacy officer, no alert or count in the UI, no masking). A mandatory reason, a time-boxed grant
   (default 4 hours), a real-time notification to the privacy officer, and a
   review queue.
   **Acceptance:** access without a relationship gets 403 with a BTG offer. After BTG, access is granted and the audit row carries the flag and reason. The grant expires on time.

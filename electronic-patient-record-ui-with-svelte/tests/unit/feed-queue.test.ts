@@ -53,6 +53,7 @@ describe("which pages are admin pages", () => {
       "/en-001/patients/new",
       "/en-001/my-record",
       "/en-001/administrator",
+      "/en-001/admin/break-glass",
     ])
       expect(isAdminPage(p)).toBe(false);
   });

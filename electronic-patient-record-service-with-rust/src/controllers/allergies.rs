@@ -7,7 +7,7 @@
 //! - `PUT  /api/patients/{id}/allergy-statement`: state, or withdraw, "no known allergies".
 //!
 //! Allergies are clinical content, so the record-level decision applies in full: the role, a care
-//! relationship (or, one day, break-the-glass), the purpose of use and the patient's consent. A
+//! relationship (or a break-the-glass grant, for a read), the purpose of use and the patient's consent. A
 //! role that may not read them, such as a receptionist, is refused by the route gate. A write and its
 //! audit row are one transaction. The audit row records ids, versions and statuses, never the
 //! substance or the reaction.

@@ -160,6 +160,30 @@ pub const TABLE: &[(&str, &str, Resource, Action)] = &[
     ),
     (
         "POST",
+        "/api/patients/{id}/break-glass",
+        Resource::BreakGlass,
+        Action::Create,
+    ),
+    (
+        "GET",
+        "/api/break-glass/reviews",
+        Resource::BreakGlass,
+        Action::Search,
+    ),
+    (
+        "GET",
+        "/api/break-glass/reviews/count",
+        Resource::BreakGlass,
+        Action::Search,
+    ),
+    (
+        "POST",
+        "/api/break-glass/reviews/{id}",
+        Resource::BreakGlass,
+        Action::Update,
+    ),
+    (
+        "POST",
         "/api/patients/{id}/merge",
         Resource::PatientLink,
         Action::Create,
