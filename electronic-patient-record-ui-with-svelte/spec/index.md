@@ -16,7 +16,10 @@ cross-subproject contract.
   session with a fresh random id; `/auth/logout` (POST, same-origin only) ends it here and at Keycloak. The browser holds only the
   `httpOnly`, `SameSite=Lax` cookie `epr_session` (`__Host-epr_session` over HTTPS); tokens stay in the server's in-memory store
   (`src/lib/session.ts`). The proxy adds `Authorization: Bearer`, refreshes within 30 s of expiry, and answers 401 when there is no
-  live session. Idle limit 900 s and absolute limit 28800 s (`EPR_SESSION_IDLE_SECONDS`, `EPR_SESSION_ABSOLUTE_SECONDS`). `returnTo`
+  live session. Idle limit 900 s and absolute limit 28800 s (`EPR_SESSION_IDLE_SECONDS`, `EPR_SESSION_ABSOLUTE_SECONDS`). A
+  background look (the patient page's minute poll) sends `x-epr-background: 1`; the hook and the proxy do not count it as activity,
+  and the header is not forwarded. Two minutes before the idle limit the layout shows an alert with the minutes left and "Stay
+  signed in" (`POST /auth/keepalive`, same-origin, 204 or 401, no API call); hazard H-025. `returnTo`
   is a same-site path only. Plain `http://` is accepted only for loopback. Environment: `EPR_OIDC_ISSUER`, `EPR_OIDC_CLIENT_ID`
   (default `epr-web`), `EPR_PUBLIC_URL` (required with an issuer; its origin must be one the client allows).
 - **Pages**: home; `/patients` searches (family-name prefix, birth date, NHS number; an empty search is never sent) and lists up to 50

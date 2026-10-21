@@ -32,4 +32,18 @@ describe("call", () => {
     );
     expect(await call("GET", "/x")).toEqual({ status: 204, body: null });
   });
+
+  it("marks a background call so the server does not count it as activity", async () => {
+    const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await call("GET", "/api/patients/x", undefined, undefined, {
+      background: true,
+    });
+    await call("GET", "/api/patients/x");
+    const [bg, fg] = fetchMock.mock.calls.map(
+      (c) => (c as unknown as [string, RequestInit])[1],
+    );
+    expect(bg?.headers).toEqual({ "x-epr-background": "1" });
+    expect(fg?.headers).toEqual({});
+  });
 });

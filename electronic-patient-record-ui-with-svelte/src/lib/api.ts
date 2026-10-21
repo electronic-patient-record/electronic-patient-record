@@ -1,3 +1,5 @@
+import { noteActivity } from "./idle.js";
+
 // One place the pages call the API through the backend-for-frontend proxy. A network failure is
 // status 0, so a page handles "could not reach the server" the same way as any other refusal.
 
@@ -19,11 +21,15 @@ export async function call<T = unknown>(
   path: string,
   body?: unknown,
   purpose?: string,
+  // A background look does not keep the session alive (CQ-8).
+  { background = false }: { background?: boolean } = {},
 ): Promise<ApiResult<T>> {
+  if (!background) noteActivity();
   try {
     const res = await fetch(`/api/proxy${path}`, {
       method,
       headers: {
+        ...(background ? { "x-epr-background": "1" } : {}),
         ...(body === undefined ? {} : { "content-type": "application/json" }),
         ...((purpose ?? defaultPurpose)
           ? { "x-purpose-of-use": (purpose ?? defaultPurpose)! }

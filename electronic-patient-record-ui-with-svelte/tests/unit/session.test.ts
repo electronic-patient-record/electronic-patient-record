@@ -34,6 +34,17 @@ describe("SessionStore", () => {
     expect(s.get(id)).toBeNull();
     expect(s.size()).toBe(0);
   });
+  it("does not count a background request as activity (CQ-8)", () => {
+    const { s, clock } = store(100, 1000);
+    const { id } = s.create(init);
+    // A page polling every 60 s with nobody at the keyboard: the session still ends on time.
+    for (clock.t = 60; clock.t <= 60 * 5; clock.t += 60) {
+      const live = s.get(id, { activity: false });
+      if (clock.t <= 100) expect(live).not.toBeNull();
+      else expect(live).toBeNull();
+    }
+    expect(s.size()).toBe(0);
+  });
   it("ends a session at the absolute limit however active", () => {
     const { s, clock } = store(100, 250);
     const { id } = s.create(init);

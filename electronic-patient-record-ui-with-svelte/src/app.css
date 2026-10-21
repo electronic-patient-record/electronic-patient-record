@@ -55,6 +55,13 @@ a {
   padding: 0.5rem 0.75rem;
   margin: 1rem 0;
 }
+/* The idle sign-out warning (an alert, so it is announced; not sticky, which the banner is). */
+.idle {
+  background: var(--warn-bg);
+  border: 2px solid var(--warn-border);
+  padding: 0.5rem 0.75rem;
+  margin: 1rem 0;
+}
 header.site {
   display: flex;
   gap: 1.5rem;

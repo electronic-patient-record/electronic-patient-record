@@ -2,6 +2,23 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-21 - The idle sign-out holds on an open patient page (CQ-8)
+
+- The patient page looks at the record and its allergies once a minute, and every proxied request counted as activity,
+  so a workstation left open on a patient page never reached the 15-minute idle limit (only the 8-hour one). The page
+  now marks those looks `x-epr-background: 1`; the hook and the proxy look the session up without counting them, and
+  the header is not forwarded to the API.
+- Two minutes before the idle limit the layout shows an alert ("You will be signed out in about N min…") with "Stay
+  signed in", which posts to a new same-origin `/auth/keepalive` (no API call, so no audit row). The page's own note of
+  activity can only lag the server's, so the warning comes early, never late. New hazard H-025.
+- Tests: 6 unit tests (the store ignores background requests and the session still ends on time; the header rule; the
+  client sends the marker only on a background call; the warning's minutes); 3 of them, and the new module, failed
+  before the change. `pnpm run check` 0 errors, 98 vitest, 42 Playwright.
+- **Not done:** an end-to-end test that sees the warning. The stubbed suite runs with sign-in off, and the real-Keycloak
+  suite was not run (no stack or password here). Typing alone is not activity, so a clinician typing a long entry
+  without saving is warned and can be signed out. The banner's photo fetch after a background look that finds a new
+  photo still counts as activity.
+
 ## 2026-10-21 - Wrong patient on screen while moving between records (CQ-6)
 
 - Following a link from one patient's page to another (a merged record to the surviving one, say) reuses the page. The

@@ -43,10 +43,10 @@
   let allergyTicket = 0;
   const current = (forId: string | undefined) => forId === id;
 
-  async function reloadAllergies() {
+  async function reloadAllergies(background = false) {
     const forId = id;
     const ticket = ++allergyTicket;
-    const res = await loadAllergies(forId ?? "");
+    const res = await loadAllergies(forId ?? "", undefined, { background });
     if (current(forId) && ticket === allergyTicket) allergies = res;
   }
 
@@ -112,9 +112,12 @@
   async function look() {
     if (!stored || document.hidden || loading) return;
     const forId = stored.id;
-    // Allergies can change without the identity record changing, so they are looked at too.
-    void reloadAllergies();
-    const res = await call<Stored>("GET", `/api/patients/${forId}`);
+    // Allergies can change without the identity record changing, so they are looked at too. Both
+    // are background looks: nobody asked for them, so they do not keep the session alive (CQ-8).
+    void reloadAllergies(true);
+    const res = await call<Stored>("GET", `/api/patients/${forId}`, undefined, undefined, {
+      background: true,
+    });
     if (
       res.status !== 200 ||
       !stored ||
@@ -293,7 +296,7 @@
     <AllergySection
       patientId={stored.id}
       data={allergies.data}
-      onchange={reloadAllergies}
+      onchange={() => reloadAllergies()}
     />
   {/if}
   {#if !stored.replaced_by}

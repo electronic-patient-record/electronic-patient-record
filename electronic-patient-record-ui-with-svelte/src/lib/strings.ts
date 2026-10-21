@@ -26,6 +26,11 @@ export const STRINGS = {
   error: "The comparison failed.",
   forbidden: "Your role does not allow this.",
   signInRequired: "Sign in to continue.",
+  idleWarning:
+    "You will be signed out in about {n} min because nothing has been done. Anything not saved would be lost.",
+  idleEnded:
+    "You may have been signed out because nothing was done for a while. Anything not saved may be lost.",
+  staySignedIn: "Stay signed in",
   signIn: "Sign in",
   searchTitle: "Find a patient",
   searchHint:

@@ -1,3 +1,4 @@
+import { BACKGROUND_HEADER, isBackground } from "#lib/proxy.js";
 import type { Handle, ServerInit } from "@sveltejs/kit/hooks";
 import { getAuth, sessionFrom } from "#lib/auth-instance.js";
 import { redirect } from "@sveltejs/kit";
@@ -28,7 +29,10 @@ export const handle: Handle = async (input) => {
     event.url,
     event.request.headers.get("x-forwarded-proto"),
   );
-  const session = sessionFrom(getAuth(), event.cookies, secure);
+  // A background look (BACKGROUND_HEADER) is not activity: it must not keep an idle session alive.
+  const session = sessionFrom(getAuth(), event.cookies, secure, {
+    activity: !isBackground(event.request.headers.get(BACKGROUND_HEADER)),
+  });
   event.locals.user = session
     ? { subject: session.subject, name: session.name }
     : null;

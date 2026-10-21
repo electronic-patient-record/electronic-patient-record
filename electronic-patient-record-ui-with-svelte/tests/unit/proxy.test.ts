@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { proxyTarget, purposeHeader } from "../../src/lib/proxy";
+import { isBackground, proxyTarget, purposeHeader } from "../../src/lib/proxy";
 
 describe("proxyTarget", () => {
   it("forwards API paths", () => {
@@ -40,5 +40,13 @@ describe("purposeHeader", () => {
     ]) {
       expect(purposeHeader(bad)).toBeNull();
     }
+  });
+});
+
+describe("isBackground (CQ-8)", () => {
+  it("is true only for the exact marker", () => {
+    expect(isBackground("1")).toBe(true);
+    for (const v of [null, undefined, "", "0", "true", "yes"])
+      expect(isBackground(v)).toBe(false);
   });
 });

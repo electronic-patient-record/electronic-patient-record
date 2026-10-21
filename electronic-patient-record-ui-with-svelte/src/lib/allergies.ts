@@ -60,12 +60,14 @@ export interface AllergyLoad {
 export async function loadAllergies(
   patientId: string,
   purpose?: string,
+  options: { background?: boolean } = {},
 ): Promise<AllergyLoad> {
   const res = await call<AllergyData>(
     "GET",
     `/api/patients/${patientId}/allergies`,
     undefined,
     purpose,
+    options,
   );
   const offer =
     res.status === 403 &&

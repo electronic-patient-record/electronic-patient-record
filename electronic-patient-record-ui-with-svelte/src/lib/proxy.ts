@@ -25,6 +25,16 @@ export function proxyTarget(
   return `${base.replace(/\/+$/, "")}/${segments.join("/")}${search}`;
 }
 
+/**
+ * The header a page sets on a background look (a poll nobody asked for). The BFF does not count such a
+ * request as activity, and does not forward the header to the API.
+ */
+export const BACKGROUND_HEADER = "x-epr-background";
+
+export function isBackground(value: string | null | undefined): boolean {
+  return value === "1";
+}
+
 /** The purposes of use the API accepts in `X-Purpose-Of-Use` (service `Purpose::parse`). */
 export const PURPOSES = [
   "treatment",

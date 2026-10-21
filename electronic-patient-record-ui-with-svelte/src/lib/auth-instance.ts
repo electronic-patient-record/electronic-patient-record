@@ -40,9 +40,10 @@ export function sessionFrom(
   auth: Auth | null,
   cookies: Cookies,
   secure: boolean,
+  options: { activity?: boolean } = {},
 ): Session | null {
   return auth
-    ? auth.store.get(cookies.get(cookieName(SESSION_COOKIE, secure)))
+    ? auth.store.get(cookies.get(cookieName(SESSION_COOKIE, secure)), options)
     : null;
 }
 

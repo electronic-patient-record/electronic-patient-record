@@ -56,8 +56,14 @@ export class SessionStore {
     return session;
   }
 
-  /** Returns the live session and counts the request as activity, or null. */
-  get(id: string | undefined): Session | null {
+  /**
+   * Returns the live session, or null. The request counts as activity unless `activity` is false
+   * (a background look, which must not keep an unattended workstation signed in).
+   */
+  get(
+    id: string | undefined,
+    { activity = true }: { activity?: boolean } = {},
+  ): Session | null {
     if (!id) return null;
     const session = this.sessions.get(id);
     if (!session) return null;
@@ -69,7 +75,7 @@ export class SessionStore {
       this.sessions.delete(id);
       return null;
     }
-    session.lastSeen = now;
+    if (activity) session.lastSeen = now;
     return session;
   }
 

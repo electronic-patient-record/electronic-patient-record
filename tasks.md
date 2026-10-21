@@ -455,7 +455,7 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
   candidate search on the transaction, then insert.
   **Acceptance:** a DB-gated test fires two concurrent creates for the same person and gets one record plus one
   duplicate warning.
-- [ ] **CQ-8 (S) — Background poll keeps the session alive.** The 60-second `look()` poll refreshes `lastSeen`
+- [ ] **CQ-8 (S) — Background poll keeps the session alive.** **Landed 2026-10-21 except the end-to-end test** (background marker honoured by hook and proxy, warning with Stay signed in, 6 unit tests, H-025). **Open until** a real-Keycloak test sees the warning. The 60-second `look()` poll refreshes `lastSeen`
   (`src/lib/server/session.ts:72`), so the 15-minute idle timeout never fires on an open page. Mark background
   requests so the BFF does not count them as activity, and warn before the idle timeout.
   **Acceptance:** a unit test shows a background request does not extend the session; an e2e test sees the

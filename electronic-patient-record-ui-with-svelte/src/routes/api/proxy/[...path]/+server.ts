@@ -6,7 +6,12 @@ import {
   sameOrigin,
   SESSION_COOKIE,
 } from "#lib/auth-instance.js";
-import { proxyTarget, purposeHeader } from "#lib/proxy.js";
+import {
+  BACKGROUND_HEADER,
+  isBackground,
+  proxyTarget,
+  purposeHeader,
+} from "#lib/proxy.js";
 import { isHttps } from "#lib/security-headers.js";
 
 // The backend-for-frontend proxy. The browser never talks to the API directly and
@@ -31,7 +36,9 @@ const forward: RequestHandler = async ({ params, url, request, cookies }) => {
     }
     const secure = isHttps(url, request.headers.get("x-forwarded-proto"));
     const id = cookies.get(cookieName(SESSION_COOKIE, secure));
-    const session = auth.store.get(id);
+    const session = auth.store.get(id, {
+      activity: !isBackground(request.headers.get(BACKGROUND_HEADER)),
+    });
     const token = session ? await auth.accessToken(session) : null;
     if (!token) {
       cookies.delete(cookieName(SESSION_COOKIE, secure), { path: "/" });

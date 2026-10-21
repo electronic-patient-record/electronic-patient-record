@@ -13,6 +13,7 @@
   } from "#lib/purpose.js";
 
   import { feedCount, isAdminPage, refreshFeedCount } from "#lib/feed-count.svelte.js";
+  import { idleWarning, lastActivityAt, noteActivity } from "#lib/idle.js";
 
   let { children } = $props();
   const locale = $derived(page.data.locale ?? DEFAULT_LOCALE);
@@ -38,6 +39,31 @@
     if (adminPage) void refreshFeedCount();
     else feedCount.open = null;
   });
+  // Idle sign-out warning (CQ-8): background looks do not keep the session alive, so warn before the
+  // limit and offer one press to stay. Checked every 15 s; the server decides, this only warns.
+  const idleSeconds = $derived<number | null>(page.data.signIn?.idleSeconds ?? null);
+  let minutesLeft = $state<number | null>(null);
+  $effect(() => {
+    const limit = idleSeconds;
+    const tick = () => (minutesLeft = idleWarning(Date.now(), lastActivityAt(), limit));
+    tick();
+    const timer = setInterval(tick, 15_000);
+    return () => clearInterval(timer);
+  });
+  async function staySignedIn() {
+    try {
+      const res = await fetch("/auth/keepalive", { method: "POST" });
+      if (res.ok) {
+        noteActivity();
+        minutesLeft = null;
+      } else {
+        minutesLeft = 0;
+      }
+    } catch {
+      minutesLeft = 0;
+    }
+  }
+
   // "My record" always declares patient access, so the staff choice does not apply there.
   const staffPage = $derived(!page.url.pathname.includes("/my-record"));
 </script>
@@ -79,6 +105,16 @@
   {/if}
 </header>
 <p class="notice" role="note">{STRINGS.notClinical}</p>
+{#if minutesLeft !== null}
+  <div class="idle" role="alert">
+    {#if minutesLeft > 0}
+      <p>{STRINGS.idleWarning.replace("{n}", String(minutesLeft))}</p>
+      <button type="button" onclick={() => void staySignedIn()}>{STRINGS.staySignedIn}</button>
+    {:else}
+      <p>{STRINGS.idleEnded}</p>
+    {/if}
+  </div>
+{/if}
 <main id="main">
   {@render children()}
 </main>
