@@ -4,6 +4,7 @@ import {
   comparisonRows,
   emptyForm,
   formToPatient,
+  isRestricted,
   nhsDigits,
   patientToForm,
   searchQuery,
@@ -156,5 +157,21 @@ describe("commonProblem", () => {
     expect(commonProblem(404)).toBeNull();
     expect(commonProblem(409)).toBeNull();
     expect(commonProblem(200)).toBeNull();
+  });
+});
+
+describe("isRestricted", () => {
+  it("tells a stand-in from a full candidate", () => {
+    expect(isRestricted({ restricted: true })).toBe(true);
+    expect(
+      isRestricted({
+        existing: { id: "x", version: 1, author: "a", patient: rich },
+        score: 1,
+        decision: "auto_link",
+        fields: [],
+        deterministic: null,
+        conflicts: [],
+      }),
+    ).toBe(false);
   });
 });

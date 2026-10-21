@@ -8,6 +8,7 @@
     comparisonRows,
     emptyForm,
     formToPatient,
+    isRestricted,
     type Candidate,
     type PatientForm,
     type Stored,
@@ -104,7 +105,12 @@
   <section aria-labelledby="dup-title" aria-live="polite">
     <h2 id="dup-title">{STRINGS.duplicateTitle}</h2>
     <p>{STRINGS.duplicateIntro}</p>
-    {#each candidates as c (c.existing.id)}
+    {#each candidates as c, i (isRestricted(c) ? `restricted-${i}` : c.existing.id)}
+      {#if isRestricted(c)}
+        <article class="candidate">
+          <p>{STRINGS.restrictedCandidate}</p>
+        </article>
+      {:else}
       <article class="candidate">
         <h3>
           {STRINGS.decision}: {STRINGS.decisions[c.decision]} ({STRINGS.score}: {c.score.toFixed(2)})
@@ -143,6 +149,7 @@
           >
         </p>
       </article>
+      {/if}
     {/each}
 
     <form

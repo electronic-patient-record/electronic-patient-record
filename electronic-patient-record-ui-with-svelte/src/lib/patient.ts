@@ -41,7 +41,16 @@ export interface MatchResult {
 }
 
 /** An existing patient the new record may duplicate, with the matcher's explanation. */
-export type Candidate = MatchResult & { existing: Stored };
+export type FullCandidate = MatchResult & { existing: Stored };
+
+/**
+ * A candidate, or a stand-in for one the patient's consent keeps from this reader: it is still a
+ * possible duplicate, but carries no record, score or breakdown.
+ */
+export type Candidate = FullCandidate | { restricted: true };
+
+export const isRestricted = (c: Candidate): c is { restricted: true } =>
+  "restricted" in c;
 
 export interface PatientForm {
   family: string;

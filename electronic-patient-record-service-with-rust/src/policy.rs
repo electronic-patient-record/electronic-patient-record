@@ -155,6 +155,12 @@ impl Resource {
         }
     }
 
+    /// Parse a name as [`Resource::name`] writes it. Unknown names are not resources.
+    #[must_use]
+    pub fn parse(name: &str) -> Option<Resource> {
+        Resource::ALL.into_iter().find(|r| r.name() == name)
+    }
+
     /// Whether the resource holds clinical content: reading it needs a care relationship.
     #[must_use]
     pub fn clinical(self) -> bool {
@@ -252,6 +258,12 @@ impl Label {
             Label::SubstanceUse => "SUD",
             Label::Ethnicity => "ETH",
         }
+    }
+
+    /// Parse a FHIR code as [`Label::code`] writes it. Unknown codes are not labels.
+    #[must_use]
+    pub fn parse(code: &str) -> Option<Label> {
+        Label::ALL.into_iter().find(|l| l.code() == code)
     }
 
     /// Roles that see a record with this label unmasked, before the patient's consent is applied.
@@ -694,6 +706,19 @@ mod tests {
         for role in Role::ALL {
             assert_eq!(Role::parse(role.as_str()), Some(role));
         }
+    }
+
+    #[test]
+    fn resources_and_labels_parse_from_what_they_print() {
+        for r in Resource::ALL {
+            assert_eq!(Resource::parse(r.name()), Some(r));
+        }
+        for l in Label::ALL {
+            assert_eq!(Label::parse(l.code()), Some(l));
+        }
+        assert_eq!(Resource::parse("patientidentity"), None);
+        assert_eq!(Label::parse("sud"), None);
+        assert_eq!(Label::parse(""), None);
     }
 
     #[test]

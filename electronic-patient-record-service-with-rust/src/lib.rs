@@ -11,6 +11,8 @@ pub mod app;
 pub mod audit;
 pub mod auth;
 pub mod authz;
+pub mod consent;
+pub mod consents_store;
 pub mod controllers;
 pub mod patients_store;
 pub mod policy;

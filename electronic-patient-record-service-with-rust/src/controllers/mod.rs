@@ -1,5 +1,6 @@
 //! HTTP controllers.
 
+pub mod consents;
 pub mod patients;
 
 use loco_rs::controller::AppRoutes;

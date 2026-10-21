@@ -87,7 +87,7 @@ pub fn validate(patient: &Patient) -> Vec<String> {
     problems
 }
 
-fn valid_birth_date(d: &str) -> bool {
+pub(crate) fn valid_birth_date(d: &str) -> bool {
     let parts: Vec<&str> = d.split('-').collect();
     let num = |s: &str, len: usize| {
         (s.len() == len && s.bytes().all(|b| b.is_ascii_digit()))

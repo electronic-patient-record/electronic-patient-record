@@ -20,12 +20,12 @@ no network, database or compilation; counts are source lines, not test runs):
 | Service version | 0.1.0 | `version` in the service `Cargo.toml` |
 | Matcher version | 0.1.0 | `version` in the matcher `Cargo.toml` |
 | Front-end version | 0.1.0 | `version` in the front-end `package.json` |
-| Migrations | 2 | files named `m2*.rs` in `migration/src` |
-| Route registrations | 5 | `.add(` calls in `src/controllers/*.rs` |
-| Service tests | 72, plus 20 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
+| Migrations | 3 | files named `m2*.rs` in `migration/src` |
+| Route registrations | 8 | `.add(` calls in `src/controllers/*.rs` |
+| Service tests | 95, plus 25 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
 | Matcher tests | 13, plus 0 `#[ignore]`d | the same patterns in the matcher |
-| Front-end unit tests (vitest) | 63 | `it(` / `test(` lines in `tests/unit` |
-| Front-end end-to-end tests (Playwright) | 14 | `test(` lines in `tests/e2e` |
+| Front-end unit tests (vitest) | 64 | `it(` / `test(` lines in `tests/unit` |
+| Front-end end-to-end tests (Playwright) | 15 | `test(` lines in `tests/e2e` |
 | Locales | 10 | entries of `LOCALES` in `src/lib/locales.ts` |
 
 **Task boxes in [`tasks.md`](../tasks.md)** (ticked / open, by prefix):

@@ -52,6 +52,8 @@ export const STRINGS = {
   entered: "As entered",
   existing: "Existing record",
   sameValue: "same",
+  restrictedCandidate:
+    "Another record may be the same person, but its owner has restricted who can see it. Ask someone who is allowed to look, or register anyway with a reason.",
   openExisting: "Open the existing record",
   overrideReason: "This is a different person. Why? (required)",
   registerAnyway: "Register anyway",

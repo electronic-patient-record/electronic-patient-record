@@ -248,3 +248,26 @@ test("a missing patient and a signed-out reader get a message, not a form", asyn
   await page.reload();
   await expect(page.getByRole("alert")).toHaveText("Sign in to continue.");
 });
+
+test("a restricted candidate blocks registration without showing the record", async ({
+  page,
+}) => {
+  await page.route("**/api/proxy/api/patients", (route) =>
+    json(route, 409, {
+      error: "possible duplicate",
+      candidates: [{ restricted: true }],
+    }),
+  );
+  await page.goto("/en-001/patients/new");
+  await page.getByLabel("Family name").fill("Smith");
+  await page.getByRole("button", { name: "Register", exact: true }).click();
+  await expect(
+    page.getByText("its owner has restricted who can see it"),
+  ).toBeVisible();
+  await expect(page.getByRole("table")).toHaveCount(0);
+  await expect(
+    page.getByRole("link", { name: "Open the existing record" }),
+  ).toHaveCount(0);
+  await expect(page.getByLabel(/This is a different person/)).toBeVisible();
+  await axe(page);
+});

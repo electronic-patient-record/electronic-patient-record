@@ -3,8 +3,10 @@
 
 use crate::audit::{self, Action, AuditError, Chain, Event};
 use crate::auth::{self, Agent};
+use crate::consent;
+use crate::consents_store;
 use crate::patients_store::{self as store, Search, StoreError};
-use crate::policy::{self, Consent, Purpose, Relationship, Subject};
+use crate::policy::{self, Consent, Purpose, Relationship, Resource, Subject};
 use axum::{
     Extension,
     extract::{Json, Path, Query},
@@ -132,12 +134,12 @@ pub fn likely_duplicates(new: &Patient, existing: Vec<store::Stored>) -> Vec<Can
     found
 }
 
-fn json_error(status: StatusCode, body: serde_json::Value) -> Response {
+pub(super) fn json_error(status: StatusCode, body: serde_json::Value) -> Response {
     (status, Json(body)).into_response()
 }
 
 /// The purpose of use the caller declared, `operations` by default. An unknown code is a 400.
-fn purpose_of(headers: &HeaderMap) -> Result<Purpose, Box<Response>> {
+pub(super) fn purpose_of(headers: &HeaderMap) -> Result<Purpose, Box<Response>> {
     match headers.get("x-purpose-of-use") {
         None => Ok(Purpose::Operations),
         Some(v) => v.to_str().ok().and_then(Purpose::parse).ok_or_else(|| {
@@ -149,7 +151,7 @@ fn purpose_of(headers: &HeaderMap) -> Result<Purpose, Box<Response>> {
     }
 }
 
-fn audit_failed(e: &AuditError) -> Response {
+pub(super) fn audit_failed(e: &AuditError) -> Response {
     tracing::error!(error = %e, "refusing to answer: the access could not be audited");
     json_error(
         StatusCode::INTERNAL_SERVER_ERROR,
@@ -157,29 +159,74 @@ fn audit_failed(e: &AuditError) -> Response {
     )
 }
 
-/// The record-level decision for an identity access. With login off (development only) there is no
-/// subject and nothing to decide. On a refusal the refusal is audited and the 403 is returned.
-async fn authorize(
+/// What the patients' consent says about this subject reading this kind of record, per patient.
+/// A patient with no active consent has no entry. With login off (development only) there is no
+/// subject and nothing is looked up. A failed lookup fails the request: an unchecked disclosure is
+/// how a refusal gets ignored.
+pub(super) async fn consent_verdicts(
+    db: &sea_orm::DatabaseConnection,
+    subject: &Subject,
+    purpose: Purpose,
+    resource: Resource,
+    patient_ids: &[String],
+) -> Result<std::collections::HashMap<String, consent::Verdict>, Box<Response>> {
+    let mut verdicts = std::collections::HashMap::new();
+    if !auth::authentication_enforced() || patient_ids.is_empty() {
+        return Ok(verdicts);
+    }
+    let ids: Vec<String> = patient_ids.iter().map(|i| i.to_lowercase()).collect();
+    let active = consents_store::active_for(db, &ids)
+        .await
+        .map_err(|e| Box::new(store_failure(&e)))?;
+    let ctx = consent::Context {
+        roles: subject.roles.clone(),
+        purpose,
+        resource,
+        labels: std::collections::BTreeSet::new(),
+        now: time_now(),
+    };
+    for (id, records) in &active {
+        let verdict = consent::decide(records.iter().map(|c| (c.id.as_str(), &c.consent)), &ctx);
+        verdicts.insert(id.clone(), verdict);
+    }
+    Ok(verdicts)
+}
+
+/// The record-level decision for an access. With login off (development only) there is no subject
+/// and nothing to decide. For a read of one patient's identity the patient's consent is looked up
+/// and applied. On a refusal the refusal is audited and the 403 is returned.
+pub(super) async fn authorize(
     db: &sea_orm::DatabaseConnection,
     agent: &Agent,
     subject: &Subject,
+    resource: Resource,
     action: policy::Action,
     purpose: Purpose,
-    patient_ref: Option<String>,
+    patient_id: Option<&str>,
 ) -> Result<(), Box<Response>> {
     if !auth::authentication_enforced() {
         return Ok(());
     }
+    let mut verdict = consent::Verdict {
+        consent: Consent::NotRecorded,
+        decided_by: Vec::new(),
+    };
+    if let (true, Resource::PatientIdentity, Some(id)) = (action.reads(), resource, patient_id) {
+        let mut all = consent_verdicts(db, subject, purpose, resource, &[id.to_string()]).await?;
+        if let Some(v) = all.remove(&id.to_lowercase()) {
+            verdict = v;
+        }
+    }
     let decision = policy::evaluate(&policy::Request {
         subject: subject.clone(),
-        resource: policy::Resource::PatientIdentity,
+        resource,
         action,
         labels: std::collections::BTreeSet::new(),
         // No care-relationship lookup exists yet, and identity is not clinical content, so none is
         // asserted. The patient and proxy roles need one, so they are refused here.
         relationship: Relationship::None,
         purpose,
-        consent: Consent::NotRecorded,
+        consent: verdict.consent,
         break_glass: None,
         now: time_now(),
     });
@@ -188,10 +235,13 @@ async fn authorize(
     }
     let mut event = Event::new(Action::Execute, agent.0.clone());
     event.outcome = 4;
-    event.patient_ref = patient_ref;
-    event.resource_ref = Some(format!("PatientIdentity/{}", action.name()));
+    event.patient_ref = patient_id.map(|id| format!("Patient/{id}"));
+    event.resource_ref = Some(format!("{}/{}", resource.name(), action.name()));
     event.purpose_of_use = Some(purpose.code().to_string());
-    event.detail = Some(serde_json::json!({ "denied": format!("{decision:?}") }));
+    // Consent ids only: what the consent says is not copied into the audit row.
+    event.detail = Some(
+        serde_json::json!({ "denied": format!("{decision:?}"), "consent": verdict.decided_by }),
+    );
     if let Err(e) = audit::append(db, audit::chain(), &event).await {
         tracing::error!(error = %e, "a refusal could not be audited");
     }
@@ -201,13 +251,13 @@ async fn authorize(
     )))
 }
 
-fn time_now() -> i64 {
+pub(super) fn time_now() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |d| i64::try_from(d.as_secs()).unwrap_or(i64::MAX))
 }
 
-/// Write the audit row for a completed access. Never put demographics in `detail`.
+/// Write the audit row for a completed access to a patient. Never put demographics in `detail`.
 async fn audit_access(
     db: &sea_orm::DatabaseConnection,
     agent: &Agent,
@@ -217,11 +267,37 @@ async fn audit_access(
     patient_id: Option<&str>,
     detail: serde_json::Value,
 ) -> Result<(), Box<Response>> {
-    let mut event = Event::new(action, agent.0.clone());
-    event.outcome = outcome;
-    event.patient_ref = patient_id.map(|id| format!("Patient/{id}"));
-    event.resource_ref = Some("Patient".to_string());
-    event.purpose_of_use = Some(purpose.code().to_string());
+    let access = Access {
+        action,
+        outcome,
+        purpose,
+        resource: "Patient",
+        patient_id,
+    };
+    audit_resource(db, agent, access, detail).await
+}
+
+/// What was accessed, for an audit row.
+pub(super) struct Access<'a> {
+    pub action: Action,
+    pub outcome: i16,
+    pub purpose: Purpose,
+    pub resource: &'a str,
+    pub patient_id: Option<&'a str>,
+}
+
+/// Write the audit row for an access. Never put demographics or consent content in `detail`.
+pub(super) async fn audit_resource(
+    db: &sea_orm::DatabaseConnection,
+    agent: &Agent,
+    access: Access<'_>,
+    detail: serde_json::Value,
+) -> Result<(), Box<Response>> {
+    let mut event = Event::new(access.action, agent.0.clone());
+    event.outcome = access.outcome;
+    event.patient_ref = access.patient_id.map(|id| format!("Patient/{id}"));
+    event.resource_ref = Some(access.resource.to_string());
+    event.purpose_of_use = Some(access.purpose.code().to_string());
     event.detail = Some(detail);
     audit::append(db, audit::chain(), &event)
         .await
@@ -229,7 +305,7 @@ async fn audit_access(
         .map_err(|e| Box::new(audit_failed(&e)))
 }
 
-fn store_failure(e: &StoreError) -> Response {
+pub(super) fn store_failure(e: &StoreError) -> Response {
     match e {
         StoreError::NotFound => json_error(
             StatusCode::NOT_FOUND,
@@ -267,6 +343,7 @@ async fn create(
         &ctx.db,
         &agent,
         &subject,
+        Resource::PatientIdentity,
         policy::Action::Create,
         purpose,
         None,
@@ -293,6 +370,37 @@ async fn create(
         Err(e) => return store_failure(&e),
     };
     let ids: Vec<&str> = duplicates.iter().map(|c| c.existing.id.as_str()).collect();
+    // A duplicate must still stop the registration, but a patient who refuses disclosure to this
+    // subject is not shown to them: the candidate is reported as restricted, with no record,
+    // score or breakdown.
+    let existing_ids: Vec<String> = duplicates.iter().map(|c| c.existing.id.clone()).collect();
+    let verdicts = match consent_verdicts(
+        &ctx.db,
+        &subject,
+        purpose,
+        Resource::PatientIdentity,
+        &existing_ids,
+    )
+    .await
+    {
+        Ok(v) => v,
+        Err(r) => return *r,
+    };
+    let restricted = |id: &str| {
+        verdicts
+            .get(&id.to_lowercase())
+            .is_some_and(|v| v.consent == Consent::Deny)
+    };
+    let shown: Vec<serde_json::Value> = duplicates
+        .iter()
+        .map(|c| {
+            if restricted(&c.existing.id) {
+                serde_json::json!({ "restricted": true })
+            } else {
+                serde_json::to_value(c).unwrap_or(serde_json::Value::Null)
+            }
+        })
+        .collect();
     if !duplicates.is_empty() && override_reason.is_none() {
         // Showing the candidates discloses them, so this is an audited access.
         if let Err(r) = audit_access(
@@ -312,7 +420,7 @@ async fn create(
             StatusCode::CONFLICT,
             serde_json::json!({
                 "error": "possible duplicate; resend with override_reason to register anyway",
-                "candidates": duplicates,
+                "candidates": shown,
             }),
         );
     }
@@ -362,9 +470,10 @@ async fn read(
         &ctx.db,
         &agent,
         &subject,
+        Resource::PatientIdentity,
         policy::Action::Read,
         purpose,
-        Some(format!("Patient/{id}")),
+        Some(&id),
     )
     .await
     {
@@ -425,9 +534,10 @@ async fn update(
         &ctx.db,
         &agent,
         &subject,
+        Resource::PatientIdentity,
         policy::Action::Update,
         purpose,
-        Some(format!("Patient/{id}")),
+        Some(&id),
     )
     .await
     {
@@ -501,6 +611,7 @@ async fn search(
         &ctx.db,
         &agent,
         &subject,
+        Resource::PatientIdentity,
         policy::Action::Search,
         purpose,
         None,
@@ -516,7 +627,24 @@ async fn search(
         );
     }
     match store::search(&ctx.db, &query).await {
-        Ok(found) => {
+        Ok(mut found) => {
+            // Drop what the patient's consent refuses this subject. A hidden result is not
+            // counted in the response; the audit row says how many there were.
+            let ids: Vec<String> = found.iter().map(|s| s.id.clone()).collect();
+            let verdicts =
+                match consent_verdicts(&ctx.db, &subject, purpose, Resource::PatientIdentity, &ids)
+                    .await
+                {
+                    Ok(v) => v,
+                    Err(r) => return *r,
+                };
+            let before = found.len();
+            found.retain(|s| {
+                verdicts
+                    .get(&s.id.to_lowercase())
+                    .is_none_or(|v| v.consent != Consent::Deny)
+            });
+            let hidden_by_consent = before - found.len();
             // The criteria are demographics, so only which kinds were used and how many matched.
             let used: Vec<&str> = [
                 ("family", &query.family),
@@ -534,7 +662,11 @@ async fn search(
                 0,
                 purpose,
                 None,
-                serde_json::json!({"search": used, "results": found.len()}),
+                serde_json::json!({
+                    "search": used,
+                    "results": found.len(),
+                    "hidden_by_consent": hidden_by_consent,
+                }),
             )
             .await
             {
@@ -557,6 +689,9 @@ pub fn routes() -> Routes {
         .add("/", get(search))
         .add("/{id}", get(read))
         .add("/{id}", put(update))
+        .add("/{id}/consents", post(super::consents::create))
+        .add("/{id}/consents", get(super::consents::list))
+        .add("/{id}/consents/{consent_id}", put(super::consents::update))
 }
 
 #[cfg(test)]
