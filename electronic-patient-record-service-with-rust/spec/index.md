@@ -22,6 +22,7 @@ the cross-subproject contract.
 | Route census | Every served route is public (the three health probes) or in `routes::TABLE`, and every table entry is served | `tests/route_census.rs` (3); fails when the table is emptied |
 
 | Patients (ID-3) | `POST /api/patients`, `GET /api/patients?family=&birth_date=&identifier=`, `GET`/`PUT /api/patients/{id}` over append-only `patient_versions` (+ view `patient_current`). `PUT` carries `expected_version`; a stale or racing write is 409. Search needs at least one criterion, returns at most 50, escapes wildcards. Validation: a family name, a real `YYYY[-MM[-DD]]` birth date, NHS number modulus 11 (other identifier systems kept as given). `X-Purpose-Of-Use` (default `operations`) feeds `policy::evaluate`. Every success and refusal is audited; search and read rows carry no demographics | `patients_store::tests` (4); `tests/patients_store.rs` (7, Postgres); run by hand against Keycloak 26.3.0 |
+| Duplicate check (ID-4) | `POST /api/patients` fetches up to 200 candidates sharing an identifier, birth date or family name, scores each with the matcher, and answers **409** with every candidate that is not a `non_match` (record, score, per-field breakdown, conflicts) unless `override_reason` is non-blank. The reason goes in the version history; the audit row lists candidate ids | `controllers::patients::tests` (3); `tests/patients_store.rs::candidates_…`; run by hand |
 
 With login off (development only) there is no subject and the gate stands aside, as authentication does.
 

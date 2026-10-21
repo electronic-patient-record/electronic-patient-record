@@ -259,3 +259,42 @@ async fn wildcards_in_a_search_are_literal_and_results_are_capped() {
     };
     assert!(store::search(&db, &q).await.unwrap().is_empty());
 }
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn candidates_share_an_identifier_a_birth_date_or_a_family_name() {
+    let db = db().await;
+    let family = tag("cand");
+    let mut p = patient(&family, "1969-02-03");
+    p.identifiers = vec![Identifier {
+        system: "urn:example:mrn".into(),
+        value: family.clone(),
+    }];
+    let stored = store::create(&db, "a", None, &p).await.unwrap();
+
+    let ids = |c: Vec<store::Stored>| c.into_iter().map(|s| s.id).collect::<Vec<_>>();
+    // Same family name, nothing else (case differs).
+    let q = patient(&family.to_uppercase(), "2001-01-01");
+    assert!(ids(store::candidates(&db, &q).await.unwrap()).contains(&stored.id));
+    // Same identifier only.
+    let mut q = patient("Unrelated", "2001-01-01");
+    q.identifiers = p.identifiers.clone();
+    assert!(ids(store::candidates(&db, &q).await.unwrap()).contains(&stored.id));
+    // Same birth date only.
+    let q = patient("Unrelated", "1969-02-03");
+    assert!(ids(store::candidates(&db, &q).await.unwrap()).contains(&stored.id));
+    // Nothing in common: not a candidate (the documented blind spot).
+    let q = patient("Unrelated", "2001-01-01");
+    assert!(!ids(store::candidates(&db, &q).await.unwrap()).contains(&stored.id));
+    // An old version's name does not make a candidate.
+    let renamed = tag("candnew");
+    let mut p2 = p.clone();
+    p2.names[0].family = Some(renamed);
+    p2.birth_date = Some("1970-01-01".into());
+    p2.identifiers = vec![];
+    store::update(&db, &stored.id, 1, "a", None, &p2)
+        .await
+        .unwrap();
+    let q = patient(&family, "2001-01-01");
+    assert!(!ids(store::candidates(&db, &q).await.unwrap()).contains(&stored.id));
+}

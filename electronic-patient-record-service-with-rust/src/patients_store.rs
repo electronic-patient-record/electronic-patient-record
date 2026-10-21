@@ -228,6 +228,59 @@ pub async fn update(
     }
 }
 
+/// The most candidates fetched for a duplicate check.
+pub const CANDIDATE_LIMIT: i64 = 200;
+
+/// Current patients that share an identifier, a birth date or a family name (case-insensitive,
+/// exact) with `patient`: the pool the matcher then scores. A pair sharing none of these is not
+/// compared, so a duplicate with a misspelt name, a different birth date and no common identifier
+/// is **not** found.
+///
+/// # Errors
+///
+/// [`StoreError::Db`] on a database failure.
+pub async fn candidates(
+    db: &DatabaseConnection,
+    patient: &Patient,
+) -> Result<Vec<Stored>, StoreError> {
+    let identifiers: Vec<serde_json::Value> = patient
+        .identifiers
+        .iter()
+        .map(|i| serde_json::json!({ "system": i.system, "value": i.value }))
+        .collect();
+    let families: Vec<String> = patient
+        .names
+        .iter()
+        .filter_map(|n| n.family.as_deref())
+        .map(|f| f.trim().to_lowercase())
+        .filter(|f| !f.is_empty())
+        .collect();
+    if identifiers.is_empty() && families.is_empty() && patient.birth_date.is_none() {
+        return Ok(Vec::new());
+    }
+    let rows = db
+        .query_all_raw(pg(
+            &format!(
+                "SELECT {COLUMNS} FROM patient_current
+                 WHERE EXISTS (SELECT 1 FROM jsonb_array_elements($1::jsonb) i
+                               WHERE body->'identifiers' @> jsonb_build_array(i))
+                    OR ($2::text IS NOT NULL AND body->>'birth_date' = $2)
+                    OR EXISTS (SELECT 1 FROM jsonb_array_elements(body->'names') n
+                               WHERE lower(trim(n->>'family')) = ANY($3::text[]))
+                 ORDER BY patient_id
+                 LIMIT {CANDIDATE_LIMIT}"
+            ),
+            vec![
+                serde_json::Value::Array(identifiers).into(),
+                patient.birth_date.clone().into(),
+                families.into(),
+            ],
+        ))
+        .await
+        .map_err(db_err)?;
+    rows.iter().map(row_to_stored).collect()
+}
+
 /// Search criteria. At least one must be set: there is no "list everyone".
 #[derive(Debug, Default, Clone, serde::Deserialize)]
 pub struct Search {

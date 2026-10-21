@@ -78,6 +78,10 @@ pub struct CreateRequest {
     /// Why, for the version history.
     #[serde(default)]
     pub reason: Option<String>,
+    /// Register anyway although the matcher found likely duplicates. A reason is required and is
+    /// kept in the version history.
+    #[serde(default)]
+    pub override_reason: Option<String>,
 }
 
 /// A change to a patient: a new version.
@@ -90,6 +94,42 @@ pub struct UpdateRequest {
     /// Why, for the version history.
     #[serde(default)]
     pub reason: Option<String>,
+}
+
+/// An existing patient the new record may duplicate, with the matcher's explanation.
+#[derive(Debug, Serialize)]
+pub struct Candidate {
+    /// The existing patient.
+    pub existing: store::Stored,
+    /// The matcher's result for (new, existing).
+    #[serde(flatten)]
+    pub result: MatchResult,
+}
+
+/// The existing patients the matcher would send to review, or would link automatically, ordered
+/// by score (highest first). A `NonMatch` is not a candidate.
+#[must_use]
+pub fn likely_duplicates(new: &Patient, existing: Vec<store::Stored>) -> Vec<Candidate> {
+    let engine = MatchingEngine::default();
+    let mut found: Vec<Candidate> = existing
+        .into_iter()
+        .filter_map(|e| {
+            let result = engine.compare(new, &e.patient);
+            (result.decision != electronic_patient_record_matcher::Decision::NonMatch).then_some(
+                Candidate {
+                    existing: e,
+                    result,
+                },
+            )
+        })
+        .collect();
+    found.sort_by(|a, b| {
+        b.result
+            .score
+            .total_cmp(&a.result.score)
+            .then_with(|| a.existing.id.cmp(&b.existing.id))
+    });
+    found
 }
 
 fn json_error(status: StatusCode, body: serde_json::Value) -> Response {
@@ -242,17 +282,50 @@ async fn create(
             serde_json::json!({"errors": problems}),
         );
     }
-    let stored = match store::create(
-        &ctx.db,
-        &agent.0,
-        request.reason.as_deref(),
-        &request.patient,
-    )
-    .await
-    {
-        Ok(s) => s,
+    let override_reason = request
+        .override_reason
+        .as_deref()
+        .map(str::trim)
+        .filter(|r| !r.is_empty());
+    let duplicates = match store::candidates(&ctx.db, &request.patient).await {
+        Ok(pool) => likely_duplicates(&request.patient, pool),
+        // An unchecked registration is how duplicates happen: fail rather than skip the check.
         Err(e) => return store_failure(&e),
     };
+    let ids: Vec<&str> = duplicates.iter().map(|c| c.existing.id.as_str()).collect();
+    if !duplicates.is_empty() && override_reason.is_none() {
+        // Showing the candidates discloses them, so this is an audited access.
+        if let Err(r) = audit_access(
+            &ctx.db,
+            &agent,
+            Action::Create,
+            4,
+            purpose,
+            None,
+            serde_json::json!({"refused": "possible duplicate", "candidates": ids}),
+        )
+        .await
+        {
+            return *r;
+        }
+        return json_error(
+            StatusCode::CONFLICT,
+            serde_json::json!({
+                "error": "possible duplicate; resend with override_reason to register anyway",
+                "candidates": duplicates,
+            }),
+        );
+    }
+    let kept_reason = match (override_reason, request.reason.as_deref()) {
+        (Some(o), Some(r)) => Some(format!("{r}; duplicate override: {o}")),
+        (Some(o), None) => Some(format!("duplicate override: {o}")),
+        (None, r) => r.map(str::to_string),
+    };
+    let stored =
+        match store::create(&ctx.db, &agent.0, kept_reason.as_deref(), &request.patient).await {
+            Ok(s) => s,
+            Err(e) => return store_failure(&e),
+        };
     if let Err(r) = audit_access(
         &ctx.db,
         &agent,
@@ -260,7 +333,12 @@ async fn create(
         0,
         purpose,
         Some(&stored.id),
-        serde_json::json!({"version": stored.version}),
+        // The override reason is free text and stays in the version history, not here.
+        serde_json::json!({
+            "version": stored.version,
+            "duplicate_override": !ids.is_empty(),
+            "candidates": ids,
+        }),
     )
     .await
     {
@@ -484,7 +562,7 @@ pub fn routes() -> Routes {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use electronic_patient_record_matcher::{Decision, HumanName};
+    use electronic_patient_record_matcher::{Decision, HumanName, Identifier, NHS_NUMBER_SYSTEM};
 
     fn p(family: &str, given: &str, dob: &str) -> Patient {
         Patient {
@@ -511,5 +589,59 @@ mod tests {
         let json = r#"{"a":{"names":[{"family":"Smith","given":["John"]}]},"b":{}}"#;
         let request: CompareRequest = serde_json::from_str(json).unwrap();
         assert_eq!(request.a.names.len(), 1);
+    }
+
+    fn stored(id: &str, patient: Patient) -> store::Stored {
+        store::Stored {
+            id: id.into(),
+            version: 1,
+            author: "a".into(),
+            patient,
+        }
+    }
+
+    #[test]
+    fn the_same_person_is_a_candidate_and_a_different_person_is_not() {
+        let new = p("Smith", "John", "1980-03-14");
+        let found = likely_duplicates(
+            &new,
+            vec![
+                stored("b", p("Okafor", "Chiamaka", "1992-11-30")),
+                stored("a", p("Smith", "John", "1980-03-14")),
+                stored("c", p("Smith", "Jon", "1980-03-14")),
+            ],
+        );
+        let ids: Vec<&str> = found.iter().map(|c| c.existing.id.as_str()).collect();
+        assert_eq!(ids, ["a", "c"], "best match first, the stranger dropped");
+        assert!(found[0].result.score >= found[1].result.score);
+        assert!(
+            !found[1].result.fields.is_empty(),
+            "the breakdown is returned"
+        );
+    }
+
+    #[test]
+    fn a_shared_nhs_number_with_a_different_birth_date_is_still_a_candidate() {
+        let mut new = p("Smith", "John", "1980-03-14");
+        new.identifiers = vec![Identifier {
+            system: NHS_NUMBER_SYSTEM.into(),
+            value: "9434765919".into(),
+        }];
+        let mut other = p("Smith", "John", "1981-03-14");
+        other.identifiers = new.identifiers.clone();
+        let found = likely_duplicates(&new, vec![stored("a", other)]);
+        assert_eq!(
+            found.len(),
+            1,
+            "a data-entry error must not hide a duplicate"
+        );
+    }
+
+    #[test]
+    fn an_identical_record_is_the_strongest_candidate() {
+        let new = p("Smith", "John", "1980-03-14");
+        let found = likely_duplicates(&new, vec![stored("a", new.clone())]);
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].result.decision, Decision::AutoLink);
     }
 }
