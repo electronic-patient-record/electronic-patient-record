@@ -327,6 +327,73 @@ pub enum Verdict {
     },
 }
 
+/// One audit row about a patient, with only the fields a patient may be shown. `detail`,
+/// `network_address` and the digests are left out on purpose.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PatientLogRow {
+    /// The row id; newest rows have the largest.
+    pub id: i64,
+    /// When, as `YYYY-MM-DDTHH:MM:SS.ffffffZ` (UTC).
+    pub at: String,
+    /// The FHIR action code: `C`, `R`, `U`, `D` or `E`.
+    pub action: String,
+    /// 0 success, 4 and above a refusal or failure.
+    pub outcome: i16,
+    /// Who did it: the token `sub`. The caller decides how much of this to reveal.
+    pub agent: String,
+    /// What was accessed, as recorded (`Patient`, `Consent`, `PatientIdentity/Read`, …).
+    pub resource: Option<String>,
+    /// The declared purpose of use.
+    pub purpose: Option<String>,
+    /// Whether the access was a break-the-glass override.
+    pub break_glass: bool,
+}
+
+/// The newest audit rows naming `Patient/<patient_id>`, newest first, at most `limit`, older than
+/// `before` when given.
+///
+/// # Errors
+///
+/// When the rows cannot be read.
+pub async fn patient_log(
+    db: &DatabaseConnection,
+    patient_id: &str,
+    before: Option<i64>,
+    limit: i64,
+) -> Result<Vec<PatientLogRow>, AuditError> {
+    let rows = db
+        .query_all_raw(pg(
+            &format!(
+                "SELECT id, to_char(recorded_at AT TIME ZONE 'UTC', '{TS_FORMAT}') AS ts,
+                        action::text AS action, outcome, agent, resource_ref, purpose_of_use, break_glass
+                 FROM audit_events
+                 WHERE lower(patient_ref) = lower($1) AND ($2::bigint IS NULL OR id < $2)
+                 ORDER BY id DESC LIMIT $3"
+            ),
+            vec![
+                format!("Patient/{}", patient_id.to_lowercase()).into(),
+                before.into(),
+                limit.into(),
+            ],
+        ))
+        .await
+        .map_err(err)?;
+    rows.iter()
+        .map(|r| {
+            Ok(PatientLogRow {
+                id: r.try_get("", "id").map_err(err)?,
+                at: r.try_get("", "ts").map_err(err)?,
+                action: r.try_get("", "action").map_err(err)?,
+                outcome: r.try_get("", "outcome").map_err(err)?,
+                agent: r.try_get("", "agent").map_err(err)?,
+                resource: r.try_get("", "resource_ref").map_err(err)?,
+                purpose: r.try_get("", "purpose_of_use").map_err(err)?,
+                break_glass: r.try_get("", "break_glass").map_err(err)?,
+            })
+        })
+        .collect()
+}
+
 /// A row's id and digest: the chain's head at some moment. Published somewhere the database's
 /// owner cannot write, it is what lets a later check notice that the newest rows were removed.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

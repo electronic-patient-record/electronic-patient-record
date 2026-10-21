@@ -373,3 +373,76 @@ test("a clinician can declare treatment; it is sent, remembered for the tab, and
   expect(seen.at(-1)).toBe("patient-access");
   await axe(page);
 });
+
+test("my record shows who has accessed it, on request, as staff without names", async ({
+  page,
+}) => {
+  const ID = ANN.id;
+  const urls: string[] = [];
+  await page.route("**/api/proxy/api/me/patients", (route) =>
+    json(route, 200, { records: [{ relationship: "self", patient: ANN }] }),
+  );
+  await page.route(
+    `**/api/proxy/api/me/patients/${ID}/access-log*`,
+    (route) => {
+      urls.push(route.request().url());
+      const older = route.request().url().includes("before=");
+      return json(
+        route,
+        200,
+        older
+          ? {
+              entries: [
+                {
+                  id: 3,
+                  at: "2026-10-20T08:00:00.000000Z",
+                  by: "staff",
+                  did: "was refused access to",
+                  what: "identity record",
+                  refused: true,
+                  purpose: "operations",
+                  break_glass: false,
+                },
+              ],
+              next: null,
+            }
+          : {
+              entries: [
+                {
+                  id: 9,
+                  at: "2026-10-21T09:00:12.000000Z",
+                  by: "staff",
+                  did: "viewed",
+                  what: "identity record",
+                  refused: false,
+                  purpose: "treatment",
+                  break_glass: false,
+                },
+              ],
+              next: 9,
+            },
+      );
+    },
+  );
+  await page.goto("/en-001/my-record");
+  // Not fetched until asked: reading the log is itself recorded.
+  expect(urls).toHaveLength(0);
+  await page
+    .getByRole("button", { name: "Show who has accessed this record" })
+    .click();
+  await expect(
+    page.getByText(
+      "A member of staff viewed your identity record. Purpose: treatment.",
+    ),
+  ).toBeVisible();
+  await expect(page.getByText("2026-10-21 09:00 UTC")).toBeVisible();
+  await axe(page);
+  await page.getByRole("button", { name: "Show older entries" }).click();
+  await expect(
+    page.getByText("was refused access to your identity record"),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Show older entries" }),
+  ).toHaveCount(0);
+  expect(urls[1]).toContain("before=9");
+});

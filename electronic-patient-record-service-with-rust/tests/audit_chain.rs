@@ -428,3 +428,35 @@ async fn a_published_head_catches_removed_newest_rows_and_a_rewritten_head() {
     s2.finish().await;
     s.finish().await;
 }
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn the_patient_log_is_one_patients_rows_newest_first_in_pages_without_detail() {
+    let chain = Chain::unkeyed();
+    let s = Scratch::new().await;
+    let mine = "3b0c6f0e-1111-4111-8111-000000000001";
+    let other = "3b0c6f0e-1111-4111-8111-000000000002";
+    let mut ids = vec![];
+    for n in 0..5 {
+        let mut e = event(n);
+        e.patient_ref = Some(format!("Patient/{}", if n == 3 { other } else { mine }));
+        // The row's case is whatever the caller used.
+        if n == 1 {
+            e.patient_ref = Some(format!("Patient/{}", mine.to_uppercase()));
+        }
+        e.detail = Some(serde_json::json!({ "secret": "do-not-show" }));
+        ids.push(audit::append(&s.db, &chain, &e).await.unwrap());
+    }
+    let page = audit::patient_log(&s.db, mine, None, 3).await.unwrap();
+    assert_eq!(
+        page.iter().map(|r| r.id).collect::<Vec<_>>(),
+        vec![ids[4], ids[2], ids[1]],
+        "newest first, other patient excluded, upper-case ref included"
+    );
+    let rest = audit::patient_log(&s.db, mine, Some(ids[1]), 3)
+        .await
+        .unwrap();
+    assert_eq!(rest.iter().map(|r| r.id).collect::<Vec<_>>(), vec![ids[0]]);
+    assert!(!format!("{page:?}").contains("do-not-show"));
+    s.finish().await;
+}

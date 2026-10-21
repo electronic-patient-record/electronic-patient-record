@@ -328,3 +328,76 @@ test("an idle session ends", async ({ page }) => {
   );
   void page;
 });
+
+test("a patient sees that a clinician viewed their record, as staff without a name", async ({
+  page,
+}) => {
+  test.skip(
+    !ADMIN || !PATIENT,
+    "set EPR_E2E_ADMIN_USERNAME and EPR_E2E_PATIENT_USERNAME",
+  );
+  const sub = async (t: string) =>
+    JSON.parse(Buffer.from(t.split(".")[1]!, "base64url").toString())
+      .sub as string;
+  const admin = await devToken(ADMIN);
+  const clinician = await devToken(USERNAME);
+  const patientToken = await devToken(PATIENT);
+  const call = async (
+    token: string,
+    method: string,
+    path: string,
+    body?: unknown,
+    purpose = "operations",
+  ) => {
+    const res = await fetch(`${API}${path}`, {
+      method,
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+        "x-purpose-of-use": purpose,
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    return { status: res.status, body: (await res.json()) as any };
+  };
+  const made = await call(admin, "POST", "/api/patients", {
+    patient: {
+      names: [{ family: `Zlog${Date.now()}`, given: ["Lou"] }],
+      birth_date: "1962-02-02",
+    },
+  });
+  expect(made.status).toBe(201);
+  const id = made.body.id as string;
+  for (const [who, kind] of [
+    [await sub(patientToken), "self"],
+    [await sub(clinician), "care-team"],
+  ] as const) {
+    const r = await call(admin, "POST", `/api/patients/${id}/relationships`, {
+      relationship: { subject: who, kind, status: "active" },
+      reason: "e2e",
+    });
+    expect(r.status).toBe(201);
+  }
+  // The clinician opens the record, declaring treatment.
+  const seen = await call(
+    clinician,
+    "GET",
+    `/api/patients/${id}`,
+    undefined,
+    "treatment",
+  );
+  expect(seen.status).toBe(200);
+
+  await signIn(page, PATIENT);
+  await page.goto("/en-001/my-record");
+  await page
+    .getByRole("button", { name: "Show who has accessed this record" })
+    .click();
+  await expect(
+    page.getByText(
+      "A member of staff viewed your identity record. Purpose: treatment.",
+    ),
+  ).toBeVisible();
+  // No staff identifier reaches the page.
+  expect(await page.content()).not.toContain(await sub(clinician));
+});

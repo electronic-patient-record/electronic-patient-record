@@ -212,6 +212,12 @@ Conventions:
 - [ ] **SE-6 (S) — Patient access log.** The patient sees who accessed their
   record and when (role and organisation; staff names per deployment policy).
   **Acceptance:** a portal test shows an access made by a clinician.
+  **Partly landed 2026-10-21** (acceptance met): `GET /api/me/patients/{id}/access-log` (patient or proxy only, purpose
+  `patient-access`, 50 per page, newest first) and a section on `/my-record`, read on request. Run against real Keycloak:
+  a clinician's treatment view appears to the patient as "A member of staff viewed your identity record. Purpose:
+  treatment." with no staff identifier in the page; the clinician cannot read the log (403, audited). **Not built:** role
+  and organisation (audit rows record only the token `sub`, so staff are shown as "staff"), staff names by deployment
+  policy, a filter or date range, an accounting-of-disclosures export, any alert to the patient. Left open.
 - [ ] **SE-7 (M) — Hardening.** Security headers, CSP, rate limiting,
   session timeout with re-auth for sensitive actions, encryption at rest
   documented, ZAP baseline in CI, cargo-deny, SBOM.

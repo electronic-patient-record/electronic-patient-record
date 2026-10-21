@@ -21,6 +21,21 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - **Not done:** CI has no job that builds with exactly 1.97, so the minimum is declared, not tested. The matcher on
   crates.io still says 1.96 until it is republished.
 
+## 2026-10-21 - Patient-visible access log (SE-6, partly)
+
+- `GET /api/me/patients/{id}/access-log`: who accessed this record, newest first, 50 per page. Only the patient or a
+  proxy (an active `self` or `proxy` relationship) may read it, at purpose `patient-access`; a clinician's treating
+  relationship does not. Entries say `you` or `staff`, what was done, to what, the purpose and whether it was refused or
+  a break-glass opening; they carry no staff identifier, `detail` or network address. A new migration adds the index
+  `audit_events_patient_log_idx`. `/my-record` shows it on request. 1 Postgres test, 2 service unit tests, 5 vitest, 1
+  stubbed browser test and 1 real-Keycloak browser test (the clinician's view appears to the patient); also by hand
+  against Keycloak: 401 with no token, 403 and an audit row for a clinician.
+- **Not done:** role and organisation are not shown, because audit rows record only the token `sub` (threading roles
+  into the ~17 audit call sites, and a deployment policy for staff names, are separate work). No filter or date range,
+  no export, no alert. The handler itself has no automated test without a Keycloak stack; the "patient but not linked"
+  branch is covered by the policy engine refusing earlier. The new Keycloak test needs a fresh database or new data: the
+  older ones re-run only on one.
+
 ## [0.1.0] - 2026-10-20
 
 Milestone M0, scaffold. **Not for clinical use.**

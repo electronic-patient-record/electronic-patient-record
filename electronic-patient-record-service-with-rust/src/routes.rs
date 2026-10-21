@@ -91,6 +91,12 @@ pub const TABLE: &[(&str, &str, Resource, Action)] = &[
         Resource::PatientIdentity,
         Action::Read,
     ),
+    (
+        "GET",
+        "/api/me/patients/{id}/access-log",
+        Resource::PatientIdentity,
+        Action::Read,
+    ),
 ];
 
 /// Whether `path` matches `template`.

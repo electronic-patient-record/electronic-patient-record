@@ -1,5 +1,6 @@
 <script lang="ts">
   import { call, commonProblem } from "#lib/api.js";
+  import { describe, whenText, type LogPage } from "#lib/access-log.js";
   import { patientToForm, type Stored } from "#lib/patient.js";
   import { STRINGS } from "#lib/strings.js";
 
@@ -28,6 +29,30 @@
   $effect(() => {
     void load();
   });
+
+  // The access log is read on request, not on load: reading it is itself recorded.
+  type Log = { entries: LogPage["entries"]; next: number | null; message: string | null };
+  let logs = $state<Record<string, Log>>({});
+
+  async function loadLog(id: string, before?: number) {
+    const q = before === undefined ? "" : `?before=${before}`;
+    const res = await call<LogPage>(
+      "GET",
+      `/api/me/patients/${id}/access-log${q}`,
+      undefined,
+      "patient-access",
+    );
+    const problem = commonProblem(res.status);
+    const prior = before === undefined ? [] : (logs[id]?.entries ?? []);
+    if (problem) logs[id] = { entries: prior, next: null, message: STRINGS[problem] };
+    else if (res.status === 200)
+      logs[id] = {
+        entries: [...prior, ...res.body.entries],
+        next: res.body.next,
+        message: null,
+      };
+    else logs[id] = { entries: prior, next: null, message: STRINGS.error };
+  }
 
   const shown = (v: string) => v || STRINGS.notAvailable;
   const fields = (s: Stored) => {
@@ -62,6 +87,7 @@
 
 {#if records}
   {#each records as entry (entry.patient.id)}
+    {@const log = logs[entry.patient.id]}
     <section aria-labelledby="rec-{entry.patient.id}">
       <h2 id="rec-{entry.patient.id}">
         {[entry.patient.patient.names[0]?.family, entry.patient.patient.names[0]?.given.join(" ")]
@@ -76,6 +102,31 @@
         {/each}
       </dl>
       <p>{STRINGS.version}: {entry.patient.version}</p>
+      <h3 id="log-{entry.patient.id}">{STRINGS.accessLogTitle}</h3>
+      {#if !log}
+        <button type="button" onclick={() => loadLog(entry.patient.id)}>
+          {STRINGS.accessLogShow}
+        </button>
+      {:else}
+        <div aria-live="polite">
+          {#if log.message}<p role="alert">{log.message}</p>{/if}
+          {#if log.entries.length === 0 && !log.message}
+            <p>{STRINGS.accessLogNone}</p>
+          {:else if log.entries.length > 0}
+            <p>{STRINGS.accessLogNote}</p>
+            <ul aria-labelledby="log-{entry.patient.id}">
+              {#each log.entries as item (item.id)}
+                <li><time datetime={item.at}>{whenText(item.at)}</time>: {describe(item)}</li>
+              {/each}
+            </ul>
+          {/if}
+          {#if log.next !== null}
+            <button type="button" onclick={() => loadLog(entry.patient.id, log.next ?? undefined)}>
+              {STRINGS.accessLogMore}
+            </button>
+          {/if}
+        </div>
+      {/if}
     </section>
   {/each}
 {/if}
