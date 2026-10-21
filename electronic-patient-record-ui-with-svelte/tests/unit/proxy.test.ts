@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { proxyTarget } from "../../src/lib/proxy";
+import { proxyTarget, purposeHeader } from "../../src/lib/proxy";
 
 describe("proxyTarget", () => {
   it("forwards API paths", () => {
@@ -13,8 +13,32 @@ describe("proxyTarget", () => {
     expect(proxyTarget("http://x", "", "")).toBeNull();
   });
   it("refuses traversal and odd segments", () => {
-    for (const p of ["api/../_health", "api//x", "api/./x", "api/%2e%2e/x", "api\\x"]) {
+    for (const p of [
+      "api/../_health",
+      "api//x",
+      "api/./x",
+      "api/%2e%2e/x",
+      "api\\x",
+    ]) {
       expect(proxyTarget("http://x", p, "")).toBeNull();
+    }
+  });
+});
+
+describe("purposeHeader", () => {
+  it("passes a known purpose of use and drops anything else", () => {
+    expect(purposeHeader("patient-access")).toBe("patient-access");
+    expect(purposeHeader("treatment")).toBe("treatment");
+    for (const bad of [
+      "",
+      null,
+      undefined,
+      "Treatment",
+      "treatment, research",
+      "x\r\nHost: evil",
+      "fun",
+    ]) {
+      expect(purposeHeader(bad)).toBeNull();
     }
   });
 });

@@ -24,3 +24,25 @@ export function proxyTarget(
   }
   return `${base.replace(/\/+$/, "")}/${segments.join("/")}${search}`;
 }
+
+/** The purposes of use the API accepts in `X-Purpose-Of-Use` (service `Purpose::parse`). */
+export const PURPOSES = [
+  "treatment",
+  "emergency",
+  "operations",
+  "payment",
+  "research",
+  "patient-access",
+  "audit",
+] as const;
+
+/**
+ * The purpose of use to forward, or null to send none (the API then assumes `operations`). A value
+ * that is not on the list is dropped here rather than passed on: the browser does not get to put
+ * arbitrary text in a header the API records in the audit trail.
+ */
+export function purposeHeader(value: string | null | undefined): string | null {
+  return value && (PURPOSES as readonly string[]).includes(value)
+    ? value
+    : null;
+}

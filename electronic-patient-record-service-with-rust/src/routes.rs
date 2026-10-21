@@ -85,6 +85,12 @@ pub const TABLE: &[(&str, &str, Resource, Action)] = &[
         Resource::CareRelationship,
         Action::Update,
     ),
+    (
+        "GET",
+        "/api/me/patients",
+        Resource::PatientIdentity,
+        Action::Read,
+    ),
 ];
 
 /// Whether `path` matches `template`.

@@ -346,6 +346,50 @@ pub async fn lookup(
     Ok(resolve(&records, now))
 }
 
+/// The patients `subject` is, or is a proxy for, now: `(patient id, kind)` for each active
+/// `self` or `proxy` relationship in force, ordered by patient id. Care-team relationships are
+/// not listed: this is "my record", not "my caseload".
+///
+/// # Errors
+///
+/// [`StoreError::Db`] on a database failure.
+pub async fn own_patients(
+    db: &DatabaseConnection,
+    subject: &str,
+    now: i64,
+) -> Result<Vec<(String, Kind)>, StoreError> {
+    let rows = sea_orm::ConnectionTrait::query_all_raw(
+        db,
+        pg(
+            "SELECT patient_id::text AS patient_id, body FROM relationship_current
+             WHERE subject = $1 AND status = 'active' AND kind IN ('self', 'proxy')
+             ORDER BY patient_id",
+            vec![subject.into()],
+        ),
+    )
+    .await
+    .map_err(db_err)?;
+    let mut out: Vec<(String, Kind)> = Vec::new();
+    for r in &rows {
+        let id: String = r.try_get("", "patient_id").map_err(db_err)?;
+        let body: serde_json::Value = r.try_get("", "body").map_err(db_err)?;
+        let rec: RelationshipRecord = serde_json::from_value(body).map_err(db_err)?;
+        if in_period(rec.period.as_ref(), now) != Some(true) {
+            continue;
+        }
+        // One entry per patient; `self` outranks `proxy`.
+        match out.iter_mut().find(|(p, _)| *p == id) {
+            Some(existing) => {
+                if rec.kind == Kind::SelfPatient {
+                    existing.1 = Kind::SelfPatient;
+                }
+            }
+            None => out.push((id, rec.kind)),
+        }
+    }
+    Ok(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

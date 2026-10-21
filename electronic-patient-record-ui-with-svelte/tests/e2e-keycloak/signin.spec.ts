@@ -164,6 +164,107 @@ test("registers a patient, catches the duplicate, overrides it, and edits with a
   await other.close();
 });
 
+// Needs a user with realm role `clinical-admin` and one with `patient`, and the dev-only password
+// grant (`epr-dev-cli`). The administrator links the patient user to a new record through the API;
+// the patient then signs in through the UI and reads it.
+const ADMIN = process.env.EPR_E2E_ADMIN_USERNAME ?? "";
+const PATIENT = process.env.EPR_E2E_PATIENT_USERNAME ?? "";
+const API = process.env.EPR_E2E_API_URL ?? "http://127.0.0.1:5150";
+const ISSUER = process.env.EPR_E2E_ISSUER ?? "http://127.0.0.1:8081/realms/epr";
+
+async function devToken(username: string): Promise<string> {
+  const res = await fetch(`${ISSUER}/protocol/openid-connect/token`, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "password",
+      client_id: "epr-dev-cli",
+      username,
+      password: PASSWORD,
+    }),
+  });
+  return ((await res.json()) as { access_token: string }).access_token;
+}
+
+test("a patient signs in, sees only the record an administrator linked to them, and loses it when it ends", async ({
+  page,
+}) => {
+  test.skip(
+    !ADMIN || !PATIENT,
+    "set EPR_E2E_ADMIN_USERNAME and EPR_E2E_PATIENT_USERNAME",
+  );
+  const admin = await devToken(ADMIN);
+  const patientToken = await devToken(PATIENT);
+  const sub = JSON.parse(
+    Buffer.from(patientToken.split(".")[1]!, "base64url").toString(),
+  ).sub as string;
+  const api = async (method: string, path: string, body?: unknown) => {
+    const res = await fetch(`${API}${path}`, {
+      method,
+      headers: {
+        authorization: `Bearer ${admin}`,
+        "content-type": "application/json",
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    return { status: res.status, body: (await res.json()) as any };
+  };
+  const family = `Zmine${Date.now()}`;
+  const made = await api("POST", "/api/patients", {
+    patient: { names: [{ family, given: ["Pat"] }], birth_date: "1975-05-05" },
+  });
+  expect(made.status).toBe(201);
+  const other = await api("POST", "/api/patients", {
+    patient: { names: [{ family: family + "x" }], birth_date: "1976-06-06" },
+  });
+  expect(other.status).toBe(201);
+
+  // Before the link: signed in, but nothing to show.
+  await signIn(page, PATIENT);
+  await page.goto("/en-001/my-record");
+  await expect(page.getByRole("status")).toContainText(
+    "No record is linked to your sign-in",
+  );
+
+  const link = await api(
+    "POST",
+    `/api/patients/${made.body.id}/relationships`,
+    {
+      relationship: { subject: sub, kind: "self", status: "active" },
+      reason: "e2e",
+    },
+  );
+  expect(link.status).toBe(201);
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { level: 2, name: `${family}, Pat` }),
+  ).toBeVisible();
+  await expect(page.getByText(family + "x")).toHaveCount(0);
+
+  // The patient cannot open the other record, or the staff pages' data.
+  const status = await page.evaluate(async (id) => {
+    const r = await fetch(`/api/proxy/api/patients/${id}`, {
+      headers: { "x-purpose-of-use": "patient-access" },
+    });
+    return r.status;
+  }, other.body.id);
+  expect(status).toBe(403);
+
+  const ended = await api(
+    "PUT",
+    `/api/patients/${made.body.id}/relationships/${link.body.id}`,
+    {
+      relationship: { subject: sub, kind: "self", status: "ended" },
+      expected_version: 1,
+    },
+  );
+  expect(ended.status).toBe(200);
+  await page.reload();
+  await expect(page.getByRole("status")).toContainText(
+    "No record is linked to your sign-in",
+  );
+});
+
 test("a tampered session cookie is refused", async ({ page, context }) => {
   await signIn(page);
   const session = (await context.cookies()).find(

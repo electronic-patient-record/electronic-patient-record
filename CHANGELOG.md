@@ -131,6 +131,15 @@ Milestone M0, scaffold. **Not for clinical use.**
   UI, and the service cannot check that the `sub` is the patient. The UI proxy does not send `X-Purpose-Of-Use`, so a patient cannot read through the UI yet. One extra query per request, unmeasured.
   Care-team access still has nothing to gate (no clinical content); break-the-glass (SE-3) is still not built.
 
+### Added after the first cut: purpose of use in the UI and a patient "my record" page
+
+- `GET /api/me/patients` (service) lists the records linked to the caller by a `self` or `proxy` relationship, each through the full decision, purpose fixed at `patient-access`. The UI proxy forwards
+  `X-Purpose-Of-Use` when it is a known code and drops anything else; `/my-record` shows the records read-only and says plainly when nothing is linked.
+- Tested: 1 Postgres test (`own_patients`), 3 vitest, 2 stubbed Playwright tests with axe, and one real Keycloak end-to-end test: an administrator links a patient-role user, who signs in through the UI, sees
+  only that record, is refused another (403), and sees nothing once the link is ended. 7 passed, 2 skipped there.
+- **Not done:** staff pages still send no purpose (so `operations`); no purpose picker; the UI proxy\'s forwarding is unit-tested and exercised by the end-to-end run but has no test with a stub upstream;
+  patients cannot edit, print or download anything, or see who accessed their record (SE-6); no relationship or consent UI for administrators; the linking is still an API call.
+
 ### Changed after the first cut
 
 - The matcher is published as `electronic-patient-record-matcher` 0.1.0 on crates.io; the service depends on it from

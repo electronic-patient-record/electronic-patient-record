@@ -138,3 +138,10 @@ small {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+dt {
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+dd {
+  margin: 0;
+}

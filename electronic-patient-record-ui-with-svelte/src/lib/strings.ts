@@ -54,6 +54,13 @@ export const STRINGS = {
   sameValue: "same",
   restrictedCandidate:
     "Another record may be the same person, but its owner has restricted who can see it. Ask someone who is allowed to look, or register anyway with a reason.",
+  navMyRecord: "My record",
+  myRecordTitle: "My record",
+  myRecordIntro:
+    "The details held about you. To correct them, ask your practice.",
+  myRecordNone:
+    "No record is linked to your sign-in. Ask your practice to link it, then sign in again.",
+  myRecordProxy: "You are viewing this record as a proxy.",
   openExisting: "Open the existing record",
   overrideReason: "This is a different person. Why? (required)",
   registerAnyway: "Register anyway",

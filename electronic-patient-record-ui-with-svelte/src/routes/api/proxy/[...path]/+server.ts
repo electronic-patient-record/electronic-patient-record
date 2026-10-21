@@ -6,7 +6,7 @@ import {
   sameOrigin,
   SESSION_COOKIE,
 } from "#lib/auth-instance.js";
-import { proxyTarget } from "#lib/proxy.js";
+import { proxyTarget, purposeHeader } from "#lib/proxy.js";
 import { isHttps } from "#lib/security-headers.js";
 
 // The backend-for-frontend proxy. The browser never talks to the API directly and
@@ -19,6 +19,8 @@ const forward: RequestHandler = async ({ params, url, request, cookies }) => {
   const headers: Record<string, string> = {
     "content-type": request.headers.get("content-type") ?? "application/json",
   };
+  const purpose = purposeHeader(request.headers.get("x-purpose-of-use"));
+  if (purpose) headers["x-purpose-of-use"] = purpose;
   const auth = getAuth();
   if (auth) {
     if (

@@ -15,6 +15,7 @@
     <a href={localizePath("/", locale)}>{STRINGS.navHome}</a>
     <a href={localizePath("/patients", locale)}>{STRINGS.navPatients}</a>
     <a href={localizePath("/patients/new", locale)}>{STRINGS.registerLink}</a>
+    <a href={localizePath("/my-record", locale)}>{STRINGS.navMyRecord}</a>
   </nav>
   {#if page.data.signIn?.enabled}
     {#if page.data.signIn.name}

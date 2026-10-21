@@ -231,3 +231,54 @@ async fn needs_a_patient_and_cannot_be_edited_or_removed() {
         assert!(e.contains("append-only"), "{sql}: {e}");
     }
 }
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn own_patients_lists_self_and_proxy_in_force_and_nothing_else() {
+    let db = db().await;
+    let (mine, theirs, team, ended, both) = (
+        patient(&db).await,
+        patient(&db).await,
+        patient(&db).await,
+        patient(&db).await,
+        patient(&db).await,
+    );
+    let me = format!("me-{mine}");
+    for (p, kind, status) in [
+        (&mine, Kind::SelfPatient, Status::Active),
+        (&theirs, Kind::Proxy, Status::Active),
+        (&team, Kind::CareTeam, Status::Active),
+        (&ended, Kind::SelfPatient, Status::Ended),
+        (&both, Kind::Proxy, Status::Active),
+        (&both, Kind::SelfPatient, Status::Active),
+    ] {
+        store::create(&db, p, "admin", None, &rec(&me, kind, status))
+            .await
+            .unwrap();
+    }
+    // Someone else's link to `mine` must not appear for me.
+    store::create(
+        &db,
+        &team,
+        "admin",
+        None,
+        &rec("other", Kind::SelfPatient, Status::Active),
+    )
+    .await
+    .unwrap();
+
+    let got = store::own_patients(&db, &me, NOW).await.unwrap();
+    let mut want = vec![
+        (mine.clone(), Kind::SelfPatient),
+        (theirs.clone(), Kind::Proxy),
+        (both.clone(), Kind::SelfPatient),
+    ];
+    want.sort_by(|a, b| a.0.cmp(&b.0));
+    assert_eq!(got, want);
+    assert!(
+        store::own_patients(&db, "nobody", NOW)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+}

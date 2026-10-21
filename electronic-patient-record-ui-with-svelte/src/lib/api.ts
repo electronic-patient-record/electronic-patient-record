@@ -10,11 +10,15 @@ export async function call<T = unknown>(
   method: "GET" | "POST" | "PUT",
   path: string,
   body?: unknown,
+  purpose?: string,
 ): Promise<ApiResult<T>> {
   try {
     const res = await fetch(`/api/proxy${path}`, {
       method,
-      headers: body === undefined ? {} : { "content-type": "application/json" },
+      headers: {
+        ...(body === undefined ? {} : { "content-type": "application/json" }),
+        ...(purpose ? { "x-purpose-of-use": purpose } : {}),
+      },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     const text = await res.text();

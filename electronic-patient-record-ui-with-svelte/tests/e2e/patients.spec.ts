@@ -271,3 +271,67 @@ test("a restricted candidate blocks registration without showing the record", as
   await expect(page.getByLabel(/This is a different person/)).toBeVisible();
   await axe(page);
 });
+
+test("my record asks for patient-access and shows the linked record read-only", async ({
+  page,
+}) => {
+  let purpose: string | null = null;
+  await page.route("**/api/proxy/api/me/patients", (route) => {
+    purpose = route.request().headers()["x-purpose-of-use"] ?? null;
+    return json(route, 200, {
+      records: [
+        { relationship: "self", patient: ANN },
+        {
+          relationship: "proxy",
+          patient: {
+            ...ANN,
+            id: "44444444-4444-4444-8444-444444444444",
+            patient: {
+              ...ANN.patient,
+              names: [{ family: "Young", given: ["Sam"] }],
+              identifiers: [],
+            },
+          },
+        },
+      ],
+    });
+  });
+  await page.goto("/en-001/my-record");
+  await expect(
+    page.getByRole("heading", { level: 2, name: "Smith, Ann" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("You are viewing this record as a proxy."),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("term").filter({ hasText: "NHS number" }).first(),
+  ).toBeVisible();
+  await expect(page.getByRole("textbox")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Save changes" })).toHaveCount(
+    0,
+  );
+  expect(purpose).toBe("patient-access");
+  await axe(page);
+});
+
+test("my record says plainly when nothing is linked, or the reader may not use it", async ({
+  page,
+}) => {
+  await page.route("**/api/proxy/api/me/patients", (route) =>
+    json(route, 200, { records: [] }),
+  );
+  await page.goto("/en-001/my-record");
+  await expect(page.getByRole("status")).toContainText(
+    "No record is linked to your sign-in",
+  );
+  await axe(page);
+
+  await page.unroute("**/api/proxy/api/me/patients");
+  await page.route("**/api/proxy/api/me/patients", (route) =>
+    json(route, 403, { error: "forbidden" }),
+  );
+  await page.reload();
+  await expect(page.getByRole("alert")).toHaveText(
+    "Your role does not allow this.",
+  );
+});
