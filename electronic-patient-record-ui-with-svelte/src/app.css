@@ -109,3 +109,32 @@ td {
   padding: 0.35rem 0.5rem;
   text-align: left;
 }
+select,
+textarea {
+  font: inherit;
+  padding: 0.4rem;
+  width: 100%;
+  box-sizing: border-box;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+small {
+  color: var(--muted);
+}
+.same {
+  color: var(--muted);
+}
+.candidate {
+  border: 1px solid var(--border);
+  padding: 0.5rem 1rem 1rem;
+  margin: 1rem 0;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

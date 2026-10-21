@@ -54,4 +54,7 @@ python3 scripts/check-links.py . && sh scripts/generate-status.sh --check
   inline `style=""`.
 - `axum-test` and `jsonwebtoken` follow `loco-rs`; do not bump them alone.
 - Use Podman (`podman build`, `podman compose`), not Docker, everywhere: instructions, scripts and CI. Container files are named `Containerfile` and `.containerignore`.
+- The Podman VM's clock drifts (after sleep, say). Keycloak then issues tokens that are already expired by the host's clock, and the API answers
+  401 `keycloak: … InvalidSignature` (the verifier keeps only the last key's error, so expiry looks like a bad signature). Compare `date -u +%s`
+  with `podman exec <container> date -u +%s`; reset with `podman machine ssh "sudo date -u -s @$(date -u +%s)"`.
 - Translations are machine-written until a speaker reviews them. Never claim a translation is reviewed.

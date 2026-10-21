@@ -19,9 +19,13 @@ cross-subproject contract.
   live session. Idle limit 900 s and absolute limit 28800 s (`EPR_SESSION_IDLE_SECONDS`, `EPR_SESSION_ABSOLUTE_SECONDS`). `returnTo`
   is a same-site path only. Plain `http://` is accepted only for loopback. Environment: `EPR_OIDC_ISSUER`, `EPR_OIDC_CLIENT_ID`
   (default `epr-web`), `EPR_PUBLIC_URL` (required with an issuer; its origin must be one the client allows).
-- **Pages**: home; `/patients` compares two patients and renders the decision, the score, the per-field table and
-  the reasons a link cannot be automatic. A missing similarity renders "not available".
-- **Accessibility**: skip link, landmarks, labelled inputs, `role="alert"` on failure, axe (WCAG 2.2 AA) on both pages.
+- **Pages**: home; `/patients` searches (family-name prefix, birth date, NHS number; an empty search is never sent) and lists up to 50
+  matches; `/patients/new` registers, and on a 409 shows each possible duplicate beside the entered record with the matcher's score and
+  reasons, registering anyway only with a typed reason; `/patients/[id]` shows and edits a record, sending the version it was read at
+  (a stale save is reported, never overwritten); `/patients/compare` compares two patients and renders the decision, the score, the per-field
+  table and the reasons a link cannot be automatic. A missing similarity renders "not available". The edit form changes only the fields it
+  shows and carries every other name, identifier, address and contact detail into the new version.
+- **Accessibility**: skip link, landmarks, labelled inputs, `role="alert"` on failure, axe (WCAG 2.2 AA) on each page and on the duplicate view.
 
 ## 2. Not built
 

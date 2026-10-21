@@ -90,6 +90,80 @@ test("a signed-in user with no role is refused by the API, and the page says so"
   );
 });
 
+test("registers a patient, catches the duplicate, overrides it, and edits with a version check", async ({
+  page,
+  browser,
+}) => {
+  await signIn(page);
+  const family = `Zz${Date.now()}`;
+  const fill = async (p: Page) => {
+    await p.goto("/en-001/patients/new");
+    await p.getByLabel("Family name").fill(family);
+    await p.getByLabel("Given name").fill("Ann");
+    await p.getByLabel("Birth date").fill("1980-03-14");
+    await p.getByLabel("NHS number").fill("943 476 5919");
+    await p.getByRole("button", { name: "Register", exact: true }).click();
+  };
+
+  // A bad NHS number is refused with the reason.
+  await page.goto("/en-001/patients/new");
+  await page.getByLabel("Family name").fill(family);
+  await page.getByLabel("NHS number").fill("9434765910");
+  await page.getByRole("button", { name: "Register", exact: true }).click();
+  await expect(
+    page.getByText("NHS number fails the modulus 11 check"),
+  ).toBeVisible();
+
+  // Registered: the page moves to the new record, version 1.
+  await fill(page);
+  await expect(page).toHaveURL(/\/en-001\/patients\/[0-9a-f-]{36}$/);
+  await expect(page.getByText("Version: 1")).toBeVisible();
+  const first = page.url();
+
+  // The same person again is a possible duplicate, shown side by side.
+  await fill(page);
+  await expect(
+    page.getByRole("heading", {
+      name: "This patient may already be registered",
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Open the existing record" }),
+  ).toHaveAttribute("href", new URL(first).pathname);
+  await page.getByRole("button", { name: "Register anyway" }).click();
+  await expect(
+    page.getByText("Give the reason this is a different person."),
+  ).toBeVisible();
+  await page.getByLabel(/This is a different person/).fill("test: twin");
+  await page.getByRole("button", { name: "Register anyway" }).click();
+  await expect(page).toHaveURL(/\/en-001\/patients\/[0-9a-f-]{36}$/);
+  expect(page.url()).not.toBe(first);
+
+  // Edit the first record in two windows: the second save is stale.
+  const other = await browser.newPage({
+    storageState: await page.context().storageState(),
+  });
+  await other.goto(first);
+  await page.goto(first);
+  await page.getByLabel("Birth date").fill("1980-03-15");
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByRole("status")).toHaveText("Saved. Version 2.");
+  await other.getByLabel("Birth date").fill("1980-03-16");
+  await other.getByRole("button", { name: "Save changes" }).click();
+  await expect(other.getByRole("alert")).toContainText(
+    "Someone else changed this record",
+  );
+  await other.getByRole("button", { name: "Reload the record" }).click();
+  await expect(other.getByLabel("Birth date")).toHaveValue("1980-03-15");
+
+  // Search finds both records by family name.
+  await page.goto("/en-001/patients");
+  await page.getByLabel("Family name").fill(family);
+  await page.getByRole("button", { name: "Search" }).click();
+  await expect(page.getByRole("link", { name: /^Open/ })).toHaveCount(2);
+  await other.close();
+});
+
 test("a tampered session cookie is refused", async ({ page, context }) => {
   await signIn(page);
   const session = (await context.cookies()).find(

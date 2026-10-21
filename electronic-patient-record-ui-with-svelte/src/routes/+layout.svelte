@@ -14,6 +14,7 @@
   <nav aria-label="Main">
     <a href={localizePath("/", locale)}>{STRINGS.navHome}</a>
     <a href={localizePath("/patients", locale)}>{STRINGS.navPatients}</a>
+    <a href={localizePath("/patients/new", locale)}>{STRINGS.registerLink}</a>
   </nav>
   {#if page.data.signIn?.enabled}
     {#if page.data.signIn.name}

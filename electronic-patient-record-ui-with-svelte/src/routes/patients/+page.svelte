@@ -1,114 +1,106 @@
 <script lang="ts">
+  import { page } from "$app/state";
+  import { call, commonProblem } from "#lib/api.js";
+  import { DEFAULT_LOCALE, localizePath } from "#lib/locales.js";
+  import PatientFields from "#lib/PatientFields.svelte";
+  import {
+    emptyForm,
+    patientToForm,
+    searchQuery,
+    type Stored,
+  } from "#lib/patient.js";
   import { STRINGS } from "#lib/strings.js";
 
-  type Field = { field: string; similarity: number | null; weight: number; note: string };
-  type Result = {
-    score: number;
-    decision: keyof typeof STRINGS.decisions;
-    fields: Field[];
-    deterministic: string | null;
-    conflicts: string[];
-  };
-
-  let a = $state({ family: "", given: "", birth: "" });
-  let b = $state({ family: "", given: "", birth: "" });
-  let result = $state<Result | null>(null);
-  let failed = $state(false);
-  let signInRequired = $state(false);
-  let forbidden = $state(false);
-
-  const patient = (p: { family: string; given: string; birth: string }) => ({
-    names: [{ family: p.family || null, given: p.given ? [p.given] : [] }],
-    birth_date: p.birth || null,
-  });
+  const locale = $derived(page.data.locale ?? DEFAULT_LOCALE);
+  let form = $state(emptyForm());
+  let found = $state<Stored[] | null>(null);
+  let limit = $state(50);
+  let message = $state<string | null>(null);
 
   async function submit(event: SubmitEvent) {
     event.preventDefault();
-    failed = false;
-    signInRequired = false;
-    forbidden = false;
-    try {
-      const res = await fetch("/api/proxy/api/patients/compare", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ a: patient(a), b: patient(b) }),
-      });
-      if (res.status === 401) {
-        signInRequired = true;
-        result = null;
-        return;
-      }
-      if (res.status === 403) {
-        forbidden = true;
-        result = null;
-        return;
-      }
-      if (!res.ok) throw new Error(String(res.status));
-      result = (await res.json()) as Result;
-    } catch {
-      result = null;
-      failed = true;
+    message = null;
+    const query = searchQuery(form);
+    if (!query) {
+      found = null;
+      message = STRINGS.searchNothing;
+      return;
+    }
+    const res = await call<{ results: Stored[]; limit: number }>(
+      "GET",
+      `/api/patients?${query}`,
+    );
+    const problem = commonProblem(res.status);
+    if (problem) {
+      found = null;
+      message = STRINGS[problem];
+    } else if (res.status === 200) {
+      found = res.body.results;
+      limit = res.body.limit;
+    } else {
+      found = null;
+      message = STRINGS.error;
     }
   }
+
+  const label = (s: Stored) => {
+    const f = patientToForm(s.patient);
+    return [f.family, f.given].filter(Boolean).join(", ") || STRINGS.notAvailable;
+  };
 </script>
 
-<svelte:head><title>{STRINGS.compareTitle}</title></svelte:head>
+<svelte:head><title>{STRINGS.searchTitle}</title></svelte:head>
 
-<h1>{STRINGS.compareTitle}</h1>
+<h1>{STRINGS.searchTitle}</h1>
+<p>{STRINGS.searchHint}</p>
 
 <form onsubmit={submit}>
-  <div class="pair">
-    {#each [{ id: "a", label: STRINGS.patientA, model: a }, { id: "b", label: STRINGS.patientB, model: b }] as p (p.id)}
-      <fieldset>
-        <legend>{p.label}</legend>
-        <label for="{p.id}-family">{STRINGS.family}</label>
-        <input id="{p.id}-family" bind:value={p.model.family} autocomplete="off" />
-        <label for="{p.id}-given">{STRINGS.given}</label>
-        <input id="{p.id}-given" bind:value={p.model.given} autocomplete="off" />
-        <label for="{p.id}-birth">{STRINGS.birthDate}</label>
-        <input id="{p.id}-birth" bind:value={p.model.birth} autocomplete="off" inputmode="numeric" />
-      </fieldset>
-    {/each}
-  </div>
-  <button type="submit">{STRINGS.compare}</button>
+  <PatientFields bind:form prefix="s" only={["family", "birthDate", "nhsNumber"]} />
+  <button type="submit">{STRINGS.search}</button>
 </form>
+<p>
+  <a href={localizePath("/patients/new", locale)}>{STRINGS.registerLink}</a> ·
+  <a href={localizePath("/patients/compare", locale)}>{STRINGS.compareTitle}</a>
+</p>
 
-{#if forbidden}
-  <p role="alert">{STRINGS.forbidden}</p>
+{#if message}
+  <p role="alert">{message}</p>
 {/if}
 
-{#if signInRequired}
-  <p role="alert">{STRINGS.signInRequired}</p>
-{/if}
-
-{#if failed}
-  <p role="alert">{STRINGS.error}</p>
-{/if}
-
-{#if result}
+{#if found}
   <section aria-live="polite">
-    <h2>{STRINGS.decision}: {STRINGS.decisions[result.decision]}</h2>
-    <p>{STRINGS.score}: {result.score.toFixed(2)}</p>
-    {#if result.deterministic}<p>{result.deterministic}</p>{/if}
-    {#if result.conflicts.length}
-      <h3>{STRINGS.conflicts}</h3>
-      <ul>
-        {#each result.conflicts as c (c)}<li>{c}</li>{/each}
-      </ul>
-    {/if}
-    <table>
-      <thead>
-        <tr><th>{STRINGS.field}</th><th>{STRINGS.similarity}</th><th></th></tr>
-      </thead>
-      <tbody>
-        {#each result.fields as f (f.field)}
+    <h2>{STRINGS.results}</h2>
+    {#if found.length === 0}
+      <p>{STRINGS.noResults}</p>
+    {:else}
+      <table>
+        <thead>
           <tr>
-            <td>{f.field}</td>
-            <td>{f.similarity === null ? STRINGS.notAvailable : f.similarity.toFixed(2)}</td>
-            <td>{f.note}</td>
+            <th>{STRINGS.family} / {STRINGS.given}</th>
+            <th>{STRINGS.birthDate}</th>
+            <th>{STRINGS.nhsNumber}</th>
+            <th></th>
           </tr>
-        {/each}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {#each found as s (s.id)}
+            {@const f = patientToForm(s.patient)}
+            <tr>
+              <td>{label(s)}</td>
+              <td>{f.birthDate || STRINGS.notAvailable}</td>
+              <td>{f.nhsNumber || STRINGS.notAvailable}</td>
+              <td>
+                <a href={localizePath(`/patients/${s.id}`, locale)}
+                  >{STRINGS.open}<span class="sr-only"> {label(s)}</span></a
+                >
+              </td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+      {#if found.length >= limit}
+        <p>{STRINGS.resultsCapped.replace("{n}", String(limit))}</p>
+      {/if}
+    {/if}
   </section>
 {/if}

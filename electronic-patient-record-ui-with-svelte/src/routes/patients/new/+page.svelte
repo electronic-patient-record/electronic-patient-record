@@ -1,0 +1,159 @@
+<script lang="ts">
+  import { goto } from "$app/navigation";
+  import { page } from "$app/state";
+  import { call, commonProblem } from "#lib/api.js";
+  import { DEFAULT_LOCALE, localizePath } from "#lib/locales.js";
+  import PatientFields from "#lib/PatientFields.svelte";
+  import {
+    comparisonRows,
+    emptyForm,
+    formToPatient,
+    type Candidate,
+    type PatientForm,
+    type Stored,
+  } from "#lib/patient.js";
+  import { STRINGS } from "#lib/strings.js";
+
+  const locale = $derived(page.data.locale ?? DEFAULT_LOCALE);
+  let form = $state(emptyForm());
+  let reason = $state("");
+  let overrideReason = $state("");
+  let problems = $state<string[]>([]);
+  let message = $state<string | null>(null);
+  let candidates = $state<Candidate[]>([]);
+  // What was submitted, so the side-by-side view does not change while the form is edited.
+  let submitted = $state<PatientForm>(emptyForm());
+  let busy = $state(false);
+
+  async function register(override: boolean) {
+    message = null;
+    problems = [];
+    if (override && !overrideReason.trim()) {
+      message = STRINGS.overrideNeeded;
+      return;
+    }
+    busy = true;
+    if (!override) {
+      candidates = [];
+      submitted = { ...form };
+    }
+    const res = await call<
+      Stored & { errors?: string[]; candidates?: Candidate[] }
+    >("POST", "/api/patients", {
+      patient: formToPatient(override ? submitted : form),
+      reason: reason.trim() || undefined,
+      override_reason: override ? overrideReason.trim() : undefined,
+    });
+    busy = false;
+    const common = commonProblem(res.status);
+    if (common) {
+      message = STRINGS[common];
+    } else if (res.status === 201) {
+      await goto(localizePath(`/patients/${res.body.id}`, locale));
+    } else if (res.status === 409 && res.body.candidates) {
+      candidates = res.body.candidates;
+    } else if (res.status === 422 && res.body.errors) {
+      problems = res.body.errors;
+    } else {
+      message = STRINGS.error;
+    }
+  }
+
+  const fieldName = (f: string) =>
+    ({
+      family: STRINGS.family,
+      given: STRINGS.given,
+      birthDate: STRINGS.birthDate,
+      sex: STRINGS.sex,
+      nhsNumber: STRINGS.nhsNumber,
+      postalCode: STRINGS.postalCode,
+    })[f] ?? f;
+  const shown = (v: string) => v || STRINGS.notAvailable;
+</script>
+
+<svelte:head><title>{STRINGS.registerTitle}</title></svelte:head>
+
+<h1>{STRINGS.registerTitle}</h1>
+
+<form
+  onsubmit={(e) => {
+    e.preventDefault();
+    void register(false);
+  }}
+>
+  <PatientFields bind:form prefix="n" />
+  <label for="n-reason">{STRINGS.reason}</label>
+  <input id="n-reason" bind:value={reason} autocomplete="off" />
+  <button type="submit" disabled={busy}>{STRINGS.register}</button>
+</form>
+
+{#if message}
+  <p role="alert">{message}</p>
+{/if}
+
+{#if problems.length}
+  <div role="alert">
+    <h2>{STRINGS.problems}</h2>
+    <ul>
+      {#each problems as p (p)}<li>{p}</li>{/each}
+    </ul>
+  </div>
+{/if}
+
+{#if candidates.length}
+  <section aria-labelledby="dup-title" aria-live="polite">
+    <h2 id="dup-title">{STRINGS.duplicateTitle}</h2>
+    <p>{STRINGS.duplicateIntro}</p>
+    {#each candidates as c (c.existing.id)}
+      <article class="candidate">
+        <h3>
+          {STRINGS.decision}: {STRINGS.decisions[c.decision]} ({STRINGS.score}: {c.score.toFixed(2)})
+        </h3>
+        {#if c.deterministic}<p>{c.deterministic}</p>{/if}
+        {#if c.conflicts.length}
+          <p>{STRINGS.conflicts}</p>
+          <ul>
+            {#each c.conflicts as why (why)}<li>{why}</li>{/each}
+          </ul>
+        {/if}
+        <table>
+          <thead>
+            <tr>
+              <th>{STRINGS.field}</th>
+              <th>{STRINGS.entered}</th>
+              <th>{STRINGS.existing}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#each comparisonRows(submitted, c.existing.patient) as row (row.field)}
+              <tr>
+                <th scope="row">{fieldName(row.field)}</th>
+                <td>{shown(row.entered)}</td>
+                <td>
+                  {shown(row.existing)}
+                  {#if row.same}<span class="same">({STRINGS.sameValue})</span>{/if}
+                </td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+        <p>
+          <a href={localizePath(`/patients/${c.existing.id}`, locale)}
+            >{STRINGS.openExisting}</a
+          >
+        </p>
+      </article>
+    {/each}
+
+    <form
+      onsubmit={(e) => {
+        e.preventDefault();
+        void register(true);
+      }}
+    >
+      <label for="n-override">{STRINGS.overrideReason}</label>
+      <textarea id="n-override" rows="3" bind:value={overrideReason}></textarea>
+      <button type="submit" disabled={busy}>{STRINGS.registerAnyway}</button>
+    </form>
+  </section>
+{/if}

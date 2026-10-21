@@ -54,3 +54,4 @@ const forward: RequestHandler = async ({ params, url, request, cookies }) => {
 
 export const GET = forward;
 export const POST = forward;
+export const PUT = forward;
