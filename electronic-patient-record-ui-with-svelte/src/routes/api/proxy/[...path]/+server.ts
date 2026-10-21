@@ -43,13 +43,25 @@ const forward: RequestHandler = async ({ params, url, request, cookies }) => {
   const upstream = await fetch(target, {
     method: request.method,
     headers,
-    body: request.method === "GET" ? undefined : await request.text(),
+    // Bytes, not text: a photo is binary and text decoding would corrupt it.
+    body: request.method === "GET" ? undefined : await request.arrayBuffer(),
   });
   return new Response(upstream.body, {
     status: upstream.status,
     headers: {
       "content-type":
         upstream.headers.get("content-type") ?? "application/json",
+      // What an image response needs to stay private and unsniffed.
+      ...Object.fromEntries(
+        [
+          "cache-control",
+          "x-content-type-options",
+          "etag",
+          "content-disposition",
+        ]
+          .map((h) => [h, upstream.headers.get(h)] as const)
+          .filter(([, v]) => v !== null) as [string, string][],
+      ),
     },
   });
 };

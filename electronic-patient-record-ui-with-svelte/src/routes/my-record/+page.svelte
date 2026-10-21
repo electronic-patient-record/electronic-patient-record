@@ -5,7 +5,7 @@
   import { patientToForm, type Stored } from "#lib/patient.js";
   import { STRINGS } from "#lib/strings.js";
 
-  type Entry = { relationship: "self" | "proxy"; patient: Stored };
+  type Entry = { relationship: "self" | "proxy"; patient: Stored; photo_version?: number | null };
 
   let records = $state<Entry[] | null>(null);
   let message = $state<string | null>(null);
@@ -95,7 +95,7 @@
           .filter(Boolean)
           .join(", ")}
       </h2>
-      <PatientBanner stored={entry.patient} />
+      <PatientBanner stored={{ ...entry.patient, photo_version: entry.photo_version }} purpose="patient-access" />
       {#if entry.relationship === "proxy"}<p>{STRINGS.myRecordProxy}</p>{/if}
       <dl>
         {#each fields(entry.patient) as [label, value] (label)}

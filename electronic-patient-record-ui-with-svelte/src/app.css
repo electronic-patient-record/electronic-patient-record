@@ -159,6 +159,13 @@ small {
 .banner p {
   margin: 0;
 }
+.banner .photo {
+  grid-row: span 3;
+  width: 6rem;
+  height: 6rem;
+  object-fit: cover;
+  border: 1px solid var(--fg);
+}
 .banner .allergies {
   font-weight: 600;
 }

@@ -143,6 +143,21 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - **Not done:** a minute is a poll, not a push (no SSE or WebSocket); each look is one more audited read; an edit made in
   the last minute is not seen until the next look; not run against the real Keycloak stack; `/my-record` does not refresh.
 
+## 2026-10-21 - Patient photo (ID-7, in part)
+
+- `patient_photos` (append-only) and the routes above; the banner shows the photo, the patient page uploads and removes one.
+  The proxy now forwards request bodies as bytes (it used `text()`, which corrupts a photo) and passes `cache-control`,
+  `nosniff`, `etag` and `content-disposition` back; the UI CSP allows `blob:` images. Hazard H-017 added. 2 unit and 4
+  Postgres tests, 3 stubbed Playwright tests with axe, 1 real-Keycloak test (an SVG sent as `image/png` is 422; the
+  patient's banner decodes the image; the raw route is `nosniff` and `no-store`).
+- Found by the live run and fixed in the same change: `GET /api/audit/export?outcome=0` failed (a `#[serde(flatten)]`
+  query cannot read numbers), so the export now parses its pairs with `AuditQuery::from_pairs` (1 unit test); the by-hand
+  run then showed CSV, NDJSON, 400s, 403 and the FHIR `gt`/`le` filters working.
+- **Not done:** nothing checks the photo shows this patient, or a face; no content scan; no FHIR `Patient.photo` mapping
+  (a FHIR body with `photo` is still refused); no resizing or thumbnail (a 512 KiB image is fetched for a 6 rem box);
+  hostile metadata inside a PNG or JPEG is stored as it came; the banner on the staff pages fetches under the picker's
+  purpose.
+
 ## [0.1.0] - 2026-10-20
 
 Milestone M0, scaffold. **Not for clinical use.**

@@ -271,15 +271,6 @@ fn to_ndjson(rows: &[audit::AuditRow]) -> String {
         .collect()
 }
 
-/// Query for an export: the search criteria plus the format.
-#[derive(Debug, serde::Deserialize)]
-struct ExportQuery {
-    #[serde(flatten)]
-    criteria: audit::AuditQuery,
-    /// `csv` (default) or `ndjson`.
-    format: Option<String>,
-}
-
 /// Export the trail (task AU-2): the same criteria as the search, up to 10,000 rows, with the
 /// digests so the chain can be re-verified elsewhere. The answer is a file; when there are more
 /// rows the header `x-next-before` carries the `before` for the next file. The export is itself
@@ -288,7 +279,7 @@ async fn export(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
     Extension(subject): Extension<Subject>,
-    Query(query): Query<ExportQuery>,
+    Query(pairs): Query<Vec<(String, String)>>,
 ) -> Response {
     if let Err(r) = authorize(
         &ctx.db,
@@ -303,14 +294,22 @@ async fn export(
     {
         return *r;
     }
-    let format = query.format.as_deref().unwrap_or("csv");
+    let criteria = match audit::AuditQuery::from_pairs(&pairs) {
+        Ok(c) => c.normalized(),
+        Err(m) => {
+            return json_error(StatusCode::BAD_REQUEST, serde_json::json!({ "error": m }));
+        }
+    };
+    let format = pairs
+        .iter()
+        .find(|(k, _)| k == "format")
+        .map_or("csv", |(_, v)| v.as_str());
     if !matches!(format, "csv" | "ndjson") {
         return json_error(
             StatusCode::BAD_REQUEST,
             serde_json::json!({ "error": "format must be csv or ndjson" }),
         );
     }
-    let criteria = query.criteria.normalized();
     let mut rows = match audit::export(&ctx.db, &criteria).await {
         Ok(r) => r,
         Err(audit::SearchError::BadQuery(m)) => {
@@ -485,5 +484,37 @@ mod tests {
         assert_eq!(lines.len(), 2);
         assert_eq!(lines[0]["digest"], "sha256:ab");
         assert!(lines[0].get("prev_digest").is_none());
+    }
+
+    #[test]
+    fn export_criteria_read_numbers_and_booleans_from_a_query_string() {
+        let pairs = |v: &[(&str, &str)]| -> Vec<(String, String)> {
+            v.iter().map(|(k, v)| ((*k).into(), (*v).into())).collect()
+        };
+        let q = audit::AuditQuery::from_pairs(&pairs(&[
+            ("outcome", "0"),
+            ("break_glass", "true"),
+            ("before", "90"),
+            ("action", "R"),
+            ("after", "2026-10-01"),
+            ("format", "ndjson"),
+        ]))
+        .unwrap();
+        assert_eq!(
+            (q.outcome, q.break_glass, q.before),
+            (Some(0), Some(true), Some(90))
+        );
+        assert_eq!(
+            (q.action.as_deref(), q.after.as_deref()),
+            (Some("R"), Some("2026-10-01"))
+        );
+        // An empty form field is no criterion; a bad value names its key.
+        let blank =
+            audit::AuditQuery::from_pairs(&pairs(&[("outcome", ""), ("before", "")])).unwrap();
+        assert_eq!((blank.outcome, blank.before), (None, None));
+        for bad in [("outcome", "x"), ("break_glass", "maybe"), ("before", "x")] {
+            let e = audit::AuditQuery::from_pairs(&pairs(&[bad])).unwrap_err();
+            assert!(e.contains(bad.0), "{e}");
+        }
     }
 }

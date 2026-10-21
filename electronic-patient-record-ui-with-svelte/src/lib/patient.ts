@@ -25,6 +25,8 @@ export interface Stored {
   version: number;
   author: string;
   patient: PatientRecord;
+  /** The photo version to fetch, or null/absent when there is no photo. */
+  photo_version?: number | null;
 }
 
 export interface MatchResult {

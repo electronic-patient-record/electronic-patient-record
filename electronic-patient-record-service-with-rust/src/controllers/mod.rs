@@ -5,6 +5,7 @@ pub mod consents;
 pub mod fhir;
 pub mod me;
 pub mod patients;
+pub mod photos;
 pub mod relationships;
 
 use loco_rs::controller::AppRoutes;

@@ -561,6 +561,45 @@ pub struct AuditQuery {
 }
 
 impl AuditQuery {
+    /// Criteria from raw `key=value` pairs, for a caller that cannot use a typed query (a struct
+    /// with `#[serde(flatten)]` cannot read numbers or booleans from a query string). Unknown keys
+    /// are ignored; a value that does not parse is an error naming the key.
+    ///
+    /// # Errors
+    ///
+    /// A message naming the key whose value is not a number or a boolean as required.
+    pub fn from_pairs(pairs: &[(String, String)]) -> Result<AuditQuery, String> {
+        let mut q = AuditQuery::default();
+        for (key, value) in pairs {
+            let text = || Some(value.clone());
+            match key.as_str() {
+                "agent" => q.agent = text(),
+                "patient" => q.patient = text(),
+                "action" => q.action = text(),
+                "purpose" => q.purpose = text(),
+                "from" => q.from = text(),
+                "to" => q.to = text(),
+                "after" => q.after = text(),
+                "through" => q.through = text(),
+                "outcome" if !value.is_empty() => {
+                    q.outcome = Some(value.parse().map_err(|_| "outcome must be 0, 4, 8 or 12")?);
+                }
+                "break_glass" if !value.is_empty() => {
+                    q.break_glass = Some(
+                        value
+                            .parse()
+                            .map_err(|_| "break_glass must be true or false")?,
+                    );
+                }
+                "before" if !value.is_empty() => {
+                    q.before = Some(value.parse().map_err(|_| "before must be a row id")?);
+                }
+                _ => {}
+            }
+        }
+        Ok(q)
+    }
+
     /// The same query with blank text criteria removed, so `?agent=` (an empty form field) means
     /// "no criterion" rather than "no row".
     #[must_use]

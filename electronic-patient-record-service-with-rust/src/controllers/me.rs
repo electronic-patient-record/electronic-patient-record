@@ -52,10 +52,17 @@ async fn patients_of_caller(
             continue;
         }
         match patients::current(&ctx.db, id).await {
-            Ok(stored) => records.push(serde_json::json!({
-                "relationship": kind.as_str(),
-                "patient": stored,
-            })),
+            Ok(stored) => {
+                let photo_version = match crate::photos_store::current(&ctx.db, &stored.id).await {
+                    Ok(p) => p.filter(|p| p.bytes.is_some()).map(|p| p.version),
+                    Err(e) => return store_failure(&e),
+                };
+                records.push(serde_json::json!({
+                    "relationship": kind.as_str(),
+                    "patient": stored,
+                    "photo_version": photo_version,
+                }));
+            }
             Err(e) => return store_failure(&e),
         }
     }

@@ -29,7 +29,7 @@ export default defineConfig({
                     // string, tests/e2e/security-headers.spec.ts fails on every route;
                     // recompute with: printf '%s' '<style value>' | openssl dgst -sha256 -binary | base64
                     "style-src-attr": ["unsafe-hashes", "sha256-S8qMpvofolR8Mpjy4kQvEm7m1q8clzU4dfDH0AmvZjo="],
-                    "img-src": ["self", "data:"],
+                    "img-src": ["self", "data:", "blob:"],
                     "font-src": ["self"],
                     "connect-src": ["self"],
                     "object-src": ["none"],

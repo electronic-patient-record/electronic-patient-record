@@ -514,3 +514,80 @@ test("only an auditor can search the audit trail, and each search is itself reco
   expect(fhir.body.resourceType).toBe("Bundle");
   expect(fhir.body.entry[0].resource.resourceType).toBe("AuditEvent");
 });
+
+test("a patient's photo is stored as bytes, refused if it is not an image, and shown in their banner", async ({
+  page,
+}) => {
+  test.skip(
+    !ADMIN || !PATIENT,
+    "set EPR_E2E_ADMIN_USERNAME and EPR_E2E_PATIENT_USERNAME",
+  );
+  const admin = await devToken(ADMIN);
+  const patientToken = await devToken(PATIENT);
+  const sub = JSON.parse(
+    Buffer.from(patientToken.split(".")[1]!, "base64url").toString(),
+  ).sub as string;
+  const json = async (method: string, path: string, body?: unknown) => {
+    const res = await fetch(`${API}${path}`, {
+      method,
+      headers: {
+        authorization: `Bearer ${admin}`,
+        "content-type": "application/json",
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    return { status: res.status, body: (await res.json()) as any };
+  };
+  const made = await json("POST", "/api/patients", {
+    patient: {
+      names: [{ family: `Zphoto${Date.now()}`, given: ["Pic"] }],
+      birth_date: "1955-05-05",
+    },
+  });
+  expect(made.status).toBe(201);
+  const id = made.body.id as string;
+  expect(
+    (
+      await json("POST", `/api/patients/${id}/relationships`, {
+        relationship: { subject: sub, kind: "self", status: "active" },
+        reason: "e2e",
+      })
+    ).status,
+  ).toBe(201);
+
+  const png = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+    "base64",
+  );
+  const put = (bytes: Buffer, v = 0) =>
+    fetch(`${API}/api/patients/${id}/photo?expected_version=${v}`, {
+      method: "PUT",
+      headers: {
+        authorization: `Bearer ${admin}`,
+        "content-type": "image/png",
+      },
+      body: bytes,
+    });
+  // Not an image, whatever the header claims.
+  const svg = await put(Buffer.from("<svg onload=alert(1)>"));
+  expect(svg.status).toBe(422);
+  const ok = await put(png);
+  expect(ok.status).toBe(200);
+  expect((await put(png)).status).toBe(409);
+
+  // The patient's own banner shows it, fetched under patient-access through the proxy.
+  await signIn(page, PATIENT);
+  await page.goto("/en-001/my-record");
+  const img = page.getByRole("img", { name: /^Photo of / });
+  await expect(img).toBeVisible();
+  expect(await img.evaluate((i: HTMLImageElement) => i.naturalWidth)).toBe(1);
+
+  // The raw route is private and unsniffed.
+  const raw = await fetch(`${API}/api/patients/${id}/photo`, {
+    headers: { authorization: `Bearer ${admin}` },
+  });
+  expect(raw.headers.get("content-type")).toBe("image/png");
+  expect(raw.headers.get("x-content-type-options")).toBe("nosniff");
+  expect(raw.headers.get("cache-control")).toContain("no-store");
+  expect(Buffer.from(await raw.arrayBuffer()).equals(png)).toBe(true);
+});

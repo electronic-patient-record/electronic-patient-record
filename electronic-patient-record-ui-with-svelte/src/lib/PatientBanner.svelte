@@ -9,10 +9,44 @@
     nhsDisplay,
     type Stored,
   } from "./patient.js";
+  import { fetchBlob } from "./api.js";
   import { STRINGS } from "./strings.js";
 
-  let { stored, today = new Date() }: { stored: Stored; today?: Date } =
-    $props();
+  // `purpose` is the purpose of use the photo is fetched under: "my record" passes
+  // `patient-access`; staff pages leave it to the picker.
+  let {
+    stored,
+    today = new Date(),
+    purpose,
+  }: { stored: Stored; today?: Date; purpose?: string } = $props();
+
+  // The photo is fetched with the page's own call (so it carries the purpose of use) and shown from
+  // an object URL that is revoked when the photo changes or the banner goes. The server serves it
+  // `no-store` and `nosniff`, and only PNG or JPEG bytes are ever stored.
+  let photoUrl = $state<string | null>(null);
+  let photoFailed = $state(false);
+  $effect(() => {
+    const id = stored.id;
+    const version = stored.photo_version;
+    photoUrl = null;
+    photoFailed = false;
+    if (!version) return;
+    let url: string | null = null;
+    let stale = false;
+    void fetchBlob(`/api/patients/${id}/photo`, purpose).then((res) => {
+      if (stale) return;
+      if (res.status === 200 && res.body) {
+        url = URL.createObjectURL(res.body);
+        photoUrl = url;
+      } else {
+        photoFailed = true;
+      }
+    });
+    return () => {
+      stale = true;
+      if (url) URL.revokeObjectURL(url);
+    };
+  });
 
   const p = $derived(stored.patient);
   const name = $derived(
@@ -52,7 +86,13 @@
   <p>
     {STRINGS.bannerOtherId}: {other ? `${other.system} ${other.value}` : STRINGS.bannerNone}
   </p>
-  <p>{STRINGS.bannerPhoto}</p>
+  {#if photoUrl}
+    <img class="photo" src={photoUrl} alt={STRINGS.bannerPhotoAlt.replace("{name}", name)} />
+  {:else if photoFailed}
+    <p role="status">{STRINGS.bannerPhotoFailed}</p>
+  {:else}
+    <p>{STRINGS.bannerPhoto}</p>
+  {/if}
   <p class="allergies">
     {STRINGS.bannerAllergies}: {STRINGS.bannerAllergiesUnknown}
   </p>

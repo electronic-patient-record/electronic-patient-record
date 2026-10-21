@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from "$app/state";
-  import { call, commonProblem } from "#lib/api.js";
+  import { call, commonProblem, sendBytes } from "#lib/api.js";
   import { DEFAULT_LOCALE, localizePath } from "#lib/locales.js";
   import PatientBanner from "#lib/PatientBanner.svelte";
   import PatientFields from "#lib/PatientFields.svelte";
@@ -91,6 +91,57 @@
     };
   });
 
+  // The photo is its own record with its own version: uploading or removing it never touches the
+  // identity fields being edited in the form.
+  let photoFile = $state<File | null>(null);
+  let photoReason = $state("");
+  let photoMessage = $state<string | null>(null);
+  const MAX_PHOTO = 512 * 1024;
+
+  async function sendPhoto(withdraw: boolean) {
+    if (!stored) return;
+    photoMessage = null;
+    if (!withdraw) {
+      if (!photoFile) {
+        photoMessage = STRINGS.photoPick;
+        return;
+      }
+      if (photoFile.size > MAX_PHOTO) {
+        photoMessage = STRINGS.photoTooBig;
+        return;
+      }
+      if (!["image/png", "image/jpeg"].includes(photoFile.type)) {
+        photoMessage = STRINGS.photoWrongType;
+        return;
+      }
+    }
+    const q = new URLSearchParams({
+      expected_version: String(stored.photo_version ?? 0),
+    });
+    if (photoReason.trim()) q.set("reason", photoReason.trim());
+    const res = await sendBytes<{ errors?: string[] }>(
+      withdraw ? "POST" : "PUT",
+      `/api/patients/${stored.id}/photo${withdraw ? "/withdraw" : ""}?${q}`,
+      withdraw ? null : photoFile,
+    );
+    const common = commonProblem(res.status);
+    if (common) photoMessage = STRINGS[common];
+    else if (res.status === 200) {
+      photoMessage = withdraw ? STRINGS.photoRemoved : STRINGS.photoSaved;
+      photoFile = null;
+      photoReason = "";
+      // The photo version moved; read the record again, but keep what is being typed.
+      const fresh = await call<Stored>("GET", `/api/patients/${stored.id}`);
+      if (fresh.status === 200 && stored) {
+        stored = { ...stored, photo_version: fresh.body.photo_version };
+        if (latest) latest = { ...latest, photo_version: fresh.body.photo_version };
+      }
+    } else if (res.status === 409) conflict = true;
+    else if (res.status === 422 && res.body?.errors)
+      photoMessage = res.body.errors.join(" ");
+    else photoMessage = STRINGS.error;
+  }
+
   async function save(event: SubmitEvent) {
     event.preventDefault();
     if (!stored) return;
@@ -151,6 +202,23 @@
   <p>
     {STRINGS.version}: {stored.version} · {STRINGS.recordedBy}: {stored.author}
   </p>
+  <section aria-labelledby="photo-h">
+    <h2 id="photo-h">{STRINGS.photoTitle}</h2>
+    <label for="photo-file">{STRINGS.photoFile}</label>
+    <input
+      id="photo-file"
+      type="file"
+      accept="image/png,image/jpeg"
+      onchange={(e) => (photoFile = e.currentTarget.files?.[0] ?? null)}
+    />
+    <label for="photo-why">{STRINGS.photoWhy}</label>
+    <input id="photo-why" bind:value={photoReason} autocomplete="off" />
+    <button type="button" onclick={() => void sendPhoto(false)}>{STRINGS.photoUpload}</button>
+    {#if stored.photo_version}
+      <button type="button" onclick={() => void sendPhoto(true)}>{STRINGS.photoWithdraw}</button>
+    {/if}
+    {#if photoMessage}<p role="status">{photoMessage}</p>{/if}
+  </section>
   <form onsubmit={save}>
     <PatientFields bind:form prefix="e" />
     <label for="e-reason">{STRINGS.reason}</label>

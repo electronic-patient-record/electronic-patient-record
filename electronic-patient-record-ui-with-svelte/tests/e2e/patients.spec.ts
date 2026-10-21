@@ -567,3 +567,106 @@ test("the banner picks up another person's edit when the tab is shown again, and
   await expect(page.getByLabel("Given name")).toHaveValue("Ann");
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
+
+// A 1x1 PNG.
+const PNG_BYTES = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+  "base64",
+);
+
+test("the banner shows the photo, fetched under the declared purpose; the page uploads and removes one", async ({
+  page,
+}) => {
+  let version: number | null = 1;
+  const purposes: string[] = [];
+  const writes: { method: string; url: string; type: string; size: number }[] =
+    [];
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, { ...ANN, photo_version: version }),
+  );
+  await page.route(`**/api/proxy/api/patients/${ANN.id}/photo**`, (route) => {
+    const req = route.request();
+    if (req.method() === "GET") {
+      purposes.push(req.headers()["x-purpose-of-use"] ?? "");
+      return route.fulfill({
+        status: 200,
+        contentType: "image/png",
+        body: PNG_BYTES,
+      });
+    }
+    writes.push({
+      method: req.method(),
+      url: req.url(),
+      type: req.headers()["content-type"] ?? "",
+      size: req.postDataBuffer()?.length ?? 0,
+    });
+    version = req.url().includes("/withdraw") ? null : (version ?? 0) + 1;
+    return json(route, 200, { version, withdrawn: version === null });
+  });
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  const banner = page.getByRole("region", { name: "Patient banner" });
+  await expect(
+    banner.getByRole("img", { name: "Photo of SMITH, Ann" }),
+  ).toBeVisible();
+  await expect(banner).not.toContainText("No photo held");
+  expect(purposes[0]).toBe("operations");
+  await axe(page);
+
+  // Upload: the bytes go as bytes, with the version the page last saw.
+  await page.getByLabel(/Photo file/).setInputFiles({
+    name: "ann.png",
+    mimeType: "image/png",
+    buffer: PNG_BYTES,
+  });
+  await page.getByRole("button", { name: "Upload photo" }).click();
+  await expect(page.getByText("Photo saved.")).toBeVisible();
+  expect(writes[0].method).toBe("PUT");
+  expect(writes[0].url).toContain("expected_version=1");
+  expect(writes[0].type).toBe("image/png");
+  expect(writes[0].size).toBe(PNG_BYTES.length);
+
+  // Remove: a POST to withdraw, and the banner goes back to saying there is no photo.
+  await page.getByRole("button", { name: "Remove photo" }).click();
+  await expect(page.getByText(/Photo removed/)).toBeVisible();
+  expect(writes[1].method).toBe("POST");
+  expect(writes[1].url).toContain("/photo/withdraw");
+  await expect(banner).toContainText("No photo held");
+  await expect(page.getByRole("button", { name: "Remove photo" })).toHaveCount(
+    0,
+  );
+});
+
+test("a file that is not a small PNG or JPEG is refused in the page before it is sent", async ({
+  page,
+}) => {
+  let sent = 0;
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, ANN),
+  );
+  await page.route(`**/api/proxy/api/patients/${ANN.id}/photo**`, (route) => {
+    sent++;
+    return json(route, 200, {});
+  });
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  await page.getByRole("button", { name: "Upload photo" }).click();
+  await expect(page.getByText("Choose a file first.")).toBeVisible();
+  await page.getByLabel(/Photo file/).setInputFiles({
+    name: "a.gif",
+    mimeType: "image/gif",
+    buffer: Buffer.from("GIF89a"),
+  });
+  await page.getByRole("button", { name: "Upload photo" }).click();
+  await expect(
+    page.getByText("The photo must be a PNG or a JPEG."),
+  ).toBeVisible();
+  await page.getByLabel(/Photo file/).setInputFiles({
+    name: "big.png",
+    mimeType: "image/png",
+    buffer: Buffer.alloc(512 * 1024 + 1),
+  });
+  await page.getByRole("button", { name: "Upload photo" }).click();
+  await expect(
+    page.getByText("That file is larger than 512 KiB."),
+  ).toBeVisible();
+  expect(sent).toBe(0);
+});

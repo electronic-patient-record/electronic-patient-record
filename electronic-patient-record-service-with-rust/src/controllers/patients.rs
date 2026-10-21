@@ -535,7 +535,15 @@ pub(super) async fn read(
             {
                 return *r;
             }
-            Json(stored).into_response()
+            // Whether there is a photo to fetch, so the banner does not ask for one that is not
+            // there. A failed lookup fails the read: a banner must not quietly lose its photo.
+            let photo_version = match crate::photos_store::current(&ctx.db, &stored.id).await {
+                Ok(p) => p.filter(|p| p.bytes.is_some()).map(|p| p.version),
+                Err(e) => return store_failure(&e),
+            };
+            let mut body = serde_json::to_value(&stored).unwrap_or(serde_json::Value::Null);
+            body["photo_version"] = serde_json::json!(photo_version);
+            Json(body).into_response()
         }
         Err(StoreError::NotFound) => {
             // A miss is an access too. Only a well-formed id is recorded as the patient reference.
@@ -738,6 +746,9 @@ pub fn routes() -> Routes {
         .add("/", get(search))
         .add("/{id}", get(read))
         .add("/{id}", put(update))
+        .add("/{id}/photo", get(super::photos::read))
+        .add("/{id}/photo", put(super::photos::put))
+        .add("/{id}/photo/withdraw", post(super::photos::withdraw))
         .add("/{id}/consents", post(super::consents::create))
         .add("/{id}/consents", get(super::consents::list))
         .add("/{id}/consents/{consent_id}", put(super::consents::update))
