@@ -265,6 +265,22 @@ test("a patient signs in, sees only the record an administrator linked to them, 
   );
 });
 
+test("a clinician declares treatment and the API accepts it", async ({
+  page,
+}) => {
+  await signIn(page);
+  const purposes: string[] = [];
+  page.on("request", (r) => {
+    const p = r.headers()["x-purpose-of-use"];
+    if (r.url().includes("/api/proxy/") && p) purposes.push(p);
+  });
+  await page.getByLabel("Purpose of use").selectOption("treatment");
+  await page.getByLabel("Family name").fill(`Zp${Date.now()}`);
+  await page.getByRole("button", { name: "Search" }).click();
+  await expect(page.getByText("No patient matches.")).toBeVisible();
+  expect(purposes).toEqual(["treatment"]);
+});
+
 test("a tampered session cookie is refused", async ({ page, context }) => {
   await signIn(page);
   const session = (await context.cookies()).find(

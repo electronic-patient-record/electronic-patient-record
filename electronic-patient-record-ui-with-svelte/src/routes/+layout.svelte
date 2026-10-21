@@ -3,9 +3,35 @@
   import { page } from "$app/state";
   import { DEFAULT_LOCALE, localizePath } from "#lib/locales.js";
   import { STRINGS } from "#lib/strings.js";
+  import { setDefaultPurpose } from "#lib/api.js";
+  import {
+    STAFF_PURPOSES,
+    parseStaffPurpose,
+    readStoredPurpose,
+    storePurpose,
+    type StaffPurpose,
+  } from "#lib/purpose.js";
 
   let { children } = $props();
   const locale = $derived(page.data.locale ?? DEFAULT_LOCALE);
+
+  // The declared purpose is kept for this tab only. It is read after load, so the server-rendered
+  // page and the first client render agree.
+  let purpose = $state<StaffPurpose>("operations");
+  $effect(() => {
+    purpose = readStoredPurpose(window.sessionStorage);
+  });
+  $effect(() => {
+    setDefaultPurpose(purpose);
+  });
+  function choose(event: Event) {
+    const next = parseStaffPurpose((event.currentTarget as HTMLSelectElement).value);
+    if (!next) return;
+    purpose = next;
+    storePurpose(window.sessionStorage, next);
+  }
+  // "My record" always declares patient access, so the staff choice does not apply there.
+  const staffPage = $derived(!page.url.pathname.includes("/my-record"));
 </script>
 
 <a class="skip" href="#main">{STRINGS.skip}</a>
@@ -17,6 +43,14 @@
     <a href={localizePath("/patients/new", locale)}>{STRINGS.registerLink}</a>
     <a href={localizePath("/my-record", locale)}>{STRINGS.navMyRecord}</a>
   </nav>
+  {#if staffPage}
+    <label class="purpose">
+      {STRINGS.purposeLabel}
+      <select value={purpose} onchange={choose}>
+        {#each STAFF_PURPOSES as p (p)}<option value={p}>{STRINGS.purposes[p]}</option>{/each}
+      </select>
+    </label>
+  {/if}
   {#if page.data.signIn?.enabled}
     {#if page.data.signIn.name}
       <form method="POST" action="/auth/logout" class="account">

@@ -335,3 +335,41 @@ test("my record says plainly when nothing is linked, or the reader may not use i
     "Your role does not allow this.",
   );
 });
+
+test("a clinician can declare treatment; it is sent, remembered for the tab, and not sent from my record", async ({
+  page,
+}) => {
+  const seen: (string | null)[] = [];
+  await page.route("**/api/proxy/api/patients?**", (route) => {
+    seen.push(route.request().headers()["x-purpose-of-use"] ?? null);
+    return json(route, 200, { results: [], limit: 50 });
+  });
+  await page.route("**/api/proxy/api/me/patients", (route) => {
+    seen.push(route.request().headers()["x-purpose-of-use"] ?? null);
+    return json(route, 200, { records: [] });
+  });
+  const search = async () => {
+    await page.getByLabel("Family name").fill("Smith");
+    await page.getByRole("button", { name: "Search" }).click();
+    await expect(page.getByText("No patient matches.")).toBeVisible();
+  };
+
+  await page.goto("/en-001/patients");
+  await expect(page.getByLabel("Purpose of use")).toHaveValue("operations");
+  await search();
+  await page.getByLabel("Purpose of use").selectOption("treatment");
+  await search();
+
+  // Remembered across a reload in this tab.
+  await page.reload();
+  await expect(page.getByLabel("Purpose of use")).toHaveValue("treatment");
+  await search();
+  expect(seen).toEqual(["operations", "treatment", "treatment"]);
+
+  // "My record" declares patient access whatever the staff choice, and shows no picker.
+  await page.goto("/en-001/my-record");
+  await expect(page.getByRole("status")).toBeVisible();
+  await expect(page.getByLabel("Purpose of use")).toHaveCount(0);
+  expect(seen.at(-1)).toBe("patient-access");
+  await axe(page);
+});

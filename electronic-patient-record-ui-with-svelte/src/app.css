@@ -145,3 +145,16 @@ dt {
 dd {
   margin: 0;
 }
+header.site .purpose {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  margin: 0;
+  margin-inline-start: auto;
+}
+header.site .purpose select {
+  width: auto;
+}
+header.site .purpose + .account {
+  margin-inline-start: 0;
+}

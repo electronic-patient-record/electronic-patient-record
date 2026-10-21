@@ -6,6 +6,14 @@ export interface ApiResult<T = unknown> {
   body: T;
 }
 
+// The purpose of use sent when a call names none: the staff member's current choice (see
+// `purpose.ts`). A call that passes its own purpose, such as "my record", is not affected.
+let defaultPurpose: string | undefined;
+
+export function setDefaultPurpose(purpose: string | undefined): void {
+  defaultPurpose = purpose;
+}
+
 export async function call<T = unknown>(
   method: "GET" | "POST" | "PUT",
   path: string,
@@ -17,7 +25,9 @@ export async function call<T = unknown>(
       method,
       headers: {
         ...(body === undefined ? {} : { "content-type": "application/json" }),
-        ...(purpose ? { "x-purpose-of-use": purpose } : {}),
+        ...((purpose ?? defaultPurpose)
+          ? { "x-purpose-of-use": (purpose ?? defaultPurpose)! }
+          : {}),
       },
       body: body === undefined ? undefined : JSON.stringify(body),
     });

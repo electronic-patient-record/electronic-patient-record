@@ -54,6 +54,8 @@ export const STRINGS = {
   sameValue: "same",
   restrictedCandidate:
     "Another record may be the same person, but its owner has restricted who can see it. Ask someone who is allowed to look, or register anyway with a reason.",
+  purposeLabel: "Purpose of use",
+  purposes: { operations: "Operations", treatment: "Treatment" },
   navMyRecord: "My record",
   myRecordTitle: "My record",
   myRecordIntro:
