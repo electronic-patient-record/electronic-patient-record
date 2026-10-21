@@ -303,7 +303,7 @@ async fn the_verify_endpoint_logic_reports_intact_then_409_and_audits_each_check
     }
     let who = Agent("auditor-1".into());
 
-    let (status, body) = verify_audited(&s.db, &chain, &who).await.unwrap();
+    let (status, body) = verify_audited(&s.db, &chain, &who, None).await.unwrap();
     assert_eq!(status, StatusCode::OK);
     assert_eq!(body["intact"], true);
     assert_eq!(body["rows"], 3);
@@ -314,7 +314,7 @@ async fn the_verify_endpoint_logic_reports_intact_then_409_and_audits_each_check
         ids[1]
     ))
     .await;
-    let (status, body) = verify_audited(&s.db, &chain, &who).await.unwrap();
+    let (status, body) = verify_audited(&s.db, &chain, &who, None).await.unwrap();
     assert_eq!(status, StatusCode::CONFLICT);
     assert_eq!(body["intact"], false);
     assert_eq!(body["first_broken_id"], ids[1]);
@@ -346,11 +346,85 @@ async fn the_verify_endpoint_logic_reports_intact_then_409_and_audits_each_check
     audit::append(&s2.db, &Chain::unkeyed(), &event(0))
         .await
         .unwrap();
-    let (_, body) = verify_audited(&s2.db, &Chain::unkeyed(), &who)
+    let (_, body) = verify_audited(&s2.db, &Chain::unkeyed(), &who, None)
         .await
         .unwrap();
     assert_eq!(body["keyed"], false);
     assert!(body["assurance"].as_str().unwrap().contains("unkeyed"));
+    s2.finish().await;
+    s.finish().await;
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn a_published_head_catches_removed_newest_rows_and_a_rewritten_head() {
+    use axum::http::StatusCode;
+    use electronic_patient_record::audit::{Head, Verdict, verify_against};
+    use electronic_patient_record::controllers::audit::verify_audited;
+
+    let chain = keyed(KEY);
+    let s = Scratch::new().await;
+    let mut ids = vec![];
+    for n in 0..5 {
+        ids.push(audit::append(&s.db, &chain, &event(n)).await.unwrap());
+    }
+    let who = Agent("auditor-2".into());
+
+    // The first answer carries the head to publish.
+    let (status, body) = verify_audited(&s.db, &chain, &who, None).await.unwrap();
+    assert_eq!(status, StatusCode::OK);
+    let head: Head = serde_json::from_value(body["head"].clone()).unwrap();
+    assert_eq!(head.id, ids[4]);
+    assert_eq!(body["checkpoint_confirmed"], false);
+
+    // More rows after the checkpoint: still fine, and the checkpoint is confirmed.
+    audit::append(&s.db, &chain, &event(5)).await.unwrap();
+    let (status, body) = verify_audited(&s.db, &chain, &who, Some(&head))
+        .await
+        .unwrap();
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["checkpoint_confirmed"], true);
+
+    // Without a checkpoint, removing the newest rows goes unnoticed (the documented gap)...
+    s.tamper(&format!("DELETE FROM audit_events WHERE id >= {}", ids[3]))
+        .await;
+    let (v, _) = verify_against(&s.db, &chain, 2, None).await.unwrap();
+    assert_eq!(v, Verdict::Intact { rows: 3 });
+    // ...and with one, it is caught at the checkpoint's row, across small batches too.
+    for batch in [1, 2, 100] {
+        let (v, _) = verify_against(&s.db, &chain, batch, Some(&head))
+            .await
+            .unwrap();
+        match v {
+            Verdict::Broken { id, reason } => {
+                assert_eq!(id, head.id);
+                assert!(reason.contains("missing"), "{reason}");
+            }
+            other => panic!("batch {batch}: expected Broken, got {other:?}"),
+        }
+    }
+    let (status, body) = verify_audited(&s.db, &chain, &who, Some(&head))
+        .await
+        .unwrap();
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert_eq!(body["first_broken_id"], head.id);
+
+    // A checkpoint whose digest differs from the stored row is a rewrite.
+    let wrong = Head {
+        id: ids[2],
+        digest: "sha256:00".into(),
+    };
+    let (v, _) = verify_against(&s.db, &chain, 100, Some(&wrong))
+        .await
+        .unwrap();
+    assert!(matches!(v, Verdict::Broken { id, .. } if id == ids[2]));
+
+    // A checkpoint on an empty chain is missing too.
+    let s2 = Scratch::new().await;
+    let (v, h) = verify_against(&s2.db, &chain, 100, Some(&head))
+        .await
+        .unwrap();
+    assert!(matches!(v, Verdict::Broken { .. }) && h.is_none());
     s2.finish().await;
     s.finish().await;
 }

@@ -2,6 +2,18 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-21 - Audit-head checkpoint
+
+- `GET /api/audit/verify` returns `head` (id and digest of the newest row checked) and accepts
+  `?checkpoint_id=&checkpoint_digest=` from an earlier answer. A checkpoint row that is missing (newer rows removed, or a
+  checkpoint from another database) or has a different digest gives 409 at that id; one parameter without the other is
+  400. `audit::verify_against` does the work; `verify` and `verify_in_batches` are unchanged. 1 new Postgres test
+  (10 in `tests/audit_chain.rs`), including batch sizes 1, 2 and 100. Idea 1 of
+  `spec/interoperability/openehr-comparison.md`.
+- **Not done:** nothing publishes the head. Removal of the newest rows is detected only if an operator stored a head
+  where the database owner cannot write; without one the answer still says so. Not run by hand against Keycloak; the
+  query-string handler is not covered by an automated test (the logic is).
+
 ## [0.1.0] - 2026-10-20
 
 Milestone M0, scaffold. **Not for clinical use.**

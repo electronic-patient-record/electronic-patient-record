@@ -327,6 +327,16 @@ pub enum Verdict {
     },
 }
 
+/// A row's id and digest: the chain's head at some moment. Published somewhere the database's
+/// owner cannot write, it is what lets a later check notice that the newest rows were removed.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct Head {
+    /// The row's id.
+    pub id: i64,
+    /// The row's stored digest.
+    pub digest: String,
+}
+
 /// Rows read per query by [`verify`], so memory does not grow with the table.
 pub const VERIFY_BATCH: i64 = 1000;
 
@@ -354,6 +364,34 @@ pub async fn verify_in_batches(
     chain: &Chain,
     batch: i64,
 ) -> Result<Verdict, AuditError> {
+    Ok(verify_against(db, chain, batch, None).await?.0)
+}
+
+/// [`verify_in_batches`] that also returns the chain's head and, given a `checkpoint` published
+/// earlier, checks that the row it names still exists with the same digest. A missing row means
+/// newer rows were removed (or the checkpoint is from another database); a different digest means
+/// the row was rewritten. Both are [`Verdict::Broken`] at the checkpoint's id.
+///
+/// The head is the newest row *checked*, so it never includes the row a caller appends to record
+/// the verification itself.
+///
+/// # Errors
+///
+/// When the rows cannot be read.
+pub async fn verify_against(
+    db: &DatabaseConnection,
+    chain: &Chain,
+    batch: i64,
+    checkpoint: Option<&Head>,
+) -> Result<(Verdict, Option<Head>), AuditError> {
+    let missing = |c: &Head| Verdict::Broken {
+        id: c.id,
+        reason: format!(
+            "the checkpoint row {} is missing: newer rows were removed, or the checkpoint is from another database",
+            c.id
+        ),
+    };
+    let mut head: Option<Head> = None;
     let mut previous: Option<String> = None;
     let mut last_id: i64 = 0;
     let mut checked: usize = 0;
@@ -371,19 +409,33 @@ pub async fn verify_in_batches(
             .await
             .map_err(err)?;
         if rows.is_empty() {
-            return Ok(Verdict::Intact { rows: checked });
+            if let Some(c) = checkpoint
+                && head.as_ref().is_none_or(|h| h.id < c.id)
+            {
+                return Ok((missing(c), head));
+            }
+            return Ok((Verdict::Intact { rows: checked }, head));
         }
         for r in &rows {
             checked += 1;
             let id: i64 = r.try_get("", "id").map_err(err)?;
             last_id = id;
+            if let Some(c) = checkpoint
+                && id > c.id
+                && head.as_ref().is_none_or(|h| h.id < c.id)
+            {
+                return Ok((missing(c), head));
+            }
             let stored_prev: Option<String> = r.try_get("", "prev_digest").map_err(err)?;
             let digest: String = r.try_get("", "digest").map_err(err)?;
             if stored_prev != previous {
-                return Ok(Verdict::Broken {
-                    id,
-                    reason: "does not link to the previous row".into(),
-                });
+                return Ok((
+                    Verdict::Broken {
+                        id,
+                        reason: "does not link to the previous row".into(),
+                    },
+                    head,
+                ));
             }
             let action = match r.try_get::<String>("", "action").map_err(err)?.as_str() {
                 "C" => Action::Create,
@@ -405,11 +457,30 @@ pub async fn verify_in_batches(
             };
             let ts: String = r.try_get("", "ts").map_err(err)?;
             if !chain.matches(&digest, previous.as_deref(), &ts, &event) {
-                return Ok(Verdict::Broken {
-                    id,
-                    reason: format!("digest of row {checked} does not match its content"),
-                });
+                return Ok((
+                    Verdict::Broken {
+                        id,
+                        reason: format!("digest of row {checked} does not match its content"),
+                    },
+                    head,
+                ));
             }
+            if let Some(c) = checkpoint
+                && c.id == id
+                && c.digest != digest
+            {
+                return Ok((
+                    Verdict::Broken {
+                        id,
+                        reason: "does not match the published checkpoint".into(),
+                    },
+                    head,
+                ));
+            }
+            head = Some(Head {
+                id,
+                digest: digest.clone(),
+            });
             previous = Some(digest);
         }
     }
