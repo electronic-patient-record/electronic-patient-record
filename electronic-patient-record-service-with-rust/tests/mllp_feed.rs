@@ -28,26 +28,44 @@ async fn db() -> DatabaseConnection {
     db
 }
 
-fn tag(label: &str) -> String {
+/// A well-mixed number, different on every call and every run. (The clock alone is no good: it
+/// ticks in whole microseconds, so a remainder taken from it takes only a few distinct values.)
+fn mixed() -> u64 {
+    static COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    format!("Zz{label}{nanos}")
+    let mut z = u64::try_from(nanos & u128::from(u64::MAX)).unwrap()
+        ^ COUNTER
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            .wrapping_mul(0x9E37_79B9_7F4A_7C15);
+    z = z.wrapping_add(0x9E37_79B9_7F4A_7C15);
+    z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+    z ^ (z >> 31)
+}
+
+/// A name that no other test run has used and that is not close to one either: the duplicate rule
+/// (rightly) treats look-alike names with the same birth date as one person, and a test database
+/// fills up over many runs. Random-looking letters first, then the label.
+fn tag(label: &str) -> String {
+    let mut letters = String::from("Zz");
+    for _ in 0..12 {
+        letters.push(char::from(b'a' + u8::try_from(mixed() % 26).unwrap()));
+    }
+    format!("{letters}{label}")
 }
 
 /// A birth date unlikely to repeat, so look-alike test patients are not (rightly) taken for one
 /// person by the duplicate rule.
 fn dob() -> String {
-    let n = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .subsec_nanos();
+    let n = mixed();
     format!(
-        "19{:02}{:02}{:02}",
-        30 + n % 60,
-        1 + n / 60 % 12,
-        1 + n / 720 % 28
+        "{}{:02}{:02}",
+        1930 + n % 90,
+        1 + n / 90 % 12,
+        1 + n / 1080 % 28
     )
 }
 
@@ -66,9 +84,23 @@ async fn start(db: &DatabaseConnection, tweak: impl FnOnce(&mut Config)) -> std:
     addr
 }
 
+/// The given name `adt` uses for a family name.
+fn given_of(family: &str) -> String {
+    let given: String = family.chars().skip(2).take(6).collect();
+    if given.is_empty() {
+        "Ann".into()
+    } else {
+        given
+    }
+}
+
 fn adt(event: &str, control: &str, mrn: &str, family: &str, dob: &str, extra_pid: &str) -> String {
+    // The given name follows the family name, so two test people share neither: the same given
+    // name, sex and birth date alone is (rightly) a possible duplicate, and a test database fills
+    // up over many runs.
+    let given = given_of(family);
     format!(
-        "MSH|^~\\&|REG|CLINIC|EPR|HOSP|20261021090000||ADT^{event}^ADT_A05|{control}|P|2.5\rEVN|{event}|20261021090000\rPID|1||{mrn}^^^LOCAL||{family}^Ann||{dob}|F{extra_pid}\r"
+        "MSH|^~\\&|REG|CLINIC|EPR|HOSP|20261021090000||ADT^{event}^ADT_A05|{control}|P|2.5\rEVN|{event}|20261021090000\rPID|1||{mrn}^^^LOCAL||{family}^{given}||{dob}|F{extra_pid}\r"
     )
 }
 
@@ -146,9 +178,12 @@ async fn a_new_patient_is_created_a_repeat_changes_nothing_and_a_correction_is_a
 
     // A correction to the name and a phone number: version 2; the birth date and sex are kept.
     let fixed = adt("A08", "M3", &mrn, &family, &d, "|||||01632 960001");
-    let ack = send(&mut s, &fixed.replace("^Ann|", "^Annie|"))
-        .await
-        .unwrap();
+    let ack = send(
+        &mut s,
+        &fixed.replace(&format!("^{}|", given_of(&family)), "^Annie|"),
+    )
+    .await
+    .unwrap();
     assert_eq!(code(&ack), "AA", "{ack}");
     let now = by_mrn(&db, &mrn).await;
     assert_eq!(now[0].version, 2);
@@ -338,4 +373,139 @@ async fn the_connection_limit_and_the_idle_timeout_hold() {
     .unwrap();
     assert_eq!(code(&ack), "AA");
     let _ = VT; // framing constants are exercised by the helpers
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn a_refused_message_waits_in_the_queue_until_a_person_closes_it_once() {
+    use electronic_patient_record::feed_queue::{self as queue, Outcome};
+    use electronic_patient_record::patients_store::StoreError;
+    let db = db().await;
+    let addr = start(&db, |_| {}).await;
+    let (mrn, family, d) = (tag("mrn"), tag("Queue"), dob());
+    let mut s = TcpStream::connect(addr).await.unwrap();
+    let first_control = tag("A");
+    let first = send(&mut s, &adt("A28", &first_control, &mrn, &family, &d, ""))
+        .await
+        .unwrap();
+    assert_eq!(code(&first), "AA", "{first}");
+    // A different birth date is refused, and so is a type the feed does not handle.
+    let control = tag("Q");
+    let refused = adt("A08", &control, &mrn, &family, &dob(), "");
+    assert_eq!(code(&send(&mut s, &refused).await.unwrap()), "AE");
+    let oru_control = tag("R");
+    let oru = adt("A28", &oru_control, &tag("m"), &family, &d, "")
+        .replace("ADT^A28^ADT_A05", "ORU^R01^ORU_R01");
+    assert_eq!(code(&send(&mut s, &oru).await.unwrap()), "AR");
+    // The listing is capped and oldest-first, and a test database holds many old entries, so find
+    // these by control id in the table.
+    let id_of = |control: String| {
+        let db = db.clone();
+        async move {
+            db.query_one_raw(sea_orm::Statement::from_sql_and_values(
+                sea_orm::DbBackend::Postgres,
+                "SELECT refusal_id::text AS id FROM feed_refusals WHERE control_id = $1",
+                [control.into()],
+            ))
+            .await
+            .unwrap()
+            .map(|r| r.try_get::<String>("", "id").unwrap())
+        }
+    };
+    // An accepted message is not queued.
+    assert_eq!(id_of(first_control).await, None);
+    let id = id_of(control.clone())
+        .await
+        .expect("the refused message is queued");
+    let oru_id = id_of(oru_control.clone()).await.expect("so is the other");
+
+    // A listing carries no message text.
+    for e in queue::list_open(&db).await.unwrap() {
+        assert_eq!(e.message, None);
+        assert!(e.resolution.is_none());
+    }
+    let entry = queue::get(&db, &id).await.unwrap();
+    assert_eq!(
+        (entry.kind.as_str(), entry.event.as_str()),
+        ("conflict", "A08")
+    );
+    assert!(entry.reasons.iter().any(|r| r.contains("birth date")));
+    assert_eq!(entry.agent, "mllp:test-feed");
+    assert_eq!(entry.control_id, control);
+    assert_eq!(queue::get(&db, &oru_id).await.unwrap().kind, "unsupported");
+
+    // One entry shows the message as received.
+    let full = queue::get(&db, &entry.id).await.unwrap();
+    assert_eq!(full.message.as_deref(), Some(refused.as_str()));
+    assert_eq!(full.resolution, None);
+    assert_eq!(
+        queue::get(&db, "not-a-uuid").await,
+        Err(StoreError::NotFound)
+    );
+
+    // Closing needs a reason, happens once, and takes it off the open list.
+    assert!(matches!(
+        queue::resolve(&db, &entry.id, "admin", Outcome::Handled, "  ").await,
+        Err(StoreError::BadQuery(_))
+    ));
+    let closed = queue::resolve(
+        &db,
+        &entry.id,
+        "admin",
+        Outcome::Handled,
+        "corrected by hand",
+    )
+    .await
+    .unwrap();
+    let r = closed.resolution.unwrap();
+    assert_eq!(
+        (r.resolved_by.as_str(), r.outcome.as_str()),
+        ("admin", "handled")
+    );
+    assert!(matches!(
+        queue::resolve(&db, &entry.id, "other", Outcome::Dismissed, "again").await,
+        Err(StoreError::Conflict { .. })
+    ));
+    let still_open = db
+        .query_one_raw(sea_orm::Statement::from_sql_and_values(
+            sea_orm::DbBackend::Postgres,
+            "SELECT count(*) AS n FROM feed_refusals f
+             LEFT JOIN feed_refusal_resolutions r USING (refusal_id)
+             WHERE r.refusal_id IS NULL AND f.refusal_id::text = $1",
+            [entry.id.clone().into()],
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(still_open.try_get::<i64>("", "n").unwrap(), 0);
+    // The closed one is still readable, with who closed it.
+    assert_eq!(
+        queue::get(&db, &entry.id)
+            .await
+            .unwrap()
+            .resolution
+            .unwrap()
+            .resolved_by,
+        "admin"
+    );
+
+    // Nothing in either table can be changed or removed.
+    for sql in [
+        format!(
+            "UPDATE feed_refusals SET kind = 'conflict' WHERE refusal_id = '{}'",
+            entry.id
+        ),
+        format!(
+            "DELETE FROM feed_refusals WHERE refusal_id = '{}'",
+            entry.id
+        ),
+        format!(
+            "DELETE FROM feed_refusal_resolutions WHERE refusal_id = '{}'",
+            entry.id
+        ),
+        "TRUNCATE feed_refusals CASCADE".to_string(),
+    ] {
+        let e = db.execute_unprepared(&sql).await.unwrap_err().to_string();
+        assert!(e.contains("append-only"), "{sql}: {e}");
+    }
 }

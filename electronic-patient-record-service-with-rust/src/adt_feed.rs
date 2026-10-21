@@ -22,6 +22,7 @@
 
 use crate::audit::{self, Action, Event};
 use crate::controllers::patients::likely_duplicates;
+use crate::feed_queue;
 use crate::interop::hl7_adt::{self, Inbound, Rejection};
 use crate::patients_store::{self as store, StoreError};
 use crate::policy::{self, Consent, Purpose, Relationship, Resource, Role, Subject};
@@ -370,6 +371,7 @@ async fn audit_refusal(
     event: &str,
     control_id: &str,
     why: &Refusal,
+    text: &str,
 ) {
     let mut row = Event::new(Action::Execute, who.agent.clone());
     row.outcome = 4;
@@ -387,6 +389,30 @@ async fn audit_refusal(
     }));
     if let Err(e) = audit::append(db, audit::chain(), &row).await {
         tracing::error!(error = %e, "an ADT refusal could not be audited");
+    }
+    // Keep the message for a person (the work queue). A transient failure is not queued: the
+    // sender retries and nothing is wrong with the message. A failure here is logged; the
+    // acknowledgement still says the message was refused.
+    let (kind, reasons) = match why {
+        Refusal::Unsupported(m) => (feed_queue::Kind::Unsupported, vec![m.clone()]),
+        Refusal::Conflict(m) => (feed_queue::Kind::Conflict, m.clone()),
+        Refusal::Temporary(_) => return,
+    };
+    if let Err(e) = feed_queue::record(
+        db,
+        feed_queue::New {
+            agent: &who.agent,
+            peer: who.peer.as_deref(),
+            event,
+            control_id,
+            kind,
+            reasons: &reasons,
+            message: text,
+        },
+    )
+    .await
+    {
+        tracing::error!(error = %e, "a refused ADT message could not be queued");
     }
 }
 
@@ -408,7 +434,7 @@ pub async fn process(
                 Ok(inbound.clone())
             }
             Err(refusal) => {
-                audit_refusal(db, who, &inbound.event, &inbound.control_id, &refusal).await;
+                audit_refusal(db, who, &inbound.event, &inbound.control_id, &refusal, text).await;
                 Err(match refusal {
                     Refusal::Unsupported(m) => Rejection::Unsupported(m),
                     Refusal::Conflict(m) => Rejection::Invalid(m),
@@ -420,10 +446,11 @@ pub async fn process(
             if !matches!(rejection, Rejection::NotHl7(_)) {
                 let why = match rejection {
                     Rejection::Unsupported(m) => Refusal::Unsupported(m.clone()),
-                    _ => Refusal::Conflict(vec![]),
+                    Rejection::Invalid(m) => Refusal::Conflict(m.clone()),
+                    Rejection::NotHl7(m) => Refusal::Conflict(vec![m.clone()]),
                 };
                 let (event, control_id) = message_ids(text);
-                audit_refusal(db, who, &event, &control_id, &why).await;
+                audit_refusal(db, who, &event, &control_id, &why, text).await;
             }
             Err(rejection.clone())
         }
@@ -593,5 +620,120 @@ mod tests {
         assert_eq!(message_ids(&long).1.len(), 64);
         let ctl = "MSH|^~\\&|A|B|C|D|T||ADT^A01|a\u{7}b|P";
         assert_eq!(message_ids(ctl).1, "ab");
+    }
+
+    /// A small deterministic generator, so a failure can be replayed.
+    struct Lcg(u64);
+    impl Lcg {
+        fn next(&mut self) -> u64 {
+            self.0 = self
+                .0
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            self.0 >> 33
+        }
+        fn below(&mut self, n: usize) -> usize {
+            usize::try_from(self.next()).unwrap_or(0) % n.max(1)
+        }
+    }
+
+    const SAMPLE: &str = "MSH|^~\\&|REG|CLINIC|EPR|HOSP|20261021090000||ADT^A08^ADT_A05|C1|P|2.5\rEVN|A08|20261021090000\rPID|1||M-1^^^LOCAL~9434765919^^^NHS^NH||Smith^Ann^Q||19800314|F|||1 High St^^Leeds^^LS1 4AB||01632960001\r";
+
+    /// Whatever the bytes, reading a message, finding its ids and answering it must not panic, and
+    /// an acknowledgement, when there is one, must itself be readable.
+    fn exercise(bytes: &[u8]) {
+        let text = String::from_utf8_lossy(bytes);
+        let read = hl7_adt::patient_from_adt(&text);
+        let _ = message_ids(&text);
+        if let Some(ack) = hl7_adt::acknowledgement(&text, &read, "ACK1", "20261021090000") {
+            assert!(ack.starts_with("MSH"), "{ack:?}");
+        }
+    }
+
+    #[test]
+    fn the_sample_is_readable_so_the_fuzzing_starts_from_something_real() {
+        assert!(hl7_adt::patient_from_adt(SAMPLE).is_ok());
+    }
+
+    #[test]
+    fn a_message_cut_anywhere_or_with_any_one_byte_removed_never_panics() {
+        let bytes = SAMPLE.as_bytes();
+        for n in 0..=bytes.len() {
+            exercise(&bytes[..n]);
+            exercise(&bytes[n..]);
+            let mut without = bytes.to_vec();
+            if n < without.len() {
+                without.remove(n);
+                exercise(&without);
+            }
+        }
+    }
+
+    #[test]
+    fn random_damage_never_panics() {
+        let mut rng = Lcg(0x00EC_0DE5);
+        let specials: &[u8] = b"|^~\\&\r\n\x0b\x1c\0 ";
+        for _ in 0..3_000 {
+            let mut m = SAMPLE.as_bytes().to_vec();
+            for _ in 0..=rng.below(6) {
+                let at = rng.below(m.len() + 1);
+                match rng.below(5) {
+                    0 if at < m.len() => {
+                        m.remove(at);
+                    }
+                    1 => m.insert(at, specials[rng.below(specials.len())]),
+                    2 => m.insert(at, u8::try_from(rng.below(256)).unwrap_or(0)),
+                    3 if at < m.len() => m[at] = specials[rng.below(specials.len())],
+                    _ => {
+                        let end = (at + rng.below(40)).min(m.len());
+                        let chunk = m[at..end].to_vec();
+                        let to = rng.below(m.len() + 1);
+                        for (i, b) in chunk.into_iter().enumerate() {
+                            m.insert((to + i).min(m.len()), b);
+                        }
+                    }
+                }
+            }
+            exercise(&m);
+        }
+    }
+
+    #[test]
+    fn arbitrary_bytes_and_huge_fields_never_panic() {
+        let mut rng = Lcg(7);
+        for _ in 0..500 {
+            let len = rng.below(400);
+            let bytes: Vec<u8> = (0..len)
+                .map(|_| u8::try_from(rng.below(256)).unwrap_or(0))
+                .collect();
+            exercise(&bytes);
+        }
+        let long = "A".repeat(200_000);
+        exercise(
+            format!("MSH|^~\\&|{long}|X|||||ADT^A08|{long}|P|2.5\rPID|1||{long}\r").as_bytes(),
+        );
+        exercise(format!("MSH|^~\\&{}\r", "|".repeat(50_000)).as_bytes());
+    }
+
+    #[test]
+    fn random_frames_are_either_a_frame_an_error_or_more_to_read() {
+        use crate::mllp::take_frame;
+        let mut rng = Lcg(99);
+        for _ in 0..2_000 {
+            let len = rng.below(64);
+            let mut buf: Vec<u8> = (0..len)
+                .map(|_| match rng.below(4) {
+                    0 => crate::mllp::VT,
+                    1 => crate::mllp::FS,
+                    2 => crate::mllp::CR,
+                    _ => u8::try_from(rng.below(256)).unwrap_or(0),
+                })
+                .collect();
+            let before = buf.len();
+            if let Ok(Some(payload)) = take_frame(&mut buf, 32) {
+                assert!(payload.len() <= 32);
+                assert!(buf.len() < before, "a frame consumes its bytes");
+            }
+        }
     }
 }

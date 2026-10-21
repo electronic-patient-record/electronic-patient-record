@@ -2,6 +2,30 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-21 - HL7 refused-message work queue and parser fuzzing (OR-3)
+
+- A message the feed refuses (`AE` or `AR`) is kept as received in `feed_refusals` (migration 9, append-only) with the
+  event, control id, kind and reasons, and stays open until a person closes it. `feed_refusal_resolutions` holds one
+  decision per refusal (`handled` or `dismissed`, with a reason), so "open" is the absence of a row and nothing is
+  edited. A transient failure is not queued.
+- `GET /api/feed/refusals` (open ones, oldest first, 50 at most, no message text), `GET /api/feed/refusals/{id}` (the
+  message as received) and `POST /api/feed/refusals/{id}/resolve`. New policy resource `FeedQueue` (12 resources; the
+  matrix test is now 1,209,600 requests): the clinical administrator reads, searches and closes; nobody else, and the
+  feed's own role can not read its refusals back. Reads and closings are audited by id, never by content.
+- Parse failures now keep their reasons (before, an invalid message was audited with none).
+- Fuzzing: 5 unit tests mutate a real ADT message (every cut, every single-byte deletion, 3,000 random edits, arbitrary
+  bytes, 200,000-character fields) and random MLLP frames; none may panic. They found nothing.
+- Tests: 4 + 1 new unit, 1 new Postgres test (a refusal is queued, listed without text, read, closed once, can not be
+  closed twice, tables can not be changed). Hazards H-023 and H-021 updated.
+- The MLLP test data was flaky (about half of the runs): the birth dates came from a clock that ticks in whole
+  microseconds, so they took three distinct values, and look-alike patients are (rightly) flagged as possible
+  duplicates. Names, given names and birth dates are now well mixed; it is still occasionally flagged (1 run in 15
+  here) because the duplicate rule flags a shared birth date and sex even with unrelated names. **Not fixed.**
+- **Not done:** a screen for the queue and any alert or count, so a refusal nobody looks at is silent; a re-apply
+  button (a person fixes the cause through `/api/patients` and closes the entry as handled); an age limit; no corpus of
+  real sample messages, so the parser acceptance is **not met**; a conformance run; a run against the real Keycloak
+  stack (the policy gate and the handlers are tested, the HTTP layer of the three routes is not).
+
 ## 2026-10-21 - FHIR AllergyIntolerance (read-only)
 
 - `GET /fhir/R4/AllergyIntolerance?patient=` (the `Patient/` prefix is accepted) returns a `searchset` of the patient's

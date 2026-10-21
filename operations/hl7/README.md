@@ -32,7 +32,14 @@ address is recorded on every audit row.
   temporary failure to retry; `AR` a message type that is not handled. A stream that is not MLLP, a frame that is not HL7 and
   text that is not UTF-8 close the connection.
 
+## Refused messages
+
+A message answered `AE` or `AR` is kept as received in `feed_refusals` until a clinical administrator closes it
+(`GET /api/feed/refusals`, `GET /api/feed/refusals/{id}`, `POST /api/feed/refusals/{id}/resolve` with `outcome`
+`handled` or `dismissed` and a reason). The sender should still hold and resend what it can; the queue is for the person
+who fixes the cause (a corrected birth date, a registration) through `/api/patients`. The stored text is patient data.
+There is no screen, alert or count yet: someone has to look.
+
 ## What is not built
 
-`A40` merges, `PV1` and visit data, `ORU` results, `SIU`, TLS, authentication, a work queue for refused messages (the sender
-holds and retries), character sets other than UTF-8, and any conformance run against a real sending system.
+`A40` merges, `PV1` and visit data, `ORU` results, `SIU`, TLS, authentication, a screen or alert for the refusal queue, character sets other than UTF-8, and any conformance run against a real sending system.

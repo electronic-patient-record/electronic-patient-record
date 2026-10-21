@@ -127,11 +127,14 @@ pub enum Resource {
     CareRelationship,
     /// A merge of two patient records, and its reversal (`links.rs`).
     PatientLink,
+    /// HL7 messages the feed refused, waiting for a person (`feed_queue.rs`). They hold patient
+    /// data but belong to no patient on record, so no care relationship applies.
+    FeedQueue,
 }
 
 impl Resource {
     /// Every resource kind, in a fixed order.
-    pub const ALL: [Resource; 11] = [
+    pub const ALL: [Resource; 12] = [
         Resource::PatientIdentity,
         Resource::Encounter,
         Resource::Condition,
@@ -143,6 +146,7 @@ impl Resource {
         Resource::AuditLog,
         Resource::CareRelationship,
         Resource::PatientLink,
+        Resource::FeedQueue,
     ];
 
     /// A stable name for audit rows and route tables.
@@ -160,6 +164,7 @@ impl Resource {
             Resource::AuditLog => "AuditLog",
             Resource::CareRelationship => "CareRelationship",
             Resource::PatientLink => "PatientLink",
+            Resource::FeedQueue => "FeedQueue",
         }
     }
 
@@ -179,6 +184,7 @@ impl Resource {
                 | Resource::AuditLog
                 | Resource::CareRelationship
                 | Resource::PatientLink
+                | Resource::FeedQueue
         )
     }
 }
@@ -479,8 +485,8 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
     use Action::{Create, Export, MarkEnteredInError as Eie, Read, Search, Update};
     use Resource::{
         AllergyIntolerance as Allergy, AuditLog, CareRelationship as Rel, Condition,
-        Consent as Cons, Document, Encounter, MedicationRequest as Meds, Observation,
-        PatientIdentity as Identity, PatientLink as Link,
+        Consent as Cons, Document, Encounter, FeedQueue as Queue, MedicationRequest as Meds,
+        Observation, PatientIdentity as Identity, PatientLink as Link,
     };
     match (role, resource) {
         // Clinicians: full clinical work, and register or correct identity.
@@ -517,6 +523,9 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         // Merging two records is an administrator's act; a clinician may see that one happened.
         (Role::ClinicalAdmin, Link) => &[Read, Search, Create, Update],
         (Role::Clinician, Link) => &[Read],
+        // Refused feed messages: an administrator reads and closes them. They are patient data, so
+        // no one else sees them, and the feed itself can never read its own refusals back.
+        (Role::ClinicalAdmin, Queue) => &[Read, Search, Update],
         // The patient: read their own record and manage their own consent; see who looked.
         (Role::Patient, Identity) => &[Read],
         (Role::Patient, Encounter | Condition | Observation | Meds | Allergy | Document) => {
@@ -1109,8 +1118,8 @@ mod tests {
                 }
             }
         }
-        // 10 roles × 11 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
-        assert_eq!(cells, 10 * 11 * 6 * 8 * 5 * 3 * 7 * 2);
+        // 10 roles × 12 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
+        assert_eq!(cells, 10 * 12 * 6 * 8 * 5 * 3 * 7 * 2);
         assert!(allows > 0);
     }
 
