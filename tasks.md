@@ -136,12 +136,12 @@ Conventions:
   `/patients/[id]` demographics with the persistent banner (photo, name, two
   identifiers, age, allergies status).
   **Acceptance:** Playwright plus axe pass. The banner is visible on every patient route (test).
-- [ ] **AU-1 (L) — Audit writer.** **Partly landed 2026-10-20** (`src/audit.rs`; 6 unit tests, 7 Postgres tests in `tests/audit_chain.rs`): rows are hash-chained (keyed MAC when `EPR_INTEGRITY_MAC_KEY` is set), appended under an advisory lock, verified by `audit::verify`; `POST /api/patients/compare` is audited before it answers and fails closed. **Not built:** a verify *endpoint* (the acceptance says endpoint; see AU-2), audit of denied requests, audit on any other route (none read stored data yet), BALP/FHIR `AuditEvent` output, refusing to start in production without a key. Left open. Original description: One AuditEvent per access, using the BALP
+- [ ] **AU-1 (L) — Audit writer.** **Partly landed 2026-10-20** (`src/audit.rs`; 6 unit tests, 7 Postgres tests in `tests/audit_chain.rs`): rows are hash-chained (keyed MAC when `EPR_INTEGRITY_MAC_KEY` is set), appended under an advisory lock, verified by `audit::verify`; `POST /api/patients/compare` is audited before it answers and fails closed. **Verify endpoint landed 2026-10-21** (`GET /api/audit/verify`, auditor only; 409 when broken; it audits itself; 2 more Postgres tests, 9 in all; run by hand against Keycloak: 401, clinician 403, auditor 200, then 409 naming row 1 after a tampered row). Route refusals and the patient, consent and verify routes are audited too. **Not built:** removal of the *newest* rows is not detected (a chain needs its latest digest anchored somewhere the database owner cannot write); the "each controller has a test asserting an audit row" acceptance is only met by hand-run checks for the patient and consent controllers; 401, 400 and 422 responses are not audited; a write and its audit row are two transactions; BALP/FHIR `AuditEvent` output; refusing to start in production without a key. Left open. Original description: One AuditEvent per access, using the BALP
   shape: agent, patient, entity, action (C/R/U/D/E), outcome, purpose of
   use, network address, break-the-glass flag. Rows are append-only and
   hash-chained with `integrity-mac`.
   **Acceptance:** each controller has a test asserting an audit row. A verify endpoint detects a tampered row. Audit cannot be disabled by configuration.
-- [ ] **AU-2 (S) — Audit read API.** `/api/audit` and
+- [ ] **AU-2 (S) — Audit read API.** **Not built** (`GET /api/audit/verify` exists, see AU-1; the 403-is-audited half of the acceptance already holds for every route). `/api/audit` and
   `/fhir/R4/AuditEvent` search, auditor role only.
   **Acceptance:** a non-auditor gets 403, and the 403 is itself audited.
 

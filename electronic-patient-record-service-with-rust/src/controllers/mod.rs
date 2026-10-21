@@ -1,5 +1,6 @@
 //! HTTP controllers.
 
+pub mod audit;
 pub mod consents;
 pub mod patients;
 
@@ -9,5 +10,7 @@ use loco_rs::controller::AppRoutes;
 /// the census sees exactly what is served.
 #[must_use]
 pub fn all_routes() -> AppRoutes {
-    AppRoutes::with_default_routes().add_route(patients::routes())
+    AppRoutes::with_default_routes()
+        .add_route(patients::routes())
+        .add_route(audit::routes())
 }

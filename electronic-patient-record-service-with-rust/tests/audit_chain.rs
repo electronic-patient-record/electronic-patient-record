@@ -252,3 +252,105 @@ async fn comparing_patients_writes_an_audit_row_without_the_demographics() {
     );
     s.finish().await;
 }
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn verifying_in_small_batches_gives_the_same_answer_and_finds_a_break_across_a_boundary() {
+    let chain = keyed(KEY);
+    let s = Scratch::new().await;
+    let mut ids = vec![];
+    for n in 0..7 {
+        ids.push(audit::append(&s.db, &chain, &event(n)).await.unwrap());
+    }
+    for batch in [1, 2, 3, 7, 8, 1000] {
+        assert_eq!(
+            audit::verify_in_batches(&s.db, &chain, batch)
+                .await
+                .unwrap(),
+            Verdict::Intact { rows: 7 },
+            "batch {batch}"
+        );
+    }
+    // Rows 3 and 4 sit either side of a boundary when the batch is 4 (ids[0..4] | ids[4..7]).
+    s.tamper(&format!(
+        "UPDATE audit_events SET agent = 'mallory' WHERE id = {}",
+        ids[4]
+    ))
+    .await;
+    for batch in [1, 2, 4, 5, 1000] {
+        match audit::verify_in_batches(&s.db, &chain, batch)
+            .await
+            .unwrap()
+        {
+            Verdict::Broken { id, .. } => assert_eq!(id, ids[4], "batch {batch}"),
+            other => panic!("batch {batch}: expected the chain to break, got {other:?}"),
+        }
+    }
+    s.finish().await;
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn the_verify_endpoint_logic_reports_intact_then_409_and_audits_each_check() {
+    use axum::http::StatusCode;
+    use electronic_patient_record::controllers::audit::verify_audited;
+
+    let chain = keyed(KEY);
+    let s = Scratch::new().await;
+    let mut ids = vec![];
+    for n in 0..3 {
+        ids.push(audit::append(&s.db, &chain, &event(n)).await.unwrap());
+    }
+    let who = Agent("auditor-1".into());
+
+    let (status, body) = verify_audited(&s.db, &chain, &who).await.unwrap();
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["intact"], true);
+    assert_eq!(body["rows"], 3);
+    assert_eq!(body["keyed"], true);
+
+    s.tamper(&format!(
+        "UPDATE audit_events SET agent = 'mallory' WHERE id = {}",
+        ids[1]
+    ))
+    .await;
+    let (status, body) = verify_audited(&s.db, &chain, &who).await.unwrap();
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert_eq!(body["intact"], false);
+    assert_eq!(body["first_broken_id"], ids[1]);
+
+    // Each check wrote one row naming the auditor, with the outcome and no row contents.
+    let rows = s
+        .db
+        .query_all_raw(sea_orm::Statement::from_sql_and_values(
+            sea_orm::DbBackend::Postgres,
+            "SELECT resource_ref, purpose_of_use, detail::text AS detail FROM audit_events WHERE agent = $1 ORDER BY id",
+            ["auditor-1".into()],
+        ))
+        .await
+        .unwrap();
+    assert_eq!(rows.len(), 2);
+    for r in &rows {
+        assert_eq!(
+            r.try_get::<String>("", "resource_ref").unwrap(),
+            "AuditLog/$verify"
+        );
+        assert_eq!(r.try_get::<String>("", "purpose_of_use").unwrap(), "audit");
+    }
+    let second: String = rows[1].try_get("", "detail").unwrap();
+    assert!(second.contains("\"intact\": false") && second.contains(&ids[1].to_string()));
+    assert!(!second.contains("mallory"));
+
+    // An unkeyed chain says so.
+    let s2 = Scratch::new().await;
+    audit::append(&s2.db, &Chain::unkeyed(), &event(0))
+        .await
+        .unwrap();
+    let (_, body) = verify_audited(&s2.db, &Chain::unkeyed(), &who)
+        .await
+        .unwrap();
+    assert_eq!(body["keyed"], false);
+    assert!(body["assurance"].as_str().unwrap().contains("unkeyed"));
+    s2.finish().await;
+    s.finish().await;
+}

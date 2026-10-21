@@ -327,63 +327,92 @@ pub enum Verdict {
     },
 }
 
+/// Rows read per query by [`verify`], so memory does not grow with the table.
+pub const VERIFY_BATCH: i64 = 1000;
+
 /// Recompute every digest in id order.
+///
+/// The table is read in batches of [`VERIFY_BATCH`] by keyset, so a long chain is not held in
+/// memory. A chain can only show that no row was edited or removed *before the last row*: the
+/// removal of the newest rows leaves a shorter, still-consistent chain. Detecting that needs the
+/// latest digest recorded somewhere an attacker with database access cannot write.
 ///
 /// # Errors
 ///
 /// When the rows cannot be read.
 pub async fn verify(db: &DatabaseConnection, chain: &Chain) -> Result<Verdict, AuditError> {
-    let rows = db
-        .query_all_raw(pg(
-            &format!(
-                "SELECT id, to_char(recorded_at AT TIME ZONE 'UTC', '{TS_FORMAT}') AS ts, action::text AS action,
-                        outcome, agent, patient_ref, resource_ref, purpose_of_use, break_glass,
-                        network_address, detail, prev_digest, digest
-                 FROM audit_events ORDER BY id"
-            ),
-            vec![],
-        ))
-        .await
-        .map_err(err)?;
+    verify_in_batches(db, chain, VERIFY_BATCH).await
+}
+
+/// [`verify`] with a chosen batch size (the tests use a small one to cross batch boundaries).
+///
+/// # Errors
+///
+/// When the rows cannot be read.
+pub async fn verify_in_batches(
+    db: &DatabaseConnection,
+    chain: &Chain,
+    batch: i64,
+) -> Result<Verdict, AuditError> {
     let mut previous: Option<String> = None;
-    for (n, r) in rows.iter().enumerate() {
-        let id: i64 = r.try_get("", "id").map_err(err)?;
-        let stored_prev: Option<String> = r.try_get("", "prev_digest").map_err(err)?;
-        let digest: String = r.try_get("", "digest").map_err(err)?;
-        if stored_prev != previous {
-            return Ok(Verdict::Broken {
-                id,
-                reason: "does not link to the previous row".into(),
-            });
+    let mut last_id: i64 = 0;
+    let mut checked: usize = 0;
+    loop {
+        let rows = db
+            .query_all_raw(pg(
+                &format!(
+                    "SELECT id, to_char(recorded_at AT TIME ZONE 'UTC', '{TS_FORMAT}') AS ts, action::text AS action,
+                            outcome, agent, patient_ref, resource_ref, purpose_of_use, break_glass,
+                            network_address, detail, prev_digest, digest
+                     FROM audit_events WHERE id > $1 ORDER BY id LIMIT $2"
+                ),
+                vec![last_id.into(), batch.into()],
+            ))
+            .await
+            .map_err(err)?;
+        if rows.is_empty() {
+            return Ok(Verdict::Intact { rows: checked });
         }
-        let action = match r.try_get::<String>("", "action").map_err(err)?.as_str() {
-            "C" => Action::Create,
-            "R" => Action::Read,
-            "U" => Action::Update,
-            "D" => Action::Delete,
-            _ => Action::Execute,
-        };
-        let event = Event {
-            action,
-            outcome: r.try_get("", "outcome").map_err(err)?,
-            agent: r.try_get("", "agent").map_err(err)?,
-            patient_ref: r.try_get("", "patient_ref").map_err(err)?,
-            resource_ref: r.try_get("", "resource_ref").map_err(err)?,
-            purpose_of_use: r.try_get("", "purpose_of_use").map_err(err)?,
-            break_glass: r.try_get("", "break_glass").map_err(err)?,
-            network_address: r.try_get("", "network_address").map_err(err)?,
-            detail: r.try_get("", "detail").map_err(err)?,
-        };
-        let ts: String = r.try_get("", "ts").map_err(err)?;
-        if !chain.matches(&digest, previous.as_deref(), &ts, &event) {
-            return Ok(Verdict::Broken {
-                id,
-                reason: format!("digest of row {} does not match its content", n + 1),
-            });
+        for r in &rows {
+            checked += 1;
+            let id: i64 = r.try_get("", "id").map_err(err)?;
+            last_id = id;
+            let stored_prev: Option<String> = r.try_get("", "prev_digest").map_err(err)?;
+            let digest: String = r.try_get("", "digest").map_err(err)?;
+            if stored_prev != previous {
+                return Ok(Verdict::Broken {
+                    id,
+                    reason: "does not link to the previous row".into(),
+                });
+            }
+            let action = match r.try_get::<String>("", "action").map_err(err)?.as_str() {
+                "C" => Action::Create,
+                "R" => Action::Read,
+                "U" => Action::Update,
+                "D" => Action::Delete,
+                _ => Action::Execute,
+            };
+            let event = Event {
+                action,
+                outcome: r.try_get("", "outcome").map_err(err)?,
+                agent: r.try_get("", "agent").map_err(err)?,
+                patient_ref: r.try_get("", "patient_ref").map_err(err)?,
+                resource_ref: r.try_get("", "resource_ref").map_err(err)?,
+                purpose_of_use: r.try_get("", "purpose_of_use").map_err(err)?,
+                break_glass: r.try_get("", "break_glass").map_err(err)?,
+                network_address: r.try_get("", "network_address").map_err(err)?,
+                detail: r.try_get("", "detail").map_err(err)?,
+            };
+            let ts: String = r.try_get("", "ts").map_err(err)?;
+            if !chain.matches(&digest, previous.as_deref(), &ts, &event) {
+                return Ok(Verdict::Broken {
+                    id,
+                    reason: format!("digest of row {checked} does not match its content"),
+                });
+            }
+            previous = Some(digest);
         }
-        previous = Some(digest);
     }
-    Ok(Verdict::Intact { rows: rows.len() })
 }
 
 #[cfg(test)]
