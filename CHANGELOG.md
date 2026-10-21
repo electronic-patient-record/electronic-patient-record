@@ -182,6 +182,16 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
   relationship, photo, allergy) are single ones.
 - **Not done:** a consistent snapshot between the data a read returns and the audit row (nothing requires one).
 
+## 2026-10-21 - Access and consent page
+
+- `/patients/[id]/access`: the admin UI for care relationships and consent over the existing APIs (no service change).
+  `src/lib/access.ts` builds the requests and words the provisions. 3 vitest, 2 stubbed Playwright tests with axe, and
+  1 real-Keycloak test through the page: an administrator grants a care-team link (the clinician's allergy read goes from
+  403 to 200), records a deny for clinicians (403), withdraws it (200) and ends the link (403).
+- **Not done:** one provision per consent in the form (several need several consents); no in-place edit of a consent;
+  people are token ids, not names, and there is no picker; not linked from `/my-record`, so a patient cannot yet use it for
+  their own consent; the opt-out remains local only; no FHIR `Consent`.
+
 ## [0.1.0] - 2026-10-20
 
 Milestone M0, scaffold. **Not for clinical use.**

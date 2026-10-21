@@ -193,6 +193,9 @@
 
 <h1>{STRINGS.patientTitle}</h1>
 <p><a href={localizePath("/patients", locale)}>{STRINGS.backToSearch}</a></p>
+<p>
+  <a href={localizePath(`/patients/${id}/access`, locale)}>{STRINGS.accessManage}</a>
+</p>
 
 {#if loading}
   <p>{STRINGS.loading}</p>

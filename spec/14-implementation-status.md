@@ -24,8 +24,8 @@ no network, database or compilation; counts are source lines, not test runs):
 | Route registrations | 29 | `.add(` calls in `src/controllers/*.rs` |
 | Service tests | 168, plus 46 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
 | Matcher tests | 13, plus 0 `#[ignore]`d | the same patterns in the matcher |
-| Front-end unit tests (vitest) | 83 | `it(` / `test(` lines in `tests/unit` |
-| Front-end end-to-end tests (Playwright) | 27 | `test(` lines in `tests/e2e` |
+| Front-end unit tests (vitest) | 87 | `it(` / `test(` lines in `tests/unit` |
+| Front-end end-to-end tests (Playwright) | 29 | `test(` lines in `tests/e2e` |
 | Locales | 10 | entries of `LOCALES` in `src/lib/locales.ts` |
 
 **Task boxes in [`tasks.md`](../tasks.md)** (ticked / open, by prefix):

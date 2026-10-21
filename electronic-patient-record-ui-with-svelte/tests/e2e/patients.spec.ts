@@ -900,3 +900,130 @@ test("a role that may not read allergies sees no allergy section and a banner th
     page.getByRole("heading", { name: "Allergies and intolerances" }),
   ).toHaveCount(0);
 });
+
+test("an administrator records and ends a care relationship, and records and withdraws consent", async ({
+  page,
+}) => {
+  const sent: { method: string; url: string; body: any }[] = [];
+  let rels: any[] = [];
+  let consents: any[] = [];
+  const REL = (status: string, version: number) => ({
+    id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    patient_id: ANN.id,
+    version,
+    author: "admin",
+    relationship: {
+      subject: "sub-clin-1",
+      kind: "care-team",
+      status,
+      period: null,
+    },
+  });
+  const CON = (status: string, version: number) => ({
+    id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+    patient_id: ANN.id,
+    version,
+    author: "admin",
+    consent: {
+      kind: "general",
+      status,
+      provisions: [
+        {
+          effect: "deny",
+          actors: ["receptionist"],
+          purposes: [],
+          resources: [],
+          labels: [],
+        },
+      ],
+    },
+  });
+  await page.route("**/api/proxy/api/patients/*/relationships", (route) => {
+    const req = route.request();
+    if (req.method() === "GET")
+      return json(route, 200, { relationships: rels });
+    sent.push({ method: "POST", url: req.url(), body: req.postDataJSON() });
+    rels = [REL("active", 1)];
+    return json(route, 201, rels[0]);
+  });
+  await page.route("**/api/proxy/api/patients/*/relationships/*", (route) => {
+    sent.push({
+      method: "PUT",
+      url: route.request().url(),
+      body: route.request().postDataJSON(),
+    });
+    rels = [REL("ended", 2)];
+    return json(route, 200, rels[0]);
+  });
+  await page.route("**/api/proxy/api/patients/*/consents", (route) => {
+    const req = route.request();
+    if (req.method() === "GET") return json(route, 200, { consents });
+    sent.push({ method: "POST", url: req.url(), body: req.postDataJSON() });
+    consents = [CON("active", 1)];
+    return json(route, 201, consents[0]);
+  });
+  await page.route("**/api/proxy/api/patients/*/consents/*", (route) => {
+    sent.push({
+      method: "PUT",
+      url: route.request().url(),
+      body: route.request().postDataJSON(),
+    });
+    consents = [CON(route.request().postDataJSON().consent.status, 2)];
+    return json(route, 200, consents[0]);
+  });
+  await page.goto(`/en-001/patients/${ANN.id}/access`);
+  await expect(page.getByText("No relationships recorded.")).toBeVisible();
+  await expect(page.getByText(/No consent recorded/)).toBeVisible();
+  await axe(page);
+
+  await page.getByLabel(/^Person/).fill("sub-clin-1");
+  await page
+    .getByLabel("Relationship", { exact: true })
+    .selectOption("care-team");
+  await page.getByRole("button", { name: "Record relationship" }).click();
+  await expect(page.locator("strong", { hasText: "Care team" })).toBeVisible();
+  expect(sent[0].body.relationship).toEqual({
+    subject: "sub-clin-1",
+    kind: "care-team",
+    status: "active",
+    period: null,
+  });
+  await page.getByRole("button", { name: "End relationship" }).click();
+  await expect(page.locator("li", { hasText: "Ended" })).toBeVisible();
+  expect(sent[1].body.expected_version).toBe(1);
+  expect(sent[1].body.relationship.status).toBe("ended");
+
+  await page.getByLabel("receptionist").check();
+  await page.getByRole("button", { name: "Record consent" }).click();
+  await expect(
+    page.getByText(
+      "Deny: receptionist · for any purpose · any record · any label",
+    ),
+  ).toBeVisible();
+  expect(sent[2].body.consent.provisions[0].actors).toEqual(["receptionist"]);
+  await axe(page);
+  await page.getByRole("button", { name: "Withdraw" }).click();
+  await expect(page.getByText("Withdrawn", { exact: true })).toBeVisible();
+  expect(sent[3].body.expected_version).toBe(1);
+  expect(sent[3].body.consent.status).toBe("inactive");
+});
+
+test("a role that may not manage access is told so instead of seeing forms", async ({
+  page,
+}) => {
+  await page.route("**/api/proxy/api/patients/*/relationships", (r) =>
+    json(r, 403, { error: "forbidden" }),
+  );
+  await page.route("**/api/proxy/api/patients/*/consents", (r) =>
+    json(r, 403, { error: "forbidden" }),
+  );
+  await page.goto(`/en-001/patients/${ANN.id}/access`);
+  await expect(page.getByRole("status")).toHaveCount(2);
+  await expect(
+    page.getByRole("button", { name: "Record relationship" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Record consent" }),
+  ).toHaveCount(0);
+  await axe(page);
+});

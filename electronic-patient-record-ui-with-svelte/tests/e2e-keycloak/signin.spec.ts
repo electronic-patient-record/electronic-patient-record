@@ -749,3 +749,74 @@ test("allergies are clinical content: a care relationship is needed, the patient
     ),
   ).toBe(true);
 });
+
+test("an administrator grants, ends and restricts access through the page, and the API follows", async ({
+  page,
+}) => {
+  test.skip(!ADMIN, "set EPR_E2E_ADMIN_USERNAME");
+  const [admin, clinician] = await Promise.all([
+    devToken(ADMIN),
+    devToken(USERNAME),
+  ]);
+  const clinicianSub = JSON.parse(
+    Buffer.from(clinician.split(".")[1]!, "base64url").toString(),
+  ).sub as string;
+  const dob = `19${40 + Math.floor(Math.random() * 40)}-0${1 + Math.floor(Math.random() * 9)}-${10 + Math.floor(Math.random() * 18)}`;
+  const made = await fetch(`${API}/api/patients`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${admin}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      patient: {
+        names: [{ family: `Zaccess${Date.now()}`, given: ["Pat"] }],
+        birth_date: dob,
+      },
+    }),
+  });
+  expect(made.status).toBe(201);
+  const id = ((await made.json()) as any).id as string;
+  const read = async () =>
+    (
+      await fetch(`${API}/api/patients/${id}/allergies`, {
+        headers: {
+          authorization: `Bearer ${clinician}`,
+          "x-purpose-of-use": "treatment",
+        },
+      })
+    ).status;
+  // Allergies are clinical content: no relationship, no access.
+  expect(await read()).toBe(403);
+
+  await signIn(page, ADMIN);
+  await page.goto(`/en-001/patients/${id}/access`);
+  await page.getByLabel(/^Person/).fill(clinicianSub);
+  await page.getByRole("button", { name: "Record relationship" }).click();
+  await expect(page.getByText("Saved.").first()).toBeVisible();
+  await expect(page.locator("li", { hasText: clinicianSub })).toContainText(
+    "In force",
+  );
+  expect(await read()).toBe(200);
+
+  // The patient's consent beats the relationship: deny clinicians, and the same read is refused.
+  await page.getByLabel("clinician", { exact: true }).check();
+  await page.getByRole("button", { name: "Record consent" }).click();
+  await expect(
+    page.locator("li", { hasText: "Deny: clinician" }),
+  ).toBeVisible();
+  expect(await read()).toBe(403);
+  await page
+    .locator("li", { hasText: "Deny: clinician" })
+    .getByRole("button", { name: "Withdraw" })
+    .click();
+  await expect(page.locator("li", { hasText: "Withdrawn" })).toBeVisible();
+  expect(await read()).toBe(200);
+
+  // Ending the relationship takes the access away again.
+  await page.getByRole("button", { name: "End relationship" }).click();
+  await expect(page.locator("li", { hasText: clinicianSub })).toContainText(
+    "Ended",
+  );
+  expect(await read()).toBe(403);
+});
