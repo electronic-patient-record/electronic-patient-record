@@ -146,6 +146,19 @@ jobs:
       - uses: actions/checkout@v7
       - run: python3 scripts/check-links.py .
       - run: sh scripts/generate-status.sh --check
+      - run: python3 scripts/check-hazard-log.py .
+      - run: python3 scripts/test_check_hazard_log.py
+
+  # A pull request labelled `clinical-impact` must change the hazard log (task AS-1).
+  hazard-log:
+    name: Hazard log (clinical-impact PRs)
+    if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'clinical-impact')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - run: sh scripts/check-clinical-impact.sh "origin/${{ github.base_ref }}"
 
   container:
     name: Container images build (Podman)
@@ -200,7 +213,7 @@ jobs:
   ci-ok:
     name: ci-ok
     if: always()
-    needs: [matcher, api, api-db, deny, ui, docs, container, fresh-clone]
+    needs: [matcher, api, api-db, deny, ui, docs, hazard-log, container, fresh-clone]
     runs-on: ubuntu-latest
     steps:
       - run: |

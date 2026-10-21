@@ -364,6 +364,11 @@ Conventions:
   clinical risk management plan, a hazard log (`governance/clinical-safety/hazard-log.csv`)
   and a safety case report template. The CSO role is named (OQ-2).
   **Acceptance:** CI fails if a PR labelled `clinical-impact` does not touch the hazard log.
+  **Partly landed 2026-10-21:** `governance/clinical-safety/hazard-log.csv` (15 hazards for what exists, 7 open, none
+  accepted or closed), unsigned plan and safety-case templates, `scripts/check-hazard-log.py` (with 9 unit tests, in
+  the docs job) and `scripts/check-clinical-impact.sh` plus a `hazard-log` job for `clinical-impact` PRs. **Not built:**
+  a named CSO (OQ-2), any review of the ratings (the author's proposals, not validated), a safety case report. The
+  workflow has never run on GitHub (no remote); the script was run locally. Left open.
 - [ ] **AS-2 (M) — Governance pack.** DPIA, record of processing, personal
   data inventory, retention schedule (UK Records Management Code of Practice
   2023 and US ranges), DTAC 2026 checklist, accessibility statement, and a
