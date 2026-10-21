@@ -135,6 +135,14 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - **Not done:** no text search of `detail`; no streaming (the file is built in memory, hence the cap); no signed or
   encrypted export; not run against Keycloak by hand; `eq` and bare FHIR dates are still refused.
 
+## 2026-10-21 - Banner refresh
+
+- The patient page re-reads the record when the tab is shown and once a minute while shown. A clean form catches up; a
+  dirty form keeps the typing while the banner shows the newer record and an alert explains. 1 stubbed Playwright test
+  (with axe) covers clean, dirty and reload.
+- **Not done:** a minute is a poll, not a push (no SSE or WebSocket); each look is one more audited read; an edit made in
+  the last minute is not seen until the next look; not run against the real Keycloak stack; `/my-record` does not refresh.
+
 ## [0.1.0] - 2026-10-20
 
 Milestone M0, scaffold. **Not for clinical use.**

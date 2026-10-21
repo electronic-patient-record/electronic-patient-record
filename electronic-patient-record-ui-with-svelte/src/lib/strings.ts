@@ -63,6 +63,9 @@ export const STRINGS = {
   myRecordNone:
     "No record is linked to your sign-in. Ask your practice to link it, then sign in again.",
   myRecordProxy: "You are viewing this record as a proxy.",
+  changedElsewhere:
+    "Someone else changed this record (now version {v}). The banner shows their version. Your unsaved changes are kept below, but saving them will be refused.",
+  reloadDiscard: "Reload and discard my changes",
   bannerLabel: "Patient banner",
   bannerBorn: "Born",
   bannerAge: "Age",

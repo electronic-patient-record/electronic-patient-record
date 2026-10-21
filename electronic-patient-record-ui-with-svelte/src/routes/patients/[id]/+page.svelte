@@ -28,6 +28,7 @@
     loading = true;
     message = null;
     conflict = false;
+    latest = null;
     const res = await call<Stored>("GET", `/api/patients/${id}`);
     loading = false;
     const common = commonProblem(res.status);
@@ -50,6 +51,44 @@
   $effect(() => {
     void id;
     void load();
+  });
+
+  // Someone else may edit while this page is open. The page looks again when the tab comes back
+  // into view and once a minute while it is in view (each look is an audited read, so not more
+  // often). Unsaved typing is never overwritten: if the form is dirty, the banner shows the newer
+  // record and the page says so, and saving the old version would be refused anyway.
+  let latest = $state<Stored | null>(null);
+  const dirty = $derived(
+    stored !== null &&
+      (JSON.stringify(form) !== JSON.stringify(patientToForm(stored.patient)) ||
+        reason.trim() !== ""),
+  );
+
+  async function look() {
+    if (!stored || document.hidden || loading) return;
+    const res = await call<Stored>("GET", `/api/patients/${stored.id}`);
+    if (res.status !== 200 || !stored || res.body.version === stored.version) {
+      return;
+    }
+    if (dirty) {
+      latest = res.body;
+    } else {
+      stored = res.body;
+      form = patientToForm(res.body.patient);
+      latest = null;
+    }
+  }
+
+  $effect(() => {
+    const onVisible = () => {
+      if (!document.hidden) void look();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    const timer = setInterval(() => void look(), 60_000);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      clearInterval(timer);
+    };
   });
 
   async function save(event: SubmitEvent) {
@@ -100,7 +139,15 @@
 {/if}
 
 {#if stored}
-  <PatientBanner {stored} />
+  <PatientBanner stored={latest ?? stored} />
+  {#if latest}
+    <div role="alert">
+      <p>{STRINGS.changedElsewhere.replace("{v}", String(latest.version))}</p>
+      <button type="button" onclick={() => void load()}>
+        {STRINGS.reloadDiscard}
+      </button>
+    </div>
+  {/if}
   <p>
     {STRINGS.version}: {stored.version} · {STRINGS.recordedBy}: {stored.author}
   </p>

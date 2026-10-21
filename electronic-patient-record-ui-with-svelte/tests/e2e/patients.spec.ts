@@ -505,3 +505,65 @@ test("a record with little on it still gets a banner that says what is missing",
   await expect(banner).toContainText("Allergies: Not recorded");
   await axe(page);
 });
+
+test("the banner picks up another person's edit when the tab is shown again, and never overwrites typing", async ({
+  page,
+}) => {
+  let current = ANN;
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, current),
+  );
+  const show = () =>
+    page.evaluate(() => {
+      Object.defineProperty(document, "hidden", {
+        value: false,
+        configurable: true,
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  const banner = page.getByRole("region", { name: "Patient banner" });
+  await expect(
+    banner.getByRole("heading", { name: "SMITH, Ann" }),
+  ).toBeVisible();
+
+  // Clean form: the page simply catches up, form and banner.
+  current = {
+    ...ANN,
+    version: 3,
+    patient: { ...ANN.patient, names: [{ family: "Smythe", given: ["Ann"] }] },
+  };
+  await show();
+  await expect(
+    banner.getByRole("heading", { name: "SMYTHE, Ann" }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Family name")).toHaveValue("Smythe");
+  await expect(page.getByText("Version: 3")).toBeVisible();
+
+  // Dirty form: typing is kept, the banner shows the newer record, and the page says so.
+  await page.getByLabel("Given name").fill("Annie");
+  current = {
+    ...current,
+    version: 4,
+    patient: {
+      ...current.patient,
+      names: [{ family: "Smith-Jones", given: ["Ann"] }],
+    },
+  };
+  await show();
+  await expect(
+    banner.getByRole("heading", { name: "SMITH-JONES, Ann" }),
+  ).toBeVisible();
+  await expect(page.getByRole("alert")).toContainText(
+    "Someone else changed this record (now version 4)",
+  );
+  await expect(page.getByLabel("Given name")).toHaveValue("Annie");
+  await axe(page);
+
+  // Reloading is the explicit way to drop the typing.
+  await page
+    .getByRole("button", { name: "Reload and discard my changes" })
+    .click();
+  await expect(page.getByLabel("Given name")).toHaveValue("Ann");
+  await expect(page.getByRole("alert")).toHaveCount(0);
+});
