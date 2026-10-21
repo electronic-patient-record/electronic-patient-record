@@ -153,6 +153,41 @@ pub async fn active_for(
     Ok(by_patient)
 }
 
+/// The active consents that apply to each of `patient_ids`: its own and those of every record merged
+/// into it (a person's refusal does not lapse because two records were joined). Two queries however
+/// many patients (CQ-10). A patient with neither has no entry; one with merged-in records but no
+/// consent has an empty entry. Keys are lower case.
+///
+/// # Errors
+///
+/// [`StoreError::Db`] on a database failure.
+pub async fn active_with_merged(
+    db: &impl ConnectionTrait,
+    patient_ids: &[String],
+) -> Result<HashMap<String, Vec<StoredConsent>>, StoreError> {
+    let ids = ids::uuids(patient_ids);
+    let sources = crate::links::sources_of_many(db, &ids).await?;
+    let mut all = ids.clone();
+    all.extend(sources.values().flatten().cloned());
+    all.sort();
+    all.dedup();
+    let consents = active_for(db, &all).await?;
+    let mut out = HashMap::new();
+    for id in &ids {
+        let own = consents.get(id).cloned();
+        let merged = sources.get(id);
+        if own.is_none() && merged.is_none() {
+            continue;
+        }
+        let mut list = own.unwrap_or_default();
+        for source in merged.into_iter().flatten() {
+            list.extend(consents.get(source).cloned().unwrap_or_default());
+        }
+        out.insert(id.clone(), list);
+    }
+    Ok(out)
+}
+
 /// The current version of one consent of one patient.
 ///
 /// # Errors

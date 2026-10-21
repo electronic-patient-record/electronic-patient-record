@@ -2,6 +2,23 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-21 - Consent for many patients in two queries (CQ-10)
+
+- The consent check behind search and the duplicate check read each patient's merged-in records and their consents
+  one patient at a time: about 100 queries for 50 search results. `links::sources_of_many` finds every patient's
+  merged-in records in one recursive query. `consents_store::active_with_merged` reads all their active consents in
+  one more and assembles the same lists as before. A patient with merged-in records but no consent keeps its empty
+  entry, as before.
+- Tests: a Postgres test compares the batched answer with the old one-at-a-time answer. It covers a three-record merge
+  chain with refusals on two records, a lone refusal, a patient with nothing, a merged pair with no consent, an
+  upper-case id and a malformed one. With the merged-in consents dropped (a mutation) it fails.
+- **Found:** the test first broke `links_store`. Its patients shared a birth date with that test's, the test database
+  passed 200 patients with that date, and the duplicate check's `LIMIT 200` (in patient-id order) dropped the real
+  duplicate. That is a defect, not only a test problem: a common birth date in a large population has more than 200
+  people. Recorded as CQ-36 and in hazard H-002. The test now uses its own birth date, and the throwaway test
+  database was recreated (it is append-only, so the rows could not be removed).
+- **Not done:** the number of queries is two by construction; it is not counted by a test.
+
 ## 2026-10-21 - Patient search by identifier or birth date seeks an index (closes CQ-9)
 
 - `patient_current` was `DISTINCT ON (patient_id)`, and search filters it on the record body. No index could help,

@@ -145,6 +145,44 @@ pub async fn merged_into(
     row.map(|r| r.try_get("", "id").map_err(db_err)).transpose()
 }
 
+/// [`sources_of`] for many targets in one query: each target's merged-in records, keyed by the
+/// target (lower case). A target with none has no entry; an id that is not a UUID is ignored.
+///
+/// # Errors
+///
+/// [`StoreError::Db`] on a database failure.
+pub async fn sources_of_many(
+    db: &impl ConnectionTrait,
+    targets: &[String],
+) -> Result<std::collections::HashMap<String, Vec<String>>, StoreError> {
+    let mut by_target: std::collections::HashMap<String, Vec<String>> =
+        std::collections::HashMap::new();
+    let targets = ids::uuids(targets);
+    if targets.is_empty() {
+        return Ok(by_target);
+    }
+    let rows = db
+        .query_all_raw(pg(
+            "WITH RECURSIVE src(root, id) AS (
+                 SELECT target_patient_id, source_patient_id FROM patient_link_current
+                 WHERE target_patient_id = ANY($1::uuid[]) AND status = 'active'
+               UNION
+                 SELECT src.root, l.source_patient_id FROM patient_link_current l
+                 JOIN src ON l.target_patient_id = src.id WHERE l.status = 'active'
+             )
+             SELECT root::text AS root, id::text AS id FROM src ORDER BY root, id",
+            vec![targets.into()],
+        ))
+        .await
+        .map_err(db_err)?;
+    for r in &rows {
+        let root: String = r.try_get("", "root").map_err(db_err)?;
+        let id: String = r.try_get("", "id").map_err(db_err)?;
+        by_target.entry(root).or_default().push(id);
+    }
+    Ok(by_target)
+}
+
 /// Every record merged, directly or through a chain, into `target` and still merged.
 ///
 /// # Errors

@@ -455,6 +455,12 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
   candidate search on the transaction, then insert.
   **Acceptance:** a DB-gated test fires two concurrent creates for the same person and gets one record plus one
   duplicate warning.
+- [ ] **CQ-36 (S/M) — The duplicate check drops candidates past 200.** **Clinical.** `patients_store::candidates`
+  takes `LIMIT 200` ordered by patient id. When more than 200 records share a birth date (a large population) or a
+  family name, the real duplicate can be cut, and nothing says so (found by CQ-10's test). Rank the strongest evidence
+  first (a shared identifier, then family name and birth date together), and say when the list was cut.
+  **Acceptance:** with 250 records sharing a birth date, the one with the same identifier, or the same family name and
+  birth date, is still a candidate (Postgres test); a cut list is flagged in the 409.
 - [ ] **CQ-8 (S) — Background poll keeps the session alive.** **Landed 2026-10-21 except the end-to-end test** (background marker honoured by hook and proxy, warning with Stay signed in, 6 unit tests, H-025). **Open until** a real-Keycloak test sees the warning. The 60-second `look()` poll refreshes `lastSeen`
   (`src/lib/server/session.ts:72`), so the 15-minute idle timeout never fires on an open page. Mark background
   requests so the BFF does not count them as activity, and warn before the idle timeout.
@@ -468,7 +474,7 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
   review the `DISTINCT ON` `*_current` views.
   **Acceptance:** `EXPLAIN` of a patient read and a search uses an index (DB-gated test asserting no seq scan on a
   seeded table); a malformed id returns 404 without a query.
-- [ ] **CQ-10 (M) — Batch consent checks.** Replace the per-patient `links::sources_of` + `active_for` loop
+- [x] **CQ-10 (M) — Batch consent checks.** **Landed 2026-10-21** (`sources_of_many` and `active_with_merged`: two queries; equivalence test against the old method; not counted by a test). Replace the per-patient `links::sources_of` + `active_for` loop
   (`controllers/patients.rs:180`) with one query over `uuid[]`.
   **Acceptance:** a 50-result search issues a constant number of queries (counted in a DB-gated test), with the
   same verdicts as before.

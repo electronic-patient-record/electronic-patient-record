@@ -249,3 +249,126 @@ async fn the_stored_consents_drive_the_decision_and_other_patients_are_untouched
     // No ids, no query.
     assert!(store::active_for(&db, &[]).await.unwrap().is_empty());
 }
+
+/// A person the matcher will agree may be merged with another made with the same family name. The
+/// birth date comes from the name, so these people do not crowd other tests' candidate searches.
+async fn alike(db: &DatabaseConnection, family: &str) -> String {
+    let n = family
+        .bytes()
+        .fold(0u32, |h, b| h.wrapping_mul(31).wrapping_add(u32::from(b)));
+    let p = Patient {
+        names: vec![HumanName {
+            family: Some(family.into()),
+            given: vec!["Sam".into()],
+        }],
+        birth_date: Some(format!(
+            "{}-{:02}-{:02}",
+            1900 + n % 100,
+            1 + n / 100 % 12,
+            1 + n / 1200 % 28
+        )),
+        ..Default::default()
+    };
+    patients_store::create(db, "t", None, &p).await.unwrap().id
+}
+
+async fn merge(db: &DatabaseConnection, target: &str, source: &str) {
+    use sea_orm::TransactionTrait;
+    let tx = db.begin().await.unwrap();
+    electronic_patient_record::links::merge(&tx, target, source, "admin", "same person")
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+}
+
+/// The way the duplicate check and search read consent before CQ-10: one patient at a time.
+async fn one_at_a_time(
+    db: &DatabaseConnection,
+    ids: &[String],
+) -> std::collections::BTreeMap<String, Vec<String>> {
+    let ids: Vec<String> = ids.iter().map(|i| i.to_lowercase()).collect();
+    let mut active = store::active_for(db, &ids).await.unwrap();
+    for id in &ids {
+        let sources = electronic_patient_record::links::sources_of(db, id)
+            .await
+            .unwrap();
+        if sources.is_empty() {
+            continue;
+        }
+        let inherited = store::active_for(db, &sources).await.unwrap();
+        active
+            .entry(id.clone())
+            .or_default()
+            .extend(inherited.into_values().flatten());
+    }
+    shape(active)
+}
+
+fn shape(
+    m: std::collections::HashMap<String, Vec<store::StoredConsent>>,
+) -> std::collections::BTreeMap<String, Vec<String>> {
+    m.into_iter()
+        .map(|(k, v)| {
+            let mut ids: Vec<String> = v.into_iter().map(|c| c.id).collect();
+            ids.sort();
+            (k, ids)
+        })
+        .collect()
+}
+
+/// CQ-10: consents for many patients, merged-in records included, in a fixed number of queries,
+/// with the same answer as one patient at a time.
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn consents_for_many_patients_match_one_at_a_time() {
+    let db = db().await;
+    let family = format!(
+        "Zzbatch{}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    );
+    // C merged into B, B into A: A carries the refusals of A and C.
+    let (a, b, c) = (
+        alike(&db, &family).await,
+        alike(&db, &family).await,
+        alike(&db, &family).await,
+    );
+    merge(&db, &b, &c).await;
+    merge(&db, &a, &b).await;
+    for id in [&a, &c] {
+        store::create(&db, id, "t", None, &deny_research())
+            .await
+            .unwrap();
+    }
+    // D has its own refusal; E has nothing; F has a merged-in G and no consent anywhere.
+    let d = patient(&db).await;
+    store::create(&db, &d, "t", None, &deny_research())
+        .await
+        .unwrap();
+    let e = patient(&db).await;
+    let (f, g) = (
+        alike(&db, &format!("{family}f")).await,
+        alike(&db, &format!("{family}f")).await,
+    );
+    merge(&db, &f, &g).await;
+
+    let ids = vec![
+        a.to_uppercase(),
+        d.clone(),
+        e.clone(),
+        f.clone(),
+        "not-a-uuid".into(),
+    ];
+    let batched = shape(store::active_with_merged(&db, &ids).await.unwrap());
+    assert_eq!(batched, one_at_a_time(&db, &ids).await);
+    assert_eq!(batched[&a.to_lowercase()].len(), 2, "{batched:?}");
+    assert_eq!(batched[&d].len(), 1);
+    assert!(!batched.contains_key(&e));
+    assert_eq!(
+        batched.get(&f),
+        Some(&Vec::new()),
+        "a merged-in source keeps an entry"
+    );
+}

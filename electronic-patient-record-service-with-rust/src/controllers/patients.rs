@@ -176,27 +176,11 @@ pub(super) async fn consent_verdicts(
     if !auth::authentication_enforced() || patient_ids.is_empty() {
         return Ok(verdicts);
     }
-    let ids: Vec<String> = patient_ids.iter().map(|i| i.to_lowercase()).collect();
-    let mut active = consents_store::active_for(db, &ids)
+    // A refusal on a record that was merged into this one stands for this one too: the person's
+    // choice does not lapse because two records were joined. Two queries for any number of ids.
+    let active = consents_store::active_with_merged(db, patient_ids)
         .await
         .map_err(|e| Box::new(store_failure(&e)))?;
-    // A refusal on a record that was merged into this one stands for this one too: the person's
-    // choice does not lapse because two records were joined.
-    for id in &ids {
-        let sources = links::sources_of(db, id)
-            .await
-            .map_err(|e| Box::new(store_failure(&e)))?;
-        if sources.is_empty() {
-            continue;
-        }
-        let inherited = consents_store::active_for(db, &sources)
-            .await
-            .map_err(|e| Box::new(store_failure(&e)))?;
-        active
-            .entry(id.clone())
-            .or_default()
-            .extend(inherited.into_values().flatten());
-    }
     let ctx = consent::Context {
         roles: subject.roles.clone(),
         purpose,
