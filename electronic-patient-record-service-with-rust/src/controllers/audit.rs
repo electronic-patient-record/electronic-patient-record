@@ -210,6 +210,172 @@ async fn search(
     }
 }
 
+/// One CSV cell. Quoted when it holds a comma, quote or line break; a cell that starts with `=`,
+/// `+`, `-`, `@`, a tab or a carriage return gets a leading apostrophe so a spreadsheet will not
+/// run it as a formula (audit values such as an agent or a free-text reason can be chosen by an
+/// attacker).
+fn csv_cell(value: &str) -> String {
+    let guarded = if value.starts_with(['=', '+', '-', '@', '\t', '\r']) {
+        format!("'{value}")
+    } else {
+        value.to_string()
+    };
+    if guarded.contains([',', '"', '\n', '\r']) {
+        format!("\"{}\"", guarded.replace('"', "\"\""))
+    } else {
+        guarded
+    }
+}
+
+const CSV_HEADER: &str = "id,at,action,outcome,agent,patient,resource,purpose,break_glass,network_address,detail,digest,prev_digest\n";
+
+/// The rows as CSV, header first.
+fn to_csv(rows: &[audit::AuditRow]) -> String {
+    let mut out = String::from(CSV_HEADER);
+    for r in rows {
+        let cells = [
+            r.id.to_string(),
+            r.at.clone(),
+            r.action.clone(),
+            r.outcome.to_string(),
+            r.agent.clone(),
+            r.patient.clone().unwrap_or_default(),
+            r.resource.clone().unwrap_or_default(),
+            r.purpose.clone().unwrap_or_default(),
+            r.break_glass.to_string(),
+            r.network_address.clone().unwrap_or_default(),
+            r.detail
+                .as_ref()
+                .map(ToString::to_string)
+                .unwrap_or_default(),
+            r.digest.clone().unwrap_or_default(),
+            r.prev_digest.clone().unwrap_or_default(),
+        ];
+        out.push_str(
+            &cells
+                .iter()
+                .map(|c| csv_cell(c))
+                .collect::<Vec<_>>()
+                .join(","),
+        );
+        out.push('\n');
+    }
+    out
+}
+
+/// The rows as newline-delimited JSON, one object per line.
+fn to_ndjson(rows: &[audit::AuditRow]) -> String {
+    rows.iter()
+        .filter_map(|r| serde_json::to_string(r).ok())
+        .map(|l| l + "\n")
+        .collect()
+}
+
+/// Query for an export: the search criteria plus the format.
+#[derive(Debug, serde::Deserialize)]
+struct ExportQuery {
+    #[serde(flatten)]
+    criteria: audit::AuditQuery,
+    /// `csv` (default) or `ndjson`.
+    format: Option<String>,
+}
+
+/// Export the trail (task AU-2): the same criteria as the search, up to 10,000 rows, with the
+/// digests so the chain can be re-verified elsewhere. The answer is a file; when there are more
+/// rows the header `x-next-before` carries the `before` for the next file. The export is itself
+/// audited (`AuditLog/$export`): the criteria names and how many rows left, not their values.
+async fn export(
+    State(ctx): State<AppContext>,
+    Extension(agent): Extension<Agent>,
+    Extension(subject): Extension<Subject>,
+    Query(query): Query<ExportQuery>,
+) -> Response {
+    if let Err(r) = authorize(
+        &ctx.db,
+        &agent,
+        &subject,
+        Resource::AuditLog,
+        policy::Action::Export,
+        Purpose::Audit,
+        None,
+    )
+    .await
+    {
+        return *r;
+    }
+    let format = query.format.as_deref().unwrap_or("csv");
+    if !matches!(format, "csv" | "ndjson") {
+        return json_error(
+            StatusCode::BAD_REQUEST,
+            serde_json::json!({ "error": "format must be csv or ndjson" }),
+        );
+    }
+    let criteria = query.criteria.normalized();
+    let mut rows = match audit::export(&ctx.db, &criteria).await {
+        Ok(r) => r,
+        Err(audit::SearchError::BadQuery(m)) => {
+            return json_error(StatusCode::BAD_REQUEST, serde_json::json!({ "error": m }));
+        }
+        Err(audit::SearchError::Audit(e)) => {
+            tracing::error!(error = %e, "audit export failed");
+            return json_error(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                serde_json::json!({"error": "internal error"}),
+            );
+        }
+    };
+    let page = usize::try_from(audit::EXPORT_LIMIT).unwrap_or(usize::MAX);
+    let more = rows.len() > page;
+    rows.truncate(page);
+    let next = if more {
+        rows.last().map(|r| r.id)
+    } else {
+        None
+    };
+    let mut event = Event::new(Action::Read, agent.0.clone());
+    event.resource_ref = Some("AuditLog/$export".to_string());
+    event.purpose_of_use = Some(Purpose::Audit.code().to_string());
+    event.detail = Some(serde_json::json!({
+        "export": criteria.used(), "format": format, "rows": rows.len(), "truncated": more,
+    }));
+    if let Err(e) = audit::append(&ctx.db, audit::chain(), &event).await {
+        tracing::error!(error = %e, "audit export could not be audited");
+        return json_error(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            serde_json::json!({"error": "internal error"}),
+        );
+    }
+    let (content_type, body, ext) = if format == "csv" {
+        ("text/csv; charset=utf-8", to_csv(&rows), "csv")
+    } else {
+        ("application/x-ndjson", to_ndjson(&rows), "ndjson")
+    };
+    let mut response = (StatusCode::OK, body).into_response();
+    let h = response.headers_mut();
+    h.insert(
+        axum::http::header::CONTENT_TYPE,
+        axum::http::HeaderValue::from_static(content_type),
+    );
+    h.insert(
+        axum::http::header::CONTENT_DISPOSITION,
+        axum::http::HeaderValue::from_str(&format!("attachment; filename=\"audit-export.{ext}\""))
+            .unwrap_or_else(|_| axum::http::HeaderValue::from_static("attachment")),
+    );
+    h.insert(
+        axum::http::header::HeaderName::from_static("x-content-type-options"),
+        axum::http::HeaderValue::from_static("nosniff"),
+    );
+    if let Some(id) = next
+        && let Ok(v) = axum::http::HeaderValue::from_str(&id.to_string())
+    {
+        h.insert(
+            axum::http::header::HeaderName::from_static("x-next-before"),
+            v,
+        );
+    }
+    response
+}
+
 async fn verify(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -252,5 +418,72 @@ pub fn routes() -> Routes {
     Routes::new()
         .prefix("api/audit")
         .add("/", get(search))
+        .add("/export", get(export))
         .add("/verify", get(verify))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn row(agent: &str) -> audit::AuditRow {
+        audit::AuditRow {
+            id: 1,
+            at: "2026-10-21T09:00:00.000000Z".into(),
+            action: "R".into(),
+            outcome: 0,
+            agent: agent.into(),
+            patient: None,
+            resource: Some("Patient".into()),
+            purpose: None,
+            break_glass: false,
+            network_address: None,
+            detail: Some(serde_json::json!({"a": "x,y"})),
+            digest: Some("sha256:ab".into()),
+            prev_digest: None,
+        }
+    }
+
+    #[test]
+    fn a_cell_that_could_run_as_a_formula_is_defused_and_odd_characters_are_quoted() {
+        for lead in ["=", "+", "-", "@"] {
+            assert_eq!(csv_cell(&format!("{lead}cmd")), format!("'{lead}cmd"));
+        }
+        assert_eq!(csv_cell("plain"), "plain");
+        assert_eq!(csv_cell("a,b"), "\"a,b\"");
+        assert_eq!(csv_cell("say \"hi\""), "\"say \"\"hi\"\"\"");
+        assert_eq!(csv_cell("two\nlines"), "\"two\nlines\"");
+        assert_eq!(csv_cell("=1,2"), "\"'=1,2\"");
+    }
+
+    #[test]
+    fn csv_has_a_header_one_line_per_row_and_the_digests() {
+        let csv = to_csv(&[row("=HYPERLINK(\"x\")"), row("sub-2")]);
+        let lines: Vec<&str> = csv.lines().collect();
+        assert_eq!(lines.len(), 3);
+        assert!(lines[0].starts_with("id,at,action,outcome,agent,"));
+        assert!(
+            lines[1].contains("\"'=HYPERLINK(\"\"x\"\")\""),
+            "{}",
+            lines[1]
+        );
+        assert!(lines[2].ends_with(",sha256:ab,"), "{}", lines[2]);
+        assert!(
+            lines[2].contains("\"{\"\"a\"\":\"\"x,y\"\"}\""),
+            "{}",
+            lines[2]
+        );
+    }
+
+    #[test]
+    fn ndjson_is_one_json_object_per_line_with_the_digests() {
+        let out = to_ndjson(&[row("a"), row("b")]);
+        let lines: Vec<serde_json::Value> = out
+            .lines()
+            .map(|l| serde_json::from_str(l).unwrap())
+            .collect();
+        assert_eq!(lines.len(), 2);
+        assert_eq!(lines[0]["digest"], "sha256:ab");
+        assert!(lines[0].get("prev_digest").is_none());
+    }
 }

@@ -126,6 +126,15 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
   handler-level automated test in `cargo test`. I did not read the status of the last verify call on the final run.
   The test-side `exact: true` change fixes a heading clash my banner caused in the Keycloak suite.
 
+## 2026-10-21 - Audit search: le/gt, and export
+
+- `after` (`gt`) and `through` (`le`) bounds on `audit::search`, with day-precision meaning the whole day; the FHIR
+  `AuditEvent` search now takes all four prefixes. `GET /api/audit/export` returns CSV or NDJSON with the digests (up to
+  10,000 rows, `x-next-before` for more), is auditor-only (`Export`) and is itself audited. The CSV defuses formula
+  injection. Tests: 1 Postgres (instants exact, days whole, digests chained), 3 unit.
+- **Not done:** no text search of `detail`; no streaming (the file is built in memory, hence the cap); no signed or
+  encrypted export; not run against Keycloak by hand; `eq` and bare FHIR dates are still refused.
+
 ## [0.1.0] - 2026-10-20
 
 Milestone M0, scaffold. **Not for clinical use.**

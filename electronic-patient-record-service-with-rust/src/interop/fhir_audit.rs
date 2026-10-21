@@ -102,6 +102,8 @@ mod tests {
             break_glass: false,
             network_address: None,
             detail: Some(json!({ "secret": "never carried" })),
+            digest: None,
+            prev_digest: None,
         }
     }
 

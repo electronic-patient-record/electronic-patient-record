@@ -785,3 +785,96 @@ async fn a_write_and_its_audit_row_commit_or_roll_back_together() {
     );
     s.finish().await;
 }
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn after_and_through_are_exact_for_instants_and_cover_whole_days_for_dates() {
+    use electronic_patient_record::audit::{AuditQuery, export, search};
+
+    let chain = Chain::unkeyed();
+    let s = Scratch::new().await;
+    let mut ids = vec![];
+    for n in 0..5 {
+        ids.push(audit::append(&s.db, &chain, &event(n)).await.unwrap());
+    }
+    let all = search(&s.db, &AuditQuery::default()).await.unwrap();
+    let at = |id: i64| all.iter().find(|r| r.id == id).unwrap().at.clone();
+    let ids_of = |rows: Vec<electronic_patient_record::audit::AuditRow>| -> Vec<i64> {
+        rows.into_iter().map(|r| r.id).collect()
+    };
+    let q = |f: &dyn Fn(&mut AuditQuery)| {
+        let mut q = AuditQuery::default();
+        f(&mut q);
+        q
+    };
+    // An instant: `through` includes the row at that instant, `after` excludes it.
+    let t = at(ids[2]);
+    let through = search(&s.db, &q(&|q| q.through = Some(t.clone())))
+        .await
+        .unwrap();
+    assert_eq!(ids_of(through), vec![ids[2], ids[1], ids[0]]);
+    let after = search(&s.db, &q(&|q| q.after = Some(t.clone())))
+        .await
+        .unwrap();
+    assert_eq!(ids_of(after), vec![ids[4], ids[3]]);
+    // A bare date covers the whole day: `through` today has everything, `after` today nothing,
+    // `after` yesterday everything, `through` yesterday nothing.
+    let today = t[..10].to_string();
+    let day_before = {
+        let rows =
+            s.db.query_one_raw(sea_orm::Statement::from_string(
+                sea_orm::DbBackend::Postgres,
+                "SELECT to_char(current_date - 1, 'YYYY-MM-DD') AS d".to_string(),
+            ))
+            .await
+            .unwrap()
+            .unwrap();
+        rows.try_get::<String>("", "d").unwrap()
+    };
+    assert_eq!(
+        search(&s.db, &q(&|q| q.through = Some(today.clone())))
+            .await
+            .unwrap()
+            .len(),
+        5
+    );
+    assert!(
+        search(&s.db, &q(&|q| q.after = Some(today.clone())))
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    assert_eq!(
+        search(&s.db, &q(&|q| q.after = Some(day_before.clone())))
+            .await
+            .unwrap()
+            .len(),
+        5
+    );
+    assert!(
+        search(&s.db, &q(&|q| q.through = Some(day_before.clone())))
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    // Bad values are refused like the other bounds.
+    assert!(
+        search(&s.db, &q(&|q| q.after = Some("soon".into())))
+            .await
+            .is_err()
+    );
+    // An export carries the digests a search leaves out, and chains them.
+    let exported = export(&s.db, &AuditQuery::default()).await.unwrap();
+    assert_eq!(exported.len(), 5);
+    assert!(exported.iter().all(|r| r.digest.is_some()));
+    assert_eq!(
+        exported[0].prev_digest, exported[1].digest,
+        "newest first: each row names its predecessor"
+    );
+    assert!(exported[4].prev_digest.is_none());
+    assert!(
+        all.iter()
+            .all(|r| r.digest.is_none() && r.prev_digest.is_none())
+    );
+    s.finish().await;
+}

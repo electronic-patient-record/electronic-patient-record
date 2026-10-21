@@ -552,6 +552,10 @@ pub struct AuditQuery {
     pub from: Option<String>,
     /// Before this instant, same formats, exclusive.
     pub to: Option<String>,
+    /// After this instant, exclusive. A bare date means after the end of that day.
+    pub after: Option<String>,
+    /// Up to and including this instant. A bare date means up to the end of that day.
+    pub through: Option<String>,
     /// Rows older than this id (the previous page's `next`).
     pub before: Option<i64>,
 }
@@ -571,6 +575,8 @@ impl AuditQuery {
             break_glass: self.break_glass,
             from: keep(&self.from),
             to: keep(&self.to),
+            after: keep(&self.after),
+            through: keep(&self.through),
             before: self.before,
         }
     }
@@ -588,6 +594,8 @@ impl AuditQuery {
             ("break_glass", self.break_glass.is_some()),
             ("from", self.from.is_some()),
             ("to", self.to.is_some()),
+            ("after", self.after.is_some()),
+            ("through", self.through.is_some()),
             ("before", self.before.is_some()),
         ]
         .into_iter()
@@ -621,6 +629,13 @@ pub struct AuditRow {
     pub network_address: Option<String>,
     /// Structured detail; never holds demographics or consent content by rule.
     pub detail: Option<serde_json::Value>,
+    /// This row's digest, and the previous row's. Only an export carries them, so an auditor can
+    /// re-verify the chain elsewhere; a search leaves them out.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub digest: Option<String>,
+    /// The previous row's digest (`None` for the first row, and for a search).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prev_digest: Option<String>,
 }
 
 /// Why a search failed.
@@ -630,6 +645,15 @@ pub enum SearchError {
     BadQuery(String),
     /// The rows could not be read.
     Audit(AuditError),
+}
+
+/// The interval to add to a bound so that day-precision and instant-precision both mean what a
+/// reader expects: a bare `YYYY-MM-DD` covers the whole day, an instant is exact.
+fn end_offset(value: Option<&str>, day: &str, instant: &str) -> String {
+    match value {
+        Some(v) if v.len() == 10 => day.to_string(),
+        _ => instant.to_string(),
+    }
 }
 
 /// The most rows [`search`] returns.
@@ -643,6 +667,27 @@ pub const SEARCH_LIMIT: i64 = 50;
 /// [`SearchError::BadQuery`] for an unknown action, outcome or date; [`SearchError::Audit`] when
 /// the rows cannot be read.
 pub async fn search(db: &DatabaseConnection, q: &AuditQuery) -> Result<Vec<AuditRow>, SearchError> {
+    search_with(db, q, SEARCH_LIMIT + 1, false).await
+}
+
+/// The most rows an export returns (one more is read to know there is another page).
+pub const EXPORT_LIMIT: i64 = 10_000;
+
+/// [`search`] for an export: up to [`EXPORT_LIMIT`] + 1 rows, with the digests.
+///
+/// # Errors
+///
+/// As [`search`].
+pub async fn export(db: &DatabaseConnection, q: &AuditQuery) -> Result<Vec<AuditRow>, SearchError> {
+    search_with(db, q, EXPORT_LIMIT + 1, true).await
+}
+
+async fn search_with(
+    db: &DatabaseConnection,
+    q: &AuditQuery,
+    limit: i64,
+    digests: bool,
+) -> Result<Vec<AuditRow>, SearchError> {
     let q = &q.normalized();
     if let Some(a) = &q.action
         && !matches!(a.as_str(), "C" | "R" | "U" | "D" | "E")
@@ -658,7 +703,12 @@ pub async fn search(db: &DatabaseConnection, q: &AuditQuery) -> Result<Vec<Audit
             "outcome must be 0, 4, 8 or 12".into(),
         ));
     }
-    for (name, v) in [("from", &q.from), ("to", &q.to)] {
+    for (name, v) in [
+        ("from", &q.from),
+        ("to", &q.to),
+        ("after", &q.after),
+        ("through", &q.through),
+    ] {
         if let Some(v) = v {
             let shaped = v.len() >= 10
                 && v.is_char_boundary(10)
@@ -687,7 +737,8 @@ pub async fn search(db: &DatabaseConnection, q: &AuditQuery) -> Result<Vec<Audit
             &format!(
                 "SELECT id, to_char(recorded_at AT TIME ZONE 'UTC', '{TS_FORMAT}') AS ts,
                         action::text AS action, outcome, agent, patient_ref, resource_ref,
-                        purpose_of_use, break_glass, network_address, detail
+                        purpose_of_use, break_glass, network_address, detail,
+                        digest, prev_digest
                  FROM audit_events
                  WHERE ($1::text IS NULL OR agent = $1)
                    AND ($2::text IS NULL OR lower(patient_ref) = 'patient/' || lower($2))
@@ -698,7 +749,9 @@ pub async fn search(db: &DatabaseConnection, q: &AuditQuery) -> Result<Vec<Audit
                    AND ($7::text IS NULL OR recorded_at >= $7::timestamptz)
                    AND ($8::text IS NULL OR recorded_at < $8::timestamptz)
                    AND ($9::bigint IS NULL OR id < $9)
-                 ORDER BY id DESC LIMIT $10"
+                   AND ($10::text IS NULL OR recorded_at >= $10::timestamptz + $11::interval)
+                   AND ($12::text IS NULL OR recorded_at < $12::timestamptz + $13::interval)
+                 ORDER BY id DESC LIMIT $14"
             ),
             vec![
                 q.agent.clone().into(),
@@ -710,7 +763,14 @@ pub async fn search(db: &DatabaseConnection, q: &AuditQuery) -> Result<Vec<Audit
                 q.from.clone().into(),
                 q.to.clone().into(),
                 q.before.into(),
-                (SEARCH_LIMIT + 1).into(),
+                // gt: after the end of a bare day, or after an instant (the microsecond is the
+                // column's resolution, so "after 12:00:00" starts at 12:00:00.000001).
+                q.after.clone().into(),
+                end_offset(q.after.as_deref(), "1 day", "1 microsecond").into(),
+                // le: before the start of the next day, or before an instant plus one microsecond.
+                q.through.clone().into(),
+                end_offset(q.through.as_deref(), "1 day", "1 microsecond").into(),
+                limit.into(),
             ],
         ))
         .await
@@ -730,6 +790,16 @@ pub async fn search(db: &DatabaseConnection, q: &AuditQuery) -> Result<Vec<Audit
                 break_glass: r.try_get("", "break_glass").map_err(e)?,
                 network_address: r.try_get("", "network_address").map_err(e)?,
                 detail: r.try_get("", "detail").map_err(e)?,
+                digest: if digests {
+                    Some(r.try_get("", "digest").map_err(e)?)
+                } else {
+                    None
+                },
+                prev_digest: if digests {
+                    r.try_get("", "prev_digest").map_err(e)?
+                } else {
+                    None
+                },
             })
         })
         .collect()

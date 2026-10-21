@@ -375,9 +375,10 @@ async fn update_patient(
     one(r, StatusCode::OK, true).await
 }
 
-/// AuditEvent search parameters as audit criteria. `date` may repeat with `ge` and `lt` prefixes
-/// (an inclusive start and an exclusive end); `le` and `gt` are refused because the store compares
-/// whole instants and an exact answer needs the other bound. `patient` takes a bare id or
+/// AuditEvent search parameters as audit criteria. `date` may repeat with the `ge`, `gt`, `le` and
+/// `lt` prefixes; a bare date covers its whole day (`le2026-10-01` includes all of 1 October,
+/// `gt2026-10-01` starts on 2 October), an instant is exact. A date with no prefix is refused
+/// (FHIR reads it as `eq`, which this does not support). `patient` takes a bare id or
 /// `Patient/<id>`. Unknown parameters are ignored.
 fn audit_query_from(pairs: &[(String, String)]) -> Result<crate::audit::AuditQuery, String> {
     let mut q = crate::audit::AuditQuery::default();
@@ -407,8 +408,12 @@ fn audit_query_from(pairs: &[(String, String)]) -> Result<crate::audit::AuditQue
                     q.from = Some(v.to_string());
                 } else if let Some(v) = value.strip_prefix("lt") {
                     q.to = Some(v.to_string());
+                } else if let Some(v) = value.strip_prefix("gt") {
+                    q.after = Some(v.to_string());
+                } else if let Some(v) = value.strip_prefix("le") {
+                    q.through = Some(v.to_string());
                 } else {
-                    return Err("date supports only the ge and lt prefixes".to_string());
+                    return Err("date supports the ge, gt, le and lt prefixes".to_string());
                 }
             }
             _ => {}
@@ -527,7 +532,7 @@ fn capability() -> serde_json::Value {
                     { "name": "patient", "type": "reference" },
                     { "name": "action", "type": "token" },
                     { "name": "outcome", "type": "token" },
-                    { "name": "date", "type": "date", "documentation": "ge and lt prefixes only" },
+                    { "name": "date", "type": "date", "documentation": "ge, gt, le and lt prefixes; no bare or eq dates" },
                 ],
             }],
         }],
@@ -754,9 +759,15 @@ mod tests {
         assert_eq!(q.from.as_deref(), Some("2026-10-01"));
         assert_eq!(q.to.as_deref(), Some("2026-11-01"));
         assert_eq!(q.before, Some(90));
-        for bad in [
-            ("date", "le2026-10-01"),
+        let both = audit_query_from(&pairs(&[
             ("date", "gt2026-10-01"),
+            ("date", "le2026-10-31"),
+        ]))
+        .unwrap();
+        assert_eq!(both.after.as_deref(), Some("2026-10-01"));
+        assert_eq!(both.through.as_deref(), Some("2026-10-31"));
+        for bad in [
+            ("date", "eq2026-10-01"),
             ("date", "2026-10-01"),
             ("outcome", "x"),
             ("_before", "x"),

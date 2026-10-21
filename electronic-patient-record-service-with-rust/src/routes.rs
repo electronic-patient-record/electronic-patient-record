@@ -51,6 +51,12 @@ pub const TABLE: &[(&str, &str, Resource, Action)] = &[
     ("GET", "/api/audit", Resource::AuditLog, Action::Search),
     (
         "GET",
+        "/api/audit/export",
+        Resource::AuditLog,
+        Action::Export,
+    ),
+    (
+        "GET",
         "/fhir/R4/AuditEvent",
         Resource::AuditLog,
         Action::Search,
