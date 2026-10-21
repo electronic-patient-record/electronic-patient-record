@@ -1115,3 +1115,111 @@ test("merging and unmerging send the reason, show the server's refusal, and relo
     body: { source: OLD, reason: "they are two people" },
   });
 });
+
+const REFUSAL = (over: Record<string, unknown> = {}) => ({
+  id: "44444444-4444-4444-8444-444444444444",
+  received_at: "2026-10-21T09:00:12.000000Z",
+  agent: "mllp:adt-feed",
+  peer: "10.0.0.5",
+  event: "A08",
+  control_id: "M-1",
+  kind: "conflict",
+  reasons: ["the birth date differs from the record"],
+  resolution: null,
+  ...over,
+});
+
+test("an administrator sees the refused messages, reads one, and closes it with a reason", async ({
+  page,
+}) => {
+  let open = [REFUSAL()];
+  const sent: { url: string; body: any }[] = [];
+  await page.route("**/api/proxy/api/feed/refusals", (route) =>
+    json(route, 200, { refusals: open, limit: 50 }),
+  );
+  await page.route("**/api/proxy/api/feed/refusals/*", (route) =>
+    json(route, 200, {
+      ...REFUSAL(),
+      message: "MSH|^~\\&|REG\rPID|1||M-1^^^LOCAL||Smith^Ann||19800314|F\r",
+    }),
+  );
+  await page.route("**/api/proxy/api/feed/refusals/*/resolve", (route) => {
+    sent.push({
+      url: route.request().url(),
+      body: route.request().postDataJSON(),
+    });
+    open = [];
+    return json(route, 200, REFUSAL({ resolution: {} }));
+  });
+  await page.goto("/en-001/admin/feed");
+  await expect(page.getByText("1 waiting")).toBeVisible();
+  await expect(
+    page.getByText("the birth date differs from the record"),
+  ).toBeVisible();
+  await axe(page);
+
+  await page.getByRole("button", { name: "Show the message" }).click();
+  await expect(page.locator("pre")).toContainText("PID|1||M-1^^^LOCAL");
+  // The segments are on separate lines.
+  expect(await page.locator("pre").innerText()).toContain("\nPID|1");
+  await axe(page);
+
+  // No reason, no request.
+  await page.getByRole("button", { name: "Close this entry" }).click();
+  await expect(
+    page.getByText("Give a reason to close an entry."),
+  ).toBeVisible();
+  expect(sent).toHaveLength(0);
+
+  await page.getByLabel("Outcome").selectOption("dismissed");
+  await page.getByLabel("Reason (required)").fill("duplicate of M-0");
+  await page.getByRole("button", { name: "Close this entry" }).click();
+  await expect(page.getByText("Closed.")).toBeVisible();
+  await expect(
+    page.getByText("No refused messages are waiting."),
+  ).toBeVisible();
+  expect(sent[0].url).toContain(
+    "/44444444-4444-4444-8444-444444444444/resolve",
+  );
+  expect(sent[0].body).toEqual({
+    outcome: "dismissed",
+    reason: "duplicate of M-0",
+  });
+});
+
+test("a role that may not read the queue is told so, and an entry closed by someone else reloads", async ({
+  page,
+}) => {
+  await page.route("**/api/proxy/api/feed/refusals", (route) =>
+    json(route, 403, { error: "forbidden" }),
+  );
+  await page.goto("/en-001/admin/feed");
+  await expect(page.getByText("Your role does not allow this.")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Show the message" }),
+  ).toHaveCount(0);
+  await axe(page);
+
+  await page.unroute("**/api/proxy/api/feed/refusals");
+  let open = [REFUSAL()];
+  await page.route("**/api/proxy/api/feed/refusals", (route) =>
+    json(route, 200, { refusals: open, limit: 50 }),
+  );
+  await page.route("**/api/proxy/api/feed/refusals/*", (route) =>
+    json(route, 200, { ...REFUSAL(), message: "MSH|^~\\&|REG\r" }),
+  );
+  await page.route("**/api/proxy/api/feed/refusals/*/resolve", (route) => {
+    open = [];
+    return json(route, 409, { error: "already resolved" });
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Show the message" }).click();
+  await page.getByLabel("Reason (required)").fill("x");
+  await page.getByRole("button", { name: "Close this entry" }).click();
+  await expect(
+    page.getByText("Someone else closed it. The list was reloaded."),
+  ).toBeVisible();
+  await expect(
+    page.getByText("No refused messages are waiting."),
+  ).toBeVisible();
+});

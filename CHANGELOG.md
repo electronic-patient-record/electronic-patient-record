@@ -2,6 +2,20 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-21 - Refused-message queue screen
+
+- `/admin/feed` ("Refused messages" in the navigation): the open entries with the kind, the event, the sender's control
+  id, when it arrived and why; "Show the message" fetches one message (a listing carries none) and shows it with the
+  segments on separate lines; closing needs an outcome (`handled` or `dismissed`) and a reason, and a blank reason sends
+  nothing. A 403 says the role does not allow it; a 409 (someone else closed it) reloads the list. The text is escaped,
+  never rendered as markup.
+- 3 vitest, 2 stubbed Playwright tests with axe, and a real-stack test (Keycloak, API, MLLP): an ORU message is sent to
+  the listener and answered `AR`, a clinician is refused the queue (403), the administrator signs in, finds the entry,
+  reads it, closes it, and the audit trail has the read and the closing with the `clinical-admin` role. This is also the
+  first run of the three queue routes over HTTP.
+- **Not done:** a count or alert (the page is reached only from the navigation, so a queue nobody opens is still silent),
+  a re-apply button, paging beyond the oldest 50, an age limit, a locale other than English (strings are shared).
+
 ## 2026-10-21 - HL7 refused-message work queue and parser fuzzing (OR-3)
 
 - A message the feed refuses (`AE` or `AR`) is kept as received in `feed_refusals` (migration 9, append-only) with the

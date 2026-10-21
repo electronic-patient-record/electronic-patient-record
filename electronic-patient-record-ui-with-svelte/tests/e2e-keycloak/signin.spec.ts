@@ -1056,3 +1056,57 @@ test("merging two records is a link: allergies and consent follow it, the old re
   expect(text).not.toContain(family);
   expect(text).not.toContain("same person registered twice");
 });
+
+// The refused-message queue (OR-3). Needs the API started with EPR_MLLP_BIND=127.0.0.1:<port>, and that
+// port in EPR_E2E_MLLP_PORT. An ORU message is refused by the feed; the administrator finds it in the
+// queue, reads it and closes it; a clinician is refused the queue.
+const MLLP_PORT = Number(process.env.EPR_E2E_MLLP_PORT ?? 0);
+
+test("a refused HL7 message waits in the queue for an administrator, and a clinician cannot see it", async ({
+  page,
+}) => {
+  test.skip(
+    !ADMIN || !MLLP_PORT,
+    "set EPR_E2E_ADMIN_USERNAME and EPR_E2E_MLLP_PORT",
+  );
+  const { connect } = await import("node:net");
+  const control = `E2E${Date.now()}`;
+  const message = `MSH|^~\\&|LAB|CLINIC|EPR|HOSP|20261021090000||ORU^R01^ORU_R01|${control}|P|2.5\rPID|1||X1^^^LOCAL||Zqueue^Test||19800101|F\r`;
+  const ack = await new Promise<string>((resolve, reject) => {
+    const socket = connect(MLLP_PORT, "127.0.0.1", () =>
+      socket.write(
+        Buffer.concat([
+          Buffer.from([0x0b]),
+          Buffer.from(message),
+          Buffer.from([0x1c, 0x0d]),
+        ]),
+      ),
+    );
+    socket.once("data", (d) => {
+      socket.end();
+      resolve(d.toString());
+    });
+    socket.once("error", reject);
+  });
+  expect(ack).toContain("MSA|AR|" + control);
+
+  const clinician = await devToken(USERNAME);
+  const asClinician = await fetch(`${API}/api/feed/refusals`, {
+    headers: { authorization: `Bearer ${clinician}` },
+  });
+  expect(asClinician.status).toBe(403);
+
+  await signIn(page, ADMIN);
+  await page.goto("/en-001/admin/feed");
+  const entry = page.locator("li", { hasText: control }).first();
+  await expect(entry).toContainText("Not a message type the feed handles");
+  await entry.getByRole("button", { name: "Show the message" }).click();
+  await expect(page.locator("pre")).toContainText("PID|1||X1^^^LOCAL");
+  await page.getByLabel("Outcome").selectOption("dismissed");
+  await page
+    .getByLabel("Reason (required)")
+    .fill("laboratory results are not handled here");
+  await page.getByRole("button", { name: "Close this entry" }).click();
+  await expect(page.getByText("Closed.")).toBeVisible();
+  await expect(page.locator("li", { hasText: control })).toHaveCount(0);
+});

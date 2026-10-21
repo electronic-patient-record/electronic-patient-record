@@ -38,8 +38,8 @@ A message answered `AE` or `AR` is kept as received in `feed_refusals` until a c
 (`GET /api/feed/refusals`, `GET /api/feed/refusals/{id}`, `POST /api/feed/refusals/{id}/resolve` with `outcome`
 `handled` or `dismissed` and a reason). The sender should still hold and resend what it can; the queue is for the person
 who fixes the cause (a corrected birth date, a registration) through `/api/patients`. The stored text is patient data.
-There is no screen, alert or count yet: someone has to look.
+The screen is `/admin/feed` in the UI. There is no alert or count yet: someone has to look.
 
 ## What is not built
 
-`A40` merges, `PV1` and visit data, `ORU` results, `SIU`, TLS, authentication, a screen or alert for the refusal queue, character sets other than UTF-8, and any conformance run against a real sending system.
+`A40` merges, `PV1` and visit data, `ORU` results, `SIU`, TLS, authentication, an alert or count for the refusal queue, character sets other than UTF-8, and any conformance run against a real sending system.
