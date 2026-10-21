@@ -225,6 +225,25 @@ pub async fn list_open(db: &impl ConnectionTrait) -> Result<Vec<Entry>, StoreErr
     rows.iter().map(to_entry).collect()
 }
 
+/// How many refusals nobody has closed.
+///
+/// # Errors
+///
+/// [`StoreError::Db`].
+pub async fn count_open(db: &impl ConnectionTrait) -> Result<i64, StoreError> {
+    let row = db
+        .query_one_raw(pg(
+            "SELECT count(*) AS n FROM feed_refusals f
+             LEFT JOIN feed_refusal_resolutions r USING (refusal_id)
+             WHERE r.refusal_id IS NULL",
+            vec![],
+        ))
+        .await
+        .map_err(db_err)?
+        .ok_or_else(|| StoreError::Db("count returned no row".into()))?;
+    row.try_get("", "n").map_err(db_err)
+}
+
 /// One refusal with its message text, open or closed.
 ///
 /// # Errors

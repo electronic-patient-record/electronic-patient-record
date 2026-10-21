@@ -8,6 +8,7 @@
     type Outcome,
     type Refusal,
   } from "#lib/feed-queue.js";
+  import { refreshFeedCount } from "#lib/feed-count.svelte.js";
   import { STRINGS } from "#lib/strings.js";
 
   let open = $state<Refusal[] | null>(null);
@@ -30,6 +31,7 @@
     } else if (res.status === 200) {
       open = res.body.refusals;
       limit = res.body.limit;
+      void refreshFeedCount();
     } else message = STRINGS.error;
   }
   $effect(() => {

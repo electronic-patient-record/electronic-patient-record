@@ -1,4 +1,5 @@
-//! The work queue for refused HL7 messages (task OR-3): `GET /api/feed/refusals` (the open ones),
+//! The work queue for refused HL7 messages (task OR-3): `GET /api/feed/refusals/count` (how many wait),
+//! `GET /api/feed/refusals` (the open ones),
 //! `GET /api/feed/refusals/{id}` (one, with the message as received) and
 //! `POST /api/feed/refusals/{id}/resolve` (close it, with an outcome and a reason).
 //!
@@ -91,6 +92,54 @@ async fn list(
         return *r;
     }
     Json(serde_json::json!({ "refusals": open, "limit": queue::LIST_LIMIT })).into_response()
+}
+
+/// How many are waiting, for the admin screens' navigation. No message text, no ids. Audited like
+/// any other search of the queue.
+async fn count(
+    State(ctx): State<AppContext>,
+    Extension(agent): Extension<Agent>,
+    Extension(subject): Extension<Subject>,
+    headers: HeaderMap,
+) -> Response {
+    let purpose = match purpose_of(&headers) {
+        Ok(p) => p,
+        Err(r) => return *r,
+    };
+    if let Err(r) = authorize(
+        &ctx.db,
+        &agent,
+        &subject,
+        Resource::FeedQueue,
+        policy::Action::Search,
+        purpose,
+        None,
+    )
+    .await
+    {
+        return *r;
+    }
+    let open = match queue::count_open(&ctx.db).await {
+        Ok(n) => n,
+        Err(e) => return failure(e),
+    };
+    if let Err(r) = audit_resource(
+        &ctx.db,
+        &agent,
+        Access {
+            action: Action::Read,
+            outcome: 0,
+            purpose,
+            resource: "FeedQueue",
+            patient_id: None,
+        },
+        serde_json::json!({ "count": open }),
+    )
+    .await
+    {
+        return *r;
+    }
+    Json(serde_json::json!({ "open": open })).into_response()
 }
 
 async fn read(
@@ -210,6 +259,7 @@ pub fn routes() -> Routes {
     Routes::new()
         .prefix("api/feed")
         .add("/refusals", get(list))
+        .add("/refusals/count", get(count))
         .add("/refusals/{id}", get(read))
         .add("/refusals/{id}/resolve", post(resolve))
 }

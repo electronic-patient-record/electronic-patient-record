@@ -383,6 +383,7 @@ async fn a_refused_message_waits_in_the_queue_until_a_person_closes_it_once() {
     let db = db().await;
     let addr = start(&db, |_| {}).await;
     let (mrn, family, d) = (tag("mrn"), tag("Queue"), dob());
+    let waiting = queue::count_open(&db).await.unwrap();
     let mut s = TcpStream::connect(addr).await.unwrap();
     let first_control = tag("A");
     let first = send(&mut s, &adt("A28", &first_control, &mrn, &family, &d, ""))
@@ -419,6 +420,7 @@ async fn a_refused_message_waits_in_the_queue_until_a_person_closes_it_once() {
         .expect("the refused message is queued");
     let oru_id = id_of(oru_control.clone()).await.expect("so is the other");
 
+    assert_eq!(queue::count_open(&db).await.unwrap(), waiting + 2);
     // A listing carries no message text.
     for e in queue::list_open(&db).await.unwrap() {
         assert_eq!(e.message, None);
@@ -466,6 +468,7 @@ async fn a_refused_message_waits_in_the_queue_until_a_person_closes_it_once() {
         queue::resolve(&db, &entry.id, "other", Outcome::Dismissed, "again").await,
         Err(StoreError::Conflict { .. })
     ));
+    assert_eq!(queue::count_open(&db).await.unwrap(), waiting + 1);
     let still_open = db
         .query_one_raw(sea_orm::Statement::from_sql_and_values(
             sea_orm::DbBackend::Postgres,

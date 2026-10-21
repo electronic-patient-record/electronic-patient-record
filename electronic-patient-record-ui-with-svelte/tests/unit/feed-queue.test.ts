@@ -36,3 +36,24 @@ describe("refused message text", () => {
     expect(resolveBody("dismissed", "   ")).toBeNull();
   });
 });
+
+import { isAdminPage } from "../../src/lib/feed-count.svelte";
+
+describe("which pages are admin pages", () => {
+  it("is the queue and a patient's access page, in any locale", () => {
+    expect(isAdminPage("/en-001/admin/feed")).toBe(true);
+    expect(isAdminPage("/admin/feed")).toBe(true);
+    expect(isAdminPage("/en-001/patients/abc/access")).toBe(true);
+  });
+  it("is not the patient pages, search, home or my record", () => {
+    for (const p of [
+      "/en-001",
+      "/en-001/patients",
+      "/en-001/patients/abc",
+      "/en-001/patients/new",
+      "/en-001/my-record",
+      "/en-001/administrator",
+    ])
+      expect(isAdminPage(p)).toBe(false);
+  });
+});

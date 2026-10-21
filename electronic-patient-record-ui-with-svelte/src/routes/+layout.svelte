@@ -12,6 +12,8 @@
     type StaffPurpose,
   } from "#lib/purpose.js";
 
+  import { feedCount, isAdminPage, refreshFeedCount } from "#lib/feed-count.svelte.js";
+
   let { children } = $props();
   const locale = $derived(page.data.locale ?? DEFAULT_LOCALE);
 
@@ -30,6 +32,12 @@
     purpose = next;
     storePurpose(window.sessionStorage, next);
   }
+  // The count of refused messages is fetched on the admin pages only.
+  const adminPage = $derived(isAdminPage(page.url.pathname));
+  $effect(() => {
+    if (adminPage) void refreshFeedCount();
+    else feedCount.open = null;
+  });
   // "My record" always declares patient access, so the staff choice does not apply there.
   const staffPage = $derived(!page.url.pathname.includes("/my-record"));
 </script>
@@ -41,7 +49,8 @@
     <a href={localizePath("/", locale)}>{STRINGS.navHome}</a>
     <a href={localizePath("/patients", locale)}>{STRINGS.navPatients}</a>
     <a href={localizePath("/patients/new", locale)}>{STRINGS.registerLink}</a>
-    <a href={localizePath("/admin/feed", locale)}>{STRINGS.navFeed}</a>
+    <a href={localizePath("/admin/feed", locale)}>{STRINGS.navFeed}{#if adminPage && feedCount.open}
+        <span class="count">({STRINGS.feedCount.replace("{n}", String(feedCount.open))})</span>{/if}</a>
     <a href={localizePath("/my-record", locale)}>{STRINGS.navMyRecord}</a>
   </nav>
   {#if staffPage}

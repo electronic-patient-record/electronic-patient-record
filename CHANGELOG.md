@@ -2,6 +2,18 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-21 - Count of waiting refused messages on the admin pages
+
+- `GET /api/feed/refusals/count` returns `{open}` (no ids, no text); same gate as the listing (`FeedQueue`, search) and
+  audited like it. The UI shows "Refused messages (3 waiting)" in the navigation on the admin pages only (the queue, and a
+  patient's access page), because every fetch writes an audit row. A role refused the count shows nothing.
+- You asked for an "unread" count. The queue has no per-person read state, so this is the count of **open** (not closed)
+  entries; an entry read but not closed still counts. Per-person unread state is not built.
+- Tests: 1 Postgres assertion (the count moves with a refusal and a closing), 2 vitest, 1 stubbed Playwright test
+  (not asked on patient pages, shown on admin pages, nothing for a refused role).
+- **Not done:** an alert, a count outside the admin pages (so an administrator who never opens one never sees it), an age
+  limit, and a run against the real stack for the count.
+
 ## 2026-10-21 - Refused-message queue screen
 
 - `/admin/feed` ("Refused messages" in the navigation): the open entries with the kind, the event, the sender's control

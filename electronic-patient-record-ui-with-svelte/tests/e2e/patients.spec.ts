@@ -1223,3 +1223,43 @@ test("a role that may not read the queue is told so, and an entry closed by some
     page.getByText("No refused messages are waiting."),
   ).toBeVisible();
 });
+
+test("the count of refused messages shows on the admin pages only, and not for a role that may not see it", async ({
+  page,
+}) => {
+  let asked = 0;
+  let status = 200;
+  await page.route("**/api/proxy/api/feed/refusals/count", (route) => {
+    asked += 1;
+    return status === 200
+      ? json(route, 200, { open: 3 })
+      : json(route, 403, { error: "forbidden" });
+  });
+  await page.route("**/api/proxy/api/feed/refusals", (route) =>
+    json(route, 200, { refusals: [REFUSAL()], limit: 50 }),
+  );
+  // Not asked for on the patient pages.
+  await page.goto("/en-001/patients");
+  await expect(
+    page.getByRole("link", { name: "Refused messages" }),
+  ).toBeVisible();
+  expect(asked).toBe(0);
+  await expect(page.getByText("(3 waiting)")).toHaveCount(0);
+
+  // Asked for, and shown in the navigation, on the admin pages.
+  await page.goto("/en-001/admin/feed");
+  await expect(
+    page.getByRole("navigation", { name: "Main" }).getByText("(3 waiting)"),
+  ).toBeVisible();
+  await axe(page);
+
+  // A role refused the count sees no number and no error from it.
+  status = 403;
+  await page.reload();
+  await expect(
+    page.getByRole("link", { name: /Refused messages/ }).first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("navigation", { name: "Main" }).getByText("(3 waiting)"),
+  ).toHaveCount(0);
+});
