@@ -44,7 +44,7 @@ jobs:
           workspaces: ${{ env.MATCHER }}
       - run: cargo fmt --check
       - run: cargo clippy --all-targets --all-features -- -D warnings
-      - run: cargo test
+      - run: cargo test --locked
 
   api:
     name: API (fmt, clippy, database-free tests)
@@ -62,9 +62,9 @@ jobs:
           workspaces: ${{ env.API }}
       - run: cargo fmt --check
       - run: cargo clippy --all-targets --all-features -- -D warnings
-      - run: cargo test --lib
-      - run: cargo test --test keycloak_guard
-      - run: cargo test --test route_census
+      # Every test that needs no database, in every crate and test binary, and the doctests: a new test
+      # file runs without a workflow edit (CQ-24). Database tests are `#[ignore]`d and run in `api-db`.
+      - run: cargo test --workspace --locked
 
   api-db:
     name: API (Postgres 18 tests)
@@ -92,15 +92,12 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: ${{ env.API }}
-      - name: Every DB-gated test binary
-        run: |
-          set -euo pipefail
-          for f in tests/*.rs; do
-            name="$(basename "$f" .rs)"
-            echo "::group::cargo test --test $name -- --ignored"
-            cargo test --test "$name" -- --ignored --test-threads=1
-            echo "::endgroup::"
-          done
+      # The same init SQL compose runs on a fresh data directory (CQ-24), so the two databases match.
+      - name: Apply ci/postgres-init
+        run: PGPASSWORD=loco psql -v ON_ERROR_STOP=1 -h localhost -U loco -d electronic_patient_record_test -f ../ci/postgres-init/00-extensions.sql
+      # Every ignored (database-gated) test wherever it lives, every binary even after a failure.
+      - name: Every DB-gated test
+        run: cargo test --workspace --locked --no-fail-fast -- --ignored --test-threads=1
 
   deny:
     name: cargo deny

@@ -2,6 +2,21 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-21 - CI runs every test without naming files (CQ-24)
+
+- The `api` job named three test targets (`--lib`, `keycloak_guard`, `route_census`). A new test file whose tests need
+  no database would have run nowhere, and the migration crate's tests and the doctests never ran. It now runs
+  `cargo test --workspace --locked`.
+- The `api-db` job looped over `tests/*.rs`. It now runs `cargo test --workspace --locked --no-fail-fast -- --ignored
+  --test-threads=1`, which reaches an ignored test anywhere in the workspace and reports every binary after a
+  failure.
+- `api-db` applies `ci/postgres-init/00-extensions.sql` before the tests, as compose does on a fresh data directory, so
+  the day an extension is added the CI database has it too. The matcher job is `--locked` too.
+- Checked locally: the `api` command runs 157 tests (and the migration crate and doctests, 0 of each today); the
+  `api-db` command runs all 64 database tests against Postgres 18; the init SQL applies.
+- **Not done:** not run on GitHub (CQ-20); the UI job is unchanged; no `--locked` equivalent check for the UI beyond
+  `pnpm install --frozen-lockfile`, which it already has.
+
 ## 2026-10-21 - Hazard-log gate: label trigger and sign-off by reviewer only (CQ-21)
 
 - The `clinical-impact` hazard-log job ran only on the default pull-request events, so a label added after a PR was

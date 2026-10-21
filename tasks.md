@@ -544,7 +544,7 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
   add Dependabot `docker` entries, pin one pnpm version for CI and the Containerfile; give each `deny.toml` ignore a
   crate, reason and re-check date, and set unknown sources to `deny`.
   **Acceptance:** a CI check fails on an unpinned `uses:` line.
-- [ ] **CQ-24 (S) — Test selection.** The `api` job hard-codes `--test` names (ci.yml:63), so a new non-ignored test
+- [x] **CQ-24 (S) — Test selection.** **Landed 2026-10-21** (`cargo test --workspace --locked`; `--ignored` over the workspace with `--no-fail-fast`; init SQL applied; both commands run locally). **Not run on GitHub** (CQ-20). The `api` job hard-codes `--test` names (ci.yml:63), so a new non-ignored test
   file runs nowhere; use `cargo test --workspace --locked` and keep the `--ignored` job. Apply `ci/postgres-init` in
   the CI Postgres.
   **Acceptance:** a new test file runs in CI without a workflow edit.
