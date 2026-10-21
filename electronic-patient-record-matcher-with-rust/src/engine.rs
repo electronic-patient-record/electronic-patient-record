@@ -177,8 +177,7 @@ impl MatchingEngine {
         let (nhs_a, nhs_b) = (valid_nhs_numbers(a), valid_nhs_numbers(b));
         let shared = nhs_a.iter().any(|n| nhs_b.contains(n));
         let clash = !nhs_a.is_empty() && !nhs_b.is_empty() && !shared;
-        let dob_conflict = matches!((full_date(a), full_date(b)), (Some(x), Some(y)) if x != y)
-            && dob.is_some_and(|s| s < 0.5);
+        let dob_conflict = matches!((full_date(a), full_date(b)), (Some(x), Some(y)) if x != y);
 
         if clash {
             conflicts.push("different verified NHS numbers".to_string());

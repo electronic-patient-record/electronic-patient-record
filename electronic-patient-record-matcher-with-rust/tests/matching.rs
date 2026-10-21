@@ -263,3 +263,21 @@ fn shared_nhs_number_with_a_changed_family_name_still_links() {
     let b = with_nhs(patient("Okafor", &["Mary"], "1980-03-14", F), "9434765919");
     assert_eq!(e.compare(&a, &b).decision, Decision::AutoLink);
 }
+
+#[test]
+fn shared_nhs_number_with_any_different_full_birth_date_goes_to_review() {
+    // Regression (CQ-3): spec §4 says any two different full dates go to Review; a near date did not.
+    let e = MatchingEngine::default();
+    for other in ["1980-01-28", "1980-02-01", "1981-01-01", "1980-10-10"] {
+        let a = with_nhs(patient("Smith", &["John"], "1980-01-01", M), "9434765919");
+        let b = with_nhs(patient("Smith", &["John"], other, M), "9434765919");
+        let r = e.compare(&a, &b);
+        assert_eq!(r.decision, Decision::Review, "{other}: {r:?}");
+        assert!(
+            r.conflicts
+                .iter()
+                .any(|c| c.contains("different birth dates")),
+            "{r:?}"
+        );
+    }
+}

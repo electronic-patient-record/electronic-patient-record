@@ -2,6 +2,15 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-21 - Shared NHS number with a different birth date (CQ-3)
+
+- The matcher spec (§4) says a shared NHS number with two different full birth dates goes to Review. The code added
+  that conflict only when birth-date similarity was below 0.5, so a near date (`1980-01-01` against `1980-01-28`,
+  scored 0.6 as a "day typo") was AutoLinked even with different names. The threshold is gone; the code now does
+  what the spec says, so the spec is unchanged. Hazard H-001 updated.
+- Tests: one test over four near and far dates; it failed before the change.
+- **Not done:** reaching the service, which needs matcher 0.2.0 (see CQ-2).
+
 ## 2026-10-21 - Placeholder NHS numbers (CQ-2)
 
 - Every NHS number made of ten copies of one digit (`0000000000` … `9999999999`) passes the modulus-11 check, and none

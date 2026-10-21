@@ -432,7 +432,7 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
   placeholder list) as identifiers that can decide a link; add a conflict when a shared NHS number comes with very
   different names. Keep the 999 test range valid for demo data (AS-8).
   **Acceptance:** two different people carrying `0000000000` and the same birth date are not AutoLinked (test).
-- [ ] **CQ-3 (S) — NHS number plus different birth date.** **Clinical.** `src/engine.rs:180` adds the birth-date
+- [x] **CQ-3 (S) — NHS number plus different birth date.** **Landed 2026-10-21** in the matcher (threshold removed, 1 test over 4 dates, H-001); reaches the service with matcher 0.2.0. **Clinical.** `src/engine.rs:180` adds the birth-date
   conflict only when similarity is below 0.5; spec §4 says any two different full dates go to Review. Drop the
   threshold (or change the spec and record why).
   **Acceptance:** shared NHS number with `1980-01-01` vs `1980-01-28` gives Review with a conflict (test).
