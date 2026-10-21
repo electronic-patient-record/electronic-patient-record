@@ -152,7 +152,7 @@ Conventions:
   `resource_current` tables (plan.md §6.2), append-only, holding
   `meta.versionId` and `lastUpdated`.
   **Acceptance:** update creates version n+1. The previous version stays readable via vread. There is no SQL path that deletes a version (enforced by a migration test and a DB trigger).
-- [ ] **RC-2 (L) — Search parameter indexing.** Token, string, date,
+- [ ] **RC-2 (L) — Search parameter indexing.** **Note (2026-10-21, from CQ-9):** patient search by family name (prefix over the names array) and the duplicate check's family arm have no index, and the duplicate check scans because of it; decide the folded-name index here. Token, string, date,
   reference, quantity and URI index tables. Support `_id`, `_lastUpdated`,
   `patient`, `code`, `date`, `status`, `category`, `_include`, `_count`,
   `_sort`.
@@ -463,7 +463,7 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
 
 ### Service
 
-- [ ] **CQ-9 (S/M) — Typed ids and indexes.** **Casts landed 2026-10-21** (14 queries bind `$n::uuid`; `ids::uuid`; a source census; a Postgres EXPLAIN test). **Views landed 2026-10-21** (migration 11: the consent, allergy, relationship and link views as anti-joins; equivalence and plan tests). **Open:** the search indexes. Parse ids to `Uuid` and bind `$1::uuid` instead of
+- [x] **CQ-9 (S/M) — Typed ids and indexes.** **Landed 2026-10-21:** 14 queries bind `$n::uuid` (`ids::uuid`, source census); migrations 11 and 12 turn the `*_current` views filtered off their key into anti-joins and index identifiers and birth date; equivalence and plan tests. **Moved to RC-2:** a folded family-name index for name search and the duplicate check. Parse ids to `Uuid` and bind `$1::uuid` instead of
   `patient_id::text = lower($1)` (11 queries). Add search indexes on identifiers, birth date and folded family name;
   review the `DISTINCT ON` `*_current` views.
   **Acceptance:** `EXPLAIN` of a patient read and a search uses an index (DB-gated test asserting no seq scan on a

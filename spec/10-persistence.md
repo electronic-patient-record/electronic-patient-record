@@ -13,8 +13,10 @@ legal hold and defensible destruction are deployer workflows.
 query filters the view on a column other than the record's own key (a patient's consents, allergies, relationships,
 links), the view is an anti-join: a version with no later version of the same record. The filter then reaches the
 versions table and its index. `DISTINCT ON (key)` hides such a filter from the index and builds every record's current
-version first, so it is used only for views keyed by what they are filtered on (`patient_current`,
-`patient_photo_current`, `allergy_assertion_current`). Ids are bound as `uuid`, never compared as text
-(`tests/sql_census.rs`).
+version first, so it is used only for views keyed by what they are filtered on (`patient_photo_current`,
+`allergy_assertion_current`). `patient_current` is an anti-join too, because search filters it on the record body.
+`patient_versions` has a GIN index on `body->'identifiers'` (`jsonb_path_ops`, for `@>`) and an expression index on
+`body->>'birth_date'`. Family-name search and the duplicate check's family arm have no index yet (RC-2). Ids are
+bound as `uuid`, never compared as text (`tests/sql_census.rs`).
 
 Migrations run with `db migrate`; production sets `auto_migrate: false` and runs the `migrate` compose service.

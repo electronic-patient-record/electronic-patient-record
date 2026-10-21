@@ -57,7 +57,13 @@ async fn count(db: &impl ConnectionTrait, sql: &str) -> i64 {
 #[ignore = "needs Postgres: set DATABASE_URL"]
 async fn each_view_is_the_latest_version_of_each_record() {
     let db = db().await;
-    for (view, table, key, _) in VIEWS {
+    let patients = (
+        "patient_current",
+        "patient_versions",
+        "patient_id",
+        "patient_id",
+    );
+    for (view, table, key, _) in VIEWS.into_iter().chain([patients]) {
         // The definition the views had before: DISTINCT ON the key, highest version first.
         let latest =
             format!("SELECT DISTINCT ON ({key}) * FROM {table} ORDER BY {key}, version DESC");
@@ -104,6 +110,49 @@ async fn a_filter_on_the_patient_seeks_an_index() {
                 .any(|l| l.contains(&format!("Index Cond: ({column} =")))
                 && !plan.iter().any(|l| l.contains("Unique")),
             "{view}: {plan:#?}"
+        );
+    }
+}
+
+async fn plan(db: &DatabaseConnection, sql: &str) -> Vec<String> {
+    let tx = db.begin().await.unwrap();
+    tx.execute_unprepared("SET LOCAL enable_seqscan = off")
+        .await
+        .unwrap();
+    tx.query_all_raw(Statement::from_string(
+        sea_orm::DbBackend::Postgres,
+        format!("EXPLAIN {sql}"),
+    ))
+    .await
+    .unwrap()
+    .iter()
+    .map(|r| r.try_get_by_index::<String>(0).unwrap())
+    .collect()
+}
+
+/// Patient search by an identifier or a birth date reaches an index on the versions table.
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn patient_search_by_identifier_or_birth_date_uses_an_index() {
+    let db = db().await;
+    for (index, filter) in [
+        (
+            "patient_versions_identifiers",
+            r#"body->'identifiers' @> '[{"system":"https://fhir.nhs.uk/Id/nhs-number","value":"9434765919"}]'::jsonb"#,
+        ),
+        (
+            "patient_versions_birth_date",
+            "body->>'birth_date' = '1980-03-14'",
+        ),
+    ] {
+        let p = plan(
+            &db,
+            &format!("SELECT * FROM patient_current WHERE {filter}"),
+        )
+        .await;
+        assert!(
+            p.iter().any(|l| l.contains(index)) && !p.iter().any(|l| l.contains("Unique")),
+            "{index}: {p:#?}"
         );
     }
 }

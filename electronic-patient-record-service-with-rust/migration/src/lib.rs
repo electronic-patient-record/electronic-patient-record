@@ -19,6 +19,7 @@ mod m20261021_000008_patient_links;
 mod m20261021_000009_feed_refusals;
 mod m20261021_000010_break_glass;
 mod m20261021_000011_current_views_seek;
+mod m20261021_000012_patient_search_indexes;
 
 /// Runs the ordered list of migrations.
 pub struct Migrator;
@@ -38,6 +39,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261021_000009_feed_refusals::Migration),
             Box::new(m20261021_000010_break_glass::Migration),
             Box::new(m20261021_000011_current_views_seek::Migration),
+            Box::new(m20261021_000012_patient_search_indexes::Migration),
         ]
     }
 }

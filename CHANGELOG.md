@@ -2,6 +2,21 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-21 - Patient search by identifier or birth date seeks an index (closes CQ-9)
+
+- `patient_current` was `DISTINCT ON (patient_id)`, and search filters it on the record body. No index could help,
+  because the filter could not reach `patient_versions`. Migration 12 makes it an anti-join, like migration 11 did for
+  the others. It adds a GIN index on `body->'identifiers'` (`jsonb_path_ops`) and an expression index on
+  `body->>'birth_date'`, so search by NHS number or birth date seeks an index.
+- Tests: `patient_current` joins the equivalence test (same rows as the old form). A plan test needs each index for
+  its filter, with no `Unique` step; it failed before the migration. 161 unit and 68 Postgres tests pass.
+- **Not done:**
+  - search by family name (a prefix `LIKE` over the names array) and the duplicate check's family arm have no index.
+    The duplicate check ORs that arm with the others, so it still scans. A folded-name index is a design choice
+    (an immutable function, perhaps `pg_trgm`), recorded under RC-2;
+  - `down()` not run;
+  - nothing measured on a large table.
+
 ## 2026-10-21 - A patient's consents, allergies, relationships and links seek an index (CQ-9, in part)
 
 - `consent_current`, `allergy_current`, `relationship_current` and `patient_link_current` were `DISTINCT ON` the
