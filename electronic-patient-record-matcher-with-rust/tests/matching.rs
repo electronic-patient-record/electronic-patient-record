@@ -211,3 +211,55 @@ fn compare_is_symmetric_over_a_grid() {
         }
     }
 }
+
+#[test]
+fn repeated_digit_nhs_numbers_are_not_valid() {
+    // Regression (CQ-2): every repeated-digit number passes modulus 11, and none is ever issued.
+    for d in 0..=9 {
+        let n = d.to_string().repeat(10);
+        assert!(!is_valid_nhs_number(&n), "{n}");
+        assert!(is_placeholder_nhs_number(&n), "{n}");
+    }
+    assert!(!is_placeholder_nhs_number("9434765919"));
+    assert!(!is_valid_nhs_number("000 000 0000"));
+    // The 999 test range stays usable for demo data.
+    assert!(is_valid_nhs_number("9990000018"));
+}
+
+#[test]
+fn shared_placeholder_nhs_number_does_not_decide() {
+    let e = MatchingEngine::default();
+    let a = with_nhs(patient("Smith", &["John"], "1980-03-14", M), "0000000000");
+    let b = with_nhs(
+        patient("Okafor", &["Chiamaka"], "1980-03-14", M),
+        "0000000000",
+    );
+    let r = e.compare(&a, &b);
+    assert_eq!(r.deterministic, None, "{r:?}");
+    assert_ne!(r.decision, Decision::AutoLink, "{r:?}");
+}
+
+#[test]
+fn shared_nhs_number_with_different_names_goes_to_review() {
+    let e = MatchingEngine::default();
+    let a = with_nhs(patient("Smith", &["John"], "1980-03-14", M), "9434765919");
+    let b = with_nhs(
+        patient("Okafor", &["Chiamaka"], "1980-03-14", M),
+        "9434765919",
+    );
+    let r = e.compare(&a, &b);
+    assert_eq!(r.decision, Decision::Review, "{r:?}");
+    assert!(
+        r.conflicts.iter().any(|c| c.contains("different names")),
+        "{r:?}"
+    );
+}
+
+#[test]
+fn shared_nhs_number_with_a_changed_family_name_still_links() {
+    // Marriage: the family name changes, the given name does not.
+    let e = MatchingEngine::default();
+    let a = with_nhs(patient("Smith", &["Mary"], "1980-03-14", F), "9434765919");
+    let b = with_nhs(patient("Okafor", &["Mary"], "1980-03-14", F), "9434765919");
+    assert_eq!(e.compare(&a, &b).decision, Decision::AutoLink);
+}

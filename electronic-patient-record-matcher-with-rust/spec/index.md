@@ -40,8 +40,14 @@ values** (ID-1 asks for a 200-pair labelled corpus before they are trusted).
 
 ## 4. Deterministic identifiers
 
-- A **shared valid NHS number** (system `https://fhir.nhs.uk/Id/nhs-number`, modulus-11 check digit) gives score 1.0
-  and `AutoLink`, unless both records have full birth dates that differ, which gives `Review` with a conflict.
+- A **valid NHS number** has a correct modulus-11 check digit and is not ten copies of one digit. Every
+  repeated-digit number (`0000000000` … `9999999999`) passes modulus 11, none is issued, and systems use them as
+  placeholders, so they are invalid (`is_placeholder_nhs_number` says which).
+- A **shared valid NHS number** (system `https://fhir.nhs.uk/Id/nhs-number`) gives score 1.0 and `AutoLink`, unless
+  either of these holds, which gives `Review` with a conflict for each:
+  - both records have full birth dates that differ;
+  - both the given and the family name are below their auto-link minimums (a family name alone may change, as on
+    marriage; both disagreeing suggests a mistyped or reused number).
 - **Two different valid NHS numbers** give `NonMatch` with a conflict, however alike the demographics.
 - Invalid NHS numbers are ignored for matching.
 - Other identifiers (MRN) do not decide a match yet.

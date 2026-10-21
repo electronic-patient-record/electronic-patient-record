@@ -188,10 +188,20 @@ impl MatchingEngine {
             score = 1.0;
             if dob_conflict {
                 conflicts.push("same NHS number but different birth dates".to_string());
-                decision = Decision::Review;
-            } else {
-                decision = Decision::AutoLink;
             }
+            // A family name alone may change (marriage); both names disagreeing suggests a
+            // mistyped or reused number.
+            let c = &self.config;
+            if given.is_some_and(|s| s < c.min_given_for_auto)
+                && family.is_some_and(|s| s < c.min_family_for_auto)
+            {
+                conflicts.push("same NHS number but different names".to_string());
+            }
+            decision = if conflicts.is_empty() {
+                Decision::AutoLink
+            } else {
+                Decision::Review
+            };
         } else {
             decision = if score >= self.config.auto_link_threshold {
                 Decision::AutoLink

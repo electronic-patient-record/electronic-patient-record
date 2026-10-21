@@ -427,7 +427,7 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
   Score both directions and take the minimum (or a symmetric assignment).
   **Acceptance:** a proptest asserts `compare(a, b) == compare(b, a)` over generated patients with valid dates; the
   `["John","J"]` vs `["John","Smith"]` case is a named regression test.
-- [ ] **CQ-2 (S) — Placeholder NHS numbers.** **Clinical.** `is_valid_nhs_number` (`src/nhs.rs:9`) accepts
+- [ ] **CQ-2 (S) — Placeholder NHS numbers.** **Matcher part landed 2026-10-21** (repeated-digit numbers invalid; shared NHS number with both names disagreeing goes to Review; 4 tests, H-001). **Open until** the service uses matcher 0.2.0 and refuses a placeholder at registration with its own message. **Clinical.** `is_valid_nhs_number` (`src/nhs.rs:9`) accepts
   `0000000000`, `1111111111`, `9999999999` and other repeated-digit numbers. Reject them (and any configured
   placeholder list) as identifiers that can decide a link; add a conflict when a shared NHS number comes with very
   different names. Keep the 999 test range valid for demo data (AS-8).

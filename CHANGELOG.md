@@ -2,6 +2,21 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-21 - Placeholder NHS numbers (CQ-2)
+
+- Every NHS number made of ten copies of one digit (`0000000000` … `9999999999`) passes the modulus-11 check, and none
+  is issued. Systems use them as placeholders, so two different people carrying `0000000000` with the same birth date
+  were AutoLinked by the "shared verified NHS number" rule with no name check. `is_valid_nhs_number` now rejects them
+  and the new `is_placeholder_nhs_number` says which; the 999 test range is unaffected.
+- A shared valid NHS number now also goes to Review when both the given and the family name are below their auto-link
+  minimums. A family name alone still links (marriage), and a test says so. Hazard H-001 updated.
+- Tests: 4 new matcher tests; 3 failed before the change (the marriage test passed before and is a guard).
+- **Found:** the service depends on the *published* matcher 0.1.0 from crates.io, not on this directory, so neither this
+  change nor CQ-1 reaches the service until matcher 0.2.0 is published and the service is bumped. The service's own
+  placeholder message waits for that bump.
+- **Not done:** a configurable list of other placeholder or test numbers; a check that the 999 test range is refused in
+  production.
+
 ## 2026-10-21 - Matcher symmetry (CQ-1)
 
 - `compare(a, b)` and `compare(b, a)` could reach different decisions: with given-name lists of equal length the
