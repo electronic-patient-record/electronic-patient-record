@@ -15,7 +15,7 @@ use loco_rs::{
 };
 use std::path::Path;
 
-use crate::{auth, authz, controllers};
+use crate::{auth, authz, controllers, mllp};
 
 /// The loco.rs application hooks.
 pub struct App;
@@ -62,6 +62,25 @@ impl Hooks for App {
         auth::init(ctx.environment == Environment::Production, config_require)
             .await
             .map_err(loco_rs::Error::Message)?;
+        // The MLLP listener for HL7 v2 ADT feeds is off unless `EPR_MLLP_BIND` is set. A bad
+        // setting, or a port that cannot be opened, stops the service starting: a feed that was
+        // asked for and is silently absent is worse than no service.
+        if let Some(config) = mllp::Config::from_env().map_err(loco_rs::Error::Message)? {
+            let listener = tokio::net::TcpListener::bind(config.bind)
+                .await
+                .map_err(|e| {
+                    loco_rs::Error::Message(format!(
+                        "cannot listen for MLLP on {}: {e}",
+                        config.bind
+                    ))
+                })?;
+            tracing::warn!(
+                bind = %config.bind,
+                agent = %config.agent,
+                "MLLP listener is ON: it has no authentication or encryption"
+            );
+            tokio::spawn(mllp::serve(listener, ctx.db.clone(), config));
+        }
         // The last layer added runs first: authenticate, then authorize.
         let gate = authz::Authz { db: ctx.db.clone() };
         Ok(router

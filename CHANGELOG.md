@@ -206,6 +206,21 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
   must be taught to follow it (H-020 says so); the matcher threshold is unvalidated; FHIR `$merge` operations;
   merging more than two at once is by repeating.
 
+## 2026-10-21 - HL7 v2 ADT feed over MLLP (OR-3, in part)
+
+- `mllp.rs` (framing, listener, settings) and `adt_feed.rs` (matching, applying, auditing, answering), started from
+  `after_routes` when `EPR_MLLP_BIND` is set. The integrator role may now create and update identity (policy; it still
+  cannot read or export). `operations/hl7/README.md` says how to turn it on and what it does not do. Hazard H-021. Tokio
+  gains `io-util`. Tests: 8 + 7 unit, 4 over a real TCP socket and Postgres, all with a pool of one connection.
+- Found by the by-hand run and fixed before commit: the first version held a transaction while asking the pool for a
+  second connection (the duplicate check), which timed out on the development pool of one; the tests had passed because
+  their pool was larger. Reads now happen before the transaction, and the tests use a pool of one so it cannot recur. Two
+  of my own test expectations were wrong (a timestamp, and test patients that were rightly taken for one person).
+- **Not done:** the work queue (a refused or unmatched message is answered `AE` and the sender must hold it, so the
+  acceptance "queued, not dropped" is not met); `A03`, `A40`, `PV1`, ORU, SIU; TLS and authentication (stated, not built);
+  character sets other than UTF-8; fuzzing and a sample corpus; a run with a real sender; a record merged away reappears as
+  a possible duplicate rather than being followed to its survivor.
+
 ## [0.1.0] - 2026-10-20
 
 Milestone M0, scaffold. **Not for clinical use.**

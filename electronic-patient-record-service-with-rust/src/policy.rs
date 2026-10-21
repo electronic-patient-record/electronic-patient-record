@@ -531,8 +531,10 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         }
         // The auditor: the audit trail only.
         (Role::Auditor, AuditLog) => &[Read, Search, Export],
-        // Integrations: find patients. No clinical content and no export until consent (SE-2).
-        (Role::Integrator, Identity) => &[Search],
+        // Integrations: find patients, and feed identity in (an ADT feed over MLLP or HL7/FHIR
+        // push): create and correct demographics. Never read a record back, never any clinical
+        // content, no export until consent (SE-2).
+        (Role::Integrator, Identity) => &[Search, Create, Update],
         _ => &[],
     }
 }
@@ -779,6 +781,8 @@ mod tests {
         let can = |role, action| gate(&subject(&[role]), Resource::PatientIdentity, action);
         assert!(can(Role::Receptionist, Action::Create));
         assert!(can(Role::Integrator, Action::Search));
+        assert!(can(Role::Integrator, Action::Create));
+        assert!(can(Role::Integrator, Action::Update));
         assert!(!can(Role::Integrator, Action::Read));
         assert!(!can(Role::Auditor, Action::Search));
         assert!(!can(Role::Patient, Action::Search));

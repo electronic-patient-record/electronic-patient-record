@@ -7,6 +7,7 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
+pub mod adt_feed;
 pub mod allergies;
 pub mod app;
 pub mod audit;
@@ -17,6 +18,7 @@ pub mod consents_store;
 pub mod controllers;
 pub mod interop;
 pub mod links;
+pub mod mllp;
 pub mod patients_store;
 pub mod photos_store;
 pub mod policy;
