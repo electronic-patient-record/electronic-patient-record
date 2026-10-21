@@ -25,7 +25,7 @@ cross-subproject contract.
   (a stale save is reported, never overwritten); `/patients/compare` compares two patients and renders the decision, the score, the per-field
   table and the reasons a link cannot be automatic. A missing similarity renders "not available". The edit form changes only the fields it
   shows and carries every other name, identifier, address and contact detail into the new version.
-- **Purpose of use**: the proxy forwards `X-Purpose-Of-Use` only when it is one of the seven codes the API knows; anything else is dropped before it can reach the audit trail. Staff pages send none (the API assumes `operations`). `/my-record` sends `patient-access`.
+- **Purpose of use**: the proxy forwards `X-Purpose-Of-Use` only when it is one of the seven codes the API knows; anything else is dropped before it can reach the audit trail. Staff declare theirs in a header picker, **Operations** (the API's default) or **Treatment**, kept for the browser tab only (`sessionStorage`; if storage is blocked the choice lasts until reload). `emergency` is not offered until break-the-glass (SE-3) exists, and `payment`, `research` and `audit` are permitted to no staff role. `/my-record` ignores the picker and sends `patient-access`. Declaring a purpose grants nothing: the API still checks it against the role and records it.
 - **My record** (`/my-record`): read-only list of the records linked to the signed-in patient or proxy, from `GET /api/me/patients`. A proxy is told it is a proxy; with no link the page says so; a refusal is announced. No edit form: corrections go through the practice.
 - **Accessibility**: skip link, landmarks, labelled inputs, `role="alert"` on failure, axe (WCAG 2.2 AA) on each page and on the duplicate view.
 
