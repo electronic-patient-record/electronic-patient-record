@@ -43,6 +43,13 @@ electronic-patient-record-matcher = "0.1.0"
 # Keycloak (OIDC) access-token verification against a realm's published keys.
 authentication-verifier = { version = "0.9.1", default-features = false, features = ["paseto", "fetch", "keycloak"] }
 
+# Interoperability (src/interop). All four are this project's author's crates; `fhir` is built for
+# R4 only (each release is ~135k generated lines).
+hl7 = "0.2.3"
+er7 = "0.2.2"
+fhir = { version = "4.2.4", default-features = false, features = ["r4"] }
+snomed = "0.56.1"
+
 [dev-dependencies]
 authentication-verifier = { version = "0.9.1", default-features = false, features = ["test-idp"] }
 loco-rs = { workspace = true, features = ["testing"] }

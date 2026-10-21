@@ -1114,6 +1114,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "convert_case"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1af709f1f33454bf52eadfc8c78b3b9ef9cb26fb54d16dc9cd9a7299f899fd1b"
+dependencies = [
+ "unicode-segmentation",
+]
+
+[[package]]
 name = "cookie"
 version = "0.18.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1727,12 +1736,16 @@ dependencies = [
  "axum",
  "electronic-patient-record-matcher",
  "electronic-patient-record-migration",
+ "er7",
+ "fhir",
+ "hl7",
  "integrity-mac",
  "loco-rs",
  "sea-orm",
  "serde",
  "serde_json",
  "sha2 0.11.1",
+ "snomed",
  "tokio",
  "tower",
  "tracing",
@@ -1825,6 +1838,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "00d174d5400e5e8fd687ad1049e2f578285fa914201b1af7e8b112a4546bd826"
 
 [[package]]
+name = "er7"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2495dc0a44dfebe8595757972ab221be465f7aeab0d31f2c82102af612816d5"
+
+[[package]]
 name = "errno"
 version = "0.3.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1869,6 +1888,60 @@ name = "fastrand"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da7c62ceae207dd37ea5b845da6a0696c799f85e97da1ab5b7910be3c1c80223"
+
+[[package]]
+name = "fhir"
+version = "4.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b776c3f4cef9bd13e3dd93d78cd08c37a47af218c5f1db40b0d77e6f1350a018"
+dependencies = [
+ "convert_case",
+ "fhir-core",
+ "fhir-derive-macros",
+ "fhir-r4",
+ "indoc",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "vec1",
+]
+
+[[package]]
+name = "fhir-core"
+version = "3.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "99799c43e5c12ac717e9c55f656effcef01708ff7deffa39f1f12191c0e48581"
+dependencies = [
+ "convert_case",
+ "serde",
+ "serde_json",
+ "vec1",
+]
+
+[[package]]
+name = "fhir-derive-macros"
+version = "1.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "139b19fd03bfc59a1a08ac5996ea6acb2ceb6664db694313332cc551776534ff"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.9",
+]
+
+[[package]]
+name = "fhir-r4"
+version = "4.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8e0da81442ac5e821075b5684709aca0557209499b4844713e8e3576a22dcfb4"
+dependencies = [
+ "fhir-core",
+ "fhir-derive-macros",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "vec1",
+]
 
 [[package]]
 name = "fiat-crypto"
@@ -2243,6 +2316,40 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4aaa26c720c68b866f2c96ef5c1264b3e6f473fe5d4ce61cd44bbe913e553018"
 dependencies = [
  "hmac",
+]
+
+[[package]]
+name = "hl7"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "432a77082f3af285a781bd5ad5c331c268a82dd66d9cd9171681d42fe03702ce"
+dependencies = [
+ "hl7-2",
+ "hl7-3",
+]
+
+[[package]]
+name = "hl7-2"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3b0c277cb019f4fa4bf07162d1effe1ff3e5085c5a8737294a51decf235719e0"
+dependencies = [
+ "er7",
+]
+
+[[package]]
+name = "hl7-2-xml-lite-helper"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a91eef4088fad4cbb1336bfbf1f5463ad77efccd314d9fe77939fe85028ba575"
+
+[[package]]
+name = "hl7-3"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b415606acf4b239394dc6bd63f4fc64cf2cb5be6b3ef261353d3b6ae35d996a0"
+dependencies = [
+ "hl7-2-xml-lite-helper",
 ]
 
 [[package]]
@@ -5074,6 +5181,88 @@ dependencies = [
 ]
 
 [[package]]
+name = "snomed"
+version = "0.56.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "01a2d14f307d253043a7cbc3cb10034af5c17c543740e00e8804074b7cd3b126"
+dependencies = [
+ "snomed-classify",
+ "snomed-core",
+ "snomed-ecl",
+ "snomed-fhir",
+ "snomed-owl",
+ "snomed-rf2",
+ "snomed-store",
+]
+
+[[package]]
+name = "snomed-classify"
+version = "0.56.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e467d6191da4eb1c623820fcdaf57b8e7b40aa2251a0e75a3b8984540ae0aa43"
+dependencies = [
+ "snomed-core",
+ "snomed-owl",
+]
+
+[[package]]
+name = "snomed-core"
+version = "0.56.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a5cb323774cc0f360a509bef0b3a37318d11fb4c65cbfd6b37b1f4a6910b4e76"
+
+[[package]]
+name = "snomed-ecl"
+version = "0.56.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "05b32111d4cc432ba0022fae609abf5414268f783306a119b7d92e3196a229d7"
+dependencies = [
+ "snomed-core",
+ "snomed-rf2",
+ "snomed-store",
+]
+
+[[package]]
+name = "snomed-fhir"
+version = "0.56.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aaf3e0d3b4770f98976a4b52f6c68d781adadb45b09cd34a65a35e98d462e62a"
+dependencies = [
+ "snomed-classify",
+ "snomed-core",
+ "snomed-ecl",
+ "snomed-store",
+]
+
+[[package]]
+name = "snomed-owl"
+version = "0.56.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd20f6c1057818388207b7f700e51cbd8777dc0d0fae74f9a6782f4249d178c6"
+dependencies = [
+ "snomed-core",
+]
+
+[[package]]
+name = "snomed-rf2"
+version = "0.56.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2ad702d9048af7691c55931f356184d82b900f5cc772ff1bd8a324a9ab5fab65"
+dependencies = [
+ "snomed-core",
+]
+
+[[package]]
+name = "snomed-store"
+version = "0.56.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dda8ad23534842f44077d2acf381dd4546e0f9aa0be017a5341b0e34a17b70bd"
+dependencies = [
+ "snomed-core",
+ "snomed-rf2",
+]
+
+[[package]]
 name = "socket2"
 version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6113,6 +6302,15 @@ name = "vcpkg"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
+
+[[package]]
+name = "vec1"
+version = "1.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eab68b56840f69efb0fefbe3ab6661499217ffdc58e2eef7c3f6f69835386322"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "version_check"

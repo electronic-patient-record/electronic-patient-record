@@ -14,6 +14,7 @@ pub mod authz;
 pub mod consent;
 pub mod consents_store;
 pub mod controllers;
+pub mod interop;
 pub mod patients_store;
 pub mod policy;
 pub mod relationships;

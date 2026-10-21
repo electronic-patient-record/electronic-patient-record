@@ -118,7 +118,7 @@ Conventions:
   birthdate, identifier and phonetic name; tantivy typeahead.
   **Acceptance:** search p95 ≤ 200 ms at 1M patients in the load test. Every call writes an audit row.
   **Built:** `POST/GET /api/patients`, `GET/PUT /api/patients/{id}` over append-only `patient_versions` (optimistic `expected_version`, 409 on a stale or racing write); search by family-name prefix, exact birth date and `system|value` identifier, at most 50 results, never "everyone"; NHS number check digit and birth date validated (422); role gate plus the record-level `policy::evaluate` with a declared `X-Purpose-Of-Use` (default `operations`); every success and refusal audited, no demographics in the audit detail. **Run by hand** against Keycloak 26.3.0: receptionist creates (201), clinician reads, updates and searches, a stale update is 409, the patient role, the auditor and a research purpose are 403, DELETE is 403.
-  **Not built:** `/fhir/R4/Patient`; phonetic search and tantivy typeahead; any load test, so the p95 target is **unmeasured** (search is a sequential scan over the current-version view, with no index); the unmatched-name edge cases of real names; a care-relationship lookup, so the patient and proxy roles cannot read even their own record; the write and its audit row are two transactions, so a crash between them leaves an unaudited write; 422 and 400 responses are not audited; `PUT` replaces the whole record (an omitted identifier is dropped from the new version, though the old version keeps it); UI pages landed with ID-7.
+  **Not built:** a `/fhir/R4/Patient` endpoint (the mapping exists in `src/interop/fhir_patient.rs`, unreachable); phonetic search and tantivy typeahead; any load test, so the p95 target is **unmeasured** (search is a sequential scan over the current-version view, with no index); the unmatched-name edge cases of real names; a care-relationship lookup, so the patient and proxy roles cannot read even their own record; the write and its audit row are two transactions, so a crash between them leaves an unaudited write; 422 and 400 responses are not audited; `PUT` replaces the whole record (an omitted identifier is dropped from the new version, though the old version keeps it); UI pages landed with ID-7.
 - [x] **ID-4 (M) — Duplicate prevention at registration.** **Landed 2026-10-21, API only.** Before a patient
   is created, matcher candidates above the review threshold are returned.
   Override requires a reason.
@@ -271,7 +271,7 @@ Conventions:
 - [ ] **OR-2 (M) — Order sets.** Versioned, clinician-curated sets with
   defaults.
   **Acceptance:** applying a set creates draft orders and none is signed automatically.
-- [ ] **OR-3 (L) — HL7 v2 inbound.** An MLLP listener plus a parser for
+- [ ] **OR-3 (L) — HL7 v2 inbound.** **Partly landed 2026-10-21 (library only):** `src/interop/hl7_adt.rs` reads ADT A01/A04/A08/A28/A31 into an identity record and builds `AA`/`AE`/`AR` acknowledgements; 9 unit tests. **Not built:** the MLLP listener, ORU, SIU, storing or matching what arrives, merges. Left open. Original description: An MLLP listener plus a parser for
   ADT A01/A03/A04/A08/A40 and ORU R01, mapped to FHIR. Unmatched messages go
   to a work queue.
   **Acceptance:** the sample message corpus parses. A message for an unknown patient is queued, not dropped. The parser is fuzzed.
