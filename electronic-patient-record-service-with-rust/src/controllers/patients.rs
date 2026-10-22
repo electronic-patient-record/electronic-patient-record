@@ -1,14 +1,15 @@
 //! Patient identity endpoints. The request and response bodies are the
 //! matcher's own types: there is no adapter layer.
 
+use super::common::{
+    Access, audit_resource, authorize, begin, commit, consent_verdicts, purpose_of, store_failure,
+};
+use crate::api_error::ApiError;
 use crate::audit::{self, Action, AuditError, Chain, Event};
-use crate::auth::{self, Agent};
-use crate::consent;
-use crate::consents_store;
+use crate::auth::Agent;
 use crate::links;
 use crate::patients_store::{self as store, Search, StoreError};
-use crate::policy::{self, Consent, Purpose, Relationship, Resource, Subject};
-use crate::relationships;
+use crate::policy::{self, Consent, Purpose, Resource, Subject};
 use axum::{
     Extension,
     extract::{Json, Path, Query},
@@ -136,217 +137,6 @@ pub fn likely_duplicates(new: &Patient, existing: Vec<store::Stored>) -> Vec<Can
     found
 }
 
-pub(super) fn json_error(status: StatusCode, body: serde_json::Value) -> Response {
-    (status, Json(body)).into_response()
-}
-
-/// The purpose of use the caller declared, `operations` by default. An unknown code is a 400.
-pub(super) fn purpose_of(headers: &HeaderMap) -> Result<Purpose, Box<Response>> {
-    match headers.get("x-purpose-of-use") {
-        None => Ok(Purpose::Operations),
-        Some(v) => v.to_str().ok().and_then(Purpose::parse).ok_or_else(|| {
-            Box::new(json_error(
-                StatusCode::BAD_REQUEST,
-                serde_json::json!({"error": "unknown X-Purpose-Of-Use"}),
-            ))
-        }),
-    }
-}
-
-pub(super) fn audit_failed(e: &AuditError) -> Response {
-    tracing::error!(error = %e, "refusing to answer: the access could not be audited");
-    json_error(
-        StatusCode::INTERNAL_SERVER_ERROR,
-        serde_json::json!({"error": "internal error"}),
-    )
-}
-
-/// What the patients' consent says about this subject reading this kind of record, per patient.
-/// A patient with no active consent has no entry. With login off (development only) there is no
-/// subject and nothing is looked up. A failed lookup fails the request: an unchecked disclosure is
-/// how a refusal gets ignored.
-pub(super) async fn consent_verdicts(
-    db: &impl sea_orm::ConnectionTrait,
-    subject: &Subject,
-    purpose: Purpose,
-    resource: Resource,
-    patient_ids: &[String],
-) -> Result<std::collections::HashMap<String, consent::Verdict>, Box<Response>> {
-    let mut verdicts = std::collections::HashMap::new();
-    if !auth::authentication_enforced() || patient_ids.is_empty() {
-        return Ok(verdicts);
-    }
-    // A refusal on a record that was merged into this one stands for this one too: the person's
-    // choice does not lapse because two records were joined. Two queries for any number of ids.
-    let active = consents_store::active_with_merged(db, patient_ids)
-        .await
-        .map_err(|e| Box::new(store_failure(&e)))?;
-    let ctx = consent::Context {
-        roles: subject.roles.clone(),
-        purpose,
-        resource,
-        labels: std::collections::BTreeSet::new(),
-        now: time_now(),
-    };
-    for (id, records) in &active {
-        let verdict = consent::decide(records.iter().map(|c| (c.id.as_str(), &c.consent)), &ctx);
-        verdicts.insert(id.clone(), verdict);
-    }
-    Ok(verdicts)
-}
-
-/// The record-level decision for an access. With login off (development only) there is no subject
-/// and nothing to decide. For a read of one patient's identity the patient's consent is looked up
-/// and applied. On a refusal the refusal is audited and the 403 is returned.
-pub(super) async fn authorize(
-    db: &sea_orm::DatabaseConnection,
-    agent: &Agent,
-    subject: &Subject,
-    resource: Resource,
-    action: policy::Action,
-    purpose: Purpose,
-    patient_id: Option<&str>,
-) -> Result<(), Box<Response>> {
-    if !auth::authentication_enforced() {
-        return Ok(());
-    }
-    let mut verdict = consent::Verdict {
-        consent: Consent::NotRecorded,
-        decided_by: Vec::new(),
-    };
-    // The patient's consent is looked up for every read of one patient's identity or clinical data.
-    if let (true, true, Some(id)) = (
-        action.reads(),
-        resource == Resource::PatientIdentity || resource.clinical(),
-        patient_id,
-    ) {
-        let mut all = consent_verdicts(db, subject, purpose, resource, &[id.to_string()]).await?;
-        if let Some(v) = all.remove(&id.to_lowercase()) {
-            verdict = v;
-        }
-    }
-    // A record merged into another is read-only: changes go to the surviving record. (Consent and
-    // relationship changes are allowed, so a refusal on the old record can still be withdrawn.)
-    if !action.reads()
-        && (resource == Resource::PatientIdentity || resource.clinical())
-        && let Some(id) = patient_id
-        && let Some(into) = links::merged_into(db, id)
-            .await
-            .map_err(|e| Box::new(store_failure(&e)))?
-    {
-        return Err(Box::new(json_error(
-            StatusCode::CONFLICT,
-            serde_json::json!({
-                "error": "this record was merged into another: change that one",
-                "replaced_by": into,
-            }),
-        )));
-    }
-    // The subject's relationship to this patient, from the recorded relationships. A failed lookup
-    // fails the request: assuming "none" would be safe, but would hide an outage as a refusal.
-    let relationship = match patient_id {
-        Some(id) => relationships::lookup(db, id, &agent.0, time_now())
-            .await
-            .map_err(|e| Box::new(store_failure(&e)))?,
-        None => Relationship::None,
-    };
-    // A grant matters only to a treating role reading clinical content without a care relationship.
-    let grant = match patient_id {
-        Some(id)
-            if action.reads()
-                && resource.clinical()
-                && !relationship.treating()
-                && subject.roles.iter().any(|r| r.treats()) =>
-        {
-            crate::break_glass::active(db, id, &agent.0)
-                .await
-                .map_err(|e| Box::new(store_failure(&e)))?
-        }
-        _ => None,
-    };
-    let decision = policy::evaluate(&policy::Request {
-        subject: subject.clone(),
-        resource,
-        action,
-        labels: std::collections::BTreeSet::new(),
-        relationship,
-        purpose,
-        consent: verdict.consent,
-        break_glass: grant.as_ref().map(|g| policy::BreakGlass {
-            reason: g.reason.clone(),
-            expires_at: g.expires_unix,
-        }),
-        now: time_now(),
-    });
-    if let (Some(g), policy::Decision::Allow(obligations)) = (&grant, &decision)
-        && obligations
-            .iter()
-            .any(|o| matches!(o, policy::Obligation::BreakTheGlass(_)))
-    {
-        // From here every audit row of this request is flagged and names the grant.
-        audit::note_break_glass(&g.id);
-    }
-    let offer = matches!(
-        decision,
-        policy::Decision::Deny {
-            btg_offer: true,
-            ..
-        }
-    );
-    if decision.allowed() {
-        return Ok(());
-    }
-    let mut event = Event::new(Action::Execute, agent.0.clone());
-    event.outcome = 4;
-    event.patient_ref = patient_id.map(|id| format!("Patient/{id}"));
-    event.resource_ref = Some(format!("{}/{}", resource.name(), action.name()));
-    event.purpose_of_use = Some(purpose.code().to_string());
-    // Consent ids only: what the consent says is not copied into the audit row.
-    event.detail = Some(
-        serde_json::json!({ "denied": format!("{decision:?}"), "consent": verdict.decided_by }),
-    );
-    if let Err(e) = audit::append(db, audit::chain(), &event).await {
-        tracing::error!(error = %e, "a refusal could not be audited");
-    }
-    // A refusal that break-the-glass could lift says so, so the screen can offer it.
-    let body = if offer {
-        serde_json::json!({"error": "forbidden", "break_glass_offer": true})
-    } else {
-        serde_json::json!({"error": "forbidden"})
-    };
-    Err(Box::new(json_error(StatusCode::FORBIDDEN, body)))
-}
-
-/// Start the transaction a write and its audit row share (see [`audit::append`]).
-pub(super) async fn begin(
-    db: &sea_orm::DatabaseConnection,
-) -> Result<sea_orm::DatabaseTransaction, Box<Response>> {
-    sea_orm::TransactionTrait::begin(db).await.map_err(|e| {
-        tracing::error!(error = %e, "could not start a transaction");
-        Box::new(json_error(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            serde_json::json!({"error": "internal error"}),
-        ))
-    })
-}
-
-/// Commit it. A failure means the write did not happen, so the request fails.
-pub(super) async fn commit(tx: sea_orm::DatabaseTransaction) -> Result<(), Box<Response>> {
-    sea_orm::TransactionSession::commit(tx).await.map_err(|e| {
-        tracing::error!(error = %e, "could not commit a write and its audit row");
-        Box::new(json_error(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            serde_json::json!({"error": "internal error"}),
-        ))
-    })
-}
-
-pub(super) fn time_now() -> i64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |d| i64::try_from(d.as_secs()).unwrap_or(i64::MAX))
-}
-
 /// Write the audit row for a completed access to a patient. Never put demographics in `detail`.
 async fn audit_access(
     db: &(impl sea_orm::ConnectionTrait + sea_orm::TransactionTrait),
@@ -365,57 +155,6 @@ async fn audit_access(
         patient_id,
     };
     audit_resource(db, agent, access, detail).await
-}
-
-/// What was accessed, for an audit row.
-pub(super) struct Access<'a> {
-    pub action: Action,
-    pub outcome: i16,
-    pub purpose: Purpose,
-    pub resource: &'a str,
-    pub patient_id: Option<&'a str>,
-}
-
-/// Write the audit row for an access. Never put demographics or consent content in `detail`.
-pub(super) async fn audit_resource(
-    db: &(impl sea_orm::ConnectionTrait + sea_orm::TransactionTrait),
-    agent: &Agent,
-    access: Access<'_>,
-    detail: serde_json::Value,
-) -> Result<(), Box<Response>> {
-    let mut event = Event::new(access.action, agent.0.clone());
-    event.outcome = access.outcome;
-    event.patient_ref = access.patient_id.map(|id| format!("Patient/{id}"));
-    event.resource_ref = Some(access.resource.to_string());
-    event.purpose_of_use = Some(access.purpose.code().to_string());
-    event.detail = Some(detail);
-    audit::append(db, audit::chain(), &event)
-        .await
-        .map(|_| ())
-        .map_err(|e| Box::new(audit_failed(&e)))
-}
-
-pub(super) fn store_failure(e: &StoreError) -> Response {
-    match e {
-        StoreError::NotFound => json_error(
-            StatusCode::NOT_FOUND,
-            serde_json::json!({"error": "not found"}),
-        ),
-        StoreError::Conflict { current } => json_error(
-            StatusCode::CONFLICT,
-            serde_json::json!({"error": "version conflict", "current_version": current}),
-        ),
-        StoreError::BadQuery(m) => {
-            json_error(StatusCode::BAD_REQUEST, serde_json::json!({"error": m}))
-        }
-        StoreError::Db(m) => {
-            tracing::error!(error = %m, "patient store failed");
-            json_error(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                serde_json::json!({"error": "internal error"}),
-            )
-        }
-    }
 }
 
 pub(super) async fn create(
@@ -444,10 +183,7 @@ pub(super) async fn create(
     }
     let problems = store::validate(&request.patient);
     if !problems.is_empty() {
-        return json_error(
-            StatusCode::UNPROCESSABLE_ENTITY,
-            serde_json::json!({"errors": problems}),
-        );
+        return ApiError::invalid(problems.clone()).into_response();
     }
     let override_reason = request
         .override_reason
@@ -526,14 +262,12 @@ pub(super) async fn create(
         if let Err(r) = commit(tx).await {
             return *r;
         }
-        return json_error(
-            StatusCode::CONFLICT,
-            serde_json::json!({
-                "error": "possible duplicate; resend with override_reason to register anyway",
-                "candidates": shown,
-                "candidates_cut": candidates_cut,
-            }),
-        );
+        return ApiError::conflict(
+            "possible duplicate; resend with override_reason to register anyway",
+        )
+        .with("candidates", shown)
+        .with("candidates_cut", candidates_cut)
+        .into_response();
     }
     let kept_reason = match (override_reason, request.reason.as_deref()) {
         (Some(o), Some(r)) => Some(format!("{r}; duplicate override: {o}")),
@@ -680,10 +414,7 @@ pub(super) async fn update(
     }
     let problems = store::validate(&request.patient);
     if !problems.is_empty() {
-        return json_error(
-            StatusCode::UNPROCESSABLE_ENTITY,
-            serde_json::json!({"errors": problems}),
-        );
+        return ApiError::invalid(problems.clone()).into_response();
     }
     let tx = match begin(&ctx.db).await {
         Ok(t) => t,
@@ -765,10 +496,11 @@ pub(super) async fn search(
         return *r;
     }
     if !query.any() {
-        return json_error(
+        return ApiError::new(
             StatusCode::BAD_REQUEST,
-            serde_json::json!({"error": "give at least one of family, birth_date, identifier"}),
-        );
+            "give at least one of family, birth_date, identifier",
+        )
+        .into_response();
     }
     match store::search(&ctx.db, &query).await {
         Ok(mut found) => {

@@ -14,9 +14,8 @@ use crate::auth::{self, Agent};
 use crate::policy::{Subject, gate};
 use crate::routes;
 use axum::extract::{Request, State};
-use axum::http::StatusCode;
 use axum::middleware::Next;
-use axum::response::{IntoResponse, Response};
+use axum::response::Response;
 use sea_orm::DatabaseConnection;
 
 /// The state the middleware needs to audit a refusal.
@@ -117,7 +116,8 @@ async fn authorize_inner(authz: Authz, req: Request, next: Next) -> Response {
                 subject.as_ref(),
             )
             .await;
-            (StatusCode::FORBIDDEN, "forbidden").into_response()
+            // JSON on /api, an OperationOutcome on /fhir (CQ-11).
+            crate::api_error::ApiError::forbidden().for_path(&path)
         }
     }
 }

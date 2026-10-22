@@ -9,6 +9,7 @@
 
 pub mod adt_feed;
 pub mod allergies;
+pub mod api_error;
 pub mod app;
 pub mod audit;
 pub mod auth;

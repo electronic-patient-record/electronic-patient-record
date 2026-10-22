@@ -8,7 +8,8 @@
 //! search is an access to the audit log, so it writes its own row naming which criteria were used
 //! and how many rows came back, not their values.
 
-use super::patients::{authorize, json_error};
+use super::common::authorize;
+use crate::api_error::ApiError;
 use crate::audit::{self, Action, Chain, Event, Head, Verdict};
 use crate::auth::Agent;
 use crate::policy::{self, Purpose, Resource, Subject};
@@ -196,16 +197,12 @@ async fn search(
         Ok((rows, next)) => {
             axum::Json(serde_json::json!({ "events": rows, "next": next })).into_response()
         }
-        Err(Ok(message)) => json_error(
-            StatusCode::BAD_REQUEST,
-            serde_json::json!({ "error": message }),
-        ),
+        Err(Ok(message)) => {
+            ApiError::new(StatusCode::BAD_REQUEST, message.to_string()).into_response()
+        }
         Err(Err(e)) => {
             tracing::error!(error = %e, "audit search failed");
-            json_error(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                serde_json::json!({"error": "internal error"}),
-            )
+            ApiError::internal().into_response()
         }
     }
 }
@@ -297,7 +294,7 @@ async fn export(
     let criteria = match audit::AuditQuery::from_pairs(&pairs) {
         Ok(c) => c.normalized(),
         Err(m) => {
-            return json_error(StatusCode::BAD_REQUEST, serde_json::json!({ "error": m }));
+            return ApiError::new(StatusCode::BAD_REQUEST, m.to_string()).into_response();
         }
     };
     let format = pairs
@@ -305,22 +302,17 @@ async fn export(
         .find(|(k, _)| k == "format")
         .map_or("csv", |(_, v)| v.as_str());
     if !matches!(format, "csv" | "ndjson") {
-        return json_error(
-            StatusCode::BAD_REQUEST,
-            serde_json::json!({ "error": "format must be csv or ndjson" }),
-        );
+        return ApiError::new(StatusCode::BAD_REQUEST, "format must be csv or ndjson")
+            .into_response();
     }
     let mut rows = match audit::export(&ctx.db, &criteria).await {
         Ok(r) => r,
         Err(audit::SearchError::BadQuery(m)) => {
-            return json_error(StatusCode::BAD_REQUEST, serde_json::json!({ "error": m }));
+            return ApiError::new(StatusCode::BAD_REQUEST, m.to_string()).into_response();
         }
         Err(audit::SearchError::Audit(e)) => {
             tracing::error!(error = %e, "audit export failed");
-            return json_error(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                serde_json::json!({"error": "internal error"}),
-            );
+            return ApiError::internal().into_response();
         }
     };
     let page = usize::try_from(audit::EXPORT_LIMIT).unwrap_or(usize::MAX);
@@ -339,10 +331,7 @@ async fn export(
     }));
     if let Err(e) = audit::append(&ctx.db, audit::chain(), &event).await {
         tracing::error!(error = %e, "audit export could not be audited");
-        return json_error(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            serde_json::json!({"error": "internal error"}),
-        );
+        return ApiError::internal().into_response();
     }
     let (content_type, body, ext) = if format == "csv" {
         ("text/csv; charset=utf-8", to_csv(&rows), "csv")
@@ -383,7 +372,7 @@ async fn verify(
 ) -> Response {
     let checkpoint = match query.head() {
         Ok(c) => c,
-        Err(m) => return json_error(StatusCode::BAD_REQUEST, serde_json::json!({ "error": m })),
+        Err(m) => return ApiError::new(StatusCode::BAD_REQUEST, m.to_string()).into_response(),
     };
     // Verifying the audit trail is, by its nature, for the purpose `audit`.
     if let Err(r) = authorize(
@@ -403,10 +392,7 @@ async fn verify(
         Ok((status, body)) => (status, axum::Json(body)).into_response(),
         Err(e) => {
             tracing::error!(error = %e, "audit verification failed");
-            json_error(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                serde_json::json!({"error": "internal error"}),
-            )
+            ApiError::internal().into_response()
         }
     }
 }

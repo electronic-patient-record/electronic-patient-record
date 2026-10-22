@@ -2,6 +2,34 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-22 - One error type and one shared controller module (CQ-11)
+
+- `src/api_error.rs` defines every error body once. `ApiError` is `{"error": …}` with optional extra fields, or 422
+  `{"errors": […]}`, as JSON, or as an `OperationOutcome` under `/fhir/` (`for_path`). `From<&StoreError>` replaces
+  the store-error mapping. The 500 body is still `internal error`, and the log now says "store failed", not "patient
+  store failed", for every store.
+- The 14 helpers ten controllers imported from `controllers/patients.rs` (`authorize`, `purpose_of`, `begin`,
+  `commit`, `audit_resource`, `store_failure`, …) moved to `controllers/common.rs`. `json_error` is gone; about 30
+  hand-built bodies became `ApiError` calls. Net 249 lines fewer.
+- The route gate answered a 403 as plain text `forbidden`, even on `/fhir/R4`, where a client expects an
+  `OperationOutcome`. The authentication middleware answered a 401 as plain text too. Both now answer by path: JSON
+  on `/api`, `OperationOutcome` on `/fhir`.
+- The REST bodies are unchanged except the gate's 403 and 401, which are now JSON; the UI reads only the status.
+- Tests:
+  - a source census (`tests/error_census.rs`) fails on a hand-built `"error":`/`"errors":` body, `json_error(`, or
+    a plain-text refusal in controllers, `auth.rs` or `authz.rs`. It found 72 lines before. One exemption: the
+    audit chain's 424 verification report, which carries `error` as one field of a report;
+  - 2 unit tests for the body shapes and the FHIR form;
+  - a Postgres test of the real gate: 403 on `/fhir/R4/Patient/{id}` is an `OperationOutcome`, and on `/api` it is
+    `{"error": "forbidden"}`. It fails without the change.
+  - 164 unit and 71 Postgres tests pass.
+- **Not done:**
+  - handlers still return `Result<_, Box<Response>>` and use `return *r`, not `?`. `From<ApiError> for Box<Response>`
+    bridges them; moving to `?` is part of the typed service layer (CQ-13);
+  - the FHIR layer still reads `body["error"]` back from the JSON handlers (CQ-13);
+  - no handler-level test (CQ-16);
+  - not run against a live stack.
+
 ## 2026-10-21 - The duplicate check keeps the strongest candidates when it must cut (CQ-36)
 
 - The duplicate check compared at most 200 candidates, taken in patient-id order, which is arbitrary. When more than

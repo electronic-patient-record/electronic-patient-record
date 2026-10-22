@@ -241,7 +241,7 @@ pub async fn require_auth_mw(
     req: axum::extract::Request,
     next: axum::middleware::Next,
 ) -> axum::response::Response {
-    use axum::response::IntoResponse;
+    let path = req.uri().path().to_string();
     let decision = match (REQUIRE_AUTH.get(), VERIFIER.get()) {
         (Some(&require), Some(verifier)) => {
             authenticate(
@@ -268,7 +268,8 @@ pub async fn require_auth_mw(
             req.extensions_mut().insert(subject);
             next.run(req).await
         }
-        Err((status, msg)) => (status, msg).into_response(),
+        // JSON on /api, an OperationOutcome on /fhir (CQ-11).
+        Err((status, msg)) => crate::api_error::ApiError::new(status, msg).for_path(&path),
     }
 }
 

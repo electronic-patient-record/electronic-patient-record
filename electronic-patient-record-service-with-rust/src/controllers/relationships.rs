@@ -2,9 +2,8 @@
 //! patient and who is their proxy. Clinical administrators only (see `relationships.rs`).
 //! Registered by `patients::routes` under `/api/patients/{id}/relationships`.
 
-use super::patients::{
-    Access, audit_resource, authorize, begin, commit, json_error, purpose_of, store_failure,
-};
+use super::common::{Access, audit_resource, authorize, begin, commit, purpose_of, store_failure};
+use crate::api_error::ApiError;
 use crate::audit::Action;
 use crate::auth::Agent;
 use crate::patients_store::{self, StoreError};
@@ -108,10 +107,7 @@ pub(super) async fn create(
     }
     let problems = store::validate(&request.relationship);
     if !problems.is_empty() {
-        return json_error(
-            StatusCode::UNPROCESSABLE_ENTITY,
-            serde_json::json!({"errors": problems}),
-        );
+        return ApiError::invalid(problems.clone()).into_response();
     }
     let tx = match begin(&ctx.db).await {
         Ok(t) => t,
@@ -235,10 +231,7 @@ pub(super) async fn update(
     }
     let problems = store::validate(&request.relationship);
     if !problems.is_empty() {
-        return json_error(
-            StatusCode::UNPROCESSABLE_ENTITY,
-            serde_json::json!({"errors": problems}),
-        );
+        return ApiError::invalid(problems.clone()).into_response();
     }
     let tx = match begin(&ctx.db).await {
         Ok(t) => t,

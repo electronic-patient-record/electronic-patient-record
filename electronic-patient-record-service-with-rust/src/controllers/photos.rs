@@ -5,9 +5,8 @@
 //! (role, relationship, purpose of use, consent) and writes an audit row. A write and its audit
 //! row are one transaction. The audit row never holds the image, only its size and type.
 
-use super::patients::{
-    Access, audit_resource, authorize, begin, commit, json_error, purpose_of, store_failure,
-};
+use super::common::{Access, audit_resource, authorize, begin, commit, purpose_of, store_failure};
+use crate::api_error::ApiError;
 use crate::audit::Action;
 use crate::auth::Agent;
 use crate::patients_store::StoreError;
@@ -144,10 +143,11 @@ async fn write(
         return *r;
     }
     let Some(expected) = query.expected_version else {
-        return json_error(
+        return ApiError::new(
             StatusCode::BAD_REQUEST,
-            serde_json::json!({"error": "give expected_version (0 when there is no photo yet)"}),
-        );
+            "give expected_version (0 when there is no photo yet)",
+        )
+        .into_response();
     };
     let tx = match begin(&ctx.db).await {
         Ok(t) => t,
@@ -211,10 +211,7 @@ async fn write(
             }
             match e {
                 // A refused file is the uploader's problem to fix, like a refused identity record.
-                StoreError::BadQuery(m) => json_error(
-                    StatusCode::UNPROCESSABLE_ENTITY,
-                    serde_json::json!({ "errors": [m] }),
-                ),
+                StoreError::BadQuery(m) => ApiError::invalid(vec![m.to_string()]).into_response(),
                 other => store_failure(&other),
             }
         }

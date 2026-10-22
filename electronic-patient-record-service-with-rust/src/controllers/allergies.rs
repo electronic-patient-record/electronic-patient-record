@@ -12,10 +12,9 @@
 //! audit row are one transaction. The audit row records ids, versions and statuses, never the
 //! substance or the reaction.
 
-use super::patients::{
-    Access, audit_resource, authorize, begin, commit, json_error, purpose_of, store_failure,
-};
+use super::common::{Access, audit_resource, authorize, begin, commit, purpose_of, store_failure};
 use crate::allergies::{self as store, AllergyRecord, Status};
+use crate::api_error::ApiError;
 use crate::audit::Action;
 use crate::auth::Agent;
 use crate::patients_store::StoreError;
@@ -66,10 +65,7 @@ pub struct StatementRequest {
 fn failure(e: StoreError) -> Response {
     match e {
         // A refused record or statement is the writer's to fix, like a refused identity record.
-        StoreError::BadQuery(m) => json_error(
-            StatusCode::UNPROCESSABLE_ENTITY,
-            serde_json::json!({ "errors": [m] }),
-        ),
+        StoreError::BadQuery(m) => ApiError::invalid(vec![m.to_string()]).into_response(),
         other => store_failure(&other),
     }
 }

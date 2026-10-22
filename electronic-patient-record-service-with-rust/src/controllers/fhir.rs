@@ -14,7 +14,7 @@
 //! through `/api/patients`, where the reason is recorded.
 
 use super::audit::search_audited;
-use super::patients::authorize;
+use super::common::authorize;
 use super::patients::{self, CreateRequest, UpdateRequest};
 use crate::allergies::{StoredAllergy, Summary};
 use crate::auth::Agent;

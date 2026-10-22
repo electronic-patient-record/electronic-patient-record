@@ -13,6 +13,18 @@
 All routes except the three probes require a valid bearer token (built). A census test will keep the mounted FHIR routes
 and the CapabilityStatement equal (IO-1).
 
+### Error bodies
+
+Every refusal and failure is built by `api_error::ApiError`, never by hand (`tests/error_census.rs`):
+
+- On `/api`: JSON `{"error": message}`, with extra fields where a client acts on them (`current_version`,
+  `replaced_by`, `break_glass_offer`, `candidates`, `candidates_cut`).
+- A refused record is 422 `{"errors": [reason, …]}`.
+- On `/fhir/`: an `OperationOutcome` with one issue, served as `application/fhir+json`. The issue codes are `login`,
+  `forbidden`, `not-found`, `conflict`, `invalid` and `exception`.
+- The authentication (401) and route-gate (403) middleware answer the same way, by path, and never as plain text.
+- A 500 says `internal error`. The cause is logged and never sent.
+
 ### API versioning
 
 The REST API lives at `/api` and is versioned by a request header, `Accepts-version`, never by the path. Do **not**

@@ -8,9 +8,8 @@
 //! `GET /api/me/patients/{id}/access-log` is the patient-visible access log (task SE-6): who
 //! touched this record and when. See [`access_log`].
 
-use super::patients::{
-    Access, audit_failed, audit_resource, authorize, json_error, store_failure, time_now,
-};
+use super::common::{Access, audit_failed, audit_resource, authorize, store_failure, time_now};
+use crate::api_error::ApiError;
 use crate::audit::{self, Action, PatientLogRow};
 use crate::auth::Agent;
 use crate::patients_store as patients;
@@ -19,7 +18,6 @@ use crate::relationships;
 use axum::{
     Extension,
     extract::{Path, Query},
-    http::StatusCode,
     response::{IntoResponse, Response},
 };
 use loco_rs::prelude::*;
@@ -175,10 +173,7 @@ async fn access_log(
                 serde_json::json!({ "denied": "not-patient-or-proxy" }),
             )
             .await;
-            return json_error(
-                StatusCode::FORBIDDEN,
-                serde_json::json!({"error": "forbidden"}),
-            );
+            return ApiError::forbidden().into_response();
         }
         Err(e) => return store_failure(&e),
     }

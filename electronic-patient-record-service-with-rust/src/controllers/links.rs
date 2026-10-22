@@ -6,9 +6,8 @@
 //! change and its audit row are one transaction. See `links.rs` for the rules and what a merge does
 //! and does not carry over.
 
-use super::patients::{
-    Access, audit_resource, authorize, begin, commit, json_error, purpose_of, store_failure,
-};
+use super::common::{Access, audit_resource, authorize, begin, commit, purpose_of, store_failure};
+use crate::api_error::ApiError;
 use crate::audit::Action;
 use crate::auth::Agent;
 use crate::links as store;
@@ -34,10 +33,7 @@ pub struct LinkRequest {
 
 fn failure(e: StoreError) -> Response {
     match e {
-        StoreError::BadQuery(m) => json_error(
-            StatusCode::UNPROCESSABLE_ENTITY,
-            serde_json::json!({ "errors": [m] }),
-        ),
+        StoreError::BadQuery(m) => ApiError::invalid(vec![m.to_string()]).into_response(),
         other => store_failure(&other),
     }
 }

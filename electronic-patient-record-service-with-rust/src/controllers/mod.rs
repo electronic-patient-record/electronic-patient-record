@@ -3,6 +3,7 @@
 pub mod allergies;
 pub mod audit;
 pub mod break_glass;
+mod common;
 pub mod consents;
 pub mod feed;
 pub mod fhir;

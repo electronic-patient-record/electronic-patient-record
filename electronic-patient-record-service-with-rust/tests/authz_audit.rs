@@ -192,3 +192,70 @@ async fn a_row_written_while_handling_a_request_records_the_callers_roles_and_or
         serde_json::json!(["riverside"])
     );
 }
+
+/// CQ-11: the gate's refusal has the shape of the route: an `OperationOutcome` on `/fhir`, JSON
+/// `{"error": "forbidden"}` on `/api`, never plain text.
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn a_refusal_has_the_shape_of_the_route() {
+    let db = db().await;
+    let agent = Agent(unique("noroles"));
+    let subject = Subject::default();
+    let router = Router::new()
+        .route(
+            "/fhir/R4/Patient/{id}",
+            get(|| async { "should never run" }),
+        )
+        .route(
+            "/api/patients/compare",
+            post(|| async { "should never run" }),
+        )
+        .layer(axum::middleware::from_fn_with_state(
+            Authz { db },
+            authorize_mw,
+        ))
+        .layer(axum::middleware::from_fn(
+            move |mut req: axum::extract::Request, next: axum::middleware::Next| {
+                let (agent, subject) = (agent.clone(), subject.clone());
+                async move {
+                    req.extensions_mut().insert(agent);
+                    req.extensions_mut().insert(subject);
+                    next.run(req).await
+                }
+            },
+        ));
+    for (method, path, fhir) in [
+        (
+            Method::GET,
+            "/fhir/R4/Patient/00000000-0000-4000-8000-000000000000",
+            true,
+        ),
+        (Method::POST, "/api/patients/compare", false),
+    ] {
+        let res = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method(method)
+                    .uri(path)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::FORBIDDEN, "{path}");
+        let kind = res.headers()["content-type"].to_str().unwrap().to_string();
+        let bytes = axum::body::to_bytes(res.into_body(), 1 << 16)
+            .await
+            .unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&bytes).expect("a JSON body");
+        if fhir {
+            assert_eq!(kind, "application/fhir+json");
+            assert_eq!(body["resourceType"], "OperationOutcome");
+            assert_eq!(body["issue"][0]["code"], "forbidden");
+        } else {
+            assert_eq!(kind, "application/json");
+            assert_eq!(body, serde_json::json!({"error": "forbidden"}));
+        }
+    }
+}

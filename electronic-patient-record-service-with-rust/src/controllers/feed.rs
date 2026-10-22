@@ -8,9 +8,8 @@
 //! Every view and every resolution is audited; the audit row names the refusal, never its text.
 //! A listing carries no message text. A resolution and its audit row are one transaction.
 
-use super::patients::{
-    Access, audit_resource, authorize, begin, commit, json_error, purpose_of, store_failure,
-};
+use super::common::{Access, audit_resource, authorize, begin, commit, purpose_of, store_failure};
+use crate::api_error::ApiError;
 use crate::audit::Action;
 use crate::auth::Agent;
 use crate::feed_queue::{self as queue, Outcome};
@@ -36,14 +35,10 @@ pub struct ResolveRequest {
 
 fn failure(e: StoreError) -> Response {
     match e {
-        StoreError::BadQuery(m) => json_error(
-            StatusCode::UNPROCESSABLE_ENTITY,
-            serde_json::json!({ "errors": [m] }),
-        ),
-        StoreError::Conflict { .. } => json_error(
-            StatusCode::CONFLICT,
-            serde_json::json!({ "error": "already resolved" }),
-        ),
+        StoreError::BadQuery(m) => ApiError::invalid(vec![m.to_string()]).into_response(),
+        StoreError::Conflict { .. } => {
+            ApiError::new(StatusCode::CONFLICT, "already resolved").into_response()
+        }
         other => store_failure(&other),
     }
 }

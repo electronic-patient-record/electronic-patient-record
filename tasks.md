@@ -478,7 +478,7 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
   (`controllers/patients.rs:180`) with one query over `uuid[]`.
   **Acceptance:** a 50-result search issues a constant number of queries (counted in a DB-gated test), with the
   same verdicts as before.
-- [ ] **CQ-11 (M) — `ApiError` and a shared controller module.** Move the 14 shared helpers out of
+- [x] **CQ-11 (M) — `ApiError` and a shared controller module.** **Landed 2026-10-22** (`api_error.rs`; `controllers/common.rs`; gate and 401 by path; error census; Postgres gate test). **Not done:** handlers on `?` (CQ-13). Move the 14 shared helpers out of
   `controllers/patients.rs` into `controllers/common.rs`; add an `ApiError` enum implementing `IntoResponse` so
   handlers use `?` and every body has one shape. Make the route gate's refusal path-aware (an `OperationOutcome`
   on `/fhir/R4`, JSON on `/api`, not `text/plain`).

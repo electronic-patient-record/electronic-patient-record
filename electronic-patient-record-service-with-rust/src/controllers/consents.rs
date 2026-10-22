@@ -5,9 +5,8 @@
 //! withdrawing a consent is an update to `status: inactive`. Audit rows carry ids, versions and
 //! counts, never the provisions.
 
-use super::patients::{
-    Access, audit_resource, authorize, begin, commit, json_error, purpose_of, store_failure,
-};
+use super::common::{Access, audit_resource, authorize, begin, commit, purpose_of, store_failure};
+use crate::api_error::ApiError;
 use crate::audit::Action;
 use crate::auth::Agent;
 use crate::consent::{self, ConsentRecord};
@@ -46,10 +45,7 @@ pub struct UpdateRequest {
 }
 
 fn invalid(problems: &[String]) -> Response {
-    json_error(
-        StatusCode::UNPROCESSABLE_ENTITY,
-        serde_json::json!({"errors": problems}),
-    )
+    ApiError::invalid(problems.to_vec()).into_response()
 }
 
 pub(super) async fn create(

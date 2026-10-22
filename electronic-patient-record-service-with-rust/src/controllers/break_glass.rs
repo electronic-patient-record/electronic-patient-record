@@ -11,9 +11,8 @@
 //! break-glass. What a grant allows is the policy engine's decision (see `break_glass.rs` at the crate root).
 //! There is no real-time notification: the review queue and its count are what exist.
 
-use super::patients::{
-    Access, audit_resource, authorize, begin, commit, json_error, purpose_of, store_failure,
-};
+use super::common::{Access, audit_resource, authorize, begin, commit, purpose_of, store_failure};
+use crate::api_error::ApiError;
 use crate::audit::{self, Action};
 use crate::auth::Agent;
 use crate::break_glass::{self as store, Outcome};
@@ -46,14 +45,10 @@ pub struct ReviewRequest {
 
 fn failure(e: StoreError) -> Response {
     match e {
-        StoreError::BadQuery(m) => json_error(
-            StatusCode::UNPROCESSABLE_ENTITY,
-            serde_json::json!({ "errors": [m] }),
-        ),
-        StoreError::Conflict { .. } => json_error(
-            StatusCode::CONFLICT,
-            serde_json::json!({ "error": "already reviewed" }),
-        ),
+        StoreError::BadQuery(m) => ApiError::invalid(vec![m.to_string()]).into_response(),
+        StoreError::Conflict { .. } => {
+            ApiError::new(StatusCode::CONFLICT, "already reviewed").into_response()
+        }
         other => store_failure(&other),
     }
 }
