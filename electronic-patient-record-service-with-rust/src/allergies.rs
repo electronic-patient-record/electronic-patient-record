@@ -17,8 +17,11 @@
 use crate::ids;
 use crate::links;
 use crate::patients_store::{self, StoreError};
-use sea_orm::{ConnectionTrait, DbBackend, Statement, TransactionSession, TransactionTrait, Value};
+use crate::store::pg;
+use sea_orm::{ConnectionTrait, TransactionTrait};
 use serde::{Deserialize, Serialize};
+
+crate::store_errors!("allergies");
 
 /// The kind of substance.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -276,14 +279,6 @@ pub fn summarise(allergies: &[StoredAllergy], statement: Option<&Assertion>) -> 
     }
 }
 
-fn pg(sql: &str, values: Vec<Value>) -> Statement {
-    Statement::from_sql_and_values(DbBackend::Postgres, sql, values)
-}
-
-fn db_err(e: impl std::fmt::Display) -> StoreError {
-    StoreError::Db(e.to_string())
-}
-
 const TS: &str = "to_char(recorded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"')";
 
 fn columns() -> String {
@@ -437,9 +432,8 @@ pub async fn update(
             "an allergy entered in error cannot be reopened: record a new one".into(),
         ));
     }
-    let sp = db.begin().await.map_err(db_err)?;
-    let inserted = sp
-        .query_one_raw(pg(
+    // A concurrent writer took this version: the primary key refuses the second (CQ-12).
+    let row = match crate::store::append_version(db, STORE, pg(
             &format!(
                 "INSERT INTO allergy_versions (allergy_id, version, patient_id, author, reason, status, body)
                  VALUES ($1::uuid, $2, $3::uuid, $4, $5, $6, $7) RETURNING {}",
@@ -454,27 +448,14 @@ pub async fn update(
                 record.status.as_str().into(),
                 serde_json::to_value(record).map_err(db_err)?.into(),
             ],
-        ))
-        .await;
-    let inserted = match inserted {
-        Ok(v) => {
-            sp.commit().await.map_err(db_err)?;
-            Ok(v)
-        }
-        Err(e) => {
-            let _ = sp.rollback().await;
-            Err(e)
+        )).await? {
+        crate::store::Appended::Row(row) => row,
+        crate::store::Appended::Taken => {
+            let current = current(db, patient_id, allergy_id).await?.version;
+            return Err(StoreError::Conflict { current });
         }
     };
-    match inserted {
-        Ok(Some(row)) => row_to_allergy(&row),
-        Ok(None) => Err(StoreError::Db("insert returned no row".into())),
-        Err(e) if e.to_string().contains("allergy_versions_pkey") => {
-            let current = current(db, patient_id, allergy_id).await?.version;
-            Err(StoreError::Conflict { current })
-        }
-        Err(e) => Err(db_err(e)),
-    }
+    row_to_allergy(&row)
 }
 
 /// The patient's current "no known allergies" statement, if one was ever made.
@@ -548,9 +529,11 @@ pub async fn assert_none_known(
         ));
     }
     let id = patients_store::current(db, patient_id).await?.id;
-    let sp = db.begin().await.map_err(db_err)?;
-    let inserted = sp
-        .query_one_raw(pg(
+    // A concurrent writer took this version: the primary key refuses the second (CQ-12).
+    let r = match crate::store::append_version(
+        db,
+        STORE,
+        pg(
             &format!(
                 "INSERT INTO allergy_assertion_versions (patient_id, version, author, reason, kind)
                  VALUES ($1::uuid, $2, $3, $4, $5) RETURNING version, author, {TS} AS at, kind"
@@ -567,32 +550,22 @@ pub async fn assert_none_known(
                 })
                 .into(),
             ],
-        ))
-        .await;
-    let inserted = match inserted {
-        Ok(v) => {
-            sp.commit().await.map_err(db_err)?;
-            Ok(v)
-        }
-        Err(e) => {
-            let _ = sp.rollback().await;
-            Err(e)
+        ),
+    )
+    .await?
+    {
+        crate::store::Appended::Row(row) => row,
+        crate::store::Appended::Taken => {
+            let current = statement(db, patient_id).await?.map_or(0, |a| a.version);
+            return Err(StoreError::Conflict { current });
         }
     };
-    match inserted {
-        Ok(Some(r)) => Ok(Assertion {
-            version: r.try_get("", "version").map_err(db_err)?,
-            author: r.try_get("", "author").map_err(db_err)?,
-            recorded_at: r.try_get("", "at").map_err(db_err)?,
-            no_known_allergies: none_known,
-        }),
-        Ok(None) => Err(StoreError::Db("insert returned no row".into())),
-        Err(e) if e.to_string().contains("allergy_assertion_versions_pkey") => {
-            let current = statement(db, patient_id).await?.map_or(0, |a| a.version);
-            Err(StoreError::Conflict { current })
-        }
-        Err(e) => Err(db_err(e)),
-    }
+    Ok(Assertion {
+        version: r.try_get("", "version").map_err(db_err)?,
+        author: r.try_get("", "author").map_err(db_err)?,
+        recorded_at: r.try_get("", "at").map_err(db_err)?,
+        no_known_allergies: none_known,
+    })
 }
 
 /// The banner summary for a patient.

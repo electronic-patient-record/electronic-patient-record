@@ -13,8 +13,11 @@
 
 use crate::ids;
 use crate::patients_store::StoreError;
-use sea_orm::{ConnectionTrait, DbBackend, Statement, Value};
+use crate::store::pg;
+use sea_orm::ConnectionTrait;
 use serde::{Deserialize, Serialize};
+
+crate::store_errors!("feed queue");
 
 /// The most entries a listing returns.
 pub const LIST_LIMIT: u64 = 50;
@@ -97,14 +100,6 @@ pub struct Entry {
     pub message: Option<String>,
     /// How it was closed, if it was.
     pub resolution: Option<Resolution>,
-}
-
-fn pg(sql: &str, values: Vec<Value>) -> Statement {
-    Statement::from_sql_and_values(DbBackend::Postgres, sql, values)
-}
-
-fn db_err(e: impl std::fmt::Display) -> StoreError {
-    StoreError::Db(e.to_string())
 }
 
 const TS: &str = "'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"'";

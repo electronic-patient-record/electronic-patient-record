@@ -19,4 +19,9 @@ version first, so it is used only for views keyed by what they are filtered on (
 `body->>'birth_date'`. Family-name search and the duplicate check's family arm have no index yet (RC-2). Ids are
 bound as `uuid`, never compared as text (`tests/sql_census.rs`).
 
+**Appending a version.** A new version is an insert of version N+1 in a savepoint (`store::append_version`). When
+two writers pass the version check at once, the primary key refuses the second. That refusal is read from the
+driver's error kind (a unique violation; the version tables have no other unique constraint), never from the
+message text, and is answered as a version conflict naming the version now current.
+
 Migrations run with `db migrate`; production sets `auto_migrate: false` and runs the `migrate` compose service.

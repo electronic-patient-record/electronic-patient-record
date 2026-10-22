@@ -472,3 +472,30 @@ async fn the_strongest_candidates_survive_a_crowded_birth_date() {
         "then family name and birth date together"
     );
 }
+
+/// CQ-12: two writers pass the version check at once; the primary key refuses the second, which
+/// must come back as a version conflict naming the version now current, not a database error.
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn a_lost_race_for_a_version_is_a_conflict() {
+    use sea_orm::TransactionTrait;
+    let db = db().await;
+    let p = patient(&tag("race2"), "1980-03-14");
+    let s = store::create(&db, "t", None, &p).await.unwrap();
+    // The first writer has version 2 written but not committed.
+    let first = db.begin().await.unwrap();
+    store::update(&first, &s.id, 1, "first", None, &p)
+        .await
+        .unwrap();
+    // The second still sees version 1, and its insert of version 2 waits on the first.
+    let second = {
+        let (db, id, p) = (db.clone(), s.id.clone(), p.clone());
+        tokio::spawn(async move { store::update(&db, &id, 1, "second", None, &p).await })
+    };
+    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    first.commit().await.unwrap();
+    assert_eq!(
+        second.await.unwrap(),
+        Err(StoreError::Conflict { current: 2 })
+    );
+}

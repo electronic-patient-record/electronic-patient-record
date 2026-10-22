@@ -13,8 +13,11 @@
 
 use crate::ids;
 use crate::patients_store::{self, StoreError};
-use sea_orm::{ConnectionTrait, DbBackend, Statement, Value};
+use crate::store::pg;
+use sea_orm::ConnectionTrait;
 use serde::{Deserialize, Serialize};
+
+crate::store_errors!("break-glass");
 
 /// How long a grant lasts. Fixed: the clinician cannot choose a longer one.
 pub const GRANT_HOURS: i64 = 4;
@@ -74,14 +77,6 @@ impl Outcome {
             Outcome::Inappropriate => "inappropriate",
         }
     }
-}
-
-fn pg(sql: &str, values: Vec<Value>) -> Statement {
-    Statement::from_sql_and_values(DbBackend::Postgres, sql, values)
-}
-
-fn db_err(e: impl std::fmt::Display) -> StoreError {
-    StoreError::Db(e.to_string())
 }
 
 const TS: &str = "'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"'";

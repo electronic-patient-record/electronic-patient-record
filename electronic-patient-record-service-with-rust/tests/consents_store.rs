@@ -372,3 +372,34 @@ async fn consents_for_many_patients_match_one_at_a_time() {
         "a merged-in source keeps an entry"
     );
 }
+
+/// CQ-12: as for patients, a lost race for a consent version is a conflict, not a database error.
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn a_lost_race_for_a_consent_version_is_a_conflict() {
+    use sea_orm::TransactionTrait;
+    let db = db().await;
+    let pid = patient(&db).await;
+    let c = store::create(&db, &pid, "t", None, &deny_research())
+        .await
+        .unwrap();
+    let first = db.begin().await.unwrap();
+    store::update(&first, &pid, &c.id, 1, "first", None, &deny_research())
+        .await
+        .unwrap();
+    let second = {
+        let (db, pid, cid) = (db.clone(), pid.clone(), c.id.clone());
+        tokio::spawn(async move {
+            store::update(&db, &pid, &cid, 1, "second", None, &deny_research()).await
+        })
+    };
+    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    first.commit().await.unwrap();
+    assert!(
+        matches!(
+            second.await.unwrap(),
+            Err(StoreError::Conflict { current: 2 })
+        ),
+        "a lost race is a conflict"
+    );
+}

@@ -484,7 +484,7 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
   on `/fhir/R4`, JSON on `/api`, not `text/plain`).
   **Acceptance:** no handler builds `json!({"error": …})` by hand (grep census test); the FHIR 403 is an
   `OperationOutcome` (test).
-- [ ] **CQ-12 (M) — Store helpers and typed conflicts.** One `append_version` helper for the six stores; keep the
+- [x] **CQ-12 (M) — Store helpers and typed conflicts.** **Landed 2026-10-22** (`store.rs`: `pg`, `db_err` naming the store, `is_unique_violation`, `append_version`; race tests for patients and consents; census). **Not done:** `Db` keeps a string; race tested in 2 of 6 stores. One `append_version` helper for the six stores; keep the
   `DbErr` cause instead of `Db(String)`; detect version conflicts by `SqlErr::UniqueConstraintViolation`, not by
   matching `"_pkey"` in the message.
   **Acceptance:** a store test forces a conflict in each store and gets `Conflict`; the error log names the store.

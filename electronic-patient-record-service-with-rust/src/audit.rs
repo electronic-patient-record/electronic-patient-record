@@ -10,11 +10,9 @@
 //! The table itself refuses `UPDATE`, `DELETE` and `TRUNCATE` (see the
 //! migration), so the chain is a second line of defence.
 
+use crate::store::pg;
 use integrity_mac::{KeyConfig, KeySet};
-use sea_orm::{
-    ConnectionTrait, DatabaseConnection, DbBackend, Statement, TransactionSession,
-    TransactionTrait, Value,
-};
+use sea_orm::{ConnectionTrait, DatabaseConnection, TransactionSession, TransactionTrait};
 use sha2::{Digest, Sha256};
 use std::fmt::Write as _;
 use std::sync::OnceLock;
@@ -275,10 +273,6 @@ pub fn chain() -> &'static Chain {
         }
         chain
     })
-}
-
-fn pg(sql: &str, values: Vec<Value>) -> Statement {
-    Statement::from_sql_and_values(DbBackend::Postgres, sql, values)
 }
 
 /// Why an audit operation failed.

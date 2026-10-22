@@ -2,6 +2,31 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-22 - Shared store helpers; a lost version race is read from the error kind (CQ-12)
+
+- Eight store modules each had their own `pg` and `db_err`; `audit.rs` had its own `pg`. Six copies of the
+  savepoint-insert-rollback mechanics appended a version, and each detected a lost race by finding
+  `"…_pkey"` in the error message. `src/store.rs` now has the shared pieces:
+  - one `pg`;
+  - `db_err`, which names the store. Each module calls `store_errors!("consents")` for a local `db_err`, so the log
+    says which store failed;
+  - `is_unique_violation`, read from SeaORM's `sql_err()`, not the message;
+  - `append_version`, which returns the new row, or `Taken` when another writer took the version.
+
+  The patient, consent, relationship, allergy, no-known-allergies and photo stores use it.
+- Tests:
+  - two Postgres tests force the race that had no test before. A first writer holds version 2 uncommitted, and a
+    second, which also saw version 1, blocks on the key until the first commits. The second must get
+    `Conflict { current: 2 }`. They passed before the change too, as guards, and fail when the constraint match is
+    broken. They cover the patient and consent stores;
+  - a source census fails on a local `fn pg(`, `fn db_err(` or a `_pkey")` text match.
+  - 165 unit and 73 Postgres tests pass.
+- **Not done:**
+  - `StoreError::Db` is still a string (with the store's name), not the `DbErr`, because tests compare `StoreError`
+    values;
+  - the race is tested for two of the six stores;
+  - no test reads the log line.
+
 ## 2026-10-22 - One error type and one shared controller module (CQ-11)
 
 - `src/api_error.rs` defines every error body once. `ApiError` is `{"error": …}` with optional extra fields, or 422

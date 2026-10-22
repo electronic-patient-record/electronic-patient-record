@@ -11,8 +11,11 @@
 //! in backups), which is the same promise the rest of the record makes.
 
 use crate::patients_store::{self, StoreError};
-use sea_orm::{ConnectionTrait, DbBackend, Statement, TransactionSession, TransactionTrait, Value};
+use crate::store::pg;
+use sea_orm::{ConnectionTrait, TransactionTrait};
 use sha2::{Digest, Sha256};
+
+crate::store_errors!("photos");
 
 /// The largest photo accepted, in bytes.
 pub const MAX_BYTES: usize = 512 * 1024;
@@ -30,14 +33,6 @@ pub struct StoredPhoto {
     pub content_type: Option<String>,
     /// The image bytes; `None` when withdrawn.
     pub bytes: Option<Vec<u8>>,
-}
-
-fn pg(sql: &str, values: Vec<Value>) -> Statement {
-    Statement::from_sql_and_values(DbBackend::Postgres, sql, values)
-}
-
-fn db_err(e: impl std::fmt::Display) -> StoreError {
-    StoreError::Db(e.to_string())
 }
 
 /// The image type of `bytes` from its magic number, or `None` if it is neither PNG nor JPEG.
@@ -135,9 +130,11 @@ pub async fn put(
             s
         })
     });
-    let sp = db.begin().await.map_err(db_err)?;
-    let inserted = sp
-        .query_one_raw(pg(
+    // A concurrent writer took this version: the primary key refuses the second (CQ-12).
+    let row = match crate::store::append_version(
+        db,
+        STORE,
+        pg(
             &format!(
                 "INSERT INTO patient_photos
                    (patient_id, version, author, reason, content_type, bytes, sha256)
@@ -152,27 +149,17 @@ pub async fn put(
                 bytes.map(<[u8]>::to_vec).into(),
                 sha.into(),
             ],
-        ))
-        .await;
-    let inserted = match inserted {
-        Ok(v) => {
-            sp.commit().await.map_err(db_err)?;
-            Ok(v)
-        }
-        Err(e) => {
-            let _ = sp.rollback().await;
-            Err(e)
+        ),
+    )
+    .await?
+    {
+        crate::store::Appended::Row(row) => row,
+        crate::store::Appended::Taken => {
+            let current = current(db, patient_id).await?.map_or(0, |p| p.version);
+            return Err(StoreError::Conflict { current });
         }
     };
-    match inserted {
-        Ok(Some(row)) => row_to_photo(&row),
-        Ok(None) => Err(StoreError::Db("insert returned no row".into())),
-        Err(e) if e.to_string().contains("patient_photos_pkey") => {
-            let current = current(db, patient_id).await?.map_or(0, |p| p.version);
-            Err(StoreError::Conflict { current })
-        }
-        Err(e) => Err(db_err(e)),
-    }
+    row_to_photo(&row)
 }
 
 #[cfg(test)]

@@ -28,3 +28,4 @@ pub mod photos_store;
 pub mod policy;
 pub mod relationships;
 pub mod routes;
+pub mod store;

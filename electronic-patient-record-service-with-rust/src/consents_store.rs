@@ -7,12 +7,12 @@
 use crate::consent::ConsentRecord;
 use crate::ids;
 use crate::patients_store::{self, StoreError};
-use sea_orm::{
-    ConnectionTrait, DatabaseConnection, DbBackend, Statement, TransactionSession,
-    TransactionTrait, Value,
-};
+use crate::store::pg;
+use sea_orm::{ConnectionTrait, DatabaseConnection, TransactionTrait};
 use serde::Serialize;
 use std::collections::HashMap;
+
+crate::store_errors!("consents");
 
 /// A consent as stored: the record and its place in the history.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -27,14 +27,6 @@ pub struct StoredConsent {
     pub author: String,
     /// The record.
     pub consent: ConsentRecord,
-}
-
-fn db_err(e: impl std::fmt::Display) -> StoreError {
-    StoreError::Db(e.to_string())
-}
-
-fn pg(sql: &str, values: Vec<Value>) -> Statement {
-    Statement::from_sql_and_values(DbBackend::Postgres, sql, values)
 }
 
 const COLUMNS: &str =
@@ -241,9 +233,10 @@ pub async fn update(
             current: now.version,
         });
     }
-    let sp = db.begin().await.map_err(db_err)?;
-    let inserted = sea_orm::ConnectionTrait::query_one_raw(
-        &sp,
+    // A concurrent writer took this version: the primary key refuses the second (CQ-12).
+    let row = match crate::store::append_version(
+        db,
+        STORE,
         pg(
             &format!(
                 "INSERT INTO consent_versions
@@ -261,26 +254,13 @@ pub async fn update(
             ],
         ),
     )
-    .await;
-    let inserted = match inserted {
-        Ok(v) => {
-            sp.commit().await.map_err(db_err)?;
-            Ok(v)
-        }
-        Err(e) => {
-            // A failed statement aborts a PostgreSQL transaction; only the savepoint is lost, so the
-            // caller's transaction (if any) can still read the current version below.
-            let _ = sp.rollback().await;
-            Err(e)
+    .await?
+    {
+        crate::store::Appended::Row(row) => row,
+        crate::store::Appended::Taken => {
+            let current = current(db, patient_id, consent_id).await?.version;
+            return Err(StoreError::Conflict { current });
         }
     };
-    match inserted {
-        Ok(Some(row)) => row_to_stored(&row),
-        Ok(None) => Err(StoreError::Db("insert returned no row".into())),
-        Err(e) if e.to_string().contains("consent_versions_pkey") => {
-            let current = current(db, patient_id, consent_id).await?.version;
-            Err(StoreError::Conflict { current })
-        }
-        Err(e) => Err(db_err(e)),
-    }
+    row_to_stored(&row)
 }

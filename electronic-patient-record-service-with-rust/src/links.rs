@@ -20,9 +20,12 @@
 
 use crate::ids;
 use crate::patients_store::{self, StoreError};
+use crate::store::pg;
 use electronic_patient_record_matcher::{Decision, MatchingEngine, Patient};
-use sea_orm::{ConnectionTrait, DbBackend, Statement, Value};
+use sea_orm::ConnectionTrait;
 use serde::Serialize;
+
+crate::store_errors!("links");
 
 /// Serialises merges and unmerges (a different key from the audit chain's lock).
 const MERGE_LOCK: i64 = 0x4550_524d_4552_4745; // "EPRMERGE"
@@ -53,14 +56,6 @@ pub struct StoredLink {
     pub match_decision: Option<String>,
     /// When this version was written (UTC).
     pub recorded_at: String,
-}
-
-fn pg(sql: &str, values: Vec<Value>) -> Statement {
-    Statement::from_sql_and_values(DbBackend::Postgres, sql, values)
-}
-
-fn db_err(e: impl std::fmt::Display) -> StoreError {
-    StoreError::Db(e.to_string())
 }
 
 const TS: &str = "to_char(recorded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"')";

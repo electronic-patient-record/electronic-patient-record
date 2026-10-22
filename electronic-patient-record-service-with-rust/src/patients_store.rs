@@ -4,13 +4,13 @@
 //! change the same version collide on the primary key and the loser gets [`StoreError::Conflict`].
 
 use crate::ids;
+use crate::store::pg;
 use electronic_patient_record_matcher::{
     NHS_NUMBER_SYSTEM, Patient, is_placeholder_nhs_number, is_valid_nhs_number,
 };
-use sea_orm::{
-    ConnectionTrait, DatabaseConnection, DbBackend, Statement, TransactionSession,
-    TransactionTrait, Value,
-};
+use sea_orm::{ConnectionTrait, DatabaseConnection, TransactionTrait};
+
+crate::store_errors!("patients");
 
 /// A stored patient at one version.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -50,14 +50,6 @@ impl std::fmt::Display for StoreError {
             StoreError::Db(e) => write!(f, "database error: {e}"),
         }
     }
-}
-
-fn db_err(e: impl std::fmt::Display) -> StoreError {
-    StoreError::Db(e.to_string())
-}
-
-fn pg(sql: &str, values: Vec<Value>) -> Statement {
-    Statement::from_sql_and_values(DbBackend::Postgres, sql, values)
 }
 
 /// Check a patient before it is stored. Returns every problem found.
@@ -240,9 +232,11 @@ pub async fn update(
     }
     let mut body = patient.clone();
     body.id = None;
-    let sp = db.begin().await.map_err(db_err)?;
-    let inserted = sp
-        .query_one_raw(pg(
+    // A concurrent writer took this version: the primary key refuses the second (CQ-12).
+    let row = match crate::store::append_version(
+        db,
+        STORE,
+        pg(
             &format!(
                 "INSERT INTO patient_versions (patient_id, version, author, reason, body)
                  VALUES ($1::uuid, $2, $3, $4, $5) RETURNING {COLUMNS}"
@@ -254,30 +248,17 @@ pub async fn update(
                 reason.map(str::to_string).into(),
                 serde_json::to_value(&body).map_err(db_err)?.into(),
             ],
-        ))
-        .await;
-    let inserted = match inserted {
-        Ok(v) => {
-            sp.commit().await.map_err(db_err)?;
-            Ok(v)
-        }
-        Err(e) => {
-            // A failed statement aborts a PostgreSQL transaction; only the savepoint is lost, so the
-            // caller's transaction (if any) can still read the current version below.
-            let _ = sp.rollback().await;
-            Err(e)
+        ),
+    )
+    .await?
+    {
+        crate::store::Appended::Row(row) => row,
+        crate::store::Appended::Taken => {
+            let current = current(db, id).await?.version;
+            return Err(StoreError::Conflict { current });
         }
     };
-    match inserted {
-        Ok(Some(row)) => row_to_stored(&row),
-        Ok(None) => Err(StoreError::Db("insert returned no row".into())),
-        // A concurrent writer took this version: the primary key refuses the second.
-        Err(e) if e.to_string().contains("patient_versions_pkey") => {
-            let current = current(db, id).await?.version;
-            Err(StoreError::Conflict { current })
-        }
-        Err(e) => Err(db_err(e)),
-    }
+    row_to_stored(&row)
 }
 
 /// The most candidates fetched for a duplicate check.
