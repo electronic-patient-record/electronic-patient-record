@@ -46,6 +46,15 @@ With login off (development only) there is no subject and the gate stands aside,
 (default `authentication-service`), `EPR_TOKEN_AUDIENCE` (default `electronic-patient-record`), `EPR_REDIS_URL`
 (production cache), `DATABASE_URL`, `PORT`.
 
+## 2a. Handler tests (CQ-16)
+
+Through the real router (`tests/http_patients.rs`, `http_roles.rs`, `http_conflicts.rs`, Postgres): duplicate 409,
+consent masking of candidates, the route gate (403 on `/api` and `/fhir`, 401 without a token), break-the-glass offer,
+grant and flag, the 409 body of every versioned store (patient, allergy, statement, photo, consent, relationship),
+merge refusals, and the FHIR refusals (428, 412, 409, 422, 404, 400). **Still untested over HTTP:** a patient or proxy
+token (self-service routes), the access-log route, audit export, HL7 feed refusals, the Keycloak-expiry 401 path, and
+the audit row written for each refused write.
+
 ## 3. Not built
 
 FHIR `Patient`, phonetic search, any load test of search; the rest of the resource store; FHIR endpoints and the CapabilityStatement; consent beyond identity (SE-2 is built for identity only: no clinical record exists to hide, no export exists to honour consent, the national data opt-out is held locally and no national service is checked, the `research` purpose is permitted to no role so an opt-out changes nothing today, the patient and proxy roles cannot manage consent without a care-relationship lookup, no UI); break-the-glass grants (SE-3: the engine checks a grant but nothing creates,

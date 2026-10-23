@@ -2,6 +2,15 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-23 - Consent and relationship conflicts, FHIR miss and search refusal; CQ-16 closed
+
+- `http_conflicts.rs` also checks the stale-change 409 for consents and relationships, a FHIR `Patient` miss (404)
+  and an unsupported `birthdate` prefix (400), both as `OperationOutcome`s.
+- CQ-16 is ticked on its acceptance ("or is listed as still untested"): the service spec §2a lists what is covered
+  and what is not.
+- **Not done or not verified:** over HTTP, no patient or proxy token, access-log route, audit export, HL7 feed
+  refusal, or Keycloak-expiry 401; the audit row of each refused write is not checked. Not run on GitHub (CQ-20).
+
 ## 2026-10-23 - Version conflicts and merge refusals through the router (CQ-16, third slice)
 
 - `tests/http_conflicts.rs` (1, Postgres, login off) checks the exact 409 body `{"error": "version conflict",

@@ -151,6 +151,45 @@ async fn stale_versions_are_409_with_the_current_version_and_bad_merges_are_422(
         assert_eq!(stale_withdraw.status_code(), StatusCode::CONFLICT);
         conflict(&stale_withdraw.json::<Value>(), 1);
 
+        // Consent and relationship: a stale change.
+        let consent = json!({ "kind": "general", "status": "active",
+            "provisions": [{ "effect": "permit", "purposes": ["treatment"] }] });
+        let made = server
+            .post(&format!("/api/patients/{id}/consents"))
+            .json(&json!({ "consent": consent }))
+            .await;
+        assert_eq!(made.status_code(), StatusCode::CREATED, "{}", made.text());
+        let consent_id = made.json::<Value>()["id"].as_str().expect("id").to_string();
+        let stale = server
+            .put(&format!("/api/patients/{id}/consents/{consent_id}"))
+            .json(&json!({ "consent": consent, "expected_version": 4 }))
+            .await;
+        assert_eq!(stale.status_code(), StatusCode::CONFLICT, "{}", stale.text());
+        conflict(&stale.json::<Value>(), 1);
+        let rel = json!({ "subject": "nurse-1", "kind": "care-team", "status": "active" });
+        let made = server
+            .post(&format!("/api/patients/{id}/relationships"))
+            .json(&json!({ "relationship": rel }))
+            .await;
+        assert_eq!(made.status_code(), StatusCode::CREATED, "{}", made.text());
+        let rel_id = made.json::<Value>()["id"].as_str().expect("id").to_string();
+        let stale = server
+            .put(&format!("/api/patients/{id}/relationships/{rel_id}"))
+            .json(&json!({ "relationship": rel, "expected_version": 4 }))
+            .await;
+        assert_eq!(stale.status_code(), StatusCode::CONFLICT, "{}", stale.text());
+        conflict(&stale.json::<Value>(), 1);
+
+        // FHIR: a miss and an unsupported search are OperationOutcomes, not the JSON error shapes.
+        let missing = server
+            .get("/fhir/R4/Patient/00000000-0000-4000-8000-000000000000")
+            .await;
+        assert_eq!(missing.status_code(), StatusCode::NOT_FOUND);
+        assert_eq!(missing.json::<Value>()["resourceType"], "OperationOutcome");
+        let prefix = server.get("/fhir/R4/Patient?birthdate=gt1990-01-01").await;
+        assert_eq!(prefix.status_code(), StatusCode::BAD_REQUEST);
+        assert_eq!(prefix.json::<Value>()["resourceType"], "OperationOutcome");
+
         // Merge and unmerge: refusals are 422 with the reason, never a 409 or a 500.
         let into_self = server
             .post(&format!("/api/patients/{id}/merge"))
