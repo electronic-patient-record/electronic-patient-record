@@ -35,6 +35,10 @@ Weighted mean of per-field similarities over the fields present on both records.
 | postcode | 0.10 | any folded postcode in common |
 | telecom | 0.10 | any phone (digits) or email (lowercase) in common |
 
+Configuration: `MatchConfig::validate()` refuses a negative or non-finite weight, all weights zero, a threshold outside 0 to 1
+(or NaN), and a `review_threshold` above `auto_link_threshold`, each with a `ConfigError` variant; `MatchingEngine::try_new`
+calls it, while `MatchingEngine::new` does not. `Default` is valid.
+
 Decision: `auto_link_threshold` 0.92, `review_threshold` 0.75, else `NonMatch`. **These are unvalidated starting
 values** (ID-1 asks for a 200-pair labelled corpus before they are trusted).
 

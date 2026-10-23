@@ -86,6 +86,16 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
   UI and Playwright gates were not run, though the JSON bodies are meant to be identical (`PatientView` flattens the
   stored version); the FHIR allergy bundle is still built from the list serialised to JSON. Not run on GitHub (CQ-20).
 
+## 2026-10-23 - `MatchConfig::validate()` (CQ-19, second slice)
+
+- Matcher (unreleased): `validate()` and `MatchingEngine::try_new` refuse a negative or non-finite weight, all-zero
+  weights, a threshold outside 0 to 1 or NaN, and a review line above the auto-link line. `tests/config.rs` (5) has one
+  test per refusal. Gates run clean from `cargo clean -p`: fmt, clippy `-D warnings`, 49 tests pass. This is additive
+  and changes no score or decision, so it is not clinical and no hazard row changed.
+- **Not done or not verified:** `MatchingEngine::new` and `Default` still accept anything, so nothing forces a caller
+  to validate; the service does not configure the matcher yet. Eight rules of CQ-19 remain. No release. Not run on
+  GitHub (CQ-20).
+
 ## 2026-10-23 - Real-world names, first slice: compound family names and the extra given name (CQ-19, partly)
 
 - **Clinical.** In the matcher (unreleased, not yet in the service, which uses 0.2.0):

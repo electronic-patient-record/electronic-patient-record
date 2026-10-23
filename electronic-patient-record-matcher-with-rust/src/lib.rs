@@ -10,6 +10,8 @@ pub mod nhs;
 pub mod normalize;
 pub mod patient;
 
-pub use engine::{Decision, FieldScore, MatchConfig, MatchResult, MatchingEngine, Weights};
+pub use engine::{
+    ConfigError, Decision, FieldScore, MatchConfig, MatchResult, MatchingEngine, Weights,
+};
 pub use nhs::{NHS_NUMBER_SYSTEM, is_placeholder_nhs_number, is_valid_nhs_number};
 pub use patient::{Address, AdministrativeSex, HumanName, Identifier, Patient, Telecom};

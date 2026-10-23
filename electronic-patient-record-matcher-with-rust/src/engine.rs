@@ -63,6 +63,56 @@ impl Default for MatchConfig {
     }
 }
 
+/// Why a `MatchConfig` is refused by `MatchConfig::validate`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+pub enum ConfigError {
+    #[error("a weight is negative or not a finite number")]
+    InvalidWeight,
+    #[error("the weights sum to zero, so no field would count")]
+    NoWeight,
+    #[error("a threshold is outside 0 to 1 or not a finite number")]
+    ThresholdOutOfRange,
+    #[error("review_threshold is above auto_link_threshold")]
+    ThresholdsInverted,
+}
+
+impl MatchConfig {
+    /// Refuse a configuration that would make scores meaningless or let a pair auto-link below
+    /// the review line. `Default` is valid. `MatchingEngine::new` does not call this; use `try_new`.
+    pub fn validate(&self) -> Result<(), ConfigError> {
+        let w = &self.weights;
+        let weights = [
+            w.family,
+            w.given,
+            w.birth_date,
+            w.sex,
+            w.postal_code,
+            w.telecom,
+        ];
+        if weights.iter().any(|x| !x.is_finite() || *x < 0.0) {
+            return Err(ConfigError::InvalidWeight);
+        }
+        if weights.iter().sum::<f64>() <= 0.0 {
+            return Err(ConfigError::NoWeight);
+        }
+        let thresholds = [
+            self.auto_link_threshold,
+            self.review_threshold,
+            self.min_given_for_auto,
+            self.min_family_for_auto,
+            self.min_birth_date_for_auto,
+            self.min_evidence_weight,
+        ];
+        if thresholds.iter().any(|x| !(0.0..=1.0).contains(x)) {
+            return Err(ConfigError::ThresholdOutOfRange);
+        }
+        if self.review_threshold > self.auto_link_threshold {
+            return Err(ConfigError::ThresholdsInverted);
+        }
+        Ok(())
+    }
+}
+
 /// What to do with a candidate pair.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -103,6 +153,12 @@ pub struct MatchingEngine {
 impl MatchingEngine {
     pub fn new(config: MatchConfig) -> Self {
         Self { config }
+    }
+
+    /// Like `new`, but refuses a configuration that `MatchConfig::validate` rejects.
+    pub fn try_new(config: MatchConfig) -> Result<Self, ConfigError> {
+        config.validate()?;
+        Ok(Self { config })
     }
 
     pub fn config(&self) -> &MatchConfig {
