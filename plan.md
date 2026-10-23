@@ -571,8 +571,33 @@ rest on secondary sources are marked **[uncertain]**.
   charts, changed how fever in children is prioritised, and clarified terms (for example "new abnormal pulse").
   The paediatric validation papers I found used the 1996 first edition, so their results may not transfer.
 - It is a **method with published content**, owned by the Manchester Triage Group and published through the
-  Advanced Life Support Group. **I did not find the licence terms.** Whether we may encode its flowcharts in an
+  Advanced Life Support Group. **I did not find the licence text.** Whether we may encode its flowcharts in an
   open-source repository is therefore unknown, and we must not copy them in until it is settled (OQ-T1).
+
+#### 15.1.1 Licensing findings (TR-1, 2026-10-23)
+
+From search summaries only; the ALSG help-centre page and the ALSG introduction PDF were not opened.
+
+- Electronic use is licensed through **Wiley** on behalf of the Advanced Life Support Group and the Manchester Triage
+  Group. A software developer can license the framework and the content, or the framework only, leaving each
+  end-user organisation to integrate the content later. A hospital can also license MTS directly and buy software
+  already populated with content.
+- The group gives licensed vendors a detailed map of each flowchart, so discriminator order is preserved. An
+  accreditation scheme covers software design, licensing, audit and timely updates.
+- Price signals: a 2025 NHS trust contract with Wiley, £17,500 excl. VAT over five years; an ambulance trust paid
+  £12,000 for three years (2019 FOI). Prices are per organisation and **[uncertain]** for us.
+- The Royal College of Emergency Medicine reports that the group no longer supports earlier editions, so a
+  deployer must run the current version and our packs need an update path.
+- A German implementation guideline says two rights holders (Wiley and the German translation publisher) must both
+  confirm IT rights. Translation rights may differ by country **[uncertain]**.
+- **Not found:** the licence terms, and whether an open-source project may publish the flowcharts at all.
+
+**Interim policy (until Wiley or the group answers):** no MTS flowchart, discriminator or wording in the repository,
+in tests or in demo data. The project ships the framework only: the pack interface (TR-6) and a synthetic pack. A
+deployer obtains the MTS licence and content from Wiley, and the project does not claim MTS accreditation or
+conformance. **Next step for a human:** write to the group (manchestertriage@alsg.org, from the community hub
+**[uncertain: confirm the address]**) and to Wiley's licensing team, asking whether the framework-only model suits
+an open-source, Apache-2.0 or MIT-licensed project.
 
 ### 15.2 Evidence on safety
 

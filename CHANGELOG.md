@@ -2,6 +2,15 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-23 - TR-1 partly done: MTS licensing findings and interim policy
+
+- `plan.md` §15.1.1 records how MTS is licensed (Wiley for the Advanced Life Support Group and the Manchester Triage
+  Group; framework-only or framework-and-content licences) and sets an interim policy: no MTS content in the repo.
+  OQ-T1 and TR-1 point to it.
+- **Not done or not verified:** only search summaries were read, not the licence, the ALSG help page or the ALSG PDF.
+  Nobody has contacted Wiley or the group, so whether an open-source project may publish the flowcharts is unknown.
+  There is no CI guard against MTS text, and TR-1 stays unticked.
+
 ## 2026-10-23 - Manchester Triage System research: plan.md §15, tasks TR-1 to TR-13
 
 - `plan.md` §15 records the MTS research (method, five categories and target times, safety evidence, fit with this

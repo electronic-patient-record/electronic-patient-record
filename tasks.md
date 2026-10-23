@@ -711,7 +711,10 @@ Ranked in plan.md §15. Sources are abstracts and summaries only, so the items s
 Emergency triage is outside the 1.0 scope (§7.1) until OQ-T2 is decided. TR-1 and TR-2 come first, and nothing else
 here is built before they are done. Every item below is **Clinical**: it changes who a clinician sees first.
 
-- [ ] **TR-1 (S) — MTS licence and content policy.** Find the Manchester Triage Group / Advanced Life Support Group
+- [ ] **TR-1 (S) — MTS licence and content policy.** **Partly done 2026-10-23:** licensing model and interim policy
+  (framework only, no MTS content in the repo) are in plan.md §15.1.1. **Not done:** the licence terms were not found,
+  nobody has asked Wiley or the group, there is no CI guard, and the task stays open until the human reply is
+  recorded in OQ-T1. Find the Manchester Triage Group / Advanced Life Support Group
   licence terms. Decide whether flowcharts may be encoded, shipped or only loaded from a licensed pack.
   **Acceptance:** the decision is recorded as OQ-T1 in `spec/16-open-questions.md`. Until then no MTS flowchart text
   is in the repo, and a CI grep guard (or a documented review step) enforces it.
