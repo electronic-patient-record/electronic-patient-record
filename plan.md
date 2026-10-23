@@ -2,8 +2,8 @@
 
 > **Status (2026-10-20).** Research and decision history, not a live queue.
 > The work items derived from it live in [tasks.md](tasks.md); the canonical
-> specification starts at [spec/index.md](spec/index.md). **No code exists
-> yet.** Facts marked **[uncertain]** came from secondary sources or could not
+> specification starts at [spec/index.md](spec/index.md). **Written when no
+> code existed; code now exists** (see [spec/14](spec/14-implementation-status.md)). Facts marked **[uncertain]** came from secondary sources or could not
 > be confirmed during this research pass and must be checked against a primary
 > source before anything depends on them.
 

@@ -11,8 +11,9 @@
 # service REFUSES TO START, which is the safe failure. It also refuses to start in `production`
 # with login off.
 #
-# NOT FOR CLINICAL USE. This is a scaffold: there is no clinical record yet, and authorization
-# beyond "has a valid token" (roles, consent, break-the-glass) is not built (tasks SE-1 to SE-4).
+# NOT FOR CLINICAL USE. This is a scaffold. Authorization is built beyond "has a valid token": a role gate on every
+# route, record-level decisions with care relationship, purpose and consent, and break-the-glass (service spec/index.md).
+# The clinical record is still only allergies; see tasks.md for what is not built.
 #
 # Keycloak is the compose profile `keycloak`, development only (operations/keycloak/README.md). The standalone
 # scripts/podman-postgres.sh and scripts/podman-redis.sh run those two services without compose.

@@ -4,7 +4,13 @@
 #
 #   podman compose -f compose.test.yaml up -d --wait
 #   DATABASE_URL=postgres://loco:loco@localhost:5432/electronic_patient_record_test \
-#     cargo test --test mod -- --ignored --test-threads=1
+#     cargo test -- --ignored --test-threads=1
+#
+# Ports 5432 and 6379 are often taken: override them (and use the same port in DATABASE_URL):
+#
+#   TEST_DB_PORT=5543 TEST_REDIS_PORT=6390 podman compose -f compose.test.yaml up -d --wait
+#   DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test cargo test -- --ignored --test-threads=1
+#
 #   podman compose -f compose.test.yaml down -v
 #
 # Redis (the production cache provider) is started with Postgres, on 127.0.0.1:6379 with the password `loco`
@@ -24,7 +30,7 @@ services:
     # Fully qualified: podman refuses a short name (or prompts for a
     # registry), which would hang an unattended run.
     image: docker.io/library/postgres:18-alpine
-    container_name: mxi-electronic-patient-record-test-db
+    container_name: electronic-patient-record-test-db
     environment:
       POSTGRES_USER: loco
       POSTGRES_PASSWORD: loco
@@ -60,7 +66,7 @@ services:
   # saved to disk. Bound to the loopback address only.
   redis:
     image: docker.io/library/redis:7-alpine
-    container_name: mxi-electronic-patient-record-test-redis
+    container_name: electronic-patient-record-test-redis
     command: ["redis-server", "--requirepass", "loco", "--save", "", "--appendonly", "no", "--maxmemory", "64mb", "--maxmemory-policy", "allkeys-lru"]
     ports:
       - "127.0.0.1:${TEST_REDIS_PORT:-6379}:6379"

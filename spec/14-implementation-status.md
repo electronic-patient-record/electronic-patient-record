@@ -1,13 +1,13 @@
 ## 14. Implementation Status
 
-**Milestone M0 (scaffold), 2026-10-20.** Not for clinical use; no clinical record exists.
-
-| Area | State |
-|---|---|
-| Matcher | Built: `Patient`, engine, NHS number validation. Missing: labelled corpus, fuzz, benches |
-| Service | Built: app wiring, auth guard and startup gate, compare endpoint, `audit_events` table, hash-chained audit writer and verifier (compare is audited). Missing: patient storage and everything clinical |
-| UI | Built: shell, locale URLs, headers/CSP, proxy, compare page. Missing: sign-in, patient pages, widgets, translations |
-| CI, release, compose, Containerfiles | Written; see the changelog for what was run |
+**Not for clinical use.** The repository is still the M0 scaffold in its release status, but code now exists for patient
+identity, consent, care relationships, allergies, photos, merge and unmerge, break-the-glass, an HL7 ADT feed and a hash-chained
+audit trail. What is built and what is not is stated per feature in each project's `spec/index.md`
+([service](../electronic-patient-record-service-with-rust/spec/index.md),
+[matcher](../electronic-patient-record-matcher-with-rust/spec/index.md),
+[UI](../electronic-patient-record-ui-with-svelte/spec/index.md)) and in the entries of [`CHANGELOG.md`](../CHANGELOG.md),
+which also say what was not run. The table that stood here was hand-written and went stale; the counts below are generated.
+Nothing has run on GitHub yet (CQ-20).
 
 <!-- generated:start -->
 <!-- This block is written by scripts/generate-status.sh; do not edit it by hand. -->

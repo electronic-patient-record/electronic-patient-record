@@ -43,6 +43,20 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
   refusals, and a patient or proxy token. The audit row written for each refused write is not checked here. Not run
   on GitHub (CQ-20).
 
+## 2026-10-23 - Stale documents brought up to date (CQ-28, partly)
+
+- `spec/14-implementation-status.md`: the hand-written area table is gone; a paragraph points to each project's
+  `spec/index.md` and this changelog, and the generated block stays.
+- UI `AGENTS.md`: lists the patient, my-record and admin pages that exist. `compose.yaml`: the header no longer says
+  authorization is not built. `compose.test.yaml`: the `--test mod` instruction (no such test target) is replaced, the
+  alternative-ports commands are given, and the container names lose the `mxi-` prefix (the running test containers
+  keep the old names until recreated). `plan.md`: the header no longer says no code exists.
+- Service and UI `CHANGELOG.md` gain an "Unreleased" note pointing at this file. The matcher's already stops at its
+  0.2.0 entry, which is current.
+- **Not done or not verified:** a reviewer has not read the files for contradictions, so CQ-28 stays open. The UI page
+  list comes from the route directory, not from running the UI. `podman compose config` accepts the test compose file;
+  it was not brought up under the new names.
+
 ## 2026-10-23 - Request id in the audit trail (CQ-17, partly)
 
 - A new outermost middleware settles `x-request-id` (the caller's, cleaned, or a UUID) before anything else, and every

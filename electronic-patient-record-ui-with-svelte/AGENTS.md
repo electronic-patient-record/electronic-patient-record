@@ -3,9 +3,10 @@
 SvelteKit (kit 3), Svelte 5 runes, TypeScript strict, adapter-node. Read [`spec/index.md`](spec/index.md) first.
 
 - **Status**: shell. Built: locale-prefixed URLs, security headers and a strict CSP, the `/api/proxy/*` BFF proxy,
-  Keycloak sign-in with server-side sessions (`/auth/*`, off unless `EPR_OIDC_ISSUER` is set), a home page and a
-  patient-compare page. Not built: a shared session store, patient pages, Lily widgets, the `DataTable`
-  wrapper, translations (English only; the ten `LOCALES` fall back to it).
+  Keycloak sign-in with server-side sessions (`/auth/*`, off unless `EPR_OIDC_ISSUER` is set), a home page, patient
+  search, registration and compare pages, a patient record page with an access-log page, `/my-record`, and admin pages
+  for the HL7 feed and break-the-glass review (see `src/routes`). Not built: a shared session store, Lily widgets,
+  the `DataTable` wrapper, translations (English only; the ten `LOCALES` fall back to it).
 - Environment variables are declared in `src/env.ts` (`defineEnvVars`) and read from `$app/env/private`.
 - The browser never calls the API directly: it calls `/api/proxy/api/...`, and `src/lib/proxy.ts` refuses anything
   outside `/api`. Keep that rule and its tests.

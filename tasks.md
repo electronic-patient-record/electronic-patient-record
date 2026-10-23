@@ -580,7 +580,7 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
   - a health check without `curl` in the runtime image.
 
   **Acceptance:** the stack boots under compose with these settings, and `/_health` returns 200.
-- [ ] **CQ-28 (S) — Stale documents.** Brings these documents up to date:
+- [ ] **CQ-28 (S) — Stale documents.** **Landed 2026-10-23** (see CHANGELOG); **open until** a reviewer reads the files for contradictions. Brings these documents up to date:
   - the hand-written area table in `spec/14-implementation-status.md`: generate it or delete it;
   - the UI `AGENTS.md` ("patient pages not built");
   - the `compose.yaml` break-the-glass comment;
