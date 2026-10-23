@@ -2,6 +2,20 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-23 - Version conflicts and merge refusals through the router (CQ-16, third slice)
+
+- `tests/http_conflicts.rs` (1, Postgres, login off) checks the exact 409 body `{"error": "version conflict",
+  "current_version": n}` for a stale patient `PUT`, allergy change, allergy statement, photo `PUT` and photo
+  withdrawal. It also checks that merging a record into itself and unmerging a record that is not merged are 422 with
+  the reason.
+- `http_roles.rs` and the break-glass test written in a second session were folded into one test; the duplicate file
+  `http_authenticated.rs` is gone.
+- Links have no sequential 409: a refused merge is a 422, and the merge race that ends in 409 is covered only at the
+  store (`links_store.rs`), not over HTTP.
+- **Not done or not verified:** CQ-16 stays open. Not covered: 409s for consents and relationships, the other FHIR
+  refusals, and a patient or proxy token. The audit row written for each refused write is not checked here. Not run
+  on GitHub (CQ-20).
+
 ## 2026-10-23 - Role-token handler tests: route gate, consent masking, break-the-glass (CQ-16, partly)
 
 - `tests/http_roles.rs` (1, Postgres) boots the app with login **on**, a local OIDC stand-in and a role map, and
