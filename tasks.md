@@ -503,7 +503,7 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
   relationship, allergy, photo, link, audit). Make it refuse for clinical tables, or allow it only in development
   behind an explicit check.
   **Acceptance:** a test runs `down` with a production environment and gets an error; the tables remain.
-- [ ] **CQ-16 (M/L) — Handler-level tests.** **First slice landed 2026-10-23** (`tests/http_patients.rs`: duplicate 409 and four FHIR refusals, login off). **Open:** consent masking and break-glass (need role tokens), links, allergies, photos. DB-gated `tests/http_*.rs` that drive `controllers::all_routes()` with
+- [ ] **CQ-16 (M/L) — Handler-level tests.** **First slice landed 2026-10-23** (`tests/http_patients.rs`: duplicate 409 and four FHIR refusals, login off). **Second slice 2026-10-23** (`tests/http_authenticated.rs`: break-glass with role tokens from a local OIDC provider, login on). **Open:** consent masking of candidates, 409 shapes for links, allergies and photos. DB-gated `tests/http_*.rs` that drive `controllers::all_routes()` with
   `loco_rs::testing` and PASETO test keys: consent masking of duplicate candidates, 409 shapes, the break-glass
   flag, FHIR mapping of refusals.
   **Acceptance:** each path listed as by-hand-only in `spec/index.md` has an automated test, or is listed as still

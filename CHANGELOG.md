@@ -2,6 +2,19 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-23 - Break-glass through the real router with role tokens (CQ-16, second slice)
+
+- `tests/http_authenticated.rs` (1, Postgres) boots the app with login on. Tokens come from the local OIDC provider
+  (`authentication_verifier::test_idp`) and are mapped by the shipped `operations/keycloak/role-map.json`. A
+  clinician with no care relationship gets 403 with `break_glass_offer: true`; a blank reason is refused; a grant
+  is 201, asking again is 200 with the same `expires_at`; the record then reads 200; the auditor's search with
+  `break_glass=true` returns the grant, the repeat and the read, all flagged, with no free text; the review count is
+  at least 1.
+- **Not done or not verified:** CQ-16 stays open. Not covered: consent masking of duplicate candidates, 409 shapes
+  for links, allergies and photos, and the other FHIR refusals. The provider is Keycloak-shaped, not Keycloak. The
+  test fixes process-wide auth settings, so it is the only test in its binary. The refused read is not itself
+  flagged as break-glass, which is intended but not asserted. Not run on GitHub (CQ-20).
+
 ## 2026-10-23 - First handler-level tests through the real router (CQ-16, partly)
 
 - `tests/http_patients.rs` (2, Postgres) boots the app with `loco_rs::testing::request` (real routes, route gate, audit

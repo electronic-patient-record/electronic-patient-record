@@ -1,7 +1,7 @@
 //! DB-gated, through the real router (`controllers::all_routes()`, the route gate and the audit
 //! chain, booted by `loco_rs::testing` with login off): the shapes of the duplicate refusal and
 //! of the FHIR refusals (CQ-16). Not covered here: consent masking of candidates and the
-//! break-glass flag, which need tokens with roles and are listed in `spec/index.md` as by-hand.
+//! break-glass flag (the latter is in `http_authenticated.rs`).
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
@@ -14,19 +14,42 @@ use electronic_patient_record::app::App;
 use electronic_patient_record_matcher::{HumanName, Patient};
 use loco_rs::testing::prelude::request;
 
+/// A family name no earlier run shares: letters only, from the clock, so the matcher's name
+/// similarity stays low against patients left in the database by other runs.
 fn tag(label: &str) -> String {
-    let nanos = std::time::SystemTime::now()
+    let mut n = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    format!("Zz{label}{nanos}")
+    let mut letters = String::new();
+    while n > 0 {
+        letters.push((b'a' + (n % 26) as u8) as char);
+        n /= 26;
+    }
+    format!("{label}{letters}")
+}
+
+/// A birth date no earlier run shares, so the duplicate check does not shortlist their patients.
+fn dob(seed: u128) -> String {
+    let n = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos()
+        / 1000
+        + seed;
+    format!(
+        "{}-{:02}-{:02}",
+        1900 + n % 100,
+        1 + n / 100 % 12,
+        1 + n / 1200 % 28
+    )
 }
 
 fn patient(family: &str, dob: &str) -> serde_json::Value {
     serde_json::to_value(Patient {
         names: vec![HumanName {
             family: Some(family.into()),
-            given: vec!["Test".into()],
+            given: vec![family.into()],
         }],
         birth_date: Some(dob.into()),
         ..Default::default()
@@ -46,7 +69,8 @@ async fn a_likely_duplicate_is_409_with_candidates_and_an_override_needs_a_reaso
     login_off();
     request::<App, _, _>(|server, _ctx| async move {
         let family = tag("dup");
-        let body = serde_json::json!({ "patient": patient(&family, "1980-03-14") });
+        let born = dob(0);
+        let body = serde_json::json!({ "patient": patient(&family, &born) });
         let first = server.post("/api/patients").json(&body).await;
         assert_eq!(first.status_code(), StatusCode::CREATED, "{}", first.text());
 
@@ -60,13 +84,13 @@ async fn a_likely_duplicate_is_409_with_candidates_and_an_override_needs_a_reaso
         assert!(candidates[0].get("score").is_some());
 
         let blank = serde_json::json!({
-            "patient": patient(&family, "1980-03-14"), "override_reason": "  "
+            "patient": patient(&family, &born), "override_reason": "  "
         });
         let refused = server.post("/api/patients").json(&blank).await;
         assert_eq!(refused.status_code(), StatusCode::CONFLICT);
 
         let with_reason = serde_json::json!({
-            "patient": patient(&family, "1980-03-14"), "override_reason": "twins"
+            "patient": patient(&family, &born), "override_reason": "twins"
         });
         let ok = server.post("/api/patients").json(&with_reason).await;
         assert_eq!(ok.status_code(), StatusCode::CREATED, "{}", ok.text());
@@ -82,7 +106,7 @@ async fn fhir_refusals_are_operation_outcomes_and_never_carry_candidates() {
         let family = tag("fhir");
         let created = server
             .post("/api/patients")
-            .json(&serde_json::json!({ "patient": patient(&family, "1975-06-01") }))
+            .json(&serde_json::json!({ "patient": patient(&family, &dob(777)) }))
             .await;
         assert_eq!(created.status_code(), StatusCode::CREATED);
         let id = created.json::<serde_json::Value>()["id"]
