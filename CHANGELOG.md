@@ -86,6 +86,19 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
   UI and Playwright gates were not run, though the JSON bodies are meant to be identical (`PatientView` flattens the
   stored version); the FHIR allergy bundle is still built from the list serialised to JSON. Not run on GitHub (CQ-20).
 
+## 2026-10-23 - Nickname table (CQ-19, eighth slice)
+
+- **Clinical.** Matcher (unreleased, not in the service): `Bill` and `William`, `Liz` and `Elizabeth` and 36 other
+  groups of English given names now score 0.8 instead of whatever Jaro-Winkler gave. 0.8 is under the 0.85 given-name
+  guard, so such a pair can reach Review but never auto-links on the name alone. `Alexander` and `Alexandra` stay
+  apart though `Alex` joins both. `tests/nicknames.rs` (4). Gates clean: fmt, clippy `-D warnings`, 80 tests. H-001
+  extended, status untouched.
+- **Not done or not verified:** the list is mine, from memory, not from a published source, and has not been reviewed
+  by anyone; it is English only (no Welsh, Irish, South Asian or other naming practice), so `Mohammed` spellings are in it only
+  as a stopgap and score no higher than a nickname. Family-name nicknames and middle names are not covered. Whether 0.8
+  puts too many pairs in Review is unmeasured (no ID-1 corpus). Two rules of CQ-19 remain (phonetic signal, enum codes).
+  No release. Not run on GitHub (CQ-20).
+
 ## 2026-10-23 - Household evidence (CQ-19, seventh slice)
 
 - **Clinical.** Matcher (unreleased, not in the service): relatives, flatmates and a care home share a postcode and a

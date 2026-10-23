@@ -525,7 +525,7 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
 
 ### Matcher
 
-- [ ] **CQ-19 (M/L) — Real-world names.** **Clinical.** **First slice landed 2026-10-23** (per-part family matching; the extra given name blocks AutoLink; `tests/names.rs`, 4; H-001; unreleased, not in the service). **`MatchConfig::validate()` landed** (second slice, `tests/config.rs`, 5). **Transliteration landed** (third slice, Latin only, `tests/transliteration.rs`, 5). **Swap detection landed** (fourth slice, `tests/swap.rs`, 5). **`\p{M}` fold landed** (fifth slice, `tests/marks.rs`, 5). **E.164 landed** (sixth slice, `tests/phone.rs`, 7). **Household evidence landed** (seventh slice, half weight, `tests/household.rs`, 5). **Open:** the other three rules.
+- [ ] **CQ-19 (M/L) — Real-world names.** **Clinical.** **First slice landed 2026-10-23** (per-part family matching; the extra given name blocks AutoLink; `tests/names.rs`, 4; H-001; unreleased, not in the service). **`MatchConfig::validate()` landed** (second slice, `tests/config.rs`, 5). **Transliteration landed** (third slice, Latin only, `tests/transliteration.rs`, 5). **Swap detection landed** (fourth slice, `tests/swap.rs`, 5). **`\p{M}` fold landed** (fifth slice, `tests/marks.rs`, 5). **E.164 landed** (sixth slice, `tests/phone.rs`, 7). **Household evidence landed** (seventh slice, half weight, `tests/household.rs`, 5). **Nickname table landed** (eighth slice, 38 groups, `tests/nicknames.rs`, 4). **Open:** the other two rules.
   - Per-token family matching, so `Smith-Jones` does not match `Smithson`.
   - Stop the average over the shorter given-name list from auto-linking `John` with `John Paul` (a twins risk).
   - A nickname table.

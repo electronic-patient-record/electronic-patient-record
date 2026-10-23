@@ -3,7 +3,8 @@
 
 use crate::nhs::{NHS_NUMBER_SYSTEM, canonical_identifier, is_valid_nhs_number};
 use crate::normalize::{
-    PartialDate, fold_name, fold_postcode, fold_telecom, normalize_phone, parse_date, transliterate,
+    PartialDate, are_nicknames, fold_name, fold_postcode, fold_telecom, normalize_phone,
+    parse_date, transliterate,
 };
 use crate::patient::{AdministrativeSex, Patient};
 use serde::{Deserialize, Serialize};
@@ -470,6 +471,10 @@ fn best_over<'a>(
     if any_y { best } else { None }
 }
 
+/// A nickname and its formal name (`Bill`, `William`) score this: a match, but under `min_given_for_auto`,
+/// so it can reach Review and never links automatically on the name alone.
+const NICKNAME_SIMILARITY: f64 = 0.8;
+
 /// Initials match tokens that start with the same letter (scored 0.8).
 fn given_token_sim(x: &str, y: &str) -> f64 {
     let (fx, fy) = (fold_name(x), fold_name(y));
@@ -477,10 +482,15 @@ fn given_token_sim(x: &str, y: &str) -> f64 {
     if (initial(&fx) || initial(&fy)) && fx.chars().next() == fy.chars().next() {
         return 0.8;
     }
-    strsim::jaro_winkler(&fx, &fy).max(strsim::jaro_winkler(
+    let spelled = strsim::jaro_winkler(&fx, &fy).max(strsim::jaro_winkler(
         &transliterate(&fx),
         &transliterate(&fy),
-    ))
+    ));
+    if are_nicknames(&fx, &fy) {
+        spelled.max(NICKNAME_SIMILARITY)
+    } else {
+        spelled
+    }
 }
 
 /// Given-name similarity, and whether the best-matching pair of lists leaves a name unmatched on

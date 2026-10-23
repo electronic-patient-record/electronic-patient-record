@@ -143,3 +143,73 @@ fn days_in_month(year: u16, month: u8) -> u8 {
         _ => 31,
     }
 }
+
+/// Groups of English given names that people use for one another. A name matches another in its group, and
+/// nothing outside it: `alex` is in the groups of both `alexander` and `alexandra`, which are not in one group
+/// and so never match each other. A short, cautious list, not a dictionary (CQ-19).
+const NICKNAME_GROUPS: &[&[&str]] = &[
+    &["william", "will", "bill", "billy", "willy", "liam"],
+    &["robert", "rob", "bob", "bobby", "robbie", "bert"],
+    &["richard", "rick", "dick", "rich", "richie"],
+    &["james", "jim", "jimmy", "jamie"],
+    &["john", "jack", "johnny", "jon"],
+    &["thomas", "tom", "tommy"],
+    &["edward", "ed", "eddie", "ted", "teddy", "ned"],
+    &["margaret", "maggie", "meg", "peggy", "marge", "greta"],
+    &[
+        "elizabeth",
+        "liz",
+        "lizzie",
+        "beth",
+        "betty",
+        "eliza",
+        "libby",
+        "betsy",
+    ],
+    &[
+        "katherine",
+        "catherine",
+        "kate",
+        "katie",
+        "kathy",
+        "cathy",
+        "kitty",
+        "kat",
+    ],
+    &["susan", "sue", "susie", "suzy"],
+    &["jennifer", "jenny", "jen"],
+    &["alexander", "alex", "sandy", "xander"],
+    &["alexandra", "alex", "sandra", "sandy", "lexi"],
+    &["christopher", "chris", "kit"],
+    &["christine", "christina", "chris", "chrissie", "tina"],
+    &["michael", "mike", "mick", "mickey"],
+    &["anthony", "tony"],
+    &["stephen", "steven", "steve"],
+    &["patrick", "pat", "paddy"],
+    &["patricia", "pat", "trish", "tricia"],
+    &["daniel", "dan", "danny"],
+    &["samuel", "sam", "sammy"],
+    &["benjamin", "ben", "benny"],
+    &["nicholas", "nick", "nicky"],
+    &["matthew", "matt"],
+    &["andrew", "andy", "drew"],
+    &["joseph", "joe", "joey"],
+    &["charles", "charlie", "chuck", "chas"],
+    &["frederick", "fred", "freddie"],
+    &["henry", "harry", "hal"],
+    &["david", "dave", "davey"],
+    &["deborah", "debra", "debbie", "deb"],
+    &["rebecca", "becky", "becca"],
+    &["victoria", "vicky", "vicki", "tori"],
+    &["abigail", "abby", "gail"],
+    &["jessica", "jess", "jessie"],
+    &["mohammed", "mohammad", "muhammad", "mohamed", "mohd"],
+];
+
+/// Whether two folded given names are in one nickname group (and are not the same word).
+pub fn are_nicknames(a: &str, b: &str) -> bool {
+    a != b
+        && NICKNAME_GROUPS
+            .iter()
+            .any(|g| g.contains(&a) && g.contains(&b))
+}

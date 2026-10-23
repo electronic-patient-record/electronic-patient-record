@@ -13,6 +13,8 @@
   block `AutoLink` with the conflict "given and family names appear swapped" (CQ-19).
 - **Fixed:** `fold_name` keeps combining marks that follow a letter; a virama or similar mark used to turn into a space and
   split an Indic name into fragments (CQ-19).
+- **Added:** a built-in table of English nicknames; a nickname and its formal name score 0.8 and cannot auto-link on the
+  name alone. `normalize::are_nicknames` is public (CQ-19).
 - **Changed:** the postcode field, and the telecom field unless an email address is shared, count at half weight as household
   evidence; `FieldScore.weight` shows the weight used. Identical records still score 1.0 (CQ-19).
 - **Changed:** phone numbers are compared in E.164 form, and a number under 7 digits is absent (CQ-19). `MatchConfig` gains
