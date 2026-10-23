@@ -308,6 +308,14 @@ tokio::task_local! {
 }
 
 tokio::task_local! {
+    /// The request's `x-request-id` (loco's middleware accepts the caller's, cleaned, or makes one),
+    /// set by the authorization middleware so every audit row written while handling the request
+    /// carries it under `detail.request_id`, and a log line and an audit row can be joined.
+    /// Rows written outside a request (tests, jobs) carry none.
+    pub static REQUEST_ID: String;
+}
+
+tokio::task_local! {
     /// The id of the break-the-glass grant the current request is being served under, once the access
     /// check has found one that lifted a refusal. Every audit row written afterwards in the request is
     /// flagged `break_glass` and names the grant, so the access, the flag and the review queue agree.
@@ -365,6 +373,27 @@ fn with_actor(event: &Event) -> Event {
     event
 }
 
+/// `event`'s detail with the current request's [`REQUEST_ID`] added under `"request_id"`. As with the
+/// actor, an existing key is overwritten: the id comes from the middleware, not from a handler.
+fn with_request_id(event: &Event) -> Event {
+    let mut event = event.clone();
+    let Ok(id) = REQUEST_ID.try_with(Clone::clone) else {
+        return event;
+    };
+    if id.is_empty() {
+        return event;
+    }
+    match event.detail.take() {
+        None => event.detail = Some(serde_json::json!({ "request_id": id })),
+        Some(serde_json::Value::Object(mut m)) => {
+            m.insert("request_id".into(), id.into());
+            event.detail = Some(serde_json::Value::Object(m));
+        }
+        other => event.detail = other,
+    }
+    event
+}
+
 /// Append `event` to the chain, in its own transaction, and return the new row's id.
 ///
 /// Given a transaction instead of a connection, the append joins it (as a savepoint): the audit
@@ -384,7 +413,7 @@ pub async fn append(
     chain: &Chain,
     event: &Event,
 ) -> Result<i64, AuditError> {
-    let event = &with_glass(&with_actor(event));
+    let event = &with_glass(&with_request_id(&with_actor(event)));
     let tx = db.begin().await.map_err(err)?;
     tx.execute_raw(pg(
         "SELECT pg_advisory_xact_lock($1)",
@@ -1145,6 +1174,21 @@ mod tests {
             roles: vec!["clinician".into()],
             organisations: vec!["riverside".into()],
         }
+    }
+
+    #[test]
+    fn the_request_id_is_added_to_the_detail_and_overwrites_a_handlers_claim() {
+        let mut e = Event::new(Action::Read, "a".to_string());
+        e.detail = Some(serde_json::json!({"n": 1, "request_id": "forged"}));
+        let out = REQUEST_ID.sync_scope("req-1".to_string(), || with_request_id(&e));
+        let d = out.detail.unwrap();
+        assert_eq!(d["request_id"], "req-1");
+        assert_eq!(d["n"], 1);
+        let bare = Event::new(Action::Read, "a".to_string());
+        let out = REQUEST_ID.sync_scope("req-2".to_string(), || with_request_id(&bare));
+        assert_eq!(out.detail.unwrap()["request_id"], "req-2");
+        // Outside a request nothing is added.
+        assert_eq!(with_request_id(&e), e);
     }
 
     #[test]

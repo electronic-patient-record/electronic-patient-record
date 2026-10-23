@@ -13,6 +13,7 @@ use axum::http::{HeaderName, HeaderValue, StatusCode};
 use electronic_patient_record::app::App;
 use electronic_patient_record_matcher::{HumanName, Patient};
 use loco_rs::testing::prelude::request;
+use sea_orm::{ConnectionTrait, Statement};
 
 /// A family name no earlier run shares: letters only, from the clock, so the matcher's name
 /// similarity stays low against patients left in the database by other runs.
@@ -158,6 +159,56 @@ async fn fhir_refusals_are_operation_outcomes_and_never_carry_candidates() {
             unprocessable.status_code(),
             StatusCode::UNPROCESSABLE_ENTITY
         );
+    })
+    .await;
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn the_request_id_is_echoed_and_written_into_the_audit_row() {
+    login_off();
+    request::<App, _, _>(|server, ctx| async move {
+        let family = tag("rid");
+        let body = serde_json::json!({ "patient": patient(&family, &dob(31)) });
+        // A caller's id is kept, minus characters outside `[\w-@]`. Unique per run: the database persists.
+        let supplied = format!("trace-{}drop", tag("id"));
+        let response = server
+            .post("/api/patients")
+            .add_header(
+                HeaderName::from_static("x-request-id"),
+                HeaderValue::from_str(&supplied.replace("drop", ";drop")).unwrap(),
+            )
+            .json(&body)
+            .await;
+        assert_eq!(response.status_code(), StatusCode::CREATED);
+        assert_eq!(response.header("x-request-id"), supplied.as_str());
+        let rows = ctx
+            .db
+            .query_all_raw(Statement::from_sql_and_values(
+                ctx.db.get_database_backend(),
+                "SELECT detail->>'request_id' AS rid FROM audit_events WHERE detail->>'request_id' = $1",
+                [supplied.clone().into()],
+            ))
+            .await
+            .unwrap();
+        assert_eq!(rows.len(), 1, "the registration's audit row carries the id");
+
+        // With none supplied the middleware makes one, and the row has the same.
+        let made = server.post("/api/patients").json(&serde_json::json!({
+            "patient": patient(&tag("rid2"), &dob(32))
+        })).await;
+        let id = made.header("x-request-id").to_str().unwrap().to_string();
+        assert!(!id.is_empty());
+        let rows = ctx
+            .db
+            .query_all_raw(Statement::from_sql_and_values(
+                ctx.db.get_database_backend(),
+                "SELECT 1 FROM audit_events WHERE detail->>'request_id' = $1",
+                [id.into()],
+            ))
+            .await
+            .unwrap();
+        assert_eq!(rows.len(), 1);
     })
     .await;
 }

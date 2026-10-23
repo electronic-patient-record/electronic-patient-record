@@ -88,7 +88,9 @@ impl Hooks for App {
                 gate,
                 authz::authorize_mw,
             ))
-            .layer(axum::middleware::from_fn(auth::require_auth_mw)))
+            .layer(axum::middleware::from_fn(auth::require_auth_mw))
+            // Outermost: the request id is settled before authentication or the audit trail.
+            .layer(axum::middleware::from_fn(authz::request_id_mw)))
     }
 
     async fn connect_workers(_ctx: &AppContext, _queue: &Queue) -> Result<()> {

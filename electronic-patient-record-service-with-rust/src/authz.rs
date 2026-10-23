@@ -73,6 +73,38 @@ pub fn check(
     }
 }
 
+const REQUEST_ID_HEADER: &str = "x-request-id";
+
+/// The caller's `x-request-id` kept to letters, digits, `_`, `-` and `@` (at most 255), or a fresh
+/// UUID when nothing is left. The same cleaning as loco's own request-id middleware, so its
+/// answer to the caller is the id we audit under.
+#[must_use]
+pub fn clean_request_id(supplied: Option<&str>) -> String {
+    supplied
+        .map(|s| {
+            s.chars()
+                .filter(|c| c.is_alphanumeric() || matches!(c, '_' | '-' | '@'))
+                .take(255)
+                .collect::<String>()
+        })
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string())
+}
+
+/// Outermost middleware: settle the request id before anything else runs and put it back in the
+/// request header, so the audit rows written in [`authorize_mw`] and loco's response header agree.
+pub async fn request_id_mw(mut req: Request, next: Next) -> Response {
+    let id = clean_request_id(
+        req.headers()
+            .get(REQUEST_ID_HEADER)
+            .and_then(|v| v.to_str().ok()),
+    );
+    if let Ok(value) = axum::http::HeaderValue::from_str(&id) {
+        req.headers_mut().insert(REQUEST_ID_HEADER, value);
+    }
+    next.run(req).await
+}
+
 /// Axum middleware over the route table and the engine.
 pub async fn authorize_mw(State(authz): State<Authz>, req: Request, next: Next) -> Response {
     let actor = req
@@ -83,10 +115,19 @@ pub async fn authorize_mw(State(authz): State<Authz>, req: Request, next: Next) 
             organisations: s.organisations.iter().cloned().collect(),
         })
         .unwrap_or_default();
-    audit::GLASS
+    let request_id = req
+        .headers()
+        .get(REQUEST_ID_HEADER)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or_default()
+        .to_string();
+    audit::REQUEST_ID
         .scope(
-            std::sync::Mutex::new(None),
-            audit::ACTOR.scope(actor, authorize_inner(authz, req, next)),
+            request_id,
+            audit::GLASS.scope(
+                std::sync::Mutex::new(None),
+                audit::ACTOR.scope(actor, authorize_inner(authz, req, next)),
+            ),
         )
         .await
 }
@@ -151,6 +192,17 @@ mod tests {
     use super::*;
     use crate::policy::Role;
     use axum::http::Method;
+
+    #[test]
+    fn a_request_id_is_cleaned_or_replaced() {
+        assert_eq!(clean_request_id(Some("trace-42;drop")), "trace-42drop");
+        assert_eq!(clean_request_id(Some("a@b_c")), "a@b_c");
+        assert_eq!(clean_request_id(Some(&"x".repeat(400))).len(), 255);
+        for none in [None, Some(""), Some(";;;")] {
+            let made = clean_request_id(none);
+            assert_eq!(made.len(), 36, "a fresh UUID: {made}");
+        }
+    }
 
     fn with(roles: &[Role]) -> Subject {
         Subject {
