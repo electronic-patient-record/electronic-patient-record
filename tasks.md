@@ -341,16 +341,20 @@ Conventions:
 
 - [ ] **CA-1 (L) — Encounters and ADT.** `Encounter` and `EpisodeOfCare`.
   Admit, transfer, discharge, bed board, discharge summary.
+  **Boundary (PA-1, proposed):** the EPR owns the clinical encounter and a minimal bed board; administrative ADT arrives from a PAS when one is present.
   **Acceptance:** an ADT state machine test passes. The discharge summary pulls the active problems and medications.
 - [ ] **CA-2 (M) — Care plans, goals, care teams, tasks.**
   **Acceptance:** a task assigned to a care team appears in each member's worklist.
 - [ ] **CA-3 (M) — Referrals with closed loop.** `ServiceRequest` plus
   `Task`, with status tracked until the outcome is received.
+  **Boundary (PA-1, proposed):** the EPR owns the clinical request and its closed loop; referral administration and triage outcomes stay in a PAS, linked by external reference.
   **Acceptance:** a referral with no response after N days escalates (fake clock).
 - [ ] **CA-4 (L) — Scheduling.** `Schedule`, `Slot` and `Appointment`.
   Templates, a waitlist and reminders by email.
+  **Boundary (PA-1, proposed):** this shrinks to a scheduling port plus a minimal scheduler for use without a PAS. Waiting lists beyond a basic one, RTT clocks, reminder ladders and transport are not built here; a PAS owns them.
   **Acceptance:** double-booking is refused unless overbooking is configured. Reminder emails are sent in a test.
 - [ ] **CA-5 (L) — Patient portal.**
+  **Boundary (PA-1, proposed):** the portal owns clinical content and proxy access to the record; booking, rebooking and reply links belong to a PAS, and the portal reads appointments through the scheduling port.
   - `/portal`: results with configured release rules, letters, secure messaging, booking, questionnaires and record download
   - proxy access (parent/carer), with adolescent confidentiality rules
 
@@ -890,7 +894,7 @@ Ranked in plan.md §18. Based on the PAS documents only, not its code or tests, 
 matters. PA-1 and PA-2 come first, and nothing else here is built before them. Items are **Clinical** where they change
 what a clinician or a carer sees.
 
-- [ ] **PA-1 (S) — Boundary decision with the PAS.** **Not clinical.** Record whether the EPR defers to the PAS,
+- [ ] **PA-1 (S) — Boundary decision with the PAS.** **Proposed 2026-10-23, awaiting the maintainer** (option 2, a minimal scheduler behind a port; the split is in `spec/02-scope.md`, the question is OQ-PA1; CA-1, CA-3, CA-4 and CA-5 carry a note). **Open:** the maintainer's confirmation; the box stays unticked until then. **Not clinical.** Record whether the EPR defers to the PAS,
   keeps a minimal scheduler behind a port, or neither (plan.md §18.2), and shrink CA-1, CA-3, CA-4 and CA-5 to match.
   **Acceptance:** OQ-PA1 is decided in `spec/16-open-questions.md`, `spec/02-scope.md` agrees, and the CA items name
   what they no longer own.

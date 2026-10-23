@@ -14,6 +14,24 @@ offline-first data entry; emergency department triage (Manchester Triage System 
 design takes a pluggable, versioned triage pack so that more than one system can be loaded, and only one is planned
 (OQ-T4). No triage content is in the repository until its licence is settled (OQ-T1).
 
+**Boundary with the Patient Administration System (PAS)** (OQ-PA1, **proposed 2026-10-23, awaiting the maintainer**). The
+PAS is a separate, administrative system (appointments, waiting lists and RTT clocks, reminders and letters, referral
+administration, transport) that holds only opaque person ids. The EPR must also run without it, so it keeps a minimal
+scheduler behind a **scheduling port** that the PAS can implement.
+
+| Area | EPR owns | PAS owns when present | Meeting point |
+|---|---|---|---|
+| Clinical record, `Encounter`, orders, results, notes | all | nothing | PAS check-in opens or updates the EPR `Encounter` (PA-8) |
+| Appointments, slots, schedules | a minimal scheduler (CA-4) used only without a PAS | all of it | the scheduling port; the EPR shows the age of what it displays |
+| Waiting lists, RTT clocks, clinical priority dates | display only (PA-15) | all | read through the port |
+| Referrals | the clinical request and its closed loop (CA-3) | administrative status, triage outcome, redirects | external reference on both sides |
+| Reminders, letters delivery, transport | none | all | the outbound choke point (PA-13) applies to the EPR's own messages |
+| Patient portal | clinical content: results, letters, messages, record download, proxy access to the record (CA-5) | booking, rebooking and reply links | the portal reads appointments through the port |
+| ADT and bed occupancy | the clinical admission and a minimal bed board (CA-1) | administrative ADT events where it runs | HL7 ADT inbound (OR-3) |
+| Person identity | the matcher and MPI (ID-*) | an opaque `person_id` from `person-service` | the identity link (PA-2) |
+
+Until the maintainer confirms, nothing here is built, and the CA items keep their text with a note.
+
 **Medical device boundary.** Calculators and AI that make diagnostic or therapeutic decisions may be Software as a
 Medical Device (UK MDR 2002). Such features stay in a separate module behind a flag, with a regulatory assessment
 first (OQ-6).

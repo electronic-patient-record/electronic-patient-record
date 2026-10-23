@@ -86,6 +86,15 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
   UI and Playwright gates were not run, though the JSON bodies are meant to be identical (`PatientView` flattens the
   stored version); the FHIR allergy bundle is still built from the list serialised to JSON. Not run on GitHub (CQ-20).
 
+## 2026-10-23 - PA-1: boundary with the PAS, proposed
+
+- Docs only. `spec/02-scope.md` gains the EPR/PAS ownership table; `spec/16-open-questions.md` gains OQ-PA1 to OQ-PA4;
+  CA-1, CA-3, CA-4 and CA-5 in `tasks.md` carry a boundary note. The recommendation is a minimal scheduler behind a
+  scheduling port (plan.md §18.2, option 2).
+- **Not done or not verified:** this is a **proposal, not a decision**: only the maintainer can decide OQ-PA1, so PA-1 is
+  not ticked and the CA items keep their original acceptance text. The table is drawn from the PAS's documents, not its
+  code. No port interface exists, and nothing is built.
+
 ## 2026-10-23 - E.164 phone normalisation (CQ-19, sixth slice)
 
 - **Clinical.** Matcher (unreleased, not in the service): `07700 900123`, `+44 7700 900123`, `0044 7700 900123` and
