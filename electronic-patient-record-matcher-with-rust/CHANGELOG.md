@@ -13,6 +13,8 @@
   block `AutoLink` with the conflict "given and family names appear swapped" (CQ-19).
 - **Fixed:** `fold_name` keeps combining marks that follow a letter; a virama or similar mark used to turn into a space and
   split an Indic name into fragments (CQ-19).
+- **Changed:** the postcode field, and the telecom field unless an email address is shared, count at half weight as household
+  evidence; `FieldScore.weight` shows the weight used. Identical records still score 1.0 (CQ-19).
 - **Changed:** phone numbers are compared in E.164 form, and a number under 7 digits is absent (CQ-19). `MatchConfig` gains
   `default_calling_code` (44; `serde` default, so older JSON still loads) and `ConfigError::InvalidCallingCode`;
   `normalize::normalize_phone` is public.

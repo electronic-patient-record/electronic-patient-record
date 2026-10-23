@@ -86,6 +86,21 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
   UI and Playwright gates were not run, though the JSON bodies are meant to be identical (`PatientView` flattens the
   stored version); the FHIR allergy bundle is still built from the list serialised to JSON. Not run on GitHub (CQ-20).
 
+## 2026-10-23 - Household evidence (CQ-19, seventh slice)
+
+- **Clinical.** Matcher (unreleased, not in the service): relatives, flatmates and a care home share a postcode and a
+  phone. The postcode field, and the telecom field unless an email address is shared, now count at half weight, so a
+  household adds less to a score, and a mismatch (a move, a new phone) costs less. Scores of records that carry these
+  fields change; identical records still score 1.0. `tests/household.rs` (5); the earlier tests are unchanged. Gates
+  clean: fmt, clippy `-D warnings`, 76 tests. H-001 extended, status untouched.
+- A first design, scoring a household match at 0.7, was dropped: it capped identical records at 0.94, below where a
+  small typo would still auto-link, and the existing `identical_records_auto_link` test caught it.
+- **Not done or not verified:** the relatives test (`a_household_cannot_lift_relatives_out_of_non_match`) also passed
+  before the change, so it is a guard, not proof of a fix; only the two weight tests failed first. Half is a guess
+  with no ID-1 corpus. The matcher cannot tell a household from a person who lives alone; a person who shares a phone
+  with a spouse now has weaker supporting evidence. Three rules of CQ-19 remain (nickname table, phonetic signal, enum
+  codes). No release. Not run on GitHub (CQ-20).
+
 ## 2026-10-23 - PA-1: boundary with the PAS, proposed
 
 - Docs only. `spec/02-scope.md` gains the EPR/PAS ownership table; `spec/16-open-questions.md` gains OQ-PA1 to OQ-PA4;

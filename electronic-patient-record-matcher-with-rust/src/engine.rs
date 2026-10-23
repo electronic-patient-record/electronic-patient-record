@@ -201,7 +201,19 @@ impl MatchingEngine {
         let dob = birth_date_similarity(a, b);
         let sex = sex_similarity(a, b);
         let postal = postal_similarity(a, b);
-        let telecom = telecom_similarity(a, b, self.config.default_calling_code);
+        let (telecom, telecom_individual) =
+            match telecom_similarity(a, b, self.config.default_calling_code) {
+                Some((s, individual)) => (Some(s), individual),
+                None => (None, false),
+            };
+        // Household evidence: a postcode, and a phone number shared without an email, say where a person
+        // lives or can be reached, which relatives share. They count at half weight.
+        let postal_weight = w.postal_code * HOUSEHOLD_WEIGHT_FACTOR;
+        let telecom_weight = if telecom_individual {
+            w.telecom
+        } else {
+            w.telecom * HOUSEHOLD_WEIGHT_FACTOR
+        };
 
         let fields = vec![
             field(
@@ -226,13 +238,13 @@ impl MatchingEngine {
             field(
                 "postal_code",
                 postal,
-                w.postal_code,
+                postal_weight,
                 "no postcode on one or both records",
             ),
             field(
                 "telecom",
                 telecom,
-                w.telecom,
+                telecom_weight,
                 "no phone or email on one or both records",
             ),
         ];
@@ -620,29 +632,34 @@ fn postal_similarity(a: &Patient, b: &Patient) -> Option<f64> {
     })
 }
 
-fn telecom_similarity(a: &Patient, b: &Patient, calling_code: u16) -> Option<f64> {
-    let values = |p: &Patient| -> Vec<String> {
+/// Half weight for a shared postcode or phone (see `compare`); a shared email address is individual.
+const HOUSEHOLD_WEIGHT_FACTOR: f64 = 0.5;
+
+/// The similarity, and whether an email address in common decided it (individual evidence).
+fn telecom_similarity(a: &Patient, b: &Patient, calling_code: u16) -> Option<(f64, bool)> {
+    // (is an email, folded value)
+    let values = |p: &Patient| -> Vec<(bool, String)> {
         p.telecom
             .iter()
             .map(|t| {
-                if t.system.eq_ignore_ascii_case("email") {
+                let email = t.system.eq_ignore_ascii_case("email");
+                let v = if email {
                     fold_telecom(&t.system, &t.value)
                 } else {
                     normalize_phone(&t.value, calling_code)
-                }
+                };
+                (email, v)
             })
-            .filter(|s| !s.is_empty())
+            .filter(|(_, s)| !s.is_empty())
             .collect()
     };
     let (x, y) = (values(a), values(b));
     if x.is_empty() || y.is_empty() {
         return None;
     }
-    Some(if x.iter().any(|c| y.contains(c)) {
-        1.0
-    } else {
-        0.0
-    })
+    let email_match = x.iter().any(|c| c.0 && y.contains(c));
+    let any_match = x.iter().any(|c| y.contains(c));
+    Some((if any_match { 1.0 } else { 0.0 }, email_match))
 }
 
 fn valid_nhs_numbers(p: &Patient) -> Vec<String> {
