@@ -726,7 +726,7 @@ here is built before they are done. Every item below is **Clinical**: it changes
   category and time-target model, "not assessed" versus "absent", and the override event. It settles OQ-T3, the FHIR
   home of the category. Check UK Core and US Core first **[uncertain]**.
   **Acceptance:** spec page merged, with the FHIR mapping table and a worked example.
-- [ ] **TR-4 (S) — Hazard rows for triage.** Add rows to `governance/clinical-safety/hazard-log.csv` for: wrong
+- [x] **TR-4 (S) — Hazard rows for triage.** **Landed 2026-10-23:** H-026 to H-032, all `open`, ratings proposed and unreviewed. **Not built:** every control they name; no evidence paths yet. Add rows to `governance/clinical-safety/hazard-log.csv` for: wrong
   flowchart, missed discriminator, under-triage of children and congenital heart disease, silent re-categorisation,
   stale pack version, clock failure, and a tool read as an autonomous triager. Status stays `open`; only the Clinical
   Safety Officer changes it.

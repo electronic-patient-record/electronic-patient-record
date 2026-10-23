@@ -2,6 +2,15 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-23 - TR-4: seven triage hazards, H-026 to H-032
+
+- Added to `governance/clinical-safety/hazard-log.csv`: wrong flowchart or missed discriminator, under-triage of
+  children and similar groups, silent re-categorisation, stale or invalid pack, clock failure or flooding, a tool
+  read as an autonomous triager, and unlicensed or wrongly claimed MTS content. All `open`, none accepted or closed.
+- **Not done or not verified:** every control is planned and unbuilt, so there are no evidence paths. Severity and
+  likelihood are the author's proposals with no site data, and no Clinical Safety Officer has reviewed them.
+  `check-hazard-log.py` and its tests pass; that checks shape, not judgement.
+
 ## 2026-10-23 - TR-3 partly done: triage spec page
 
 - `spec/triage/index.md` (linked from `spec/index.md`) sets the content policy, the model (pack, append-only
