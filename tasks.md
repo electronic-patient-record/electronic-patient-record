@@ -719,7 +719,7 @@ here is built before they are done. Every item below is **Clinical**: it changes
   licence terms. Decide whether flowcharts may be encoded, shipped or only loaded from a licensed pack.
   **Acceptance:** the decision is recorded as OQ-T1 in `spec/16-open-questions.md`. Until then no MTS flowchart text
   is in the repo, and a CI grep guard (or a documented review step) enforces it.
-- [ ] **TR-2 (S) — Scope decision for emergency triage.** Settle OQ-T2 and OQ-T4: in or out of 1.0, and one triage
+- [x] **TR-2 (S) — Scope decision for emergency triage.** **Landed 2026-10-23.** Post-1.0; pluggable pack, MTS only. **Not built:** any code; the decision is the user's reply in chat, not a maintainer review. Settle OQ-T2 and OQ-T4: in or out of 1.0, and one triage
   system or several.
   **Acceptance:** `spec/02-scope.md` and `spec/15-roadmap.md` state the decision, and plan.md §7 matches.
 - [ ] **TR-3 (S/M) — Spec and domain model for triage.** A `spec/` page covering the flowchart, discriminator,

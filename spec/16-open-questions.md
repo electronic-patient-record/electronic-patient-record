@@ -10,9 +10,9 @@
 | OQ-6 | Which features would be SaMD, and is any wanted for 1.0? | maintainer |
 | OQ-7 | Terminology server: Snowstorm (open, SNOMED only) or Ontoserver (commercial)? | maintainer |
 | OQ-T1 | May the project encode Manchester Triage flowcharts and discriminators, and under what licence? Interim: framework only, no MTS content in the repo; Wiley and the group not yet asked (TR-1, plan.md §15.1.1) | maintainer |
-| OQ-T2 | Is emergency triage in scope for 1.0, or post-1.0? Recommendation: post-1.0 (TR-2) | maintainer |
+| OQ-T2 | Is emergency triage in scope for 1.0, or post-1.0? **Decided 2026-10-23: post-1.0** (TR-2) | maintainer |
 | OQ-T3 | Which FHIR element and code system carry the triage category? (TR-3) | maintainer |
-| OQ-T4 | Do we support other triage systems (ESI, CTAS, ATS) through a pluggable pack? (TR-2) | maintainer |
+| OQ-T4 | Do we support other triage systems (ESI, CTAS, ATS) through a pluggable pack? **Decided 2026-10-23: pluggable interface, build only MTS** (TR-2) | maintainer |
 | OQ-P1 | Does the project or each deploying organisation hold the Wong-Baker FACES licence? No artwork in the repo until settled (PN-1) | maintainer |
 | OQ-P2 | Which LOINC codes and value set bind pain observations (72514-3, 38221-8 unverified)? (PN-2) | maintainer |
 | OQ-P3 | Do we support observer pain scales (FLACC, CPOT, PAINAD)? (PN-10) | maintainer |

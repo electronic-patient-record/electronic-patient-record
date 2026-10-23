@@ -300,7 +300,8 @@ Billing and claims (X12, NHS PbR), a licensed drug knowledge base (we
 integrate one), e-prescribing network certification (Surescripts, EPS),
 EPCS, PACS (we link via ImagingStudy and DICOMweb), LIS/RIS internals, eMAR
 with barcode scanning (planned for M7), ONC certification itself, eCQM / QRDA
-reporting, public-health eCR, and offline-first data entry.
+reporting, public-health eCR, offline-first data entry, and emergency department triage (decided post-1.0 on
+2026-10-23; see §15 and OQ-T2).
 
 ## 8. Compliance approach
 

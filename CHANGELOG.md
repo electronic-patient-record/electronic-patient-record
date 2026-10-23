@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-23 - TR-2: emergency triage is post-1.0
+
+- `spec/02-scope.md`, `spec/15-roadmap.md`, plan.md §7.2 and OQ-T2 and OQ-T4 state the decision: post-1.0, a
+  pluggable triage pack, only MTS planned.
+- **Not done or not verified:** no code, no milestone assigned, and the decision rests on one chat reply from the
+  user, not a maintainer review or the Clinical Safety Officer. No hazard rows yet (TR-4).
+
 ## 2026-10-23 - TR-1 partly done: MTS licensing findings and interim policy
 
 - `plan.md` §15.1.1 records how MTS is licensed (Wiley for the Advanced Life Support Group and the Manchester Triage
