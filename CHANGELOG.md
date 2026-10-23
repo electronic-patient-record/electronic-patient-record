@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-23 - TR-3 partly done: triage spec page
+
+- `spec/triage/index.md` (linked from `spec/index.md`) sets the content policy, the model (pack, append-only
+  assessment, `not-assessed`, suggested versus confirmed), a proposed FHIR mapping and the rules.
+- **Not done or not verified:** the mapping rests on search summaries; UK Core, US Core and LOINC were not opened,
+  and the ESI code 75636-1 is unconfirmed. No worked example, so TR-3 stays unticked and OQ-T3 open. No code or
+  tests. No hazard rows (TR-4).
+
 ## 2026-10-23 - TR-2: emergency triage is post-1.0
 
 - `spec/02-scope.md`, `spec/15-roadmap.md`, plan.md §7.2 and OQ-T2 and OQ-T4 state the decision: post-1.0, a

@@ -722,7 +722,7 @@ here is built before they are done. Every item below is **Clinical**: it changes
 - [x] **TR-2 (S) — Scope decision for emergency triage.** **Landed 2026-10-23.** Post-1.0; pluggable pack, MTS only. **Not built:** any code; the decision is the user's reply in chat, not a maintainer review. Settle OQ-T2 and OQ-T4: in or out of 1.0, and one triage
   system or several.
   **Acceptance:** `spec/02-scope.md` and `spec/15-roadmap.md` state the decision, and plan.md §7 matches.
-- [ ] **TR-3 (S/M) — Spec and domain model for triage.** A `spec/` page covering the flowchart, discriminator,
+- [ ] **TR-3 (S/M) — Spec and domain model for triage.** **Partly done 2026-10-23:** `spec/triage/index.md` holds the model, rules and a FHIR mapping table. **Not done:** the UK Core and US Core profile pages were not opened, there is no worked example, and OQ-T3 stays open. A `spec/` page covering the flowchart, discriminator,
   category and time-target model, "not assessed" versus "absent", and the override event. It settles OQ-T3, the FHIR
   home of the category. Check UK Core and US Core first **[uncertain]**.
   **Acceptance:** spec page merged, with the FHIR mapping table and a worked example.

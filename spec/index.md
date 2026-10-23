@@ -81,6 +81,8 @@ Topics that span several numbered chapters and are kept whole:
 - [Usability](usability/index.md) — documentation burden, alert fatigue,
   note bloat, copy-forward risk, NISTIR 7804 summative testing, SUS target.
   Spans §6, §7, §11.
+- [Emergency triage](triage/index.md) — post-1.0: pluggable triage pack, append-only assessments, FHIR mapping,
+  Manchester Triage System content policy. Spans §5, §6.
 - [Locales](locales.md) — `<language>-<region>` names, same rules as the
   project-portfolio-management repository.
 
