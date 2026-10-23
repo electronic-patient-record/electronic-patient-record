@@ -44,6 +44,12 @@ Configuration: `MatchConfig::validate()` refuses a negative or non-finite weight
 (or NaN), and a `review_threshold` above `auto_link_threshold`, each with a `ConfigError` variant; `MatchingEngine::try_new`
 calls it, while `MatchingEngine::new` does not. `Default` is valid.
 
+Conflicts: `MatchResult.conflicts` keeps its English text, and `MatchResult.conflict_codes` carries the same reasons as
+`ConflictCode` values in the same order, serialised with a snake_case `code` tag and their numbers (`field_unavailable`
+and `field_below_minimum` name a `GuardField`; `field_below_minimum` gives the similarity and the minimum;
+`evidence_thin` gives the percentage present). A client translates the code, not the text. The field names in
+`FieldScore.field` are already stable snake_case identifiers and stay strings.
+
 Decision: `auto_link_threshold` 0.92, `review_threshold` 0.75, else `NonMatch`. **These are unvalidated starting
 values** (ID-1 asks for a 200-pair labelled corpus before they are trusted).
 

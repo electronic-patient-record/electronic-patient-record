@@ -86,6 +86,20 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
   UI and Playwright gates were not run, though the JSON bodies are meant to be identical (`PatientView` flattens the
   stored version); the FHIR allergy bundle is still built from the list serialised to JSON. Not run on GitHub (CQ-20).
 
+## 2026-10-23 - Enum codes for conflicts (CQ-19, tenth and last listed slice)
+
+- Matcher (unreleased, not in the service): `ConflictCode` (nine variants, with the field, similarity, minimum or
+  percentage where one applies) and `MatchResult.conflict_codes`, beside the English `conflicts`, which are now generated
+  from the codes and read exactly as before. Additive: no score or decision changes, so this is not clinical and no hazard
+  row changed. `tests/codes.rs` (5). Gates clean: fmt, clippy `-D warnings`, 91 tests.
+- **Why beside, not instead:** the UI prints `conflicts` as received (`patients/compare` and `patients/new`), so the
+  English text appears untranslated in every locale, and the service writes it into link notes (`links.rs`). Neither was
+  changed; moving them to the codes is not done and would let the UI translate them (a UI task, not yet in `tasks.md`).
+- **Not done or not verified:** `FieldScore.field` is still a string (already a stable identifier), not an enum. The
+  service and UI were read, not run. **CQ-19 is not ticked:** all eleven rules now have code and a named test, but its
+  acceptance also asks the ID-1 labelled corpus to show no increase in false AutoLinks, and that corpus does not exist,
+  so none of the ten slices is measured on real names. No matcher release or service bump. Not run on GitHub (CQ-20).
+
 ## 2026-10-23 - Phonetic signal (CQ-19, ninth slice)
 
 - **Clinical.** Matcher (unreleased, not in the service): American Soundex on the transliterated family and first given

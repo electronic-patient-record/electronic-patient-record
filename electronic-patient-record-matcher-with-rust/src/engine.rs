@@ -129,6 +129,80 @@ impl MatchConfig {
     }
 }
 
+/// The name or date a guard checks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum GuardField {
+    GivenName,
+    FamilyName,
+    BirthDate,
+}
+
+impl GuardField {
+    fn label(self) -> &'static str {
+        match self {
+            Self::GivenName => "given name",
+            Self::FamilyName => "family name",
+            Self::BirthDate => "birth date",
+        }
+    }
+}
+
+/// Why a link must not be automatic: a stable code a client can translate, with its numbers. The English
+/// text in `MatchResult.conflicts` is `message()` of the same code, in the same order.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "code", rename_all = "snake_case")]
+pub enum ConflictCode {
+    DifferentNhsNumbers,
+    SameNhsDifferentBirthDates,
+    SameNhsDifferentNames,
+    NamesSoundAlike,
+    NamesSwapped,
+    ExtraGivenName,
+    /// A name or date needed to confirm the link is absent on one or both records.
+    FieldUnavailable {
+        field: GuardField,
+    },
+    /// A name or date is less similar than the auto-link minimum.
+    FieldBelowMinimum {
+        field: GuardField,
+        similarity: f64,
+        minimum: f64,
+    },
+    /// Less of the total field weight is present than `min_evidence_weight`.
+    EvidenceThin {
+        percent_present: f64,
+    },
+}
+
+impl ConflictCode {
+    /// The English text, kept stable for clients that print it.
+    pub fn message(&self) -> String {
+        match self {
+            Self::DifferentNhsNumbers => "different verified NHS numbers".into(),
+            Self::SameNhsDifferentBirthDates => "same NHS number but different birth dates".into(),
+            Self::SameNhsDifferentNames => "same NHS number but different names".into(),
+            Self::NamesSoundAlike => "names sound alike but are spelled differently".into(),
+            Self::NamesSwapped => "given and family names appear swapped".into(),
+            Self::ExtraGivenName => "one record has a given name the other lacks".into(),
+            Self::FieldUnavailable { field } => {
+                format!("{} not available to confirm the link", field.label())
+            }
+            Self::FieldBelowMinimum {
+                field,
+                similarity,
+                minimum,
+            } => format!(
+                "{} similarity {similarity:.2} below {minimum:.2}",
+                field.label()
+            ),
+            Self::EvidenceThin { percent_present } => {
+                format!("only {percent_present:.0}% of the evidence is present")
+            }
+        }
+    }
+}
+
 /// What to do with a candidate pair.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -158,6 +232,9 @@ pub struct MatchResult {
     pub deterministic: Option<String>,
     /// Reasons a link must not be automatic. Never hidden.
     pub conflicts: Vec<String>,
+    /// The same reasons as stable codes, in the same order, for a client that translates them.
+    #[serde(default)]
+    pub conflict_codes: Vec<ConflictCode>,
     /// The family and the first given name of one name on each record sound alike (Soundex) though they
     /// are spelled differently. Never part of the score; see `compare`.
     #[serde(default)]
@@ -271,7 +348,7 @@ impl MatchingEngine {
         };
 
         let phonetic_match = phonetic_match(a, b);
-        let mut conflicts = Vec::new();
+        let mut conflicts: Vec<ConflictCode> = Vec::new();
         let mut deterministic = None;
         let mut decision;
 
@@ -282,13 +359,13 @@ impl MatchingEngine {
         let dob_conflict = matches!((full_date(a), full_date(b)), (Some(x), Some(y)) if x != y);
 
         if clash {
-            conflicts.push("different verified NHS numbers".to_string());
+            conflicts.push(ConflictCode::DifferentNhsNumbers);
             decision = Decision::NonMatch;
         } else if shared {
             deterministic = Some("shared verified NHS number".to_string());
             score = 1.0;
             if dob_conflict {
-                conflicts.push("same NHS number but different birth dates".to_string());
+                conflicts.push(ConflictCode::SameNhsDifferentBirthDates);
             }
             // A family name alone may change (marriage); both names disagreeing suggests a
             // mistyped or reused number.
@@ -296,7 +373,7 @@ impl MatchingEngine {
             if given.is_some_and(|s| s < c.min_given_for_auto)
                 && family.is_some_and(|s| s < c.min_family_for_auto)
             {
-                conflicts.push("same NHS number but different names".to_string());
+                conflicts.push(ConflictCode::SameNhsDifferentNames);
             }
             decision = if conflicts.is_empty() {
                 Decision::AutoLink
@@ -317,40 +394,39 @@ impl MatchingEngine {
                 && phonetic_match
                 && dob.is_some_and(|d| d >= self.config.min_birth_date_for_auto)
             {
-                conflicts.push("names sound alike but are spelled differently".to_string());
+                conflicts.push(ConflictCode::NamesSoundAlike);
                 decision = Decision::Review;
             }
             if decision == Decision::AutoLink {
                 let c = &self.config;
                 // Missing evidence blocks automatic linking; it is not treated as agreement.
                 let guards = [
-                    ("given name", given, c.min_given_for_auto),
-                    ("family name", family, c.min_family_for_auto),
-                    ("birth date", dob, c.min_birth_date_for_auto),
+                    (GuardField::GivenName, given, c.min_given_for_auto),
+                    (GuardField::FamilyName, family, c.min_family_for_auto),
+                    (GuardField::BirthDate, dob, c.min_birth_date_for_auto),
                 ];
-                for (label, sim, min) in guards {
+                for (field, sim, min) in guards {
                     match sim {
-                        None => {
-                            conflicts.push(format!("{label} not available to confirm the link"))
-                        }
-                        Some(s) if s < min => {
-                            conflicts.push(format!("{label} similarity {s:.2} below {min:.2}"))
-                        }
+                        None => conflicts.push(ConflictCode::FieldUnavailable { field }),
+                        Some(s) if s < min => conflicts.push(ConflictCode::FieldBelowMinimum {
+                            field,
+                            similarity: s,
+                            minimum: min,
+                        }),
                         _ => {}
                     }
                 }
                 if swapped.is_some() {
-                    conflicts.push("given and family names appear swapped".to_string());
+                    conflicts.push(ConflictCode::NamesSwapped);
                 }
                 if given_extra {
                     // `John` and `John Paul` can be two people (twins, a father and son).
-                    conflicts.push("one record has a given name the other lacks".to_string());
+                    conflicts.push(ConflictCode::ExtraGivenName);
                 }
                 if present / total < c.min_evidence_weight {
-                    conflicts.push(format!(
-                        "only {:.0}% of the evidence is present",
-                        100.0 * present / total
-                    ));
+                    conflicts.push(ConflictCode::EvidenceThin {
+                        percent_present: 100.0 * present / total,
+                    });
                 }
                 if !conflicts.is_empty() {
                     decision = Decision::Review;
@@ -363,7 +439,8 @@ impl MatchingEngine {
             decision,
             fields,
             deterministic,
-            conflicts,
+            conflicts: conflicts.iter().map(ConflictCode::message).collect(),
+            conflict_codes: conflicts,
             phonetic_match,
         }
     }

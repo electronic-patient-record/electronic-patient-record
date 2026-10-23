@@ -13,6 +13,8 @@
   block `AutoLink` with the conflict "given and family names appear swapped" (CQ-19).
 - **Fixed:** `fold_name` keeps combining marks that follow a letter; a virama or similar mark used to turn into a space and
   split an Indic name into fragments (CQ-19).
+- **Added:** `ConflictCode`, `GuardField` and `MatchResult.conflict_codes` (serde default empty): each conflict as a stable code
+  with its numbers, in the order of the unchanged English `conflicts` (CQ-19).
 - **Added:** `MatchResult.phonetic_match` (serde default false) and `normalize::soundex`; a sound-alike pair with the same
   birth date that would be `NonMatch` goes to Review. The score is unchanged (CQ-19).
 - **Added:** a built-in table of English nicknames; a nickname and its formal name score 0.8 and cannot auto-link on the
