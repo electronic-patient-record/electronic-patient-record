@@ -17,6 +17,7 @@ use super::audit::search_audited;
 use super::common::authorize;
 use super::patients::{self, CreateRequest, UpdateRequest};
 use crate::allergies::{StoredAllergy, Summary};
+use crate::api_error::ApiError;
 use crate::auth::Agent;
 use crate::interop::fhir_patient::{from_fhir_json, to_fhir};
 use crate::interop::{fhir_allergy, fhir_audit};
@@ -25,7 +26,7 @@ use crate::policy::Subject;
 use crate::policy::{self, Purpose, Resource};
 use axum::{
     Extension,
-    extract::{Json, Path, Query, RawQuery},
+    extract::{Path, Query, RawQuery},
     http::{HeaderMap, HeaderValue, StatusCode, header},
     response::{IntoResponse, Response},
 };
@@ -62,18 +63,6 @@ fn outcome(status: StatusCode, code: &str, diagnostics: &str) -> Response {
             "issue": [{ "severity": severity, "code": code, "diagnostics": diagnostics }],
         }),
         None,
-    )
-}
-
-/// The JSON handlers' answer, read back: status, headers and body.
-async fn read_back(response: Response) -> (StatusCode, serde_json::Value) {
-    let status = response.status();
-    let bytes = axum::body::to_bytes(response.into_body(), 4 << 20)
-        .await
-        .unwrap_or_default();
-    (
-        status,
-        serde_json::from_slice(&bytes).unwrap_or(serde_json::Value::Null),
     )
 }
 
@@ -157,27 +146,20 @@ fn with_links(
     Ok(json)
 }
 
-/// Turn the JSON API's single-patient answer into FHIR.
-async fn one(response: Response, success: StatusCode, update: bool) -> Response {
-    let (status, body) = read_back(response).await;
-    if status != StatusCode::OK && status != StatusCode::CREATED {
-        return error_outcome(status, &body, update);
-    }
-    let replaced_by = body
-        .get("replaced_by")
-        .and_then(serde_json::Value::as_str)
-        .map(str::to_string);
-    let replaces: Vec<String> = body
-        .get("replaces")
-        .and_then(serde_json::Value::as_array)
-        .map(|a| {
-            a.iter()
-                .filter_map(|v| v.as_str().map(str::to_string))
-                .collect()
-        })
-        .unwrap_or_default();
-    let Ok(stored) = serde_json::from_value::<Stored>(body) else {
-        return internal("unreadable stored patient");
+/// A refusal from the service as an `OperationOutcome`.
+fn refusal(e: &ApiError, update: bool) -> Response {
+    error_outcome(e.status(), &e.body(), update)
+}
+
+/// A stored patient, and where it was merged to or what was merged into it, as FHIR.
+fn one(
+    result: Result<(Stored, Option<String>, Vec<String>), ApiError>,
+    success: StatusCode,
+    update: bool,
+) -> Response {
+    let (stored, replaced_by, replaces) = match result {
+        Ok(v) => v,
+        Err(e) => return refusal(&e, update),
     };
     match patient_json(&stored).and_then(|j| with_links(j, replaced_by.as_deref(), &replaces)) {
         Ok(json) => {
@@ -310,15 +292,10 @@ async fn read_patient(
     headers: HeaderMap,
     Path(id): Path<String>,
 ) -> Response {
-    let r = patients::read(
-        State(ctx),
-        Extension(agent),
-        Extension(subject),
-        headers,
-        Path(id),
-    )
-    .await;
-    one(r, StatusCode::OK, false).await
+    let r = patients::read_service(&ctx, &agent, &subject, &headers, &id)
+        .await
+        .map(|v| (v.stored, v.replaced_by, v.replaces));
+    one(r, StatusCode::OK, false)
 }
 
 async fn search_patients(
@@ -332,23 +309,10 @@ async fn search_patients(
         Ok(s) => s,
         Err(m) => return outcome(StatusCode::BAD_REQUEST, "not-supported", &m),
     };
-    let r = patients::search(
-        State(ctx),
-        Extension(agent),
-        Extension(subject),
-        headers,
-        Query(search),
-    )
-    .await;
-    let (status, body) = read_back(r).await;
-    if status != StatusCode::OK {
-        return error_outcome(status, &body, false);
-    }
-    let found: Vec<Stored> = body
-        .get("results")
-        .cloned()
-        .and_then(|v| serde_json::from_value(v).ok())
-        .unwrap_or_default();
+    let found = match patients::search_service(&ctx, &agent, &subject, &headers, &search).await {
+        Ok(found) => found,
+        Err(e) => return refusal(&e, false),
+    };
     match bundle(&found, crate::patients_store::SEARCH_LIMIT) {
         Ok(b) => fhir(StatusCode::OK, &b, None),
         Err(e) => internal(&e),
@@ -371,15 +335,10 @@ async fn create_patient(
         reason: None,
         override_reason: None,
     };
-    let r = patients::create(
-        State(ctx),
-        Extension(agent),
-        Extension(subject),
-        headers,
-        Json(request),
-    )
-    .await;
-    one(r, StatusCode::CREATED, false).await
+    let r = patients::create_service(&ctx, &agent, &subject, &headers, &request)
+        .await
+        .map(|s| (s, None, Vec::new()));
+    one(r, StatusCode::CREATED, false)
 }
 
 async fn update_patient(
@@ -403,16 +362,10 @@ async fn update_patient(
         expected_version,
         reason: None,
     };
-    let r = patients::update(
-        State(ctx),
-        Extension(agent),
-        Extension(subject),
-        headers,
-        Path(id),
-        Json(request),
-    )
-    .await;
-    one(r, StatusCode::OK, true).await
+    let r = patients::update_service(&ctx, &agent, &subject, &headers, &id, &request)
+        .await
+        .map(|s| (s, None, Vec::new()));
+    one(r, StatusCode::OK, true)
 }
 
 /// AuditEvent search parameters as audit criteria. `date` may repeat with the `ge`, `gt`, `le` and
@@ -494,8 +447,7 @@ async fn search_audit_events(
     )
     .await
     {
-        let (status, body) = read_back(*r).await;
-        return error_outcome(status, &body, false);
+        return refusal(&r, false);
     }
     match search_audited(&ctx.db, &agent, &query).await {
         Ok((rows, next)) => {
@@ -618,27 +570,24 @@ async fn search_allergies(
             "the patient search parameter is required",
         );
     };
-    let r = super::allergies::list(
-        State(ctx),
-        Extension(agent),
-        Extension(subject),
-        headers,
-        Path(patient.clone()),
-    )
-    .await;
-    let (status, body) = read_back(r).await;
-    if status != StatusCode::OK {
-        // A refusal, a consent refusal or a failure: say that this is not an empty list.
-        let mut response = error_outcome(status, &body, false);
-        if status == StatusCode::FORBIDDEN {
-            response = outcome(
-                status,
-                "forbidden",
-                "forbidden. This does not mean the patient has no allergies.",
-            );
-        }
-        return response;
-    }
+    let list =
+        match super::allergies::list_service(&ctx, &agent, &subject, &headers, &patient).await {
+            Ok(list) => list,
+            Err(e) => {
+                // A refusal, a consent refusal or a failure: say that this is not an empty list.
+                if e.status() == StatusCode::FORBIDDEN {
+                    return outcome(
+                        e.status(),
+                        "forbidden",
+                        "forbidden. This does not mean the patient has no allergies.",
+                    );
+                }
+                return refusal(&e, false);
+            }
+        };
+    let Ok(body) = serde_json::to_value(&list) else {
+        return internal("an allergy list that cannot be written");
+    };
     match allergy_bundle(&patient, &body) {
         Ok(b) => fhir(StatusCode::OK, &b, None),
         Err(e) => internal(&e),
@@ -736,6 +685,18 @@ mod tests {
                 ..Default::default()
             },
         }
+    }
+
+    /// A response's status and JSON body.
+    async fn read_back(response: Response) -> (StatusCode, serde_json::Value) {
+        let status = response.status();
+        let bytes = axum::body::to_bytes(response.into_body(), 4 << 20)
+            .await
+            .unwrap_or_default();
+        (
+            status,
+            serde_json::from_slice(&bytes).unwrap_or(serde_json::Value::Null),
+        )
     }
 
     async fn body_of(r: Response) -> serde_json::Value {

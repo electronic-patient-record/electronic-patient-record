@@ -51,7 +51,7 @@ async fn list(
 ) -> Response {
     let purpose = match purpose_of(&headers) {
         Ok(p) => p,
-        Err(r) => return *r,
+        Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
         &ctx.db,
@@ -64,7 +64,7 @@ async fn list(
     )
     .await
     {
-        return *r;
+        return r.into_response();
     }
     let open = match queue::list_open(&ctx.db).await {
         Ok(o) => o,
@@ -84,7 +84,7 @@ async fn list(
     )
     .await
     {
-        return *r;
+        return r.into_response();
     }
     Json(serde_json::json!({ "refusals": open, "limit": queue::LIST_LIMIT })).into_response()
 }
@@ -99,7 +99,7 @@ async fn count(
 ) -> Response {
     let purpose = match purpose_of(&headers) {
         Ok(p) => p,
-        Err(r) => return *r,
+        Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
         &ctx.db,
@@ -112,7 +112,7 @@ async fn count(
     )
     .await
     {
-        return *r;
+        return r.into_response();
     }
     let open = match queue::count_open(&ctx.db).await {
         Ok(n) => n,
@@ -132,7 +132,7 @@ async fn count(
     )
     .await
     {
-        return *r;
+        return r.into_response();
     }
     Json(serde_json::json!({ "open": open })).into_response()
 }
@@ -146,7 +146,7 @@ async fn read(
 ) -> Response {
     let purpose = match purpose_of(&headers) {
         Ok(p) => p,
-        Err(r) => return *r,
+        Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
         &ctx.db,
@@ -159,7 +159,7 @@ async fn read(
     )
     .await
     {
-        return *r;
+        return r.into_response();
     }
     let entry = match queue::get(&ctx.db, &id).await {
         Ok(e) => e,
@@ -180,7 +180,7 @@ async fn read(
     )
     .await
     {
-        return *r;
+        return r.into_response();
     }
     Json(entry).into_response()
 }
@@ -195,7 +195,7 @@ async fn resolve(
 ) -> Response {
     let purpose = match purpose_of(&headers) {
         Ok(p) => p,
-        Err(r) => return *r,
+        Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
         &ctx.db,
@@ -208,11 +208,11 @@ async fn resolve(
     )
     .await
     {
-        return *r;
+        return r.into_response();
     }
     let tx = match begin(&ctx.db).await {
         Ok(t) => t,
-        Err(r) => return *r,
+        Err(r) => return r.into_response(),
     };
     match queue::resolve(&tx, &id, &agent.0, request.outcome, &request.reason).await {
         Ok(entry) => {
@@ -231,10 +231,10 @@ async fn resolve(
             )
             .await
             {
-                return *r;
+                return r.into_response();
             }
             if let Err(r) = commit(tx).await {
-                return *r;
+                return r.into_response();
             }
             // The message text is not repeated in the answer to a write.
             let mut entry = entry;

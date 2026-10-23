@@ -2,7 +2,7 @@
 //! matcher's own types: there is no adapter layer.
 
 use super::common::{
-    Access, audit_resource, authorize, begin, commit, consent_verdicts, purpose_of, store_failure,
+    Access, audit_resource, authorize, begin, commit, consent_verdicts, purpose_of,
 };
 use crate::api_error::ApiError;
 use crate::audit::{self, Action, AuditError, Chain, Event};
@@ -146,7 +146,7 @@ async fn audit_access(
     purpose: Purpose,
     patient_id: Option<&str>,
     detail: serde_json::Value,
-) -> Result<(), Box<Response>> {
+) -> Result<(), ApiError> {
     let access = Access {
         action,
         outcome,
@@ -157,33 +157,46 @@ async fn audit_access(
     audit_resource(db, agent, access, detail).await
 }
 
-pub(super) async fn create(
-    State(ctx): State<AppContext>,
-    Extension(agent): Extension<Agent>,
-    Extension(subject): Extension<Subject>,
-    headers: HeaderMap,
-    Json(request): Json<CreateRequest>,
-) -> Response {
-    let purpose = match purpose_of(&headers) {
+/// A patient as read: the stored version, whether there is a photo to fetch, and merge status
+/// (ID-5). A record merged away says where it went; a surviving record says what was merged into it.
+#[derive(Debug, Serialize)]
+pub struct PatientView {
+    /// The current version.
+    #[serde(flatten)]
+    pub stored: store::Stored,
+    /// The photo's version, `None` when there is none or it was withdrawn.
+    pub photo_version: Option<i32>,
+    /// The surviving record, when this one was merged away.
+    pub replaced_by: Option<String>,
+    /// The records merged into this one.
+    pub replaces: Vec<String>,
+}
+
+/// Register a patient: the duplicate check, the new version and its audit row are one transaction.
+pub(super) async fn create_service(
+    ctx: &AppContext,
+    agent: &Agent,
+    subject: &Subject,
+    headers: &HeaderMap,
+    request: &CreateRequest,
+) -> Result<store::Stored, ApiError> {
+    let purpose = match purpose_of(headers) {
         Ok(p) => p,
-        Err(r) => return *r,
+        Err(r) => return Err(r),
     };
-    if let Err(r) = authorize(
+    authorize(
         &ctx.db,
-        &agent,
-        &subject,
+        agent,
+        subject,
         Resource::PatientIdentity,
         policy::Action::Create,
         purpose,
         None,
     )
-    .await
-    {
-        return *r;
-    }
+    .await?;
     let problems = store::validate(&request.patient);
     if !problems.is_empty() {
-        return ApiError::invalid(problems.clone()).into_response();
+        return Err(ApiError::invalid(problems.clone()));
     }
     let override_reason = request
         .override_reason
@@ -195,16 +208,16 @@ pub(super) async fn create(
     // if the audit row cannot be written the patient is not created.
     let tx = match begin(&ctx.db).await {
         Ok(t) => t,
-        Err(r) => return *r,
+        Err(r) => return Err(r),
     };
     if let Err(e) = store::lock_registration(&tx).await {
-        return store_failure(&e);
+        return Err(ApiError::from(&e));
     }
     // More matches than the limit: only the strongest were compared, and the answer says so (CQ-36).
     let (duplicates, candidates_cut) = match store::candidates_ranked(&tx, &request.patient).await {
         Ok((pool, cut)) => (likely_duplicates(&request.patient, pool), cut),
         // An unchecked registration is how duplicates happen: fail rather than skip the check.
-        Err(e) => return store_failure(&e),
+        Err(e) => return Err(ApiError::from(&e)),
     };
     let ids: Vec<&str> = duplicates.iter().map(|c| c.existing.id.as_str()).collect();
     // A duplicate must still stop the registration, but a patient who refuses disclosure to this
@@ -214,7 +227,7 @@ pub(super) async fn create(
     // On the transaction: it holds a connection, and the development pool has only one.
     let verdicts = match consent_verdicts(
         &tx,
-        &subject,
+        subject,
         purpose,
         Resource::PatientIdentity,
         &existing_ids,
@@ -222,7 +235,7 @@ pub(super) async fn create(
     .await
     {
         Ok(v) => v,
-        Err(r) => return *r,
+        Err(r) => return Err(r),
     };
     let restricted = |id: &str| {
         verdicts
@@ -242,9 +255,9 @@ pub(super) async fn create(
     if !duplicates.is_empty() && override_reason.is_none() {
         // Showing the candidates discloses them, so this is an audited access. The row is written on
         // the transaction (nothing else has been written to it) and committed before the refusal.
-        if let Err(r) = audit_access(
+        audit_access(
             &tx,
-            &agent,
+            agent,
             Action::Create,
             4,
             purpose,
@@ -255,19 +268,13 @@ pub(super) async fn create(
                 "candidates_cut": candidates_cut,
             }),
         )
-        .await
-        {
-            return *r;
-        }
-        if let Err(r) = commit(tx).await {
-            return *r;
-        }
-        return ApiError::conflict(
+        .await?;
+        commit(tx).await?;
+        return Err(ApiError::conflict(
             "possible duplicate; resend with override_reason to register anyway",
         )
         .with("candidates", shown)
-        .with("candidates_cut", candidates_cut)
-        .into_response();
+        .with("candidates_cut", candidates_cut));
     }
     let kept_reason = match (override_reason, request.reason.as_deref()) {
         (Some(o), Some(r)) => Some(format!("{r}; duplicate override: {o}")),
@@ -277,11 +284,11 @@ pub(super) async fn create(
     let stored = match store::create(&tx, &agent.0, kept_reason.as_deref(), &request.patient).await
     {
         Ok(s) => s,
-        Err(e) => return store_failure(&e),
+        Err(e) => return Err(ApiError::from(&e)),
     };
-    if let Err(r) = audit_access(
+    audit_access(
         &tx,
-        &agent,
+        agent,
         Action::Create,
         0,
         purpose,
@@ -294,14 +301,97 @@ pub(super) async fn create(
             "candidates_cut": candidates_cut,
         }),
     )
-    .await
-    {
-        return *r;
+    .await?;
+    commit(tx).await?;
+    Ok(stored)
+}
+
+pub(super) async fn create(
+    State(ctx): State<AppContext>,
+    Extension(agent): Extension<Agent>,
+    Extension(subject): Extension<Subject>,
+    headers: HeaderMap,
+    Json(request): Json<CreateRequest>,
+) -> Response {
+    match create_service(&ctx, &agent, &subject, &headers, &request).await {
+        Ok(stored) => (StatusCode::CREATED, Json(stored)).into_response(),
+        Err(e) => e.into_response(),
     }
-    if let Err(r) = commit(tx).await {
-        return *r;
+}
+
+pub(super) async fn read_service(
+    ctx: &AppContext,
+    agent: &Agent,
+    subject: &Subject,
+    headers: &HeaderMap,
+    id: &str,
+) -> Result<PatientView, ApiError> {
+    let purpose = match purpose_of(headers) {
+        Ok(p) => p,
+        Err(r) => return Err(r),
+    };
+    authorize(
+        &ctx.db,
+        agent,
+        subject,
+        Resource::PatientIdentity,
+        policy::Action::Read,
+        purpose,
+        Some(id),
+    )
+    .await?;
+    match store::current(&ctx.db, id).await {
+        Ok(stored) => {
+            // Audit before the data leaves.
+            audit_access(
+                &ctx.db,
+                agent,
+                Action::Read,
+                0,
+                purpose,
+                Some(&stored.id),
+                serde_json::json!({"version": stored.version}),
+            )
+            .await?;
+            // Whether there is a photo to fetch, so the banner does not ask for one that is not
+            // there. A failed lookup fails the read: a banner must not quietly lose its photo.
+            let photo_version = match crate::photos_store::current(&ctx.db, &stored.id).await {
+                Ok(p) => p.filter(|p| p.bytes.is_some()).map(|p| p.version),
+                Err(e) => return Err(ApiError::from(&e)),
+            };
+            // Merge status (ID-5): a record merged away says where it went; a surviving record
+            // says what was merged into it. A failed lookup fails the read.
+            let replaced_by = match links::merged_into(&ctx.db, &stored.id).await {
+                Ok(r) => r,
+                Err(e) => return Err(ApiError::from(&e)),
+            };
+            let replaces = match links::sources_of(&ctx.db, &stored.id).await {
+                Ok(r) => r,
+                Err(e) => return Err(ApiError::from(&e)),
+            };
+            Ok(PatientView {
+                stored,
+                photo_version,
+                replaced_by,
+                replaces,
+            })
+        }
+        Err(StoreError::NotFound) => {
+            // A miss is an access too. Only a well-formed id is recorded as the patient reference.
+            audit_access(
+                &ctx.db,
+                agent,
+                Action::Read,
+                4,
+                purpose,
+                None,
+                serde_json::json!({"found": false}),
+            )
+            .await?;
+            Err(ApiError::from(&StoreError::NotFound))
+        }
+        Err(e) => Err(ApiError::from(&e)),
     }
-    (StatusCode::CREATED, Json(stored)).into_response()
 }
 
 pub(super) async fn read(
@@ -311,79 +401,82 @@ pub(super) async fn read(
     headers: HeaderMap,
     Path(id): Path<String>,
 ) -> Response {
-    let purpose = match purpose_of(&headers) {
+    match read_service(&ctx, &agent, &subject, &headers, &id).await {
+        Ok(view) => Json(view).into_response(),
+        Err(e) => e.into_response(),
+    }
+}
+
+pub(super) async fn update_service(
+    ctx: &AppContext,
+    agent: &Agent,
+    subject: &Subject,
+    headers: &HeaderMap,
+    id: &str,
+    request: &UpdateRequest,
+) -> Result<store::Stored, ApiError> {
+    let purpose = match purpose_of(headers) {
         Ok(p) => p,
-        Err(r) => return *r,
+        Err(r) => return Err(r),
     };
-    if let Err(r) = authorize(
+    authorize(
         &ctx.db,
-        &agent,
-        &subject,
+        agent,
+        subject,
         Resource::PatientIdentity,
-        policy::Action::Read,
+        policy::Action::Update,
         purpose,
-        Some(&id),
+        Some(id),
+    )
+    .await?;
+    let problems = store::validate(&request.patient);
+    if !problems.is_empty() {
+        return Err(ApiError::invalid(problems.clone()));
+    }
+    let tx = match begin(&ctx.db).await {
+        Ok(t) => t,
+        Err(r) => return Err(r),
+    };
+    match store::update(
+        &tx,
+        id,
+        request.expected_version,
+        &agent.0,
+        request.reason.as_deref(),
+        &request.patient,
     )
     .await
     {
-        return *r;
-    }
-    match store::current(&ctx.db, &id).await {
         Ok(stored) => {
-            // Audit before the data leaves.
-            if let Err(r) = audit_access(
-                &ctx.db,
-                &agent,
-                Action::Read,
+            audit_access(
+                &tx,
+                agent,
+                Action::Update,
                 0,
                 purpose,
                 Some(&stored.id),
                 serde_json::json!({"version": stored.version}),
             )
-            .await
-            {
-                return *r;
-            }
-            // Whether there is a photo to fetch, so the banner does not ask for one that is not
-            // there. A failed lookup fails the read: a banner must not quietly lose its photo.
-            let photo_version = match crate::photos_store::current(&ctx.db, &stored.id).await {
-                Ok(p) => p.filter(|p| p.bytes.is_some()).map(|p| p.version),
-                Err(e) => return store_failure(&e),
-            };
-            let mut body = serde_json::to_value(&stored).unwrap_or(serde_json::Value::Null);
-            body["photo_version"] = serde_json::json!(photo_version);
-            // Merge status (ID-5): a record merged away says where it went; a surviving record
-            // says what was merged into it. A failed lookup fails the read.
-            let replaced_by = match links::merged_into(&ctx.db, &stored.id).await {
-                Ok(r) => r,
-                Err(e) => return store_failure(&e),
-            };
-            let replaces = match links::sources_of(&ctx.db, &stored.id).await {
-                Ok(r) => r,
-                Err(e) => return store_failure(&e),
-            };
-            body["replaced_by"] = serde_json::json!(replaced_by);
-            body["replaces"] = serde_json::json!(replaces);
-            Json(body).into_response()
+            .await?;
+            commit(tx).await?;
+            Ok(stored)
         }
-        Err(StoreError::NotFound) => {
-            // A miss is an access too. Only a well-formed id is recorded as the patient reference.
-            if let Err(r) = audit_access(
+        Err(e @ (StoreError::Conflict { .. } | StoreError::NotFound)) => {
+            // Nothing was written; end the transaction before the refusal is audited.
+            let _ = sea_orm::TransactionSession::rollback(tx).await;
+            audit_access(
                 &ctx.db,
-                &agent,
-                Action::Read,
+                agent,
+                Action::Update,
                 4,
                 purpose,
                 None,
-                serde_json::json!({"found": false}),
+                serde_json::json!({"refused": e.to_string()}),
             )
-            .await
-            {
-                return *r;
-            }
-            store_failure(&StoreError::NotFound)
+            .await?;
+            Err(ApiError::from(&e))
         }
-        Err(e) => store_failure(&e),
+        Err(e) => Err(ApiError::from(&e)),
     }
 }
 
@@ -395,124 +488,50 @@ pub(super) async fn update(
     Path(id): Path<String>,
     Json(request): Json<UpdateRequest>,
 ) -> Response {
-    let purpose = match purpose_of(&headers) {
-        Ok(p) => p,
-        Err(r) => return *r,
-    };
-    if let Err(r) = authorize(
-        &ctx.db,
-        &agent,
-        &subject,
-        Resource::PatientIdentity,
-        policy::Action::Update,
-        purpose,
-        Some(&id),
-    )
-    .await
-    {
-        return *r;
-    }
-    let problems = store::validate(&request.patient);
-    if !problems.is_empty() {
-        return ApiError::invalid(problems.clone()).into_response();
-    }
-    let tx = match begin(&ctx.db).await {
-        Ok(t) => t,
-        Err(r) => return *r,
-    };
-    match store::update(
-        &tx,
-        &id,
-        request.expected_version,
-        &agent.0,
-        request.reason.as_deref(),
-        &request.patient,
-    )
-    .await
-    {
-        Ok(stored) => {
-            if let Err(r) = audit_access(
-                &tx,
-                &agent,
-                Action::Update,
-                0,
-                purpose,
-                Some(&stored.id),
-                serde_json::json!({"version": stored.version}),
-            )
-            .await
-            {
-                return *r;
-            }
-            if let Err(r) = commit(tx).await {
-                return *r;
-            }
-            Json(stored).into_response()
-        }
-        Err(e @ (StoreError::Conflict { .. } | StoreError::NotFound)) => {
-            // Nothing was written; end the transaction before the refusal is audited.
-            let _ = sea_orm::TransactionSession::rollback(tx).await;
-            if let Err(r) = audit_access(
-                &ctx.db,
-                &agent,
-                Action::Update,
-                4,
-                purpose,
-                None,
-                serde_json::json!({"refused": e.to_string()}),
-            )
-            .await
-            {
-                return *r;
-            }
-            store_failure(&e)
-        }
-        Err(e) => store_failure(&e),
+    match update_service(&ctx, &agent, &subject, &headers, &id, &request).await {
+        Ok(stored) => Json(stored).into_response(),
+        Err(e) => e.into_response(),
     }
 }
 
-pub(super) async fn search(
-    State(ctx): State<AppContext>,
-    Extension(agent): Extension<Agent>,
-    Extension(subject): Extension<Subject>,
-    headers: HeaderMap,
-    Query(query): Query<Search>,
-) -> Response {
-    let purpose = match purpose_of(&headers) {
+pub(super) async fn search_service(
+    ctx: &AppContext,
+    agent: &Agent,
+    subject: &Subject,
+    headers: &HeaderMap,
+    query: &Search,
+) -> Result<Vec<store::Stored>, ApiError> {
+    let purpose = match purpose_of(headers) {
         Ok(p) => p,
-        Err(r) => return *r,
+        Err(r) => return Err(r),
     };
-    if let Err(r) = authorize(
+    authorize(
         &ctx.db,
-        &agent,
-        &subject,
+        agent,
+        subject,
         Resource::PatientIdentity,
         policy::Action::Search,
         purpose,
         None,
     )
-    .await
-    {
-        return *r;
-    }
+    .await?;
     if !query.any() {
-        return ApiError::new(
+        return Err(ApiError::new(
             StatusCode::BAD_REQUEST,
             "give at least one of family, birth_date, identifier",
-        )
-        .into_response();
+        ));
     }
-    match store::search(&ctx.db, &query).await {
+    match store::search(&ctx.db, query).await {
         Ok(mut found) => {
             // Drop what the patient's consent refuses this subject. A hidden result is not
             // counted in the response; the audit row says how many there were.
             let ids: Vec<String> = found.iter().map(|s| s.id.clone()).collect();
             let verdicts =
-                match consent_verdicts(&ctx.db, &subject, purpose, Resource::PatientIdentity, &ids)
+                match consent_verdicts(&ctx.db, subject, purpose, Resource::PatientIdentity, &ids)
                     .await
                 {
                     Ok(v) => v,
-                    Err(r) => return *r,
+                    Err(r) => return Err(r),
                 };
             let before = found.len();
             found.retain(|s| {
@@ -531,9 +550,9 @@ pub(super) async fn search(
             .filter(|(_, v)| v.as_deref().is_some_and(|s| !s.trim().is_empty()))
             .map(|(k, _)| k)
             .collect();
-            if let Err(r) = audit_access(
+            audit_access(
                 &ctx.db,
-                &agent,
+                agent,
                 Action::Read,
                 0,
                 purpose,
@@ -544,14 +563,24 @@ pub(super) async fn search(
                     "hidden_by_consent": hidden_by_consent,
                 }),
             )
-            .await
-            {
-                return *r;
-            }
-            Json(serde_json::json!({"results": found, "limit": store::SEARCH_LIMIT}))
-                .into_response()
+            .await?;
+            Ok(found)
         }
-        Err(e) => store_failure(&e),
+        Err(e) => Err(ApiError::from(&e)),
+    }
+}
+
+pub(super) async fn search(
+    State(ctx): State<AppContext>,
+    Extension(agent): Extension<Agent>,
+    Extension(subject): Extension<Subject>,
+    headers: HeaderMap,
+    Query(query): Query<Search>,
+) -> Response {
+    match search_service(&ctx, &agent, &subject, &headers, &query).await {
+        Ok(found) => Json(serde_json::json!({"results": found, "limit": store::SEARCH_LIMIT}))
+            .into_response(),
+        Err(e) => e.into_response(),
     }
 }
 

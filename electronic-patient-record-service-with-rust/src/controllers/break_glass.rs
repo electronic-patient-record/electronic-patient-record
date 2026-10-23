@@ -63,7 +63,7 @@ async fn open(
 ) -> Response {
     let purpose = match purpose_of(&headers) {
         Ok(p) => p,
-        Err(r) => return *r,
+        Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
         &ctx.db,
@@ -76,11 +76,11 @@ async fn open(
     )
     .await
     {
-        return *r;
+        return r.into_response();
     }
     let tx = match begin(&ctx.db).await {
         Ok(t) => t,
-        Err(r) => return *r,
+        Err(r) => return r.into_response(),
     };
     match store::open(&tx, &patient, &agent.0, &request.reason).await {
         Ok((grant, created)) => {
@@ -101,10 +101,10 @@ async fn open(
             )
             .await
             {
-                return *r;
+                return r.into_response();
             }
             if let Err(r) = commit(tx).await {
-                return *r;
+                return r.into_response();
             }
             (
                 if created {
@@ -129,7 +129,7 @@ async fn guard(
     subject: &Subject,
     headers: &HeaderMap,
     action: policy::Action,
-) -> Result<policy::Purpose, Box<Response>> {
+) -> Result<policy::Purpose, ApiError> {
     let purpose = purpose_of(headers)?;
     authorize(
         &ctx.db,
@@ -152,7 +152,7 @@ async fn list(
 ) -> Response {
     let purpose = match guard(&ctx, &agent, &subject, &headers, policy::Action::Search).await {
         Ok(p) => p,
-        Err(r) => return *r,
+        Err(r) => return r.into_response(),
     };
     let grants = match store::unreviewed(&ctx.db).await {
         Ok(g) => g,
@@ -172,7 +172,7 @@ async fn list(
     )
     .await
     {
-        return *r;
+        return r.into_response();
     }
     Json(serde_json::json!({ "grants": grants, "limit": store::LIST_LIMIT })).into_response()
 }
@@ -185,7 +185,7 @@ async fn count(
 ) -> Response {
     let purpose = match guard(&ctx, &agent, &subject, &headers, policy::Action::Search).await {
         Ok(p) => p,
-        Err(r) => return *r,
+        Err(r) => return r.into_response(),
     };
     let n = match store::count_unreviewed(&ctx.db).await {
         Ok(n) => n,
@@ -205,7 +205,7 @@ async fn count(
     )
     .await
     {
-        return *r;
+        return r.into_response();
     }
     Json(serde_json::json!({ "unreviewed": n })).into_response()
 }
@@ -220,11 +220,11 @@ async fn review(
 ) -> Response {
     let purpose = match guard(&ctx, &agent, &subject, &headers, policy::Action::Update).await {
         Ok(p) => p,
-        Err(r) => return *r,
+        Err(r) => return r.into_response(),
     };
     let tx = match begin(&ctx.db).await {
         Ok(t) => t,
-        Err(r) => return *r,
+        Err(r) => return r.into_response(),
     };
     match store::review(&tx, &id, &agent.0, request.outcome, &request.note).await {
         Ok(grant) => {
@@ -242,10 +242,10 @@ async fn review(
             )
             .await
             {
-                return *r;
+                return r.into_response();
             }
             if let Err(r) = commit(tx).await {
-                return *r;
+                return r.into_response();
             }
             Json(grant).into_response()
         }

@@ -20,6 +20,24 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
   so the licence, the 3rd-edition changes and the target times are **[uncertain]**. The OQ entries are not yet in
   `spec/16-open-questions.md`, no hazard-log rows are written (TR-4), and no code or spec page changed.
 
+## 2026-10-23 - A typed service layer under the JSON and FHIR patient routes (CQ-13, for the handlers FHIR uses)
+
+- The shared helpers (`authorize`, `audit_resource`, `begin`, `commit`, `purpose_of`, `consent_verdicts`) return
+  `ApiError` instead of a boxed `Response`.
+- Patient create, read, update and search, and the allergy list, are now `*_service` functions returning
+  `Result<Domain, ApiError>`: `Stored`, a new `PatientView` (the stored version, `photo_version`, `replaced_by`,
+  `replaces`), `Vec<Stored>` and `AllergyList`. The JSON handlers render them; the FHIR controller calls the same
+  services and maps an `ApiError` to an `OperationOutcome`.
+- `fhir.rs` no longer calls a JSON handler, `read_back` is gone from its code (it remains as a test helper), and so
+  are the `unwrap_or_default` fallbacks that turned an unreadable body into an empty result. A source census
+  (`tests/fhir_census.rs`) fails if one returns.
+- Wire shapes are unchanged: the 154 unit tests, the FHIR tests and the full Postgres suite (including the three
+  handler-level files) pass without edits.
+- **Not done or not verified:** the other handlers (consents, relationships, links, photos, allergy writes,
+  break-glass, `me`, audit, feed) still build a `Response` and use `into_response()` on the helpers' errors; the
+  UI and Playwright gates were not run, though the JSON bodies are meant to be identical (`PatientView` flattens the
+  stored version); the FHIR allergy bundle is still built from the list serialised to JSON. Not run on GitHub (CQ-20).
+
 ## 2026-10-23 - Consent and relationship conflicts, FHIR miss and search refusal; CQ-16 closed
 
 - `http_conflicts.rs` also checks the stale-change 409 for consents and relationships, a FHIR `Patient` miss (404)

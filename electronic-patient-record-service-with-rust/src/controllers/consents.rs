@@ -58,7 +58,7 @@ pub(super) async fn create(
 ) -> Response {
     let purpose = match purpose_of(&headers) {
         Ok(p) => p,
-        Err(r) => return *r,
+        Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
         &ctx.db,
@@ -71,7 +71,7 @@ pub(super) async fn create(
     )
     .await
     {
-        return *r;
+        return r.into_response();
     }
     let problems = consent::validate(&request.consent);
     if !problems.is_empty() {
@@ -79,7 +79,7 @@ pub(super) async fn create(
     }
     let tx = match begin(&ctx.db).await {
         Ok(t) => t,
-        Err(r) => return *r,
+        Err(r) => return r.into_response(),
     };
     match store::create(
         &tx,
@@ -109,10 +109,10 @@ pub(super) async fn create(
             )
             .await
             {
-                return *r;
+                return r.into_response();
             }
             if let Err(r) = commit(tx).await {
-                return *r;
+                return r.into_response();
             }
             (StatusCode::CREATED, Json(stored)).into_response()
         }
@@ -133,7 +133,7 @@ pub(super) async fn list(
 ) -> Response {
     let purpose = match purpose_of(&headers) {
         Ok(p) => p,
-        Err(r) => return *r,
+        Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
         &ctx.db,
@@ -146,7 +146,7 @@ pub(super) async fn list(
     )
     .await
     {
-        return *r;
+        return r.into_response();
     }
     // A patient that does not exist is a 404, not an empty list.
     let known = match patients_store::current(&ctx.db, &patient).await {
@@ -169,7 +169,7 @@ pub(super) async fn list(
             )
             .await
             {
-                return *r;
+                return r.into_response();
             }
             Json(serde_json::json!({ "consents": consents })).into_response()
         }
@@ -187,7 +187,7 @@ pub(super) async fn update(
 ) -> Response {
     let purpose = match purpose_of(&headers) {
         Ok(p) => p,
-        Err(r) => return *r,
+        Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
         &ctx.db,
@@ -200,7 +200,7 @@ pub(super) async fn update(
     )
     .await
     {
-        return *r;
+        return r.into_response();
     }
     let problems = consent::validate(&request.consent);
     if !problems.is_empty() {
@@ -208,7 +208,7 @@ pub(super) async fn update(
     }
     let tx = match begin(&ctx.db).await {
         Ok(t) => t,
-        Err(r) => return *r,
+        Err(r) => return r.into_response(),
     };
     match store::update(
         &tx,
@@ -240,10 +240,10 @@ pub(super) async fn update(
             )
             .await
             {
-                return *r;
+                return r.into_response();
             }
             if let Err(r) = commit(tx).await {
-                return *r;
+                return r.into_response();
             }
             Json(stored).into_response()
         }
@@ -278,7 +278,7 @@ async fn refused(
         )
         .await
     {
-        return *r;
+        return r.into_response();
     }
     store_failure(e)
 }

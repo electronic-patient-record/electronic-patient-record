@@ -17,20 +17,20 @@ use axum::{
 };
 
 /// The purpose of use the caller declared, `operations` by default. An unknown code is a 400.
-pub(super) fn purpose_of(headers: &HeaderMap) -> Result<Purpose, Box<Response>> {
+pub(super) fn purpose_of(headers: &HeaderMap) -> Result<Purpose, ApiError> {
     match headers.get("x-purpose-of-use") {
         None => Ok(Purpose::Operations),
         Some(v) => v
             .to_str()
             .ok()
             .and_then(Purpose::parse)
-            .ok_or_else(|| ApiError::bad_request("unknown X-Purpose-Of-Use").into()),
+            .ok_or_else(|| ApiError::bad_request("unknown X-Purpose-Of-Use")),
     }
 }
 
-pub(super) fn audit_failed(e: &AuditError) -> Response {
+pub(super) fn audit_failed(e: &AuditError) -> ApiError {
     tracing::error!(error = %e, "refusing to answer: the access could not be audited");
-    ApiError::internal().into_response()
+    ApiError::internal()
 }
 
 /// What the patients' consent says about this subject reading this kind of record, per patient.
@@ -43,7 +43,7 @@ pub(super) async fn consent_verdicts(
     purpose: Purpose,
     resource: Resource,
     patient_ids: &[String],
-) -> Result<std::collections::HashMap<String, consent::Verdict>, Box<Response>> {
+) -> Result<std::collections::HashMap<String, consent::Verdict>, ApiError> {
     let mut verdicts = std::collections::HashMap::new();
     if !auth::authentication_enforced() || patient_ids.is_empty() {
         return Ok(verdicts);
@@ -52,7 +52,7 @@ pub(super) async fn consent_verdicts(
     // choice does not lapse because two records were joined. Two queries for any number of ids.
     let active = consents_store::active_with_merged(db, patient_ids)
         .await
-        .map_err(|e| Box::new(store_failure(&e)))?;
+        .map_err(|e| ApiError::from(&e))?;
     let ctx = consent::Context {
         roles: subject.roles.clone(),
         purpose,
@@ -78,7 +78,7 @@ pub(super) async fn authorize(
     action: policy::Action,
     purpose: Purpose,
     patient_id: Option<&str>,
-) -> Result<(), Box<Response>> {
+) -> Result<(), ApiError> {
     if !auth::authentication_enforced() {
         return Ok(());
     }
@@ -104,12 +104,11 @@ pub(super) async fn authorize(
         && let Some(id) = patient_id
         && let Some(into) = links::merged_into(db, id)
             .await
-            .map_err(|e| Box::new(store_failure(&e)))?
+            .map_err(|e| ApiError::from(&e))?
     {
         return Err(
             ApiError::conflict("this record was merged into another: change that one")
-                .with("replaced_by", into)
-                .into(),
+                .with("replaced_by", into),
         );
     }
     // The subject's relationship to this patient, from the recorded relationships. A failed lookup
@@ -117,7 +116,7 @@ pub(super) async fn authorize(
     let relationship = match patient_id {
         Some(id) => relationships::lookup(db, id, &agent.0, time_now())
             .await
-            .map_err(|e| Box::new(store_failure(&e)))?,
+            .map_err(|e| ApiError::from(&e))?,
         None => Relationship::None,
     };
     // A grant matters only to a treating role reading clinical content without a care relationship.
@@ -130,7 +129,7 @@ pub(super) async fn authorize(
         {
             crate::break_glass::active(db, id, &agent.0)
                 .await
-                .map_err(|e| Box::new(store_failure(&e)))?
+                .map_err(|e| ApiError::from(&e))?
         }
         _ => None,
     };
@@ -184,24 +183,24 @@ pub(super) async fn authorize(
     } else {
         ApiError::forbidden()
     };
-    Err(refusal.into())
+    Err(refusal)
 }
 
 /// Start the transaction a write and its audit row share (see [`audit::append`]).
 pub(super) async fn begin(
     db: &sea_orm::DatabaseConnection,
-) -> Result<sea_orm::DatabaseTransaction, Box<Response>> {
+) -> Result<sea_orm::DatabaseTransaction, ApiError> {
     sea_orm::TransactionTrait::begin(db).await.map_err(|e| {
         tracing::error!(error = %e, "could not start a transaction");
-        ApiError::internal().into()
+        ApiError::internal()
     })
 }
 
 /// Commit it. A failure means the write did not happen, so the request fails.
-pub(super) async fn commit(tx: sea_orm::DatabaseTransaction) -> Result<(), Box<Response>> {
+pub(super) async fn commit(tx: sea_orm::DatabaseTransaction) -> Result<(), ApiError> {
     sea_orm::TransactionSession::commit(tx).await.map_err(|e| {
         tracing::error!(error = %e, "could not commit a write and its audit row");
-        ApiError::internal().into()
+        ApiError::internal()
     })
 }
 
@@ -226,7 +225,7 @@ pub(super) async fn audit_resource(
     agent: &Agent,
     access: Access<'_>,
     detail: serde_json::Value,
-) -> Result<(), Box<Response>> {
+) -> Result<(), ApiError> {
     let mut event = Event::new(access.action, agent.0.clone());
     event.outcome = access.outcome;
     event.patient_ref = access.patient_id.map(|id| format!("Patient/{id}"));
@@ -236,7 +235,7 @@ pub(super) async fn audit_resource(
     audit::append(db, audit::chain(), &event)
         .await
         .map(|_| ())
-        .map_err(|e| Box::new(audit_failed(&e)))
+        .map_err(|e| audit_failed(&e))
 }
 
 /// A store error as its response ([`ApiError`]'s `From<&StoreError>`).

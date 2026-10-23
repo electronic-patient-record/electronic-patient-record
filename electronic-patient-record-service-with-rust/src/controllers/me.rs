@@ -78,7 +78,7 @@ async fn patients_of_caller(
     )
     .await
     {
-        return *r;
+        return r.into_response();
     }
     axum::Json(serde_json::json!({ "records": records })).into_response()
 }
@@ -153,7 +153,7 @@ async fn access_log(
     )
     .await
     {
-        return *r;
+        return r.into_response();
     }
     // `authorize` allows a treating relationship to read the identity record; the log is for the
     // patient and proxy only.
@@ -180,7 +180,7 @@ async fn access_log(
     // One more than a page, to know whether there is another.
     let mut rows = match audit::patient_log(&ctx.db, &id, query.before, LOG_PAGE + 1).await {
         Ok(r) => r,
-        Err(e) => return audit_failed(&e),
+        Err(e) => return audit_failed(&e).into_response(),
     };
     let more = rows.len() > usize::try_from(LOG_PAGE).unwrap_or(usize::MAX);
     rows.truncate(usize::try_from(LOG_PAGE).unwrap_or(usize::MAX));
@@ -204,7 +204,7 @@ async fn access_log(
     )
     .await
     {
-        return *r;
+        return r.into_response();
     }
     axum::Json(serde_json::json!({ "entries": entries, "next": next })).into_response()
 }

@@ -490,7 +490,7 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
   `DbErr` cause instead of `Db(String)`; detect version conflicts by `SqlErr::UniqueConstraintViolation`, not by
   matching `"_pkey"` in the message.
   **Acceptance:** a store test forces a conflict in each store and gets `Conflict`; the error log names the store.
-- [ ] **CQ-13 (L) — Typed service layer under JSON and FHIR.** Split each handler into a service function returning
+- [x] **CQ-13 (L) — Typed service layer under JSON and FHIR.** **Landed 2026-10-23 for the handlers FHIR uses** (patient create, read, update, search; allergy list; census). **Not done:** the other handlers still build a `Response`. Split each handler into a service function returning
   `Result<Domain, ApiError>`, rendered by the JSON and FHIR controllers; remove `read_back`
   (`controllers/fhir.rs:69`) and its `unwrap_or_default` fallbacks. Depends on CQ-11 and CQ-16.
   **Acceptance:** `fhir.rs` no longer calls JSON handlers; FHIR tests unchanged and green.

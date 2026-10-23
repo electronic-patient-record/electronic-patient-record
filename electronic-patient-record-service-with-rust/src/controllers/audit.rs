@@ -191,7 +191,7 @@ async fn search(
     )
     .await
     {
-        return *r;
+        return r.into_response();
     }
     match search_audited(&ctx.db, &agent, &query).await {
         Ok((rows, next)) => {
@@ -293,7 +293,7 @@ async fn export(
     )
     .await
     {
-        return *r;
+        return r.into_response();
     }
     let criteria = match audit::AuditQuery::from_pairs(&pairs) {
         Ok(c) => c.normalized(),
@@ -398,7 +398,7 @@ async fn verify(
     )
     .await
     {
-        return *r;
+        return r.into_response();
     }
     match verify_audited(&ctx.db, audit::chain(), &agent, checkpoint.as_ref()).await {
         Ok((status, body)) => (status, axum::Json(body)).into_response(),

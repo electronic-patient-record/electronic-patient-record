@@ -12,7 +12,7 @@
 //! audit row are one transaction. The audit row records ids, versions and statuses, never the
 //! substance or the reaction.
 
-use super::common::{Access, audit_resource, authorize, begin, commit, purpose_of, store_failure};
+use super::common::{Access, audit_resource, authorize, begin, commit, purpose_of};
 use crate::allergies::{self as store, AllergyRecord, Status};
 use crate::api_error::ApiError;
 use crate::audit::Action;
@@ -26,7 +26,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use loco_rs::prelude::*;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// Record an allergy.
 #[derive(Debug, Deserialize)]
@@ -62,11 +62,11 @@ pub struct StatementRequest {
     pub reason: Option<String>,
 }
 
-fn failure(e: StoreError) -> Response {
+fn failure(e: StoreError) -> ApiError {
     match e {
         // A refused record or statement is the writer's to fix, like a refused identity record.
-        StoreError::BadQuery(m) => ApiError::invalid(vec![m.to_string()]).into_response(),
-        other => store_failure(&other),
+        StoreError::BadQuery(m) => ApiError::invalid(vec![m.to_string()]),
+        other => ApiError::from(&other),
     }
 }
 
@@ -77,7 +77,7 @@ async fn refused(
     purpose: Purpose,
     action: Action,
     e: &StoreError,
-) -> Option<Response> {
+) -> Option<ApiError> {
     if !matches!(
         e,
         StoreError::NotFound | StoreError::Conflict { .. } | StoreError::BadQuery(_)
@@ -99,7 +99,77 @@ async fn refused(
     )
     .await
     .err()
-    .map(|r| *r)
+}
+
+/// A patient's allergies, the statement and the banner summary.
+#[derive(Debug, Serialize)]
+pub struct AllergyList {
+    /// Every allergy in every status.
+    pub allergies: Vec<store::StoredAllergy>,
+    /// "No known allergies", when stated.
+    pub statement: Option<store::Assertion>,
+    /// The banner state.
+    pub summary: store::Summary,
+}
+
+pub(super) async fn list_service(
+    ctx: &AppContext,
+    agent: &Agent,
+    subject: &Subject,
+    headers: &HeaderMap,
+    patient: &str,
+) -> Result<AllergyList, ApiError> {
+    let purpose = match purpose_of(headers) {
+        Ok(p) => p,
+        Err(r) => return Err(r),
+    };
+    authorize(
+        &ctx.db,
+        agent,
+        subject,
+        Resource::AllergyIntolerance,
+        policy::Action::Read,
+        purpose,
+        Some(patient),
+    )
+    .await?;
+    let all = match store::list(&ctx.db, patient).await {
+        Ok(a) => a,
+        Err(e) => {
+            if let Some(r) = refused(ctx, agent, purpose, Action::Read, &e).await {
+                return Err(r);
+            }
+            return Err(failure(e));
+        }
+    };
+    let statement = match store::statement(&ctx.db, patient).await {
+        Ok(s) => s,
+        Err(e) => return Err(failure(e)),
+    };
+    let summary = store::summarise(&all, statement.as_ref());
+    let state = serde_json::to_value(&summary)
+        .ok()
+        .and_then(|v| v.get("state").cloned());
+    // Audit before the clinical content leaves.
+    let patient_id = all.first().map(|a| a.patient_id.clone());
+    audit_resource(
+        &ctx.db,
+        agent,
+        Access {
+            action: Action::Read,
+            outcome: 0,
+            purpose,
+            resource: "AllergyIntolerance",
+            patient_id: patient_id.as_deref().or(Some(patient)),
+        },
+        serde_json::json!({ "allergies": all.len(), "summary": state }),
+    )
+    .await?;
+    Ok(AllergyList {
+        allergies: all,
+        statement,
+        summary,
+    })
 }
 
 pub(super) async fn list(
@@ -109,64 +179,10 @@ pub(super) async fn list(
     headers: HeaderMap,
     Path(patient): Path<String>,
 ) -> Response {
-    let purpose = match purpose_of(&headers) {
-        Ok(p) => p,
-        Err(r) => return *r,
-    };
-    if let Err(r) = authorize(
-        &ctx.db,
-        &agent,
-        &subject,
-        Resource::AllergyIntolerance,
-        policy::Action::Read,
-        purpose,
-        Some(&patient),
-    )
-    .await
-    {
-        return *r;
+    match list_service(&ctx, &agent, &subject, &headers, &patient).await {
+        Ok(list) => Json(list).into_response(),
+        Err(e) => e.into_response(),
     }
-    let all = match store::list(&ctx.db, &patient).await {
-        Ok(a) => a,
-        Err(e) => {
-            if let Some(r) = refused(&ctx, &agent, purpose, Action::Read, &e).await {
-                return r;
-            }
-            return failure(e);
-        }
-    };
-    let statement = match store::statement(&ctx.db, &patient).await {
-        Ok(s) => s,
-        Err(e) => return failure(e),
-    };
-    let summary = store::summarise(&all, statement.as_ref());
-    let state = serde_json::to_value(&summary)
-        .ok()
-        .and_then(|v| v.get("state").cloned());
-    // Audit before the clinical content leaves.
-    let patient_id = all.first().map(|a| a.patient_id.clone());
-    if let Err(r) = audit_resource(
-        &ctx.db,
-        &agent,
-        Access {
-            action: Action::Read,
-            outcome: 0,
-            purpose,
-            resource: "AllergyIntolerance",
-            patient_id: patient_id.as_deref().or(Some(&patient)),
-        },
-        serde_json::json!({ "allergies": all.len(), "summary": state }),
-    )
-    .await
-    {
-        return *r;
-    }
-    axum::Json(serde_json::json!({
-        "allergies": all,
-        "statement": statement,
-        "summary": summary,
-    }))
-    .into_response()
 }
 
 pub(super) async fn create(
@@ -179,7 +195,7 @@ pub(super) async fn create(
 ) -> Response {
     let purpose = match purpose_of(&headers) {
         Ok(p) => p,
-        Err(r) => return *r,
+        Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
         &ctx.db,
@@ -192,11 +208,11 @@ pub(super) async fn create(
     )
     .await
     {
-        return *r;
+        return r.into_response();
     }
     let tx = match begin(&ctx.db).await {
         Ok(t) => t,
-        Err(r) => return *r,
+        Err(r) => return r.into_response(),
     };
     match store::create(
         &tx,
@@ -226,19 +242,19 @@ pub(super) async fn create(
             )
             .await
             {
-                return *r;
+                return r.into_response();
             }
             if let Err(r) = commit(tx).await {
-                return *r;
+                return r.into_response();
             }
             (StatusCode::CREATED, Json(stored)).into_response()
         }
         Err(e) => {
             let _ = sea_orm::TransactionSession::rollback(tx).await;
             if let Some(r) = refused(&ctx, &agent, purpose, Action::Create, &e).await {
-                return r;
+                return r.into_response();
             }
-            failure(e)
+            failure(e).into_response()
         }
     }
 }
@@ -253,7 +269,7 @@ pub(super) async fn update(
 ) -> Response {
     let purpose = match purpose_of(&headers) {
         Ok(p) => p,
-        Err(r) => return *r,
+        Err(r) => return r.into_response(),
     };
     // Marking a mistake is its own permission: a nurse may update an allergy but not retract one.
     let needed = if request.allergy.status == Status::EnteredInError {
@@ -272,11 +288,11 @@ pub(super) async fn update(
     )
     .await
     {
-        return *r;
+        return r.into_response();
     }
     let tx = match begin(&ctx.db).await {
         Ok(t) => t,
-        Err(r) => return *r,
+        Err(r) => return r.into_response(),
     };
     match store::update(
         &tx,
@@ -308,19 +324,19 @@ pub(super) async fn update(
             )
             .await
             {
-                return *r;
+                return r.into_response();
             }
             if let Err(r) = commit(tx).await {
-                return *r;
+                return r.into_response();
             }
             Json(stored).into_response()
         }
         Err(e) => {
             let _ = sea_orm::TransactionSession::rollback(tx).await;
             if let Some(r) = refused(&ctx, &agent, purpose, Action::Update, &e).await {
-                return r;
+                return r.into_response();
             }
-            failure(e)
+            failure(e).into_response()
         }
     }
 }
@@ -335,7 +351,7 @@ pub(super) async fn statement(
 ) -> Response {
     let purpose = match purpose_of(&headers) {
         Ok(p) => p,
-        Err(r) => return *r,
+        Err(r) => return r.into_response(),
     };
     let (needed, action) = if request.none_known {
         (policy::Action::Create, Action::Create)
@@ -353,11 +369,11 @@ pub(super) async fn statement(
     )
     .await
     {
-        return *r;
+        return r.into_response();
     }
     let tx = match begin(&ctx.db).await {
         Ok(t) => t,
-        Err(r) => return *r,
+        Err(r) => return r.into_response(),
     };
     match store::assert_none_known(
         &tx,
@@ -387,19 +403,19 @@ pub(super) async fn statement(
             )
             .await
             {
-                return *r;
+                return r.into_response();
             }
             if let Err(r) = commit(tx).await {
-                return *r;
+                return r.into_response();
             }
             Json(statement).into_response()
         }
         Err(e) => {
             let _ = sea_orm::TransactionSession::rollback(tx).await;
             if let Some(r) = refused(&ctx, &agent, purpose, action, &e).await {
-                return r;
+                return r.into_response();
             }
-            failure(e)
+            failure(e).into_response()
         }
     }
 }

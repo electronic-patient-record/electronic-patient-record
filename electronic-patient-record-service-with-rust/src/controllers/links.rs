@@ -49,7 +49,7 @@ async fn change(
 ) -> Response {
     let purpose = match purpose_of(headers) {
         Ok(p) => p,
-        Err(r) => return *r,
+        Err(r) => return r.into_response(),
     };
     let (needed, action) = if merging {
         (policy::Action::Create, Action::Create)
@@ -67,11 +67,11 @@ async fn change(
     )
     .await
     {
-        return *r;
+        return r.into_response();
     }
     let tx = match begin(&ctx.db).await {
         Ok(t) => t,
-        Err(r) => return *r,
+        Err(r) => return r.into_response(),
     };
     let done = if merging {
         store::merge(&tx, target, &request.source, &agent.0, &request.reason).await
@@ -103,10 +103,10 @@ async fn change(
             )
             .await
             {
-                return *r;
+                return r.into_response();
             }
             if let Err(r) = commit(tx).await {
-                return *r;
+                return r.into_response();
             }
             (
                 if merging {
@@ -136,7 +136,7 @@ async fn change(
                 )
                 .await
             {
-                return *r;
+                return r.into_response();
             }
             failure(e)
         }
@@ -174,7 +174,7 @@ pub(super) async fn list(
 ) -> Response {
     let purpose = match purpose_of(&headers) {
         Ok(p) => p,
-        Err(r) => return *r,
+        Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
         &ctx.db,
@@ -187,7 +187,7 @@ pub(super) async fn list(
     )
     .await
     {
-        return *r;
+        return r.into_response();
     }
     match store::list(&ctx.db, &patient).await {
         Ok(links) => {
@@ -205,7 +205,7 @@ pub(super) async fn list(
             )
             .await
             {
-                return *r;
+                return r.into_response();
             }
             Json(serde_json::json!({ "links": links })).into_response()
         }

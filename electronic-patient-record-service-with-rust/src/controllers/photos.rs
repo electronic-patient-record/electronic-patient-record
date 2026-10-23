@@ -72,7 +72,7 @@ pub(super) async fn read(
 ) -> Response {
     let purpose = match purpose_of(&headers) {
         Ok(p) => p,
-        Err(r) => return *r,
+        Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
         &ctx.db,
@@ -85,7 +85,7 @@ pub(super) async fn read(
     )
     .await
     {
-        return *r;
+        return r.into_response();
     }
     let found = match store::current(&ctx.db, &id).await {
         Ok(p) => p,
@@ -108,7 +108,7 @@ pub(super) async fn read(
     )
     .await
     {
-        return *r;
+        return r.into_response();
     }
     match photo.as_ref().and_then(image_response) {
         Some(r) => r,
@@ -127,7 +127,7 @@ async fn write(
 ) -> Response {
     let purpose = match purpose_of(headers) {
         Ok(p) => p,
-        Err(r) => return *r,
+        Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
         &ctx.db,
@@ -140,7 +140,7 @@ async fn write(
     )
     .await
     {
-        return *r;
+        return r.into_response();
     }
     let Some(expected) = query.expected_version else {
         return ApiError::new(
@@ -151,7 +151,7 @@ async fn write(
     };
     let tx = match begin(&ctx.db).await {
         Ok(t) => t,
-        Err(r) => return *r,
+        Err(r) => return r.into_response(),
     };
     match store::put(&tx, id, expected, &agent.0, query.reason.as_deref(), bytes).await {
         Ok(photo) => {
@@ -174,10 +174,10 @@ async fn write(
             )
             .await
             {
-                return *r;
+                return r.into_response();
             }
             if let Err(r) = commit(tx).await {
-                return *r;
+                return r.into_response();
             }
             axum::Json(serde_json::json!({
                 "version": photo.version,
@@ -207,7 +207,7 @@ async fn write(
                 )
                 .await
             {
-                return *r;
+                return r.into_response();
             }
             match e {
                 // A refused file is the uploader's problem to fix, like a refused identity record.
