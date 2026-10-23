@@ -4,7 +4,7 @@
 use crate::nhs::{NHS_NUMBER_SYSTEM, canonical_identifier, is_valid_nhs_number};
 use crate::normalize::{
     PartialDate, are_nicknames, fold_name, fold_postcode, fold_telecom, normalize_phone,
-    parse_date, transliterate,
+    parse_date, soundex, transliterate,
 };
 use crate::patient::{AdministrativeSex, Patient};
 use serde::{Deserialize, Serialize};
@@ -158,6 +158,10 @@ pub struct MatchResult {
     pub deterministic: Option<String>,
     /// Reasons a link must not be automatic. Never hidden.
     pub conflicts: Vec<String>,
+    /// The family and the first given name of one name on each record sound alike (Soundex) though they
+    /// are spelled differently. Never part of the score; see `compare`.
+    #[serde(default)]
+    pub phonetic_match: bool,
 }
 
 /// The engine. Cheap to construct; holds only configuration.
@@ -266,6 +270,7 @@ impl MatchingEngine {
             0.0
         };
 
+        let phonetic_match = phonetic_match(a, b);
         let mut conflicts = Vec::new();
         let mut deterministic = None;
         let mut decision;
@@ -306,6 +311,15 @@ impl MatchingEngine {
             } else {
                 Decision::NonMatch
             };
+            // A pair the spelling scores as unrelated, with names that sound alike and the same birth
+            // date, is worth a person's look. The score is unchanged, and this never reaches AutoLink.
+            if decision == Decision::NonMatch
+                && phonetic_match
+                && dob.is_some_and(|d| d >= self.config.min_birth_date_for_auto)
+            {
+                conflicts.push("names sound alike but are spelled differently".to_string());
+                decision = Decision::Review;
+            }
             if decision == Decision::AutoLink {
                 let c = &self.config;
                 // Missing evidence blocks automatic linking; it is not treated as agreement.
@@ -350,6 +364,7 @@ impl MatchingEngine {
             fields,
             deterministic,
             conflicts,
+            phonetic_match,
         }
     }
 }
@@ -406,6 +421,29 @@ fn compound_sim(x: &str, y: &str) -> f64 {
         std::cmp::Ordering::Greater => mean(&ys, &xs),
         std::cmp::Ordering::Equal => mean(&xs, &ys).min(mean(&ys, &xs)),
     }
+}
+
+/// Whether one name on each record has the same Soundex for the family name and for the first given
+/// name while being spelled differently in at least one of the two (identical spellings are not news).
+fn phonetic_match(a: &Patient, b: &Patient) -> bool {
+    let parts = |p: &Patient| -> Vec<(String, String)> {
+        p.names
+            .iter()
+            .filter_map(|n| {
+                let family = fold_name(n.family.as_deref().filter(|s| !fold_name(s).is_empty())?);
+                let given = fold_name(n.given.iter().find(|s| !fold_name(s).is_empty())?);
+                Some((family, given))
+            })
+            .collect()
+    };
+    let (xa, xb) = (parts(a), parts(b));
+    xa.iter().any(|(fa, ga)| {
+        xb.iter().any(|(fb, gb)| {
+            (fa != fb || ga != gb)
+                && soundex(fa).is_some_and(|s| Some(s) == soundex(fb))
+                && soundex(ga).is_some_and(|s| Some(s) == soundex(gb))
+        })
+    })
 }
 
 /// A name pair is read as swapped only when each name matches the other's at least this well, and

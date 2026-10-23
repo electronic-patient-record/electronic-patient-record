@@ -86,6 +86,21 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
   UI and Playwright gates were not run, though the JSON bodies are meant to be identical (`PatientView` flattens the
   stored version); the FHIR allergy bundle is still built from the list serialised to JSON. Not run on GitHub (CQ-20).
 
+## 2026-10-23 - Phonetic signal (CQ-19, ninth slice)
+
+- **Clinical.** Matcher (unreleased, not in the service): American Soundex on the transliterated family and first given
+  name, kept out of the score. If both agree (`Wu`/`Woo` with `Li`/`Lee`), the spellings differ, the birth date matches
+  and the spelling alone would give `NonMatch`, the pair goes to Review with a stated conflict. `MatchResult` gains
+  `phonetic_match` (serde default, so older JSON loads). `tests/phonetic.rs` (6). Gates clean: fmt, clippy `-D warnings`, 86
+  tests. H-001 extended, status untouched.
+- **Not done or not verified:** Soundex is coarse and English-biased: it keeps the first letter (`Katarzyna` and
+  `Catarzyna` differ), drops vowels so `Wu`, `Woo` and `Wei` collide, and says nothing about non-Latin scripts. I
+  probed nine pairs: with an exact birth date most sound-alike pairs already reach Review on spelling, so the rule
+  fires only when other fields disagree (a move and a new phone). Double Metaphone or a name-origin-aware encoder was
+  not tried. My first test pair (`Kowalczyk`/`Kovalchik`) did not share a code, which is how I learned the first-letter
+  limit. No ID-1 corpus, so the extra Review volume is unmeasured. One rule of CQ-19 remains (enum codes). No release.
+  Not run on GitHub (CQ-20).
+
 ## 2026-10-23 - Nickname table (CQ-19, eighth slice)
 
 - **Clinical.** Matcher (unreleased, not in the service): `Bill` and `William`, `Liz` and `Elizabeth` and 36 other

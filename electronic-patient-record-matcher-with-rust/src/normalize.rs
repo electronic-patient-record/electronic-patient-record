@@ -144,6 +144,53 @@ fn days_in_month(year: u16, month: u8) -> u8 {
     }
 }
 
+/// American Soundex of a folded name, one code per word joined by a space, or `None` when a word has
+/// no Latin letters to code (another script) so no claim is made about it. Applied after `transliterate`,
+/// so `Müller` codes as `Mueller`. A coarse sound signal, never a similarity (CQ-19).
+pub fn soundex(folded: &str) -> Option<String> {
+    let code = |c: char| match c {
+        'b' | 'f' | 'p' | 'v' => Some('1'),
+        'c' | 'g' | 'j' | 'k' | 'q' | 's' | 'x' | 'z' => Some('2'),
+        'd' | 't' => Some('3'),
+        'l' => Some('4'),
+        'm' | 'n' => Some('5'),
+        'r' => Some('6'),
+        _ => None,
+    };
+    let words: Vec<String> = transliterate(folded)
+        .split(' ')
+        .map(|w| {
+            let letters: Vec<char> = w.chars().collect();
+            let first = *letters.first()?;
+            if !letters.iter().all(char::is_ascii_lowercase) {
+                return None;
+            }
+            let mut out = String::from(first.to_ascii_uppercase());
+            let mut last = code(first);
+            for &c in &letters[1..] {
+                let d = code(c);
+                if let Some(digit) = d
+                    && d != last
+                {
+                    out.push(digit);
+                }
+                // `h` and `w` do not separate two letters with the same code; a vowel does.
+                if c != 'h' && c != 'w' {
+                    last = d;
+                }
+                if out.len() == 4 {
+                    break;
+                }
+            }
+            while out.len() < 4 {
+                out.push('0');
+            }
+            Some(out)
+        })
+        .collect::<Option<_>>()?;
+    (!words.is_empty()).then(|| words.join(" "))
+}
+
 /// Groups of English given names that people use for one another. A name matches another in its group, and
 /// nothing outside it: `alex` is in the groups of both `alexander` and `alexandra`, which are not in one group
 /// and so never match each other. A short, cautious list, not a dictionary (CQ-19).
