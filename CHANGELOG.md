@@ -2,6 +2,15 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-23 - Manchester Triage System research: plan.md §15, tasks TR-1 to TR-13
+
+- `plan.md` §15 records the MTS research (method, five categories and target times, safety evidence, fit with this
+  project, risks, open questions OQ-T1 to OQ-T4). `tasks.md` gains 13 unticked `TR-` items. Emergency triage is
+  post-1.0, confirmed by the user. `TR` is added to `PREFIXES` in `scripts/generate-status.sh`.
+- **Not done or not verified:** only abstracts and summaries were read, not the MTS book, flowcharts or licence terms,
+  so the licence, the 3rd-edition changes and the target times are **[uncertain]**. The OQ entries are not yet in
+  `spec/16-open-questions.md`, no hazard-log rows are written (TR-4), and no code or spec page changed.
+
 ## 2026-10-23 - Consent and relationship conflicts, FHIR miss and search refusal; CQ-16 closed
 
 - `http_conflicts.rs` also checks the stale-change 409 for consents and relationships, a FHIR `Patient` miss (404)
@@ -24,6 +33,19 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - **Not done or not verified:** CQ-16 stays open. Not covered: 409s for consents and relationships, the other FHIR
   refusals, and a patient or proxy token. The audit row written for each refused write is not checked here. Not run
   on GitHub (CQ-20).
+
+## 2026-10-23 - Request id in the audit trail (CQ-17, partly)
+
+- A new outermost middleware settles `x-request-id` (the caller's, cleaned, or a UUID) before anything else, and every
+  audit row written during the request carries it as `detail.request_id`. The response header is the same id. A
+  `uuid` dependency was added (already in the lock through loco).
+- loco's `TraceLayer` and request-id middleware were already on by default (its `logger` middleware); I did not
+  change or test them beyond the id agreeing with the audit row.
+- Tests: 1 unit in `authz`, 1 in `audit`, 1 Postgres (`http_patients.rs`: a supplied id is cleaned, echoed and found in
+  exactly one audit row; a generated one too).
+- **Not done or not verified:** the Prometheus counters and `/metrics` (CQ-17 stays open; it needs a dependency, a
+  gated route and a policy decision on who may read it). The id is caller-supplied, so two requests can share one on
+  purpose. Rows from the HL7 feed and background work have no request, so no id. Not run on GitHub (CQ-20).
 
 ## 2026-10-23 - Role-token handler tests: route gate, consent masking, break-the-glass (CQ-16, partly)
 
