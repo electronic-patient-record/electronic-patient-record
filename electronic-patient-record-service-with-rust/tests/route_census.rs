@@ -49,11 +49,11 @@ fn every_policy_entry_names_a_served_route() {
 }
 
 #[test]
-fn only_health_probes_are_public() {
+fn only_health_probes_and_metrics_are_public() {
     for (method, uri) in served() {
         if auth::is_public_path(&uri) {
             assert!(
-                ["/_health", "/_ping", "/_readiness"].contains(&uri.as_str()),
+                ["/_health", "/_ping", "/_readiness", "/metrics"].contains(&uri.as_str()),
                 "{method} {uri} is public"
             );
         }

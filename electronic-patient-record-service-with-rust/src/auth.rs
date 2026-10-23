@@ -39,10 +39,11 @@ static VERIFIER: OnceLock<Verifier> = OnceLock::new();
 static KEYCLOAK: OnceLock<KeycloakVerifier> = OnceLock::new();
 static REQUIRE_AUTH: OnceLock<bool> = OnceLock::new();
 
-/// Paths that never need a token: health probes only.
+/// Paths that never need a token: health probes, and `/metrics`, which answers 404 unless the
+/// deployer turned it on (`EPR_METRICS`, see [`crate::metrics`]).
 #[must_use]
 pub fn is_public_path(path: &str) -> bool {
-    matches!(path, "/_health" | "/_ping" | "/_readiness")
+    matches!(path, "/_health" | "/_ping" | "/_readiness" | "/metrics")
 }
 
 fn env_or(name: &str, default: &str) -> String {
@@ -277,7 +278,11 @@ pub async fn require_auth_mw(
             next.run(req).await
         }
         // JSON on /api, an OperationOutcome on /fhir (CQ-11).
-        Err((status, msg)) => crate::api_error::ApiError::new(status, msg).for_path(&path),
+        Err((status, msg)) => {
+            // Nothing is audited before a caller is known: count it so it is not invisible.
+            crate::metrics::UNAUDITED_REFUSALS.inc();
+            crate::api_error::ApiError::new(status, msg).for_path(&path)
+        }
     }
 }
 

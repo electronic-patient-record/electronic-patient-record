@@ -173,6 +173,7 @@ pub struct New<'a> {
 ///
 /// [`StoreError::Db`] when the insert fails.
 pub async fn record(db: &impl ConnectionTrait, new: New<'_>) -> Result<String, StoreError> {
+    crate::metrics::FEED_REFUSALS.inc();
     let message = new.message;
     let mut text = message;
     if text.len() > MAX_MESSAGE {

@@ -22,6 +22,7 @@ pub mod feed_queue;
 pub mod ids;
 pub mod interop;
 pub mod links;
+pub mod metrics;
 pub mod mllp;
 pub mod patients_store;
 pub mod photos_store;

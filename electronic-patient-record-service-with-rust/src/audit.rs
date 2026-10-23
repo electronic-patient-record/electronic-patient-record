@@ -413,6 +413,18 @@ pub async fn append(
     chain: &Chain,
     event: &Event,
 ) -> Result<i64, AuditError> {
+    let result = append_row(db, chain, event).await;
+    if result.is_err() {
+        crate::metrics::AUDIT_APPEND_FAILURES.inc();
+    }
+    result
+}
+
+async fn append_row(
+    db: &(impl ConnectionTrait + TransactionTrait),
+    chain: &Chain,
+    event: &Event,
+) -> Result<i64, AuditError> {
     let event = &with_glass(&with_request_id(&with_actor(event)));
     let tx = db.begin().await.map_err(err)?;
     tx.execute_raw(pg(

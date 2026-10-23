@@ -2,6 +2,17 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-23 - CQ-17: `/metrics` with three counters
+
+- New `src/metrics.rs` and `GET /metrics` (Prometheus text): audit-append failures, refusals that left no audit row
+  (401 and 503 from the auth middleware; a 403 whose row failed) and refused HL7 messages. 404 unless `EPR_METRICS` is
+  `1` or `true`. `/metrics` is a public path, so `is_public_path`, the route census and the service spec say so.
+- Not clinical, so no hazard row; the counters make H-023 (a refused HL7 message never seen) and audit outages easier
+  to notice but do not close either.
+- **Not done or not verified:** no scrape config, alert or dashboard, so nothing yet pages anyone. Counters are in
+  memory, restart at zero and have no labels. When on, `/metrics` needs no token. The DB-gated tests were not run
+  (no Postgres started); `cargo fmt`, clippy and `cargo test` pass. Not run on GitHub (CQ-20).
+
 ## 2026-10-23 - CQ-31: proxy timeout and transport errors, session kept on provider failure, version header, proxy trust
 
 - The BFF proxy handler moved to `src/lib/proxy-handler.ts` with injected dependencies. It times the upstream call out at

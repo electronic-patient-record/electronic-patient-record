@@ -9,6 +9,7 @@ pub mod feed;
 pub mod fhir;
 pub mod links;
 pub mod me;
+pub mod metrics;
 pub mod patients;
 pub mod photos;
 pub mod relationships;
@@ -23,6 +24,7 @@ pub fn all_routes() -> AppRoutes {
         .add_route(patients::routes())
         .add_route(audit::routes())
         .add_route(me::routes())
+        .add_route(metrics::routes())
         .add_route(fhir::routes())
         .add_route(feed::routes())
         .add_route(break_glass::routes())

@@ -509,7 +509,7 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
   flag, FHIR mapping of refusals.
   **Acceptance:** each path listed as by-hand-only in `spec/index.md` has an automated test, or is listed as still
   untested.
-- [ ] **CQ-17 (M) — Observability.** **Request id landed 2026-10-23** (in `detail.request_id`; `TraceLayer` was already loco's default). **Open:** the Prometheus counters and `/metrics`. tower-http `TraceLayer`, `x-request-id` carried into the audit `detail`, and
+- [x] **CQ-17 (M) — Observability.** **Landed 2026-10-23:** request id earlier the same day (in `detail.request_id`; `TraceLayer` was already loco's default), then `/metrics` with three counters (`src/metrics.rs`, `tests/metrics.rs`). **Not built:** no scrape config, dashboard or alert rule; counters are in memory with no labels and restart at zero; `/metrics` has no authentication (404 unless `EPR_METRICS` is on); no latency or request counters; the DB-gated suites were not run, and the env switch is tested through `metrics::enabled`, not through the live router. tower-http `TraceLayer`, `x-request-id` carried into the audit `detail`, and
   Prometheus counters for audit-append failures, unaudited refusals and refused feed messages.
   **Acceptance:** a test sees the request id in an audit row; `/metrics` exposes the counters.
 - [ ] **CQ-18 (L) — Audit chain throughput.** One global advisory lock (`audit.rs:25`) is held until the outer

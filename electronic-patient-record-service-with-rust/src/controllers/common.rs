@@ -175,6 +175,7 @@ pub(super) async fn authorize(
         serde_json::json!({ "denied": format!("{decision:?}"), "consent": verdict.decided_by }),
     );
     if let Err(e) = audit::append(db, audit::chain(), &event).await {
+        crate::metrics::UNAUDITED_REFUSALS.inc();
         tracing::error!(error = %e, "a refusal could not be audited");
     }
     // A refusal that break-the-glass could lift says so, so the screen can offer it.
