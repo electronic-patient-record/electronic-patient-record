@@ -61,6 +61,24 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
   refusals, and a patient or proxy token. The audit row written for each refused write is not checked here. Not run
   on GitHub (CQ-20).
 
+## 2026-10-23 - Matcher property tests and mutation testing (CQ-30, partly)
+
+- `tests/properties.rs` (6) over 20,000 seeded random patients each: `compare` is total and its score is in [0, 1]; a
+  record compared with itself reports no clash; symmetry when the given-name lists are the same length; dropping a
+  birth date, sex, postcode or telephone never creates an auto-link on pairs without a shared NHS number (a field that
+  disagreed is not dropped: removing a contradiction may legitimately raise the score); and a pin of the finding below.
+- **Finding (CQ-37, not fixed):** a shared valid NHS number gives `AutoLink` with no names or birth date on either
+  record, and removing one side's conflicting birth date turns `Review` into `AutoLink`. That differs from the rule for
+  every other pair. Behaviour is unchanged, a test pins it, and the H-001 row of the hazard log now says so (status
+  untouched). It needs a clinical decision.
+- `cargo mutants -f src/engine.rs -f src/nhs.rs`: the first run missed 23 of 152 (mostly the sex, postcode and
+  telephone similarity, and birth-date precision). `tests/fields.rs` (11) pins those, and the last run caught 147 and
+  found 5 unviable, with none missed or timed out.
+- **Not done or not verified:** the `cargo fuzz` target (needs nightly; CQ-30 stays open for it); mutants on
+  `normalize.rs` and `patient.rs`; the generator is hand-rolled with a fixed seed, so it explores one sequence, not a
+  shrinking search; the symmetry property excludes pairs whose given-name lists differ in length, where CQ-1 does not
+  promise it. Not run on GitHub (CQ-20).
+
 ## 2026-10-23 - Stale documents brought up to date (CQ-28, partly)
 
 - `spec/14-implementation-status.md`: the hand-written area table is gone; a paragraph points to each project's

@@ -463,6 +463,7 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
   first (a shared identifier, then family name and birth date together), and say when the list was cut.
   **Acceptance:** with 250 records sharing a birth date, the one with the same identifier, or the same family name and
   birth date, is still a candidate (Postgres test); a cut list is flagged in the 409.
+- [ ] **CQ-37 (S) — A shared NHS number links with nothing else present.** **Clinical.** Found by CQ-30. In `engine.rs` a shared valid NHS number returns `AutoLink` with no names and no birth date on either record, and removing one side's *conflicting* birth date turns `Review` into `AutoLink`. Every other pair needs given name, family name and birth date present to auto-link (`AGENTS.md`: a missing field blocks an automatic link). H-001 lists that control without the exception. **Decide first (clinical safety officer):** keep the rule that the number decides, or apply the missing-evidence guard on this path too. **Acceptance:** the decision is in `spec/patient-identity`, H-001's controls say what is true, and `tests/properties.rs::a_shared_nhs_number_alone_auto_links_today` is changed to match. Nothing is changed in code by this item until the decision.
 - [ ] **CQ-8 (S) — Background poll keeps the session alive.** **Landed 2026-10-21 except the end-to-end test** (background marker honoured by hook and proxy, warning with Stay signed in, 6 unit tests, H-025). **Open until** a real-Keycloak test sees the warning. The 60-second `look()` poll refreshes `lastSeen`
   (`src/lib/server/session.ts:72`), so the 15-minute idle timeout never fires on an open page. Mark background
   requests so the BFF does not count them as activity, and warn before the idle timeout.
@@ -532,7 +533,7 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
   - `MatchConfig::validate()`.
 
   **Acceptance:** each rule has a named test, and the ID-1 labelled corpus shows no increase in false AutoLinks.
-- [ ] **CQ-30 (M) — Matcher test depth.** proptest for symmetry, totality and "removing a field never raises the
+- [ ] **CQ-30 (M) — Matcher test depth.** **Landed 2026-10-23 except the fuzz target** (`tests/properties.rs`, 6 tests; `tests/fields.rs`, 11; `cargo mutants` on `engine.rs` and `nhs.rs`: 147 caught, 5 unviable, none missed; see CHANGELOG). **Open:** the `cargo fuzz` target (SF-2) and mutants on the other matcher files. Hand-rolled generator, not proptest. proptest for symmetry, totality and "removing a field never raises the
   decision"; cargo-mutants on `engine.rs` and `nhs.rs`; a `cargo fuzz` target (closes part of SF-2).
   **Acceptance:** surviving mutants are fixed or listed with a reason.
 
