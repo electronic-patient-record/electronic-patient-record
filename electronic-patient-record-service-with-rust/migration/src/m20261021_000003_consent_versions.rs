@@ -72,6 +72,7 @@ impl MigrationTrait for Migration {
     ///
     /// When any statement fails.
     async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        crate::refuse_clinical_down("consent_versions")?;
         let db = m.get_connection();
         db.execute_unprepared("DROP VIEW IF EXISTS consent_current")
             .await?;

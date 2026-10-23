@@ -497,7 +497,7 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
   instead of dropping a row; invalid `EPR_PASETO_KEYS` JSON fails startup (`auth.rs:110`); document or separate the
   CSV formula guard so the exported value still matches its digest; `merged_into` past `MAX_DEPTH` is an error.
   **Acceptance:** one test per path.
-- [ ] **CQ-15 (S) — No delete path in down migrations.** `down()` drops clinical tables (patient, consent,
+- [x] **CQ-15 (S) — No delete path in down migrations.** **Landed 2026-10-23** (see CHANGELOG). `down()` drops clinical tables (patient, consent,
   relationship, allergy, photo, link, audit). Make it refuse for clinical tables, or allow it only in development
   behind an explicit check.
   **Acceptance:** a test runs `down` with a production environment and gets an error; the tables remain.

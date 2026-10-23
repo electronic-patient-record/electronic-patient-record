@@ -73,6 +73,7 @@ impl MigrationTrait for Migration {
     ///
     /// When any statement fails.
     async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        crate::refuse_clinical_down("allergies")?;
         let db = m.get_connection();
         for sql in [
             "DROP VIEW IF EXISTS allergy_assertion_current",

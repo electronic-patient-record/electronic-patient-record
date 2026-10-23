@@ -57,6 +57,7 @@ impl MigrationTrait for Migration {
     ///
     /// When any statement fails.
     async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        crate::refuse_clinical_down("relationship_versions")?;
         let db = m.get_connection();
         db.execute_unprepared("DROP VIEW IF EXISTS relationship_current")
             .await?;

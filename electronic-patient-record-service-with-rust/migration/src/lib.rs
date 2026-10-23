@@ -21,6 +21,27 @@ mod m20261021_000010_break_glass;
 mod m20261021_000011_current_views_seek;
 mod m20261021_000012_patient_search_indexes;
 
+/// Whether a `down` that drops clinical tables may run: only in development or test, and only when
+/// `EPR_ALLOW_DESTRUCTIVE_DOWN=true` says so. A missing environment name counts as production.
+fn down_allowed(env: Option<&str>, flag: Option<&str>) -> bool {
+    matches!(env, Some("development" | "test")) && flag == Some("true")
+}
+
+/// Refuse to drop clinical tables (patient, consent, relationship, allergy, photo, link, feed,
+/// break-glass, audit) unless [`down_allowed`]. The clinical record is never deleted; a `down` is a
+/// development convenience, and in any other environment it fails before it changes anything.
+pub(crate) fn refuse_clinical_down(migration: &str) -> Result<(), DbErr> {
+    let env = std::env::var("LOCO_ENV").ok();
+    let flag = std::env::var("EPR_ALLOW_DESTRUCTIVE_DOWN").ok();
+    if down_allowed(env.as_deref(), flag.as_deref()) {
+        Ok(())
+    } else {
+        Err(DbErr::Migration(format!(
+            "{migration}: down would drop clinical tables, which is allowed only with LOCO_ENV=development or test and EPR_ALLOW_DESTRUCTIVE_DOWN=true"
+        )))
+    }
+}
+
 /// Runs the ordered list of migrations.
 pub struct Migrator;
 
@@ -41,5 +62,20 @@ impl MigratorTrait for Migrator {
             Box::new(m20261021_000011_current_views_seek::Migration),
             Box::new(m20261021_000012_patient_search_indexes::Migration),
         ]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::down_allowed;
+
+    #[test]
+    fn down_needs_a_development_or_test_environment_and_the_flag() {
+        assert!(down_allowed(Some("development"), Some("true")));
+        assert!(down_allowed(Some("test"), Some("true")));
+        assert!(!down_allowed(Some("production"), Some("true")));
+        assert!(!down_allowed(None, Some("true")));
+        assert!(!down_allowed(Some("development"), None));
+        assert!(!down_allowed(Some("development"), Some("1")));
     }
 }

@@ -2,6 +2,18 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-23 - Down migrations refuse to drop clinical tables (CQ-15)
+
+- The nine migrations that create tables (audit, patient, consent, relationship, photo, allergy, link, feed
+  refusal, break-glass) now fail in `down` before changing anything, unless `LOCO_ENV` is `development` or `test`
+  and `EPR_ALLOW_DESTRUCTIVE_DOWN=true`. An unset `LOCO_ENV` counts as production.
+- Tests: 1 unit (the rule), 1 Postgres (`tests/migration_down.rs`: with `LOCO_ENV=production` and the flag set,
+  `Migrator::down` errors and five tables remain).
+- **Not done or not verified:** the audit and version tables have delete triggers, but a database owner can still
+  drop them by hand; no database role is denied `DROP`. The test reverses migrations 12 and 11 (views and indexes,
+  unguarded) before it hits the guard; the next `up` restores them. `db migrate down` through the loco CLI was not
+  run. Not run on GitHub (CQ-20).
+
 ## 2026-10-23 - Fail loudly on bad input and export (CQ-14)
 
 - An `AuditEvent` search with a parameter the service does not know (a misspelt `agnet=`) was answered with the

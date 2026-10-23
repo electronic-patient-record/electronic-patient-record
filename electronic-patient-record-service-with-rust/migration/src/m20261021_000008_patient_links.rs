@@ -61,6 +61,7 @@ impl MigrationTrait for Migration {
     ///
     /// When any statement fails.
     async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        crate::refuse_clinical_down("patient_links")?;
         let db = m.get_connection();
         for sql in [
             "DROP VIEW IF EXISTS patient_link_current",
