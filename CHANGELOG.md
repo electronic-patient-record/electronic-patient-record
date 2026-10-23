@@ -86,6 +86,17 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
   UI and Playwright gates were not run, though the JSON bodies are meant to be identical (`PatientView` flattens the
   stored version); the FHIR allergy bundle is still built from the list serialised to JSON. Not run on GitHub (CQ-20).
 
+## 2026-10-23 - Transliteration (CQ-19, third slice)
+
+- **Clinical.** Matcher (unreleased, not in the service): family and given names are also compared transliterated, and
+  the better score is kept. `Müller`/`Mueller` and `José`/`Jose` now score about 1.0; `Müller`/`Miller` stays below
+  0.95. Scores can rise, never fall. `tests/transliteration.rs` (5). Gates clean: fmt, clippy `-D warnings`, 54 tests.
+  H-001's controls and tests are extended; its status is untouched.
+- **Not done or not verified:** the table is German digraphs plus Latin base letters only: no `æ ø å` (`Soren`/`Søren`
+  is not folded, since `ø` has no decomposition), no `ç`-style language rules, no Cyrillic, Greek, Arabic or CJK
+  transliteration (`Mohammed`/`محمد`). Higher scores may add false Review or AutoLink pairs; there is no ID-1 corpus
+  to measure that. Seven rules of CQ-19 remain. No release. Not run on GitHub (CQ-20).
+
 ## 2026-10-23 - `MatchConfig::validate()` (CQ-19, second slice)
 
 - Matcher (unreleased): `validate()` and `MatchingEngine::try_new` refuse a negative or non-finite weight, all-zero

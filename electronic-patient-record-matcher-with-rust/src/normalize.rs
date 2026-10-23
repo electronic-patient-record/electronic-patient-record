@@ -1,4 +1,4 @@
-//! Text folding. NFKC and lowercase; diacritics are preserved, never stripped.
+//! Text folding. NFKC and lowercase; `fold_name` keeps diacritics; `transliterate` is applied only as a second comparison.
 
 use unicode_normalization::UnicodeNormalization;
 
@@ -11,6 +11,29 @@ pub fn fold_name(s: &str) -> String {
         .map(|c| if c.is_alphabetic() { c } else { ' ' })
         .collect();
     folded.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// Transliterate a folded name to plain Latin letters for comparison only: `ä ö ü` become `ae oe ue`,
+/// `ß` becomes `ss`, and a Latin letter with a mark (`é`, `ñ`) becomes its base letter. Characters of
+/// other scripts, and their combining marks, are left alone (a `\p{M}` fold is a separate rule).
+pub fn transliterate(folded: &str) -> String {
+    let mut out = String::with_capacity(folded.len());
+    for c in folded.chars() {
+        match c {
+            'ä' => out.push_str("ae"),
+            'ö' => out.push_str("oe"),
+            'ü' => out.push_str("ue"),
+            'ß' => out.push_str("ss"),
+            _ => {
+                let mut d = std::iter::once(c).nfd();
+                match (d.next(), c.is_ascii()) {
+                    (Some(base), false) if base.is_ascii_alphabetic() => out.push(base),
+                    _ => out.push(c),
+                }
+            }
+        }
+    }
+    out
 }
 
 /// Fold a postcode: alphanumerics only, lowercase.

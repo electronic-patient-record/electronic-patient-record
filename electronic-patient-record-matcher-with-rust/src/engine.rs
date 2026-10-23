@@ -2,7 +2,9 @@
 //! patients to an explainable result. No clocks, no randomness, no IO.
 
 use crate::nhs::{NHS_NUMBER_SYSTEM, canonical_identifier, is_valid_nhs_number};
-use crate::normalize::{PartialDate, fold_name, fold_postcode, fold_telecom, parse_date};
+use crate::normalize::{
+    PartialDate, fold_name, fold_postcode, fold_telecom, parse_date, transliterate,
+};
 use crate::patient::{AdministrativeSex, Patient};
 use serde::{Deserialize, Serialize};
 
@@ -328,10 +330,15 @@ fn field(name: &str, similarity: Option<f64>, weight: f64, absent: &str) -> Fiel
 
 fn name_sim(x: &str, y: &str) -> f64 {
     let (fx, fy) = (fold_name(x), fold_name(y));
+    // `Müller` against `Mueller`: the better of the spelling as written and the transliterated one.
+    folded_name_sim(&fx, &fy).max(folded_name_sim(&transliterate(&fx), &transliterate(&fy)))
+}
+
+fn folded_name_sim(fx: &str, fy: &str) -> f64 {
     if fx.contains(' ') || fy.contains(' ') {
-        compound_sim(&fx, &fy)
+        compound_sim(fx, fy)
     } else {
-        strsim::jaro_winkler(&fx, &fy)
+        strsim::jaro_winkler(fx, fy)
     }
 }
 
@@ -400,7 +407,10 @@ fn given_token_sim(x: &str, y: &str) -> f64 {
     if (initial(&fx) || initial(&fy)) && fx.chars().next() == fy.chars().next() {
         return 0.8;
     }
-    strsim::jaro_winkler(&fx, &fy)
+    strsim::jaro_winkler(&fx, &fy).max(strsim::jaro_winkler(
+        &transliterate(&fx),
+        &transliterate(&fy),
+    ))
 }
 
 /// Given-name similarity, and whether the best-matching pair of lists leaves a name unmatched on

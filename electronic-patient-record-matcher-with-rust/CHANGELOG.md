@@ -7,6 +7,8 @@
 - **Changed:** a given name on the longer list that nothing on the shorter list matches blocks `AutoLink` (conflict
   "one record has a given name the other lacks"); the score is unchanged, so such a pair goes to Review (CQ-19).
 
+- **Changed:** names are also compared transliterated (`Müller`/`Mueller`, `José`/`Jose`); the better score is kept, so a
+  similarity can rise but never fall. `normalize::transliterate` is public (CQ-19).
 - **Added:** `MatchConfig::validate()`, `ConfigError` and `MatchingEngine::try_new` (CQ-19). `new` is unchanged.
 
 ## [0.2.0] - 2026-10-21
