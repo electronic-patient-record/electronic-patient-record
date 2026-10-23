@@ -28,8 +28,8 @@ Weighted mean of per-field similarities over the fields present on both records.
 
 | Field | Weight | Similarity |
 |---|---|---|
-| family name | 0.25 | best Jaro-Winkler over name pairs |
-| given name | 0.20 | per token best match, averaged over the shorter list (with lists of equal length, averaged both ways and the lower kept, so order never raises the score); an initial matching a token's first letter scores 0.8 |
+| family name | 0.25 | best Jaro-Winkler over name pairs; a name of several parts (`Smith-Jones`, `Jones Smith`) is compared part by part (each part of the shorter takes its best match, scaled by the ratio of the two parts' lengths, mean kept; with equal numbers of parts both ways and the lower kept), so `Smith-Jones` does not match `Smithson` and `Smith` still matches `Smith-Jones` |
+| given name | 0.20 | per token best match, averaged over the shorter list (with lists of equal length, averaged both ways and the lower kept, so order never raises the score; when the longer list has a name nothing in the shorter matches at 0.85 or more, `AutoLink` is blocked with the conflict "one record has a given name the other lacks", so `John` and `John Paul` go to Review); an initial matching a token's first letter scores 0.8 |
 | birth date | 0.30 | exact 1.0; day and month swapped 0.8; one component differing by a keying slip (one digit, or two adjacent digits swapped, written as `DD`, `MM` or `YYYY`) 0.6; partial dates by shared precision; else 0.0. A date the calendar does not have (`2020-02-31`, `1900-02-29`) is absent |
 | sex | 0.05 | equal 1.0, different 0.0; `unknown` counts as absent |
 | postcode | 0.10 | any folded postcode in common |

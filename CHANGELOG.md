@@ -86,6 +86,26 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
   UI and Playwright gates were not run, though the JSON bodies are meant to be identical (`PatientView` flattens the
   stored version); the FHIR allergy bundle is still built from the list serialised to JSON. Not run on GitHub (CQ-20).
 
+## 2026-10-23 - Real-world names, first slice: compound family names and the extra given name (CQ-19, partly)
+
+- **Clinical.** In the matcher (unreleased, not yet in the service, which uses 0.2.0):
+  - a family name of several parts is compared part by part, with each part scaled by the ratio of lengths: `Smith-Jones`
+    against `Smithson` fell from about 0.90 to below 0.85 (the auto-link minimum); `Smith` against `Smith-Jones`
+    and `Jones Smith` against `Smith-Jones` still match fully;
+  - `John` against `John Paul` (a given name on one record that nothing on the other matches at 0.85 or more) can no
+    longer auto-link: the score is unchanged and the pair goes to Review with a stated conflict.
+- `tests/names.rs` (4) names each rule and checks the order of the records; the 40 other matcher tests pass.
+- H-001's controls are extended; its status is untouched.
+- A stale Cargo fingerprint hid the new code from `cargo test` for part of this work (the library was not rebuilt
+  after an edit until `cargo clean -p electronic-patient-record-matcher`); results above are from a clean build.
+  Earlier green runs in this directory may have been stale. They should be rerun.
+- **Not done or not verified:** nine rules of CQ-19 remain (nickname table, phonetic signal, transliteration, swap
+  detection, `\p{M}` fold, E.164, household evidence, enum codes, `MatchConfig::validate()`). There is no ID-1 labelled
+  corpus in the repository, so "no increase in false AutoLinks" is checked only by the existing 23 matching tests and
+  the property tests, not on real names. `Jane` against `Jane Louise` (a middle name left off) now goes to Review where
+  it could auto-link; that costs reviewer time and was a chosen trade, not measured. No matcher release or service
+  bump. Not run on GitHub (CQ-20).
+
 ## 2026-10-23 - Consent and relationship conflicts, FHIR miss and search refusal; CQ-16 closed
 
 - `http_conflicts.rs` also checks the stale-change 409 for consents and relationships, a FHIR `Patient` miss (404)

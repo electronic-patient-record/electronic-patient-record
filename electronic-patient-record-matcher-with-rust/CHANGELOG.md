@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+- **Changed:** a family name of several parts is compared part by part; `Smith-Jones` no longer scores as a close
+  match to `Smithson` (CQ-19).
+- **Changed:** a given name on the longer list that nothing on the shorter list matches blocks `AutoLink` (conflict
+  "one record has a given name the other lacks"); the score is unchanged, so such a pair goes to Review (CQ-19).
+
 ## [0.2.0] - 2026-10-21
 
 Patient-safety fixes to matching. Behaviour changes, so pairs scored by 0.1.0 may score differently. See the

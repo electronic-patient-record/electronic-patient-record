@@ -113,7 +113,10 @@ impl MatchingEngine {
     pub fn compare(&self, a: &Patient, b: &Patient) -> MatchResult {
         let w = &self.config.weights;
         let family = family_similarity(a, b);
-        let given = given_similarity(a, b);
+        let (given, given_extra) = match given_similarity(a, b) {
+            Some((s, e)) => (Some(s), e),
+            None => (None, false),
+        };
         let dob = birth_date_similarity(a, b);
         let sex = sex_similarity(a, b);
         let postal = postal_similarity(a, b);
@@ -228,6 +231,10 @@ impl MatchingEngine {
                         _ => {}
                     }
                 }
+                if given_extra {
+                    // `John` and `John Paul` can be two people (twins, a father and son).
+                    conflicts.push("one record has a given name the other lacks".to_string());
+                }
                 if present / total < c.min_evidence_weight {
                     conflicts.push(format!(
                         "only {:.0}% of the evidence is present",
@@ -264,7 +271,39 @@ fn field(name: &str, similarity: Option<f64>, weight: f64, absent: &str) -> Fiel
 }
 
 fn name_sim(x: &str, y: &str) -> f64 {
-    strsim::jaro_winkler(&fold_name(x), &fold_name(y))
+    let (fx, fy) = (fold_name(x), fold_name(y));
+    if fx.contains(' ') || fy.contains(' ') {
+        compound_sim(&fx, &fy)
+    } else {
+        strsim::jaro_winkler(&fx, &fy)
+    }
+}
+
+/// A family name of several parts (`Smith-Jones`) against another name: each part of the shorter
+/// takes its best match among the parts of the longer, and the mean is kept. A part counts for a
+/// similar part only in proportion to their lengths, so `Smith-Jones` does not match `Smithson`
+/// because `Smith` is a prefix of it, while `Smith` still matches `Smith-Jones` (a name that lost
+/// or gained a part on marriage).
+fn compound_sim(x: &str, y: &str) -> f64 {
+    let (xs, ys): (Vec<&str>, Vec<&str>) = (x.split(' ').collect(), y.split(' ').collect());
+    let part = |a: &str, b: &str| {
+        let (la, lb) = (a.chars().count() as f64, b.chars().count() as f64);
+        strsim::jaro_winkler(a, b) * la.min(lb) / la.max(lb)
+    };
+    let mean = |short: &[&str], long: &[&str]| {
+        let total: f64 = short
+            .iter()
+            .map(|s| long.iter().map(|l| part(s, l)).fold(0.0, f64::max))
+            .sum();
+        total / short.len() as f64
+    };
+    // With equal numbers of parts, both ways and the lower kept, so the order of the records
+    // never raises the score.
+    match xs.len().cmp(&ys.len()) {
+        std::cmp::Ordering::Less => mean(&xs, &ys),
+        std::cmp::Ordering::Greater => mean(&ys, &xs),
+        std::cmp::Ordering::Equal => mean(&xs, &ys).min(mean(&ys, &xs)),
+    }
 }
 
 fn family_similarity(a: &Patient, b: &Patient) -> Option<f64> {
@@ -308,8 +347,10 @@ fn given_token_sim(x: &str, y: &str) -> f64 {
     strsim::jaro_winkler(&fx, &fy)
 }
 
-fn given_similarity(a: &Patient, b: &Patient) -> Option<f64> {
-    let mut best: Option<f64> = None;
+/// Given-name similarity, and whether the best-matching pair of lists leaves a name unmatched on
+/// the longer side (`John` against `John Paul`: the average over the shorter list cannot see it).
+fn given_similarity(a: &Patient, b: &Patient) -> Option<(f64, bool)> {
+    let mut best: Option<(f64, bool)> = None;
     // A token that folds to nothing (`-`, spaces) is absent, not a name that disagrees.
     let tokens = |given: &[String]| -> Vec<String> {
         given
@@ -325,16 +366,34 @@ fn given_similarity(a: &Patient, b: &Patient) -> Option<f64> {
             }
             // Average over the shorter list; with equal lengths, average both ways and keep the
             // lower, so the order of the records never raises the score.
-            let s = match na.len().cmp(&nb.len()) {
-                std::cmp::Ordering::Less => given_average(&na, &nb),
-                std::cmp::Ordering::Greater => given_average(&nb, &na),
-                std::cmp::Ordering::Equal => given_average(&na, &nb).min(given_average(&nb, &na)),
+            let (s, extra) = match na.len().cmp(&nb.len()) {
+                std::cmp::Ordering::Less => (given_average(&na, &nb), unmatched(&na, &nb)),
+                std::cmp::Ordering::Greater => (given_average(&nb, &na), unmatched(&nb, &na)),
+                std::cmp::Ordering::Equal => {
+                    (given_average(&na, &nb).min(given_average(&nb, &na)), false)
+                }
             };
-            best = Some(best.map_or(s, |b: f64| b.max(s)));
+            // The better pair wins; on a tie the one with nothing unmatched.
+            best = match best {
+                Some((b, e)) if b > s || (b == s && !e) => Some((b, e)),
+                _ => Some((s, extra)),
+            };
         }
     }
     best
 }
+
+/// Whether `long` has a token that no token of `short` matches well enough to be the same name.
+fn unmatched(short: &[String], long: &[String]) -> bool {
+    long.iter().any(|l| {
+        short
+            .iter()
+            .all(|s| given_token_sim(s, l) < UNMATCHED_BELOW)
+    })
+}
+
+/// A given-name token is unmatched below this similarity to every token on the other side.
+const UNMATCHED_BELOW: f64 = 0.85;
 
 /// Each token of `short` takes its best match in `long`; the mean of those.
 fn given_average(short: &[String], long: &[String]) -> f64 {
