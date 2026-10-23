@@ -31,6 +31,16 @@ export const SECURITY_HEADERS: Readonly<Record<string, string>> = {
 /** Browsers ignore HSTS over plain HTTP; sending it there is wrong. */
 export const HSTS_VALUE = "max-age=31536000; includeSubDomains";
 
+/** The `X-Forwarded-Proto` value to believe: the header's, only when the deployer says a proxy sets it. */
+export function trustedForwardedProto(
+  headers: Headers,
+  trusted: string | undefined,
+): string | null {
+  return ["1", "true"].includes((trusted ?? "").trim().toLowerCase())
+    ? headers.get("x-forwarded-proto")
+    : null;
+}
+
 /** True when the request reached us over HTTPS, directly or via a proxy. */
 export function isHttps(url: URL, forwardedProto: string | null): boolean {
   if (url.protocol === "https:") return true;

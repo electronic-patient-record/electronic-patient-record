@@ -11,6 +11,7 @@ import {
   normalizeLocale,
   splitPath,
 } from "#lib/locales.js";
+import { forwardedProto } from "#lib/forwarded-proto.js";
 import { applySecurityHeaders, isHttps } from "#lib/security-headers.js";
 
 /** Remembers the reader's locale, to choose one for a bare, unprefixed URL. */
@@ -25,10 +26,7 @@ export const init: ServerInit = () => {
 // tokens stay in the server's session store (src/lib/session.ts).
 export const handle: Handle = async (input) => {
   const { event } = input;
-  const secure = isHttps(
-    event.url,
-    event.request.headers.get("x-forwarded-proto"),
-  );
+  const secure = isHttps(event.url, forwardedProto(event.request));
   // A background look (BACKGROUND_HEADER) is not activity: it must not keep an idle session alive.
   const session = sessionFrom(getAuth(), event.cookies, secure, {
     activity: !isBackground(event.request.headers.get(BACKGROUND_HEADER)),
@@ -40,7 +38,7 @@ export const handle: Handle = async (input) => {
   try {
     applySecurityHeaders(
       response.headers,
-      isHttps(event.url, event.request.headers.get("x-forwarded-proto")),
+      isHttps(event.url, forwardedProto(event.request)),
     );
   } catch {
     // Immutable headers (a redirect response from `fetch`): leave as is.

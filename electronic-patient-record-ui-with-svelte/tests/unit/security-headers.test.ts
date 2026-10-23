@@ -4,6 +4,7 @@ import {
   HSTS_VALUE,
   applySecurityHeaders,
   isHttps,
+  trustedForwardedProto,
 } from "../../src/lib/security-headers";
 
 describe("isHttps", () => {
@@ -54,5 +55,26 @@ describe("applySecurityHeaders", () => {
     expect(h.get("x-frame-options")).toBe("SAMEORIGIN");
     expect(h.get("strict-transport-security")).toBe("max-age=1");
     expect(h.get("referrer-policy")).toBe("strict-origin-when-cross-origin");
+  });
+});
+
+describe("trustedForwardedProto", () => {
+  const headers = new Headers({ "x-forwarded-proto": "https" });
+  it("ignores the header unless the deployer trusts a proxy", () => {
+    for (const trusted of [undefined, "", "0", "false", "yes"]) {
+      expect(trustedForwardedProto(headers, trusted)).toBeNull();
+      expect(
+        isHttps(
+          new URL("http://x.test/"),
+          trustedForwardedProto(headers, trusted),
+        ),
+      ).toBe(false);
+    }
+  });
+  it("returns the header when trusted", () => {
+    for (const trusted of ["1", "true", " TRUE "]) {
+      expect(trustedForwardedProto(headers, trusted)).toBe("https");
+    }
+    expect(trustedForwardedProto(new Headers(), "1")).toBeNull();
   });
 });

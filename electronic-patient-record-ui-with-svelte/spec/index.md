@@ -22,6 +22,13 @@ cross-subproject contract.
   signed in" (`POST /auth/keepalive`, same-origin, 204 or 401, no API call); hazard H-025. `returnTo`
   is a same-site path only. Plain `http://` is accepted only for loopback. Environment: `EPR_OIDC_ISSUER`, `EPR_OIDC_CLIENT_ID`
   (default `epr-web`), `EPR_PUBLIC_URL` (required with an issuer; its origin must be one the client allows).
+  **Proxy resilience (CQ-31)**: the proxy gives the API 30 s (`UPSTREAM_TIMEOUT_MS`); a timeout is a 504 and any other
+  transport failure a 502, both JSON `{error}`. A token refresh deletes the session only when the provider answers
+  `invalid_grant` (or the session holds no refresh token); a network error, timeout, 5xx or malformed answer keeps the
+  session and cookie and the proxy answers 503 with `Retry-After: 5`. The proxy forwards `Accepts-version` when it is a short
+  token (letters, digits, dots, hyphens) and never touches the path. `X-Forwarded-Proto` is believed only when
+  `EPR_TRUST_FORWARDED_PROTO` is `1` or `true`: **a deployment behind a TLS-terminating proxy must set it**, or cookies are
+  not `__Host-` prefixed `Secure` and HSTS is not sent.
 - **Pages**: home; `/patients` searches (family-name prefix, birth date, NHS number; an empty search is never sent) and lists up to 50
   matches; `/patients/new` registers, and on a 409 shows each possible duplicate beside the entered record with the matcher's score and
   reasons, registering anyway only with a typed reason (when the 409 says `candidates_cut`, the page adds that only the closest 200 were compared and to search first); `/patients/[id]` shows and edits a record, sending the version it was read at

@@ -56,3 +56,11 @@ export function purposeHeader(value: string | null | undefined): string | null {
     ? value
     : null;
 }
+
+/**
+ * The `Accepts-version` value to forward, or null. The API is versioned by this header, never by the
+ * path; only a short token of letters, digits, dots and hyphens passes, so nothing odd reaches the API.
+ */
+export function versionHeader(value: string | null | undefined): string | null {
+  return value && /^[A-Za-z0-9.-]{1,32}$/.test(value) ? value : null;
+}

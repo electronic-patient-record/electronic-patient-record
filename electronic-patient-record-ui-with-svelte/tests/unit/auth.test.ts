@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Auth, AuthError } from "../../src/lib/auth";
+import { Auth, AuthError, AuthUnavailableError } from "../../src/lib/auth";
 import { loadOidcConfig } from "../../src/lib/oidc";
 import { SessionStore } from "../../src/lib/session";
 
@@ -207,6 +207,65 @@ describe("Auth tokens and sign-out", () => {
         form.get("grant_type") === "refresh_token"
           ? reply({ error: "invalid_grant" }, 400)
           : goodToken(box.n),
+    });
+    const session = await signedIn(m, box);
+    m.clock.t += 295;
+    expect(await m.auth.accessToken(session)).toBeNull();
+    expect(m.store.get(session.id)).toBeNull();
+  });
+
+  it("keeps the session when the provider is down, slow or answers badly, and throws so the caller can retry", async () => {
+    const answers: (() => Response)[] = [
+      () => reply({ error: "temporarily_unavailable" }, 503),
+      () => new Response("<html>bad gateway</html>", { status: 502 }),
+      () => reply({ error: "invalid_client" }, 401),
+      () => reply({ nothing: true }),
+      () => {
+        throw new TypeError("fetch failed");
+      },
+    ];
+    for (const answer of answers) {
+      const box = { n: "" };
+      const m = make({
+        token: (form) =>
+          form.get("grant_type") === "refresh_token"
+            ? answer()
+            : goodToken(box.n),
+      });
+      const session = await signedIn(m, box);
+      m.clock.t += 295;
+      await expect(m.auth.accessToken(session)).rejects.toThrow(
+        AuthUnavailableError,
+      );
+      expect(m.store.get(session.id)).not.toBeNull();
+      expect(session.refreshToken).toBe("refresh-1");
+    }
+  });
+
+  it("recovers on the next call after a provider failure", async () => {
+    const box = { n: "" };
+    let down = true;
+    const m = make({
+      token: (form) =>
+        form.get("grant_type") !== "refresh_token"
+          ? goodToken(box.n)
+          : down
+            ? reply({}, 503)
+            : reply({ access_token: "access-2", expires_in: 300 }),
+    });
+    const session = await signedIn(m, box);
+    m.clock.t += 295;
+    await expect(m.auth.accessToken(session)).rejects.toThrow(
+      AuthUnavailableError,
+    );
+    down = false;
+    expect(await m.auth.accessToken(session)).toBe("access-2");
+  });
+
+  it("deletes a session that holds no refresh token", async () => {
+    const box = { n: "" };
+    const m = make({
+      token: () => goodToken(box.n, { refresh_token: undefined }),
     });
     const session = await signedIn(m, box);
     m.clock.t += 295;

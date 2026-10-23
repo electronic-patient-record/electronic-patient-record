@@ -2,6 +2,19 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-23 - CQ-31: proxy timeout and transport errors, session kept on provider failure, version header, proxy trust
+
+- The BFF proxy handler moved to `src/lib/proxy-handler.ts` with injected dependencies. It times the upstream call out at
+  30 s (504), maps other transport errors to 502 and forwards `Accepts-version`. A refresh failure other than
+  `invalid_grant` keeps the session and answers 503; only `invalid_grant` or no refresh token deletes it.
+- **Behaviour change for deployers:** `X-Forwarded-Proto` is now ignored unless `EPR_TRUST_FORWARDED_PROTO=1`. A UI behind a
+  TLS-terminating proxy that does not set it loses the `__Host-` Secure cookie and HSTS. Nothing in this repo's compose or
+  operations files runs the UI behind such a proxy, so none needed editing.
+- Not clinical: no change to what a clinician sees beyond a clearer error, so no hazard row. H-025 (sessions) is
+  unaffected.
+- **Not done or not verified:** the real-Keycloak e2e suite was not run, there is no browser retry after a 503, and the
+  proxy-trust rule is unit-tested on its helper only. Not run on GitHub (CQ-20).
+
 ## 2026-10-23 - TR-4: seven triage hazards, H-026 to H-032
 
 - Added to `governance/clinical-safety/hazard-log.csv`: wrong flowchart or missed discriminator, under-triage of

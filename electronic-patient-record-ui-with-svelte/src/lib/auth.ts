@@ -19,7 +19,18 @@ import {
 } from "./oidc.js";
 import type { Session, SessionStore } from "./session.js";
 
-export class AuthError extends Error {}
+export class AuthError extends Error {
+  constructor(
+    message: string,
+    /** The OAuth `error` code the provider answered with, if any (e.g. `invalid_grant`). */
+    readonly code?: string,
+  ) {
+    super(message);
+  }
+}
+
+/** The provider could not be reached or answered badly: the session is kept and the caller may retry. */
+export class AuthUnavailableError extends Error {}
 
 /** Refresh the access token when it has less than this long to live. */
 export const REFRESH_MARGIN_SECONDS = 30;
@@ -142,9 +153,18 @@ export class Auth {
     return (await pending) ? session.accessToken : null;
   }
 
+  /**
+   * True when refreshed; false when the provider has refused the refresh token for good
+   * (`invalid_grant`, or none held), in which case the session is deleted. Any other failure
+   * (network, timeout, a 5xx, a malformed answer) throws `AuthUnavailableError` and keeps the
+   * session, so a provider blip does not sign every clinician out.
+   */
   private async refresh(session: Session): Promise<boolean> {
+    if (!session.refreshToken) {
+      this.store.delete(session.id);
+      return false;
+    }
     try {
-      if (!session.refreshToken) throw new AuthError("no refresh token");
       const token = await this.tokenRequest(await this.endpoints(), {
         grant_type: "refresh_token",
         refresh_token: session.refreshToken,
@@ -153,9 +173,14 @@ export class Auth {
       session.refreshToken = token.refresh_token ?? session.refreshToken;
       session.accessExpiresAt = this.now() + token.expires_in;
       return true;
-    } catch {
-      this.store.delete(session.id);
-      return false;
+    } catch (e) {
+      if (e instanceof AuthError && e.code === "invalid_grant") {
+        this.store.delete(session.id);
+        return false;
+      }
+      throw new AuthUnavailableError("sign-in service unavailable", {
+        cause: e,
+      });
     }
   }
 
@@ -199,7 +224,16 @@ export class Auth {
       body: new URLSearchParams({ client_id: this.config.clientId, ...form }),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
-    if (!res.ok) throw new AuthError(`token endpoint returned ${res.status}`);
+    if (!res.ok) {
+      let code: string | undefined;
+      try {
+        const err = (await res.json()) as { error?: unknown };
+        if (typeof err.error === "string") code = err.error;
+      } catch {
+        // No JSON body: a gateway error page, say. Not a refusal of the grant.
+      }
+      throw new AuthError(`token endpoint returned ${res.status}`, code);
+    }
     const body = (await res.json()) as Record<string, unknown>;
     if (
       typeof body.access_token !== "string" ||

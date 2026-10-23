@@ -597,7 +597,7 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
 
 ### UI
 
-- [ ] **CQ-31 (S) — Proxy and session resilience.** Adds `AbortSignal.timeout` to the upstream call
+- [x] **CQ-31 (S) — Proxy and session resilience.** **Landed 2026-10-23** (`proxy-handler.ts`, `auth.ts`, `forwarded-proto.ts`; 13 new unit tests; Playwright 43 pass). **Not done:** the real-Keycloak suite was not run; the handler test stubs `forwardedProto`, so the proxy-trust rule is tested on its helper, not through the handler; no retry in the browser on a 503. Adds `AbortSignal.timeout` to the upstream call
   (`api/proxy/[...path]/+server.ts:43`).
   - Transport errors map to 502 or 504 JSON.
   - A session is kept on a transient refresh failure (`auth.ts:156`); it is deleted only on `invalid_grant`.

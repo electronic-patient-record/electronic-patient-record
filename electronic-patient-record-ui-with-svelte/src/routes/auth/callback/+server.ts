@@ -7,12 +7,13 @@ import {
   SESSION_COOKIE,
 } from "#lib/auth-instance.js";
 import { localizePath } from "#lib/locales.js";
+import { forwardedProto } from "#lib/forwarded-proto.js";
 import { isHttps } from "#lib/security-headers.js";
 
 export const GET: RequestHandler = async ({ url, cookies, request }) => {
   const auth = getAuth();
   if (!auth) error(404, "not found");
-  const secure = isHttps(url, request.headers.get("x-forwarded-proto"));
+  const secure = isHttps(url, forwardedProto(request));
   const loginCookie = cookieName(LOGIN_COOKIE, secure);
   const loginId = cookies.get(loginCookie);
   cookies.delete(loginCookie, { path: "/" });

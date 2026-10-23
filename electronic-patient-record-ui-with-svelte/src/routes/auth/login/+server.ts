@@ -1,5 +1,6 @@
 import { error, redirect, type RequestHandler } from "@sveltejs/kit";
 import { cookieName, getAuth, LOGIN_COOKIE } from "#lib/auth-instance.js";
+import { forwardedProto } from "#lib/forwarded-proto.js";
 import { isHttps } from "#lib/security-headers.js";
 
 export const GET: RequestHandler = async ({ url, cookies, request }) => {
@@ -11,7 +12,7 @@ export const GET: RequestHandler = async ({ url, cookies, request }) => {
   } catch {
     error(502, "The identity provider is not reachable.");
   }
-  const secure = isHttps(url, request.headers.get("x-forwarded-proto"));
+  const secure = isHttps(url, forwardedProto(request));
   // Lax, not Strict: the provider sends the browser back with a cross-site navigation.
   cookies.set(cookieName(LOGIN_COOKIE, secure), started.loginId, {
     path: "/",
