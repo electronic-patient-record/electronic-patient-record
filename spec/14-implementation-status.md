@@ -43,6 +43,8 @@ no network, database or compilation; counts are source lines, not test runs):
 | CA | 0 | 8 |
 | AS | 0 | 12 |
 | CQ | 16 | 20 |
-| **Total** | **27** | **105** |
+| TR | 0 | 13 |
+| PN | 0 | 11 |
+| **Total** | **27** | **129** |
 
 <!-- generated:end -->

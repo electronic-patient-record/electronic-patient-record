@@ -19,6 +19,8 @@ IDs are grouped by prefix so they do not collide with the numbered build-out in
 | `CA-` | Care coordination, scheduling, portal, downtime | M7 |
 | `AS-` | Assurance: safety, usability, compliance, operations | M0–M8 |
 | `CQ-` | Code quality and defects found in review (research 2026-10-21) | any |
+| `TR-` | Emergency triage, Manchester Triage System (research 2026-10-23) | post-1.0 unless OQ-T2 says otherwise |
+| `PN-` | Pain assessment, Wong-Baker FACES and 0-10 scale (research 2026-10-23) | with RC-6 (M2) |
 
 Sizes: S ≈ one business day, M ≈ a few business days, L ≈ a business week or
 more.
@@ -702,3 +704,107 @@ confirms it before anything depends on it.
   **Acceptance:** an example report renders, and its variants are searchable.
 - [ ] **IO-15 (S) — FHIR R6 watch.** A spec note that keeps storage version-neutral, revisited when R6 is final.
   **Acceptance:** the note is in `spec/09-api-surface.md`, with a re-check date.
+
+## Research 2026-10-23 — Manchester Triage System
+
+Ranked in plan.md §15. Sources are abstracts and summaries only, so the items say **[uncertain]** where it matters.
+Emergency triage is outside the 1.0 scope (§7.1) until OQ-T2 is decided. TR-1 and TR-2 come first, and nothing else
+here is built before they are done. Every item below is **Clinical**: it changes who a clinician sees first.
+
+- [ ] **TR-1 (S) — MTS licence and content policy.** Find the Manchester Triage Group / Advanced Life Support Group
+  licence terms. Decide whether flowcharts may be encoded, shipped or only loaded from a licensed pack.
+  **Acceptance:** the decision is recorded as OQ-T1 in `spec/16-open-questions.md`. Until then no MTS flowchart text
+  is in the repo, and a CI grep guard (or a documented review step) enforces it.
+- [ ] **TR-2 (S) — Scope decision for emergency triage.** Settle OQ-T2 and OQ-T4: in or out of 1.0, and one triage
+  system or several.
+  **Acceptance:** `spec/02-scope.md` and `spec/15-roadmap.md` state the decision, and plan.md §7 matches.
+- [ ] **TR-3 (S/M) — Spec and domain model for triage.** A `spec/` page covering the flowchart, discriminator,
+  category and time-target model, "not assessed" versus "absent", and the override event. It settles OQ-T3, the FHIR
+  home of the category. Check UK Core and US Core first **[uncertain]**.
+  **Acceptance:** spec page merged, with the FHIR mapping table and a worked example.
+- [ ] **TR-4 (S) — Hazard rows for triage.** Add rows to `governance/clinical-safety/hazard-log.csv` for: wrong
+  flowchart, missed discriminator, under-triage of children and congenital heart disease, silent re-categorisation,
+  stale pack version, clock failure, and a tool read as an autonomous triager. Status stays `open`; only the Clinical
+  Safety Officer changes it.
+  **Acceptance:** rows exist with causes, controls and the task that implements each control.
+- [ ] **TR-5 (M) — Triage record.** Append-only triage assessments on an Encounter: pack and version, flowchart,
+  discriminator that fired, category, assessor, time. A category change is a new row with a reason. Unassessed
+  discriminators are stored as "not assessed" with a reason.
+  **Acceptance:** tests show that nothing updates or deletes a triage, that a missing assessment never lowers the
+  category, and that every read and write is audited.
+- [ ] **TR-6 (M) — Triage pack loader.** A versioned, pluggable pack interface (flowcharts, discriminators,
+  categories, target times) loaded from configuration, with MTS as the first pack if TR-1 allows. The repo ships a
+  tiny synthetic test pack, clearly not MTS.
+  **Acceptance:** an invalid or unsigned pack is refused loudly, and a triage stamps its pack version.
+- [ ] **TR-7 (M/L) — Triage UI.** Pick a flowchart, walk the discriminators top-down, and show the suggested
+  category for the nurse to confirm or override with a reason. Keyboard-first, and a suggestion is never saved
+  without confirmation.
+  **Acceptance:** a Playwright test completes a triage by keyboard within a click and time budget, and an axe check
+  passes.
+- [ ] **TR-8 (M) — Time targets and tracking board.** A clock per patient against the category target (0, 10, 60,
+  120, 240 minutes **[uncertain: confirm in the book]**), a tracking board, and one breach signal per patient.
+  **Acceptance:** a breach test with a fake clock, and an audit event when a target is missed.
+- [ ] **TR-9 (M) — Vitals and early-warning prompts.** Show the latest vitals and NEWS2 (adults) or a paediatric
+  score beside the category, and prompt when they point to a higher urgency than the category. A prompt only, never an
+  automatic change. Depends on RC-6 and OR-3.
+  **Acceptance:** a test with a deteriorating child shows the prompt, and the category does not change by itself.
+- [ ] **TR-10 (M) — Triage accuracy audit.** A report comparing triage category with later outcome (admission,
+  critical care, return within 72 hours) to find under-triage by group, run over the export path (IO-4) and never
+  the clinical database.
+  **Acceptance:** the report runs on demo data and lists its method and limits.
+- [ ] **TR-11 (S/M) — Triage interoperability.** Expose the triage in FHIR per TR-3, in the CapabilityStatement and
+  in the IPS or ED summary where the mapping allows, and add it to `$export`.
+  **Acceptance:** a validator passes in CI and the interaction is pinned in `src/openapi.rs`.
+- [ ] **TR-12 (S) — Triage test census.** Property tests over a synthetic pack (the first applicable discriminator
+  always wins, ordering is stable, "not assessed" never lowers urgency), registered in the status census.
+  **Acceptance:** tests are counted by `scripts/generate-status.sh` and the docs job passes.
+- [ ] **TR-13 (S) — Triage localisation note.** Flowchart text is clinical content. Record that translations are
+  machine-written until a speaker reviews them, and that clinical text is never machine-translated at runtime.
+  **Acceptance:** the note is in `spec/locales.md`.
+
+
+## Research 2026-10-23 — Wong-Baker FACES Pain Rating Scale
+
+Ranked in plan.md §16. Sources are search summaries and a landing page only, so items say **[uncertain]** where it
+matters. Every item is **Clinical**: it changes what a clinician sees when choosing analgesia. PN-1 and PN-2 come
+first, and no face artwork enters the repo before PN-1 is done.
+
+- [ ] **PN-1 (S) — FACES licence and content policy.** Read the Foundation's Terms of Use and licensing pages and
+  decide who holds a licence and how the artwork is loaded (licensed pack, not in the repo).
+  **Acceptance:** the decision is recorded as OQ-P1 in `spec/16-open-questions.md`. Until then no face image is in
+  the repo, and a CI guard or documented review step enforces it.
+- [ ] **PN-2 (S) — Pain instrument model.** A spec note for pain as an `Observation` that always carries its
+  instrument (NRS 0-10, Wong-Baker FACES 0-10 in steps of 2, others later), verifies the LOINC codes (OQ-P2:
+  72514-3 and 38221-8 **[uncertain]**), and lists the `dataAbsentReason`s (unable to self-report, declined, not
+  asked, asleep).
+  **Acceptance:** `spec/` page merged with the FHIR mapping and a worked example. Depends on RC-6.
+- [ ] **PN-3 (M) — Pain observation validation.** Server rules: instrument required, value in range for the
+  instrument (FACES only 0, 2, 4, 6, 8, 10), UCUM `{score}`, and no bare number.
+  **Acceptance:** tests show a pain value without an instrument is refused 422, a FACES 5 is refused, and an absent
+  score with a reason is stored as `null`, never 0.
+- [ ] **PN-4 (M) — Pain entry in the UI (NRS first).** Accessible single-choice 0-10 entry with text labels, a
+  keyboard path, a confirm step, and "unable to self-report" and "declined" as explicit choices.
+  **Acceptance:** a Playwright test records a score by keyboard, an axe check passes, and no inline `style=""`.
+- [ ] **PN-5 (S) — Hazard rows for pain.** Add rows to `governance/clinical-safety/hazard-log.csv` for: face score
+  read as NRS, unassessed recorded as no pain, self-report scale used on a non-responsive patient, mis-tapped face,
+  altered artwork, and reassessment not linked to the intervention. Status stays `open`.
+  **Acceptance:** rows exist with causes, controls and the task that implements each control.
+- [ ] **PN-6 (M) — FACES widget (only if PN-1 allows).** The six licensed, unmodified faces with numbers and text,
+  loaded from a pack, with a checksum test on the asset.
+  **Acceptance:** the widget stores instrument FACES with the chosen value, and the checksum test fails if the asset
+  is altered.
+- [ ] **PN-7 (S/M) — Pain trend by instrument.** Vitals trend (RC-8) shows pain as separate series per instrument,
+  with gaps shown as gaps.
+  **Acceptance:** a test with mixed NRS and FACES readings never draws one joined line.
+- [ ] **PN-8 (S) — Reassessment link.** A post-intervention score references the earlier score and the intervention
+  time (flowsheet row, DO-5).
+  **Acceptance:** a test shows the link and that the earlier observation is unchanged (append-only).
+- [ ] **PN-9 (S) — Triage and early-warning links.** TR-5/TR-6 read pain from this observation. TR-9 may prompt on a
+  rising score, never change a category.
+  **Acceptance:** a test shows the triage pain discriminator uses the observation, and a missing score never lowers
+  the category.
+- [ ] **PN-10 (S) — Observer-scale decision.** Settle OQ-P3 (FLACC, CPOT, PAINAD).
+  **Acceptance:** the decision is in `spec/02-scope.md`; the instrument field already admits the answer.
+- [ ] **PN-11 (S) — Pain localisation note.** Face labels and alt text are clinical content; translations stay
+  machine-written until a speaker reviews them.
+  **Acceptance:** the note is in `spec/locales.md`.

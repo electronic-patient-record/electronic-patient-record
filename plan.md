@@ -550,3 +550,180 @@ those features on its account.
   - freevacy.com (NHS Modernisation Bill)
   - capminds.com (CMS-0057-F)
   - Wikipedia (EHDS)
+
+## 15. Research pass 2026-10-23: Manchester Triage System (MTS)
+
+Evidence base, stated plainly: one standard web search and one extended search, giving abstracts and secondary
+summaries. Not read: the MTS book (Emergency Triage: Manchester Triage Group, 3rd edition), any flowchart, the
+licence terms, or any vendor's implementation. Everything here is a pointer to verify (AS-11), and facts that
+rest on secondary sources are marked **[uncertain]**.
+
+### 15.1 What MTS is
+
+- A nurse-led emergency department triage method. The nurse picks one of about 50 presenting-complaint
+  **flowcharts** (52 or 53 depending on the source **[uncertain]**; 49 are suitable for children), then works down
+  its **discriminators** from most to least urgent. The first discriminator that applies sets the category.
+- Five categories, with maximum times to first clinical assessment: red *immediate* (0 min), orange *very
+  urgent* (10), yellow *urgent* (60), green *standard* (120), blue *non-urgent* (240).
+- Six general discriminators recur across flowcharts: life threat, pain (0 to 10), haemorrhage, acuteness of
+  onset, level of consciousness and temperature. Each flowchart adds its own.
+- The 3rd edition (2014; a 2023 revision is listed as version 3.8 **[uncertain]**) added neonate and baby
+  charts, changed how fever in children is prioritised, and clarified terms (for example "new abnormal pulse").
+  The paediatric validation papers I found used the 1996 first edition, so their results may not transfer.
+- It is a **method with published content**, owned by the Manchester Triage Group and published through the
+  Advanced Life Support Group. **I did not find the licence terms.** Whether we may encode its flowcharts in an
+  open-source repository is therefore unknown, and we must not copy them in until it is settled (OQ-T1).
+
+### 15.2 Evidence on safety
+
+- Validity studies report that MTS under-triages some groups. The ones I found concern children with congenital
+  heart disease, and children whose vital signs are not part of the discriminators. Updating MTS with paediatric
+  vital signs improved prioritisation in the cited work **[uncertain: abstracts only]**.
+- The consequence for us is that triage is a **clinical decision aid with known error modes**, not a calculation.
+  A wrong category changes who is seen first, so every triage item is clinical (AGENTS.md rule 4).
+
+### 15.3 How it fits this project
+
+- Today the scope is ambulatory first, inpatient core next (§7.1). Emergency department triage is a new setting.
+  It needs a decision on scope (OQ-T2) before any build.
+- It reuses what exists: vital signs as Observations (RC-6) and the early-warning score from the NEWS2 work
+  (OR-3), Encounter (RC-1), the work queue (CA-1), audit (AU-1), Provenance, and consent.
+- Absent evidence is `null` with a reason. A discriminator that was not assessed is "not assessed", never
+  "absent". A missing assessment must not lower the category.
+- The nurse stays the decision maker. We record the flowchart, the discriminator that fired, the category and
+  who chose it. An override by the nurse is a first-class event with a reason, and the system never changes a
+  category silently.
+- Time targets are a clock from arrival or triage. Breaches show on the tracking board and are audited. Alert
+  fatigue (§5) argues for one breach signal per patient, not a stream.
+- FHIR has no single agreed home for a triage category. Candidates are `Encounter.priority`, an `Observation`
+  with a coded value, or an extension. **[uncertain]** The mapping needs checking against the UK Core and
+  US Core ED profiles before the spec commits (OQ-T3).
+
+### 15.4 Risks specific to MTS
+
+| Risk | Mitigation |
+|---|---|
+| Copyright on flowcharts | Licence first (TR-1); configuration loaded from a licensed pack, not stored in the repo |
+| Under-triage of groups MTS handles badly (children, congenital heart disease) | Show vitals and NEWS2 or PEWS beside the category; a prompt, never an automatic change; hazard rows |
+| Stale or mixed flowchart versions | Version every pack, stamp each triage with its pack version |
+| Silent re-categorisation | Category changes are append-only events with reason and author |
+| A tool that looks like it triages by itself | Wording and UI say "suggested"; the nurse confirms; see MHRA device risk in AS-1 |
+| Fixed clocks cause alert fatigue | One breach signal per patient, tested against a click and alert budget |
+| Locale | Flowchart text is clinical content; translations stay machine-written until a speaker reviews them |
+
+### 15.5 Open questions (to move to spec/16-open-questions.md)
+
+- **OQ-T1.** May the project encode MTS flowcharts and discriminators, and under what licence?
+- **OQ-T2.** Is emergency triage in scope for 1.0, or post-1.0 (§7.2)? Recommendation: post-1.0, with the data
+  model kept compatible now.
+- **OQ-T3.** Which FHIR element carries the triage category, and which code system?
+- **OQ-T4.** Do we support other triage systems (ESI, CTAS, ATS, NEWS2-led pathways), through the same
+  pluggable pack interface? Recommendation: design the interface for more than one, build only MTS.
+
+### 15.6 Order of work
+
+1. Settle the licence and scope (TR-1, TR-2). Nothing else is safe to build before these.
+2. Model and hazard rows (TR-3, TR-4), then the triage record (TR-5).
+3. Pack loader (TR-6), then the UI (TR-7), tracking board and clock (TR-8).
+4. Paediatric and vitals prompts (TR-9), audit of triage accuracy (TR-10), interoperability (TR-11), tests (TR-12).
+
+### 15.7 Sources (this pass)
+
+All are abstracts or summaries, so treat the details as **[uncertain]**.
+
+- wiley.com: Emergency Triage: Manchester Triage Group, 3rd edition (version 3.8, 2023)
+- pubmed.ncbi.nlm.nih.gov/42651270 (MTS effectiveness, limitations and global implementation, narrative review)
+- ncbi.nlm.nih.gov/pmc/articles/PMC2548283 (paediatric prospective study; first edition)
+- ncbi.nlm.nih.gov/pmc/articles/PMC3893080 (improving MTS for paediatric emergency care)
+- ncbi.nlm.nih.gov/pmc/articles/PMC7872278 (updating MTS with vital signs)
+- ncbi.nlm.nih.gov/pmc/articles/PMC9546792 (MTS safety for children with congenital heart disease)
+- ncbi.nlm.nih.gov/pmc/articles/PMC5289484 (validity of MTS, prospective study)
+- ncbi.nlm.nih.gov/pmc/articles/PMC5016055 (main flowcharts and discriminators in paediatric care)
+- metricgate.com/docs/manchester-triage-priority (secondary)
+
+
+## 16. Research pass 2026-10-23: Wong-Baker FACES® Pain Rating Scale
+
+Evidence base, stated plainly: two standard web searches and two page fetches of wongbakerfaces.org, giving
+search summaries and a landing page. Not read: the Foundation's Instructions for Use, FAQ or Terms of Use pages
+(the fetched page only links to them), the Garra 2010 full text, or any licence agreement. Facts that rest on
+summaries are marked **[uncertain]** and go to AS-11 for verification.
+
+### 16.1 What it is
+
+- A self-report scale of six cartoon faces, scored 0, 2, 4, 6, 8, 10, for physical pain intensity. The Foundation
+  says it is for people aged 3 and older, not only children.
+- It is **self-report only**. The Foundation says it is for physical pain, not emotion or comfort, and must not be
+  used with unresponsive patients. Observer scales (FLACC, CPOT, PAINAD) are a separate instrument and a separate
+  record.
+- Validation: Garra et al. 2010 compared it with a 100 mm visual analogue scale in children aged 8 to 17 in a
+  paediatric emergency department; mean VAS rose by about 17 mm per face **[uncertain: abstract only]**. Some
+  versions, such as Hicks et al., score 0 to 5 **[uncertain]**, so the stored score must name the instrument.
+
+### 16.2 Licence and content policy (the same shape as OQ-T1)
+
+- The artwork is copyrighted. The Foundation offers a free personal-use agreement for individuals only, and a paid
+  licence for organisations. An institutional licence reportedly covers use in electronic medical records and gives
+  digital files and translations. Fees are quoted on request, and I found no price list.
+- Rules stated on the Foundation pages: no modification without written permission, and adding colour counts as
+  infringement. Publishing and research use must contact the Foundation first. Citation text is given on the site.
+- For us: an Apache- or MIT-style open-source repo cannot ship the faces without a licence. **The repo must hold
+  no face artwork until OQ-P1 is settled.** Without it, the 0 to 10 numeric rating scale (NRS) works with no
+  artwork and no licence, so the NRS ships first and the FACES widget is a licensed, optional add-on.
+
+### 16.3 How it fits this project
+
+- It is a vital sign: an `Observation` (RC-6). Candidate LOINC codes **[uncertain: from a search summary, verify
+  against loinc.org]**: 72514-3 *Pain severity, 0-10 verbal numeric rating [Score], Reported*, and 38221-8 *Pain
+  severity, Wong-Baker FACES pain rating scale*. LOINC 56840-2 is discouraged in favour of 72514-3. UCUM unit is
+  `{score}`.
+- Two numbers must not be mixed. A FACES 6 is not a NRS 6. Store the **instrument** with the value, show it, and
+  never plot or compare across instruments as one series without saying so. Trend charts split by instrument.
+- Absent evidence is `null` with a reason: "patient unable to self-report", "declined", "not asked", "asleep" are
+  distinct `dataAbsentReason`s. An unassessed pain is never recorded as 0 ("no hurt"), and a missing score never
+  counts as low pain (matches the triage rule in §15.3).
+- Pain is a Manchester discriminator (§15.1). TR-5 and TR-6 should take pain from this observation, not from a
+  second field, and TR-9 may prompt on a rising score. A prompt, never an automatic change.
+- Reassessment matters clinically: pain after an analgesic is a *second* observation linked to the first, with the
+  time of the intervention. That is a flowsheet row (DO-5), not a new design.
+- UI: a large-target single choice (radio group with an accessible name per face, not colour or image alone), a
+  keyboard path, and a text label under each face. Alt text and labels are clinical content, so translations stay
+  machine-written until a speaker reviews them. The CSP forbids inline `style=""`, so any face sizing uses Svelte's
+  `style:` directive.
+- Clinical risk: a wrong-instrument or wrong-scale entry changes analgesia decisions. Every item is **Clinical**.
+
+### 16.4 Risks specific to this scale
+
+| Risk | Mitigation |
+|---|---|
+| Copyright on the faces | Licence first (PN-1); NRS ships without artwork; no image in the repo until OQ-P1 |
+| Face scores read as NRS scores | Store and show the instrument; separate trend series; a test that refuses a unitless pain value |
+| Used on a patient who cannot self-report | Reason-coded absent evidence; offer an observer-scale path (OQ-P3); never default to 0 |
+| Mis-keyed or mis-tapped face | Confirm step shows the chosen face and its number; the value is an append-only observation, corrections are new rows |
+| Altered artwork (colour, scaling distortion) | Use only licensed files, unmodified; a checksum test on the shipped asset |
+| Translation drift | Machine-written until reviewed; never claim reviewed |
+
+### 16.5 Open questions (to move to spec/16-open-questions.md)
+
+- **OQ-P1.** Does the project obtain a Foundation licence, and who holds it (the project, or each deploying
+  organisation)? Recommendation: the deploying organisation, with the artwork loaded from a licensed pack like
+  OQ-T1.
+- **OQ-P2.** Which LOINC codes and value set bind pain observations, and do UK Core and US Core accept them?
+- **OQ-P3.** Do we support observer pain scales (FLACC, CPOT, PAINAD) for patients who cannot self-report?
+  Recommendation: design the instrument field for it now, build later.
+
+### 16.6 Order of work
+
+PN-1 and PN-2 first (licence, instrument model). Then the observation record and NRS entry (PN-3, PN-4), hazard
+rows (PN-5), the FACES widget only if PN-1 allows (PN-6), then trends, reassessment and triage links.
+
+### 16.7 Sources (this pass)
+
+Summaries only, so treat details as **[uncertain]**.
+
+- wongbakerfaces.org (landing page ?p=4; licensing dashboard pages for personal, professional, publishing,
+  educator and commercial use)
+- rdcoas.c-path.org (COA At-a-Glance: Wong-Baker FACES)
+- researchconnect.stonybrook.edu (Garra et al. 2010, validation in paediatric ED patients; PMID 20003121)
+- findacode.com and loinc.org (72514-3, 56840-2); VSAC pain intensity value set (38221-8) via tx5.health-samurai.io
+- Secondary, low trust: carepatron.com template, metricgate.com
