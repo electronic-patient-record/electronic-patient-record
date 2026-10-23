@@ -1,15 +1,24 @@
 //! Text folding. NFKC and lowercase; `fold_name` keeps diacritics; `transliterate` is applied only as a second comparison.
 
-use unicode_normalization::UnicodeNormalization;
+use unicode_normalization::{UnicodeNormalization, char::is_combining_mark};
 
-/// Fold a name part: NFKC, lowercase, letters only (hyphen and apostrophe
-/// become a space and are collapsed).
+/// Fold a name part: NFKC, lowercase, letters and the combining marks that follow a letter
+/// (hyphen and apostrophe become a space and are collapsed). A mark is part of its letter, so a
+/// virama or vowel sign does not split an Indic name; a mark with no letter before it is dropped.
 pub fn fold_name(s: &str) -> String {
-    let folded: String = s
-        .nfkc()
-        .flat_map(char::to_lowercase)
-        .map(|c| if c.is_alphabetic() { c } else { ' ' })
-        .collect();
+    let mut folded = String::with_capacity(s.len());
+    let mut after_letter = false;
+    for c in s.nfkc().flat_map(char::to_lowercase) {
+        if c.is_alphabetic() {
+            folded.push(c);
+            after_letter = true;
+        } else if after_letter && is_combining_mark(c) {
+            folded.push(c);
+        } else {
+            folded.push(' ');
+            after_letter = false;
+        }
+    }
     folded.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 

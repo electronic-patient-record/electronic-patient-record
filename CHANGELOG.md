@@ -86,6 +86,18 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
   UI and Playwright gates were not run, though the JSON bodies are meant to be identical (`PatientView` flattens the
   stored version); the FHIR allergy bundle is still built from the list serialised to JSON. Not run on GitHub (CQ-20).
 
+## 2026-10-23 - `\p{M}`-aware name fold (CQ-19, fifth slice)
+
+- **Clinical.** Matcher (unreleased, not in the service): `fold_name` kept only alphabetic characters, so a virama
+  (U+094D) became a space: `कृष्ण` folded to `कृष ण` and was compared as two parts. Combining marks after a letter
+  are now kept. This changes scores for names in Indic and other scripts with such marks (fewer false fragments,
+  so more exact matches and sharper mismatches); Latin names are unchanged. A test failed first (`tests/marks.rs`, 5);
+  gates clean: fmt, clippy `-D warnings`, 64 tests. H-001 extended, status untouched.
+- **Not done or not verified:** only one Devanagari and one Arabic-script name were tested; no Persian, Tamil, Thai or
+  other script, and no Indic transliteration or phonetic comparison. Arabic harakat were already kept (they are
+  alphabetic in Rust) so that test passed before the change. No ID-1 corpus. Five rules of CQ-19 remain. No release.
+  Not run on GitHub (CQ-20).
+
 ## 2026-10-23 - Given/family swap detection (CQ-19, fourth slice)
 
 - **Clinical.** Matcher (unreleased, not in the service): `Taylor Morgan` against `Morgan Taylor` was a NonMatch on the
