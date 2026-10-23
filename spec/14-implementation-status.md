@@ -45,6 +45,8 @@ no network, database or compilation; counts are source lines, not test runs):
 | CQ | 20 | 17 |
 | TR | 2 | 11 |
 | PN | 0 | 11 |
-| **Total** | **33** | **124** |
+| EM | 0 | 16 |
+| PA | 0 | 17 |
+| **Total** | **33** | **157** |
 
 <!-- generated:end -->

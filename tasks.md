@@ -21,6 +21,8 @@ IDs are grouped by prefix so they do not collide with the numbered build-out in
 | `CQ-` | Code quality and defects found in review (research 2026-10-21) | any |
 | `TR-` | Emergency triage, Manchester Triage System (research 2026-10-23) | post-1.0 unless OQ-T2 says otherwise |
 | `PN-` | Pain assessment, Wong-Baker FACES and 0-10 scale (research 2026-10-23) | with RC-6 (M2) |
+| `EM-` | Typical EPR modules and the gaps against them (research 2026-10-23) | M7 or post-1.0, decided by EM-1 |
+| `PA-` | Ideas from the Patient Administration System and the boundary with it (research 2026-10-23) | PA-1 first; the rest by milestone |
 
 Sizes: S ≈ one business day, M ≈ a few business days, L ≈ a business week or
 more.
@@ -812,3 +814,142 @@ first, and no face artwork enters the repo before PN-1 is done.
 - [ ] **PN-11 (S) — Pain localisation note.** Face labels and alt text are clinical content; translations stay
   machine-written until a speaker reviews them.
   **Acceptance:** the note is in `spec/locales.md`.
+
+## Research 2026-10-23 — typical EPR modules
+
+Ranked in plan.md §17. Sources are search summaries and a pasted module list, so items say **[uncertain]** where it
+matters. Every item is **Clinical** unless it says otherwise. EM-1 decides what is in 1.0, M7 or post-1.0, and EM-16
+adds the hazard rows before any module code is written.
+
+- [ ] **EM-1 (S) — Module map and scope decisions.** **Not clinical.** A `spec/` page that lists each typical module
+  group (plan.md §17.2) as in 1.0, M7 or post-1.0, with the task that covers it, and moves OQ-M1 to OQ-M3 into
+  `spec/16-open-questions.md`.
+  **Acceptance:** every module group has a row, `spec/02-scope.md` agrees with it, and the links check passes.
+- [ ] **EM-2 (L) — eMAR: closed-loop medicines administration.** `MedicationAdministration` against an active
+  `MedicationRequest`: due list, barcode scan of the patient wristband and the drug (or a manual override with a
+  reason), the five rights shown, doses given, refused, delayed or omitted, with who and when (Provenance). Settles
+  OQ-M3.
+  **Acceptance:** a scan of the wrong patient or the wrong drug blocks the dose in a test, an override needs a reason
+  and is audited, and an omitted dose is shown as omitted, never as given.
+- [ ] **EM-3 (M) — Nursing assessments and risk tools.** Falls, pressure ulcer (Waterlow or Braden), nutrition (MUST),
+  VTE and sepsis screen as questionnaires (DO-7) with scoring in code, an admission due time, a repeat schedule and an
+  overdue list. A high score can add a care-plan prompt (CA-2), never an automatic order. Depends on OQ-M2 for licence.
+  **Acceptance:** each tool has reference-case tests for its score bands, an overdue assessment shows on the ward list,
+  and a missing item is "not assessed", never scored as zero.
+- [ ] **EM-4 (M) — Fluid balance.** Intake and output charting per patient with running totals by period and a
+  `dataAbsentReason` when not measured.
+  **Acceptance:** totals match a seeded chart, a gap is a gap and not zero, and an entry is append-only with a
+  correction trail.
+- [ ] **EM-5 (M) — Bed flow.** Extends the CA-1 bed board with an occupancy summary, expected discharge date,
+  isolation and cleaning status, and a capacity view per ward. Isolation shows on the bed and the patient banner.
+  **Acceptance:** a test moves a patient through admit, transfer and discharge and the board follows. An
+  isolation flag is not hidden by a filter.
+- [ ] **EM-6 (M) — Specimen collection and labelling.** `Specimen` created at the bedside against an order, with a
+  label printed after the patient is identified (wristband scan or two identifiers), and a collected-not-received
+  list.
+  **Acceptance:** a specimen cannot be labelled for a different patient than its order (test), and an unreceived
+  specimen escalates after a configured time (fake clock).
+- [ ] **EM-7 (M) — Imaging link.** `ImagingStudy` references and a launch-in-context link to an external viewer through
+  DICOMweb or a vendor URL, with the radiology report in the results inbox (OR-4). No images are stored here.
+  **Acceptance:** a stub viewer link opens for the right patient and study, and every launch is audited.
+- [ ] **EM-8 (M) — Discharge summary and clinic letters.** A `Composition` for discharge summary and outpatient letter
+  that pulls problems, medicines (with RC-10 reconciliation), allergies and follow-up, signed by a clinician and sent to
+  the GP. The PRSB standard and its version are **[uncertain]**.
+  **Acceptance:** an unsigned summary cannot be sent, the medicines match the reconciled list, and the document
+  validates against its profile.
+- [ ] **EM-9 (M) — Virtual consultations.** An `Appointment` with a virtual flag and a join link from an external
+  video provider, with identity check and consent recorded. No video is hosted here.
+  **Acceptance:** the portal shows the link only inside the booked window (fake clock), and the join is audited.
+- [ ] **EM-10 (L) — Perioperative module (post-1.0).** WHO surgical checklist, anaesthetic record, implant log and
+  theatre list, as append-only assessments on an `Encounter`.
+  **Acceptance:** a spike result with a scope decision in `spec/02-scope.md`; nothing is built before EM-1 and OQ-6.
+- [ ] **EM-11 (L) — Critical care and device feeds (post-1.0).** Bedside device data (HL7 v2 ORU or FHIR gateways) into
+  `Observation`, quarantined by the RC-11 rule until accepted. This is medical-device territory (OQ-6).
+  **Acceptance:** a spike result and a regulatory note; an unaccepted device value never changes NEWS2.
+- [ ] **EM-12 (M) — ED board (post-1.0, with TR-*).** A tracking board of waiting patients with triage category,
+  presenting complaint and wait clocks. It follows OQ-T2.
+  **Acceptance:** the board shows "not triaged" as its own state, and a clock test with a fake clock passes.
+- [ ] **EM-13 (M) — Handover list.** A ward or team list with NEWS2, outstanding tasks, pending results and a
+  structured handover note (SBAR or I-PASS **[uncertain: which]**), that is read-only for what it quotes.
+  **Acceptance:** a patient with an overdue task or a pending abnormal result cannot drop off the list, and a handover
+  note is signed and dated.
+- [ ] **EM-14 (S) — DCF and EMRAM mapping.** **Not clinical.** Map the Digital Capabilities Framework core
+  requirements and the HIMSS EMRAM stages to our tasks, as buyer evidence. The DCF text needs a login **[uncertain]**.
+  **Acceptance:** a table in `spec/` with a covered, partly covered or not covered column and no claim of compliance.
+- [ ] **EM-15 (S) — Specialty modules watch (post-1.0).** **Not clinical.** A scope note on maternity, paediatrics,
+  mental health and community care: what the data model already allows and what it would need.
+  **Acceptance:** the note is in `spec/02-scope.md`, and no module code is added.
+- [ ] **EM-16 (S) — Hazard rows for modules.** For each EM item EM-1 keeps in 1.0 or M7, add rows to
+  `governance/clinical-safety/hazard-log.csv` (for example: wrong drug given, dose shown given when omitted, missed
+  assessment, wrong-patient specimen, summary sent unsigned). Status stays `open`.
+  **Acceptance:** each row has a cause, a control and the task that implements it.
+
+## Research 2026-10-23 — the Patient Administration System (PAS)
+
+Ranked in plan.md §18. Based on the PAS documents only, not its code or tests, so items say **[uncertain]** where it
+matters. PA-1 and PA-2 come first, and nothing else here is built before them. Items are **Clinical** where they change
+what a clinician or a carer sees.
+
+- [ ] **PA-1 (S) — Boundary decision with the PAS.** **Not clinical.** Record whether the EPR defers to the PAS,
+  keeps a minimal scheduler behind a port, or neither (plan.md §18.2), and shrink CA-1, CA-3, CA-4 and CA-5 to match.
+  **Acceptance:** OQ-PA1 is decided in `spec/16-open-questions.md`, `spec/02-scope.md` agrees, and the CA items name
+  what they no longer own.
+- [ ] **PA-2 (M) — Identity link with the PAS.** A table that maps our patient id to the PAS `person_id`, and a rule
+  that a merge or unmerge (ID-5) emits an event the PAS can act on. Settles OQ-PA2.
+  **Acceptance:** a merge test emits exactly one event, an unmerge reverses the link, and an unlinked patient is shown as
+  unlinked, never guessed.
+- [ ] **PA-3 (S) — Support-only guard test.** A schema guard that fails on a column named like `score`, `rank`,
+  `deprioritise`, `suppress`, `withhold` or `overbook` unless it has a written reason, plus the rule in `spec/` that no
+  score may reduce what a patient is offered. It is a tripwire, not proof, and the item says so.
+  **Acceptance:** a test fails on a planted column, passes on the allow-list, and the allow-list entries have reasons.
+- [ ] **PA-4 (M) — Gated features.** **Clinical.** A switch plus named approvers plus shadow mode for any feature that
+  scores or drafts (DO-8, SE-11). Inert until all three. A CSO approval is recorded by a person, never by a script.
+  **Acceptance:** with the switch on and no approval the feature does nothing, in shadow it records but shows nothing,
+  and the approval is audited.
+- [ ] **PA-5 (M) — Proxy authority with scopes.** **Clinical.** Patient, proxy, relationship, basis, scopes, a named
+  recorder, an expiry, and revocation, as the model for CA-5 proxy access and adolescent confidentiality.
+  **Acceptance:** a proxy cannot read outside its scopes, an expired or revoked proxy is refused (fake clock), and every
+  use is in the patient's access log.
+- [ ] **PA-6 (M) — Reasonable adjustments and communication needs.** **Clinical.** A coded record with a review date
+  (interpreter need, BSL, easy read, pictorial pain scale preferred), shown in the patient banner and read by PN-4. The
+  code list's licence is **[uncertain]**.
+  **Acceptance:** an overdue review shows, an adjustment is visible beside the appointment and the banner, and an
+  adjustment is append-only with an end date, never deleted.
+- [ ] **PA-7 (M) — Privacy-safe analytics rule.** Small-cell suppression (k at least 5, secondary suppression), no
+  identifiers, and a per-caller query budget for every aggregate: OR-7, TR-10, IO-7, IO-14. Document what it does not
+  prevent (differencing).
+  **Acceptance:** a cell under k is hidden, a pair of queries that would difference it out is refused or listed, and a
+  test covers each report.
+- [ ] **PA-8 (M) — Events from the PAS.** An idempotent, at-least-once consumer of PAS appointment, check-in and slot
+  events that feeds worklists (CA-2, CA-6) and opens or updates an `Encounter` on arrival (CA-1). The EPR shows the age of
+  what it displays.
+  **Acceptance:** a duplicate event changes nothing, a cancelled appointment disappears from the worklist, and a stale
+  feed is shown as stale.
+- [ ] **PA-9 (M) — FHIR version edge.** Decide R4 or R5 at the boundary (OQ-PA3) and build or request the edge: a
+  mapping of `Appointment`, `Slot` and `Encounter`, or the PAS's own R4 endpoints (its NEW-1).
+  **Acceptance:** a round trip of one appointment validates on both sides, and the unmapped fields are listed.
+- [ ] **PA-10 (S) — Triage code reconciliation.** **Clinical.** Check the PAS's SNOMED CT UK acuity concepts (its
+  FR-189) against a primary source, and reconcile with `spec/triage/index.md`, which found none. Settles OQ-PA4.
+  **Acceptance:** a note in `spec/triage/` says which concepts exist, what they mean, and whether TR-3 uses them.
+- [ ] **PA-11 (S) — Single-use link tokens.** Opaque random ids, hashed at rest, expiring, with GET reading and POST
+  acting, as the tested pattern for IO-10 and portal links.
+  **Acceptance:** a token works once, an expired one is refused (fake clock), and a GET never changes state.
+- [ ] **PA-12 (M) — Hostile-input sweep.** A seeded test that sends malformed and hostile input to every route in the
+  census (CQ-16) and requires no panic, no 500 and no leak, on a throwaway database only.
+  **Acceptance:** the sweep runs in CI with a fixed seed, and a planted panic fails it.
+- [ ] **PA-13 (S) — Outbound choke point.** One gate that every outbound patient or clinician message passes, applying
+  consent, opt-outs and quiet hours, with no clinical detail in channels that forbid it.
+  **Acceptance:** a message to an opted-out patient is refused and audited, and a test finds no send path that
+  bypasses the gate.
+- [ ] **PA-14 (M) — Referral outcomes beyond accept and reject.** **Clinical.** Returned with advice, redirected to
+  another service (with the new referral linked), and a named triager, in CA-3.
+  **Acceptance:** a redirect creates a linked referral, a return carries the advice, and both are audited.
+- [ ] **PA-15 (S) — Show PAS clinical-priority and follow-up dates.** **Clinical.** Display, never own: clinical
+  priority with its review-by date and the follow-up target and any delay, read from the PAS.
+  **Acceptance:** an overdue review-by date is shown, and an absent value is "not set", never a default priority.
+- [ ] **PA-16 (S) — PIFU outcome.** **Clinical.** A clinician records patient-initiated follow-up at the end of a
+  clinic encounter, which opens the episode in the PAS (an urgent pathway needs a named override there).
+  **Acceptance:** the outcome is recorded with its reason, and a request after expiry is shown as expired.
+- [ ] **PA-17 (S) — Ideas not taken, recorded.** **Not clinical.** A short `spec/` note listing group consultations,
+  RAG tolerances, Welsh RTT rules and NHS Wales App and PROMs feeds as not planned here, with the reason for each.
+  **Acceptance:** the note is merged and the links check passes.

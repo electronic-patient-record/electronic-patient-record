@@ -29,7 +29,7 @@ count_ts() {
   find "$@" -name '*.ts' -not -path '*/node_modules/*' -not -path '*/.svelte-kit/*' -print0 | xargs -0 cat | grep -cE "$pat" || true
 }
 # The task prefixes, in the order of the table in tasks.md. A new prefix goes here too.
-PREFIXES="SF ID AU RC SE DO OR IO CA AS CQ TR PN"
+PREFIXES="SF ID AU RC SE DO OR IO CA AS CQ TR PN EM PA"
 task_count() { # <prefix> <x| >
   grep -cE "^- \\[$2\\] \\*\\*$1-[0-9]" "$TASKS" || true
 }

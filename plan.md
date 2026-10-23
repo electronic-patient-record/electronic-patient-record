@@ -753,3 +753,182 @@ Summaries only, so treat details as **[uncertain]**.
 - researchconnect.stonybrook.edu (Garra et al. 2010, validation in paediatric ED patients; PMID 20003121)
 - findacode.com and loinc.org (72514-3, 56840-2); VSAC pain intensity value set (38221-8) via tx5.health-samurai.io
 - Secondary, low trust: carepatron.com template, metricgate.com
+
+## 17. Research pass 2026-10-23: typical EPR modules
+
+Evidence base, stated plainly: the module list you pasted (six groups) and three standard web searches, which gave
+search summaries only. Not read: the NHS Digital Capabilities Framework itself (a source says it needs a login), the
+HIMSS EMRAM criteria, the PRSB discharge standard (the search returned nothing on it), or any vendor's module. What is
+below is a gap analysis against our own plan and tasks, and facts from the searches are marked **[uncertain]**
+for AS-11 to confirm.
+
+### 17.1 What the searches added
+
+- NHS England's developer guidance groups EPR modules as records, assessments and plans, ordering and managing
+  medicines, and asset and resource management (staff and beds), and says not every module applies to every care
+  setting. The Digital Capabilities Framework (formerly Minimum Digital Foundations) has over 100 core requirements
+  and is broadly in line with HIMSS EMRAM stage 5 **[uncertain: secondary source]**.
+- Closed-loop medicines administration (barcode check of patient and drug at the bedside) is tied to EMRAM stage 6
+  **[uncertain]**. §7.2 already plans eMAR for M7, but no task exists for it.
+- Ombudsman findings (SPSO) show missed admission assessments (MUST, falls, sepsis screen) as a recurring harm, which
+  supports building them as required, time-based assessments **[uncertain: one case, a secondary summary]**.
+- No NHS-published FHIR profile was found for fluid balance, VTE risk or sepsis screening. A third-party guide
+  (Savannah GHI) has falls and MUST codes. Neither is a source to build on.
+- In 2025 data, 93% of providers had an EPR but only 30% had fully integrated bi-directional data flows
+  **[uncertain]**. Integration, not module count, is the weak point, so the module work stays behind the standards
+  already chosen (§4).
+
+### 17.2 Coverage against the pasted list
+
+| Module group | Typical content | Where we stand |
+|---|---|---|
+| Clinical documentation | progress notes, templates | covered: DO-1 to DO-8 |
+| Assessments and care plans | falls, skin, nutrition, VTE, sepsis; pathways | care plans CA-2 only; **no nursing assessments** (EM-3) |
+| Order comms and results | CPOE, results inbox | covered: OR-1 to OR-4. Specimen labelling is **not** (EM-6) |
+| PACS integration | view images from the chart | out of scope for 1.0 with a link via `ImagingStudy`/DICOMweb, but **no task** (EM-7) |
+| EPMA | prescribing, CDS | prescribing and CDS covered (OR-1, OR-5, OR-6). **Administration (eMAR) has no task** (EM-2) |
+| Theatre / perioperative | WHO checklist, anaesthetic record | not planned (EM-10, post-1.0) |
+| Emergency department | board, wait clocks, triage | triage post-1.0 (TR-*, OQ-T2); board is EM-12 |
+| Critical care / device feeds | ventilator and monitor data | not planned (EM-11, post-1.0) |
+| e-Obs | vitals and NEWS2 | covered: DO-5, RC-11. Fluid balance is **not** (EM-4) |
+| Bed management and flow | occupancy, discharges, isolation | basic bed board in CA-1; flow is EM-5 |
+| Outpatient | clinic letters, follow-up, virtual visits | scheduling CA-4. **Letters and discharge summary** (EM-8) and **virtual visits** (EM-9) are not covered |
+| Patient portal | appointments, results, summaries | covered: CA-5 |
+| Handover | ward list, outstanding tasks | not covered (EM-13) |
+
+### 17.3 Ranking of new items
+
+| Rank | Item | Why | Depends on |
+|---|---|---|---|
+| 1 | EM-1 module map and scope decisions | Everything else is a decision about scope first | none |
+| 2 | EM-2 eMAR (closed-loop administration) | In scope for M7 yet untasked; highest wrong-drug and wrong-patient risk | OR-1, RC-3, RC-5 |
+| 3 | EM-3 nursing assessments | Recurring omission harm; needs due-time rules and tested scoring | DO-7, RC-6, CA-2 |
+| 4 | EM-8 discharge summary and clinic letters | Highest-volume transfer of care document | CA-1, RC-10 |
+| 5 | EM-4 fluid balance | Simple, structured, safety relevant | RC-6, DO-5 |
+| 6 | EM-5 bed flow and EM-13 handover | Operational value; clinical when it hides a patient | CA-1, CA-2 |
+| 7 | EM-6 specimen labelling | Wrong-blood-in-tube is a never event | OR-1, OR-4 |
+| 8 | EM-7 imaging link, EM-9 virtual visits | Link out only; no image storage | OR-4, CA-4 |
+| 9 | EM-14 DCF and EMRAM mapping | Evidence for buyers | EM-1 |
+| 10 | EM-10 perioperative, EM-11 critical care, EM-12 ED board, EM-15 specialties | Post-1.0, named so nobody assumes otherwise | see tasks |
+
+### 17.4 Risks specific to modules
+
+- A module that is only a form still changes what a clinician sees. Every EM item is **Clinical** unless it says
+  otherwise, and its hazard rows come before its code (EM-16).
+- Device and PACS feeds make the record a medical device input (OQ-6). They stay post-1.0 and behind a flag.
+- Scores such as Waterlow, MUST and VTE risk are copyrighted or licensed in places **[uncertain]**; check before any
+  tool text enters the repo, as for MTS (OQ-T1) and FACES (OQ-P1).
+- The EM items are many. Building them all would be a second product, so EM-1 decides which stay in 1.0, M7 or post-1.0.
+
+### 17.5 Open questions (to move to spec/16-open-questions.md)
+
+- **OQ-M1.** Which module groups are in the 1.0 claim, and which are post-1.0 (EM-1)? Recommendation: eMAR, assessments
+  and discharge summary in M7, the rest post-1.0.
+- **OQ-M2.** Which risk tools (Waterlow, Braden, MUST, falls, VTE) may we encode, and under what licence?
+- **OQ-M3.** Do we build closed-loop barcode scanning ourselves or integrate a wristband and drug-barcode service?
+
+### 17.6 Order of work
+
+EM-1 first, then EM-16 (hazard rows for what EM-1 keeps), then EM-2, EM-3 and EM-8 in that order. Operational and
+post-1.0 items wait.
+
+### 17.7 Sources (this pass)
+
+Summaries only, so treat details as **[uncertain]**.
+
+- [NHS England developer guidance: acute, community and mental health care](https://nhsd-proxy.openprescribing.net/developer/guides-and-documentation/building-healthcare-software/acute-community-and-mental-health-care)
+- [HTN: NHS England on digital by default, EPR adoption and optimisation](https://htn.co.uk/2026/04/07/nhs-england-on-digital-by-default-epr-adoption-optimisation-improving-workflows/)
+- [The Access Group: HSC and the NHS DCF](https://www.theaccessgroup.com/en-gb/blog/hsc-nhs-dcf/) (secondary)
+- [Digital Health: Gloucestershire barcode medication verification](https://digitalhealth.net/2024/09/gloucestershire-hospitals-utilises-barcode-tech-to-verify-medication)
+- [SPSO decision report 201803102](https://www.spso.org.uk/decision-reports/2019/july/decision-report-201803102-201803102)
+- [Savannah GHI FHIR profile guide](https://build.fhir.org/ig/savannahghi/sil_fhir_profile_ig/CodeSystem-clinical-score-codesystem.html) (third party)
+
+## 18. Research pass 2026-10-23: the Patient Administration System (PAS) as a neighbour
+
+Evidence base, stated plainly: I read `~/git/patient-administration-system/patient-administration-system`: its
+`AGENTS.md`, `spec/02-scope.md`, the capability and task lists in `tasks.md`, `plan.md` sections 7 to 12, and a few
+lines of `spec/08` and `spec/09`. Not read: its source code, tests, migrations or governance files, so everything below
+is what its documents claim, not something I checked running. Nothing in that repository was changed.
+
+### 18.1 What the PAS is
+
+An NHS Wales **administrative, not clinical** system (Axum, SeaORM, Postgres, a SvelteKit UI, 10 locales). It owns
+appointments, slots and schedules, waiting lists and RTT clocks, referrals, reminders and replies, letters, transport
+and virtual-visit requests, and the measurement of fairness. It holds only opaque `person_id` and `worker_id`; identity
+and workforce live in two other services (`person-service`, `worker-service`). It has a transactional outbox (HL7 v2 and
+webhooks), FHIR **R5** at its edge (R4 is its NEW-1, not built), and it already records an externally assigned triage
+category (NEW-22 to NEW-24) and a pictorial pain preference (NEW-26).
+
+### 18.2 The decision that comes first: boundary
+
+Our CA-1 (ADT), CA-3 (referrals), CA-4 (scheduling and reminders), CA-5 (portal) and OR-7 overlap the PAS scope.
+Building both would be two systems that disagree about when a patient is coming. Options:
+
+1. **EPR defers to the PAS** for appointments, waiting lists, RTT, reminders and letters, and keeps the clinical context
+   (encounter, orders, notes). The EPR calls the PAS over FHIR and consumes its events. Least duplication.
+2. **EPR keeps a minimal scheduler** for standalone use (the project is open source and must run without the PAS) and
+   treats the PAS as an optional peer behind the same interface.
+3. Merge them. Not recommended: the PAS is deliberately separate from clinical data, which is why its privacy,
+   analytics and consent rules are lighter.
+
+Recommendation: 2, with an interface (a scheduling port) that the PAS implements. CA-4 shrinks to the port and a basic
+adapter, and PA-1 records the decision.
+
+### 18.3 Ideas worth taking, assessed
+
+| Rank | Idea (PAS source) | Value to EPR | Cost and caveat |
+|---|---|---|---|
+| 1 | **Support-only rule with a schema guard test** (NFR-11, `cap10_support_test.rs`): no score may reduce care; columns named `score`, `rank`, `deprioritise` and so on fail a test | Directly guards every EPR score (NEWS2 prompts, triage, future risk tools) against becoming a gate | Small. A name-based guard is easy to evade, so it is a tripwire, not a proof |
+| 2 | **Gated features: switch plus named approvers plus shadow mode** (no-show score) | Fits DO-8, SE-11 and any AI feature; ties to AS-1 and the CSO rule | Medium; needs an approvals table |
+| 3 | **Proxy authority with scopes, expiry and revocation** (NEW-7) | Concrete model for CA-5 proxy access and adolescent rules | Clinical: decides what a carer sees |
+| 4 | **Reasonable adjustments and communication needs as coded records with review dates** (NEW-5, 6, 20) | Belongs in the patient banner and portal; interpreter need affects care | Clinical; its 19-code catalogue needs a licence check |
+| 5 | **Privacy-safe analytics**: k at least 5, secondary suppression, differencing budget | Needed by OR-7, TR-10, IO-7 and IO-14, none of which has a small-cell rule | Its own doc admits what it does not prevent |
+| 6 | **Single-use hashed tokens, GET reads and POST acts** | A tested pattern for IO-10 SMART Health Links and portal links | Small |
+| 7 | **Hostile-input test over every route** (chaos testing, seeded) | We have a route census (CQ-16) but no hostile-input sweep | Medium; do it on a throwaway database |
+| 8 | **Consent and quiet hours at one choke point** for outbound messages | Any EPR notification (escalations, portal messages) should pass one gate | Small |
+| 9 | **Referral triage outcomes** (returned with advice, redirected) | Extends CA-3 beyond accepted or rejected | Clinical |
+| 10 | **Clinical priority with a review-by date; follow-up target dates; delayed-follow-up report** (NEW-15, 17) | Clinical context that the EPR should show, not own | Display and event consumption only, since the PAS owns it |
+| 11 | **PIFU episodes** (NEW-3) | A clinic outcome the clinician sets in the EPR | Clinical |
+| 12 | **Group consultations** (slot capacity, NEW-18) | Only matters if EPR keeps a scheduler | Skip unless option 2 |
+| 13 | **Tolerances in red, amber, green** (TOL-1) | Useful for operational metrics (CQ-17 `/metrics`) | Skip for now |
+
+### 18.4 Integration seams (where the two meet)
+
+- **Identity.** The PAS keys everything by a `person_id` from `person-service`. Our matcher and MPI would be one
+  source of that person, so a link table and a merge-event rule are needed (a merge must reach the PAS).
+- **Arrival and encounter.** A PAS check-in (arrived, room) should open or update an EPR `Encounter`, and an emergency
+  encounter is where its triage category already attaches.
+- **Events.** The PAS outbox (appointment and slot changes, `SlotReleased`) can feed EPR tasks and worklists (CA-2, CA-6).
+- **FHIR versions.** The PAS speaks R5 and we speak R4 (§4). Either side needs an edge: its NEW-1, or an R4/R5 mapping
+  on ours. This is the largest unknown.
+- **Triage and pain.** The PAS found SNOMED CT UK acuity concepts for the triage category (its `spec/09`, FR-189),
+  where our `spec/triage/index.md` says we found no code. One of the two is wrong or they mean different things;
+  reconcile before TR-3 relies on either **[uncertain: not checked against a primary source]**.
+- **Governance.** Its clinical-safety, DPIA and retention documents are a model for ours, and its list of what is left
+  ("mostly people and contracts") matches ours.
+
+### 18.5 Risks
+
+- A split of scheduling across two systems can show a clinician an appointment the other system has cancelled. Events
+  must be at-least-once and idempotent, and the EPR must show the age of what it displays.
+- The PAS is administrative on purpose. Importing its rules (looser analytics, no clinical data) into a clinical
+  record would be wrong, and importing clinical detail into its messages would break its NFR-13.
+- Its Welsh context (RTT rules, DHCW, NHS Wales App) does not transfer to England, and we should not copy it.
+- Two repositories under one author can drift. Pin the contract (an OpenAPI and a FHIR profile) and test against it.
+
+### 18.6 Open questions (to move to spec/16-open-questions.md)
+
+- **OQ-PA1.** Does the EPR defer to the PAS, keep a minimal scheduler behind a port, or neither (§18.2)?
+- **OQ-PA2.** Which system owns the person identity, and how does a merge propagate?
+- **OQ-PA3.** FHIR R4 or R5 at the boundary, and who builds the edge?
+- **OQ-PA4.** Do the SNOMED acuity codes in the PAS exist and mean what it says? (verify, then reconcile with TR-3)
+
+### 18.7 Order of work
+
+PA-1 (the boundary decision) and PA-2 (identity) first. Then the guards that cost little and protect most (PA-3, PA-4),
+then the data the EPR should show (PA-5 to PA-7), then the integration (PA-8, PA-9). Optional items wait.
+
+### 18.8 Sources (this pass)
+
+Local files in `~/git/patient-administration-system/patient-administration-system`: `AGENTS.md`, `plan.md`,
+`tasks.md`, `spec/02-scope.md`, `spec/08-architecture.md`, `spec/09-api-surface.md`, `spec/06-functional-requirements.md`.

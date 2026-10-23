@@ -86,6 +86,17 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
   UI and Playwright gates were not run, though the JSON bodies are meant to be identical (`PatientView` flattens the
   stored version); the FHIR allergy bundle is still built from the list serialised to JSON. Not run on GitHub (CQ-20).
 
+## 2026-10-23 - Planning: typical EPR modules (EM) and the PAS (PA)
+
+- Docs only. `plan.md` §17 (typical modules, gap analysis against the pasted six-group list and three web searches) and §18
+  (the Patient Administration System as a neighbour, from its documents); `tasks.md` gains EM-1 to EM-16 and PA-1 to PA-17;
+  `scripts/generate-status.sh` knows the `EM` and `PA` prefixes. No code, spec, hazard row or test changed.
+- **Not done or not verified:** the web evidence is search summaries only (the NHS Digital Capabilities Framework, the
+  HIMSS EMRAM criteria and the PRSB discharge standard were not read). For the PAS I read its documents, not its code,
+  tests or migrations, and checked nothing running. Its claim of SNOMED acuity concepts contradicts our triage spec
+  and is unreconciled (PA-10). The new items are candidates, not commitments: EM-1 and PA-1 decide scope. No hazard
+  rows were added (EM-16).
+
 ## 2026-10-23 - `\p{M}`-aware name fold (CQ-19, fifth slice)
 
 - **Clinical.** Matcher (unreleased, not in the service): `fold_name` kept only alphabetic characters, so a virama
