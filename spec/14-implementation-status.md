@@ -23,7 +23,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | Migrations | 12 | files named `m2*.rs` in `migration/src` |
 | Route registrations | 42 | `.add(` calls in `src/controllers/*.rs` |
 | Service tests | 259, plus 80 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
-| Matcher tests | 64, plus 0 `#[ignore]`d | the same patterns in the matcher |
+| Matcher tests | 71, plus 0 `#[ignore]`d | the same patterns in the matcher |
 | Front-end unit tests (vitest) | 112 | `it(` / `test(` lines in `tests/unit` |
 | Front-end end-to-end tests (Playwright) | 40 | `test(` lines in `tests/e2e` |
 | Locales | 10 | entries of `LOCALES` in `src/lib/locales.ts` |

@@ -13,6 +13,9 @@
   block `AutoLink` with the conflict "given and family names appear swapped" (CQ-19).
 - **Fixed:** `fold_name` keeps combining marks that follow a letter; a virama or similar mark used to turn into a space and
   split an Indic name into fragments (CQ-19).
+- **Changed:** phone numbers are compared in E.164 form, and a number under 7 digits is absent (CQ-19). `MatchConfig` gains
+  `default_calling_code` (44; `serde` default, so older JSON still loads) and `ConfigError::InvalidCallingCode`;
+  `normalize::normalize_phone` is public.
 - **Added:** `MatchConfig::validate()`, `ConfigError` and `MatchingEngine::try_new` (CQ-19). `new` is unchanged.
 
 ## [0.2.0] - 2026-10-21

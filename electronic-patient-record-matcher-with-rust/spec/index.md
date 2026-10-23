@@ -36,7 +36,7 @@ Weighted mean of per-field similarities over the fields present on both records.
 | birth date | 0.30 | exact 1.0; day and month swapped 0.8; one component differing by a keying slip (one digit, or two adjacent digits swapped, written as `DD`, `MM` or `YYYY`) 0.6; partial dates by shared precision; else 0.0. A date the calendar does not have (`2020-02-31`, `1900-02-29`) is absent |
 | sex | 0.05 | equal 1.0, different 0.0; `unknown` counts as absent |
 | postcode | 0.10 | any folded postcode in common |
-| telecom | 0.10 | any phone (digits) or email (lowercase) in common |
+| telecom | 0.10 | any phone or email in common. A phone is normalised towards E.164: `+` or `00` marks an international number, a leading `0` takes `default_calling_code` (44), a `0` written after the country code (`+44 (0)7700`) is dropped, a number with no prefix is kept as written, and fewer than 7 digits is absent. Email is lowercase |
 
 Configuration: `MatchConfig::validate()` refuses a negative or non-finite weight, all weights zero, a threshold outside 0 to 1
 (or NaN), and a `review_threshold` above `auto_link_threshold`, each with a `ConfigError` variant; `MatchingEngine::try_new`

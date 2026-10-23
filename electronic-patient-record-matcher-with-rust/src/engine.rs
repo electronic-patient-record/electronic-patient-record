@@ -3,7 +3,7 @@
 
 use crate::nhs::{NHS_NUMBER_SYSTEM, canonical_identifier, is_valid_nhs_number};
 use crate::normalize::{
-    PartialDate, fold_name, fold_postcode, fold_telecom, parse_date, transliterate,
+    PartialDate, fold_name, fold_postcode, fold_telecom, normalize_phone, parse_date, transliterate,
 };
 use crate::patient::{AdministrativeSex, Patient};
 use serde::{Deserialize, Serialize};
@@ -49,6 +49,13 @@ pub struct MatchConfig {
     pub min_birth_date_for_auto: f64,
     /// Fraction of total weight that must be present to go beyond Review.
     pub min_evidence_weight: f64,
+    /// Country calling code assumed for a phone number written with a leading `0` (44 for the UK).
+    #[serde(default = "default_calling_code")]
+    pub default_calling_code: u16,
+}
+
+fn default_calling_code() -> u16 {
+    44
 }
 
 impl Default for MatchConfig {
@@ -61,6 +68,7 @@ impl Default for MatchConfig {
             min_family_for_auto: 0.85,
             min_birth_date_for_auto: 0.99,
             min_evidence_weight: 0.5,
+            default_calling_code: default_calling_code(),
         }
     }
 }
@@ -76,6 +84,8 @@ pub enum ConfigError {
     ThresholdOutOfRange,
     #[error("review_threshold is above auto_link_threshold")]
     ThresholdsInverted,
+    #[error("default_calling_code is outside 1 to 999")]
+    InvalidCallingCode,
 }
 
 impl MatchConfig {
@@ -110,6 +120,9 @@ impl MatchConfig {
         }
         if self.review_threshold > self.auto_link_threshold {
             return Err(ConfigError::ThresholdsInverted);
+        }
+        if !(1..=999).contains(&self.default_calling_code) {
+            return Err(ConfigError::InvalidCallingCode);
         }
         Ok(())
     }
@@ -188,7 +201,7 @@ impl MatchingEngine {
         let dob = birth_date_similarity(a, b);
         let sex = sex_similarity(a, b);
         let postal = postal_similarity(a, b);
-        let telecom = telecom_similarity(a, b);
+        let telecom = telecom_similarity(a, b, self.config.default_calling_code);
 
         let fields = vec![
             field(
@@ -607,11 +620,17 @@ fn postal_similarity(a: &Patient, b: &Patient) -> Option<f64> {
     })
 }
 
-fn telecom_similarity(a: &Patient, b: &Patient) -> Option<f64> {
+fn telecom_similarity(a: &Patient, b: &Patient, calling_code: u16) -> Option<f64> {
     let values = |p: &Patient| -> Vec<String> {
         p.telecom
             .iter()
-            .map(|t| fold_telecom(&t.system, &t.value))
+            .map(|t| {
+                if t.system.eq_ignore_ascii_case("email") {
+                    fold_telecom(&t.system, &t.value)
+                } else {
+                    normalize_phone(&t.value, calling_code)
+                }
+            })
             .filter(|s| !s.is_empty())
             .collect()
     };

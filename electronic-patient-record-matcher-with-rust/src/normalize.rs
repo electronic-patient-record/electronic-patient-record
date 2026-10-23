@@ -62,6 +62,42 @@ pub fn fold_telecom(system: &str, value: &str) -> String {
     }
 }
 
+/// The fewest digits a phone number can have and still count as evidence of identity.
+pub const MIN_PHONE_DIGITS: usize = 7;
+
+/// Normalise a phone number towards E.164 digits (no `+`), or `""` when it is too short to be evidence.
+///
+/// `+44 7700 900123`, `0044 7700 900123` and `07700 900123` (with `default_code` 44) all give
+/// `447700900123`; the trunk `0` written after the country code, `+44 (0)7700 900123`, is dropped.
+/// A number with no `+`, no `00` and no leading `0` is kept as written, because its country is unknown.
+pub fn normalize_phone(value: &str, default_code: u16) -> String {
+    let digits: String = value.chars().filter(char::is_ascii_digit).collect();
+    let code = default_code.to_string();
+    let international = value.trim_start().starts_with('+');
+    let full = if international {
+        digits
+    } else if let Some(rest) = digits.strip_prefix("00") {
+        rest.to_string()
+    } else if let Some(rest) = digits.strip_prefix('0') {
+        format!("{code}{rest}")
+    } else {
+        return if digits.len() >= MIN_PHONE_DIGITS {
+            digits
+        } else {
+            String::new()
+        };
+    };
+    let full = match full.strip_prefix(code.as_str()) {
+        Some(rest) if rest.starts_with('0') => format!("{code}{}", &rest[1..]),
+        _ => full,
+    };
+    if full.len() >= MIN_PHONE_DIGITS {
+        full
+    } else {
+        String::new()
+    }
+}
+
 /// A parsed, possibly partial, ISO 8601 date.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PartialDate {

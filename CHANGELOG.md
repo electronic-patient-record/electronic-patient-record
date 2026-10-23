@@ -86,6 +86,19 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
   UI and Playwright gates were not run, though the JSON bodies are meant to be identical (`PatientView` flattens the
   stored version); the FHIR allergy bundle is still built from the list serialised to JSON. Not run on GitHub (CQ-20).
 
+## 2026-10-23 - E.164 phone normalisation (CQ-19, sixth slice)
+
+- **Clinical.** Matcher (unreleased, not in the service): `07700 900123`, `+44 7700 900123`, `0044 7700 900123` and
+  `+44 (0)7700 900123` are now one number; before, only the bare digits were compared, so the national and
+  international forms never matched. A number under 7 digits is now absent, not evidence (it could match another
+  short number). `MatchConfig.default_calling_code` (44) says what a leading `0` means; `validate()` checks it.
+  `tests/phone.rs` (7). Gates clean: fmt, clippy `-D warnings`, 71 tests. H-001 extended, status untouched.
+- **Not done or not verified:** only the default country's trunk `0` is dropped after a country code; other countries'
+  trunk rules, number-length validity and mobile or landline type are not checked. A shared phone still counts as
+  agreement between two people (household evidence is the next rule and would down-weight it). A `MatchConfig` built
+  as a struct literal without `..Default::default()` no longer compiles (a new public field). No ID-1 corpus. Four
+  rules of CQ-19 remain. No release. Not run on GitHub (CQ-20).
+
 ## 2026-10-23 - Planning: typical EPR modules (EM) and the PAS (PA)
 
 - Docs only. `plan.md` §17 (typical modules, gap analysis against the pasted six-group list and three web searches) and §18
