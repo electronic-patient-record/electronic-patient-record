@@ -2,6 +2,19 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-23 - First handler-level tests through the real router (CQ-16, partly)
+
+- `tests/http_patients.rs` (2, Postgres) boots the app with `loco_rs::testing::request` (real routes, route gate, audit
+  chain, login off) and checks: a likely duplicate is 409 with candidates, a blank `override_reason` is still 409, a
+  real reason creates; on `/fhir/R4/Patient` a `PUT` without `If-Match` is 428, a stale one 412, a duplicate 409 as an
+  `OperationOutcome` that does not contain the family name, and an element the record cannot hold is 422.
+- `config/test.yaml`: `dangerously_truncate` and `dangerously_recreate` are now `false`. With them on, every boot
+  dropped the tables but left the audit trigger function, so the next migration failed; the other DB tests migrate
+  with `Migrator::up` and never relied on them.
+- **Not done or not verified:** CQ-16 stays open. Not covered: consent masking of candidates and the break-glass flag
+  (both need tokens with roles; the harness runs with login off), 409 shapes for links, allergies and photos, and the
+  other FHIR refusals. Not run on GitHub (CQ-20).
+
 ## 2026-10-23 - Down migrations refuse to drop clinical tables (CQ-15)
 
 - The nine migrations that create tables (audit, patient, consent, relationship, photo, allergy, link, feed
