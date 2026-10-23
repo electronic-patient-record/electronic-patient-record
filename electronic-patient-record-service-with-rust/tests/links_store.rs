@@ -253,6 +253,40 @@ async fn bad_merges_are_refused_with_a_reason() {
 
 #[tokio::test]
 #[ignore = "needs Postgres: set DATABASE_URL"]
+async fn a_chain_deeper_than_sixteen_merges_is_an_error_not_a_wrong_answer() {
+    let db = db().await;
+    let family = tag("deep");
+    let mut people = Vec::new();
+    for _ in 0..18 {
+        people.push(person(&db, &family).await);
+    }
+    for i in 0..16 {
+        merge(&db, &people[i + 1], &people[i]).await.unwrap();
+    }
+    // Sixteen merges: the top is found.
+    assert_eq!(
+        links::merged_into(&db, &people[0])
+            .await
+            .unwrap()
+            .as_deref(),
+        Some(people[16].as_str())
+    );
+    // A seventeenth: the chain from the first record is too long to follow.
+    merge(&db, &people[17], &people[16]).await.unwrap();
+    let e = links::merged_into(&db, &people[0]).await.unwrap_err();
+    assert!(e.to_string().contains("more than 16"), "{e}");
+    // Shorter chains from the same top are unaffected.
+    assert_eq!(
+        links::merged_into(&db, &people[1])
+            .await
+            .unwrap()
+            .as_deref(),
+        Some(people[17].as_str())
+    );
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
 async fn chains_resolve_to_the_top_and_unmerging_a_middle_link_splits_them() {
     let db = db().await;
     let family = tag("chain");

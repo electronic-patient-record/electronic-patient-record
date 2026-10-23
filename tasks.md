@@ -492,7 +492,7 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
   `Result<Domain, ApiError>`, rendered by the JSON and FHIR controllers; remove `read_back`
   (`controllers/fhir.rs:69`) and its `unwrap_or_default` fallbacks. Depends on CQ-11 and CQ-16.
   **Acceptance:** `fhir.rs` no longer calls JSON handlers; FHIR tests unchanged and green.
-- [ ] **CQ-14 (S) — Fail loudly on bad input and export.** A malformed `AuditEvent` query (`fhir.rs:472`) returns
+- [x] **CQ-14 (S) — Fail loudly on bad input and export.** **Landed 2026-10-23** (see CHANGELOG). A malformed `AuditEvent` query (`fhir.rs:472`) returns
   400 `OperationOutcome`, not an unfiltered search; the NDJSON audit export (`controllers/audit.rs:269`) fails
   instead of dropping a row; invalid `EPR_PASETO_KEYS` JSON fails startup (`auth.rs:110`); document or separate the
   CSV formula guard so the exported value still matches its digest; `merged_into` past `MAX_DEPTH` is an error.

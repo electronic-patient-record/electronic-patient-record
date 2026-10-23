@@ -93,6 +93,17 @@ fn build(keys: &serde_json::Value) -> Result<Verifier, String> {
     Verifier::from_paseto_keys_value(keys, &issuer, &audience).map_err(|e| e.to_string())
 }
 
+/// The inline key set from `EPR_PASETO_KEYS`: none when unset, and an error when set but not JSON,
+/// so a typo stops startup instead of leaving a service that rejects every token.
+fn inline_keys(raw: Option<&str>) -> Result<serde_json::Value, String> {
+    match raw {
+        None => Ok(serde_json::json!({ "keys": [] })),
+        Some(raw) => {
+            serde_json::from_str(raw).map_err(|e| format!("EPR_PASETO_KEYS is not valid JSON: {e}"))
+        }
+    }
+}
+
 /// Initialise the process-wide guard from config and environment, fetching the
 /// key set from `EPR_PASETO_KEYS_URL` when set. Call once before serving.
 ///
@@ -107,10 +118,7 @@ pub async fn init(production: bool, config_require_auth: Option<bool>) -> Result
     let url = std::env::var("EPR_PASETO_KEYS_URL")
         .ok()
         .filter(|s| !s.trim().is_empty());
-    let inline = std::env::var("EPR_PASETO_KEYS")
-        .ok()
-        .and_then(|raw| serde_json::from_str::<serde_json::Value>(&raw).ok())
-        .unwrap_or_else(|| serde_json::json!({ "keys": [] }));
+    let inline = inline_keys(std::env::var("EPR_PASETO_KEYS").ok().as_deref())?;
     let mut verifier = build(&inline)?;
     if let Some(url) = &url {
         let issuer = env_or("EPR_TOKEN_ISSUER", DEFAULT_ISSUER);
@@ -289,6 +297,17 @@ mod tests {
         assert!(!resolve_require_auth(Some(true), Some("false")));
         assert!(resolve_require_auth(Some(false), Some("true")));
         assert!(resolve_require_auth(None, Some("garbage")));
+    }
+
+    #[test]
+    fn invalid_inline_keys_fail_startup() {
+        assert_eq!(
+            inline_keys(None).unwrap(),
+            serde_json::json!({ "keys": [] })
+        );
+        assert!(inline_keys(Some(r#"{"keys":[]}"#)).is_ok());
+        let e = inline_keys(Some("{keys: oops")).unwrap_err();
+        assert!(e.starts_with("EPR_PASETO_KEYS is not valid JSON"), "{e}");
     }
 
     #[test]

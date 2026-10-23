@@ -30,7 +30,8 @@ crate::store_errors!("links");
 /// Serialises merges and unmerges (a different key from the audit chain's lock).
 const MERGE_LOCK: i64 = 0x4550_524d_4552_4745; // "EPRMERGE"
 
-/// How far up a chain of merges to look.
+/// The longest chain of merges that is followed. A longer one is an error, not a silent stop at
+/// the sixteenth record.
 const MAX_DEPTH: i32 = 16;
 
 /// A link as stored.
@@ -114,12 +115,12 @@ pub fn judge(source: &Patient, target: &Patient) -> Result<(f64, &'static str), 
 ///
 /// # Errors
 ///
-/// [`StoreError::Db`] on a database failure.
+/// [`StoreError::Db`] on a database failure, or when the chain is longer than 16 merges.
 pub async fn merged_into(
     db: &impl ConnectionTrait,
     patient_id: &str,
 ) -> Result<Option<String>, StoreError> {
-    let Some(patient_id) = ids::uuid(patient_id) else {
+    let Some(start) = ids::uuid(patient_id) else {
         return Ok(None);
     };
     let row = db
@@ -132,12 +133,19 @@ pub async fn merged_into(
                  FROM patient_link_current l JOIN up ON l.source_patient_id = up.id
                  WHERE l.status = 'active' AND up.depth < $2
              )
-             SELECT id::text AS id FROM up ORDER BY depth DESC LIMIT 1",
-            vec![patient_id.into(), MAX_DEPTH.into()],
+             SELECT id::text AS id, depth FROM up ORDER BY depth DESC LIMIT 1",
+            vec![start.into(), (MAX_DEPTH + 1).into()],
         ))
         .await
         .map_err(db_err)?;
-    row.map(|r| r.try_get("", "id").map_err(db_err)).transpose()
+    let Some(row) = row else { return Ok(None) };
+    let depth: i32 = row.try_get("", "depth").map_err(db_err)?;
+    if depth > MAX_DEPTH {
+        return Err(db_err(format!(
+            "record {patient_id} is merged through more than {MAX_DEPTH} records"
+        )));
+    }
+    row.try_get("", "id").map(Some).map_err(db_err)
 }
 
 /// [`sources_of`] for many targets in one query: each target's merged-in records, keyed by the

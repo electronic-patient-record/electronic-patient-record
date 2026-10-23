@@ -210,7 +210,8 @@ async fn search(
 /// One CSV cell. Quoted when it holds a comma, quote or line break; a cell that starts with `=`,
 /// `+`, `-`, `@`, a tab or a carriage return gets a leading apostrophe so a spreadsheet will not
 /// run it as a formula (audit values such as an agent or a free-text reason can be chosen by an
-/// attacker).
+/// attacker). The guard changes what a spreadsheet shows, so a guarded cell no longer equals the
+/// stored value: re-verify the chain from the NDJSON export, whose values are exact.
 fn csv_cell(value: &str) -> String {
     let guarded = if value.starts_with(['=', '+', '-', '@', '\t', '\r']) {
         format!("'{value}")
@@ -260,12 +261,15 @@ fn to_csv(rows: &[audit::AuditRow]) -> String {
     out
 }
 
-/// The rows as newline-delimited JSON, one object per line.
-fn to_ndjson(rows: &[audit::AuditRow]) -> String {
-    rows.iter()
-        .filter_map(|r| serde_json::to_string(r).ok())
-        .map(|l| l + "\n")
-        .collect()
+/// The rows as newline-delimited JSON, one object per line. A row that cannot be written is an
+/// error: an export that drops a row looks complete and breaks the chain for whoever re-verifies it.
+fn to_ndjson<T: serde::Serialize>(rows: &[T]) -> Result<String, serde_json::Error> {
+    let mut out = String::new();
+    for r in rows {
+        out.push_str(&serde_json::to_string(r)?);
+        out.push('\n');
+    }
+    Ok(out)
 }
 
 /// Export the trail (task AU-2): the same criteria as the search, up to 10,000 rows, with the
@@ -323,6 +327,19 @@ async fn export(
     } else {
         None
     };
+    // Rendered before the export is audited: a row that cannot be written fails the export, and
+    // nothing is recorded as having left.
+    let (content_type, body, ext) = if format == "csv" {
+        ("text/csv; charset=utf-8", to_csv(&rows), "csv")
+    } else {
+        match to_ndjson(&rows) {
+            Ok(body) => ("application/x-ndjson", body, "ndjson"),
+            Err(e) => {
+                tracing::error!(error = %e, "audit export could not render a row");
+                return ApiError::internal().into_response();
+            }
+        }
+    };
     let mut event = Event::new(Action::Read, agent.0.clone());
     event.resource_ref = Some("AuditLog/$export".to_string());
     event.purpose_of_use = Some(Purpose::Audit.code().to_string());
@@ -333,11 +350,6 @@ async fn export(
         tracing::error!(error = %e, "audit export could not be audited");
         return ApiError::internal().into_response();
     }
-    let (content_type, body, ext) = if format == "csv" {
-        ("text/csv; charset=utf-8", to_csv(&rows), "csv")
-    } else {
-        ("application/x-ndjson", to_ndjson(&rows), "ndjson")
-    };
     let mut response = (StatusCode::OK, body).into_response();
     let h = response.headers_mut();
     h.insert(
@@ -462,7 +474,7 @@ mod tests {
 
     #[test]
     fn ndjson_is_one_json_object_per_line_with_the_digests() {
-        let out = to_ndjson(&[row("a"), row("b")]);
+        let out = to_ndjson(&[row("a"), row("b")]).unwrap();
         let lines: Vec<serde_json::Value> = out
             .lines()
             .map(|l| serde_json::from_str(l).unwrap())
@@ -470,6 +482,17 @@ mod tests {
         assert_eq!(lines.len(), 2);
         assert_eq!(lines[0]["digest"], "sha256:ab");
         assert!(lines[0].get("prev_digest").is_none());
+    }
+
+    #[test]
+    fn ndjson_fails_instead_of_dropping_a_row() {
+        struct Unwritable;
+        impl serde::Serialize for Unwritable {
+            fn serialize<S: serde::Serializer>(&self, _: S) -> Result<S::Ok, S::Error> {
+                Err(serde::ser::Error::custom("no"))
+            }
+        }
+        assert!(to_ndjson(&[Unwritable]).is_err());
     }
 
     #[test]

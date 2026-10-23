@@ -2,6 +2,25 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-23 - Fail loudly on bad input and export (CQ-14)
+
+- An `AuditEvent` search with a parameter the service does not know (a misspelt `agnet=`) was answered with the
+  unfiltered trail. It is now 400 `OperationOutcome`; `_`-prefixed result parameters are still ignored. An
+  unparseable query string is also 400.
+- The NDJSON audit export dropped a row it could not write. It now fails the export (500), before the export is
+  audited, so nothing is recorded as having left.
+- `EPR_PASETO_KEYS` set but not valid JSON now stops startup; it was read as an empty key set.
+- The CSV export's formula guard (a leading apostrophe) means a guarded cell no longer equals the stored value; this
+  is now stated in the code, and the NDJSON export is the one to re-verify the chain from. The two were not
+  separated.
+- `links::merged_into` follows 16 merges; a longer chain was cut at the sixteenth record and returned as if it were
+  the top. It is now an error (a Postgres test with 17 merges). A deeper chain makes the handlers that call it
+  answer 500 until the chain is unmerged.
+- Tests: 2 new unit (keys, NDJSON), 1 extended (the unknown search parameter), 1 new Postgres.
+- **Not done or not verified:** no handler-level test of the 400 and 500 responses (CQ-16); the chain error is
+  not mapped to a message for the clinician; no merge refuses to make a chain longer than 16; the hazard log is
+  unchanged.
+
 ## 2026-10-22 - Shared store helpers; a lost version race is read from the error kind (CQ-12)
 
 - Eight store modules each had their own `pg` and `db_err`; `audit.rs` had its own `pg`. Six copies of the

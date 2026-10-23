@@ -419,7 +419,9 @@ async fn update_patient(
 /// `lt` prefixes; a bare date covers its whole day (`le2026-10-01` includes all of 1 October,
 /// `gt2026-10-01` starts on 2 October), an instant is exact. A date with no prefix is refused
 /// (FHIR reads it as `eq`, which this does not support). `patient` takes a bare id or
-/// `Patient/<id>`. Unknown parameters are ignored.
+/// `Patient/<id>`. A search parameter this does not know (a misspelt `agnet`) is refused, not
+/// ignored: an audit search that silently loses its filter answers a different question. Result
+/// parameters that start with `_` (`_count`, `_format`) are ignored.
 fn audit_query_from(pairs: &[(String, String)]) -> Result<crate::audit::AuditQuery, String> {
     let mut q = crate::audit::AuditQuery::default();
     for (key, value) in pairs {
@@ -456,7 +458,8 @@ fn audit_query_from(pairs: &[(String, String)]) -> Result<crate::audit::AuditQue
                     return Err("date supports the ge, gt, le and lt prefixes".to_string());
                 }
             }
-            _ => {}
+            k if k.starts_with('_') => {}
+            k => return Err(format!("the search parameter {k} is not supported")),
         }
     }
     Ok(q)
@@ -469,7 +472,13 @@ async fn search_audit_events(
     RawQuery(raw): RawQuery,
 ) -> Response {
     let raw = raw.unwrap_or_default();
-    let pairs: Vec<(String, String)> = serde_urlencoded::from_str(&raw).unwrap_or_default();
+    let Ok(pairs) = serde_urlencoded::from_str::<Vec<(String, String)>>(&raw) else {
+        return outcome(
+            StatusCode::BAD_REQUEST,
+            "invalid",
+            "the query string is not valid",
+        );
+    };
     let query = match audit_query_from(&pairs) {
         Ok(q) => q,
         Err(m) => return outcome(StatusCode::BAD_REQUEST, "not-supported", &m),
@@ -1041,6 +1050,7 @@ mod tests {
             ("date", "2026-10-01"),
             ("outcome", "x"),
             ("_before", "x"),
+            ("agnet", "sub-1"),
         ] {
             assert!(audit_query_from(&pairs(&[bad])).is_err(), "{bad:?}");
         }
