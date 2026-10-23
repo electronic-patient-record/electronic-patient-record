@@ -86,6 +86,19 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
   UI and Playwright gates were not run, though the JSON bodies are meant to be identical (`PatientView` flattens the
   stored version); the FHIR allergy bundle is still built from the list serialised to JSON. Not run on GitHub (CQ-20).
 
+## 2026-10-23 - Given/family swap detection (CQ-19, fourth slice)
+
+- **Clinical.** Matcher (unreleased, not in the service): `Taylor Morgan` against `Morgan Taylor` was a NonMatch on the
+  names; it now scores both name fields at 0.9 of the swapped similarity and goes to Review with the conflict "given and
+  family names appear swapped", never AutoLink. The same pair written the right way round still scores higher.
+  `tests/swap.rs` (5: Review with conflict, symmetric, below the unswapped pair, unlike names unaffected, a direct
+  given match rules a swap out). Gates clean: fmt, clippy `-D warnings`, 59 tests. H-001 extended, status untouched.
+- **Not done or not verified:** only the first given name and a single family string are used, so a swap across
+  several given names or compound family names is not seen; a shared valid NHS number with swapped names can still
+  AutoLink (the number decides, and the penalised score no longer trips the "names disagree" check), which I judged
+  right for a keying slip but did not test. The 0.9 and 0.85 are guesses with no ID-1 corpus. Six rules of CQ-19
+  remain. No release. Not run on GitHub (CQ-20).
+
 ## 2026-10-23 - Transliteration (CQ-19, third slice)
 
 - **Clinical.** Matcher (unreleased, not in the service): family and given names are also compared transliterated, and

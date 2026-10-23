@@ -9,6 +9,8 @@
 
 - **Changed:** names are also compared transliterated (`Müller`/`Mueller`, `José`/`Jose`); the better score is kept, so a
   similarity can rise but never fall. `normalize::transliterate` is public (CQ-19).
+- **Changed:** given and family names that match each other's boxes (not as written) score at 0.9 of that similarity and
+  block `AutoLink` with the conflict "given and family names appear swapped" (CQ-19).
 - **Added:** `MatchConfig::validate()`, `ConfigError` and `MatchingEngine::try_new` (CQ-19). `new` is unchanged.
 
 ## [0.2.0] - 2026-10-21

@@ -170,11 +170,21 @@ impl MatchingEngine {
     /// Compare two patients. Symmetric: `compare(a, b)` equals `compare(b, a)`.
     pub fn compare(&self, a: &Patient, b: &Patient) -> MatchResult {
         let w = &self.config.weights;
-        let family = family_similarity(a, b);
-        let (given, given_extra) = match given_similarity(a, b) {
+        let mut family = family_similarity(a, b);
+        let (mut given, given_extra) = match given_similarity(a, b) {
             Some((s, e)) => (Some(s), e),
             None => (None, false),
         };
+        // Given and family name keyed into each other's boxes: when neither name matches as written
+        // but each matches the other's, score the swapped pair at a penalty and block AutoLink.
+        let swapped = match (family, given, swapped_similarity(a, b)) {
+            (Some(f), Some(g), Some(s)) if f < SWAP_FLOOR && g < SWAP_FLOOR => Some(s),
+            _ => None,
+        };
+        if let Some(s) = swapped {
+            family = Some(s * SWAP_PENALTY);
+            given = Some(s * SWAP_PENALTY);
+        }
         let dob = birth_date_similarity(a, b);
         let sex = sex_similarity(a, b);
         let postal = postal_similarity(a, b);
@@ -289,6 +299,9 @@ impl MatchingEngine {
                         _ => {}
                     }
                 }
+                if swapped.is_some() {
+                    conflicts.push("given and family names appear swapped".to_string());
+                }
                 if given_extra {
                     // `John` and `John Paul` can be two people (twins, a father and son).
                     conflicts.push("one record has a given name the other lacks".to_string());
@@ -367,6 +380,38 @@ fn compound_sim(x: &str, y: &str) -> f64 {
         std::cmp::Ordering::Greater => mean(&ys, &xs),
         std::cmp::Ordering::Equal => mean(&xs, &ys).min(mean(&ys, &xs)),
     }
+}
+
+/// A name pair is read as swapped only when each name matches the other's at least this well, and
+/// neither matches as written (the same floor as the auto-link name guards).
+const SWAP_FLOOR: f64 = 0.85;
+/// A swapped pair is scored at this fraction of its similarity: it is weaker evidence.
+const SWAP_PENALTY: f64 = 0.9;
+
+/// The best, over name pairs, of the lower of: family against the other's first given name, and
+/// first given name against the other's family. `None` below `SWAP_FLOOR` or when a name is absent.
+/// Symmetric, because `name_sim` is.
+fn swapped_similarity(a: &Patient, b: &Patient) -> Option<f64> {
+    let parts = |p: &Patient| -> Vec<(String, String)> {
+        p.names
+            .iter()
+            .filter_map(|n| {
+                let family = n.family.as_deref().filter(|s| !fold_name(s).is_empty())?;
+                let given = n.given.iter().find(|s| !fold_name(s).is_empty())?;
+                Some((family.to_string(), given.clone()))
+            })
+            .collect()
+    };
+    let mut best: Option<f64> = None;
+    for (fa, ga) in parts(a) {
+        for (fb, gb) in parts(b) {
+            let s = name_sim(&fa, &gb).min(name_sim(&ga, &fb));
+            if s >= SWAP_FLOOR {
+                best = Some(best.map_or(s, |x: f64| x.max(s)));
+            }
+        }
+    }
+    best
 }
 
 fn family_similarity(a: &Patient, b: &Patient) -> Option<f64> {
