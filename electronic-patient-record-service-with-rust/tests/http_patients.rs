@@ -1,7 +1,7 @@
 //! DB-gated, through the real router (`controllers::all_routes()`, the route gate and the audit
 //! chain, booted by `loco_rs::testing` with login off): the shapes of the duplicate refusal and
 //! of the FHIR refusals (CQ-16). Not covered here: consent masking of candidates and the
-//! break-glass flag (the latter is in `http_authenticated.rs`).
+//! break-glass flag (both are in `http_roles.rs`).
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait

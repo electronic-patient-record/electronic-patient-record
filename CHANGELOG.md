@@ -2,19 +2,6 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
-## 2026-10-23 - Break-glass through the real router with role tokens (CQ-16, second slice)
-
-- `tests/http_authenticated.rs` (1, Postgres) boots the app with login on. Tokens come from the local OIDC provider
-  (`authentication_verifier::test_idp`) and are mapped by the shipped `operations/keycloak/role-map.json`. A
-  clinician with no care relationship gets 403 with `break_glass_offer: true`; a blank reason is refused; a grant
-  is 201, asking again is 200 with the same `expires_at`; the record then reads 200; the auditor's search with
-  `break_glass=true` returns the grant, the repeat and the read, all flagged, with no free text; the review count is
-  at least 1.
-- **Not done or not verified:** CQ-16 stays open. Not covered: consent masking of duplicate candidates, 409 shapes
-  for links, allergies and photos, and the other FHIR refusals. The provider is Keycloak-shaped, not Keycloak. The
-  test fixes process-wide auth settings, so it is the only test in its binary. The refused read is not itself
-  flagged as break-glass, which is intended but not asserted. Not run on GitHub (CQ-20).
-
 ## 2026-10-23 - Role-token handler tests: route gate, consent masking, break-the-glass (CQ-16, partly)
 
 - `tests/http_roles.rs` (1, Postgres) boots the app with login **on**, a local OIDC stand-in and a role map, and
@@ -22,7 +9,9 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
   `{"error":"forbidden"}` on `/api` and an `OperationOutcome` on `/fhir`; no token is 401; with a deny-for-operations
   consent on the existing record, the duplicate 409 shows only `{"restricted": true}` and never the name; a clinician
   with no relationship is 403 with `break_glass_offer`, a blank reason is 422, a grant is 201 and asking again 200,
-  the read then succeeds, and the flagged audit row and the review queue name the patient.
+  the read then succeeds, and the flagged audit row and the review queue name the patient. Another session wrote
+  an overlapping `http_authenticated.rs`; it is folded in here (same `expires_at` on a repeat grant, exactly three
+  flagged rows for the patient and no free text in them, the review count) and deleted.
 - `http_patients.rs` and `http_roles.rs` now use a letters-only name, a given name and a birth date unique to each run:
   leftover patients from earlier runs made the first registration a 409 (the digit-only names scored as similar).
   This was a latent flake in the first slice, found while writing this one.

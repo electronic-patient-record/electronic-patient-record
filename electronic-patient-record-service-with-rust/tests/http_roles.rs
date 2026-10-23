@@ -199,6 +199,7 @@ async fn roles_consent_and_break_glass_through_the_router() {
             "{}",
             opened.text()
         );
+        let expires = opened.json::<Value>()["expires_at"].clone();
         let repeat = server
             .post(&grant)
             .add_header(ch.clone(), cv.clone())
@@ -209,6 +210,7 @@ async fn roles_consent_and_break_glass_through_the_router() {
             StatusCode::OK,
             "asking again does not extend it"
         );
+        assert_eq!(repeat.json::<Value>()["expires_at"], expires);
 
         let read = server
             .get(&allergies)
@@ -218,12 +220,19 @@ async fn roles_consent_and_break_glass_through_the_router() {
 
         // The read is flagged in the trail, and the grant waits for review.
         let flagged = server
-            .get("/api/audit?break_glass=true")
+            .get(&format!("/api/audit?break_glass=true&patient={pid}"))
             .add_header(ah.clone(), av.clone())
             .await;
         assert_eq!(flagged.status_code(), StatusCode::OK, "{}", flagged.text());
         let rows = flagged.json::<Value>();
         let text = rows.to_string();
+        let events = rows["events"].as_array().expect("events");
+        assert_eq!(events.len(), 3, "grant, repeat and read: {text}");
+        assert!(events.iter().all(|e| e["break_glass"] == true));
+        assert!(
+            !text.contains("collapsed in the street"),
+            "no free text in the trail"
+        );
         assert!(
             text.contains(&pid),
             "a flagged row names the patient: {text}"
@@ -238,6 +247,16 @@ async fn roles_consent_and_break_glass_through_the_router() {
             .await;
         assert_eq!(reviews.status_code(), StatusCode::OK, "{}", reviews.text());
         assert!(reviews.text().contains(&pid));
+        let (ah2, av2) = bearer(&auditor);
+        let count = server
+            .get("/api/break-glass/reviews/count")
+            .add_header(ah2, av2)
+            .add_header(
+                HeaderName::from_static("x-purpose-of-use"),
+                HeaderValue::from_static("audit"),
+            )
+            .await;
+        assert!(count.json::<Value>()["unreviewed"].as_i64() >= Some(1));
     })
     .await;
 }
