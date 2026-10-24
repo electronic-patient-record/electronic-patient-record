@@ -3,8 +3,8 @@
 
 use crate::nhs::{NHS_NUMBER_SYSTEM, canonical_identifier, is_valid_nhs_number};
 use crate::normalize::{
-    PartialDate, are_nicknames, fold_name, fold_postcode, fold_telecom, normalize_phone,
-    parse_date, soundex, transliterate,
+    PartialDate, are_nicknames, fold_name, fold_postcode, fold_telecom, is_usable_name,
+    normalize_phone, parse_date, soundex, transliterate,
 };
 use crate::patient::{AdministrativeSex, Patient};
 use serde::{Deserialize, Serialize};
@@ -507,8 +507,8 @@ fn phonetic_match(a: &Patient, b: &Patient) -> bool {
         p.names
             .iter()
             .filter_map(|n| {
-                let family = fold_name(n.family.as_deref().filter(|s| !fold_name(s).is_empty())?);
-                let given = fold_name(n.given.iter().find(|s| !fold_name(s).is_empty())?);
+                let family = fold_name(n.family.as_deref().filter(|s| is_usable_name(s))?);
+                let given = fold_name(n.given.iter().find(|s| is_usable_name(s))?);
                 Some((family, given))
             })
             .collect()
@@ -537,8 +537,8 @@ fn swapped_similarity(a: &Patient, b: &Patient) -> Option<f64> {
         p.names
             .iter()
             .filter_map(|n| {
-                let family = n.family.as_deref().filter(|s| !fold_name(s).is_empty())?;
-                let given = n.given.iter().find(|s| !fold_name(s).is_empty())?;
+                let family = n.family.as_deref().filter(|s| is_usable_name(s))?;
+                let given = n.given.iter().find(|s| is_usable_name(s))?;
                 Some((family.to_string(), given.clone()))
             })
             .collect()
@@ -560,11 +560,11 @@ fn family_similarity(a: &Patient, b: &Patient) -> Option<f64> {
         a.names
             .iter()
             .filter_map(|n| n.family.as_deref())
-            .filter(|s| !fold_name(s).is_empty()),
+            .filter(|s| is_usable_name(s)),
         b.names
             .iter()
             .filter_map(|n| n.family.as_deref())
-            .filter(|s| !fold_name(s).is_empty()),
+            .filter(|s| is_usable_name(s)),
         name_sim,
     )
 }
@@ -612,11 +612,11 @@ fn given_token_sim(x: &str, y: &str) -> f64 {
 /// the longer side (`John` against `John Paul`: the average over the shorter list cannot see it).
 fn given_similarity(a: &Patient, b: &Patient) -> Option<(f64, bool)> {
     let mut best: Option<(f64, bool)> = None;
-    // A token that folds to nothing (`-`, spaces) is absent, not a name that disagrees.
+    // A token that folds to nothing (`-`, spaces) or is a placeholder (`unknown`) is absent, not a name that disagrees.
     let tokens = |given: &[String]| -> Vec<String> {
         given
             .iter()
-            .filter(|t| !fold_name(t).is_empty())
+            .filter(|t| is_usable_name(t))
             .cloned()
             .collect()
     };

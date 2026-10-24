@@ -22,6 +22,23 @@ pub fn fold_name(s: &str) -> String {
     folded.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
+/// Whether a folded name part is a placeholder that stands for "no name known": `unknown`, `unidentified`,
+/// `anonymous`, or `unk` (digits fold away, so `UNK-001` is `unk`). It says nothing about who the person
+/// is, so the matcher treats it as absent. The list is short and English only, and `doe` is not on it
+/// (it is a real surname).
+pub fn is_placeholder_name(folded: &str) -> bool {
+    matches!(
+        folded,
+        "unknown" | "unidentified" | "anonymous" | "unk" | "unkn"
+    )
+}
+
+/// A name part the matcher can use: it folds to something, and is not a placeholder.
+pub fn is_usable_name(raw: &str) -> bool {
+    let folded = fold_name(raw);
+    !folded.is_empty() && !is_placeholder_name(&folded)
+}
+
 /// Transliterate a folded name to plain Latin letters for comparison only: `ä ö ü` become `ae oe ue`,
 /// `ß` becomes `ss`, and a Latin letter with a mark (`é`, `ñ`) becomes its base letter. Characters of
 /// other scripts, and their combining marks, are left alone (a `\p{M}` fold is a separate rule).

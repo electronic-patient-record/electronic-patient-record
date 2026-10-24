@@ -970,7 +970,7 @@ otherwise. Nothing here is built.
   saying what `~/git/emergency-care-system` is (synthetic, model-written, ESI and US billing), that it is a source of
   scenario ideas only, and that none of its numbers or rules are used.
   **Acceptance:** the note is linked from plan.md §19 and the links check passes.
-- [ ] **EC-2 (M) — Unknown-patient registration.** A temporary record with a placeholder id, an "identity not
+- [ ] **EC-2 (M) — Unknown-patient registration.** **First slice landed 2026-10-24** (matcher: a placeholder name is absent evidence; `tests/placeholders.rs`, 5; H-001; unreleased, not in the service). **Open:** the temporary record, the flag, the merge on identification, and OQ-E2. A temporary record with a placeholder id, an "identity not
   verified" flag, unverified fields (estimated age range, a name found on a card), and a task to identify. When the
   person is identified, the temporary record is merged into the real one through ID-5 with a reason, never linked
   automatically, and a conscious patient with an existing record never gets a second one. The matcher must treat a
