@@ -204,8 +204,10 @@ jobs:
             echo "::error::the API did not refuse to start with no token keys (state: $state)"
             podman compose down -v; exit 1
           fi
-          podman logs electronic-patient-record_api_1 2>&1 | grep "refusing to start"
+          logs="$(podman logs electronic-patient-record_api_1 2>&1 || true)"
+          echo "state: $state"; echo "$logs" | tail -20
           podman compose down -v
+          echo "$logs" | grep "refusing to start"
       - name: The API starts, and demands a token, with keys set
         env:
           EPR_PASETO_KEYS: '{"keys":[{"kty":"OKP","crv":"Ed25519","use":"sig","kid":"sUcFiI9KaDkaCapZaN0l0Ww7unuzttFb81TY3KroWkc","x":"11l5O7wTooGagnx2rbb7qKSa7gB_SfLQmS2ZuCWtLEg"}]}'
