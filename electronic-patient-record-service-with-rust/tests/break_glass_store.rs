@@ -230,3 +230,67 @@ async fn grants_and_reviews_cannot_be_changed_or_removed() {
         assert!(e.contains("append-only"), "{sql}: {e}");
     }
 }
+
+async fn old_grant(
+    db: &DatabaseConnection,
+    patient: &str,
+    subject: &str,
+    hours_ago: i64,
+) -> String {
+    let row = db
+        .query_one_raw(Statement::from_string(
+            db.get_database_backend(),
+            format!(
+                "INSERT INTO break_glass_grants (patient_id, subject, reason, granted_at, expires_at)
+                 VALUES ('{patient}'::uuid, '{subject}', 'old emergency',
+                         now() - interval '{hours_ago} hours', now() - interval '{hours_ago} hours' + interval '4 hours')
+                 RETURNING grant_id::text AS id"
+            ),
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    row.try_get("", "id").unwrap()
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn a_grant_unreviewed_for_longer_than_the_limit_is_overdue_until_it_is_reviewed() {
+    let db = db().await;
+    let p = patient(&db).await;
+    let before = glass::count_overdue(&db).await.unwrap();
+
+    // Inside the limit: waiting, not overdue.
+    let (fresh, _) = glass::open(&db, &p, &unique("dr"), "collapsed")
+        .await
+        .unwrap();
+    // Just inside, and well outside.
+    let inside = old_grant(&db, &p, &unique("dr"), glass::DEFAULT_REVIEW_DUE_HOURS - 1).await;
+    let outside = old_grant(&db, &p, &unique("dr"), glass::DEFAULT_REVIEW_DUE_HOURS + 1).await;
+
+    let waiting = glass::unreviewed(&db).await.unwrap();
+    let find = |id: &str| {
+        waiting
+            .iter()
+            .find(|g| g.id == id)
+            .unwrap_or_else(|| panic!("{id}"))
+            .overdue
+    };
+    assert!(!find(&fresh.id));
+    assert!(!find(&inside), "inside the limit");
+    assert!(find(&outside), "past the limit");
+    assert_eq!(glass::count_overdue(&db).await.unwrap(), before + 1);
+
+    // A review ends the overdue state.
+    glass::review(
+        &db,
+        &outside,
+        "an-auditor",
+        Outcome::Appropriate,
+        "emergency",
+    )
+    .await
+    .unwrap();
+    assert_eq!(glass::count_overdue(&db).await.unwrap(), before);
+    assert!(!glass::get(&db, &outside).await.unwrap().overdue);
+}

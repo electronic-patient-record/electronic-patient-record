@@ -22,6 +22,28 @@ crate::store_errors!("break-glass");
 /// How long a grant lasts. Fixed: the clinician cannot choose a longer one.
 pub const GRANT_HOURS: i64 = 4;
 
+/// How long a grant may wait for its review before it is overdue (EC-11), when `EPR_BREAK_GLASS_REVIEW_HOURS`
+/// does not say otherwise. **A guess**: no policy has set it.
+pub const DEFAULT_REVIEW_DUE_HOURS: i64 = 72;
+
+/// The hours a grant may wait for review: `EPR_BREAK_GLASS_REVIEW_HOURS` when it is a whole number from 1 to
+/// 8760, else [`DEFAULT_REVIEW_DUE_HOURS`].
+#[must_use]
+pub fn review_due_hours() -> i64 {
+    due_hours_from(
+        std::env::var("EPR_BREAK_GLASS_REVIEW_HOURS")
+            .ok()
+            .as_deref(),
+    )
+}
+
+fn due_hours_from(value: Option<&str>) -> i64 {
+    value
+        .and_then(|v| v.trim().parse::<i64>().ok())
+        .filter(|h| (1..=8760).contains(h))
+        .unwrap_or(DEFAULT_REVIEW_DUE_HOURS)
+}
+
 /// The most grants a listing returns.
 pub const LIST_LIMIT: u64 = 50;
 
@@ -45,6 +67,8 @@ pub struct Grant {
     pub expires_unix: i64,
     /// The review, once there is one.
     pub review: Option<Review>,
+    /// Unreviewed for longer than [`review_due_hours`] (EC-11). Never true once there is a review.
+    pub overdue: bool,
 }
 
 /// Someone else's verdict on a grant.
@@ -88,8 +112,11 @@ fn select() -> String {
                 to_char(g.expires_at AT TIME ZONE 'UTC', {TS}) AS expires_at,
                 floor(extract(epoch FROM g.expires_at))::bigint AS expires_unix,
                 r.reviewed_by, r.outcome, r.note,
-                to_char(r.reviewed_at AT TIME ZONE 'UTC', {TS}) AS reviewed_at
-         FROM break_glass_grants g LEFT JOIN break_glass_reviews r USING (grant_id)"
+                to_char(r.reviewed_at AT TIME ZONE 'UTC', {TS}) AS reviewed_at,
+                (r.grant_id IS NULL
+                 AND g.granted_at < now() - make_interval(hours => {}::int)) AS overdue
+         FROM break_glass_grants g LEFT JOIN break_glass_reviews r USING (grant_id)",
+        review_due_hours()
     )
 }
 
@@ -114,6 +141,7 @@ fn to_grant(row: &sea_orm::QueryResult) -> Result<Grant, StoreError> {
         expires_at: get("expires_at")?,
         expires_unix: row.try_get("", "expires_unix").map_err(db_err)?,
         review,
+        overdue: row.try_get("", "overdue").map_err(db_err)?,
     })
 }
 
@@ -241,6 +269,28 @@ pub async fn count_unreviewed(db: &impl ConnectionTrait) -> Result<i64, StoreErr
     row.try_get("", "n").map_err(db_err)
 }
 
+/// How many unreviewed grants are overdue (EC-11).
+///
+/// # Errors
+///
+/// [`StoreError::Db`].
+pub async fn count_overdue(db: &impl ConnectionTrait) -> Result<i64, StoreError> {
+    let row = db
+        .query_one_raw(pg(
+            &format!(
+                "SELECT count(*) AS n FROM break_glass_grants g
+                 LEFT JOIN break_glass_reviews r USING (grant_id)
+                 WHERE r.grant_id IS NULL AND g.granted_at < now() - make_interval(hours => {}::int)",
+                review_due_hours()
+            ),
+            vec![],
+        ))
+        .await
+        .map_err(db_err)?
+        .ok_or_else(|| StoreError::Db("count returned no row".into()))?;
+    row.try_get("", "n").map_err(db_err)
+}
+
 /// Review a grant. A note is required. A grant is reviewed once, and not by the person who opened it.
 ///
 /// # Errors
@@ -286,4 +336,21 @@ pub async fn review(
         return Err(StoreError::Conflict { current: 1 });
     }
     get(db, id).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_review_limit_is_a_whole_number_of_hours_or_the_default() {
+        assert_eq!(due_hours_from(None), DEFAULT_REVIEW_DUE_HOURS);
+        assert_eq!(due_hours_from(Some("24")), 24);
+        assert_eq!(due_hours_from(Some(" 48 ")), 48);
+        for bad in ["", "0", "-5", "8761", "2.5", "soon"] {
+            assert_eq!(due_hours_from(Some(bad)), DEFAULT_REVIEW_DUE_HOURS, "{bad}");
+        }
+        assert_eq!(due_hours_from(Some("1")), 1);
+        assert_eq!(due_hours_from(Some("8760")), 8760);
+    }
 }

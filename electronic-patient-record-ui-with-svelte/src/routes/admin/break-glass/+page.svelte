@@ -10,6 +10,8 @@
     reason: string;
     granted_at: string;
     expires_at: string;
+    /** Unreviewed for longer than the service's limit. Absent from an older API: not overdue. */
+    overdue?: boolean;
   };
 
   let grants = $state<Grant[] | null>(null);
@@ -73,6 +75,7 @@
     <ul>
       {#each grants as g (g.id)}
         <li>
+          {#if g.overdue}<strong class="overdue">{STRINGS.glassOverdue}</strong> ·{/if}
           {whenText(g.granted_at)} · {STRINGS.glassBy} <code>{g.subject}</code>
           · {STRINGS.glassFor} <code>{g.patient_id}</code>
           · {STRINGS.glassUntil} {whenText(g.expires_at)}

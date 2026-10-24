@@ -1053,6 +1053,33 @@ test("a drill record says so at the top of its banner, and a real one does not",
   }
 });
 
+test("the break-the-glass review list marks a grant that has waited too long", async ({
+  page,
+}) => {
+  const grant = (id: string, overdue?: boolean) => ({
+    id,
+    patient_id: ANN.id,
+    subject: "dr-who",
+    reason: "collapsed",
+    granted_at: "2026-10-20T10:00:00.000000Z",
+    expires_at: "2026-10-20T14:00:00.000000Z",
+    ...(overdue === undefined ? {} : { overdue }),
+  });
+  await page.route("**/api/proxy/api/break-glass/reviews", (route) =>
+    json(route, 200, {
+      grants: [grant("a", true), grant("b", false), grant("c")],
+      limit: 50,
+    }),
+  );
+  await page.goto("/en-001/admin/break-glass");
+  const items = page.getByRole("listitem").filter({ hasText: "collapsed" });
+  await expect(items).toHaveCount(3);
+  await expect(items.nth(0)).toContainText("OVERDUE FOR REVIEW");
+  await expect(items.nth(1)).not.toContainText("OVERDUE");
+  await expect(items.nth(2)).not.toContainText("OVERDUE");
+  await axe(page);
+});
+
 test("a record merged away says so everywhere and cannot be edited; the surviving record merges and unmerges", async ({
   page,
 }) => {

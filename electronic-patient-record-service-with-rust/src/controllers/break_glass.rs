@@ -191,6 +191,10 @@ async fn count(
         Ok(n) => n,
         Err(e) => return failure(e),
     };
+    let overdue = match store::count_overdue(&ctx.db).await {
+        Ok(n) => n,
+        Err(e) => return failure(e),
+    };
     if let Err(r) = audit_resource(
         &ctx.db,
         &agent,
@@ -201,13 +205,13 @@ async fn count(
             resource: "BreakGlass",
             patient_id: None,
         },
-        serde_json::json!({ "count": n }),
+        serde_json::json!({ "count": n, "overdue": overdue }),
     )
     .await
     {
         return r.into_response();
     }
-    Json(serde_json::json!({ "unreviewed": n })).into_response()
+    Json(serde_json::json!({ "unreviewed": n, "overdue": overdue })).into_response()
 }
 
 async fn review(

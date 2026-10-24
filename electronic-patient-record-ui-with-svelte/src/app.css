@@ -173,6 +173,11 @@ small {
   border-left: 4px solid var(--warn-border);
   background: var(--warn-bg);
 }
+.overdue {
+  padding: 0 0.25rem;
+  border-left: 4px solid var(--warn-border);
+  background: var(--warn-bg);
+}
 .banner .drill {
   grid-column: 1 / -1;
   font-weight: 700;

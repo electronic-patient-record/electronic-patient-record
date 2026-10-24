@@ -1022,7 +1022,7 @@ otherwise. Nothing here is built.
   by default, and can never be merged into a real record.
   **Acceptance:** a test merge of a drill record into a real one is refused, a drill record is absent from the
   default patient search and from an aggregate, and the banner is on every view that shows it.
-- [ ] **EC-11 (M) — Emergency access review and outage access.** After a break-glass access, a review task records the
+- [ ] **EC-11 (M) — Emergency access review and outage access.** **Overdue flag landed 2026-10-24** (the review list and count say which grants waited past the limit; the admin page marks them; the limit is a guessed 72 hours). **Open:** the review form (necessity, minimum data, patient told), escalation, the compliance-list place, and the outage-access decision. After a break-glass access, a review task records the
   necessity, the minimum data used, whether the patient was told, and a quality outcome. For an authentication outage,
   prefer the read-only downtime snapshot (CA-7) to a login bypass; any time-limited emergency account needs a named
   approver, an expiry, read-only scope and live monitoring, and is a decision for the Clinical Safety Officer first.
