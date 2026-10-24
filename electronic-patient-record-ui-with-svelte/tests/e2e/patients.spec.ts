@@ -1597,3 +1597,32 @@ test("a cut candidate list says that only the closest records were compared", as
   ).toBeVisible();
   await expect(note).toHaveCount(0);
 });
+
+test("my record shows when it was read and warns when a later look fails", async ({ page }) => {
+  let up = true;
+  await stubAllergies(page);
+  await page.route("**/api/proxy/api/me/patients", (route) =>
+    up
+      ? json(route, 200, { records: [{ relationship: "self", patient: ANN }] })
+      : json(route, 503, { error: "unavailable" }),
+  );
+  const show = () =>
+    page.evaluate(() => {
+      Object.defineProperty(document, "hidden", { value: false, configurable: true });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+  await page.goto("/en-001/my-record");
+  await expect(page.getByText(/^Record read at \d{1,2}:\d{2}/)).toBeVisible();
+  await expect(page.getByText("may not be current")).toHaveCount(0);
+
+  up = false;
+  await show();
+  await expect(page.getByRole("alert").filter({ hasText: "may not be current" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Smith, Ann", exact: true })).toBeVisible();
+  await axe(page);
+
+  up = true;
+  await show();
+  await expect(page.getByText("may not be current")).toHaveCount(0);
+  await expect(page.getByText(/^Record read at/)).toBeVisible();
+});

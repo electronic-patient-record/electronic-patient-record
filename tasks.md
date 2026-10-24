@@ -1028,7 +1028,7 @@ otherwise. Nothing here is built.
   approver, an expiry, read-only scope and live monitoring, and is a decision for the Clinical Safety Officer first.
   **Acceptance:** a break-glass access without a review after a configured time appears on the compliance list; no
   authentication bypass exists in code; the decision on emergency accounts is in `spec/16-open-questions.md`.
-- [ ] **EC-12 (S) — Data-age banner.** **First slice landed 2026-10-24** (patient page only: last-read time and a may-not-be-current alert; `tests/unit/data-age.test.ts`, 5, and one e2e test; H-016). **Open:** the other pages, offline reading and sync priority (CA-7, CA-8). Every screen that may show cached or queued data shows the time it was last
+- [ ] **EC-12 (S) — Data-age banner.** **First slice landed 2026-10-24** (patient page and `/my-record`: last-read time and a may-not-be-current alert; `tests/unit/data-age.test.ts`, 5, and one e2e test; H-016). **Open:** the other pages, offline reading and sync priority (CA-7, CA-8). Every screen that may show cached or queued data shows the time it was last
   synced and says when it may not be current, and critical data syncs first on reconnection. Extends PA-1's rule and
   CA-7, CA-8.
   **Acceptance:** an offline test shows the last-sync time and the warning, and a critical item syncs before a routine

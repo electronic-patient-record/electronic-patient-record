@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-24 - UI: `/my-record` shows how old the record is (EC-12, second slice)
+
+- The patient and proxy page shows "Record read at HH:MM" and, when a later look fails or none succeeds for 2.5 minutes, an alert that the record may not be current. It looks again once a minute and when the tab comes back, and keeps the records on screen if a look fails. One e2e test. Same rule as the patient page (`src/lib/data-age.ts`).
+- Not done: other pages, offline reading, sync priority. The access log, opened on request, is not refreshed and carries no age. Not verified in a real browser against the real API; the test stubs the API. The hazard log is unchanged: H-016 already lists the notice as a control for the patient page, and I did not re-assess the patient-facing page.
+
 ## 2026-10-24 - Spec: when a write's audit row cannot be written, the write is refused (CQ-39)
 
 - New section "The audit row is part of the write" in `spec/audit/index.md`, a sentence in NFR-7, and task CQ-39. The service already behaves this way for patient create and update (the store test and the service spec's "Write and audit in one transaction" row); the new text makes it the rule for every write.

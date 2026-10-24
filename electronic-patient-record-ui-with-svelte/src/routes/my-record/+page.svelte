@@ -5,6 +5,9 @@
   import { describe, whenText, type LogPage } from "#lib/access-log.js";
   import { patientToForm, type Stored } from "#lib/patient.js";
   import { STRINGS } from "#lib/strings.js";
+  import { page } from "$app/state";
+  import { DEFAULT_LOCALE } from "#lib/locales.js";
+  import { dataAge } from "#lib/data-age.js";
 
   type Entry = { relationship: "self" | "proxy"; patient: Stored; photo_version?: number | null };
 
@@ -13,9 +16,17 @@
   let loading = $state(true);
   let allergyById = $state<Record<string, AllergyLoad>>({});
 
+  // EC-12: the page shows when the record was last read and says so when a later look failed. It
+  // looks again once a minute while open, and keeps the records on screen if that fails.
+  const locale = $derived(page.data.locale ?? DEFAULT_LOCALE);
+  let lastRead = $state<Date | null>(null);
+  let lookFailed = $state(false);
+  let now = $state(new Date());
+  const age = $derived(dataAge(lastRead, now, lookFailed, locale));
+
   // This page is for the signed-in patient or proxy, so it always says so: the purpose of use is
   // `patient-access`, and the API fixes it for this endpoint too.
-  async function load() {
+  async function load(refresh = false) {
     const res = await call<{ records: Entry[] }>(
       "GET",
       "/api/me/patients",
@@ -23,9 +34,16 @@
       "patient-access",
     );
     loading = false;
+    if (refresh && res.status !== 200) {
+      lookFailed = true;
+      return;
+    }
     const problem = commonProblem(res.status);
     if (problem) message = STRINGS[problem];
     else if (res.status === 200) {
+      message = null;
+      lastRead = new Date();
+      lookFailed = false;
       records = res.body.records;
       // One allergy call per record, under the patient-access purpose.
       for (const r of res.body.records) {
@@ -39,6 +57,17 @@
 
   $effect(() => {
     void load();
+    const onVisible = () => {
+      if (!document.hidden) void load(true);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    const timer = setInterval(() => void load(true), 60_000);
+    const tick = setInterval(() => (now = new Date()), 15_000);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      clearInterval(timer);
+      clearInterval(tick);
+    };
   });
 
   // The access log is read on request, not on load: reading it is itself recorded.
@@ -90,6 +119,14 @@
 
 {#if message}
   <p role="alert">{message}</p>
+{/if}
+
+{#if age}
+  {#if age.stale}
+    <p role="alert">{STRINGS.dataMayBeOld.replace("{time}", age.readAt)}</p>
+  {:else}
+    <p class="read-at">{STRINGS.dataReadAt.replace("{time}", age.readAt)}</p>
+  {/if}
 {/if}
 
 {#if records && records.length === 0}
