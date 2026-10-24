@@ -524,6 +524,40 @@ test("a record with little on it still gets a banner that says what is missing",
   await axe(page);
 });
 
+test("the page says when the record was read, and says so loudly when it could not be refreshed", async ({
+  page,
+}) => {
+  let up = true;
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    up ? json(route, 200, ANN) : json(route, 503, { error: "unavailable" }),
+  );
+  const show = () =>
+    page.evaluate(() => {
+      Object.defineProperty(document, "hidden", {
+        value: false,
+        configurable: true,
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  await expect(page.getByText(/^Record read at \d{1,2}:\d{2}/)).toBeVisible();
+  await expect(page.getByText("may not be current")).toHaveCount(0);
+
+  // The next look fails: the same record stays on screen, with a warning that it may be out of date.
+  up = false;
+  await show();
+  await expect(page.getByRole("alert").filter({ hasText: "may not be current" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "SMITH, Ann" })).toBeVisible();
+  await axe(page);
+
+  // A good look clears it.
+  up = true;
+  await show();
+  await expect(page.getByText("may not be current")).toHaveCount(0);
+  await expect(page.getByText(/^Record read at/)).toBeVisible();
+});
+
 test("the banner picks up another person's edit when the tab is shown again, and never overwrites typing", async ({
   page,
 }) => {

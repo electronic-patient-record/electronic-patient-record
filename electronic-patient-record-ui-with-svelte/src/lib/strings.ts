@@ -224,6 +224,9 @@ export const STRINGS = {
   anyLabel: "any label",
   accessSaved: "Saved.",
   accessChanged: "That changed meanwhile. The list was reloaded.",
+  dataReadAt: "Record read at {time}.",
+  dataMayBeOld:
+    "This record may not be current: it was last read at {time} and the latest check failed or is overdue. Check your connection.",
   bannerDrill: "DRILL — NOT A REAL PATIENT. Nothing recorded here belongs to a person.",
   bannerMerged:
     "THIS RECORD WAS MERGED INTO ANOTHER. Do not use it; open the surviving record.",

@@ -16,6 +16,7 @@
     patientToForm,
     type Stored,
   } from "#lib/patient.js";
+  import { dataAge } from "#lib/data-age.js";
   import { STRINGS } from "#lib/strings.js";
 
   const locale = $derived(page.data.locale ?? DEFAULT_LOCALE);
@@ -69,6 +70,8 @@
     message = null;
     conflict = false;
     latest = null;
+    lastRead = null;
+    lookFailed = false;
     const res = await call<Stored>("GET", `/api/patients/${forId}`);
     if (!current(forId) || ticket !== loadTicket) return;
     loading = false;
@@ -81,6 +84,7 @@
       message = STRINGS.notFound;
     } else if (res.status === 200) {
       stored = res.body;
+      lastRead = new Date();
       form = patientToForm(res.body.patient);
       reason = "";
       allergies = null;
@@ -103,6 +107,11 @@
   // often). Unsaved typing is never overwritten: if the form is dirty, the banner shows the newer
   // record and the page says so, and saving the old version would be refused anyway.
   let latest = $state<Stored | null>(null);
+  // When the record on screen was last read, and whether the latest background look failed (EC-12).
+  let lastRead = $state<Date | null>(null);
+  let lookFailed = $state(false);
+  let now = $state(new Date());
+  const age = $derived(dataAge(lastRead, now, lookFailed, locale));
   const dirty = $derived(
     stored !== null &&
       (JSON.stringify(form) !== JSON.stringify(patientToForm(stored.patient)) ||
@@ -118,15 +127,14 @@
     const res = await call<Stored>("GET", `/api/patients/${forId}`, undefined, undefined, {
       background: true,
     });
-    if (
-      res.status !== 200 ||
-      !stored ||
-      stored.id !== forId ||
-      !current(forId) ||
-      res.body.version === stored.version
-    ) {
+    if (!stored || stored.id !== forId || !current(forId)) return;
+    if (res.status !== 200) {
+      lookFailed = true;
       return;
     }
+    lastRead = new Date();
+    lookFailed = false;
+    if (res.body.version === stored.version) return;
     if (dirty) {
       latest = res.body;
     } else {
@@ -142,9 +150,11 @@
     };
     document.addEventListener("visibilitychange", onVisible);
     const timer = setInterval(() => void look(), 60_000);
+    const tick = setInterval(() => (now = new Date()), 15_000);
     return () => {
       document.removeEventListener("visibilitychange", onVisible);
       clearInterval(timer);
+      clearInterval(tick);
     };
   });
 
@@ -255,6 +265,13 @@
 
 {#if stored}
   <PatientBanner stored={latest ?? stored} {allergies} />
+  {#if age}
+    {#if age.stale}
+      <p role="alert">{STRINGS.dataMayBeOld.replace("{time}", age.readAt)}</p>
+    {:else}
+      <p class="read-at">{STRINGS.dataReadAt.replace("{time}", age.readAt)}</p>
+    {/if}
+  {/if}
   {#if stored.replaced_by}
     <div role="alert">
       <p>{STRINGS.mergedNotice}</p>

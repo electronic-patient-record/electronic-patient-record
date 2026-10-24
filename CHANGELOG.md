@@ -7,6 +7,11 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - New section "The audit row is part of the write" in `spec/audit/index.md`, a sentence in NFR-7, and task CQ-39. The service already behaves this way for patient create and update (the store test and the service spec's "Write and audit in one transaction" row); the new text makes it the rule for every write.
 - Not verified: only patient create and update have a test with a failing audit table. I read that the other write controllers (allergies, photos, merge, break-glass, feed, consents, relationships) begin a transaction and commit, but I did not check that each appends its row inside it, and no test drives them. The spec says so, and CQ-39 is the test. Nothing in code changed for this item.
 
+## 2026-10-24 - UI: the patient page shows how old the record is (EC-12, first slice)
+
+- `src/lib/data-age.ts` (pure), a "Record read at HH:MM" line under the banner on `/patients/[id]`, and an alert when the latest background look failed or no read succeeded for 2.5 minutes; the record stays on screen. Tests: 5 unit, one Playwright (read, failed look, recovery; axe clean). `pnpm run check` clean, vitest 117, Playwright 46 pass locally. H-016's controls, evidence and residual text updated (status unchanged).
+- Not done: the other pages (`/my-record`, lists, compare) show no age; **2.5 minutes is my guess**; the time is shown in the reader's browser locale and is not tested in other locales; tested with a stubbed API, not a real outage; offline reading and sync priority (CA-7, CA-8) are not built. The strings are English only.
+
 ## 2026-10-24 - Break-glass reviews: overdue grants are flagged (EC-11, first slice)
 
 - `Grant.overdue` (service) is true for a grant with no review after `EPR_BREAK_GLASS_REVIEW_HOURS` (default 72 hours); the count route adds `overdue`; the admin page marks such grants "OVERDUE FOR REVIEW". Tests: a unit test for the hour parsing, a Postgres test (fresh, just inside, past the limit, then reviewed), and a Playwright test. The Postgres `break_glass_store` and `http_roles` suites and the UI gates pass locally (check clean, vitest 112, Playwright 45).
