@@ -31,6 +31,8 @@ export interface Stored {
   replaced_by?: string | null;
   /** The records merged into this one and still merged. */
   replaces?: string[];
+  /** A drill or test record (EC-10): not a real patient. Absent from an older API means not a drill. */
+  drill?: boolean;
 }
 
 export interface MatchResult {

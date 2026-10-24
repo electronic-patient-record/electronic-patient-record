@@ -86,6 +86,9 @@
 </script>
 
 <section class="banner" aria-label={STRINGS.bannerLabel}>
+  {#if stored.drill}
+    <p class="drill" role="alert">{STRINGS.bannerDrill}</p>
+  {/if}
   <h2>{name || STRINGS.notAvailable}</h2>
   {#if stored.replaced_by}
     <p class="merged" role="alert">{STRINGS.bannerMerged}</p>

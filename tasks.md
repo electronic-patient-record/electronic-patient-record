@@ -1017,7 +1017,7 @@ otherwise. Nothing here is built.
 - [ ] **EC-9 (L) — Major-incident mode (post-1.0, with EM-12).** Minimal registration with numbered ids, a tracking
   board, a family information list, surge areas and a stand-down, kept behind a flag. Decides OQ-E3.
   **Acceptance:** a spike result and a scope decision in `spec/02-scope.md`; nothing is built before EM-1.
-- [ ] **EC-10 (M) — Drill mode and test-data separation.** **First slice landed 2026-10-24** (service only: `patient_versions.drill`, search and duplicate check apart, merge refused, FHIR tag; `tests/drill_records.rs`, 5, and an HTTP test; H-033). **Open:** the UI banner on every view, exclusion from aggregates and exports (none exist yet), and who may create a drill record. Any drill or synthetic patient is flagged at creation,
+- [ ] **EC-10 (M) — Drill mode and test-data separation.** **First slice landed 2026-10-24** (service only: `patient_versions.drill`, search and duplicate check apart, merge refused, FHIR tag; `tests/drill_records.rs`, 5, and an HTTP test; H-033). **UI banner landed 2026-10-24** (the patient banner shows "DRILL — NOT A REAL PATIENT" on the patient page and my-record; one e2e test). **Open:** a label on lists and the tab title, registering a drill record from the UI, exclusion from aggregates and exports (none exist yet), and who may create a drill record. Any drill or synthetic patient is flagged at creation,
   shows a banner "DRILL — NOT A REAL PATIENT" everywhere it appears, is excluded from real lists, metrics and exports
   by default, and can never be merged into a real record.
   **Acceptance:** a test merge of a drill record into a real one is refused, a drill record is absent from the

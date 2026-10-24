@@ -7,6 +7,11 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - New section "The audit row is part of the write" in `spec/audit/index.md`, a sentence in NFR-7, and task CQ-39. The service already behaves this way for patient create and update (the store test and the service spec's "Write and audit in one transaction" row); the new text makes it the rule for every write.
 - Not verified: only patient create and update have a test with a failing audit table. I read that the other write controllers (allergies, photos, merge, break-glass, feed, consents, relationships) begin a transaction and commit, but I did not check that each appends its row inside it, and no test drives them. The spec says so, and CQ-39 is the test. Nothing in code changed for this item.
 
+## 2026-10-24 - UI: the patient banner marks a drill record (EC-10)
+
+- `Stored.drill`, a string `bannerDrill`, an alert at the top of `PatientBanner` and a style; one Playwright test (drill shows it, absent and false do not, axe clean). `pnpm run check` 0 errors, vitest 112, Playwright 44 pass locally. H-033's text now says the banner marks it but nothing else does (status `open`).
+- Not done: no label on lists or in the tab title (a drill record is not listed in search anyway), no way to register a drill record from the UI, the string is English only and machine-written like the rest, and the alert is not tested in other locales. I did not run the UI against the real API with a drill record.
+
 ## 2026-10-24 - Tests: the last four write routes refuse when their audit row cannot be written (CQ-39 closed)
 
 - FHIR update joins `tests/http_audit_refusal.rs`; new `tests/http_audit_refusal_roles.rs` (login on, one test) covers break-glass open and review and resolving a feed refusal. The trigger and counting helpers moved to `tests/audit_switch/mod.rs`, which also holds the two route lists the census checks; `break_glass_reviews` joined the row counts. All 18 write routes refuse with 500, store nothing, and then succeed once audit works. Nothing in the service changed. With the audit error swallowed in `audit_resource`, the roles test fails on the first route. CQ-39 is ticked.

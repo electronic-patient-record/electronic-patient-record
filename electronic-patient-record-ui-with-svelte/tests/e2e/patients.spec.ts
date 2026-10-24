@@ -1028,6 +1028,31 @@ test("a role that may not manage access is told so instead of seeing forms", asy
   await axe(page);
 });
 
+test("a drill record says so at the top of its banner, and a real one does not", async ({
+  page,
+}) => {
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, { ...ANN, drill: true }),
+  );
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  const banner = page.getByRole("region", { name: "Patient banner" });
+  await expect(banner).toContainText("DRILL — NOT A REAL PATIENT");
+  await expect(banner.getByRole("alert")).toHaveText(/DRILL/);
+  await axe(page);
+
+  // The same record from an API that does not send the flag, or sends false, carries no notice.
+  for (const body of [ANN, { ...ANN, drill: false }]) {
+    await page.unroute(`**/api/proxy/api/patients/${ANN.id}`);
+    await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+      json(route, 200, body),
+    );
+    await page.goto(`/en-001/patients/${ANN.id}`);
+    await expect(banner).toContainText("SMITH, Ann");
+    await expect(banner).not.toContainText("DRILL");
+  }
+});
+
 test("a record merged away says so everywhere and cannot be edited; the surviving record merges and unmerges", async ({
   page,
 }) => {
