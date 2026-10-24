@@ -903,7 +903,7 @@ what a clinician or a carer sees.
   that a merge or unmerge (ID-5) emits an event the PAS can act on. Settles OQ-PA2.
   **Acceptance:** a merge test emits exactly one event, an unmerge reverses the link, and an unlinked patient is shown as
   unlinked, never guessed.
-- [ ] **PA-3 (S) — Support-only guard test.** A schema guard that fails on a column named like `score`, `rank`,
+- [x] **PA-3 (S) — Support-only guard test.** **Landed 2026-10-24** (`tests/support_only.rs`, 3 tests; NFR-12; one allow-list entry, `match_score`). **Not done:** it reads migration names only, so a score under another name, or one computed in code, passes. A schema guard that fails on a column named like `score`, `rank`,
   `deprioritise`, `suppress`, `withhold` or `overbook` unless it has a written reason, plus the rule in `spec/` that no
   score may reduce what a patient is offered. It is a tripwire, not proof, and the item says so.
   **Acceptance:** a test fails on a planted column, passes on the allow-list, and the allow-list entries have reasons.

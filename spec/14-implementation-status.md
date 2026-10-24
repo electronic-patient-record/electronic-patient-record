@@ -22,7 +22,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | Front-end version | 0.1.0 | `version` in the front-end `package.json` |
 | Migrations | 12 | files named `m2*.rs` in `migration/src` |
 | Route registrations | 42 | `.add(` calls in `src/controllers/*.rs` |
-| Service tests | 259, plus 80 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
+| Service tests | 262, plus 80 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
 | Matcher tests | 91, plus 0 `#[ignore]`d | the same patterns in the matcher |
 | Front-end unit tests (vitest) | 112 | `it(` / `test(` lines in `tests/unit` |
 | Front-end end-to-end tests (Playwright) | 40 | `test(` lines in `tests/e2e` |
@@ -46,7 +46,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | TR | 2 | 11 |
 | PN | 0 | 11 |
 | EM | 0 | 16 |
-| PA | 0 | 17 |
-| **Total** | **33** | **158** |
+| PA | 1 | 16 |
+| **Total** | **34** | **157** |
 
 <!-- generated:end -->

@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-24 - PA-3: support-only tripwire (NFR-12)
+
+- New `tests/support_only.rs` (service, 3 tests) and NFR-12 in `spec/07`: a migration that names a column like `score`, `rank`, `deprioritise`, `suppress`, `withhold` or `overbook` fails unless it is on an allow-list with a reason. One entry today: `match_score` (the matcher's score on a patient link). I confirmed the test fails when that entry is removed. Not clinical, no hazard-log change.
+- Not done: it reads migration source names only, so a score under another name, in a view, or computed in code is not caught. It is a tripwire, not proof. The Postgres-gated tests were not run.
+
 ## 2026-10-24 - EM-1: module map proposal
 
 - New `spec/19-module-map.md` (every module group from plan.md §17.2 with a slot, as a proposal), OQ-M1 to OQ-M3 in

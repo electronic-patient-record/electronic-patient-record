@@ -15,4 +15,5 @@ Targets, not measurements. Nothing here has been measured yet.
 - **NFR-8 Observability.** `tracing` JSON logs, Prometheus metrics, OTLP.
 - **NFR-9 Determinism.** Matching is pure and total; every score has a breakdown.
 - **NFR-10 Usability.** SUS ≥ 75 in summative tests; click and time budgets per critical task; alert override rate tracked.
+- **NFR-12 Support only.** No score, rank or priority computed here may reduce what a patient is offered, hide a patient from a list or delay their care; a score asks a person to look. A tripwire test fails when a migration names a column like `score`, `rank`, `deprioritise`, `suppress`, `withhold` or `overbook` without a written reason. It reads names, not behaviour, so it is not proof (PA-3).
 - **NFR-11 Supply chain.** Pinned toolchain; Dependabot; licences allow-listed; SBOM on release.
