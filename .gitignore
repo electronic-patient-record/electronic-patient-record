@@ -21,3 +21,6 @@ __pycache__/
 **/config/local.yaml
 **/config/*.local.yaml
 chaos-report.json
+
+# Downloaded tools (scripts/fhir-validator.sh).
+.cache/

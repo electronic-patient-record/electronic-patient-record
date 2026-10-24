@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-24 - Testing: the official HL7 FHIR validator as an oracle
+
+- `scripts/fhir-validator.sh` fetches `validator_cli.jar` 7.0.3 (hapifhir/org.hl7.fhir.core) into the git-ignored `.cache/`, and refuses it unless its SHA-256 equals the digest GitHub publishes for that release asset (pinned in the script). `tests/fhir_validator.rs` (service, 2 tests, `#[ignore]`) writes a Patient, three AllergyIntolerance forms, an AuditEvent and a searchset Bundle from the service's own converters and validates them against R4 4.0.1; a control confirms a broken Patient (bad `gender`, stray element) fails. Both pass on Java 25 (about 6 s after the 200 MB download).
+- What it found, not fixed: every resource has the `dom-6` warning (no narrative), and the AuditEvent uses `urn:epr:audited-resource` and `urn:epr:purpose-of-use`, code systems the validator cannot resolve (4 warnings). The test asserts no errors, not no warnings.
+- Not done: it is not in CI (a 200 MB download and Java per run needs a cache and a decision); it runs with `-tx n/a`, so codes are not looked up (SNOMED, LOINC); no UK Core or US Core profile validation (RC-2); the searchset bundle in the test is rebuilt by hand because the service's own bundle builder is private, so the real search response is not validated; the jar's pin is trust in GitHub's digest, not a signature check.
+
 ## 2026-10-24 - Matcher: placeholder names are absent evidence (EC-2, first slice)
 
 - `normalize::is_placeholder_name` and `is_usable_name`; every name rule (family, given, swap, phonetic) now skips a placeholder (`Unknown`, `Unidentified`, `Anonymous`, `UNK-001`), so absent evidence blocks AutoLink: two unidentified patients never match each other and an unidentified patient never auto-links to a real record. `tests/placeholders.rs` (5 tests); three fail with the list emptied. Matcher spec and H-001 updated (status untouched, `controlled-unreviewed`).
