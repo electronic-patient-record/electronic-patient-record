@@ -140,7 +140,14 @@ fn jar() -> PathBuf {
     PathBuf::from(jar)
 }
 
+/// One validator at a time: on a cold package cache each run installs `hl7.fhir.r4.core` into
+/// `~/.fhir/packages` under a lock file, and two at once fail with "Failed to acquire lock".
+static ONE_AT_A_TIME: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 fn validate(jar: &Path, files: &[PathBuf]) -> (bool, String) {
+    let _turn = ONE_AT_A_TIME
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let out = Command::new("java")
         .arg("-jar")
         .arg(jar)
