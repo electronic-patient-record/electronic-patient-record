@@ -23,6 +23,8 @@ that did not happen, because the record is append-only and cannot be taken back.
   users are.
 
 **Evidence today.** The store-level test `a_write_and_its_audit_row_commit_or_roll_back_together` proves it for patient
-create and update (a trigger makes the audit insert fail). The controllers for the other writes follow the same
-pattern in code, but no test drives each route with a failing audit table: CQ-39 adds that, and until it lands this
-rule is a requirement, not a verified property.
+create and update. `tests/http_audit_refusal.rs` drives 14 of the 18 write routes through the router with a trigger
+that makes the audit insert fail: each answers 500 and leaves no row in any store, and the same request then succeeds
+once audit works. A census fails when a write route is added without such a test or an entry in its list of gaps.
+**Not yet verified** (CQ-39): FHIR update, the two break-the-glass writes, and resolving a feed refusal; for those
+the rule is a requirement, not a verified property.

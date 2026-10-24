@@ -7,6 +7,11 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - New section "The audit row is part of the write" in `spec/audit/index.md`, a sentence in NFR-7, and task CQ-39. The service already behaves this way for patient create and update (the store test and the service spec's "Write and audit in one transaction" row); the new text makes it the rule for every write.
 - Not verified: only patient create and update have a test with a failing audit table. I read that the other write controllers (allergies, photos, merge, break-glass, feed, consents, relationships) begin a transaction and commit, but I did not check that each appends its row inside it, and no test drives them. The spec says so, and CQ-39 is the test. Nothing in code changed for this item.
 
+## 2026-10-24 - Tests: a write whose audit row cannot be written is refused, on 14 of 18 write routes (CQ-39)
+
+- New `tests/http_audit_refusal.rs`: a trigger on `audit_events`, switched on around one request, makes the audit insert fail. For each of 14 write routes the answer is 500 and no store gains a row, and the same request then succeeds, so the 500 is the audit row's doing. A DB-free census fails when a write route is in the policy table but neither covered nor listed as a gap. Nothing in the service had to change: every covered route already refused. With the audit error swallowed in `audit_resource`, the test fails on the first route.
+- Not done: FHIR update, break-glass open and review, and resolving a feed refusal are listed as gaps, so CQ-39 stays open. The test proves the 500 and the unchanged stores, not that the response body is helpful, and not that the failure counter moves. It runs against a trigger, not a real full-disk failure.
+
 ## 2026-10-24 - Testing: the two validator tests no longer race for the package cache
 
 - The `fhir-validator` CI job failed on the push after it had passed three times: both tests start the jar at once, and on a cold runner each installs `hl7.fhir.r4.core` into `~/.fhir/packages` under a lock ("Failed to acquire lock on file"). The earlier green runs were luck. The tests now take a mutex, and the CI step passes `--test-threads=1`. I could not reproduce it locally (the package cache is warm here), so the fix is verified only by CI.
