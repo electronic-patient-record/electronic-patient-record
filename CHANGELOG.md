@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-24 - Service: a blank `EPR_PASETO_KEYS` counts as unset
+
+- Found by the container job in CI: `compose.yaml` passes `EPR_PASETO_KEYS: ${EPR_PASETO_KEYS:-}`, an empty string, and the service stopped with "EPR_PASETO_KEYS is not valid JSON: EOF" instead of the startup gate's "no token keys are configured; refusing to start". It failed closed both ways, but the CI step (and anyone following the compose file) expects the gate's message. `inline_keys` now treats a blank value as unset (`auth::tests::invalid_inline_keys_fail_startup` extended; service spec updated). A blank value still cannot start the service with login on.
+- CI step also ends `compose down -v` with `|| true`: the runner printed "rootless netns: kill network process: permission denied" on teardown, after the containers were removed.
+- Not verified: the container job passing (it takes about 11 minutes); the Postgres-gated tests were not run locally.
+
 ## 2026-10-24 - CI: the "API refuses to start" step tolerates `compose up` failing
 
 - The first CI run on `main` failed the container job at `podman compose up -d`, because the API exits at once by design and the step runs with `bash -e`. The step now ends `up -d` with `|| true` and the loop that checks the container state decides. I read this from the two failed logs (both stop right after `api_1` starts); I have not run the Podman job locally.

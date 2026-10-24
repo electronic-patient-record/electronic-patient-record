@@ -206,7 +206,8 @@ jobs:
           fi
           logs="$(podman logs electronic-patient-record_api_1 2>&1 || true)"
           echo "state: $state"; echo "$logs" | tail -20
-          podman compose down -v
+          # Teardown on the runner can fail with "rootless netns: kill network process: permission denied".
+          podman compose down -v || true
           echo "$logs" | grep "refusing to start"
       - name: The API starts, and demands a token, with keys set
         env:

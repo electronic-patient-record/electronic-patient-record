@@ -45,7 +45,7 @@ With login off (development only) there is no subject and the gate stands aside,
 
 ## 2. Configuration
 
-`EPR_REQUIRE_AUTH`, `EPR_KEYCLOAK_URL` / `_REALM` / `_AUDIENCES` / `_ROLE_MAP_FILE` (see `operations/keycloak/README.md`), `EPR_PASETO_KEYS` (inline JSON key set; set but not valid JSON stops startup), `EPR_PASETO_KEYS_URL`, `EPR_INTEGRITY_MAC_KEY` / `EPR_INTEGRITY_MAC_KEY_FILE` (audit chain key), `EPR_TOKEN_ISSUER`
+`EPR_REQUIRE_AUTH`, `EPR_KEYCLOAK_URL` / `_REALM` / `_AUDIENCES` / `_ROLE_MAP_FILE` (see `operations/keycloak/README.md`), `EPR_PASETO_KEYS` (inline JSON key set; a blank value counts as unset; set but not valid JSON stops startup), `EPR_PASETO_KEYS_URL`, `EPR_INTEGRITY_MAC_KEY` / `EPR_INTEGRITY_MAC_KEY_FILE` (audit chain key), `EPR_TOKEN_ISSUER`
 (default `authentication-service`), `EPR_TOKEN_AUDIENCE` (default `electronic-patient-record`), `EPR_REDIS_URL`
 (production cache), `DATABASE_URL`, `PORT`, `EPR_METRICS` (`1` or `true` serves `/metrics`).
 

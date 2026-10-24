@@ -94,11 +94,13 @@ fn build(keys: &serde_json::Value) -> Result<Verifier, String> {
     Verifier::from_paseto_keys_value(keys, &issuer, &audience).map_err(|e| e.to_string())
 }
 
-/// The inline key set from `EPR_PASETO_KEYS`: none when unset, and an error when set but not JSON,
-/// so a typo stops startup instead of leaving a service that rejects every token.
+/// The inline key set from `EPR_PASETO_KEYS`: none when unset or blank (compose passes `${VAR:-}` as an
+/// empty string), and an error when set but not JSON, so a typo stops startup instead of leaving a
+/// service that rejects every token.
 fn inline_keys(raw: Option<&str>) -> Result<serde_json::Value, String> {
     match raw {
         None => Ok(serde_json::json!({ "keys": [] })),
+        Some(raw) if raw.trim().is_empty() => Ok(serde_json::json!({ "keys": [] })),
         Some(raw) => {
             serde_json::from_str(raw).map_err(|e| format!("EPR_PASETO_KEYS is not valid JSON: {e}"))
         }
@@ -311,6 +313,15 @@ mod tests {
             serde_json::json!({ "keys": [] })
         );
         assert!(inline_keys(Some(r#"{"keys":[]}"#)).is_ok());
+        // A blank value is unset, so the startup gate gives its own message (CI: container job).
+        assert_eq!(
+            inline_keys(Some("")).unwrap(),
+            serde_json::json!({ "keys": [] })
+        );
+        assert_eq!(
+            inline_keys(Some("  ")).unwrap(),
+            serde_json::json!({ "keys": [] })
+        );
         let e = inline_keys(Some("{keys: oops")).unwrap_err();
         assert!(e.starts_with("EPR_PASETO_KEYS is not valid JSON"), "{e}");
     }
