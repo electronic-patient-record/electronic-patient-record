@@ -7,6 +7,11 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - New section "The audit row is part of the write" in `spec/audit/index.md`, a sentence in NFR-7, and task CQ-39. The service already behaves this way for patient create and update (the store test and the service spec's "Write and audit in one transaction" row); the new text makes it the rule for every write.
 - Not verified: only patient create and update have a test with a failing audit table. I read that the other write controllers (allergies, photos, merge, break-glass, feed, consents, relationships) begin a transaction and commit, but I did not check that each appends its row inside it, and no test drives them. The spec says so, and CQ-39 is the test. Nothing in code changed for this item.
 
+## 2026-10-24 - Service: a differencing check for aggregates (PA-7, second slice)
+
+- `privacy::would_difference` refuses a table that, subtracted from an earlier one by the same caller on the same measure over a **nested** population (a `Filter` of field to allowed values, a missing field meaning unrestricted), would reveal the count of 1 to `k-1` people. 7 more unit tests (18 in all); with the lower boundary moved and the subset test loosened, tests fail. No caller yet, so the hazard log is unchanged.
+- Not done: it sees only nested populations on one measure and uses **true** totals, so the caller must keep them (in memory or a store nobody can read, which does not exist); overlapping populations, related measures (admissions against attendances), two callers comparing notes, and repeated queries are not seen. Two-way tables need complementary suppression across rows and columns. PA-7 stays open: no report uses any of this and there is no per-report test.
+
 ## 2026-10-24 - Service: the privacy rule for aggregates (PA-7, first slice)
 
 - New `src/privacy.rs`: `suppress` hides counts of 1 to `k-1` (`k` at least 5), shows zeros, and with a published total also hides the smallest other nonzero cell until the hidden sum reaches `k`; `Budget` allows a number of tables per caller per window and does not count a refusal. 11 unit tests; with secondary suppression off and the boundary moved, three fail. No caller, so the hazard log is unchanged.

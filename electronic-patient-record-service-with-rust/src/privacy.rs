@@ -15,7 +15,9 @@
 //! (this month and last month, or "all" and "all but one clinic") give those few people's count by
 //! subtraction, and each table is safe alone. *Linkage* with other data a reader has. *Repeated near-identical
 //! queries* that average out any noise. The [`Budget`] limits how many tables one caller can ask for, which
-//! slows differencing and does not stop it. A pair-of-queries check is not built (PA-7 stays open).
+//! slows differencing and does not stop it. [`would_difference`] refuses the simplest case, a pair of tables over
+//! nested populations whose true totals differ by 1 to `k-1`; it sees nothing else (overlapping populations,
+//! tables on related measures, two callers comparing notes).
 
 /// The least `k` the service accepts, whatever is configured.
 pub const MIN_K: u64 = 5;
@@ -84,6 +86,59 @@ pub fn suppress(counts: &[(String, u64)], k: u64, publish_total: bool) -> (Vec<R
         .collect();
     let total = publish_total.then(|| counts.iter().map(|(_, n)| *n).sum());
     (rows, total)
+}
+
+/// A population, as the conditions that define it: for each field, the values it may take. A field that is
+/// not named is unrestricted. `{clinic: {a, b}}` is everyone seen at clinic a or b.
+pub type Filter = std::collections::BTreeMap<String, std::collections::BTreeSet<String>>;
+
+/// A table one caller already received: what was counted, over whom, and the **true** total.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Past {
+    /// What was counted (for example `attendances`).
+    pub measure: String,
+    /// The population.
+    pub filter: Filter,
+    /// The true total, before any suppression.
+    pub total: u64,
+}
+
+/// Whether population `outer` contains population `inner`: every condition `outer` puts on a field, `inner`
+/// puts a condition on the same field that is at least as tight.
+#[must_use]
+pub fn contains(outer: &Filter, inner: &Filter) -> bool {
+    outer
+        .iter()
+        .all(|(field, allowed)| inner.get(field).is_some_and(|v| v.is_subset(allowed)))
+}
+
+/// Whether answering a new table would, by subtraction from an earlier one, reveal the count of fewer than `k`
+/// people. Two tables on the same measure over nested populations differ by the people in the ring between
+/// them; if that is 1 to `k-1`, each table is safe alone and the pair is not. Returns the index in `past` of
+/// the first table that makes it so. Only **nested** populations on one measure are seen: overlapping ones, a
+/// different measure that is a function of this one, and queries by two colluding callers are not.
+#[must_use]
+pub fn would_difference(
+    past: &[Past],
+    measure: &str,
+    filter: &Filter,
+    total: u64,
+    k: u64,
+) -> Option<usize> {
+    let k = k.max(MIN_K);
+    past.iter().position(|p| {
+        if p.measure != measure {
+            return false;
+        }
+        let ring = if contains(&p.filter, filter) {
+            p.total.checked_sub(total)
+        } else if contains(filter, &p.filter) {
+            total.checked_sub(p.total)
+        } else {
+            None
+        };
+        ring.is_some_and(|n| (1..k).contains(&n))
+    })
 }
 
 /// How many tables one caller may ask for in a window. The caller is whatever the service identifies
@@ -245,6 +300,120 @@ mod tests {
             "a refusal is not counted and does not move the window"
         );
         assert_eq!(b.ask(1_060), Allowance::Allowed { left: 1 }, "a new window");
+    }
+
+    fn filter(parts: &[(&str, &[&str])]) -> Filter {
+        parts
+            .iter()
+            .map(|(f, vs)| {
+                (
+                    (*f).to_string(),
+                    vs.iter().map(ToString::to_string).collect(),
+                )
+            })
+            .collect()
+    }
+
+    fn past(measure: &str, f: Filter, total: u64) -> Past {
+        Past {
+            measure: measure.into(),
+            filter: f,
+            total,
+        }
+    }
+
+    #[test]
+    fn dropping_one_clinic_that_holds_three_people_is_refused() {
+        let all = filter(&[("clinic", &["a", "b", "c"])]);
+        let less = filter(&[("clinic", &["a", "b"])]);
+        let history = vec![past("attendances", all, 100)];
+        // 100 - 97 = 3 people at clinic c would be revealed.
+        assert_eq!(
+            would_difference(&history, "attendances", &less, 97, 5),
+            Some(0)
+        );
+    }
+
+    #[test]
+    fn a_ring_of_k_or_more_people_or_none_is_allowed() {
+        let all = filter(&[("clinic", &["a", "b", "c"])]);
+        let less = filter(&[("clinic", &["a", "b"])]);
+        let history = vec![past("attendances", all, 100)];
+        assert_eq!(
+            would_difference(&history, "attendances", &less, 95, 5),
+            None
+        );
+        assert_eq!(
+            would_difference(&history, "attendances", &less, 100, 5),
+            None
+        );
+    }
+
+    #[test]
+    fn the_ring_boundaries_are_one_person_and_k_minus_one() {
+        let all = filter(&[("clinic", &["a", "b", "c"])]);
+        let less = filter(&[("clinic", &["a", "b"])]);
+        let history = vec![past("attendances", all, 100)];
+        assert_eq!(
+            would_difference(&history, "attendances", &less, 99, 5),
+            Some(0),
+            "one person"
+        );
+        assert_eq!(
+            would_difference(&history, "attendances", &less, 96, 5),
+            Some(0),
+            "k - 1 people"
+        );
+        assert_eq!(
+            would_difference(&history, "attendances", &less, 95, 5),
+            None,
+            "k people"
+        );
+    }
+
+    #[test]
+    fn it_works_in_either_order() {
+        let all = filter(&[("clinic", &["a", "b", "c"])]);
+        let less = filter(&[("clinic", &["a", "b"])]);
+        let history = vec![past("attendances", less, 97)];
+        assert_eq!(
+            would_difference(&history, "attendances", &all, 100, 5),
+            Some(0)
+        );
+    }
+
+    #[test]
+    fn a_different_measure_or_a_non_nested_population_is_not_seen() {
+        let a = filter(&[("clinic", &["a", "b"])]);
+        let b = filter(&[("clinic", &["b", "c"])]);
+        let history = vec![past("attendances", a.clone(), 100)];
+        assert_eq!(would_difference(&history, "admissions", &a, 98, 5), None);
+        assert_eq!(would_difference(&history, "attendances", &b, 98, 5), None);
+    }
+
+    #[test]
+    fn an_unrestricted_field_is_wider_than_any_restriction() {
+        let everyone = Filter::new();
+        let one_clinic = filter(&[("clinic", &["a"])]);
+        assert!(contains(&everyone, &one_clinic));
+        assert!(!contains(&one_clinic, &everyone));
+        let history = vec![past("attendances", everyone, 100)];
+        assert_eq!(
+            would_difference(&history, "attendances", &one_clinic, 98, 5),
+            Some(0),
+            "all but 2 people at one clinic"
+        );
+    }
+
+    #[test]
+    fn k_below_the_minimum_is_raised_here_too() {
+        let all = filter(&[("clinic", &["a", "b"])]);
+        let less = filter(&[("clinic", &["a"])]);
+        let history = vec![past("attendances", all, 100)];
+        assert_eq!(
+            would_difference(&history, "attendances", &less, 96, 1),
+            Some(0)
+        );
     }
 
     #[test]

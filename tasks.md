@@ -922,7 +922,7 @@ what a clinician or a carer sees.
   code list's licence is **[uncertain]**.
   **Acceptance:** an overdue review shows, an adjustment is visible beside the appointment and the banner, and an
   adjustment is append-only with an end date, never deleted.
-- [ ] **PA-7 (M) — Privacy-safe analytics rule.** **First slice landed 2026-10-24** (`src/privacy.rs`: small-cell and secondary suppression, and a per-window budget, pure; 11 unit tests; no caller yet). **Open:** the pair-of-queries (differencing) check, budget storage per caller, and a test for each report (none exists yet). Small-cell suppression (k at least 5, secondary suppression), no
+- [ ] **PA-7 (M) — Privacy-safe analytics rule.** **First slice landed 2026-10-24** (`src/privacy.rs`: small-cell and secondary suppression, and a per-window budget, pure; 11 unit tests; no caller yet). **Differencing check landed** (`would_difference`: nested populations on one measure, true totals; 7 more tests). **Open:** per-caller storage of past tables and budgets, two-way tables, and a test for each report (none exists yet). Small-cell suppression (k at least 5, secondary suppression), no
   identifiers, and a per-caller query budget for every aggregate: OR-7, TR-10, IO-7, IO-14. Document what it does not
   prevent (differencing).
   **Acceptance:** a cell under k is hidden, a pair of queries that would difference it out is refused or listed, and a
