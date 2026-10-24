@@ -293,6 +293,11 @@ pub async fn merge(
             "a record cannot be merged into itself".into(),
         ));
     }
+    if target.drill != source.drill {
+        return Err(StoreError::BadQuery(
+            "a drill record and a real record can never be merged".into(),
+        ));
+    }
     if let Some(into) = merged_into(db, &source.id).await? {
         return Err(StoreError::BadQuery(format!(
             "the record to merge away was already merged into {into}"

@@ -2,6 +2,16 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-24 - Spec: when a write's audit row cannot be written, the write is refused (CQ-39)
+
+- New section "The audit row is part of the write" in `spec/audit/index.md`, a sentence in NFR-7, and task CQ-39. The service already behaves this way for patient create and update (the store test and the service spec's "Write and audit in one transaction" row); the new text makes it the rule for every write.
+- Not verified: only patient create and update have a test with a failing audit table. I read that the other write controllers (allergies, photos, merge, break-glass, feed, consents, relationships) begin a transaction and commit, but I did not check that each appends its row inside it, and no test drives them. The spec says so, and CQ-39 is the test. Nothing in code changed for this item.
+
+## 2026-10-24 - Service: drill and test records kept apart from real patients (EC-10, first slice)
+
+- Migration 13 adds `patient_versions.drill` (default false; `patient_current` carries it); `POST /api/patients` takes `drill`; every version keeps the flag. Ordinary search, the FHIR facade and the duplicate check see real records only; `?drill=true` searches drill records; a drill registration is compared only with drill records; `links::merge` refuses a drill/real pair (422); a drill Patient in FHIR is tagged `urn:epr:record-kind|drill`. `store::create`, `candidates` and `candidates_ranked` keep their signatures (they are the real side); `create_as`, `candidates_in` and `Search.drill` are new. `tests/drill_records.rs` (5), an HTTP test, a unit test and a drill Patient in the FHIR validator test; mutating out the search filter, the duplicate-check filter and the merge check makes three of the five fail. New hazard H-033 (status `open`).
+- Not done: no UI banner or label on any screen, so a drill record is only recognisable by its flag or FHIR tag; nothing limits who may create a drill record; no aggregate or export exists to exclude it from; the flag cannot be corrected on a mistaken record. `down` for migration 13 is refused outside development like the other clinical downs. The ADT feed registers real patients only. I ran the Postgres-gated suites for the stores, links, migration and HTTP tests locally, not the whole workspace.
+
 ## 2026-10-24 - CI: a `fhir-validator` job
 
 - New job in `.github/workflows/ci.yml` (Temurin 25, the jar cached by the script's hash, `scripts/fhir-validator.sh` re-checks its SHA-256) running `tests/fhir_validator.rs`, and added to `ci-ok`'s needs. I have not seen it run: it is verified only by pushing. `spec/11` and the service spec said "not yet in CI"; updated.

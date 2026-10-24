@@ -23,6 +23,10 @@ pub struct Stored {
     pub author: String,
     /// The identity record, with `id` set to the server id.
     pub patient: Patient,
+    /// A drill or test record (EC-10): kept out of search and of the duplicate check for real
+    /// patients, and never merged with a real record. Every version of a patient has the same value.
+    #[serde(default)]
+    pub drill: bool,
 }
 
 /// Why a store operation failed.
@@ -129,6 +133,7 @@ fn row_to_stored(row: &sea_orm::QueryResult) -> Result<Stored, StoreError> {
         version: row.try_get("", "version").map_err(db_err)?,
         author: row.try_get("", "author").map_err(db_err)?,
         patient,
+        drill: row.try_get("", "drill").map_err(db_err)?,
     })
 }
 
@@ -138,9 +143,9 @@ const NOT_MERGED_AWAY: &str = "NOT EXISTS (
     SELECT 1 FROM patient_link_current l
     WHERE l.source_patient_id = patient_current.patient_id AND l.status = 'active')";
 
-const COLUMNS: &str = "patient_id::text AS id, version, author, body";
+const COLUMNS: &str = "patient_id::text AS id, version, author, body, drill";
 
-/// Create a patient at version 1. The server assigns the id; any `id` in `patient` is ignored.
+/// Create a real patient at version 1. The server assigns the id; any `id` in `patient` is ignored.
 ///
 /// # Errors
 ///
@@ -151,18 +156,34 @@ pub async fn create(
     reason: Option<&str>,
     patient: &Patient,
 ) -> Result<Stored, StoreError> {
+    create_as(db, author, reason, patient, false).await
+}
+
+/// [`create`], as a drill or test record when `drill` is true (EC-10).
+///
+/// # Errors
+///
+/// [`StoreError::Db`] when the insert fails.
+pub async fn create_as(
+    db: &impl ConnectionTrait,
+    author: &str,
+    reason: Option<&str>,
+    patient: &Patient,
+    drill: bool,
+) -> Result<Stored, StoreError> {
     let mut body = patient.clone();
     body.id = None;
     let row = db
         .query_one_raw(pg(
             &format!(
-                "INSERT INTO patient_versions (patient_id, version, author, reason, body)
-                 VALUES (gen_random_uuid(), 1, $1, $2, $3) RETURNING {COLUMNS}"
+                "INSERT INTO patient_versions (patient_id, version, author, reason, body, drill)
+                 VALUES (gen_random_uuid(), 1, $1, $2, $3, $4) RETURNING {COLUMNS}"
             ),
             vec![
                 author.into(),
                 reason.map(str::to_string).into(),
                 serde_json::to_value(&body).map_err(db_err)?.into(),
+                drill.into(),
             ],
         ))
         .await
@@ -238,8 +259,8 @@ pub async fn update(
         STORE,
         pg(
             &format!(
-                "INSERT INTO patient_versions (patient_id, version, author, reason, body)
-                 VALUES ($1::uuid, $2, $3, $4, $5) RETURNING {COLUMNS}"
+                "INSERT INTO patient_versions (patient_id, version, author, reason, body, drill)
+                 VALUES ($1::uuid, $2, $3, $4, $5, $6) RETURNING {COLUMNS}"
             ),
             vec![
                 now.id.clone().into(),
@@ -247,6 +268,7 @@ pub async fn update(
                 author.into(),
                 reason.map(str::to_string).into(),
                 serde_json::to_value(&body).map_err(db_err)?.into(),
+                now.drill.into(),
             ],
         ),
     )
@@ -290,6 +312,20 @@ pub async fn candidates_ranked(
     db: &impl ConnectionTrait,
     patient: &Patient,
 ) -> Result<(Vec<Stored>, bool), StoreError> {
+    candidates_in(db, patient, false).await
+}
+
+/// [`candidates_ranked`] within one kind of record: a drill registration is compared only with drill
+/// records and a real one only with real records, so the two can never be offered for a link (EC-10).
+///
+/// # Errors
+///
+/// [`StoreError::Db`] on a database failure.
+pub async fn candidates_in(
+    db: &impl ConnectionTrait,
+    patient: &Patient,
+    drill: bool,
+) -> Result<(Vec<Stored>, bool), StoreError> {
     let identifiers: Vec<serde_json::Value> = patient
         .identifiers
         .iter()
@@ -315,6 +351,7 @@ pub async fn candidates_ranked(
             &format!(
                 "SELECT {COLUMNS} FROM patient_current
                  WHERE ({by_identifier} OR {by_birth} OR {by_family})
+                   AND drill = $4
                    AND {NOT_MERGED_AWAY}
                  ORDER BY {by_identifier} DESC, ({by_birth} AND {by_family}) DESC,
                           {by_birth} DESC, {by_family} DESC, patient_id
@@ -325,6 +362,7 @@ pub async fn candidates_ranked(
                 serde_json::Value::Array(identifiers).into(),
                 patient.birth_date.clone().into(),
                 families.into(),
+                drill.into(),
             ],
         ))
         .await
@@ -347,6 +385,9 @@ pub struct Search {
     pub birth_date: Option<String>,
     /// `system|value`.
     pub identifier: Option<String>,
+    /// Search drill and test records instead of real ones (`?drill=true`, EC-10). Never both.
+    #[serde(default)]
+    pub drill: bool,
 }
 
 /// The most results a search returns.
@@ -410,6 +451,7 @@ pub async fn search(db: &DatabaseConnection, q: &Search) -> Result<Vec<Stored>, 
                          WHERE lower(n->>'family') LIKE lower($1) ESCAPE '\\'))
                    AND ($2::text IS NULL OR body->>'birth_date' = $2)
                    AND ($3::jsonb IS NULL OR body->'identifiers' @> $3::jsonb)
+                   AND drill = $4
                    AND {NOT_MERGED_AWAY}
                  ORDER BY lower(body->'names'->0->>'family'), patient_id
                  LIMIT {SEARCH_LIMIT}"
@@ -418,6 +460,7 @@ pub async fn search(db: &DatabaseConnection, q: &Search) -> Result<Vec<Stored>, 
                 family.map(like_prefix).into(),
                 birth.map(str::to_string).into(),
                 identifier.into(),
+                q.drill.into(),
             ],
         ))
         .await

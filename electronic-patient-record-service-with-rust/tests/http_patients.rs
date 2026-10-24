@@ -212,3 +212,65 @@ async fn the_request_id_is_echoed_and_written_into_the_audit_row() {
     })
     .await;
 }
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn a_drill_registration_is_kept_apart_from_real_patients() {
+    login_off();
+    request::<App, _, _>(|server, _ctx| async move {
+        let family = tag("drill");
+        let born = dob(7);
+        let real = server
+            .post("/api/patients")
+            .json(&serde_json::json!({ "patient": patient(&family, &born) }))
+            .await;
+        assert_eq!(real.status_code(), StatusCode::CREATED, "{}", real.text());
+        let real: serde_json::Value = real.json();
+        assert_eq!(real["drill"], false);
+
+        // The same person as a drill record is not a duplicate of the real one.
+        let drill = server
+            .post("/api/patients")
+            .json(&serde_json::json!({ "patient": patient(&family, &born), "drill": true }))
+            .await;
+        assert_eq!(drill.status_code(), StatusCode::CREATED, "{}", drill.text());
+        let drill: serde_json::Value = drill.json();
+        assert_eq!(drill["drill"], true);
+
+        let ids = |v: &serde_json::Value| -> Vec<String> {
+            v["results"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|r| r["id"].as_str().unwrap().to_string())
+                .collect()
+        };
+        let ordinary: serde_json::Value = server
+            .get(&format!("/api/patients?family={family}"))
+            .await
+            .json();
+        assert_eq!(ids(&ordinary), vec![real["id"].as_str().unwrap()]);
+        let drills: serde_json::Value = server
+            .get(&format!("/api/patients?family={family}&drill=true"))
+            .await
+            .json();
+        assert_eq!(ids(&drills), vec![drill["id"].as_str().unwrap()]);
+
+        // The FHIR facade lists real patients only, and a drill read says what it is.
+        let bundle: serde_json::Value = server
+            .get(&format!("/fhir/R4/Patient?family={family}"))
+            .await
+            .json();
+        let in_bundle = bundle["entry"].as_array().map_or(0, Vec::len);
+        assert_eq!(in_bundle, 1, "{bundle}");
+        let read = server
+            .get(&format!(
+                "/fhir/R4/Patient/{}",
+                drill["id"].as_str().unwrap()
+            ))
+            .await;
+        let read: serde_json::Value = read.json();
+        assert_eq!(read["meta"]["tag"][0]["code"], "drill");
+    })
+    .await;
+}

@@ -87,6 +87,10 @@ pub struct CreateRequest {
     /// kept in the version history.
     #[serde(default)]
     pub override_reason: Option<String>,
+    /// Register a drill or test record (EC-10): it is compared only with other drill records, kept out
+    /// of ordinary search and never merged with a real patient.
+    #[serde(default)]
+    pub drill: bool,
 }
 
 /// A change to a patient: a new version.
@@ -214,11 +218,12 @@ pub(super) async fn create_service(
         return Err(ApiError::from(&e));
     }
     // More matches than the limit: only the strongest were compared, and the answer says so (CQ-36).
-    let (duplicates, candidates_cut) = match store::candidates_ranked(&tx, &request.patient).await {
-        Ok((pool, cut)) => (likely_duplicates(&request.patient, pool), cut),
-        // An unchecked registration is how duplicates happen: fail rather than skip the check.
-        Err(e) => return Err(ApiError::from(&e)),
-    };
+    let (duplicates, candidates_cut) =
+        match store::candidates_in(&tx, &request.patient, request.drill).await {
+            Ok((pool, cut)) => (likely_duplicates(&request.patient, pool), cut),
+            // An unchecked registration is how duplicates happen: fail rather than skip the check.
+            Err(e) => return Err(ApiError::from(&e)),
+        };
     let ids: Vec<&str> = duplicates.iter().map(|c| c.existing.id.as_str()).collect();
     // A duplicate must still stop the registration, but a patient who refuses disclosure to this
     // subject is not shown to them: the candidate is reported as restricted, with no record,
@@ -281,7 +286,14 @@ pub(super) async fn create_service(
         (Some(o), None) => Some(format!("duplicate override: {o}")),
         (None, r) => r.map(str::to_string),
     };
-    let stored = match store::create(&tx, &agent.0, kept_reason.as_deref(), &request.patient).await
+    let stored = match store::create_as(
+        &tx,
+        &agent.0,
+        kept_reason.as_deref(),
+        &request.patient,
+        request.drill,
+    )
+    .await
     {
         Ok(s) => s,
         Err(e) => return Err(ApiError::from(&e)),
@@ -296,6 +308,7 @@ pub(super) async fn create_service(
         // The override reason is free text and stays in the version history, not here.
         serde_json::json!({
             "version": stored.version,
+            "drill": stored.drill,
             "duplicate_override": !ids.is_empty(),
             "candidates": ids,
             "candidates_cut": candidates_cut,
@@ -652,6 +665,7 @@ mod tests {
 
     fn stored(id: &str, patient: Patient) -> store::Stored {
         store::Stored {
+            drill: false,
             id: id.into(),
             version: 1,
             author: "a".into(),

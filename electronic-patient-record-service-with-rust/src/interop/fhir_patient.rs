@@ -40,6 +40,9 @@ pub struct FromFhir {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Unreadable(pub Vec<String>);
 
+/// The `meta.tag` system that marks a drill or test record.
+pub const DRILL_TAG_SYSTEM: &str = "urn:epr:record-kind";
+
 /// The stored record as a FHIR R4 `Patient` (a `Resource::Patient`, so it serializes with its
 /// `resourceType`), with `meta.versionId` set to the record version. The
 /// result is parsed through the typed R4 model, so it is known to be shaped as R4 requires.
@@ -54,6 +57,14 @@ pub fn to_fhir(stored: &Stored) -> Result<Resource, String> {
         "id": stored.id,
         "meta": { "versionId": stored.version.to_string() },
     });
+    if stored.drill {
+        // A drill or test record says so in the resource itself (EC-10).
+        out["meta"]["tag"] = json!([{
+            "system": DRILL_TAG_SYSTEM,
+            "code": "drill",
+            "display": "DRILL - NOT A REAL PATIENT",
+        }]);
+    }
     let map = out.as_object_mut().ok_or("not an object")?;
     if !p.identifiers.is_empty() {
         map.insert(
@@ -253,6 +264,7 @@ mod tests {
 
     fn stored() -> Stored {
         Stored {
+            drill: false,
             id: "11111111-1111-4111-8111-111111111111".into(),
             version: 3,
             author: "a".into(),
@@ -309,6 +321,21 @@ mod tests {
         expected.id = None;
         assert_eq!(back.patient, expected);
         assert!(back.dropped.is_empty(), "{:?}", back.dropped);
+    }
+
+    #[test]
+    fn a_drill_record_carries_a_tag_and_a_real_one_does_not() {
+        let mut s = stored();
+        assert!(
+            serde_json::to_value(to_fhir(&s).unwrap()).unwrap()["meta"]
+                .get("tag")
+                .is_none()
+        );
+        s.drill = true;
+        let json = serde_json::to_value(to_fhir(&s).unwrap()).unwrap();
+        assert_eq!(json["meta"]["tag"][0]["system"], DRILL_TAG_SYSTEM);
+        assert_eq!(json["meta"]["tag"][0]["code"], "drill");
+        assert_eq!(json["meta"]["versionId"], "3");
     }
 
     #[test]

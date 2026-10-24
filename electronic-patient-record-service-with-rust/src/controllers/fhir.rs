@@ -194,6 +194,8 @@ fn search_from(params: &HashMap<String, String>) -> Result<Search, String> {
         family: params.get("family").cloned(),
         birth_date,
         identifier: params.get("identifier").cloned(),
+        // The FHIR facade shows real patients only (EC-10).
+        drill: false,
     })
 }
 
@@ -334,6 +336,7 @@ async fn create_patient(
         patient,
         reason: None,
         override_reason: None,
+        drill: false,
     };
     let r = patients::create_service(&ctx, &agent, &subject, &headers, &request)
         .await
@@ -672,6 +675,7 @@ mod tests {
 
     fn stored(id: &str, family: &str) -> Stored {
         Stored {
+            drill: false,
             id: id.into(),
             version: 3,
             author: "a".into(),

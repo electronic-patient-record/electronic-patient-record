@@ -27,6 +27,7 @@ const PATIENT: &str = "11111111-1111-4111-8111-111111111111";
 
 fn patient() -> Stored {
     Stored {
+        drill: false,
         id: PATIENT.into(),
         version: 3,
         author: "someone".into(),
@@ -110,6 +111,9 @@ fn resources() -> Vec<(&'static str, Value)> {
             .unwrap()
             .unwrap(),
     );
+    let mut drill_record = patient();
+    drill_record.drill = true;
+    let drill = value(&fhir_patient::to_fhir(&drill_record).unwrap());
     let none = value(&fhir_allergy::no_known_allergies(PATIENT, "2026-10-21T09:30:00Z").unwrap());
     let audit = value(&fhir_audit::to_fhir(&audit_row()).unwrap());
     let bundle = json!({
@@ -120,6 +124,7 @@ fn resources() -> Vec<(&'static str, Value)> {
     });
     vec![
         ("patient", p),
+        ("patient-drill", drill),
         ("allergy-active", active),
         ("allergy-inactive", inactive),
         ("no-known-allergies", none),

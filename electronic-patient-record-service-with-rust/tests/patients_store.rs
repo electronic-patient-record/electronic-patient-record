@@ -198,6 +198,7 @@ async fn search_finds_current_versions_by_name_prefix_birth_date_and_identifier(
         family: family.map(Into::into),
         birth_date: dob.map(Into::into),
         identifier: ident,
+        drill: false,
     };
     assert!(
         store::search(&db, &by(Some(&family), None, None))
