@@ -23,5 +23,8 @@
 | OQ-PA2 | Which system owns the person identity, and how does a merge reach the PAS? (PA-2) | maintainer |
 | OQ-PA3 | FHIR R4 or R5 at the PAS boundary, and who builds the edge? (PA-9) | maintainer |
 | OQ-PA4 | Do the SNOMED CT UK acuity concepts the PAS cites exist and mean what it says? (PA-10) | maintainer |
+| OQ-E1 | Does the EPR own resuscitation status (DNACPR or ReSPECT) and show it in the banner, or read it from a shared care record? Recommendation: a read-only copy with its source and date. (EC-5) | maintainer |
+| OQ-E2 | How is an unidentified patient's record joined to the real record later? Recommendation: a merge with a reason, never an automatic link. (EC-2) | maintainer |
+| OQ-E3 | Does the ED board need a major-incident mode in 1.0? Recommendation: no, post-1.0. (EC-9) | maintainer |
 
 No answers recorded yet, except where a row says decided or proposed.

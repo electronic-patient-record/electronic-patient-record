@@ -23,6 +23,7 @@ IDs are grouped by prefix so they do not collide with the numbered build-out in
 | `PN-` | Pain assessment, Wong-Baker FACES and 0-10 scale (research 2026-10-23) | with RC-6 (M2) |
 | `EM-` | Typical EPR modules and the gaps against them (research 2026-10-23) | M7 or post-1.0, decided by EM-1 |
 | `PA-` | Ideas from the Patient Administration System and the boundary with it (research 2026-10-23) | PA-1 first; the rest by milestone |
+| `EC-` | Ideas from the emergency care system repository (research 2026-10-24; a synthetic source) | EC-1 first; the rest by milestone |
 
 Sizes: S ≈ one business day, M ≈ a few business days, L ≈ a business week or
 more.
@@ -958,3 +959,80 @@ what a clinician or a carer sees.
 - [ ] **PA-17 (S) — Ideas not taken, recorded.** **Not clinical.** A short `spec/` note listing group consultations,
   RAG tolerances, Welsh RTT rules and NHS Wales App and PROMs feeds as not planned here, with the reason for each.
   **Acceptance:** the note is merged and the links check passes.
+
+## Research 2026-10-24 — the emergency care system repository (ECS)
+
+Ranked in plan.md §19. The source is a synthetic, model-written, US-flavoured demo, so every item must name a real UK
+source before it enters `spec/`, and items say **[uncertain]** where it matters. Items are **Clinical** unless they say
+otherwise. Nothing here is built.
+
+- [ ] **EC-1 (S) — Status note on the ECS repository.** **Not clinical.** One paragraph in `spec/17-references.md`
+  saying what `~/git/emergency-care-system` is (synthetic, model-written, ESI and US billing), that it is a source of
+  scenario ideas only, and that none of its numbers or rules are used.
+  **Acceptance:** the note is linked from plan.md §19 and the links check passes.
+- [ ] **EC-2 (M) — Unknown-patient registration.** A temporary record with a placeholder id, an "identity not
+  verified" flag, unverified fields (estimated age range, a name found on a card), and a task to identify. When the
+  person is identified, the temporary record is merged into the real one through ID-5 with a reason, never linked
+  automatically, and a conscious patient with an existing record never gets a second one. The matcher must treat a
+  placeholder name or id as no evidence and refuse an automatic link on it (as for placeholder NHS numbers, CQ-2).
+  Settles OQ-E2.
+  **Acceptance:** a test registers an unknown patient with only an estimate and gets a temporary record; a placeholder
+  record never auto-links (matcher test); a merge on identification keeps every order and result and the audit
+  trail; an unverified field is never shown as verified.
+- [ ] **EC-3 (M) — Corrected and cancelled critical results.** A corrected or cancelled result cancels its critical
+  alert, sends the correction to every recipient who saw the original, removes the flag from every display, and records
+  the lab error. A critical result needs a named acknowledgement within a configured time, with escalation (fake
+  clock). Check OR-4 and OR-5 first and amend them if they already cover part of this.
+  **Acceptance:** a corrected value reaches every earlier recipient (test), the superseded value stays in history and
+  is marked superseded, and an unacknowledged critical result escalates.
+- [ ] **EC-4 (S) — Override and manual-entry acceptance for EM-2, OR-5 and RC-5.** An allergy or interaction override
+  records the clinical rationale, the risk assessment, the monitoring plan and the alternatives reviewed, and tells the
+  nurse. A manual drug entry after a failed barcode scan needs a second person and creates a pharmacy review item. A
+  high-risk medicine needs an independent double check. Add these as acceptance lines on the items named.
+  **Acceptance:** each of the three items carries the lines, and EM-2's tests include a failed scan.
+- [ ] **EC-5 (L) — Resuscitation status and cardiac arrest call (post-1.0 for the call).** Two parts. First, a
+  read-only resuscitation status (DNACPR or ReSPECT, its source and date) in the patient banner; the form is
+  **[uncertain]** and OQ-E1 decides ownership. Second, a cardiac arrest call: activation, a timed event log kept by a
+  named recorder, return of circulation, stop, a false alarm closed with a reason. Medicines given in the call go
+  through EM-2 afterwards, not into free text.
+  **Acceptance:** the banner shows the status with its date and says "not recorded" when absent, never "for
+  resuscitation"; an event log entry is append-only with its time; a false alarm leaves a record.
+- [ ] **EC-6 (M) — Capacity, self-discharge and left without being seen.** Record a capacity assessment (the Mental
+  Capacity Act **[uncertain]**) with who assessed and a witness when a patient leaves against advice, with the safety
+  advice given. A patient who leaves unseen is a recorded outcome with a follow-up task, distinct from a discharge.
+  **Acceptance:** a self-discharge cannot be saved without a capacity entry, a left-unseen patient appears on a
+  follow-up list, and neither is counted as a normal discharge.
+- [ ] **EC-7 (S) — Time-critical flags, no auto-ordering.** A suspected stroke or heart attack shows a countdown
+  beside the patient on the board. The countdown is display only. No rule here reorders a queue, assigns a provider, or
+  moves someone ahead because of a status; a "VIP" or preference flag may not change order. A confidentiality flag
+  (hide a name on a public board) is separate and allowed. Adds a line to NFR-12's list of examples.
+  **Acceptance:** a test shows the queue order is unchanged by a countdown or a preference flag, and a hidden-name flag
+  hides only the name.
+- [ ] **EC-8 (S) — Reassessment due clock.** An hourly check marks patients whose next assessment is due, with a
+  standard and an urgent state, and no alert for a patient not yet due. The intervals come from the triage pack
+  (TR-*) and EM-3, not from this item.
+  **Acceptance:** with a fake clock, a due patient is flagged, a not-due patient is not, and the list says "not
+  assessed" for a patient never assessed.
+- [ ] **EC-9 (L) — Major-incident mode (post-1.0, with EM-12).** Minimal registration with numbered ids, a tracking
+  board, a family information list, surge areas and a stand-down, kept behind a flag. Decides OQ-E3.
+  **Acceptance:** a spike result and a scope decision in `spec/02-scope.md`; nothing is built before EM-1.
+- [ ] **EC-10 (M) — Drill mode and test-data separation.** Any drill or synthetic patient is flagged at creation,
+  shows a banner "DRILL — NOT A REAL PATIENT" everywhere it appears, is excluded from real lists, metrics and exports
+  by default, and can never be merged into a real record.
+  **Acceptance:** a test merge of a drill record into a real one is refused, a drill record is absent from the
+  default patient search and from an aggregate, and the banner is on every view that shows it.
+- [ ] **EC-11 (M) — Emergency access review and outage access.** After a break-glass access, a review task records the
+  necessity, the minimum data used, whether the patient was told, and a quality outcome. For an authentication outage,
+  prefer the read-only downtime snapshot (CA-7) to a login bypass; any time-limited emergency account needs a named
+  approver, an expiry, read-only scope and live monitoring, and is a decision for the Clinical Safety Officer first.
+  **Acceptance:** a break-glass access without a review after a configured time appears on the compliance list; no
+  authentication bypass exists in code; the decision on emergency accounts is in `spec/16-open-questions.md`.
+- [ ] **EC-12 (S) — Data-age banner.** Every screen that may show cached or queued data shows the time it was last
+  synced and says when it may not be current, and critical data syncs first on reconnection. Extends PA-1's rule and
+  CA-7, CA-8.
+  **Acceptance:** an offline test shows the last-sync time and the warning, and a critical item syncs before a routine
+  one.
+- [ ] **EC-13 (S) — Given/When/Then acceptance for clinical tasks.** **Not clinical.** A spike on writing acceptance
+  for hazard-linked tasks as Gherkin files run by one runner, with the feature file winning over code. One feature set,
+  not twelve ports.
+  **Acceptance:** two tasks have feature files that run in CI, and the result says what the format cost and gave.

@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-24 - Research pass: the emergency care system repository (EC-1 to EC-13)
+
+- `plan.md` §19 assesses 21 ideas from `~/git/emergency-care-system`; `tasks.md` gains the `EC-` prefix (EC-1 to EC-13); `spec/16-open-questions.md` gains OQ-E1 to OQ-E3; `scripts/generate-status.sh` counts the `EC` prefix. Planning only: no code, spec rule or hazard-log change.
+- Not done or not verified: I read the README, AGENTS, titles of all 171 scenarios and about fifteen full scenarios, not the app code, the twelve suites or the site. The source is synthetic and model-written, so every UK reference (DNACPR or ReSPECT, the Mental Capacity Act, single-sex rules) is marked uncertain and unchecked. No EC item is built, and none has hazard rows yet.
+
 ## 2026-10-24 - PA-3: support-only tripwire (NFR-12)
 
 - New `tests/support_only.rs` (service, 3 tests) and NFR-12 in `spec/07`: a migration that names a column like `score`, `rank`, `deprioritise`, `suppress`, `withhold` or `overbook` fails unless it is on an allow-list with a reason. One entry today: `match_score` (the matcher's score on a patient link). I confirmed the test fails when that entry is removed. Not clinical, no hazard-log change.
