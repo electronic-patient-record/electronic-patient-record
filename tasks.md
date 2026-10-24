@@ -913,7 +913,7 @@ what a clinician or a carer sees.
   scores or drafts (DO-8, SE-11). Inert until all three. A CSO approval is recorded by a person, never by a script.
   **Acceptance:** with the switch on and no approval the feature does nothing, in shadow it records but shows nothing,
   and the approval is audited.
-- [ ] **PA-5 (M) — Proxy authority with scopes.** **Clinical.** Patient, proxy, relationship, basis, scopes, a named
+- [ ] **PA-5 (M) — Proxy authority with scopes.** **Clinical.** **First slice landed 2026-10-24** (`proxy.rs`, pure decision and validation, no caller; `proxy::tests`, 9). **Open:** store, routes, audit and access-log entry, use by `relationships`/`policy`, adolescent confidentiality, UI. Patient, proxy, relationship, basis, scopes, a named
   recorder, an expiry, and revocation, as the model for CA-5 proxy access and adolescent confidentiality.
   **Acceptance:** a proxy cannot read outside its scopes, an expired or revoked proxy is refused (fake clock), and every
   use is in the patient's access log.

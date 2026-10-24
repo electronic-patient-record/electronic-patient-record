@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-24 - Service: the proxy authority rule, pure (PA-5, first slice)
+
+- `proxy.rs`: `decide` (revoked, expired, out of scope, in that order; the expiry instant is expired) and `validate` (no empty scope, no self-recorded authority, a required expiry within five years). 9 unit tests; moving the expiry or revocation boundary, or ignoring the scope list, makes tests fail.
+- Not done: nothing calls it, so **proxy access is unchanged and still all-or-nothing** (hazard H-011 and the proxy part of the model are not improved yet, so the hazard log is unchanged). No store, route, audit row, access-log entry, UI or adolescent-confidentiality rule. The four scopes and the five-year limit are guesses; the basis list is not checked against anything.
+
 ## 2026-10-24 - UI: `/my-record` shows how old the record is (EC-12, second slice)
 
 - The patient and proxy page shows "Record read at HH:MM" and, when a later look fails or none succeeds for 2.5 minutes, an alert that the record may not be current. It looks again once a minute and when the tab comes back, and keeps the records on screen if a look fails. One e2e test. Same rule as the patient page (`src/lib/data-age.ts`).
