@@ -3,9 +3,9 @@
 //! insert fails; the answer must be 500 and no store may gain a row. Then the same request is sent with audit
 //! working and must succeed, so the 500 is proved to come from the audit row and not from a bad request.
 //!
-//! Covered: patient create and update (API and FHIR create), consent, relationship, allergy and the allergy
-//! statement, photo put and withdraw, merge and unmerge. **Not covered yet:** FHIR update, the two break-glass
-//! writes and resolving a feed refusal (tasks.md CQ-39).
+//! Covered here (login off): patients, FHIR create and update, consent, relationship, allergy, the allergy
+//! statement, photo put and withdraw, merge and unmerge. Break-glass and the feed queue need login on, so they
+//! are in `http_audit_refusal_roles.rs`.
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
@@ -17,56 +17,15 @@ use axum::http::{HeaderName, HeaderValue, StatusCode};
 use electronic_patient_record::app::App;
 use electronic_patient_record_matcher::{HumanName, Patient};
 use loco_rs::testing::prelude::request;
-use sea_orm::{ConnectionTrait, DatabaseConnection, Statement};
 use serde_json::{Value, json};
-use std::future::Future;
+
+mod audit_switch;
+use audit_switch::{DRIVEN, LOGIN_OFF, LOGIN_ON, install, refused_then_accepted, uninstall};
 
 const PNG: &[u8] = &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3];
 
-/// The write routes this file drives with a failing audit table, spelled as in `routes::TABLE`.
-const COVERED: [&str; 14] = [
-    "POST /api/patients",
-    "PUT /api/patients/{id}",
-    "POST /fhir/R4/Patient",
-    "POST /api/patients/{id}/allergies",
-    "PUT /api/patients/{id}/allergies/{allergy_id}",
-    "PUT /api/patients/{id}/allergy-statement",
-    "PUT /api/patients/{id}/photo",
-    "POST /api/patients/{id}/photo/withdraw",
-    "POST /api/patients/{id}/consents",
-    "PUT /api/patients/{id}/consents/{consent_id}",
-    "POST /api/patients/{id}/relationships",
-    "PUT /api/patients/{id}/relationships/{relationship_id}",
-    "POST /api/patients/{id}/merge",
-    "POST /api/patients/{id}/unmerge",
-];
-
-/// Write routes with no such test yet. Each one is a gap in CQ-39: remove it from here when it is covered.
-const NOT_COVERED: [&str; 4] = [
-    "PUT /fhir/R4/Patient/{id}",
-    "POST /api/patients/{id}/break-glass",
-    "POST /api/break-glass/reviews/{id}",
-    "POST /api/feed/refusals/{id}/resolve",
-];
-
 /// A read in write clothing: it audits, but it changes nothing.
 const NOT_A_WRITE: [&str; 1] = ["POST /api/patients/compare"];
-
-/// The routes `refused_then_accepted` has been called with.
-static DRIVEN: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
-
-/// Every table a write route changes.
-const STORES: [&str; 9] = [
-    "patient_versions",
-    "consent_versions",
-    "relationship_versions",
-    "allergy_versions",
-    "allergy_assertion_versions",
-    "patient_photos",
-    "patient_link_versions",
-    "break_glass_grants",
-    "feed_refusal_resolutions",
-];
 
 fn tag(label: &str) -> String {
     let mut n = std::time::SystemTime::now()
@@ -107,104 +66,6 @@ fn patient(family: &str, seed: u128) -> Value {
 fn login_off() {
     // SAFETY: set before any thread of this test reads it, and the suite runs single-threaded.
     unsafe { std::env::set_var("EPR_REQUIRE_AUTH", "false") };
-}
-
-async fn sql(db: &DatabaseConnection, text: &str) {
-    db.execute_unprepared(text).await.unwrap();
-}
-
-async fn counts(db: &DatabaseConnection) -> Vec<i64> {
-    let mut out = Vec::new();
-    for table in STORES.iter().chain(["audit_events"].iter()) {
-        let row = db
-            .query_one_raw(Statement::from_string(
-                db.get_database_backend(),
-                format!("SELECT count(*) AS n FROM {table}"),
-            ))
-            .await
-            .unwrap()
-            .unwrap();
-        out.push(row.try_get::<i64>("", "n").unwrap());
-    }
-    out
-}
-
-/// Install the switch and its trigger. The switch starts off.
-async fn install(db: &DatabaseConnection) {
-    sql(
-        db,
-        "DROP TRIGGER IF EXISTS epr_test_audit_refuse ON audit_events",
-    )
-    .await;
-    sql(db, "DROP TABLE IF EXISTS epr_test_audit_switch").await;
-    sql(
-        db,
-        "CREATE TABLE epr_test_audit_switch (fail BOOLEAN NOT NULL)",
-    )
-    .await;
-    sql(db, "INSERT INTO epr_test_audit_switch VALUES (false)").await;
-    sql(
-        db,
-        "CREATE OR REPLACE FUNCTION epr_test_audit_refuse() RETURNS trigger AS $$
-         BEGIN
-           IF (SELECT fail FROM epr_test_audit_switch LIMIT 1) THEN
-             RAISE EXCEPTION 'audit row refused by test';
-           END IF;
-           RETURN NEW;
-         END $$ LANGUAGE plpgsql",
-    )
-    .await;
-    sql(
-        db,
-        "CREATE TRIGGER epr_test_audit_refuse BEFORE INSERT ON audit_events
-         FOR EACH ROW EXECUTE FUNCTION epr_test_audit_refuse()",
-    )
-    .await;
-}
-
-async fn uninstall(db: &DatabaseConnection) {
-    sql(
-        db,
-        "DROP TRIGGER IF EXISTS epr_test_audit_refuse ON audit_events",
-    )
-    .await;
-    sql(db, "DROP FUNCTION IF EXISTS epr_test_audit_refuse()").await;
-    sql(db, "DROP TABLE IF EXISTS epr_test_audit_switch").await;
-}
-
-/// Send the request with the audit insert failing, check it was refused and changed nothing, then
-/// send it again with audit working and check it is accepted.
-async fn refused_then_accepted<F, Fut>(db: &DatabaseConnection, route: &str, send: F)
-where
-    F: Fn() -> Fut,
-    Fut: Future<Output = (StatusCode, String)>,
-{
-    DRIVEN.lock().unwrap().push(route.to_string());
-    let before = counts(db).await;
-    sql(db, "UPDATE epr_test_audit_switch SET fail = true").await;
-    let (status, body) = send().await;
-    // Off again before anything can fail an assertion and leave it on.
-    sql(db, "UPDATE epr_test_audit_switch SET fail = false").await;
-    assert_eq!(
-        status,
-        StatusCode::INTERNAL_SERVER_ERROR,
-        "{route}: a write whose audit row cannot be written must be refused: {body}"
-    );
-    assert_eq!(
-        counts(db).await,
-        before,
-        "{route}: the refused write left a row behind"
-    );
-    let (status, body) = send().await;
-    assert!(
-        status.is_success(),
-        "{route}: the same request must succeed once audit works ({status}): {body}"
-    );
-    assert_ne!(
-        counts(db).await,
-        before,
-        "{route}: the accepted write stored nothing"
-    );
 }
 
 #[tokio::test]
@@ -265,6 +126,26 @@ async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_r
         };
         refused_then_accepted(db, "POST /fhir/R4/Patient", || async {
             let r = server.post("/fhir/R4/Patient").json(&fhir).await;
+            (r.status_code(), r.text())
+        })
+        .await;
+
+        // FHIR update, with If-Match.
+        let fhir_read = server
+            .get(&format!("/fhir/R4/Patient/{other}"))
+            .await
+            .json::<Value>();
+        let mut fhir_changed = fhir_read.clone();
+        fhir_changed["telecom"] = json!([{ "system": "phone", "value": "01632 960002" }]);
+        refused_then_accepted(db, "PUT /fhir/R4/Patient/{id}", || async {
+            let r = server
+                .put(&format!("/fhir/R4/Patient/{other}"))
+                .add_header(
+                    HeaderName::from_static("if-match"),
+                    HeaderValue::from_static("W/\"1\""),
+                )
+                .json(&fhir_changed)
+                .await;
             (r.status_code(), r.text())
         })
         .await;
@@ -434,19 +315,19 @@ async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_r
 
         let mut driven = DRIVEN.lock().unwrap().clone();
         driven.sort();
-        let mut covered: Vec<String> = COVERED.iter().map(ToString::to_string).collect();
+        let mut covered: Vec<String> = LOGIN_OFF.iter().map(ToString::to_string).collect();
         covered.sort();
         assert_eq!(
             driven, covered,
-            "COVERED must list exactly what this test drives"
+            "LOGIN_OFF must list exactly what this test drives"
         );
     })
     .await;
 }
 
-/// Census (database-free): every route in the policy table that is not a GET is either driven above, listed
-/// as not covered, or a read. A new write route therefore fails here until it is given an audit-failure test
-/// or an entry in `NOT_COVERED`, which is a visible gap in CQ-39.
+/// Census (database-free): every route in the policy table that is not a GET is driven by this file or
+/// by `http_audit_refusal_roles.rs`, or is a read. A new write route therefore fails here until it is given an
+/// audit-failure test and listed in `audit_switch::LOGIN_OFF` or `LOGIN_ON`.
 #[test]
 fn every_write_route_is_covered_or_listed_as_a_gap() {
     let mut writes: Vec<String> = electronic_patient_record::routes::TABLE
@@ -456,14 +337,14 @@ fn every_write_route_is_covered_or_listed_as_a_gap() {
         .filter(|r| !NOT_A_WRITE.contains(&r.as_str()))
         .collect();
     writes.sort();
-    let mut known: Vec<String> = COVERED
+    let mut known: Vec<String> = LOGIN_OFF
         .iter()
-        .chain(NOT_COVERED.iter())
+        .chain(LOGIN_ON.iter())
         .map(ToString::to_string)
         .collect();
     known.sort();
     assert_eq!(
         writes, known,
-        "a write route was added or removed: give it an audit-failure test (COVERED) or list it (NOT_COVERED)"
+        "a write route was added or removed: give it an audit-failure test and list it in tests/audit_switch/mod.rs"
     );
 }
