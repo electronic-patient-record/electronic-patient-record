@@ -826,7 +826,7 @@ Ranked in plan.md §17. Sources are search summaries and a pasted module list, s
 matters. Every item is **Clinical** unless it says otherwise. EM-1 decides what is in 1.0, M7 or post-1.0, and EM-16
 adds the hazard rows before any module code is written.
 
-- [ ] **EM-1 (S) — Module map and scope decisions.** **Not clinical.** A `spec/` page that lists each typical module
+- [ ] **EM-1 (S) — Module map and scope decisions.** **Not clinical.** **Proposal written 2026-10-24** (`spec/19-module-map.md`, OQ-M1 to OQ-M3 in `spec/16`; awaiting the maintainer, so the box stays unticked). A `spec/` page that lists each typical module
   group (plan.md §17.2) as in 1.0, M7 or post-1.0, with the task that covers it, and moves OQ-M1 to OQ-M3 into
   `spec/16-open-questions.md`.
   **Acceptance:** every module group has a row, `spec/02-scope.md` agrees with it, and the links check passes.

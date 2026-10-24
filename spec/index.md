@@ -55,6 +55,7 @@ repositories read the same way.
 16. [Open Questions](16-open-questions.md) — OQ-n, each with an owner and a date
 17. [References](17-references.md) — standards, products, papers (see [`../plan.md`](../plan.md) for the research)
 18. [Change Control](18-change-control.md) — how the spec changes; clinical-safety impact assessment on every change
+19. [Module map](19-module-map.md) — typical EPR modules as 1.0, M7 or post-1.0 (proposed, OQ-M1)
 
 ## Cross-cutting sections
 

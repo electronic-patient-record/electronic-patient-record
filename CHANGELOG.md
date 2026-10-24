@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-24 - EM-1: module map proposal
+
+- New `spec/19-module-map.md` (every module group from plan.md §17.2 with a slot, as a proposal), OQ-M1 to OQ-M3 in
+  `spec/16-open-questions.md`, a pointer in `spec/02-scope.md` and `spec/index.md`. Planning only: no code, no hazard-log change.
+- Not done: the maintainer has not confirmed any slot, so EM-1 is unticked; EM-16 (hazard rows) is not started. The slots rest on search summaries, not on a read of the DCF or EMRAM.
+
 ## 2026-10-24 - CQ-38: task to move the service and UI to `conflict_codes`
 
 - `tasks.md` gains CQ-38 and CQ-19 points to it. Planning only: no code, spec or hazard-log change.

@@ -8,7 +8,7 @@ break-the-glass; FHIR R4 API, SMART App Launch, CDS Hooks client, HL7 v2 inbound
 
 **Out of scope for 1.0**: billing and claims (X12, NHS PbR); a licensed drug knowledge base (we integrate one);
 e-prescribing network certification (Surescripts, EPS) and EPCS; PACS (link via ImagingStudy/DICOMweb); LIS/RIS
-internals; eMAR with barcode scanning (planned M7); ONC certification itself; eCQM/QRDA; public-health eCR;
+internals; eMAR with barcode scanning (planned M7, EM-2; see the [module map](19-module-map.md)); ONC certification itself; eCQM/QRDA; public-health eCR;
 offline-first data entry; emergency department triage (Manchester Triage System or another), decided post-1.0 on
 2026-10-23 (OQ-T2). The data model stays compatible: triage would be append-only assessments on an Encounter. The
 design takes a pluggable, versioned triage pack so that more than one system can be loaded, and only one is planned

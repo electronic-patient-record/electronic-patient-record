@@ -16,6 +16,9 @@
 | OQ-P1 | Does the project or each deploying organisation hold the Wong-Baker FACES licence? No artwork in the repo until settled (PN-1) | maintainer |
 | OQ-P2 | Which LOINC codes and value set bind pain observations (72514-3, 38221-8 unverified)? (PN-2) | maintainer |
 | OQ-P3 | Do we support observer pain scales (FLACC, CPOT, PAINAD)? (PN-10) | maintainer |
+| OQ-M1 | Which module groups are in the 1.0 claim, and which are post-1.0? **Proposed 2026-10-24, not yet confirmed by the maintainer:** eMAR, nursing assessments and discharge summary in M7, the rest post-1.0 (see [19](19-module-map.md)). (EM-1) | maintainer |
+| OQ-M2 | Which risk tools (Waterlow, Braden, MUST, falls, VTE) may we encode, and under what licence? (EM-3) | maintainer |
+| OQ-M3 | Do we build closed-loop barcode scanning ourselves or integrate a wristband and drug-barcode service? (EM-2) | maintainer |
 | OQ-PA1 | Does the EPR defer to the Patient Administration System (PAS), keep a minimal scheduler behind a port, or neither? **Proposed 2026-10-23, not yet confirmed by the maintainer: a minimal scheduler behind a scheduling port the PAS can implement** (PA-1, plan.md §18.2; the split is in `spec/02-scope.md`) | maintainer |
 | OQ-PA2 | Which system owns the person identity, and how does a merge reach the PAS? (PA-2) | maintainer |
 | OQ-PA3 | FHIR R4 or R5 at the PAS boundary, and who builds the edge? (PA-9) | maintainer |
