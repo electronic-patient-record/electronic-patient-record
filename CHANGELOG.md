@@ -7,6 +7,11 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - New section "The audit row is part of the write" in `spec/audit/index.md`, a sentence in NFR-7, and task CQ-39. The service already behaves this way for patient create and update (the store test and the service spec's "Write and audit in one transaction" row); the new text makes it the rule for every write.
 - Not verified: only patient create and update have a test with a failing audit table. I read that the other write controllers (allergies, photos, merge, break-glass, feed, consents, relationships) begin a transaction and commit, but I did not check that each appends its row inside it, and no test drives them. The spec says so, and CQ-39 is the test. Nothing in code changed for this item.
 
+## 2026-10-24 - Service: the privacy rule for aggregates (PA-7, first slice)
+
+- New `src/privacy.rs`: `suppress` hides counts of 1 to `k-1` (`k` at least 5), shows zeros, and with a published total also hides the smallest other nonzero cell until the hidden sum reaches `k`; `Budget` allows a number of tables per caller per window and does not count a refusal. 11 unit tests; with secondary suppression off and the boundary moved, three fail. No caller, so the hazard log is unchanged.
+- Not done: the rule does **not** stop differencing (two tables over populations that differ by a few people), linkage, or repeated queries, and says so in its header; the pair-of-queries check is not built, so the acceptance "a pair of queries that would difference it out is refused or listed" is not met and PA-7 stays open. It handles one-dimensional tables with one total; a two-way table with row and column totals needs a stronger rule (complementary suppression across both). The budget is in memory only. `k` of 5 and any limit are guesses.
+
 ## 2026-10-24 - UI: the patient page shows how old the record is (EC-12, first slice)
 
 - `src/lib/data-age.ts` (pure), a "Record read at HH:MM" line under the banner on `/patients/[id]`, and an alert when the latest background look failed or no read succeeded for 2.5 minutes; the record stays on screen. Tests: 5 unit, one Playwright (read, failed look, recovery; axe clean). `pnpm run check` clean, vitest 117, Playwright 46 pass locally. H-016's controls, evidence and residual text updated (status unchanged).

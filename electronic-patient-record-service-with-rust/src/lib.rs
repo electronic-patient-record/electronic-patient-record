@@ -28,6 +28,7 @@ pub mod mllp;
 pub mod patients_store;
 pub mod photos_store;
 pub mod policy;
+pub mod privacy;
 pub mod relationships;
 pub mod routes;
 pub mod store;
