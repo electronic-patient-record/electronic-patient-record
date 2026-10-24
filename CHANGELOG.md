@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-24 - CQ-38: task to move the service and UI to `conflict_codes`
+
+- `tasks.md` gains CQ-38 and CQ-19 points to it. Planning only: no code, spec or hazard-log change.
+- Not done: the matcher release, the service bump and the UI mapping. Nothing is pushed and CI has never run (CQ-20).
+
 ## 2026-10-23 - CQ-17: `/metrics` with three counters
 
 - New `src/metrics.rs` and `GET /metrics` (Prometheus text): audit-append failures, refusals that left no audit row
