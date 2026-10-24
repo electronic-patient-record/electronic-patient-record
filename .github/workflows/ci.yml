@@ -121,7 +121,8 @@ jobs:
         run: PGPASSWORD=loco psql -v ON_ERROR_STOP=1 -h localhost -U loco -d electronic_patient_record_test -f ../ci/postgres-init/00-extensions.sql
       # Every ignored (database-gated) test wherever it lives, every binary even after a failure.
       - name: Every DB-gated test
-        run: cargo test --workspace --locked --no-fail-fast -- --ignored --test-threads=1
+        # The FHIR validator tests are `#[ignore]` too but need Java and the jar: the `fhir-validator` job runs them.
+        run: cargo test --workspace --locked --no-fail-fast -- --ignored --test-threads=1 --skip fhir_validator_
 
   deny:
     name: cargo deny

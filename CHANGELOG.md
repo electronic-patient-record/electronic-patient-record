@@ -6,6 +6,7 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 
 - New job in `.github/workflows/ci.yml` (Temurin 25, the jar cached by the script's hash, `scripts/fhir-validator.sh` re-checks its SHA-256) running `tests/fhir_validator.rs`, and added to `ci-ok`'s needs. I have not seen it run: it is verified only by pushing. `spec/11` and the service spec said "not yet in CI"; updated.
 - Not done: no UK Core or US Core profile validation; a cache miss downloads 200 MB.
+- Found by the first run: the validator job passed, but `api-db` failed, because its `-- --ignored` step also ran the two validator tests, which need the jar. The two tests are now named `fhir_validator_*` and the `api-db` step skips that prefix (`--skip fhir_validator_`). Not verified: that `api-db` is green again (it is verified by pushing).
 
 ## 2026-10-24 - Testing: the official HL7 FHIR validator as an oracle
 

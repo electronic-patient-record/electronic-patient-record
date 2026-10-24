@@ -153,7 +153,7 @@ fn validate(jar: &Path, files: &[PathBuf]) -> (bool, String) {
 
 #[test]
 #[ignore = "needs Java and the validator jar: set FHIR_VALIDATOR_JAR"]
-fn every_resource_the_service_writes_passes_the_r4_validator() {
+fn fhir_validator_accepts_every_resource_the_service_writes() {
     let jar = jar();
     let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("fhir-validator");
     std::fs::create_dir_all(&dir).unwrap();
@@ -175,7 +175,7 @@ fn every_resource_the_service_writes_passes_the_r4_validator() {
 /// element is refused, so a green run above means something.
 #[test]
 #[ignore = "needs Java and the validator jar: set FHIR_VALIDATOR_JAR"]
-fn the_validator_refuses_a_broken_patient() {
+fn fhir_validator_refuses_a_broken_patient() {
     let jar = jar();
     let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("fhir-validator");
     std::fs::create_dir_all(&dir).unwrap();
