@@ -19,6 +19,7 @@ pub mod consent;
 pub mod consents_store;
 pub mod controllers;
 pub mod feed_queue;
+pub mod gate;
 pub mod ids;
 pub mod interop;
 pub mod links;

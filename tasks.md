@@ -909,7 +909,7 @@ what a clinician or a carer sees.
   `deprioritise`, `suppress`, `withhold` or `overbook` unless it has a written reason, plus the rule in `spec/` that no
   score may reduce what a patient is offered. It is a tripwire, not proof, and the item says so.
   **Acceptance:** a test fails on a planted column, passes on the allow-list, and the allow-list entries have reasons.
-- [ ] **PA-4 (M) — Gated features.** **Clinical.** A switch plus named approvers plus shadow mode for any feature that
+- [ ] **PA-4 (M) — Gated features.** **First slice landed 2026-10-24** (`src/gate.rs`, the pure rule, 9 unit tests; nothing calls it). **Open:** an approvals store, a route to record and revoke an approval by a person with its audit row, the shadow-output record, and the first caller (DO-8 or SE-11). **Clinical.** A switch plus named approvers plus shadow mode for any feature that
   scores or drafts (DO-8, SE-11). Inert until all three. A CSO approval is recorded by a person, never by a script.
   **Acceptance:** with the switch on and no approval the feature does nothing, in shadow it records but shows nothing,
   and the approval is audited.

@@ -7,6 +7,11 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - New section "The audit row is part of the write" in `spec/audit/index.md`, a sentence in NFR-7, and task CQ-39. The service already behaves this way for patient create and update (the store test and the service spec's "Write and audit in one transaction" row); the new text makes it the rule for every write.
 - Not verified: only patient create and update have a test with a failing audit table. I read that the other write controllers (allergies, photos, merge, break-glass, feed, consents, relationships) begin a transaction and commit, but I did not check that each appends its row inside it, and no test drives them. The spec says so, and CQ-39 is the test. Nothing in code changed for this item.
 
+## 2026-10-24 - Service: the gated-feature rule (PA-4, first slice)
+
+- New `src/gate.rs`: a pure `effect(gate, now)` from a switch (`Off`, `Shadow`, `On`), required approver roles and approvals. `Off` is inert; `Shadow` records and never shows; `On` shows only with every role approved by a person inside the approval's window and not revoked; one person cannot approve two roles; a script identity never counts; a gate with no named approver never shows. 9 unit tests; with the window check and the one-person rule mutated out, two fail. Not clinical in itself: no feature uses it, so the hazard log is unchanged.
+- Not done: no store, route or audit for approving or revoking, so an approval cannot be made; no caller; no record of shadow output. Two choices of mine, not the maintainer's: shadow needs no approval (so evidence can be gathered), and an approval with no end date is allowed. PA-4 stays open.
+
 ## 2026-10-24 - UI: the patient banner marks a drill record (EC-10)
 
 - `Stored.drill`, a string `bannerDrill`, an alert at the top of `PatientBanner` and a style; one Playwright test (drill shows it, absent and false do not, axe clean). `pnpm run check` 0 errors, vitest 112, Playwright 44 pass locally. H-033's text now says the banner marks it but nothing else does (status `open`).
