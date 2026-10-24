@@ -5,13 +5,16 @@
 //! (role, relationship, purpose of use, consent) and writes an audit row. A write and its audit
 //! row are one transaction. The audit row never holds the image, only its size and type.
 
-use super::common::{Access, audit_resource, authorize, begin, commit, purpose_of, store_failure};
+use super::common::{
+    Access, audit_resource, authorize_scoped, begin, commit, purpose_of, store_failure,
+};
 use crate::api_error::ApiError;
 use crate::audit::Action;
 use crate::auth::Agent;
 use crate::patients_store::StoreError;
 use crate::photos_store::{self as store, StoredPhoto};
 use crate::policy::{self, Resource, Subject};
+use crate::proxy::Scope;
 use axum::{
     Extension,
     body::Bytes,
@@ -74,7 +77,7 @@ pub(super) async fn read(
         Ok(p) => p,
         Err(r) => return r.into_response(),
     };
-    if let Err(r) = authorize(
+    if let Err(r) = authorize_scoped(
         &ctx.db,
         &agent,
         &subject,
@@ -82,6 +85,7 @@ pub(super) async fn read(
         policy::Action::Read,
         purpose,
         Some(&id),
+        Some(Scope::Photo),
     )
     .await
     {
@@ -129,7 +133,7 @@ async fn write(
         Ok(p) => p,
         Err(r) => return r.into_response(),
     };
-    if let Err(r) = authorize(
+    if let Err(r) = authorize_scoped(
         &ctx.db,
         agent,
         subject,
@@ -137,6 +141,7 @@ async fn write(
         policy::Action::Update,
         purpose,
         Some(id),
+        Some(Scope::Photo),
     )
     .await
     {

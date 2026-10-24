@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   describeConsent,
   describeProvision,
+  describeProxy,
   emptyConsentForm,
   formToConsent,
+  proxyTerms,
   relationshipRecord,
 } from "../../src/lib/access";
 
@@ -84,5 +86,30 @@ describe("access and consent requests", () => {
     expect(
       describeConsent({ kind: "general", status: "active", provisions: [] }),
     ).toBe("No provisions");
+  });
+
+  it("builds proxy terms that end at the start of the day after the last day", () => {
+    expect(proxyTerms("deputyship", ["identity"], "2026-12-31")).toEqual({
+      basis: "deputyship",
+      scopes: ["identity"],
+      expires_at: Date.UTC(2027, 0, 1) / 1000,
+    });
+    for (const bad of ["", "tomorrow", "2026-02-30", "2026-13-01", "26-01-01"])
+      expect(proxyTerms("deputyship", ["identity"], bad), bad).toBeNull();
+  });
+
+  it("sends terms for a proxy only, and never invents them", () => {
+    const t = proxyTerms("patient-request", ["photo"], "2026-12-31");
+    expect(relationshipRecord("s", "proxy", "", "", t).proxy).toEqual(t);
+    expect(relationshipRecord("s", "care-team", "", "", t)).not.toHaveProperty("proxy");
+    expect(relationshipRecord("s", "proxy", "", "", null)).not.toHaveProperty("proxy");
+  });
+
+  it("describes a proxy by its scopes and last day, and says plainly when it has no terms", () => {
+    const t = proxyTerms("patient-request", ["identity", "photo"], "2026-12-31");
+    expect(describeProxy(t)).toBe(
+      "Name, birth date and identifiers, Photo · until the end of 2026-12-31",
+    );
+    expect(describeProxy(null)).toContain("sees nothing");
   });
 });

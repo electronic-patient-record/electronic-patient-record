@@ -8,12 +8,15 @@
 //! `GET /api/me/patients/{id}/access-log` is the patient-visible access log (task SE-6): who
 //! touched this record and when. See [`access_log`].
 
-use super::common::{Access, audit_failed, audit_resource, authorize, store_failure, time_now};
+use super::common::{
+    Access, audit_failed, audit_resource, authorize, authorize_scoped, store_failure, time_now,
+};
 use crate::api_error::ApiError;
 use crate::audit::{self, Action, PatientLogRow};
 use crate::auth::Agent;
 use crate::patients_store as patients;
 use crate::policy::{self, Purpose, Relationship, Resource, Subject};
+use crate::proxy::Scope;
 use crate::relationships;
 use axum::{
     Extension,
@@ -142,7 +145,7 @@ async fn access_log(
     Query(query): Query<LogQuery>,
 ) -> Response {
     let purpose = Purpose::PatientAccess;
-    if let Err(r) = authorize(
+    if let Err(r) = authorize_scoped(
         &ctx.db,
         &agent,
         &subject,
@@ -150,6 +153,7 @@ async fn access_log(
         policy::Action::Read,
         purpose,
         Some(&id),
+        Some(Scope::AccessLog),
     )
     .await
     {
@@ -157,7 +161,7 @@ async fn access_log(
     }
     // `authorize` allows a treating relationship to read the identity record; the log is for the
     // patient and proxy only.
-    match relationships::lookup(&ctx.db, &id, &agent.0, time_now()).await {
+    match relationships::lookup(&ctx.db, &id, &agent.0, time_now(), Some(Scope::AccessLog)).await {
         Ok(Relationship::SelfPatient | Relationship::Proxy) => {}
         Ok(_) => {
             let _ = audit_resource(

@@ -48,6 +48,8 @@ fn detail(s: &store::StoredRelationship) -> serde_json::Value {
         "kind": s.relationship.kind.as_str(),
         "subject": s.relationship.subject,
         "ended": s.relationship.status == store::Status::Ended,
+        // The proxy's terms are ids and times, not clinical content: the grant can be traced.
+        "proxy": s.relationship.proxy,
     })
 }
 
@@ -105,7 +107,7 @@ pub(super) async fn create(
     {
         return r.into_response();
     }
-    let problems = store::validate(&request.relationship);
+    let problems = store::validate(&request.relationship, &agent.0, super::common::time_now());
     if !problems.is_empty() {
         return ApiError::invalid(problems.clone()).into_response();
     }
@@ -229,7 +231,7 @@ pub(super) async fn update(
     {
         return r.into_response();
     }
-    let problems = store::validate(&request.relationship);
+    let problems = store::validate(&request.relationship, &agent.0, super::common::time_now());
     if !problems.is_empty() {
         return ApiError::invalid(problems.clone()).into_response();
     }

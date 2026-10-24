@@ -12,6 +12,7 @@ use crate::consent::{Period, in_period};
 use crate::ids;
 use crate::patients_store::{self, StoreError};
 use crate::policy::Relationship;
+use crate::proxy::{self, Scope, Terms};
 use crate::store::pg;
 use sea_orm::{ConnectionTrait, DatabaseConnection, TransactionTrait};
 use serde::{Deserialize, Serialize};
@@ -86,12 +87,38 @@ pub struct RelationshipRecord {
     /// Optional dates (`YYYY-MM-DD`, inclusive).
     #[serde(default)]
     pub period: Option<Period>,
+    /// What a proxy may use and until when (PA-5). Required for `proxy`, refused for every other kind.
+    #[serde(default)]
+    pub proxy: Option<Terms>,
 }
 
-/// Every problem with a record.
+/// Every problem with a record. `recorded_by` and `now` (Unix seconds) are who is recording it and when,
+/// for the proxy rules; an ended record is not held to the term limit, so a long one can still be ended.
 #[must_use]
-pub fn validate(r: &RelationshipRecord) -> Vec<String> {
+pub fn validate(r: &RelationshipRecord, recorded_by: &str, now: i64) -> Vec<String> {
     let mut problems = Vec::new();
+    match (&r.kind, &r.proxy) {
+        (Kind::Proxy, None) => {
+            problems.push("a proxy needs proxy terms: basis, scopes and an expiry".to_string())
+        }
+        (Kind::Proxy, Some(t)) if r.status == Status::Active => {
+            problems.extend(proxy::validate(&proxy::Authority {
+                patient: "-".into(),
+                proxy: r.subject.clone(),
+                basis: t.basis,
+                scopes: t.scopes.clone(),
+                recorded_by: recorded_by.to_string(),
+                recorded_at: now,
+                expires_at: t.expires_at,
+                revoked_at: None,
+            }));
+        }
+        (Kind::Proxy, Some(_)) => {}
+        (_, Some(_)) => {
+            problems.push("proxy terms belong to a proxy relationship only".to_string())
+        }
+        (_, None) => {}
+    }
     if r.subject.trim().is_empty() || r.subject.len() > 200 {
         problems.push("subject must be the person's token sub (1 to 200 characters)".to_string());
     }
@@ -114,10 +141,13 @@ pub fn validate(r: &RelationshipRecord) -> Vec<String> {
 
 /// The strongest relationship in force at `now`. Order: self, proxy, active encounter, care team,
 /// none. An unreadable period counts as not in force, so corrupt data can only withhold access.
+/// A proxy is in force only when its terms allow `scope` at `now`; with no scope, or terms missing
+/// (a proxy recorded before PA-5), it is not in force. That is a refusal, never a wider grant.
 #[must_use]
 pub fn resolve<'a>(
     records: impl IntoIterator<Item = &'a RelationshipRecord>,
     now: i64,
+    scope: Option<Scope>,
 ) -> Relationship {
     let rank = |r: Relationship| match r {
         Relationship::SelfPatient => 4,
@@ -129,9 +159,19 @@ pub fn resolve<'a>(
     records
         .into_iter()
         .filter(|r| r.status == Status::Active && in_period(r.period.as_ref(), now) == Some(true))
+        .filter(|r| r.kind != Kind::Proxy || proxy_allows(r, scope, now))
         .map(|r| r.kind.relationship())
         .max_by_key(|r| rank(*r))
         .unwrap_or(Relationship::None)
+}
+
+fn proxy_allows(r: &RelationshipRecord, scope: Option<Scope>, now: i64) -> bool {
+    match (&r.proxy, scope) {
+        (Some(t), Some(scope)) => {
+            proxy::decide_terms(t, None, scope, now) == proxy::Decision::Allowed
+        }
+        _ => false,
+    }
 }
 
 /// A relationship as stored.
@@ -322,9 +362,10 @@ pub async fn lookup(
     patient_id: &str,
     subject: &str,
     now: i64,
+    scope: Option<Scope>,
 ) -> Result<Relationship, StoreError> {
     let Some(patient_id) = ids::uuid(patient_id) else {
-        return Ok(resolve(&[], now));
+        return Ok(resolve(&[], now, scope));
     };
     let rows = sea_orm::ConnectionTrait::query_all_raw(
         db,
@@ -343,7 +384,7 @@ pub async fn lookup(
             serde_json::from_value::<RelationshipRecord>(body).map_err(db_err)
         })
         .collect::<Result<Vec<_>, _>>()?;
-    Ok(resolve(&records, now))
+    Ok(resolve(&records, now, scope))
 }
 
 /// The patients `subject` is, or is a proxy for, now: `(patient id, kind)` for each active
@@ -377,6 +418,10 @@ pub async fn own_patients(
         if in_period(rec.period.as_ref(), now) != Some(true) {
             continue;
         }
+        // A proxy sees the patient in the list only with the identity scope in force.
+        if rec.kind == Kind::Proxy && !proxy_allows(&rec, Some(Scope::Identity), now) {
+            continue;
+        }
         // One entry per patient; `self` outranks `proxy`.
         match out.iter_mut().find(|(p, _)| *p == id) {
             Some(existing) => {
@@ -402,8 +447,15 @@ mod tests {
             kind,
             status,
             period: None,
+            proxy: (kind == Kind::Proxy).then(|| Terms {
+                basis: proxy::Basis::ParentalResponsibility,
+                scopes: [Scope::Identity, Scope::Allergies].into(),
+                expires_at: NOW + 86_400,
+            }),
         }
     }
+
+    const ID: Option<Scope> = Some(Scope::Identity);
 
     #[test]
     fn the_strongest_active_relationship_wins() {
@@ -412,18 +464,18 @@ mod tests {
             rec(Kind::Proxy, Status::Active),
             rec(Kind::ActiveEncounter, Status::Active),
         ];
-        assert_eq!(resolve(&all, NOW), Relationship::Proxy);
-        assert_eq!(resolve(&all[..1], NOW), Relationship::CareTeam);
-        assert_eq!(resolve(&[], NOW), Relationship::None);
+        assert_eq!(resolve(&all, NOW, ID), Relationship::Proxy);
+        assert_eq!(resolve(&all[..1], NOW, ID), Relationship::CareTeam);
+        assert_eq!(resolve(&[], NOW, ID), Relationship::None);
         let mut with_self = all.to_vec();
         with_self.push(rec(Kind::SelfPatient, Status::Active));
-        assert_eq!(resolve(&with_self, NOW), Relationship::SelfPatient);
+        assert_eq!(resolve(&with_self, NOW, ID), Relationship::SelfPatient);
     }
 
     #[test]
     fn ended_relationships_and_those_out_of_period_grant_nothing() {
         assert_eq!(
-            resolve(&[rec(Kind::SelfPatient, Status::Ended)], NOW),
+            resolve(&[rec(Kind::SelfPatient, Status::Ended)], NOW, ID),
             Relationship::None
         );
         let day = |d: &str| crate::consent::day_start(d).unwrap();
@@ -432,18 +484,24 @@ mod tests {
             start: Some("2026-09-21".into()),
             end: Some("2026-09-22".into()),
         });
-        assert_eq!(resolve(&[r.clone()], day("2026-09-20")), Relationship::None);
         assert_eq!(
-            resolve(&[r.clone()], day("2026-09-22") + 86_399),
+            resolve(&[r.clone()], day("2026-09-20"), ID),
+            Relationship::None
+        );
+        assert_eq!(
+            resolve(&[r.clone()], day("2026-09-22") + 86_399, ID),
             Relationship::CareTeam
         );
-        assert_eq!(resolve(&[r.clone()], day("2026-09-23")), Relationship::None);
+        assert_eq!(
+            resolve(&[r.clone()], day("2026-09-23"), ID),
+            Relationship::None
+        );
         r.period = Some(Period {
             start: Some("garbage".into()),
             end: None,
         });
         assert_eq!(
-            resolve(&[r], NOW),
+            resolve(&[r], NOW, ID),
             Relationship::None,
             "unreadable withholds"
         );
@@ -451,14 +509,15 @@ mod tests {
 
     #[test]
     fn validation_and_json_shape() {
-        assert!(validate(&rec(Kind::SelfPatient, Status::Active)).is_empty());
+        assert!(validate(&rec(Kind::SelfPatient, Status::Active), "admin", NOW).is_empty());
         let mut r = rec(Kind::Proxy, Status::Active);
         r.subject = "  ".into();
         r.period = Some(Period {
             start: Some("2026-10-02".into()),
             end: Some("2026-10-01".into()),
         });
-        assert_eq!(validate(&r).len(), 2);
+        // The blank subject is named twice, once by each rule that needs it, and the period once.
+        assert_eq!(validate(&r, "admin", NOW).len(), 3);
         let parsed: RelationshipRecord =
             serde_json::from_str(r#"{"subject":"s","kind":"self","status":"active"}"#).unwrap();
         assert_eq!(parsed.kind, Kind::SelfPatient);
@@ -476,5 +535,65 @@ mod tests {
         ] {
             assert_eq!(serde_json::to_value(k).unwrap(), k.as_str());
         }
+    }
+
+    #[test]
+    fn a_proxy_is_in_force_only_for_a_scope_its_terms_allow() {
+        let p = [rec(Kind::Proxy, Status::Active)];
+        assert_eq!(resolve(&p, NOW, ID), Relationship::Proxy);
+        assert_eq!(
+            resolve(&p, NOW, Some(Scope::Allergies)),
+            Relationship::Proxy
+        );
+        for scope in [Some(Scope::Photo), Some(Scope::AccessLog), None] {
+            assert_eq!(resolve(&p, NOW, scope), Relationship::None, "{scope:?}");
+        }
+    }
+
+    #[test]
+    fn an_expired_or_unrecorded_proxy_grants_nothing_and_never_hides_a_stronger_link() {
+        let mut p = rec(Kind::Proxy, Status::Active);
+        let end = p.proxy.as_ref().unwrap().expires_at;
+        assert_eq!(resolve(&[p.clone()], end - 1, ID), Relationship::Proxy);
+        assert_eq!(resolve(&[p.clone()], end, ID), Relationship::None);
+        p.proxy = None;
+        assert_eq!(
+            resolve(&[p.clone()], NOW, ID),
+            Relationship::None,
+            "a proxy recorded before PA-5 has no terms and reads nothing"
+        );
+        let team = rec(Kind::CareTeam, Status::Active);
+        assert_eq!(resolve(&[p, team], NOW, ID), Relationship::CareTeam);
+    }
+
+    #[test]
+    fn proxy_terms_are_required_for_a_proxy_and_refused_for_anything_else() {
+        let mut p = rec(Kind::Proxy, Status::Active);
+        assert!(validate(&p, "admin", NOW).is_empty());
+        assert!(
+            validate(&p, "u", NOW)
+                .iter()
+                .any(|m| m.contains("their own authority"))
+        );
+        let terms = p.proxy.take();
+        assert!(
+            validate(&p, "admin", NOW)
+                .iter()
+                .any(|m| m.contains("needs proxy terms"))
+        );
+        let mut team = rec(Kind::CareTeam, Status::Active);
+        team.proxy = terms.clone();
+        assert!(
+            validate(&team, "admin", NOW)
+                .iter()
+                .any(|m| m.contains("proxy relationship only"))
+        );
+        // An ended proxy is not held to the term limit, so a long one can still be ended.
+        let mut ended = rec(Kind::Proxy, Status::Ended);
+        ended.proxy = terms.map(|mut t| {
+            t.expires_at = NOW + 100 * 366 * 86_400;
+            t
+        });
+        assert!(validate(&ended, "admin", NOW).is_empty());
     }
 }

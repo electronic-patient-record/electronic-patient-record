@@ -1626,3 +1626,53 @@ test("my record shows when it was read and warns when a later look fails", async
   await expect(page.getByText("may not be current")).toHaveCount(0);
   await expect(page.getByText(/^Record read at/)).toBeVisible();
 });
+
+test("recording a proxy sends its basis, scopes and last day, and the list shows them", async ({
+  page,
+}) => {
+  const sent: any[] = [];
+  let rels: any[] = [];
+  await page.route("**/api/proxy/api/patients/*/relationships", (route) => {
+    const req = route.request();
+    if (req.method() === "GET") return json(route, 200, { relationships: rels });
+    sent.push(req.postDataJSON());
+    rels = [
+      {
+        id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        patient_id: ANN.id,
+        version: 1,
+        author: "admin",
+        relationship: sent[0].relationship,
+      },
+      {
+        id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+        patient_id: ANN.id,
+        version: 1,
+        author: "admin",
+        relationship: { subject: "old-proxy", kind: "proxy", status: "active" },
+      },
+    ];
+    return json(route, 201, rels[0]);
+  });
+  await page.route("**/api/proxy/api/patients/*/consents", (route) =>
+    json(route, 200, { consents: [] }),
+  );
+  await page.goto(`/en-001/patients/${ANN.id}/access`);
+  await expect(page.getByLabel("Basis for the proxy")).toHaveCount(0);
+  await page.getByLabel(/^Person/).fill("sub-mum");
+  await page.getByLabel("Relationship", { exact: true }).selectOption("proxy");
+  await page.getByLabel("Basis for the proxy").selectOption("parental-responsibility");
+  await page.getByLabel("Allergies").check();
+  await page.getByLabel(/^Last day/).fill("2026-12-31");
+  await axe(page);
+  await page.getByRole("button", { name: "Record relationship" }).click();
+  expect(sent[0].relationship.proxy).toEqual({
+    basis: "parental-responsibility",
+    scopes: ["allergies"],
+    expires_at: Date.UTC(2027, 0, 1) / 1000,
+  });
+  await expect(
+    page.getByText("Allergies · until the end of 2026-12-31"),
+  ).toBeVisible();
+  await expect(page.getByText(/this proxy sees nothing/)).toBeVisible();
+});

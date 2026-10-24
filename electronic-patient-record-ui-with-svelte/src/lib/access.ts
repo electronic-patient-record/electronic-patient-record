@@ -17,11 +17,30 @@ export interface Period {
   end?: string | null;
 }
 
+export type ProxyScope = "identity" | "allergies" | "photo" | "access-log";
+export const PROXY_SCOPES: readonly ProxyScope[] = ["identity", "allergies", "photo", "access-log"];
+export type ProxyBasis =
+  "parental-responsibility" | "power-of-attorney" | "deputyship" | "patient-request";
+export const PROXY_BASES: readonly ProxyBasis[] = [
+  "parental-responsibility",
+  "power-of-attorney",
+  "deputyship",
+  "patient-request",
+];
+
+/** What a proxy may use and until when (PA-5). `expires_at` is Unix seconds. */
+export interface ProxyTerms {
+  basis: ProxyBasis;
+  scopes: ProxyScope[];
+  expires_at: number;
+}
+
 export interface RelationshipRecord {
   subject: string;
   kind: RelationshipKind;
   status: "active" | "ended";
   period?: Period | null;
+  proxy?: ProxyTerms | null;
 }
 
 export interface StoredRelationship {
@@ -148,13 +167,43 @@ export function relationshipRecord(
   kind: RelationshipKind,
   start: string,
   end: string,
+  proxy?: ProxyTerms | null,
 ): RelationshipRecord {
   return {
     subject: subject.trim(),
     kind,
     status: "active",
     period: period(start, end),
+    ...(kind === "proxy" && proxy ? { proxy } : {}),
   };
+}
+
+/**
+ * A proxy's terms from the form. The last day is inclusive, so the authority ends at the start of the day
+ * after it (UTC). Null when the date is not a real `YYYY-MM-DD` day: the form then sends no terms and the
+ * server refuses the proxy, rather than the page guessing an expiry.
+ */
+export function proxyTerms(
+  basis: ProxyBasis,
+  scopes: ProxyScope[],
+  lastDay: string,
+): ProxyTerms | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(lastDay.trim());
+  if (!m) return null;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const start = Date.UTC(y, mo - 1, d);
+  const real = new Date(start);
+  if (real.getUTCFullYear() !== y || real.getUTCMonth() !== mo - 1 || real.getUTCDate() !== d)
+    return null;
+  return { basis, scopes, expires_at: start / 1000 + 86_400 };
+}
+
+/** One line for the list: what the proxy may use, and when it ends. */
+export function describeProxy(t: ProxyTerms | null | undefined): string {
+  if (!t) return STRINGS.proxyNoTerms;
+  // The authority ends at the start of the day after its last day.
+  const end = new Date((t.expires_at - 86_400) * 1000).toISOString().slice(0, 10);
+  return `${t.scopes.map((s) => STRINGS.proxyScopes[s]).join(", ")} · ${STRINGS.proxyUntil} ${end}`;
 }
 
 const list = (xs: string[], any: string) => (xs.length ? xs.join(", ") : any);

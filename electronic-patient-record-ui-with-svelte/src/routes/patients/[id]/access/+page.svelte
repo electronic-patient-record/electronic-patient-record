@@ -3,14 +3,20 @@
   import { call, commonProblem } from "#lib/api.js";
   import {
     describeConsent,
+    describeProxy,
     emptyConsentForm,
     formToConsent,
     LABELS,
+    PROXY_BASES,
+    PROXY_SCOPES,
+    proxyTerms,
     PURPOSES,
     RELATIONSHIP_KINDS,
     relationshipRecord,
     RESOURCES,
     ROLES,
+    type ProxyBasis,
+    type ProxyScope,
     type RelationshipKind,
     type StoredConsent,
     type StoredRelationship,
@@ -31,6 +37,9 @@
   let relStart = $state("");
   let relEnd = $state("");
   let relWhy = $state("");
+  let basis = $state<ProxyBasis>("parental-responsibility");
+  let proxyScopes = $state<ProxyScope[]>([]);
+  let lastDay = $state("");
   let cform = $state(emptyConsentForm());
   let consentWhy = $state("");
 
@@ -92,10 +101,19 @@
     event.preventDefault();
     relMessage = null;
     const res = await call("POST", `/api/patients/${id}/relationships`, {
-      relationship: relationshipRecord(subject, kind, relStart, relEnd),
+      relationship: relationshipRecord(
+        subject,
+        kind,
+        relStart,
+        relEnd,
+        proxyTerms(basis, proxyScopes, lastDay),
+      ),
       reason: relWhy.trim() || undefined,
     });
-    if (res.status === 201) subject = relStart = relEnd = relWhy = "";
+    if (res.status === 201) {
+      subject = relStart = relEnd = relWhy = lastDay = "";
+      proxyScopes = [];
+    }
     await settle(res, (m) => (relMessage = m), loadRels);
   }
 
@@ -178,6 +196,9 @@
             {#if r.relationship.period?.start || r.relationship.period?.end}
               · {r.relationship.period.start ?? "…"} – {r.relationship.period.end ?? "…"}
             {/if}
+            {#if r.relationship.kind === "proxy"}
+              · {describeProxy(r.relationship.proxy)}
+            {/if}
             {#if r.relationship.status === "active"}
               <button type="button" onclick={() => void endRelationship(r)}>
                 {STRINGS.relEnd_}
@@ -196,6 +217,32 @@
           <option value={k}>{STRINGS.relKinds[k]}</option>
         {/each}
       </select>
+      {#if kind === "proxy"}
+        <label for="r-basis">{STRINGS.proxyBasis}</label>
+        <select id="r-basis" bind:value={basis}>
+          {#each PROXY_BASES as b (b)}
+            <option value={b}>{STRINGS.proxyBases[b]}</option>
+          {/each}
+        </select>
+        <fieldset>
+          <legend>{STRINGS.proxyScopesLegend}</legend>
+          {#each PROXY_SCOPES as s (s)}
+            <label>
+              <input
+                type="checkbox"
+                checked={proxyScopes.includes(s)}
+                onchange={(e) =>
+                  (proxyScopes = e.currentTarget.checked
+                    ? [...proxyScopes, s]
+                    : proxyScopes.filter((v) => v !== s))}
+              />
+              {STRINGS.proxyScopes[s]}
+            </label>
+          {/each}
+        </fieldset>
+        <label for="r-last">{STRINGS.proxyLastDay}</label>
+        <input id="r-last" bind:value={lastDay} autocomplete="off" />
+      {/if}
       <label for="r-start">{STRINGS.relStart}</label>
       <input id="r-start" bind:value={relStart} autocomplete="off" />
       <label for="r-end">{STRINGS.relEnd}</label>

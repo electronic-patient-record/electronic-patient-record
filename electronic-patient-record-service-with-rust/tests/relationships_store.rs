@@ -9,6 +9,7 @@
 
 use electronic_patient_record::patients_store::{self, StoreError};
 use electronic_patient_record::policy::Relationship;
+use electronic_patient_record::proxy::{Basis, Scope, Terms};
 use electronic_patient_record::relationships::{self as store, Kind, RelationshipRecord, Status};
 use electronic_patient_record_matcher::{HumanName, Patient};
 use electronic_patient_record_migration::{Migrator, MigratorTrait};
@@ -44,6 +45,11 @@ fn rec(subject: &str, kind: Kind, status: Status) -> RelationshipRecord {
         kind,
         status,
         period: None,
+        proxy: (kind == Kind::Proxy).then(|| Terms {
+            basis: Basis::PatientRequest,
+            scopes: [Scope::Identity].into(),
+            expires_at: NOW + 86_400,
+        }),
     }
 }
 
@@ -81,30 +87,40 @@ async fn lookup_is_per_subject_and_per_patient_and_takes_the_strongest() {
     .unwrap();
 
     assert_eq!(
-        store::lookup(&db, &a, "alice", NOW).await.unwrap(),
+        store::lookup(&db, &a, "alice", NOW, Some(Scope::Identity))
+            .await
+            .unwrap(),
         Relationship::Proxy
     );
     assert_eq!(
-        store::lookup(&db, &a, "bob", NOW).await.unwrap(),
-        Relationship::SelfPatient
-    );
-    assert_eq!(
-        store::lookup(&db, &a, "carol", NOW).await.unwrap(),
-        Relationship::None
-    );
-    // The same subject has nothing to the other patient.
-    assert_eq!(
-        store::lookup(&db, &b, "alice", NOW).await.unwrap(),
-        Relationship::None
-    );
-    assert_eq!(
-        store::lookup(&db, &a.to_uppercase(), "bob", NOW)
+        store::lookup(&db, &a, "bob", NOW, Some(Scope::Identity))
             .await
             .unwrap(),
         Relationship::SelfPatient
     );
     assert_eq!(
-        store::lookup(&db, "nonsense", "bob", NOW).await.unwrap(),
+        store::lookup(&db, &a, "carol", NOW, Some(Scope::Identity))
+            .await
+            .unwrap(),
+        Relationship::None
+    );
+    // The same subject has nothing to the other patient.
+    assert_eq!(
+        store::lookup(&db, &b, "alice", NOW, Some(Scope::Identity))
+            .await
+            .unwrap(),
+        Relationship::None
+    );
+    assert_eq!(
+        store::lookup(&db, &a.to_uppercase(), "bob", NOW, Some(Scope::Identity))
+            .await
+            .unwrap(),
+        Relationship::SelfPatient
+    );
+    assert_eq!(
+        store::lookup(&db, "nonsense", "bob", NOW, Some(Scope::Identity))
+            .await
+            .unwrap(),
         Relationship::None
     );
 }
@@ -124,7 +140,9 @@ async fn ending_a_relationship_withdraws_access_and_keeps_the_history() {
     .await
     .unwrap();
     assert_eq!(
-        store::lookup(&db, &p, "dana", NOW).await.unwrap(),
+        store::lookup(&db, &p, "dana", NOW, Some(Scope::Identity))
+            .await
+            .unwrap(),
         Relationship::SelfPatient
     );
 
@@ -169,7 +187,9 @@ async fn ending_a_relationship_withdraws_access_and_keeps_the_history() {
     .unwrap();
     assert_eq!(v2.version, 2);
     assert_eq!(
-        store::lookup(&db, &p, "dana", NOW).await.unwrap(),
+        store::lookup(&db, &p, "dana", NOW, Some(Scope::Identity))
+            .await
+            .unwrap(),
         Relationship::None
     );
     assert_eq!(store::list(&db, &p).await.unwrap().len(), 1);

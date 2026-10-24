@@ -1,7 +1,10 @@
 //! Proxy authority (PA-5): the rule that decides whether a proxy may use one part of a patient's record at a
 //! given time. It is pure: the caller passes the authority and the time (Unix seconds), and gets back one
-//! [`Decision`]. Nothing in the service uses it yet; `relationships.rs` still records a proxy as an
-//! all-or-nothing link, and CA-5 (proxy access) and adolescent confidentiality are the intended callers.
+//! [`Decision`].
+//!
+//! The terms are stored inside a `proxy` care relationship (`relationships.rs`): the relationship's version
+//! history supplies the recorder and the time, and ending the relationship is the revocation. The decision
+//! applies to every read a proxy makes (`controllers::common::authorize`, the photo and access-log routes).
 //!
 //! An authority names the **patient**, the **proxy**, the **basis** the administrator relied on, the **scopes**
 //! the proxy may use, the **person who recorded it**, and an **expiry**. It can be **revoked**. The decision is
@@ -16,10 +19,12 @@
 //! perform; [`validate`] says what is wrong with a record before it is stored. **Nothing here proves** the
 //! basis is true: that is the administrator's check, outside this service.
 
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
 /// A part of the record a proxy may be given. A guess at the first four; the list grows with the record.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum Scope {
     /// Name, birth date, sex, identifiers and address.
     Identity,
@@ -32,7 +37,8 @@ pub enum Scope {
 }
 
 /// What the administrator relied on to record the authority.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum Basis {
     /// Parental responsibility for a child.
     ParentalResponsibility,
@@ -42,6 +48,17 @@ pub enum Basis {
     Deputyship,
     /// The patient asked for it, and the administrator saw it.
     PatientRequest,
+}
+
+/// What a proxy relationship carries: the part of an [`Authority`] the relationship record does not already hold.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Terms {
+    /// What the administrator relied on.
+    pub basis: Basis,
+    /// What the proxy may use.
+    pub scopes: BTreeSet<Scope>,
+    /// When it ends (Unix seconds).
+    pub expires_at: i64,
 }
 
 /// One proxy's authority over one patient.
@@ -92,13 +109,24 @@ pub const MAX_TERM_SECS: i64 = 5 * 366 * 86_400;
 /// May the proxy use `scope` at `now`?
 #[must_use]
 pub fn decide(a: &Authority, scope: Scope, now: i64) -> Decision {
-    if a.revoked_at.is_some_and(|r| r <= now) {
+    let terms = Terms {
+        basis: a.basis,
+        scopes: a.scopes.clone(),
+        expires_at: a.expires_at,
+    };
+    decide_terms(&terms, a.revoked_at, scope, now)
+}
+
+/// The same decision from the terms alone, for a caller that holds the relationship record.
+#[must_use]
+pub fn decide_terms(t: &Terms, revoked_at: Option<i64>, scope: Scope, now: i64) -> Decision {
+    if revoked_at.is_some_and(|r| r <= now) {
         return Decision::Refused(Refusal::Revoked);
     }
-    if now >= a.expires_at {
+    if now >= t.expires_at {
         return Decision::Refused(Refusal::Expired);
     }
-    if !a.scopes.contains(&scope) {
+    if !t.scopes.contains(&scope) {
         return Decision::Refused(Refusal::OutOfScope);
     }
     Decision::Allowed

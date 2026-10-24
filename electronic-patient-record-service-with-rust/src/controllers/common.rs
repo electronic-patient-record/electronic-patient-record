@@ -10,6 +10,7 @@ use crate::consents_store;
 use crate::links;
 use crate::patients_store::StoreError;
 use crate::policy::{self, Consent, Purpose, Relationship, Resource, Subject};
+use crate::proxy::Scope;
 use crate::relationships;
 use axum::{
     http::HeaderMap,
@@ -79,6 +80,35 @@ pub(super) async fn authorize(
     purpose: Purpose,
     patient_id: Option<&str>,
 ) -> Result<(), ApiError> {
+    authorize_scoped(
+        db, agent, subject, resource, action, purpose, patient_id, None,
+    )
+    .await
+}
+
+/// The proxy scope a resource needs when the route does not name one. A resource no scope covers
+/// returns `None`, and a proxy then has no relationship at all (PA-5).
+fn scope_of(resource: Resource) -> Option<Scope> {
+    match resource {
+        Resource::PatientIdentity => Some(Scope::Identity),
+        Resource::AllergyIntolerance => Some(Scope::Allergies),
+        _ => None,
+    }
+}
+
+/// [`authorize`], for a route that is a narrower part of a resource than the resource itself (the photo
+/// and the access log are identity data to the policy, and their own scope to a proxy).
+#[allow(clippy::too_many_arguments)]
+pub(super) async fn authorize_scoped(
+    db: &sea_orm::DatabaseConnection,
+    agent: &Agent,
+    subject: &Subject,
+    resource: Resource,
+    action: policy::Action,
+    purpose: Purpose,
+    patient_id: Option<&str>,
+    scope: Option<Scope>,
+) -> Result<(), ApiError> {
     if !auth::authentication_enforced() {
         return Ok(());
     }
@@ -114,9 +144,15 @@ pub(super) async fn authorize(
     // The subject's relationship to this patient, from the recorded relationships. A failed lookup
     // fails the request: assuming "none" would be safe, but would hide an outage as a refusal.
     let relationship = match patient_id {
-        Some(id) => relationships::lookup(db, id, &agent.0, time_now())
-            .await
-            .map_err(|e| ApiError::from(&e))?,
+        Some(id) => relationships::lookup(
+            db,
+            id,
+            &agent.0,
+            time_now(),
+            scope.or_else(|| scope_of(resource)),
+        )
+        .await
+        .map_err(|e| ApiError::from(&e))?,
         None => Relationship::None,
     };
     // A grant matters only to a treating role reading clinical content without a care relationship.
