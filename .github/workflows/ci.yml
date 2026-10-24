@@ -193,7 +193,8 @@ jobs:
       - name: The API refuses to start with login on and no keys
         run: |
           set -u
-          podman compose up -d
+          # The API is meant to exit at once here, and `up -d` then returns non-zero; the loop below checks it.
+          podman compose up -d || true
           for i in $(seq 1 60); do
             state="$(podman inspect -f '{{.State.Status}}' electronic-patient-record_api_1 2>/dev/null || echo missing)"
             [ "$state" = exited ] && break

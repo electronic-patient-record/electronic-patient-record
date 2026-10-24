@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-24 - CI: the "API refuses to start" step tolerates `compose up` failing
+
+- The first CI run on `main` failed the container job at `podman compose up -d`, because the API exits at once by design and the step runs with `bash -e`. The step now ends `up -d` with `|| true` and the loop that checks the container state decides. I read this from the two failed logs (both stop right after `api_1` starts); I have not run the Podman job locally.
+- Not verified: that the step now passes, or that the later step ("starts, and demands a token, with keys set") passes: it never ran.
+
 ## 2026-10-24 - Service: tokio 1.54.1 and ctutils 0.4.5 (RUSTSEC-2026-0384, RUSTSEC-2026-0385)
 
 - `Cargo.lock` only: the first CI run on `main` failed `cargo deny` on both advisories, so I ran `cargo update -p tokio -p ctutils`. `cargo deny check`, fmt, clippy and the database-free tests pass locally.
