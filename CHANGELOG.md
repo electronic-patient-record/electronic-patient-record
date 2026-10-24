@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-24 - CI: a `fhir-validator` job
+
+- New job in `.github/workflows/ci.yml` (Temurin 25, the jar cached by the script's hash, `scripts/fhir-validator.sh` re-checks its SHA-256) running `tests/fhir_validator.rs`, and added to `ci-ok`'s needs. I have not seen it run: it is verified only by pushing. `spec/11` and the service spec said "not yet in CI"; updated.
+- Not done: no UK Core or US Core profile validation; a cache miss downloads 200 MB.
+
 ## 2026-10-24 - Testing: the official HL7 FHIR validator as an oracle
 
 - `scripts/fhir-validator.sh` fetches `validator_cli.jar` 7.0.3 (hapifhir/org.hl7.fhir.core) into the git-ignored `.cache/`, and refuses it unless its SHA-256 equals the digest GitHub publishes for that release asset (pinned in the script). `tests/fhir_validator.rs` (service, 2 tests, `#[ignore]`) writes a Patient, three AllergyIntolerance forms, an AuditEvent and a searchset Bundle from the service's own converters and validates them against R4 4.0.1; a control confirms a broken Patient (bad `gender`, stray element) fails. Both pass on Java 25 (about 6 s after the 200 MB download).

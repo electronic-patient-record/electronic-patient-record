@@ -66,6 +66,30 @@ jobs:
       # file runs without a workflow edit (CQ-24). Database tests are `#[ignore]`d and run in `api-db`.
       - run: cargo test --workspace --locked
 
+  fhir-validator:
+    name: FHIR validator (what the API writes, base R4)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@1.99.1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ${{ env.API }}
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "25"
+      # The jar is about 200 MB. The script pins its SHA-256, so a cache hit is re-checked and a miss is fetched.
+      - uses: actions/cache@v6
+        with:
+          path: .cache/fhir-validator
+          key: fhir-validator-${{ hashFiles('scripts/fhir-validator.sh') }}
+      - name: Validate every resource kind the API writes
+        working-directory: ${{ env.API }}
+        run: |
+          FHIR_VALIDATOR_JAR="$(sh ../scripts/fhir-validator.sh)" \
+            cargo test --test fhir_validator -- --ignored
+
   api-db:
     name: API (Postgres 18 tests)
     runs-on: ubuntu-latest
@@ -233,7 +257,7 @@ jobs:
   ci-ok:
     name: ci-ok
     if: always()
-    needs: [matcher, api, api-db, deny, ui, docs, hazard-log, hazard-signoff, container, fresh-clone]
+    needs: [matcher, api, api-db, fhir-validator, deny, ui, docs, hazard-log, hazard-signoff, container, fresh-clone]
     runs-on: ubuntu-latest
     steps:
       - run: |
