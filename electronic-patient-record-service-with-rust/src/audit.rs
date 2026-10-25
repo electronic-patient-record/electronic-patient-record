@@ -557,18 +557,44 @@ fn strings(actor: &serde_json::Value, key: &str) -> Vec<String> {
         .unwrap_or_default()
 }
 
-/// The newest audit rows naming `Patient/<patient_id>`, newest first, at most `limit`, older than
-/// `before` when given.
+/// Narrowing for [`patient_log`]. Every field narrows; none set is the whole log.
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct PatientLogFilter {
+    /// Older than this row id (the previous page's `next`).
+    pub before: Option<i64>,
+    /// Not before this instant, inclusive: `YYYY-MM-DD` or `YYYY-MM-DDTHH:MM:SSZ`.
+    pub from: Option<String>,
+    /// Before this instant, exclusive, same formats.
+    pub to: Option<String>,
+    /// Only rows made by this agent (`Some(true)`, the caller's own) or only by anyone else.
+    pub by_caller: Option<bool>,
+    /// Only refused attempts (`Some(true)`) or only the ones that succeeded.
+    pub refused: Option<bool>,
+}
+
+/// The newest audit rows naming `Patient/<patient_id>`, newest first, at most `limit`, narrowed
+/// by `filter`. `caller` is the agent the `by_caller` filter compares against.
 ///
 /// # Errors
 ///
-/// When the rows cannot be read.
+/// [`SearchError::BadQuery`] when `from` or `to` is not a date or an instant; otherwise when the
+/// rows cannot be read.
 pub async fn patient_log(
     db: &DatabaseConnection,
     patient_id: &str,
-    before: Option<i64>,
+    caller: &str,
+    filter: &PatientLogFilter,
     limit: i64,
-) -> Result<Vec<PatientLogRow>, AuditError> {
+) -> Result<Vec<PatientLogRow>, SearchError> {
+    for (name, v) in [("from", &filter.from), ("to", &filter.to)] {
+        if let Some(v) = v
+            && !valid_instant(db, v).await
+        {
+            return Err(SearchError::BadQuery(format!(
+                "{name} must be YYYY-MM-DD or YYYY-MM-DDTHH:MM:SSZ"
+            )));
+        }
+    }
     let rows = db
         .query_all_raw(pg(
             &format!(
@@ -577,16 +603,25 @@ pub async fn patient_log(
                         detail->'actor' AS actor
                  FROM audit_events
                  WHERE lower(patient_ref) = lower($1) AND ($2::bigint IS NULL OR id < $2)
+                   AND ($4::text IS NULL OR recorded_at >= $4::timestamptz)
+                   AND ($5::text IS NULL OR recorded_at < $5::timestamptz)
+                   AND ($6::bool IS NULL OR (agent = $7) = $6)
+                   AND ($8::bool IS NULL OR (outcome <> 0) = $8)
                  ORDER BY id DESC LIMIT $3"
             ),
             vec![
                 format!("Patient/{}", patient_id.to_lowercase()).into(),
-                before.into(),
+                filter.before.into(),
                 limit.into(),
+                filter.from.clone().into(),
+                filter.to.clone().into(),
+                filter.by_caller.into(),
+                caller.to_string().into(),
+                filter.refused.into(),
             ],
         ))
         .await
-        .map_err(err)?;
+        .map_err(|e| SearchError::Audit(err(e)))?;
     rows.iter()
         .map(|r| {
             let actor: Option<serde_json::Value> = r.try_get("", "actor").map_err(err)?;
@@ -604,7 +639,8 @@ pub async fn patient_log(
                 organisations: strings(&actor, "organisations"),
             })
         })
-        .collect()
+        .collect::<Result<Vec<_>, AuditError>>()
+        .map_err(SearchError::Audit)
 }
 
 /// Criteria for [`search`]. Every field narrows; none set returns the newest rows.
@@ -751,6 +787,28 @@ pub struct AuditRow {
     pub prev_digest: Option<String>,
 }
 
+/// Whether `v` is `YYYY-MM-DD` or `YYYY-MM-DDTHH:MM:SSZ` and a real time to the database.
+async fn valid_instant(db: &DatabaseConnection, v: &str) -> bool {
+    let shaped = v.len() >= 10
+        && v.is_char_boundary(10)
+        && v[..10].bytes().enumerate().all(|(i, b)| {
+            if i == 4 || i == 7 {
+                b == b'-'
+            } else {
+                b.is_ascii_digit()
+            }
+        })
+        && (v.len() == 10 || (v.as_bytes()[10] == b'T' && v.ends_with('Z')));
+    shaped
+        && db
+            .query_one_raw(pg(
+                "SELECT $1::timestamptz AS t",
+                vec![v.to_string().into()],
+            ))
+            .await
+            .is_ok()
+}
+
 /// Why a search failed.
 #[derive(Debug)]
 pub enum SearchError {
@@ -822,27 +880,12 @@ async fn search_with(
         ("after", &q.after),
         ("through", &q.through),
     ] {
-        if let Some(v) = v {
-            let shaped = v.len() >= 10
-                && v.is_char_boundary(10)
-                && v[..10].bytes().enumerate().all(|(i, b)| {
-                    if i == 4 || i == 7 {
-                        b == b'-'
-                    } else {
-                        b.is_ascii_digit()
-                    }
-                })
-                && (v.len() == 10 || (v.as_bytes()[10] == b'T' && v.ends_with('Z')));
-            let valid = shaped
-                && db
-                    .query_one_raw(pg("SELECT $1::timestamptz AS t", vec![v.clone().into()]))
-                    .await
-                    .is_ok();
-            if !valid {
-                return Err(SearchError::BadQuery(format!(
-                    "{name} must be YYYY-MM-DD or YYYY-MM-DDTHH:MM:SSZ"
-                )));
-            }
+        if let Some(v) = v
+            && !valid_instant(db, v).await
+        {
+            return Err(SearchError::BadQuery(format!(
+                "{name} must be YYYY-MM-DD or YYYY-MM-DDTHH:MM:SSZ"
+            )));
         }
     }
     let rows = db

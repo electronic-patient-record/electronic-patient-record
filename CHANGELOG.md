@@ -7,6 +7,12 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - `proxy.rs`: `decide` (revoked, expired, out of scope, in that order; the expiry instant is expired) and `validate` (no empty scope, no self-recorded authority, a required expiry within five years). 9 unit tests; moving the expiry or revocation boundary, or ignoring the scope list, makes tests fail.
 - Not done: nothing calls it, so **proxy access is unchanged and still all-or-nothing** (hazard H-011 and the proxy part of the model are not improved yet, so the hazard log is unchanged). No store, route, audit row, access-log entry, UI or adolescent-confidentiality rule. The four scopes and the five-year limit are guesses; the basis list is not checked against anything.
 
+## 2026-10-25 - Service: the patient access log narrows by day, by who and by refusal (SE-6)
+
+- `GET /api/me/patients/{id}/access-log` takes `from` (inclusive) and `to` (exclusive), as a day or an instant in UTC, `by=you|staff` and `refused=true|false`. A filter it cannot read is a 400 and nothing is audited. The paging `next` still works under a filter. The read's own audit row says only that a filter was used, not its values.
+- Tests: a Postgres test over the four filters and bad dates (`audit_chain.rs`), and over HTTP for a proxy with the access-log scope (`http_proxy_scopes.rs`).
+- Not done: no filter form on `/my-record` yet (next); days are UTC, not the patient's zone (RC-9); no filter by purpose or by role; the full Postgres suite (91 tests, validator tests skipped) passes locally. The log's content is unchanged, so no hazard-log change.
+
 ## 2026-10-25 - UI: tests for remove photo and undo this merge (CQ-33, last of the write buttons)
 
 - Two clicks in one task on "Remove photo" and on "Undo this merge" each send one POST. Each fails with its own guard removed (`photoBusy`, merge's `busy`): 2 requests, not 1.

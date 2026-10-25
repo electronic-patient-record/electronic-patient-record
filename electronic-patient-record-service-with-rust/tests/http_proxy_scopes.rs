@@ -177,6 +177,17 @@ async fn a_proxy_reads_only_what_its_terms_list_and_only_until_they_end() {
             200
         );
 
+        // The log narrows by day, by who and by refusal (SE-6); a filter it cannot read is 400.
+        let log = format!("/api/me/patients/{pid}/access-log");
+        for bad in ["by=nobody", "from=yesterday", "to=2026-13-45", "refused=maybe"] {
+            assert_eq!(get(format!("{log}?{bad}")).await.status_code(), 400, "{bad}");
+        }
+        let none = get(format!("{log}?from=2999-01-01")).await;
+        assert_eq!(none.status_code(), 200);
+        assert_eq!(none.json::<Value>()["entries"].as_array().unwrap().len(), 0);
+        let some = get(format!("{log}?from=2000-01-01&to=2999-01-01&by=staff&refused=false")).await;
+        assert_eq!(some.status_code(), 200, "{}", some.text());
+
         // Ending the relationship is the revocation.
         let ended = server
             .put(&format!("{rel_url}/{}", created["id"].as_str().unwrap()))

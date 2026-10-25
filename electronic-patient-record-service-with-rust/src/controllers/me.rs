@@ -86,6 +86,11 @@ async fn patients_of_caller(
     axum::Json(serde_json::json!({ "records": records })).into_response()
 }
 
+/// A 400 for a filter the log does not understand (nothing is read, so nothing is audited).
+fn log_bad_request(message: &str) -> Response {
+    ApiError::bad_request(message).into_response()
+}
+
 /// Entries per page of the access log.
 const LOG_PAGE: i64 = 50;
 
@@ -94,6 +99,14 @@ const LOG_PAGE: i64 = 50;
 struct LogQuery {
     /// Return entries older than this `id` (the `next` of the previous page).
     before: Option<i64>,
+    /// Not before this day or instant, inclusive (`YYYY-MM-DD` or `YYYY-MM-DDTHH:MM:SSZ`, UTC).
+    from: Option<String>,
+    /// Before this day or instant, exclusive, same formats.
+    to: Option<String>,
+    /// `you` for the caller's own activity, `staff` for everyone else.
+    by: Option<String>,
+    /// `true` for refused attempts only, `false` for the ones that succeeded.
+    refused: Option<bool>,
 }
 
 /// One access, in words a patient can read. Who did it is never a staff identifier: `you` is the
@@ -181,10 +194,25 @@ async fn access_log(
         }
         Err(e) => return store_failure(&e),
     }
+    let blank = |v: &Option<String>| v.clone().filter(|s| !s.trim().is_empty());
+    let by_caller = match blank(&query.by).as_deref() {
+        None => None,
+        Some("you") => Some(true),
+        Some("staff") => Some(false),
+        Some(_) => return log_bad_request("by must be you or staff"),
+    };
+    let filter = audit::PatientLogFilter {
+        before: query.before,
+        from: blank(&query.from),
+        to: blank(&query.to),
+        by_caller,
+        refused: query.refused,
+    };
     // One more than a page, to know whether there is another.
-    let mut rows = match audit::patient_log(&ctx.db, &id, query.before, LOG_PAGE + 1).await {
+    let mut rows = match audit::patient_log(&ctx.db, &id, &agent.0, &filter, LOG_PAGE + 1).await {
         Ok(r) => r,
-        Err(e) => return audit_failed(&e).into_response(),
+        Err(audit::SearchError::BadQuery(m)) => return log_bad_request(&m),
+        Err(audit::SearchError::Audit(e)) => return audit_failed(&e).into_response(),
     };
     let more = rows.len() > usize::try_from(LOG_PAGE).unwrap_or(usize::MAX);
     rows.truncate(usize::try_from(LOG_PAGE).unwrap_or(usize::MAX));
@@ -204,7 +232,7 @@ async fn access_log(
             resource: "AccessLog",
             patient_id: Some(&id),
         },
-        serde_json::json!({ "entries": entries.len() }),
+        serde_json::json!({ "entries": entries.len(), "filtered": filter.from.is_some() || filter.to.is_some() || filter.by_caller.is_some() || filter.refused.is_some() }),
     )
     .await
     {

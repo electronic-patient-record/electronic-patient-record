@@ -224,8 +224,8 @@ Conventions:
   a clinician's treatment view appears to the patient as "A member of staff viewed your identity record. Purpose:
   treatment." with no staff identifier in the page; the clinician cannot read the log (403, audited). **Role and organisation landed 2026-10-21:** every audit row
   written while handling a request carries `detail.actor` `{roles, organisations}` from the token, and the log shows
-  "A member of staff (clinician, riverside) viewed your identity record." (older rows say only staff). **Not built:**
-  staff names by deployment policy (none are recorded), a filter or date range, an accounting-of-disclosures export, any
+  "A member of staff (clinician, riverside) viewed your identity record." (older rows say only staff). **Filter and date range landed 2026-10-25 (API):** `from`, `to`, `by`, `refused`. **Not built:**
+  staff names by deployment policy (none are recorded), a filter form on `/my-record`, an accounting-of-disclosures export, any
   alert to the patient. Left open.
 - [ ] **SE-7 (M) — Hardening.** Security headers, CSP, rate limiting,
   session timeout with re-auth for sensitive actions, encryption at rest

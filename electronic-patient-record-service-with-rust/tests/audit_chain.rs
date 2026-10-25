@@ -431,6 +431,80 @@ async fn a_published_head_catches_removed_newest_rows_and_a_rewritten_head() {
 
 #[tokio::test]
 #[ignore = "needs Postgres: set DATABASE_URL"]
+async fn the_patient_log_narrows_by_day_by_who_and_by_refusal() {
+    let chain = Chain::unkeyed();
+    let s = Scratch::new().await;
+    let mine = "3b0c6f0e-1111-4111-8111-000000000009";
+    // 0: the caller, ok. 1: staff, ok. 2: staff, refused.
+    let mut ids = vec![];
+    for (agent, outcome) in [("me", 0), ("dr", 0), ("dr", 4)] {
+        let mut e = event(0);
+        e.agent = agent.to_string();
+        e.outcome = outcome;
+        e.patient_ref = Some(format!("Patient/{mine}"));
+        ids.push(audit::append(&s.db, &chain, &e).await.unwrap());
+    }
+    let log = |f: audit::PatientLogFilter| {
+        let db = &s.db;
+        async move {
+            audit::patient_log(db, mine, "me", &f, 10)
+                .await
+                .map(|rows| rows.iter().map(|r| r.id).collect::<Vec<_>>())
+        }
+    };
+    let all = vec![ids[2], ids[1], ids[0]];
+    assert_eq!(log(Default::default()).await.unwrap(), all);
+    let f = |from: Option<&str>, to: Option<&str>| audit::PatientLogFilter {
+        from: from.map(Into::into),
+        to: to.map(Into::into),
+        ..Default::default()
+    };
+    // Days: from is inclusive, to is exclusive; an instant is exact.
+    assert_eq!(
+        log(f(Some("2000-01-01"), Some("2999-01-01")))
+            .await
+            .unwrap(),
+        all
+    );
+    assert!(log(f(Some("2999-01-01"), None)).await.unwrap().is_empty());
+    assert!(log(f(None, Some("2000-01-01"))).await.unwrap().is_empty());
+    assert_eq!(
+        log(f(Some("2000-01-01T00:00:00Z"), None)).await.unwrap(),
+        all
+    );
+    for bad in ["yesterday", "2026-13-45", "2026-10-01T10:00", "2026-1-1"] {
+        assert!(
+            matches!(
+                log(f(Some(bad), None)).await,
+                Err(audit::SearchError::BadQuery(_))
+            ),
+            "{bad}"
+        );
+    }
+    let by = |by_caller: Option<bool>, refused: Option<bool>| audit::PatientLogFilter {
+        by_caller,
+        refused,
+        ..Default::default()
+    };
+    assert_eq!(log(by(Some(true), None)).await.unwrap(), vec![ids[0]]);
+    assert_eq!(
+        log(by(Some(false), None)).await.unwrap(),
+        vec![ids[2], ids[1]]
+    );
+    assert_eq!(log(by(None, Some(true))).await.unwrap(), vec![ids[2]]);
+    assert_eq!(
+        log(by(None, Some(false))).await.unwrap(),
+        vec![ids[1], ids[0]]
+    );
+    assert_eq!(
+        log(by(Some(false), Some(false))).await.unwrap(),
+        vec![ids[1]]
+    );
+    assert!(log(by(Some(true), Some(true))).await.unwrap().is_empty());
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
 async fn the_patient_log_is_one_patients_rows_newest_first_in_pages_without_detail() {
     let chain = Chain::unkeyed();
     let s = Scratch::new().await;
@@ -461,15 +535,32 @@ async fn the_patient_log_is_one_patients_rows_newest_first_in_pages_without_deta
             ids.push(audit::append(&s.db, &chain, &e).await.unwrap());
         }
     }
-    let page = audit::patient_log(&s.db, mine, None, 3).await.unwrap();
+    let page = audit::patient_log(
+        &s.db,
+        mine,
+        "nobody",
+        &audit::PatientLogFilter::default(),
+        3,
+    )
+    .await
+    .unwrap();
     assert_eq!(
         page.iter().map(|r| r.id).collect::<Vec<_>>(),
         vec![ids[4], ids[2], ids[1]],
         "newest first, other patient excluded, upper-case ref included"
     );
-    let rest = audit::patient_log(&s.db, mine, Some(ids[1]), 3)
-        .await
-        .unwrap();
+    let rest = audit::patient_log(
+        &s.db,
+        mine,
+        "nobody",
+        &audit::PatientLogFilter {
+            before: Some(ids[1]),
+            ..Default::default()
+        },
+        3,
+    )
+    .await
+    .unwrap();
     assert_eq!(rest.iter().map(|r| r.id).collect::<Vec<_>>(), vec![ids[0]]);
     assert!(!format!("{page:?}").contains("do-not-show"));
     assert_eq!(page[0].roles, vec!["clinician".to_string()]);
