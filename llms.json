@@ -1,0 +1,267 @@
+{
+  "name": "Electronic Patient Record",
+  "summary": "Open-source electronic patient record software: a safe, append-only, audited longitudinal patient record with FHIR R4 as both data model and API, and explainable patient identity matching. A Rust matcher library, a Rust service (loco.rs, PostgreSQL) and a SvelteKit 3 / Svelte 5 UI, specified in spec/. Pre-release scaffold (milestone M0): NOT FOR CLINICAL USE; do not enter real patient data; no accreditation, certification or clinical validation is claimed.",
+  "repository": "https://github.com/electronic-patient-record/electronic-patient-record",
+  "status": "pre-release scaffold (M0); not for clinical use",
+  "stack": {
+    "matcher": "Rust library (pure, deterministic, explainable identity matching), published as electronic-patient-record-matcher",
+    "service": "Rust, loco.rs (Axum, SeaORM), PostgreSQL 18, REST and FHIR R4",
+    "ui": "SvelteKit 3, Svelte 5 runes, backend-for-frontend proxy"
+  },
+  "notes": [
+    "The specification in spec/ and each project's spec/index.md is the source of truth; code and docs follow it. A behavioural change is one commit with a spec edit, a code edit and a test edit.",
+    "One item, one commit, one push, then look at CI. Stage named files, never `git add -A`.",
+    "Say plainly what is not built or not tested: every CHANGELOG.md entry states what was not done or not verified. Never weaken a guard or census test to get green.",
+    "Clinical risk: a change that could alter what a clinician sees, decides or signs updates governance/clinical-safety/hazard-log.csv in the same commit. Never set a hazard to accepted or closed; only the Clinical Safety Officer does.",
+    "The clinical record is append-only: no delete path for clinical data. Absent evidence is null with a reason, never zero; a missing field blocks an automatic patient link.",
+    "API versioning is the Accepts-version request header on the unversioned /api path, never /api/v1. Use Podman, not Docker.",
+    "Translations are machine-written until a speaker reviews them. Never claim a translation is reviewed.",
+    "Never put real patient data in examples, tests or fixtures; use synthetic data."
+  ],
+  "sections": [
+    {
+      "name": "Start here",
+      "links": [
+        {
+          "title": "README",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/README.md",
+          "path": "README.md",
+          "description": "What the project is, the three subprojects, how to run the API from a fresh clone."
+        },
+        {
+          "title": "AGENTS",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AGENTS.md",
+          "path": "AGENTS.md",
+          "description": "How work is done here: spec first, one commit per item, the gates, and the things that are easy to get wrong."
+        },
+        {
+          "title": "Specification index",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/index.md",
+          "path": "spec/index.md",
+          "description": "Entry point to the specification."
+        },
+        {
+          "title": "Implementation status",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/14-implementation-status.md",
+          "path": "spec/14-implementation-status.md",
+          "description": "Generated: exactly what is built and how many tests pass."
+        },
+        {
+          "title": "Tasks",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/tasks.md",
+          "path": "tasks.md",
+          "description": "The task queue with what landed, what is open and what was not verified."
+        },
+        {
+          "title": "Changelog",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CHANGELOG.md",
+          "path": "CHANGELOG.md",
+          "description": "Every change, newest first, each stating what was not done or not verified."
+        }
+      ]
+    },
+    {
+      "name": "Specification",
+      "links": [
+        {
+          "title": "Purpose and vision",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/01-purpose-and-vision.md",
+          "path": "spec/01-purpose-and-vision.md",
+          "description": "The problem and what this provides."
+        },
+        {
+          "title": "Scope",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/02-scope.md",
+          "path": "spec/02-scope.md",
+          "description": "What is in and out."
+        },
+        {
+          "title": "Domain model",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/05-domain-model.md",
+          "path": "spec/05-domain-model.md",
+          "description": "Entities and relationships."
+        },
+        {
+          "title": "Functional requirements",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/06-functional-requirements.md",
+          "path": "spec/06-functional-requirements.md",
+          "description": "Numbered functional requirements."
+        },
+        {
+          "title": "Non-functional requirements",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/07-non-functional-requirements.md",
+          "path": "spec/07-non-functional-requirements.md",
+          "description": "Safety, security, performance, accessibility."
+        },
+        {
+          "title": "Architecture",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/08-architecture.md",
+          "path": "spec/08-architecture.md",
+          "description": "Components and data flow."
+        },
+        {
+          "title": "API surface",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/09-api-surface.md",
+          "path": "spec/09-api-surface.md",
+          "description": "Routes, versioning by header, error bodies."
+        },
+        {
+          "title": "Persistence",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/10-persistence.md",
+          "path": "spec/10-persistence.md",
+          "description": "Append-only tables and audit triggers."
+        },
+        {
+          "title": "Testing strategy",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/11-testing-strategy.md",
+          "path": "spec/11-testing-strategy.md",
+          "description": "Gates, census tests, oracles."
+        },
+        {
+          "title": "Compliance",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/12-compliance.md",
+          "path": "spec/12-compliance.md",
+          "description": "The regulatory position and what is not claimed."
+        },
+        {
+          "title": "Roadmap",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/15-roadmap.md",
+          "path": "spec/15-roadmap.md",
+          "description": "Milestones M0 onward."
+        },
+        {
+          "title": "Open questions",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/16-open-questions.md",
+          "path": "spec/16-open-questions.md",
+          "description": "Decisions that need a maintainer, a clinician or the Clinical Safety Officer."
+        },
+        {
+          "title": "Plan",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/plan.md",
+          "path": "plan.md",
+          "description": "The long plan behind the task queue."
+        }
+      ]
+    },
+    {
+      "name": "Subprojects",
+      "links": [
+        {
+          "title": "Matcher AGENTS",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/electronic-patient-record-matcher-with-rust/AGENTS.md",
+          "path": "electronic-patient-record-matcher-with-rust/AGENTS.md",
+          "description": "Working in the matching library."
+        },
+        {
+          "title": "Matcher spec",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/electronic-patient-record-matcher-with-rust/spec/index.md",
+          "path": "electronic-patient-record-matcher-with-rust/spec/index.md",
+          "description": "What the matcher does and refuses."
+        },
+        {
+          "title": "Service AGENTS",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/electronic-patient-record-service-with-rust/AGENTS.md",
+          "path": "electronic-patient-record-service-with-rust/AGENTS.md",
+          "description": "Working in the loco.rs service."
+        },
+        {
+          "title": "Service spec",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/electronic-patient-record-service-with-rust/spec/index.md",
+          "path": "electronic-patient-record-service-with-rust/spec/index.md",
+          "description": "What the service does, row by row."
+        },
+        {
+          "title": "UI AGENTS",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/electronic-patient-record-ui-with-svelte/AGENTS.md",
+          "path": "electronic-patient-record-ui-with-svelte/AGENTS.md",
+          "description": "Working in the SvelteKit UI."
+        },
+        {
+          "title": "UI spec",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/electronic-patient-record-ui-with-svelte/spec/index.md",
+          "path": "electronic-patient-record-ui-with-svelte/spec/index.md",
+          "description": "What each page does."
+        }
+      ]
+    },
+    {
+      "name": "Clinical safety and governance",
+      "links": [
+        {
+          "title": "Hazard log",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/governance/clinical-safety/hazard-log.csv",
+          "path": "governance/clinical-safety/hazard-log.csv",
+          "description": "The hazard log (never edit a status to accepted or closed)."
+        },
+        {
+          "title": "Risk management plan",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/governance/clinical-safety/risk-management-plan.md",
+          "path": "governance/clinical-safety/risk-management-plan.md",
+          "description": "How hazards are managed."
+        },
+        {
+          "title": "Governance",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/GOVERNANCE.md",
+          "path": "GOVERNANCE.md",
+          "description": "How decisions are made."
+        },
+        {
+          "title": "Security policy",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md",
+          "path": "SECURITY.md",
+          "description": "Reporting a vulnerability."
+        }
+      ]
+    },
+    {
+      "name": "Agent skill",
+      "links": [
+        {
+          "title": "Skill",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/electronic-patient-record-skill/SKILL.md",
+          "path": "electronic-patient-record-skill/SKILL.md",
+          "description": "A skill for agents working in this repository."
+        }
+      ]
+    }
+  ],
+  "optional": [
+    {
+      "title": "Contributing",
+      "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CONTRIBUTING.md",
+      "path": "CONTRIBUTING.md",
+      "description": "How to contribute."
+    },
+    {
+      "title": "AI statement",
+      "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AI_STATEMENT.md",
+      "path": "AI_STATEMENT.md",
+      "description": "How AI is used in this project."
+    },
+    {
+      "title": "RFC",
+      "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/RFC.md",
+      "path": "RFC.md",
+      "description": "Request for comments."
+    },
+    {
+      "title": "News",
+      "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/NEWS.md",
+      "path": "NEWS.md",
+      "description": "Project news."
+    },
+    {
+      "title": "Maintainers",
+      "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/MAINTAINERS.md",
+      "path": "MAINTAINERS.md",
+      "description": "Who maintains this."
+    }
+  ],
+  "commands": {
+    "matcher": "cd electronic-patient-record-matcher-with-rust && cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test",
+    "service": "cd electronic-patient-record-service-with-rust && cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test",
+    "service database tests": "TEST_DB_PORT=5543 TEST_REDIS_PORT=6390 podman compose -f compose.test.yaml up -d --wait, then DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test cargo test -- --ignored --test-threads=1",
+    "ui": "cd electronic-patient-record-ui-with-svelte && pnpm run check && pnpm exec vitest run && PW_PORT=4183 CI=true pnpm exec playwright test",
+    "docs": "python3 scripts/check-links.py . && sh scripts/generate-status.sh --check && python3 scripts/generate-llms.py --check && python3 scripts/check-hazard-log.py"
+  }
+}

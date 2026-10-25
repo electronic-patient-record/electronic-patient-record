@@ -24,6 +24,12 @@ updates:
     directory: /electronic-patient-record-ui-with-svelte
     schedule:
       interval: weekly
+    ignore:
+      # SvelteKit 3.1 reads tsconfig through TypeScript's JavaScript API (`ts.readConfigFile`), which
+      # TypeScript 7 (the native compiler) does not have: `svelte-kit sync` and so `pnpm run check`
+      # fail. Revisit when kit supports it.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
     groups:
       npm-ui:
         patterns: ["*"]
@@ -31,3 +37,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # The ref of dtolnay/rust-toolchain is the Rust version it installs, not the action's own
+      # version. The pin lives in rust-toolchain.toml and the "Toolchain pin matches CI" job checks the
+      # two agree, so a bump here would install a Rust the project has not adopted.
+      - dependency-name: dtolnay/rust-toolchain

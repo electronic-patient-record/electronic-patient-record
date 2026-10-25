@@ -1,0 +1,73 @@
+# Electronic Patient Record
+
+> Open-source electronic patient record software: a safe, append-only, audited longitudinal patient record with FHIR R4 as both data model and API, and explainable patient identity matching. A Rust matcher library, a Rust service (loco.rs, PostgreSQL) and a SvelteKit 3 / Svelte 5 UI, specified in spec/. Pre-release scaffold (milestone M0): NOT FOR CLINICAL USE; do not enter real patient data; no accreditation, certification or clinical validation is claimed.
+
+- The specification in spec/ and each project's spec/index.md is the source of truth; code and docs follow it. A behavioural change is one commit with a spec edit, a code edit and a test edit.
+- One item, one commit, one push, then look at CI. Stage named files, never `git add -A`.
+- Say plainly what is not built or not tested: every CHANGELOG.md entry states what was not done or not verified. Never weaken a guard or census test to get green.
+- Clinical risk: a change that could alter what a clinician sees, decides or signs updates governance/clinical-safety/hazard-log.csv in the same commit. Never set a hazard to accepted or closed; only the Clinical Safety Officer does.
+- The clinical record is append-only: no delete path for clinical data. Absent evidence is null with a reason, never zero; a missing field blocks an automatic patient link.
+- API versioning is the Accepts-version request header on the unversioned /api path, never /api/v1. Use Podman, not Docker.
+- Translations are machine-written until a speaker reviews them. Never claim a translation is reviewed.
+- Never put real patient data in examples, tests or fixtures; use synthetic data.
+
+## Start here
+
+- [README](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/README.md): What the project is, the three subprojects, how to run the API from a fresh clone.
+- [AGENTS](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AGENTS.md): How work is done here: spec first, one commit per item, the gates, and the things that are easy to get wrong.
+- [Specification index](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/index.md): Entry point to the specification.
+- [Implementation status](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/14-implementation-status.md): Generated: exactly what is built and how many tests pass.
+- [Tasks](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/tasks.md): The task queue with what landed, what is open and what was not verified.
+- [Changelog](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CHANGELOG.md): Every change, newest first, each stating what was not done or not verified.
+
+## Specification
+
+- [Purpose and vision](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/01-purpose-and-vision.md): The problem and what this provides.
+- [Scope](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/02-scope.md): What is in and out.
+- [Domain model](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/05-domain-model.md): Entities and relationships.
+- [Functional requirements](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/06-functional-requirements.md): Numbered functional requirements.
+- [Non-functional requirements](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/07-non-functional-requirements.md): Safety, security, performance, accessibility.
+- [Architecture](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/08-architecture.md): Components and data flow.
+- [API surface](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/09-api-surface.md): Routes, versioning by header, error bodies.
+- [Persistence](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/10-persistence.md): Append-only tables and audit triggers.
+- [Testing strategy](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/11-testing-strategy.md): Gates, census tests, oracles.
+- [Compliance](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/12-compliance.md): The regulatory position and what is not claimed.
+- [Roadmap](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/15-roadmap.md): Milestones M0 onward.
+- [Open questions](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/16-open-questions.md): Decisions that need a maintainer, a clinician or the Clinical Safety Officer.
+- [Plan](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/plan.md): The long plan behind the task queue.
+
+## Subprojects
+
+- [Matcher AGENTS](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/electronic-patient-record-matcher-with-rust/AGENTS.md): Working in the matching library.
+- [Matcher spec](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/electronic-patient-record-matcher-with-rust/spec/index.md): What the matcher does and refuses.
+- [Service AGENTS](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/electronic-patient-record-service-with-rust/AGENTS.md): Working in the loco.rs service.
+- [Service spec](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/electronic-patient-record-service-with-rust/spec/index.md): What the service does, row by row.
+- [UI AGENTS](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/electronic-patient-record-ui-with-svelte/AGENTS.md): Working in the SvelteKit UI.
+- [UI spec](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/electronic-patient-record-ui-with-svelte/spec/index.md): What each page does.
+
+## Clinical safety and governance
+
+- [Hazard log](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/governance/clinical-safety/hazard-log.csv): The hazard log (never edit a status to accepted or closed).
+- [Risk management plan](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/governance/clinical-safety/risk-management-plan.md): How hazards are managed.
+- [Governance](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/GOVERNANCE.md): How decisions are made.
+- [Security policy](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md): Reporting a vulnerability.
+
+## Agent skill
+
+- [Skill](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/electronic-patient-record-skill/SKILL.md): A skill for agents working in this repository.
+
+## Optional
+
+- [Contributing](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CONTRIBUTING.md): How to contribute.
+- [AI statement](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AI_STATEMENT.md): How AI is used in this project.
+- [RFC](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/RFC.md): Request for comments.
+- [News](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/NEWS.md): Project news.
+- [Maintainers](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/MAINTAINERS.md): Who maintains this.
+
+## Commands
+
+- matcher: `cd electronic-patient-record-matcher-with-rust && cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test`
+- service: `cd electronic-patient-record-service-with-rust && cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test`
+- service database tests: `TEST_DB_PORT=5543 TEST_REDIS_PORT=6390 podman compose -f compose.test.yaml up -d --wait, then DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test cargo test -- --ignored --test-threads=1`
+- ui: `cd electronic-patient-record-ui-with-svelte && pnpm run check && pnpm exec vitest run && PW_PORT=4183 CI=true pnpm exec playwright test`
+- docs: `python3 scripts/check-links.py . && sh scripts/generate-status.sh --check && python3 scripts/generate-llms.py --check && python3 scripts/check-hazard-log.py`
