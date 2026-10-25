@@ -107,6 +107,8 @@ struct LogQuery {
     by: Option<String>,
     /// `true` for refused attempts only, `false` for the ones that succeeded.
     refused: Option<bool>,
+    /// A purpose-of-use code (`treatment`, `operations`, ...).
+    purpose: Option<String>,
 }
 
 /// One access, in words a patient can read. Who did it is never a staff identifier: `you` is the
@@ -201,7 +203,13 @@ async fn access_log(
         Some("staff") => Some(false),
         Some(_) => return log_bad_request("by must be you or staff"),
     };
+    let purpose_filter = match blank(&query.purpose) {
+        None => None,
+        Some(p) if Purpose::parse(&p).is_some() => Some(p),
+        Some(_) => return log_bad_request("purpose is not a purpose-of-use code"),
+    };
     let filter = audit::PatientLogFilter {
+        purpose: purpose_filter,
         before: query.before,
         from: blank(&query.from),
         to: blank(&query.to),
@@ -232,7 +240,7 @@ async fn access_log(
             resource: "AccessLog",
             patient_id: Some(&id),
         },
-        serde_json::json!({ "entries": entries.len(), "filtered": filter.from.is_some() || filter.to.is_some() || filter.by_caller.is_some() || filter.refused.is_some() }),
+        serde_json::json!({ "entries": entries.len(), "filtered": filter.from.is_some() || filter.to.is_some() || filter.by_caller.is_some() || filter.refused.is_some() || filter.purpose.is_some() }),
     )
     .await
     {

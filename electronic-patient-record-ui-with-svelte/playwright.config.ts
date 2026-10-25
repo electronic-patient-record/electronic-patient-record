@@ -9,7 +9,8 @@ export default defineConfig({
   testDir: "tests/e2e",
   timeout: 30_000,
   fullyParallel: true,
-  use: { baseURL: `http://localhost:${PORT}`, trace: "on-first-retry" },
+  // A fixed zone, so a time the page prints in the reader's zone is the same on every machine.
+  use: { baseURL: `http://localhost:${PORT}`, trace: "on-first-retry", timezoneId: "UTC" },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
     command: `pnpm run build && pnpm exec vite preview --port ${PORT} --strictPort`,

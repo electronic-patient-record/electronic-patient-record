@@ -19,10 +19,37 @@ export type LogPage = { entries: LogEntry[]; next: number | null };
 const DID = STRINGS.accessLogDid as Record<string, string>;
 const WHAT = STRINGS.accessLogWhat as Record<string, string>;
 
-/** "2026-10-21T09:00:00.000000Z" as "2026-10-21 09:00 UTC"; anything else is shown as given. */
-export function whenText(at: string): string {
+/**
+ * "2026-10-21T09:00:00.000000Z" as "2026-10-21 09:00 UTC", or in `zone` with the zone named
+ * ("2026-10-21 10:00 GMT+1"); anything that is not an instant is shown as given.
+ */
+export function whenText(at: string, zone = "UTC"): string {
   const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(at);
-  return m ? `${m[1]} ${m[2]} UTC` : at;
+  if (!m) return at;
+  if (zone === "UTC") return `${m[1]} ${m[2]} UTC`;
+  const t = Date.parse(at);
+  if (Number.isNaN(t)) return at;
+  const p = new Intl.DateTimeFormat("en-US", {
+    timeZone: zone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZoneName: "short",
+  }).formatToParts(new Date(t));
+  const g = (k: string) => p.find((x) => x.type === k)?.value ?? "";
+  return `${g("year")}-${g("month")}-${g("day")} ${g("hour")}:${g("minute")} ${g("timeZoneName")}`;
+}
+
+/** The reader's IANA time zone, or UTC when the browser will not say. */
+export function readerZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
 }
 
 const ROLE = STRINGS.roleNames as Record<string, string>;
@@ -56,8 +83,21 @@ export type LogFilter = {
   to: string;
   by: "" | "you" | "staff";
   refused: "" | "true" | "false";
+  /** A purpose-of-use code the API knows, or empty for any. */
+  purpose: string;
 };
-export const NO_FILTER: LogFilter = { from: "", to: "", by: "", refused: "" };
+export const NO_FILTER: LogFilter = { from: "", to: "", by: "", refused: "", purpose: "" };
+
+/** The purpose-of-use codes the API accepts as a filter (`policy::Purpose`), in the order shown. */
+export const LOG_PURPOSES = [
+  "treatment",
+  "emergency",
+  "operations",
+  "payment",
+  "research",
+  "patient-access",
+  "audit",
+] as const;
 
 /** `YYYY-MM-DD` as a UTC time, or null when it is not a real day. */
 function day(v: string): number | null {
@@ -69,24 +109,61 @@ function day(v: string): number | null {
   return back.getUTCFullYear() === y && back.getUTCMonth() === mo - 1 && back.getUTCDate() === d ? t : null;
 }
 
+/** How far `zone`'s wall clock is ahead of UTC at the instant `t` (ms). */
+function offsetAt(t: number, zone: string): number {
+  const whole = Math.floor(t / 1000) * 1000;
+  const p = new Intl.DateTimeFormat("en-US", {
+    timeZone: zone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(new Date(whole));
+  const g = (k: string) => Number(p.find((x) => x.type === k)?.value);
+  return Date.UTC(g("year"), g("month") - 1, g("day"), g("hour"), g("minute"), g("second")) - whole;
+}
+
 /**
- * The query string for the access log: the filter, and the page to continue from. The reader's last
- * day is included, but the API's `to` is exclusive, so the next day is sent. Null when a date is
- * not a real day (the page then says so and sends nothing).
+ * The instant a calendar day starts in `zone`. The offset is looked up twice so a day that starts
+ * on the far side of a clock change is still right; a zone with no midnight on that day (a few
+ * have none, where the clocks skip it) gets the first moment after the gap's start.
  */
-export function logQuery(f: LogFilter, before?: number): string | null {
+export function dayStart(dayText: string, zone: string): number | null {
+  const base = day(dayText);
+  if (base === null) return null;
+  const first = base - offsetAt(base, zone);
+  return base - offsetAt(first, zone);
+}
+
+const iso = (t: number) => new Date(t).toISOString().replace(/\.\d{3}Z$/, "Z");
+
+/**
+ * The query string for the access log: the filter, and the page to continue from. The days are the
+ * reader's own, in `zone`: each is sent as the UTC instant it starts at. The last day is included,
+ * but the API's `to` is exclusive, so the start of the next day is sent. Null when a date is not a
+ * real day (the page then says so and sends nothing).
+ */
+export function logQuery(f: LogFilter, before?: number, zone = "UTC"): string | null {
   const q = new URLSearchParams();
   if (f.from) {
-    if (day(f.from) === null) return null;
-    q.set("from", f.from);
+    const t = dayStart(f.from, zone);
+    if (t === null) return null;
+    q.set("from", iso(t));
   }
   if (f.to) {
     const t = day(f.to);
     if (t === null) return null;
-    q.set("to", new Date(t + 86_400_000).toISOString().slice(0, 10));
+    const next = new Date(t + 86_400_000).toISOString().slice(0, 10);
+    const start = dayStart(next, zone);
+    if (start === null) return null;
+    q.set("to", iso(start));
   }
   if (f.by) q.set("by", f.by);
   if (f.refused) q.set("refused", f.refused);
+  if (f.purpose) q.set("purpose", f.purpose);
   if (before !== undefined) q.set("before", String(before));
   const text = q.toString();
   return text ? `?${text}` : "";

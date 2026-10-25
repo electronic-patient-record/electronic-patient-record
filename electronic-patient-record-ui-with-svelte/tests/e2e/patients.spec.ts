@@ -2004,7 +2004,9 @@ test("two clicks at once on remove photo, and on undo this merge, send one reque
   expect(posts.unmerge).toBe(1);
 });
 
-test("my record narrows the access log by day, who and outcome, and keeps the filter on older entries", async ({ page }) => {
+test.describe("in the patient's own time zone", () => {
+test.use({ timezoneId: "Pacific/Auckland" });
+test("my record narrows the access log by day, who, outcome and purpose, in the patient's zone, and keeps the filter on older entries", async ({ page }) => {
   const ID = ANN.id;
   const urls: string[] = [];
   const entry = (id: number) => ({
@@ -2027,7 +2029,9 @@ test("my record narrows the access log by day, who and outcome, and keeps the fi
   });
   await page.goto("/en-001/my-record");
   await page.getByRole("button", { name: "Show who has accessed this record" }).click();
-  await expect(page.getByText("2026-10-21 09:00 UTC")).toBeVisible();
+  // The entry's time is shown in the patient's zone, which the form names.
+  await expect(page.getByText("2026-10-21 22:00 GMT+13")).toBeVisible();
+  await expect(page.getByText("Days and times here are in your time zone: Pacific/Auckland.")).toBeVisible();
   await axe(page);
 
   // A day that is not real sends nothing.
@@ -2036,19 +2040,22 @@ test("my record narrows the access log by day, who and outcome, and keeps the fi
   await page.getByLabel("Up to and including (day)").fill("2026-10-31");
   await page.getByLabel("Who", { exact: true }).selectOption("staff");
   await page.getByLabel("Outcome").selectOption("true");
+  await page.getByLabel("Purpose", { exact: true }).selectOption("operations");
   await page.getByRole("button", { name: "Apply", exact: true }).click();
   await expect.poll(() => urls.length).toBe(before + 1);
   const q = new URL(urls.at(-1)!).searchParams;
-  expect(Object.fromEntries(q)).toEqual({ from: "2026-10-01", to: "2026-11-01", by: "staff", refused: "true" });
+  // Auckland is UTC+13 in October: its 1 October begins at 11:00 UTC on 30 September.
+  expect(Object.fromEntries(q)).toEqual({ from: "2026-09-30T11:00:00Z", to: "2026-10-31T11:00:00Z", by: "staff", refused: "true", purpose: "operations" });
 
   // Older entries are asked for under the same filter.
   await page.getByRole("button", { name: "Show older entries" }).click();
   await expect.poll(() => urls.length).toBe(before + 2);
   expect(Object.fromEntries(new URL(urls.at(-1)!).searchParams)).toEqual({
-    from: "2026-10-01",
-    to: "2026-11-01",
+    from: "2026-09-30T11:00:00Z",
+    to: "2026-10-31T11:00:00Z",
     by: "staff",
     refused: "true",
+    purpose: "operations",
     before: "9",
   });
 
@@ -2056,4 +2063,27 @@ test("my record narrows the access log by day, who and outcome, and keeps the fi
   await page.getByRole("button", { name: "Clear" }).click();
   await expect.poll(() => urls.length).toBe(before + 3);
   expect(new URL(urls.at(-1)!).search).toBe("");
+});
+});
+
+test("the access-log filter form is in the page's language, and still passes axe (machine-written words)", async ({ page }) => {
+  const ID = ANN.id;
+  await page.route("**/api/proxy/api/me/patients", (route) =>
+    json(route, 200, { records: [{ relationship: "self", patient: ANN }] }),
+  );
+  await page.route(`**/api/proxy/api/me/patients/${ID}/access-log*`, (route) =>
+    json(route, 200, { entries: [], next: null }),
+  );
+  for (const [locale, from, purpose, dir] of [
+    ["de-001", "Von (Tag)", "Zweck", "ltr"],
+    ["ar-001", "من (يوم)", "الغرض", "rtl"],
+    ["zh-cn", "从(日期)", "目的", "ltr"],
+  ] as const) {
+    await page.goto(`/${locale}/my-record`);
+    await expect(page.locator("html")).toHaveAttribute("dir", dir);
+    await page.getByRole("button", { name: "Show who has accessed this record" }).click();
+    await expect(page.getByLabel(from, { exact: true })).toBeVisible();
+    await expect(page.getByLabel(purpose, { exact: true })).toBeVisible();
+    await axe(page);
+  }
 });

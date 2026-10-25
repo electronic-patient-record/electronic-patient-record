@@ -74,7 +74,7 @@ Conventions:
   - `compose.test.yaml` (Postgres 18), `Containerfile` (non-root)
 
   **Acceptance:** `cargo test --lib` is green. A DB-gated smoke test passes against Postgres. The container boots in compose and `/_health` returns 200.
-- [ ] **SF-4 (M) — UI shell.** **Partly landed 2026-10-20**: kit 3 shell, locale-prefixed URLs for the ten locales, CSP and security headers, BFF proxy, `check` 0 errors and 0 warnings, 26 vitest, 7 Playwright with axe; the UI image builds and serves. **Not built:** Lily widgets and themes, the `DataTable` wrapper, `@sveltia/i18n` and any translation (English only), a session cookie and sign-in. Left open. Description: `electronic-patient-record-ui-with-svelte`:
+- [ ] **SF-4 (M) — UI shell.** **Partly landed 2026-10-20**: kit 3 shell, locale-prefixed URLs for the ten locales, CSP and security headers, BFF proxy, `check` 0 errors and 0 warnings, 26 vitest, 7 Playwright with axe; the UI image builds and serves. **Not built:** Lily widgets and themes, the `DataTable` wrapper, `@sveltia/i18n` and any translation (English only, except the machine-written, unreviewed access-log filter form on `/my-record`, 2026-10-25), a session cookie and sign-in. Left open. Description: `electronic-patient-record-ui-with-svelte`:
   - SvelteKit with Svelte 5 runes, TypeScript strict, adapter-node
   - Lily widgets and themes, `@sveltia/i18n`, ten locales with `<language>-<region>` URL prefixes
   - BFF cookie session (the browser holds no token)
@@ -188,7 +188,7 @@ Conventions:
   - medication reconciliation view
 
   **Acceptance:** chart open is p95 ≤ 1 s in a Playwright performance test on the seeded demo. axe passes. Keyboard-only operation is tested.
-- [ ] **RC-9 (S) — UTC and time zones.** **Partly landed 2026-10-25 (UI only):** the read-at clock names its zone; `tests/unit/time-zones.test.ts` runs three zones and a New York DST change. **Open:** the service stores no recorded zone; times from the API are still shown as UTC rather than the user's zone; age uses the UTC date, which can be a day early or late for a reader near midnight (decision needed).
+- [ ] **RC-9 (S) — UTC and time zones.** **Partly landed 2026-10-25 (UI only):** the read-at clock names its zone; the access log's days and times, and its filter, use the patient's browser zone; `tests/unit/time-zones.test.ts` runs three zones and a New York DST change. **Open:** the service stores no recorded zone; times from the API are still shown as UTC rather than the user's zone, except in the patient's access log; age uses the UTC date, which can be a day early or late for a reader near midnight (decision needed).
   Store UTC, keep the recorded zone,
   and render in the user's zone.
   **Acceptance:** a time-zone test runs under three zones and around a DST transition.
@@ -224,8 +224,8 @@ Conventions:
   a clinician's treatment view appears to the patient as "A member of staff viewed your identity record. Purpose:
   treatment." with no staff identifier in the page; the clinician cannot read the log (403, audited). **Role and organisation landed 2026-10-21:** every audit row
   written while handling a request carries `detail.actor` `{roles, organisations}` from the token, and the log shows
-  "A member of staff (clinician, riverside) viewed your identity record." (older rows say only staff). **Filter and date range landed 2026-10-25:** `from`, `to`, `by`, `refused` on the API, and a form on `/my-record`. **Not built:**
-  staff names by deployment policy (none are recorded), a filter by purpose, an accounting-of-disclosures export, any
+  "A member of staff (clinician, riverside) viewed your identity record." (older rows say only staff). **Filter and date range landed 2026-10-25:** `from`, `to`, `by`, `refused`, `purpose` on the API, and a form on `/my-record`. **Not built:**
+  staff names by deployment policy (none are recorded), an accounting-of-disclosures export, any
   alert to the patient. Left open.
 - [ ] **SE-7 (M) — Hardening.** Security headers, CSP, rate limiting,
   session timeout with re-auth for sensitive actions, encryption at rest

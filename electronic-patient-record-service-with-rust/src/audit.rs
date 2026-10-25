@@ -570,6 +570,8 @@ pub struct PatientLogFilter {
     pub by_caller: Option<bool>,
     /// Only refused attempts (`Some(true)`) or only the ones that succeeded.
     pub refused: Option<bool>,
+    /// Only rows made for this purpose of use, by its code, exactly.
+    pub purpose: Option<String>,
 }
 
 /// The newest audit rows naming `Patient/<patient_id>`, newest first, at most `limit`, narrowed
@@ -607,6 +609,7 @@ pub async fn patient_log(
                    AND ($5::text IS NULL OR recorded_at < $5::timestamptz)
                    AND ($6::bool IS NULL OR (agent = $7) = $6)
                    AND ($8::bool IS NULL OR (outcome <> 0) = $8)
+                   AND ($9::text IS NULL OR purpose_of_use = $9)
                  ORDER BY id DESC LIMIT $3"
             ),
             vec![
@@ -618,6 +621,7 @@ pub async fn patient_log(
                 filter.by_caller.into(),
                 caller.to_string().into(),
                 filter.refused.into(),
+                filter.purpose.clone().into(),
             ],
         ))
         .await

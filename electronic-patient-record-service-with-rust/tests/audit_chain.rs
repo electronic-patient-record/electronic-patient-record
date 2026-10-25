@@ -439,6 +439,14 @@ async fn the_patient_log_narrows_by_day_by_who_and_by_refusal() {
     let mut ids = vec![];
     for (agent, outcome) in [("me", 0), ("dr", 0), ("dr", 4)] {
         let mut e = event(0);
+        e.purpose_of_use = Some(
+            if agent == "me" {
+                "patient-access"
+            } else {
+                "treatment"
+            }
+            .to_string(),
+        );
         e.agent = agent.to_string();
         e.outcome = outcome;
         e.patient_ref = Some(format!("Patient/{mine}"));
@@ -501,6 +509,16 @@ async fn the_patient_log_narrows_by_day_by_who_and_by_refusal() {
         vec![ids[1]]
     );
     assert!(log(by(Some(true), Some(true))).await.unwrap().is_empty());
+    let purpose = |p: &str| audit::PatientLogFilter {
+        purpose: Some(p.into()),
+        ..Default::default()
+    };
+    assert_eq!(
+        log(purpose("treatment")).await.unwrap(),
+        vec![ids[2], ids[1]]
+    );
+    assert_eq!(log(purpose("patient-access")).await.unwrap(), vec![ids[0]]);
+    assert!(log(purpose("research")).await.unwrap().is_empty());
 }
 
 #[tokio::test]

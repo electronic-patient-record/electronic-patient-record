@@ -4,13 +4,16 @@
   import PatientBanner from "#lib/PatientBanner.svelte";
   import {
     describe,
+    LOG_PURPOSES,
     logQuery,
+    readerZone,
     NO_FILTER,
     whenText,
     type LogFilter,
     type LogPage,
   } from "#lib/access-log.js";
   import { Busy } from "#lib/busy.svelte.js";
+  import { logFormStrings } from "#lib/translations.js";
   import { patientToForm, type Stored } from "#lib/patient.js";
   import { STRINGS } from "#lib/strings.js";
   import { page } from "$app/state";
@@ -85,6 +88,10 @@
   let applied = $state<Record<string, LogFilter>>({});
   let editing = $state<Record<string, LogFilter>>({});
   const logBusy = new Busy();
+  // The filter form's words, in the reader's locale (machine-written; English where missing).
+  const F = $derived(logFormStrings(locale));
+  // The patient's own days: the zone of the browser they are reading in.
+  const zone = readerZone();
 
   async function loadLog(id: string, before?: number, filter: LogFilter = applied[id] ?? NO_FILTER) {
     await logBusy.run(() => loadLogNow(id, before, filter));
@@ -92,9 +99,9 @@
 
   async function loadLogNow(id: string, before: number | undefined, filter: LogFilter) {
     editing[id] ??= { ...NO_FILTER };
-    const q = logQuery(filter, before);
+    const q = logQuery(filter, before, zone);
     if (q === null) {
-      logs[id] = { entries: logs[id]?.entries ?? [], next: logs[id]?.next ?? null, message: STRINGS.accessLogBadDay };
+      logs[id] = { entries: logs[id]?.entries ?? [], next: logs[id]?.next ?? null, message: F.badDay };
       return;
     }
     const res = await call<LogPage>(
@@ -187,31 +194,39 @@
           }}
         >
           <fieldset>
-            <legend>{STRINGS.accessLogFilterTitle}</legend>
-            <label for="lf-from-{entry.patient.id}">{STRINGS.accessLogFrom}</label>
+            <legend>{F.filterTitle}</legend>
+            <p>{F.zone.replace("{zone}", zone)}</p>
+            <label for="lf-from-{entry.patient.id}">{F.from}</label>
             <input id="lf-from-{entry.patient.id}" type="date" bind:value={f.from} />
-            <label for="lf-to-{entry.patient.id}">{STRINGS.accessLogTo}</label>
+            <label for="lf-to-{entry.patient.id}">{F.to}</label>
             <input id="lf-to-{entry.patient.id}" type="date" bind:value={f.to} />
-            <label for="lf-by-{entry.patient.id}">{STRINGS.accessLogBy}</label>
+            <label for="lf-by-{entry.patient.id}">{F.by}</label>
             <select id="lf-by-{entry.patient.id}" bind:value={f.by}>
-              <option value="">{STRINGS.accessLogByAny}</option>
-              <option value="you">{STRINGS.accessLogByYou}</option>
-              <option value="staff">{STRINGS.accessLogByStaff}</option>
+              <option value="">{F.byAny}</option>
+              <option value="you">{F.byYou}</option>
+              <option value="staff">{F.byStaff}</option>
             </select>
-            <label for="lf-out-{entry.patient.id}">{STRINGS.accessLogOutcome}</label>
+            <label for="lf-out-{entry.patient.id}">{F.outcome}</label>
             <select id="lf-out-{entry.patient.id}" bind:value={f.refused}>
-              <option value="">{STRINGS.accessLogOutcomeAny}</option>
-              <option value="true">{STRINGS.accessLogRefusedOnly}</option>
-              <option value="false">{STRINGS.accessLogOkOnly}</option>
+              <option value="">{F.outcomeAny}</option>
+              <option value="true">{F.refusedOnly}</option>
+              <option value="false">{F.okOnly}</option>
             </select>
-            <button type="submit" disabled={logBusy.on}>{STRINGS.accessLogApply}</button>
+            <label for="lf-purpose-{entry.patient.id}">{F.purposeFilter}</label>
+            <select id="lf-purpose-{entry.patient.id}" bind:value={f.purpose}>
+              <option value="">{F.purposeAny}</option>
+              {#each LOG_PURPOSES as code (code)}
+                <option value={code}>{F.purposes[code]}</option>
+              {/each}
+            </select>
+            <button type="submit" disabled={logBusy.on}>{F.apply}</button>
             <button
               type="button"
               disabled={logBusy.on}
               onclick={() => {
                 editing[entry.patient.id] = { ...NO_FILTER };
                 void loadLog(entry.patient.id, undefined, NO_FILTER);
-              }}>{STRINGS.accessLogClear}</button
+              }}>{F.clear}</button
             >
           </fieldset>
         </form>
@@ -223,7 +238,7 @@
             <p>{STRINGS.accessLogNote}</p>
             <ul aria-labelledby="log-{entry.patient.id}">
               {#each log.entries as item (item.id)}
-                <li><time datetime={item.at}>{whenText(item.at)}</time>: {describe(item)}</li>
+                <li><time datetime={item.at}>{whenText(item.at, zone)}</time>: {describe(item)}</li>
               {/each}
             </ul>
           {/if}
