@@ -1913,3 +1913,33 @@ test("two clicks at once on merge and on close this entry send one request each"
   await expect(page.getByRole("button", { name: "Close this entry" })).toBeEnabled();
   expect(posts.close).toBe(1);
 });
+
+test("two clicks at once on upload photo send one request and switch remove photo off", async ({ page }) => {
+  let writes = 0;
+  let release: () => void = () => {};
+  const held = new Promise<void>((r) => (release = r));
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, { ...ANN, photo_version: 1 }),
+  );
+  await page.route(`**/api/proxy/api/patients/${ANN.id}/photo**`, async (route) => {
+    if (route.request().method() === "GET")
+      return route.fulfill({ status: 200, contentType: "image/png", body: PNG_BYTES });
+    writes++;
+    await held;
+    return json(route, 500, {});
+  });
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  await page.getByLabel(/Photo file/).setInputFiles({
+    name: "ann.png",
+    mimeType: "image/png",
+    buffer: PNG_BYTES,
+  });
+  await page.getByRole("button", { name: "Upload photo" }).evaluate((el: HTMLButtonElement) => {
+    el.click();
+    el.click();
+  });
+  await expect(page.getByRole("button", { name: "Remove photo" })).toBeDisabled();
+  release();
+  await expect(page.getByRole("button", { name: "Upload photo" })).toBeEnabled();
+  expect(writes).toBe(1);
+});
