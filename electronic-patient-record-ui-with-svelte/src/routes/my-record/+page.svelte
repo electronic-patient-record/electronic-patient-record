@@ -140,6 +140,9 @@
       a.download = "access-log.csv";
       a.click();
       URL.revokeObjectURL(url);
+      // The file was cut at the most recent entries: say so, with the entries already shown kept.
+      if (res.next)
+        logs[id] = { entries: logs[id]?.entries ?? [], next: logs[id]?.next ?? null, message: F.downloadCut };
     });
   }
 

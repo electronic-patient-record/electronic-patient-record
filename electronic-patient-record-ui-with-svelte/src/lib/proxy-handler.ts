@@ -103,6 +103,8 @@ export function createProxyHandler(deps: ProxyDeps): RequestHandler {
             "x-content-type-options",
             "etag",
             "content-disposition",
+            // Where the next page or the rest of a cut export starts (the access log's CSV).
+            "x-next-before",
           ]
             .map((h) => [h, upstream.headers.get(h)] as const)
             .filter(([, v]) => v !== null) as [string, string][],

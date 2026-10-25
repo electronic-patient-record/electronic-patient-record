@@ -7,6 +7,11 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - `proxy.rs`: `decide` (revoked, expired, out of scope, in that order; the expiry instant is expired) and `validate` (no empty scope, no self-recorded authority, a required expiry within five years). 9 unit tests; moving the expiry or revocation boundary, or ignoring the scope list, makes tests fail.
 - Not done: nothing calls it, so **proxy access is unchanged and still all-or-nothing** (hazard H-011 and the proxy part of the model are not improved yet, so the hazard log is unchanged). No store, route, audit row, access-log entry, UI or adolescent-confidentiality rule. The four scopes and the five-year limit are guesses; the basis list is not checked against anything.
 
+## 2026-10-25 - UI: the access-log download says when the file was cut (SE-6)
+
+- The BFF proxy now passes on `x-next-before` (and nothing else new; a unit test checks an unknown header is still dropped), `fetchBlob` returns it, and when a CSV was cut at 1000 entries the page says "The file holds only the 1000 most recent entries. Narrow the days to get older ones." (in the page's locale; machine-written, unreviewed, in seven languages). A browser test covers it.
+- Not done: the page does not offer the next batch itself (the patient narrows the days); the other proxied routes that send `x-next-before` (audit export) are not used by this UI. No hazard-log change.
+
 ## 2026-10-25 - Service and UI: a refused merge carries its reasons as codes, shown translated (CQ-38)
 
 - A merge the matcher refuses is still 422 `{errors: [...]}` and now also carries `conflict_codes` (new `StoreError::NotSamePerson`; `ApiError::Invalid` can carry extra keys). It is still audited as a refusal (the audit condition now names the new variant: leaving it out would have silently stopped recording refused merges). The merge section shows "These do not look like the same person:" and each reason in the page's locale, or the API's English message whole when there are no codes (a verified NHS number alone decided it) or a code it cannot translate.

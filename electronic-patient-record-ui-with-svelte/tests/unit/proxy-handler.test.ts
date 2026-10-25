@@ -54,6 +54,21 @@ function setup(opts: {
   return { call, seen, deleted };
 }
 
+describe("proxy handler answers", () => {
+  it("pass on where a cut export continues, and nothing else of the API's headers", async () => {
+    const t = setup({
+      fetchFn: (async () =>
+        new Response("a,b\n", {
+          status: 200,
+          headers: { "content-type": "text/csv", "x-next-before": "41", "x-secret": "no" },
+        })) as unknown as typeof fetch,
+    });
+    const res = await t.call("api/me/patients/x/access-log?format=csv");
+    expect(res.headers.get("x-next-before")).toBe("41");
+    expect(res.headers.get("x-secret")).toBeNull();
+  });
+});
+
 describe("proxy handler", () => {
   it("forwards the token, a known purpose and the API version header", async () => {
     const t = setup({});

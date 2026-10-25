@@ -314,6 +314,7 @@ export const STRINGS = {
   accessLogApply: "Apply",
   accessLogClear: "Clear",
   accessLogDownload: "Download as a CSV file (up to the 1000 most recent entries)",
+  accessLogDownloadCut: "The file holds only the 1000 most recent entries. Narrow the days to get older ones.",
   accessLogDownloadFailed: "The file could not be made. Try again.",
   accessLogBadDay: "Use real days written like 2026-10-21.",
   accessLogZone: "Days and times here are in your time zone: {zone}.",

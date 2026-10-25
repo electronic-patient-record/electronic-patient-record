@@ -24,6 +24,7 @@ export const LOG_FORM_KEYS = [
   "apply",
   "clear",
   "download",
+  "downloadCut",
   "badDay",
 ] as const;
 
@@ -50,6 +51,7 @@ const en: LogFormStrings = {
   apply: STRINGS.accessLogApply,
   clear: STRINGS.accessLogClear,
   download: STRINGS.accessLogDownload,
+  downloadCut: STRINGS.accessLogDownloadCut,
   badDay: STRINGS.accessLogBadDay,
   purposes: STRINGS.accessLogPurposes,
 };
@@ -72,6 +74,7 @@ const de: LogFormStrings = {
     apply: "Anwenden",
     clear: "Zurücksetzen",
     download: "Als CSV-Datei herunterladen (bis zu 1000 neueste Einträge)",
+    downloadCut: "Die Datei enthält nur die 1000 neuesten Einträge. Grenzen Sie die Tage ein, um ältere zu erhalten.",
     badDay: "Bitte echte Tage im Format 2026-10-21 angeben.",
     purposes: {
       "treatment": "Behandlung",
@@ -102,6 +105,7 @@ const es: LogFormStrings = {
     apply: "Aplicar",
     clear: "Borrar",
     download: "Descargar como archivo CSV (hasta las 1000 entradas más recientes)",
+    downloadCut: "El archivo solo contiene las 1000 entradas más recientes. Acote los días para obtener las anteriores.",
     badDay: "Use días reales escritos como 2026-10-21.",
     purposes: {
       "treatment": "Tratamiento",
@@ -132,6 +136,7 @@ const fr: LogFormStrings = {
     apply: "Appliquer",
     clear: "Effacer",
     download: "Télécharger en fichier CSV (jusqu'à 1000 entrées les plus récentes)",
+    downloadCut: "Le fichier ne contient que les 1000 entrées les plus récentes. Réduisez les jours pour obtenir les plus anciennes.",
     badDay: "Saisissez de vrais jours écrits comme 2026-10-21.",
     purposes: {
       "treatment": "Soins",
@@ -162,6 +167,7 @@ const zh: LogFormStrings = {
     apply: "应用",
     clear: "清除",
     download: "下载为 CSV 文件(最多最近 1000 条记录)",
+    downloadCut: "文件仅包含最近的 1000 条记录。请缩小日期范围以获取更早的记录。",
     badDay: "请输入真实的日期,格式如 2026-10-21。",
     purposes: {
       "treatment": "治疗",
@@ -192,6 +198,7 @@ const hi: LogFormStrings = {
     apply: "लागू करें",
     clear: "साफ़ करें",
     download: "CSV फ़ाइल के रूप में डाउनलोड करें (सबसे हाल की 1000 प्रविष्टियाँ तक)",
+    downloadCut: "फ़ाइल में केवल सबसे हाल की 1000 प्रविष्टियाँ हैं। पुरानी प्रविष्टियों के लिए दिनों को सीमित करें।",
     badDay: "2026-10-21 जैसे असली दिन लिखें।",
     purposes: {
       "treatment": "उपचार",
@@ -222,6 +229,7 @@ const ar: LogFormStrings = {
     apply: "تطبيق",
     clear: "مسح",
     download: "تنزيل كملف CSV (حتى أحدث 1000 إدخال)",
+    downloadCut: "يحتوي الملف على أحدث 1000 إدخال فقط. ضيّق الأيام للحصول على الإدخالات الأقدم.",
     badDay: "استخدم أياماً حقيقية مكتوبة مثل 2026-10-21.",
     purposes: {
       "treatment": "العلاج",
@@ -252,6 +260,7 @@ const cy: LogFormStrings = {
     apply: "Gosod",
     clear: "Clirio",
     download: "Lawrlwytho fel ffeil CSV (hyd at y 1000 cofnod diweddaraf)",
+    downloadCut: "Dim ond y 1000 cofnod diweddaraf sydd yn y ffeil. Cyfyngwch y dyddiau i gael rhai hŷn.",
     badDay: "Defnyddiwch ddyddiau go iawn wedi'u hysgrifennu fel 2026-10-21.",
     purposes: {
       "treatment": "Triniaeth",

@@ -2101,6 +2101,7 @@ test("my record downloads the access log as a CSV file under the filter that is 
       return route.fulfill({
         status: 200,
         contentType: "text/csv; charset=utf-8",
+        headers: { "x-next-before": "7" },
         body: "id,at_utc,by,roles,organisations,did,what,refused,purpose,emergency_access\n7,2026-10-21T09:00:12.000000Z,staff,,,viewed,identity record,false,treatment,false\n",
       });
     return json(route, 200, { entries: [], next: null });
@@ -2117,6 +2118,8 @@ test("my record downloads the access log as a CSV file under the filter that is 
   const text = await (await import("node:fs/promises")).readFile((await file.path())!, "utf8");
   expect(text).toContain("id,at_utc,by,roles");
   expect(Object.fromEntries(new URL(urls.at(-1)!).searchParams)).toEqual({ by: "staff", format: "csv" });
+  // The file was cut (the API said where the rest starts): the page says so.
+  await expect(page.getByText("The file holds only the 1000 most recent entries. Narrow the days to get older ones.")).toBeVisible();
   await axe(page);
 });
 

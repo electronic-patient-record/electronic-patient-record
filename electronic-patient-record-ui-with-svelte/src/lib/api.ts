@@ -54,13 +54,14 @@ export async function call<T = unknown>(
 export async function fetchBlob(
   path: string,
   purpose?: string,
-): Promise<ApiResult<Blob | null>> {
+): Promise<ApiResult<Blob | null> & { next?: string }> {
   try {
     const p = purpose ?? defaultPurpose;
     const res = await fetch(`/api/proxy${path}`, {
       headers: p ? { "x-purpose-of-use": p } : {},
     });
-    return { status: res.status, body: res.ok ? await res.blob() : null };
+    const next = res.headers.get("x-next-before") ?? undefined;
+    return { status: res.status, body: res.ok ? await res.blob() : null, ...(next ? { next } : {}) };
   } catch {
     return { status: 0, body: null };
   }
