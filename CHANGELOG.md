@@ -7,6 +7,11 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - `proxy.rs`: `decide` (revoked, expired, out of scope, in that order; the expiry instant is expired) and `validate` (no empty scope, no self-recorded authority, a required expiry within five years). 9 unit tests; moving the expiry or revocation boundary, or ignoring the scope list, makes tests fail.
 - Not done: nothing calls it, so **proxy access is unchanged and still all-or-nothing** (hazard H-011 and the proxy part of the model are not improved yet, so the hazard log is unchanged). No store, route, audit row, access-log entry, UI or adolescent-confidentiality rule. The four scopes and the five-year limit are guesses; the basis list is not checked against anything.
 
+## 2026-10-25 - Matcher: release 0.3.0
+
+- The matcher crate is now version 0.3.0 and is published to crates.io: the CQ-19 changes (part-by-part family names, extra-given-name block, transliteration, swap detection, `\p{M}` fold, E.164 phones, household evidence, nicknames, phonetic review, `MatchConfig::validate`), `conflict_codes` and placeholder names (EC-2). 96 tests pass; clippy and fmt clean.
+- Not done: the service still pins 0.2.0, so none of this reaches the API, the UI or any link note yet (CQ-38); no decision was recorded on H-001's retest against the new matching, so the hazard log is unchanged and the hazard stays `open`; no git tag was made (a `v*` tag releases the service image, not the matcher). A published version cannot be unpublished, only yanked.
+
 ## 2026-10-25 - Service: HTTP test of the unknown-search-parameter refusal (IO-1)
 
 - `http_patients.rs` (Postgres): `Patient?gender=`, `AllergyIntolerance?category=` and `AuditEvent?_id=` are each a 400 OperationOutcome saying "not supported"; `_count` still returns 200. With the AllergyIntolerance handler's check disabled the test fails.

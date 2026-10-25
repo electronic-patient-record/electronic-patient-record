@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-25
+
 - **Changed:** a family name of several parts is compared part by part; `Smith-Jones` no longer scores as a close
   match to `Smithson` (CQ-19).
 - **Changed:** a given name on the longer list that nothing on the shorter list matches blocks `AutoLink` (conflict
