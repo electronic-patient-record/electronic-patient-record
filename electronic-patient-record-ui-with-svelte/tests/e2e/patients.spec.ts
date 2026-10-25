@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page, type Route } from "@playwright/test";
+import type { Page, Route } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 const NHS = "https://fhir.nhs.uk/Id/nhs-number";
 const ANN = {

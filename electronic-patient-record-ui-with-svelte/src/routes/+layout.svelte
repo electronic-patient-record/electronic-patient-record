@@ -66,6 +66,12 @@
 
   // "My record" always declares patient access, so the staff choice does not apply there.
   const staffPage = $derived(!page.url.pathname.includes("/my-record"));
+
+  // Set once the page has hydrated, so a browser test waits for the handlers to be attached before it
+  // clicks (a click before that is a native form submit that does nothing).
+  $effect(() => {
+    document.documentElement.setAttribute("data-hydrated", "");
+  });
 </script>
 
 <a class="skip" href="#main">{STRINGS.skip}</a>

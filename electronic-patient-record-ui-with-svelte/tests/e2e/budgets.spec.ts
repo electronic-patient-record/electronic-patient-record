@@ -1,4 +1,5 @@
-import { expect, test, type Locator, type Page, type Route } from "@playwright/test";
+import type { Locator, Page, Route } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import budgets from "./budgets.json" with { type: "json" };
 
 // AS-5: how many things a clinician must do for the critical tasks. Every action goes through `user`,
