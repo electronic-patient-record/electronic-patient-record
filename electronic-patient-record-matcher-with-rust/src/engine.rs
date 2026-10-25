@@ -375,6 +375,19 @@ impl MatchingEngine {
             {
                 conflicts.push(ConflictCode::SameNhsDifferentNames);
             }
+            // The rule for every other pair holds here too: missing evidence is not agreement, so a
+            // shared number with no given name, family name or birth date to check it against is for a
+            // person to confirm (CQ-37). A name that differs is not blocked here (a family name can
+            // change by marriage); only a name or date that is absent is.
+            for (field, sim) in [
+                (GuardField::GivenName, given),
+                (GuardField::FamilyName, family),
+                (GuardField::BirthDate, dob),
+            ] {
+                if sim.is_none() {
+                    conflicts.push(ConflictCode::FieldUnavailable { field });
+                }
+            }
             decision = if conflicts.is_empty() {
                 Decision::AutoLink
             } else {

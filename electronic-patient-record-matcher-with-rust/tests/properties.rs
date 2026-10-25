@@ -261,28 +261,69 @@ fn removing_a_field_never_creates_an_auto_link_without_a_shared_nhs_number() {
     assert!(checked > 5_000, "the filter left too few cases: {checked}");
 }
 
-/// **Known gap, pinned so a change is seen (CQ-37).** A shared valid NHS number links
-/// automatically even when names and birth date are missing, and removing a conflicting birth date
-/// turns Review into AutoLink. That is the documented rule ("a shared verified NHS number
-/// decides"), but it differs from the rule for every other pair, where a missing field blocks an
-/// automatic link. Whether it should is a clinical decision, not made here.
+/// **CQ-37, decided 2026-10-25:** a shared valid NHS number no longer links automatically on its own.
+/// Missing evidence is not agreement, as for every other pair: with no given name, family name or birth
+/// date on a side, the pair goes to Review with the missing field named, and dropping a conflicting
+/// birth date can no longer turn Review into AutoLink. A family name that differs (marriage) still links
+/// when the rest is present, and a fully present, agreeing pair still links.
 #[test]
-fn a_shared_nhs_number_alone_auto_links_today() {
+fn a_shared_nhs_number_alone_goes_to_review() {
     let engine = MatchingEngine::default();
-    let with_nhs = |dob: Option<&str>| Patient {
+    let with_nhs = |dob: Option<&str>, given: Option<&str>, family: Option<&str>| Patient {
         identifiers: vec![Identifier {
             system: NHS_NUMBER_SYSTEM.into(),
             value: "9434765919".into(),
         }],
         birth_date: dob.map(Into::into),
+        names: if given.is_some() || family.is_some() {
+            vec![HumanName {
+                family: family.map(Into::into),
+                given: given.map(|g| vec![g.into()]).unwrap_or_default(),
+            }]
+        } else {
+            vec![]
+        },
         ..Default::default()
     };
-    let bare = engine.compare(&with_nhs(None), &with_nhs(None));
-    assert_eq!(bare.decision, Decision::AutoLink);
-    let differ = engine.compare(&with_nhs(Some("1980-03-14")), &with_nhs(Some("1981-03-14")));
+    let full = || with_nhs(Some("1980-03-14"), Some("Ann"), Some("Smith"));
+    // Everything present and agreeing: still an automatic link.
+    assert_eq!(
+        engine.compare(&full(), &full()).decision,
+        Decision::AutoLink
+    );
+    // Nothing but the number: Review, each missing field named, and the number still the stated basis.
+    let bare = engine.compare(&with_nhs(None, None, None), &with_nhs(None, None, None));
+    assert_eq!(bare.decision, Decision::Review);
+    assert_eq!(
+        bare.deterministic.as_deref(),
+        Some("shared verified NHS number")
+    );
+    assert_eq!(bare.conflict_codes.len(), 3, "{bare:?}");
+    // Two different full birth dates were already Review.
+    let differ = engine.compare(
+        &full(),
+        &with_nhs(Some("1981-03-14"), Some("Ann"), Some("Smith")),
+    );
     assert_eq!(differ.decision, Decision::Review);
-    let dropped = engine.compare(&with_nhs(Some("1980-03-14")), &with_nhs(None));
-    assert_eq!(dropped.decision, Decision::AutoLink);
+    // Dropping the conflicting birth date used to turn that Review into AutoLink: now it is Review.
+    let dropped = engine.compare(&full(), &with_nhs(None, Some("Ann"), Some("Smith")));
+    assert_eq!(dropped.decision, Decision::Review);
+    assert!(
+        dropped
+            .conflict_codes
+            .contains(&ConflictCode::FieldUnavailable {
+                field: GuardField::BirthDate
+            })
+    );
+    // One name missing on one side: Review too.
+    let no_given = engine.compare(&full(), &with_nhs(Some("1980-03-14"), None, Some("Smith")));
+    assert_eq!(no_given.decision, Decision::Review);
+    // A family name that changed (marriage) with everything else present is not blocked.
+    let married = engine.compare(
+        &full(),
+        &with_nhs(Some("1980-03-14"), Some("Ann"), Some("Jones")),
+    );
+    assert_eq!(married.decision, Decision::AutoLink);
 }
 
 /// The stronger claim in the task: removing a field never raises the decision at all. It does not

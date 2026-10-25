@@ -63,7 +63,11 @@ values** (ID-1 asks for a 200-pair labelled corpus before they are trusted).
   either of these holds, which gives `Review` with a conflict for each:
   - both records have full birth dates that differ;
   - both the given and the family name are below their auto-link minimums (a family name alone may change, as on
-    marriage; both disagreeing suggests a mistyped or reused number).
+    marriage; both disagreeing suggests a mistyped or reused number);
+  - the given name, the family name or the birth date is absent on either record (`FieldUnavailable`, one per
+    missing field): missing evidence is not agreement, as for every other pair (CQ-37, decided 2026-10-25). A
+    number alone, or a number with a date dropped, is for a person to confirm. The score is still 1.0 and the
+    stated basis still the shared number.
 - **Two different valid NHS numbers** give `NonMatch` with a conflict, however alike the demographics.
 - Invalid NHS numbers are ignored for matching.
 - Other identifiers (MRN) do not decide a match yet.

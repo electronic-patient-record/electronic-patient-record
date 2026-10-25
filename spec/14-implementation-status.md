@@ -42,12 +42,12 @@ no network, database or compilation; counts are source lines, not test runs):
 | IO | 0 | 15 |
 | CA | 0 | 8 |
 | AS | 0 | 12 |
-| CQ | 22 | 17 |
+| CQ | 23 | 16 |
 | TR | 2 | 11 |
 | PN | 0 | 11 |
 | EM | 0 | 16 |
 | PA | 1 | 16 |
 | EC | 0 | 13 |
-| **Total** | **36** | **169** |
+| **Total** | **37** | **168** |
 
 <!-- generated:end -->

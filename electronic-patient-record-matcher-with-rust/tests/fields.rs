@@ -190,6 +190,12 @@ fn shares_nhs(dob: &str) -> Patient {
             system: NHS_NUMBER_SYSTEM.into(),
             value: "9434765919".into(),
         }],
+        // Names that agree: a shared number with no name to check it against goes to Review (CQ-37),
+        // which is not what this test is about.
+        names: vec![HumanName {
+            family: Some("Smith".into()),
+            given: vec!["Ann".into()],
+        }],
         birth_date: Some(dob.into()),
         ..Default::default()
     }
