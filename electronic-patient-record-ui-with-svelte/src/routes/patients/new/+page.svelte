@@ -14,6 +14,7 @@
     type PatientForm,
     type Stored,
   } from "#lib/patient.js";
+  import { conflictList } from "#lib/conflicts.js";
   import { STRINGS } from "#lib/strings.js";
 
   const locale = $derived(page.data.locale ?? DEFAULT_LOCALE);
@@ -131,7 +132,7 @@
         {#if c.conflicts.length}
           <p>{STRINGS.conflicts}</p>
           <ul>
-            {#each c.conflicts as why (why)}<li>{why}</li>{/each}
+            {#each conflictList(c.conflicts, c.conflict_codes, locale) as why, i (i)}<li>{why}</li>{/each}
           </ul>
         {/if}
         <table>

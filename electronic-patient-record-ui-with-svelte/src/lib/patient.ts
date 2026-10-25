@@ -4,6 +4,7 @@
 // The edit form shows only some fields. `formToPatient` therefore starts from the record being
 // edited and changes only what the form owns: a PUT replaces the whole record, so anything the
 // form dropped would be deleted from the next version.
+import type { ConflictCode } from "./conflicts.js";
 
 export const NHS_NUMBER_SYSTEM = "https://fhir.nhs.uk/Id/nhs-number";
 
@@ -46,6 +47,8 @@ export interface MatchResult {
   }[];
   deterministic: string | null;
   conflicts: string[];
+  /** The same reasons as codes, in the same order (matcher 0.3.0); absent from an older API. */
+  conflict_codes?: ConflictCode[];
 }
 
 /** An existing patient the new record may duplicate, with the matcher's explanation. */

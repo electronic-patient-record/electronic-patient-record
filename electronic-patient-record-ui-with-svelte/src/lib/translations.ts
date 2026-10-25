@@ -283,3 +283,164 @@ export function logFormStrings(locale: Locale): LogFormStrings {
 }
 
 export { en as LOG_FORM_ENGLISH };
+
+// The reasons a link cannot be automatic (CQ-38), in the words of each locale. The matcher sends each
+// reason as a code with its numbers (`conflict_codes`) beside its English text; the page translates the
+// code and falls back to the English text for anything it does not know.
+//
+// MACHINE-WRITTEN, not reviewed by any speaker, and this is clinical wording (a registrar reads it
+// when two records may be one person): do not call it reviewed until a clinician who speaks the
+// language has read it (hazard H-001).
+export const CONFLICT_KEYS = [
+  "differentNhsNumbers",
+  "sameNhsDifferentBirthDates",
+  "sameNhsDifferentNames",
+  "namesSoundAlike",
+  "namesSwapped",
+  "extraGivenName",
+  "fieldUnavailable",
+  "fieldBelowMinimum",
+  "evidenceThin",
+  "givenName",
+  "familyName",
+  "birthDate",
+] as const;
+export type ConflictWords = Record<(typeof CONFLICT_KEYS)[number], string>;
+
+export const CONFLICT_ENGLISH: ConflictWords = {
+  differentNhsNumbers: "different verified NHS numbers",
+  sameNhsDifferentBirthDates: "same NHS number but different birth dates",
+  sameNhsDifferentNames: "same NHS number but different names",
+  namesSoundAlike: "names sound alike but are spelled differently",
+  namesSwapped: "given and family names appear swapped",
+  extraGivenName: "one record has a given name the other lacks",
+  fieldUnavailable: "{field} not available to confirm the link",
+  fieldBelowMinimum: "{field} similarity {similarity} below {minimum}",
+  evidenceThin: "only {percent}% of the evidence is present",
+  givenName: "given name",
+  familyName: "family name",
+  birthDate: "birth date",
+};
+
+const conflict_de: ConflictWords = {
+  differentNhsNumbers: "unterschiedliche geprüfte NHS-Nummern",
+  sameNhsDifferentBirthDates: "gleiche NHS-Nummer, aber unterschiedliche Geburtsdaten",
+  sameNhsDifferentNames: "gleiche NHS-Nummer, aber unterschiedliche Namen",
+  namesSoundAlike: "Namen klingen ähnlich, sind aber unterschiedlich geschrieben",
+  namesSwapped: "Vor- und Nachname scheinen vertauscht",
+  extraGivenName: "ein Datensatz hat einen Vornamen, der dem anderen fehlt",
+  fieldUnavailable: "{field} nicht verfügbar, um die Verknüpfung zu bestätigen",
+  fieldBelowMinimum: "{field}: Ähnlichkeit {similarity} unter {minimum}",
+  evidenceThin: "nur {percent} % der Hinweise sind vorhanden",
+  givenName: "Vorname",
+  familyName: "Nachname",
+  birthDate: "Geburtsdatum",
+};
+
+const conflict_es: ConflictWords = {
+  differentNhsNumbers: "números NHS verificados distintos",
+  sameNhsDifferentBirthDates: "mismo número NHS pero fechas de nacimiento distintas",
+  sameNhsDifferentNames: "mismo número NHS pero nombres distintos",
+  namesSoundAlike: "los nombres suenan parecido pero se escriben distinto",
+  namesSwapped: "el nombre y el apellido parecen intercambiados",
+  extraGivenName: "un registro tiene un nombre de pila que el otro no tiene",
+  fieldUnavailable: "{field} no disponible para confirmar el vínculo",
+  fieldBelowMinimum: "{field}: similitud {similarity} por debajo de {minimum}",
+  evidenceThin: "solo el {percent} % de la evidencia está presente",
+  givenName: "nombre de pila",
+  familyName: "apellido",
+  birthDate: "fecha de nacimiento",
+};
+
+const conflict_fr: ConflictWords = {
+  differentNhsNumbers: "numéros NHS vérifiés différents",
+  sameNhsDifferentBirthDates: "même numéro NHS mais dates de naissance différentes",
+  sameNhsDifferentNames: "même numéro NHS mais noms différents",
+  namesSoundAlike: "les noms se prononcent de façon proche mais s'écrivent différemment",
+  namesSwapped: "le prénom et le nom semblent inversés",
+  extraGivenName: "un dossier a un prénom que l'autre n'a pas",
+  fieldUnavailable: "{field} non disponible pour confirmer le lien",
+  fieldBelowMinimum: "{field} : similarité {similarity} inférieure à {minimum}",
+  evidenceThin: "seulement {percent} % des éléments sont présents",
+  givenName: "prénom",
+  familyName: "nom de famille",
+  birthDate: "date de naissance",
+};
+
+const conflict_zh: ConflictWords = {
+  differentNhsNumbers: "已验证的 NHS 编号不同",
+  sameNhsDifferentBirthDates: "NHS 编号相同但出生日期不同",
+  sameNhsDifferentNames: "NHS 编号相同但姓名不同",
+  namesSoundAlike: "姓名发音相近但拼写不同",
+  namesSwapped: "名和姓似乎颠倒了",
+  extraGivenName: "其中一条记录有另一条没有的名字",
+  fieldUnavailable: "{field}不可用,无法确认关联",
+  fieldBelowMinimum: "{field}相似度 {similarity} 低于 {minimum}",
+  evidenceThin: "仅有 {percent}% 的证据",
+  givenName: "名",
+  familyName: "姓",
+  birthDate: "出生日期",
+};
+
+const conflict_hi: ConflictWords = {
+  differentNhsNumbers: "सत्यापित NHS नंबर अलग हैं",
+  sameNhsDifferentBirthDates: "NHS नंबर वही है लेकिन जन्म तिथियाँ अलग हैं",
+  sameNhsDifferentNames: "NHS नंबर वही है लेकिन नाम अलग हैं",
+  namesSoundAlike: "नाम सुनने में मिलते हैं लेकिन वर्तनी अलग है",
+  namesSwapped: "पहला और अंतिम नाम आपस में बदले हुए लगते हैं",
+  extraGivenName: "एक रिकॉर्ड में एक पहला नाम है जो दूसरे में नहीं है",
+  fieldUnavailable: "लिंक की पुष्टि के लिए {field} उपलब्ध नहीं है",
+  fieldBelowMinimum: "{field} समानता {similarity}, {minimum} से कम",
+  evidenceThin: "केवल {percent}% प्रमाण मौजूद हैं",
+  givenName: "पहला नाम",
+  familyName: "अंतिम नाम",
+  birthDate: "जन्म तिथि",
+};
+
+const conflict_ar: ConflictWords = {
+  differentNhsNumbers: "أرقام NHS الموثّقة مختلفة",
+  sameNhsDifferentBirthDates: "رقم NHS نفسه لكن تواريخ الميلاد مختلفة",
+  sameNhsDifferentNames: "رقم NHS نفسه لكن الأسماء مختلفة",
+  namesSoundAlike: "الأسماء متشابهة في النطق لكنها مكتوبة بشكل مختلف",
+  namesSwapped: "يبدو أن الاسم الأول واسم العائلة متبادلان",
+  extraGivenName: "في أحد السجلين اسم أول ليس في الآخر",
+  fieldUnavailable: "{field} غير متوفر لتأكيد الربط",
+  fieldBelowMinimum: "{field}: التشابه {similarity} أقل من {minimum}",
+  evidenceThin: "تتوفر {percent}% فقط من الأدلة",
+  givenName: "الاسم الأول",
+  familyName: "اسم العائلة",
+  birthDate: "تاريخ الميلاد",
+};
+
+const conflict_cy: ConflictWords = {
+  differentNhsNumbers: "rhifau NHS gwiriedig gwahanol",
+  sameNhsDifferentBirthDates: "yr un rhif NHS ond dyddiadau geni gwahanol",
+  sameNhsDifferentNames: "yr un rhif NHS ond enwau gwahanol",
+  namesSoundAlike: "mae'r enwau'n swnio'n debyg ond wedi'u sillafu'n wahanol",
+  namesSwapped: "mae'n ymddangos bod yr enw cyntaf a'r cyfenw wedi'u cyfnewid",
+  extraGivenName: "mae gan un cofnod enw cyntaf nad yw ar y llall",
+  fieldUnavailable: "nid yw {field} ar gael i gadarnhau'r cyswllt",
+  fieldBelowMinimum: "{field}: tebygrwydd {similarity} o dan {minimum}",
+  evidenceThin: "dim ond {percent}% o'r dystiolaeth sy'n bresennol",
+  givenName: "enw cyntaf",
+  familyName: "cyfenw",
+  birthDate: "dyddiad geni",
+};
+
+/** Machine-written, not reviewed. `de-de` reads as `de-001`, and `zh-cn` as `zh-001` (simplified). */
+export const CONFLICT_WORDS: Partial<Record<Locale, ConflictWords>> = {
+  "ar-001": conflict_ar,
+  "cy-001": conflict_cy,
+  "de-001": conflict_de,
+  "de-de": conflict_de,
+  "es-001": conflict_es,
+  "fr-001": conflict_fr,
+  "hi-001": conflict_hi,
+  "zh-001": conflict_zh,
+  "zh-cn": conflict_zh,
+};
+
+/** The conflict words for `locale`, English where there is no translation. */
+export function conflictWords(locale: Locale): ConflictWords {
+  return CONFLICT_WORDS[locale] ?? CONFLICT_ENGLISH;
+}

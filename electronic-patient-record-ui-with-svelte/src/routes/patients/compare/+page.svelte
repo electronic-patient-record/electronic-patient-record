@@ -1,6 +1,11 @@
 <script lang="ts">
   import { Busy } from "#lib/busy.svelte.js";
+  import { page } from "$app/state";
+  import { conflictList, type ConflictCode } from "#lib/conflicts.js";
+  import { DEFAULT_LOCALE } from "#lib/locales.js";
   import { STRINGS } from "#lib/strings.js";
+
+  const locale = $derived(page.data.locale ?? DEFAULT_LOCALE);
 
   type Field = { field: string; similarity: number | null; weight: number; note: string };
   type Result = {
@@ -9,6 +14,7 @@
     fields: Field[];
     deterministic: string | null;
     conflicts: string[];
+    conflict_codes?: ConflictCode[];
   };
 
   let a = $state({ family: "", given: "", birth: "" });
@@ -100,7 +106,7 @@
     {#if result.conflicts.length}
       <h3>{STRINGS.conflicts}</h3>
       <ul>
-        {#each result.conflicts as c (c)}<li>{c}</li>{/each}
+        {#each conflictList(result.conflicts, result.conflict_codes, locale) as c, i (i)}<li>{c}</li>{/each}
       </ul>
     {/if}
     <table>
