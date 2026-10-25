@@ -7,6 +7,11 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - `proxy.rs`: `decide` (revoked, expired, out of scope, in that order; the expiry instant is expired) and `validate` (no empty scope, no self-recorded authority, a required expiry within five years). 9 unit tests; moving the expiry or revocation boundary, or ignoring the scope list, makes tests fail.
 - Not done: nothing calls it, so **proxy access is unchanged and still all-or-nothing** (hazard H-011 and the proxy part of the model are not improved yet, so the hazard log is unchanged). No store, route, audit row, access-log entry, UI or adolescent-confidentiality rule. The four scopes and the five-year limit are guesses; the basis list is not checked against anything.
 
+## 2026-10-25 - Service: Patient and AllergyIntolerance FHIR searches refuse an unknown parameter (IO-1, third slice)
+
+- `GET /fhir/R4/Patient?gender=female` used to ignore `gender` and return every match on the other terms, which looks filtered and is not. It, and an extra parameter on `AllergyIntolerance`, is now a 400 `not-supported` naming the parameter (same rule as AuditEvent); `_count`, `_format` and `_pretty` still pass. FHIR permits ignoring unknown parameters, so a client that sends extras will now get an error: that is the intended trade.
+- Not done: no Postgres test of the 400 over HTTP (the rule is unit-tested through `search_from` and `refuse_unknown`; the AllergyIntolerance handler's call to it is not exercised by a test); `Prefer: handling=lenient` is not offered. The Postgres tests were not rerun. No hazard-log change (it only refuses more requests).
+
 ## 2026-10-25 - Service: the CapabilityStatement's search parameters match the code; AuditEvent refuses `_id` and `_lastUpdated` (IO-1, second slice)
 
 - New test: the parameters stated for Patient, AllergyIntolerance and AuditEvent are the ones the code reads. It found a gap: `GET /fhir/R4/AuditEvent?_id=...` or `_lastUpdated=...` ignored the filter (every `_` parameter was dropped) and returned unfiltered events, which the doc comment said must not happen. Now only `_count`, `_format` and `_pretty` are ignored and any other is refused (400 with the parameter's name).

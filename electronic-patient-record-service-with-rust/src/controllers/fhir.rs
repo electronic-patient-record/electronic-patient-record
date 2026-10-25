@@ -176,10 +176,26 @@ fn one(
     }
 }
 
-/// FHIR search parameters as the store's criteria. Unknown parameters are ignored (the server
-/// does not claim to support them). A date prefix other than `eq` is refused rather than
-/// treated as exact.
+/// Refuse a search parameter the resource does not read, so a filter is never silently lost: a
+/// search for `gender=female` that returned every Smith would look filtered and not be. Only the
+/// result-shaping `_count`, `_format` and `_pretty` are let through.
+fn refuse_unknown(params: &HashMap<String, String>, known: &[&str]) -> Result<(), String> {
+    let mut unknown: Vec<&str> = params
+        .keys()
+        .map(String::as_str)
+        .filter(|k| !known.contains(k) && !matches!(*k, "_count" | "_format" | "_pretty"))
+        .collect();
+    unknown.sort_unstable();
+    match unknown.first() {
+        None => Ok(()),
+        Some(k) => Err(format!("the search parameter {k} is not supported")),
+    }
+}
+
+/// FHIR search parameters as the store's criteria. An unknown parameter is refused, not ignored
+/// (`refuse_unknown`). A date prefix other than `eq` is refused rather than treated as exact.
 fn search_from(params: &HashMap<String, String>) -> Result<Search, String> {
+    refuse_unknown(params, &["family", "birthdate", "identifier"])?;
     let birth_date = match params.get("birthdate") {
         None => None,
         Some(v) => {
@@ -563,6 +579,9 @@ async fn search_allergies(
     headers: HeaderMap,
     Query(params): Query<HashMap<String, String>>,
 ) -> Response {
+    if let Err(m) = refuse_unknown(&params, &["patient"]) {
+        return outcome(StatusCode::BAD_REQUEST, "not-supported", &m);
+    }
     let Some(patient) = params
         .get("patient")
         .map(|p| p.strip_prefix("Patient/").unwrap_or(p).to_string())
@@ -1041,13 +1060,21 @@ mod tests {
                 "{name} is stated but not read"
             );
         }
-        for name in ["gender", "name", "_id", "address", "phone", "active"] {
-            let s = search_from(&one(name, "x")).unwrap();
+        for name in [
+            "gender",
+            "name",
+            "_id",
+            "address",
+            "phone",
+            "active",
+            "_lastUpdated",
+        ] {
             assert!(
-                s.family.is_none() && s.birth_date.is_none() && s.identifier.is_none(),
-                "{name} is read but not stated"
+                search_from(&one(name, "x")).is_err(),
+                "{name} is accepted but not stated"
             );
         }
+        assert!(search_from(&one("_count", "5")).is_ok());
 
         // AllergyIntolerance: patient only.
         assert_eq!(stated("AllergyIntolerance"), set(&["patient"]));
@@ -1089,6 +1116,26 @@ mod tests {
                 "{name} is accepted but not stated"
             );
         }
+    }
+
+    #[test]
+    fn an_unknown_search_parameter_is_refused_and_result_shaping_ones_are_not() {
+        let q = |pairs: &[(&str, &str)]| -> HashMap<String, String> {
+            pairs
+                .iter()
+                .map(|(k, v)| ((*k).into(), (*v).into()))
+                .collect()
+        };
+        assert!(
+            refuse_unknown(
+                &q(&[("patient", "p"), ("_count", "5"), ("_format", "json")]),
+                &["patient"]
+            )
+            .is_ok()
+        );
+        let e = refuse_unknown(&q(&[("patient", "p"), ("category", "food")]), &["patient"])
+            .unwrap_err();
+        assert!(e.contains("category"), "{e}");
     }
 
     #[test]
