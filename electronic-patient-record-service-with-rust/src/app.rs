@@ -62,6 +62,8 @@ impl Hooks for App {
         auth::init(ctx.environment == Environment::Production, config_require)
             .await
             .map_err(loco_rs::Error::Message)?;
+        // The site's time zone, for the age on a banner: a name that is not an IANA zone stops the service.
+        crate::site::init().map_err(loco_rs::Error::Message)?;
         // The MLLP listener for HL7 v2 ADT feeds is off unless `EPR_MLLP_BIND` is set. A bad
         // setting, or a port that cannot be opened, stops the service starting: a feed that was
         // asked for and is silently absent is worse than no service.

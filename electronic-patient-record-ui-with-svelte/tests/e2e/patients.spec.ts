@@ -2148,3 +2148,23 @@ test("a refused merge gives its reasons in the page's language, and the API's ow
   await page.getByRole("button", { name: "Merge into this record" }).click();
   await expect(page.getByText(english)).toBeVisible();
 });
+
+test("the banner's age is counted on the site's calendar day, not the reader's", async ({ page }) => {
+  // Born 1980-03-14. At 23:30 UTC on 13 March it is already the 14th in Auckland and still the 13th in New York.
+  let zone = "Pacific/Auckland";
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, { ...ANN, replaced_by: null, replaces: [], site_time_zone: zone }),
+  );
+  await page.clock.setFixedTime(new Date("2026-03-13T23:30:00Z"));
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  const banner = page.getByRole("region", { name: "Patient banner" });
+  await expect(banner).toContainText("46 years");
+  zone = "America/New_York";
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  await expect(banner).toContainText("45 years");
+  // An older API sends no zone: UTC, where it is still the 13th.
+  zone = undefined as unknown as string;
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  await expect(banner).toContainText("45 years");
+});

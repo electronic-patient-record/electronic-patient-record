@@ -36,6 +36,8 @@ x-api-environment: &api-environment
   EPR_INTEGRITY_MAC_KEY: ${EPR_INTEGRITY_MAC_KEY:-}
   EPR_TOKEN_ISSUER: ${EPR_TOKEN_ISSUER:-authentication-service}
   EPR_TOKEN_AUDIENCE: ${EPR_TOKEN_AUDIENCE:-electronic-patient-record}
+  # The site's IANA time zone, whose calendar day a patient's age is counted on; blank means UTC.
+  EPR_SITE_TIME_ZONE: ${EPR_SITE_TIME_ZONE:-}
   SMTP_HOST: ${SMTP_HOST:-localhost}
   SMTP_PORT: ${SMTP_PORT:-587}
   SMTP_USER: ${SMTP_USER:-}

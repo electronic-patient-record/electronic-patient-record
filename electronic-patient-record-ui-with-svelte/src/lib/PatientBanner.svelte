@@ -74,7 +74,7 @@
     p.identifiers.find((i) => i.system !== NHS_NUMBER_SYSTEM),
   );
   const age = $derived.by(() => {
-    const a = ageOn(p.birth_date, today);
+    const a = ageOn(p.birth_date, today, stored.site_time_zone);
     if (!a) return STRINGS.bannerNoBirthDate;
     if (a.months !== undefined)
       return STRINGS.bannerAgeMonths.replace("{n}", String(a.months));

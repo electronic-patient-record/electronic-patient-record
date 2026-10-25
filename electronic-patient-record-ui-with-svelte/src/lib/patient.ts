@@ -28,6 +28,8 @@ export interface Stored {
   patient: PatientRecord;
   /** The photo version to fetch, or null/absent when there is no photo. */
   photo_version?: number | null;
+  /** The site's time zone, whose calendar day the age is counted on (`EPR_SITE_TIME_ZONE`); absent from an older API. */
+  site_time_zone?: string;
   /** Set when this record was merged away: the surviving record's id. */
   replaced_by?: string | null;
   /** The records merged into this one and still merged. */
@@ -100,12 +102,13 @@ export const nhsDisplay = (digits: string): string =>
  */
 export function ageOn(
   birthDate: string | null | undefined,
-  today: Date,
+  now: Date,
+  zone = "UTC",
 ): { years?: number; months?: number; approximate: boolean } | null {
+  const { year: ty, month: tm, day: td } = calendarDay(now, zone);
   const m = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/.exec(birthDate ?? "");
   if (!m) return null;
   const year = Number(m[1]);
-  const ty = today.getUTCFullYear();
   if (year > ty) return null;
   if (m[2] === undefined || m[3] === undefined) {
     return { years: ty - year, approximate: true };
@@ -120,13 +123,29 @@ export function ageOn(
     probe.getUTCDate() !== day
   )
     return null;
-  const tm = today.getUTCMonth() + 1;
-  const td = today.getUTCDate();
   let months = (ty - year) * 12 + (tm - month) - (td < day ? 1 : 0);
   if (months < 0) return null;
   return months < 24
     ? { months, approximate: false }
     : { years: Math.floor(months / 12), approximate: false };
+}
+
+/**
+ * The calendar day it is at `now` in `zone` (an IANA name): the site's own day, so a patient's age
+ * changes at the site's midnight for everyone. An unknown zone name falls back to UTC rather than
+ * failing the banner.
+ */
+export function calendarDay(now: Date, zone: string): { year: number; month: number; day: number } {
+  const parts = (tz: string) =>
+    new Intl.DateTimeFormat("en-US", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(now);
+  let p;
+  try {
+    p = parts(zone);
+  } catch {
+    p = parts("UTC");
+  }
+  const n = (k: string) => Number(p.find((x) => x.type === k)?.value);
+  return { year: n("year"), month: n("month"), day: n("day") };
 }
 
 /** The form's view of a record: the first name, the NHS number, the first postcode. */

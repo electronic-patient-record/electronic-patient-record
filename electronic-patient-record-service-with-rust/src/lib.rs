@@ -32,4 +32,5 @@ pub mod privacy;
 pub mod proxy;
 pub mod relationships;
 pub mod routes;
+pub mod site;
 pub mod store;

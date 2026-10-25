@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { clock } from "../../src/lib/data-age";
 import { whenText } from "../../src/lib/access-log";
-import { ageOn } from "../../src/lib/patient";
+import { ageOn, calendarDay } from "../../src/lib/patient";
 
 // RC-9: the same instant must read the same under any process time zone, except where the page
 // deliberately shows the reader's own zone, and then it must name it.
@@ -37,9 +37,32 @@ describe("time zones (RC-9)", () => {
       under("America/New_York", () => clock(after, "en-GB")),
     );
   });
-  it("age is counted on the UTC date, whatever the zone (current behaviour, not a claim it is ideal)", () => {
-    // 2026-10-24 23:30 in New York is already the 25th in UTC: a person born 2025-10-25 is 12 months.
+  it("age is counted on the site's calendar day, the same for every reader whatever their own zone", () => {
+    // 03:30 UTC on 25 October is still the evening of the 24th in New York.
     const now = new Date("2026-10-25T03:30:00Z");
-    for (const tz of ZONES) expect(under(tz, () => ageOn("2025-10-25", now))).toEqual({ months: 12, approximate: false });
+    for (const tz of ZONES) {
+      // The reader's zone does not matter; the site's does.
+      expect(under(tz, () => ageOn("2025-10-25", now, "UTC"))).toEqual({ months: 12, approximate: false });
+      expect(under(tz, () => ageOn("2025-10-25", now, "America/New_York"))).toEqual({ months: 11, approximate: false });
+      expect(under(tz, () => ageOn("2025-10-25", now, "Pacific/Auckland"))).toEqual({ months: 12, approximate: false });
+    }
+    // No zone given is UTC, as before; an unknown zone falls back to UTC rather than failing the banner.
+    expect(ageOn("2025-10-25", now)).toEqual({ months: 12, approximate: false });
+    expect(ageOn("2025-10-25", now, "Not/AZone")).toEqual({ months: 12, approximate: false });
+  });
+  it("a birthday arrives at the site's midnight", () => {
+    // Born 2020-03-01: five on 1 March in the site's zone, four the day before, and the leap day counts.
+    const london = (iso: string) => ageOn("2020-03-01", new Date(iso), "Europe/London")?.years;
+    expect(london("2025-02-28T23:30:00Z")).toBe(4);
+    expect(london("2025-03-01T00:30:00Z")).toBe(5);
+    // 2026-03-29 00:30 UTC is 01:30 BST in London, after the clocks went forward: same day, same age.
+    expect(london("2026-03-29T00:30:00Z")).toBe(6);
+  });
+  it("calendarDay is the day in the zone, and UTC for a zone it does not know", () => {
+    const t = new Date("2026-10-25T23:30:00Z");
+    expect(calendarDay(t, "UTC")).toEqual({ year: 2026, month: 10, day: 25 });
+    expect(calendarDay(t, "Pacific/Auckland")).toEqual({ year: 2026, month: 10, day: 26 });
+    expect(calendarDay(t, "America/New_York")).toEqual({ year: 2026, month: 10, day: 25 });
+    expect(calendarDay(t, "nonsense")).toEqual({ year: 2026, month: 10, day: 25 });
   });
 });

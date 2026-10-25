@@ -115,6 +115,11 @@ async fn fhir_refusals_are_operation_outcomes_and_never_carry_candidates() {
             .expect("id")
             .to_string();
 
+        // The read carries the site's time zone for the banner's age (RC-9): UTC unless `EPR_SITE_TIME_ZONE` is set.
+        let view = server.get(&format!("/api/patients/{id}")).await;
+        assert_eq!(view.status_code(), StatusCode::OK);
+        assert_eq!(view.json::<serde_json::Value>()["site_time_zone"], "UTC");
+
         // Update without If-Match: 428 OperationOutcome.
         let read = server.get(&format!("/fhir/R4/Patient/{id}")).await;
         assert_eq!(read.status_code(), StatusCode::OK);

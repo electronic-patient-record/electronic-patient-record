@@ -188,7 +188,7 @@ Conventions:
   - medication reconciliation view
 
   **Acceptance:** chart open is p95 ≤ 1 s in a Playwright performance test on the seeded demo. axe passes. Keyboard-only operation is tested.
-- [ ] **RC-9 (S) — UTC and time zones.** **Partly landed 2026-10-25 (UI only):** the read-at clock names its zone; the access log's days and times, and its filter, use the patient's browser zone; `tests/unit/time-zones.test.ts` runs three zones and a New York DST change. **Open:** the service stores no recorded zone; times from the API are still shown as UTC rather than the user's zone, except in the patient's access log; age uses the UTC date, which can be a day early or late for a reader near midnight (decision needed).
+- [ ] **RC-9 (S) — UTC and time zones.** **Partly landed 2026-10-25 (UI only):** the read-at clock names its zone; the access log's days and times, and its filter, use the patient's browser zone; `tests/unit/time-zones.test.ts` runs three zones and a New York DST change. **Open:** the service stores no recorded zone; times from the API are still shown as UTC rather than the user's zone, except in the patient's access log; ~~age uses the UTC date~~ (decided and landed 2026-10-25: the banner's age is counted on the site's calendar day, `EPR_SITE_TIME_ZONE`, one zone per service).
   Store UTC, keep the recorded zone,
   and render in the user's zone.
   **Acceptance:** a time-zone test runs under three zones and around a DST transition.

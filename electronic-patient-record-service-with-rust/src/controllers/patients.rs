@@ -174,6 +174,8 @@ pub struct PatientView {
     pub replaced_by: Option<String>,
     /// The records merged into this one.
     pub replaces: Vec<String>,
+    /// The site's time zone (`EPR_SITE_TIME_ZONE`), whose calendar day the banner's age is counted on.
+    pub site_time_zone: String,
 }
 
 /// Register a patient: the duplicate check, the new version and its audit row are one transaction.
@@ -387,6 +389,7 @@ pub(super) async fn read_service(
                 photo_version,
                 replaced_by,
                 replaces,
+                site_time_zone: crate::site::time_zone(),
             })
         }
         Err(StoreError::NotFound) => {
