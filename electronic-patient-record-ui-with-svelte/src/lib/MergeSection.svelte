@@ -18,22 +18,30 @@
   let source = $state("");
   let why = $state("");
   let message = $state<string | null>(null);
+  let busy = $state(false);
 
   async function send(
     path: "merge" | "unmerge",
     sourceId: string,
     done: string,
   ) {
+    if (busy) return;
     message = null;
     if (!why.trim()) {
       message = STRINGS.mergeWhy;
       return;
     }
-    const res = await call<{ errors?: string[] }>(
-      "POST",
-      `/api/patients/${patientId}/${path}`,
-      { source: sourceId.trim(), reason: why.trim() },
-    );
+    busy = true;
+    let res;
+    try {
+      res = await call<{ errors?: string[] }>(
+        "POST",
+        `/api/patients/${patientId}/${path}`,
+        { source: sourceId.trim(), reason: why.trim() },
+      );
+    } finally {
+      busy = false;
+    }
     const common = commonProblem(res.status);
     if (common) message = STRINGS[common];
     else if (res.status === 200 || res.status === 201) {
@@ -56,7 +64,7 @@
       {#each replaces as r (r)}
         <li>
           <code>{r}</code>
-          <button type="button" onclick={() => void send("unmerge", r, STRINGS.mergeUndone)}>
+          <button type="button" disabled={busy} onclick={() => void send("unmerge", r, STRINGS.mergeUndone)}>
             {STRINGS.mergeUndo}
           </button>
         </li>
@@ -67,7 +75,7 @@
   <input id="m-source" bind:value={source} autocomplete="off" />
   <label for="m-why">{STRINGS.mergeWhy}</label>
   <input id="m-why" bind:value={why} autocomplete="off" />
-  <button type="button" disabled={!source.trim()} onclick={() => void send("merge", source, STRINGS.mergeDone)}>
+  <button type="button" disabled={busy || !source.trim()} onclick={() => void send("merge", source, STRINGS.mergeDone)}>
     {STRINGS.mergeDo}
   </button>
   {#if message}<p role="status">{message}</p>{/if}

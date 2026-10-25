@@ -164,8 +164,21 @@
   let photoReason = $state("");
   let photoMessage = $state<string | null>(null);
   const MAX_PHOTO = 512 * 1024;
+  // One write at a time: a second click while the first is in flight is ignored, not sent.
+  let saving = $state(false);
+  let photoBusy = $state(false);
 
   async function sendPhoto(withdraw: boolean) {
+    if (!stored || photoBusy) return;
+    photoBusy = true;
+    try {
+      await sendPhotoNow(withdraw);
+    } finally {
+      photoBusy = false;
+    }
+  }
+
+  async function sendPhotoNow(withdraw: boolean) {
     if (!stored) return;
     photoMessage = null;
     if (!withdraw) {
@@ -213,18 +226,26 @@
 
   async function save(event: SubmitEvent) {
     event.preventDefault();
-    if (!stored) return;
+    if (!stored || saving) return;
+    saving = true;
+    try {
+      await saveNow(stored.id, stored.version, stored.patient);
+    } finally {
+      saving = false;
+    }
+  }
+
+  async function saveNow(forId: string, version: number, base: Stored["patient"]) {
     message = null;
     problems = [];
     saved = null;
     conflict = false;
-    const forId = stored.id;
     const res = await call<Stored & { errors?: string[] }>(
       "PUT",
       `/api/patients/${forId}`,
       {
-        patient: formToPatient(form, stored.patient),
-        expected_version: stored.version,
+        patient: formToPatient(form, base),
+        expected_version: version,
         reason: reason.trim() || undefined,
       },
     );
@@ -256,7 +277,7 @@
 </p>
 
 {#if loading}
-  <p>{STRINGS.loading}</p>
+  <p role="status" aria-busy="true">{STRINGS.loading}</p>
 {/if}
 
 {#if message}
@@ -334,9 +355,9 @@
     />
     <label for="photo-why">{STRINGS.photoWhy}</label>
     <input id="photo-why" bind:value={photoReason} autocomplete="off" />
-    <button type="button" onclick={() => void sendPhoto(false)}>{STRINGS.photoUpload}</button>
+    <button type="button" disabled={photoBusy} onclick={() => void sendPhoto(false)}>{STRINGS.photoUpload}</button>
     {#if stored.photo_version}
-      <button type="button" onclick={() => void sendPhoto(true)}>{STRINGS.photoWithdraw}</button>
+      <button type="button" disabled={photoBusy} onclick={() => void sendPhoto(true)}>{STRINGS.photoWithdraw}</button>
     {/if}
     {#if photoMessage}<p role="status">{photoMessage}</p>{/if}
   </section>
@@ -344,7 +365,7 @@
     <PatientFields bind:form prefix="e" />
     <label for="e-reason">{STRINGS.reason}</label>
     <input id="e-reason" bind:value={reason} autocomplete="off" />
-    <button type="submit">{STRINGS.save}</button>
+    <button type="submit" disabled={saving}>{STRINGS.save}</button>
   </form>
   {/if}
 {/if}

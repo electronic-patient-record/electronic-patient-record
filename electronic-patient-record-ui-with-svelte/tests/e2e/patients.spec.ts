@@ -1676,3 +1676,28 @@ test("recording a proxy sends its basis, scopes and last day, and the list shows
   ).toBeVisible();
   await expect(page.getByText(/this proxy sees nothing/)).toBeVisible();
 });
+
+test("a double click on save sends one request, and the button is off while it is in flight", async ({
+  page,
+}) => {
+  let puts = 0;
+  let release: () => void = () => {};
+  const held = new Promise<void>((r) => (release = r));
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, async (route) => {
+    if (route.request().method() === "PUT") {
+      puts++;
+      await held;
+      return json(route, 200, { ...ANN, version: 3 });
+    }
+    return json(route, 200, ANN);
+  });
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  const save = page.getByRole("button", { name: "Save changes" });
+  await expect(save).toBeEnabled();
+  await save.dblclick();
+  await expect(save).toBeDisabled();
+  release();
+  await expect(page.getByRole("status").filter({ hasText: "Saved." })).toBeVisible();
+  expect(puts).toBe(1);
+  await expect(save).toBeEnabled();
+});

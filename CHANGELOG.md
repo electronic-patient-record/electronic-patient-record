@@ -7,6 +7,11 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - `proxy.rs`: `decide` (revoked, expired, out of scope, in that order; the expiry instant is expired) and `validate` (no empty scope, no self-recorded authority, a required expiry within five years). 9 unit tests; moving the expiry or revocation boundary, or ignoring the scope list, makes tests fail.
 - Not done: nothing calls it, so **proxy access is unchanged and still all-or-nothing** (hazard H-011 and the proxy part of the model are not improved yet, so the hazard log is unchanged). No store, route, audit row, access-log entry, UI or adolescent-confidentiality rule. The four scopes and the five-year limit are guesses; the basis list is not checked against anything.
 
+## 2026-10-25 - UI: one write at a time, loading is announced, logical CSS (CQ-33, first slice)
+
+- The patient page's save and photo buttons, and the merge section's buttons, are disabled while a request is in flight and a second click is ignored in code too; the loading text on the patient and my-record pages is `role="status"` `aria-busy`; `left`/`right` in `app.css` became logical properties. One e2e test (a double click on save sends one PUT); removing the guard and the disabled attribute fails it.
+- Not done: the register, access, consent, break-glass and admin forms still allow a double submit (the server's version check turns the second into a 409, which is not a fix); no double-click test for photo or merge; no axe run with `ar-001`; the RTL layout was not looked at. CQ-33 stays open.
+
 ## 2026-10-25 - UI: the access log no longer calls a proxy "a member of staff" (PA-5)
 
 - An entry whose recorded roles include `proxy` reads "Someone acting as a proxy viewed your identity record." It used to read "A member of staff (proxy, …)". One unit test.

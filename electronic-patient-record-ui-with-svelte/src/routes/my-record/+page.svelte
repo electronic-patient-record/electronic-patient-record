@@ -114,7 +114,7 @@
 <p>{STRINGS.myRecordIntro}</p>
 
 {#if loading}
-  <p>{STRINGS.loading}</p>
+  <p role="status" aria-busy="true">{STRINGS.loading}</p>
 {/if}
 
 {#if message}

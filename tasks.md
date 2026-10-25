@@ -620,7 +620,7 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
 
   **Acceptance:** no `as T` on response bodies (grep census test); a malformed response shows an error, not a blank
   field.
-- [ ] **CQ-33 (S) — In-flight and accessibility states.** Disable save, upload and withdraw while busy; give the loading
+- [ ] **CQ-33 (S) — In-flight and accessibility states.** **Partly landed 2026-10-25:** save, photo upload and withdraw on the patient page and merge/unmerge ignore a second click while one is in flight; loading text has `role="status"` and `aria-busy`; physical `left` in `app.css` is now logical; one e2e double-click test (save). **Open:** the other forms (register, access, consent, break-glass, admin), a double-click test for photo and merge, and axe with `ar-001`. Disable save, upload and withdraw while busy; give the loading
   text `role="status"` and `aria-busy`; replace physical `left`/`right` CSS with logical properties for `dir="rtl"`.
   **Acceptance:** an e2e double-click test makes one request; axe passes with `ar-001`.
 - [ ] **CQ-34 (M) — Translation readiness and local time.** **Clinical** (times). A message catalogue keyed by locale

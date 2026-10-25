@@ -40,10 +40,10 @@ a {
 }
 .skip {
   position: absolute;
-  left: -999px;
+  inset-inline-start: -999px;
 }
 .skip:focus {
-  left: 0.5rem;
+  inset-inline-start: 0.5rem;
   top: 0.5rem;
   background: var(--bg);
   padding: 0.5rem;
@@ -114,7 +114,7 @@ th,
 td {
   border: 1px solid var(--border);
   padding: 0.35rem 0.5rem;
-  text-align: left;
+  text-align: start;
 }
 select,
 textarea {
@@ -170,12 +170,12 @@ small {
   grid-column: 1 / -1;
   font-weight: 700;
   padding: 0.25rem 0.5rem;
-  border-left: 4px solid var(--warn-border);
+  border-inline-start: 4px solid var(--warn-border);
   background: var(--warn-bg);
 }
 .overdue {
   padding: 0 0.25rem;
-  border-left: 4px solid var(--warn-border);
+  border-inline-start: 4px solid var(--warn-border);
   background: var(--warn-bg);
 }
 .banner .drill {
@@ -193,8 +193,8 @@ small {
   border: 1px solid var(--fg);
 }
 .banner .allergies.high {
-  padding-left: 0.5rem;
-  border-left: 4px solid var(--warn-border);
+  padding-inline-start: 0.5rem;
+  border-inline-start: 4px solid var(--warn-border);
   background: var(--warn-bg);
 }
 .banner .allergies {
