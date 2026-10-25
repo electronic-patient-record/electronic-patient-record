@@ -1964,3 +1964,42 @@ test("two clicks at once on register send one request (a second would make a dup
   await expect(page.getByRole("button", { name: "Register", exact: true })).toBeEnabled();
   expect(posts).toBe(1);
 });
+
+test("two clicks at once on remove photo, and on undo this merge, send one request each", async ({ page }) => {
+  const OLD = "44444444-4444-4444-8444-444444444444";
+  const click2 = (b: import("@playwright/test").Locator) =>
+    b.evaluate((el: HTMLButtonElement) => {
+      el.click();
+      el.click();
+    });
+  const posts = { withdraw: 0, unmerge: 0 };
+  let release: () => void = () => {};
+  const held = new Promise<void>((r) => (release = r));
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, { ...ANN, photo_version: 1, replaced_by: null, replaces: [OLD] }),
+  );
+  await page.route(`**/api/proxy/api/patients/${ANN.id}/photo**`, async (route) => {
+    if (route.request().method() === "GET")
+      return route.fulfill({ status: 200, contentType: "image/png", body: PNG_BYTES });
+    posts.withdraw++;
+    await held;
+    return json(route, 500, {});
+  });
+  await page.route(`**/api/proxy/api/patients/${ANN.id}/unmerge`, async (route) => {
+    posts.unmerge++;
+    await held;
+    return json(route, 500, {});
+  });
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  await click2(page.getByRole("button", { name: "Remove photo" }));
+  await expect(page.getByRole("button", { name: "Upload photo" })).toBeDisabled();
+  release();
+  await expect(page.getByRole("button", { name: "Upload photo" })).toBeEnabled();
+  expect(posts.withdraw).toBe(1);
+
+  await page.getByLabel(/Why are these the same person/).fill("merged in error");
+  await click2(page.getByRole("button", { name: "Undo this merge" }));
+  await expect(page.getByRole("button", { name: "Undo this merge" })).toBeEnabled();
+  expect(posts.unmerge).toBe(1);
+});

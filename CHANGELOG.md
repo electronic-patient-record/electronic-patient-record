@@ -7,6 +7,11 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - `proxy.rs`: `decide` (revoked, expired, out of scope, in that order; the expiry instant is expired) and `validate` (no empty scope, no self-recorded authority, a required expiry within five years). 9 unit tests; moving the expiry or revocation boundary, or ignoring the scope list, makes tests fail.
 - Not done: nothing calls it, so **proxy access is unchanged and still all-or-nothing** (hazard H-011 and the proxy part of the model are not improved yet, so the hazard log is unchanged). No store, route, audit row, access-log entry, UI or adolescent-confidentiality rule. The four scopes and the five-year limit are guesses; the basis list is not checked against anything.
 
+## 2026-10-25 - UI: tests for remove photo and undo this merge (CQ-33, last of the write buttons)
+
+- Two clicks in one task on "Remove photo" and on "Undo this merge" each send one POST. Each fails with its own guard removed (`photoBusy`, merge's `busy`): 2 requests, not 1.
+- Not done: the CQ-33 write buttons now all have a test. Still open from CQ-33 in general: nothing known besides the read-only search and compare forms, which have no test of their own.
+
 ## 2026-10-25 - Matcher: release 0.3.0
 
 - The matcher crate is now version 0.3.0 and is published to crates.io: the CQ-19 changes (part-by-part family names, extra-given-name block, transliteration, swap detection, `\p{M}` fold, E.164 phones, household evidence, nicknames, phonetic review, `MatchConfig::validate`), `conflict_codes` and placeholder names (EC-2). 96 tests pass; clippy and fmt clean.
