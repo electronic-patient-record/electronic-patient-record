@@ -7,6 +7,11 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - `proxy.rs`: `decide` (revoked, expired, out of scope, in that order; the expiry instant is expired) and `validate` (no empty scope, no self-recorded authority, a required expiry within five years). 9 unit tests; moving the expiry or revocation boundary, or ignoring the scope list, makes tests fail.
 - Not done: nothing calls it, so **proxy access is unchanged and still all-or-nothing** (hazard H-011 and the proxy part of the model are not improved yet, so the hazard log is unchanged). No store, route, audit row, access-log entry, UI or adolescent-confidentiality rule. The four scopes and the five-year limit are guesses; the basis list is not checked against anything.
 
+## 2026-10-25 - UI: a test for the allergy buttons' one-at-a-time rule (CQ-33)
+
+- Two clicks in one task on "Record allergy" send one POST and switch "Record: no known allergies" off while it is in flight; with the guard removed the test fails.
+- Not done: photo, merge, break-glass and the admin pages still have no such test.
+
 ## 2026-10-25 - UI: axe passes on the main pages in ar-001 (CQ-33, third slice)
 
 - One e2e test visits search, register, patient, access and my-record under `/ar-001`, checks `dir="rtl"` and a visible heading, and runs axe (WCAG 2.2 AA). It passed first time, so it found nothing to fix.

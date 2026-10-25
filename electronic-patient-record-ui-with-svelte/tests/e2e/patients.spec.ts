@@ -1774,3 +1774,35 @@ test("the main pages are right-to-left and pass axe in ar-001", async ({ page })
     await axe(page);
   }
 });
+
+test("two clicks at once on record allergy send one request and switch the other allergy buttons off", async ({ page }) => {
+  const posts = { add: 0, statement: 0 };
+  let release: () => void = () => {};
+  const held = new Promise<void>((r) => (release = r));
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) => json(route, 200, ANN));
+  await page.route("**/api/proxy/api/patients/*/allergies", async (route) => {
+    if (route.request().method() === "GET") return json(route, 200, NOT_RECORDED);
+    posts.add++;
+    await held;
+    return json(route, 201, {});
+  });
+  await page.route("**/api/proxy/api/patients/*/allergy-statement", async (route) => {
+    posts.statement++;
+    await held;
+    return json(route, 200, {});
+  });
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  await page.getByLabel("Substance").fill("Penicillin");
+  const click2 = (b: import("@playwright/test").Locator) =>
+    b.evaluate((el: HTMLButtonElement) => {
+      el.click();
+      el.click();
+    });
+  await click2(page.getByRole("button", { name: "Record allergy" }));
+  // While the first write is in flight the other allergy buttons are off too.
+  await expect(page.getByRole("button", { name: "Record: no known allergies" })).toBeDisabled();
+  release();
+  await expect(page.getByRole("button", { name: "Record allergy" })).toBeEnabled();
+  expect(posts).toEqual({ add: 1, statement: 0 });
+});
