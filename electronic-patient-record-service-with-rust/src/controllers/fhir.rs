@@ -617,8 +617,98 @@ async fn search_allergies(
     }
 }
 
-/// What this server does, as a FHIR `CapabilityStatement`.
+/// The interactions the mounted routes give each resource type (`/Type`, `/Type/{id}`), in the
+/// order FHIR lists them. The statement's `interaction` arrays are made from this, so a route
+/// cannot be mounted without being stated, nor stated without being mounted (IO-1). A method and
+/// path this does not know is listed as `unmapped-<METHOD>`, which is not a FHIR code, so the
+/// statement stops parsing and a test fails.
+fn mounted_interactions() -> std::collections::BTreeMap<String, Vec<String>> {
+    use std::collections::{BTreeMap, BTreeSet};
+    const ORDER: [&str; 4] = ["read", "search-type", "create", "update"];
+    let mut found: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    for handler in routes().handlers {
+        let parts: Vec<&str> = handler.uri.trim_matches('/').split('/').collect();
+        let (Some(kind), rest) = (parts.first().copied(), &parts[1.min(parts.len())..]) else {
+            continue;
+        };
+        if kind == "metadata" {
+            continue;
+        }
+        for method in &handler.actions {
+            let code = match (method.as_str(), rest) {
+                ("GET", []) => "search-type".to_string(),
+                ("POST", []) => "create".to_string(),
+                ("GET", ["{id}"]) => "read".to_string(),
+                ("PUT", ["{id}"]) => "update".to_string(),
+                (m, _) => format!("unmapped-{m}"),
+            };
+            found.entry(kind.to_string()).or_default().insert(code);
+        }
+    }
+    found
+        .into_iter()
+        .map(|(kind, codes)| {
+            let mut codes: Vec<String> = codes.into_iter().collect();
+            codes.sort_by_key(|c| ORDER.iter().position(|o| o == c).unwrap_or(ORDER.len()));
+            (kind, codes)
+        })
+        .collect()
+}
+
+/// What the statement says about a resource besides its interactions, which come from the routes:
+/// versioning, documentation and search parameters. The types in `NOTED_TYPES` (a test's list of
+/// what `resource_notes` has a case for) are those with something to say; a mounted type missing
+/// from it is still stated, with only its interactions.
+#[cfg(test)]
+const NOTED_TYPES: [&str; 3] = ["Patient", "AllergyIntolerance", "AuditEvent"];
+
+fn resource_notes(kind: &str) -> serde_json::Value {
+    match kind {
+        "Patient" => serde_json::json!({
+            "versioning": "versioned",
+            "updateCreate": false,
+            "conditionalCreate": false,
+            "searchParam": [
+                { "name": "family", "type": "string" },
+                { "name": "birthdate", "type": "date", "documentation": "exact date only" },
+                { "name": "identifier", "type": "token" },
+            ],
+        }),
+        "AllergyIntolerance" => serde_json::json!({
+            "documentation": "Search by patient only; read-only. Allergies entered in error are not returned. A result with no allergy in it is never a statement that there are none: it carries an OperationOutcome saying so, unless a clinician has stated no known allergies. verificationStatus and type are not recorded, so are not returned.",
+            "searchParam": [
+                { "name": "patient", "type": "reference", "documentation": "required" },
+            ],
+        }),
+        "AuditEvent" => serde_json::json!({
+            "documentation": "Auditor role only. Every search is itself audited.",
+            "searchParam": [
+                { "name": "agent", "type": "token", "documentation": "the token subject, exactly" },
+                { "name": "patient", "type": "reference" },
+                { "name": "action", "type": "token" },
+                { "name": "outcome", "type": "token" },
+                { "name": "date", "type": "date", "documentation": "ge, gt, le and lt prefixes; no bare or eq dates" },
+            ],
+        }),
+        _ => serde_json::json!({}),
+    }
+}
+
+/// What this server does, as a FHIR `CapabilityStatement`. The resource types and their
+/// interactions are generated from the mounted routes; the notes on each are written by hand.
 fn capability() -> serde_json::Value {
+    let resources: Vec<serde_json::Value> = mounted_interactions()
+        .into_iter()
+        .map(|(kind, codes)| {
+            let mut resource = resource_notes(&kind);
+            resource["type"] = serde_json::json!(kind);
+            resource["interaction"] = codes
+                .iter()
+                .map(|c| serde_json::json!({ "code": c }))
+                .collect();
+            resource
+        })
+        .collect();
     serde_json::json!({
         "resourceType": "CapabilityStatement",
         "status": "draft",
@@ -629,44 +719,7 @@ fn capability() -> serde_json::Value {
         "fhirVersion": "4.0.1",
         "format": ["json"],
         "description": "NOT FOR CLINICAL USE. Patient identity (read, search-type, create and update with If-Match), allergies (search by patient, read-only) and audit events. No history, delete, conditional create, paging or search prefixes.",
-        "rest": [{
-            "mode": "server",
-            "resource": [{
-                "type": "Patient",
-                "versioning": "versioned",
-                "updateCreate": false,
-                "conditionalCreate": false,
-                "interaction": [
-                    { "code": "read" },
-                    { "code": "search-type" },
-                    { "code": "create" },
-                    { "code": "update" },
-                ],
-                "searchParam": [
-                    { "name": "family", "type": "string" },
-                    { "name": "birthdate", "type": "date", "documentation": "exact date only" },
-                    { "name": "identifier", "type": "token" },
-                ],
-            }, {
-                "type": "AllergyIntolerance",
-                "interaction": [{ "code": "search-type" }],
-                "documentation": "Search by patient only; read-only. Allergies entered in error are not returned. A result with no allergy in it is never a statement that there are none: it carries an OperationOutcome saying so, unless a clinician has stated no known allergies. verificationStatus and type are not recorded, so are not returned.",
-                "searchParam": [
-                    { "name": "patient", "type": "reference", "documentation": "required" },
-                ],
-            }, {
-                "type": "AuditEvent",
-                "interaction": [{ "code": "search-type" }],
-                "documentation": "Auditor role only. Every search is itself audited.",
-                "searchParam": [
-                    { "name": "agent", "type": "token", "documentation": "the token subject, exactly" },
-                    { "name": "patient", "type": "reference" },
-                    { "name": "action", "type": "token" },
-                    { "name": "outcome", "type": "token" },
-                    { "name": "date", "type": "date", "documentation": "ge, gt, le and lt prefixes; no bare or eq dates" },
-                ],
-            }],
-        }],
+        "rest": [{ "mode": "server", "resource": resources }],
     })
 }
 
@@ -1026,6 +1079,37 @@ mod tests {
             }
         }
         assert_eq!(mounted, stated);
+    }
+
+    /// IO-1, third slice: the statement is generated from the routes, and its hand-written notes
+    /// are not stale or missing.
+    #[test]
+    fn the_capability_notes_name_exactly_the_mounted_types_that_have_any() {
+        let mounted = mounted_interactions();
+        for kind in NOTED_TYPES {
+            assert!(
+                mounted.contains_key(kind),
+                "notes for {kind}, which is not mounted"
+            );
+        }
+        for (kind, codes) in &mounted {
+            if codes.iter().any(|c| c == "search-type") {
+                assert!(
+                    NOTED_TYPES.contains(&kind.as_str()),
+                    "{kind} is searchable but its search parameters are not described"
+                );
+            }
+            assert!(
+                codes.iter().all(|c| !c.starts_with("unmapped")),
+                "{kind}: {codes:?}"
+            );
+        }
+        assert!(routes().handlers.iter().any(|h| h.uri == "/metadata"));
+        // FHIR's own order, whatever order the routes are mounted in.
+        assert_eq!(
+            mounted["Patient"],
+            ["read", "search-type", "create", "update"]
+        );
     }
 
     /// IO-1, second slice: the search parameters the statement lists are the ones the code reads.

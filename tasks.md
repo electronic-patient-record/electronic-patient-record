@@ -311,7 +311,7 @@ Conventions:
 
 ## M6 — Interoperability and apps
 
-- [ ] **IO-1 (M) — CapabilityStatement.** **Partly landed 2026-10-25:** `/fhir/R4/metadata` is built (hand-written) and a census test asserts the interactions it states equal the mounted routes. **Second slice 2026-10-25:** a test asserts the search parameters stated for Patient, AllergyIntolerance and AuditEvent are those the code reads, and found that FHIR AuditEvent search ignored `_id` and `_lastUpdated` (any `_` parameter) and so returned unfiltered events; now refused. **Open:** generate it from the routes; (third slice 2026-10-25: Patient and AllergyIntolerance search now refuse unknown parameters too, as AuditEvent does; FHIR allows ignoring them, but a dropped filter looks like a filtered list); `date` and version are hand-set.
+- [ ] **IO-1 (M) — CapabilityStatement.** **Partly landed 2026-10-25:** `/fhir/R4/metadata` is built (hand-written) and a census test asserts the interactions it states equal the mounted routes. **Second slice 2026-10-25:** a test asserts the search parameters stated for Patient, AllergyIntolerance and AuditEvent are those the code reads, and found that FHIR AuditEvent search ignored `_id` and `_lastUpdated` (any `_` parameter) and so returned unfiltered events; now refused. **Third slice 2026-10-25:** resource types and interactions are now generated from the mounted routes. **Open:** (Patient and AllergyIntolerance search now refuse unknown parameters too, as AuditEvent does; FHIR allows ignoring them, but a dropped filter looks like a filtered list); `date` and version are hand-set.
   `/fhir/R4/metadata`, generated
   from the mounted routes.
   **Acceptance:** a census test asserts every FHIR route is listed and nothing extra is.

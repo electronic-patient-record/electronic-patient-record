@@ -7,6 +7,11 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - `proxy.rs`: `decide` (revoked, expired, out of scope, in that order; the expiry instant is expired) and `validate` (no empty scope, no self-recorded authority, a required expiry within five years). 9 unit tests; moving the expiry or revocation boundary, or ignoring the scope list, makes tests fail.
 - Not done: nothing calls it, so **proxy access is unchanged and still all-or-nothing** (hazard H-011 and the proxy part of the model are not improved yet, so the hazard log is unchanged). No store, route, audit row, access-log entry, UI or adolescent-confidentiality rule. The four scopes and the five-year limit are guesses; the basis list is not checked against anything.
 
+## 2026-10-25 - Service: the CapabilityStatement's resources and interactions are generated from the routes (IO-1, fourth slice)
+
+- `capability()` reads the mounted routes (`/Type` and `/Type/{id}` by method) for each resource type and its interactions, in FHIR's order; only the notes, versioning and search parameters stay hand-written. Resources are now listed alphabetically. A new test fails when a searchable type is mounted without its search parameters described, or notes exist for an unmounted type; an unknown method or path shows as `unmapped-<METHOD>` and the statement stops parsing.
+- Not done: the search parameters and the `date` are still written by hand (the parameter census checks the three types it knows, not a new one); the previous census of routes against the statement now agrees by construction and only checks the mapping; `description` is hand-written. Behaviour on the wire is otherwise the same. The validator job does not validate the CapabilityStatement, so it was not checked by the official validator. No hazard-log change.
+
 ## 2026-10-25 - UI: a filter form on the access log in `/my-record` (SE-6)
 
 - Once the log is shown, a form narrows it by first and last day, who and outcome; older entries are fetched under the same filter; Clear returns to the whole log. A last day is sent as the next day (the API's `to` is exclusive); a day that is not real sends nothing. `logQuery` has 4 unit tests and one e2e test covers apply, older entries and clear (axe clean).
