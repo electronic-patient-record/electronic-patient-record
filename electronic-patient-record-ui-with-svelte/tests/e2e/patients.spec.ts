@@ -1863,3 +1863,53 @@ test("two clicks at once on open emergency access, and on record the review, sen
   await expect(page.getByRole("button", { name: "Record the review" })).toBeEnabled();
   expect(posts.review).toBe(1);
 });
+
+test("two clicks at once on merge and on close this entry send one request each", async ({ page }) => {
+  const click2 = (b: import("@playwright/test").Locator) =>
+    b.evaluate((el: HTMLButtonElement) => {
+      el.click();
+      el.click();
+    });
+  const posts = { merge: 0, close: 0 };
+  let release: () => void = () => {};
+  const held = new Promise<void>((r) => (release = r));
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, { ...ANN, replaced_by: null, replaces: [] }),
+  );
+  await page.route(`**/api/proxy/api/patients/${ANN.id}/merge`, async (route) => {
+    posts.merge++;
+    await held;
+    return json(route, 500, {});
+  });
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  await page.getByLabel(/^Id of the record/).fill("some-id");
+  await page.getByLabel(/Why are these the same person/).fill("same person");
+  await click2(page.getByRole("button", { name: "Merge into this record" }));
+  await expect(page.getByRole("button", { name: "Merge into this record" })).toBeDisabled();
+  release();
+  await expect(page.getByRole("button", { name: "Merge into this record" })).toBeEnabled();
+  expect(posts.merge).toBe(1);
+
+  let release2: () => void = () => {};
+  const held2 = new Promise<void>((r) => (release2 = r));
+  await page.route("**/api/proxy/api/feed/refusals", (route) =>
+    json(route, 200, { refusals: [REFUSAL()], limit: 50 }),
+  );
+  await page.route("**/api/proxy/api/feed/refusals/*", (route) =>
+    json(route, 200, { ...REFUSAL(), message: "MSH|^~\\&|REG\r" }),
+  );
+  await page.route("**/api/proxy/api/feed/refusals/*/resolve", async (route) => {
+    posts.close++;
+    await held2;
+    return json(route, 500, {});
+  });
+  await page.goto("/en-001/admin/feed");
+  await page.getByRole("button", { name: "Show the message" }).click();
+  await page.getByLabel("Reason (required)").fill("duplicate of M-0");
+  await click2(page.getByRole("button", { name: "Close this entry" }));
+  await expect(page.getByRole("button", { name: "Close this entry" })).toBeDisabled();
+  release2();
+  await expect(page.getByRole("button", { name: "Close this entry" })).toBeEnabled();
+  expect(posts.close).toBe(1);
+});

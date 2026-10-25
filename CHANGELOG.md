@@ -7,6 +7,11 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - `proxy.rs`: `decide` (revoked, expired, out of scope, in that order; the expiry instant is expired) and `validate` (no empty scope, no self-recorded authority, a required expiry within five years). 9 unit tests; moving the expiry or revocation boundary, or ignoring the scope list, makes tests fail.
 - Not done: nothing calls it, so **proxy access is unchanged and still all-or-nothing** (hazard H-011 and the proxy part of the model are not improved yet, so the hazard log is unchanged). No store, route, audit row, access-log entry, UI or adolescent-confidentiality rule. The four scopes and the five-year limit are guesses; the basis list is not checked against anything.
 
+## 2026-10-25 - UI: tests for the merge and admin feed buttons' one-at-a-time rule (CQ-33)
+
+- Two clicks in one task on "Merge into this record" and on "Close this entry" each send one POST and disable the button while in flight. Each fails with its own guard removed (merge's `if (busy) return`, and `Busy.run`'s check for the feed page): 2 requests, not 1.
+- Not done: photo upload and withdraw still have no such test; unmerge is not clicked twice (it shares merge's guard).
+
 ## 2026-10-25 - UI: tests for the break-glass and admin review buttons' one-at-a-time rule (CQ-33)
 
 - Two clicks in one task on "Open emergency access" and on "Record the review" each send one POST and disable the button while in flight; with the guard removed the first fails (2 requests, not 1).
