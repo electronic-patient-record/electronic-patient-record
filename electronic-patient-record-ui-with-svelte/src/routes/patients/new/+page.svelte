@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Busy } from "#lib/busy.svelte.js";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
   import { call, commonProblem } from "#lib/api.js";
@@ -26,16 +27,19 @@
   let candidatesCut = $state(false);
   // What was submitted, so the side-by-side view does not change while the form is edited.
   let submitted = $state<PatientForm>(emptyForm());
-  let busy = $state(false);
+  const busy = new Busy();
 
   async function register(override: boolean) {
+    await busy.run(() => registerNow(override));
+  }
+
+  async function registerNow(override: boolean) {
     message = null;
     problems = [];
     if (override && !overrideReason.trim()) {
       message = STRINGS.overrideNeeded;
       return;
     }
-    busy = true;
     if (!override) {
       candidates = [];
       candidatesCut = false;
@@ -52,7 +56,6 @@
       reason: reason.trim() || undefined,
       override_reason: override ? overrideReason.trim() : undefined,
     });
-    busy = false;
     const common = commonProblem(res.status);
     if (common) {
       message = STRINGS[common];
@@ -93,7 +96,7 @@
   <PatientFields bind:form prefix="n" />
   <label for="n-reason">{STRINGS.reason}</label>
   <input id="n-reason" bind:value={reason} autocomplete="off" />
-  <button type="submit" disabled={busy}>{STRINGS.register}</button>
+  <button type="submit" disabled={busy.on}>{STRINGS.register}</button>
 </form>
 
 {#if message}
@@ -169,7 +172,7 @@
     >
       <label for="n-override">{STRINGS.overrideReason}</label>
       <textarea id="n-override" rows="3" bind:value={overrideReason}></textarea>
-      <button type="submit" disabled={busy}>{STRINGS.registerAnyway}</button>
+      <button type="submit" disabled={busy.on}>{STRINGS.registerAnyway}</button>
     </form>
   </section>
 {/if}

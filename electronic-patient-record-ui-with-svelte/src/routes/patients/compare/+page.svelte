@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Busy } from "#lib/busy.svelte.js";
   import { STRINGS } from "#lib/strings.js";
 
   type Field = { field: string; similarity: number | null; weight: number; note: string };
@@ -22,8 +23,14 @@
     birth_date: p.birth || null,
   });
 
+  const busy = new Busy();
+
   async function submit(event: SubmitEvent) {
     event.preventDefault();
+    await busy.run(compareNow);
+  }
+
+  async function compareNow() {
     failed = false;
     signInRequired = false;
     forbidden = false;
@@ -70,7 +77,7 @@
       </fieldset>
     {/each}
   </div>
-  <button type="submit">{STRINGS.compare}</button>
+  <button type="submit" disabled={busy.on}>{STRINGS.compare}</button>
 </form>
 
 {#if forbidden}

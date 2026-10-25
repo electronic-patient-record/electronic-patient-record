@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Busy } from "#lib/busy.svelte.js";
   import { page } from "$app/state";
   import { call, commonProblem } from "#lib/api.js";
   import { DEFAULT_LOCALE, localizePath } from "#lib/locales.js";
@@ -17,8 +18,14 @@
   let limit = $state(50);
   let message = $state<string | null>(null);
 
+  const busy = new Busy();
+
   async function submit(event: SubmitEvent) {
     event.preventDefault();
+    await busy.run(searchNow);
+  }
+
+  async function searchNow() {
     message = null;
     const query = searchQuery(form);
     if (!query) {
@@ -56,7 +63,7 @@
 
 <form onsubmit={submit}>
   <PatientFields bind:form prefix="s" only={["family", "birthDate", "nhsNumber"]} />
-  <button type="submit">{STRINGS.search}</button>
+  <button type="submit" disabled={busy.on}>{STRINGS.search}</button>
 </form>
 <p>
   <a href={localizePath("/patients/new", locale)}>{STRINGS.registerLink}</a> ·

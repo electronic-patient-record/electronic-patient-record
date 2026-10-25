@@ -1943,3 +1943,24 @@ test("two clicks at once on upload photo send one request and switch remove phot
   await expect(page.getByRole("button", { name: "Upload photo" })).toBeEnabled();
   expect(writes).toBe(1);
 });
+
+test("two clicks at once on register send one request (a second would make a duplicate patient)", async ({ page }) => {
+  let posts = 0;
+  let release: () => void = () => {};
+  const held = new Promise<void>((r) => (release = r));
+  await page.route("**/api/proxy/api/patients", async (route) => {
+    posts++;
+    await held;
+    return json(route, 422, { errors: ["held"] });
+  });
+  await page.goto("/en-001/patients/new");
+  await page.getByLabel("Family name").fill("Smith");
+  await page.getByRole("button", { name: "Register", exact: true }).evaluate((el: HTMLButtonElement) => {
+    el.click();
+    el.click();
+  });
+  await expect(page.getByRole("button", { name: "Register", exact: true })).toBeDisabled();
+  release();
+  await expect(page.getByRole("button", { name: "Register", exact: true })).toBeEnabled();
+  expect(posts).toBe(1);
+});
