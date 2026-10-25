@@ -11,9 +11,9 @@ export interface DataAge {
   stale: boolean;
 }
 
-/** `HH:MM` in the reader's locale. */
+/** `HH:MM` in the reader's locale and time zone, with the zone named: a bare "09:40" means nothing across sites. */
 export function clock(at: Date, locale?: string): string {
-  return at.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
+  return at.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", timeZoneName: "short" });
 }
 
 /** The age notice for a record last read at `lastRead`, or null when nothing was read yet. */

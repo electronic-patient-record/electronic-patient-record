@@ -7,6 +7,11 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - `proxy.rs`: `decide` (revoked, expired, out of scope, in that order; the expiry instant is expired) and `validate` (no empty scope, no self-recorded authority, a required expiry within five years). 9 unit tests; moving the expiry or revocation boundary, or ignoring the scope list, makes tests fail.
 - Not done: nothing calls it, so **proxy access is unchanged and still all-or-nothing** (hazard H-011 and the proxy part of the model are not improved yet, so the hazard log is unchanged). No store, route, audit row, access-log entry, UI or adolescent-confidentiality rule. The four scopes and the five-year limit are guesses; the basis list is not checked against anything.
 
+## 2026-10-25 - UI: the read-at clock names its time zone; time-zone tests (RC-9, first slice)
+
+- "Record read at 10:00" now reads "10:00 UTC" (or the reader's zone name): a bare clock time means nothing across sites. New `time-zones.test.ts` runs `TZ` = UTC, New York and Auckland, and a New York DST change.
+- Not done: the service keeps no recorded zone; API times are still shown in UTC, not the user's zone; `ageOn` counts on the UTC date, so near midnight a banner age can differ by a day from the reader's local date (pinned by a test as current behaviour, not endorsed; needs a decision). Zone abbreviations are locale-dependent and not checked outside en-GB. No hazard-log change.
+
 ## 2026-10-25 - Service: census of the CapabilityStatement against the mounted routes (IO-1, first slice)
 
 - `the_capability_statement_lists_exactly_the_mounted_routes`: every mounted `/fhir/R4` method and path is stated, and every stated interaction is mounted. Adding an unlisted route made it fail.
