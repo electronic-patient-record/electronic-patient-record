@@ -2,7 +2,15 @@
   import { call, commonProblem } from "#lib/api.js";
   import { loadAllergies, type AllergyLoad } from "#lib/allergies.js";
   import PatientBanner from "#lib/PatientBanner.svelte";
-  import { describe, whenText, type LogPage } from "#lib/access-log.js";
+  import {
+    describe,
+    logQuery,
+    NO_FILTER,
+    whenText,
+    type LogFilter,
+    type LogPage,
+  } from "#lib/access-log.js";
+  import { Busy } from "#lib/busy.svelte.js";
   import { patientToForm, type Stored } from "#lib/patient.js";
   import { STRINGS } from "#lib/strings.js";
   import { page } from "$app/state";
@@ -73,15 +81,29 @@
   // The access log is read on request, not on load: reading it is itself recorded.
   type Log = { entries: LogPage["entries"]; next: number | null; message: string | null };
   let logs = $state<Record<string, Log>>({});
+  // The filter the shown entries were read under, and the one being edited.
+  let applied = $state<Record<string, LogFilter>>({});
+  let editing = $state<Record<string, LogFilter>>({});
+  const logBusy = new Busy();
 
-  async function loadLog(id: string, before?: number) {
-    const q = before === undefined ? "" : `?before=${before}`;
+  async function loadLog(id: string, before?: number, filter: LogFilter = applied[id] ?? NO_FILTER) {
+    await logBusy.run(() => loadLogNow(id, before, filter));
+  }
+
+  async function loadLogNow(id: string, before: number | undefined, filter: LogFilter) {
+    editing[id] ??= { ...NO_FILTER };
+    const q = logQuery(filter, before);
+    if (q === null) {
+      logs[id] = { entries: logs[id]?.entries ?? [], next: logs[id]?.next ?? null, message: STRINGS.accessLogBadDay };
+      return;
+    }
     const res = await call<LogPage>(
       "GET",
       `/api/me/patients/${id}/access-log${q}`,
       undefined,
       "patient-access",
     );
+    if (res.status === 200) applied[id] = { ...filter };
     const problem = commonProblem(res.status);
     const prior = before === undefined ? [] : (logs[id]?.entries ?? []);
     if (problem) logs[id] = { entries: prior, next: null, message: STRINGS[problem] };
@@ -153,10 +175,46 @@
       <p>{STRINGS.version}: {entry.patient.version}</p>
       <h3 id="log-{entry.patient.id}">{STRINGS.accessLogTitle}</h3>
       {#if !log}
-        <button type="button" onclick={() => loadLog(entry.patient.id)}>
+        <button type="button" disabled={logBusy.on} onclick={() => loadLog(entry.patient.id)}>
           {STRINGS.accessLogShow}
         </button>
       {:else}
+        {@const f = editing[entry.patient.id] ?? { ...NO_FILTER }}
+        <form
+          onsubmit={(e) => {
+            e.preventDefault();
+            void loadLog(entry.patient.id, undefined, editing[entry.patient.id] ?? NO_FILTER);
+          }}
+        >
+          <fieldset>
+            <legend>{STRINGS.accessLogFilterTitle}</legend>
+            <label for="lf-from-{entry.patient.id}">{STRINGS.accessLogFrom}</label>
+            <input id="lf-from-{entry.patient.id}" type="date" bind:value={f.from} />
+            <label for="lf-to-{entry.patient.id}">{STRINGS.accessLogTo}</label>
+            <input id="lf-to-{entry.patient.id}" type="date" bind:value={f.to} />
+            <label for="lf-by-{entry.patient.id}">{STRINGS.accessLogBy}</label>
+            <select id="lf-by-{entry.patient.id}" bind:value={f.by}>
+              <option value="">{STRINGS.accessLogByAny}</option>
+              <option value="you">{STRINGS.accessLogByYou}</option>
+              <option value="staff">{STRINGS.accessLogByStaff}</option>
+            </select>
+            <label for="lf-out-{entry.patient.id}">{STRINGS.accessLogOutcome}</label>
+            <select id="lf-out-{entry.patient.id}" bind:value={f.refused}>
+              <option value="">{STRINGS.accessLogOutcomeAny}</option>
+              <option value="true">{STRINGS.accessLogRefusedOnly}</option>
+              <option value="false">{STRINGS.accessLogOkOnly}</option>
+            </select>
+            <button type="submit" disabled={logBusy.on}>{STRINGS.accessLogApply}</button>
+            <button
+              type="button"
+              disabled={logBusy.on}
+              onclick={() => {
+                editing[entry.patient.id] = { ...NO_FILTER };
+                void loadLog(entry.patient.id, undefined, NO_FILTER);
+              }}>{STRINGS.accessLogClear}</button
+            >
+          </fieldset>
+        </form>
         <div aria-live="polite">
           {#if log.message}<p role="alert">{log.message}</p>{/if}
           {#if log.entries.length === 0 && !log.message}
@@ -170,7 +228,7 @@
             </ul>
           {/if}
           {#if log.next !== null}
-            <button type="button" onclick={() => loadLog(entry.patient.id, log.next ?? undefined)}>
+            <button type="button" disabled={logBusy.on} onclick={() => loadLog(entry.patient.id, log.next ?? undefined)}>
               {STRINGS.accessLogMore}
             </button>
           {/if}

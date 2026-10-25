@@ -1,5 +1,5 @@
 import { describe as suite, expect, it } from "vitest";
-import { describe, whenText, type LogEntry } from "../../src/lib/access-log";
+import { describe, logQuery, NO_FILTER, whenText, type LogEntry } from "../../src/lib/access-log";
 
 const e = (over: Partial<LogEntry> = {}): LogEntry => ({
   id: 1,
@@ -55,5 +55,26 @@ suite("access log text", () => {
       "2026-10-21 09:00 UTC",
     );
     expect(whenText("yesterday")).toBe("yesterday");
+  });
+});
+
+suite("logQuery (SE-6 filter)", () => {
+  it("sends nothing for no filter and the page to continue from", () => {
+    expect(logQuery(NO_FILTER)).toBe("");
+    expect(logQuery(NO_FILTER, 9)).toBe("?before=9");
+  });
+  it("sends the reader's last day as the next day, because the API's `to` is exclusive", () => {
+    expect(logQuery({ ...NO_FILTER, from: "2026-10-01", to: "2026-10-31" })).toBe("?from=2026-10-01&to=2026-11-01");
+    expect(logQuery({ ...NO_FILTER, to: "2026-12-31" })).toBe("?to=2027-01-01");
+    expect(logQuery({ ...NO_FILTER, to: "2028-02-28" })).toBe("?to=2028-02-29");
+  });
+  it("sends who and outcome, and keeps the filter on the next page", () => {
+    expect(logQuery({ ...NO_FILTER, by: "staff", refused: "true" }, 4)).toBe("?by=staff&refused=true&before=4");
+  });
+  it("sends nothing at all for a date that is not a real day", () => {
+    for (const bad of ["2026-02-30", "2026-13-01", "yesterday", "2026-1-1", "26-01-01"]) {
+      expect(logQuery({ ...NO_FILTER, from: bad })).toBeNull();
+      expect(logQuery({ ...NO_FILTER, to: bad })).toBeNull();
+    }
   });
 });

@@ -50,3 +50,44 @@ export function describe(e: LogEntry): string {
   if (e.break_glass) parts.push(STRINGS.accessLogBreakGlass);
   return parts.join(" ");
 }
+
+export type LogFilter = {
+  from: string;
+  to: string;
+  by: "" | "you" | "staff";
+  refused: "" | "true" | "false";
+};
+export const NO_FILTER: LogFilter = { from: "", to: "", by: "", refused: "" };
+
+/** `YYYY-MM-DD` as a UTC time, or null when it is not a real day. */
+function day(v: string): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+  if (!m) return null;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const t = Date.UTC(y, mo - 1, d);
+  const back = new Date(t);
+  return back.getUTCFullYear() === y && back.getUTCMonth() === mo - 1 && back.getUTCDate() === d ? t : null;
+}
+
+/**
+ * The query string for the access log: the filter, and the page to continue from. The reader's last
+ * day is included, but the API's `to` is exclusive, so the next day is sent. Null when a date is
+ * not a real day (the page then says so and sends nothing).
+ */
+export function logQuery(f: LogFilter, before?: number): string | null {
+  const q = new URLSearchParams();
+  if (f.from) {
+    if (day(f.from) === null) return null;
+    q.set("from", f.from);
+  }
+  if (f.to) {
+    const t = day(f.to);
+    if (t === null) return null;
+    q.set("to", new Date(t + 86_400_000).toISOString().slice(0, 10));
+  }
+  if (f.by) q.set("by", f.by);
+  if (f.refused) q.set("refused", f.refused);
+  if (before !== undefined) q.set("before", String(before));
+  const text = q.toString();
+  return text ? `?${text}` : "";
+}

@@ -2003,3 +2003,57 @@ test("two clicks at once on remove photo, and on undo this merge, send one reque
   await expect(page.getByRole("button", { name: "Undo this merge" })).toBeEnabled();
   expect(posts.unmerge).toBe(1);
 });
+
+test("my record narrows the access log by day, who and outcome, and keeps the filter on older entries", async ({ page }) => {
+  const ID = ANN.id;
+  const urls: string[] = [];
+  const entry = (id: number) => ({
+    id,
+    at: "2026-10-21T09:00:12.000000Z",
+    by: "staff",
+    did: "viewed",
+    what: "identity record",
+    refused: false,
+    purpose: "treatment",
+    break_glass: false,
+  });
+  await page.route("**/api/proxy/api/me/patients", (route) =>
+    json(route, 200, { records: [{ relationship: "self", patient: ANN }] }),
+  );
+  await page.route(`**/api/proxy/api/me/patients/${ID}/access-log*`, (route) => {
+    urls.push(route.request().url());
+    const older = route.request().url().includes("before=");
+    return json(route, 200, { entries: [entry(older ? 3 : 9)], next: older ? null : 9 });
+  });
+  await page.goto("/en-001/my-record");
+  await page.getByRole("button", { name: "Show who has accessed this record" }).click();
+  await expect(page.getByText("2026-10-21 09:00 UTC")).toBeVisible();
+  await axe(page);
+
+  // A day that is not real sends nothing.
+  const before = urls.length;
+  await page.getByLabel("From (day)").fill("2026-10-01");
+  await page.getByLabel("Up to and including (day)").fill("2026-10-31");
+  await page.getByLabel("Who", { exact: true }).selectOption("staff");
+  await page.getByLabel("Outcome").selectOption("true");
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await expect.poll(() => urls.length).toBe(before + 1);
+  const q = new URL(urls.at(-1)!).searchParams;
+  expect(Object.fromEntries(q)).toEqual({ from: "2026-10-01", to: "2026-11-01", by: "staff", refused: "true" });
+
+  // Older entries are asked for under the same filter.
+  await page.getByRole("button", { name: "Show older entries" }).click();
+  await expect.poll(() => urls.length).toBe(before + 2);
+  expect(Object.fromEntries(new URL(urls.at(-1)!).searchParams)).toEqual({
+    from: "2026-10-01",
+    to: "2026-11-01",
+    by: "staff",
+    refused: "true",
+    before: "9",
+  });
+
+  // Clear goes back to the whole log.
+  await page.getByRole("button", { name: "Clear" }).click();
+  await expect.poll(() => urls.length).toBe(before + 3);
+  expect(new URL(urls.at(-1)!).search).toBe("");
+});

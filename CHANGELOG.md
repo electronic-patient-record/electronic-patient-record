@@ -7,6 +7,11 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - `proxy.rs`: `decide` (revoked, expired, out of scope, in that order; the expiry instant is expired) and `validate` (no empty scope, no self-recorded authority, a required expiry within five years). 9 unit tests; moving the expiry or revocation boundary, or ignoring the scope list, makes tests fail.
 - Not done: nothing calls it, so **proxy access is unchanged and still all-or-nothing** (hazard H-011 and the proxy part of the model are not improved yet, so the hazard log is unchanged). No store, route, audit row, access-log entry, UI or adolescent-confidentiality rule. The four scopes and the five-year limit are guesses; the basis list is not checked against anything.
 
+## 2026-10-25 - UI: a filter form on the access log in `/my-record` (SE-6)
+
+- Once the log is shown, a form narrows it by first and last day, who and outcome; older entries are fetched under the same filter; Clear returns to the whole log. A last day is sent as the next day (the API's `to` is exclusive); a day that is not real sends nothing. `logQuery` has 4 unit tests and one e2e test covers apply, older entries and clear (axe clean).
+- Not done: days are UTC, and the form says so, not the patient's zone (RC-9); no purpose filter; the form's strings are English only until the translations are done and reviewed; nothing was tested in `ar-001` beyond the existing right-to-left page check, which does not open the log. The API's audit row for the read records only that a filter was used. No hazard-log change.
+
 ## 2026-10-25 - Service: the patient access log narrows by day, by who and by refusal (SE-6)
 
 - `GET /api/me/patients/{id}/access-log` takes `from` (inclusive) and `to` (exclusive), as a day or an instant in UTC, `by=you|staff` and `refused=true|false`. A filter it cannot read is a 400 and nothing is audited. The paging `next` still works under a filter. The read's own audit row says only that a filter was used, not its values.
