@@ -1806,3 +1806,60 @@ test("two clicks at once on record allergy send one request and switch the other
   await expect(page.getByRole("button", { name: "Record allergy" })).toBeEnabled();
   expect(posts).toEqual({ add: 1, statement: 0 });
 });
+
+test("two clicks at once on open emergency access, and on record the review, send one request each", async ({ page }) => {
+  const click2 = (b: import("@playwright/test").Locator) =>
+    b.evaluate((el: HTMLButtonElement) => {
+      el.click();
+      el.click();
+    });
+  let release: () => void = () => {};
+  const held = new Promise<void>((r) => (release = r));
+  const posts = { glass: 0, review: 0 };
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) => json(route, 200, ANN));
+  await stubAllergies(page, { error: "forbidden", break_glass_offer: true }, 403);
+  await page.route("**/api/proxy/api/patients/*/break-glass", async (route) => {
+    posts.glass++;
+    await held;
+    return json(route, 500, {});
+  });
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  await page.getByLabel(/^Reason for emergency access/).fill("collapsed");
+  await page.getByLabel("I understand this is recorded and reviewed").check();
+  await click2(page.getByRole("button", { name: /Open emergency access/ }));
+  await expect(page.getByRole("button", { name: /Open emergency access/ })).toBeDisabled();
+  release();
+  await expect(page.getByRole("button", { name: /Open emergency access/ })).toBeEnabled();
+  expect(posts.glass).toBe(1);
+
+  let release2: () => void = () => {};
+  const held2 = new Promise<void>((r) => (release2 = r));
+  await page.route("**/api/proxy/api/break-glass/reviews", (route) =>
+    json(route, 200, {
+      grants: [
+        {
+          id: "g1",
+          patient_id: ANN.id,
+          subject: "sub-dr",
+          reason: "collapsed in corridor",
+          granted_at: "2026-10-21T09:00:12.000000Z",
+          expires_at: "2026-10-21T13:00:12.000000Z",
+        },
+      ],
+      limit: 50,
+    }),
+  );
+  await page.route("**/api/proxy/api/break-glass/reviews/g1", async (route) => {
+    posts.review++;
+    await held2;
+    return json(route, 500, {});
+  });
+  await page.goto("/en-001/admin/break-glass");
+  await page.getByRole("button", { name: "Review", exact: true }).click();
+  await page.getByLabel("Note (required)").fill("no emergency found");
+  await click2(page.getByRole("button", { name: "Record the review" }));
+  await expect(page.getByRole("button", { name: "Record the review" })).toBeDisabled();
+  release2();
+  await expect(page.getByRole("button", { name: "Record the review" })).toBeEnabled();
+  expect(posts.review).toBe(1);
+});
