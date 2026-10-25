@@ -67,13 +67,19 @@ function staff(e: LogEntry): string {
     : STRINGS.accessLogStaff;
 }
 
+/** A purpose code in words for mid-sentence ("running the service"); a code from a newer API is shown as it is. */
+function purposeWords(code: string): string {
+  const label = (STRINGS.accessLogPurposes as Record<string, string>)[code];
+  return label ? label.charAt(0).toLowerCase() + label.slice(1) : code;
+}
+
 /** One entry as a sentence. Unknown words from a newer API are shown, not hidden. */
 export function describe(e: LogEntry): string {
   const who = e.by === "you" ? STRINGS.accessLogYou : staff(e);
   const did = DID[e.did] ?? e.did;
   const what = WHAT[e.what] ?? e.what;
   const parts = [`${who} ${did} ${STRINGS.accessLogYour} ${what}.`];
-  if (e.purpose) parts.push(`${STRINGS.accessLogPurpose}: ${e.purpose}.`);
+  if (e.purpose) parts.push(`${STRINGS.accessLogPurpose}: ${purposeWords(e.purpose)}.`);
   if (e.break_glass) parts.push(STRINGS.accessLogBreakGlass);
   return parts.join(" ");
 }

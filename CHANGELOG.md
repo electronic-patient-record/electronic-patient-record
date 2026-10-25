@@ -7,6 +7,11 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - `proxy.rs`: `decide` (revoked, expired, out of scope, in that order; the expiry instant is expired) and `validate` (no empty scope, no self-recorded authority, a required expiry within five years). 9 unit tests; moving the expiry or revocation boundary, or ignoring the scope list, makes tests fail.
 - Not done: nothing calls it, so **proxy access is unchanged and still all-or-nothing** (hazard H-011 and the proxy part of the model are not improved yet, so the hazard log is unchanged). No store, route, audit row, access-log entry, UI or adolescent-confidentiality rule. The four scopes and the five-year limit are guesses; the basis list is not checked against anything.
 
+## 2026-10-25 - UI: the access log's entries give the purpose in words (SE-6)
+
+- "Purpose: operations" now reads "Purpose: running the service", and `patient-access` reads "you or your proxy looking at the record"; a code from a newer API is shown as it is. `treatment` reads as before, so the existing sentence tests did not change. One unit test.
+- Not done: English only (the entries' sentences are not translated, nor is this phrase); the Keycloak e2e test still expects "Purpose: treatment", which is unchanged, and was not run. No hazard-log change.
+
 ## 2026-10-25 - UI: the access-log form in the patient's zone and in the page's language (SE-6, RC-9)
 
 - **Zone:** the filter's days are the patient's own, in the browser's time zone, named on the form. Each is sent as the UTC instant it starts at (`from=2026-09-30T11:00:00Z` for 1 October in Auckland), so a 23 or 25 hour day across a clock change is right (tested for London, New York and Auckland); the last day is included by sending the start of the next. Entries are shown in that zone with the zone named ("2026-10-21 22:00 GMT+13"). The e2e suite now runs in a fixed UTC zone and the zone test overrides it.

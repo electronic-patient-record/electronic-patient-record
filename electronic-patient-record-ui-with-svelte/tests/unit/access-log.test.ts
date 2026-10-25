@@ -40,6 +40,11 @@ suite("access log text", () => {
       describe(e({ did: "was refused access to", refused: true })),
     ).toContain("was refused access to your identity record");
   });
+  it("puts the purpose in words, and shows a code it does not know as it is", () => {
+    expect(describe(e({ purpose: "operations" }))).toContain("Purpose: running the service.");
+    expect(describe(e({ purpose: "patient-access" }))).toContain("Purpose: you or your proxy looking at the record.");
+    expect(describe(e({ purpose: "new-purpose" }))).toContain("Purpose: new-purpose.");
+  });
   it("flags an emergency opening", () => {
     expect(describe(e({ break_glass: true }))).toContain(
       "Opened in an emergency.",
