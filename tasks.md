@@ -225,7 +225,7 @@ Conventions:
   treatment." with no staff identifier in the page; the clinician cannot read the log (403, audited). **Role and organisation landed 2026-10-21:** every audit row
   written while handling a request carries `detail.actor` `{roles, organisations}` from the token, and the log shows
   "A member of staff (clinician, riverside) viewed your identity record." (older rows say only staff). **Filter and date range landed 2026-10-25:** `from`, `to`, `by`, `refused`, `purpose` on the API, and a form on `/my-record`. **Not built:**
-  staff names by deployment policy (none are recorded), an accounting-of-disclosures export, any
+  staff names by deployment policy (none are recorded), (an accounting-of-disclosures CSV landed 2026-10-25; no signed or formal report), any
   alert to the patient. Left open.
 - [ ] **SE-7 (M) — Hardening.** Security headers, CSP, rate limiting,
   session timeout with re-auth for sensitive actions, encryption at rest

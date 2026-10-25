@@ -1,10 +1,11 @@
 <script lang="ts">
-  import { call, commonProblem } from "#lib/api.js";
+  import { call, commonProblem, fetchBlob } from "#lib/api.js";
   import { loadAllergies, type AllergyLoad } from "#lib/allergies.js";
   import PatientBanner from "#lib/PatientBanner.svelte";
   import {
     describe,
     LOG_PURPOSES,
+    logCsvQuery,
     logQuery,
     readerZone,
     NO_FILTER,
@@ -123,6 +124,25 @@
     else logs[id] = { entries: prior, next: null, message: STRINGS.error };
   }
 
+  // The log as a file, under the filter that is showing (not one still being edited).
+  async function downloadLog(id: string) {
+    await logBusy.run(async () => {
+      const q = logCsvQuery(applied[id] ?? NO_FILTER, zone);
+      const res = q === null ? null : await fetchBlob(`/api/me/patients/${id}/access-log${q}`, "patient-access");
+      if (!res || !res.body) {
+        const problem = res ? commonProblem(res.status) : null;
+        logs[id] = { entries: logs[id]?.entries ?? [], next: logs[id]?.next ?? null, message: problem ? STRINGS[problem] : STRINGS.accessLogDownloadFailed };
+        return;
+      }
+      const url = URL.createObjectURL(res.body);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "access-log.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
+
   const shown = (v: string) => v || STRINGS.notAvailable;
   const fields = (s: Stored) => {
     const f = patientToForm(s.patient);
@@ -228,6 +248,7 @@
                 void loadLog(entry.patient.id, undefined, NO_FILTER);
               }}>{F.clear}</button
             >
+            <button type="button" disabled={logBusy.on} onclick={() => void downloadLog(entry.patient.id)}>{F.download}</button>
           </fieldset>
         </form>
         <div aria-live="polite">

@@ -109,6 +109,55 @@ struct LogQuery {
     refused: Option<bool>,
     /// A purpose-of-use code (`treatment`, `operations`, ...).
     purpose: Option<String>,
+    /// `csv` for the log as a file (an accounting of who accessed the record), up to
+    /// [`LOG_EXPORT`] rows under the same filters; absent for the JSON page.
+    format: Option<String>,
+}
+
+/// The most rows one CSV of the access log holds.
+const LOG_EXPORT: i64 = 1000;
+
+const LOG_CSV_HEADER: &str =
+    "id,at_utc,by,roles,organisations,did,what,refused,purpose,emergency_access\n";
+
+/// The log as CSV, one line per entry, in the same words and with the same omissions as the JSON
+/// (a staff identifier is never in it). Cells are guarded against spreadsheet formulas.
+fn log_csv(entries: &[serde_json::Value]) -> String {
+    let join = |v: &serde_json::Value| {
+        v.as_array()
+            .map(|a| {
+                a.iter()
+                    .filter_map(|x| x.as_str())
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            })
+            .unwrap_or_default()
+    };
+    let text = |v: &serde_json::Value| v.as_str().unwrap_or_default().to_string();
+    let mut out = String::from(LOG_CSV_HEADER);
+    for e in entries {
+        let cells = [
+            e["id"].to_string(),
+            text(&e["at"]),
+            text(&e["by"]),
+            join(&e["roles"]),
+            join(&e["organisations"]),
+            text(&e["did"]),
+            text(&e["what"]),
+            e["refused"].to_string(),
+            text(&e["purpose"]),
+            e["break_glass"].to_string(),
+        ];
+        out.push_str(
+            &cells
+                .iter()
+                .map(|c| super::audit::csv_cell(c))
+                .collect::<Vec<_>>()
+                .join(","),
+        );
+        out.push('\n');
+    }
+    out
 }
 
 /// One access, in words a patient can read. Who did it is never a staff identifier: `you` is the
@@ -216,14 +265,20 @@ async fn access_log(
         by_caller,
         refused: query.refused,
     };
+    let csv = match blank(&query.format).as_deref() {
+        None => false,
+        Some("csv") => true,
+        Some(_) => return log_bad_request("format must be csv"),
+    };
+    let page = if csv { LOG_EXPORT } else { LOG_PAGE };
     // One more than a page, to know whether there is another.
-    let mut rows = match audit::patient_log(&ctx.db, &id, &agent.0, &filter, LOG_PAGE + 1).await {
+    let mut rows = match audit::patient_log(&ctx.db, &id, &agent.0, &filter, page + 1).await {
         Ok(r) => r,
         Err(audit::SearchError::BadQuery(m)) => return log_bad_request(&m),
         Err(audit::SearchError::Audit(e)) => return audit_failed(&e).into_response(),
     };
-    let more = rows.len() > usize::try_from(LOG_PAGE).unwrap_or(usize::MAX);
-    rows.truncate(usize::try_from(LOG_PAGE).unwrap_or(usize::MAX));
+    let more = rows.len() > usize::try_from(page).unwrap_or(usize::MAX);
+    rows.truncate(usize::try_from(page).unwrap_or(usize::MAX));
     let entries: Vec<_> = rows.iter().map(|r| entry(r, &agent.0)).collect();
     let next = if more {
         rows.last().map(|r| r.id)
@@ -240,11 +295,37 @@ async fn access_log(
             resource: "AccessLog",
             patient_id: Some(&id),
         },
-        serde_json::json!({ "entries": entries.len(), "filtered": filter.from.is_some() || filter.to.is_some() || filter.by_caller.is_some() || filter.refused.is_some() || filter.purpose.is_some() }),
+        serde_json::json!({ "entries": entries.len(), "format": if csv { "csv" } else { "json" }, "filtered": filter.from.is_some() || filter.to.is_some() || filter.by_caller.is_some() || filter.refused.is_some() || filter.purpose.is_some() }),
     )
     .await
     {
         return r.into_response();
+    }
+    if csv {
+        // Rendered and audited above before anything is sent: a log that cannot be audited is not exported.
+        let mut response = (axum::http::StatusCode::OK, log_csv(&entries)).into_response();
+        let h = response.headers_mut();
+        h.insert(
+            axum::http::header::CONTENT_TYPE,
+            axum::http::HeaderValue::from_static("text/csv; charset=utf-8"),
+        );
+        h.insert(
+            axum::http::header::CONTENT_DISPOSITION,
+            axum::http::HeaderValue::from_static("attachment; filename=\"access-log.csv\""),
+        );
+        h.insert(
+            axum::http::header::HeaderName::from_static("x-content-type-options"),
+            axum::http::HeaderValue::from_static("nosniff"),
+        );
+        if let Some(id) = next
+            && let Ok(v) = axum::http::HeaderValue::from_str(&id.to_string())
+        {
+            h.insert(
+                axum::http::header::HeaderName::from_static("x-next-before"),
+                v,
+            );
+        }
+        return response;
     }
     axum::Json(serde_json::json!({ "entries": entries, "next": next })).into_response()
 }
@@ -302,6 +383,37 @@ mod tests {
         assert_eq!(
             (consent["did"].clone(), consent["what"].clone()),
             ("changed".into(), "consent choices".into())
+        );
+    }
+}
+
+#[cfg(test)]
+mod csv_tests {
+    use super::*;
+
+    #[test]
+    fn the_csv_has_one_line_per_entry_and_guards_spreadsheet_formulas() {
+        let entry = serde_json::json!({
+            "id": 7, "at": "2026-10-21T09:00:12.000000Z", "by": "staff",
+            "roles": ["clinician"], "organisations": ["=cmd|' /C calc'!A0", "river, side"],
+            "did": "viewed", "what": "identity record", "refused": false,
+            "purpose": "treatment", "break_glass": true,
+        });
+        let csv = log_csv(&[entry.clone(), entry]);
+        let lines: Vec<&str> = csv.lines().collect();
+        assert_eq!(lines.len(), 3, "{csv}");
+        assert_eq!(lines[0], LOG_CSV_HEADER.trim_end());
+        assert!(
+            lines[1].starts_with("7,2026-10-21T09:00:12.000000Z,staff,clinician,"),
+            "{csv}"
+        );
+        assert!(
+            lines[1].contains("\"'=cmd|' /C calc'!A0 river, side\""),
+            "formula guarded and quoted: {csv}"
+        );
+        assert!(
+            lines[1].ends_with(",viewed,identity record,false,treatment,true"),
+            "{csv}"
         );
     }
 }

@@ -188,6 +188,20 @@ async fn a_proxy_reads_only_what_its_terms_list_and_only_until_they_end() {
         let some = get(format!("{log}?from=2000-01-01&to=2999-01-01&by=staff&refused=false&purpose=treatment")).await;
         assert_eq!(some.status_code(), 200, "{}", some.text());
 
+        // The log as a file: CSV, the same filters, no staff identifier, and a format it does not know is 400.
+        let file = get(format!("{log}?format=csv&from=2000-01-01&by=staff")).await;
+        assert_eq!(file.status_code(), 200, "{}", file.text());
+        assert!(file.header("content-type").to_str().unwrap().starts_with("text/csv"));
+        assert!(file.header("content-disposition").to_str().unwrap().contains("access-log.csv"));
+        assert_eq!(file.header("x-content-type-options"), "nosniff");
+        let body = file.text();
+        assert!(
+            body.starts_with("id,at_utc,by,roles,organisations,did,what,refused,purpose,emergency_access\n"),
+            "{body}"
+        );
+        assert!(!body.contains(sub_long), "no staff identifier in the file: {body}");
+        assert_eq!(get(format!("{log}?format=xml")).await.status_code(), 400);
+
         // Ending the relationship is the revocation.
         let ended = server
             .put(&format!("{rel_url}/{}", created["id"].as_str().unwrap()))

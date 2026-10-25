@@ -174,3 +174,9 @@ export function logQuery(f: LogFilter, before?: number, zone = "UTC"): string | 
   const text = q.toString();
   return text ? `?${text}` : "";
 }
+
+/** The CSV download's query: the filter that is showing, then the format. Null when a date is not real. */
+export function logCsvQuery(f: LogFilter, zone = "UTC"): string | null {
+  const q = logQuery(f, undefined, zone);
+  return q === null ? null : `${q}${q ? "&" : "?"}format=csv`;
+}

@@ -390,7 +390,8 @@ test("a clinician can declare treatment; it is sent, remembered for the tab, and
   await page.goto("/en-001/my-record");
   await expect(page.getByRole("status")).toBeVisible();
   await expect(page.getByLabel("Purpose of use")).toHaveCount(0);
-  expect(seen.at(-1)).toBe("patient-access");
+  // The request follows the loading text a moment later: wait for it rather than race it.
+  await expect.poll(() => seen.at(-1)).toBe("patient-access");
   await axe(page);
 });
 
@@ -2086,4 +2087,35 @@ test("the access-log filter form is in the page's language, and still passes axe
     await expect(page.getByLabel(purpose, { exact: true })).toBeVisible();
     await axe(page);
   }
+});
+
+test("my record downloads the access log as a CSV file under the filter that is showing", async ({ page }) => {
+  const ID = ANN.id;
+  const urls: string[] = [];
+  await page.route("**/api/proxy/api/me/patients", (route) =>
+    json(route, 200, { records: [{ relationship: "self", patient: ANN }] }),
+  );
+  await page.route(`**/api/proxy/api/me/patients/${ID}/access-log*`, (route) => {
+    urls.push(route.request().url());
+    if (route.request().url().includes("format=csv"))
+      return route.fulfill({
+        status: 200,
+        contentType: "text/csv; charset=utf-8",
+        body: "id,at_utc,by,roles,organisations,did,what,refused,purpose,emergency_access\n7,2026-10-21T09:00:12.000000Z,staff,,,viewed,identity record,false,treatment,false\n",
+      });
+    return json(route, 200, { entries: [], next: null });
+  });
+  await page.goto("/en-001/my-record");
+  await page.getByRole("button", { name: "Show who has accessed this record" }).click();
+  await page.getByLabel("Who", { exact: true }).selectOption("staff");
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await expect.poll(() => urls.length).toBe(2);
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: /^Download as a CSV file/ }).click();
+  const file = await download;
+  expect(file.suggestedFilename()).toBe("access-log.csv");
+  const text = await (await import("node:fs/promises")).readFile((await file.path())!, "utf8");
+  expect(text).toContain("id,at_utc,by,roles");
+  expect(Object.fromEntries(new URL(urls.at(-1)!).searchParams)).toEqual({ by: "staff", format: "csv" });
+  await axe(page);
 });

@@ -212,7 +212,7 @@ async fn search(
 /// run it as a formula (audit values such as an agent or a free-text reason can be chosen by an
 /// attacker). The guard changes what a spreadsheet shows, so a guarded cell no longer equals the
 /// stored value: re-verify the chain from the NDJSON export, whose values are exact.
-fn csv_cell(value: &str) -> String {
+pub(super) fn csv_cell(value: &str) -> String {
     let guarded = if value.starts_with(['=', '+', '-', '@', '\t', '\r']) {
         format!("'{value}")
     } else {

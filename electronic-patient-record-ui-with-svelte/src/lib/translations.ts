@@ -23,6 +23,7 @@ export const LOG_FORM_KEYS = [
   "purposeAny",
   "apply",
   "clear",
+  "download",
   "badDay",
 ] as const;
 
@@ -48,6 +49,7 @@ const en: LogFormStrings = {
   purposeAny: STRINGS.accessLogPurposeAny,
   apply: STRINGS.accessLogApply,
   clear: STRINGS.accessLogClear,
+  download: STRINGS.accessLogDownload,
   badDay: STRINGS.accessLogBadDay,
   purposes: STRINGS.accessLogPurposes,
 };
@@ -69,6 +71,7 @@ const de: LogFormStrings = {
     purposeAny: "Beliebiger Zweck",
     apply: "Anwenden",
     clear: "Zurücksetzen",
+    download: "Als CSV-Datei herunterladen (bis zu 1000 neueste Einträge)",
     badDay: "Bitte echte Tage im Format 2026-10-21 angeben.",
     purposes: {
       "treatment": "Behandlung",
@@ -98,6 +101,7 @@ const es: LogFormStrings = {
     purposeAny: "Cualquier finalidad",
     apply: "Aplicar",
     clear: "Borrar",
+    download: "Descargar como archivo CSV (hasta las 1000 entradas más recientes)",
     badDay: "Use días reales escritos como 2026-10-21.",
     purposes: {
       "treatment": "Tratamiento",
@@ -127,6 +131,7 @@ const fr: LogFormStrings = {
     purposeAny: "Toute finalité",
     apply: "Appliquer",
     clear: "Effacer",
+    download: "Télécharger en fichier CSV (jusqu'à 1000 entrées les plus récentes)",
     badDay: "Saisissez de vrais jours écrits comme 2026-10-21.",
     purposes: {
       "treatment": "Soins",
@@ -156,6 +161,7 @@ const zh: LogFormStrings = {
     purposeAny: "任何目的",
     apply: "应用",
     clear: "清除",
+    download: "下载为 CSV 文件(最多最近 1000 条记录)",
     badDay: "请输入真实的日期,格式如 2026-10-21。",
     purposes: {
       "treatment": "治疗",
@@ -185,6 +191,7 @@ const hi: LogFormStrings = {
     purposeAny: "कोई भी उद्देश्य",
     apply: "लागू करें",
     clear: "साफ़ करें",
+    download: "CSV फ़ाइल के रूप में डाउनलोड करें (सबसे हाल की 1000 प्रविष्टियाँ तक)",
     badDay: "2026-10-21 जैसे असली दिन लिखें।",
     purposes: {
       "treatment": "उपचार",
@@ -214,6 +221,7 @@ const ar: LogFormStrings = {
     purposeAny: "أي غرض",
     apply: "تطبيق",
     clear: "مسح",
+    download: "تنزيل كملف CSV (حتى أحدث 1000 إدخال)",
     badDay: "استخدم أياماً حقيقية مكتوبة مثل 2026-10-21.",
     purposes: {
       "treatment": "العلاج",
@@ -243,6 +251,7 @@ const cy: LogFormStrings = {
     purposeAny: "Unrhyw bwrpas",
     apply: "Gosod",
     clear: "Clirio",
+    download: "Lawrlwytho fel ffeil CSV (hyd at y 1000 cofnod diweddaraf)",
     badDay: "Defnyddiwch ddyddiau go iawn wedi'u hysgrifennu fel 2026-10-21.",
     purposes: {
       "treatment": "Triniaeth",

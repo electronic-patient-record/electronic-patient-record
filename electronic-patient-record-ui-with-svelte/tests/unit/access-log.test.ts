@@ -1,5 +1,5 @@
 import { describe as suite, expect, it } from "vitest";
-import { dayStart, describe, LOG_PURPOSES, logQuery, NO_FILTER, readerZone, whenText, type LogEntry } from "../../src/lib/access-log";
+import { dayStart, describe, logCsvQuery, LOG_PURPOSES, logQuery, NO_FILTER, readerZone, whenText, type LogEntry } from "../../src/lib/access-log";
 
 const e = (over: Partial<LogEntry> = {}): LogEntry => ({
   id: 1,
@@ -121,5 +121,13 @@ suite("days in the patient's zone (SE-6, RC-9)", () => {
   it("finds a zone, and falls back to UTC rather than none", () => {
     expect(typeof readerZone()).toBe("string");
     expect(readerZone().length).toBeGreaterThan(0);
+  });
+});
+
+suite("logCsvQuery (SE-6 file)", () => {
+  it("is the filter that is showing plus the format, and nothing when a day is not real", () => {
+    expect(logCsvQuery(NO_FILTER)).toBe("?format=csv");
+    expect(logCsvQuery({ ...NO_FILTER, by: "you", purpose: "audit" })).toBe("?by=you&purpose=audit&format=csv");
+    expect(logCsvQuery({ ...NO_FILTER, from: "2026-02-30" })).toBeNull();
   });
 });
