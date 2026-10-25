@@ -141,6 +141,24 @@ async fn fhir_refusals_are_operation_outcomes_and_never_carry_candidates() {
             .await;
         assert_eq!(stale.status_code(), StatusCode::PRECONDITION_FAILED);
 
+        // A search parameter the facade does not read is a 400 naming it, never a silently
+        // unfiltered list (IO-1); result-shaping `_count` still passes.
+        for url in [
+            format!("/fhir/R4/Patient?family={family}&gender=female"),
+            format!("/fhir/R4/AllergyIntolerance?patient={id}&category=food"),
+            "/fhir/R4/AuditEvent?_id=1".to_string(),
+        ] {
+            let refused = server.get(&url).await;
+            assert_eq!(refused.status_code(), StatusCode::BAD_REQUEST, "{url}");
+            let body: serde_json::Value = refused.json();
+            assert_eq!(body["resourceType"], "OperationOutcome", "{url}");
+            assert!(body.to_string().contains("not supported"), "{url}: {body}");
+        }
+        let counted = server
+            .get(&format!("/fhir/R4/Patient?family={family}&_count=5"))
+            .await;
+        assert_eq!(counted.status_code(), StatusCode::OK);
+
         // A duplicate through FHIR: 409, an OperationOutcome, no candidates.
         let mut dup = resource.clone();
         dup.as_object_mut().unwrap().remove("id");

@@ -7,6 +7,11 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - `proxy.rs`: `decide` (revoked, expired, out of scope, in that order; the expiry instant is expired) and `validate` (no empty scope, no self-recorded authority, a required expiry within five years). 9 unit tests; moving the expiry or revocation boundary, or ignoring the scope list, makes tests fail.
 - Not done: nothing calls it, so **proxy access is unchanged and still all-or-nothing** (hazard H-011 and the proxy part of the model are not improved yet, so the hazard log is unchanged). No store, route, audit row, access-log entry, UI or adolescent-confidentiality rule. The four scopes and the five-year limit are guesses; the basis list is not checked against anything.
 
+## 2026-10-25 - Service: HTTP test of the unknown-search-parameter refusal (IO-1)
+
+- `http_patients.rs` (Postgres): `Patient?gender=`, `AllergyIntolerance?category=` and `AuditEvent?_id=` are each a 400 OperationOutcome saying "not supported"; `_count` still returns 200. With the AllergyIntolerance handler's check disabled the test fails.
+- Not done: the full Postgres suite was not rerun here, only this test; `Prefer: handling=lenient` is still not offered. No behaviour changed.
+
 ## 2026-10-25 - Service: Patient and AllergyIntolerance FHIR searches refuse an unknown parameter (IO-1, third slice)
 
 - `GET /fhir/R4/Patient?gender=female` used to ignore `gender` and return every match on the other terms, which looks filtered and is not. It, and an extra parameter on `AllergyIntolerance`, is now a 400 `not-supported` naming the parameter (same rule as AuditEvent); `_count`, `_format` and `_pretty` still pass. FHIR permits ignoring unknown parameters, so a client that sends extras will now get an error: that is the intended trade.
