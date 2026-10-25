@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Busy } from "#lib/busy.svelte.js";
   import { page } from "$app/state";
   import { call, commonProblem } from "#lib/api.js";
   import {
@@ -24,6 +25,8 @@
   import { DEFAULT_LOCALE, localizePath } from "#lib/locales.js";
   import { STRINGS } from "#lib/strings.js";
 
+  const con = new Busy();
+  const rel = new Busy();
   const locale = $derived(page.data.locale ?? DEFAULT_LOCALE);
   const id = $derived(page.params.id);
 
@@ -99,6 +102,10 @@
 
   async function addRelationship(event: SubmitEvent) {
     event.preventDefault();
+    await rel.run(() => addRelationshipNow(event));
+  }
+
+  async function addRelationshipNow(event: SubmitEvent) {
     relMessage = null;
     const res = await call("POST", `/api/patients/${id}/relationships`, {
       relationship: relationshipRecord(
@@ -118,6 +125,10 @@
   }
 
   async function endRelationship(r: StoredRelationship) {
+    await rel.run(() => endRelationshipNow(r));
+  }
+
+  async function endRelationshipNow(r: StoredRelationship) {
     relMessage = null;
     await settle(
       await call("PUT", `/api/patients/${id}/relationships/${r.id}`, {
@@ -132,6 +143,10 @@
 
   async function addConsent(event: SubmitEvent) {
     event.preventDefault();
+    await con.run(() => addConsentNow(event));
+  }
+
+  async function addConsentNow(event: SubmitEvent) {
     consentMessage = null;
     const res = await call("POST", `/api/patients/${id}/consents`, {
       consent: formToConsent(cform),
@@ -144,10 +159,11 @@
     await settle(res, (m) => (consentMessage = m), loadConsents);
   }
 
-  async function changeConsent(
-    c: StoredConsent,
-    status: "inactive" | "entered-in-error",
-  ) {
+  async function changeConsent(c: StoredConsent, status: "inactive" | "entered-in-error") {
+    await con.run(() => changeConsentNow(c, status));
+  }
+
+  async function changeConsentNow(c: StoredConsent, status: "inactive" | "entered-in-error") {
     consentMessage = null;
     await settle(
       await call("PUT", `/api/patients/${id}/consents/${c.id}`, {
@@ -200,7 +216,7 @@
               · {describeProxy(r.relationship.proxy)}
             {/if}
             {#if r.relationship.status === "active"}
-              <button type="button" onclick={() => void endRelationship(r)}>
+              <button disabled={rel.on} type="button" onclick={() => void endRelationship(r)}>
                 {STRINGS.relEnd_}
               </button>
             {/if}
@@ -249,7 +265,7 @@
       <input id="r-end" bind:value={relEnd} autocomplete="off" />
       <label for="r-why">{STRINGS.relWhy}</label>
       <input id="r-why" bind:value={relWhy} autocomplete="off" />
-      <button type="submit">{STRINGS.relAdd}</button>
+      <button disabled={rel.on} type="submit">{STRINGS.relAdd}</button>
     </form>
   {/if}
   {#if relMessage}<p role="status">{relMessage}</p>{/if}
@@ -267,12 +283,12 @@
             <strong>{STRINGS.consentStatuses[c.consent.status]}</strong>
             · {describeConsent(c.consent)}
             {#if c.consent.status === "active"}
-              <button type="button" onclick={() => void changeConsent(c, "inactive")}>
+              <button disabled={con.on} type="button" onclick={() => void changeConsent(c, "inactive")}>
                 {STRINGS.consentWithdraw}
               </button>
             {/if}
             {#if c.consent.status !== "entered-in-error"}
-              <button type="button" onclick={() => void changeConsent(c, "entered-in-error")}>
+              <button disabled={con.on} type="button" onclick={() => void changeConsent(c, "entered-in-error")}>
                 {STRINGS.consentMistake}
               </button>
             {/if}
@@ -313,7 +329,7 @@
       {/if}
       <label for="c-why">{STRINGS.consentWhy}</label>
       <input id="c-why" bind:value={consentWhy} autocomplete="off" />
-      <button type="submit">{STRINGS.consentAdd}</button>
+      <button disabled={con.on} type="submit">{STRINGS.consentAdd}</button>
     </form>
   {/if}
   {#if consentMessage}<p role="status">{consentMessage}</p>{/if}

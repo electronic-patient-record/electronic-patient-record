@@ -7,6 +7,11 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - `proxy.rs`: `decide` (revoked, expired, out of scope, in that order; the expiry instant is expired) and `validate` (no empty scope, no self-recorded authority, a required expiry within five years). 9 unit tests; moving the expiry or revocation boundary, or ignoring the scope list, makes tests fail.
 - Not done: nothing calls it, so **proxy access is unchanged and still all-or-nothing** (hazard H-011 and the proxy part of the model are not improved yet, so the hazard log is unchanged). No store, route, audit row, access-log entry, UI or adolescent-confidentiality rule. The four scopes and the five-year limit are guesses; the basis list is not checked against anything.
 
+## 2026-10-25 - UI: one write at a time on every write form (CQ-33, second slice)
+
+- A small `Busy` helper (`src/lib/busy.svelte.ts`) runs one write at a time and disables its buttons; it now covers the access page (relationships, consents), allergies, break-glass and the feed and break-glass admin pages. One e2e test sends two clicks in one task to the relationship and consent buttons and expects one POST each; with the guard removed it fails (the disabled button alone does not stop two clicks in one task).
+- Not done: no test for allergies, break-glass, the admin pages, photo or merge (the same helper, but untested there); the register form keeps its own `busy` flag; no axe run with `ar-001`; RTL not looked at. CQ-33 stays open.
+
 ## 2026-10-25 - UI: one write at a time, loading is announced, logical CSS (CQ-33, first slice)
 
 - The patient page's save and photo buttons, and the merge section's buttons, are disabled while a request is in flight and a second click is ignored in code too; the loading text on the patient and my-record pages is `role="status"` `aria-busy`; `left`/`right` in `app.css` became logical properties. One e2e test (a double click on save sends one PUT); removing the guard and the disabled attribute fails it.

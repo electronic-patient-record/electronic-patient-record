@@ -1,10 +1,12 @@
 <script lang="ts">
+  import { Busy } from "#lib/busy.svelte.js";
   // Break-the-glass (SE-3): offered only when the API refused clinical content for want of a care
   // relationship and said break-the-glass could lift it. A reason and an acknowledgement are
   // required; nothing is sent without both. The grant lasts 4 hours and is reviewed afterwards.
   import { call, commonProblem } from "./api.js";
   import { STRINGS } from "./strings.js";
 
+  const busy = new Busy();
   let {
     patientId,
     onopened,
@@ -21,6 +23,10 @@
 
   async function open(event: SubmitEvent) {
     event.preventDefault();
+    await busy.run(() => openNow(event));
+  }
+
+  async function openNow(event: SubmitEvent) {
     if (!reason.trim() || !acknowledged) {
       message = STRINGS.glassNeeded;
       return;
@@ -52,7 +58,7 @@
       <input type="checkbox" bind:checked={acknowledged} />
       {STRINGS.glassAck}
     </label>
-    <button type="submit">{STRINGS.glassOpen}</button>
+    <button disabled={busy.on} type="submit">{STRINGS.glassOpen}</button>
   </form>
   {#if message}<p role="status">{message}</p>{/if}
 </section>

@@ -1701,3 +1701,50 @@ test("a double click on save sends one request, and the button is off while it i
   expect(puts).toBe(1);
   await expect(save).toBeEnabled();
 });
+
+test("two clicks at once on record relationship, and on record consent, send one request each", async ({
+  page,
+}) => {
+  const posts = { rel: 0, consent: 0 };
+  let release: () => void = () => {};
+  const held = new Promise<void>((r) => (release = r));
+  const rec = (kind: string) => ({
+    id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    patient_id: ANN.id,
+    version: 1,
+    author: "admin",
+    [kind]: {},
+  });
+  await page.route("**/api/proxy/api/patients/*/relationships", async (route) => {
+    if (route.request().method() === "GET")
+      return json(route, 200, { relationships: [] });
+    posts.rel++;
+    await held;
+    return json(route, 201, rec("relationship"));
+  });
+  await page.route("**/api/proxy/api/patients/*/consents", async (route) => {
+    if (route.request().method() === "GET") return json(route, 200, { consents: [] });
+    posts.consent++;
+    await held;
+    return json(route, 201, rec("consent"));
+  });
+  await page.goto(`/en-001/patients/${ANN.id}/access`);
+  await page.getByLabel(/^Person/).fill("sub-1");
+  const addRel = page.getByRole("button", { name: "Record relationship" });
+  const addConsent = page.getByRole("button", { name: "Record consent" });
+  // Two clicks in one task, before the page can redraw the button as disabled: only the guard in code stops these.
+  await addRel.evaluate((b: HTMLButtonElement) => {
+    b.click();
+    b.click();
+  });
+  await addConsent.evaluate((b: HTMLButtonElement) => {
+    b.click();
+    b.click();
+  });
+  await expect(addRel).toBeDisabled();
+  await expect(addConsent).toBeDisabled();
+  release();
+  await expect(addRel).toBeEnabled();
+  await expect(addConsent).toBeEnabled();
+  expect(posts).toEqual({ rel: 1, consent: 1 });
+});

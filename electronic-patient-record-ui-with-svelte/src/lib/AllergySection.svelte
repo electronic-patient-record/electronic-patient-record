@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Busy } from "#lib/busy.svelte.js";
   // The allergy list and the forms to record, end or retract one, and to state "no known
   // allergies" (RC-5, in part). Shown only to a role that may read allergies. Nothing is deleted:
   // ending an allergy or marking it entered in error is a new version, and entered in error is final.
@@ -12,6 +13,7 @@
   } from "./allergies.js";
   import { STRINGS } from "./strings.js";
 
+  const busy = new Busy();
   let {
     patientId,
     data,
@@ -57,6 +59,10 @@
 
   async function add(event: SubmitEvent) {
     event.preventDefault();
+    await busy.run(() => addNow(event));
+  }
+
+  async function addNow(event: SubmitEvent) {
     message = null;
     const allergy: AllergyRecord = {
       substance: substance.trim(),
@@ -77,6 +83,10 @@
   }
 
   async function change(a: StoredAllergy, status: "inactive" | "entered-in-error") {
+    await busy.run(() => changeNow(a, status));
+  }
+
+  async function changeNow(a: StoredAllergy, status: "inactive" | "entered-in-error") {
     message = null;
     await done(
       await call("PUT", `/api/patients/${patientId}/allergies/${a.id}`, {
@@ -88,6 +98,10 @@
   }
 
   async function statement(noneKnown: boolean) {
+    await busy.run(() => statementNow(noneKnown));
+  }
+
+  async function statementNow(noneKnown: boolean) {
     message = null;
     await done(
       await call("PUT", `/api/patients/${patientId}/allergy-statement`, {
@@ -112,12 +126,12 @@
           {#if a.allergy.reaction}· {a.allergy.reaction}{/if}
           {#if a.allergy.onset}· {a.allergy.onset}{/if}
           {#if a.allergy.status === "active"}
-            <button type="button" onclick={() => void change(a, "inactive")}>
+            <button disabled={busy.on} type="button" onclick={() => void change(a, "inactive")}>
               {STRINGS.allergyEnd}
             </button>
           {/if}
           {#if a.allergy.status !== "entered-in-error"}
-            <button type="button" onclick={() => void change(a, "entered-in-error")}>
+            <button disabled={busy.on} type="button" onclick={() => void change(a, "entered-in-error")}>
               {STRINGS.allergyMistake}
             </button>
           {/if}
@@ -149,16 +163,16 @@
     <input id="al-onset" bind:value={onset} autocomplete="off" />
     <label for="al-why">{STRINGS.allergyWhy}</label>
     <input id="al-why" bind:value={why} autocomplete="off" />
-    <button type="submit">{STRINGS.allergyAdd}</button>
+    <button disabled={busy.on} type="submit">{STRINGS.allergyAdd}</button>
   </form>
 
   <p>
     {#if data.statement?.no_known_allergies}
-      <button type="button" onclick={() => void statement(false)}>
+      <button disabled={busy.on} type="button" onclick={() => void statement(false)}>
         {STRINGS.allergyWithdrawNone}
       </button>
     {:else}
-      <button type="button" onclick={() => void statement(true)}>
+      <button disabled={busy.on} type="button" onclick={() => void statement(true)}>
         {STRINGS.allergyNoneKnown}
       </button>
     {/if}

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Busy } from "#lib/busy.svelte.js";
   import { call, commonProblem } from "#lib/api.js";
   import { whenText } from "#lib/access-log.js";
   import { STRINGS } from "#lib/strings.js";
@@ -14,6 +15,7 @@
     overdue?: boolean;
   };
 
+  const busy = new Busy();
   let grants = $state<Grant[] | null>(null);
   let message = $state<string | null>(null);
   let open = $state<string | null>(null);
@@ -39,6 +41,10 @@
 
   async function record(event: SubmitEvent) {
     event.preventDefault();
+    await busy.run(() => recordNow(event));
+  }
+
+  async function recordNow(event: SubmitEvent) {
     if (!open) return;
     if (!note.trim()) {
       message = STRINGS.glassNoteNeeded;
@@ -96,7 +102,7 @@
               </select>
               <label for="g-note">{STRINGS.glassNote}</label>
               <input id="g-note" bind:value={note} autocomplete="off" />
-              <button type="submit">{STRINGS.glassRecord}</button>
+              <button disabled={busy.on} type="submit">{STRINGS.glassRecord}</button>
             </form>
           {/if}
         </li>

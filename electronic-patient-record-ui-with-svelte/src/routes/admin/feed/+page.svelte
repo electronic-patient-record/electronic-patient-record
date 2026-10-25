@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Busy } from "#lib/busy.svelte.js";
   import { call, commonProblem } from "#lib/api.js";
   import {
     headline,
@@ -11,6 +12,7 @@
   import { refreshFeedCount } from "#lib/feed-count.svelte.js";
   import { STRINGS } from "#lib/strings.js";
 
+  const busy = new Busy();
   let open = $state<Refusal[] | null>(null);
   let limit = $state(50);
   let message = $state<string | null>(null);
@@ -39,6 +41,10 @@
   });
 
   async function toggle(r: Refusal) {
+    await busy.run(() => toggleNow(r));
+  }
+
+  async function toggleNow(r: Refusal) {
     if (shown?.id === r.id) {
       shown = null;
       return;
@@ -56,6 +62,10 @@
 
   async function close(event: SubmitEvent) {
     event.preventDefault();
+    await busy.run(() => closeNow(event));
+  }
+
+  async function closeNow(event: SubmitEvent) {
     if (!shown) return;
     const body = resolveBody(outcome, reason);
     if (!body) {
@@ -98,7 +108,7 @@
           <ul>
             {#each r.reasons as why (why)}<li>{why}</li>{/each}
           </ul>
-          <button type="button" onclick={() => void toggle(r)}>
+          <button disabled={busy.on} type="button" onclick={() => void toggle(r)}>
             {shown?.id === r.id ? STRINGS.feedHide : STRINGS.feedShow}
           </button>
           {#if shown?.id === r.id}
@@ -113,7 +123,7 @@
               </select>
               <label for="f-reason">{STRINGS.feedReason}</label>
               <input id="f-reason" bind:value={reason} autocomplete="off" />
-              <button type="submit">{STRINGS.feedClose}</button>
+              <button disabled={busy.on} type="submit">{STRINGS.feedClose}</button>
             </form>
           {/if}
         </li>
