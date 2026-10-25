@@ -376,8 +376,9 @@ async fn update_patient(
 /// `gt2026-10-01` starts on 2 October), an instant is exact. A date with no prefix is refused
 /// (FHIR reads it as `eq`, which this does not support). `patient` takes a bare id or
 /// `Patient/<id>`. A search parameter this does not know (a misspelt `agnet`) is refused, not
-/// ignored: an audit search that silently loses its filter answers a different question. Result
-/// parameters that start with `_` (`_count`, `_format`) are ignored.
+/// ignored: an audit search that silently loses its filter answers a different question. That
+/// includes the `_` filters (`_id`, `_lastUpdated`): only the result-shaping `_count`, `_format` and
+/// `_pretty` are ignored.
 fn audit_query_from(pairs: &[(String, String)]) -> Result<crate::audit::AuditQuery, String> {
     let mut q = crate::audit::AuditQuery::default();
     for (key, value) in pairs {
@@ -414,7 +415,7 @@ fn audit_query_from(pairs: &[(String, String)]) -> Result<crate::audit::AuditQue
                     return Err("date supports the ge, gt, le and lt prefixes".to_string());
                 }
             }
-            k if k.starts_with('_') => {}
+            "_count" | "_format" | "_pretty" => {}
             k => return Err(format!("the search parameter {k} is not supported")),
         }
     }
@@ -1006,6 +1007,88 @@ mod tests {
             }
         }
         assert_eq!(mounted, stated);
+    }
+
+    /// IO-1, second slice: the search parameters the statement lists are the ones the code reads.
+    #[test]
+    fn the_capability_statement_lists_the_search_parameters_the_code_reads() {
+        use std::collections::BTreeSet;
+        let cap = capability();
+        let stated = |t: &str| -> BTreeSet<String> {
+            cap["rest"][0]["resource"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|r| r["type"] == t)
+                .unwrap()["searchParam"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|p| p["name"].as_str().unwrap().to_string())
+                .collect()
+        };
+        let set =
+            |names: &[&str]| -> BTreeSet<String> { names.iter().map(|n| (*n).into()).collect() };
+        let one = |k: &str, v: &str| HashMap::from([(k.to_string(), v.to_string())]);
+
+        // Patient: each stated parameter changes the search; an unstated one changes nothing.
+        let patient = set(&["family", "birthdate", "identifier"]);
+        assert_eq!(stated("Patient"), patient);
+        for name in &patient {
+            let s = search_from(&one(name, "1980")).unwrap();
+            assert!(
+                s.family.is_some() || s.birth_date.is_some() || s.identifier.is_some(),
+                "{name} is stated but not read"
+            );
+        }
+        for name in ["gender", "name", "_id", "address", "phone", "active"] {
+            let s = search_from(&one(name, "x")).unwrap();
+            assert!(
+                s.family.is_none() && s.birth_date.is_none() && s.identifier.is_none(),
+                "{name} is read but not stated"
+            );
+        }
+
+        // AllergyIntolerance: patient only.
+        assert_eq!(stated("AllergyIntolerance"), set(&["patient"]));
+
+        // AuditEvent: each stated parameter is accepted; common FHIR ones that are not stated are refused.
+        let audit = [
+            ("agent", "x"),
+            ("patient", "Patient/a"),
+            ("action", "R"),
+            ("outcome", "4"),
+            ("date", "ge2026-10-01"),
+        ];
+        assert_eq!(
+            stated("AuditEvent"),
+            audit
+                .iter()
+                .map(|(k, _)| (*k).into())
+                .collect::<BTreeSet<String>>()
+        );
+        for (k, v) in audit {
+            assert!(
+                audit_query_from(&[(k.to_string(), v.to_string())]).is_ok(),
+                "{k} is stated but refused"
+            );
+        }
+        for name in [
+            "_id",
+            "type",
+            "subtype",
+            "entity",
+            "source",
+            "site",
+            "address",
+            "policy",
+            "_lastUpdated",
+        ] {
+            assert!(
+                audit_query_from(&[(name.to_string(), "x".to_string())]).is_err(),
+                "{name} is accepted but not stated"
+            );
+        }
     }
 
     #[test]

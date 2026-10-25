@@ -7,6 +7,11 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - `proxy.rs`: `decide` (revoked, expired, out of scope, in that order; the expiry instant is expired) and `validate` (no empty scope, no self-recorded authority, a required expiry within five years). 9 unit tests; moving the expiry or revocation boundary, or ignoring the scope list, makes tests fail.
 - Not done: nothing calls it, so **proxy access is unchanged and still all-or-nothing** (hazard H-011 and the proxy part of the model are not improved yet, so the hazard log is unchanged). No store, route, audit row, access-log entry, UI or adolescent-confidentiality rule. The four scopes and the five-year limit are guesses; the basis list is not checked against anything.
 
+## 2026-10-25 - Service: the CapabilityStatement's search parameters match the code; AuditEvent refuses `_id` and `_lastUpdated` (IO-1, second slice)
+
+- New test: the parameters stated for Patient, AllergyIntolerance and AuditEvent are the ones the code reads. It found a gap: `GET /fhir/R4/AuditEvent?_id=...` or `_lastUpdated=...` ignored the filter (every `_` parameter was dropped) and returned unfiltered events, which the doc comment said must not happen. Now only `_count`, `_format` and `_pretty` are ignored and any other is refused (400 with the parameter's name).
+- Not done: the "accepted but not stated" check uses a fixed list of common FHIR names, so an unusual parameter added later without a statement entry would not be caught; Patient search still ignores unknown parameters (allowed by FHIR, but a client cannot tell its filter was dropped); the statement is not generated. The Postgres and validator tests were not rerun here. No hazard-log change (the change only refuses more requests, on the auditor-only search).
+
 ## 2026-10-25 - UI: action budgets for registering a patient and recording an allergy (AS-5, first slice)
 
 - `tests/e2e/budgets.spec.ts` counts each user action (click, text box, list) through one helper and fails above `budgets.json` plus 10%: register 6, allergy 5 (measured today, so no slack). Lowering a budget one below the count made the test fail.
