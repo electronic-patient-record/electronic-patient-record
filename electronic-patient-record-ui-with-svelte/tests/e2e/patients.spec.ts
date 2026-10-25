@@ -1748,3 +1748,29 @@ test("two clicks at once on record relationship, and on record consent, send one
   await expect(addConsent).toBeEnabled();
   expect(posts).toEqual({ rel: 1, consent: 1 });
 });
+
+test("the main pages are right-to-left and pass axe in ar-001", async ({ page }) => {
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) => json(route, 200, ANN));
+  await page.route("**/api/proxy/api/patients/*/relationships", (route) =>
+    json(route, 200, { relationships: [] }),
+  );
+  await page.route("**/api/proxy/api/patients/*/consents", (route) =>
+    json(route, 200, { consents: [] }),
+  );
+  await page.route("**/api/proxy/api/me/patients", (route) =>
+    json(route, 200, { records: [{ relationship: "self", patient: ANN }] }),
+  );
+  for (const path of [
+    "/ar-001/patients",
+    "/ar-001/patients/new",
+    `/ar-001/patients/${ANN.id}`,
+    `/ar-001/patients/${ANN.id}/access`,
+    "/ar-001/my-record",
+  ]) {
+    await page.goto(path);
+    await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await axe(page);
+  }
+});

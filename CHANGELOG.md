@@ -7,6 +7,11 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - `proxy.rs`: `decide` (revoked, expired, out of scope, in that order; the expiry instant is expired) and `validate` (no empty scope, no self-recorded authority, a required expiry within five years). 9 unit tests; moving the expiry or revocation boundary, or ignoring the scope list, makes tests fail.
 - Not done: nothing calls it, so **proxy access is unchanged and still all-or-nothing** (hazard H-011 and the proxy part of the model are not improved yet, so the hazard log is unchanged). No store, route, audit row, access-log entry, UI or adolescent-confidentiality rule. The four scopes and the five-year limit are guesses; the basis list is not checked against anything.
 
+## 2026-10-25 - UI: axe passes on the main pages in ar-001 (CQ-33, third slice)
+
+- One e2e test visits search, register, patient, access and my-record under `/ar-001`, checks `dir="rtl"` and a visible heading, and runs axe (WCAG 2.2 AA). It passed first time, so it found nothing to fix.
+- Not verified: the layout was not looked at by a person or a speaker of Arabic; axe checks rules, not whether the page reads right. Arabic strings are machine-written. Admin, break-glass, compare and the allergy section (shown on the patient page with stubbed data) were not visited. CQ-33 stays open for the untested busy buttons.
+
 ## 2026-10-25 - UI: one write at a time on every write form (CQ-33, second slice)
 
 - A small `Busy` helper (`src/lib/busy.svelte.ts`) runs one write at a time and disables its buttons; it now covers the access page (relationships, consents), allergies, break-glass and the feed and break-glass admin pages. One e2e test sends two clicks in one task to the relationship and consent buttons and expects one POST each; with the guard removed it fails (the disabled button alone does not stop two clicks in one task).
