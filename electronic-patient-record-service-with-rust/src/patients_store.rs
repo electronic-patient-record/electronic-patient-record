@@ -41,6 +41,14 @@ pub enum StoreError {
     },
     /// The query is malformed.
     BadQuery(String),
+    /// The matcher says two records are not the same person (a merge is refused): the words, and the
+    /// reasons as the matcher's stable codes (a JSON list) for a client that translates them.
+    NotSamePerson {
+        /// The English text, as `BadQuery` would carry it.
+        message: String,
+        /// `MatchResult.conflict_codes` as JSON.
+        conflict_codes: serde_json::Value,
+    },
     /// The database failed.
     Db(String),
 }
@@ -51,6 +59,7 @@ impl std::fmt::Display for StoreError {
             StoreError::NotFound => write!(f, "patient not found"),
             StoreError::Conflict { current } => write!(f, "current version is {current}"),
             StoreError::BadQuery(e) => write!(f, "bad query: {e}"),
+            StoreError::NotSamePerson { message, .. } => write!(f, "bad query: {message}"),
             StoreError::Db(e) => write!(f, "database error: {e}"),
         }
     }

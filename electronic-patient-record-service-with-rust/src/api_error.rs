@@ -24,7 +24,12 @@ pub enum ApiError {
         extra: Map<String, Value>,
     },
     /// 422 `{"errors": [...]}`: the record was refused, for each of these reasons.
-    Invalid(Vec<String>),
+    Invalid {
+        /// The problems, one line each.
+        problems: Vec<String>,
+        /// Further keys in the body (`conflict_codes` on a refused merge).
+        extra: Map<String, Value>,
+    },
 }
 
 impl ApiError {
@@ -40,9 +45,8 @@ impl ApiError {
     /// Add a field beside `error` (ignored for [`ApiError::Invalid`]).
     #[must_use]
     pub fn with(mut self, key: &str, value: impl Into<Value>) -> Self {
-        if let Self::Error { extra, .. } = &mut self {
-            extra.insert(key.to_string(), value.into());
-        }
+        let (Self::Error { extra, .. } | Self::Invalid { extra, .. }) = &mut self;
+        extra.insert(key.to_string(), value.into());
         self
     }
 
@@ -82,7 +86,10 @@ impl ApiError {
     /// 422 with each reason the record was refused.
     #[must_use]
     pub fn invalid(problems: Vec<String>) -> Self {
-        Self::Invalid(problems)
+        Self::Invalid {
+            problems,
+            extra: Map::new(),
+        }
     }
 
     /// The HTTP status.
@@ -90,7 +97,7 @@ impl ApiError {
     pub fn status(&self) -> StatusCode {
         match self {
             Self::Error { status, .. } => *status,
-            Self::Invalid(_) => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::Invalid { .. } => StatusCode::UNPROCESSABLE_ENTITY,
         }
     }
 
@@ -104,7 +111,12 @@ impl ApiError {
                 body.extend(extra.clone());
                 Value::Object(body)
             }
-            Self::Invalid(problems) => serde_json::json!({ "errors": problems }),
+            Self::Invalid { problems, extra } => {
+                let mut body = Map::new();
+                body.insert("errors".into(), serde_json::json!(problems));
+                body.extend(extra.clone());
+                Value::Object(body)
+            }
         }
     }
 
@@ -122,7 +134,7 @@ impl ApiError {
         };
         let diagnostics = match &self {
             Self::Error { message, .. } => message.clone(),
-            Self::Invalid(problems) => problems.join("; "),
+            Self::Invalid { problems, .. } => problems.join("; "),
         };
         let severity = if status.is_server_error() {
             "fatal"
@@ -172,6 +184,12 @@ impl From<&StoreError> for ApiError {
                 Self::conflict("version conflict").with("current_version", *current)
             }
             StoreError::BadQuery(m) => Self::bad_request(m.clone()),
+            StoreError::NotSamePerson {
+                message,
+                conflict_codes,
+            } => {
+                Self::invalid(vec![message.clone()]).with("conflict_codes", conflict_codes.clone())
+            }
             StoreError::Db(m) => {
                 tracing::error!(error = %m, "store failed");
                 Self::internal()
@@ -183,6 +201,22 @@ impl From<&StoreError> for ApiError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_refused_merge_carries_its_reasons_as_codes_beside_the_errors() {
+        let e = ApiError::from(&StoreError::NotSamePerson {
+            message: "these do not look like the same person".into(),
+            conflict_codes: serde_json::json!([{ "code": "different_nhs_numbers" }]),
+        });
+        assert_eq!(e.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(
+            e.body(),
+            serde_json::json!({
+                "errors": ["these do not look like the same person"],
+                "conflict_codes": [{ "code": "different_nhs_numbers" }],
+            })
+        );
+    }
 
     #[test]
     fn rest_bodies_have_the_shapes_the_ui_reads() {

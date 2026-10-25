@@ -2,7 +2,10 @@
   // Merge another record into this one, and undo a merge (ID-5). A merge is a link: nothing is
   // deleted or moved, so undoing it restores both records exactly. The server decides everything
   // (who may, whether they look like the same person); this page shows its reasons.
+  import { page } from "$app/state";
   import { call, commonProblem } from "./api.js";
+  import { notSamePersonText, type ConflictCode } from "./conflicts.js";
+  import { DEFAULT_LOCALE } from "./locales.js";
   import { STRINGS } from "./strings.js";
 
   let {
@@ -34,7 +37,7 @@
     busy = true;
     let res;
     try {
-      res = await call<{ errors?: string[] }>(
+      res = await call<{ errors?: string[]; conflict_codes?: ConflictCode[] }>(
         "POST",
         `/api/patients/${patientId}/${path}`,
         { source: sourceId.trim(), reason: why.trim() },
@@ -50,7 +53,8 @@
       await onchange();
     } else if (res.status === 404) message = STRINGS.notFound;
     else if (res.status === 422 && res.body?.errors)
-      message = res.body.errors.join(" ");
+      message =
+        notSamePersonText(res.body.conflict_codes, page.data.locale ?? DEFAULT_LOCALE) ?? res.body.errors.join(" ");
     else message = STRINGS.error;
   }
 </script>

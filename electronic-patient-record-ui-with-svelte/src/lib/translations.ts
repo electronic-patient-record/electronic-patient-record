@@ -304,6 +304,7 @@ export const CONFLICT_KEYS = [
   "givenName",
   "familyName",
   "birthDate",
+  "notSamePerson",
 ] as const;
 export type ConflictWords = Record<(typeof CONFLICT_KEYS)[number], string>;
 
@@ -320,6 +321,7 @@ export const CONFLICT_ENGLISH: ConflictWords = {
   givenName: "given name",
   familyName: "family name",
   birthDate: "birth date",
+  notSamePerson: "These do not look like the same person:",
 };
 
 const conflict_de: ConflictWords = {
@@ -335,6 +337,7 @@ const conflict_de: ConflictWords = {
   givenName: "Vorname",
   familyName: "Nachname",
   birthDate: "Geburtsdatum",
+  notSamePerson: "Das scheinen nicht dieselben Personen zu sein:",
 };
 
 const conflict_es: ConflictWords = {
@@ -350,6 +353,7 @@ const conflict_es: ConflictWords = {
   givenName: "nombre de pila",
   familyName: "apellido",
   birthDate: "fecha de nacimiento",
+  notSamePerson: "No parecen ser la misma persona:",
 };
 
 const conflict_fr: ConflictWords = {
@@ -365,6 +369,7 @@ const conflict_fr: ConflictWords = {
   givenName: "prénom",
   familyName: "nom de famille",
   birthDate: "date de naissance",
+  notSamePerson: "Ce ne semble pas être la même personne :",
 };
 
 const conflict_zh: ConflictWords = {
@@ -380,6 +385,7 @@ const conflict_zh: ConflictWords = {
   givenName: "名",
   familyName: "姓",
   birthDate: "出生日期",
+  notSamePerson: "这看起来不是同一个人:",
 };
 
 const conflict_hi: ConflictWords = {
@@ -395,6 +401,7 @@ const conflict_hi: ConflictWords = {
   givenName: "पहला नाम",
   familyName: "अंतिम नाम",
   birthDate: "जन्म तिथि",
+  notSamePerson: "ये एक ही व्यक्ति नहीं लगते:",
 };
 
 const conflict_ar: ConflictWords = {
@@ -410,6 +417,7 @@ const conflict_ar: ConflictWords = {
   givenName: "الاسم الأول",
   familyName: "اسم العائلة",
   birthDate: "تاريخ الميلاد",
+  notSamePerson: "لا يبدو أنهما الشخص نفسه:",
 };
 
 const conflict_cy: ConflictWords = {
@@ -425,6 +433,7 @@ const conflict_cy: ConflictWords = {
   givenName: "enw cyntaf",
   familyName: "cyfenw",
   birthDate: "dyddiad geni",
+  notSamePerson: "Nid yw'r rhain yn edrych fel yr un person:",
 };
 
 /** Machine-written, not reviewed. `de-de` reads as `de-001`, and `zh-cn` as `zh-001` (simplified). */

@@ -58,3 +58,5 @@ registration, banner, summary; the clinical pages; the Lily widgets and `DataTab
 portal; dark-theme toggle (colours follow `prefers-color-scheme`).
 
 **Reasons a link cannot be automatic (CQ-38).** The compare and registration pages show each reason from the matcher's `conflict_codes` (nine codes: different NHS numbers, same NHS with different birth dates or names, sound-alike, swapped, extra given name, field unavailable, field below minimum, thin evidence) in the page's locale, with the numbers in the locale's digits (`src/lib/conflicts.ts`). A code, field or number the page does not know shows the matcher's English text for that position; codes missing or a different length from the English list show the English list whole. The wording is machine-written, **not reviewed by any speaker**, and is clinical wording (H-001).
+
+A merge the API refuses as not the same person shows "These do not look like the same person:" and each reason from `conflict_codes`, in the page's locale; if the API sent no codes (a verified NHS number alone decided it) or one it cannot translate, the API's English message shows whole. Machine-written, not reviewed.

@@ -184,7 +184,7 @@ async fn bad_merges_are_refused_with_a_reason() {
         person(&db, &family).await,
     );
     let msg = |e: Result<links::StoredLink, StoreError>| match e {
-        Err(StoreError::BadQuery(m)) => m,
+        Err(StoreError::BadQuery(m) | StoreError::NotSamePerson { message: m, .. }) => m,
         other => panic!("expected a refusal, got {other:?}"),
     };
     assert!(msg(merge(&db, &a, &a).await).contains("itself"));
@@ -249,6 +249,13 @@ async fn bad_merges_are_refused_with_a_reason() {
         .unwrap()
         .id;
     assert!(msg(merge(&db, &n1, &n2).await).contains("do not look like the same person"));
+    // The refusal carries the reasons as stable codes for a client that translates them (CQ-38).
+    match merge(&db, &a, &o).await {
+        Err(StoreError::NotSamePerson { conflict_codes, .. }) => {
+            assert!(conflict_codes.is_array(), "{conflict_codes}");
+        }
+        other => panic!("expected NotSamePerson, got {other:?}"),
+    }
 }
 
 #[tokio::test]

@@ -2119,3 +2119,28 @@ test("my record downloads the access log as a CSV file under the filter that is 
   expect(Object.fromEntries(new URL(urls.at(-1)!).searchParams)).toEqual({ by: "staff", format: "csv" });
   await axe(page);
 });
+
+test("a refused merge gives its reasons in the page's language, and the API's own words when it cannot", async ({ page }) => {
+  const english = "these do not look like the same person (match score 0.10; different verified NHS numbers)";
+  let known = true;
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, { ...ANN, replaced_by: null, replaces: [] }),
+  );
+  await page.route(`**/api/proxy/api/patients/${ANN.id}/merge`, (route) =>
+    json(route, 422, {
+      errors: [english],
+      conflict_codes: known ? [{ code: "different_nhs_numbers" }] : [{ code: "brand_new_reason" }],
+    }),
+  );
+  await page.goto("/de-001/patients/" + ANN.id);
+  await page.getByLabel(/^Id of the record/).fill("other-id");
+  await page.getByLabel(/Why are these the same person/).fill("same person");
+  await page.getByRole("button", { name: "Merge into this record" }).click();
+  await expect(
+    page.getByText("Das scheinen nicht dieselben Personen zu sein: unterschiedliche geprüfte NHS-Nummern"),
+  ).toBeVisible();
+  known = false;
+  await page.getByRole("button", { name: "Merge into this record" }).click();
+  await expect(page.getByText(english)).toBeVisible();
+});

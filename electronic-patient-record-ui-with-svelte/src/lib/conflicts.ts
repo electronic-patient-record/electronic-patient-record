@@ -73,3 +73,15 @@ export function conflictList(english: string[], codes: ConflictCode[] | undefine
   if (!codes || codes.length !== english.length) return english;
   return codes.map((c, i) => conflictText(c, locale) ?? english[i]!);
 }
+
+/**
+ * A refused merge's reasons in `locale`: "These do not look like the same person: <reasons>". Null when
+ * the API sent no codes, or any one cannot be translated, so the page shows the API's English message
+ * whole rather than a partial translation.
+ */
+export function notSamePersonText(codes: ConflictCode[] | undefined, locale: Locale): string | null {
+  if (!codes || codes.length === 0) return null;
+  const parts = codes.map((c) => conflictText(c, locale));
+  if (parts.some((p) => p === null)) return null;
+  return `${conflictWords(locale).notSamePerson} ${parts.join("; ")}`;
+}

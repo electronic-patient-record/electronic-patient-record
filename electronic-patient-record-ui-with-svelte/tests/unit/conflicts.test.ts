@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { conflictList, conflictText, type ConflictCode } from "../../src/lib/conflicts";
+import { conflictList, conflictText, notSamePersonText, type ConflictCode } from "../../src/lib/conflicts";
 import { LOCALES } from "../../src/lib/locales";
 
 // The nine codes, with the exact English the matcher (0.3.0) writes for each beside them.
@@ -51,5 +51,24 @@ describe("conflict codes in every locale (CQ-38; translations machine-written, u
     expect(conflictList(english, undefined, "de-001")).toBe(english);
     expect(conflictList(english, [{ code: "names_swapped" }], "de-001")).toBe(english);
     expect(conflictList([], [], "de-001")).toEqual([]);
+  });
+});
+
+describe("a refused merge in the page's language", () => {
+  it("leads with 'these do not look like the same person' and lists each reason, in every locale", () => {
+    for (const locale of LOCALES) {
+      const t = notSamePersonText([{ code: "different_nhs_numbers" }, { code: "names_swapped" }], locale);
+      expect(t, locale).toContain(conflictText({ code: "different_nhs_numbers" }, locale)!);
+      expect(t).toContain("; ");
+      if (locale !== "en-001") expect(t).not.toMatch(/^These do not look/);
+    }
+    expect(notSamePersonText([{ code: "names_swapped" }], "en-001")).toBe(
+      "These do not look like the same person: given and family names appear swapped",
+    );
+  });
+  it("gives null, so the API's English message shows whole, when there are no codes or one is unknown", () => {
+    expect(notSamePersonText(undefined, "de-001")).toBeNull();
+    expect(notSamePersonText([], "de-001")).toBeNull();
+    expect(notSamePersonText([{ code: "names_swapped" }, { code: "brand_new" }], "de-001")).toBeNull();
   });
 });

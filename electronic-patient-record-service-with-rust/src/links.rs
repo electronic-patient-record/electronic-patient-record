@@ -21,7 +21,7 @@
 use crate::ids;
 use crate::patients_store::{self, StoreError};
 use crate::store::pg;
-use electronic_patient_record_matcher::{Decision, MatchingEngine, Patient};
+use electronic_patient_record_matcher::{ConflictCode, Decision, MatchingEngine, Patient};
 use sea_orm::ConnectionTrait;
 use serde::Serialize;
 
@@ -83,6 +83,25 @@ fn row_to_link(r: &sea_orm::QueryResult) -> Result<StoredLink, StoreError> {
     })
 }
 
+/// Why a merge is refused: the words, and the matcher's reasons as stable codes (empty when a verified
+/// national identifier alone decided it).
+#[derive(Debug, Clone, PartialEq)]
+pub struct NotSamePerson {
+    /// The English text.
+    pub message: String,
+    /// `MatchResult.conflict_codes`.
+    pub codes: Vec<ConflictCode>,
+}
+
+impl From<NotSamePerson> for StoreError {
+    fn from(n: NotSamePerson) -> Self {
+        StoreError::NotSamePerson {
+            message: n.message,
+            conflict_codes: serde_json::to_value(&n.codes).unwrap_or_default(),
+        }
+    }
+}
+
 /// The matcher's verdict on a pair that is to be merged, or why the merge is refused. Two different
 /// verified NHS numbers, or anything else the matcher calls a non-match, refuse. Pure: the same pair
 /// gives the same answer in either order.
@@ -90,20 +109,23 @@ fn row_to_link(r: &sea_orm::QueryResult) -> Result<StoredLink, StoreError> {
 /// # Errors
 ///
 /// The reason, in words.
-pub fn judge(source: &Patient, target: &Patient) -> Result<(f64, &'static str), String> {
+pub fn judge(source: &Patient, target: &Patient) -> Result<(f64, &'static str), NotSamePerson> {
     let result = MatchingEngine::default().compare(source, target);
     match result.decision {
-        Decision::NonMatch => Err(match result.deterministic {
-            Some(d) => format!("these do not look like the same person ({d})"),
-            None => format!(
-                "these do not look like the same person (match score {:.2}{})",
-                result.score,
-                if result.conflicts.is_empty() {
-                    String::new()
-                } else {
-                    format!("; {}", result.conflicts.join("; "))
-                }
-            ),
+        Decision::NonMatch => Err(NotSamePerson {
+            codes: result.conflict_codes.clone(),
+            message: match result.deterministic {
+                Some(d) => format!("these do not look like the same person ({d})"),
+                None => format!(
+                    "these do not look like the same person (match score {:.2}{})",
+                    result.score,
+                    if result.conflicts.is_empty() {
+                        String::new()
+                    } else {
+                        format!("; {}", result.conflicts.join("; "))
+                    }
+                ),
+            },
         }),
         Decision::AutoLink => Ok((result.score, "auto_link")),
         Decision::Review => Ok((result.score, "review")),
@@ -308,8 +330,7 @@ pub async fn merge(
             "the surviving record was itself merged into {into}: merge into that one"
         )));
     }
-    let (score, decision) =
-        judge(&source.patient, &target.patient).map_err(StoreError::BadQuery)?;
+    let (score, decision) = judge(&source.patient, &target.patient).map_err(StoreError::from)?;
     let row = db
         .query_one_raw(pg(
             &format!(
@@ -443,7 +464,10 @@ mod tests {
         // numbers as a non-match.
         let b = person("Smith", "John", "1980-03-14", Some("4010232137"));
         let e = judge(&a, &b).unwrap_err();
-        assert!(e.contains("do not look like the same person"), "{e}");
+        assert!(
+            e.message.contains("do not look like the same person"),
+            "{e:?}"
+        );
     }
 
     #[test]

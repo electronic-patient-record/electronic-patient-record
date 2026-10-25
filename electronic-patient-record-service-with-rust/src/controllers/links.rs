@@ -121,20 +121,22 @@ async fn change(
         Err(e) => {
             let _ = sea_orm::TransactionSession::rollback(tx).await;
             // A refused merge is an access worth recording: who tried to join which records.
-            if matches!(e, StoreError::NotFound | StoreError::BadQuery(_))
-                && let Err(r) = audit_resource(
-                    &ctx.db,
-                    agent,
-                    Access {
-                        action,
-                        outcome: 4,
-                        purpose,
-                        resource: "PatientLink",
-                        patient_id: None,
-                    },
-                    serde_json::json!({ "refused": e.to_string() }),
-                )
-                .await
+            if matches!(
+                e,
+                StoreError::NotFound | StoreError::BadQuery(_) | StoreError::NotSamePerson { .. }
+            ) && let Err(r) = audit_resource(
+                &ctx.db,
+                agent,
+                Access {
+                    action,
+                    outcome: 4,
+                    purpose,
+                    resource: "PatientLink",
+                    patient_id: None,
+                },
+                serde_json::json!({ "refused": e.to_string() }),
+            )
+            .await
             {
                 return r.into_response();
             }
