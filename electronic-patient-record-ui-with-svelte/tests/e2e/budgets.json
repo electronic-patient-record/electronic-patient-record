@@ -1,0 +1,9 @@
+{
+  "note": "AS-5: user actions (trusted clicks plus distinct fields typed into) from the patients page to a finished task. CI fails when a count exceeds its budget by more than 10%. Lower a budget when a task gets shorter; raising one needs a reason in the CHANGELOG.",
+  "register-a-patient": {
+    "actions": 6
+  },
+  "record-an-allergy": {
+    "actions": 5
+  }
+}

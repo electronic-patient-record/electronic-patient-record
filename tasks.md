@@ -395,7 +395,7 @@ Conventions:
   - summative NISTIR 7804 testing at M8 on the (g)(3) critical tasks with ≥ 10 users each, reported in NISTIR 7742 format
 
   **Acceptance:** the report exists and SUS is ≥ 75, or the shortfall and its remediation are recorded.
-- [ ] **AS-5 (M) — Click and time budgets.** Playwright budgets for critical
+- [ ] **AS-5 (M) — Click and time budgets.** **Partly landed 2026-10-25:** `tests/e2e/budgets.spec.ts` and `budgets.json` budget the actions (clicks, text boxes, lists) for register a patient (6) and record an allergy (5), and fail above budget + 10%. **Open:** prescribe, acknowledge results and sign a note do not exist yet; no time budgets (stubbed API); the count is of the test's own steps, so it catches a task getting longer, not a shorter route nobody tried. Playwright budgets for critical
   tasks: register a patient, record an allergy, prescribe, acknowledge
   results, sign a note.
   **Acceptance:** CI fails when a budget regresses by more than 10%.
