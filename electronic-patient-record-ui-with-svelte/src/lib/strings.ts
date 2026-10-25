@@ -307,6 +307,7 @@ export const STRINGS = {
   },
   accessLogYou: "You",
   accessLogStaff: "A member of staff",
+  accessLogProxy: "Someone acting as a proxy",
   accessLogYour: "your",
   accessLogPurpose: "Purpose",
   accessLogBreakGlass: "Opened in an emergency.",

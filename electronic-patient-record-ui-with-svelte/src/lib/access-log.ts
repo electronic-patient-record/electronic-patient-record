@@ -29,6 +29,8 @@ const ROLE = STRINGS.roleNames as Record<string, string>;
 
 /** "A member of staff (clinician, riverside)": the role and organisation the token carried, if recorded. */
 function staff(e: LogEntry): string {
+  // A proxy is not staff: the patient must be able to tell who is reading their record for them (PA-5).
+  if ((e.roles ?? []).includes("proxy")) return STRINGS.accessLogProxy;
   const bits = [
     ...(e.roles ?? []).map((r) => ROLE[r] ?? r),
     ...(e.organisations ?? []),

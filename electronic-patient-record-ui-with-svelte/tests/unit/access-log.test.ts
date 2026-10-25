@@ -27,6 +27,11 @@ suite("access log text", () => {
     );
     expect(describe(e({ roles: ["new-role"] }))).toContain("(new-role)");
   });
+  it("does not call a proxy a member of staff", () => {
+    expect(describe(e({ roles: ["proxy"], organisations: ["riverside"] }))).toBe(
+      "Someone acting as a proxy viewed your identity record. Purpose: treatment.",
+    );
+  });
   it("says you when it was you, and says a refusal plainly", () => {
     expect(describe(e({ by: "you", purpose: null }))).toBe(
       "You viewed your identity record.",
