@@ -6,11 +6,11 @@
 | `/api/patients/compare` | POST | built; body `{a, b}` of `Patient`; returns `MatchResult` |
 | `/api/patients`, `/api/patients/{id}` | CRUD | planned (ID-3) |
 | `/api/audit` | GET | planned (AU-2) |
-| `/fhir/R4/metadata` | GET | planned (IO-1) |
+| `/fhir/R4/metadata` | GET | built; a hand-written CapabilityStatement (parses as FHIR R4) |
 | `/fhir/R4/{Type}` and `/{id}`, `_history`, `$everything`, `$export`, `Patient/$match`, `$summary` | | planned (RC-, IO-) |
 | `/.well-known/smart-configuration` | GET | planned (IO-2) |
 
-All routes except the three probes require a valid bearer token (built). A census test will keep the mounted FHIR routes
+All routes except the three probes require a valid bearer token (built). A census test (`the_capability_statement_lists_exactly_the_mounted_routes`) keeps the mounted FHIR routes
 and the CapabilityStatement equal (IO-1).
 
 ### Error bodies

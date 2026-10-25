@@ -7,6 +7,11 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - `proxy.rs`: `decide` (revoked, expired, out of scope, in that order; the expiry instant is expired) and `validate` (no empty scope, no self-recorded authority, a required expiry within five years). 9 unit tests; moving the expiry or revocation boundary, or ignoring the scope list, makes tests fail.
 - Not done: nothing calls it, so **proxy access is unchanged and still all-or-nothing** (hazard H-011 and the proxy part of the model are not improved yet, so the hazard log is unchanged). No store, route, audit row, access-log entry, UI or adolescent-confidentiality rule. The four scopes and the five-year limit are guesses; the basis list is not checked against anything.
 
+## 2026-10-25 - Service: census of the CapabilityStatement against the mounted routes (IO-1, first slice)
+
+- `the_capability_statement_lists_exactly_the_mounted_routes`: every mounted `/fhir/R4` method and path is stated, and every stated interaction is mounted. Adding an unlisted route made it fail.
+- Not done: the statement is still hand-written, not generated; search parameters, `date` and the description are not checked against the code; no behaviour changed.
+
 ## 2026-10-25 - UI: register, search and compare ignore a second click (CQ-33)
 
 - Fixed a real gap: the register form disabled its button only after a redraw, so two clicks in one task sent two POSTs (the new test showed 2 requests on the old code). A double click could therefore ask for the same registration twice. Register, search and compare now use `Busy`.

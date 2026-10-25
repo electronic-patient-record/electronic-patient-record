@@ -310,7 +310,8 @@ Conventions:
 
 ## M6 — Interoperability and apps
 
-- [ ] **IO-1 (M) — CapabilityStatement.** `/fhir/R4/metadata`, generated
+- [ ] **IO-1 (M) — CapabilityStatement.** **Partly landed 2026-10-25:** `/fhir/R4/metadata` is built (hand-written) and a census test asserts the interactions it states equal the mounted routes. **Open:** generate it from the routes; check search parameters, not only interactions; `date` and version are hand-set.
+  `/fhir/R4/metadata`, generated
   from the mounted routes.
   **Acceptance:** a census test asserts every FHIR route is listed and nothing extra is.
 - [ ] **IO-2 (L) — SMART App Launch 2.2.**

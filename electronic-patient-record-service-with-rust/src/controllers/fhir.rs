@@ -981,6 +981,33 @@ mod tests {
         assert!(resource.is_ok(), "{:?}", resource.err());
     }
 
+    /// IO-1: the mounted routes and the CapabilityStatement say the same thing. A route added
+    /// without a statement entry, or an entry without a route, fails here.
+    #[test]
+    fn the_capability_statement_lists_exactly_the_mounted_routes() {
+        use std::collections::BTreeSet;
+        let mounted: BTreeSet<String> = routes()
+            .handlers
+            .iter()
+            .flat_map(|h| h.actions.iter().map(|m| format!("{m} {}", h.uri)))
+            .collect();
+        let mut stated: BTreeSet<String> = BTreeSet::from(["GET /metadata".to_string()]);
+        let cap = capability();
+        for r in cap["rest"][0]["resource"].as_array().unwrap() {
+            let t = r["type"].as_str().unwrap();
+            for i in r["interaction"].as_array().unwrap() {
+                stated.insert(match i["code"].as_str().unwrap() {
+                    "read" => format!("GET /{t}/{{id}}"),
+                    "search-type" => format!("GET /{t}"),
+                    "create" => format!("POST /{t}"),
+                    "update" => format!("PUT /{t}/{{id}}"),
+                    other => format!("UNMAPPED {other} {t}"),
+                });
+            }
+        }
+        assert_eq!(mounted, stated);
+    }
+
     #[test]
     fn audit_search_parameters_map_and_unsupported_date_prefixes_are_refused() {
         let pairs = |v: &[(&str, &str)]| -> Vec<(String, String)> {
