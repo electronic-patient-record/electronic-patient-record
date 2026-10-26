@@ -561,14 +561,6 @@ export type PatientProblemWords = Record<
   string
 >;
 
-export const PATIENT_PROBLEM_ENGLISH: PatientProblemWords = {
-  familyNameRequired: "At least one name with a family name is required.",
-  birthDateInvalid: "The birth date must be a year, a year and month, or a real date.",
-  nhsNumberPlaceholder: "The NHS number is a placeholder (ten copies of one digit), not an issued number.",
-  nhsNumberCheckDigit: "The NHS number fails the check-digit test.",
-  identifierIncomplete: "An identifier needs a system and a value.",
-};
-
 const problem_de: PatientProblemWords = {
   familyNameRequired: "Mindestens ein Name mit Familiennamen ist erforderlich.",
   birthDateInvalid: "Das Geburtsdatum muss ein Jahr, ein Jahr mit Monat oder ein echtes Datum sein.",
@@ -637,7 +629,7 @@ export const PATIENT_PROBLEM_WORDS: Partial<Record<Locale, PatientProblemWords>>
   "zh-cn": problem_zh,
 };
 
-/** The patient-problem words for `locale`, English where there is no translation. */
-export function patientProblemWords(locale: Locale): PatientProblemWords {
-  return PATIENT_PROBLEM_WORDS[locale] ?? PATIENT_PROBLEM_ENGLISH;
+/** The patient-problem words for `locale`, or null where there is no translation (the API's English is shown). */
+export function translatedPatientProblemWords(locale: Locale): PatientProblemWords | null {
+  return PATIENT_PROBLEM_WORDS[locale] ?? null;
 }

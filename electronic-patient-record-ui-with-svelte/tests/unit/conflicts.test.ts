@@ -106,13 +106,12 @@ describe("a refused merge or unmerge by code", () => {
 describe("a refused patient", () => {
   const CODES = ["family_name_required", "birth_date_invalid", "nhs_number_placeholder", "nhs_number_check_digit", "identifier_incomplete"];
   const english = CODES.map((c) => `english ${c}`);
-  it("says every code in every locale, and each locale differs from English", () => {
-    const en = patientProblemList(english, CODES, "en-001");
+  it("says every code in every translated locale, and leaves English readers the API's own words", () => {
     for (const locale of LOCALES) {
       const t = patientProblemList(english, CODES, locale);
       expect(t).toHaveLength(CODES.length);
-      t.forEach((line, i) => expect(line, `${locale} ${CODES[i]}`).not.toMatch(/^english /));
-      if (locale.startsWith("de")) expect(t[0]).not.toBe(en[0]);
+      if (locale.startsWith("en")) expect(t, locale).toEqual(english);
+      else t.forEach((line, i) => expect(line, `${locale} ${CODES[i]}`).not.toMatch(/^english /));
     }
   });
   it("keeps the API's English for an unknown code, and the whole English list when the codes do not line up", () => {

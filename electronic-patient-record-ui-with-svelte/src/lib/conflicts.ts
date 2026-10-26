@@ -2,7 +2,7 @@
 import type { Locale } from "./locales.js";
 import {
   conflictWords,
-  patientProblemWords,
+  translatedPatientProblemWords,
   refusalWords,
   type ConflictWords,
   type PatientProblemWords,
@@ -125,12 +125,14 @@ const PATIENT_PROBLEM: Record<string, keyof PatientProblemWords> = {
 
 /**
  * The reasons a patient was refused (422 `errors` and `error_codes`, same order), each in `locale`,
- * and the API's English for any code this does not know. If the lengths differ (an older API sent no
+ * and the API's English for any code this does not know, or for a locale with no translation (English
+ * readers see the API's own words). If the lengths differ (an older API sent no
  * codes) the English list is shown whole, never fewer reasons than the API gave.
  */
 export function patientProblemList(english: string[], codes: unknown, locale: Locale): string[] {
   if (!Array.isArray(codes) || codes.length !== english.length) return english;
-  const w = patientProblemWords(locale);
+  const w = translatedPatientProblemWords(locale);
+  if (!w) return english;
   return codes.map((c, i) => {
     const key = typeof c === "string" ? PATIENT_PROBLEM[c] : undefined;
     return key ? w[key] : english[i]!;

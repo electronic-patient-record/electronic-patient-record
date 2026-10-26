@@ -25,7 +25,7 @@ export default defineConfig({
       EPR_OIDC_ISSUER: ISSUER,
       EPR_OIDC_CLIENT_ID: "epr-web",
       EPR_PUBLIC_URL: ORIGIN,
-      EPR_SESSION_IDLE_SECONDS: "900",
+      EPR_SESSION_IDLE_SECONDS: process.env.EPR_E2E_IDLE_SECONDS ?? "900",
     },
   },
 });

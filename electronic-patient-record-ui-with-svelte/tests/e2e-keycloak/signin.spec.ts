@@ -1385,3 +1385,20 @@ test("break-the-glass does not override a patient's refusal of consent", async (
   // No offer: break-the-glass can not lift this one.
   expect(read.body.break_glass_offer).toBeUndefined();
 });
+
+// CQ-8: needs a short idle limit, e.g. EPR_E2E_IDLE_SECONDS=140 (the warning shows 120 s before the end).
+test("the idle warning shows, and one press on Stay signed in clears it and keeps the session", async ({
+  page,
+}) => {
+  test.skip(
+    !process.env.EPR_E2E_IDLE_SECONDS,
+    "set EPR_E2E_IDLE_SECONDS (140) so the warning is due within seconds",
+  );
+  await signIn(page);
+  const warning = page.getByRole("alert").filter({ hasText: "Stay signed in" });
+  await expect(warning).toBeVisible({ timeout: 45_000 });
+  await warning.getByRole("button", { name: "Stay signed in" }).click();
+  await expect(warning).toHaveCount(0);
+  // The server agrees the session is alive.
+  expect(await compare(page)).toBe(200);
+});
