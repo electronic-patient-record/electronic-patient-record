@@ -1488,3 +1488,8 @@ Milestone M0, scaffold. **Not for clinical use.**
 - **Not run:** the GitHub Actions workflows (`ci.yml`, `release.yml`) have never executed (the Podman steps in them, including `podman-compose` and the multi-arch `podman manifest` push, are untested; `podman compose` locally delegates to a Homebrew `docker-compose` client talking to Podman), so any error in them is
   unknown; there is no zap job and no chaos workflow; the release image and SBOM steps are untested.
 - No hazard log, no clinical safety officer, no governance pack (AS-1 to AS-3).
+
+## 2026-10-26 - Matcher 0.4.0 released; the service uses it (CQ-37, H-001)
+
+- Matcher 0.4.0 is published to crates.io (CQ-37: a shared NHS number with a given name, family name or birth date absent on either record goes to Review). The service pins 0.4.0. Matcher gates and `cargo publish --dry-run` passed; service fmt, clippy and unit tests passed; Postgres suite 91 tests, 0 failed (validator tests skipped).
+- Not done: Clinical Safety Officer review of CQ-37; H-001 stays `open` and its retest of the CQ-19 rules and thresholds against 0.4.0 has not happened; no git tag (a `v*` tag releases the service image); a published version cannot be unpublished, only yanked. The UI was not rerun for this bump (it does not depend on the matcher crate).

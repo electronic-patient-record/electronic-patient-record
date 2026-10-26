@@ -41,7 +41,7 @@ integrity-mac = "0.2.0"
 sha2 = "0.11"
 electronic-patient-record-migration = { version = "0.1.0", path = "migration" }
 # The matcher's `Patient` is the API identity DTO, with no adapter layer. Published crate.
-electronic-patient-record-matcher = "0.3.0"
+electronic-patient-record-matcher = "0.4.0"
 # Offline PASETO v4.public verification against the authentication service's Ed25519 keys, and
 # Keycloak (OIDC) access-token verification against a realm's published keys.
 authentication-verifier = { version = "0.9.1", default-features = false, features = ["paseto", "fetch", "keycloak"] }
