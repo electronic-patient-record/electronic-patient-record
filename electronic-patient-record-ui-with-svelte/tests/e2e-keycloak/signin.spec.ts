@@ -1497,3 +1497,81 @@ test("a clinician records a vital sign through the page; it is read back with it
     page.getByRole("region", { name: "Vital signs" }),
   ).toContainText("not shown to your role");
 });
+
+test("a clinician corrects a vital sign and then marks it entered in error; the real API ends at version 3, entered in error, value kept", async ({
+  page,
+}) => {
+  test.skip(!ADMIN, "set EPR_E2E_ADMIN_USERNAME");
+  const subOf = (t: string) =>
+    JSON.parse(Buffer.from(t.split(".")[1]!, "base64url").toString())
+      .sub as string;
+  const [admin, clinician] = await Promise.all([
+    devToken(ADMIN),
+    devToken(USERNAME),
+  ]);
+  const call = async (token: string, method: string, path: string, body?: unknown) => {
+    const res = await fetch(`${API}${path}`, {
+      method,
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+        "x-purpose-of-use": "operations",
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const text = await res.text();
+    return { status: res.status, body: text ? JSON.parse(text) : null };
+  };
+  const made = await call(admin, "POST", "/api/patients", {
+    patient: {
+      names: [{ family: `Zcorrect${Date.now()}`, given: ["Casey"] }],
+      birth_date: "1971-03-14",
+    },
+  });
+  expect(made.status).toBe(201);
+  const id = made.body.id as string;
+  expect(
+    (
+      await call(admin, "POST", `/api/patients/${id}/relationships`, {
+        relationship: { subject: subOf(clinician), kind: "care-team", status: "active" },
+        reason: "e2e",
+      })
+    ).status,
+  ).toBe(201);
+
+  await signIn(page);
+  await page.goto(`/en-001/patients/${id}`);
+  const section = page.getByRole("region", { name: "Vital signs" });
+  const at = new Date(Date.now() - 10 * 60_000).toISOString().slice(0, 16);
+  await section.getByLabel("Value (/min)").fill("172");
+  await section.getByLabel(/^Measured at/).fill(at);
+  await section.getByRole("button", { name: "Record vital sign" }).click();
+  await expect(section.getByText("Vital sign recorded.")).toBeVisible();
+
+  // Correct it: a reason is needed, then the real API stores version 2.
+  await section.getByRole("button", { name: "Correct", exact: true }).click();
+  await expect(section.getByLabel("Value (/min)")).toHaveValue("172");
+  await section.getByLabel("Value (/min)").fill("72");
+  await section.getByRole("button", { name: "Save correction" }).click();
+  await expect(section.getByText("Say what you are correcting and why.")).toBeVisible();
+  await section.getByLabel("Reason for this entry (optional)").fill("keyed 172 for 72");
+  await section.getByRole("button", { name: "Save correction" }).click();
+  await expect(section.getByText("Correction saved as a new version.")).toBeVisible();
+  const row = section.getByRole("listitem").filter({ hasText: "Heart rate" });
+  await expect(row).toContainText("72 /min");
+  await expect(row).toContainText("version 2");
+  await expect(row).not.toContainText("172");
+
+  // Mark it entered in error: it leaves the main list and is kept, struck through.
+  await row.getByRole("button", { name: "Mark entered in error" }).click();
+  await section.getByLabel("Why this entry was a mistake").fill("wrong patient");
+  await section.getByRole("button", { name: "Confirm entered in error" }).click();
+  await expect(section.getByText("Marked entered in error. It is kept, not deleted.")).toBeVisible();
+  await expect(section.getByText("Entered in error (1)")).toBeVisible();
+  await expect(section.getByRole("button", { name: "Mark entered in error" })).toHaveCount(0);
+
+  // The real API agrees: one observation, version 3, entered in error, value kept.
+  const list = await call(clinician, "GET", `/api/patients/${id}/observations`);
+  expect(list.body.observations).toHaveLength(1);
+  expect(list.body.observations[0]).toMatchObject({ version: 3, status: "entered-in-error", value: 72 });
+});

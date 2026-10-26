@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-26 - UI: real-Keycloak run of vital sign correction and entered-in-error (RC-6, H-034)
+
+- New test in `tests/e2e-keycloak/signin.spec.ts`: a clinician with a care relationship records 172, corrects it to 72 (reason required first), marks it entered in error, and the real API (Keycloak tokens, Postgres 18) answers version 3, `entered-in-error`, value 72 kept. Run by hand against Keycloak 26.3.0, the API built from `main` and a fresh database; it and the earlier vital test pass. Containers removed afterwards.
+- Not done: this suite is still not in CI; the first run passed, so I did not see it fail (the assertions name version 3 and the status, which a no-op would not give); the earlier versions are not read back (no endpoint returns them); one run, one machine.
+
 ## 2026-10-26 - UI: correct a vital sign from the page (RC-6, H-034)
 
 - "Correct" loads a standing entry into the form; saving sends a PUT with the whole record, `expected_version` and a required reason. The service stores it as a new version and keeps the old. The vital cannot be changed while correcting. A critical range, which the form has no field for, is carried over unchanged (without that a correction would have erased it; the test checks it).
