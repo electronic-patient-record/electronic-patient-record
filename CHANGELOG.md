@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-26 - UI: correct a vital sign from the page (RC-6, H-034)
+
+- "Correct" loads a standing entry into the form; saving sends a PUT with the whole record, `expected_version` and a required reason. The service stores it as a new version and keeps the old. The vital cannot be changed while correcting. A critical range, which the form has no field for, is carried over unchanged (without that a correction would have erased it; the test checks it).
+- Not done: the earlier version is not shown on the page; a real-Keycloak run of this or the entered-in-error action; nothing warns that another clinician already read the old value; no clinician review of the flow or wording. A correction can still be wrong inside the bounds. H-034 controls and gaps updated, status unchanged.
+
 ## 2026-10-26 - UI: mark a vital sign entered in error (RC-6, H-034)
 
 - Each standing vital sign has "Mark entered in error", which needs a reason and sends the stored record with only `status` changed, plus `expected_version`. The entry moves under "Entered in error (n)", struck through; nothing is deleted. 2 vitest, 1 stubbed Playwright test with axe (reason required and nothing sent without it, 409 message, exact request body).

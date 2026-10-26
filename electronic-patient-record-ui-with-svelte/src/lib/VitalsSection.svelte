@@ -2,7 +2,7 @@
   import { Busy } from "#lib/busy.svelte.js";
   // The vital signs list and the form to record one (RC-6, first UI slice). Nothing here says a value
   // is normal unless the API computed it from a range the sender gave; a missing value says why; an
-  // empty box is never sent as 0. Marking an entry entered in error is here (it is kept, struck through, never deleted); correcting a value is a later slice.
+  // empty box is never sent as 0. Marking an entry entered in error and correcting a value are here: a correction is a new version with a required reason, and the old version is kept.
   import { call, commonProblem } from "./api.js";
   import {
     VITALS,
@@ -42,6 +42,8 @@
   let measuredAt = $state("");
   let why = $state("");
 
+  // The entry being corrected: the form is loaded from it and submits a new version of it.
+  let correcting = $state<StoredObservation | null>(null);
   let erroring = $state<string | null>(null);
   let errorWhy = $state("");
 
@@ -98,6 +100,32 @@
     });
   }
 
+  function startCorrection(o: StoredObservation) {
+    const v = VITALS.find((x) => x.loinc === o.code);
+    if (!v) {
+      message = STRINGS.vitalCannotCorrect;
+      return;
+    }
+    correcting = o;
+    message = null;
+    vital = v.key;
+    noValue = o.value === null || o.value === undefined;
+    value = noValue ? "" : String(o.value);
+    absentReason = o.absent_reason ?? "";
+    low = o.range?.low != null ? String(o.range.low) : "";
+    high = o.range?.high != null ? String(o.range.high) : "";
+    measuredAt = nowInZone(new Date(o.effective_at), siteZone);
+    why = "";
+  }
+
+  function cancelCorrection() {
+    correcting = null;
+    value = low = high = why = "";
+    noValue = false;
+    absentReason = "";
+    measuredAt = nowInZone(new Date(), siteZone);
+  }
+
   async function recordNow() {
     message = null;
     const built = formToRequest({ vital, value, noValue, absentReason, low, high, measuredAt, siteZone });
@@ -105,14 +133,27 @@
       message = built.problem;
       return;
     }
-    const res = await call<{ errors?: string[] }>("POST", `/api/patients/${patientId}/observations`, {
-      observation: built.record,
-      reason: why.trim() || undefined,
-    });
+    // The form has no critical range; a correction keeps the one the entry has rather than erasing it.
+    if (correcting?.critical) built.record.critical = correcting.critical;
+    if (correcting && !why.trim()) {
+      message = STRINGS.vitalCorrectReasonNeeded;
+      return;
+    }
+    const res = correcting
+      ? await call<{ errors?: string[] }>(
+          "PUT",
+          `/api/patients/${patientId}/observations/${correcting.id}`,
+          { observation: built.record, expected_version: correcting.version, reason: why.trim() },
+        )
+      : await call<{ errors?: string[] }>("POST", `/api/patients/${patientId}/observations`, {
+          observation: built.record,
+          reason: why.trim() || undefined,
+        });
     const common = commonProblem(res.status);
     if (common) message = STRINGS[common];
-    else if (res.status === 201) {
-      message = STRINGS.vitalsSaved;
+    else if (res.status === 201 || (correcting && res.status === 200)) {
+      message = correcting ? STRINGS.vitalCorrected : STRINGS.vitalsSaved;
+      correcting = null;
       value = low = high = why = "";
       noValue = false;
       absentReason = "";
@@ -147,6 +188,9 @@
             · <time datetime={o.effective_at}>{siteWhenText(o.effective_at, siteZone)}</time>
             · {STRINGS.vitalBy} <code>{o.author}</code>
             {#if o.version > 1}· {STRINGS.vitalVersion.replace("{n}", String(o.version))}{/if}
+            {#if !correcting}
+              <button type="button" onclick={() => startCorrection(o)}>{STRINGS.vitalCorrect}</button>
+            {/if}
             {#if erroring === o.id}
               <label for="vs-err-{o.id}">{STRINGS.vitalMarkErrorWhy}</label>
               <input id="vs-err-{o.id}" bind:value={errorWhy} autocomplete="off" />
@@ -179,10 +223,13 @@
       </details>
     {/if}
 
-    <h3>{STRINGS.vitalsRecordTitle}</h3>
+    <h3>{correcting ? STRINGS.vitalCorrectTitle : STRINGS.vitalsRecordTitle}</h3>
+    {#if correcting}
+      <p>{STRINGS.vitalCorrectNote.replace("{n}", String(correcting.version))}</p>
+    {/if}
     <form onsubmit={record}>
       <label for="vs-vital">{STRINGS.vitalLabel}</label>
-      <select id="vs-vital" bind:value={vital}>
+      <select id="vs-vital" bind:value={vital} disabled={correcting !== null}>
         {#each VITALS as v (v.key)}
           <option value={v.key}>{STRINGS.vitalNames[v.key]}</option>
         {/each}
@@ -217,7 +264,12 @@
       <input id="vs-high" bind:value={high} inputmode="decimal" autocomplete="off" />
       <label for="vs-why">{STRINGS.vitalWhy}</label>
       <input id="vs-why" bind:value={why} autocomplete="off" />
-      <button disabled={busy.on} type="submit">{STRINGS.vitalSubmit}</button>
+      <button disabled={busy.on} type="submit">
+        {correcting ? STRINGS.vitalCorrectSubmit : STRINGS.vitalSubmit}
+      </button>
+      {#if correcting}
+        <button type="button" onclick={cancelCorrection}>{STRINGS.vitalMarkErrorCancel}</button>
+      {/if}
     </form>
   {/if}
   {#if message}<p role="status">{message}</p>{/if}

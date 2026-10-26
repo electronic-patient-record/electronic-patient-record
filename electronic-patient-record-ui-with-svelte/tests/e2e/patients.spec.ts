@@ -2481,3 +2481,50 @@ test("a vital sign is marked entered in error with a reason, sending the whole r
   await expect(section.getByText("Entered in error (1)")).toBeVisible();
   await expect(section.getByRole("button", { name: "Mark entered in error" })).toHaveCount(0);
 });
+
+test("correcting a vital loads it into the form, needs a reason, and sends a new version with the version it was made from", async ({
+  page,
+}) => {
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, { ...ANN, site_time_zone: "America/New_York" }),
+  );
+  const mine = OBS({ id: "o-2", version: 1, value: 172, critical: { low: 40, high: 150 } });
+  let rows: unknown[] = [mine];
+  const sent: any[] = [];
+  await page.route("**/api/proxy/api/patients/*/observations/o-2", (route) => {
+    sent.push(route.request().postDataJSON());
+    rows = [{ ...mine, version: 2, value: 72 }];
+    return json(route, 200, rows[0]);
+  });
+  await page.route("**/api/proxy/api/patients/*/observations", (route) =>
+    json(route, 200, { observations: rows }),
+  );
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  const section = page.getByRole("region", { name: "Vital signs" });
+  await section.getByRole("button", { name: "Correct", exact: true }).click();
+  await expect(section.getByLabel("Value (/min)")).toHaveValue("172");
+  await expect(section.getByLabel("Measured at (site time, America/New_York)")).toHaveValue("2026-10-26T09:30");
+  await axe(page);
+  await section.getByLabel("Value (/min)").fill("72");
+  await section.getByRole("button", { name: "Save correction" }).click();
+  await expect(section.getByText("Say what you are correcting and why.")).toBeVisible();
+  expect(sent).toHaveLength(0);
+  await section.getByLabel("Reason for this entry (optional)").fill("keyed 172 for 72");
+  await section.getByRole("button", { name: "Save correction" }).click();
+  await expect(section.getByText("Correction saved as a new version.")).toBeVisible();
+  expect(sent[0]).toEqual({
+    observation: {
+      code: "8867-4",
+      value: 72,
+      unit: "/min",
+      critical: { low: 40, high: 150 },
+      effective_at: "2026-10-26T13:30:00Z",
+      status: "final",
+    },
+    expected_version: 1,
+    reason: "keyed 172 for 72",
+  });
+  await expect(section.getByText("version 2")).toBeVisible();
+  await expect(section.getByRole("button", { name: "Record vital sign" })).toBeVisible();
+});
