@@ -127,6 +127,21 @@ test("registering shows the server's validation problems", async ({ page }) => {
   await axe(page);
 });
 
+test("registration problems come by code, in the page's language, with the API's English for an unknown code", async ({ page }) => {
+  await page.route("**/api/proxy/api/patients", (route) =>
+    json(route, 422, {
+      errors: ["NHS number fails the modulus 11 check", "something new the UI has no code for"],
+      error_codes: ["nhs_number_check_digit", "brand_new"],
+    }),
+  );
+  await page.goto("/de-001/patients/new");
+  await page.getByLabel("Family name").fill("Smith");
+  await page.locator("form button[type=submit]").click();
+  await expect(page.getByText("Die NHS-Nummer besteht die Prüfziffernprüfung nicht.")).toBeVisible();
+  await expect(page.getByText("something new the UI has no code for")).toBeVisible();
+  await expect(page.getByText("NHS number fails the modulus 11 check")).toHaveCount(0);
+});
+
 test("a possible duplicate is shown side by side and needs a reason to override", async ({
   page,
 }) => {

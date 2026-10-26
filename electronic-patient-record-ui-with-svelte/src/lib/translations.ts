@@ -554,3 +554,90 @@ export const REFUSAL_WORDS: Partial<Record<Locale, RefusalWords>> = {
 export function refusalWords(locale: Locale): RefusalWords {
   return REFUSAL_WORDS[locale] ?? REFUSAL_ENGLISH;
 }
+
+/** The reasons a patient record is refused (CQ-38, 422 `error_codes`). Machine-written, not reviewed. */
+export type PatientProblemWords = Record<
+  "familyNameRequired" | "birthDateInvalid" | "nhsNumberPlaceholder" | "nhsNumberCheckDigit" | "identifierIncomplete",
+  string
+>;
+
+export const PATIENT_PROBLEM_ENGLISH: PatientProblemWords = {
+  familyNameRequired: "At least one name with a family name is required.",
+  birthDateInvalid: "The birth date must be a year, a year and month, or a real date.",
+  nhsNumberPlaceholder: "The NHS number is a placeholder (ten copies of one digit), not an issued number.",
+  nhsNumberCheckDigit: "The NHS number fails the check-digit test.",
+  identifierIncomplete: "An identifier needs a system and a value.",
+};
+
+const problem_de: PatientProblemWords = {
+  familyNameRequired: "Mindestens ein Name mit Familiennamen ist erforderlich.",
+  birthDateInvalid: "Das Geburtsdatum muss ein Jahr, ein Jahr mit Monat oder ein echtes Datum sein.",
+  nhsNumberPlaceholder: "Die NHS-Nummer ist ein Platzhalter (zehnmal dieselbe Ziffer), keine vergebene Nummer.",
+  nhsNumberCheckDigit: "Die NHS-Nummer besteht die Prüfziffernprüfung nicht.",
+  identifierIncomplete: "Eine Kennung braucht ein System und einen Wert.",
+};
+
+const problem_es: PatientProblemWords = {
+  familyNameRequired: "Se requiere al menos un nombre con apellido.",
+  birthDateInvalid: "La fecha de nacimiento debe ser un año, un año y mes, o una fecha real.",
+  nhsNumberPlaceholder: "El número NHS es un marcador (diez copias de un mismo dígito), no un número asignado.",
+  nhsNumberCheckDigit: "El número NHS no supera la comprobación del dígito de control.",
+  identifierIncomplete: "Un identificador necesita un sistema y un valor.",
+};
+
+const problem_fr: PatientProblemWords = {
+  familyNameRequired: "Au moins un nom avec un nom de famille est obligatoire.",
+  birthDateInvalid: "La date de naissance doit être une année, une année et un mois, ou une date réelle.",
+  nhsNumberPlaceholder: "Le numéro NHS est un numéro factice (dix fois le même chiffre), pas un numéro attribué.",
+  nhsNumberCheckDigit: "Le numéro NHS échoue au contrôle de la clé.",
+  identifierIncomplete: "Un identifiant a besoin d'un système et d'une valeur.",
+};
+
+const problem_zh: PatientProblemWords = {
+  familyNameRequired: "至少需要一个带姓氏的姓名。",
+  birthDateInvalid: "出生日期必须是年份、年月或真实日期。",
+  nhsNumberPlaceholder: "NHS 号码是占位符(同一数字重复十次),不是已签发的号码。",
+  nhsNumberCheckDigit: "NHS 号码未通过校验位检查。",
+  identifierIncomplete: "标识符需要系统和值。",
+};
+
+const problem_hi: PatientProblemWords = {
+  familyNameRequired: "कम से कम एक नाम, उपनाम के साथ, आवश्यक है।",
+  birthDateInvalid: "जन्म तिथि एक वर्ष, वर्ष और महीना, या वास्तविक तिथि होनी चाहिए।",
+  nhsNumberPlaceholder: "NHS नंबर एक प्लेसहोल्डर है (एक ही अंक दस बार), जारी किया गया नंबर नहीं।",
+  nhsNumberCheckDigit: "NHS नंबर चेक-डिजिट जाँच में विफल है।",
+  identifierIncomplete: "पहचानकर्ता के लिए सिस्टम और मान दोनों आवश्यक हैं।",
+};
+
+const problem_ar: PatientProblemWords = {
+  familyNameRequired: "مطلوب اسم واحد على الأقل مع اسم العائلة.",
+  birthDateInvalid: "يجب أن يكون تاريخ الميلاد سنة، أو سنة وشهرًا، أو تاريخًا حقيقيًا.",
+  nhsNumberPlaceholder: "رقم NHS عنصر نائب (عشر نسخ من رقم واحد) وليس رقمًا صادرًا.",
+  nhsNumberCheckDigit: "رقم NHS لا يجتاز فحص رقم التحقق.",
+  identifierIncomplete: "يحتاج المعرّف إلى نظام وقيمة.",
+};
+
+const problem_cy: PatientProblemWords = {
+  familyNameRequired: "Mae angen o leiaf un enw gydag enw teuluol.",
+  birthDateInvalid: "Rhaid i'r dyddiad geni fod yn flwyddyn, yn flwyddyn a mis, neu'n ddyddiad go iawn.",
+  nhsNumberPlaceholder: "Dim ond llanwr yw rhif GIG (deg copi o'r un digid), nid rhif a gyhoeddwyd.",
+  nhsNumberCheckDigit: "Nid yw rhif GIG yn pasio'r prawf digid gwirio.",
+  identifierIncomplete: "Mae angen system a gwerth ar ddynodydd.",
+};
+
+export const PATIENT_PROBLEM_WORDS: Partial<Record<Locale, PatientProblemWords>> = {
+  "ar-001": problem_ar,
+  "cy-001": problem_cy,
+  "de-001": problem_de,
+  "de-de": problem_de,
+  "es-001": problem_es,
+  "fr-001": problem_fr,
+  "hi-001": problem_hi,
+  "zh-001": problem_zh,
+  "zh-cn": problem_zh,
+};
+
+/** The patient-problem words for `locale`, English where there is no translation. */
+export function patientProblemWords(locale: Locale): PatientProblemWords {
+  return PATIENT_PROBLEM_WORDS[locale] ?? PATIENT_PROBLEM_ENGLISH;
+}

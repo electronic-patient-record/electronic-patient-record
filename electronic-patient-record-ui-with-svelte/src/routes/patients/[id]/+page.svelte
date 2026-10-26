@@ -7,6 +7,7 @@
   import BreakGlassSection from "#lib/BreakGlassSection.svelte";
   import { whenText } from "#lib/access-log.js";
   import { loadAllergies, type AllergyLoad } from "#lib/allergies.js";
+  import { patientProblemList } from "#lib/conflicts.js";
   import MergeSection from "#lib/MergeSection.svelte";
   import PatientBanner from "#lib/PatientBanner.svelte";
   import PatientFields from "#lib/PatientFields.svelte";
@@ -240,7 +241,7 @@
     problems = [];
     saved = null;
     conflict = false;
-    const res = await call<Stored & { errors?: string[] }>(
+    const res = await call<Stored & { errors?: string[]; error_codes?: unknown }>(
       "PUT",
       `/api/patients/${forId}`,
       {
@@ -261,7 +262,7 @@
     } else if (res.status === 409) {
       conflict = true;
     } else if (res.status === 422 && res.body?.errors) {
-      problems = res.body.errors;
+      problems = patientProblemList(res.body.errors, res.body.error_codes, locale);
     } else {
       message = STRINGS.error;
     }

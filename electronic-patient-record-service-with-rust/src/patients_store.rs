@@ -72,35 +72,70 @@ impl std::fmt::Display for StoreError {
 /// is kept as given (unverified).
 #[must_use]
 pub fn validate(patient: &Patient) -> Vec<String> {
+    validate_coded(patient)
+        .into_iter()
+        .map(|(_, message)| message)
+        .collect()
+}
+
+/// [`validate`] with a stable code beside each message, in the same order, so a client can say it in
+/// the reader's language: `family_name_required`, `birth_date_invalid`, `nhs_number_placeholder`,
+/// `nhs_number_check_digit`, `identifier_incomplete`.
+#[must_use]
+pub fn validate_coded(patient: &Patient) -> Vec<(&'static str, String)> {
     let mut problems = Vec::new();
     if !patient
         .names
         .iter()
         .any(|n| n.family.as_deref().is_some_and(|f| !f.trim().is_empty()))
     {
-        problems.push("at least one name with a family name is required".to_string());
+        problems.push((
+            "family_name_required",
+            "at least one name with a family name is required".to_string(),
+        ));
     }
     if let Some(d) = &patient.birth_date
         && !valid_birth_date(d)
     {
-        problems.push(format!(
-            "birth_date {d:?} is not YYYY, YYYY-MM or YYYY-MM-DD"
+        problems.push((
+            "birth_date_invalid",
+            format!("birth_date {d:?} is not YYYY, YYYY-MM or YYYY-MM-DD"),
         ));
     }
     for id in &patient.identifiers {
         if id.system == NHS_NUMBER_SYSTEM && is_placeholder_nhs_number(&id.value) {
-            problems.push(
+            problems.push((
+                "nhs_number_placeholder",
                 "NHS number is a placeholder (ten copies of one digit), not an issued number"
                     .to_string(),
-            );
+            ));
         } else if id.system == NHS_NUMBER_SYSTEM && !is_valid_nhs_number(&id.value) {
-            problems.push("NHS number fails the modulus 11 check".to_string());
+            problems.push((
+                "nhs_number_check_digit",
+                "NHS number fails the modulus 11 check".to_string(),
+            ));
         }
         if id.system.trim().is_empty() || id.value.trim().is_empty() {
-            problems.push("an identifier needs a system and a value".to_string());
+            problems.push((
+                "identifier_incomplete",
+                "an identifier needs a system and a value".to_string(),
+            ));
         }
     }
     problems
+}
+
+/// The 422 for a refused patient: `errors` as before, and `error_codes` (same order) beside it.
+/// `None` when the patient is acceptable.
+#[must_use]
+pub fn refusal(patient: &Patient) -> Option<crate::api_error::ApiError> {
+    let coded = validate_coded(patient);
+    if coded.is_empty() {
+        return None;
+    }
+    let codes: Vec<&str> = coded.iter().map(|(c, _)| *c).collect();
+    let messages: Vec<String> = coded.iter().map(|(_, m)| m.clone()).collect();
+    Some(crate::api_error::ApiError::invalid(messages).with("error_codes", codes))
 }
 
 pub(crate) fn valid_birth_date(d: &str) -> bool {
@@ -513,6 +548,17 @@ mod tests {
         }
         assert!(!validate(&patient("  ", None)).is_empty());
         assert!(!validate(&Patient::default()).is_empty());
+        let coded = validate_coded(&patient("Smith", Some("1980-02-30")));
+        assert_eq!(coded.len(), 1);
+        assert_eq!(coded[0].0, "birth_date_invalid");
+        assert_eq!(
+            validate_coded(&Patient::default())
+                .iter()
+                .map(|(c, _)| *c)
+                .collect::<Vec<_>>(),
+            ["family_name_required"]
+        );
+        assert!(refusal(&patient("Smith", None)).is_none());
     }
 
     #[test]

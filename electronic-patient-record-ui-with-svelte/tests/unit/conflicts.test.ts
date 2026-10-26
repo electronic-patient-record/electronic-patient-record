@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { conflictList, conflictText, notSamePersonText, refusalText, type ConflictCode } from "../../src/lib/conflicts";
+import { conflictList, conflictText, notSamePersonText, patientProblemList, refusalText, type ConflictCode } from "../../src/lib/conflicts";
 import { LOCALES } from "../../src/lib/locales";
 
 // The nine codes, with the exact English the matcher (0.3.0) writes for each beside them.
@@ -100,5 +100,25 @@ describe("a refused merge or unmerge by code", () => {
     expect(refusalText("brand_new", undefined, "de-001")).toBeNull();
     expect(refusalText("source_already_merged", undefined, "de-001")).toBeNull();
     expect(refusalText("source_already_merged", "", "de-001")).toBeNull();
+  });
+});
+
+describe("a refused patient", () => {
+  const CODES = ["family_name_required", "birth_date_invalid", "nhs_number_placeholder", "nhs_number_check_digit", "identifier_incomplete"];
+  const english = CODES.map((c) => `english ${c}`);
+  it("says every code in every locale, and each locale differs from English", () => {
+    const en = patientProblemList(english, CODES, "en-001");
+    for (const locale of LOCALES) {
+      const t = patientProblemList(english, CODES, locale);
+      expect(t).toHaveLength(CODES.length);
+      t.forEach((line, i) => expect(line, `${locale} ${CODES[i]}`).not.toMatch(/^english /));
+      if (locale.startsWith("de")) expect(t[0]).not.toBe(en[0]);
+    }
+  });
+  it("keeps the API's English for an unknown code, and the whole English list when the codes do not line up", () => {
+    expect(patientProblemList(["a", "b"], ["brand_new", "family_name_required"], "de-001")[0]).toBe("a");
+    expect(patientProblemList(["a", "b"], ["family_name_required"], "de-001")).toEqual(["a", "b"]);
+    expect(patientProblemList(["a"], undefined, "de-001")).toEqual(["a"]);
+    expect(patientProblemList(["a"], [7], "de-001")).toEqual(["a"]);
   });
 });

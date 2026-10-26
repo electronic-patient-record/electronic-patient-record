@@ -1,6 +1,13 @@
 // The reasons a link cannot be automatic, translated (CQ-38). Pure: the page passes its locale.
 import type { Locale } from "./locales.js";
-import { conflictWords, refusalWords, type ConflictWords, type RefusalWords } from "./translations.js";
+import {
+  conflictWords,
+  patientProblemWords,
+  refusalWords,
+  type ConflictWords,
+  type PatientProblemWords,
+  type RefusalWords,
+} from "./translations.js";
 
 /** One reason as the matcher sends it (`ConflictCode`, tagged by `code`). Unknown codes are kept. */
 export type ConflictCode =
@@ -106,4 +113,26 @@ export function refusalText(code: unknown, into: unknown, locale: Locale): strin
   const text = refusalWords(locale)[key];
   if (!text.includes("{id}")) return text;
   return typeof into === "string" && into ? text.replace("{id}", into) : null;
+}
+
+const PATIENT_PROBLEM: Record<string, keyof PatientProblemWords> = {
+  family_name_required: "familyNameRequired",
+  birth_date_invalid: "birthDateInvalid",
+  nhs_number_placeholder: "nhsNumberPlaceholder",
+  nhs_number_check_digit: "nhsNumberCheckDigit",
+  identifier_incomplete: "identifierIncomplete",
+};
+
+/**
+ * The reasons a patient was refused (422 `errors` and `error_codes`, same order), each in `locale`,
+ * and the API's English for any code this does not know. If the lengths differ (an older API sent no
+ * codes) the English list is shown whole, never fewer reasons than the API gave.
+ */
+export function patientProblemList(english: string[], codes: unknown, locale: Locale): string[] {
+  if (!Array.isArray(codes) || codes.length !== english.length) return english;
+  const w = patientProblemWords(locale);
+  return codes.map((c, i) => {
+    const key = typeof c === "string" ? PATIENT_PROBLEM[c] : undefined;
+    return key ? w[key] : english[i]!;
+  });
 }

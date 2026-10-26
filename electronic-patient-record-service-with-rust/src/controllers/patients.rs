@@ -200,9 +200,8 @@ pub(super) async fn create_service(
         None,
     )
     .await?;
-    let problems = store::validate(&request.patient);
-    if !problems.is_empty() {
-        return Err(ApiError::invalid(problems.clone()));
+    if let Some(refused) = store::refusal(&request.patient) {
+        return Err(refused);
     }
     let override_reason = request
         .override_reason
@@ -445,9 +444,8 @@ pub(super) async fn update_service(
         Some(id),
     )
     .await?;
-    let problems = store::validate(&request.patient);
-    if !problems.is_empty() {
-        return Err(ApiError::invalid(problems.clone()));
+    if let Some(refused) = store::refusal(&request.patient) {
+        return Err(refused);
     }
     let tx = match begin(&ctx.db).await {
         Ok(t) => t,

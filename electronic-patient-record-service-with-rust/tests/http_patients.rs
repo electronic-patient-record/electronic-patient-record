@@ -188,6 +188,28 @@ async fn fhir_refusals_are_operation_outcomes_and_never_carry_candidates() {
 
 #[tokio::test]
 #[ignore = "needs Postgres: set DATABASE_URL"]
+async fn a_refused_patient_carries_an_error_code_for_each_problem() {
+    login_off();
+    request::<App, _, _>(|server, _ctx| async move {
+        let mut bad = patient(&tag("codes"), "1980-02-30");
+        bad["names"][0]["family"] = serde_json::json!("  ");
+        let response = server
+            .post("/api/patients")
+            .json(&serde_json::json!({ "patient": bad }))
+            .await;
+        assert_eq!(response.status_code(), StatusCode::UNPROCESSABLE_ENTITY);
+        let body: serde_json::Value = response.json();
+        assert_eq!(
+            body["error_codes"],
+            serde_json::json!(["family_name_required", "birth_date_invalid"])
+        );
+        assert_eq!(body["errors"].as_array().unwrap().len(), 2);
+    })
+    .await;
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
 async fn the_request_id_is_echoed_and_written_into_the_audit_row() {
     login_off();
     request::<App, _, _>(|server, ctx| async move {

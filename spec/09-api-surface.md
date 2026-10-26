@@ -18,7 +18,7 @@ Every refusal and failure is built by `api_error::ApiError`, never by hand (`tes
 
 - On `/api`: JSON `{"error": message}`, with extra fields where a client acts on them (`current_version`,
   `replaced_by`, `break_glass_offer`, `candidates`, `candidates_cut`).
-- A refused record is 422 `{"errors": [reason, …]}`.
+- A refused record is 422 `{"errors": [reason, …]}`. A refused patient (create or update) also carries `error_codes`, one stable code per reason in the same order (`family_name_required`, `birth_date_invalid`, `nhs_number_placeholder`, `nhs_number_check_digit`, `identifier_incomplete`), so a client can say it in the reader's language; `errors` stays the English text.
 - On `/fhir/`: an `OperationOutcome` with one issue, served as `application/fhir+json`. The issue codes are `login`,
   `forbidden`, `not-found`, `conflict`, `invalid` and `exception`.
 - The authentication (401) and route-gate (403) middleware answer the same way, by path, and never as plain text.

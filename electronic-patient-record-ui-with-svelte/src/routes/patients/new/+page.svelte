@@ -14,7 +14,7 @@
     type PatientForm,
     type Stored,
   } from "#lib/patient.js";
-  import { conflictList } from "#lib/conflicts.js";
+  import { conflictList, patientProblemList } from "#lib/conflicts.js";
   import { STRINGS } from "#lib/strings.js";
 
   const locale = $derived(page.data.locale ?? DEFAULT_LOCALE);
@@ -49,6 +49,7 @@
     const res = await call<
       Stored & {
         errors?: string[];
+        error_codes?: unknown;
         candidates?: Candidate[];
         candidates_cut?: boolean;
       }
@@ -66,7 +67,7 @@
       candidates = res.body.candidates;
       candidatesCut = res.body.candidates_cut === true;
     } else if (res.status === 422 && res.body.errors) {
-      problems = res.body.errors;
+      problems = patientProblemList(res.body.errors, res.body.error_codes, locale);
     } else {
       message = STRINGS.error;
     }
