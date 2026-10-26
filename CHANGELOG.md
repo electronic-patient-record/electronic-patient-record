@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-26 - Service: an observation's version history (RC-6, H-034)
+
+- `GET /api/patients/{id}/observations/{observation_id}/versions` returns every version oldest first, each with its reason, author, time and a flag computed now from that version's own range. Same authorisation as the list (role, care relationship or break-glass, purpose, consent; a proxy is refused), audited before the data leaves with ids and a count only. Not found for another patient's observation. Route-gate table updated. A store test (three versions with reasons, a retracted one still returned, another patient and a bad id not found) and an HTTP block (nurse, receptionist and proxy and no-relationship cases).
+- Not done: **the page does not show it yet**; no pagination (an observation has a handful of versions); the history of a merged-in record's observation is returned under the survivor (by provenance, as the list does) but I did not test an unmerge against the history route; the flag in an old version uses today's rules, not the rules then. Whole suite run against Postgres 18 with `--no-fail-fast`: everything passes except the two FHIR validator tests, which need the external validator that I did not start. H-034 gains the new read path.
+
 ## 2026-10-26 - UI: real-Keycloak run of vital sign correction and entered-in-error (RC-6, H-034)
 
 - New test in `tests/e2e-keycloak/signin.spec.ts`: a clinician with a care relationship records 172, corrects it to 72 (reason required first), marks it entered in error, and the real API (Keycloak tokens, Postgres 18) answers version 3, `entered-in-error`, value 72 kept. Run by hand against Keycloak 26.3.0, the API built from `main` and a fresh database; it and the earlier vital test pass. Containers removed afterwards.

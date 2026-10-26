@@ -322,6 +322,54 @@ pub async fn current(
     row_to_observation(&row)
 }
 
+/// One stored version of an observation, with the reason it was written.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct ObservationVersion {
+    /// Why this version was written, if the writer said.
+    pub reason: Option<String>,
+    /// The version as stored (the flag is computed now, from that version's own range).
+    #[serde(flatten)]
+    pub stored: StoredObservation,
+}
+
+/// Every version of one observation, oldest first, found under the patient or under a record merged
+/// into it. Nothing is hidden: a version later marked entered in error is still here.
+///
+/// # Errors
+///
+/// [`StoreError::NotFound`] when there is no such observation for that patient.
+pub async fn history(
+    db: &impl ConnectionTrait,
+    patient_id: &str,
+    observation_id: &str,
+) -> Result<Vec<ObservationVersion>, StoreError> {
+    let observation_id = ids::uuid(observation_id).ok_or(StoreError::NotFound)?;
+    let linked = ids::uuids(&links::linked_ids(db, patient_id).await?);
+    let rows = db
+        .query_all_raw(pg(
+            &format!(
+                "SELECT {}, reason FROM observation_versions
+                 WHERE observation_id = $1::uuid AND patient_id = ANY($2::uuid[])
+                 ORDER BY version",
+                columns()
+            ),
+            vec![observation_id.into(), linked.into()],
+        ))
+        .await
+        .map_err(db_err)?;
+    if rows.is_empty() {
+        return Err(StoreError::NotFound);
+    }
+    rows.iter()
+        .map(|row| {
+            Ok(ObservationVersion {
+                reason: row.try_get("", "reason").map_err(db_err)?,
+                stored: row_to_observation(row)?,
+            })
+        })
+        .collect()
+}
+
 /// Append version `expected_version + 1`. A correction is a new `final` record; a mistake is
 /// `status: entered-in-error`, which is final.
 ///

@@ -163,6 +163,30 @@ async fn an_observation_is_versioned_corrected_and_a_mistake_is_final() {
         Err(StoreError::BadQuery(_))
     ));
     assert_eq!(count_rows(&db, &p).await, 3);
+
+    // The history keeps every version, oldest first, each with its reason and its own value.
+    let h = store::history(&db, &p, &v1.id).await.unwrap();
+    assert_eq!(
+        h.iter()
+            .map(|v| (v.stored.version, v.stored.record.value, v.reason.as_deref()))
+            .collect::<Vec<_>>(),
+        vec![
+            (1, Some(72.0), Some("on arrival")),
+            (2, Some(78.0), Some("misread the monitor")),
+            (3, Some(78.0), Some("wrong patient")),
+        ]
+    );
+    assert_eq!(h[2].stored.record.status, Status::EnteredInError);
+    // Another patient's observation, or an id that is not one, is not found.
+    let other = person(&db, &tag("other")).await;
+    assert_eq!(
+        store::history(&db, &other, &v1.id).await,
+        Err(StoreError::NotFound)
+    );
+    assert_eq!(
+        store::history(&db, &p, "nope").await,
+        Err(StoreError::NotFound)
+    );
 }
 
 #[tokio::test]

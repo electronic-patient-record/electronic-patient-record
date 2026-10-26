@@ -244,6 +244,12 @@ pub const TABLE: &[(&str, &str, Resource, Action)] = &[
     ),
     (
         "GET",
+        "/api/patients/{id}/observations/{observation_id}/versions",
+        Resource::Observation,
+        Action::Read,
+    ),
+    (
+        "GET",
         "/api/patients/{id}/photo",
         Resource::PatientIdentity,
         Action::Read,

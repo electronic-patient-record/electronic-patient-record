@@ -621,6 +621,10 @@ pub fn routes() -> Routes {
         .add("/{id}/observations", get(super::observations::list))
         .add("/{id}/observations", post(super::observations::create))
         .add(
+            "/{id}/observations/{observation_id}/versions",
+            get(super::observations::versions),
+        )
+        .add(
             "/{id}/observations/{observation_id}",
             put(super::observations::update),
         )

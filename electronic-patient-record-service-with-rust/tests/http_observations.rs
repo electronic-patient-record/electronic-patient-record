@@ -269,6 +269,39 @@ async fn who_may_record_read_and_retract_an_observation() {
         assert_eq!(all.len(), 2);
         assert!(all.iter().any(|o| o["status"] == "entered-in-error"));
 
+        // The history keeps every version, oldest first, with its reason; the retraction does not hide
+        // the values it replaced. The same access decision as the list applies.
+        let versions_url = format!("{url}/{nurse_id}/versions");
+        let history = server.get(&versions_url).add_header(ch.clone(), cv.clone()).await;
+        assert_eq!(history.status_code(), StatusCode::OK, "{}", history.text());
+        let history: Value = history.json();
+        let v = history["versions"].as_array().unwrap();
+        assert_eq!(v.len(), 3);
+        assert_eq!(
+            v.iter().map(|x| x["version"].as_i64().unwrap()).collect::<Vec<_>>(),
+            vec![1, 2, 3]
+        );
+        assert_eq!((v[0]["value"].as_f64(), v[1]["value"].as_f64()), (Some(88.0), Some(86.0)));
+        assert_eq!(v[1]["reason"], "misread");
+        assert_eq!(v[2]["status"], "entered-in-error");
+        assert_eq!(
+            server.get(&versions_url).add_header(rh.clone(), rv.clone()).await.status_code(),
+            StatusCode::FORBIDDEN
+        );
+        assert_eq!(
+            server.get(&versions_url).add_header(ph.clone(), pv.clone()).await.status_code(),
+            StatusCode::FORBIDDEN
+        );
+        // Under a patient the clinician has no relationship with, the history is refused, not "not found".
+        assert_eq!(
+            server
+                .get(&format!("/api/patients/{sid}/observations/{nurse_id}/versions"))
+                .add_header(ch.clone(), cv.clone())
+                .await
+                .status_code(),
+            StatusCode::FORBIDDEN
+        );
+
         // The audit trail names the records and never a measured value, a unit or a range.
         let rows = ctx
             .db

@@ -3,6 +3,7 @@
 //! - `GET  /api/patients/{id}/observations`: every observation (all statuses), newest measurement
 //!   first, each with its computed flag.
 //! - `POST /api/patients/{id}/observations`: record one.
+//! - `GET  /api/patients/{id}/observations/{observation_id}/versions`: every version, oldest first.
 //! - `PUT  /api/patients/{id}/observations/{observation_id}`: correct it, or mark it entered in error.
 //!
 //! Observations are clinical content, so the record-level decision applies in full: the role, a care
@@ -57,6 +58,13 @@ pub struct UpdateRequest {
 pub struct ObservationList {
     /// Every observation in every status, newest measurement first.
     pub observations: Vec<store::StoredObservation>,
+}
+
+/// One observation's versions.
+#[derive(Debug, Serialize)]
+pub struct VersionList {
+    /// Oldest first.
+    pub versions: Vec<store::ObservationVersion>,
 }
 
 fn failure(e: StoreError) -> ApiError {
@@ -151,6 +159,62 @@ pub(super) async fn list(
         return r.into_response();
     }
     Json(ObservationList { observations: all }).into_response()
+}
+
+/// Every version of one observation, oldest first, each with the reason it was written. A read of
+/// clinical content: the same access decision as the list, and an audit row (ids and a count, never a
+/// value) before anything leaves.
+pub(super) async fn versions(
+    State(ctx): State<AppContext>,
+    Extension(agent): Extension<Agent>,
+    Extension(subject): Extension<Subject>,
+    headers: HeaderMap,
+    Path((patient, observation_id)): Path<(String, String)>,
+) -> Response {
+    let purpose = match purpose_of(&headers) {
+        Ok(p) => p,
+        Err(r) => return r.into_response(),
+    };
+    if let Err(r) = authorize(
+        &ctx.db,
+        &agent,
+        &subject,
+        Resource::Observation,
+        policy::Action::Read,
+        purpose,
+        Some(&patient),
+    )
+    .await
+    {
+        return r.into_response();
+    }
+    let all = match store::history(&ctx.db, &patient, &observation_id).await {
+        Ok(a) => a,
+        Err(e) => {
+            if let Some(r) = refused(&ctx, &agent, purpose, Action::Read, &e).await {
+                return r.into_response();
+            }
+            return failure(e).into_response();
+        }
+    };
+    let patient_id = all.first().map(|v| v.stored.patient_id.clone());
+    if let Err(r) = audit_resource(
+        &ctx.db,
+        &agent,
+        Access {
+            action: Action::Read,
+            outcome: 0,
+            purpose,
+            resource: "Observation",
+            patient_id: patient_id.as_deref().or(Some(&patient)),
+        },
+        serde_json::json!({ "observation": observation_id, "versions": all.len() }),
+    )
+    .await
+    {
+        return r.into_response();
+    }
+    Json(VersionList { versions: all }).into_response()
 }
 
 pub(super) async fn create(
