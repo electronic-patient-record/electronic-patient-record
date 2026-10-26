@@ -259,3 +259,21 @@ export function formToRequest(
   }
   return { ok: true, record };
 }
+
+/**
+ * The whole record for "entered in error" (the service's PUT takes the whole record): the stored
+ * fields unchanged, with only the status changed. Nothing is recomputed, so no value is altered.
+ */
+export function enteredInErrorRecord(o: StoredObservation): Record<string, unknown> {
+  const record: Record<string, unknown> = {
+    code: o.code,
+    effective_at: o.effective_at,
+    status: "entered-in-error",
+  };
+  if (o.value !== null && o.value !== undefined) record.value = o.value;
+  if (o.unit) record.unit = o.unit;
+  if (o.absent_reason) record.absent_reason = o.absent_reason;
+  if (o.range) record.range = o.range;
+  if (o.critical) record.critical = o.critical;
+  return record;
+}

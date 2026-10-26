@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-26 - UI: mark a vital sign entered in error (RC-6, H-034)
+
+- Each standing vital sign has "Mark entered in error", which needs a reason and sends the stored record with only `status` changed, plus `expected_version`. The entry moves under "Entered in error (n)", struck through; nothing is deleted. 2 vitest, 1 stubbed Playwright test with axe (reason required and nothing sent without it, 409 message, exact request body).
+- Not done: correcting a value from the page; earlier versions; no real-Keycloak run of this action (the service's PUT is tested over HTTP, the page's call to it only against a stub); no clinician has reviewed the wording or whether one click plus a reason is enough friction for a clinical record. H-034's controls note the action; status unchanged.
+
 ## 2026-10-24 - Service: the proxy authority rule, pure (PA-5, first slice)
 
 - `proxy.rs`: `decide` (revoked, expired, out of scope, in that order; the expiry instant is expired) and `validate` (no empty scope, no self-recorded authority, a required expiry within five years). 9 unit tests; moving the expiry or revocation boundary, or ignoring the scope list, makes tests fail.

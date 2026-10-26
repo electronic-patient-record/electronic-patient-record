@@ -2429,3 +2429,55 @@ test("the banner's age is counted on the site's calendar day, not the reader's",
   await page.goto(`/en-001/patients/${ANN.id}`);
   await expect(banner).toContainText("45 years");
 });
+
+test("a vital sign is marked entered in error with a reason, sending the whole record and its version, and is kept", async ({
+  page,
+}) => {
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, { ...ANN, site_time_zone: "America/New_York" }),
+  );
+  const mine = OBS({ id: "o-1", version: 2, range: { low: 60, high: 100 }, flag: "normal" });
+  let rows: unknown[] = [mine];
+  const sent: any[] = [];
+  let answer = 200;
+  await page.route("**/api/proxy/api/patients/*/observations/o-1", (route) => {
+    sent.push(route.request().postDataJSON());
+    if (answer === 200) rows = [{ ...mine, version: 3, status: "entered-in-error" }];
+    return json(route, answer, answer === 200 ? rows[0] : { errors: ["x"] });
+  });
+  await page.route("**/api/proxy/api/patients/*/observations", (route) =>
+    json(route, 200, { observations: rows }),
+  );
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  const section = page.getByRole("region", { name: "Vital signs" });
+  await section.getByRole("button", { name: "Mark entered in error" }).click();
+  await axe(page);
+  // A reason is needed, and nothing is sent without it.
+  await section.getByRole("button", { name: "Confirm entered in error" }).click();
+  await expect(section.getByText("Say why this entry was a mistake.")).toBeVisible();
+  expect(sent).toHaveLength(0);
+
+  answer = 409;
+  await section.getByLabel("Why this entry was a mistake").fill("wrong patient");
+  await section.getByRole("button", { name: "Confirm entered in error" }).click();
+  await expect(section.getByText(/changed or was merged/)).toBeVisible();
+
+  answer = 200;
+  await section.getByRole("button", { name: "Confirm entered in error" }).click();
+  await expect(section.getByText("Marked entered in error. It is kept, not deleted.")).toBeVisible();
+  expect(sent[1]).toEqual({
+    observation: {
+      code: "8867-4",
+      value: 72,
+      unit: "/min",
+      range: { low: 60, high: 100 },
+      effective_at: "2026-10-26T13:30:00.000000Z",
+      status: "entered-in-error",
+    },
+    expected_version: 2,
+    reason: "wrong patient",
+  });
+  await expect(section.getByText("Entered in error (1)")).toBeVisible();
+  await expect(section.getByRole("button", { name: "Mark entered in error" })).toHaveCount(0);
+});

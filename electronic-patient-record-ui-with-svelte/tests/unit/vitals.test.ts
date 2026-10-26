@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   VITALS,
   assessmentText,
+  enteredInErrorRecord,
   formToRequest,
   nowInZone,
   parseNumber,
@@ -203,5 +204,26 @@ describe("the form as a request", () => {
   it("refuses a time that is not real", () => {
     expect(formToRequest({ ...form, measuredAt: "" }).ok).toBe(false);
     expect(formToRequest({ ...form, measuredAt: "2026-02-30T09:30" }).ok).toBe(false);
+  });
+});
+
+describe("enteredInErrorRecord", () => {
+  it("keeps every stored field and changes only the status", () => {
+    const o = { ...base, range: { low: 60, high: 100 }, critical: { low: 40 } };
+    expect(enteredInErrorRecord(o)).toEqual({
+      code: "8867-4",
+      value: 72,
+      unit: "/min",
+      range: { low: 60, high: 100 },
+      critical: { low: 40 },
+      effective_at: "2026-10-26T13:30:00.000000Z",
+      status: "entered-in-error",
+    });
+  });
+  it("keeps a missing value missing with its reason, never as 0", () => {
+    const r = enteredInErrorRecord({ ...base, value: null, unit: null, absent_reason: "failed" });
+    expect(r).not.toHaveProperty("value");
+    expect(r).not.toHaveProperty("unit");
+    expect(r.absent_reason).toBe("failed");
   });
 });

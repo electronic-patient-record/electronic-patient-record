@@ -2,10 +2,11 @@
   import { Busy } from "#lib/busy.svelte.js";
   // The vital signs list and the form to record one (RC-6, first UI slice). Nothing here says a value
   // is normal unless the API computed it from a range the sender gave; a missing value says why; an
-  // empty box is never sent as 0. Correcting and retracting are a later slice.
+  // empty box is never sent as 0. Marking an entry entered in error is here (it is kept, struck through, never deleted); correcting a value is a later slice.
   import { call, commonProblem } from "./api.js";
   import {
     VITALS,
+    enteredInErrorRecord,
     formToRequest,
     loadObservations,
     nowInZone,
@@ -41,6 +42,9 @@
   let measuredAt = $state("");
   let why = $state("");
 
+  let erroring = $state<string | null>(null);
+  let errorWhy = $state("");
+
   const unit = $derived(unitLabel(VITALS.find((v) => v.key === vital)?.unit ?? ""));
   const standing = $derived(rows.filter((o) => o.status !== "entered-in-error"));
   const mistaken = $derived(rows.filter((o) => o.status === "entered-in-error"));
@@ -67,6 +71,31 @@
   async function record(event: SubmitEvent) {
     event.preventDefault();
     await busy.run(recordNow);
+  }
+
+  async function markError(o: StoredObservation) {
+    await busy.run(async () => {
+      message = null;
+      if (!errorWhy.trim()) {
+        message = STRINGS.vitalMarkErrorReasonNeeded;
+        return;
+      }
+      const res = await call<{ errors?: string[] }>(
+        "PUT",
+        `/api/patients/${patientId}/observations/${o.id}`,
+        { observation: enteredInErrorRecord(o), expected_version: o.version, reason: errorWhy.trim() },
+      );
+      const common = commonProblem(res.status);
+      if (common) message = STRINGS[common];
+      else if (res.status === 200) {
+        message = STRINGS.vitalMarkedError;
+        erroring = null;
+        errorWhy = "";
+        await load();
+      } else if (res.status === 409) message = STRINGS.vitalConflict;
+      else if (res.status === 422 && res.body?.errors) message = res.body.errors.join(" ");
+      else message = STRINGS.error;
+    });
   }
 
   async function recordNow() {
@@ -118,6 +147,20 @@
             · <time datetime={o.effective_at}>{siteWhenText(o.effective_at, siteZone)}</time>
             · {STRINGS.vitalBy} <code>{o.author}</code>
             {#if o.version > 1}· {STRINGS.vitalVersion.replace("{n}", String(o.version))}{/if}
+            {#if erroring === o.id}
+              <label for="vs-err-{o.id}">{STRINGS.vitalMarkErrorWhy}</label>
+              <input id="vs-err-{o.id}" bind:value={errorWhy} autocomplete="off" />
+              <button type="button" disabled={busy.on} onclick={() => markError(o)}>
+                {STRINGS.vitalMarkErrorConfirm}
+              </button>
+              <button type="button" onclick={() => ((erroring = null), (errorWhy = ""))}>
+                {STRINGS.vitalMarkErrorCancel}
+              </button>
+            {:else}
+              <button type="button" onclick={() => ((erroring = o.id), (errorWhy = ""))}>
+                {STRINGS.vitalMarkError}
+              </button>
+            {/if}
           </li>
         {/each}
       </ul>
