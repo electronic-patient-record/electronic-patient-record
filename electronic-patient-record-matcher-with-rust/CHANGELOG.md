@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-26
+
 - **Changed:** a shared valid NHS number no longer links automatically when the given name, family name or birth date is absent on either record: the pair goes to `Review` with a `FieldUnavailable` conflict per missing field, as for every other pair (CQ-37). A fully present agreeing pair still links, and a family name that differs (marriage) with everything else present still links. Behaviour change for any caller that relied on a bare number linking.
 
 ## [0.3.0] - 2026-10-25
