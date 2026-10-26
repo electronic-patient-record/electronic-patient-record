@@ -178,6 +178,7 @@ Conventions:
 - [ ] **RC-6 (M) — Vitals and observations.** `Observation` with LOINC codes,
   UCUM units, reference ranges and abnormal flags.
   **Acceptance:** a unit mismatch is refused 422. Flags are computed from ranges and covered by unit tests.
+  **Carried from RC-9:** decide whose time zone is recorded with an effective time of day (the author's, the site's or the patient's) before an observation stores one; today every stored instant is UTC and shown on the site's clock.
 - [ ] **RC-7 (M) — Terminology service.** `TerminologyService` trait with
   `$lookup`, `$validate-code`, `$expand` and `$translate`. Two adapters:
   Snowstorm and an embedded fixture subset for tests.
@@ -188,7 +189,7 @@ Conventions:
   - medication reconciliation view
 
   **Acceptance:** chart open is p95 ≤ 1 s in a Playwright performance test on the seeded demo. axe passes. Keyboard-only operation is tested.
-- [ ] **RC-9 (S) — UTC and time zones.** **Partly landed 2026-10-25 (UI only):** the read-at clock names its zone; the access log's days and times, and its filter, use the patient's browser zone; `tests/unit/time-zones.test.ts` runs three zones and a New York DST change. **Site-clock times landed 2026-10-26:** break-glass start and expiry and the "no known allergies" time show on the site's clock with UTC beside them (`siteWhenText`; the reviews list now sends `site_time_zone`). **Open:** the service stores no recorded zone (whose zone, the author's, the site's or the patient's, is undecided; it matters when a clinician types a local time, from RC-6); (the HL7 feed queue's received time landed 2026-10-26 too); ~~age uses the UTC date~~ (decided and landed 2026-10-25: the banner's age is counted on the site's calendar day, `EPR_SITE_TIME_ZONE`, one zone per service).
+- [x] **RC-9 (S) — UTC and time zones.** **Closed 2026-10-26 with the recorded zone deferred to RC-6 (a scoping decision I made from my own recommendation, not yet confirmed by the maintainer: reopen if wrong).** **Partly landed 2026-10-25 (UI only):** the read-at clock names its zone; the access log's days and times, and its filter, use the patient's browser zone; `tests/unit/time-zones.test.ts` runs three zones and a New York DST change. **Site-clock times landed 2026-10-26:** break-glass start and expiry and the "no known allergies" time show on the site's clock with UTC beside them (`siteWhenText`; the reviews list now sends `site_time_zone`). **Deferred to RC-6:** the service stores no recorded zone (whose zone, the author's, the site's or the patient's, is undecided; it matters only when a clinician types a local time); (the HL7 feed queue's received time landed 2026-10-26 too); ~~age uses the UTC date~~ (decided and landed 2026-10-25: the banner's age is counted on the site's calendar day, `EPR_SITE_TIME_ZONE`, one zone per service).
   Store UTC, keep the recorded zone,
   and render in the user's zone.
   **Acceptance:** a time-zone test runs under three zones and around a DST transition.

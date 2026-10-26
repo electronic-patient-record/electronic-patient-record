@@ -35,7 +35,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | SF | 5 | 4 |
 | ID | 2 | 6 |
 | AU | 1 | 2 |
-| RC | 0 | 12 |
+| RC | 1 | 11 |
 | SE | 3 | 9 |
 | DO | 0 | 8 |
 | OR | 0 | 9 |
@@ -48,6 +48,6 @@ no network, database or compilation; counts are source lines, not test runs):
 | EM | 0 | 16 |
 | PA | 1 | 16 |
 | EC | 0 | 13 |
-| **Total** | **38** | **167** |
+| **Total** | **39** | **166** |
 
 <!-- generated:end -->

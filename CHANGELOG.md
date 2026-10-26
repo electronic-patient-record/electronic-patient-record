@@ -1520,3 +1520,8 @@ Milestone M0, scaffold. **Not for clinical use.**
 
 - `GET /api/feed/refusals` sends `site_time_zone`; the queue's headline uses `siteWhenText` (`received 2026-10-21 05:00 EDT (09:00 UTC)`), UTC text when there is no zone. Tests: 1 unit, 1 browser, an assertion in the Postgres refusal-roles test; the rest of the UI and Playwright suites pass (172, 71).
 - Not done: this closes the "times still UTC" part of RC-9 for every page I found by searching for `whenText` and `UTC` in the UI, not by auditing every screen; no recorded zone is stored; one zone per service. The hazard log changes only to drop the caveat I added to H-016 earlier today ("the HL7 feed queue's received time is still UTC"), which is no longer true; no control or status changed.
+
+## 2026-10-26 - Tasks: RC-9 closed, the recorded zone carried to RC-6
+
+- RC-9 is ticked: its acceptance (a time-zone test under three zones and around a DST change) is met by `tests/unit/time-zones.test.ts`, and the site-clock display is in. The recorded zone is now a line under RC-6, where a clinician first types a local time.
+- Not done / not confirmed: **this scoping call was mine**, taken from my own recommendation after the maintainer's "next" without an answer to it; it changes no code and can be undone by unticking RC-9. No clinician or maintainer has reviewed it. No hazard-log change.
