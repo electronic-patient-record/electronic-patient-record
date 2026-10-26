@@ -174,7 +174,7 @@ async fn list(
     {
         return r.into_response();
     }
-    Json(serde_json::json!({ "grants": grants, "limit": store::LIST_LIMIT })).into_response()
+    Json(serde_json::json!({ "grants": grants, "limit": store::LIST_LIMIT, "site_time_zone": crate::site::time_zone() })).into_response()
 }
 
 async fn count(

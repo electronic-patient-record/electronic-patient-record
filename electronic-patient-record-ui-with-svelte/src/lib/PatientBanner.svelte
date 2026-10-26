@@ -28,7 +28,7 @@
     // (once) and hands it to the banner and the allergy section.
     allergies?: AllergyLoad | null;
   } = $props();
-  const allergyLine = $derived(bannerAllergies(allergies));
+  const allergyLine = $derived(bannerAllergies(allergies, stored.site_time_zone));
 
   // The photo is fetched with the page's own call (so it carries the purpose of use) and shown from
   // an object URL that is revoked when the photo changes or the banner goes. The server serves it

@@ -3,6 +3,7 @@
 // The line must never read as "none" unless a clinician said so: every state where the system does
 // not KNOW says so in words ("not recorded", "not shown to your role", "could not be loaded"), and
 // each of them adds that this does not mean there are none.
+import { siteWhenText } from "./access-log.js";
 import { call } from "./api.js";
 import { STRINGS } from "./strings.js";
 
@@ -86,14 +87,9 @@ const RISK: Record<string, string> = {
   "unable-to-assess": STRINGS.allergyRiskUnassessed,
 };
 
-/** "2026-10-21T09:00:12.000000Z" as "2026-10-21 09:00 UTC". */
-const when = (at: string): string => {
-  const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(at);
-  return m ? `${m[1]} ${m[2]} UTC` : at;
-};
 
 /** The banner's allergy line, and whether it carries a high-risk allergy (shown more strongly). */
-export function bannerAllergies(load: AllergyLoad | null): {
+export function bannerAllergies(load: AllergyLoad | null, siteZone?: string): {
   text: string;
   high: boolean;
 } {
@@ -118,7 +114,7 @@ export function bannerAllergies(load: AllergyLoad | null): {
       };
     case "no-known":
       return {
-        text: STRINGS.allergyNoKnown.replace("{when}", when(s.asserted_at)),
+        text: STRINGS.allergyNoKnown.replace("{when}", siteWhenText(s.asserted_at, siteZone)),
         high: false,
       };
     case "none-active":

@@ -5,7 +5,7 @@
   import { DEFAULT_LOCALE, localizePath } from "#lib/locales.js";
   import AllergySection from "#lib/AllergySection.svelte";
   import BreakGlassSection from "#lib/BreakGlassSection.svelte";
-  import { whenText } from "#lib/access-log.js";
+  import { siteWhenText } from "#lib/access-log.js";
   import { loadAllergies, type AllergyLoad } from "#lib/allergies.js";
   import { patientProblemList } from "#lib/conflicts.js";
   import MergeSection from "#lib/MergeSection.svelte";
@@ -328,7 +328,7 @@
   {/if}
   {#if glassUntil}
     <p role="status">
-      {STRINGS.glassOpened.replace("{until}", whenText(glassUntil))}
+      {STRINGS.glassOpened.replace("{until}", siteWhenText(glassUntil, stored.site_time_zone))}
     </p>
   {/if}
   {#if allergies?.status === 200 && allergies.data}

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Busy } from "#lib/busy.svelte.js";
   import { call, commonProblem } from "#lib/api.js";
-  import { whenText } from "#lib/access-log.js";
+  import { siteWhenText } from "#lib/access-log.js";
   import { STRINGS } from "#lib/strings.js";
 
   type Grant = {
@@ -17,13 +17,14 @@
 
   const busy = new Busy();
   let grants = $state<Grant[] | null>(null);
+  let siteZone = $state<string | undefined>(undefined);
   let message = $state<string | null>(null);
   let open = $state<string | null>(null);
   let outcome = $state<"appropriate" | "inappropriate">("appropriate");
   let note = $state("");
 
   async function load() {
-    const res = await call<{ grants: Grant[] }>(
+    const res = await call<{ grants: Grant[]; site_time_zone?: string }>(
       "GET",
       "/api/break-glass/reviews",
     );
@@ -33,6 +34,7 @@
       message = STRINGS[problem];
     } else if (res.status === 200) {
       grants = res.body.grants;
+      siteZone = res.body.site_time_zone;
     } else message = STRINGS.error;
   }
   $effect(() => {
@@ -82,9 +84,9 @@
       {#each grants as g (g.id)}
         <li>
           {#if g.overdue}<strong class="overdue">{STRINGS.glassOverdue}</strong> ·{/if}
-          {whenText(g.granted_at)} · {STRINGS.glassBy} <code>{g.subject}</code>
+          {siteWhenText(g.granted_at, siteZone)} · {STRINGS.glassBy} <code>{g.subject}</code>
           · {STRINGS.glassFor} <code>{g.patient_id}</code>
-          · {STRINGS.glassUntil} {whenText(g.expires_at)}
+          · {STRINGS.glassUntil} {siteWhenText(g.expires_at, siteZone)}
           <p>{STRINGS.glassWhy}: {g.reason}</p>
           <button type="button" onclick={() => (open = g.id)}>
             {STRINGS.glassReview}

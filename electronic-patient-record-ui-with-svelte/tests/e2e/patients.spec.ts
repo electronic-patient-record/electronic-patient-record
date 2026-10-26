@@ -1131,6 +1131,45 @@ test("the break-the-glass review list marks a grant that has waited too long", a
   await axe(page);
 });
 
+test("break-the-glass and allergy-statement times are on the site's clock, with UTC beside them", async ({
+  page,
+}) => {
+  await page.route("**/api/proxy/api/break-glass/reviews", (route) =>
+    json(route, 200, {
+      grants: [
+        {
+          id: "a",
+          patient_id: ANN.id,
+          subject: "dr-who",
+          reason: "collapsed",
+          granted_at: "2026-10-20T10:00:00.000000Z",
+          expires_at: "2026-10-20T14:00:00.000000Z",
+        },
+      ],
+      limit: 50,
+      site_time_zone: "America/New_York",
+    }),
+  );
+  await page.goto("/en-001/admin/break-glass");
+  await expect(page.getByText(/2026-10-20 06:00 EDT \(10:00 UTC\)/)).toBeVisible();
+  await expect(page.getByText(/2026-10-20 10:00 EDT \(14:00 UTC\)/)).toBeVisible();
+
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, { ...ANN, site_time_zone: "America/New_York" }),
+  );
+  await page.route("**/api/proxy/api/patients/*/allergies", (route) =>
+    json(route, 200, {
+      allergies: [],
+      statement: null,
+      summary: { state: "no-known", asserted_at: "2026-10-21T13:00:00.000000Z" },
+    }),
+  );
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  await expect(page.getByRole("region", { name: "Patient banner" })).toContainText(
+    "No known allergies (stated 2026-10-21 09:00 EDT (13:00 UTC))",
+  );
+});
+
 test("a record merged away says so everywhere and cannot be edited; the surviving record merges and unmerges", async ({
   page,
 }) => {

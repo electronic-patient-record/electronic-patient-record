@@ -247,6 +247,7 @@ async fn roles_consent_and_break_glass_through_the_router() {
             .await;
         assert_eq!(reviews.status_code(), StatusCode::OK, "{}", reviews.text());
         assert!(reviews.text().contains(&pid));
+        assert!(reviews.json::<Value>()["site_time_zone"].is_string());
         let (ah2, av2) = bearer(&auditor);
         let count = server
             .get("/api/break-glass/reviews/count")

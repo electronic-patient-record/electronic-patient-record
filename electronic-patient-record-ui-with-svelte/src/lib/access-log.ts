@@ -43,6 +43,21 @@ export function whenText(at: string, zone = "UTC"): string {
   return `${g("year")}-${g("month")}-${g("day")} ${g("hour")}:${g("minute")} ${g("timeZoneName")}`;
 }
 
+/**
+ * A server instant on the site's clock with the UTC time beside it: "2026-10-21 09:30 EDT (13:30 UTC)".
+ * With no zone, or UTC, exactly what [`whenText`] says. An unknown zone name also falls back to that.
+ */
+export function siteWhenText(at: string, zone?: string): string {
+  const utc = whenText(at);
+  if (!zone || zone === "UTC") return utc;
+  try {
+    const local = whenText(at, zone);
+    return local === at ? utc : `${local} (${utc.slice(11, 16)} UTC)`;
+  } catch {
+    return utc;
+  }
+}
+
 /** The reader's IANA time zone, or UTC when the browser will not say. */
 export function readerZone(): string {
   try {

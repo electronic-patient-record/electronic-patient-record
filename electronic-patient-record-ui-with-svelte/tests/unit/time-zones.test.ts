@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { clock } from "../../src/lib/data-age";
-import { whenText } from "../../src/lib/access-log";
+import { siteWhenText, whenText } from "../../src/lib/access-log";
 import { ageOn, calendarDay } from "../../src/lib/patient";
 
 // RC-9: the same instant must read the same under any process time zone, except where the page
@@ -17,6 +17,24 @@ const under = <T>(tz: string, f: () => T): T => {
 };
 
 describe("time zones (RC-9)", () => {
+  it("a site time shows the site's clock with the UTC time beside it, under any process zone", () => {
+    const at = "2026-10-21T13:30:00.000000Z";
+    for (const tz of ZONES) {
+      expect(under(tz, () => siteWhenText(at, "America/New_York"))).toMatch(/^2026-10-21 09:30 (EDT|GMT-4) \(13:30 UTC\)$/);
+      expect(under(tz, () => siteWhenText(at, "Pacific/Auckland"))).toMatch(/^2026-10-22 02:30 (NZDT|GMT\+13) \(13:30 UTC\)$/);
+    }
+  });
+  it("a site time follows a daylight-saving change, not a fixed offset", () => {
+    expect(siteWhenText("2026-03-08T06:59:00Z", "America/New_York")).toMatch(/^2026-03-08 01:59 (EST|GMT-5) \(06:59 UTC\)$/);
+    expect(siteWhenText("2026-03-08T07:01:00Z", "America/New_York")).toMatch(/^2026-03-08 03:01 (EDT|GMT-4) \(07:01 UTC\)$/);
+  });
+  it("no zone, UTC, an unknown zone, or something that is not a time says what it always did", () => {
+    const at = "2026-10-21T13:30:00.000000Z";
+    expect(siteWhenText(at)).toBe("2026-10-21 13:30 UTC");
+    expect(siteWhenText(at, "UTC")).toBe("2026-10-21 13:30 UTC");
+    expect(siteWhenText(at, "Not/AZone")).toBe("2026-10-21 13:30 UTC");
+    expect(siteWhenText("soon", "America/New_York")).toBe("soon");
+  });
   it("server times shown as UTC do not move with the reader's zone", () => {
     for (const tz of ZONES)
       expect(under(tz, () => whenText("2026-10-21T23:30:00.000000Z"))).toBe("2026-10-21 23:30 UTC");
