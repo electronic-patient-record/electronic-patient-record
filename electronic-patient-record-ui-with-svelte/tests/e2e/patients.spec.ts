@@ -1170,6 +1170,16 @@ test("break-the-glass and allergy-statement times are on the site's clock, with 
   );
 });
 
+test("the refused-message queue shows when a message arrived on the site's clock", async ({
+  page,
+}) => {
+  await page.route("**/api/proxy/api/feed/refusals", (route) =>
+    json(route, 200, { refusals: [REFUSAL()], limit: 50, site_time_zone: "America/New_York" }),
+  );
+  await page.goto("/en-001/admin/feed");
+  await expect(page.getByText(/received 2026-10-21 05:00 EDT \(09:00 UTC\)/)).toBeVisible();
+});
+
 test("a record merged away says so everywhere and cannot be edited; the surviving record merges and unmerges", async ({
   page,
 }) => {

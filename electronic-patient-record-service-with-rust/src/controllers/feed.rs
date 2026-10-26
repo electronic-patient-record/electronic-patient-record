@@ -86,7 +86,7 @@ async fn list(
     {
         return r.into_response();
     }
-    Json(serde_json::json!({ "refusals": open, "limit": queue::LIST_LIMIT })).into_response()
+    Json(serde_json::json!({ "refusals": open, "limit": queue::LIST_LIMIT, "site_time_zone": crate::site::time_zone() })).into_response()
 }
 
 /// How many are waiting, for the admin screens' navigation. No message text, no ids. Audited like

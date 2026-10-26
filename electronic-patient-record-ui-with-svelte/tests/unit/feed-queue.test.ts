@@ -24,6 +24,11 @@ describe("refused message text", () => {
       "A08 · message M-1 · received 2026-10-21 09:00 UTC",
     );
   });
+  it("shows the time on the site's clock with UTC beside it when the API sends a zone", () => {
+    expect(headline(r, "America/New_York")).toMatch(
+      /^A08 · message M-1 · received 2026-10-21 05:00 (EDT|GMT-4) \(09:00 UTC\)$/,
+    );
+  });
   it("shows HL7 segments on separate lines", () => {
     expect(readable("MSH|a\rPID|1\r")).toBe("MSH|a\nPID|1");
     expect(readable("MSH|a\r\nPID|1")).toBe("MSH|a\nPID|1");

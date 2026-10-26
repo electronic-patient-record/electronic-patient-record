@@ -120,6 +120,7 @@ async fn break_glass_and_the_feed_queue_refuse_when_their_audit_row_cannot_be_wr
             .await;
         assert!(waiting.status_code().is_success(), "{}", waiting.text());
         let refusal = waiting.json::<Value>();
+        assert!(refusal["site_time_zone"].is_string());
         let refusal_id = refusal["refusals"]
             .as_array()
             .and_then(|a| a.first())

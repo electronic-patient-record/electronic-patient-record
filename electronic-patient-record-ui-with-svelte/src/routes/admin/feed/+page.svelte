@@ -18,11 +18,12 @@
   let message = $state<string | null>(null);
   // One entry's message is shown at a time, fetched when asked for (a listing carries no text).
   let shown = $state<Refusal | null>(null);
+  let siteZone = $state<string | undefined>(undefined);
   let outcome = $state<Outcome>("handled");
   let reason = $state("");
 
   async function load() {
-    const res = await call<{ refusals: Refusal[]; limit: number }>(
+    const res = await call<{ refusals: Refusal[]; limit: number; site_time_zone?: string }>(
       "GET",
       "/api/feed/refusals",
     );
@@ -33,6 +34,7 @@
     } else if (res.status === 200) {
       open = res.body.refusals;
       limit = res.body.limit;
+      siteZone = res.body.site_time_zone;
       void refreshFeedCount();
     } else message = STRINGS.error;
   }
@@ -104,7 +106,7 @@
     <ul>
       {#each open as r (r.id)}
         <li>
-          <strong>{STRINGS.feedKinds[r.kind]}</strong> · {headline(r)}
+          <strong>{STRINGS.feedKinds[r.kind]}</strong> · {headline(r, siteZone)}
           <ul>
             {#each r.reasons as why (why)}<li>{why}</li>{/each}
           </ul>
