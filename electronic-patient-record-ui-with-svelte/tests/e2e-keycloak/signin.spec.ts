@@ -1402,3 +1402,98 @@ test("the idle warning shows, and one press on Stay signed in clears it and keep
   // The server agrees the session is alive.
   expect(await compare(page)).toBe(200);
 });
+
+test("a clinician records a vital sign through the page; it is read back with its words and the site's time, and a patient with no care relationship shows none", async ({
+  page,
+}) => {
+  test.skip(!ADMIN, "set EPR_E2E_ADMIN_USERNAME");
+  const subOf = (t: string) =>
+    JSON.parse(Buffer.from(t.split(".")[1]!, "base64url").toString())
+      .sub as string;
+  const [admin, clinician] = await Promise.all([
+    devToken(ADMIN),
+    devToken(USERNAME),
+  ]);
+  const api = async (method: string, path: string, body?: unknown) => {
+    const res = await fetch(`${API}${path}`, {
+      method,
+      headers: {
+        authorization: `Bearer ${admin}`,
+        "content-type": "application/json",
+        "x-purpose-of-use": "operations",
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const text = await res.text();
+    return { status: res.status, body: text ? JSON.parse(text) : null };
+  };
+  const dob = () =>
+    `19${40 + Math.floor(Math.random() * 40)}-0${1 + Math.floor(Math.random() * 9)}-${10 + Math.floor(Math.random() * 18)}`;
+  const make = async (given: string) => {
+    const r = await api("POST", "/api/patients", {
+      patient: {
+        names: [{ family: `Zvitals${Date.now()}${given}`, given: [given] }],
+        birth_date: dob(),
+      },
+    });
+    expect(r.status).toBe(201);
+    return r.body.id as string;
+  };
+  const id = await make("Alex");
+  const stranger = await make("Blair");
+  expect(
+    (
+      await api("POST", `/api/patients/${id}/relationships`, {
+        relationship: {
+          subject: subOf(clinician),
+          kind: "care-team",
+          status: "active",
+        },
+        reason: "e2e",
+      })
+    ).status,
+  ).toBe(201);
+
+  await signIn(page);
+  await page.goto(`/en-001/patients/${id}`);
+  const section = page.getByRole("region", { name: "Vital signs" });
+  await expect(section).toContainText("No vital signs recorded");
+
+  // A measurement from a little while ago, in the site's clock (UTC here, as no zone is set).
+  const at = new Date(Date.now() - 10 * 60_000).toISOString().slice(0, 16);
+  await section.getByLabel("Value (/min)").fill("131");
+  await section.getByLabel(/^Measured at/).fill(at);
+  await section.getByLabel("Range from (optional)").fill("60");
+  await section.getByLabel("Range up to (optional)").fill("100");
+  await section.getByRole("button", { name: "Record vital sign" }).click();
+  await expect(section.getByText("Vital sign recorded.")).toBeVisible();
+  const row = section.getByRole("listitem").filter({ hasText: "Heart rate" });
+  await expect(row).toContainText("131 /min");
+  await expect(row).toContainText("· High ·");
+  await expect(row).toContainText("Range given: 60 to 100");
+
+  // No range: not assessed, never normal.
+  await section.getByLabel("Value (/min)").fill("70");
+  await section.getByLabel(/^Measured at/).fill(at);
+  await section.getByLabel("Range from (optional)").fill("");
+  await section.getByLabel("Range up to (optional)").fill("");
+  await section.getByRole("button", { name: "Record vital sign" }).click();
+  const bare = section
+    .getByRole("listitem")
+    .filter({ hasText: "70 /min" });
+  await expect(bare).toContainText("Not assessed (no range given)");
+  await expect(bare).not.toContainText(/within|normal/i);
+
+  // A measured time in the future is refused by the real API, and the page shows why.
+  const future = new Date(Date.now() + 3 * 3600_000).toISOString().slice(0, 16);
+  await section.getByLabel("Value (/min)").fill("72");
+  await section.getByLabel(/^Measured at/).fill(future);
+  await section.getByRole("button", { name: "Record vital sign" }).click();
+  await expect(section.getByText(/in the future/)).toBeVisible();
+
+  // A patient the clinician has no relationship with: refused, in words that do not say "none".
+  await page.goto(`/en-001/patients/${stranger}`);
+  await expect(
+    page.getByRole("region", { name: "Vital signs" }),
+  ).toContainText("not shown to your role");
+});

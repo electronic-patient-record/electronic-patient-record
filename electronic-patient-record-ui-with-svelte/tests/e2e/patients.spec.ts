@@ -1180,6 +1180,180 @@ test("the refused-message queue shows when a message arrived on the site's clock
   await expect(page.getByText(/received 2026-10-21 05:00 EDT \(09:00 UTC\)/)).toBeVisible();
 });
 
+const OBS = (over: Record<string, unknown>) => ({
+  id: "o-" + Math.random().toString(36).slice(2),
+  patient_id: ANN.id,
+  version: 1,
+  author: "nurse-1",
+  recorded_at: "2026-10-26T14:00:00.000000Z",
+  site_zone: "America/New_York",
+  code: "8867-4",
+  value: 72,
+  unit: "/min",
+  effective_at: "2026-10-26T13:30:00.000000Z",
+  status: "final",
+  flag: null,
+  ...over,
+});
+
+test("the vital signs list says where each value sits in words, and never calls a missing range normal", async ({
+  page,
+}) => {
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, { ...ANN, site_time_zone: "America/New_York" }),
+  );
+  await page.route("**/api/proxy/api/patients/*/observations", (route) =>
+    json(route, 200, {
+      observations: [
+        OBS({ value: 130, range: { low: 60, high: 100 }, flag: "high" }),
+        OBS({ code: "8310-5", value: 36.6, unit: "Cel", effective_at: "2026-10-26T13:00:00.000000Z" }),
+        OBS({
+          code: "59408-5",
+          value: null,
+          unit: null,
+          absent_reason: "failed",
+          effective_at: "2026-10-26T12:30:00.000000Z",
+        }),
+        OBS({ code: "8480-6", value: 150, unit: "mm[Hg]", range: { low: 90, high: 140 }, flag: "critical-high", version: 2 }),
+        OBS({ code: "29463-7", value: 700, unit: "kg", status: "entered-in-error" }),
+      ],
+    }),
+  );
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  const section = page.getByRole("region", { name: "Vital signs" });
+  await expect(section.getByRole("list").first().getByText("Heart rate")).toBeVisible();
+  await expect(section.getByText("130 /min")).toBeVisible();
+  const heart = section.getByRole("listitem").filter({ hasText: "Heart rate" });
+  await expect(heart).toContainText("· High ·");
+  await expect(heart).toContainText("Range given: 60 to 100");
+  // No range: not assessed, in words, never normal.
+  const temp = section.getByRole("listitem").filter({ hasText: "Temperature" });
+  await expect(temp).toContainText("36.6 °C");
+  await expect(temp).toContainText("Not assessed (no range given)");
+  await expect(temp).not.toContainText(/within|normal/i);
+  // No value: why, never 0 or a dash.
+  const spo2 = section.getByRole("listitem").filter({ hasText: "Oxygen saturation" });
+  await expect(spo2).toContainText("No value: attempt failed");
+  await expect(spo2).toContainText("Not assessed (no value)");
+  await expect(section.getByRole("listitem").filter({ hasText: "Blood pressure, systolic" })).toContainText(
+    "Critically high",
+  );
+  await expect(section.getByRole("listitem").filter({ hasText: "Blood pressure, systolic" })).toContainText(
+    "version 2",
+  );
+  // The time is the site's clock with UTC beside it.
+  await expect(section.getByText(/2026-10-26 09:30 EDT \(13:30 UTC\)/).first()).toBeVisible();
+  // A mistake is collapsed, struck through, and not in the main list.
+  const mistaken = section.getByRole("group").filter({ hasText: "Entered in error (1)" });
+  await expect(mistaken).toBeVisible();
+  await expect(section.getByRole("list").first()).not.toContainText("Weight");
+  await axe(page);
+});
+
+test("the vital signs say so when there are none, when the role may not see them, and when they could not be loaded", async ({
+  page,
+}) => {
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) => json(route, 200, ANN));
+  let state: [number, unknown] = [200, { observations: [] }];
+  await page.route("**/api/proxy/api/patients/*/observations", (route) => json(route, state[0], state[1]));
+  const section = () => page.getByRole("region", { name: "Vital signs" });
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  await expect(section()).toContainText("No vital signs recorded in this system. This does not mean none were taken.");
+  state = [403, { error: "forbidden" }];
+  await page.reload();
+  await expect(section()).toContainText("Vital signs are not shown to your role. This does not mean none are recorded.");
+  await expect(section().getByRole("button", { name: "Record vital sign" })).toHaveCount(0);
+  state = [500, { error: "internal error" }];
+  await page.reload();
+  await expect(section()).toContainText("Vital signs could not be loaded. This does not mean none are recorded.");
+  await expect(section()).not.toContainText("No vital signs recorded");
+});
+
+test("recording a vital sends its own unit and the site's time as UTC, never an empty value as zero, and shows the API's refusals", async ({
+  page,
+}) => {
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, { ...ANN, site_time_zone: "America/New_York" }),
+  );
+  const sent: any[] = [];
+  let answer: [number, unknown] = [201, OBS({})];
+  let rows: unknown[] = [];
+  await page.route("**/api/proxy/api/patients/*/observations", (route) => {
+    if (route.request().method() === "POST") {
+      sent.push(route.request().postDataJSON());
+      if (answer[0] === 201) rows = [OBS({})];
+      return json(route, answer[0], answer[1]);
+    }
+    return json(route, 200, { observations: rows });
+  });
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  const section = page.getByRole("region", { name: "Vital signs" });
+  await expect(section).toContainText("No vital signs recorded");
+  await axe(page);
+
+  // The unit is fixed text beside the value, and follows the vital chosen.
+  await expect(section.getByLabel("Value (/min)")).toBeVisible();
+  await section.getByLabel("Vital sign").selectOption({ label: "Temperature" });
+  await expect(section.getByLabel("Value (°C)")).toBeVisible();
+
+  // An empty or unreadable value sends nothing (the box also refuses it).
+  await section.getByLabel("Vital sign").selectOption({ label: "Heart rate" });
+  await section.getByLabel("Value (/min)").fill("seventy");
+  await section.getByLabel(/^Measured at/).fill("2026-10-26T09:30");
+  await section.getByRole("button", { name: "Record vital sign" }).click();
+  await expect(section.getByText("Give the value as a number.")).toBeVisible();
+  expect(sent).toHaveLength(0);
+
+  // A good one: its own unit, the number, and 09:30 in New York as 13:30 UTC.
+  await section.getByLabel("Value (/min)").fill("72");
+  await section.getByLabel("Range from (optional)").fill("60");
+  await section.getByLabel("Range up to (optional)").fill("100");
+  await section.getByRole("button", { name: "Record vital sign" }).click();
+  await expect(section.getByText("Vital sign recorded.")).toBeVisible();
+  expect(sent).toEqual([
+    {
+      observation: {
+        code: "8867-4",
+        effective_at: "2026-10-26T13:30:00Z",
+        status: "final",
+        value: 72,
+        unit: "/min",
+        range: { low: 60, high: 100 },
+      },
+    },
+  ]);
+  await expect(section.getByRole("listitem")).toHaveCount(1);
+
+  // No value: a reason is needed, and the value is not sent at all.
+  await section.getByLabel("No value").check();
+  await section.getByLabel(/^Measured at/).fill("2026-10-26T09:45");
+  await section.getByLabel("Why there is no value").selectOption("");
+  await section.getByRole("button", { name: "Record vital sign" }).click();
+  expect(sent).toHaveLength(1);
+  await section.getByLabel("Why there is no value").selectOption({ label: "declined" });
+  await section.getByRole("button", { name: "Record vital sign" }).click();
+  await expect(section.getByText("Vital sign recorded.")).toBeVisible();
+  expect(sent[1].observation).toEqual({
+    code: "8867-4",
+    effective_at: "2026-10-26T13:45:00Z",
+    status: "final",
+    absent_reason: "declined",
+  });
+
+  // The API's refusals are shown whole.
+  answer = [422, { errors: ["the unit \"x\" does not fit this code"], error_codes: ["unit_mismatch"] }];
+  await section.getByLabel("No value").uncheck();
+  await section.getByLabel(/^Value/).fill("72");
+  await section.getByRole("button", { name: "Record vital sign" }).click();
+  await expect(section.getByText('the unit "x" does not fit this code')).toBeVisible();
+  answer = [409, { error: "version conflict" }];
+  await section.getByRole("button", { name: "Record vital sign" }).click();
+  await expect(section.getByText(/changed or was merged/)).toBeVisible();
+});
+
 test("a record merged away says so everywhere and cannot be edited; the surviving record merges and unmerges", async ({
   page,
 }) => {

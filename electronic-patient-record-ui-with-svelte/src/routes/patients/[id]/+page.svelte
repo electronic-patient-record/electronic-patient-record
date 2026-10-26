@@ -9,6 +9,7 @@
   import { loadAllergies, type AllergyLoad } from "#lib/allergies.js";
   import { patientProblemList } from "#lib/conflicts.js";
   import MergeSection from "#lib/MergeSection.svelte";
+  import VitalsSection from "#lib/VitalsSection.svelte";
   import PatientBanner from "#lib/PatientBanner.svelte";
   import PatientFields from "#lib/PatientFields.svelte";
   import {
@@ -338,6 +339,12 @@
       onchange={() => reloadAllergies()}
     />
   {/if}
+  <!-- Reloads when emergency access is opened: a refusal under no care relationship may lift. -->
+  <VitalsSection
+    patientId={stored.id}
+    siteZone={stored.site_time_zone ?? "UTC"}
+    refresh={glassUntil}
+  />
   {#if !stored.replaced_by}
     <MergeSection
       patientId={stored.id}
