@@ -21,6 +21,7 @@ mod m20261021_000010_break_glass;
 mod m20261021_000011_current_views_seek;
 mod m20261021_000012_patient_search_indexes;
 mod m20261024_000013_patient_drill;
+mod m20261026_000014_observations;
 
 /// Whether a `down` that drops clinical tables may run: only in development or test, and only when
 /// `EPR_ALLOW_DESTRUCTIVE_DOWN=true` says so. A missing environment name counts as production.
@@ -63,6 +64,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261021_000011_current_views_seek::Migration),
             Box::new(m20261021_000012_patient_search_indexes::Migration),
             Box::new(m20261024_000013_patient_drill::Migration),
+            Box::new(m20261026_000014_observations::Migration),
         ]
     }
 }

@@ -10,6 +10,7 @@ pub mod fhir;
 pub mod links;
 pub mod me;
 pub mod metrics;
+pub mod observations;
 pub mod patients;
 pub mod photos;
 pub mod relationships;

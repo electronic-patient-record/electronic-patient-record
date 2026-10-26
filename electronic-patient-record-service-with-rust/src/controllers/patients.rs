@@ -618,6 +618,12 @@ pub fn routes() -> Routes {
             put(super::allergies::update),
         )
         .add("/{id}/allergy-statement", put(super::allergies::statement))
+        .add("/{id}/observations", get(super::observations::list))
+        .add("/{id}/observations", post(super::observations::create))
+        .add(
+            "/{id}/observations/{observation_id}",
+            put(super::observations::update),
+        )
         .add("/{id}/photo", get(super::photos::read))
         .add("/{id}/photo", put(super::photos::put))
         .add("/{id}/photo/withdraw", post(super::photos::withdraw))

@@ -191,6 +191,44 @@ async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_r
         })
         .await;
 
+        // Observation create and update.
+        let observation = json!({
+            "code": "8867-4", "value": 72.0, "unit": "/min",
+            "effective_at": "2026-10-26T09:30:00Z", "status": "final"
+        });
+        refused_then_accepted(db, "POST /api/patients/{id}/observations", || async {
+            let r = server
+                .post(&format!("/api/patients/{id}/observations"))
+                .json(&json!({ "observation": observation }))
+                .await;
+            (r.status_code(), r.text())
+        })
+        .await;
+        let listed = server
+            .get(&format!("/api/patients/{id}/observations"))
+            .await
+            .json::<Value>();
+        let observation_id = listed["observations"][0]["id"]
+            .as_str()
+            .expect("an observation id")
+            .to_string();
+        let mistaken = json!({
+            "code": "8867-4", "value": 72.0, "unit": "/min",
+            "effective_at": "2026-10-26T09:30:00Z", "status": "entered-in-error"
+        });
+        refused_then_accepted(
+            db,
+            "PUT /api/patients/{id}/observations/{observation_id}",
+            || async {
+                let r = server
+                    .put(&format!("/api/patients/{id}/observations/{observation_id}"))
+                    .json(&json!({ "observation": mistaken, "expected_version": 1 }))
+                    .await;
+                (r.status_code(), r.text())
+            },
+        )
+        .await;
+
         // Photo put and withdraw.
         let png = HeaderValue::from_static("image/png");
         let ct = HeaderName::from_static("content-type");

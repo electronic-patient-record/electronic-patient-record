@@ -178,8 +178,8 @@ Conventions:
 - [ ] **RC-6 (M) — Vitals and observations.** `Observation` with LOINC codes,
   UCUM units, reference ranges and abnormal flags.
   **Acceptance:** a unit mismatch is refused 422. Flags are computed from ranges and covered by unit tests.
-  **First slice landed 2026-10-26 (pure rules only, `observations.rs`, 15 unit tests; nothing calls it):** eight vitals, one unit each, no conversion, the sender's range, a flag or `None`. **Not built:** the store, routes, audit, UI, FHIR `Observation`, hazard row (add one when it is wired), the 422 over HTTP (so the acceptance is **not met**), a time of day. Left open.
-  **Carried from RC-9:** decide whose time zone is recorded with an effective time of day (the author's, the site's or the patient's) before an observation stores one; today every stored instant is UTC and shown on the site's clock.
+  **Landed 2026-10-26, service only:** the pure rules (`observations.rs`), then the append-only store, `GET`/`POST /api/patients/{id}/observations` and `PUT …/{observation_id}` with audit, consent, care relationship, entered-in-error and a 422 with `error_codes` (hazard H-034). 22 unit tests, 7 store tests, 1 HTTP roles test, 2 audit-failure route tests. The acceptance (a unit mismatch is refused 422; flags computed from ranges and unit-tested) is met for the service. **Not built:** any UI (so no clinician sees an observation), FHIR `Observation`, a device feed, trends, a proxy scope, units beyond the eight vitals, a check of the sender's range. Left open.
+  **Carried from RC-9, decided 2026-10-26 (mine, not yet confirmed by the maintainer):** the measured time is stored as a UTC instant and the site's zone at recording is stored beside it (`site_zone`); the author's and the patient's zones are not recorded.
 - [ ] **RC-7 (M) — Terminology service.** `TerminologyService` trait with
   `$lookup`, `$validate-code`, `$expand` and `$translate`. Two adapters:
   Snowstorm and an embedded fixture subset for tests.
