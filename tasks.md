@@ -178,6 +178,7 @@ Conventions:
 - [ ] **RC-6 (M) — Vitals and observations.** `Observation` with LOINC codes,
   UCUM units, reference ranges and abnormal flags.
   **Acceptance:** a unit mismatch is refused 422. Flags are computed from ranges and covered by unit tests.
+  **First slice landed 2026-10-26 (pure rules only, `observations.rs`, 15 unit tests; nothing calls it):** eight vitals, one unit each, no conversion, the sender's range, a flag or `None`. **Not built:** the store, routes, audit, UI, FHIR `Observation`, hazard row (add one when it is wired), the 422 over HTTP (so the acceptance is **not met**), a time of day. Left open.
   **Carried from RC-9:** decide whose time zone is recorded with an effective time of day (the author's, the site's or the patient's) before an observation stores one; today every stored instant is UTC and shown on the site's clock.
 - [ ] **RC-7 (M) — Terminology service.** `TerminologyService` trait with
   `$lookup`, `$validate-code`, `$expand` and `$translate`. Two adapters:

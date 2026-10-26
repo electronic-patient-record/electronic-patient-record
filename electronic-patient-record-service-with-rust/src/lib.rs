@@ -25,6 +25,7 @@ pub mod interop;
 pub mod links;
 pub mod metrics;
 pub mod mllp;
+pub mod observations;
 pub mod patients_store;
 pub mod photos_store;
 pub mod policy;
