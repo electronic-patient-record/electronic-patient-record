@@ -4,7 +4,7 @@
   // (who may, whether they look like the same person); this page shows its reasons.
   import { page } from "$app/state";
   import { call, commonProblem } from "./api.js";
-  import { notSamePersonText, type ConflictCode } from "./conflicts.js";
+  import { notSamePersonText, refusalText, type ConflictCode } from "./conflicts.js";
   import { DEFAULT_LOCALE } from "./locales.js";
   import { STRINGS } from "./strings.js";
 
@@ -37,7 +37,7 @@
     busy = true;
     let res;
     try {
-      res = await call<{ errors?: string[]; conflict_codes?: ConflictCode[] }>(
+      res = await call<{ errors?: string[]; conflict_codes?: ConflictCode[]; refusal?: string; refusal_into?: string }>(
         "POST",
         `/api/patients/${patientId}/${path}`,
         { source: sourceId.trim(), reason: why.trim() },
@@ -52,10 +52,13 @@
       source = why = "";
       await onchange();
     } else if (res.status === 404) message = STRINGS.notFound;
-    else if (res.status === 422 && res.body?.errors)
+    else if (res.status === 422 && res.body?.errors) {
+      const locale = page.data.locale ?? DEFAULT_LOCALE;
       message =
-        notSamePersonText(res.body.conflict_codes, page.data.locale ?? DEFAULT_LOCALE) ?? res.body.errors.join(" ");
-    else message = STRINGS.error;
+        notSamePersonText(res.body.conflict_codes, locale) ??
+        refusalText(res.body.refusal, res.body.refusal_into, locale) ??
+        res.body.errors.join(" ");
+    } else message = STRINGS.error;
   }
 </script>
 

@@ -196,13 +196,18 @@ async fn stale_versions_are_409_with_the_current_version_and_bad_merges_are_422(
             .json(&json!({ "source": id, "reason": "same" }))
             .await;
         assert_eq!(into_self.status_code(), StatusCode::UNPROCESSABLE_ENTITY);
-        assert!(into_self.json::<Value>()["errors"].is_array());
+        let into_self = into_self.json::<Value>();
+        assert!(into_self["errors"].is_array());
+        // A stable code so a client can say it in the reader's language (CQ-38).
+        assert_eq!(into_self["refusal"], "same_record");
+        assert!(into_self.get("refusal_into").is_none());
         let not_merged = server
             .post(&format!("/api/patients/{id}/unmerge"))
             .json(&json!({ "source": ids[1], "reason": "oops" }))
             .await;
         assert_eq!(not_merged.status_code(), StatusCode::UNPROCESSABLE_ENTITY);
         assert!(not_merged.text().contains("not currently merged"));
+        assert_eq!(not_merged.json::<Value>()["refusal"], "not_merged");
     })
     .await;
 }

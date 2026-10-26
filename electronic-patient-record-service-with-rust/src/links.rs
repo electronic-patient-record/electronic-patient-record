@@ -289,6 +289,37 @@ async fn lock(db: &impl ConnectionTrait) -> Result<(), StoreError> {
     .map_err(db_err)
 }
 
+const REASON_TO_MERGE: &str = "a reason is required to merge records";
+const REASON_TO_UNMERGE: &str = "a reason is required to unmerge records";
+const MERGE_INTO_ITSELF: &str = "a record cannot be merged into itself";
+const DRILL_AND_REAL: &str = "a drill record and a real record can never be merged";
+const SOURCE_ALREADY_MERGED: &str = "the record to merge away was already merged into ";
+const TARGET_ALREADY_MERGED: &str = "the surviving record was itself merged into ";
+const TARGET_ALREADY_MERGED_END: &str = ": merge into that one";
+const NOT_MERGED: &str = "that record is not currently merged into this one";
+
+/// A refused merge or unmerge as a stable code, with the other record's id where the refusal names one,
+/// so a client can say it in the reader's language (CQ-38). `None` for a message this does not know.
+pub fn refusal(message: &str) -> Option<(&'static str, Option<String>)> {
+    let plain = |code| Some((code, None));
+    match message {
+        REASON_TO_MERGE | REASON_TO_UNMERGE => plain("reason_required"),
+        MERGE_INTO_ITSELF => plain("same_record"),
+        DRILL_AND_REAL => plain("drill_and_real"),
+        NOT_MERGED => plain("not_merged"),
+        m => {
+            if let Some(into) = m.strip_prefix(SOURCE_ALREADY_MERGED) {
+                Some(("source_already_merged", Some(into.to_string())))
+            } else {
+                let into = m
+                    .strip_prefix(TARGET_ALREADY_MERGED)?
+                    .strip_suffix(TARGET_ALREADY_MERGED_END)?;
+                Some(("target_already_merged", Some(into.to_string())))
+            }
+        }
+    }
+}
+
 /// Merge `source` into `target`. Call inside a transaction (the lock lasts until it ends).
 ///
 /// # Errors
@@ -303,31 +334,25 @@ pub async fn merge(
     reason: &str,
 ) -> Result<StoredLink, StoreError> {
     if reason.trim().is_empty() {
-        return Err(StoreError::BadQuery(
-            "a reason is required to merge records".into(),
-        ));
+        return Err(StoreError::BadQuery(REASON_TO_MERGE.into()));
     }
     lock(db).await?;
     let target = patients_store::current(db, target_id).await?;
     let source = patients_store::current(db, source_id).await?;
     if target.id == source.id {
-        return Err(StoreError::BadQuery(
-            "a record cannot be merged into itself".into(),
-        ));
+        return Err(StoreError::BadQuery(MERGE_INTO_ITSELF.into()));
     }
     if target.drill != source.drill {
-        return Err(StoreError::BadQuery(
-            "a drill record and a real record can never be merged".into(),
-        ));
+        return Err(StoreError::BadQuery(DRILL_AND_REAL.into()));
     }
     if let Some(into) = merged_into(db, &source.id).await? {
         return Err(StoreError::BadQuery(format!(
-            "the record to merge away was already merged into {into}"
+            "{SOURCE_ALREADY_MERGED}{into}"
         )));
     }
     if let Some(into) = merged_into(db, &target.id).await? {
         return Err(StoreError::BadQuery(format!(
-            "the surviving record was itself merged into {into}: merge into that one"
+            "{TARGET_ALREADY_MERGED}{into}{TARGET_ALREADY_MERGED_END}"
         )));
     }
     let (score, decision) = judge(&source.patient, &target.patient).map_err(StoreError::from)?;
@@ -371,9 +396,7 @@ pub async fn unmerge(
     reason: &str,
 ) -> Result<StoredLink, StoreError> {
     if reason.trim().is_empty() {
-        return Err(StoreError::BadQuery(
-            "a reason is required to unmerge records".into(),
-        ));
+        return Err(StoreError::BadQuery(REASON_TO_UNMERGE.into()));
     }
     lock(db).await?;
     let target = patients_store::current(db, target_id).await?;
@@ -390,9 +413,7 @@ pub async fn unmerge(
         ))
         .await
         .map_err(db_err)?
-        .ok_or_else(|| {
-            StoreError::BadQuery("that record is not currently merged into this one".into())
-        })?;
+        .ok_or_else(|| StoreError::BadQuery(NOT_MERGED.into()))?;
     let now = row_to_link(&row)?;
     let row = db
         .query_one_raw(pg(
@@ -425,6 +446,32 @@ pub async fn unmerge(
 mod tests {
     use super::*;
     use electronic_patient_record_matcher::{HumanName, Identifier, NHS_NUMBER_SYSTEM};
+
+    #[test]
+    fn every_refusal_message_has_a_code() {
+        let cases = [
+            (REASON_TO_MERGE.to_string(), "reason_required", None),
+            (REASON_TO_UNMERGE.to_string(), "reason_required", None),
+            (MERGE_INTO_ITSELF.to_string(), "same_record", None),
+            (DRILL_AND_REAL.to_string(), "drill_and_real", None),
+            (NOT_MERGED.to_string(), "not_merged", None),
+            (
+                format!("{SOURCE_ALREADY_MERGED}abc"),
+                "source_already_merged",
+                Some("abc"),
+            ),
+            (
+                format!("{TARGET_ALREADY_MERGED}def{TARGET_ALREADY_MERGED_END}"),
+                "target_already_merged",
+                Some("def"),
+            ),
+        ];
+        for (message, code, into) in cases {
+            let got = refusal(&message).expect(&message);
+            assert_eq!((got.0, got.1.as_deref()), (code, into), "{message}");
+        }
+        assert!(refusal("something else").is_none());
+    }
 
     fn person(family: &str, given: &str, dob: &str, nhs: Option<&str>) -> Patient {
         Patient {

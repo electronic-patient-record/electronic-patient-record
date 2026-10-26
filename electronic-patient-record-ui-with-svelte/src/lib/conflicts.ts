@@ -1,6 +1,6 @@
 // The reasons a link cannot be automatic, translated (CQ-38). Pure: the page passes its locale.
 import type { Locale } from "./locales.js";
-import { conflictWords, type ConflictWords } from "./translations.js";
+import { conflictWords, refusalWords, type ConflictWords, type RefusalWords } from "./translations.js";
 
 /** One reason as the matcher sends it (`ConflictCode`, tagged by `code`). Unknown codes are kept. */
 export type ConflictCode =
@@ -84,4 +84,26 @@ export function notSamePersonText(codes: ConflictCode[] | undefined, locale: Loc
   const parts = codes.map((c) => conflictText(c, locale));
   if (parts.some((p) => p === null)) return null;
   return `${conflictWords(locale).notSamePerson} ${parts.join("; ")}`;
+}
+
+const REFUSAL: Record<string, keyof RefusalWords> = {
+  reason_required: "reasonRequired",
+  same_record: "sameRecord",
+  drill_and_real: "drillAndReal",
+  not_merged: "notMerged",
+  source_already_merged: "sourceAlreadyMerged",
+  target_already_merged: "targetAlreadyMerged",
+};
+
+/**
+ * A refused merge or unmerge in `locale`, from the API's `refusal` code (and `refusal_into`, the other
+ * record's id). Null for no code, a code this does not know, or a code that needs an id and has none,
+ * so the page shows the API's English message.
+ */
+export function refusalText(code: unknown, into: unknown, locale: Locale): string | null {
+  const key = typeof code === "string" ? REFUSAL[code] : undefined;
+  if (!key) return null;
+  const text = refusalWords(locale)[key];
+  if (!text.includes("{id}")) return text;
+  return typeof into === "string" && into ? text.replace("{id}", into) : null;
 }

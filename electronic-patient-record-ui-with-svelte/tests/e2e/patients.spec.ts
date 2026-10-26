@@ -2149,6 +2149,29 @@ test("a refused merge gives its reasons in the page's language, and the API's ow
   await expect(page.getByText(english)).toBeVisible();
 });
 
+test("a merge refused for a rule says so in the page's language, naming the other record", async ({ page }) => {
+  const english = "the record to merge away was already merged into abc-123";
+  let known = true;
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, { ...ANN, replaced_by: null, replaces: [] }),
+  );
+  await page.route(`**/api/proxy/api/patients/${ANN.id}/merge`, (route) =>
+    json(route, 422, {
+      errors: [english],
+      ...(known ? { refusal: "source_already_merged", refusal_into: "abc-123" } : {}),
+    }),
+  );
+  await page.goto("/de-001/patients/" + ANN.id);
+  await page.getByLabel(/^Id of the record/).fill("other-id");
+  await page.getByLabel(/Why are these the same person/).fill("same person");
+  await page.getByRole("button", { name: "Merge into this record" }).click();
+  await expect(page.getByText("Der aufzulösende Datensatz wurde bereits mit abc-123 zusammengeführt.")).toBeVisible();
+  known = false;
+  await page.getByRole("button", { name: "Merge into this record" }).click();
+  await expect(page.getByText(english)).toBeVisible();
+});
+
 test("the banner's age is counted on the site's calendar day, not the reader's", async ({ page }) => {
   // Born 1980-03-14. At 23:30 UTC on 13 March it is already the 14th in Auckland and still the 13th in New York.
   let zone = "Pacific/Auckland";

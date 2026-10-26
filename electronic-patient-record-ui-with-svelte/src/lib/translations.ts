@@ -462,3 +462,95 @@ export const CONFLICT_WORDS: Partial<Record<Locale, ConflictWords>> = {
 export function conflictWords(locale: Locale): ConflictWords {
   return CONFLICT_WORDS[locale] ?? CONFLICT_ENGLISH;
 }
+
+/** The refusals to merge or unmerge (CQ-38); `{id}` is the other record. Machine-written, not reviewed. */
+export type RefusalWords = Record<"reasonRequired" | "sameRecord" | "drillAndReal" | "notMerged" | "sourceAlreadyMerged" | "targetAlreadyMerged", string>;
+
+export const REFUSAL_ENGLISH: RefusalWords = {
+  reasonRequired: "A reason is required.",
+  sameRecord: "A record cannot be merged into itself.",
+  drillAndReal: "A drill record and a real record can never be merged.",
+  notMerged: "That record is not currently merged into this one.",
+  sourceAlreadyMerged: "The record to merge away was already merged into {id}.",
+  targetAlreadyMerged: "The surviving record was itself merged into {id}: merge into that one.",
+};
+
+const refusal_de: RefusalWords = {
+  reasonRequired: "Ein Grund ist erforderlich.",
+  sameRecord: "Ein Datensatz kann nicht mit sich selbst zusammengeführt werden.",
+  drillAndReal: "Ein Übungsdatensatz und ein echter Datensatz dürfen nie zusammengeführt werden.",
+  notMerged: "Dieser Datensatz ist derzeit nicht in diesen zusammengeführt.",
+  sourceAlreadyMerged: "Der aufzulösende Datensatz wurde bereits mit {id} zusammengeführt.",
+  targetAlreadyMerged: "Der bestehende Datensatz wurde selbst mit {id} zusammengeführt: führen Sie mit diesem zusammen.",
+};
+
+const refusal_es: RefusalWords = {
+  reasonRequired: "Se requiere un motivo.",
+  sameRecord: "Un registro no puede fusionarse consigo mismo.",
+  drillAndReal: "Un registro de simulacro y un registro real nunca pueden fusionarse.",
+  notMerged: "Ese registro no está fusionado actualmente con este.",
+  sourceAlreadyMerged: "El registro que se iba a fusionar ya estaba fusionado con {id}.",
+  targetAlreadyMerged: "El registro que se conserva ya fue fusionado con {id}: fusione con ese.",
+};
+
+const refusal_fr: RefusalWords = {
+  reasonRequired: "Un motif est obligatoire.",
+  sameRecord: "Un dossier ne peut pas être fusionné avec lui-même.",
+  drillAndReal: "Un dossier d'exercice et un dossier réel ne peuvent jamais être fusionnés.",
+  notMerged: "Ce dossier n'est pas actuellement fusionné avec celui-ci.",
+  sourceAlreadyMerged: "Le dossier à fusionner a déjà été fusionné avec {id}.",
+  targetAlreadyMerged: "Le dossier conservé a lui-même été fusionné avec {id} : fusionnez avec celui-là.",
+};
+
+const refusal_zh: RefusalWords = {
+  reasonRequired: "必须填写原因。",
+  sameRecord: "记录不能与自身合并。",
+  drillAndReal: "演练记录与真实记录永远不能合并。",
+  notMerged: "该记录当前没有合并到此记录中。",
+  sourceAlreadyMerged: "要并入的记录已合并到 {id}。",
+  targetAlreadyMerged: "保留的记录本身已合并到 {id}:请合并到那一条。",
+};
+
+const refusal_hi: RefusalWords = {
+  reasonRequired: "कारण आवश्यक है।",
+  sameRecord: "कोई रिकॉर्ड स्वयं में मर्ज नहीं किया जा सकता।",
+  drillAndReal: "अभ्यास रिकॉर्ड और वास्तविक रिकॉर्ड को कभी मर्ज नहीं किया जा सकता।",
+  notMerged: "वह रिकॉर्ड अभी इस रिकॉर्ड में मर्ज नहीं है।",
+  sourceAlreadyMerged: "जिस रिकॉर्ड को मर्ज करना था, वह पहले ही {id} में मर्ज हो चुका है।",
+  targetAlreadyMerged: "बचा हुआ रिकॉर्ड स्वयं {id} में मर्ज हो चुका है: उसी में मर्ज करें।",
+};
+
+const refusal_ar: RefusalWords = {
+  reasonRequired: "السبب مطلوب.",
+  sameRecord: "لا يمكن دمج سجل مع نفسه.",
+  drillAndReal: "لا يمكن أبدًا دمج سجل تدريبي مع سجل حقيقي.",
+  notMerged: "هذا السجل غير مدمج حاليًا في هذا السجل.",
+  sourceAlreadyMerged: "السجل المراد دمجه سبق دمجه في {id}.",
+  targetAlreadyMerged: "السجل المتبقي نفسه مدمج في {id}: ادمج في ذلك السجل.",
+};
+
+const refusal_cy: RefusalWords = {
+  reasonRequired: "Mae angen rheswm.",
+  sameRecord: "Ni ellir uno cofnod ag ef ei hun.",
+  drillAndReal: "Ni ellir byth uno cofnod ymarfer â chofnod go iawn.",
+  notMerged: "Nid yw'r cofnod hwnnw wedi'i uno â'r un hwn ar hyn o bryd.",
+  sourceAlreadyMerged: "Roedd y cofnod i'w uno eisoes wedi'i uno â {id}.",
+  targetAlreadyMerged: "Roedd y cofnod sy'n aros wedi'i uno ag {id}: unwch â'r un hwnnw.",
+};
+
+export const REFUSAL_WORDS: Partial<Record<Locale, RefusalWords>> = {
+  "ar-001": refusal_ar,
+  "cy-001": refusal_cy,
+  "de-001": refusal_de,
+  "de-de": refusal_de,
+  "es-001": refusal_es,
+  "fr-001": refusal_fr,
+  "hi-001": refusal_hi,
+  "zh-001": refusal_zh,
+  "zh-cn": refusal_zh,
+};
+
+/** The refusal words for `locale`, English where there is no translation. */
+export function refusalWords(locale: Locale): RefusalWords {
+  return REFUSAL_WORDS[locale] ?? REFUSAL_ENGLISH;
+}

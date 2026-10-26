@@ -33,7 +33,16 @@ pub struct LinkRequest {
 
 fn failure(e: StoreError) -> Response {
     match e {
-        StoreError::BadQuery(m) => ApiError::invalid(vec![m.to_string()]).into_response(),
+        StoreError::BadQuery(m) => {
+            let mut e = ApiError::invalid(vec![m.to_string()]);
+            if let Some((code, into)) = store::refusal(&m) {
+                e = e.with("refusal", code);
+                if let Some(into) = into {
+                    e = e.with("refusal_into", into);
+                }
+            }
+            e.into_response()
+        }
         other => store_failure(&other),
     }
 }

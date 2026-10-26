@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { conflictList, conflictText, notSamePersonText, type ConflictCode } from "../../src/lib/conflicts";
+import { conflictList, conflictText, notSamePersonText, refusalText, type ConflictCode } from "../../src/lib/conflicts";
 import { LOCALES } from "../../src/lib/locales";
 
 // The nine codes, with the exact English the matcher (0.3.0) writes for each beside them.
@@ -70,5 +70,35 @@ describe("a refused merge in the page's language", () => {
     expect(notSamePersonText(undefined, "de-001")).toBeNull();
     expect(notSamePersonText([], "de-001")).toBeNull();
     expect(notSamePersonText([{ code: "names_swapped" }, { code: "brand_new" }], "de-001")).toBeNull();
+  });
+});
+
+describe("a refused merge or unmerge by code", () => {
+  const CODES = [
+    "reason_required",
+    "same_record",
+    "drill_and_real",
+    "not_merged",
+    "source_already_merged",
+    "target_already_merged",
+  ];
+  it("says every code in every locale, and names the other record where the refusal does", () => {
+    for (const locale of LOCALES) {
+      for (const code of CODES) {
+        const t = refusalText(code, "abc-123", locale);
+        expect(t, `${locale} ${code}`).toBeTruthy();
+        expect(t).not.toContain("{id}");
+      }
+      expect(refusalText("source_already_merged", "abc-123", locale)).toContain("abc-123");
+      expect(refusalText("target_already_merged", "abc-123", locale)).toContain("abc-123");
+    }
+    expect(refusalText("same_record", undefined, "en-001")).toBe("A record cannot be merged into itself.");
+    expect(refusalText("not_merged", undefined, "de-001")).not.toMatch(/^That record/);
+  });
+  it("gives null, so the API's English shows, for no code, an unknown code, or a missing id", () => {
+    expect(refusalText(undefined, undefined, "de-001")).toBeNull();
+    expect(refusalText("brand_new", undefined, "de-001")).toBeNull();
+    expect(refusalText("source_already_merged", undefined, "de-001")).toBeNull();
+    expect(refusalText("source_already_merged", "", "de-001")).toBeNull();
   });
 });
