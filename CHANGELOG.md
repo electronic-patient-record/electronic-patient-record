@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-27 - Service: amendment request rules, pure (RC-4)
+
+- `amendment.rs`: one request's lifecycle as a pure function (`Request::apply(Event)`): accept, deny with a closed ground and a reason, apply as a later version, withdraw (requester only, before a decision), one statement of disagreement kept unedited, one 30-day extension with a reason; the decider is never the requester; `due`, `overdue` and the `notice` a reader must see. 8 tests.
+- Not done: **everything but the rules**: no table, route, audit row, UI, or display of the notice beside a record, so the acceptance (absent from search, visible to readers) is not met. The 60 and 30 days, the grounds list and the HIPAA reading are mine and unreviewed; UK/GDPR rectification, proxies and who may decide are not modelled. No hazard-log entry yet: nothing a clinician sees uses it; open one when it is wired in. Gates run: fmt, clippy, the non-database suite.
+
 ## 2026-10-27 - UI: vital signs trend table (RC-6, RC-8, H-034)
 
 - "Show readings over time" opens one table per vital (page order), newest first: time on the site's clock, value, and where it sits in the service's words. A reading with no value stays a row with its reason; entries in error are left out; nothing is averaged, smoothed, charted or flagged by the page. The tables are drawn only when opened. 3 vitest (`trends`), 1 stubbed Playwright test with axe.
