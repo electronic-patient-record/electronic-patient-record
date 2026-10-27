@@ -58,6 +58,10 @@ pub struct UpdateRequest {
 pub struct ObservationList {
     /// Every observation in every status, newest measurement first.
     pub observations: Vec<store::StoredObservation>,
+    /// What a reader must be told about each observation that has an amendment request (RC-4), by
+    /// observation id, newest request first. An observation with none has no key. Never left out
+    /// when it cannot be read: the list fails instead.
+    pub amendment_notices: std::collections::BTreeMap<String, Vec<crate::amendment::Notice>>,
 }
 
 /// One observation's versions.
@@ -150,7 +154,24 @@ pub(super) async fn list_service(
         serde_json::json!({ "observations": all.len() }),
     )
     .await?;
-    Ok(ObservationList { observations: all })
+    let mut amendment_notices = std::collections::BTreeMap::<String, Vec<_>>::new();
+    for a in crate::amendments_store::list(&ctx.db, patient)
+        .await
+        .map_err(failure)?
+    {
+        if a.request.target.kind == "Observation"
+            && let Some(n) = a.request.notice()
+        {
+            amendment_notices
+                .entry(a.request.target.id.clone())
+                .or_default()
+                .push(n);
+        }
+    }
+    Ok(ObservationList {
+        observations: all,
+        amendment_notices,
+    })
 }
 
 pub(super) async fn list(

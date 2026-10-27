@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-27 - Service: amendment notices on the observation list (RC-4, H-035)
+
+- `GET /api/patients/{id}/observations` returns `amendment_notices`: for each observation with a request, the notice (pending, amended in version n, or refused with the patient's statement), newest first. If the requests cannot be read the list fails; a notice is never silently left out. `tests/http_amendments.rs` checks the list carries the same notice as the request.
+- Not done: the UI does not show it yet; the FHIR Observation search and the allergy list carry no notice (allergies can be amended, so a refused allergy request is still invisible to a reader); no alert for new or overdue requests. Gates run: fmt, clippy, the whole service suite against Postgres 18 (ignored tests included) and the docs gates. **Not run:** the two FHIR validator tests (no `FHIR_VALIDATOR_JAR`) and the UI gates (the UI is unchanged, though it now receives an extra field it ignores).
+
 ## 2026-10-27 - Service: amendment request routes (RC-4, H-035)
 
 - `GET`/`POST /api/patients/{id}/amendments` and `PUT .../{amendment_id}` (one step: accept, deny, apply, extend, withdraw, disagree), policy resource `Amendment` (patient asks, withdraws and disagrees; clinician reads and decides). The requester and decider come from the token, never the body; each step belongs to one role; a stale version is 409; a write and its audit row are one transaction and the row never holds the request text, a reason or a statement. The policy matrix census grew from 13 to 14 resources (1,411,200 cells). `tests/http_amendments.rs` (login on: roles, token as requester, 403/409/422, no text in the audit rows) and both routes added to the audit-refusal test and its census. H-035 opened (status `open`).

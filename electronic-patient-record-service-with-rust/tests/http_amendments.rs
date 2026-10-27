@@ -199,7 +199,8 @@ async fn who_may_ask_decide_and_withdraw() {
             .json(&json!({ "expected_version": 1, "step": "accept", "reason": "the chart shows 62" }))
             .await;
         assert_eq!(accepted.status_code(), StatusCode::OK, "{}", accepted.text());
-        assert_eq!(accepted.json::<Value>()["version"], 2);
+        let accepted: Value = accepted.json();
+        assert_eq!(accepted["version"], 2);
 
         // The patient lists it; a clinician reads it too.
         let listed = server
@@ -210,9 +211,20 @@ async fn who_may_ask_decide_and_withdraw() {
         assert_eq!(listed.status_code(), StatusCode::OK, "{}", listed.text());
         assert_eq!(listed.json::<Value>()["amendments"].as_array().unwrap().len(), 1);
         assert_eq!(
-            server.get(&url).add_header(ch, cv).await.status_code(),
+            server.get(&url).add_header(ch.clone(), cv.clone()).await.status_code(),
             StatusCode::OK
         );
+
+        // A reader of the observation is told it is under amendment, by the same words as the request.
+        let obs = server
+            .get(&format!("/api/patients/{pid}/observations"))
+            .add_header(ch.clone(), cv.clone())
+            .await;
+        assert_eq!(obs.status_code(), StatusCode::OK, "{}", obs.text());
+        let obs: Value = obs.json();
+        let notices = &obs["amendment_notices"][&observation_id];
+        assert_eq!(notices.as_array().map(Vec::len), Some(1), "{obs}");
+        assert_eq!(notices[0], accepted["notice"], "{obs}");
 
         // The audit trail names the request and its state, never the words in it.
         let rows = ctx
