@@ -9,6 +9,7 @@
   import { loadAllergies, type AllergyLoad } from "#lib/allergies.js";
   import { patientProblemList } from "#lib/conflicts.js";
   import MergeSection from "#lib/MergeSection.svelte";
+  import AmendmentsSection from "#lib/AmendmentsSection.svelte";
   import VitalsSection from "#lib/VitalsSection.svelte";
   import PatientBanner from "#lib/PatientBanner.svelte";
   import PatientFields from "#lib/PatientFields.svelte";
@@ -341,6 +342,11 @@
   {/if}
   <!-- Reloads when emergency access is opened: a refusal under no care relationship may lift. -->
   <VitalsSection
+    patientId={stored.id}
+    siteZone={stored.site_time_zone ?? "UTC"}
+    refresh={glassUntil}
+  />
+  <AmendmentsSection
     patientId={stored.id}
     siteZone={stored.site_time_zone ?? "UTC"}
     refresh={glassUntil}

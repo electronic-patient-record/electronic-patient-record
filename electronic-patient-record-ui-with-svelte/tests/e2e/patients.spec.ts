@@ -1287,6 +1287,68 @@ test("a reading under an amendment request carries the notice, including a refus
   await axe(page);
 });
 
+test("a clinician reads a request to correct a record and refuses it with a ground and a reason", async ({
+  page,
+}) => {
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) => json(route, 200, ANN));
+  await page.route("**/api/proxy/api/patients/*/observations", (route) => json(route, 200, { observations: [] }));
+  let sent: Record<string, unknown> | null = null;
+  let state: Record<string, unknown> = { state: "requested" };
+  await page.route("**/api/proxy/api/patients/*/amendments/am-1", (route) => {
+    sent = route.request().postDataJSON();
+    state = { state: "denied", by: "dr-1", ground: "accurate-and-complete", reason: "the chart shows 72", disagreement: null };
+    return json(route, 200, {});
+  });
+  await page.route("**/api/proxy/api/patients/*/amendments", (route) =>
+    json(route, 200, {
+      amendments: [
+        {
+          id: "am-1",
+          patient_id: ANN.id,
+          version: 1,
+          request: {
+            target: { kind: "Observation", id: "o-1", version: 1 },
+            requester: "pat-1",
+            text: "<i>my pulse was never that fast</i>",
+            received_at: "2026-10-26T13:00:00Z",
+            extension: null,
+            state,
+          },
+          notice: { notice: "pending" },
+          due: "2026-12-25T13:00:00Z",
+          overdue: true,
+        },
+      ],
+    }),
+  );
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  const section = page.getByRole("region", { name: "Requests to correct a record" });
+  await expect(section).toContainText("<i>my pulse was never that fast</i>");
+  await expect(section).toContainText("Waiting for a decision.");
+  await expect(section).toContainText("This is overdue.");
+  await axe(page);
+  // No reason, nothing sent.
+  await section.getByRole("button", { name: "Refuse" }).click();
+  await section.getByRole("button", { name: "Send" }).click();
+  await expect(section.getByRole("status")).toHaveText("Give a reason.");
+  expect(sent).toBeNull();
+  await section.getByLabel("Reason").fill("the chart shows 72");
+  await section.getByRole("button", { name: "Send" }).click();
+  await expect(section.getByRole("status")).toHaveText("Choose a ground.");
+  await section.getByLabel("Ground for refusing").selectOption("accurate-and-complete");
+  await section.getByRole("button", { name: "Send" }).click();
+  await expect(section).toContainText("Refused.");
+  expect(sent).toEqual({
+    expected_version: 1,
+    step: "deny",
+    ground: "accurate-and-complete",
+    reason: "the chart shows 72",
+  });
+  await expect(section.getByRole("button", { name: "Refuse" })).toHaveCount(0);
+  await axe(page);
+});
+
 test("the vital signs say so when there are none, when the role may not see them, and when they could not be loaded", async ({
   page,
 }) => {

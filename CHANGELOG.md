@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-27 - UI: a clinician decides requests to correct a record (RC-4, H-035)
+
+- A section on the patient page lists the requests (patient's words as text, state, due date, "overdue" in words) and offers only the steps that fit: agree, refuse (ground and reason), record the correction (version), take the one extension (reason). Nothing is sent without its reason, ground or a whole version. 8 vitest, 1 Playwright test with axe (checks the exact body sent and that an empty reason sends nothing).
+- Not done: **the patient still cannot ask, withdraw or state disagreement from the UI**, so RC-4's acceptance is not met; the request does not show the record it is about (only its kind), so a clinician must find it on the page; the version typed is not checked against the record; no alert for new or overdue requests; English only, wording mine and unreviewed; not seen with a real service or Keycloak (the Playwright tests stub the API). Full UI gates run: check, vitest, 80 Playwright, all pass. Service gates not re-run (no service change).
+
 ## 2026-10-27 - UI: the amendment notice beside a reading (RC-4, H-035)
 
 - The vitals section shows each reading's `amendment_notices` under it: pending, corrected in version n, or refused with the ground and the patient's statement of disagreement (shown as text, not markup). An unknown notice kind is still told in general words. 5 vitest, 1 Playwright test with axe.
