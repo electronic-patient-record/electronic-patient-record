@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-27 - Service: amendment request store (RC-4)
+
+- Migration 15: append-only `amendment_versions` (triggers refuse update, delete, truncate) and `amendment_current`. `amendments_store`: `open`, `advance`, `list`, `current`, `notices`. A request must name a record that exists and a version it has; applying needs the record to really have that later version; stale versions conflict; every step keeps the event and its author. 2 Postgres tests (the whole course, refusals, a statement of disagreement reaching the notice, the triggers); `amendment_current` added to the current-views test.
+- Not done: **no route, audit row, policy resource or UI**, so nothing can be asked for over HTTP and the acceptance is still not met; nothing checks that the applied version actually corrects the disputed field; the audit trail for these writes does not exist yet (the rows are their own history, but not in `audit_events`); no hazard entry yet. Gates run: fmt, clippy, the whole suite against Postgres 18 (validator tests included).
+
 ## 2026-10-27 - Service: amendment request rules, pure (RC-4)
 
 - `amendment.rs`: one request's lifecycle as a pure function (`Request::apply(Event)`): accept, deny with a closed ground and a reason, apply as a later version, withdraw (requester only, before a decision), one statement of disagreement kept unedited, one 30-day extension with a reason; the decider is never the requester; `due`, `overdue` and the `notice` a reader must see. 8 tests.

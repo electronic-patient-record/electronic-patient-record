@@ -21,6 +21,7 @@
 //! cannot be edited; nothing leaves a final state.
 
 use chrono::{DateTime, Duration, Utc};
+use serde::{Deserialize, Serialize};
 
 /// Days allowed to act on a request. **A guess from HIPAA's 60; configurable later.**
 pub const ACT_WITHIN_DAYS: i64 = 60;
@@ -30,7 +31,7 @@ pub const EXTENSION_DAYS: i64 = 30;
 pub const STATEMENT_MAX: usize = 4000;
 
 /// The record a request is about: one kind, one id, and the version the patient read.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Target {
     /// The kind of record (`Observation`, `AllergyIntolerance`, ...).
     pub kind: String,
@@ -41,7 +42,8 @@ pub struct Target {
 }
 
 /// Why a request was refused. A closed list: a free-text ground cannot be counted or audited.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum Ground {
     /// The record was not made by this organisation.
     NotOurs,
@@ -54,7 +56,8 @@ pub enum Ground {
 }
 
 /// Where a request stands.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "state", rename_all = "kebab-case")]
 pub enum State {
     /// Waiting for a decision.
     Requested,
@@ -86,7 +89,7 @@ pub enum State {
 }
 
 /// One request.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Request {
     /// What it is about.
     pub target: Target,
@@ -103,7 +106,8 @@ pub struct Request {
 }
 
 /// What can happen to a request.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "event", rename_all = "kebab-case")]
 pub enum Event {
     /// Agree to the change.
     Accept {
@@ -168,6 +172,20 @@ pub enum Refusal {
 
 fn blank(s: &str) -> bool {
     s.trim().is_empty()
+}
+
+impl State {
+    /// The stored word for the state.
+    #[must_use]
+    pub fn word(&self) -> &'static str {
+        match self {
+            State::Requested => "requested",
+            State::Accepted { .. } => "accepted",
+            State::Applied { .. } => "applied",
+            State::Denied { .. } => "denied",
+            State::Withdrawn => "withdrawn",
+        }
+    }
 }
 
 impl Request {
@@ -323,7 +341,8 @@ impl Request {
 }
 
 /// What a reader is shown beside the disputed record.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "notice", rename_all = "kebab-case")]
 pub enum Notice {
     /// An amendment has been asked for and the record is not yet corrected.
     Pending,

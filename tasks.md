@@ -165,7 +165,7 @@ Conventions:
 - [ ] **RC-3 (M) — Provenance on every write.** Records the agent (human,
   device or AI), on-behalf-of, reason and activity.
   **Acceptance:** every write test asserts a Provenance. A write without an authenticated agent is refused.
-- [ ] **RC-4 (M) — Entered-in-error and amendment.** **Amendment rules landed 2026-10-27 (pure, nothing stored or served; `amendment.rs`, 8 tests).** **Not built:** storage, routes, UI, the reader's notice on a record, hazard entry; the acceptance is not met. Original: No delete endpoint for
+- [ ] **RC-4 (M) — Entered-in-error and amendment.** **Amendment rules and store landed 2026-10-27 (`amendment.rs`, 8 tests; append-only `amendment_versions`, 2 Postgres tests; nothing served).** **Not built:** routes, audit, policy, UI, the reader's notice on a record, hazard entry; the acceptance is not met. Original: No delete endpoint for
   clinical data. `entered-in-error` hides the resource from default views but
   keeps it in history. Patient-requested amendment workflow (HIPAA §164.526):
   accept or deny, with a statement of disagreement.

@@ -10,6 +10,7 @@
 pub mod adt_feed;
 pub mod allergies;
 pub mod amendment;
+pub mod amendments_store;
 pub mod api_error;
 pub mod app;
 pub mod audit;
