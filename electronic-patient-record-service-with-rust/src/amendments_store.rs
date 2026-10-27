@@ -221,6 +221,29 @@ pub async fn notices(
         .collect())
 }
 
+/// The notices for every record of one kind a patient has, by record id: the same notices as
+/// [`notices`], read once. A record with none has no key. A list that shows records of this kind
+/// carries this, and fails if it cannot be read: a dispute is never left out.
+///
+/// # Errors
+///
+/// [`StoreError::NotFound`] (no such patient).
+pub async fn notices_by_target(
+    db: &impl ConnectionTrait,
+    patient_id: &str,
+    kind: &str,
+) -> Result<std::collections::BTreeMap<String, Vec<Notice>>, StoreError> {
+    let mut out = std::collections::BTreeMap::<String, Vec<Notice>>::new();
+    for a in list(db, patient_id).await? {
+        if a.request.target.kind == kind
+            && let Some(n) = a.request.notice()
+        {
+            out.entry(a.request.target.id.clone()).or_default().push(n);
+        }
+    }
+    Ok(out)
+}
+
 /// Apply `event` to a request and append the result as the next version.
 ///
 /// # Errors

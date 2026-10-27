@@ -206,7 +206,7 @@ async fn who_may_ask_decide_and_withdraw() {
         let listed = server
             .get(&url)
             .add_header(ph.clone(), pv.clone())
-            .add_header(purpose, access)
+            .add_header(purpose.clone(), access.clone())
             .await;
         assert_eq!(listed.status_code(), StatusCode::OK, "{}", listed.text());
         assert_eq!(listed.json::<Value>()["amendments"].as_array().unwrap().len(), 1);
@@ -226,6 +226,38 @@ async fn who_may_ask_decide_and_withdraw() {
         assert_eq!(notices.as_array().map(Vec::len), Some(1), "{obs}");
         assert_eq!(notices[0], accepted["notice"], "{obs}");
 
+        // An allergy can be asked about too, and its list carries the notice the same way.
+        let allergy = server
+            .post(&format!("/api/patients/{pid}/allergies"))
+            .add_header(ch.clone(), cv.clone())
+            .json(&json!({ "allergy": { "substance": "penicillin", "status": "active" } }))
+            .await;
+        assert_eq!(allergy.status_code(), StatusCode::CREATED, "{}", allergy.text());
+        let allergy_id = allergy.json::<Value>()["id"].as_str().unwrap().to_string();
+        let asked = server
+            .post(&url)
+            .add_header(ph.clone(), pv.clone())
+            .add_header(purpose.clone(), access.clone())
+            .json(&json!({
+                "kind": "AllergyIntolerance", "target_id": allergy_id, "version": 1,
+                "text": "I am not allergic to penicillin"
+            }))
+            .await;
+        assert_eq!(asked.status_code(), StatusCode::CREATED, "{}", asked.text());
+        let asked: Value = asked.json();
+        let allergies = server
+            .get(&format!("/api/patients/{pid}/allergies"))
+            .add_header(ch.clone(), cv.clone())
+            .await;
+        assert_eq!(allergies.status_code(), StatusCode::OK, "{}", allergies.text());
+        let allergies: Value = allergies.json();
+        assert_eq!(
+            allergies["amendment_notices"][&allergy_id],
+            json!([asked["notice"]]),
+            "{allergies}"
+        );
+        assert!(allergies["amendment_notices"].get(&observation_id).is_none());
+
         // The audit trail names the request and its state, never the words in it.
         let rows = ctx
             .db
@@ -240,7 +272,7 @@ async fn who_may_ask_decide_and_withdraw() {
         assert!(rows.len() >= 4, "create, two reads and a step are audited: {}", rows.len());
         for row in rows {
             let d: String = row.try_get("", "d").unwrap();
-            for secret in ["pulse", "never that fast", "chart shows", "someone-else"] {
+            for secret in ["pulse", "never that fast", "chart shows", "someone-else", "penicillin"] {
                 assert!(!d.contains(secret), "{secret} leaked into the audit row: {d}");
             }
         }

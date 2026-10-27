@@ -1330,7 +1330,7 @@ test("a patient asks for a reading to be corrected, withdraws, and states disagr
     return json(route, 200, { amendments: list });
   });
   await page.goto("/en-001/my-record");
-  const ask = page.getByRole("heading", { name: "Ask for a reading to be corrected" });
+  const ask = page.getByRole("heading", { name: "Ask for a record to be corrected" });
   await expect(ask).toBeVisible();
   // Each request says which reading it is about, and shows the patient's words as text.
   await expect(page.getByText("About Heart rate").first()).toBeVisible();
@@ -1339,8 +1339,8 @@ test("a patient asks for a reading to be corrected, withdraws, and states disagr
 
   // Nothing is sent without a reading and words.
   await page.getByRole("button", { name: "Send the request" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Choose a reading." })).toBeVisible();
-  await page.getByLabel("Which reading").selectOption("o-1");
+  await expect(page.getByRole("status").filter({ hasText: "Choose a record." })).toBeVisible();
+  await page.getByLabel("Which record").selectOption("Observation:o-1");
   await page.getByLabel("What should change").fill("it was 62");
   await page.getByRole("button", { name: "Send the request" }).click();
   await expect(page.getByText("Your request was sent.")).toBeVisible();
@@ -1366,12 +1366,58 @@ test("a patient asks for a reading to be corrected, withdraws, and states disagr
   await axe(page);
 });
 
+test("an allergy can be asked about, and its request shows beside it", async ({ page }) => {
+  const allergy = {
+    id: "g-1",
+    patient_id: ANN.id,
+    version: 3,
+    author: "nurse-1",
+    recorded_at: "2026-10-26T14:00:00.000000Z",
+    allergy: { substance: "penicillin", criticality: "high", status: "active" },
+  };
+  await stubAllergies(page, {
+    allergies: [allergy],
+    statement: null,
+    summary: { state: "active", items: [{ substance: "penicillin", criticality: "high" }] },
+    amendment_notices: { "g-1": [{ notice: "pending" }] },
+  });
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) => json(route, 200, ANN));
+  await page.route("**/api/proxy/api/patients/*/observations", (route) => json(route, 200, { observations: [] }));
+  await page.route("**/api/proxy/api/patients/*/amendments", (route) => json(route, 200, { amendments: [] }));
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  const list = page.getByRole("region", { name: "Allergies" });
+  await expect(list.getByRole("note")).toContainText("No decision has been recorded.");
+  await axe(page);
+
+  // The patient can choose it, and the request names the allergy and the version read.
+  await page.route("**/api/proxy/api/me/patients", (route) =>
+    json(route, 200, { records: [{ relationship: "self", patient: ANN }] }),
+  );
+  let sent: unknown = null;
+  await page.unroute("**/api/proxy/api/patients/*/amendments");
+  await page.route("**/api/proxy/api/patients/*/amendments", (route) => {
+    if (route.request().method() === "POST") {
+      sent = route.request().postDataJSON();
+      return json(route, 201, {});
+    }
+    return json(route, 200, { amendments: [] });
+  });
+  await page.goto("/en-001/my-record");
+  await page.getByLabel("Which record").selectOption("AllergyIntolerance:g-1");
+  await page.getByLabel("What should change").fill("I am not allergic");
+  await page.getByRole("button", { name: "Send the request" }).click();
+  await expect(page.getByText("Your request was sent.")).toBeVisible();
+  expect(sent).toEqual({ kind: "AllergyIntolerance", target_id: "g-1", version: 3, text: "I am not allergic" });
+});
+
 test("a clinician reads a request to correct a record and refuses it with a ground and a reason", async ({
   page,
 }) => {
   await stubAllergies(page);
   await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) => json(route, 200, ANN));
-  await page.route("**/api/proxy/api/patients/*/observations", (route) => json(route, 200, { observations: [] }));
+  await page.route("**/api/proxy/api/patients/*/observations", (route) =>
+    json(route, 200, { observations: [OBS({ id: "o-1", value: 72 })] }),
+  );
   let sent: Record<string, unknown> | null = null;
   let state: Record<string, unknown> = { state: "requested" };
   await page.route("**/api/proxy/api/patients/*/amendments/am-1", (route) => {
@@ -1404,17 +1450,20 @@ test("a clinician reads a request to correct a record and refuses it with a grou
   await page.goto(`/en-001/patients/${ANN.id}`);
   const section = page.getByRole("region", { name: "Requests to correct a record" });
   await expect(section).toContainText("<i>my pulse was never that fast</i>");
+  // It says which reading it is about, and what waits: the count is in words, overdue included.
+  await expect(section).toContainText("About Heart rate");
+  await expect(section.getByRole("status")).toContainText("1 waiting for a decision. 1 overdue.");
   await expect(section).toContainText("Waiting for a decision.");
   await expect(section).toContainText("This is overdue.");
   await axe(page);
   // No reason, nothing sent.
   await section.getByRole("button", { name: "Refuse" }).click();
   await section.getByRole("button", { name: "Send" }).click();
-  await expect(section.getByRole("status")).toHaveText("Give a reason.");
+  await expect(section.getByRole("status").filter({ hasText: "Give a reason." })).toBeVisible();
   expect(sent).toBeNull();
   await section.getByLabel("Reason").fill("the chart shows 72");
   await section.getByRole("button", { name: "Send" }).click();
-  await expect(section.getByRole("status")).toHaveText("Choose a ground.");
+  await expect(section.getByRole("status").filter({ hasText: "Choose a ground." })).toBeVisible();
   await section.getByLabel("Ground for refusing").selectOption("accurate-and-complete");
   await section.getByRole("button", { name: "Send" }).click();
   await expect(section).toContainText("Refused.");

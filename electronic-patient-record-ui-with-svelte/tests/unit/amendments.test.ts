@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { askBody, disagreeBody, dueText, ownStepsFor, stateText, stepBody, stepsFor, type AmendmentView, type State } from "../../src/lib/amendments";
+import { aboutText, askBody, disagreeBody, dueText, openCounts, ownStepsFor, stateText, targetLines, stepBody, stepsFor, type AmendmentView, type State } from "../../src/lib/amendments";
 
 const view = (state: State, over: Partial<AmendmentView["request"]> = {}, top: Partial<AmendmentView> = {}): AmendmentView => ({
   id: "a1",
@@ -89,9 +89,9 @@ describe("the patient's side", () => {
     expect(ownStepsFor(view({ state: "withdrawn" }))).toEqual([]);
   });
   it("asks only about a chosen reading, in words, naming the version the patient read", () => {
-    expect(askBody(null, "x")).toEqual({ ok: false, problem: "Choose a reading." });
-    expect(askBody({ id: "o1", version: 2 }, "  ")).toEqual({ ok: false, problem: "Say what should change." });
-    expect(askBody({ id: "o1", version: 2 }, " it was 62 ")).toEqual({
+    expect(askBody(null, "x")).toEqual({ ok: false, problem: "Choose a record." });
+    expect(askBody({ kind: "Observation", id: "o1", version: 2 }, "  ")).toEqual({ ok: false, problem: "Say what should change." });
+    expect(askBody({ kind: "Observation", id: "o1", version: 2 }, " it was 62 ")).toEqual({
       ok: true,
       body: { kind: "Observation", target_id: "o1", version: 2, text: "it was 62" },
     });
@@ -102,5 +102,29 @@ describe("the patient's side", () => {
       ok: true,
       body: { expected_version: 2, step: "disagree", statement: "  I disagree.\n" },
     });
+  });
+});
+
+describe("naming what a request is about, and counting what waits", () => {
+  const obs = { id: "o1", patient_id: "p1", version: 1, author: "n", recorded_at: "2026-10-26T10:00:00Z", site_zone: "UTC", code: "8867-4", value: 72, unit: "/min", effective_at: "2026-10-26T13:30:00Z", status: "final", flag: null } as const;
+  const allergy = { id: "g1", patient_id: "p1", version: 2, author: "n", recorded_at: "2026-10-26T10:00:00Z", allergy: { substance: "penicillin", criticality: "high", status: "active" } } as const;
+  it("names a reading or an allergy, and falls back to the kind when the record is not loaded", () => {
+    const lines = targetLines([obs], [allergy], "UTC");
+    const on = (kind: string, id: string) => view({ state: "requested" }, { target: { kind, id, version: 1 } });
+    expect(aboutText(on("Observation", "o1"), lines)).toContain("Heart rate");
+    expect(aboutText(on("AllergyIntolerance", "g1"), lines)).toContain("penicillin");
+    expect(aboutText(on("Observation", "gone"), lines)).toBe("Observation");
+    // The same id under the other kind is not the same record.
+    expect(aboutText(on("AllergyIntolerance", "o1"), lines)).toBe("AllergyIntolerance");
+  });
+  it("counts only what is undecided, and the overdue among it", () => {
+    const rows = [
+      view({ state: "requested" }, {}, { overdue: true }),
+      view({ state: "accepted", by: "d", reason: "r" }),
+      view({ state: "withdrawn" }, {}, { overdue: true }),
+      view({ state: "applied", version: 2 }),
+    ];
+    expect(openCounts(rows)).toEqual({ open: 2, overdue: 1 });
+    expect(openCounts([])).toEqual({ open: 0, overdue: 0 });
   });
 });

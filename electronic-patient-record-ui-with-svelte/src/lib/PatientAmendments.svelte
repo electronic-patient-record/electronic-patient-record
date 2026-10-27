@@ -7,14 +7,18 @@
   import { call, commonProblem } from "./api.js";
   import { siteWhenText } from "./access-log.js";
   import {
+    aboutText,
     askBody,
     disagreeBody,
     dueText,
     loadAmendments,
     ownStepsFor,
     stateText,
+    targetLines,
     type AmendmentView,
+    type TargetKind,
   } from "./amendments.js";
+  import { allergyLine, loadAllergies, type StoredAllergy } from "./allergies.js";
   import { STRINGS } from "./strings.js";
   import { loadObservations, vitalLine, type StoredObservation } from "./vitals.js";
 
@@ -25,6 +29,7 @@
   let status = $state<number | null>(null);
   let rows = $state<AmendmentView[]>([]);
   let readings = $state<StoredObservation[] | null>(null);
+  let allergies = $state<StoredAllergy[] | null>(null);
   let message = $state<string | null>(null);
 
   let reading = $state("");
@@ -33,26 +38,26 @@
   let statement = $state("");
 
   const standing = $derived((readings ?? []).filter((o) => o.status !== "entered-in-error"));
-  const byId = $derived(new Map((readings ?? []).map((o) => [o.id, o])));
+  const standingAllergies = $derived(
+    (allergies ?? []).filter((a) => a.allergy.status !== "entered-in-error"),
+  );
+  const lines = $derived(targetLines(readings ?? [], allergies ?? [], siteZone));
 
   async function load() {
-    const [a, o] = await Promise.all([
+    const [a, o, g] = await Promise.all([
       loadAmendments(patientId, { purpose: PURPOSE }),
       loadObservations(patientId, { purpose: PURPOSE }),
+      loadAllergies(patientId, PURPOSE),
     ]);
     status = a.status;
     rows = a.amendments ?? [];
     readings = o.observations;
+    allergies = g.data?.allergies ?? null;
   }
   $effect(() => {
     void patientId;
     void load();
   });
-
-  function about(a: AmendmentView): string {
-    const o = byId.get(a.request.target.id);
-    return o ? vitalLine(o, siteZone) : a.request.target.kind;
-  }
 
   function report(res: { status: number; body: { errors?: string[] } | null }, ok: number, done: string) {
     const common = commonProblem(res.status);
@@ -68,8 +73,13 @@
     event.preventDefault();
     await busy.run(async () => {
       message = null;
-      const o = standing.find((x) => x.id === reading);
-      const built = askBody(o ? { id: o.id, version: o.version } : null, text);
+      // The choice is `kind:id`.
+      const [kind, id] = reading.split(":") as [TargetKind, string];
+      const found =
+        kind === "Observation"
+          ? standing.find((x) => x.id === id)
+          : standingAllergies.find((x) => x.id === id);
+      const built = askBody(found ? { kind, id: found.id, version: found.version } : null, text);
       if (!built.ok) {
         message = built.problem;
         return;
@@ -124,16 +134,27 @@
   <p>{STRINGS.askCouldNot}</p>
 {:else}
   <p>{STRINGS.askIntro}</p>
-  {#if standing.length === 0}
+  {#if standing.length + standingAllergies.length === 0}
     <p>{STRINGS.askNoReadings}</p>
   {:else}
     <form onsubmit={ask}>
       <label for="ask-r-{patientId}">{STRINGS.askReading}</label>
       <select id="ask-r-{patientId}" bind:value={reading}>
         <option value=""></option>
-        {#each standing as o (o.id)}
-          <option value={o.id}>{vitalLine(o, siteZone)}</option>
-        {/each}
+        {#if standing.length}
+          <optgroup label={STRINGS.askReadingGroup}>
+            {#each standing as o (o.id)}
+              <option value={`Observation:${o.id}`}>{vitalLine(o, siteZone)}</option>
+            {/each}
+          </optgroup>
+        {/if}
+        {#if standingAllergies.length}
+          <optgroup label={STRINGS.askAllergyGroup}>
+            {#each standingAllergies as g (g.id)}
+              <option value={`AllergyIntolerance:${g.id}`}>{allergyLine(g)}</option>
+            {/each}
+          </optgroup>
+        {/if}
       </select>
       <label for="ask-t-{patientId}">{STRINGS.askText}</label>
       <textarea id="ask-t-{patientId}" bind:value={text}></textarea>
@@ -148,7 +169,7 @@
       {#each rows as a (a.id)}
         {@const s = a.request.state}
         <li>
-          <strong>{STRINGS.askAboutReading.replace("{reading}", about(a))}</strong>
+          <strong>{STRINGS.askAboutReading.replace("{reading}", aboutText(a, lines))}</strong>
           · {siteWhenText(a.request.received_at, siteZone)}
           <p>{a.request.text}</p>
           <p>{stateText(s)} {dueText(a, siteZone)}</p>

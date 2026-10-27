@@ -5,10 +5,15 @@
   // acting is the token. The patient's words are shown as text. Nothing is sent without its reason.
   import { call, commonProblem } from "./api.js";
   import { siteWhenText } from "./access-log.js";
+  import { loadAllergies, type StoredAllergy } from "./allergies.js";
+  import { loadObservations, type StoredObservation } from "./vitals.js";
   import {
     GROUNDS,
+    aboutText,
     dueText,
     loadAmendments,
+    openCounts,
+    targetLines,
     stateText,
     stepBody,
     stepsFor,
@@ -27,6 +32,10 @@
 
   let status = $state<number | null>(null);
   let rows = $state<AmendmentView[]>([]);
+  let observations = $state<StoredObservation[]>([]);
+  let allergies = $state<StoredAllergy[]>([]);
+  const lines = $derived(targetLines(observations, allergies, siteZone));
+  const counts = $derived(openCounts(rows));
   let message = $state<string | null>(null);
   // The one step being filled in, on one request.
   let open = $state<{ id: string; step: StepName } | null>(null);
@@ -46,16 +55,25 @@
   async function load() {
     const mine = ++ticket;
     const forId = patientId;
-    const res = await loadAmendments(forId);
+    const [res, obs, alg] = await Promise.all([
+      loadAmendments(forId),
+      loadObservations(forId),
+      loadAllergies(forId),
+    ]);
     if (mine !== ticket || forId !== patientId) return;
     status = res.status;
     rows = res.amendments ?? [];
+    // A record this role cannot read is not named; the request still shows its kind.
+    observations = obs.observations ?? [];
+    allergies = alg.data?.allergies ?? [];
   }
   $effect(() => {
     void patientId;
     void refresh;
     status = null;
     rows = [];
+    observations = [];
+    allergies = [];
     open = null;
     void load();
   });
@@ -108,11 +126,17 @@
   {:else if rows.length === 0}
     <p>{STRINGS.amendNone}</p>
   {:else}
+    {#if counts.open > 0}
+      <p role="status">
+        {STRINGS.amendOpenCount.replace("{n}", String(counts.open))}
+        {#if counts.overdue > 0}<strong>{STRINGS.amendOverdueCount.replace("{n}", String(counts.overdue))}</strong>{/if}
+      </p>
+    {/if}
     <ul>
       {#each rows as a (a.id)}
         {@const s = a.request.state}
         <li>
-          <strong>{STRINGS.amendAbout.replace("{kind}", a.request.target.kind)}</strong>
+          <strong>{STRINGS.amendAbout.replace("{kind}", aboutText(a, lines))}</strong>
           · {STRINGS.amendAsked.replace("{when}", siteWhenText(a.request.received_at, siteZone))}
           <p>{STRINGS.amendText} {a.request.text}</p>
           <p>{stateText(s)} {dueText(a, siteZone)}</p>

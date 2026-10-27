@@ -110,6 +110,9 @@ pub struct AllergyList {
     pub statement: Option<store::Assertion>,
     /// The banner state.
     pub summary: store::Summary,
+    /// What a reader must be told about each allergy that has an amendment request (RC-4), by allergy
+    /// id, newest first. An allergy with none has no key. The list fails rather than leave one out.
+    pub amendment_notices: std::collections::BTreeMap<String, Vec<crate::amendment::Notice>>,
 }
 
 pub(super) async fn list_service(
@@ -165,10 +168,18 @@ pub(super) async fn list_service(
         serde_json::json!({ "allergies": all.len(), "summary": state }),
     )
     .await?;
+    let amendment_notices =
+        crate::amendments_store::notices_by_target(&ctx.db, patient, "AllergyIntolerance")
+            .await
+            .map_err(|e| match e {
+                crate::patients_store::StoreError::BadQuery(m) => ApiError::invalid(vec![m]),
+                other => ApiError::from(&other),
+            })?;
     Ok(AllergyList {
         allergies: all,
         statement,
         summary,
+        amendment_notices,
     })
 }
 

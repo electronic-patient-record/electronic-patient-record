@@ -154,20 +154,10 @@ pub(super) async fn list_service(
         serde_json::json!({ "observations": all.len() }),
     )
     .await?;
-    let mut amendment_notices = std::collections::BTreeMap::<String, Vec<_>>::new();
-    for a in crate::amendments_store::list(&ctx.db, patient)
-        .await
-        .map_err(failure)?
-    {
-        if a.request.target.kind == "Observation"
-            && let Some(n) = a.request.notice()
-        {
-            amendment_notices
-                .entry(a.request.target.id.clone())
-                .or_default()
-                .push(n);
-        }
-    }
+    let amendment_notices =
+        crate::amendments_store::notices_by_target(&ctx.db, patient, "Observation")
+            .await
+            .map_err(failure)?;
     Ok(ObservationList {
         observations: all,
         amendment_notices,

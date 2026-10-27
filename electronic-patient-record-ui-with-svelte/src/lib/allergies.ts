@@ -6,6 +6,7 @@
 import { siteWhenText } from "./access-log.js";
 import { call } from "./api.js";
 import { STRINGS } from "./strings.js";
+import type { Notice } from "./vitals.js";
 
 export type Criticality = "low" | "high" | "unable-to-assess";
 export type AllergyStatus = "active" | "inactive" | "entered-in-error";
@@ -48,6 +49,19 @@ export interface AllergyData {
     no_known_allergies: boolean;
   } | null;
   summary: AllergySummary;
+  /** What a reader must be told about each allergy with an amendment request (RC-4), by id. */
+  amendment_notices?: Record<string, Notice[]>;
+}
+
+/** One allergy in a line: the substance, its risk in words, and its status. */
+export function allergyLine(a: StoredAllergy): string {
+  return [
+    a.allergy.substance,
+    a.allergy.criticality ? `(${STRINGS.allergyCriticalities[a.allergy.criticality]})` : "",
+    `· ${STRINGS.allergyStatusLabels[a.allergy.status]}`,
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
 
 /** What the API said: the status, and the data when it was 200. */

@@ -12,6 +12,7 @@
     StoredAllergy,
   } from "./allergies.js";
   import { STRINGS } from "./strings.js";
+  import { noticeText } from "./vitals.js";
 
   const busy = new Busy();
   let {
@@ -125,6 +126,9 @@
           · {STRINGS.allergyStatusLabels[a.allergy.status]}
           {#if a.allergy.reaction}· {a.allergy.reaction}{/if}
           {#if a.allergy.onset}· {a.allergy.onset}{/if}
+          {#each data.amendment_notices?.[a.id] ?? [] as n, i (i)}
+            <p role="note">{noticeText(n)}</p>
+          {/each}
           {#if a.allergy.status === "active"}
             <button disabled={busy.on} type="button" onclick={() => void change(a, "inactive")}>
               {STRINGS.allergyEnd}
