@@ -201,7 +201,7 @@ export interface VitalsLoad {
 
 export async function loadObservations(
   patientId: string,
-  options: { background?: boolean } = {},
+  options: { background?: boolean; purpose?: string } = {},
 ): Promise<VitalsLoad> {
   const res = await call<{
     observations: StoredObservation[];
@@ -210,7 +210,7 @@ export async function loadObservations(
     "GET",
     `/api/patients/${patientId}/observations`,
     undefined,
-    undefined,
+    options.purpose,
     options,
   );
   return {

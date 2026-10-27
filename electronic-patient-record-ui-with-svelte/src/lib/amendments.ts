@@ -105,14 +105,47 @@ export interface AmendmentsLoad {
 
 export async function loadAmendments(
   patientId: string,
-  options: { background?: boolean } = {},
+  options: { background?: boolean; purpose?: string } = {},
 ): Promise<AmendmentsLoad> {
   const res = await call<{ amendments: AmendmentView[] }>(
     "GET",
     `/api/patients/${patientId}/amendments`,
     undefined,
-    undefined,
+    options.purpose,
     options,
   );
   return { status: res.status, amendments: res.status === 200 ? res.body.amendments : null };
+}
+
+// ---- The patient's side ----
+
+/** The steps the requester is offered (the service still decides). */
+export function ownStepsFor(a: AmendmentView): ("withdraw" | "disagree")[] {
+  const s = a.request.state;
+  if (s.state === "requested") return ["withdraw"];
+  if (s.state === "denied" && !s.disagreement) return ["disagree"];
+  return [];
+}
+
+/** The body asking for a reading to be corrected, or the sentence saying what to fix. */
+export function askBody(
+  target: { id: string; version: number } | null,
+  text: string,
+): { ok: true; body: Record<string, unknown> } | { ok: false; problem: string } {
+  if (!target) return { ok: false, problem: STRINGS.askPickReading };
+  const t = text.trim();
+  if (!t) return { ok: false, problem: STRINGS.askTextNeeded };
+  return {
+    ok: true,
+    body: { kind: "Observation", target_id: target.id, version: target.version, text: t },
+  };
+}
+
+/** The body stating disagreement with a refusal; the statement is kept as written. */
+export function disagreeBody(
+  expectedVersion: number,
+  statement: string,
+): { ok: true; body: Record<string, unknown> } | { ok: false; problem: string } {
+  if (!statement.trim()) return { ok: false, problem: STRINGS.askStatementNeeded };
+  return { ok: true, body: { expected_version: expectedVersion, step: "disagree", statement } };
 }

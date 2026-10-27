@@ -1,6 +1,7 @@
 <script lang="ts">
   import { call, commonProblem, fetchBlob } from "#lib/api.js";
   import { loadAllergies, type AllergyLoad } from "#lib/allergies.js";
+  import PatientAmendments from "#lib/PatientAmendments.svelte";
   import PatientBanner from "#lib/PatientBanner.svelte";
   import {
     describe,
@@ -203,6 +204,7 @@
         {/each}
       </dl>
       <p>{STRINGS.version}: {entry.patient.version}</p>
+      <PatientAmendments patientId={entry.patient.id} siteZone={entry.patient.site_time_zone ?? "UTC"} />
       <h3 id="log-{entry.patient.id}">{STRINGS.accessLogTitle}</h3>
       {#if !log}
         <button type="button" disabled={logBusy.on} onclick={() => loadLog(entry.patient.id)}>

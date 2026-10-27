@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dueText, stateText, stepBody, stepsFor, type AmendmentView, type State } from "../../src/lib/amendments";
+import { askBody, disagreeBody, dueText, ownStepsFor, stateText, stepBody, stepsFor, type AmendmentView, type State } from "../../src/lib/amendments";
 
 const view = (state: State, over: Partial<AmendmentView["request"]> = {}, top: Partial<AmendmentView> = {}): AmendmentView => ({
   id: "a1",
@@ -76,5 +76,31 @@ describe("what a row says", () => {
   });
   it("still says something for a state it does not know", () => {
     expect(stateText({ state: "new" } as unknown as State)).toContain("cannot show");
+  });
+});
+
+describe("the patient's side", () => {
+  it("offers withdrawal only before a decision, and a statement only once, after a refusal", () => {
+    expect(ownStepsFor(view({ state: "requested" }))).toEqual(["withdraw"]);
+    expect(ownStepsFor(view({ state: "accepted", by: "d", reason: "r" }))).toEqual([]);
+    const denied = { state: "denied", by: "d", ground: "other", reason: "r" } as const;
+    expect(ownStepsFor(view(denied))).toEqual(["disagree"]);
+    expect(ownStepsFor(view({ ...denied, disagreement: "I disagree" }))).toEqual([]);
+    expect(ownStepsFor(view({ state: "withdrawn" }))).toEqual([]);
+  });
+  it("asks only about a chosen reading, in words, naming the version the patient read", () => {
+    expect(askBody(null, "x")).toEqual({ ok: false, problem: "Choose a reading." });
+    expect(askBody({ id: "o1", version: 2 }, "  ")).toEqual({ ok: false, problem: "Say what should change." });
+    expect(askBody({ id: "o1", version: 2 }, " it was 62 ")).toEqual({
+      ok: true,
+      body: { kind: "Observation", target_id: "o1", version: 2, text: "it was 62" },
+    });
+  });
+  it("keeps a statement exactly as written, and sends none that is blank", () => {
+    expect(disagreeBody(2, "  ")).toEqual({ ok: false, problem: "Write your statement." });
+    expect(disagreeBody(2, "  I disagree.\n")).toEqual({
+      ok: true,
+      body: { expected_version: 2, step: "disagree", statement: "  I disagree.\n" },
+    });
   });
 });

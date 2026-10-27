@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-27 - UI: a patient asks for a reading to be corrected (RC-4, H-035)
+
+- On `/my-record` a patient chooses one of their vital signs, says what should change, and sees their requests with the reading each is about and the reason for a refusal; they can withdraw one before a decision and add one statement of disagreement to a refusal. Sent under `patient-access`. 3 vitest, 1 Playwright test with axe (checks each body sent, the purpose, and that an empty form sends nothing).
+- Not done: only vital signs can be asked about (not allergies); a proxy is told it is not available, since the service gives it no scope; the clinician's list still shows only the kind of record; the 60-day clock is shown but nothing reminds anyone; English only, wording mine and unreviewed by a patient, clinician or privacy officer; not seen with a real service or Keycloak (Playwright stubs the API), so a real patient token reading `/observations` and posting an amendment has been exercised only by the service's login-on test, not through the UI. Full UI gates run: check, 214 vitest, 81 Playwright, all pass. Service gates not re-run (no service change).
+
 ## 2026-10-27 - UI: a clinician decides requests to correct a record (RC-4, H-035)
 
 - A section on the patient page lists the requests (patient's words as text, state, due date, "overdue" in words) and offers only the steps that fit: agree, refuse (ground and reason), record the correction (version), take the one extension (reason). Nothing is sent without its reason, ground or a whole version. 8 vitest, 1 Playwright test with axe (checks the exact body sent and that an empty reason sends nothing).

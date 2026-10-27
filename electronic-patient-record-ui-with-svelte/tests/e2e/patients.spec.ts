@@ -1287,6 +1287,85 @@ test("a reading under an amendment request carries the notice, including a refus
   await axe(page);
 });
 
+test("a patient asks for a reading to be corrected, withdraws, and states disagreement with a refusal", async ({
+  page,
+}) => {
+  await stubAllergies(page);
+  await page.route("**/api/proxy/api/me/patients", (route) =>
+    json(route, 200, { records: [{ relationship: "self", patient: ANN }] }),
+  );
+  await page.route("**/api/proxy/api/patients/*/observations", (route) =>
+    json(route, 200, { observations: [OBS({ id: "o-1", value: 72 })] }),
+  );
+  const sent: { method: string; body: unknown; purpose: string | null }[] = [];
+  const req = (state: Record<string, unknown>, id: string, text: string) => ({
+    id,
+    patient_id: ANN.id,
+    version: 1,
+    request: {
+      target: { kind: "Observation", id: "o-1", version: 1 },
+      requester: "me",
+      text,
+      received_at: "2026-10-26T13:00:00Z",
+      extension: null,
+      state,
+    },
+    notice: null,
+    due: "2026-12-25T13:00:00Z",
+    overdue: false,
+  });
+  let list = [
+    req({ state: "requested" }, "am-1", "<b>too fast</b>"),
+    req({ state: "denied", by: "dr", ground: "other", reason: "the chart agrees", disagreement: null }, "am-2", "wrong"),
+  ];
+  await page.route("**/api/proxy/api/patients/*/amendments/*", (route) => {
+    sent.push({ method: route.request().method(), body: route.request().postDataJSON(), purpose: route.request().headers()["x-purpose-of-use"] ?? null });
+    return json(route, 200, {});
+  });
+  await page.route("**/api/proxy/api/patients/*/amendments", (route) => {
+    if (route.request().method() === "POST") {
+      sent.push({ method: "POST", body: route.request().postDataJSON(), purpose: route.request().headers()["x-purpose-of-use"] ?? null });
+      return json(route, 201, {});
+    }
+    return json(route, 200, { amendments: list });
+  });
+  await page.goto("/en-001/my-record");
+  const ask = page.getByRole("heading", { name: "Ask for a reading to be corrected" });
+  await expect(ask).toBeVisible();
+  // Each request says which reading it is about, and shows the patient's words as text.
+  await expect(page.getByText("About Heart rate").first()).toBeVisible();
+  await expect(page.getByText("<b>too fast</b>")).toBeVisible();
+  await axe(page);
+
+  // Nothing is sent without a reading and words.
+  await page.getByRole("button", { name: "Send the request" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Choose a reading." })).toBeVisible();
+  await page.getByLabel("Which reading").selectOption("o-1");
+  await page.getByLabel("What should change").fill("it was 62");
+  await page.getByRole("button", { name: "Send the request" }).click();
+  await expect(page.getByText("Your request was sent.")).toBeVisible();
+  expect(sent).toEqual([
+    { method: "POST", body: { kind: "Observation", target_id: "o-1", version: 1, text: "it was 62" }, purpose: "patient-access" },
+  ]);
+
+  // Withdraw, then a statement of disagreement with the refusal.
+  await page.getByRole("button", { name: "Withdraw this request" }).click();
+  await expect(page.getByText("Your request was withdrawn.")).toBeVisible();
+  expect(sent.at(-1)).toEqual({ method: "PUT", body: { expected_version: 1, step: "withdraw" }, purpose: "patient-access" });
+  await page.getByRole("button", { name: "Add a statement that you disagree" }).click();
+  await page.getByRole("button", { name: "Add my statement" }).click();
+  await expect(page.getByText("Write your statement.")).toBeVisible();
+  await page.getByLabel(/^Your statement\./).fill("I disagree.");
+  await page.getByRole("button", { name: "Add my statement" }).click();
+  expect(sent.at(-1)).toEqual({
+    method: "PUT",
+    body: { expected_version: 1, step: "disagree", statement: "I disagree." },
+    purpose: "patient-access",
+  });
+  list = [];
+  await axe(page);
+});
+
 test("a clinician reads a request to correct a record and refuses it with a ground and a reason", async ({
   page,
 }) => {
