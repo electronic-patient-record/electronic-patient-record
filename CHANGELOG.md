@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-27 - Service: a vital sign as a FHIR Observation, pure mapping (RC-6, H-034)
+
+- `interop::fhir_observation::to_fhir` turns one stored observation into a typed R4 `Observation`: `vital-signs` category, LOINC code, UCUM `valueQuantity`, a missing value as `dataAbsentReason` (never zero), the flag computed on read as `interpretation` (none when the flag is null), the sender's range as `referenceRange` (left out if there is no unit). An entry in error is not exported; a record with neither value nor reason is refused. The critical range has no FHIR element and is not exported. 7 unit tests.
+- Not done: **nothing serves it** (no `/fhir/R4/Observation` route, so no gate, consent or audit path exists for it yet); not run through the HL7 validator; blood pressure stays two observations, not a panel; no `performer`, `encounter` or `device`; the data-absent and interpretation code choices are mine and unreviewed. Gates run: fmt, clippy, the full non-database suite (235 unit tests pass), link, status and llms checks; the database tests were not run.
+
 ## 2026-10-27 - UI: a vital sign's version history on the page (RC-6, H-034)
 
 - Each entry, standing or entered in error, has a "History" button that loads the service's versions route and lists every version oldest first: value (a missing value with its reason), where it sits, range, entered in error or not, time on the site's clock, author and reason ("no reason given" when empty). A retracted value stays visible. A 403 and a failed load say so in words; an open list closes when the entries reload so an old list is never shown beside a change. 1 stubbed Playwright test with axe (three versions, retraction, 403, 500).

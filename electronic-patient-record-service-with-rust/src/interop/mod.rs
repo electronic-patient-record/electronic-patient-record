@@ -3,6 +3,7 @@
 //! and SNOMED ones are library only (no listener yet: OR-3).
 //!
 //! - [`fhir_allergy`]: an allergy as a FHIR R4 `AllergyIntolerance` (out only).
+//! - [`fhir_observation`]: a vital sign as a FHIR R4 `Observation` (out only; library only, no route yet: RC-6).
 //! - [`fhir_audit`]: an audit row as a FHIR R4 `AuditEvent` (BALP-shaped).
 //! - [`fhir_patient`]: FHIR R4 `Patient` (crate `fhir`).
 //! - [`hl7_adt`]: HL7 v2 ADT patient feeds and their acknowledgements (crates `er7`, `hl7`).
@@ -13,6 +14,7 @@
 
 pub mod fhir_allergy;
 pub mod fhir_audit;
+pub mod fhir_observation;
 pub mod fhir_patient;
 pub mod hl7_adt;
 pub mod terminology;
