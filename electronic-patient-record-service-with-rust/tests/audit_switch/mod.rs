@@ -8,7 +8,7 @@ use sea_orm::{ConnectionTrait, DatabaseConnection, Statement};
 use std::future::Future;
 
 /// The write routes driven with login off (`http_audit_refusal.rs`), spelled as in `routes::TABLE`.
-pub const LOGIN_OFF: [&str; 17] = [
+pub const LOGIN_OFF: [&str; 19] = [
     "POST /api/patients",
     "PUT /api/patients/{id}",
     "POST /fhir/R4/Patient",
@@ -18,6 +18,8 @@ pub const LOGIN_OFF: [&str; 17] = [
     "PUT /api/patients/{id}/allergy-statement",
     "POST /api/patients/{id}/observations",
     "PUT /api/patients/{id}/observations/{observation_id}",
+    "POST /api/patients/{id}/amendments",
+    "PUT /api/patients/{id}/amendments/{amendment_id}",
     "PUT /api/patients/{id}/photo",
     "POST /api/patients/{id}/photo/withdraw",
     "POST /api/patients/{id}/consents",
@@ -39,13 +41,14 @@ pub const LOGIN_ON: [&str; 3] = [
 pub static DRIVEN: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
 
 /// Every table a write route changes.
-pub const STORES: [&str; 11] = [
+pub const STORES: [&str; 12] = [
     "patient_versions",
     "consent_versions",
     "relationship_versions",
     "allergy_versions",
     "allergy_assertion_versions",
     "observation_versions",
+    "amendment_versions",
     "patient_photos",
     "patient_link_versions",
     "break_glass_grants",

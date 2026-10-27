@@ -229,6 +229,40 @@ async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_r
         )
         .await;
 
+        // Amendment request and a step on it: the requester asks about the observation, then withdraws
+        // (with login off one agent is both sides, and may not decide its own request).
+        refused_then_accepted(db, "POST /api/patients/{id}/amendments", || async {
+            let r = server
+                .post(&format!("/api/patients/{id}/amendments"))
+                .json(&json!({
+                    "kind": "Observation", "target_id": observation_id, "version": 1,
+                    "text": "the rate was 62, not 72"
+                }))
+                .await;
+            (r.status_code(), r.text())
+        })
+        .await;
+        let listed = server
+            .get(&format!("/api/patients/{id}/amendments"))
+            .await
+            .json::<Value>();
+        let amendment_id = listed["amendments"][0]["id"]
+            .as_str()
+            .expect("an amendment id")
+            .to_string();
+        refused_then_accepted(
+            db,
+            "PUT /api/patients/{id}/amendments/{amendment_id}",
+            || async {
+                let r = server
+                    .put(&format!("/api/patients/{id}/amendments/{amendment_id}"))
+                    .json(&json!({ "expected_version": 1, "step": "withdraw" }))
+                    .await;
+                (r.status_code(), r.text())
+            },
+        )
+        .await;
+
         // Photo put and withdraw.
         let png = HeaderValue::from_static("image/png");
         let ct = HeaderName::from_static("content-type");

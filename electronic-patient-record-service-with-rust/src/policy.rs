@@ -115,6 +115,8 @@ pub enum Resource {
     Observation,
     /// FHIR `MedicationRequest`.
     MedicationRequest,
+    /// A patient's request to amend a record, and the decision on it (`amendments_store.rs`).
+    Amendment,
     /// FHIR `AllergyIntolerance`.
     AllergyIntolerance,
     /// FHIR `DocumentReference` / `Composition` (notes).
@@ -137,12 +139,13 @@ pub enum Resource {
 
 impl Resource {
     /// Every resource kind, in a fixed order.
-    pub const ALL: [Resource; 13] = [
+    pub const ALL: [Resource; 14] = [
         Resource::PatientIdentity,
         Resource::Encounter,
         Resource::Condition,
         Resource::Observation,
         Resource::MedicationRequest,
+        Resource::Amendment,
         Resource::AllergyIntolerance,
         Resource::Document,
         Resource::Consent,
@@ -162,6 +165,7 @@ impl Resource {
             Resource::Condition => "Condition",
             Resource::Observation => "Observation",
             Resource::MedicationRequest => "MedicationRequest",
+            Resource::Amendment => "Amendment",
             Resource::AllergyIntolerance => "AllergyIntolerance",
             Resource::Document => "Document",
             Resource::Consent => "Consent",
@@ -490,9 +494,10 @@ impl Decision {
 fn permitted(role: Role, resource: Resource) -> &'static [Action] {
     use Action::{Create, Export, MarkEnteredInError as Eie, Read, Search, Update};
     use Resource::{
-        AllergyIntolerance as Allergy, AuditLog, BreakGlass as Glass, CareRelationship as Rel,
-        Condition, Consent as Cons, Document, Encounter, FeedQueue as Queue,
-        MedicationRequest as Meds, Observation, PatientIdentity as Identity, PatientLink as Link,
+        AllergyIntolerance as Allergy, Amendment, AuditLog, BreakGlass as Glass,
+        CareRelationship as Rel, Condition, Consent as Cons, Document, Encounter,
+        FeedQueue as Queue, MedicationRequest as Meds, Observation, PatientIdentity as Identity,
+        PatientLink as Link,
     };
     match (role, resource) {
         // Clinicians: full clinical work, and register or correct identity.
@@ -501,6 +506,10 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
             &[Read, Search, Create, Update, Eie]
         }
         (Role::Clinician, Cons) => &[Read],
+        // Amendments: a clinician reads and decides; the patient asks, withdraws and disagrees. Which
+        // step belongs to which role is checked by the route.
+        (Role::Clinician, Amendment) => &[Read, Search, Update],
+        (Role::Patient, Amendment) => &[Read, Search, Create, Update],
         // Nurses: record care; cannot withdraw others' entries; read-only on prescriptions.
         (Role::Nurse, Identity) => &[Read, Search],
         (Role::Nurse, Encounter | Condition | Observation | Allergy | Document) => {
@@ -1128,8 +1137,8 @@ mod tests {
                 }
             }
         }
-        // 10 roles × 13 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
-        assert_eq!(cells, 10 * 13 * 6 * 8 * 5 * 3 * 7 * 2);
+        // 10 roles × 14 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
+        assert_eq!(cells, 10 * 14 * 6 * 8 * 5 * 3 * 7 * 2);
         assert!(allows > 0);
     }
 

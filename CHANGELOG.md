@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-27 - Service: amendment request routes (RC-4, H-035)
+
+- `GET`/`POST /api/patients/{id}/amendments` and `PUT .../{amendment_id}` (one step: accept, deny, apply, extend, withdraw, disagree), policy resource `Amendment` (patient asks, withdraws and disagrees; clinician reads and decides). The requester and decider come from the token, never the body; each step belongs to one role; a stale version is 409; a write and its audit row are one transaction and the row never holds the request text, a reason or a statement. The policy matrix census grew from 13 to 14 resources (1,411,200 cells). `tests/http_amendments.rs` (login on: roles, token as requester, 403/409/422, no text in the audit rows) and both routes added to the audit-refusal test and its census. H-035 opened (status `open`).
+- Not done: **no UI, and nothing shows the notice beside a record** (UI or FHIR), so the acceptance (visible to readers) is still not met; no alert for a new or overdue request; nothing checks that an applied version corrects the disputed field; a proxy is refused; deciders are just the clinician role; the 60/30 days and grounds are unreviewed guesses; not run against a real Keycloak. Gates run: fmt, clippy, the whole service suite against Postgres 18 (single-threaded, ignored tests included), and the docs gates (links, status, llms). **Not run:** the two FHIR validator tests (they need the 200 MB `FHIR_VALIDATOR_JAR`; this change writes no FHIR resource) and the UI gates (no UI change).
+
 ## 2026-10-27 - Service: amendment request store (RC-4)
 
 - Migration 15: append-only `amendment_versions` (triggers refuse update, delete, truncate) and `amendment_current`. `amendments_store`: `open`, `advance`, `list`, `current`, `notices`. A request must name a record that exists and a version it has; applying needs the record to really have that later version; stale versions conflict; every step keeps the event and its author. 2 Postgres tests (the whole course, refusals, a statement of disagreement reaching the notice, the triggers); `amendment_current` added to the current-views test.

@@ -628,6 +628,12 @@ pub fn routes() -> Routes {
             "/{id}/observations/{observation_id}",
             put(super::observations::update),
         )
+        .add("/{id}/amendments", get(super::amendments::list))
+        .add("/{id}/amendments", post(super::amendments::create))
+        .add(
+            "/{id}/amendments/{amendment_id}",
+            put(super::amendments::update),
+        )
         .add("/{id}/photo", get(super::photos::read))
         .add("/{id}/photo", put(super::photos::put))
         .add("/{id}/photo/withdraw", post(super::photos::withdraw))
