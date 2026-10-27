@@ -116,6 +116,23 @@ export function vitalLine(o: StoredObservation, siteZone?: string): string {
   ].join(" · ");
 }
 
+/** One stored version, with the reason it was written. */
+export type ObservationVersion = StoredObservation & { reason?: string | null };
+
+export interface HistoryLoad {
+  status: number;
+  versions: ObservationVersion[] | null;
+}
+
+/** Every version of one observation, oldest first. */
+export async function loadHistory(patientId: string, observationId: string): Promise<HistoryLoad> {
+  const res = await call<{ versions: ObservationVersion[] }>(
+    "GET",
+    `/api/patients/${patientId}/observations/${observationId}/versions`,
+  );
+  return { status: res.status, versions: res.status === 200 ? res.body.versions : null };
+}
+
 export interface VitalsLoad {
   status: number;
   observations: StoredObservation[] | null;

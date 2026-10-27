@@ -8,6 +8,8 @@
     VITALS,
     enteredInErrorRecord,
     formToRequest,
+    loadHistory,
+    type ObservationVersion,
     loadObservations,
     nowInZone,
     rangeText,
@@ -44,6 +46,18 @@
 
   // The entry being corrected: the form is loaded from it and submits a new version of it.
   let correcting = $state<StoredObservation | null>(null);
+  // Open histories by observation id. A late answer for a closed or changed entry is dropped.
+  let histories = $state<Record<string, { status: number | null; versions: ObservationVersion[] }>>({});
+  async function toggleHistory(o: StoredObservation) {
+    if (histories[o.id]) {
+      delete histories[o.id];
+      return;
+    }
+    histories[o.id] = { status: null, versions: [] };
+    const res = await loadHistory(patientId, o.id);
+    if (!histories[o.id]) return;
+    histories[o.id] = { status: res.status, versions: res.versions ?? [] };
+  }
   let erroring = $state<string | null>(null);
   let errorWhy = $state("");
 
@@ -60,12 +74,15 @@
     if (mine !== ticket || forId !== patientId) return;
     status = res.status;
     rows = res.observations ?? [];
+    // A change makes an open history stale: close it rather than show an old list.
+    histories = {};
   }
   $effect(() => {
     void patientId;
     void refresh;
     status = null;
     rows = [];
+    histories = {};
     measuredAt = nowInZone(new Date(), siteZone);
     void load();
   });
@@ -166,6 +183,34 @@
   }
 </script>
 
+{#snippet historyList(o: StoredObservation)}
+  {@const h = histories[o.id]}
+  {#if h}
+    {#if h.status === null}
+      <p>{STRINGS.vitalHistoryLoading}</p>
+    {:else if h.status === 403}
+      <p>{STRINGS.vitalHistoryNotShown}</p>
+    {:else if h.status !== 200}
+      <p>{STRINGS.vitalHistoryCouldNot}</p>
+    {:else}
+      <ol aria-label={STRINGS.vitalHistory}>
+        {#each h.versions as v (v.version)}
+          <li>
+            {STRINGS.vitalVersion.replace("{n}", String(v.version))}
+            · {valueText(v)}
+            · {assessmentText(v)}
+            {#if rangeText(v.range)}· {STRINGS.vitalRange} {rangeText(v.range)}{/if}
+            {#if v.status === "entered-in-error"}· {STRINGS.vitalHistoryInError}{/if}
+            · {siteWhenText(v.recorded_at, siteZone)}
+            · {STRINGS.vitalBy} <code>{v.author}</code>
+            · {STRINGS.vitalHistoryReason} {v.reason || STRINGS.vitalHistoryNoReason}
+          </li>
+        {/each}
+      </ol>
+    {/if}
+  {/if}
+{/snippet}
+
 <section aria-labelledby="vitals-h">
   <h2 id="vitals-h">{STRINGS.vitalsTitle}</h2>
   {#if status === null}
@@ -188,6 +233,10 @@
             · <time datetime={o.effective_at}>{siteWhenText(o.effective_at, siteZone)}</time>
             · {STRINGS.vitalBy} <code>{o.author}</code>
             {#if o.version > 1}· {STRINGS.vitalVersion.replace("{n}", String(o.version))}{/if}
+            <button type="button" aria-expanded={!!histories[o.id]} onclick={() => toggleHistory(o)}>
+              {histories[o.id] ? STRINGS.vitalHistoryHide : STRINGS.vitalHistory}
+            </button>
+            {@render historyList(o)}
             {#if !correcting}
               <button type="button" onclick={() => startCorrection(o)}>{STRINGS.vitalCorrect}</button>
             {/if}
@@ -217,6 +266,10 @@
             <li>
               <s>{vitalName(o.code)} · {valueText(o)}</s>
               · <time datetime={o.effective_at}>{siteWhenText(o.effective_at, siteZone)}</time>
+              <button type="button" aria-expanded={!!histories[o.id]} onclick={() => toggleHistory(o)}>
+                {histories[o.id] ? STRINGS.vitalHistoryHide : STRINGS.vitalHistory}
+              </button>
+              {@render historyList(o)}
             </li>
           {/each}
         </ul>

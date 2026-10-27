@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-27 - UI: a vital sign's version history on the page (RC-6, H-034)
+
+- Each entry, standing or entered in error, has a "History" button that loads the service's versions route and lists every version oldest first: value (a missing value with its reason), where it sits, range, entered in error or not, time on the site's clock, author and reason ("no reason given" when empty). A retracted value stays visible. A 403 and a failed load say so in words; an open list closes when the entries reload so an old list is never shown beside a change. 1 stubbed Playwright test with axe (three versions, retraction, 403, 500).
+- Not done: no real-Keycloak run of the history; no side-by-side comparison; no highlighting of what changed between versions; English only; no clinician has reviewed the wording. Full UI gates run: check, 195 vitest, 77 Playwright, all pass. H-034 gap text updated, status unchanged.
+
 ## 2026-10-26 - Service: an observation's version history (RC-6, H-034)
 
 - `GET /api/patients/{id}/observations/{observation_id}/versions` returns every version oldest first, each with its reason, author, time and a flag computed now from that version's own range. Same authorisation as the list (role, care relationship or break-glass, purpose, consent; a proxy is refused), audited before the data leaves with ids and a count only. Not found for another patient's observation. Route-gate table updated. A store test (three versions with reasons, a retracted one still returned, another patient and a bad id not found) and an HTTP block (nurse, receptionist and proxy and no-relationship cases).

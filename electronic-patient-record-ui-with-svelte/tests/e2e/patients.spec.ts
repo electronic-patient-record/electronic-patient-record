@@ -2528,3 +2528,54 @@ test("correcting a vital loads it into the form, needs a reason, and sends a new
   await expect(section.getByText("version 2")).toBeVisible();
   await expect(section.getByRole("button", { name: "Record vital sign" })).toBeVisible();
 });
+
+test("a vital's history lists every version with its reason, keeps a retracted value visible, and says when it cannot be shown", async ({
+  page,
+}) => {
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, { ...ANN, site_time_zone: "America/New_York" }),
+  );
+  let historyStatus = 200;
+  await page.route("**/api/proxy/api/patients/*/observations", (route) =>
+    json(route, 200, {
+      observations: [OBS({ id: "o-9", version: 3, value: 72, status: "entered-in-error" }), OBS({ id: "o-8", version: 2, value: 88 })],
+    }),
+  );
+  await page.route("**/api/proxy/api/patients/*/observations/o-9/versions", (route) =>
+    json(route, 200, {
+      versions: [
+        OBS({ id: "o-9", version: 1, value: 172, reason: "on arrival", author: "nurse-1" }),
+        OBS({ id: "o-9", version: 2, value: 72, reason: "keyed 172 for 72", author: "nurse-2" }),
+        OBS({ id: "o-9", version: 3, value: 72, status: "entered-in-error", reason: null, author: "dr-1" }),
+      ],
+    }),
+  );
+  await page.route("**/api/proxy/api/patients/*/observations/o-8/versions", (route) =>
+    json(route, historyStatus, { error: "x" }),
+  );
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  const section = page.getByRole("region", { name: "Vital signs" });
+
+  // The retracted entry's history still shows the value it replaced.
+  await section.getByText("Entered in error (1)").click();
+  await section.getByRole("button", { name: "History" }).nth(1).click();
+  const list = section.getByRole("list", { name: "History" });
+  await expect(list.getByRole("listitem")).toHaveCount(3);
+  await expect(list.getByRole("listitem").nth(0)).toContainText("172 /min");
+  await expect(list.getByRole("listitem").nth(0)).toContainText("Reason: on arrival");
+  await expect(list.getByRole("listitem").nth(2)).toContainText("entered in error");
+  await expect(list.getByRole("listitem").nth(2)).toContainText("Reason: no reason given");
+  await axe(page);
+  await section.getByRole("button", { name: "Hide history" }).click();
+  await expect(list).toHaveCount(0);
+
+  // Refused and failed loads say so in words.
+  historyStatus = 403;
+  await section.getByRole("button", { name: "History" }).first().click();
+  await expect(section.getByText("The history is not shown to your role.")).toBeVisible();
+  await section.getByRole("button", { name: "Hide history" }).click();
+  historyStatus = 500;
+  await section.getByRole("button", { name: "History" }).first().click();
+  await expect(section.getByText("The history could not be loaded. The earlier versions still exist.")).toBeVisible();
+});
