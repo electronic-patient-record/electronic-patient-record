@@ -2579,3 +2579,38 @@ test("a vital's history lists every version with its reason, keeps a retracted v
   await section.getByRole("button", { name: "History" }).first().click();
   await expect(section.getByText("The history could not be loaded. The earlier versions still exist.")).toBeVisible();
 });
+
+test("the vital signs trend lists every standing reading per vital, newest first, with a gap shown as its reason", async ({
+  page,
+}) => {
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, { ...ANN, site_time_zone: "America/New_York" }),
+  );
+  await page.route("**/api/proxy/api/patients/*/observations", (route) =>
+    json(route, 200, {
+      observations: [
+        OBS({ id: "h1", value: 70, effective_at: "2026-10-26T12:00:00.000000Z" }),
+        OBS({ id: "h2", value: 130, range: { low: 60, high: 100 }, flag: "high", effective_at: "2026-10-26T14:00:00.000000Z" }),
+        OBS({ id: "h3", value: null, unit: null, absent_reason: "declined", effective_at: "2026-10-26T13:00:00.000000Z" }),
+        OBS({ id: "h4", value: 999, status: "entered-in-error", effective_at: "2026-10-26T15:00:00.000000Z" }),
+      ],
+    }),
+  );
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  const section = page.getByRole("region", { name: "Vital signs" });
+  await expect(section.getByRole("table")).toHaveCount(0);
+  await section.getByRole("button", { name: "Show readings over time" }).click();
+  const table = section.getByRole("table", { name: "Heart rate" });
+  const rows = table.getByRole("row");
+  await expect(rows).toHaveCount(4);
+  await expect(rows.nth(1)).toContainText("130 /min");
+  await expect(rows.nth(1)).toContainText("High");
+  await expect(rows.nth(2)).toContainText("No value: declined");
+  await expect(rows.nth(3)).toContainText("70 /min");
+  await expect(rows.nth(3)).toContainText("Not assessed (no range given)");
+  await expect(table).not.toContainText("999");
+  await axe(page);
+  await section.getByRole("button", { name: "Hide readings over time" }).click();
+  await expect(section.getByRole("table")).toHaveCount(0);
+});

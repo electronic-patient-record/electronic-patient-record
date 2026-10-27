@@ -7,6 +7,7 @@ import {
   nowInZone,
   parseNumber,
   rangeText,
+  trends,
   unitLabel,
   valueText,
   vitalLine,
@@ -225,5 +226,38 @@ describe("enteredInErrorRecord", () => {
     expect(r).not.toHaveProperty("value");
     expect(r).not.toHaveProperty("unit");
     expect(r.absent_reason).toBe("failed");
+  });
+});
+
+describe("trends", () => {
+  const at = (n: number, over: Partial<StoredObservation> = {}): StoredObservation => ({
+    ...base,
+    id: `o${n}`,
+    effective_at: `2026-10-26T1${n}:00:00Z`,
+    ...over,
+  });
+
+  it("groups by vital in the page's order, newest first, and leaves out entries in error", () => {
+    const out = trends([
+      at(1, { code: "8310-5", unit: "Cel", value: 36.6 }),
+      at(1, { value: 70 }),
+      at(3, { value: 90 }),
+      at(2, { value: 80 }),
+      at(4, { value: 999, status: "entered-in-error" }),
+    ]);
+    expect(out.map((t) => t.code)).toEqual(["8867-4", "8310-5"]);
+    expect(out[0]!.rows.map((o) => o.value)).toEqual([90, 80, 70]);
+  });
+
+  it("keeps a reading with no value as a row, so a gap is not a missing reading or a zero", () => {
+    const out = trends([at(1, { value: null, unit: null, absent_reason: "declined" }), at(2)]);
+    expect(out[0]!.rows).toHaveLength(2);
+    expect(valueText(out[0]!.rows[1]!)).toBe("No value: declined");
+  });
+
+  it("puts a code the page does not know last, under its code, and nothing at all gives nothing", () => {
+    const out = trends([at(1, { code: "99999-9" }), at(2)]);
+    expect(out.map((t) => t.name)).toEqual(["Heart rate", "99999-9"]);
+    expect(trends([])).toEqual([]);
   });
 });

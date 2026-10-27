@@ -116,6 +116,36 @@ export function vitalLine(o: StoredObservation, siteZone?: string): string {
   ].join(" · ");
 }
 
+/** One vital's readings over time. */
+export interface Trend {
+  code: string;
+  name: string;
+  /** Newest first. */
+  rows: StoredObservation[];
+}
+
+/**
+ * The standing readings grouped by vital, in the order of `VITALS` (a code this page does not know
+ * comes last, under its code), each newest first. An entry in error is left out. A reading with no
+ * value stays as a row, with its reason: a gap is not a zero and not a missing row. Nothing is
+ * averaged, smoothed or interpolated, and no flag is computed here.
+ */
+export function trends(observations: StoredObservation[]): Trend[] {
+  const standing = observations.filter((o) => o.status !== "entered-in-error");
+  const known: string[] = VITALS.map((v) => v.loinc);
+  const codes = [
+    ...known.filter((c) => standing.some((o) => o.code === c)),
+    ...[...new Set(standing.map((o) => o.code))].filter((c) => !known.includes(c)).sort(),
+  ];
+  return codes.map((code) => ({
+    code,
+    name: vitalName(code),
+    rows: standing
+      .filter((o) => o.code === code)
+      .sort((a, b) => Date.parse(b.effective_at) - Date.parse(a.effective_at)),
+  }));
+}
+
 /** One stored version, with the reason it was written. */
 export type ObservationVersion = StoredObservation & { reason?: string | null };
 

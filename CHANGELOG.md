@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-27 - UI: vital signs trend table (RC-6, RC-8, H-034)
+
+- "Show readings over time" opens one table per vital (page order), newest first: time on the site's clock, value, and where it sits in the service's words. A reading with no value stays a row with its reason; entries in error are left out; nothing is averaged, smoothed, charted or flagged by the page. The tables are drawn only when opened. 3 vitest (`trends`), 1 stubbed Playwright test with axe.
+- Not done: no chart, no filter by time, no highlighting of change, no NEWS2 (DO-5); English only; no clinician has used it or reviewed the wording; no real-Keycloak run; reads whatever the list returns (no pagination, so a long history is one long table). H-034 gap text updated, status unchanged. Full UI gates run: check, 198 vitest, 78 Playwright, all pass.
+
 ## 2026-10-27 - Service: terminology service trait and fixture (RC-7)
 
 - `terminology.rs`: `TerminologyService` (`lookup`, `validate_code`, `expand`, `translate`) and an embedded `Fixture`. Every call must name a pinned version; none, blank or another version is refused (`Unpinned`) on all four operations before any lookup. A missing code is `result: false` in `validate_code`; a translate with no target is an empty list. The fixture's value set equals the codes `observations::SUPPORTED` accepts, so the two cannot drift unnoticed. 5 tests, no network.

@@ -13,6 +13,7 @@
     loadObservations,
     nowInZone,
     rangeText,
+    trends,
     unitLabel,
     valueText,
     assessmentText,
@@ -58,6 +59,8 @@
     if (!histories[o.id]) return;
     histories[o.id] = { status: res.status, versions: res.versions ?? [] };
   }
+  let showTrend = $state(false);
+  const trendList = $derived(showTrend ? trends(rows) : []);
   let erroring = $state<string | null>(null);
   let errorWhy = $state("");
 
@@ -257,6 +260,35 @@
           </li>
         {/each}
       </ul>
+    {/if}
+    {#if standing.length}
+      <button type="button" aria-expanded={showTrend} onclick={() => (showTrend = !showTrend)}>
+        {showTrend ? STRINGS.vitalTrendHide : STRINGS.vitalTrendShow}
+      </button>
+      {#if showTrend}
+        <p>{STRINGS.vitalTrendNote}</p>
+        {#each trendList as t (t.code)}
+          <table>
+            <caption>{t.name}</caption>
+            <thead>
+              <tr>
+                <th scope="col">{STRINGS.vitalTrendTime}</th>
+                <th scope="col">{STRINGS.vitalTrendValue}</th>
+                <th scope="col">{STRINGS.vitalTrendWhere}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each t.rows as o (o.id)}
+                <tr>
+                  <td><time datetime={o.effective_at}>{siteWhenText(o.effective_at, siteZone)}</time></td>
+                  <td>{valueText(o)}</td>
+                  <td>{assessmentText(o)}</td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        {/each}
+      {/if}
     {/if}
     {#if mistaken.length}
       <details>
