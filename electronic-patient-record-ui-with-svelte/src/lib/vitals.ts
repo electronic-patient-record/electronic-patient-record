@@ -36,6 +36,35 @@ export interface StoredObservation {
   flag: Flag | null;
 }
 
+/** What a reader of a record must be told about a request to amend it (RC-4, H-035). */
+export type Notice =
+  | { notice: "pending" }
+  | { notice: "amended"; version: number }
+  | { notice: "refused"; ground: string; disagreement?: string | null };
+
+/**
+ * The notice in words. A notice this page does not know is still told, in general words: a dispute
+ * is never left out because the page is older than the service.
+ */
+export function noticeText(n: Notice): string {
+  switch (n.notice) {
+    case "pending":
+      return STRINGS.noticePending;
+    case "amended":
+      return STRINGS.noticeAmended.replace("{n}", String(n.version));
+    case "refused": {
+      const ground =
+        (STRINGS.noticeGrounds as Record<string, string>)[n.ground] ?? STRINGS.noticeGroundUnknown;
+      const said = n.disagreement?.trim()
+        ? ` ${STRINGS.noticeStatement} ${n.disagreement.trim()}`
+        : ` ${STRINGS.noticeNoStatement}`;
+      return `${STRINGS.noticeRefused} ${ground}${said}`;
+    }
+    default:
+      return STRINGS.noticeUnknown;
+  }
+}
+
 /** The vital signs the service accepts: one unit each, no conversion. */
 export const VITALS = [
   { loinc: "8480-6", key: "systolic", unit: "mm[Hg]" },
@@ -166,13 +195,18 @@ export async function loadHistory(patientId: string, observationId: string): Pro
 export interface VitalsLoad {
   status: number;
   observations: StoredObservation[] | null;
+  /** By observation id; an observation with no request has no key. */
+  notices: Record<string, Notice[]>;
 }
 
 export async function loadObservations(
   patientId: string,
   options: { background?: boolean } = {},
 ): Promise<VitalsLoad> {
-  const res = await call<{ observations: StoredObservation[] }>(
+  const res = await call<{
+    observations: StoredObservation[];
+    amendment_notices?: Record<string, Notice[]>;
+  }>(
     "GET",
     `/api/patients/${patientId}/observations`,
     undefined,
@@ -182,6 +216,7 @@ export async function loadObservations(
   return {
     status: res.status,
     observations: res.status === 200 ? res.body.observations : null,
+    notices: res.status === 200 ? (res.body.amendment_notices ?? {}) : {},
   };
 }
 

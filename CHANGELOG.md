@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-27 - UI: the amendment notice beside a reading (RC-4, H-035)
+
+- The vitals section shows each reading's `amendment_notices` under it: pending, corrected in version n, or refused with the ground and the patient's statement of disagreement (shown as text, not markup). An unknown notice kind is still told in general words. 5 vitest, 1 Playwright test with axe.
+- Not done: **the patient still cannot ask, and a clinician still cannot decide, from the UI** (no form or screen), so RC-4's acceptance is not met; no notice on allergies or in FHIR; no alert for new or overdue requests; English only and the wording (including the ground sentences) is mine and unreviewed by any clinician or privacy officer; not seen with a real service or Keycloak. Full UI gates run: check, 203 vitest, 79 Playwright, all pass. Service gates not re-run (no service change).
+
 ## 2026-10-27 - Service: amendment notices on the observation list (RC-4, H-035)
 
 - `GET /api/patients/{id}/observations` returns `amendment_notices`: for each observation with a request, the notice (pending, amended in version n, or refused with the patient's statement), newest first. If the requests cannot be read the list fails; a notice is never silently left out. `tests/http_amendments.rs` checks the list carries the same notice as the request.

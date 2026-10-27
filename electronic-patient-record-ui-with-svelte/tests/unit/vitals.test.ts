@@ -4,6 +4,7 @@ import {
   assessmentText,
   enteredInErrorRecord,
   formToRequest,
+  noticeText,
   nowInZone,
   parseNumber,
   rangeText,
@@ -13,6 +14,7 @@ import {
   vitalLine,
   vitalName,
   wallTimeToUtc,
+  type Notice,
   type StoredObservation,
   type VitalForm,
 } from "../../src/lib/vitals";
@@ -259,5 +261,42 @@ describe("trends", () => {
     const out = trends([at(1, { code: "99999-9" }), at(2)]);
     expect(out.map((t) => t.name)).toEqual(["Heart rate", "99999-9"]);
     expect(trends([])).toEqual([]);
+  });
+});
+
+describe("the notice beside a disputed record (RC-4, H-035)", () => {
+  it("tells a pending request without saying it was wrong or right", () => {
+    expect(noticeText({ notice: "pending" })).toBe(
+      "The patient has asked for this record to be corrected. No decision has been recorded.",
+    );
+  });
+
+  it("names the version a correction was made in", () => {
+    expect(noticeText({ notice: "amended", version: 3 })).toContain("version 3");
+  });
+
+  it("gives a refusal with the ground and the patient's statement, as the patient wrote it", () => {
+    const text = noticeText({
+      notice: "refused",
+      ground: "accurate-and-complete",
+      disagreement: "  My pulse was never that fast.  ",
+    });
+    expect(text).toContain("the record is accurate and complete as it stands.");
+    expect(text).toContain("The patient's statement of disagreement: My pulse was never that fast.");
+  });
+
+  it("says there is no statement when none was given, and never drops a ground it does not know", () => {
+    expect(noticeText({ notice: "refused", ground: "other", disagreement: null })).toContain(
+      "The patient has given no statement.",
+    );
+    expect(noticeText({ notice: "refused", ground: "new-ground" })).toContain(
+      "for a reason this page cannot show.",
+    );
+  });
+
+  it("still tells a notice kind it does not know", () => {
+    expect(noticeText({ notice: "something-new" } as unknown as Notice)).toContain(
+      "There is a request to correct this record.",
+    );
   });
 });

@@ -11,6 +11,8 @@
     loadHistory,
     type ObservationVersion,
     loadObservations,
+    noticeText,
+    type Notice,
     nowInZone,
     rangeText,
     trends,
@@ -34,6 +36,7 @@
 
   let status = $state<number | null>(null);
   let rows = $state<StoredObservation[]>([]);
+  let notices = $state<Record<string, Notice[]>>({});
   let message = $state<string | null>(null);
 
   let vital = $state<VitalKey>("heartRate");
@@ -77,6 +80,7 @@
     if (mine !== ticket || forId !== patientId) return;
     status = res.status;
     rows = res.observations ?? [];
+    notices = res.notices;
     // A change makes an open history stale: close it rather than show an old list.
     histories = {};
   }
@@ -85,6 +89,7 @@
     void refresh;
     status = null;
     rows = [];
+    notices = {};
     histories = {};
     measuredAt = nowInZone(new Date(), siteZone);
     void load();
@@ -186,6 +191,12 @@
   }
 </script>
 
+{#snippet noticeList(o: StoredObservation)}
+  {#each notices[o.id] ?? [] as n, i (i)}
+    <p role="note">{noticeText(n)}</p>
+  {/each}
+{/snippet}
+
 {#snippet historyList(o: StoredObservation)}
   {@const h = histories[o.id]}
   {#if h}
@@ -239,6 +250,7 @@
             <button type="button" aria-expanded={!!histories[o.id]} onclick={() => toggleHistory(o)}>
               {histories[o.id] ? STRINGS.vitalHistoryHide : STRINGS.vitalHistory}
             </button>
+            {@render noticeList(o)}
             {@render historyList(o)}
             {#if !correcting}
               <button type="button" onclick={() => startCorrection(o)}>{STRINGS.vitalCorrect}</button>
@@ -301,6 +313,7 @@
               <button type="button" aria-expanded={!!histories[o.id]} onclick={() => toggleHistory(o)}>
                 {histories[o.id] ? STRINGS.vitalHistoryHide : STRINGS.vitalHistory}
               </button>
+              {@render noticeList(o)}
               {@render historyList(o)}
             </li>
           {/each}

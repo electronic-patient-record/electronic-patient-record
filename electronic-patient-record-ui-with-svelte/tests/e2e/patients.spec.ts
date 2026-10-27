@@ -1251,6 +1251,42 @@ test("the vital signs list says where each value sits in words, and never calls 
   await axe(page);
 });
 
+test("a reading under an amendment request carries the notice, including a refusal with the patient's statement", async ({
+  page,
+}) => {
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) => json(route, 200, ANN));
+  await page.route("**/api/proxy/api/patients/*/observations", (route) =>
+    json(route, 200, {
+      observations: [
+        OBS({ id: "o-a", value: 72 }),
+        OBS({ id: "o-b", code: "8310-5", value: 36.6, unit: "Cel" }),
+        OBS({ id: "o-c", code: "29463-7", value: 70, unit: "kg" }),
+      ],
+      amendment_notices: {
+        "o-a": [{ notice: "pending" }],
+        "o-b": [
+          {
+            notice: "refused",
+            ground: "accurate-and-complete",
+            disagreement: "<b>I was not feverish.</b>",
+          },
+        ],
+      },
+    }),
+  );
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  const section = page.getByRole("region", { name: "Vital signs" });
+  const heart = section.getByRole("listitem").filter({ hasText: "Heart rate" });
+  await expect(heart.getByRole("note")).toContainText("No decision has been recorded.");
+  const temp = section.getByRole("listitem").filter({ hasText: "Temperature" });
+  await expect(temp.getByRole("note")).toContainText("The request was refused");
+  // The statement is shown as text, never as markup.
+  await expect(temp.getByRole("note")).toContainText("<b>I was not feverish.</b>");
+  await expect(section.getByRole("listitem").filter({ hasText: "Weight" }).getByRole("note")).toHaveCount(0);
+  await axe(page);
+});
+
 test("the vital signs say so when there are none, when the role may not see them, and when they could not be loaded", async ({
   page,
 }) => {
