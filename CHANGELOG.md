@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-27 - Service: FHIR Observation search by patient (RC-6, H-034)
+
+- `GET /fhir/R4/Observation?patient=` returns a `searchset` of the patient's vital signs through the same service function as the JSON list (`list_service`, now shared), so the role gate, care relationship, purpose, consent, proxy refusal and the audit row are the same. Other parameters are 400. A list with nothing standing, or only entries in error, carries an `OperationOutcome` warning that it is not a normal reading; a 403 says it does not mean there are no vital signs. Capability statement and route gate updated. Validator test gains a flagged vital sign and a declined one; both pass the HL7 validator 7.0.3 against base R4 with `-tx n/a`.
+- Not done: read by id, create, update; no UK Core or US Core profile validation; the validator does not look codes up; no real-Keycloak run of the FHIR route; no clinician has reviewed the warning wording. Gates run: fmt, clippy, the whole suite against Postgres 18 with the validator tests run (all pass).
+
 ## 2026-10-27 - Service: a vital sign as a FHIR Observation, pure mapping (RC-6, H-034)
 
 - `interop::fhir_observation::to_fhir` turns one stored observation into a typed R4 `Observation`: `vital-signs` category, LOINC code, UCUM `valueQuantity`, a missing value as `dataAbsentReason` (never zero), the flag computed on read as `interpretation` (none when the flag is null), the sender's range as `referenceRange` (left out if there is no unit). An entry in error is not exported; a record with neither value nor reason is refused. The critical range has no FHIR element and is not exported. 7 unit tests.

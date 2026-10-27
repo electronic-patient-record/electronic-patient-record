@@ -21,8 +21,8 @@ no network, database or compilation; counts are source lines, not test runs):
 | Matcher version | 0.4.0 | `version` in the matcher `Cargo.toml` |
 | Front-end version | 0.1.0 | `version` in the front-end `package.json` |
 | Migrations | 14 | files named `m2*.rs` in `migration/src` |
-| Route registrations | 46 | `.add(` calls in `src/controllers/*.rs` |
-| Service tests | 363, plus 102 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
+| Route registrations | 47 | `.add(` calls in `src/controllers/*.rs` |
+| Service tests | 364, plus 102 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
 | Matcher tests | 96, plus 0 `#[ignore]`d | the same patterns in the matcher |
 | Front-end unit tests (vitest) | 179 | `it(` / `test(` lines in `tests/unit` |
 | Front-end end-to-end tests (Playwright) | 73 | `test(` lines in `tests/e2e` |

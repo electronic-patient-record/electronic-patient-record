@@ -136,6 +136,12 @@ pub const TABLE: &[(&str, &str, Resource, Action)] = &[
     ),
     (
         "GET",
+        "/fhir/R4/Observation",
+        Resource::Observation,
+        Action::Read,
+    ),
+    (
+        "GET",
         "/api/feed/refusals",
         Resource::FeedQueue,
         Action::Search,

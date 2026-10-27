@@ -1,5 +1,5 @@
-//! `/fhir/R4/Patient` (task ID-3), `/fhir/R4/AllergyIntolerance` (task RC-5, read-only) and
-//! `/fhir/R4/AuditEvent` (task AU-2).
+//! `/fhir/R4/Patient` (task ID-3), `/fhir/R4/AllergyIntolerance` (task RC-5, read-only),
+//! `/fhir/R4/Observation` (task RC-6, read-only) and `/fhir/R4/AuditEvent` (task AU-2).
 //!
 //! A thin translation over the JSON handlers in `patients.rs`: each request is turned into the
 //! JSON request, the *same handler* runs (so the role gate, relationship, consent, purpose of use
@@ -20,7 +20,8 @@ use crate::allergies::{StoredAllergy, Summary};
 use crate::api_error::ApiError;
 use crate::auth::Agent;
 use crate::interop::fhir_patient::{from_fhir_json, to_fhir};
-use crate::interop::{fhir_allergy, fhir_audit};
+use crate::interop::{fhir_allergy, fhir_audit, fhir_observation};
+use crate::observations_store::StoredObservation;
 use crate::patients_store::{Search, Stored};
 use crate::policy::Subject;
 use crate::policy::{self, Purpose, Resource};
@@ -617,6 +618,85 @@ async fn search_allergies(
     }
 }
 
+/// A `searchset` of the patient's vital signs, built from the JSON handler's answer. A list with
+/// nothing in it carries a warning: no vital signs here is not a normal reading.
+fn observation_bundle(
+    patient: &str,
+    all: &[StoredObservation],
+) -> Result<serde_json::Value, String> {
+    let mut entries = Vec::new();
+    for o in all {
+        if let Some(r) = fhir_observation::to_fhir(o, patient)? {
+            entries.push(serde_json::json!({
+                "fullUrl": format!("{BASE}/Observation/{}", o.id),
+                "resource": r,
+                "search": { "mode": "match" },
+            }));
+        }
+    }
+    if entries.is_empty() {
+        entries.push(serde_json::json!({
+            "resource": {
+                "resourceType": "OperationOutcome",
+                "issue": [{
+                    "severity": "warning",
+                    "code": "incomplete",
+                    "diagnostics": "No vital sign has been recorded here. This does not mean the patient's readings are normal or that none were taken.",
+                }],
+            },
+            "search": { "mode": "outcome" },
+        }));
+    }
+    Ok(serde_json::json!({
+        "resourceType": "Bundle",
+        "type": "searchset",
+        "entry": entries,
+    }))
+}
+
+/// `GET /fhir/R4/Observation?patient=` : the same service function, so the same gate, care
+/// relationship, purpose of use, consent and audit row as `/api/patients/{id}/observations`.
+async fn search_observations(
+    State(ctx): State<AppContext>,
+    Extension(agent): Extension<Agent>,
+    Extension(subject): Extension<Subject>,
+    headers: HeaderMap,
+    Query(params): Query<HashMap<String, String>>,
+) -> Response {
+    if let Err(m) = refuse_unknown(&params, &["patient"]) {
+        return outcome(StatusCode::BAD_REQUEST, "not-supported", &m);
+    }
+    let Some(patient) = params
+        .get("patient")
+        .map(|p| p.strip_prefix("Patient/").unwrap_or(p).to_string())
+        .filter(|p| !p.is_empty())
+    else {
+        return outcome(
+            StatusCode::BAD_REQUEST,
+            "required",
+            "the patient search parameter is required",
+        );
+    };
+    let list =
+        match super::observations::list_service(&ctx, &agent, &subject, &headers, &patient).await {
+            Ok(list) => list,
+            Err(e) => {
+                if e.status() == StatusCode::FORBIDDEN {
+                    return outcome(
+                        e.status(),
+                        "forbidden",
+                        "forbidden. This does not mean the patient has no vital signs recorded.",
+                    );
+                }
+                return refusal(&e, false);
+            }
+        };
+    match observation_bundle(&patient, &list.observations) {
+        Ok(b) => fhir(StatusCode::OK, &b, None),
+        Err(e) => internal(&e),
+    }
+}
+
 /// The interactions the mounted routes give each resource type (`/Type`, `/Type/{id}`), in the
 /// order FHIR lists them. The statement's `interaction` arrays are made from this, so a route
 /// cannot be mounted without being stated, nor stated without being mounted (IO-1). A method and
@@ -660,7 +740,7 @@ fn mounted_interactions() -> std::collections::BTreeMap<String, Vec<String>> {
 /// what `resource_notes` has a case for) are those with something to say; a mounted type missing
 /// from it is still stated, with only its interactions.
 #[cfg(test)]
-const NOTED_TYPES: [&str; 3] = ["Patient", "AllergyIntolerance", "AuditEvent"];
+const NOTED_TYPES: [&str; 4] = ["Patient", "AllergyIntolerance", "Observation", "AuditEvent"];
 
 fn resource_notes(kind: &str) -> serde_json::Value {
     match kind {
@@ -676,6 +756,12 @@ fn resource_notes(kind: &str) -> serde_json::Value {
         }),
         "AllergyIntolerance" => serde_json::json!({
             "documentation": "Search by patient only; read-only. Allergies entered in error are not returned. A result with no allergy in it is never a statement that there are none: it carries an OperationOutcome saying so, unless a clinician has stated no known allergies. verificationStatus and type are not recorded, so are not returned.",
+            "searchParam": [
+                { "name": "patient", "type": "reference", "documentation": "required" },
+            ],
+        }),
+        "Observation" => serde_json::json!({
+            "documentation": "Vital signs only; search by patient only; read-only. Observations entered in error are not returned. A result with no observation is never a normal reading: it carries an OperationOutcome saying so. The critical range is not returned, and a flag the service could not compute is no interpretation, never normal.",
             "searchParam": [
                 { "name": "patient", "type": "reference", "documentation": "required" },
             ],
@@ -738,6 +824,7 @@ pub fn routes() -> Routes {
         .add("/Patient/{id}", get(read_patient))
         .add("/Patient/{id}", put(update_patient))
         .add("/AllergyIntolerance", get(search_allergies))
+        .add("/Observation", get(search_observations))
         .add("/AuditEvent", get(search_audit_events))
 }
 
@@ -804,6 +891,48 @@ mod tests {
                 )
             })
             .collect()
+    }
+
+    fn observation(status: crate::observations_store::Status) -> StoredObservation {
+        use crate::observations_store::ObservationRecord;
+        StoredObservation {
+            id: "o1".into(),
+            patient_id: "P1".into(),
+            version: 1,
+            author: "a".into(),
+            recorded_at: "2026-10-26T09:31:00Z".into(),
+            site_zone: "Europe/London".into(),
+            record: ObservationRecord {
+                code: "8867-4".into(),
+                value: Some(71.0),
+                unit: Some("/min".into()),
+                absent_reason: None,
+                range: None,
+                critical: None,
+                effective_at: "2026-10-26T09:30:00Z".into(),
+                status,
+            },
+            flag: None,
+        }
+    }
+
+    #[test]
+    fn a_standing_vital_sign_is_a_match_and_an_empty_list_is_a_warning_not_a_normal_reading() {
+        use crate::observations_store::Status;
+        let b = observation_bundle("P1", &[observation(Status::Final)]).unwrap();
+        assert_eq!(
+            kinds(&b),
+            vec![("Observation".to_string(), "match".to_string())]
+        );
+        // Nothing, or only entries in error: a warning, never an empty (normal-looking) result.
+        for list in [vec![], vec![observation(Status::EnteredInError)]] {
+            let b = observation_bundle("P1", &list).unwrap();
+            assert_eq!(
+                kinds(&b),
+                vec![("OperationOutcome".to_string(), "outcome".to_string())]
+            );
+            assert!(b.to_string().contains("does not mean"));
+        }
     }
 
     #[test]
@@ -1160,8 +1289,9 @@ mod tests {
         }
         assert!(search_from(&one("_count", "5")).is_ok());
 
-        // AllergyIntolerance: patient only.
+        // AllergyIntolerance and Observation: patient only.
         assert_eq!(stated("AllergyIntolerance"), set(&["patient"]));
+        assert_eq!(stated("Observation"), set(&["patient"]));
 
         // AuditEvent: each stated parameter is accepted; common FHIR ones that are not stated are refused.
         let audit = [

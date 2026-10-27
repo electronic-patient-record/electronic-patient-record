@@ -269,6 +269,43 @@ async fn who_may_record_read_and_retract_an_observation() {
         assert_eq!(all.len(), 2);
         assert!(all.iter().any(|o| o["status"] == "entered-in-error"));
 
+        // The FHIR search is the same decision and the same audit row. An entry in error is not
+        // returned, the flag is the computed one, and the gate refuses as it does for the JSON route.
+        let fhir_url = format!("/fhir/R4/Observation?patient={pid}");
+        let bundle = server.get(&fhir_url).add_header(ch.clone(), cv.clone()).await;
+        assert_eq!(bundle.status_code(), StatusCode::OK, "{}", bundle.text());
+        let bundle: Value = bundle.json();
+        assert_eq!(bundle["type"], "searchset");
+        let entries = bundle["entry"].as_array().unwrap();
+        assert_eq!(entries.len(), 1, "{bundle}");
+        let r = &entries[0]["resource"];
+        assert_eq!(r["resourceType"], "Observation");
+        assert_eq!(r["id"], id);
+        assert_eq!(r["valueQuantity"]["value"], 71.37);
+        assert_eq!(r["interpretation"][0]["coding"][0]["code"], "N");
+        assert_eq!(r["subject"]["reference"], format!("Patient/{pid}"));
+        assert_eq!(
+            server.get(&fhir_url).add_header(rh.clone(), rv.clone()).await.status_code(),
+            StatusCode::FORBIDDEN
+        );
+        assert_eq!(
+            server.get(&fhir_url).add_header(ph.clone(), pv.clone()).await.status_code(),
+            StatusCode::FORBIDDEN
+        );
+        let denied = server
+            .get(&format!("/fhir/R4/Observation?patient={sid}"))
+            .add_header(ch.clone(), cv.clone())
+            .await;
+        assert_eq!(denied.status_code(), StatusCode::FORBIDDEN);
+        assert!(denied.text().contains("does not mean"), "{}", denied.text());
+        for bad in ["/fhir/R4/Observation", &format!("{fhir_url}&category=vital-signs")] {
+            assert_eq!(
+                server.get(bad).add_header(ch.clone(), cv.clone()).await.status_code(),
+                StatusCode::BAD_REQUEST,
+                "{bad}"
+            );
+        }
+
         // The history keeps every version, oldest first, with its reason; the retraction does not hide
         // the values it replaced. The same access decision as the list applies.
         let versions_url = format!("{url}/{nurse_id}/versions");

@@ -107,6 +107,52 @@ async fn refused(
     .err()
 }
 
+/// The list, as a value, for the JSON route and the FHIR search: one decision, one audit row.
+pub(super) async fn list_service(
+    ctx: &AppContext,
+    agent: &Agent,
+    subject: &Subject,
+    headers: &HeaderMap,
+    patient: &str,
+) -> Result<ObservationList, ApiError> {
+    let purpose = purpose_of(headers)?;
+    authorize(
+        &ctx.db,
+        agent,
+        subject,
+        Resource::Observation,
+        policy::Action::Read,
+        purpose,
+        Some(patient),
+    )
+    .await?;
+    let all = match store::list(&ctx.db, patient).await {
+        Ok(a) => a,
+        Err(e) => {
+            if let Some(r) = refused(ctx, agent, purpose, Action::Read, &e).await {
+                return Err(r);
+            }
+            return Err(failure(e));
+        }
+    };
+    // Audit before the clinical content leaves.
+    let patient_id = all.first().map(|o| o.patient_id.clone());
+    audit_resource(
+        &ctx.db,
+        agent,
+        Access {
+            action: Action::Read,
+            outcome: 0,
+            purpose,
+            resource: "Observation",
+            patient_id: patient_id.as_deref().or(Some(patient)),
+        },
+        serde_json::json!({ "observations": all.len() }),
+    )
+    .await?;
+    Ok(ObservationList { observations: all })
+}
+
 pub(super) async fn list(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -114,51 +160,10 @@ pub(super) async fn list(
     headers: HeaderMap,
     Path(patient): Path<String>,
 ) -> Response {
-    let purpose = match purpose_of(&headers) {
-        Ok(p) => p,
-        Err(r) => return r.into_response(),
-    };
-    if let Err(r) = authorize(
-        &ctx.db,
-        &agent,
-        &subject,
-        Resource::Observation,
-        policy::Action::Read,
-        purpose,
-        Some(&patient),
-    )
-    .await
-    {
-        return r.into_response();
+    match list_service(&ctx, &agent, &subject, &headers, &patient).await {
+        Ok(list) => Json(list).into_response(),
+        Err(e) => e.into_response(),
     }
-    let all = match store::list(&ctx.db, &patient).await {
-        Ok(a) => a,
-        Err(e) => {
-            if let Some(r) = refused(&ctx, &agent, purpose, Action::Read, &e).await {
-                return r.into_response();
-            }
-            return failure(e).into_response();
-        }
-    };
-    // Audit before the clinical content leaves.
-    let patient_id = all.first().map(|o| o.patient_id.clone());
-    if let Err(r) = audit_resource(
-        &ctx.db,
-        &agent,
-        Access {
-            action: Action::Read,
-            outcome: 0,
-            purpose,
-            resource: "Observation",
-            patient_id: patient_id.as_deref().or(Some(&patient)),
-        },
-        serde_json::json!({ "observations": all.len() }),
-    )
-    .await
-    {
-        return r.into_response();
-    }
-    Json(ObservationList { observations: all }).into_response()
 }
 
 /// Every version of one observation, oldest first, each with the reason it was written. A read of

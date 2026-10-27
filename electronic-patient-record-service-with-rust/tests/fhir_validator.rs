@@ -14,7 +14,13 @@ use electronic_patient_record::allergies::{
     AllergyRecord, Category, Coding, Criticality, Status, StoredAllergy,
 };
 use electronic_patient_record::audit::AuditRow;
-use electronic_patient_record::interop::{fhir_allergy, fhir_audit, fhir_patient};
+use electronic_patient_record::interop::{
+    fhir_allergy, fhir_audit, fhir_observation, fhir_patient,
+};
+use electronic_patient_record::observations::{AbsentReason, Flag, Range};
+use electronic_patient_record::observations_store::{
+    ObservationRecord, Status as ObsStatus, StoredObservation,
+};
 use electronic_patient_record::patients_store::Stored;
 use electronic_patient_record_matcher::{
     Address, AdministrativeSex, HumanName, Identifier, NHS_NUMBER_SYSTEM, Patient, Telecom,
@@ -51,6 +57,31 @@ fn patient() -> Stored {
                 value: "01632 960001".into(),
             }],
         },
+    }
+}
+
+fn observation(value: Option<f64>) -> StoredObservation {
+    StoredObservation {
+        id: "33333333-3333-4333-8333-333333333333".into(),
+        patient_id: PATIENT.into(),
+        version: 2,
+        author: "someone".into(),
+        recorded_at: "2026-10-26T09:31:00.123456Z".into(),
+        site_zone: "Europe/London".into(),
+        record: ObservationRecord {
+            code: "8867-4".into(),
+            value,
+            unit: value.map(|_| "/min".into()),
+            absent_reason: value.is_none().then_some(AbsentReason::Declined),
+            range: value.map(|_| Range {
+                low: Some(60.0),
+                high: Some(100.0),
+            }),
+            critical: None,
+            effective_at: "2026-10-26T09:30:00Z".into(),
+            status: ObsStatus::Final,
+        },
+        flag: value.map(|_| Flag::High),
     }
 }
 
@@ -116,6 +147,16 @@ fn resources() -> Vec<(&'static str, Value)> {
     let drill = value(&fhir_patient::to_fhir(&drill_record).unwrap());
     let none = value(&fhir_allergy::no_known_allergies(PATIENT, "2026-10-21T09:30:00Z").unwrap());
     let audit = value(&fhir_audit::to_fhir(&audit_row()).unwrap());
+    let vital = value(
+        &fhir_observation::to_fhir(&observation(Some(130.0)), PATIENT)
+            .unwrap()
+            .unwrap(),
+    );
+    let declined = value(
+        &fhir_observation::to_fhir(&observation(None), PATIENT)
+            .unwrap()
+            .unwrap(),
+    );
     let bundle = json!({
         "resourceType": "Bundle",
         "type": "searchset",
@@ -129,6 +170,8 @@ fn resources() -> Vec<(&'static str, Value)> {
         ("allergy-inactive", inactive),
         ("no-known-allergies", none),
         ("audit-event", audit),
+        ("observation-vital", vital),
+        ("observation-declined", declined),
         ("patient-searchset", bundle),
     ]
 }
