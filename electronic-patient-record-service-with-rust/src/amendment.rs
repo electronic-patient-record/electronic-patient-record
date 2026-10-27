@@ -360,6 +360,31 @@ pub enum Notice {
     },
 }
 
+impl Notice {
+    /// The notice in plain English, as a reader of the record is shown it (the UI says the same).
+    /// The patient's statement is given as written.
+    #[must_use]
+    pub fn describe(&self) -> String {
+        match self {
+            Notice::Pending => "The patient has asked for this record to be corrected. No decision has been recorded.".into(),
+            Notice::Amended { version } => format!("The patient asked for this record to be corrected. It was corrected in version {version}."),
+            Notice::Refused { ground, disagreement } => {
+                let ground = match ground {
+                    Ground::NotOurs => "this organisation did not make the record.",
+                    Ground::AccurateAndComplete => "the record is accurate and complete as it stands.",
+                    Ground::NotAvailableToRequester => "the record is not one the requester may have amended.",
+                    Ground::Other => "another ground.",
+                };
+                let said = match disagreement.as_deref().map(str::trim) {
+                    Some(s) if !s.is_empty() => format!("The patient's statement of disagreement: {s}"),
+                    _ => "The patient has given no statement.".into(),
+                };
+                format!("The patient asked for this record to be corrected. The request was refused: {ground} {said}")
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -544,5 +569,32 @@ mod tests {
         let r = open();
         let _ = r.apply(deny()).unwrap();
         assert_eq!(r.state, State::Requested);
+    }
+
+    #[test]
+    fn a_notice_in_words_never_drops_the_ground_or_the_statement() {
+        assert!(
+            Notice::Pending
+                .describe()
+                .contains("No decision has been recorded.")
+        );
+        assert!(
+            Notice::Amended { version: 3 }
+                .describe()
+                .contains("version 3")
+        );
+        let refused = Notice::Refused {
+            ground: Ground::AccurateAndComplete,
+            disagreement: Some("  I was not feverish.  ".into()),
+        }
+        .describe();
+        assert!(refused.contains("accurate and complete"));
+        assert!(refused.ends_with("The patient's statement of disagreement: I was not feverish."));
+        let none = Notice::Refused {
+            ground: Ground::Other,
+            disagreement: Some("  ".into()),
+        }
+        .describe();
+        assert!(none.ends_with("The patient has given no statement."));
     }
 }

@@ -75,7 +75,11 @@ fn parse(json: Value) -> Result<Resource, String> {
 /// # Errors
 ///
 /// A message when the typed model refuses the result.
-pub fn to_fhir(stored: &StoredObservation, patient: &str) -> Result<Option<Resource>, String> {
+pub fn to_fhir(
+    stored: &StoredObservation,
+    patient: &str,
+    notices: &[crate::amendment::Notice],
+) -> Result<Option<Resource>, String> {
     let r = &stored.record;
     if r.status == Status::EnteredInError {
         return Ok(None);
@@ -111,6 +115,13 @@ pub fn to_fhir(stored: &StoredObservation, patient: &str) -> Result<Option<Resou
         .and_then(|x| reference_range(x, r.unit.as_deref()))
     {
         out["referenceRange"] = json!([range]);
+    }
+    // A reader of the export is told the record is disputed, in the same words as a reader of the page.
+    if !notices.is_empty() {
+        out["note"] = notices
+            .iter()
+            .map(|n| json!({ "text": n.describe() }))
+            .collect();
     }
     parse(out).map(Some)
 }
@@ -149,7 +160,7 @@ mod tests {
     }
 
     fn json_of(s: &StoredObservation) -> Value {
-        serde_json::to_value(to_fhir(s, "P1").unwrap().unwrap()).unwrap()
+        serde_json::to_value(to_fhir(s, "P1", &[]).unwrap().unwrap()).unwrap()
     }
 
     #[test]
@@ -222,7 +233,7 @@ mod tests {
     fn one_entered_in_error_is_not_exported() {
         let mut s = stored();
         s.record.status = Status::EnteredInError;
-        assert!(to_fhir(&s, "P1").unwrap().is_none());
+        assert!(to_fhir(&s, "P1", &[]).unwrap().is_none());
     }
 
     #[test]
@@ -230,6 +241,35 @@ mod tests {
         let mut s = stored();
         s.record.value = None;
         s.record.unit = None;
-        assert!(to_fhir(&s, "P1").is_err());
+        assert!(to_fhir(&s, "P1", &[]).is_err());
+    }
+
+    #[test]
+    fn a_disputed_vital_sign_carries_the_notice_as_a_note_and_an_undisputed_one_carries_none() {
+        use crate::amendment::{Ground, Notice};
+        let none = serde_json::to_value(to_fhir(&stored(), "P1", &[]).unwrap().unwrap()).unwrap();
+        assert!(none.get("note").is_none());
+        let notices = [
+            Notice::Pending,
+            Notice::Refused {
+                ground: Ground::AccurateAndComplete,
+                disagreement: Some("I was not feverish.".into()),
+            },
+        ];
+        let j = serde_json::to_value(to_fhir(&stored(), "P1", &notices).unwrap().unwrap()).unwrap();
+        let notes = j["note"].as_array().unwrap();
+        assert_eq!(notes.len(), 2);
+        assert!(
+            notes[0]["text"]
+                .as_str()
+                .unwrap()
+                .contains("No decision has been recorded.")
+        );
+        assert!(
+            notes[1]["text"]
+                .as_str()
+                .unwrap()
+                .contains("I was not feverish.")
+        );
     }
 }

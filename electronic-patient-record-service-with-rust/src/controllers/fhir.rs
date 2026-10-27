@@ -531,8 +531,20 @@ fn not_a_statement_of_none(why: &str) -> serde_json::Value {
     })
 }
 
+/// The notices in a JSON list's `amendment_notices`, by record id. Absent is none; unreadable is an error,
+/// so a dispute is never silently left out of an export.
+fn notices_of(
+    v: Option<&serde_json::Value>,
+) -> Result<std::collections::BTreeMap<String, Vec<crate::amendment::Notice>>, String> {
+    v.map_or_else(
+        || Ok(Default::default()),
+        |v| serde_json::from_value(v.clone()).map_err(|e| e.to_string()),
+    )
+}
+
 /// A `searchset` of the patient's allergies, built from the JSON handler's answer.
 fn allergy_bundle(patient: &str, body: &serde_json::Value) -> Result<serde_json::Value, String> {
+    let notices = notices_of(body.get("amendment_notices"))?;
     let all: Vec<StoredAllergy> =
         serde_json::from_value(body.get("allergies").cloned().unwrap_or_default())
             .map_err(|e| e.to_string())?;
@@ -540,7 +552,9 @@ fn allergy_bundle(patient: &str, body: &serde_json::Value) -> Result<serde_json:
         .map_err(|e| e.to_string())?;
     let mut entries = Vec::new();
     for a in &all {
-        if let Some(r) = fhir_allergy::to_fhir(a, patient)? {
+        if let Some(r) =
+            fhir_allergy::to_fhir(a, patient, notices.get(&a.id).map_or(&[], Vec::as_slice))?
+        {
             entries.push(serde_json::json!({
                 "fullUrl": format!("{BASE}/AllergyIntolerance/{}", a.id),
                 "resource": r,
@@ -623,10 +637,13 @@ async fn search_allergies(
 fn observation_bundle(
     patient: &str,
     all: &[StoredObservation],
+    notices: &std::collections::BTreeMap<String, Vec<crate::amendment::Notice>>,
 ) -> Result<serde_json::Value, String> {
     let mut entries = Vec::new();
     for o in all {
-        if let Some(r) = fhir_observation::to_fhir(o, patient)? {
+        if let Some(r) =
+            fhir_observation::to_fhir(o, patient, notices.get(&o.id).map_or(&[], Vec::as_slice))?
+        {
             entries.push(serde_json::json!({
                 "fullUrl": format!("{BASE}/Observation/{}", o.id),
                 "resource": r,
@@ -691,7 +708,7 @@ async fn search_observations(
                 return refusal(&e, false);
             }
         };
-    match observation_bundle(&patient, &list.observations) {
+    match observation_bundle(&patient, &list.observations, &list.amendment_notices) {
         Ok(b) => fhir(StatusCode::OK, &b, None),
         Err(e) => internal(&e),
     }
@@ -919,14 +936,15 @@ mod tests {
     #[test]
     fn a_standing_vital_sign_is_a_match_and_an_empty_list_is_a_warning_not_a_normal_reading() {
         use crate::observations_store::Status;
-        let b = observation_bundle("P1", &[observation(Status::Final)]).unwrap();
+        let b =
+            observation_bundle("P1", &[observation(Status::Final)], &Default::default()).unwrap();
         assert_eq!(
             kinds(&b),
             vec![("Observation".to_string(), "match".to_string())]
         );
         // Nothing, or only entries in error: a warning, never an empty (normal-looking) result.
         for list in [vec![], vec![observation(Status::EnteredInError)]] {
-            let b = observation_bundle("P1", &list).unwrap();
+            let b = observation_bundle("P1", &list, &Default::default()).unwrap();
             assert_eq!(
                 kinds(&b),
                 vec![("OperationOutcome".to_string(), "outcome".to_string())]

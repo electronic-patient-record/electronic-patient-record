@@ -133,12 +133,12 @@ fn value<T: serde::Serialize>(r: &T) -> Value {
 fn resources() -> Vec<(&'static str, Value)> {
     let p = value(&fhir_patient::to_fhir(&patient()).unwrap());
     let active = value(
-        &fhir_allergy::to_fhir(&allergy(Status::Active), PATIENT)
+        &fhir_allergy::to_fhir(&allergy(Status::Active), PATIENT, &[])
             .unwrap()
             .unwrap(),
     );
     let inactive = value(
-        &fhir_allergy::to_fhir(&allergy(Status::Inactive), PATIENT)
+        &fhir_allergy::to_fhir(&allergy(Status::Inactive), PATIENT, &[])
             .unwrap()
             .unwrap(),
     );
@@ -148,12 +148,30 @@ fn resources() -> Vec<(&'static str, Value)> {
     let none = value(&fhir_allergy::no_known_allergies(PATIENT, "2026-10-21T09:30:00Z").unwrap());
     let audit = value(&fhir_audit::to_fhir(&audit_row()).unwrap());
     let vital = value(
-        &fhir_observation::to_fhir(&observation(Some(130.0)), PATIENT)
+        &fhir_observation::to_fhir(&observation(Some(130.0)), PATIENT, &[])
             .unwrap()
             .unwrap(),
     );
     let declined = value(
-        &fhir_observation::to_fhir(&observation(None), PATIENT)
+        &fhir_observation::to_fhir(&observation(None), PATIENT, &[])
+            .unwrap()
+            .unwrap(),
+    );
+    // A record under an amendment request carries the notice as a note.
+    let disputed = [
+        electronic_patient_record::amendment::Notice::Pending,
+        electronic_patient_record::amendment::Notice::Refused {
+            ground: electronic_patient_record::amendment::Ground::Other,
+            disagreement: Some("I disagree.".into()),
+        },
+    ];
+    let vital_disputed = value(
+        &fhir_observation::to_fhir(&observation(Some(130.0)), PATIENT, &disputed)
+            .unwrap()
+            .unwrap(),
+    );
+    let allergy_disputed = value(
+        &fhir_allergy::to_fhir(&allergy(Status::Active), PATIENT, &disputed)
             .unwrap()
             .unwrap(),
     );
@@ -172,6 +190,8 @@ fn resources() -> Vec<(&'static str, Value)> {
         ("audit-event", audit),
         ("observation-vital", vital),
         ("observation-declined", declined),
+        ("observation-disputed", vital_disputed),
+        ("allergy-disputed", allergy_disputed),
         ("patient-searchset", bundle),
     ]
 }

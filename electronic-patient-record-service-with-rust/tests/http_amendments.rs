@@ -258,6 +258,33 @@ async fn who_may_ask_decide_and_withdraw() {
         );
         assert!(allergies["amendment_notices"].get(&observation_id).is_none());
 
+        // The FHIR searches carry the same notice, as a note, so an export is not silent about a dispute.
+        for (url, id, notice) in [
+            (format!("/fhir/R4/Observation?patient={pid}"), &observation_id, &accepted["notice"]),
+            (format!("/fhir/R4/AllergyIntolerance?patient={pid}"), &allergy_id, &asked["notice"]),
+        ] {
+            let bundle = server.get(&url).add_header(ch.clone(), cv.clone()).await;
+            assert_eq!(bundle.status_code(), StatusCode::OK, "{}", bundle.text());
+            let bundle: Value = bundle.json();
+            let resource = bundle["entry"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|e| &e["resource"])
+                .find(|r| r["id"] == *id)
+                .unwrap_or_else(|| panic!("{id} is not in {bundle}"));
+            let described: Vec<&str> = resource["note"]
+                .as_array()
+                .unwrap_or_else(|| panic!("no note on {resource}"))
+                .iter()
+                .map(|n| n["text"].as_str().unwrap())
+                .collect();
+            assert_eq!(described.len(), 1, "{resource}");
+            // The notice is the same one the JSON list gave: Pending reads the same everywhere.
+            assert_eq!(notice["notice"], "pending");
+            assert!(described[0].contains("No decision has been recorded."), "{resource}");
+        }
+
         // The audit trail names the request and its state, never the words in it.
         let rows = ctx
             .db

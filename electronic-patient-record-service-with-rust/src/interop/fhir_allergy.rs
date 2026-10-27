@@ -62,7 +62,11 @@ fn parse(json: Value) -> Result<Resource, String> {
 /// # Errors
 ///
 /// A message when the typed model refuses the result.
-pub fn to_fhir(stored: &StoredAllergy, patient: &str) -> Result<Option<Resource>, String> {
+pub fn to_fhir(
+    stored: &StoredAllergy,
+    patient: &str,
+    notices: &[crate::amendment::Notice],
+) -> Result<Option<Resource>, String> {
     let a: &AllergyRecord = &stored.allergy;
     let clinical = match a.status {
         Status::Active => "active",
@@ -93,6 +97,13 @@ pub fn to_fhir(stored: &StoredAllergy, patient: &str) -> Result<Option<Resource>
     }
     if let Some(reaction) = &a.reaction {
         out["reaction"] = json!([{ "manifestation": [{ "text": reaction }] }]);
+    }
+    // A reader of the export is told the record is disputed, in the same words as a reader of the page.
+    if !notices.is_empty() {
+        out["note"] = notices
+            .iter()
+            .map(|n| json!({ "text": n.describe() }))
+            .collect();
     }
     parse(out).map(Some)
 }
@@ -155,7 +166,9 @@ mod tests {
 
     #[test]
     fn an_active_allergy_carries_what_was_recorded() {
-        let r = to_fhir(&stored(Status::Active), "P1").unwrap().unwrap();
+        let r = to_fhir(&stored(Status::Active), "P1", &[])
+            .unwrap()
+            .unwrap();
         let j = json_of(&r);
         assert_eq!(j["resourceType"], "AllergyIntolerance");
         assert_eq!(j["meta"]["versionId"], "2");
@@ -177,7 +190,7 @@ mod tests {
         s.allergy.coding = None;
         s.allergy.reaction = None;
         s.allergy.onset = None;
-        let j = json_of(&to_fhir(&s, "P1").unwrap().unwrap());
+        let j = json_of(&to_fhir(&s, "P1", &[]).unwrap().unwrap());
         for absent in [
             "criticality",
             "category",
@@ -196,16 +209,20 @@ mod tests {
     fn an_unassessed_criticality_is_not_low() {
         let mut s = stored(Status::Active);
         s.allergy.criticality = Some(Criticality::UnableToAssess);
-        let j = json_of(&to_fhir(&s, "P1").unwrap().unwrap());
+        let j = json_of(&to_fhir(&s, "P1", &[]).unwrap().unwrap());
         assert_eq!(j["criticality"], "unable-to-assess");
     }
 
     #[test]
     fn an_ended_allergy_is_inactive_and_one_entered_in_error_is_not_exported() {
-        let j = json_of(&to_fhir(&stored(Status::Inactive), "P1").unwrap().unwrap());
+        let j = json_of(
+            &to_fhir(&stored(Status::Inactive), "P1", &[])
+                .unwrap()
+                .unwrap(),
+        );
         assert_eq!(j["clinicalStatus"]["coding"][0]["code"], "inactive");
         assert!(
-            to_fhir(&stored(Status::EnteredInError), "P1")
+            to_fhir(&stored(Status::EnteredInError), "P1", &[])
                 .unwrap()
                 .is_none()
         );
@@ -224,5 +241,23 @@ mod tests {
             ),
             Ok(())
         );
+    }
+
+    #[test]
+    fn a_disputed_allergy_carries_the_notice_as_a_note() {
+        use crate::amendment::Notice;
+        let r = to_fhir(
+            &stored(Status::Active),
+            "P1",
+            &[Notice::Amended { version: 4 }],
+        )
+        .unwrap()
+        .unwrap();
+        let j = json_of(&r);
+        assert!(j["note"][0]["text"].as_str().unwrap().contains("version 4"));
+        let r = to_fhir(&stored(Status::Active), "P1", &[])
+            .unwrap()
+            .unwrap();
+        assert!(json_of(&r).get("note").is_none());
     }
 }

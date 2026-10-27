@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-27 - Service: the amendment notice in the FHIR searches (RC-4, H-035)
+
+- `GET /fhir/R4/Observation?patient=` and `/fhir/R4/AllergyIntolerance?patient=` put each notice on the resource as an `Annotation` in `note`, in the same English as the page (`Notice::describe()`, 1 unit test); a record with no request has no `note`. A notice that cannot be read fails the search rather than being left out. Unit tests on both converters; `http_amendments` checks both searches over HTTP with login on; the validator test now includes a disputed observation and allergy.
+- **Verified for the first time:** the official HL7 validator (`validator_cli.jar` 7.0.3, base R4, no terminology server) accepts every resource the service writes, the two new ones included; these two tests had been listed as not run in earlier entries and now pass. Gates run: fmt, clippy, the whole service suite against Postgres 18 with the validator jar set (ignored tests included; no failure), and the docs and hazard-log checks. UI gates not re-run (no UI change).
+- Not done: the notice is English prose in `note`, not a coded extension, so a machine reader cannot tell a pending request from a refusal; no UK Core or US Core profile check (RC-2); no read by id, `$everything` or `$export` exists yet and each must carry the notice when added; still no real-login run of the patient page, no alert across patients, no proxy asking, wording unreviewed.
+
 ## 2026-10-27 - Amendments: allergies, the record named, a count of what waits (RC-4, H-035)
 
 - Service: `GET /api/patients/{id}/allergies` returns `amendment_notices` as the observation list does (shared `amendments_store::notices_by_target`, which also builds the observation one); `http_amendments` asks about an allergy and checks the list carries the same notice. UI: a patient can choose an allergy as well as a vital sign; the allergy list shows the notice; the clinician's list names the record each request is about and says "n waiting for a decision. m overdue." Tests: 2 vitest, 1 Playwright test added and 1 changed.
