@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-27 - Service: terminology service trait and fixture (RC-7)
+
+- `terminology.rs`: `TerminologyService` (`lookup`, `validate_code`, `expand`, `translate`) and an embedded `Fixture`. Every call must name a pinned version; none, blank or another version is refused (`Unpinned`) on all four operations before any lookup. A missing code is `result: false` in `validate_code`; a translate with no target is an empty list. The fixture's value set equals the codes `observations::SUPPORTED` accepts, so the two cannot drift unnoticed. 5 tests, no network.
+- Not done: **the Snowstorm adapter**; no caller (observations and allergies do not check codes against it yet), no route, no stored code version; the fixture's displays, version name and one LOINC-to-SNOMED map are test data that I wrote from memory and nobody has checked against a release. No hazard-log change: nothing a clinician sees uses it yet. Gates run: fmt, clippy, the full non-database suite.
+
 ## 2026-10-27 - Service: FHIR Observation search by patient (RC-6, H-034)
 
 - `GET /fhir/R4/Observation?patient=` returns a `searchset` of the patient's vital signs through the same service function as the JSON list (`list_service`, now shared), so the role gate, care relationship, purpose, consent, proxy refusal and the audit row are the same. Other parameters are 400. A list with nothing standing, or only entries in error, carries an `OperationOutcome` warning that it is not a normal reading; a 403 says it does not mean there are no vital signs. Capability statement and route gate updated. Validator test gains a flagged vital sign and a declined one; both pass the HL7 validator 7.0.3 against base R4 with `-tx n/a`.

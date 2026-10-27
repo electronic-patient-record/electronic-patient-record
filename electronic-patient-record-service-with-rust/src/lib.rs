@@ -36,3 +36,4 @@ pub mod relationships;
 pub mod routes;
 pub mod site;
 pub mod store;
+pub mod terminology;
