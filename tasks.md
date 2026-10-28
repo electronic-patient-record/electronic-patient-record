@@ -965,6 +965,17 @@ what a clinician or a carer sees.
   what it displays.
   **Acceptance:** a duplicate event changes nothing, a cancelled appointment disappears from the worklist, and a stale
   feed is shown as stale.
+- [ ] **IO-16 (L) — Read-only FHIR R5 facade.** Per [`spec/interoperability/index.md`](spec/interoperability/index.md) "FHIR R5":
+  `/fhir/R5/metadata`, `Patient`, `AllergyIntolerance` and `Observation` reads, derived from the stored R4 resource with the
+  `fhir` crate's `convert::between::<R4, R5>`; a loss report on a clinical resource fails the response; policy rows, audit
+  and the amendment notice as for R4; `fhir` gets the `r5` feature. **Clinical-impact:** a hazard row first.
+  **Acceptance:** the R5 validator accepts what each route returns; a planted lossy field makes the route fail rather than
+  answer; the route and audit-failure censuses cover the new routes; the capability statement says base R5, no UK Core or
+  US Core claim. Settles OQ-PA3 for the read side and unblocks PA-9.
+- [ ] **IO-17 (S) — Check R5 against the specification.** Read the R4 to R5 differences for Patient, AllergyIntolerance,
+  Observation, AuditEvent, Consent and Provenance from the HL7 cross-version pages and fix the table in the spec; confirm
+  whether UK Core or US Core has an R5 release; confirm the `fhirVersion` content-negotiation rule.
+  **Acceptance:** every `[uncertain]` mark in that table is resolved with a link.
 - [ ] **PA-9 (M) — FHIR version edge.** Decide R4 or R5 at the boundary (OQ-PA3) and build or request the edge: a
   mapping of `Appointment`, `Slot` and `Encounter`, or the PAS's own R4 endpoints (its NEW-1).
   **Acceptance:** a round trip of one appointment validates on both sides, and the unmapped fields are listed.

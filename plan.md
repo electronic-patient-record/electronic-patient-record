@@ -1084,3 +1084,50 @@ Order: AS-17 then AS-18; the repository-file work (AS-13 to AS-15) stays first b
 
 - presencis.com/regulations/dcb0129/article-hazard-log/ (secondary)
 - cdn.presencis.com/regulations/dcb0129/guide/clinical-safety-officer (secondary)
+
+## 21. Research pass 2026-10-28: FHIR R5
+
+The request "add FHIR R5". The spec is in [`spec/interoperability/index.md`](spec/interoperability/index.md) "FHIR R5".
+
+### 21.1 Assessment
+
+- §4 keeps R4 as the baseline and says to design so a second release can be added as a second facade. That still holds: UK
+  Core and US Core are R4 guides, US Core's next target is reported as R6 (secondary source), and R5 adoption figures are
+  weakly sourced (one site claims about 10 percent; unverified).
+- The reason to add R5 anyway is a neighbour: the patient administration system speaks R5 (§18, OQ-PA3), and R5 has native
+  topic-based subscriptions where R4 has only a backport (IO-6).
+- **The author's `fhir` crate already has an `r5` feature and `convert::between::<R4, R5>`**, which returns a loss report. That
+  makes a derived facade cheap and, more to the point, makes silent loss visible. It fits the project's rule that absent or
+  lost evidence must never look like "none".
+- I did not read the HL7 R5 pages. The field-level differences in the spec are from memory and marked uncertain.
+
+### 21.2 Ideas, assessed
+
+| Rank | Idea | Value | Cost and caveat |
+|---|---|---|---|
+| 1 | **Derive R5 from stored R4; fail a clinical response on any reported loss** | One set of converters; no quiet drop of a reaction, range or notice | Small to medium; the loss report may flag harmless differences, so allow-list them, never block-list |
+| 2 | **Read-only first** (Patient, AllergyIntolerance, Observation, metadata) | Settles the PAS edge for reads | An R5 write is a separate decision |
+| 3 | **Validate with the HL7 validator at `-version 5.0` in the existing job** | Same proof as R4 | Small; the jar already supports it |
+| 4 | **State base R5 only, no profile claim** | Honest: no R5 UK Core or US Core found | None |
+| 5 | **R5 subscriptions** (IO-6) | Native topics instead of the backport | Medium; after the read facade |
+| 6 | **`fhirVersion` content negotiation** | Standard way to ask for a release | Behaviour from memory: check in IO-17 |
+| 7 | **Do not serve R5 `AuditEvent` or `Consent` yet** | Avoids the heaviest reshaping | A partner wanting them waits |
+
+### 21.3 Risks
+
+- A second shape of the record is a second place a clinician or partner can see something different: `clinical-impact`.
+- A permissive conversion could hide a dropped field; the fail-closed rule and a planted-loss test are the guard.
+- Two releases double the validator and census work; keep the R5 route list short.
+
+### 21.4 Order of work
+
+IO-17 (read the specification) then IO-16. OQ-PA3 stays open until IO-16 lands.
+
+### 21.5 Sources (this pass)
+
+- [US Core STU5 guidance](https://hl7.org/fhir/us/core/STU5/guidance.html) (R4-based despite the label)
+- [MITRE, FHIR versions](https://mitre.github.io/fhir-for-research/modules/fhir-versions) (secondary: US Core's next target is R6)
+- [Medplum on R5](https://www.medplum.com/blog/fhir-r5) (secondary)
+- [UK Core R4 package on get-ig.org](https://get-ig.org/fhir.r4.ukcore.stu3.currentbuild) (fhirVersions 4.0.1)
+- the `fhir` 4.2.4 crate source: features `r5`, module `convert`
+

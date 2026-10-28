@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-28 - Spec: FHIR R5 as a derived read-only facade (IO-16, IO-17 planned)
+
+- `spec/interoperability/index.md` gains "FHIR R5": R4 stays the stored baseline and R5 is derived from it at `/fhir/R5`, reads only, base R5 with no UK Core or US Core claim, a loss report from the `fhir` crate's `convert::between::<R4, R5>` that fails a clinical response, the same policy, audit and amendment notice as R4. plan.md §21 ranks seven ideas; tasks IO-16 and IO-17 added; OQ-PA3 points at them.
+- **Checked:** the `fhir` 4.2.4 crate in the cargo registry has an `r5` feature and a `convert` module with a loss report. The project builds with `r4` only today.
+- **Not done / not verified:** nothing is built, enabled or tested; the R4 to R5 field differences are from memory and marked uncertain, I did not read the HL7 pages; the `fhirVersion` negotiation rule is unchecked; one search found no R5 UK Core or US Core, which is not proof there is none; no hazard row yet, because no behaviour changed. I read "add FHIR R5" as a spec, plan and tasks change, as with ISO 14971; if you meant the facade itself, that is IO-16.
+
 ## 2026-10-28 - Service: the hazard register, only the Clinical Safety Officer retires (AS-17, in part)
 
 - **Built:** role `clinical-safety-officer` and resource `Hazard` in the policy table; append-only `hazard_versions` and view `hazard_current` (migration 16, triggers refuse update, delete and truncate); pure rules in `hazard.rs`; `hazard_store.rs` (no delete function); `GET` and `POST /api/hazards`, `PUT /api/hazards/{hazard_id}` with `control`, `retire`, `reopen`. A retirement needs the role in the token (403 otherwise, and the check does not switch off when login is off), at least one evidence item with a kind, a reference, a past time and a SHA-256 (422 otherwise), and a person who did not record a control on that hazard. Any writer reopens with a reason. The audit row holds the evidence hashes and never the free text. The role is in the Keycloak realm and role map; the table is in the personal-data inventory and the retention schedule; hazard H-036 is added (open, unreviewed).
