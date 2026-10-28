@@ -105,6 +105,28 @@ pub async fn request_id_mw(mut req: Request, next: Next) -> Response {
     next.run(req).await
 }
 
+/// Whether a request target holds a NUL byte, raw or percent-encoded.
+#[must_use]
+pub fn target_has_nul(target: &str) -> bool {
+    target.contains('\0') || target.to_ascii_lowercase().contains("%00")
+}
+
+/// Refuse a request whose path or query holds a NUL byte: PostgreSQL cannot store one in text, so
+/// it would reach the database as a failure and be answered 500 (found by `tests/chaos_api.rs`).
+/// Runs before authentication, so a hostile target is refused alike for everyone.
+pub async fn no_nul_mw(req: Request, next: Next) -> Response {
+    let target = req
+        .uri()
+        .path_and_query()
+        .map(|p| p.as_str().to_owned())
+        .unwrap_or_default();
+    if target_has_nul(&target) {
+        return crate::api_error::ApiError::bad_request("the request contains a NUL byte")
+            .for_path(req.uri().path());
+    }
+    next.run(req).await
+}
+
 /// Axum middleware over the route table and the engine.
 pub async fn authorize_mw(State(authz): State<Authz>, req: Request, next: Next) -> Response {
     let actor = req
@@ -190,6 +212,16 @@ async fn audit_refusal(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_nul_byte_in_the_target_is_found_however_it_is_written() {
+        use super::target_has_nul;
+        assert!(target_has_nul("/api/patients?birth_date=%00"));
+        assert!(target_has_nul("/api/patients/a%00b"));
+        assert!(target_has_nul("/api/patients/a\0b"));
+        assert!(!target_has_nul("/api/patients?q=100%25"));
+        assert!(!target_has_nul("/api/patients/%2500"));
+    }
+
     use super::*;
     use crate::policy::Role;
     use axum::http::Method;
