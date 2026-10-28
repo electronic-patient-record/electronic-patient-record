@@ -184,7 +184,7 @@ Conventions:
   `$lookup`, `$validate-code`, `$expand` and `$translate`. Two adapters:
   Snowstorm and an embedded fixture subset for tests.
   **Acceptance:** a code from an unpinned version is refused. Tests run with no network.
-- [ ] **RC-8 (L) — Patient summary UI.**
+- [ ] **RC-8 (L) — Patient summary UI.** **First slice landed 2026-10-28:** `/patients/[id]/summary`, read-only, with the banner, allergies, the latest reading of each vital and a plain list of what is not built (4 vitest, 2 stubbed Playwright tests with axe; hazard H-034). **Not built:** problems, medications, immunisations, results, appointments, reconciliation, the performance and keyboard tests, so the acceptance is **not met**. Left open. Original:
   - `/patients/[id]/summary` showing problems, allergies, active medications, recent results, vitals trend and upcoming appointments
   - pages for problems, allergies, medications and immunisations, with add, edit and entered-in-error
   - medication reconciliation view

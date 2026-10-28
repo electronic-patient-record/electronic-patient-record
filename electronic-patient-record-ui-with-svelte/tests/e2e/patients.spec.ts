@@ -2840,3 +2840,45 @@ test("the vital signs trend lists every standing reading per vital, newest first
   await section.getByRole("button", { name: "Hide readings over time" }).click();
   await expect(section.getByRole("table")).toHaveCount(0);
 });
+
+test("the summary shows the allergies, the latest reading of each vital with its notice, and says what is not built", async ({
+  page,
+}) => {
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, { ...ANN, site_time_zone: "America/New_York" }),
+  );
+  await page.route("**/api/proxy/api/patients/*/observations", (route) =>
+    json(route, 200, {
+      observations: [
+        OBS({ id: "old", value: 60, effective_at: "2026-10-25T13:30:00.000000Z" }),
+        OBS({ id: "new", value: 130, range: { low: 60, high: 100 }, flag: "high" }),
+        OBS({ id: "oops", value: 999, status: "entered-in-error", effective_at: "2026-10-26T15:00:00.000000Z" }),
+      ],
+      amendment_notices: { new: [{ notice: "pending" }] },
+    }),
+  );
+  await page.goto(`/en-001/patients/${ANN.id}/summary`);
+  const vitals = page.getByRole("region", { name: "Latest vital signs" });
+  await expect(vitals.getByRole("listitem")).toHaveCount(1);
+  await expect(vitals).toContainText("130 /min");
+  await expect(vitals).toContainText("The patient has asked for this record to be corrected");
+  await expect(vitals).not.toContainText("60 /min");
+  await expect(vitals).not.toContainText("999");
+  await expect(page.getByRole("region", { name: "Allergies and intolerances" })).toBeVisible();
+  const todo = page.getByRole("region", { name: "Not built in this system yet" });
+  await expect(todo).toContainText("Problems");
+  await expect(todo).toContainText("Active medications");
+  await expect(todo).toContainText("This does not mean there is nothing to record.");
+  await axe(page);
+});
+
+test("the summary says so when vital signs are refused or fail, never that there are none", async ({ page }) => {
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) => json(route, 200, ANN));
+  await page.route("**/api/proxy/api/patients/*/observations", (route) => json(route, 403, {}));
+  await page.goto(`/en-001/patients/${ANN.id}/summary`);
+  const vitals = page.getByRole("region", { name: "Latest vital signs" });
+  await expect(vitals).toContainText("not shown for your role or purpose");
+  await expect(vitals).not.toContainText("No vital signs recorded");
+});

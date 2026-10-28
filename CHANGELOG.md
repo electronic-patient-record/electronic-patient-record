@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-28 - UI: a first patient summary page (RC-8, H-034)
+
+- `/patients/[id]/summary`, linked from the patient page and read-only: the banner, the allergies with their amendment notices, the newest standing reading of each vital sign with its notice, and a list of what is not built (problems, medications, immunisations, results, appointments) saying that this does not mean there is nothing to record. A newest reading with no value shows its reason; an older value is never put in its place. A refused or failed section says so. 4 vitest, 2 stubbed Playwright tests with axe. H-034 text updated (status unchanged, still `open`).
+- **Not done:** everything else RC-8 asks for (the five sections, reconciliation, add and edit), so the acceptance is not met; no performance test of chart open (p95 under 1 s) and no keyboard-only test; the page was not added to the axe list in `smoke.spec.ts` (it needs a stubbed patient, so its axe check is in `patients.spec.ts`); English only, wording mine and unreviewed by a clinician; not run against the real service or Keycloak. Gates run: UI check, 220 vitest, 84 Playwright. Docs gates (links, status, llms) pass; service gates not run (no service change).
+
 ## 2026-10-27 - Service: the amendment notice in the FHIR searches (RC-4, H-035)
 
 - `GET /fhir/R4/Observation?patient=` and `/fhir/R4/AllergyIntolerance?patient=` put each notice on the resource as an `Annotation` in `note`, in the same English as the page (`Notice::describe()`, 1 unit test); a record with no request has no `note`. A notice that cannot be read fails the search rather than being left out. Unit tests on both converters; `http_amendments` checks both searches over HTTP with login on; the validator test now includes a disputed observation and allergy.
