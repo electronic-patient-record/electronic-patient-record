@@ -76,6 +76,17 @@ keeps its own hazards (DCB0160, the deployer's duty, with its own CSO). **Nothin
 `ClinicalSafetyOfficer` role (`src/policy.rs` lists ten roles, none of them this one), no hazard table and no hazard route.
 `src/gate.rs` already names the CSO as an example approver, and that is the only trace.
 
+**Built 2026-10-28 (AS-17, in part):** the `clinical-safety-officer` role and the `Hazard` resource in the policy table
+(CSO and clinician read, raise, record controls and reopen; the auditor reads; nobody else); the append-only
+`hazard_versions` table with view `hazard_current` (migration 16, triggers refuse update, delete and truncate); the pure
+rules (`src/hazard.rs`); the store (`src/hazard_store.rs`, no delete function); `GET` and `POST /api/hazards` and
+`PUT /api/hazards/{hazard_id}` with the steps `control`, `retire` and `reopen`; the 403 for a retirement without the role,
+which does not switch off when login is off; the 422 without evidence; four eyes (whoever recorded a control cannot
+retire); an audit row per step holding the evidence hashes and no free text; the table in the personal-data inventory;
+the role in the Keycloak realm and role map; hazard H-036. **Not built:** a person holding the role (OQ-2), the deployer
+baseline, the gate link and the re-hash that reopens (AS-18), any screen in the UI, a copy of the evidence itself (only its
+hash and reference are stored), the repository-file items (AS-13 to AS-15).
+
 ### The rule, in product terms
 
 1. **Only a person holding the `clinical-safety-officer` role can retire a hazard.** The role is a new `Role` variant with

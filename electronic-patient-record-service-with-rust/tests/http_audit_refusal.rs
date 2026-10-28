@@ -263,6 +263,30 @@ async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_r
         )
         .await;
 
+        // The hazard register: raise a hazard, then record a control on it (a control needs no officer
+        // role, so it works with login off; a retirement is refused without the role, by design).
+        refused_then_accepted(db, "POST /api/hazards", || async {
+            let r = server
+                .post("/api/hazards")
+                .json(&json!({ "title": "audit refusal", "severity": 2, "likelihood": 2 }))
+                .await;
+            (r.status_code(), r.text())
+        })
+        .await;
+        let hazards = server.get("/api/hazards").await.json::<Value>();
+        let hazard_id = hazards["hazards"][0]["id"]
+            .as_str()
+            .expect("a hazard id")
+            .to_string();
+        refused_then_accepted(db, "PUT /api/hazards/{hazard_id}", || async {
+            let r = server
+                .put(&format!("/api/hazards/{hazard_id}"))
+                .json(&json!({ "expected_version": 1, "event": "control", "text": "a check" }))
+                .await;
+            (r.status_code(), r.text())
+        })
+        .await;
+
         // Photo put and withdraw.
         let png = HeaderValue::from_static("image/png");
         let ct = HeaderName::from_static("content-type");

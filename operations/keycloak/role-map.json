@@ -49,6 +49,11 @@
       "integrator"
     ]
   },
+  "clinical-safety-officer": {
+    "role": [
+      "clinical-safety-officer"
+    ]
+  },
   "org-riverside": {
     "organisation": [
       "riverside"

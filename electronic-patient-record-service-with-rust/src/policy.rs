@@ -52,11 +52,14 @@ pub enum Role {
     Auditor,
     /// A system integration (service account).
     Integrator,
+    /// The Clinical Safety Officer: keeps the hazard register and is the only role that can retire a hazard
+    /// (`hazard.rs`). Sees no clinical content.
+    ClinicalSafetyOfficer,
 }
 
 impl Role {
     /// Every role, in a fixed order.
-    pub const ALL: [Role; 10] = [
+    pub const ALL: [Role; 11] = [
         Role::Clinician,
         Role::Nurse,
         Role::Pharmacist,
@@ -67,6 +70,7 @@ impl Role {
         Role::Proxy,
         Role::Auditor,
         Role::Integrator,
+        Role::ClinicalSafetyOfficer,
     ];
 
     /// The token value for this role (`role=clinician`).
@@ -83,6 +87,7 @@ impl Role {
             Role::Proxy => "proxy",
             Role::Auditor => "auditor",
             Role::Integrator => "integrator",
+            Role::ClinicalSafetyOfficer => "clinical-safety-officer",
         }
     }
 
@@ -135,11 +140,14 @@ pub enum Resource {
     /// Emergency access to a record without a care relationship, and the review of it
     /// (`break_glass.rs`).
     BreakGlass,
+    /// The hazard register (`hazard_store.rs`): hazards, their controls and the evidence that one was
+    /// removed. It holds no patient data and belongs to no patient.
+    Hazard,
 }
 
 impl Resource {
     /// Every resource kind, in a fixed order.
-    pub const ALL: [Resource; 14] = [
+    pub const ALL: [Resource; 15] = [
         Resource::PatientIdentity,
         Resource::Encounter,
         Resource::Condition,
@@ -154,6 +162,7 @@ impl Resource {
         Resource::PatientLink,
         Resource::FeedQueue,
         Resource::BreakGlass,
+        Resource::Hazard,
     ];
 
     /// A stable name for audit rows and route tables.
@@ -174,6 +183,7 @@ impl Resource {
             Resource::PatientLink => "PatientLink",
             Resource::FeedQueue => "FeedQueue",
             Resource::BreakGlass => "BreakGlass",
+            Resource::Hazard => "Hazard",
         }
     }
 
@@ -195,6 +205,7 @@ impl Resource {
                 | Resource::PatientLink
                 | Resource::FeedQueue
                 | Resource::BreakGlass
+                | Resource::Hazard
         )
     }
 }
@@ -496,8 +507,8 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
     use Resource::{
         AllergyIntolerance as Allergy, Amendment, AuditLog, BreakGlass as Glass,
         CareRelationship as Rel, Condition, Consent as Cons, Document, Encounter,
-        FeedQueue as Queue, MedicationRequest as Meds, Observation, PatientIdentity as Identity,
-        PatientLink as Link,
+        FeedQueue as Queue, Hazard, MedicationRequest as Meds, Observation,
+        PatientIdentity as Identity, PatientLink as Link,
     };
     match (role, resource) {
         // Clinicians: full clinical work, and register or correct identity.
@@ -557,6 +568,12 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         (Role::Proxy, Encounter | Condition | Observation | Meds | Allergy | Document) => {
             &[Read, Search]
         }
+        // The hazard register: the Clinical Safety Officer keeps it; clinicians raise hazards, record
+        // controls and reopen; the auditor reads. Which step belongs to which role is checked by the
+        // route: only the Clinical Safety Officer retires a hazard (`hazard.rs`).
+        (Role::ClinicalSafetyOfficer, Hazard) => &[Read, Search, Create, Update],
+        (Role::Clinician, Hazard) => &[Read, Search, Create, Update],
+        (Role::Auditor, Hazard) => &[Read, Search],
         // The auditor: the audit trail only.
         (Role::Auditor, AuditLog) => &[Read, Search, Export],
         // Integrations: find patients, and feed identity in (an ADT feed over MLLP or HL7/FHIR
@@ -579,6 +596,7 @@ fn purpose_fits(role: Role, purpose: Purpose) -> bool {
         }
         Role::Patient | Role::Proxy => purpose == PatientAccess,
         Role::Auditor => purpose == Audit,
+        Role::ClinicalSafetyOfficer => purpose == Operations,
     }
 }
 
@@ -1125,7 +1143,10 @@ mod tests {
                                         // Roles with no clinical permission never see clinical content.
                                         if matches!(
                                             role,
-                                            Role::Receptionist | Role::Auditor | Role::Integrator
+                                            Role::Receptionist
+                                                | Role::Auditor
+                                                | Role::Integrator
+                                                | Role::ClinicalSafetyOfficer
                                         ) {
                                             assert!(!resource.clinical(), "{at}");
                                         }
@@ -1137,8 +1158,8 @@ mod tests {
                 }
             }
         }
-        // 10 roles × 14 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
-        assert_eq!(cells, 10 * 14 * 6 * 8 * 5 * 3 * 7 * 2);
+        // 11 roles × 15 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
+        assert_eq!(cells, 11 * 15 * 6 * 8 * 5 * 3 * 7 * 2);
         assert!(allows > 0);
     }
 

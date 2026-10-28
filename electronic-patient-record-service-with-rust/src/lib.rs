@@ -22,6 +22,8 @@ pub mod consents_store;
 pub mod controllers;
 pub mod feed_queue;
 pub mod gate;
+pub mod hazard;
+pub mod hazard_store;
 pub mod ids;
 pub mod interop;
 pub mod link_token;

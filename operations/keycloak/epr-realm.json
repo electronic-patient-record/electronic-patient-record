@@ -54,6 +54,10 @@
       {
         "name": "integrator",
         "description": "EPR policy role (SE-1). Mapped to the token attribute role=integrator by role-map.json; the API reads nothing else."
+      },
+      {
+        "name": "clinical-safety-officer",
+        "description": "EPR policy role (AS-17). Mapped to the token attribute role=clinical-safety-officer by role-map.json; the only role that can retire a hazard, and only with evidence. Give it to a named person, never to a service account."
       }
     ]
   },

@@ -404,7 +404,7 @@ Conventions:
   protective, information) columns in the hazard log, an overall residual-risk judgement, and a post-production feedback
   process. **Not clinical** until a module is declared a device; the CSO and the MHRA boundary decide that (OQ-2, AS-11).
   **Acceptance:** each row of the table is marked met, partial or not met with evidence; no document claims conformity.
-- [ ] **AS-17 (M) — Hazard register in the product: only the CSO retires, with evidence.** Per
+- [ ] **AS-17 (M) — Hazard register in the product: only the CSO retires, with evidence.** **Landed 2026-10-28 in part:** the role, the append-only table, the rules, the routes (403 without the role even with login off, 422 without evidence, four eyes, reopen by any writer), audit rows with evidence hashes only, the inventory rows, the Keycloak role, hazard H-036, and tests (see the CHANGELOG). **Not met:** the acceptance line about the route census listing a `hazard:retire` permission for one role: retire is gated in the handler by the token's role, not by a separate permission in the table, because the table is per resource and action; no one holds the role (OQ-2); no UI screen; evidence is stored as a hash and reference only. Left open. Original: Per
   [`spec/hazard/index.md`](spec/hazard/index.md) "In the EPR system itself": a `clinical-safety-officer` role and a
   `hazard:retire` permission in the policy table; an append-only `hazard_events` table (trigger refuses update and delete);
   a retire route that answers 422 without evidence (kind, reference, time, SHA-256) and 403 to every other role; reopen open

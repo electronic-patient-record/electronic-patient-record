@@ -4,7 +4,7 @@
 
 | Class | Covers | Period | Today |
 | --- | --- | --- | --- |
-| `record` | Patient identity, consent, relationships, links, photos, allergies, observations, amendment requests (each with its `_current` view) | Not set | Kept for ever. The clinical record is append-only: there is no delete path and no migration may add one |
+| `record` | Patient identity, consent, relationships, links, photos, allergies, observations, amendment requests, the hazard register (each with its `_current` view) | Not set | Kept for ever. The clinical record is append-only: there is no delete path and no migration may add one |
 | `audit` | `audit_events`, `break_glass_grants`, `break_glass_reviews` | Not set | Kept for ever; `audit_events` is protected by database triggers and a hash chain |
 | `feed` | `feed_refusals` and `feed_refusal_resolutions`: HL7 messages the service refused, with the raw message | Not set | Kept for ever. The raw message holds identity and may hold more, so it is the strongest case for a shorter period |
 

@@ -101,6 +101,20 @@ feed_refusals,control_id,none,HL7 message control id,feed
 feed_refusals,kind,none,Kind of record,feed
 feed_refusals,reasons,none,Why the message was refused,feed
 feed_refusals,message,health,The raw HL7 message as received,feed
+hazard_current,hazard_id,none,Random hazard id,record
+hazard_current,version,none,Version counter,record
+hazard_current,recorded_at,none,When the version was written,record
+hazard_current,author,staff-identifier,Who wrote the version,record
+hazard_current,state,none,State of the hazard,record
+hazard_current,event,free-text,Step of the hazard ; controls and reasons are free text and must hold no patient data,record
+hazard_current,body,free-text,The hazard ; title and controls and evidence references and the note are free text and must hold no patient data,record
+hazard_versions,hazard_id,none,Random hazard id,record
+hazard_versions,version,none,Version counter,record
+hazard_versions,recorded_at,none,When the version was written,record
+hazard_versions,author,staff-identifier,Who wrote the version,record
+hazard_versions,state,none,State of the hazard,record
+hazard_versions,event,free-text,Step of the hazard ; controls and reasons are free text and must hold no patient data,record
+hazard_versions,body,free-text,The hazard ; title and controls and evidence references and the note are free text and must hold no patient data,record
 observation_current,observation_id,none,Random record id,record
 observation_current,version,none,Version counter,record
 observation_current,patient_id,identifier,Links a record to the patient,record
