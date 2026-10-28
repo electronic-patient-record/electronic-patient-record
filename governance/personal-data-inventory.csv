@@ -1,0 +1,193 @@
+table,column,category,purpose,retention_class
+allergy_assertion_current,patient_id,identifier,Links a record to the patient,record
+allergy_assertion_current,version,none,Version counter,record
+allergy_assertion_current,recorded_at,none,When the version was written,record
+allergy_assertion_current,author,staff-identifier,Who wrote the version,record
+allergy_assertion_current,reason,free-text,Why the version was written as typed,record
+allergy_assertion_current,kind,none,Kind of record,record
+allergy_assertion_versions,patient_id,identifier,Links a record to the patient,record
+allergy_assertion_versions,version,none,Version counter,record
+allergy_assertion_versions,recorded_at,none,When the version was written,record
+allergy_assertion_versions,author,staff-identifier,Who wrote the version,record
+allergy_assertion_versions,reason,free-text,Why the version was written as typed,record
+allergy_assertion_versions,kind,none,Kind of record,record
+allergy_current,allergy_id,none,Random record id,record
+allergy_current,version,none,Version counter,record
+allergy_current,patient_id,identifier,Links a record to the patient,record
+allergy_current,recorded_at,none,When the version was written,record
+allergy_current,author,staff-identifier,Who wrote the version,record
+allergy_current,reason,free-text,Why the version was written as typed,record
+allergy_current,status,none,State of the record,record
+allergy_current,body,health,The allergy as recorded,record
+allergy_versions,allergy_id,none,Random record id,record
+allergy_versions,version,none,Version counter,record
+allergy_versions,patient_id,identifier,Links a record to the patient,record
+allergy_versions,recorded_at,none,When the version was written,record
+allergy_versions,author,staff-identifier,Who wrote the version,record
+allergy_versions,reason,free-text,Why the version was written as typed,record
+allergy_versions,status,none,State of the record,record
+allergy_versions,body,health,The allergy as recorded,record
+amendment_current,amendment_id,none,Random record id,record
+amendment_current,version,none,Version counter,record
+amendment_current,patient_id,identifier,Links a record to the patient,record
+amendment_current,recorded_at,none,When the version was written,record
+amendment_current,author,staff-identifier,Who wrote the version,record
+amendment_current,state,none,State of the request,record
+amendment_current,target_kind,none,Kind of record a request is about,record
+amendment_current,target_id,none,Id of the record a request is about,record
+amendment_current,event,none,Step of the request,record
+amendment_current,body,health,The patient request to correct a record ; in the patient own words,record
+amendment_versions,amendment_id,none,Random record id,record
+amendment_versions,version,none,Version counter,record
+amendment_versions,patient_id,identifier,Links a record to the patient,record
+amendment_versions,recorded_at,none,When the version was written,record
+amendment_versions,author,staff-identifier,Who wrote the version,record
+amendment_versions,state,none,State of the request,record
+amendment_versions,target_kind,none,Kind of record a request is about,record
+amendment_versions,target_id,none,Id of the record a request is about,record
+amendment_versions,event,none,Step of the request,record
+amendment_versions,body,health,The patient request to correct a record ; in the patient own words,record
+audit_events,id,none,Random record id,audit
+audit_events,recorded_at,none,When the version was written,audit
+audit_events,action,none,Audited action,audit
+audit_events,outcome,none,Outcome code,audit
+audit_events,agent,staff-identifier,Who or what acted,audit
+audit_events,patient_ref,identifier,Patient the action was about,audit
+audit_events,resource_ref,none,Resource the action was about,audit
+audit_events,purpose_of_use,none,Purpose of use declared,audit
+audit_events,break_glass,none,Whether emergency access applied,audit
+audit_events,network_address,staff-trace,Address the request came from,audit
+audit_events,detail,free-text,Structured detail of the audit row; it holds no values by design but is classified cautiously,audit
+audit_events,prev_digest,none,Hash chain,audit
+audit_events,digest,none,Hash chain,audit
+break_glass_grants,grant_id,none,Random record id,audit
+break_glass_grants,patient_id,identifier,Links a record to the patient,audit
+break_glass_grants,subject,staff-identifier,The clinician given emergency access,audit
+break_glass_grants,reason,free-text,Why the version was written as typed,audit
+break_glass_grants,granted_at,none,When emergency access began,audit
+break_glass_grants,expires_at,none,When emergency access ends,audit
+break_glass_reviews,grant_id,none,Random record id,audit
+break_glass_reviews,reviewed_at,none,When the review was written,audit
+break_glass_reviews,reviewed_by,staff-identifier,Who reviewed the emergency access,audit
+break_glass_reviews,outcome,none,Outcome code,audit
+break_glass_reviews,note,free-text,Reviewer note as typed,audit
+consent_current,consent_id,none,Random record id,record
+consent_current,version,none,Version counter,record
+consent_current,patient_id,identifier,Links a record to the patient,record
+consent_current,recorded_at,none,When the version was written,record
+consent_current,author,staff-identifier,Who wrote the version,record
+consent_current,reason,free-text,Why the version was written as typed,record
+consent_current,status,none,State of the record,record
+consent_current,body,preference,The consent decision,record
+consent_versions,consent_id,none,Random record id,record
+consent_versions,version,none,Version counter,record
+consent_versions,patient_id,identifier,Links a record to the patient,record
+consent_versions,recorded_at,none,When the version was written,record
+consent_versions,author,staff-identifier,Who wrote the version,record
+consent_versions,reason,free-text,Why the version was written as typed,record
+consent_versions,status,none,State of the record,record
+consent_versions,body,preference,The consent decision,record
+feed_refusal_resolutions,refusal_id,none,Random record id,feed
+feed_refusal_resolutions,resolved_at,none,When the refusal was resolved,feed
+feed_refusal_resolutions,resolved_by,staff-identifier,Who resolved the refusal,feed
+feed_refusal_resolutions,outcome,none,Outcome code,feed
+feed_refusal_resolutions,reason,free-text,Why the version was written as typed,feed
+feed_refusals,refusal_id,none,Random record id,feed
+feed_refusals,received_at,none,When the message arrived,feed
+feed_refusals,agent,staff-identifier,Who or what acted,feed
+feed_refusals,peer,staff-trace,Address of the sending system,feed
+feed_refusals,event,none,Step of the request,feed
+feed_refusals,control_id,none,HL7 message control id,feed
+feed_refusals,kind,none,Kind of record,feed
+feed_refusals,reasons,none,Why the message was refused,feed
+feed_refusals,message,health,The raw HL7 message as received,feed
+observation_current,observation_id,none,Random record id,record
+observation_current,version,none,Version counter,record
+observation_current,patient_id,identifier,Links a record to the patient,record
+observation_current,recorded_at,none,When the version was written,record
+observation_current,author,staff-identifier,Who wrote the version,record
+observation_current,reason,free-text,Why the version was written as typed,record
+observation_current,status,none,State of the record,record
+observation_current,effective_at,health,When the measurement was taken,record
+observation_current,site_zone,none,Time zone of the site,record
+observation_current,body,health,The vital sign as recorded,record
+observation_versions,observation_id,none,Random record id,record
+observation_versions,version,none,Version counter,record
+observation_versions,patient_id,identifier,Links a record to the patient,record
+observation_versions,recorded_at,none,When the version was written,record
+observation_versions,author,staff-identifier,Who wrote the version,record
+observation_versions,reason,free-text,Why the version was written as typed,record
+observation_versions,status,none,State of the record,record
+observation_versions,effective_at,health,When the measurement was taken,record
+observation_versions,site_zone,none,Time zone of the site,record
+observation_versions,body,health,The vital sign as recorded,record
+patient_current,patient_id,identifier,Links a record to the patient,record
+patient_current,version,none,Version counter,record
+patient_current,recorded_at,none,When the version was written,record
+patient_current,author,staff-identifier,Who wrote the version,record
+patient_current,reason,free-text,Why the version was written as typed,record
+patient_current,body,identifier,The patient identity record: names ; birth date ; sex ; identifiers ; addresses ; telecom,record
+patient_current,drill,none,Marks a drill record,record
+patient_link_current,link_id,none,Random record id,record
+patient_link_current,version,none,Version counter,record
+patient_link_current,recorded_at,none,When the version was written,record
+patient_link_current,author,staff-identifier,Who wrote the version,record
+patient_link_current,reason,free-text,Why the version was written as typed,record
+patient_link_current,source_patient_id,identifier,The patient a link leaves,record
+patient_link_current,target_patient_id,identifier,The patient a link points to,record
+patient_link_current,status,none,State of the record,record
+patient_link_current,match_score,none,Matcher score for the link,record
+patient_link_current,match_decision,none,Matcher decision for the link,record
+patient_link_versions,link_id,none,Random record id,record
+patient_link_versions,version,none,Version counter,record
+patient_link_versions,recorded_at,none,When the version was written,record
+patient_link_versions,author,staff-identifier,Who wrote the version,record
+patient_link_versions,reason,free-text,Why the version was written as typed,record
+patient_link_versions,source_patient_id,identifier,The patient a link leaves,record
+patient_link_versions,target_patient_id,identifier,The patient a link points to,record
+patient_link_versions,status,none,State of the record,record
+patient_link_versions,match_score,none,Matcher score for the link,record
+patient_link_versions,match_decision,none,Matcher decision for the link,record
+patient_photo_current,patient_id,identifier,Links a record to the patient,record
+patient_photo_current,version,none,Version counter,record
+patient_photo_current,recorded_at,none,When the version was written,record
+patient_photo_current,author,staff-identifier,Who wrote the version,record
+patient_photo_current,reason,free-text,Why the version was written as typed,record
+patient_photo_current,content_type,none,Image type,record
+patient_photo_current,bytes,biometric,The patient photo,record
+patient_photo_current,sha256,none,Digest of the photo,record
+patient_photos,patient_id,identifier,Links a record to the patient,record
+patient_photos,version,none,Version counter,record
+patient_photos,recorded_at,none,When the version was written,record
+patient_photos,author,staff-identifier,Who wrote the version,record
+patient_photos,reason,free-text,Why the version was written as typed,record
+patient_photos,content_type,none,Image type,record
+patient_photos,bytes,biometric,The patient photo,record
+patient_photos,sha256,none,Digest of the photo,record
+patient_versions,patient_id,identifier,Links a record to the patient,record
+patient_versions,version,none,Version counter,record
+patient_versions,recorded_at,none,When the version was written,record
+patient_versions,author,staff-identifier,Who wrote the version,record
+patient_versions,reason,free-text,Why the version was written as typed,record
+patient_versions,body,identifier,The patient identity record: names ; birth date ; sex ; identifiers ; addresses ; telecom,record
+patient_versions,drill,none,Marks a drill record,record
+relationship_current,relationship_id,none,Random record id,record
+relationship_current,version,none,Version counter,record
+relationship_current,patient_id,identifier,Links a record to the patient,record
+relationship_current,subject,identifier,The person given the relationship,record
+relationship_current,kind,none,Kind of record,record
+relationship_current,status,none,State of the record,record
+relationship_current,recorded_at,none,When the version was written,record
+relationship_current,author,staff-identifier,Who wrote the version,record
+relationship_current,reason,free-text,Why the version was written as typed,record
+relationship_current,body,identifier,The care or proxy relationship,record
+relationship_versions,relationship_id,none,Random record id,record
+relationship_versions,version,none,Version counter,record
+relationship_versions,patient_id,identifier,Links a record to the patient,record
+relationship_versions,subject,identifier,The person given the relationship,record
+relationship_versions,kind,none,Kind of record,record
+relationship_versions,status,none,State of the record,record
+relationship_versions,recorded_at,none,When the version was written,record
+relationship_versions,author,staff-identifier,Who wrote the version,record
+relationship_versions,reason,free-text,Why the version was written as typed,record
+relationship_versions,body,identifier,The care or proxy relationship,record

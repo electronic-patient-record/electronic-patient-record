@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-28 - Governance: personal-data inventory, retention schedule, DPIA and record of processing (from the patient-administration-system project)
+
+- `governance/personal-data-inventory.csv` classifies all 192 database columns (category, purpose, retention class); `tests/personal_data_inventory.rs` fails when a column is unclassified or a row is stale (database test, passed against Postgres 18; the shape test needs no database). `governance/retention-schedule.md`, `governance/dpia.md` and `governance/record-of-processing.md` are drafts from the code and specs.
+- **Not done, and plainly:** no retention period is set; no one has reviewed any of these documents (no data protection officer, Clinical Safety Officer or privacy lead); the controller, legal basis, Article 9 condition, hosting and processors are all left as "controller to decide"; the DPIA does not assess residual risk and records no consultation. The category of each column is my judgement (for example `audit_events.detail` is classed free-text to be cautious, and the photo as biometric). **How deletion fits an append-only record is an open question** that the schedule names and does not answer. The inventory test is not in a CI job of its own: the CI database job runs every ignored test, so it runs there. Gates: fmt, clippy, links.
+
 ## 2026-10-28 - Service: a seeded chaos test over every route (from the patient-administration-system project)
 
 - Read `~/git/patient-administration-system/patient-administration-system` for ideas. Taken: its seeded "monkey" that hits every route with hostile input. `tests/chaos_api.rs` does this against `controllers::all_routes()` (no panic, no 5xx other than 502/503/504, no internals in a body; seeded; refuses a non-test database). **It found a real bug on the first run:** a NUL byte (`%00`) in a query string made `GET /api/patients` and `GET /api/audit` answer 500, because PostgreSQL cannot store one. Fixed by refusing such a target 400 before authentication (`authz::no_nul_mw`, 1 unit test). After the fix, two seeds of 12,000 requests each ran clean (before it, seeds 1 and 2 of 20,000 each failed).
