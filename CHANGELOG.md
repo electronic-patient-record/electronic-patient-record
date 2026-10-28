@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-28 - CI: fixed seed for the hostile-input sweep (PA-12, in part)
+
+- The CI database-test step sets `EPR_CHAOS_SEED=20261028`, so a failure repeats; local runs stay random. Planted check: a temporary `panic!` in `no_nul_mw` on targets containing `%2` made `chaos_api` fail (300 iterations, seed 20261028); reverted, nothing of it is committed.
+- **Found, not fixed:** a first plant keyed on `%25` (a literal `%`) was NOT caught in 2000 iterations, because the generator never sends a bare `%`. So the sweep's reach is limited by its junk list; I did not widen it (that changes every seeded sequence).
+- **Not done / not verified:** PA-12 stays open (login is off in the test); the fixed seed has not yet run in CI; no hazard-log change.
+
 ## 2026-10-28 - Spec: link to the MHRA
 
 - `spec/12-compliance.md` now links the MHRA's page on GOV.UK where it names the Software as a Medical Device boundary. Wording only.
