@@ -102,7 +102,7 @@ pub fn to_fhir(
     if !notices.is_empty() {
         out["note"] = notices
             .iter()
-            .map(|n| json!({ "text": n.describe() }))
+            .map(crate::amendment::Notice::fhir_annotation)
             .collect();
     }
     parse(out).map(Some)

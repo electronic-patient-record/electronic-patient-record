@@ -383,7 +383,37 @@ impl Notice {
             }
         }
     }
+
+    /// The notice as a FHIR `Annotation`: the English text a person reads, and a coded extension a
+    /// machine can act on (state, the version that corrected it, the ground of a refusal). The
+    /// extension URL is a placeholder under `.example` until the project owns a canonical base.
+    #[must_use]
+    pub fn fhir_annotation(&self) -> serde_json::Value {
+        let (state, mut parts) = match self {
+            Notice::Pending => ("pending", vec![]),
+            Notice::Amended { version } => (
+                "amended",
+                vec![serde_json::json!({ "url": "version", "valueInteger": version })],
+            ),
+            Notice::Refused { ground, .. } => (
+                "refused",
+                vec![serde_json::json!({
+                    "url": "ground",
+                    "valueCode": serde_json::to_value(ground).ok().and_then(|g| g.as_str().map(str::to_owned)).unwrap_or_default()
+                })],
+            ),
+        };
+        parts.insert(0, serde_json::json!({ "url": "state", "valueCode": state }));
+        serde_json::json!({
+            "extension": [{ "url": AMENDMENT_NOTICE_URL, "extension": parts }],
+            "text": self.describe(),
+        })
+    }
 }
+
+/// The extension that codes an amendment notice. A placeholder base: not yet published or registered.
+pub const AMENDMENT_NOTICE_URL: &str =
+    "https://electronic-patient-record.example/fhir/StructureDefinition/amendment-notice";
 
 #[cfg(test)]
 mod tests {
@@ -596,5 +626,27 @@ mod tests {
         }
         .describe();
         assert!(none.ends_with("The patient has given no statement."));
+    }
+
+    #[test]
+    fn a_notice_is_coded_for_a_machine_as_well_as_told_in_words() {
+        let code = |n: &Notice| n.fhir_annotation()["extension"][0]["extension"].clone();
+        assert_eq!(
+            code(&Notice::Pending),
+            serde_json::json!([{ "url": "state", "valueCode": "pending" }])
+        );
+        assert_eq!(
+            code(&Notice::Amended { version: 4 }),
+            serde_json::json!([{ "url": "state", "valueCode": "amended" }, { "url": "version", "valueInteger": 4 }])
+        );
+        let refused = Notice::Refused {
+            ground: Ground::AccurateAndComplete,
+            disagreement: Some("no".into()),
+        };
+        assert_eq!(
+            code(&refused),
+            serde_json::json!([{ "url": "state", "valueCode": "refused" }, { "url": "ground", "valueCode": "accurate-and-complete" }])
+        );
+        assert_eq!(refused.fhir_annotation()["text"], refused.describe());
     }
 }

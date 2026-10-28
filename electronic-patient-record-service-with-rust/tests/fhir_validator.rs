@@ -214,7 +214,11 @@ fn validate(jar: &Path, files: &[PathBuf]) -> (bool, String) {
     let out = Command::new("java")
         .arg("-jar")
         .arg(jar)
-        .args(["-version", "4.0.1", "-tx", "n/a"])
+        .args(["-version", "4.0.1", "-tx", "n/a", "-ig"])
+        .arg(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/fhir/StructureDefinition-amendment-notice.json"
+        ))
         .args(files)
         .output()
         .expect("java must be on the PATH");

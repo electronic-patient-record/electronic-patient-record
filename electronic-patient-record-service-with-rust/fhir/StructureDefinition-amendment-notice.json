@@ -1,0 +1,127 @@
+{
+  "resourceType": "StructureDefinition",
+  "id": "amendment-notice",
+  "url": "https://electronic-patient-record.example/fhir/StructureDefinition/amendment-notice",
+  "version": "0.1.0",
+  "name": "AmendmentNotice",
+  "title": "Amendment notice",
+  "status": "draft",
+  "description": "Codes the notice of a request to amend a record, carried beside the English text in Annotation. A placeholder canonical base: not published or registered. Unreviewed.",
+  "fhirVersion": "4.0.1",
+  "kind": "complex-type",
+  "abstract": false,
+  "context": [
+    {
+      "type": "element",
+      "expression": "Annotation"
+    }
+  ],
+  "type": "Extension",
+  "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Extension",
+  "derivation": "constraint",
+  "differential": {
+    "element": [
+      {
+        "id": "Extension",
+        "path": "Extension",
+        "short": "Amendment notice",
+        "definition": "A coded form of the notice a reader of a record must be told: a request to correct it is pending, was applied, or was refused.",
+        "min": 0,
+        "max": "*"
+      },
+      {
+        "id": "Extension.extension",
+        "path": "Extension.extension",
+        "slicing": {
+          "discriminator": [
+            {
+              "type": "value",
+              "path": "url"
+            }
+          ],
+          "rules": "open"
+        }
+      },
+      {
+        "id": "Extension.extension:state",
+        "path": "Extension.extension",
+        "sliceName": "state",
+        "short": "pending, amended or refused",
+        "min": 1,
+        "max": "1"
+      },
+      {
+        "id": "Extension.extension:state.url",
+        "path": "Extension.extension.url",
+        "fixedUri": "state"
+      },
+      {
+        "id": "Extension.extension:state.value[x]",
+        "path": "Extension.extension.value[x]",
+        "min": 1,
+        "type": [
+          {
+            "code": "code"
+          }
+        ]
+      },
+      {
+        "id": "Extension.extension:version",
+        "path": "Extension.extension",
+        "sliceName": "version",
+        "short": "The version that corrected the record (amended only)",
+        "min": 0,
+        "max": "1"
+      },
+      {
+        "id": "Extension.extension:version.url",
+        "path": "Extension.extension.url",
+        "fixedUri": "version"
+      },
+      {
+        "id": "Extension.extension:version.value[x]",
+        "path": "Extension.extension.value[x]",
+        "min": 1,
+        "type": [
+          {
+            "code": "integer"
+          }
+        ]
+      },
+      {
+        "id": "Extension.extension:ground",
+        "path": "Extension.extension",
+        "sliceName": "ground",
+        "short": "The ground of a refusal (refused only)",
+        "min": 0,
+        "max": "1"
+      },
+      {
+        "id": "Extension.extension:ground.url",
+        "path": "Extension.extension.url",
+        "fixedUri": "ground"
+      },
+      {
+        "id": "Extension.extension:ground.value[x]",
+        "path": "Extension.extension.value[x]",
+        "min": 1,
+        "type": [
+          {
+            "code": "code"
+          }
+        ]
+      },
+      {
+        "id": "Extension.url",
+        "path": "Extension.url",
+        "fixedUri": "https://electronic-patient-record.example/fhir/StructureDefinition/amendment-notice"
+      },
+      {
+        "id": "Extension.value[x]",
+        "path": "Extension.value[x]",
+        "min": 0,
+        "max": "0"
+      }
+    ]
+  }
+}

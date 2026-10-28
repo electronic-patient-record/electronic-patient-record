@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-28 - Service: the amendment notice coded in FHIR (RC-4, H-035)
+
+- Each `note` the FHIR Observation and AllergyIntolerance searches carry now has a coded extension beside the English text (`Notice::fhir_annotation`): `state` (pending, amended, refused), `version` (amended) and `ground` (refused). A machine reader can tell a pending request from a refusal without reading prose. The text is unchanged. 1 new unit test, assertions added to the Observation converter test. The StructureDefinition is `fhir/StructureDefinition-amendment-notice.json`, and the HL7 validator test now loads it with `-ig`: without it the validator rejects the extension, so the check does something.
+- **Not done:** the extension URL is a placeholder under `electronic-patient-record.example` that I chose, not a canonical address the project owns, and the StructureDefinition is unreviewed, not published and not served by the API (no `StructureDefinition` read). The patient's statement of disagreement is still only in the text, not coded. No UK Core or US Core profile (RC-2). Gates run: fmt, clippy, the non-database suite, and both validator tests (jar 7.0.3). **Not run locally:** the Postgres tests (`http_amendments` reads the same `note[].text`, which did not change); CI runs them. UI gates not run (no UI change).
+
 ## 2026-10-28 - UI: a first patient summary page (RC-8, H-034)
 
 - `/patients/[id]/summary`, linked from the patient page and read-only: the banner, the allergies with their amendment notices, the newest standing reading of each vital sign with its notice, and a list of what is not built (problems, medications, immunisations, results, appointments) saying that this does not mean there is nothing to record. A newest reading with no value shows its reason; an older value is never put in its place. A refused or failed section says so. 4 vitest, 2 stubbed Playwright tests with axe. H-034 text updated (status unchanged, still `open`).

@@ -120,7 +120,7 @@ pub fn to_fhir(
     if !notices.is_empty() {
         out["note"] = notices
             .iter()
-            .map(|n| json!({ "text": n.describe() }))
+            .map(crate::amendment::Notice::fhir_annotation)
             .collect();
     }
     parse(out).map(Some)
@@ -259,6 +259,14 @@ mod tests {
         let j = serde_json::to_value(to_fhir(&stored(), "P1", &notices).unwrap().unwrap()).unwrap();
         let notes = j["note"].as_array().unwrap();
         assert_eq!(notes.len(), 2);
+        assert_eq!(
+            notes[0]["extension"][0]["url"],
+            crate::amendment::AMENDMENT_NOTICE_URL
+        );
+        assert_eq!(
+            notes[1]["extension"][0]["extension"][1]["valueCode"],
+            "accurate-and-complete"
+        );
         assert!(
             notes[0]["text"]
                 .as_str()
