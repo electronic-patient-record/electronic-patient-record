@@ -15,6 +15,8 @@ SvelteKit (kit 3), Svelte 5 runes, TypeScript strict, adapter-node. Read [`spec/
 - Sign-in end-to-end (needs Keycloak and the API; see `operations/keycloak/README.md`):
   `EPR_E2E_API_URL=… EPR_E2E_PASSWORD=… pnpm exec playwright test -c playwright.keycloak.config.ts`.
 - Computed styles use the `style:` directive; the CSP forbids inline `style=""`.
-- Every page must pass the axe audit in `tests/e2e/smoke.spec.ts` (WCAG 2.2 AA). Add new pages to that list.
+- Every page must pass the axe audit in `tests/e2e/smoke.spec.ts` (WCAG 2.2 AA). Add new pages to that list. `tests/unit/axe-route-coverage.test.ts` fails when a page is never opened by a spec that runs axe.
+- API error text: only the 422 list of problems (`errors`) may be shown; any other status shows `STRINGS.error` or another of the page's own words (`tests/unit/no-api-error-text.test.ts`).
+- Translations: `governance/translation-review.md` is the register; a row may say `reviewed` only with a reviewer and a date (`tests/unit/translation-register.test.ts`).
 - Never display a missing value as `0` or "none"; show "not available".
 - Gates: `pnpm run check` (0 errors, 0 warnings), `pnpm exec vitest run`, `PW_PORT=4183 CI=true pnpm exec playwright test`.

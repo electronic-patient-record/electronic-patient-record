@@ -2882,3 +2882,15 @@ test("the summary says so when vital signs are refused or fail, never that there
   await expect(vitals).toContainText("not shown for your role or purpose");
   await expect(vitals).not.toContainText("No vital signs recorded");
 });
+
+test("a 500 that leaks internals shows the page's own words and none of the API's", async ({ page }) => {
+  const leak = "SELECT secret FROM patient_versions at /src/store.rs:42 panicked";
+  await stubAllergies(page, { error: leak }, 500);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) => json(route, 500, { error: leak }));
+  await page.route("**/api/proxy/api/patients/*/observations", (route) => json(route, 500, { error: leak }));
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  await expect(page.getByRole("alert").first()).toBeVisible();
+  await expect(page.locator("body")).not.toContainText("SELECT");
+  await expect(page.locator("body")).not.toContainText("store.rs");
+  await axe(page);
+});

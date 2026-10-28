@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-28 - UI: a translation register, a rule on API error text, and axe route coverage (from the patient-administration-system project)
+
+- `governance/translation-review.md` lists every locale with its status (all nine are machine-written, none reviewed, no reviewer) and `translation-register.test.ts` fails if a locale has no row, a status is unknown, or `reviewed` lacks a reviewer and date. The key-parity test already existed (`translations.test.ts`) and is unchanged.
+- `no-api-error-text.test.ts` scans `src`: a problem list may be shown only under a 422 check, and no `error` or `message` field of an answer may be shown. A leaking 500 on the patient page shows the page's own words and none of the leak (1 Playwright test with axe). **Deliberately different from the other project:** this UI shows the service's 422 validation wording as it stands (it is fixed English written in one place), so the rule is "422 only", not "never".
+- `axe-route-coverage.test.ts` fails when a page under `src/routes` is not opened by a spec that runs axe (checked by adding a dummy page: it failed). Both new rules were also tried against a deliberate violation and failed as they should.
+- **Not done:** the register covers one translated surface (the access-log filter form); nothing else is translated; no speaker has reviewed anything. The coverage test shows a page is opened in an axe spec, not that axe ran in every state of it. The 422 wording is still unreviewed English. Full UI gates run: check, vitest, Playwright, docs gates.
+
 ## 2026-10-28 - Governance: personal-data inventory, retention schedule, DPIA and record of processing (from the patient-administration-system project)
 
 - `governance/personal-data-inventory.csv` classifies all 192 database columns (category, purpose, retention class); `tests/personal_data_inventory.rs` fails when a column is unclassified or a row is stale (database test, passed against Postgres 18; the shape test needs no database). `governance/retention-schedule.md`, `governance/dpia.md` and `governance/record-of-processing.md` are drafts from the code and specs.
