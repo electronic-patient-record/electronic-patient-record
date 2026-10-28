@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-28 - Spec: link to the MHRA
+
+- `spec/12-compliance.md` now links the MHRA's page on GOV.UK where it names the Software as a Medical Device boundary. Wording only.
+- **Not done / not verified:** I did not open the link or check what the MHRA currently says; the spec still makes no claim that this software is or is not a medical device, and `plan.md` and the hazard log are unchanged. If you meant it to go somewhere else (the README, `llms.txt`, a sources list), say where.
+
 ## 2026-10-28 - CI: type-check the Playwright specs
 
 - The CI UI job now runs `pnpm run check:tests` (after `check`), and the gates in `AGENTS.md` list it. It passed locally before the change. This closes the "`check:tests` is not in CI" gap in the entry below.
