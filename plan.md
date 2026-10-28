@@ -1015,3 +1015,48 @@ identity, then EC-3 and EC-4 (results and overrides), then EC-5 to EC-8. EC-9 an
 
 Local files in `~/git/emergency-care-system`: `README.md`, `AGENTS.md`, `spec/index.md`, and the feature files
 `01` to `22` in `tests-with-given-when-then-features/` (titles for all, bodies for about fifteen scenarios).
+
+## 20. Research pass 2026-10-28: removing a hazard from the log
+
+The request: only the Clinical Safety Officer (CSO) can remove a hazard, and must put in evidence that it is removed.
+The rule, its evidence table and what is enforced today are in [`spec/hazard/index.md`](spec/hazard/index.md).
+
+### 20.1 Assessment
+
+- The repository already enforces half of it: on a pull request, only a login in `reviewers.txt` (empty until a CSO is
+  named, OQ-2) can set `accepted` or `closed`, change `reviewed_by`, or touch a row, and no row can be deleted at all.
+- "Remove" is better built as **retire**: the row stays with a closing status. DCB0129 vendor guidance (secondary
+  sources, not the standard) says closed hazards stay on the log for audit, and the project's own principle is that
+  clinical history is append-only. Deleting would also blind the checker, which compares rows by id.
+- Five gaps, ranked by risk: (1) the sign-off job runs on pull requests only and work goes straight to `main`, so a close
+  can bypass it; (2) `closed` needs no closure evidence; (3) a login is not a signature; (4) evidence paths can vanish
+  after closure; (5) one person can be both maintainer and CSO.
+
+### 20.2 Ideas, assessed
+
+| Rank | Idea | Value | Cost and caveat |
+|---|---|---|---|
+| 1 | **Run the sign-off comparison on every push to `main`**, against the previous commit, and require pull requests for `main` | Closes the bypass | Small to run; branch protection is a repository setting only the owner may change |
+| 2 | **Closure columns**: `closed_on`, `closure_evidence`, `closure_note`; `closed` without them fails | Makes "must put in evidence" a rule the machine checks | Small; changes the CSV shape, so the checker, its tests and the generated docs move together |
+| 3 | **Signed closing commit**: the commit that closes a hazard must be signed by a key listed for the CSO | A login becomes an identity | Medium; key management and a trust file |
+| 4 | **Evidence watch**: fail when a closed hazard's evidence path disappears; list code paths per hazard so a change there asks for review | Stops silent decay | Medium; path lists need upkeep |
+| 5 | **Reopen with a reason by anyone**; closing stays CSO-only | Doubt is cheap to record | Small |
+| 6 | **Release freeze**: a signed tag per release freezes the log; the safety case cites the tag | A log as the release saw it | Small |
+| 7 | **Separate the roles** in the risk plan: the maintainer may not be the CSO for a release | Keeps a second reviewer | A people decision (OQ-2), not code |
+
+### 20.3 Risks and what is uncertain
+
+- I read vendor guides, not the NHS England standard text: closure criteria and the retention period are **[uncertain]**
+  (AS-11).
+- Item 2 tightens a check that must never be weakened to get green; the existing 35 rows have no closure data, so none is
+  closed today and none is affected.
+- Nothing here names a CSO or changes any hazard's status.
+
+### 20.4 Order of work
+
+AS-13 (items 1, 2 and 5), then AS-14 (3), then AS-15 (4 and 6). OQ-2 comes first for all of them.
+
+### 20.5 Sources (this pass)
+
+- presencis.com/regulations/dcb0129/article-hazard-log/ (secondary)
+- cdn.presencis.com/regulations/dcb0129/guide/clinical-safety-officer (secondary)

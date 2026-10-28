@@ -41,13 +41,13 @@ no network, database or compilation; counts are source lines, not test runs):
 | OR | 0 | 9 |
 | IO | 0 | 15 |
 | CA | 0 | 8 |
-| AS | 0 | 12 |
+| AS | 0 | 15 |
 | CQ | 24 | 15 |
 | TR | 2 | 11 |
 | PN | 0 | 11 |
 | EM | 0 | 16 |
 | PA | 1 | 16 |
 | EC | 0 | 13 |
-| **Total** | **39** | **166** |
+| **Total** | **39** | **169** |
 
 <!-- generated:end -->

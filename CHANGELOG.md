@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-28 - Spec: who may remove a hazard, and the evidence (AS-13 to AS-15 planned)
+
+- New [`spec/hazard/index.md`](spec/hazard/index.md): only the Clinical Safety Officer removes a hazard and must give evidence; "remove" means retire (the row stays, as the checker already requires); anyone may reopen. It lists what counts as evidence, what the checker enforces today, seven weaknesses with advice, and plan.md §20 ranks the ideas. Tasks AS-13 (closure columns, push guard), AS-14 (signed closing commit) and AS-15 (evidence that does not rot) are added.
+- **Said plainly:** the request said "chief safety officer"; the repository and DCB0129 call the role Clinical Safety Officer, so the spec does. I read two vendor guides, not the NHS England standard, so closure criteria and retention are marked uncertain.
+- **Not done:** no code or CSV change, so none of the new rules is enforced; no CSO is named (OQ-2); no hazard status changed; the gap that a direct push to `main` skips the sign-off job is recorded, not fixed (branch protection is the owner's setting).
+
 ## 2026-10-28 - CI: fixed seed for the hostile-input sweep (PA-12, in part)
 
 - The CI database-test step sets `EPR_CHAOS_SEED=20261028`, so a failure repeats; local runs stay random. Planted check: a temporary `panic!` in `no_nul_mw` on targets containing `%2` made `chaos_api` fail (300 iterations, seed 20261028); reverted, nothing of it is committed.

@@ -388,6 +388,17 @@ Conventions:
   2023 and US ranges), DTAC 2026 checklist, accessibility statement, and a
   HIPAA Security Rule mapping (to the 2025 NPRM baseline, marked "not final").
   **Acceptance:** every document is linked from `governance/README.md`, and no document claims certification.
+- [ ] **AS-13 (S) — Hazard closure needs evidence, on every push.** Per [`spec/hazard/index.md`](spec/hazard/index.md):
+  `closed` needs `closed_on`, `closure_evidence` (paths that exist) and `closure_note`; reopening anyone may do, with a reason;
+  the sign-off comparison also runs on pushes to `main`. **Not clinical** (a check on the log, no hazard changes).
+  **Acceptance:** a unit test closes a hazard without evidence and fails, one with evidence by a listed reviewer passes,
+  and a push that closes a hazard without a listed author fails in CI. Needs OQ-2 and, for the push guard, pull requests
+  required on `main` (owner's setting).
+- [ ] **AS-14 (M) — Signed hazard closure.** The commit that closes a hazard must carry a signature by a key listed for the
+  CSO. **Not clinical.** **Acceptance:** an unsigned closing commit fails; a commit signed by an unlisted key fails.
+- [ ] **AS-15 (M) — Closure evidence does not rot.** A closed hazard whose evidence path later disappears fails the
+  check; each hazard may list watched code paths, and a change there asks for the CSO's review; a signed tag per release
+  freezes the log. **Not clinical.** **Acceptance:** deleting a closed hazard's evidence file fails the docs job.
 - [ ] **AS-3 (S) — SAFER Guides mapping.** The eight 2025 guides mapped to
   features and gaps.
   **Acceptance:** each practice is marked met, partial or not met with evidence.

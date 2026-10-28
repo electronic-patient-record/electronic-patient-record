@@ -64,6 +64,8 @@ Topics that span several numbered chapters and are kept whole:
 - [Clinical safety](clinical-safety/index.md) — hazard log, safety case, the
   clinical safety officer's sign-off, safety-enhanced design. Spans §6, §7,
   §11, §12, §18.
+- [Hazard removal](hazard/index.md) — only the Clinical Safety Officer removes a hazard, with evidence; closed, never
+  deleted.
 - [Interoperability](interoperability/index.md) — FHIR R4 profiles (UK Core,
   US Core, IPS), SMART App Launch 2.x, CDS Hooks, Bulk Data, HL7 v2 inbound,
   C-CDA / IPS document export. Spans §5, §8, §9.
