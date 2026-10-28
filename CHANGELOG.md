@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-28 - Service: single-use link tokens, library only (PA-11); small-cell suppression was already here (PA-7)
+
+- `link_token.rs` (pure, 7 tests with fake time): opaque token, SHA-256 at rest, a link that works once, expiry refused at and after its time, and a read-only `view` so a GET cannot change state. Taken from the patient-administration-system project.
+- **Small-cell suppression needed no work:** `privacy.rs` (PA-7) already hides cells under k (never below 5), hides a second cell so a single hidden one cannot be subtracted from the total, limits how many tables a caller may ask for, and refuses the simplest differencing case. It has no caller. I did not add the other project's per-caller daily budget in the database or its audit of query shapes, since nothing here produces an aggregate yet.
+- **Not done:** the tokens have no table, no atomic spend and no caller, so no link works yet and PA-11 stays open; no route; nothing proves two simultaneous spends cannot both win (that needs the database). PA-12 is also noted in `tasks.md`: the chaos test does not yet meet its acceptance (random seed in CI, no planted-panic proof). Gates: fmt, clippy, the whole non-database suite.
+
 ## 2026-10-28 - UI: a translation register, a rule on API error text, and axe route coverage (from the patient-administration-system project)
 
 - `governance/translation-review.md` lists every locale with its status (all nine are machine-written, none reviewed, no reviewer) and `translation-register.test.ts` fails if a locale has no row, a status is unknown, or `reviewed` lacks a reviewer and date. The key-parity test already existed (`translations.test.ts`) and is unchanged.

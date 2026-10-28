@@ -942,10 +942,10 @@ what a clinician or a carer sees.
 - [ ] **PA-10 (S) — Triage code reconciliation.** **Clinical.** Check the PAS's SNOMED CT UK acuity concepts (its
   FR-189) against a primary source, and reconcile with `spec/triage/index.md`, which found none. Settles OQ-PA4.
   **Acceptance:** a note in `spec/triage/` says which concepts exist, what they mean, and whether TR-3 uses them.
-- [ ] **PA-11 (S) — Single-use link tokens.** Opaque random ids, hashed at rest, expiring, with GET reading and POST
+- [ ] **PA-11 (S) — Single-use link tokens.** **Library landed 2026-10-28, pure (`link_token.rs`, 7 tests, fake time):** token and hash, a link that works once, expiry refused at and after its time, and `view(&self)` that cannot change state. **Not built:** a table, an atomic spend, any caller, so the acceptance is met for the library only. Left open. Original: Opaque random ids, hashed at rest, expiring, with GET reading and POST
   acting, as the tested pattern for IO-10 and portal links.
   **Acceptance:** a token works once, an expired one is refused (fake clock), and a GET never changes state.
-- [ ] **PA-12 (M) — Hostile-input sweep.** A seeded test that sends malformed and hostile input to every route in the
+- [ ] **PA-12 (M) — Hostile-input sweep.** **Landed 2026-10-28 in part (`tests/chaos_api.rs`):** it found and fixed a real 500 (a NUL byte in a query). **Not met:** the seed is random in CI, not fixed, and no planted panic has been shown to fail it; login is off in the test. Left open. Original: A seeded test that sends malformed and hostile input to every route in the
   census (CQ-16) and requires no panic, no 500 and no leak, on a throwaway database only.
   **Acceptance:** the sweep runs in CI with a fixed seed, and a planted panic fails it.
 - [ ] **PA-13 (S) — Outbound choke point.** One gate that every outbound patient or clinician message passes, applying
