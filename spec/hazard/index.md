@@ -2,7 +2,7 @@
 
 Who may take a hazard off the active list, and what they must show. Related: [Clinical safety](../clinical-safety/index.md),
 the [hazard log](../../governance/clinical-safety/hazard-log.csv), the
-[risk management plan](../../governance/clinical-safety/risk-management-plan.md). Tasks AS-1, AS-13, AS-14, AS-15, AS-16.
+[risk management plan](../../governance/clinical-safety/risk-management-plan.md). Tasks AS-1, AS-13 to AS-18.
 
 Planned unless stated. **NOT FOR CLINICAL USE.** No Clinical Safety Officer is named yet (OQ-2), so today nobody can remove
 a hazard, and that is the intended state until one is.
@@ -67,6 +67,53 @@ column is never empty, even for a closed hazard).
    "this no longer applies". Only closing removes it from the active list. The CSO must say which, in the note.
 7. **The log is a file.** A row's history lives in git. Advice: never rewrite that history (no force-push, no squash of the
    log's commits); a signed tag at each release freezes the log as the release saw it.
+
+## In the EPR system itself
+
+Everything above governs the hazard log **file** in this repository, which the manufacturer keeps (DCB0129). The request
+"in the EPR system" is a different thing: a **hazard register inside the running product**, where a deploying organisation
+keeps its own hazards (DCB0160, the deployer's duty, with its own CSO). **Nothing of it is built:** the service has no
+`ClinicalSafetyOfficer` role (`src/policy.rs` lists ten roles, none of them this one), no hazard table and no hazard route.
+`src/gate.rs` already names the CSO as an example approver, and that is the only trace.
+
+### The rule, in product terms
+
+1. **Only a person holding the `clinical-safety-officer` role can retire a hazard.** The role is a new `Role` variant with
+   one new permission, `hazard:retire`, in the policy table, so the route census (CQ-16) fails if any other role gets it.
+   No clinical role has it, and a service, script or agent identity never has it.
+2. **A retirement without evidence is refused with a 422**, whoever asks: at least one evidence item, each with a kind
+   (`removal-change`, `test-run`, `review-record`, `census`), a reference, the time it was taken, and the **SHA-256 of the
+   artefact as it was then**. The hash means later edits to the evidence can be detected.
+3. **The register is append-only.** Events (`raised`, `rated`, `control-added`, `retired`, `reopened`) are rows that are never
+   updated or deleted; a database trigger refuses both, as for `audit_events`. A hazard's state is the last event. There is
+   no delete route and no migration may add one.
+4. **Any authenticated clinical-safety reader may reopen**, with a reason; the system itself may reopen when a re-check of the
+   evidence fails (see below). Retiring needs the CSO; reopening never does.
+5. **Every event is audited** in the hash-chained trail, with the actor, the role used and the evidence hashes.
+6. **The register holds no patient data.** Free text is length-limited and the table is listed in
+   `governance/personal-data-inventory.csv`, so the census test forces its columns to be declared.
+
+### Design questions I could not settle alone
+
+| Question | Advice |
+|---|---|
+| Two registers (the repository's CSV and the product's) | Keep both, with different owners: the CSV is the **manufacturer's** file; the product register is each **deployer's**. A deployer should receive the manufacturer's hazards as a shipped baseline it **cannot retire**, only mark "does not apply here" with evidence. **[uncertain]**: I have not checked how DCB0160 splits these |
+| The CSO is also a clinician | Retiring needs the CSO role **in that session's token**, not the clinician role: a separate login or a step-up, so a clinician's session cannot retire by accident |
+| Four eyes | The person who recorded the control or the removal cannot also retire it. On a one-person site this fails; allow it only with a recorded override and flag it on the safety case |
+| A hazard stuck open when the CSO leaves | Safe, but a lock-out: require **two** named CSOs (a deputy) and record who holds the role |
+| Evidence rots | Store the hash and a copy of small artefacts; a scheduled re-check re-hashes the evidence and **reopens** the hazard if it no longer matches, then raises an alert |
+| Retiring a hazard that gates a feature | Link a hazard to a gate (`src/gate.rs`): a feature with an open linked hazard may not reach `Show`. Retiring is then clinical, because it can turn a feature on |
+| Time of day and clock | Use the server clock; the Podman clock-drift note in `AGENTS.md` applies to the test setup, not the rule |
+
+### Risks
+
+- **Clinical impact.** The register itself shows clinicians nothing, but a linked gate makes retirement able to switch a
+  feature on. Treat any change that links them as `clinical-impact` and add a hazard row (AS-1).
+- **Evidence can be forged by the CSO.** Hashes prove it did not change afterwards, not that it was true. Only an independent
+  reviewer or the audit trail narrows that; do not claim more.
+- **Nothing here is clinically reviewed.** It is an AI agent's proposal, with no compliance claim.
+
+Tasks AS-17 (role, table, route, the 422 and the trigger) and AS-18 (the deployer baseline and the gate link).
 
 ## ISO 14971 (medical device risk management)
 

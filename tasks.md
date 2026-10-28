@@ -404,6 +404,19 @@ Conventions:
   protective, information) columns in the hazard log, an overall residual-risk judgement, and a post-production feedback
   process. **Not clinical** until a module is declared a device; the CSO and the MHRA boundary decide that (OQ-2, AS-11).
   **Acceptance:** each row of the table is marked met, partial or not met with evidence; no document claims conformity.
+- [ ] **AS-17 (M) — Hazard register in the product: only the CSO retires, with evidence.** Per
+  [`spec/hazard/index.md`](spec/hazard/index.md) "In the EPR system itself": a `clinical-safety-officer` role and a
+  `hazard:retire` permission in the policy table; an append-only `hazard_events` table (trigger refuses update and delete);
+  a retire route that answers 422 without evidence (kind, reference, time, SHA-256) and 403 to every other role; reopen open
+  to any safety reader; every event audited; the table listed in the personal-data inventory. **Clinical-adjacent:** add a
+  hazard row when it lands. **Acceptance:** tests show a clinician, a service identity and an agent are refused, a retire with
+  no evidence is a 422, an UPDATE and a DELETE on the table fail, and the route census lists the permission for one role only.
+  Needs OQ-2 and a decision on the two-registers question.
+- [ ] **AS-18 (M) — Deployer baseline and the gate link.** The manufacturer's hazards ship as a baseline a deployer cannot
+  retire, only mark "does not apply here" with evidence; a feature gate (PA-4) cannot reach `Show` while a linked hazard is
+  open; a scheduled re-hash reopens a hazard whose evidence changed. **Clinical:** retiring can switch a feature on, so a
+  hazard row and the CSO's review come first. **Acceptance:** a linked feature stays `Inert` with an open hazard and
+  a test shows a changed evidence file reopens it.
 - [ ] **AS-3 (S) — SAFER Guides mapping.** The eight 2025 guides mapped to
   features and gaps.
   **Acceptance:** each practice is marked met, partial or not met with evidence.

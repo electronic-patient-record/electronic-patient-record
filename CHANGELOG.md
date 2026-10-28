@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-28 - Spec: the hazard rule inside the product (AS-17, AS-18 planned)
+
+- `spec/hazard/index.md` gains "In the EPR system itself": only a `clinical-safety-officer` role can retire a hazard, with evidence (kind, reference, time, SHA-256) or a 422; an append-only event table; anyone may reopen; every event audited. It separates the manufacturer's log file from a deployer's in-product register. plan.md §20.4b ranks seven ideas; tasks AS-17 and AS-18 added.
+- **Checked in code:** there is no such role, table or route today; `Role` has ten variants and none is this one.
+- **Not done / not verified:** nothing is built or enforced; the DCB0129 versus DCB0160 split is from memory and marked uncertain; I did not read either standard; no hazard row was added because no behaviour changed; no CSO is named (OQ-2).
+
 ## 2026-10-28 - Spec: ISO 14971 mapping (AS-16 planned)
 
 - `spec/hazard/index.md` gains a table mapping ISO 14971 activities to the hazard log and risk plan, with the gap for each; plan.md §20.4a and task AS-16 follow. Main finding: the risk plan sets no risk-acceptability criteria.

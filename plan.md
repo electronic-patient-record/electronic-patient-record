@@ -1063,6 +1063,23 @@ is that the risk plan has **no acceptability criteria**, so `accepted` has no ya
 `control_type` field, and likelihood is of the hazard, not of harm. Whether 14971 applies at all depends on the MHRA device
 boundary. Clauses are from memory of a paywalled standard and are **[uncertain]** (AS-11).
 
+### 20.4b The same rule inside the product
+
+Asked again as "in the epr system". The service has no CSO role, hazard table or route, so this is a design, not a gap in
+code. Ranked ideas:
+
+| Rank | Idea | Value | Cost and caveat |
+|---|---|---|---|
+| 1 | **CSO role with one permission, `hazard:retire`**, checked by the existing route census | Makes "only the CSO" a failing test, not a convention | Small; needs OQ-2 |
+| 2 | **Append-only `hazard_events`** with a no-update, no-delete trigger, same pattern as `audit_events` | Retirement can never erase history | Small; proven pattern |
+| 3 | **Evidence with a SHA-256 and a 422 when absent** | "Must put in evidence" becomes a rule the API enforces | Small; a hash shows no change, not truth |
+| 4 | **Two registers**: manufacturer baseline (read-only for deployers) and the deployer's own | Matches DCB0129 versus DCB0160 | Medium; **[uncertain]** until the standards are read |
+| 5 | **Link a hazard to a feature gate** (PA-4) | An open hazard keeps a risky feature off | Medium; makes retirement clinical |
+| 6 | **Scheduled re-hash that reopens** a hazard on changed evidence | Stops evidence rot in production | Medium; needs an alert path |
+| 7 | **Two named CSOs and a four-eyes rule** | No lock-out, no self-certification | A people decision; hard on small sites |
+
+Order: AS-17 then AS-18; the repository-file work (AS-13 to AS-15) stays first because it protects the log that exists.
+
 ### 20.5 Sources (this pass)
 
 - presencis.com/regulations/dcb0129/article-hazard-log/ (secondary)
