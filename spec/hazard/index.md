@@ -2,7 +2,7 @@
 
 Who may take a hazard off the active list, and what they must show. Related: [Clinical safety](../clinical-safety/index.md),
 the [hazard log](../../governance/clinical-safety/hazard-log.csv), the
-[risk management plan](../../governance/clinical-safety/risk-management-plan.md). Tasks AS-1, AS-13, AS-14, AS-15.
+[risk management plan](../../governance/clinical-safety/risk-management-plan.md). Tasks AS-1, AS-13, AS-14, AS-15, AS-16.
 
 Planned unless stated. **NOT FOR CLINICAL USE.** No Clinical Safety Officer is named yet (OQ-2), so today nobody can remove
 a hazard, and that is the intended state until one is.
@@ -67,6 +67,30 @@ column is never empty, even for a closed hazard).
    "this no longer applies". Only closing removes it from the active list. The CSO must say which, in the note.
 7. **The log is a file.** A row's history lives in git. Advice: never rewrite that history (no force-push, no squash of the
    log's commits); a signed tag at each release freezes the log as the release saw it.
+
+## ISO 14971 (medical device risk management)
+
+ISO 14971:2019 is the risk management process for medical devices; ISO/TR 24971:2020 is its guidance. It applies **only if a
+module is a device** (the MHRA boundary in [`../12-compliance.md`](../12-compliance.md)). Today nothing here is claimed to be one,
+so this is a mapping to prepare with, not a claim of conformity. The clause list below is from my general knowledge of the
+standard, which is paywalled and **was not read**: every row is **[uncertain]** until someone with the text checks it (AS-11).
+
+| 14971 activity | Where it lives here | Gap |
+|---|---|---|
+| Risk management plan, with the manufacturer's **criteria for acceptable risk** | [`risk-management-plan.md`](../../governance/clinical-safety/risk-management-plan.md) | The plan rates severity x likelihood but sets **no acceptability matrix**, so "accepted" has no yardstick |
+| Intended use and foreseeable misuse | `spec/01`, `spec/02` (scope) | No written intended-use statement or misuse list |
+| Hazard identification, hazardous situations, harms | hazard log columns `hazard`, `cause`, `effect` | No separate "hazardous situation" or "harm" field; one row mixes them |
+| Risk estimation (severity, probability of harm) | `severity`, `likelihood`, `score` | Likelihood is of the hazard, not of harm following it; ratings are the author's, unvalidated |
+| Risk control, in order: safe design, protective measures, information for safety | `controls` | The column does not say which kind each control is; a warning in the UI is the weakest kind |
+| Verification of control implementation and effectiveness | `evidence` | Two checks in one column; only existence of the path is machine-checked |
+| Residual risk evaluation, and overall residual risk | `residual` | No overall residual-risk judgement across all hazards |
+| Benefit-risk analysis where residual risk is not acceptable | none | Not started |
+| Risk management review before release; report | [`safety-case-report-template.md`](../../governance/clinical-safety/safety-case-report-template.md) | Unsigned template |
+| Production and post-production information | none | No complaint, incident or field-feedback loop |
+
+Two differences matter for the removal rule above. ISO 14971 has no "closed" state: a hazard stays until verified and its
+residual risk is judged acceptable, and the file is kept as a **risk management file** for the product's life. And
+DCB0129 (the NHS standard) is a separate duty that sits beside it; meeting one does not meet the other.
 
 ## Sources and how far to trust them
 

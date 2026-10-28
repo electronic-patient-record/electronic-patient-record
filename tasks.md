@@ -399,6 +399,11 @@ Conventions:
 - [ ] **AS-15 (M) — Closure evidence does not rot.** A closed hazard whose evidence path later disappears fails the
   check; each hazard may list watched code paths, and a change there asks for the CSO's review; a signed tag per release
   freezes the log. **Not clinical.** **Acceptance:** deleting a closed hazard's evidence file fails the docs job.
+- [ ] **AS-16 (M) — ISO 14971 readiness.** Per the table in [`spec/hazard/index.md`](spec/hazard/index.md): risk acceptability
+  criteria in the risk plan, an intended-use and foreseeable-misuse statement, `harm` and `control_type` (design,
+  protective, information) columns in the hazard log, an overall residual-risk judgement, and a post-production feedback
+  process. **Not clinical** until a module is declared a device; the CSO and the MHRA boundary decide that (OQ-2, AS-11).
+  **Acceptance:** each row of the table is marked met, partial or not met with evidence; no document claims conformity.
 - [ ] **AS-3 (S) — SAFER Guides mapping.** The eight 2025 guides mapped to
   features and gaps.
   **Acceptance:** each practice is marked met, partial or not met with evidence.

@@ -1056,6 +1056,13 @@ The rule, its evidence table and what is enforced today are in [`spec/hazard/ind
 
 AS-13 (items 1, 2 and 5), then AS-14 (3), then AS-15 (4 and 6). OQ-2 comes first for all of them.
 
+### 20.4a ISO 14971
+
+Added at the request "add iso 14971": a clause-by-clause mapping in `spec/hazard/index.md` and task AS-16. The biggest gap
+is that the risk plan has **no acceptability criteria**, so `accepted` has no yardstick; second, the log has no `harm` or
+`control_type` field, and likelihood is of the hazard, not of harm. Whether 14971 applies at all depends on the MHRA device
+boundary. Clauses are from memory of a paywalled standard and are **[uncertain]** (AS-11).
+
 ### 20.5 Sources (this pass)
 
 - presencis.com/regulations/dcb0129/article-hazard-log/ (secondary)

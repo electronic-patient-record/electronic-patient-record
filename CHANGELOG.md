@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-28 - Spec: ISO 14971 mapping (AS-16 planned)
+
+- `spec/hazard/index.md` gains a table mapping ISO 14971 activities to the hazard log and risk plan, with the gap for each; plan.md §20.4a and task AS-16 follow. Main finding: the risk plan sets no risk-acceptability criteria.
+- **Not done / not verified:** I did not read ISO 14971 or ISO/TR 24971 (paywalled); the clauses are from memory and marked uncertain. No code, CSV or hazard change, no conformity claim, and no decision that any module is a device.
+
 ## 2026-10-28 - Spec: who may remove a hazard, and the evidence (AS-13 to AS-15 planned)
 
 - New [`spec/hazard/index.md`](spec/hazard/index.md): only the Clinical Safety Officer removes a hazard and must give evidence; "remove" means retire (the row stays, as the checker already requires); anyone may reopen. It lists what counts as evidence, what the checker enforces today, seven weaknesses with advice, and plan.md §20 ranks the ideas. Tasks AS-13 (closure columns, push guard), AS-14 (signed closing commit) and AS-15 (evidence that does not rot) are added.
