@@ -1,0 +1,35 @@
+#!/bin/sh
+# Fast checks on what is staged, so a red CI run for formatting or a stale generated file is
+# caught before the commit. Only the checks that match the staged files run. Slow gates (clippy,
+# tests, Playwright) are not here: run them before pushing (AGENTS.md). Skip once with
+# `git commit --no-verify`. Install with `sh scripts/install-hooks.sh`.
+set -eu
+root="$(git rev-parse --show-toplevel)"
+cd "$root"
+staged="$(git diff --cached --name-only --diff-filter=ACMR)"
+has() { printf '%s\n' "$staged" | grep -Eq "$1"; }
+fail=0
+
+if has '^electronic-patient-record-ui-with-svelte/'; then
+  echo "pre-commit: UI lint (prettier, eslint)"
+  (cd electronic-patient-record-ui-with-svelte && pnpm run lint) || fail=1
+fi
+for dir in electronic-patient-record-service-with-rust electronic-patient-record-matcher-with-rust; do
+  if has "^$dir/.*\\.rs$"; then
+    echo "pre-commit: cargo fmt --check ($dir)"
+    (cd "$dir" && cargo fmt --check) || fail=1
+  fi
+done
+if has '\.(md|csv|rs|ts|svelte)$|^scripts/|^tasks\.md$'; then
+  echo "pre-commit: generated docs are current"
+  sh scripts/generate-status.sh --check || fail=1
+  python3 scripts/generate-llms.py --check || fail=1
+fi
+if has '\.md$'; then
+  python3 scripts/check-links.py . >/dev/null || { echo "pre-commit: broken links (python3 scripts/check-links.py .)"; fail=1; }
+fi
+
+if [ "$fail" -ne 0 ]; then
+  echo "pre-commit: failed. Fix it, or skip once with git commit --no-verify." >&2
+  exit 1
+fi

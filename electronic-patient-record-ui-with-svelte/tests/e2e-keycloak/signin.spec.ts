@@ -1,5 +1,33 @@
 import { expect, test, type Page } from "@playwright/test";
 
+/** One audit row, as far as these tests read it. */
+interface AuditEvent {
+  resource: string;
+  outcome: number;
+  detail?: { search?: string; break_glass_grant?: string };
+  [key: string]: unknown;
+}
+interface Grant {
+  id: string;
+  [key: string]: unknown;
+}
+/** An API answer, as far as these tests read it. */
+interface Api {
+  id: string;
+  grants: Grant[];
+  events: AuditEvent[];
+  results: { id: string }[];
+  entry: { resource: { resourceType: string } }[];
+  errors: string[];
+  summary: { state: string };
+  allergies: { patient_id: string }[];
+  link: unknown[];
+  consent: Record<string, unknown>;
+  expires_at: string;
+  review: { outcome: string };
+  [key: string]: unknown;
+}
+
 const USERNAME = process.env.EPR_E2E_USERNAME ?? "dev.clinician";
 const PASSWORD = process.env.EPR_E2E_PASSWORD ?? "";
 // A second user who can sign in but holds no role (optional).
@@ -207,7 +235,7 @@ test("a patient signs in, sees only the record an administrator linked to them, 
       },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
-    return { status: res.status, body: (await res.json()) as any };
+    return { status: res.status, body: (await res.json()) as Api };
   };
   const family = `Zmine${Date.now()}`;
   const made = await api("POST", "/api/patients", {
@@ -362,7 +390,7 @@ test("a patient sees that a clinician viewed their record, as staff without a na
       },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
-    return { status: res.status, body: (await res.json()) as any };
+    return { status: res.status, body: (await res.json()) as Api };
   };
   const made = await call(admin, "POST", "/api/patients", {
     patient: {
@@ -427,7 +455,7 @@ test("the FHIR Patient endpoint creates, reads, searches and refuses a stale upd
     return {
       status: res.status,
       etag: res.headers.get("etag"),
-      body: (await res.json()) as any,
+      body: (await res.json()) as Api,
     };
   };
   const family = `Zfhir${Date.now()}`;
@@ -488,7 +516,7 @@ test("only an auditor can search the audit trail, and each search is itself reco
     });
     return {
       status: res.status,
-      body: (await res.json().catch(() => null)) as any,
+      body: (await res.json().catch(() => null)) as Api,
     };
   };
   // A non-auditor is refused, and the refusal is in the trail the auditor then reads.
@@ -498,17 +526,17 @@ test("only an auditor can search the audit trail, and each search is itself reco
   expect(refused.status).toBe(200);
   expect(
     refused.body.events.some(
-      (e: any) => e.resource === "/api/audit" && e.outcome === 4,
+      (e: AuditEvent) => e.resource === "/api/audit" && e.outcome === 4,
     ),
   ).toBe(true);
 
   // The auditor's own search wrote a row naming the criteria, not their values.
   const mine = await get(AUDITOR, "/api/audit?action=R");
   const search = mine.body.events.find(
-    (e: any) =>
+    (e: AuditEvent) =>
       e.resource === "AuditLog" && e.detail?.search?.includes("outcome"),
   );
-  expect(search?.detail.search).toEqual(["outcome"]);
+  expect(search?.detail?.search).toEqual(["outcome"]);
 
   const fhir = await get(AUDITOR, "/fhir/R4/AuditEvent?outcome=4");
   expect(fhir.body.resourceType).toBe("Bundle");
@@ -536,7 +564,7 @@ test("a patient's photo is stored as bytes, refused if it is not an image, and s
       },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
-    return { status: res.status, body: (await res.json()) as any };
+    return { status: res.status, body: (await res.json()) as Api };
   };
   const made = await json("POST", "/api/patients", {
     patient: {
@@ -566,7 +594,7 @@ test("a patient's photo is stored as bytes, refused if it is not an image, and s
         authorization: `Bearer ${admin}`,
         "content-type": "image/png",
       },
-      body: bytes,
+      body: new Uint8Array(bytes),
     });
   // Not an image, whatever the header claims.
   const svg = await put(Buffer.from("<svg onload=alert(1)>"));
@@ -626,13 +654,13 @@ test("allergies are clinical content: a care relationship is needed, the patient
     });
     // The route gate answers a plain "forbidden", not JSON.
     const text = await res.text();
-    let parsed: any = text;
+    let parsed: unknown = text;
     try {
       parsed = JSON.parse(text);
     } catch {
       /* plain text */
     }
-    return { status: res.status, body: parsed };
+    return { status: res.status, body: parsed as Api };
   };
   // A birth date no earlier run used, so the duplicate check stays quiet.
   const dob = () =>
@@ -730,7 +758,7 @@ test("allergies are clinical content: a care relationship is needed, the patient
     undefined,
     "audit",
   );
-  const rows = trail.body.events.filter((e: any) =>
+  const rows = trail.body.events.filter((e: AuditEvent) =>
     e.resource?.startsWith("AllergyIntolerance"),
   );
   expect(rows.length).toBeGreaterThanOrEqual(3);
@@ -744,7 +772,7 @@ test("allergies are clinical content: a care relationship is needed, the patient
     "audit",
   );
   expect(
-    refused.body.events.some((e: any) =>
+    refused.body.events.some((e: AuditEvent) =>
       String(e.resource).startsWith("AllergyIntolerance"),
     ),
   ).toBe(true);
@@ -776,7 +804,7 @@ test("an administrator grants, ends and restricts access through the page, and t
     }),
   });
   expect(made.status).toBe(201);
-  const id = ((await made.json()) as any).id as string;
+  const id = ((await made.json()) as Api).id as string;
   const read = async () =>
     (
       await fetch(`${API}/api/patients/${id}/allergies`, {
@@ -851,13 +879,13 @@ test("merging two records is a link: allergies and consent follow it, the old re
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     const text = await res.text();
-    let parsed: any = text;
+    let parsed: unknown = text;
     try {
       parsed = JSON.parse(text);
     } catch {
       /* plain text */
     }
-    return { status: res.status, body: parsed };
+    return { status: res.status, body: parsed as Api };
   };
   const family = `Zmerge${Date.now()}`;
   const dob = `19${40 + Math.floor(Math.random() * 40)}-0${1 + Math.floor(Math.random() * 9)}-${10 + Math.floor(Math.random() * 18)}`;
@@ -959,7 +987,7 @@ test("merging two records is a link: allergies and consent follow it, the old re
     (await api(admin, "GET", `/api/patients/${target}`)).body.replaces,
   ).toEqual([source]);
   const found = await api(admin, "GET", `/api/patients?family=${family}`);
-  expect(found.body.results.map((r: any) => r.id)).toEqual([target]);
+  expect(found.body.results.map((r: { id: string }) => r.id)).toEqual([target]);
   const edit = await api(admin, "PUT", `/api/patients/${source}`, {
     patient: person,
     expected_version: 1,
@@ -970,7 +998,7 @@ test("merging two records is a link: allergies and consent follow it, the old re
   const fhir = await fetch(`${API}/fhir/R4/Patient/${source}`, {
     headers: { authorization: `Bearer ${admin}` },
   });
-  const fhirBody = (await fhir.json()) as any;
+  const fhirBody = (await fhir.json()) as Api;
   expect(fhirBody.active).toBe(false);
   expect(fhirBody.link[0]).toMatchObject({
     type: "replaced-by",
@@ -1049,7 +1077,7 @@ test("merging two records is a link: allergies and consent follow it, the old re
     "audit",
   );
   const rows = trail.body.events.filter(
-    (e: any) => e.resource === "PatientLink",
+    (e: AuditEvent) => e.resource === "PatientLink",
   );
   expect(rows.length).toBeGreaterThanOrEqual(2);
   const text = JSON.stringify(trail.body);
@@ -1141,7 +1169,7 @@ test("break-the-glass: refused with an offer, opened with a reason, read and aud
     });
     return {
       status: res.status,
-      body: (await res.json().catch(() => null)) as any,
+      body: (await res.json().catch(() => null)) as Api,
     };
   };
   const made = await call(admin, "POST", "/api/patients", {
@@ -1240,7 +1268,7 @@ test("break-the-glass: refused with an offer, opened with a reason, read and aud
     "audit",
   );
   expect(trail.status).toBe(200);
-  const rows = trail.body.events as any[];
+  const rows = trail.body.events as AuditEvent[];
   const flagged = rows.filter((r) => r.break_glass === true);
   expect(flagged.length).toBeGreaterThanOrEqual(2); // the opening and the read
   expect(
@@ -1274,7 +1302,7 @@ test("break-the-glass: refused with an offer, opened with a reason, read and aud
     "audit",
   );
   expect(queue.status).toBe(200);
-  expect(queue.body.grants.some((g: any) => g.id === opened.body.id)).toBe(
+  expect(queue.body.grants.some((g: Grant) => g.id === opened.body.id)).toBe(
     true,
   );
   expect(
@@ -1318,7 +1346,7 @@ test("break-the-glass: refused with an offer, opened with a reason, read and aud
     undefined,
     "audit",
   );
-  expect(after.body.grants.some((g: any) => g.id === opened.body.id)).toBe(
+  expect(after.body.grants.some((g: Grant) => g.id === opened.body.id)).toBe(
     false,
   );
 });
@@ -1345,7 +1373,7 @@ test("break-the-glass does not override a patient's refusal of consent", async (
     });
     return {
       status: res.status,
-      body: (await res.json().catch(() => null)) as any,
+      body: (await res.json().catch(() => null)) as Api,
     };
   };
   const made = await call(admin, "POST", "/api/patients", {

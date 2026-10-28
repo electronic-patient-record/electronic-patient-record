@@ -18,7 +18,8 @@
     "test:e2e": "playwright test",
     "format": "prettier --write .",
     "lint": "prettier --check . && eslint .",
-    "lint:fix": "prettier --write . && eslint --fix ."
+    "lint:fix": "prettier --write . && eslint --fix .",
+    "check:tests": "tsc -p tsconfig.tests.json"
   },
   "dependencies": {
     "@lilydesignsystem/svelte-headless": "^0.6.1",

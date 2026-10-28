@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Page, Route } from "@playwright/test";
 import { expect, test } from "./fixtures";
+import type { Json } from "./json";
 
 const NHS = "https://fhir.nhs.uk/Id/nhs-number";
 const ANN = {
@@ -226,7 +227,7 @@ test("a possible duplicate is shown side by side and needs a reason to override"
 test("editing sends the expected version and keeps what the form does not show", async ({
   page,
 }) => {
-  let put: Record<string, any> | null = null;
+  let put: Json | null = null;
   await page.route(`**/api/proxy/api/patients/${ANN.id}`, async (route) => {
     if (route.request().method() === "PUT") {
       put = route.request().postDataJSON();
@@ -827,8 +828,8 @@ test("the banner's allergy line says exactly what is known, and never reads as n
 test("a clinician records, ends and retracts an allergy and states none known; the banner follows", async ({
   page,
 }) => {
-  const sent: { method: string; url: string; body: any }[] = [];
-  let state: any = {
+  const sent: { method: string; url: string; body: Json }[] = [];
+  let state: Record<string, unknown> = {
     allergies: [],
     statement: null,
     summary: { state: "not-recorded" },
@@ -968,9 +969,9 @@ test("a role that may not read allergies sees no allergy section and a banner th
 test("an administrator records and ends a care relationship, and records and withdraws consent", async ({
   page,
 }) => {
-  const sent: { method: string; url: string; body: any }[] = [];
-  let rels: any[] = [];
-  let consents: any[] = [];
+  const sent: { method: string; url: string; body: Json }[] = [];
+  let rels: unknown[] = [];
+  let consents: unknown[] = [];
   const REL = (status: string, version: number) => ({
     id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
     patient_id: ANN.id,
@@ -1657,7 +1658,7 @@ test("recording a vital sends its own unit and the site's time as UTC, never an 
   await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
     json(route, 200, { ...ANN, site_time_zone: "America/New_York" }),
   );
-  const sent: any[] = [];
+  const sent: Json[] = [];
   let answer: [number, unknown] = [201, OBS({})];
   let rows: unknown[] = [];
   await page.route("**/api/proxy/api/patients/*/observations", (route) => {
@@ -1771,7 +1772,7 @@ test("merging and unmerging send the reason, show the server's refusal, and relo
   page,
 }) => {
   const OLD = "44444444-4444-4444-8444-444444444444";
-  const sent: { path: string; body: any }[] = [];
+  const sent: { path: string; body: Json }[] = [];
   let replaces: string[] = [];
   await stubAllergies(page);
   await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
@@ -1848,7 +1849,7 @@ test("an administrator sees the refused messages, reads one, and closes it with 
   page,
 }) => {
   let open = [REFUSAL()];
-  const sent: { url: string; body: any }[] = [];
+  const sent: { url: string; body: Json }[] = [];
   await page.route("**/api/proxy/api/feed/refusals", (route) =>
     json(route, 200, { refusals: open, limit: 50 }),
   );
@@ -1998,7 +1999,7 @@ test("emergency access is offered only when the API offers it, needs a reason an
         })
       : json(route, 403, { error: "forbidden", break_glass_offer: true }),
   );
-  const sent: any[] = [];
+  const sent: Json[] = [];
   await page.route("**/api/proxy/api/patients/*/break-glass", (route) => {
     sent.push(route.request().postDataJSON());
     granted = true;
@@ -2061,7 +2062,7 @@ test("the auditor sees the emergency access nobody has reviewed and records a ve
       expires_at: "2026-10-21T13:00:12.000000Z",
     },
   ];
-  const sent: any[] = [];
+  const sent: Json[] = [];
   await page.route("**/api/proxy/api/break-glass/reviews", (route) =>
     json(route, 200, { grants, limit: 50 }),
   );
@@ -2268,8 +2269,8 @@ test("my record shows when it was read and warns when a later look fails", async
 test("recording a proxy sends its basis, scopes and last day, and the list shows them", async ({
   page,
 }) => {
-  const sent: any[] = [];
-  let rels: any[] = [];
+  const sent: Json[] = [];
+  let rels: unknown[] = [];
   await page.route("**/api/proxy/api/patients/*/relationships", (route) => {
     const req = route.request();
     if (req.method() === "GET")
@@ -3011,7 +3012,7 @@ test("a vital sign is marked entered in error with a reason, sending the whole r
     flag: "normal",
   });
   let rows: unknown[] = [mine];
-  const sent: any[] = [];
+  const sent: Json[] = [];
   let answer = 200;
   await page.route("**/api/proxy/api/patients/*/observations/o-1", (route) => {
     sent.push(route.request().postDataJSON());
@@ -3083,7 +3084,7 @@ test("correcting a vital loads it into the form, needs a reason, and sends a new
     critical: { low: 40, high: 150 },
   });
   let rows: unknown[] = [mine];
-  const sent: any[] = [];
+  const sent: Json[] = [];
   await page.route("**/api/proxy/api/patients/*/observations/o-2", (route) => {
     sent.push(route.request().postDataJSON());
     rows = [{ ...mine, version: 2, value: 72 }];

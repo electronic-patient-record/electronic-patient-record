@@ -54,6 +54,7 @@ python3 scripts/check-links.py . && sh scripts/generate-status.sh --check && pyt
   `$app/env/private`, not `$env/dynamic/private`. Computed styles use Svelte's `style:` directive; the CSP forbids
   inline `style=""`.
 - `axum-test` and `jsonwebtoken` follow `loco-rs`; do not bump them alone.
+- Run `sh scripts/install-hooks.sh` once per clone: it makes git run `.githooks/pre-commit` (UI lint, `cargo fmt --check`, generated docs, links; only what the staged files need). Skip once with `--no-verify`; CI runs everything either way.
 - Use Podman (`podman build`, `podman compose`), not Docker, everywhere: instructions, scripts and CI. Container files are named `Containerfile` and `.containerignore`.
 - The Podman VM's clock drifts (after sleep, say). Keycloak then issues tokens that are already expired by the host's clock, and the API answers
   401 `keycloak: … InvalidSignature` (the verifier keeps only the last key's error, so expiry looks like a bad signature). Compare `date -u +%s`

@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-28 - UI and repo: no `any` in tests, a link guard, a pre-commit hook
+
+- **`any` removed from the tests** (35 uses; the ESLint exception for `tests/` is gone). Request bodies the tests read back are typed `Json` (`tests/e2e/json.ts`); the Keycloak spec has `Api`, `AuditEvent` and `Grant` types. New `pnpm run check:tests` type-checks the Playwright specs, which nothing did before: it needed `noUncheckedIndexedAccess` off (in `tsconfig.tests.json`) so deep reads of a `Json` body compile, and it passes. It surfaced one real type error (a `Buffer` as a `fetch` body), fixed.
+- **Links:** `svelte/no-navigation-without-resolve` stays off (it knows only SvelteKit's `resolve`), but `tests/unit/links-use-localize-path.test.ts` now fails when an `href`, `goto` or `redirect` to a page of this app skips `localizePath` (allowed: `#anchors`, `/auth/…`, the identity-provider redirect). Checked by planting `href="/patients"`: it failed.
+- **Pre-commit hook:** `.githooks/pre-commit` runs only what the staged files need (UI lint, `cargo fmt --check`, the generated status and `llms` files, links); `sh scripts/install-hooks.sh` sets `core.hooksPath` for the clone (local config). I installed it in this clone. First real use caught a stale `spec/14-implementation-status.md`; a badly formatted file was blocked.
+- **Not done:** the hook is opt-in per clone (git cannot enforce it; CI is the real gate); it does not run clippy or any tests, to stay fast; `check:tests` is not in CI yet and the specs' own strictness is lower than `src` (no `noUncheckedIndexedAccess`); `Json` makes a wrong nested name a value, not an error; the link guard reads lines, so a link built across several lines in an unusual way could slip past it. Gates run: lint, svelte-check, check:tests, vitest, Playwright.
+
 ## 2026-10-28 - UI: ESLint and Prettier checks, in CI
 
 - Added ESLint 10 (flat config: typescript-eslint, eslint-plugin-svelte, eslint-config-prettier) and a Prettier config with the Svelte plugin. `pnpm run lint` runs `prettier --check .` and `eslint .`, and is now a step of the CI UI job and of the gates in `AGENTS.md`. Prettier covers code and config; Markdown is ignored (the specs are hand-wrapped).

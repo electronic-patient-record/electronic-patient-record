@@ -35,11 +35,6 @@ export default ts.config(
     },
   },
   {
-    // Tests stub JSON bodies of many shapes; `any` there is a convenience, not a hole in a guard.
-    files: ["tests/**"],
-    rules: { "@typescript-eslint/no-explicit-any": "off" },
-  },
-  {
     // SvelteKit's own boilerplate declares empty interfaces to be filled in.
     files: ["src/app.d.ts"],
     rules: { "@typescript-eslint/no-empty-object-type": "off" },
