@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-28 - CI: type-check the Playwright specs
+
+- The CI UI job now runs `pnpm run check:tests` (after `check`), and the gates in `AGENTS.md` list it. It passed locally before the change. This closes the "`check:tests` is not in CI" gap in the entry below.
+- **Not done / not verified:** the specs' strictness is still lower than `src` (no `noUncheckedIndexedAccess`); the step has run only locally, not yet in CI; no product code changed, so no hazard-log change.
+
 ## 2026-10-28 - UI and repo: no `any` in tests, a link guard, a pre-commit hook
 
 - **`any` removed from the tests** (35 uses; the ESLint exception for `tests/` is gone). Request bodies the tests read back are typed `Json` (`tests/e2e/json.ts`); the Keycloak spec has `Api`, `AuditEvent` and `Grant` types. New `pnpm run check:tests` type-checks the Playwright specs, which nothing did before: it needed `noUncheckedIndexedAccess` off (in `tsconfig.tests.json`) so deep reads of a `Json` body compile, and it passes. It surfaced one real type error (a `Buffer` as a `fetch` body), fixed.
