@@ -127,9 +127,15 @@
     // Allergies can change without the identity record changing, so they are looked at too. Both
     // are background looks: nobody asked for them, so they do not keep the session alive (CQ-8).
     void reloadAllergies(true);
-    const res = await call<Stored>("GET", `/api/patients/${forId}`, undefined, undefined, {
-      background: true,
-    });
+    const res = await call<Stored>(
+      "GET",
+      `/api/patients/${forId}`,
+      undefined,
+      undefined,
+      {
+        background: true,
+      },
+    );
     if (!stored || stored.id !== forId || !current(forId)) return;
     if (res.status !== 200) {
       lookFailed = true;
@@ -199,6 +205,7 @@
       }
     }
     const forId = stored.id;
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- a query string built once, not state
     const q = new URLSearchParams({
       expected_version: String(stored.photo_version ?? 0),
     });
@@ -219,7 +226,8 @@
       const fresh = await call<Stored>("GET", `/api/patients/${forId}`);
       if (fresh.status === 200 && stored?.id === forId) {
         stored = { ...stored, photo_version: fresh.body.photo_version };
-        if (latest) latest = { ...latest, photo_version: fresh.body.photo_version };
+        if (latest)
+          latest = { ...latest, photo_version: fresh.body.photo_version };
       }
     } else if (res.status === 409) conflict = true;
     else if (res.status === 422 && res.body?.errors)
@@ -238,20 +246,22 @@
     }
   }
 
-  async function saveNow(forId: string, version: number, base: Stored["patient"]) {
+  async function saveNow(
+    forId: string,
+    version: number,
+    base: Stored["patient"],
+  ) {
     message = null;
     problems = [];
     saved = null;
     conflict = false;
-    const res = await call<Stored & { errors?: string[]; error_codes?: unknown }>(
-      "PUT",
-      `/api/patients/${forId}`,
-      {
-        patient: formToPatient(form, base),
-        expected_version: version,
-        reason: reason.trim() || undefined,
-      },
-    );
+    const res = await call<
+      Stored & { errors?: string[]; error_codes?: unknown }
+    >("PUT", `/api/patients/${forId}`, {
+      patient: formToPatient(form, base),
+      expected_version: version,
+      reason: reason.trim() || undefined,
+    });
     if (stored?.id !== forId) return;
     const common = commonProblem(res.status);
     if (common) {
@@ -264,7 +274,11 @@
     } else if (res.status === 409) {
       conflict = true;
     } else if (res.status === 422 && res.body?.errors) {
-      problems = patientProblemList(res.body.errors, res.body.error_codes, locale);
+      problems = patientProblemList(
+        res.body.errors,
+        res.body.error_codes,
+        locale,
+      );
     } else {
       message = STRINGS.error;
     }
@@ -275,9 +289,15 @@
 
 <h1>{STRINGS.patientTitle}</h1>
 <p><a href={localizePath("/patients", locale)}>{STRINGS.backToSearch}</a></p>
-<p><a href={localizePath(`/patients/${id}/summary`, locale)}>{STRINGS.summaryOpen}</a></p>
 <p>
-  <a href={localizePath(`/patients/${id}/access`, locale)}>{STRINGS.accessManage}</a>
+  <a href={localizePath(`/patients/${id}/summary`, locale)}
+    >{STRINGS.summaryOpen}</a
+  >
+</p>
+<p>
+  <a href={localizePath(`/patients/${id}/access`, locale)}
+    >{STRINGS.accessManage}</a
+  >
 </p>
 
 {#if loading}
@@ -320,68 +340,79 @@
   </p>
   <!-- A record merged into another is read-only: its changes go to the surviving record. -->
   {#if !stored.replaced_by}
-  {#if allergies?.status === 403 && allergies.offer}
-    <BreakGlassSection
-      patientId={stored.id}
-      onopened={async (until) => {
-        glassUntil = until;
-        await reloadAllergies();
-      }}
-    />
-  {/if}
-  {#if glassUntil}
-    <p role="status">
-      {STRINGS.glassOpened.replace("{until}", siteWhenText(glassUntil, stored.site_time_zone))}
-    </p>
-  {/if}
-  {#if allergies?.status === 200 && allergies.data}
-    <AllergySection
-      patientId={stored.id}
-      data={allergies.data}
-      onchange={() => reloadAllergies()}
-    />
-  {/if}
-  <!-- Reloads when emergency access is opened: a refusal under no care relationship may lift. -->
-  <VitalsSection
-    patientId={stored.id}
-    siteZone={stored.site_time_zone ?? "UTC"}
-    refresh={glassUntil}
-  />
-  <AmendmentsSection
-    patientId={stored.id}
-    siteZone={stored.site_time_zone ?? "UTC"}
-    refresh={glassUntil}
-  />
-  {#if !stored.replaced_by}
-    <MergeSection
-      patientId={stored.id}
-      replaces={stored.replaces ?? []}
-      onchange={load}
-    />
-  {/if}
-  <section aria-labelledby="photo-h">
-    <h2 id="photo-h">{STRINGS.photoTitle}</h2>
-    <label for="photo-file">{STRINGS.photoFile}</label>
-    <input
-      id="photo-file"
-      type="file"
-      accept="image/png,image/jpeg"
-      onchange={(e) => (photoFile = e.currentTarget.files?.[0] ?? null)}
-    />
-    <label for="photo-why">{STRINGS.photoWhy}</label>
-    <input id="photo-why" bind:value={photoReason} autocomplete="off" />
-    <button type="button" disabled={photoBusy} onclick={() => void sendPhoto(false)}>{STRINGS.photoUpload}</button>
-    {#if stored.photo_version}
-      <button type="button" disabled={photoBusy} onclick={() => void sendPhoto(true)}>{STRINGS.photoWithdraw}</button>
+    {#if allergies?.status === 403 && allergies.offer}
+      <BreakGlassSection
+        patientId={stored.id}
+        onopened={async (until) => {
+          glassUntil = until;
+          await reloadAllergies();
+        }}
+      />
     {/if}
-    {#if photoMessage}<p role="status">{photoMessage}</p>{/if}
-  </section>
-  <form onsubmit={save}>
-    <PatientFields bind:form prefix="e" />
-    <label for="e-reason">{STRINGS.reason}</label>
-    <input id="e-reason" bind:value={reason} autocomplete="off" />
-    <button type="submit" disabled={saving}>{STRINGS.save}</button>
-  </form>
+    {#if glassUntil}
+      <p role="status">
+        {STRINGS.glassOpened.replace(
+          "{until}",
+          siteWhenText(glassUntil, stored.site_time_zone),
+        )}
+      </p>
+    {/if}
+    {#if allergies?.status === 200 && allergies.data}
+      <AllergySection
+        patientId={stored.id}
+        data={allergies.data}
+        onchange={() => reloadAllergies()}
+      />
+    {/if}
+    <!-- Reloads when emergency access is opened: a refusal under no care relationship may lift. -->
+    <VitalsSection
+      patientId={stored.id}
+      siteZone={stored.site_time_zone ?? "UTC"}
+      refresh={glassUntil}
+    />
+    <AmendmentsSection
+      patientId={stored.id}
+      siteZone={stored.site_time_zone ?? "UTC"}
+      refresh={glassUntil}
+    />
+    {#if !stored.replaced_by}
+      <MergeSection
+        patientId={stored.id}
+        replaces={stored.replaces ?? []}
+        onchange={load}
+      />
+    {/if}
+    <section aria-labelledby="photo-h">
+      <h2 id="photo-h">{STRINGS.photoTitle}</h2>
+      <label for="photo-file">{STRINGS.photoFile}</label>
+      <input
+        id="photo-file"
+        type="file"
+        accept="image/png,image/jpeg"
+        onchange={(e) => (photoFile = e.currentTarget.files?.[0] ?? null)}
+      />
+      <label for="photo-why">{STRINGS.photoWhy}</label>
+      <input id="photo-why" bind:value={photoReason} autocomplete="off" />
+      <button
+        type="button"
+        disabled={photoBusy}
+        onclick={() => void sendPhoto(false)}>{STRINGS.photoUpload}</button
+      >
+      {#if stored.photo_version}
+        <button
+          type="button"
+          disabled={photoBusy}
+          onclick={() => void sendPhoto(true)}>{STRINGS.photoWithdraw}</button
+        >
+      {/if}
+      {#if photoMessage}<p role="status">{photoMessage}</p>{/if}
+    </section>
+    <form onsubmit={save}>
+      <PatientFields bind:form prefix="e" />
+      <label for="e-reason">{STRINGS.reason}</label>
+      <input id="e-reason" bind:value={reason} autocomplete="off" />
+      <button type="submit" disabled={saving}>{STRINGS.save}</button>
+    </form>
   {/if}
 {/if}
 

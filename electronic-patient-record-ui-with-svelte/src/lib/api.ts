@@ -61,7 +61,11 @@ export async function fetchBlob(
       headers: p ? { "x-purpose-of-use": p } : {},
     });
     const next = res.headers.get("x-next-before") ?? undefined;
-    return { status: res.status, body: res.ok ? await res.blob() : null, ...(next ? { next } : {}) };
+    return {
+      status: res.status,
+      body: res.ok ? await res.blob() : null,
+      ...(next ? { next } : {}),
+    };
   } catch {
     return { status: 0, body: null };
   }

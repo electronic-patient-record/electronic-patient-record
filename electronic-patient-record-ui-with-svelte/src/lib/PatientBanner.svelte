@@ -28,7 +28,9 @@
     // (once) and hands it to the banner and the allergy section.
     allergies?: AllergyLoad | null;
   } = $props();
-  const allergyLine = $derived(bannerAllergies(allergies, stored.site_time_zone));
+  const allergyLine = $derived(
+    bannerAllergies(allergies, stored.site_time_zone),
+  );
 
   // The photo is fetched with the page's own call (so it carries the purpose of use) and shown from
   // an object URL that is revoked when the photo changes or the banner goes. The server serves it
@@ -60,10 +62,7 @@
 
   const p = $derived(stored.patient);
   const name = $derived(
-    [
-      p.names[0]?.family?.toUpperCase(),
-      (p.names[0]?.given ?? []).join(" "),
-    ]
+    [p.names[0]?.family?.toUpperCase(), (p.names[0]?.given ?? []).join(" ")]
       .filter(Boolean)
       .join(", "),
   );
@@ -78,10 +77,9 @@
     if (!a) return STRINGS.bannerNoBirthDate;
     if (a.months !== undefined)
       return STRINGS.bannerAgeMonths.replace("{n}", String(a.months));
-    return (a.approximate ? STRINGS.bannerAgeYearsApprox : STRINGS.bannerAgeYears).replace(
-      "{n}",
-      String(a.years),
-    );
+    return (
+      a.approximate ? STRINGS.bannerAgeYearsApprox : STRINGS.bannerAgeYears
+    ).replace("{n}", String(a.years));
   });
 </script>
 
@@ -100,10 +98,16 @@
   </p>
   <p>{STRINGS.bannerNhs}: {nhs ? nhsDisplay(nhs) : STRINGS.bannerNone}</p>
   <p>
-    {STRINGS.bannerOtherId}: {other ? `${other.system} ${other.value}` : STRINGS.bannerNone}
+    {STRINGS.bannerOtherId}: {other
+      ? `${other.system} ${other.value}`
+      : STRINGS.bannerNone}
   </p>
   {#if photoUrl}
-    <img class="photo" src={photoUrl} alt={STRINGS.bannerPhotoAlt.replace("{name}", name)} />
+    <img
+      class="photo"
+      src={photoUrl}
+      alt={STRINGS.bannerPhotoAlt.replace("{name}", name)}
+    />
   {:else if photoFailed}
     <p role="status">{STRINGS.bannerPhotoFailed}</p>
   {:else}

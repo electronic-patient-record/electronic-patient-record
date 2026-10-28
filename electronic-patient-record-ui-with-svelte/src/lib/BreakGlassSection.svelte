@@ -23,10 +23,10 @@
 
   async function open(event: SubmitEvent) {
     event.preventDefault();
-    await busy.run(() => openNow(event));
+    await busy.run(() => openNow());
   }
 
-  async function openNow(event: SubmitEvent) {
+  async function openNow() {
     if (!reason.trim() || !acknowledged) {
       message = STRINGS.glassNeeded;
       return;
@@ -43,7 +43,8 @@
       reason = "";
       acknowledged = false;
       await onopened(res.body.expires_at);
-    } else if (res.status === 422 && body?.errors) message = body.errors.join(" ");
+    } else if (res.status === 422 && body?.errors)
+      message = body.errors.join(" ");
     else message = STRINGS.error;
   }
 </script>

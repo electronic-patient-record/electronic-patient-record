@@ -109,7 +109,8 @@
         open = null;
         await load();
       } else if (res.status === 409) message = STRINGS.amendConflict;
-      else if (res.status === 422 && res.body?.errors) message = res.body.errors.join(" ");
+      else if (res.status === 422 && res.body?.errors)
+        message = res.body.errors.join(" ");
       else message = STRINGS.error;
     });
   }
@@ -129,15 +130,25 @@
     {#if counts.open > 0}
       <p role="status">
         {STRINGS.amendOpenCount.replace("{n}", String(counts.open))}
-        {#if counts.overdue > 0}<strong>{STRINGS.amendOverdueCount.replace("{n}", String(counts.overdue))}</strong>{/if}
+        {#if counts.overdue > 0}<strong
+            >{STRINGS.amendOverdueCount.replace(
+              "{n}",
+              String(counts.overdue),
+            )}</strong
+          >{/if}
       </p>
     {/if}
     <ul>
       {#each rows as a (a.id)}
         {@const s = a.request.state}
         <li>
-          <strong>{STRINGS.amendAbout.replace("{kind}", aboutText(a, lines))}</strong>
-          · {STRINGS.amendAsked.replace("{when}", siteWhenText(a.request.received_at, siteZone))}
+          <strong
+            >{STRINGS.amendAbout.replace("{kind}", aboutText(a, lines))}</strong
+          >
+          · {STRINGS.amendAsked.replace(
+            "{when}",
+            siteWhenText(a.request.received_at, siteZone),
+          )}
           <p>{STRINGS.amendText} {a.request.text}</p>
           <p>{stateText(s)} {dueText(a, siteZone)}</p>
           {#if s.state === "accepted" || s.state === "denied"}
@@ -146,7 +157,10 @@
           {#if s.state === "denied" && s.disagreement}
             <p>{STRINGS.noticeStatement} {s.disagreement}</p>
           {/if}
-          {#if a.request.extension}<p>{STRINGS.amendExtended} {a.request.extension}</p>{/if}
+          {#if a.request.extension}<p>
+              {STRINGS.amendExtended}
+              {a.request.extension}
+            </p>{/if}
           {#if open?.id === a.id}
             <form onsubmit={(e) => send(e, a)}>
               <p>{label[open.step]}</p>
@@ -161,17 +175,32 @@
               {/if}
               {#if open.step === "apply"}
                 <label for="am-v-{a.id}">{STRINGS.amendVersion}</label>
-                <input id="am-v-{a.id}" bind:value={version} inputmode="numeric" autocomplete="off" />
+                <input
+                  id="am-v-{a.id}"
+                  bind:value={version}
+                  inputmode="numeric"
+                  autocomplete="off"
+                />
               {:else}
                 <label for="am-r-{a.id}">{STRINGS.amendReason}</label>
-                <input id="am-r-{a.id}" bind:value={reason} autocomplete="off" />
+                <input
+                  id="am-r-{a.id}"
+                  bind:value={reason}
+                  autocomplete="off"
+                />
               {/if}
-              <button type="submit" disabled={busy.on}>{STRINGS.amendConfirm}</button>
-              <button type="button" onclick={() => (open = null)}>{STRINGS.amendCancel}</button>
+              <button type="submit" disabled={busy.on}
+                >{STRINGS.amendConfirm}</button
+              >
+              <button type="button" onclick={() => (open = null)}
+                >{STRINGS.amendCancel}</button
+              >
             </form>
           {:else}
             {#each stepsFor(a) as step (step)}
-              <button type="button" onclick={() => start(a, step)}>{label[step]}</button>
+              <button type="button" onclick={() => start(a, step)}
+                >{label[step]}</button
+              >
             {/each}
           {/if}
         </li>

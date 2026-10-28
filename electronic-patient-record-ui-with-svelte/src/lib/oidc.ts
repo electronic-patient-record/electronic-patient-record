@@ -125,6 +125,7 @@ export function safeReturnTo(value: string | null | undefined): string {
     value.includes("\\")
   )
     return "/";
+  // eslint-disable-next-line no-control-regex -- the point is to refuse control characters
   if (/[\u0000-\u001f]/.test(value)) return "/";
   return value;
 }

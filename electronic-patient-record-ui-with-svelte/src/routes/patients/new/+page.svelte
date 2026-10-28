@@ -67,7 +67,11 @@
       candidates = res.body.candidates;
       candidatesCut = res.body.candidates_cut === true;
     } else if (res.status === 422 && res.body.errors) {
-      problems = patientProblemList(res.body.errors, res.body.error_codes, locale);
+      problems = patientProblemList(
+        res.body.errors,
+        res.body.error_codes,
+        locale,
+      );
     } else {
       message = STRINGS.error;
     }
@@ -125,44 +129,49 @@
           <p>{STRINGS.restrictedCandidate}</p>
         </article>
       {:else}
-      <article class="candidate">
-        <h3>
-          {STRINGS.decision}: {STRINGS.decisions[c.decision]} ({STRINGS.score}: {c.score.toFixed(2)})
-        </h3>
-        {#if c.deterministic}<p>{c.deterministic}</p>{/if}
-        {#if c.conflicts.length}
-          <p>{STRINGS.conflicts}</p>
-          <ul>
-            {#each conflictList(c.conflicts, c.conflict_codes, locale) as why, i (i)}<li>{why}</li>{/each}
-          </ul>
-        {/if}
-        <table>
-          <thead>
-            <tr>
-              <th>{STRINGS.field}</th>
-              <th>{STRINGS.entered}</th>
-              <th>{STRINGS.existing}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {#each comparisonRows(submitted, c.existing.patient) as row (row.field)}
+        <article class="candidate">
+          <h3>
+            {STRINGS.decision}: {STRINGS.decisions[c.decision]} ({STRINGS.score}:
+            {c.score.toFixed(2)})
+          </h3>
+          {#if c.deterministic}<p>{c.deterministic}</p>{/if}
+          {#if c.conflicts.length}
+            <p>{STRINGS.conflicts}</p>
+            <ul>
+              {#each conflictList(c.conflicts, c.conflict_codes, locale) as why, i (i)}<li
+                >
+                  {why}
+                </li>{/each}
+            </ul>
+          {/if}
+          <table>
+            <thead>
               <tr>
-                <th scope="row">{fieldName(row.field)}</th>
-                <td>{shown(row.entered)}</td>
-                <td>
-                  {shown(row.existing)}
-                  {#if row.same}<span class="same">({STRINGS.sameValue})</span>{/if}
-                </td>
+                <th>{STRINGS.field}</th>
+                <th>{STRINGS.entered}</th>
+                <th>{STRINGS.existing}</th>
               </tr>
-            {/each}
-          </tbody>
-        </table>
-        <p>
-          <a href={localizePath(`/patients/${c.existing.id}`, locale)}
-            >{STRINGS.openExisting}</a
-          >
-        </p>
-      </article>
+            </thead>
+            <tbody>
+              {#each comparisonRows(submitted, c.existing.patient) as row (row.field)}
+                <tr>
+                  <th scope="row">{fieldName(row.field)}</th>
+                  <td>{shown(row.entered)}</td>
+                  <td>
+                    {shown(row.existing)}
+                    {#if row.same}<span class="same">({STRINGS.sameValue})</span
+                      >{/if}
+                  </td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+          <p>
+            <a href={localizePath(`/patients/${c.existing.id}`, locale)}
+              >{STRINGS.openExisting}</a
+            >
+          </p>
+        </article>
       {/if}
     {/each}
 

@@ -12,7 +12,11 @@
     type StaffPurpose,
   } from "#lib/purpose.js";
 
-  import { feedCount, isAdminPage, refreshFeedCount } from "#lib/feed-count.svelte.js";
+  import {
+    feedCount,
+    isAdminPage,
+    refreshFeedCount,
+  } from "#lib/feed-count.svelte.js";
   import { idleWarning, lastActivityAt, noteActivity } from "#lib/idle.js";
 
   let { children } = $props();
@@ -20,6 +24,7 @@
 
   // The declared purpose is kept for this tab only. It is read after load, so the server-rendered
   // page and the first client render agree.
+  // eslint-disable-next-line svelte/prefer-writable-derived -- read from storage only after hydration, on purpose
   let purpose = $state<StaffPurpose>("operations");
   $effect(() => {
     purpose = readStoredPurpose(window.sessionStorage);
@@ -28,7 +33,9 @@
     setDefaultPurpose(purpose);
   });
   function choose(event: Event) {
-    const next = parseStaffPurpose((event.currentTarget as HTMLSelectElement).value);
+    const next = parseStaffPurpose(
+      (event.currentTarget as HTMLSelectElement).value,
+    );
     if (!next) return;
     purpose = next;
     storePurpose(window.sessionStorage, next);
@@ -41,11 +48,14 @@
   });
   // Idle sign-out warning (CQ-8): background looks do not keep the session alive, so warn before the
   // limit and offer one press to stay. Checked every 15 s; the server decides, this only warns.
-  const idleSeconds = $derived<number | null>(page.data.signIn?.idleSeconds ?? null);
+  const idleSeconds = $derived<number | null>(
+    page.data.signIn?.idleSeconds ?? null,
+  );
   let minutesLeft = $state<number | null>(null);
   $effect(() => {
     const limit = idleSeconds;
-    const tick = () => (minutesLeft = idleWarning(Date.now(), lastActivityAt(), limit));
+    const tick = () =>
+      (minutesLeft = idleWarning(Date.now(), lastActivityAt(), limit));
     tick();
     const timer = setInterval(tick, 15_000);
     return () => clearInterval(timer);
@@ -81,8 +91,12 @@
     <a href={localizePath("/", locale)}>{STRINGS.navHome}</a>
     <a href={localizePath("/patients", locale)}>{STRINGS.navPatients}</a>
     <a href={localizePath("/patients/new", locale)}>{STRINGS.registerLink}</a>
-    <a href={localizePath("/admin/feed", locale)}>{STRINGS.navFeed}{#if adminPage && feedCount.open}
-        <span class="count">({STRINGS.feedCount.replace("{n}", String(feedCount.open))})</span>{/if}</a>
+    <a href={localizePath("/admin/feed", locale)}
+      >{STRINGS.navFeed}{#if adminPage && feedCount.open}
+        <span class="count"
+          >({STRINGS.feedCount.replace("{n}", String(feedCount.open))})</span
+        >{/if}</a
+    >
     <a href={localizePath("/admin/break-glass", locale)}>{STRINGS.navGlass}</a>
     <a href={localizePath("/my-record", locale)}>{STRINGS.navMyRecord}</a>
   </nav>
@@ -90,7 +104,9 @@
     <label class="purpose">
       {STRINGS.purposeLabel}
       <select value={purpose} onchange={choose}>
-        {#each STAFF_PURPOSES as p (p)}<option value={p}>{STRINGS.purposes[p]}</option>{/each}
+        {#each STAFF_PURPOSES as p (p)}<option value={p}
+            >{STRINGS.purposes[p]}</option
+          >{/each}
       </select>
     </label>
   {/if}
@@ -104,8 +120,9 @@
       <a
         class="account"
         data-sveltekit-reload
-        href="/auth/login?returnTo={encodeURIComponent(page.url.pathname + page.url.search)}"
-        >{STRINGS.signIn}</a
+        href="/auth/login?returnTo={encodeURIComponent(
+          page.url.pathname + page.url.search,
+        )}">{STRINGS.signIn}</a
       >
     {/if}
   {/if}
@@ -115,7 +132,9 @@
   <div class="idle" role="alert">
     {#if minutesLeft > 0}
       <p>{STRINGS.idleWarning.replace("{n}", String(minutesLeft))}</p>
-      <button type="button" onclick={() => void staySignedIn()}>{STRINGS.staySignedIn}</button>
+      <button type="button" onclick={() => void staySignedIn()}
+        >{STRINGS.staySignedIn}</button
+      >
     {:else}
       <p>{STRINGS.idleEnded}</p>
     {/if}

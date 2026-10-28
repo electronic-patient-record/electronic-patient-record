@@ -19,4 +19,5 @@ SvelteKit (kit 3), Svelte 5 runes, TypeScript strict, adapter-node. Read [`spec/
 - API error text: only the 422 list of problems (`errors`) may be shown; any other status shows `STRINGS.error` or another of the page's own words (`tests/unit/no-api-error-text.test.ts`).
 - Translations: `governance/translation-review.md` is the register; a row may say `reviewed` only with a reviewer and a date (`tests/unit/translation-register.test.ts`).
 - Never display a missing value as `0` or "none"; show "not available".
-- Gates: `pnpm run check` (0 errors, 0 warnings), `pnpm exec vitest run`, `PW_PORT=4183 CI=true pnpm exec playwright test`.
+- Lint: `pnpm run lint` runs Prettier (`--check`, code only; Markdown is left as written) and ESLint (typescript-eslint, eslint-plugin-svelte). `pnpm run lint:fix` fixes what it can. `eslint.config.js` turns off three rules and says why: `any` in tests, empty interfaces in `app.d.ts`, and `svelte/no-navigation-without-resolve` (links go through `localizePath`). Do not add an `eslint-disable` without a reason after `--`.
+- Gates: `pnpm run lint`, `pnpm run check` (0 errors, 0 warnings), `pnpm exec vitest run`, `PW_PORT=4183 CI=true pnpm exec playwright test`.

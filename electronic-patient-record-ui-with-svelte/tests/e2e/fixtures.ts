@@ -5,7 +5,13 @@ import { expect, test as base } from "@playwright/test";
 // "an empty search sends nothing and says why" fail about once in forty runs on a loaded machine.
 export const test = base.extend({
   page: async ({ page }, use) => {
-    const hydrated = () => page.waitForSelector("html[data-hydrated]", { state: "attached", timeout: 5000 }).catch(() => {});
+    const hydrated = () =>
+      page
+        .waitForSelector("html[data-hydrated]", {
+          state: "attached",
+          timeout: 5000,
+        })
+        .catch(() => {});
     const goto = page.goto.bind(page);
     const reload = page.reload.bind(page);
     page.goto = (async (url: string, options?: Parameters<typeof goto>[1]) => {

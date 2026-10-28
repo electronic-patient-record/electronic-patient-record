@@ -31,7 +31,11 @@ describe("latestReadings", () => {
   it("never offers an entry in error, even if it is the newest", () => {
     const got = latestReadings([
       o({ id: "a", effective_at: "2026-10-25T13:00:00Z" }),
-      o({ id: "x", status: "entered-in-error", effective_at: "2026-10-27T13:00:00Z" }),
+      o({
+        id: "x",
+        status: "entered-in-error",
+        effective_at: "2026-10-27T13:00:00Z",
+      }),
     ]);
     expect(got.map((r) => r.id)).toEqual(["a"]);
   });
@@ -39,7 +43,13 @@ describe("latestReadings", () => {
   it("keeps a newest reading with no value rather than showing an older value as current", () => {
     const got = latestReadings([
       o({ id: "a", effective_at: "2026-10-25T13:00:00Z" }),
-      o({ id: "n", value: null, unit: null, absent_reason: "failed", effective_at: "2026-10-26T13:00:00Z" }),
+      o({
+        id: "n",
+        value: null,
+        unit: null,
+        absent_reason: "failed",
+        effective_at: "2026-10-26T13:00:00Z",
+      }),
     ]);
     expect(got.map((r) => r.id)).toEqual(["n"]);
   });

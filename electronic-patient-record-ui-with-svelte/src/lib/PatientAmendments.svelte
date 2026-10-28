@@ -18,13 +18,24 @@
     type AmendmentView,
     type TargetKind,
   } from "./amendments.js";
-  import { allergyLine, loadAllergies, type StoredAllergy } from "./allergies.js";
+  import {
+    allergyLine,
+    loadAllergies,
+    type StoredAllergy,
+  } from "./allergies.js";
   import { STRINGS } from "./strings.js";
-  import { loadObservations, vitalLine, type StoredObservation } from "./vitals.js";
+  import {
+    loadObservations,
+    vitalLine,
+    type StoredObservation,
+  } from "./vitals.js";
 
   const PURPOSE = "patient-access";
   const busy = new Busy();
-  let { patientId, siteZone = "UTC" }: { patientId: string; siteZone?: string } = $props();
+  let {
+    patientId,
+    siteZone = "UTC",
+  }: { patientId: string; siteZone?: string } = $props();
 
   let status = $state<number | null>(null);
   let rows = $state<AmendmentView[]>([]);
@@ -37,11 +48,15 @@
   let stating = $state<string | null>(null);
   let statement = $state("");
 
-  const standing = $derived((readings ?? []).filter((o) => o.status !== "entered-in-error"));
+  const standing = $derived(
+    (readings ?? []).filter((o) => o.status !== "entered-in-error"),
+  );
   const standingAllergies = $derived(
     (allergies ?? []).filter((a) => a.allergy.status !== "entered-in-error"),
   );
-  const lines = $derived(targetLines(readings ?? [], allergies ?? [], siteZone));
+  const lines = $derived(
+    targetLines(readings ?? [], allergies ?? [], siteZone),
+  );
 
   async function load() {
     const [a, o, g] = await Promise.all([
@@ -59,12 +74,17 @@
     void load();
   });
 
-  function report(res: { status: number; body: { errors?: string[] } | null }, ok: number, done: string) {
+  function report(
+    res: { status: number; body: { errors?: string[] } | null },
+    ok: number,
+    done: string,
+  ) {
     const common = commonProblem(res.status);
     if (common) message = STRINGS[common];
     else if (res.status === ok) message = done;
     else if (res.status === 409) message = STRINGS.amendConflict;
-    else if (res.status === 422 && res.body?.errors) message = res.body.errors.join(" ");
+    else if (res.status === 422 && res.body?.errors)
+      message = res.body.errors.join(" ");
     else message = STRINGS.error;
     return res.status === ok;
   }
@@ -79,7 +99,10 @@
         kind === "Observation"
           ? standing.find((x) => x.id === id)
           : standingAllergies.find((x) => x.id === id);
-      const built = askBody(found ? { kind, id: found.id, version: found.version } : null, text);
+      const built = askBody(
+        found ? { kind, id: found.id, version: found.version } : null,
+        text,
+      );
       if (!built.ok) {
         message = built.problem;
         return;
@@ -97,7 +120,11 @@
     });
   }
 
-  async function step(a: AmendmentView, body: Record<string, unknown>, done: string) {
+  async function step(
+    a: AmendmentView,
+    body: Record<string, unknown>,
+    done: string,
+  ) {
     await busy.run(async () => {
       message = null;
       const res = await call<{ errors?: string[] }>(
@@ -144,14 +171,18 @@
         {#if standing.length}
           <optgroup label={STRINGS.askReadingGroup}>
             {#each standing as o (o.id)}
-              <option value={`Observation:${o.id}`}>{vitalLine(o, siteZone)}</option>
+              <option value={`Observation:${o.id}`}
+                >{vitalLine(o, siteZone)}</option
+              >
             {/each}
           </optgroup>
         {/if}
         {#if standingAllergies.length}
           <optgroup label={STRINGS.askAllergyGroup}>
             {#each standingAllergies as g (g.id)}
-              <option value={`AllergyIntolerance:${g.id}`}>{allergyLine(g)}</option>
+              <option value={`AllergyIntolerance:${g.id}`}
+                >{allergyLine(g)}</option
+              >
             {/each}
           </optgroup>
         {/if}
@@ -169,20 +200,33 @@
       {#each rows as a (a.id)}
         {@const s = a.request.state}
         <li>
-          <strong>{STRINGS.askAboutReading.replace("{reading}", aboutText(a, lines))}</strong>
+          <strong
+            >{STRINGS.askAboutReading.replace(
+              "{reading}",
+              aboutText(a, lines),
+            )}</strong
+          >
           · {siteWhenText(a.request.received_at, siteZone)}
           <p>{a.request.text}</p>
           <p>{stateText(s)} {dueText(a, siteZone)}</p>
           {#if s.state === "denied"}
             <p>{STRINGS.askReasonGiven} {s.reason}</p>
-            {#if s.disagreement}<p>{STRINGS.askYourStatement} {s.disagreement}</p>{/if}
+            {#if s.disagreement}<p>
+                {STRINGS.askYourStatement}
+                {s.disagreement}
+              </p>{/if}
           {/if}
           {#each ownStepsFor(a) as st (st)}
             {#if st === "withdraw"}
               <button
                 type="button"
                 disabled={busy.on}
-                onclick={() => step(a, { expected_version: a.version, step: "withdraw" }, STRINGS.askWithdrawn)}
+                onclick={() =>
+                  step(
+                    a,
+                    { expected_version: a.version, step: "withdraw" },
+                    STRINGS.askWithdrawn,
+                  )}
               >
                 {STRINGS.askWithdraw}
               </button>
@@ -190,11 +234,22 @@
               <form onsubmit={(e) => disagree(e, a)}>
                 <label for="ask-s-{a.id}">{STRINGS.askDisagreeLabel}</label>
                 <textarea id="ask-s-{a.id}" bind:value={statement}></textarea>
-                <button type="submit" disabled={busy.on}>{STRINGS.askDisagreeSend}</button>
-                <button type="button" onclick={() => (stating = null)}>{STRINGS.amendCancel}</button>
+                <button type="submit" disabled={busy.on}
+                  >{STRINGS.askDisagreeSend}</button
+                >
+                <button type="button" onclick={() => (stating = null)}
+                  >{STRINGS.amendCancel}</button
+                >
               </form>
             {:else}
-              <button type="button" onclick={() => ((stating = a.id), (statement = ""), (message = null))}>
+              <button
+                type="button"
+                onclick={() => (
+                  (stating = a.id),
+                  (statement = ""),
+                  (message = null)
+                )}
+              >
                 {STRINGS.askDisagree}
               </button>
             {/if}

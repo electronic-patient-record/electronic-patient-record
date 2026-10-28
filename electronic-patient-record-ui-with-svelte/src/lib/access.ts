@@ -18,9 +18,17 @@ export interface Period {
 }
 
 export type ProxyScope = "identity" | "allergies" | "photo" | "access-log";
-export const PROXY_SCOPES: readonly ProxyScope[] = ["identity", "allergies", "photo", "access-log"];
+export const PROXY_SCOPES: readonly ProxyScope[] = [
+  "identity",
+  "allergies",
+  "photo",
+  "access-log",
+];
 export type ProxyBasis =
-  "parental-responsibility" | "power-of-attorney" | "deputyship" | "patient-request";
+  | "parental-responsibility"
+  | "power-of-attorney"
+  | "deputyship"
+  | "patient-request";
 export const PROXY_BASES: readonly ProxyBasis[] = [
   "parental-responsibility",
   "power-of-attorney",
@@ -193,7 +201,11 @@ export function proxyTerms(
   const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
   const start = Date.UTC(y, mo - 1, d);
   const real = new Date(start);
-  if (real.getUTCFullYear() !== y || real.getUTCMonth() !== mo - 1 || real.getUTCDate() !== d)
+  if (
+    real.getUTCFullYear() !== y ||
+    real.getUTCMonth() !== mo - 1 ||
+    real.getUTCDate() !== d
+  )
     return null;
   return { basis, scopes, expires_at: start / 1000 + 86_400 };
 }
@@ -202,7 +214,9 @@ export function proxyTerms(
 export function describeProxy(t: ProxyTerms | null | undefined): string {
   if (!t) return STRINGS.proxyNoTerms;
   // The authority ends at the start of the day after its last day.
-  const end = new Date((t.expires_at - 86_400) * 1000).toISOString().slice(0, 10);
+  const end = new Date((t.expires_at - 86_400) * 1000)
+    .toISOString()
+    .slice(0, 10);
   return `${t.scopes.map((s) => STRINGS.proxyScopes[s]).join(", ")} · ${STRINGS.proxyUntil} ${end}`;
 }
 

@@ -11,7 +11,9 @@ describe("dataAge (EC-12)", () => {
   });
   it("is current just after a read and while the last look worked", () => {
     expect(dataAge(read, read, false, "en-GB")?.stale).toBe(false);
-    expect(dataAge(read, at(STALE_AFTER_MS), false, "en-GB")?.stale).toBe(false);
+    expect(dataAge(read, at(STALE_AFTER_MS), false, "en-GB")?.stale).toBe(
+      false,
+    );
   });
   it("is doubtful once the time since the read passes the limit", () => {
     expect(dataAge(read, at(STALE_AFTER_MS + 1), false)?.stale).toBe(true);

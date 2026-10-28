@@ -52,7 +52,7 @@ export function createProxyHandler(deps: ProxyDeps): RequestHandler {
       const session = auth.store.get(cookies.get(name), {
         activity: !isBackground(request.headers.get(BACKGROUND_HEADER)),
       });
-      let token: string | null = null;
+      let token: string | null;
       try {
         token = session ? await auth.accessToken(session) : null;
       } catch (e) {

@@ -157,6 +157,7 @@ jobs:
           cache: pnpm
           cache-dependency-path: electronic-patient-record-ui-with-svelte/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      - run: pnpm run lint
       - run: pnpm run check
       - run: pnpm exec vitest run
       - run: pnpm exec playwright install --with-deps chromium

@@ -14,7 +14,8 @@ const fallback = (process.env.UI_PROTOCOL ?? "http").toLowerCase();
 
 http
   .createServer((req, res) => {
-    if (!req.headers["x-forwarded-proto"]) req.headers["x-forwarded-proto"] = fallback;
+    if (!req.headers["x-forwarded-proto"])
+      req.headers["x-forwarded-proto"] = fallback;
     handler(req, res, () => {
       res.statusCode = 404;
       res.end();

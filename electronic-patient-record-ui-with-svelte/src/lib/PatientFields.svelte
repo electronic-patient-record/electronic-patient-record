@@ -22,12 +22,22 @@
 {/if}
 {#if show("given")}
   <label for="{prefix}-given">{STRINGS.given}</label>
-  <input id="{prefix}-given" bind:value={form.given} autocomplete="off" aria-describedby="{prefix}-given-hint" />
+  <input
+    id="{prefix}-given"
+    bind:value={form.given}
+    autocomplete="off"
+    aria-describedby="{prefix}-given-hint"
+  />
   <small id="{prefix}-given-hint">{STRINGS.givenHint}</small>
 {/if}
 {#if show("birthDate")}
   <label for="{prefix}-birth">{STRINGS.birthDate}</label>
-  <input id="{prefix}-birth" bind:value={form.birthDate} autocomplete="off" inputmode="numeric" />
+  <input
+    id="{prefix}-birth"
+    bind:value={form.birthDate}
+    autocomplete="off"
+    inputmode="numeric"
+  />
 {/if}
 {#if show("sex")}
   <label for="{prefix}-sex">{STRINGS.sex}</label>
@@ -38,9 +48,18 @@
 {/if}
 {#if show("nhsNumber")}
   <label for="{prefix}-nhs">{STRINGS.nhsNumber}</label>
-  <input id="{prefix}-nhs" bind:value={form.nhsNumber} autocomplete="off" inputmode="numeric" />
+  <input
+    id="{prefix}-nhs"
+    bind:value={form.nhsNumber}
+    autocomplete="off"
+    inputmode="numeric"
+  />
 {/if}
 {#if show("postalCode")}
   <label for="{prefix}-postcode">{STRINGS.postalCode}</label>
-  <input id="{prefix}-postcode" bind:value={form.postalCode} autocomplete="off" />
+  <input
+    id="{prefix}-postcode"
+    bind:value={form.postalCode}
+    autocomplete="off"
+  />
 {/if}

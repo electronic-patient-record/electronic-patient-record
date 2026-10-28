@@ -127,19 +127,30 @@ test("registering shows the server's validation problems", async ({ page }) => {
   await axe(page);
 });
 
-test("registration problems come by code, in the page's language, with the API's English for an unknown code", async ({ page }) => {
+test("registration problems come by code, in the page's language, with the API's English for an unknown code", async ({
+  page,
+}) => {
   await page.route("**/api/proxy/api/patients", (route) =>
     json(route, 422, {
-      errors: ["NHS number fails the modulus 11 check", "something new the UI has no code for"],
+      errors: [
+        "NHS number fails the modulus 11 check",
+        "something new the UI has no code for",
+      ],
       error_codes: ["nhs_number_check_digit", "brand_new"],
     }),
   );
   await page.goto("/de-001/patients/new");
   await page.getByLabel("Family name").fill("Smith");
   await page.locator("form button[type=submit]").click();
-  await expect(page.getByText("Die NHS-Nummer besteht die Prüfziffernprüfung nicht.")).toBeVisible();
-  await expect(page.getByText("something new the UI has no code for")).toBeVisible();
-  await expect(page.getByText("NHS number fails the modulus 11 check")).toHaveCount(0);
+  await expect(
+    page.getByText("Die NHS-Nummer besteht die Prüfziffernprüfung nicht."),
+  ).toBeVisible();
+  await expect(
+    page.getByText("something new the UI has no code for"),
+  ).toBeVisible();
+  await expect(
+    page.getByText("NHS number fails the modulus 11 check"),
+  ).toHaveCount(0);
 });
 
 test("a possible duplicate is shown side by side and needs a reason to override", async ({
@@ -564,7 +575,9 @@ test("the page says when the record was read, and says so loudly when it could n
   // The next look fails: the same record stays on screen, with a warning that it may be out of date.
   up = false;
   await show();
-  await expect(page.getByRole("alert").filter({ hasText: "may not be current" })).toBeVisible();
+  await expect(
+    page.getByRole("alert").filter({ hasText: "may not be current" }),
+  ).toBeVisible();
   await expect(page.getByRole("heading", { name: "SMITH, Ann" })).toBeVisible();
   await axe(page);
 
@@ -1151,8 +1164,12 @@ test("break-the-glass and allergy-statement times are on the site's clock, with 
     }),
   );
   await page.goto("/en-001/admin/break-glass");
-  await expect(page.getByText(/2026-10-20 06:00 EDT \(10:00 UTC\)/)).toBeVisible();
-  await expect(page.getByText(/2026-10-20 10:00 EDT \(14:00 UTC\)/)).toBeVisible();
+  await expect(
+    page.getByText(/2026-10-20 06:00 EDT \(10:00 UTC\)/),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/2026-10-20 10:00 EDT \(14:00 UTC\)/),
+  ).toBeVisible();
 
   await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
     json(route, 200, { ...ANN, site_time_zone: "America/New_York" }),
@@ -1161,11 +1178,16 @@ test("break-the-glass and allergy-statement times are on the site's clock, with 
     json(route, 200, {
       allergies: [],
       statement: null,
-      summary: { state: "no-known", asserted_at: "2026-10-21T13:00:00.000000Z" },
+      summary: {
+        state: "no-known",
+        asserted_at: "2026-10-21T13:00:00.000000Z",
+      },
     }),
   );
   await page.goto(`/en-001/patients/${ANN.id}`);
-  await expect(page.getByRole("region", { name: "Patient banner" })).toContainText(
+  await expect(
+    page.getByRole("region", { name: "Patient banner" }),
+  ).toContainText(
     "No known allergies (stated 2026-10-21 09:00 EDT (13:00 UTC))",
   );
 });
@@ -1174,10 +1196,16 @@ test("the refused-message queue shows when a message arrived on the site's clock
   page,
 }) => {
   await page.route("**/api/proxy/api/feed/refusals", (route) =>
-    json(route, 200, { refusals: [REFUSAL()], limit: 50, site_time_zone: "America/New_York" }),
+    json(route, 200, {
+      refusals: [REFUSAL()],
+      limit: 50,
+      site_time_zone: "America/New_York",
+    }),
   );
   await page.goto("/en-001/admin/feed");
-  await expect(page.getByText(/received 2026-10-21 05:00 EDT \(09:00 UTC\)/)).toBeVisible();
+  await expect(
+    page.getByText(/received 2026-10-21 05:00 EDT \(09:00 UTC\)/),
+  ).toBeVisible();
 });
 
 const OBS = (over: Record<string, unknown>) => ({
@@ -1207,7 +1235,12 @@ test("the vital signs list says where each value sits in words, and never calls 
     json(route, 200, {
       observations: [
         OBS({ value: 130, range: { low: 60, high: 100 }, flag: "high" }),
-        OBS({ code: "8310-5", value: 36.6, unit: "Cel", effective_at: "2026-10-26T13:00:00.000000Z" }),
+        OBS({
+          code: "8310-5",
+          value: 36.6,
+          unit: "Cel",
+          effective_at: "2026-10-26T13:00:00.000000Z",
+        }),
         OBS({
           code: "59408-5",
           value: null,
@@ -1215,14 +1248,28 @@ test("the vital signs list says where each value sits in words, and never calls 
           absent_reason: "failed",
           effective_at: "2026-10-26T12:30:00.000000Z",
         }),
-        OBS({ code: "8480-6", value: 150, unit: "mm[Hg]", range: { low: 90, high: 140 }, flag: "critical-high", version: 2 }),
-        OBS({ code: "29463-7", value: 700, unit: "kg", status: "entered-in-error" }),
+        OBS({
+          code: "8480-6",
+          value: 150,
+          unit: "mm[Hg]",
+          range: { low: 90, high: 140 },
+          flag: "critical-high",
+          version: 2,
+        }),
+        OBS({
+          code: "29463-7",
+          value: 700,
+          unit: "kg",
+          status: "entered-in-error",
+        }),
       ],
     }),
   );
   await page.goto(`/en-001/patients/${ANN.id}`);
   const section = page.getByRole("region", { name: "Vital signs" });
-  await expect(section.getByRole("list").first().getByText("Heart rate")).toBeVisible();
+  await expect(
+    section.getByRole("list").first().getByText("Heart rate"),
+  ).toBeVisible();
   await expect(section.getByText("130 /min")).toBeVisible();
   const heart = section.getByRole("listitem").filter({ hasText: "Heart rate" });
   await expect(heart).toContainText("· High ·");
@@ -1233,19 +1280,29 @@ test("the vital signs list says where each value sits in words, and never calls 
   await expect(temp).toContainText("Not assessed (no range given)");
   await expect(temp).not.toContainText(/within|normal/i);
   // No value: why, never 0 or a dash.
-  const spo2 = section.getByRole("listitem").filter({ hasText: "Oxygen saturation" });
+  const spo2 = section
+    .getByRole("listitem")
+    .filter({ hasText: "Oxygen saturation" });
   await expect(spo2).toContainText("No value: attempt failed");
   await expect(spo2).toContainText("Not assessed (no value)");
-  await expect(section.getByRole("listitem").filter({ hasText: "Blood pressure, systolic" })).toContainText(
-    "Critically high",
-  );
-  await expect(section.getByRole("listitem").filter({ hasText: "Blood pressure, systolic" })).toContainText(
-    "version 2",
-  );
+  await expect(
+    section
+      .getByRole("listitem")
+      .filter({ hasText: "Blood pressure, systolic" }),
+  ).toContainText("Critically high");
+  await expect(
+    section
+      .getByRole("listitem")
+      .filter({ hasText: "Blood pressure, systolic" }),
+  ).toContainText("version 2");
   // The time is the site's clock with UTC beside it.
-  await expect(section.getByText(/2026-10-26 09:30 EDT \(13:30 UTC\)/).first()).toBeVisible();
+  await expect(
+    section.getByText(/2026-10-26 09:30 EDT \(13:30 UTC\)/).first(),
+  ).toBeVisible();
   // A mistake is collapsed, struck through, and not in the main list.
-  const mistaken = section.getByRole("group").filter({ hasText: "Entered in error (1)" });
+  const mistaken = section
+    .getByRole("group")
+    .filter({ hasText: "Entered in error (1)" });
   await expect(mistaken).toBeVisible();
   await expect(section.getByRole("list").first()).not.toContainText("Weight");
   await axe(page);
@@ -1255,7 +1312,9 @@ test("a reading under an amendment request carries the notice, including a refus
   page,
 }) => {
   await stubAllergies(page);
-  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) => json(route, 200, ANN));
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, ANN),
+  );
   await page.route("**/api/proxy/api/patients/*/observations", (route) =>
     json(route, 200, {
       observations: [
@@ -1278,12 +1337,21 @@ test("a reading under an amendment request carries the notice, including a refus
   await page.goto(`/en-001/patients/${ANN.id}`);
   const section = page.getByRole("region", { name: "Vital signs" });
   const heart = section.getByRole("listitem").filter({ hasText: "Heart rate" });
-  await expect(heart.getByRole("note")).toContainText("No decision has been recorded.");
+  await expect(heart.getByRole("note")).toContainText(
+    "No decision has been recorded.",
+  );
   const temp = section.getByRole("listitem").filter({ hasText: "Temperature" });
   await expect(temp.getByRole("note")).toContainText("The request was refused");
   // The statement is shown as text, never as markup.
-  await expect(temp.getByRole("note")).toContainText("<b>I was not feverish.</b>");
-  await expect(section.getByRole("listitem").filter({ hasText: "Weight" }).getByRole("note")).toHaveCount(0);
+  await expect(temp.getByRole("note")).toContainText(
+    "<b>I was not feverish.</b>",
+  );
+  await expect(
+    section
+      .getByRole("listitem")
+      .filter({ hasText: "Weight" })
+      .getByRole("note"),
+  ).toHaveCount(0);
   await axe(page);
 });
 
@@ -1316,21 +1384,41 @@ test("a patient asks for a reading to be corrected, withdraws, and states disagr
   });
   let list = [
     req({ state: "requested" }, "am-1", "<b>too fast</b>"),
-    req({ state: "denied", by: "dr", ground: "other", reason: "the chart agrees", disagreement: null }, "am-2", "wrong"),
+    req(
+      {
+        state: "denied",
+        by: "dr",
+        ground: "other",
+        reason: "the chart agrees",
+        disagreement: null,
+      },
+      "am-2",
+      "wrong",
+    ),
   ];
   await page.route("**/api/proxy/api/patients/*/amendments/*", (route) => {
-    sent.push({ method: route.request().method(), body: route.request().postDataJSON(), purpose: route.request().headers()["x-purpose-of-use"] ?? null });
+    sent.push({
+      method: route.request().method(),
+      body: route.request().postDataJSON(),
+      purpose: route.request().headers()["x-purpose-of-use"] ?? null,
+    });
     return json(route, 200, {});
   });
   await page.route("**/api/proxy/api/patients/*/amendments", (route) => {
     if (route.request().method() === "POST") {
-      sent.push({ method: "POST", body: route.request().postDataJSON(), purpose: route.request().headers()["x-purpose-of-use"] ?? null });
+      sent.push({
+        method: "POST",
+        body: route.request().postDataJSON(),
+        purpose: route.request().headers()["x-purpose-of-use"] ?? null,
+      });
       return json(route, 201, {});
     }
     return json(route, 200, { amendments: list });
   });
   await page.goto("/en-001/my-record");
-  const ask = page.getByRole("heading", { name: "Ask for a record to be corrected" });
+  const ask = page.getByRole("heading", {
+    name: "Ask for a record to be corrected",
+  });
   await expect(ask).toBeVisible();
   // Each request says which reading it is about, and shows the patient's words as text.
   await expect(page.getByText("About Heart rate").first()).toBeVisible();
@@ -1339,20 +1427,37 @@ test("a patient asks for a reading to be corrected, withdraws, and states disagr
 
   // Nothing is sent without a reading and words.
   await page.getByRole("button", { name: "Send the request" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Choose a record." })).toBeVisible();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Choose a record." }),
+  ).toBeVisible();
   await page.getByLabel("Which record").selectOption("Observation:o-1");
   await page.getByLabel("What should change").fill("it was 62");
   await page.getByRole("button", { name: "Send the request" }).click();
   await expect(page.getByText("Your request was sent.")).toBeVisible();
   expect(sent).toEqual([
-    { method: "POST", body: { kind: "Observation", target_id: "o-1", version: 1, text: "it was 62" }, purpose: "patient-access" },
+    {
+      method: "POST",
+      body: {
+        kind: "Observation",
+        target_id: "o-1",
+        version: 1,
+        text: "it was 62",
+      },
+      purpose: "patient-access",
+    },
   ]);
 
   // Withdraw, then a statement of disagreement with the refusal.
   await page.getByRole("button", { name: "Withdraw this request" }).click();
   await expect(page.getByText("Your request was withdrawn.")).toBeVisible();
-  expect(sent.at(-1)).toEqual({ method: "PUT", body: { expected_version: 1, step: "withdraw" }, purpose: "patient-access" });
-  await page.getByRole("button", { name: "Add a statement that you disagree" }).click();
+  expect(sent.at(-1)).toEqual({
+    method: "PUT",
+    body: { expected_version: 1, step: "withdraw" },
+    purpose: "patient-access",
+  });
+  await page
+    .getByRole("button", { name: "Add a statement that you disagree" })
+    .click();
   await page.getByRole("button", { name: "Add my statement" }).click();
   await expect(page.getByText("Write your statement.")).toBeVisible();
   await page.getByLabel(/^Your statement\./).fill("I disagree.");
@@ -1366,7 +1471,9 @@ test("a patient asks for a reading to be corrected, withdraws, and states disagr
   await axe(page);
 });
 
-test("an allergy can be asked about, and its request shows beside it", async ({ page }) => {
+test("an allergy can be asked about, and its request shows beside it", async ({
+  page,
+}) => {
   const allergy = {
     id: "g-1",
     patient_id: ANN.id,
@@ -1378,15 +1485,26 @@ test("an allergy can be asked about, and its request shows beside it", async ({ 
   await stubAllergies(page, {
     allergies: [allergy],
     statement: null,
-    summary: { state: "active", items: [{ substance: "penicillin", criticality: "high" }] },
+    summary: {
+      state: "active",
+      items: [{ substance: "penicillin", criticality: "high" }],
+    },
     amendment_notices: { "g-1": [{ notice: "pending" }] },
   });
-  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) => json(route, 200, ANN));
-  await page.route("**/api/proxy/api/patients/*/observations", (route) => json(route, 200, { observations: [] }));
-  await page.route("**/api/proxy/api/patients/*/amendments", (route) => json(route, 200, { amendments: [] }));
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, ANN),
+  );
+  await page.route("**/api/proxy/api/patients/*/observations", (route) =>
+    json(route, 200, { observations: [] }),
+  );
+  await page.route("**/api/proxy/api/patients/*/amendments", (route) =>
+    json(route, 200, { amendments: [] }),
+  );
   await page.goto(`/en-001/patients/${ANN.id}`);
   const list = page.getByRole("region", { name: "Allergies" });
-  await expect(list.getByRole("note")).toContainText("No decision has been recorded.");
+  await expect(list.getByRole("note")).toContainText(
+    "No decision has been recorded.",
+  );
   await axe(page);
 
   // The patient can choose it, and the request names the allergy and the version read.
@@ -1407,14 +1525,21 @@ test("an allergy can be asked about, and its request shows beside it", async ({ 
   await page.getByLabel("What should change").fill("I am not allergic");
   await page.getByRole("button", { name: "Send the request" }).click();
   await expect(page.getByText("Your request was sent.")).toBeVisible();
-  expect(sent).toEqual({ kind: "AllergyIntolerance", target_id: "g-1", version: 3, text: "I am not allergic" });
+  expect(sent).toEqual({
+    kind: "AllergyIntolerance",
+    target_id: "g-1",
+    version: 3,
+    text: "I am not allergic",
+  });
 });
 
 test("a clinician reads a request to correct a record and refuses it with a ground and a reason", async ({
   page,
 }) => {
   await stubAllergies(page);
-  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) => json(route, 200, ANN));
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, ANN),
+  );
   await page.route("**/api/proxy/api/patients/*/observations", (route) =>
     json(route, 200, { observations: [OBS({ id: "o-1", value: 72 })] }),
   );
@@ -1422,7 +1547,13 @@ test("a clinician reads a request to correct a record and refuses it with a grou
   let state: Record<string, unknown> = { state: "requested" };
   await page.route("**/api/proxy/api/patients/*/amendments/am-1", (route) => {
     sent = route.request().postDataJSON();
-    state = { state: "denied", by: "dr-1", ground: "accurate-and-complete", reason: "the chart shows 72", disagreement: null };
+    state = {
+      state: "denied",
+      by: "dr-1",
+      ground: "accurate-and-complete",
+      reason: "the chart shows 72",
+      disagreement: null,
+    };
     return json(route, 200, {});
   });
   await page.route("**/api/proxy/api/patients/*/amendments", (route) =>
@@ -1448,23 +1579,33 @@ test("a clinician reads a request to correct a record and refuses it with a grou
     }),
   );
   await page.goto(`/en-001/patients/${ANN.id}`);
-  const section = page.getByRole("region", { name: "Requests to correct a record" });
+  const section = page.getByRole("region", {
+    name: "Requests to correct a record",
+  });
   await expect(section).toContainText("<i>my pulse was never that fast</i>");
   // It says which reading it is about, and what waits: the count is in words, overdue included.
   await expect(section).toContainText("About Heart rate");
-  await expect(section.getByRole("status")).toContainText("1 waiting for a decision. 1 overdue.");
+  await expect(section.getByRole("status")).toContainText(
+    "1 waiting for a decision. 1 overdue.",
+  );
   await expect(section).toContainText("Waiting for a decision.");
   await expect(section).toContainText("This is overdue.");
   await axe(page);
   // No reason, nothing sent.
   await section.getByRole("button", { name: "Refuse" }).click();
   await section.getByRole("button", { name: "Send" }).click();
-  await expect(section.getByRole("status").filter({ hasText: "Give a reason." })).toBeVisible();
+  await expect(
+    section.getByRole("status").filter({ hasText: "Give a reason." }),
+  ).toBeVisible();
   expect(sent).toBeNull();
   await section.getByLabel("Reason").fill("the chart shows 72");
   await section.getByRole("button", { name: "Send" }).click();
-  await expect(section.getByRole("status").filter({ hasText: "Choose a ground." })).toBeVisible();
-  await section.getByLabel("Ground for refusing").selectOption("accurate-and-complete");
+  await expect(
+    section.getByRole("status").filter({ hasText: "Choose a ground." }),
+  ).toBeVisible();
+  await section
+    .getByLabel("Ground for refusing")
+    .selectOption("accurate-and-complete");
   await section.getByRole("button", { name: "Send" }).click();
   await expect(section).toContainText("Refused.");
   expect(sent).toEqual({
@@ -1481,19 +1622,31 @@ test("the vital signs say so when there are none, when the role may not see them
   page,
 }) => {
   await stubAllergies(page);
-  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) => json(route, 200, ANN));
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, ANN),
+  );
   let state: [number, unknown] = [200, { observations: [] }];
-  await page.route("**/api/proxy/api/patients/*/observations", (route) => json(route, state[0], state[1]));
+  await page.route("**/api/proxy/api/patients/*/observations", (route) =>
+    json(route, state[0], state[1]),
+  );
   const section = () => page.getByRole("region", { name: "Vital signs" });
   await page.goto(`/en-001/patients/${ANN.id}`);
-  await expect(section()).toContainText("No vital signs recorded in this system. This does not mean none were taken.");
+  await expect(section()).toContainText(
+    "No vital signs recorded in this system. This does not mean none were taken.",
+  );
   state = [403, { error: "forbidden" }];
   await page.reload();
-  await expect(section()).toContainText("Vital signs are not shown to your role. This does not mean none are recorded.");
-  await expect(section().getByRole("button", { name: "Record vital sign" })).toHaveCount(0);
+  await expect(section()).toContainText(
+    "Vital signs are not shown to your role. This does not mean none are recorded.",
+  );
+  await expect(
+    section().getByRole("button", { name: "Record vital sign" }),
+  ).toHaveCount(0);
   state = [500, { error: "internal error" }];
   await page.reload();
-  await expect(section()).toContainText("Vital signs could not be loaded. This does not mean none are recorded.");
+  await expect(section()).toContainText(
+    "Vital signs could not be loaded. This does not mean none are recorded.",
+  );
   await expect(section()).not.toContainText("No vital signs recorded");
 });
 
@@ -1559,7 +1712,9 @@ test("recording a vital sends its own unit and the site's time as UTC, never an 
   await section.getByLabel("Why there is no value").selectOption("");
   await section.getByRole("button", { name: "Record vital sign" }).click();
   expect(sent).toHaveLength(1);
-  await section.getByLabel("Why there is no value").selectOption({ label: "declined" });
+  await section
+    .getByLabel("Why there is no value")
+    .selectOption({ label: "declined" });
   await section.getByRole("button", { name: "Record vital sign" }).click();
   await expect(section.getByText("Vital sign recorded.")).toBeVisible();
   expect(sent[1].observation).toEqual({
@@ -1570,11 +1725,19 @@ test("recording a vital sends its own unit and the site's time as UTC, never an 
   });
 
   // The API's refusals are shown whole.
-  answer = [422, { errors: ["the unit \"x\" does not fit this code"], error_codes: ["unit_mismatch"] }];
+  answer = [
+    422,
+    {
+      errors: ['the unit "x" does not fit this code'],
+      error_codes: ["unit_mismatch"],
+    },
+  ];
   await section.getByLabel("No value").uncheck();
   await section.getByLabel(/^Value/).fill("72");
   await section.getByRole("button", { name: "Record vital sign" }).click();
-  await expect(section.getByText('the unit "x" does not fit this code')).toBeVisible();
+  await expect(
+    section.getByText('the unit "x" does not fit this code'),
+  ).toBeVisible();
   answer = [409, { error: "version conflict" }];
   await section.getByRole("button", { name: "Record vital sign" }).click();
   await expect(section.getByText(/changed or was merged/)).toBeVisible();
@@ -2064,7 +2227,9 @@ test("a cut candidate list says that only the closest records were compared", as
   await expect(note).toHaveCount(0);
 });
 
-test("my record shows when it was read and warns when a later look fails", async ({ page }) => {
+test("my record shows when it was read and warns when a later look fails", async ({
+  page,
+}) => {
   let up = true;
   await stubAllergies(page);
   await page.route("**/api/proxy/api/me/patients", (route) =>
@@ -2074,7 +2239,10 @@ test("my record shows when it was read and warns when a later look fails", async
   );
   const show = () =>
     page.evaluate(() => {
-      Object.defineProperty(document, "hidden", { value: false, configurable: true });
+      Object.defineProperty(document, "hidden", {
+        value: false,
+        configurable: true,
+      });
       document.dispatchEvent(new Event("visibilitychange"));
     });
   await page.goto("/en-001/my-record");
@@ -2083,8 +2251,12 @@ test("my record shows when it was read and warns when a later look fails", async
 
   up = false;
   await show();
-  await expect(page.getByRole("alert").filter({ hasText: "may not be current" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Smith, Ann", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("alert").filter({ hasText: "may not be current" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Smith, Ann", exact: true }),
+  ).toBeVisible();
   await axe(page);
 
   up = true;
@@ -2100,7 +2272,8 @@ test("recording a proxy sends its basis, scopes and last day, and the list shows
   let rels: any[] = [];
   await page.route("**/api/proxy/api/patients/*/relationships", (route) => {
     const req = route.request();
-    if (req.method() === "GET") return json(route, 200, { relationships: rels });
+    if (req.method() === "GET")
+      return json(route, 200, { relationships: rels });
     sent.push(req.postDataJSON());
     rels = [
       {
@@ -2127,7 +2300,9 @@ test("recording a proxy sends its basis, scopes and last day, and the list shows
   await expect(page.getByLabel("Basis for the proxy")).toHaveCount(0);
   await page.getByLabel(/^Person/).fill("sub-mum");
   await page.getByLabel("Relationship", { exact: true }).selectOption("proxy");
-  await page.getByLabel("Basis for the proxy").selectOption("parental-responsibility");
+  await page
+    .getByLabel("Basis for the proxy")
+    .selectOption("parental-responsibility");
   await page.getByLabel("Allergies").check();
   await page.getByLabel(/^Last day/).fill("2026-12-31");
   await axe(page);
@@ -2163,7 +2338,9 @@ test("a double click on save sends one request, and the button is off while it i
   await save.dblclick();
   await expect(save).toBeDisabled();
   release();
-  await expect(page.getByRole("status").filter({ hasText: "Saved." })).toBeVisible();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Saved." }),
+  ).toBeVisible();
   expect(puts).toBe(1);
   await expect(save).toBeEnabled();
 });
@@ -2181,15 +2358,19 @@ test("two clicks at once on record relationship, and on record consent, send one
     author: "admin",
     [kind]: {},
   });
-  await page.route("**/api/proxy/api/patients/*/relationships", async (route) => {
-    if (route.request().method() === "GET")
-      return json(route, 200, { relationships: [] });
-    posts.rel++;
-    await held;
-    return json(route, 201, rec("relationship"));
-  });
+  await page.route(
+    "**/api/proxy/api/patients/*/relationships",
+    async (route) => {
+      if (route.request().method() === "GET")
+        return json(route, 200, { relationships: [] });
+      posts.rel++;
+      await held;
+      return json(route, 201, rec("relationship"));
+    },
+  );
   await page.route("**/api/proxy/api/patients/*/consents", async (route) => {
-    if (route.request().method() === "GET") return json(route, 200, { consents: [] });
+    if (route.request().method() === "GET")
+      return json(route, 200, { consents: [] });
     posts.consent++;
     await held;
     return json(route, 201, rec("consent"));
@@ -2215,9 +2396,13 @@ test("two clicks at once on record relationship, and on record consent, send one
   expect(posts).toEqual({ rel: 1, consent: 1 });
 });
 
-test("the main pages are right-to-left and pass axe in ar-001", async ({ page }) => {
+test("the main pages are right-to-left and pass axe in ar-001", async ({
+  page,
+}) => {
   await stubAllergies(page);
-  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) => json(route, 200, ANN));
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, ANN),
+  );
   await page.route("**/api/proxy/api/patients/*/relationships", (route) =>
     json(route, 200, { relationships: [] }),
   );
@@ -2241,23 +2426,31 @@ test("the main pages are right-to-left and pass axe in ar-001", async ({ page })
   }
 });
 
-test("two clicks at once on record allergy send one request and switch the other allergy buttons off", async ({ page }) => {
+test("two clicks at once on record allergy send one request and switch the other allergy buttons off", async ({
+  page,
+}) => {
   const posts = { add: 0, statement: 0 };
   let release: () => void = () => {};
   const held = new Promise<void>((r) => (release = r));
   await stubAllergies(page);
-  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) => json(route, 200, ANN));
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, ANN),
+  );
   await page.route("**/api/proxy/api/patients/*/allergies", async (route) => {
-    if (route.request().method() === "GET") return json(route, 200, NOT_RECORDED);
+    if (route.request().method() === "GET")
+      return json(route, 200, NOT_RECORDED);
     posts.add++;
     await held;
     return json(route, 201, {});
   });
-  await page.route("**/api/proxy/api/patients/*/allergy-statement", async (route) => {
-    posts.statement++;
-    await held;
-    return json(route, 200, {});
-  });
+  await page.route(
+    "**/api/proxy/api/patients/*/allergy-statement",
+    async (route) => {
+      posts.statement++;
+      await held;
+      return json(route, 200, {});
+    },
+  );
   await page.goto(`/en-001/patients/${ANN.id}`);
   await page.getByLabel("Substance").fill("Penicillin");
   const click2 = (b: import("@playwright/test").Locator) =>
@@ -2267,13 +2460,19 @@ test("two clicks at once on record allergy send one request and switch the other
     });
   await click2(page.getByRole("button", { name: "Record allergy" }));
   // While the first write is in flight the other allergy buttons are off too.
-  await expect(page.getByRole("button", { name: "Record: no known allergies" })).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Record: no known allergies" }),
+  ).toBeDisabled();
   release();
-  await expect(page.getByRole("button", { name: "Record allergy" })).toBeEnabled();
+  await expect(
+    page.getByRole("button", { name: "Record allergy" }),
+  ).toBeEnabled();
   expect(posts).toEqual({ add: 1, statement: 0 });
 });
 
-test("two clicks at once on open emergency access, and on record the review, send one request each", async ({ page }) => {
+test("two clicks at once on open emergency access, and on record the review, send one request each", async ({
+  page,
+}) => {
   const click2 = (b: import("@playwright/test").Locator) =>
     b.evaluate((el: HTMLButtonElement) => {
       el.click();
@@ -2282,8 +2481,14 @@ test("two clicks at once on open emergency access, and on record the review, sen
   let release: () => void = () => {};
   const held = new Promise<void>((r) => (release = r));
   const posts = { glass: 0, review: 0 };
-  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) => json(route, 200, ANN));
-  await stubAllergies(page, { error: "forbidden", break_glass_offer: true }, 403);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, ANN),
+  );
+  await stubAllergies(
+    page,
+    { error: "forbidden", break_glass_offer: true },
+    403,
+  );
   await page.route("**/api/proxy/api/patients/*/break-glass", async (route) => {
     posts.glass++;
     await held;
@@ -2293,9 +2498,13 @@ test("two clicks at once on open emergency access, and on record the review, sen
   await page.getByLabel(/^Reason for emergency access/).fill("collapsed");
   await page.getByLabel("I understand this is recorded and reviewed").check();
   await click2(page.getByRole("button", { name: /Open emergency access/ }));
-  await expect(page.getByRole("button", { name: /Open emergency access/ })).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: /Open emergency access/ }),
+  ).toBeDisabled();
   release();
-  await expect(page.getByRole("button", { name: /Open emergency access/ })).toBeEnabled();
+  await expect(
+    page.getByRole("button", { name: /Open emergency access/ }),
+  ).toBeEnabled();
   expect(posts.glass).toBe(1);
 
   let release2: () => void = () => {};
@@ -2324,13 +2533,19 @@ test("two clicks at once on open emergency access, and on record the review, sen
   await page.getByRole("button", { name: "Review", exact: true }).click();
   await page.getByLabel("Note (required)").fill("no emergency found");
   await click2(page.getByRole("button", { name: "Record the review" }));
-  await expect(page.getByRole("button", { name: "Record the review" })).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Record the review" }),
+  ).toBeDisabled();
   release2();
-  await expect(page.getByRole("button", { name: "Record the review" })).toBeEnabled();
+  await expect(
+    page.getByRole("button", { name: "Record the review" }),
+  ).toBeEnabled();
   expect(posts.review).toBe(1);
 });
 
-test("two clicks at once on merge and on close this entry send one request each", async ({ page }) => {
+test("two clicks at once on merge and on close this entry send one request each", async ({
+  page,
+}) => {
   const click2 = (b: import("@playwright/test").Locator) =>
     b.evaluate((el: HTMLButtonElement) => {
       el.click();
@@ -2343,18 +2558,25 @@ test("two clicks at once on merge and on close this entry send one request each"
   await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
     json(route, 200, { ...ANN, replaced_by: null, replaces: [] }),
   );
-  await page.route(`**/api/proxy/api/patients/${ANN.id}/merge`, async (route) => {
-    posts.merge++;
-    await held;
-    return json(route, 500, {});
-  });
+  await page.route(
+    `**/api/proxy/api/patients/${ANN.id}/merge`,
+    async (route) => {
+      posts.merge++;
+      await held;
+      return json(route, 500, {});
+    },
+  );
   await page.goto(`/en-001/patients/${ANN.id}`);
   await page.getByLabel(/^Id of the record/).fill("some-id");
   await page.getByLabel(/Why are these the same person/).fill("same person");
   await click2(page.getByRole("button", { name: "Merge into this record" }));
-  await expect(page.getByRole("button", { name: "Merge into this record" })).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Merge into this record" }),
+  ).toBeDisabled();
   release();
-  await expect(page.getByRole("button", { name: "Merge into this record" })).toBeEnabled();
+  await expect(
+    page.getByRole("button", { name: "Merge into this record" }),
+  ).toBeEnabled();
   expect(posts.merge).toBe(1);
 
   let release2: () => void = () => {};
@@ -2365,52 +2587,76 @@ test("two clicks at once on merge and on close this entry send one request each"
   await page.route("**/api/proxy/api/feed/refusals/*", (route) =>
     json(route, 200, { ...REFUSAL(), message: "MSH|^~\\&|REG\r" }),
   );
-  await page.route("**/api/proxy/api/feed/refusals/*/resolve", async (route) => {
-    posts.close++;
-    await held2;
-    return json(route, 500, {});
-  });
+  await page.route(
+    "**/api/proxy/api/feed/refusals/*/resolve",
+    async (route) => {
+      posts.close++;
+      await held2;
+      return json(route, 500, {});
+    },
+  );
   await page.goto("/en-001/admin/feed");
   await page.getByRole("button", { name: "Show the message" }).click();
   await page.getByLabel("Reason (required)").fill("duplicate of M-0");
   await click2(page.getByRole("button", { name: "Close this entry" }));
-  await expect(page.getByRole("button", { name: "Close this entry" })).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Close this entry" }),
+  ).toBeDisabled();
   release2();
-  await expect(page.getByRole("button", { name: "Close this entry" })).toBeEnabled();
+  await expect(
+    page.getByRole("button", { name: "Close this entry" }),
+  ).toBeEnabled();
   expect(posts.close).toBe(1);
 });
 
-test("two clicks at once on upload photo send one request and switch remove photo off", async ({ page }) => {
+test("two clicks at once on upload photo send one request and switch remove photo off", async ({
+  page,
+}) => {
   let writes = 0;
   let release: () => void = () => {};
   const held = new Promise<void>((r) => (release = r));
   await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
     json(route, 200, { ...ANN, photo_version: 1 }),
   );
-  await page.route(`**/api/proxy/api/patients/${ANN.id}/photo**`, async (route) => {
-    if (route.request().method() === "GET")
-      return route.fulfill({ status: 200, contentType: "image/png", body: PNG_BYTES });
-    writes++;
-    await held;
-    return json(route, 500, {});
-  });
+  await page.route(
+    `**/api/proxy/api/patients/${ANN.id}/photo**`,
+    async (route) => {
+      if (route.request().method() === "GET")
+        return route.fulfill({
+          status: 200,
+          contentType: "image/png",
+          body: PNG_BYTES,
+        });
+      writes++;
+      await held;
+      return json(route, 500, {});
+    },
+  );
   await page.goto(`/en-001/patients/${ANN.id}`);
   await page.getByLabel(/Photo file/).setInputFiles({
     name: "ann.png",
     mimeType: "image/png",
     buffer: PNG_BYTES,
   });
-  await page.getByRole("button", { name: "Upload photo" }).evaluate((el: HTMLButtonElement) => {
-    el.click();
-    el.click();
-  });
-  await expect(page.getByRole("button", { name: "Remove photo" })).toBeDisabled();
+  await page
+    .getByRole("button", { name: "Upload photo" })
+    .evaluate((el: HTMLButtonElement) => {
+      el.click();
+      el.click();
+    });
+  await expect(
+    page.getByRole("button", { name: "Remove photo" }),
+  ).toBeDisabled();
   release();
-  await expect(page.getByRole("button", { name: "Upload photo" })).toBeEnabled();
+  await expect(
+    page.getByRole("button", { name: "Upload photo" }),
+  ).toBeEnabled();
   expect(writes).toBe(1);
 });
 
-test("two clicks at once on register send one request (a second would make a duplicate patient)", async ({ page }) => {
+test("two clicks at once on register send one request (a second would make a duplicate patient)", async ({
+  page,
+}) => {
   let posts = 0;
   let release: () => void = () => {};
   const held = new Promise<void>((r) => (release = r));
@@ -2421,17 +2667,25 @@ test("two clicks at once on register send one request (a second would make a dup
   });
   await page.goto("/en-001/patients/new");
   await page.getByLabel("Family name").fill("Smith");
-  await page.getByRole("button", { name: "Register", exact: true }).evaluate((el: HTMLButtonElement) => {
-    el.click();
-    el.click();
-  });
-  await expect(page.getByRole("button", { name: "Register", exact: true })).toBeDisabled();
+  await page
+    .getByRole("button", { name: "Register", exact: true })
+    .evaluate((el: HTMLButtonElement) => {
+      el.click();
+      el.click();
+    });
+  await expect(
+    page.getByRole("button", { name: "Register", exact: true }),
+  ).toBeDisabled();
   release();
-  await expect(page.getByRole("button", { name: "Register", exact: true })).toBeEnabled();
+  await expect(
+    page.getByRole("button", { name: "Register", exact: true }),
+  ).toBeEnabled();
   expect(posts).toBe(1);
 });
 
-test("two clicks at once on remove photo, and on undo this merge, send one request each", async ({ page }) => {
+test("two clicks at once on remove photo, and on undo this merge, send one request each", async ({
+  page,
+}) => {
   const OLD = "44444444-4444-4444-8444-444444444444";
   const click2 = (b: import("@playwright/test").Locator) =>
     b.evaluate((el: HTMLButtonElement) => {
@@ -2443,96 +2697,143 @@ test("two clicks at once on remove photo, and on undo this merge, send one reque
   const held = new Promise<void>((r) => (release = r));
   await stubAllergies(page);
   await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
-    json(route, 200, { ...ANN, photo_version: 1, replaced_by: null, replaces: [OLD] }),
+    json(route, 200, {
+      ...ANN,
+      photo_version: 1,
+      replaced_by: null,
+      replaces: [OLD],
+    }),
   );
-  await page.route(`**/api/proxy/api/patients/${ANN.id}/photo**`, async (route) => {
-    if (route.request().method() === "GET")
-      return route.fulfill({ status: 200, contentType: "image/png", body: PNG_BYTES });
-    posts.withdraw++;
-    await held;
-    return json(route, 500, {});
-  });
-  await page.route(`**/api/proxy/api/patients/${ANN.id}/unmerge`, async (route) => {
-    posts.unmerge++;
-    await held;
-    return json(route, 500, {});
-  });
+  await page.route(
+    `**/api/proxy/api/patients/${ANN.id}/photo**`,
+    async (route) => {
+      if (route.request().method() === "GET")
+        return route.fulfill({
+          status: 200,
+          contentType: "image/png",
+          body: PNG_BYTES,
+        });
+      posts.withdraw++;
+      await held;
+      return json(route, 500, {});
+    },
+  );
+  await page.route(
+    `**/api/proxy/api/patients/${ANN.id}/unmerge`,
+    async (route) => {
+      posts.unmerge++;
+      await held;
+      return json(route, 500, {});
+    },
+  );
   await page.goto(`/en-001/patients/${ANN.id}`);
   await click2(page.getByRole("button", { name: "Remove photo" }));
-  await expect(page.getByRole("button", { name: "Upload photo" })).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Upload photo" }),
+  ).toBeDisabled();
   release();
-  await expect(page.getByRole("button", { name: "Upload photo" })).toBeEnabled();
+  await expect(
+    page.getByRole("button", { name: "Upload photo" }),
+  ).toBeEnabled();
   expect(posts.withdraw).toBe(1);
 
-  await page.getByLabel(/Why are these the same person/).fill("merged in error");
+  await page
+    .getByLabel(/Why are these the same person/)
+    .fill("merged in error");
   await click2(page.getByRole("button", { name: "Undo this merge" }));
-  await expect(page.getByRole("button", { name: "Undo this merge" })).toBeEnabled();
+  await expect(
+    page.getByRole("button", { name: "Undo this merge" }),
+  ).toBeEnabled();
   expect(posts.unmerge).toBe(1);
 });
 
 test.describe("in the patient's own time zone", () => {
-test.use({ timezoneId: "Pacific/Auckland" });
-test("my record narrows the access log by day, who, outcome and purpose, in the patient's zone, and keeps the filter on older entries", async ({ page }) => {
-  const ID = ANN.id;
-  const urls: string[] = [];
-  const entry = (id: number) => ({
-    id,
-    at: "2026-10-21T09:00:12.000000Z",
-    by: "staff",
-    did: "viewed",
-    what: "identity record",
-    refused: false,
-    purpose: "treatment",
-    break_glass: false,
-  });
-  await page.route("**/api/proxy/api/me/patients", (route) =>
-    json(route, 200, { records: [{ relationship: "self", patient: ANN }] }),
-  );
-  await page.route(`**/api/proxy/api/me/patients/${ID}/access-log*`, (route) => {
-    urls.push(route.request().url());
-    const older = route.request().url().includes("before=");
-    return json(route, 200, { entries: [entry(older ? 3 : 9)], next: older ? null : 9 });
-  });
-  await page.goto("/en-001/my-record");
-  await page.getByRole("button", { name: "Show who has accessed this record" }).click();
-  // The entry's time is shown in the patient's zone, which the form names.
-  await expect(page.getByText("2026-10-21 22:00 GMT+13")).toBeVisible();
-  await expect(page.getByText("Days and times here are in your time zone: Pacific/Auckland.")).toBeVisible();
-  await axe(page);
+  test.use({ timezoneId: "Pacific/Auckland" });
+  test("my record narrows the access log by day, who, outcome and purpose, in the patient's zone, and keeps the filter on older entries", async ({
+    page,
+  }) => {
+    const ID = ANN.id;
+    const urls: string[] = [];
+    const entry = (id: number) => ({
+      id,
+      at: "2026-10-21T09:00:12.000000Z",
+      by: "staff",
+      did: "viewed",
+      what: "identity record",
+      refused: false,
+      purpose: "treatment",
+      break_glass: false,
+    });
+    await page.route("**/api/proxy/api/me/patients", (route) =>
+      json(route, 200, { records: [{ relationship: "self", patient: ANN }] }),
+    );
+    await page.route(
+      `**/api/proxy/api/me/patients/${ID}/access-log*`,
+      (route) => {
+        urls.push(route.request().url());
+        const older = route.request().url().includes("before=");
+        return json(route, 200, {
+          entries: [entry(older ? 3 : 9)],
+          next: older ? null : 9,
+        });
+      },
+    );
+    await page.goto("/en-001/my-record");
+    await page
+      .getByRole("button", { name: "Show who has accessed this record" })
+      .click();
+    // The entry's time is shown in the patient's zone, which the form names.
+    await expect(page.getByText("2026-10-21 22:00 GMT+13")).toBeVisible();
+    await expect(
+      page.getByText(
+        "Days and times here are in your time zone: Pacific/Auckland.",
+      ),
+    ).toBeVisible();
+    await axe(page);
 
-  // A day that is not real sends nothing.
-  const before = urls.length;
-  await page.getByLabel("From (day)").fill("2026-10-01");
-  await page.getByLabel("Up to and including (day)").fill("2026-10-31");
-  await page.getByLabel("Who", { exact: true }).selectOption("staff");
-  await page.getByLabel("Outcome").selectOption("true");
-  await page.getByLabel("Purpose", { exact: true }).selectOption("operations");
-  await page.getByRole("button", { name: "Apply", exact: true }).click();
-  await expect.poll(() => urls.length).toBe(before + 1);
-  const q = new URL(urls.at(-1)!).searchParams;
-  // Auckland is UTC+13 in October: its 1 October begins at 11:00 UTC on 30 September.
-  expect(Object.fromEntries(q)).toEqual({ from: "2026-09-30T11:00:00Z", to: "2026-10-31T11:00:00Z", by: "staff", refused: "true", purpose: "operations" });
+    // A day that is not real sends nothing.
+    const before = urls.length;
+    await page.getByLabel("From (day)").fill("2026-10-01");
+    await page.getByLabel("Up to and including (day)").fill("2026-10-31");
+    await page.getByLabel("Who", { exact: true }).selectOption("staff");
+    await page.getByLabel("Outcome").selectOption("true");
+    await page
+      .getByLabel("Purpose", { exact: true })
+      .selectOption("operations");
+    await page.getByRole("button", { name: "Apply", exact: true }).click();
+    await expect.poll(() => urls.length).toBe(before + 1);
+    const q = new URL(urls.at(-1)!).searchParams;
+    // Auckland is UTC+13 in October: its 1 October begins at 11:00 UTC on 30 September.
+    expect(Object.fromEntries(q)).toEqual({
+      from: "2026-09-30T11:00:00Z",
+      to: "2026-10-31T11:00:00Z",
+      by: "staff",
+      refused: "true",
+      purpose: "operations",
+    });
 
-  // Older entries are asked for under the same filter.
-  await page.getByRole("button", { name: "Show older entries" }).click();
-  await expect.poll(() => urls.length).toBe(before + 2);
-  expect(Object.fromEntries(new URL(urls.at(-1)!).searchParams)).toEqual({
-    from: "2026-09-30T11:00:00Z",
-    to: "2026-10-31T11:00:00Z",
-    by: "staff",
-    refused: "true",
-    purpose: "operations",
-    before: "9",
+    // Older entries are asked for under the same filter.
+    await page.getByRole("button", { name: "Show older entries" }).click();
+    await expect.poll(() => urls.length).toBe(before + 2);
+    expect(Object.fromEntries(new URL(urls.at(-1)!).searchParams)).toEqual({
+      from: "2026-09-30T11:00:00Z",
+      to: "2026-10-31T11:00:00Z",
+      by: "staff",
+      refused: "true",
+      purpose: "operations",
+      before: "9",
+    });
+
+    // Clear goes back to the whole log.
+    await page.getByRole("button", { name: "Clear" }).click();
+    await expect.poll(() => urls.length).toBe(before + 3);
+    expect(new URL(urls.at(-1)!).search).toBe("");
   });
-
-  // Clear goes back to the whole log.
-  await page.getByRole("button", { name: "Clear" }).click();
-  await expect.poll(() => urls.length).toBe(before + 3);
-  expect(new URL(urls.at(-1)!).search).toBe("");
 });
-});
 
-test("the access-log filter form is in the page's language, and still passes axe (machine-written words)", async ({ page }) => {
+test("the access-log filter form is in the page's language, and still passes axe (machine-written words)", async ({
+  page,
+}) => {
   const ID = ANN.id;
   await page.route("**/api/proxy/api/me/patients", (route) =>
     json(route, 200, { records: [{ relationship: "self", patient: ANN }] }),
@@ -2547,32 +2848,41 @@ test("the access-log filter form is in the page's language, and still passes axe
   ] as const) {
     await page.goto(`/${locale}/my-record`);
     await expect(page.locator("html")).toHaveAttribute("dir", dir);
-    await page.getByRole("button", { name: "Show who has accessed this record" }).click();
+    await page
+      .getByRole("button", { name: "Show who has accessed this record" })
+      .click();
     await expect(page.getByLabel(from, { exact: true })).toBeVisible();
     await expect(page.getByLabel(purpose, { exact: true })).toBeVisible();
     await axe(page);
   }
 });
 
-test("my record downloads the access log as a CSV file under the filter that is showing", async ({ page }) => {
+test("my record downloads the access log as a CSV file under the filter that is showing", async ({
+  page,
+}) => {
   const ID = ANN.id;
   const urls: string[] = [];
   await page.route("**/api/proxy/api/me/patients", (route) =>
     json(route, 200, { records: [{ relationship: "self", patient: ANN }] }),
   );
-  await page.route(`**/api/proxy/api/me/patients/${ID}/access-log*`, (route) => {
-    urls.push(route.request().url());
-    if (route.request().url().includes("format=csv"))
-      return route.fulfill({
-        status: 200,
-        contentType: "text/csv; charset=utf-8",
-        headers: { "x-next-before": "7" },
-        body: "id,at_utc,by,roles,organisations,did,what,refused,purpose,emergency_access\n7,2026-10-21T09:00:12.000000Z,staff,,,viewed,identity record,false,treatment,false\n",
-      });
-    return json(route, 200, { entries: [], next: null });
-  });
+  await page.route(
+    `**/api/proxy/api/me/patients/${ID}/access-log*`,
+    (route) => {
+      urls.push(route.request().url());
+      if (route.request().url().includes("format=csv"))
+        return route.fulfill({
+          status: 200,
+          contentType: "text/csv; charset=utf-8",
+          headers: { "x-next-before": "7" },
+          body: "id,at_utc,by,roles,organisations,did,what,refused,purpose,emergency_access\n7,2026-10-21T09:00:12.000000Z,staff,,,viewed,identity record,false,treatment,false\n",
+        });
+      return json(route, 200, { entries: [], next: null });
+    },
+  );
   await page.goto("/en-001/my-record");
-  await page.getByRole("button", { name: "Show who has accessed this record" }).click();
+  await page
+    .getByRole("button", { name: "Show who has accessed this record" })
+    .click();
   await page.getByLabel("Who", { exact: true }).selectOption("staff");
   await page.getByRole("button", { name: "Apply", exact: true }).click();
   await expect.poll(() => urls.length).toBe(2);
@@ -2580,16 +2890,28 @@ test("my record downloads the access log as a CSV file under the filter that is 
   await page.getByRole("button", { name: /^Download as a CSV file/ }).click();
   const file = await download;
   expect(file.suggestedFilename()).toBe("access-log.csv");
-  const text = await (await import("node:fs/promises")).readFile((await file.path())!, "utf8");
+  const text = await (
+    await import("node:fs/promises")
+  ).readFile((await file.path())!, "utf8");
   expect(text).toContain("id,at_utc,by,roles");
-  expect(Object.fromEntries(new URL(urls.at(-1)!).searchParams)).toEqual({ by: "staff", format: "csv" });
+  expect(Object.fromEntries(new URL(urls.at(-1)!).searchParams)).toEqual({
+    by: "staff",
+    format: "csv",
+  });
   // The file was cut (the API said where the rest starts): the page says so.
-  await expect(page.getByText("The file holds only the 1000 most recent entries. Narrow the days to get older ones.")).toBeVisible();
+  await expect(
+    page.getByText(
+      "The file holds only the 1000 most recent entries. Narrow the days to get older ones.",
+    ),
+  ).toBeVisible();
   await axe(page);
 });
 
-test("a refused merge gives its reasons in the page's language, and the API's own words when it cannot", async ({ page }) => {
-  const english = "these do not look like the same person (match score 0.10; different verified NHS numbers)";
+test("a refused merge gives its reasons in the page's language, and the API's own words when it cannot", async ({
+  page,
+}) => {
+  const english =
+    "these do not look like the same person (match score 0.10; different verified NHS numbers)";
   let known = true;
   await stubAllergies(page);
   await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
@@ -2598,7 +2920,9 @@ test("a refused merge gives its reasons in the page's language, and the API's ow
   await page.route(`**/api/proxy/api/patients/${ANN.id}/merge`, (route) =>
     json(route, 422, {
       errors: [english],
-      conflict_codes: known ? [{ code: "different_nhs_numbers" }] : [{ code: "brand_new_reason" }],
+      conflict_codes: known
+        ? [{ code: "different_nhs_numbers" }]
+        : [{ code: "brand_new_reason" }],
     }),
   );
   await page.goto("/de-001/patients/" + ANN.id);
@@ -2606,14 +2930,18 @@ test("a refused merge gives its reasons in the page's language, and the API's ow
   await page.getByLabel(/Why are these the same person/).fill("same person");
   await page.getByRole("button", { name: "Merge into this record" }).click();
   await expect(
-    page.getByText("Das scheinen nicht dieselben Personen zu sein: unterschiedliche geprüfte NHS-Nummern"),
+    page.getByText(
+      "Das scheinen nicht dieselben Personen zu sein: unterschiedliche geprüfte NHS-Nummern",
+    ),
   ).toBeVisible();
   known = false;
   await page.getByRole("button", { name: "Merge into this record" }).click();
   await expect(page.getByText(english)).toBeVisible();
 });
 
-test("a merge refused for a rule says so in the page's language, naming the other record", async ({ page }) => {
+test("a merge refused for a rule says so in the page's language, naming the other record", async ({
+  page,
+}) => {
   const english = "the record to merge away was already merged into abc-123";
   let known = true;
   await stubAllergies(page);
@@ -2623,25 +2951,38 @@ test("a merge refused for a rule says so in the page's language, naming the othe
   await page.route(`**/api/proxy/api/patients/${ANN.id}/merge`, (route) =>
     json(route, 422, {
       errors: [english],
-      ...(known ? { refusal: "source_already_merged", refusal_into: "abc-123" } : {}),
+      ...(known
+        ? { refusal: "source_already_merged", refusal_into: "abc-123" }
+        : {}),
     }),
   );
   await page.goto("/de-001/patients/" + ANN.id);
   await page.getByLabel(/^Id of the record/).fill("other-id");
   await page.getByLabel(/Why are these the same person/).fill("same person");
   await page.getByRole("button", { name: "Merge into this record" }).click();
-  await expect(page.getByText("Der aufzulösende Datensatz wurde bereits mit abc-123 zusammengeführt.")).toBeVisible();
+  await expect(
+    page.getByText(
+      "Der aufzulösende Datensatz wurde bereits mit abc-123 zusammengeführt.",
+    ),
+  ).toBeVisible();
   known = false;
   await page.getByRole("button", { name: "Merge into this record" }).click();
   await expect(page.getByText(english)).toBeVisible();
 });
 
-test("the banner's age is counted on the site's calendar day, not the reader's", async ({ page }) => {
+test("the banner's age is counted on the site's calendar day, not the reader's", async ({
+  page,
+}) => {
   // Born 1980-03-14. At 23:30 UTC on 13 March it is already the 14th in Auckland and still the 13th in New York.
   let zone = "Pacific/Auckland";
   await stubAllergies(page);
   await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
-    json(route, 200, { ...ANN, replaced_by: null, replaces: [], site_time_zone: zone }),
+    json(route, 200, {
+      ...ANN,
+      replaced_by: null,
+      replaces: [],
+      site_time_zone: zone,
+    }),
   );
   await page.clock.setFixedTime(new Date("2026-03-13T23:30:00Z"));
   await page.goto(`/en-001/patients/${ANN.id}`);
@@ -2663,13 +3004,19 @@ test("a vital sign is marked entered in error with a reason, sending the whole r
   await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
     json(route, 200, { ...ANN, site_time_zone: "America/New_York" }),
   );
-  const mine = OBS({ id: "o-1", version: 2, range: { low: 60, high: 100 }, flag: "normal" });
+  const mine = OBS({
+    id: "o-1",
+    version: 2,
+    range: { low: 60, high: 100 },
+    flag: "normal",
+  });
   let rows: unknown[] = [mine];
   const sent: any[] = [];
   let answer = 200;
   await page.route("**/api/proxy/api/patients/*/observations/o-1", (route) => {
     sent.push(route.request().postDataJSON());
-    if (answer === 200) rows = [{ ...mine, version: 3, status: "entered-in-error" }];
+    if (answer === 200)
+      rows = [{ ...mine, version: 3, status: "entered-in-error" }];
     return json(route, answer, answer === 200 ? rows[0] : { errors: ["x"] });
   });
   await page.route("**/api/proxy/api/patients/*/observations", (route) =>
@@ -2680,18 +3027,30 @@ test("a vital sign is marked entered in error with a reason, sending the whole r
   await section.getByRole("button", { name: "Mark entered in error" }).click();
   await axe(page);
   // A reason is needed, and nothing is sent without it.
-  await section.getByRole("button", { name: "Confirm entered in error" }).click();
-  await expect(section.getByText("Say why this entry was a mistake.")).toBeVisible();
+  await section
+    .getByRole("button", { name: "Confirm entered in error" })
+    .click();
+  await expect(
+    section.getByText("Say why this entry was a mistake."),
+  ).toBeVisible();
   expect(sent).toHaveLength(0);
 
   answer = 409;
-  await section.getByLabel("Why this entry was a mistake").fill("wrong patient");
-  await section.getByRole("button", { name: "Confirm entered in error" }).click();
+  await section
+    .getByLabel("Why this entry was a mistake")
+    .fill("wrong patient");
+  await section
+    .getByRole("button", { name: "Confirm entered in error" })
+    .click();
   await expect(section.getByText(/changed or was merged/)).toBeVisible();
 
   answer = 200;
-  await section.getByRole("button", { name: "Confirm entered in error" }).click();
-  await expect(section.getByText("Marked entered in error. It is kept, not deleted.")).toBeVisible();
+  await section
+    .getByRole("button", { name: "Confirm entered in error" })
+    .click();
+  await expect(
+    section.getByText("Marked entered in error. It is kept, not deleted."),
+  ).toBeVisible();
   expect(sent[1]).toEqual({
     observation: {
       code: "8867-4",
@@ -2705,7 +3064,9 @@ test("a vital sign is marked entered in error with a reason, sending the whole r
     reason: "wrong patient",
   });
   await expect(section.getByText("Entered in error (1)")).toBeVisible();
-  await expect(section.getByRole("button", { name: "Mark entered in error" })).toHaveCount(0);
+  await expect(
+    section.getByRole("button", { name: "Mark entered in error" }),
+  ).toHaveCount(0);
 });
 
 test("correcting a vital loads it into the form, needs a reason, and sends a new version with the version it was made from", async ({
@@ -2715,7 +3076,12 @@ test("correcting a vital loads it into the form, needs a reason, and sends a new
   await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
     json(route, 200, { ...ANN, site_time_zone: "America/New_York" }),
   );
-  const mine = OBS({ id: "o-2", version: 1, value: 172, critical: { low: 40, high: 150 } });
+  const mine = OBS({
+    id: "o-2",
+    version: 1,
+    value: 172,
+    critical: { low: 40, high: 150 },
+  });
   let rows: unknown[] = [mine];
   const sent: any[] = [];
   await page.route("**/api/proxy/api/patients/*/observations/o-2", (route) => {
@@ -2730,15 +3096,23 @@ test("correcting a vital loads it into the form, needs a reason, and sends a new
   const section = page.getByRole("region", { name: "Vital signs" });
   await section.getByRole("button", { name: "Correct", exact: true }).click();
   await expect(section.getByLabel("Value (/min)")).toHaveValue("172");
-  await expect(section.getByLabel("Measured at (site time, America/New_York)")).toHaveValue("2026-10-26T09:30");
+  await expect(
+    section.getByLabel("Measured at (site time, America/New_York)"),
+  ).toHaveValue("2026-10-26T09:30");
   await axe(page);
   await section.getByLabel("Value (/min)").fill("72");
   await section.getByRole("button", { name: "Save correction" }).click();
-  await expect(section.getByText("Say what you are correcting and why.")).toBeVisible();
+  await expect(
+    section.getByText("Say what you are correcting and why."),
+  ).toBeVisible();
   expect(sent).toHaveLength(0);
-  await section.getByLabel("Reason for this entry (optional)").fill("keyed 172 for 72");
+  await section
+    .getByLabel("Reason for this entry (optional)")
+    .fill("keyed 172 for 72");
   await section.getByRole("button", { name: "Save correction" }).click();
-  await expect(section.getByText("Correction saved as a new version.")).toBeVisible();
+  await expect(
+    section.getByText("Correction saved as a new version."),
+  ).toBeVisible();
   expect(sent[0]).toEqual({
     observation: {
       code: "8867-4",
@@ -2752,7 +3126,9 @@ test("correcting a vital loads it into the form, needs a reason, and sends a new
     reason: "keyed 172 for 72",
   });
   await expect(section.getByText("version 2")).toBeVisible();
-  await expect(section.getByRole("button", { name: "Record vital sign" })).toBeVisible();
+  await expect(
+    section.getByRole("button", { name: "Record vital sign" }),
+  ).toBeVisible();
 });
 
 test("a vital's history lists every version with its reason, keeps a retracted value visible, and says when it cannot be shown", async ({
@@ -2765,20 +3141,45 @@ test("a vital's history lists every version with its reason, keeps a retracted v
   let historyStatus = 200;
   await page.route("**/api/proxy/api/patients/*/observations", (route) =>
     json(route, 200, {
-      observations: [OBS({ id: "o-9", version: 3, value: 72, status: "entered-in-error" }), OBS({ id: "o-8", version: 2, value: 88 })],
-    }),
-  );
-  await page.route("**/api/proxy/api/patients/*/observations/o-9/versions", (route) =>
-    json(route, 200, {
-      versions: [
-        OBS({ id: "o-9", version: 1, value: 172, reason: "on arrival", author: "nurse-1" }),
-        OBS({ id: "o-9", version: 2, value: 72, reason: "keyed 172 for 72", author: "nurse-2" }),
-        OBS({ id: "o-9", version: 3, value: 72, status: "entered-in-error", reason: null, author: "dr-1" }),
+      observations: [
+        OBS({ id: "o-9", version: 3, value: 72, status: "entered-in-error" }),
+        OBS({ id: "o-8", version: 2, value: 88 }),
       ],
     }),
   );
-  await page.route("**/api/proxy/api/patients/*/observations/o-8/versions", (route) =>
-    json(route, historyStatus, { error: "x" }),
+  await page.route(
+    "**/api/proxy/api/patients/*/observations/o-9/versions",
+    (route) =>
+      json(route, 200, {
+        versions: [
+          OBS({
+            id: "o-9",
+            version: 1,
+            value: 172,
+            reason: "on arrival",
+            author: "nurse-1",
+          }),
+          OBS({
+            id: "o-9",
+            version: 2,
+            value: 72,
+            reason: "keyed 172 for 72",
+            author: "nurse-2",
+          }),
+          OBS({
+            id: "o-9",
+            version: 3,
+            value: 72,
+            status: "entered-in-error",
+            reason: null,
+            author: "dr-1",
+          }),
+        ],
+      }),
+  );
+  await page.route(
+    "**/api/proxy/api/patients/*/observations/o-8/versions",
+    (route) => json(route, historyStatus, { error: "x" }),
   );
   await page.goto(`/en-001/patients/${ANN.id}`);
   const section = page.getByRole("region", { name: "Vital signs" });
@@ -2789,9 +3190,15 @@ test("a vital's history lists every version with its reason, keeps a retracted v
   const list = section.getByRole("list", { name: "History" });
   await expect(list.getByRole("listitem")).toHaveCount(3);
   await expect(list.getByRole("listitem").nth(0)).toContainText("172 /min");
-  await expect(list.getByRole("listitem").nth(0)).toContainText("Reason: on arrival");
-  await expect(list.getByRole("listitem").nth(2)).toContainText("entered in error");
-  await expect(list.getByRole("listitem").nth(2)).toContainText("Reason: no reason given");
+  await expect(list.getByRole("listitem").nth(0)).toContainText(
+    "Reason: on arrival",
+  );
+  await expect(list.getByRole("listitem").nth(2)).toContainText(
+    "entered in error",
+  );
+  await expect(list.getByRole("listitem").nth(2)).toContainText(
+    "Reason: no reason given",
+  );
   await axe(page);
   await section.getByRole("button", { name: "Hide history" }).click();
   await expect(list).toHaveCount(0);
@@ -2799,11 +3206,17 @@ test("a vital's history lists every version with its reason, keeps a retracted v
   // Refused and failed loads say so in words.
   historyStatus = 403;
   await section.getByRole("button", { name: "History" }).first().click();
-  await expect(section.getByText("The history is not shown to your role.")).toBeVisible();
+  await expect(
+    section.getByText("The history is not shown to your role."),
+  ).toBeVisible();
   await section.getByRole("button", { name: "Hide history" }).click();
   historyStatus = 500;
   await section.getByRole("button", { name: "History" }).first().click();
-  await expect(section.getByText("The history could not be loaded. The earlier versions still exist.")).toBeVisible();
+  await expect(
+    section.getByText(
+      "The history could not be loaded. The earlier versions still exist.",
+    ),
+  ).toBeVisible();
 });
 
 test("the vital signs trend lists every standing reading per vital, newest first, with a gap shown as its reason", async ({
@@ -2816,17 +3229,40 @@ test("the vital signs trend lists every standing reading per vital, newest first
   await page.route("**/api/proxy/api/patients/*/observations", (route) =>
     json(route, 200, {
       observations: [
-        OBS({ id: "h1", value: 70, effective_at: "2026-10-26T12:00:00.000000Z" }),
-        OBS({ id: "h2", value: 130, range: { low: 60, high: 100 }, flag: "high", effective_at: "2026-10-26T14:00:00.000000Z" }),
-        OBS({ id: "h3", value: null, unit: null, absent_reason: "declined", effective_at: "2026-10-26T13:00:00.000000Z" }),
-        OBS({ id: "h4", value: 999, status: "entered-in-error", effective_at: "2026-10-26T15:00:00.000000Z" }),
+        OBS({
+          id: "h1",
+          value: 70,
+          effective_at: "2026-10-26T12:00:00.000000Z",
+        }),
+        OBS({
+          id: "h2",
+          value: 130,
+          range: { low: 60, high: 100 },
+          flag: "high",
+          effective_at: "2026-10-26T14:00:00.000000Z",
+        }),
+        OBS({
+          id: "h3",
+          value: null,
+          unit: null,
+          absent_reason: "declined",
+          effective_at: "2026-10-26T13:00:00.000000Z",
+        }),
+        OBS({
+          id: "h4",
+          value: 999,
+          status: "entered-in-error",
+          effective_at: "2026-10-26T15:00:00.000000Z",
+        }),
       ],
     }),
   );
   await page.goto(`/en-001/patients/${ANN.id}`);
   const section = page.getByRole("region", { name: "Vital signs" });
   await expect(section.getByRole("table")).toHaveCount(0);
-  await section.getByRole("button", { name: "Show readings over time" }).click();
+  await section
+    .getByRole("button", { name: "Show readings over time" })
+    .click();
   const table = section.getByRole("table", { name: "Heart rate" });
   const rows = table.getByRole("row");
   await expect(rows).toHaveCount(4);
@@ -2837,7 +3273,9 @@ test("the vital signs trend lists every standing reading per vital, newest first
   await expect(rows.nth(3)).toContainText("Not assessed (no range given)");
   await expect(table).not.toContainText("999");
   await axe(page);
-  await section.getByRole("button", { name: "Hide readings over time" }).click();
+  await section
+    .getByRole("button", { name: "Hide readings over time" })
+    .click();
   await expect(section.getByRole("table")).toHaveCount(0);
 });
 
@@ -2851,9 +3289,23 @@ test("the summary shows the allergies, the latest reading of each vital with its
   await page.route("**/api/proxy/api/patients/*/observations", (route) =>
     json(route, 200, {
       observations: [
-        OBS({ id: "old", value: 60, effective_at: "2026-10-25T13:30:00.000000Z" }),
-        OBS({ id: "new", value: 130, range: { low: 60, high: 100 }, flag: "high" }),
-        OBS({ id: "oops", value: 999, status: "entered-in-error", effective_at: "2026-10-26T15:00:00.000000Z" }),
+        OBS({
+          id: "old",
+          value: 60,
+          effective_at: "2026-10-25T13:30:00.000000Z",
+        }),
+        OBS({
+          id: "new",
+          value: 130,
+          range: { low: 60, high: 100 },
+          flag: "high",
+        }),
+        OBS({
+          id: "oops",
+          value: 999,
+          status: "entered-in-error",
+          effective_at: "2026-10-26T15:00:00.000000Z",
+        }),
       ],
       amendment_notices: { new: [{ notice: "pending" }] },
     }),
@@ -2862,32 +3314,53 @@ test("the summary shows the allergies, the latest reading of each vital with its
   const vitals = page.getByRole("region", { name: "Latest vital signs" });
   await expect(vitals.getByRole("listitem")).toHaveCount(1);
   await expect(vitals).toContainText("130 /min");
-  await expect(vitals).toContainText("The patient has asked for this record to be corrected");
+  await expect(vitals).toContainText(
+    "The patient has asked for this record to be corrected",
+  );
   await expect(vitals).not.toContainText("60 /min");
   await expect(vitals).not.toContainText("999");
-  await expect(page.getByRole("region", { name: "Allergies and intolerances" })).toBeVisible();
-  const todo = page.getByRole("region", { name: "Not built in this system yet" });
+  await expect(
+    page.getByRole("region", { name: "Allergies and intolerances" }),
+  ).toBeVisible();
+  const todo = page.getByRole("region", {
+    name: "Not built in this system yet",
+  });
   await expect(todo).toContainText("Problems");
   await expect(todo).toContainText("Active medications");
-  await expect(todo).toContainText("This does not mean there is nothing to record.");
+  await expect(todo).toContainText(
+    "This does not mean there is nothing to record.",
+  );
   await axe(page);
 });
 
-test("the summary says so when vital signs are refused or fail, never that there are none", async ({ page }) => {
+test("the summary says so when vital signs are refused or fail, never that there are none", async ({
+  page,
+}) => {
   await stubAllergies(page);
-  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) => json(route, 200, ANN));
-  await page.route("**/api/proxy/api/patients/*/observations", (route) => json(route, 403, {}));
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, ANN),
+  );
+  await page.route("**/api/proxy/api/patients/*/observations", (route) =>
+    json(route, 403, {}),
+  );
   await page.goto(`/en-001/patients/${ANN.id}/summary`);
   const vitals = page.getByRole("region", { name: "Latest vital signs" });
   await expect(vitals).toContainText("not shown for your role or purpose");
   await expect(vitals).not.toContainText("No vital signs recorded");
 });
 
-test("a 500 that leaks internals shows the page's own words and none of the API's", async ({ page }) => {
-  const leak = "SELECT secret FROM patient_versions at /src/store.rs:42 panicked";
+test("a 500 that leaks internals shows the page's own words and none of the API's", async ({
+  page,
+}) => {
+  const leak =
+    "SELECT secret FROM patient_versions at /src/store.rs:42 panicked";
   await stubAllergies(page, { error: leak }, 500);
-  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) => json(route, 500, { error: leak }));
-  await page.route("**/api/proxy/api/patients/*/observations", (route) => json(route, 500, { error: leak }));
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 500, { error: leak }),
+  );
+  await page.route("**/api/proxy/api/patients/*/observations", (route) =>
+    json(route, 500, { error: leak }),
+  );
   await page.goto(`/en-001/patients/${ANN.id}`);
   await expect(page.getByRole("alert").first()).toBeVisible();
   await expect(page.locator("body")).not.toContainText("SELECT");

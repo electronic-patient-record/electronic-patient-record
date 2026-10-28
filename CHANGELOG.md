@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-28 - UI: ESLint and Prettier checks, in CI
+
+- Added ESLint 10 (flat config: typescript-eslint, eslint-plugin-svelte, eslint-config-prettier) and a Prettier config with the Svelte plugin. `pnpm run lint` runs `prettier --check .` and `eslint .`, and is now a step of the CI UI job and of the gates in `AGENTS.md`. Prettier covers code and config; Markdown is ignored (the specs are hand-wrapped).
+- The first run found 68 problems. Fixed in code: seven unused `event` arguments, a `let` that should be `const`, a useless assignment, an unused import, an unused variable. Kept with a written reason: one control-character regex that exists to refuse them, one `$effect` that reads storage after hydration on purpose, one query string built once. Turned off in `eslint.config.js`, each with its reason: `no-explicit-any` under `tests/` (35 stubbed JSON bodies), empty interfaces in `app.d.ts` (SvelteKit's boilerplate) and `svelte/no-navigation-without-resolve` (every link goes through `localizePath`, which the rule does not know). Prettier reformatted 59 files; that is the bulk of this commit's diff and changes no behaviour.
+- **Not done / not verified:** the `any` rule is off for tests, so those 35 uses are not fixed; the navigation rule is off rather than satisfied, so a link that skips `localizePath` is not caught by lint (the locale tests are the guard); no pre-commit hook; the service (Rust) was not touched. Gates run: lint, svelte-check, 227 vitest, Playwright 84 of 85 in one loaded run (the right-to-left axe test timed out under load; it passes alone, so it is slow-machine flakiness, not a fix I made).
+
 ## 2026-10-28 - Service: single-use link tokens, library only (PA-11); small-cell suppression was already here (PA-7)
 
 - `link_token.rs` (pure, 7 tests with fake time): opaque token, SHA-256 at rest, a link that works once, expiry refused at and after its time, and a read-only `view` so a GET cannot change state. Taken from the patient-administration-system project.

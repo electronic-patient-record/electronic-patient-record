@@ -21,10 +21,16 @@ const visited = new Set<string>();
 for (const name of readdirSync(specDir).filter((n) => n.endsWith(".spec.ts"))) {
   const text = readFileSync(join(specDir, name), "utf8");
   if (!text.includes("AxeBuilder")) continue;
-  for (const m of text.matchAll(/goto\(\s*([`"'])(.*?)\1(?:\s*\+\s*[\w.]+)?\s*[,)]/g)) {
+  for (const m of text.matchAll(
+    /goto\(\s*([`"'])(.*?)\1(?:\s*\+\s*[\w.]+)?\s*[,)]/g,
+  )) {
     // Locale prefix off; a template hole or concatenated id is a `[id]`.
-    let path = m[2].replace(/^\/(?:\$\{locale\}|[a-z]{2}-[a-z0-9]{2,3})(?=\/|$)/, "") || "/";
-    path = path.replace(/\$\{[^}]*\}/g, "[id]").replace(/\/[0-9a-f]{8}-[0-9a-f-]{27}/g, "/[id]");
+    let path =
+      m[2].replace(/^\/(?:\$\{locale\}|[a-z]{2}-[a-z0-9]{2,3})(?=\/|$)/, "") ||
+      "/";
+    path = path
+      .replace(/\$\{[^}]*\}/g, "[id]")
+      .replace(/\/[0-9a-f]{8}-[0-9a-f-]{27}/g, "/[id]");
     if (/\/$/.test(path) && path !== "/") path += "[id]";
     visited.add(path);
   }
@@ -32,11 +38,18 @@ for (const name of readdirSync(specDir).filter((n) => n.endsWith(".spec.ts"))) {
 
 describe("axe route coverage", () => {
   it("found the pages and the specs", () => {
-    expect(pages(join(process.cwd(), "src/routes")).length).toBeGreaterThanOrEqual(8);
+    expect(
+      pages(join(process.cwd(), "src/routes")).length,
+    ).toBeGreaterThanOrEqual(8);
     expect(visited.size).toBeGreaterThanOrEqual(6);
   });
   it("opens every page in a spec that runs axe", () => {
-    const missing = pages(join(process.cwd(), "src/routes")).filter((route) => !visited.has(route));
-    expect(missing, `pages no axe spec opens: ${missing.join(", ")} (opened: ${[...visited].join(", ")})`).toEqual([]);
+    const missing = pages(join(process.cwd(), "src/routes")).filter(
+      (route) => !visited.has(route),
+    );
+    expect(
+      missing,
+      `pages no axe spec opens: ${missing.join(", ")} (opened: ${[...visited].join(", ")})`,
+    ).toEqual([]);
   });
 });

@@ -15,7 +15,9 @@ function files(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-const sources = files(join(process.cwd(), "src")).map((p) => [p, readFileSync(p, "utf8")] as const);
+const sources = files(join(process.cwd(), "src")).map(
+  (p) => [p, readFileSync(p, "utf8")] as const,
+);
 
 describe("API error text on pages", () => {
   it("shows a list of problems only when the status is 422", () => {
@@ -26,7 +28,8 @@ describe("API error text on pages", () => {
         if (!/errors\??\.join\(/.test(line)) return;
         // The 422 test is on this line or the six before it.
         const near = lines.slice(Math.max(0, i - 6), i + 1).join("\n");
-        if (!/status === 422/.test(near)) bad.push(`${path}:${i + 1}: ${line.trim()}`);
+        if (!/status === 422/.test(near))
+          bad.push(`${path}:${i + 1}: ${line.trim()}`);
       });
     }
     expect(bad, bad.join("\n")).toEqual([]);
@@ -36,7 +39,12 @@ describe("API error text on pages", () => {
     const bad: string[] = [];
     for (const [path, text] of sources) {
       text.split("\n").forEach((line, i) => {
-        if (/\b(res|body|answer|response)\??\.(body\??\.)?(error|message)\b/.test(line) && !/params\./.test(line)) {
+        if (
+          /\b(res|body|answer|response)\??\.(body\??\.)?(error|message)\b/.test(
+            line,
+          ) &&
+          !/params\./.test(line)
+        ) {
           bad.push(`${path}:${i + 1}: ${line.trim()}`);
         }
       });

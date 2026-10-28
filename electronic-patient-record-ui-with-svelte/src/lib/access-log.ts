@@ -94,7 +94,8 @@ export function describe(e: LogEntry): string {
   const did = DID[e.did] ?? e.did;
   const what = WHAT[e.what] ?? e.what;
   const parts = [`${who} ${did} ${STRINGS.accessLogYour} ${what}.`];
-  if (e.purpose) parts.push(`${STRINGS.accessLogPurpose}: ${purposeWords(e.purpose)}.`);
+  if (e.purpose)
+    parts.push(`${STRINGS.accessLogPurpose}: ${purposeWords(e.purpose)}.`);
   if (e.break_glass) parts.push(STRINGS.accessLogBreakGlass);
   return parts.join(" ");
 }
@@ -107,7 +108,13 @@ export type LogFilter = {
   /** A purpose-of-use code the API knows, or empty for any. */
   purpose: string;
 };
-export const NO_FILTER: LogFilter = { from: "", to: "", by: "", refused: "", purpose: "" };
+export const NO_FILTER: LogFilter = {
+  from: "",
+  to: "",
+  by: "",
+  refused: "",
+  purpose: "",
+};
 
 /** The purpose-of-use codes the API accepts as a filter (`policy::Purpose`), in the order shown. */
 export const LOG_PURPOSES = [
@@ -127,7 +134,11 @@ function day(v: string): number | null {
   const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
   const t = Date.UTC(y, mo - 1, d);
   const back = new Date(t);
-  return back.getUTCFullYear() === y && back.getUTCMonth() === mo - 1 && back.getUTCDate() === d ? t : null;
+  return back.getUTCFullYear() === y &&
+    back.getUTCMonth() === mo - 1 &&
+    back.getUTCDate() === d
+    ? t
+    : null;
 }
 
 /** How far `zone`'s wall clock is ahead of UTC at the instant `t` (ms). */
@@ -144,7 +155,16 @@ function offsetAt(t: number, zone: string): number {
     second: "2-digit",
   }).formatToParts(new Date(whole));
   const g = (k: string) => Number(p.find((x) => x.type === k)?.value);
-  return Date.UTC(g("year"), g("month") - 1, g("day"), g("hour"), g("minute"), g("second")) - whole;
+  return (
+    Date.UTC(
+      g("year"),
+      g("month") - 1,
+      g("day"),
+      g("hour"),
+      g("minute"),
+      g("second"),
+    ) - whole
+  );
 }
 
 /**
@@ -167,7 +187,11 @@ const iso = (t: number) => new Date(t).toISOString().replace(/\.\d{3}Z$/, "Z");
  * but the API's `to` is exclusive, so the start of the next day is sent. Null when a date is not a
  * real day (the page then says so and sends nothing).
  */
-export function logQuery(f: LogFilter, before?: number, zone = "UTC"): string | null {
+export function logQuery(
+  f: LogFilter,
+  before?: number,
+  zone = "UTC",
+): string | null {
   const q = new URLSearchParams();
   if (f.from) {
     const t = dayStart(f.from, zone);

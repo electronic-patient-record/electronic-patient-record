@@ -7,7 +7,12 @@
 
   const locale = $derived(page.data.locale ?? DEFAULT_LOCALE);
 
-  type Field = { field: string; similarity: number | null; weight: number; note: string };
+  type Field = {
+    field: string;
+    similarity: number | null;
+    weight: number;
+    note: string;
+  };
   type Result = {
     score: number;
     decision: keyof typeof STRINGS.decisions;
@@ -75,11 +80,24 @@
       <fieldset>
         <legend>{p.label}</legend>
         <label for="{p.id}-family">{STRINGS.family}</label>
-        <input id="{p.id}-family" bind:value={p.model.family} autocomplete="off" />
+        <input
+          id="{p.id}-family"
+          bind:value={p.model.family}
+          autocomplete="off"
+        />
         <label for="{p.id}-given">{STRINGS.given}</label>
-        <input id="{p.id}-given" bind:value={p.model.given} autocomplete="off" />
+        <input
+          id="{p.id}-given"
+          bind:value={p.model.given}
+          autocomplete="off"
+        />
         <label for="{p.id}-birth">{STRINGS.birthDate}</label>
-        <input id="{p.id}-birth" bind:value={p.model.birth} autocomplete="off" inputmode="numeric" />
+        <input
+          id="{p.id}-birth"
+          bind:value={p.model.birth}
+          autocomplete="off"
+          inputmode="numeric"
+        />
       </fieldset>
     {/each}
   </div>
@@ -106,7 +124,10 @@
     {#if result.conflicts.length}
       <h3>{STRINGS.conflicts}</h3>
       <ul>
-        {#each conflictList(result.conflicts, result.conflict_codes, locale) as c, i (i)}<li>{c}</li>{/each}
+        {#each conflictList(result.conflicts, result.conflict_codes, locale) as c, i (i)}<li
+          >
+            {c}
+          </li>{/each}
       </ul>
     {/if}
     <table>
@@ -117,7 +138,11 @@
         {#each result.fields as f (f.field)}
           <tr>
             <td>{f.field}</td>
-            <td>{f.similarity === null ? STRINGS.notAvailable : f.similarity.toFixed(2)}</td>
+            <td
+              >{f.similarity === null
+                ? STRINGS.notAvailable
+                : f.similarity.toFixed(2)}</td
+            >
             <td>{f.note}</td>
           </tr>
         {/each}

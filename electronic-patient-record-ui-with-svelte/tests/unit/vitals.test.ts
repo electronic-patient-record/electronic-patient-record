@@ -54,7 +54,21 @@ describe("a number from the form (H-034: an empty box is never 0)", () => {
     expect(parseNumber("0")).toBe(0);
   });
   it("refuses everything else, so nothing becomes 0 by accident", () => {
-    for (const bad of ["", "  ", "abc", "7 2", "1e3", "0x10", ".5", "5.", "--1", "1,2,3", "Infinity", "NaN", "72bpm"]) {
+    for (const bad of [
+      "",
+      "  ",
+      "abc",
+      "7 2",
+      "1e3",
+      "0x10",
+      ".5",
+      "5.",
+      "--1",
+      "1,2,3",
+      "Infinity",
+      "NaN",
+      "72bpm",
+    ]) {
       expect(parseNumber(bad), JSON.stringify(bad)).toBeNull();
     }
   });
@@ -80,10 +94,17 @@ describe("what a row says", () => {
       ["failed", "attempt failed"],
       ["unknown", "not known"],
     ] as const) {
-      const t = valueText({ ...base, value: null, unit: null, absent_reason: reason });
+      const t = valueText({
+        ...base,
+        value: null,
+        unit: null,
+        absent_reason: reason,
+      });
       expect(t).toBe(`No value: ${word}`);
     }
-    expect(valueText({ ...base, value: null, unit: null, absent_reason: null })).toBe("No value: no reason given");
+    expect(
+      valueText({ ...base, value: null, unit: null, absent_reason: null }),
+    ).toBe("No value: no reason given");
     expect(valueText({ ...base, value: null })).not.toMatch(/\b0\b|—|-/);
   });
   it("a real zero is shown as 0, because it is a value", () => {
@@ -93,19 +114,40 @@ describe("what a row says", () => {
 
 describe("where a value sits (H-034: never normal unless the API computed it from a range)", () => {
   it("says each flag in words", () => {
-    expect(assessmentText({ ...base, flag: "critical-low" })).toBe("Critically low");
+    expect(assessmentText({ ...base, flag: "critical-low" })).toBe(
+      "Critically low",
+    );
     expect(assessmentText({ ...base, flag: "low" })).toBe("Low");
-    expect(assessmentText({ ...base, flag: "normal" })).toBe("Within the range given");
+    expect(assessmentText({ ...base, flag: "normal" })).toBe(
+      "Within the range given",
+    );
     expect(assessmentText({ ...base, flag: "high" })).toBe("High");
-    expect(assessmentText({ ...base, flag: "critical-high" })).toBe("Critically high");
+    expect(assessmentText({ ...base, flag: "critical-high" })).toBe(
+      "Critically high",
+    );
   });
   it("says not assessed, and why, for no flag; never normal", () => {
-    expect(assessmentText({ ...base, flag: null })).toBe("Not assessed (no range given)");
-    expect(assessmentText({ ...base, flag: undefined as never })).toBe("Not assessed (no range given)");
-    expect(assessmentText({ ...base, value: null, absent_reason: "failed", flag: null })).toBe("Not assessed (no value)");
+    expect(assessmentText({ ...base, flag: null })).toBe(
+      "Not assessed (no range given)",
+    );
+    expect(assessmentText({ ...base, flag: undefined as never })).toBe(
+      "Not assessed (no range given)",
+    );
+    expect(
+      assessmentText({
+        ...base,
+        value: null,
+        absent_reason: "failed",
+        flag: null,
+      }),
+    ).toBe("Not assessed (no value)");
     // Even a flag the API sent cannot make a missing value normal.
-    expect(assessmentText({ ...base, value: null, flag: "normal" })).toBe("Not assessed (no value)");
-    expect(assessmentText({ ...base, flag: null })).not.toMatch(/normal|ok|within/i);
+    expect(assessmentText({ ...base, value: null, flag: "normal" })).toBe(
+      "Not assessed (no value)",
+    );
+    expect(assessmentText({ ...base, flag: null })).not.toMatch(
+      /normal|ok|within/i,
+    );
   });
   it("shows the range given in words", () => {
     expect(rangeText({ low: 60, high: 100 })).toBe("60 to 100");
@@ -119,31 +161,61 @@ describe("where a value sits (H-034: never normal unless the API computed it fro
     expect(vitalLine({ ...base, flag: "high" }, "America/New_York")).toMatch(
       /^Heart rate · 72 \/min · High · 2026-10-26 09:30 (EDT|GMT-4) \(13:30 UTC\)$/,
     );
-    expect(vitalLine(base)).toBe("Heart rate · 72 /min · Not assessed (no range given) · 2026-10-26 13:30 UTC");
+    expect(vitalLine(base)).toBe(
+      "Heart rate · 72 /min · Not assessed (no range given) · 2026-10-26 13:30 UTC",
+    );
   });
 });
 
 describe("the measured time is the site's wall clock, sent as UTC", () => {
   it("converts New York time, in summer and winter", () => {
-    expect(wallTimeToUtc("2026-10-26T09:30", "America/New_York")).toBe("2026-10-26T13:30:00Z");
-    expect(wallTimeToUtc("2026-12-01T09:30", "America/New_York")).toBe("2026-12-01T14:30:00Z");
-    expect(wallTimeToUtc("2026-10-26T09:30", "UTC")).toBe("2026-10-26T09:30:00Z");
-    expect(wallTimeToUtc("2026-10-26T09:30", "Pacific/Auckland")).toBe("2026-10-25T20:30:00Z");
+    expect(wallTimeToUtc("2026-10-26T09:30", "America/New_York")).toBe(
+      "2026-10-26T13:30:00Z",
+    );
+    expect(wallTimeToUtc("2026-12-01T09:30", "America/New_York")).toBe(
+      "2026-12-01T14:30:00Z",
+    );
+    expect(wallTimeToUtc("2026-10-26T09:30", "UTC")).toBe(
+      "2026-10-26T09:30:00Z",
+    );
+    expect(wallTimeToUtc("2026-10-26T09:30", "Pacific/Auckland")).toBe(
+      "2026-10-25T20:30:00Z",
+    );
   });
   it("is exact on either side of a clock change", () => {
     // New York went forward at 02:00 EST on 2026-03-08: 01:59 is EST, 03:00 is EDT.
-    expect(wallTimeToUtc("2026-03-08T01:59", "America/New_York")).toBe("2026-03-08T06:59:00Z");
-    expect(wallTimeToUtc("2026-03-08T03:00", "America/New_York")).toBe("2026-03-08T07:00:00Z");
+    expect(wallTimeToUtc("2026-03-08T01:59", "America/New_York")).toBe(
+      "2026-03-08T06:59:00Z",
+    );
+    expect(wallTimeToUtc("2026-03-08T03:00", "America/New_York")).toBe(
+      "2026-03-08T07:00:00Z",
+    );
     // It went back at 02:00 EDT on 2026-11-01: 00:59 is EDT, 02:00 is EST.
-    expect(wallTimeToUtc("2026-11-01T00:59", "America/New_York")).toBe("2026-11-01T04:59:00Z");
-    expect(wallTimeToUtc("2026-11-01T02:00", "America/New_York")).toBe("2026-11-01T07:00:00Z");
+    expect(wallTimeToUtc("2026-11-01T00:59", "America/New_York")).toBe(
+      "2026-11-01T04:59:00Z",
+    );
+    expect(wallTimeToUtc("2026-11-01T02:00", "America/New_York")).toBe(
+      "2026-11-01T07:00:00Z",
+    );
   });
   it("reads the skipped hour as an hour earlier and the repeated hour as the first of two", () => {
-    expect(wallTimeToUtc("2026-03-08T02:30", "America/New_York")).toBe("2026-03-08T06:30:00Z");
-    expect(wallTimeToUtc("2026-11-01T01:30", "America/New_York")).toBe("2026-11-01T05:30:00Z");
+    expect(wallTimeToUtc("2026-03-08T02:30", "America/New_York")).toBe(
+      "2026-03-08T06:30:00Z",
+    );
+    expect(wallTimeToUtc("2026-11-01T01:30", "America/New_York")).toBe(
+      "2026-11-01T05:30:00Z",
+    );
   });
   it("gives null for anything that is not a real time or zone", () => {
-    for (const bad of ["", "2026-10-26", "2026-10-26 09:30", "2026-02-30T09:30", "2026-10-26T25:00", "2026-13-01T09:30", "soon"]) {
+    for (const bad of [
+      "",
+      "2026-10-26",
+      "2026-10-26 09:30",
+      "2026-02-30T09:30",
+      "2026-10-26T25:00",
+      "2026-13-01T09:30",
+      "soon",
+    ]) {
       expect(wallTimeToUtc(bad, "UTC"), bad).toBeNull();
     }
     expect(wallTimeToUtc("2026-10-26T09:30", "Not/AZone")).toBeNull();
@@ -185,10 +257,20 @@ describe("the form as a request", () => {
     expect(formToRequest({ ...form, value: "0" }).ok).toBe(true);
   });
   it("sends no value and a reason when there is none, and refuses that without a reason", () => {
-    const r = formToRequest({ ...form, value: "999", noValue: true, absentReason: "declined" });
+    const r = formToRequest({
+      ...form,
+      value: "999",
+      noValue: true,
+      absentReason: "declined",
+    });
     expect(r).toEqual({
       ok: true,
-      record: { code: "8867-4", effective_at: "2026-10-26T13:30:00Z", status: "final", absent_reason: "declined" },
+      record: {
+        code: "8867-4",
+        effective_at: "2026-10-26T13:30:00Z",
+        status: "final",
+        absent_reason: "declined",
+      },
     });
     const none = formToRequest({ ...form, noValue: true, absentReason: "" });
     expect(none.ok).toBe(false);
@@ -200,13 +282,19 @@ describe("the form as a request", () => {
     expect(lowOnly.ok && lowOnly.record.range).toEqual({ low: 60 });
     const none = formToRequest(form);
     expect(none.ok && "range" in none.record).toBe(false);
-    for (const bad of [{ low: "x" }, { high: "1e2" }, { low: "60", high: "" + "abc" }]) {
+    for (const bad of [
+      { low: "x" },
+      { high: "1e2" },
+      { low: "60", high: "" + "abc" },
+    ]) {
       expect(formToRequest({ ...form, ...bad }).ok).toBe(false);
     }
   });
   it("refuses a time that is not real", () => {
     expect(formToRequest({ ...form, measuredAt: "" }).ok).toBe(false);
-    expect(formToRequest({ ...form, measuredAt: "2026-02-30T09:30" }).ok).toBe(false);
+    expect(formToRequest({ ...form, measuredAt: "2026-02-30T09:30" }).ok).toBe(
+      false,
+    );
   });
 });
 
@@ -224,7 +312,12 @@ describe("enteredInErrorRecord", () => {
     });
   });
   it("keeps a missing value missing with its reason, never as 0", () => {
-    const r = enteredInErrorRecord({ ...base, value: null, unit: null, absent_reason: "failed" });
+    const r = enteredInErrorRecord({
+      ...base,
+      value: null,
+      unit: null,
+      absent_reason: "failed",
+    });
     expect(r).not.toHaveProperty("value");
     expect(r).not.toHaveProperty("unit");
     expect(r.absent_reason).toBe("failed");
@@ -232,7 +325,10 @@ describe("enteredInErrorRecord", () => {
 });
 
 describe("trends", () => {
-  const at = (n: number, over: Partial<StoredObservation> = {}): StoredObservation => ({
+  const at = (
+    n: number,
+    over: Partial<StoredObservation> = {},
+  ): StoredObservation => ({
     ...base,
     id: `o${n}`,
     effective_at: `2026-10-26T1${n}:00:00Z`,
@@ -252,7 +348,10 @@ describe("trends", () => {
   });
 
   it("keeps a reading with no value as a row, so a gap is not a missing reading or a zero", () => {
-    const out = trends([at(1, { value: null, unit: null, absent_reason: "declined" }), at(2)]);
+    const out = trends([
+      at(1, { value: null, unit: null, absent_reason: "declined" }),
+      at(2),
+    ]);
     expect(out[0]!.rows).toHaveLength(2);
     expect(valueText(out[0]!.rows[1]!)).toBe("No value: declined");
   });
@@ -272,7 +371,9 @@ describe("the notice beside a disputed record (RC-4, H-035)", () => {
   });
 
   it("names the version a correction was made in", () => {
-    expect(noticeText({ notice: "amended", version: 3 })).toContain("version 3");
+    expect(noticeText({ notice: "amended", version: 3 })).toContain(
+      "version 3",
+    );
   });
 
   it("gives a refusal with the ground and the patient's statement, as the patient wrote it", () => {
@@ -282,21 +383,23 @@ describe("the notice beside a disputed record (RC-4, H-035)", () => {
       disagreement: "  My pulse was never that fast.  ",
     });
     expect(text).toContain("the record is accurate and complete as it stands.");
-    expect(text).toContain("The patient's statement of disagreement: My pulse was never that fast.");
+    expect(text).toContain(
+      "The patient's statement of disagreement: My pulse was never that fast.",
+    );
   });
 
   it("says there is no statement when none was given, and never drops a ground it does not know", () => {
-    expect(noticeText({ notice: "refused", ground: "other", disagreement: null })).toContain(
-      "The patient has given no statement.",
-    );
+    expect(
+      noticeText({ notice: "refused", ground: "other", disagreement: null }),
+    ).toContain("The patient has given no statement.");
     expect(noticeText({ notice: "refused", ground: "new-ground" })).toContain(
       "for a reason this page cannot show.",
     );
   });
 
   it("still tells a notice kind it does not know", () => {
-    expect(noticeText({ notice: "something-new" } as unknown as Notice)).toContain(
-      "There is a request to correct this record.",
-    );
+    expect(
+      noticeText({ notice: "something-new" } as unknown as Notice),
+    ).toContain("There is a request to correct this record.");
   });
 });

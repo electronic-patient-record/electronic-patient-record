@@ -4,7 +4,11 @@
   import { call, commonProblem } from "#lib/api.js";
   import { DEFAULT_LOCALE, localizePath } from "#lib/locales.js";
   import { siteWhenText } from "#lib/access-log.js";
-  import { allergyLine, loadAllergies, type AllergyLoad } from "#lib/allergies.js";
+  import {
+    allergyLine,
+    loadAllergies,
+    type AllergyLoad,
+  } from "#lib/allergies.js";
   import PatientBanner from "#lib/PatientBanner.svelte";
   import type { Stored } from "#lib/patient.js";
   import { latestReadings } from "#lib/summary.js";
@@ -48,7 +52,10 @@
     else if (res.status !== 200) message = STRINGS.error;
     else {
       stored = res.body;
-      const [a, v] = await Promise.all([loadAllergies(forId), loadObservations(forId)]);
+      const [a, v] = await Promise.all([
+        loadAllergies(forId),
+        loadObservations(forId),
+      ]);
       if (mine !== ticket) return;
       allergies = a;
       vitals = v;
@@ -61,13 +68,17 @@
   });
 
   const siteZone = $derived(stored?.site_time_zone ?? "UTC");
-  const latest = $derived(vitals?.observations ? latestReadings(vitals.observations) : []);
+  const latest = $derived(
+    vitals?.observations ? latestReadings(vitals.observations) : [],
+  );
 </script>
 
 <svelte:head><title>{STRINGS.summaryTitle}</title></svelte:head>
 
 <h1>{STRINGS.summaryTitle}</h1>
-<p><a href={localizePath(`/patients/${id}`, locale)}>{STRINGS.summaryBack}</a></p>
+<p>
+  <a href={localizePath(`/patients/${id}`, locale)}>{STRINGS.summaryBack}</a>
+</p>
 
 {#if loading}
   <p role="status" aria-busy="true">{STRINGS.loading}</p>
@@ -89,7 +100,9 @@
       <p role="alert">{STRINGS.allergyLoadFailed}</p>
     {:else}
       {@const data = allergies.data}
-      {@const standing = data.allergies.filter((a) => a.allergy.status !== "entered-in-error")}
+      {@const standing = data.allergies.filter(
+        (a) => a.allergy.status !== "entered-in-error",
+      )}
       {#if standing.length === 0}
         <p>{STRINGS.allergyNone}</p>
       {:else}
@@ -123,7 +136,9 @@
         {#each latest as o (o.id)}
           <li>
             {vitalName(o.code)} · {valueText(o)} · {assessmentText(o)} ·
-            <time datetime={o.effective_at}>{siteWhenText(o.effective_at, siteZone)}</time>
+            <time datetime={o.effective_at}
+              >{siteWhenText(o.effective_at, siteZone)}</time
+            >
             {#each vitals.notices[o.id] ?? [] as n, i (i)}
               <p role="note">{noticeText(n)}</p>
             {/each}

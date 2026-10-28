@@ -52,7 +52,9 @@
 
   const label = (s: Stored) => {
     const f = patientToForm(s.patient);
-    return [f.family, f.given].filter(Boolean).join(", ") || STRINGS.notAvailable;
+    return (
+      [f.family, f.given].filter(Boolean).join(", ") || STRINGS.notAvailable
+    );
   };
 </script>
 
@@ -62,7 +64,11 @@
 <p>{STRINGS.searchHint}</p>
 
 <form onsubmit={submit}>
-  <PatientFields bind:form prefix="s" only={["family", "birthDate", "nhsNumber"]} />
+  <PatientFields
+    bind:form
+    prefix="s"
+    only={["family", "birthDate", "nhsNumber"]}
+  />
   <button type="submit" disabled={busy.on}>{STRINGS.search}</button>
 </form>
 <p>

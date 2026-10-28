@@ -23,10 +23,11 @@
   let reason = $state("");
 
   async function load() {
-    const res = await call<{ refusals: Refusal[]; limit: number; site_time_zone?: string }>(
-      "GET",
-      "/api/feed/refusals",
-    );
+    const res = await call<{
+      refusals: Refusal[];
+      limit: number;
+      site_time_zone?: string;
+    }>("GET", "/api/feed/refusals");
     const problem = commonProblem(res.status);
     if (problem) {
       open = null;
@@ -64,10 +65,10 @@
 
   async function close(event: SubmitEvent) {
     event.preventDefault();
-    await busy.run(() => closeNow(event));
+    await busy.run(() => closeNow());
   }
 
-  async function closeNow(event: SubmitEvent) {
+  async function closeNow() {
     if (!shown) return;
     const body = resolveBody(outcome, reason);
     if (!body) {
@@ -110,7 +111,11 @@
           <ul>
             {#each r.reasons as why (why)}<li>{why}</li>{/each}
           </ul>
-          <button disabled={busy.on} type="button" onclick={() => void toggle(r)}>
+          <button
+            disabled={busy.on}
+            type="button"
+            onclick={() => void toggle(r)}
+          >
             {shown?.id === r.id ? STRINGS.feedHide : STRINGS.feedShow}
           </button>
           {#if shown?.id === r.id}
@@ -125,7 +130,9 @@
               </select>
               <label for="f-reason">{STRINGS.feedReason}</label>
               <input id="f-reason" bind:value={reason} autocomplete="off" />
-              <button disabled={busy.on} type="submit">{STRINGS.feedClose}</button>
+              <button disabled={busy.on} type="submit"
+                >{STRINGS.feedClose}</button
+              >
             </form>
           {/if}
         </li>

@@ -101,12 +101,20 @@ describe("access and consent requests", () => {
   it("sends terms for a proxy only, and never invents them", () => {
     const t = proxyTerms("patient-request", ["photo"], "2026-12-31");
     expect(relationshipRecord("s", "proxy", "", "", t).proxy).toEqual(t);
-    expect(relationshipRecord("s", "care-team", "", "", t)).not.toHaveProperty("proxy");
-    expect(relationshipRecord("s", "proxy", "", "", null)).not.toHaveProperty("proxy");
+    expect(relationshipRecord("s", "care-team", "", "", t)).not.toHaveProperty(
+      "proxy",
+    );
+    expect(relationshipRecord("s", "proxy", "", "", null)).not.toHaveProperty(
+      "proxy",
+    );
   });
 
   it("describes a proxy by its scopes and last day, and says plainly when it has no terms", () => {
-    const t = proxyTerms("patient-request", ["identity", "photo"], "2026-12-31");
+    const t = proxyTerms(
+      "patient-request",
+      ["identity", "photo"],
+      "2026-12-31",
+    );
     expect(describeProxy(t)).toBe(
       "Name, birth date and identifiers, Photo · until the end of 2026-12-31",
     );

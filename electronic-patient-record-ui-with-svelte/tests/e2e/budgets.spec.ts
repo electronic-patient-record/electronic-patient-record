@@ -5,7 +5,8 @@ import budgets from "./budgets.json" with { type: "json" };
 // AS-5: how many things a clinician must do for the critical tasks. Every action goes through `user`,
 // which counts it: a click, a text box typed into, a list chosen from. Reaching a field and tabbing
 // are not counted, and nor is time: with every API call stubbed a time would measure the stub.
-const json = (route: Route, status: number, body: unknown) => route.fulfill({ status, json: body });
+const json = (route: Route, status: number, body: unknown) =>
+  route.fulfill({ status, json: body });
 
 function user() {
   let actions = 0;
@@ -20,7 +21,10 @@ function user() {
 }
 function within(name: keyof typeof budgets, actual: number) {
   const budget = (budgets[name] as { actions: number }).actions;
-  expect(actual, `${name}: ${actual} actions, budget ${budget}`).toBeLessThanOrEqual(Math.floor(budget * 1.1));
+  expect(
+    actual,
+    `${name}: ${actual} actions, budget ${budget}`,
+  ).toBeLessThanOrEqual(Math.floor(budget * 1.1));
 }
 
 const ID = "11111111-1111-4111-8111-111111111111";
@@ -40,17 +44,29 @@ const ANN = {
   replaced_by: null,
   replaces: [],
 };
-const NOT_RECORDED = { allergies: [], statement: null, summary: { state: "not-recorded" } };
+const NOT_RECORDED = {
+  allergies: [],
+  statement: null,
+  summary: { state: "not-recorded" },
+};
 const stubPatient = (page: Page) =>
-  page.route(`**/api/proxy/api/patients/${ID}`, (route) => json(route, 200, ANN));
+  page.route(`**/api/proxy/api/patients/${ID}`, (route) =>
+    json(route, 200, ANN),
+  );
 
 test("budget: register a patient from the search page", async ({ page }) => {
   const u = user();
   await stubPatient(page);
-  await page.route("**/api/proxy/api/patients", (route) => json(route, 201, ANN));
-  await page.route("**/api/proxy/api/patients/*/allergies", (route) => json(route, 200, NOT_RECORDED));
+  await page.route("**/api/proxy/api/patients", (route) =>
+    json(route, 201, ANN),
+  );
+  await page.route("**/api/proxy/api/patients/*/allergies", (route) =>
+    json(route, 200, NOT_RECORDED),
+  );
   await page.goto("/en-001/patients");
-  await u.click(page.getByRole("link", { name: "Register a new patient" }).first());
+  await u.click(
+    page.getByRole("link", { name: "Register a new patient" }).first(),
+  );
   await u.type(page.getByLabel("Family name"), "Smith");
   await u.type(page.getByLabel("Given name"), "Ann");
   await u.type(page.getByLabel("Birth date"), "1980-03-14");
@@ -64,9 +80,12 @@ test("budget: record an allergy from the search page", async ({ page }) => {
   const u = user();
   let posted = 0;
   await stubPatient(page);
-  await page.route("**/api/proxy/api/patients?**", (route) => json(route, 200, { results: [ANN], limit: 50 }));
+  await page.route("**/api/proxy/api/patients?**", (route) =>
+    json(route, 200, { results: [ANN], limit: 50 }),
+  );
   await page.route("**/api/proxy/api/patients/*/allergies", (route) => {
-    if (route.request().method() === "GET") return json(route, 200, NOT_RECORDED);
+    if (route.request().method() === "GET")
+      return json(route, 200, NOT_RECORDED);
     posted++;
     return json(route, 201, {});
   });

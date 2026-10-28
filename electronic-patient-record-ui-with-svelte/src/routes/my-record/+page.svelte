@@ -22,7 +22,11 @@
   import { DEFAULT_LOCALE } from "#lib/locales.js";
   import { dataAge } from "#lib/data-age.js";
 
-  type Entry = { relationship: "self" | "proxy"; patient: Stored; photo_version?: number | null };
+  type Entry = {
+    relationship: "self" | "proxy";
+    patient: Stored;
+    photo_version?: number | null;
+  };
 
   let records = $state<Entry[] | null>(null);
   let message = $state<string | null>(null);
@@ -64,8 +68,7 @@
           allergyById[r.patient.id] = l;
         });
       }
-    }
-    else message = STRINGS.error;
+    } else message = STRINGS.error;
   }
 
   $effect(() => {
@@ -84,7 +87,11 @@
   });
 
   // The access log is read on request, not on load: reading it is itself recorded.
-  type Log = { entries: LogPage["entries"]; next: number | null; message: string | null };
+  type Log = {
+    entries: LogPage["entries"];
+    next: number | null;
+    message: string | null;
+  };
   let logs = $state<Record<string, Log>>({});
   // The filter the shown entries were read under, and the one being edited.
   let applied = $state<Record<string, LogFilter>>({});
@@ -95,15 +102,27 @@
   // The patient's own days: the zone of the browser they are reading in.
   const zone = readerZone();
 
-  async function loadLog(id: string, before?: number, filter: LogFilter = applied[id] ?? NO_FILTER) {
+  async function loadLog(
+    id: string,
+    before?: number,
+    filter: LogFilter = applied[id] ?? NO_FILTER,
+  ) {
     await logBusy.run(() => loadLogNow(id, before, filter));
   }
 
-  async function loadLogNow(id: string, before: number | undefined, filter: LogFilter) {
+  async function loadLogNow(
+    id: string,
+    before: number | undefined,
+    filter: LogFilter,
+  ) {
     editing[id] ??= { ...NO_FILTER };
     const q = logQuery(filter, before, zone);
     if (q === null) {
-      logs[id] = { entries: logs[id]?.entries ?? [], next: logs[id]?.next ?? null, message: F.badDay };
+      logs[id] = {
+        entries: logs[id]?.entries ?? [],
+        next: logs[id]?.next ?? null,
+        message: F.badDay,
+      };
       return;
     }
     const res = await call<LogPage>(
@@ -115,7 +134,8 @@
     if (res.status === 200) applied[id] = { ...filter };
     const problem = commonProblem(res.status);
     const prior = before === undefined ? [] : (logs[id]?.entries ?? []);
-    if (problem) logs[id] = { entries: prior, next: null, message: STRINGS[problem] };
+    if (problem)
+      logs[id] = { entries: prior, next: null, message: STRINGS[problem] };
     else if (res.status === 200)
       logs[id] = {
         entries: [...prior, ...res.body.entries],
@@ -129,10 +149,20 @@
   async function downloadLog(id: string) {
     await logBusy.run(async () => {
       const q = logCsvQuery(applied[id] ?? NO_FILTER, zone);
-      const res = q === null ? null : await fetchBlob(`/api/me/patients/${id}/access-log${q}`, "patient-access");
+      const res =
+        q === null
+          ? null
+          : await fetchBlob(
+              `/api/me/patients/${id}/access-log${q}`,
+              "patient-access",
+            );
       if (!res || !res.body) {
         const problem = res ? commonProblem(res.status) : null;
-        logs[id] = { entries: logs[id]?.entries ?? [], next: logs[id]?.next ?? null, message: problem ? STRINGS[problem] : STRINGS.accessLogDownloadFailed };
+        logs[id] = {
+          entries: logs[id]?.entries ?? [],
+          next: logs[id]?.next ?? null,
+          message: problem ? STRINGS[problem] : STRINGS.accessLogDownloadFailed,
+        };
         return;
       }
       const url = URL.createObjectURL(res.body);
@@ -143,7 +173,11 @@
       URL.revokeObjectURL(url);
       // The file was cut at the most recent entries: say so, with the entries already shown kept.
       if (res.next)
-        logs[id] = { entries: logs[id]?.entries ?? [], next: logs[id]?.next ?? null, message: F.downloadCut };
+        logs[id] = {
+          entries: logs[id]?.entries ?? [],
+          next: logs[id]?.next ?? null,
+          message: F.downloadCut,
+        };
     });
   }
 
@@ -191,11 +225,18 @@
     {@const log = logs[entry.patient.id]}
     <section aria-labelledby="rec-{entry.patient.id}">
       <h2 id="rec-{entry.patient.id}">
-        {[entry.patient.patient.names[0]?.family, entry.patient.patient.names[0]?.given.join(" ")]
+        {[
+          entry.patient.patient.names[0]?.family,
+          entry.patient.patient.names[0]?.given.join(" "),
+        ]
           .filter(Boolean)
           .join(", ")}
       </h2>
-      <PatientBanner stored={{ ...entry.patient, photo_version: entry.photo_version }} purpose="patient-access" allergies={allergyById[entry.patient.id] ?? null} />
+      <PatientBanner
+        stored={{ ...entry.patient, photo_version: entry.photo_version }}
+        purpose="patient-access"
+        allergies={allergyById[entry.patient.id] ?? null}
+      />
       {#if entry.relationship === "proxy"}<p>{STRINGS.myRecordProxy}</p>{/if}
       <dl>
         {#each fields(entry.patient) as [label, value] (label)}
@@ -204,10 +245,17 @@
         {/each}
       </dl>
       <p>{STRINGS.version}: {entry.patient.version}</p>
-      <PatientAmendments patientId={entry.patient.id} siteZone={entry.patient.site_time_zone ?? "UTC"} />
+      <PatientAmendments
+        patientId={entry.patient.id}
+        siteZone={entry.patient.site_time_zone ?? "UTC"}
+      />
       <h3 id="log-{entry.patient.id}">{STRINGS.accessLogTitle}</h3>
       {#if !log}
-        <button type="button" disabled={logBusy.on} onclick={() => loadLog(entry.patient.id)}>
+        <button
+          type="button"
+          disabled={logBusy.on}
+          onclick={() => loadLog(entry.patient.id)}
+        >
           {STRINGS.accessLogShow}
         </button>
       {:else}
@@ -215,16 +263,28 @@
         <form
           onsubmit={(e) => {
             e.preventDefault();
-            void loadLog(entry.patient.id, undefined, editing[entry.patient.id] ?? NO_FILTER);
+            void loadLog(
+              entry.patient.id,
+              undefined,
+              editing[entry.patient.id] ?? NO_FILTER,
+            );
           }}
         >
           <fieldset>
             <legend>{F.filterTitle}</legend>
             <p>{F.zone.replace("{zone}", zone)}</p>
             <label for="lf-from-{entry.patient.id}">{F.from}</label>
-            <input id="lf-from-{entry.patient.id}" type="date" bind:value={f.from} />
+            <input
+              id="lf-from-{entry.patient.id}"
+              type="date"
+              bind:value={f.from}
+            />
             <label for="lf-to-{entry.patient.id}">{F.to}</label>
-            <input id="lf-to-{entry.patient.id}" type="date" bind:value={f.to} />
+            <input
+              id="lf-to-{entry.patient.id}"
+              type="date"
+              bind:value={f.to}
+            />
             <label for="lf-by-{entry.patient.id}">{F.by}</label>
             <select id="lf-by-{entry.patient.id}" bind:value={f.by}>
               <option value="">{F.byAny}</option>
@@ -253,7 +313,12 @@
                 void loadLog(entry.patient.id, undefined, NO_FILTER);
               }}>{F.clear}</button
             >
-            <button type="button" disabled={logBusy.on} onclick={() => void downloadLog(entry.patient.id)}>{F.download}</button>
+            <button
+              type="button"
+              disabled={logBusy.on}
+              onclick={() => void downloadLog(entry.patient.id)}
+              >{F.download}</button
+            >
           </fieldset>
         </form>
         <div aria-live="polite">
@@ -264,12 +329,20 @@
             <p>{STRINGS.accessLogNote}</p>
             <ul aria-labelledby="log-{entry.patient.id}">
               {#each log.entries as item (item.id)}
-                <li><time datetime={item.at}>{whenText(item.at, zone)}</time>: {describe(item)}</li>
+                <li>
+                  <time datetime={item.at}>{whenText(item.at, zone)}</time>: {describe(
+                    item,
+                  )}
+                </li>
               {/each}
             </ul>
           {/if}
           {#if log.next !== null}
-            <button type="button" disabled={logBusy.on} onclick={() => loadLog(entry.patient.id, log.next ?? undefined)}>
+            <button
+              type="button"
+              disabled={logBusy.on}
+              onclick={() => loadLog(entry.patient.id, log.next ?? undefined)}
+            >
               {STRINGS.accessLogMore}
             </button>
           {/if}

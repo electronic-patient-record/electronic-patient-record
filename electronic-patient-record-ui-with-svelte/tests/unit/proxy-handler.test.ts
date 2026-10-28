@@ -60,7 +60,11 @@ describe("proxy handler answers", () => {
       fetchFn: (async () =>
         new Response("a,b\n", {
           status: 200,
-          headers: { "content-type": "text/csv", "x-next-before": "41", "x-secret": "no" },
+          headers: {
+            "content-type": "text/csv",
+            "x-next-before": "41",
+            "x-secret": "no",
+          },
         })) as unknown as typeof fetch,
     });
     const res = await t.call("api/me/patients/x/access-log?format=csv");

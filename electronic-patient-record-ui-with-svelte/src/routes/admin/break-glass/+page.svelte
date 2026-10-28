@@ -43,20 +43,19 @@
 
   async function record(event: SubmitEvent) {
     event.preventDefault();
-    await busy.run(() => recordNow(event));
+    await busy.run(() => recordNow());
   }
 
-  async function recordNow(event: SubmitEvent) {
+  async function recordNow() {
     if (!open) return;
     if (!note.trim()) {
       message = STRINGS.glassNoteNeeded;
       return;
     }
-    const res = await call(
-      "POST",
-      `/api/break-glass/reviews/${open}`,
-      { outcome, note: note.trim() },
-    );
+    const res = await call("POST", `/api/break-glass/reviews/${open}`, {
+      outcome,
+      note: note.trim(),
+    });
     const problem = commonProblem(res.status);
     const body = res.body as { errors?: string[] } | null;
     if (problem) message = STRINGS[problem];
@@ -84,9 +83,11 @@
       {#each grants as g (g.id)}
         <li>
           {#if g.overdue}<strong class="overdue">{STRINGS.glassOverdue}</strong> ·{/if}
-          {siteWhenText(g.granted_at, siteZone)} · {STRINGS.glassBy} <code>{g.subject}</code>
+          {siteWhenText(g.granted_at, siteZone)} · {STRINGS.glassBy}
+          <code>{g.subject}</code>
           · {STRINGS.glassFor} <code>{g.patient_id}</code>
-          · {STRINGS.glassUntil} {siteWhenText(g.expires_at, siteZone)}
+          · {STRINGS.glassUntil}
+          {siteWhenText(g.expires_at, siteZone)}
           <p>{STRINGS.glassWhy}: {g.reason}</p>
           <button type="button" onclick={() => (open = g.id)}>
             {STRINGS.glassReview}
@@ -104,7 +105,9 @@
               </select>
               <label for="g-note">{STRINGS.glassNote}</label>
               <input id="g-note" bind:value={note} autocomplete="off" />
-              <button disabled={busy.on} type="submit">{STRINGS.glassRecord}</button>
+              <button disabled={busy.on} type="submit"
+                >{STRINGS.glassRecord}</button
+              >
             </form>
           {/if}
         </li>

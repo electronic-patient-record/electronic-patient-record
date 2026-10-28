@@ -18,7 +18,12 @@ export type ConflictCode =
   | { code: "names_swapped" }
   | { code: "extra_given_name" }
   | { code: "field_unavailable"; field: string }
-  | { code: "field_below_minimum"; field: string; similarity: number; minimum: number }
+  | {
+      code: "field_below_minimum";
+      field: string;
+      similarity: number;
+      minimum: number;
+    }
   | { code: "evidence_thin"; percent_present: number }
   | { code: string; [more: string]: unknown };
 
@@ -33,7 +38,10 @@ export function conflictText(c: ConflictCode, locale: Locale): string | null {
   const w = conflictWords(locale);
   const num = (n: unknown, digits: number) =>
     typeof n === "number" && Number.isFinite(n)
-      ? new Intl.NumberFormat(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(n)
+      ? new Intl.NumberFormat(locale, {
+          minimumFractionDigits: digits,
+          maximumFractionDigits: digits,
+        }).format(n)
       : null;
   const field = (f: unknown) => {
     const key = typeof f === "string" ? FIELD[f] : undefined;
@@ -60,7 +68,12 @@ export function conflictText(c: ConflictCode, locale: Locale): string | null {
       const f = field(c.field);
       const s = num(c.similarity, 2);
       const m = num(c.minimum, 2);
-      return f && s && m ? w.fieldBelowMinimum.replace("{field}", f).replace("{similarity}", s).replace("{minimum}", m) : null;
+      return f && s && m
+        ? w.fieldBelowMinimum
+            .replace("{field}", f)
+            .replace("{similarity}", s)
+            .replace("{minimum}", m)
+        : null;
     }
     case "evidence_thin": {
       const p = num(c.percent_present, 0);
@@ -76,7 +89,11 @@ export function conflictText(c: ConflictCode, locale: Locale): string | null {
  * The codes and the English list come in the same order and length; if they do not (an older API sent
  * no codes), the English list is shown whole, never fewer reasons than the API gave.
  */
-export function conflictList(english: string[], codes: ConflictCode[] | undefined, locale: Locale): string[] {
+export function conflictList(
+  english: string[],
+  codes: ConflictCode[] | undefined,
+  locale: Locale,
+): string[] {
   if (!codes || codes.length !== english.length) return english;
   return codes.map((c, i) => conflictText(c, locale) ?? english[i]!);
 }
@@ -86,7 +103,10 @@ export function conflictList(english: string[], codes: ConflictCode[] | undefine
  * the API sent no codes, or any one cannot be translated, so the page shows the API's English message
  * whole rather than a partial translation.
  */
-export function notSamePersonText(codes: ConflictCode[] | undefined, locale: Locale): string | null {
+export function notSamePersonText(
+  codes: ConflictCode[] | undefined,
+  locale: Locale,
+): string | null {
   if (!codes || codes.length === 0) return null;
   const parts = codes.map((c) => conflictText(c, locale));
   if (parts.some((p) => p === null)) return null;
@@ -107,7 +127,11 @@ const REFUSAL: Record<string, keyof RefusalWords> = {
  * record's id). Null for no code, a code this does not know, or a code that needs an id and has none,
  * so the page shows the API's English message.
  */
-export function refusalText(code: unknown, into: unknown, locale: Locale): string | null {
+export function refusalText(
+  code: unknown,
+  into: unknown,
+  locale: Locale,
+): string | null {
   const key = typeof code === "string" ? REFUSAL[code] : undefined;
   if (!key) return null;
   const text = refusalWords(locale)[key];
@@ -129,7 +153,11 @@ const PATIENT_PROBLEM: Record<string, keyof PatientProblemWords> = {
  * readers see the API's own words). If the lengths differ (an older API sent no
  * codes) the English list is shown whole, never fewer reasons than the API gave.
  */
-export function patientProblemList(english: string[], codes: unknown, locale: Locale): string[] {
+export function patientProblemList(
+  english: string[],
+  codes: unknown,
+  locale: Locale,
+): string[] {
   if (!Array.isArray(codes) || codes.length !== english.length) return english;
   const w = translatedPatientProblemWords(locale);
   if (!w) return english;

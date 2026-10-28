@@ -84,21 +84,28 @@ export const STRINGS = {
   allergyRiskHigh: "high risk",
   allergyRiskLow: "low risk",
   allergyRiskUnassessed: "risk not assessed",
-  noticePending: "The patient has asked for this record to be corrected. No decision has been recorded.",
-  noticeAmended: "The patient asked for this record to be corrected. It was corrected in version {n}.",
-  noticeRefused: "The patient asked for this record to be corrected. The request was refused:",
+  noticePending:
+    "The patient has asked for this record to be corrected. No decision has been recorded.",
+  noticeAmended:
+    "The patient asked for this record to be corrected. It was corrected in version {n}.",
+  noticeRefused:
+    "The patient asked for this record to be corrected. The request was refused:",
   noticeGrounds: {
     "not-ours": "this organisation did not make the record.",
-    "accurate-and-complete": "the record is accurate and complete as it stands.",
-    "not-available-to-requester": "the record is not one the requester may have amended.",
+    "accurate-and-complete":
+      "the record is accurate and complete as it stands.",
+    "not-available-to-requester":
+      "the record is not one the requester may have amended.",
     other: "another ground.",
   },
   noticeGroundUnknown: "for a reason this page cannot show.",
   noticeStatement: "The patient's statement of disagreement:",
   noticeNoStatement: "The patient has given no statement.",
-  noticeUnknown: "There is a request to correct this record. This page cannot show its state.",
+  noticeUnknown:
+    "There is a request to correct this record. This page cannot show its state.",
   askTitle: "Ask for a record to be corrected",
-  askIntro: "If a vital sign or an allergy in your record is wrong, say so here. A clinician will decide and will give a reason. The reading is not changed unless a correction is recorded as a new version.",
+  askIntro:
+    "If a vital sign or an allergy in your record is wrong, say so here. A clinician will decide and will give a reason. The reading is not changed unless a correction is recorded as a new version.",
   askReading: "Which record",
   askText: "What should change",
   askSubmit: "Send the request",
@@ -106,15 +113,19 @@ export const STRINGS = {
   askTextNeeded: "Say what should change.",
   askStatementNeeded: "Write your statement.",
   askSent: "Your request was sent.",
-  askNoReadings: "There is nothing in your record to ask about. This does not mean nothing was recorded.",
-  askNotAvailable: "Asking for a correction is not available to you here. This does not mean your record is correct.",
-  askCouldNot: "Your requests could not be loaded. This does not mean you have made none.",
+  askNoReadings:
+    "There is nothing in your record to ask about. This does not mean nothing was recorded.",
+  askNotAvailable:
+    "Asking for a correction is not available to you here. This does not mean your record is correct.",
+  askCouldNot:
+    "Your requests could not be loaded. This does not mean you have made none.",
   askYours: "Your requests",
   askNone: "You have made no requests.",
   askAboutReading: "About {reading}",
   askWithdraw: "Withdraw this request",
   askDisagree: "Add a statement that you disagree",
-  askDisagreeLabel: "Your statement. It is kept with the record and cannot be edited",
+  askDisagreeLabel:
+    "Your statement. It is kept with the record and cannot be edited",
   askDisagreeSend: "Add my statement",
   askYourStatement: "Your statement:",
   askReasonGiven: "The reason given for the refusal:",
@@ -124,9 +135,12 @@ export const STRINGS = {
   amendOverdueCount: "{n} overdue.",
   askReadingGroup: "Vital signs",
   askAllergyGroup: "Allergies",
-  amendNone: "No requests to correct a record in this system. This does not mean none were made.",
-  amendNotShown: "Requests to correct a record are not shown to your role. This does not mean none were made.",
-  amendCouldNot: "Requests could not be loaded. This does not mean none were made.",
+  amendNone:
+    "No requests to correct a record in this system. This does not mean none were made.",
+  amendNotShown:
+    "Requests to correct a record are not shown to your role. This does not mean none were made.",
+  amendCouldNot:
+    "Requests could not be loaded. This does not mean none were made.",
   amendAbout: "About {kind}",
   amendAsked: "Asked {when}",
   amendText: "The patient wrote:",
@@ -196,11 +210,16 @@ export const STRINGS = {
   vitalTimeInvalid: "Give a real date and time.",
   vitalReasonNeeded: "Say why there is no value.",
   vitalValueInvalid: "Give the value as a number.",
-  vitalRangeInvalid: "Give each end of the range as a number, or leave it empty.",
-  vitalsNone: "No vital signs recorded in this system. This does not mean none were taken.",
-  vitalsNotShown: "Vital signs are not shown to your role. This does not mean none are recorded.",
-  vitalsCouldNot: "Vital signs could not be loaded. This does not mean none are recorded.",
-  vitalConflict: "This record changed or was merged into another. Reload the page and try again.",
+  vitalRangeInvalid:
+    "Give each end of the range as a number, or leave it empty.",
+  vitalsNone:
+    "No vital signs recorded in this system. This does not mean none were taken.",
+  vitalsNotShown:
+    "Vital signs are not shown to your role. This does not mean none are recorded.",
+  vitalsCouldNot:
+    "Vital signs could not be loaded. This does not mean none are recorded.",
+  vitalConflict:
+    "This record changed or was merged into another. Reload the page and try again.",
   vitalsSaved: "Vital sign recorded.",
   vitalsRecordTitle: "Record a vital sign",
   vitalLabel: "Vital sign",
@@ -217,7 +236,8 @@ export const STRINGS = {
   vitalVersion: "version {n}",
   vitalTrendShow: "Show readings over time",
   vitalTrendHide: "Hide readings over time",
-  vitalTrendNote: "Newest first. Every standing reading is listed; none is averaged or left out. Entries marked in error are not shown.",
+  vitalTrendNote:
+    "Newest first. Every standing reading is listed; none is averaged or left out. Entries marked in error are not shown.",
   vitalTrendTime: "Measured",
   vitalTrendValue: "Value",
   vitalTrendWhere: "Where it sits",
@@ -225,13 +245,15 @@ export const STRINGS = {
   vitalHistoryHide: "Hide history",
   vitalHistoryLoading: "Loading the history.",
   vitalHistoryNotShown: "The history is not shown to your role.",
-  vitalHistoryCouldNot: "The history could not be loaded. The earlier versions still exist.",
+  vitalHistoryCouldNot:
+    "The history could not be loaded. The earlier versions still exist.",
   vitalHistoryReason: "Reason:",
   vitalHistoryNoReason: "no reason given",
   vitalHistoryInError: "entered in error",
   vitalCorrect: "Correct",
   vitalCorrectTitle: "Correct a vital sign",
-  vitalCorrectNote: "This saves a new version after version {n}. The earlier version is kept.",
+  vitalCorrectNote:
+    "This saves a new version after version {n}. The earlier version is kept.",
   vitalCorrectSubmit: "Save correction",
   vitalCorrectReasonNeeded: "Say what you are correcting and why.",
   vitalCorrected: "Correction saved as a new version.",
@@ -403,7 +425,8 @@ export const STRINGS = {
   dataReadAt: "Record read at {time}.",
   dataMayBeOld:
     "This record may not be current: it was last read at {time} and the latest check failed or is overdue. Check your connection.",
-  bannerDrill: "DRILL — NOT A REAL PATIENT. Nothing recorded here belongs to a person.",
+  bannerDrill:
+    "DRILL — NOT A REAL PATIENT. Nothing recorded here belongs to a person.",
   bannerMerged:
     "THIS RECORD WAS MERGED INTO ANOTHER. Do not use it; open the surviving record.",
   mergedNotice:
@@ -471,8 +494,10 @@ export const STRINGS = {
   },
   accessLogApply: "Apply",
   accessLogClear: "Clear",
-  accessLogDownload: "Download as a CSV file (up to the 1000 most recent entries)",
-  accessLogDownloadCut: "The file holds only the 1000 most recent entries. Narrow the days to get older ones.",
+  accessLogDownload:
+    "Download as a CSV file (up to the 1000 most recent entries)",
+  accessLogDownloadCut:
+    "The file holds only the 1000 most recent entries. Narrow the days to get older ones.",
   accessLogDownloadFailed: "The file could not be made. Try again.",
   accessLogBadDay: "Use real days written like 2026-10-21.",
   accessLogZone: "Days and times here are in your time zone: {zone}.",
@@ -533,12 +558,15 @@ export const STRINGS = {
   summaryBack: "Back to the full record",
   summaryAllergies: "Allergies and intolerances",
   summaryVitals: "Latest vital signs",
-  summaryVitalsNote: "The most recent reading of each vital sign. Earlier readings are on the full record.",
-  summaryVitalsNone: "No vital signs recorded in this system. This does not mean none were taken.",
+  summaryVitalsNote:
+    "The most recent reading of each vital sign. Earlier readings are on the full record.",
+  summaryVitalsNone:
+    "No vital signs recorded in this system. This does not mean none were taken.",
   summaryVitalsNotShown: "Vital signs are not shown for your role or purpose.",
   summaryVitalsFailed: "Vital signs could not be loaded.",
   summaryNotBuilt: "Not built in this system yet",
-  summaryNotBuiltNote: "Nothing is held for these. This does not mean there is nothing to record.",
+  summaryNotBuiltNote:
+    "Nothing is held for these. This does not mean there is nothing to record.",
   summaryNotBuiltItems: {
     problems: "Problems",
     medications: "Active medications",

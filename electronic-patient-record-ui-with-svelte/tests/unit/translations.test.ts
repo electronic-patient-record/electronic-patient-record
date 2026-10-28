@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { LOCALES } from "../../src/lib/locales";
-import { LOG_FORM, LOG_FORM_ENGLISH, LOG_FORM_KEYS, logFormStrings } from "../../src/lib/translations";
+import {
+  LOG_FORM,
+  LOG_FORM_ENGLISH,
+  LOG_FORM_KEYS,
+  logFormStrings,
+} from "../../src/lib/translations";
 import { LOG_PURPOSES } from "../../src/lib/access-log";
 
 // The words are machine-written and unreviewed. These tests check shape, not quality: every locale has
@@ -17,7 +22,9 @@ describe("access-log filter form translations (machine-written, not reviewed)", 
       const t = logFormStrings(locale);
       for (const key of LOG_FORM_KEYS) {
         expect(t[key], `${locale}.${key}`).toBeTruthy();
-        expect(t[key], `${locale}.${key} is still English`).not.toBe(LOG_FORM_ENGLISH[key]);
+        expect(t[key], `${locale}.${key} is still English`).not.toBe(
+          LOG_FORM_ENGLISH[key],
+        );
       }
       expect(t.zone).toContain("{zone}");
       expect(t.zone.split("{zone}").length).toBe(2);

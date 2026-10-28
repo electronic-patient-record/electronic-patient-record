@@ -102,10 +102,10 @@
 
   async function addRelationship(event: SubmitEvent) {
     event.preventDefault();
-    await rel.run(() => addRelationshipNow(event));
+    await rel.run(() => addRelationshipNow());
   }
 
-  async function addRelationshipNow(event: SubmitEvent) {
+  async function addRelationshipNow() {
     relMessage = null;
     const res = await call("POST", `/api/patients/${id}/relationships`, {
       relationship: relationshipRecord(
@@ -143,10 +143,10 @@
 
   async function addConsent(event: SubmitEvent) {
     event.preventDefault();
-    await con.run(() => addConsentNow(event));
+    await con.run(() => addConsentNow());
   }
 
-  async function addConsentNow(event: SubmitEvent) {
+  async function addConsentNow() {
     consentMessage = null;
     const res = await call("POST", `/api/patients/${id}/consents`, {
       consent: formToConsent(cform),
@@ -159,11 +159,17 @@
     await settle(res, (m) => (consentMessage = m), loadConsents);
   }
 
-  async function changeConsent(c: StoredConsent, status: "inactive" | "entered-in-error") {
+  async function changeConsent(
+    c: StoredConsent,
+    status: "inactive" | "entered-in-error",
+  ) {
     await con.run(() => changeConsentNow(c, status));
   }
 
-  async function changeConsentNow(c: StoredConsent, status: "inactive" | "entered-in-error") {
+  async function changeConsentNow(
+    c: StoredConsent,
+    status: "inactive" | "entered-in-error",
+  ) {
     consentMessage = null;
     await settle(
       await call("PUT", `/api/patients/${id}/consents/${c.id}`, {
@@ -183,7 +189,11 @@
     [STRINGS.consentLabels, LABELS, "labels"],
   ] as const);
 
-  function toggle(field: "actors" | "purposes" | "resources" | "labels", value: string, on: boolean) {
+  function toggle(
+    field: "actors" | "purposes" | "resources" | "labels",
+    value: string,
+    on: boolean,
+  ) {
     const now = cform[field];
     cform[field] = on ? [...now, value] : now.filter((v) => v !== value);
   }
@@ -208,15 +218,22 @@
           <li>
             <strong>{STRINGS.relKinds[r.relationship.kind]}</strong>
             · <code>{r.relationship.subject}</code>
-            · {r.relationship.status === "active" ? STRINGS.relActive : STRINGS.relEnded}
+            · {r.relationship.status === "active"
+              ? STRINGS.relActive
+              : STRINGS.relEnded}
             {#if r.relationship.period?.start || r.relationship.period?.end}
-              · {r.relationship.period.start ?? "…"} – {r.relationship.period.end ?? "…"}
+              · {r.relationship.period.start ?? "…"} – {r.relationship.period
+                .end ?? "…"}
             {/if}
             {#if r.relationship.kind === "proxy"}
               · {describeProxy(r.relationship.proxy)}
             {/if}
             {#if r.relationship.status === "active"}
-              <button disabled={rel.on} type="button" onclick={() => void endRelationship(r)}>
+              <button
+                disabled={rel.on}
+                type="button"
+                onclick={() => void endRelationship(r)}
+              >
                 {STRINGS.relEnd_}
               </button>
             {/if}
@@ -283,12 +300,20 @@
             <strong>{STRINGS.consentStatuses[c.consent.status]}</strong>
             · {describeConsent(c.consent)}
             {#if c.consent.status === "active"}
-              <button disabled={con.on} type="button" onclick={() => void changeConsent(c, "inactive")}>
+              <button
+                disabled={con.on}
+                type="button"
+                onclick={() => void changeConsent(c, "inactive")}
+              >
                 {STRINGS.consentWithdraw}
               </button>
             {/if}
             {#if c.consent.status !== "entered-in-error"}
-              <button disabled={con.on} type="button" onclick={() => void changeConsent(c, "entered-in-error")}>
+              <button
+                disabled={con.on}
+                type="button"
+                onclick={() => void changeConsent(c, "entered-in-error")}
+              >
                 {STRINGS.consentMistake}
               </button>
             {/if}

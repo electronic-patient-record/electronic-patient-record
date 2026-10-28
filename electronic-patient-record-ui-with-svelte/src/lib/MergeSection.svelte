@@ -4,7 +4,11 @@
   // (who may, whether they look like the same person); this page shows its reasons.
   import { page } from "$app/state";
   import { call, commonProblem } from "./api.js";
-  import { notSamePersonText, refusalText, type ConflictCode } from "./conflicts.js";
+  import {
+    notSamePersonText,
+    refusalText,
+    type ConflictCode,
+  } from "./conflicts.js";
   import { DEFAULT_LOCALE } from "./locales.js";
   import { STRINGS } from "./strings.js";
 
@@ -37,11 +41,15 @@
     busy = true;
     let res;
     try {
-      res = await call<{ errors?: string[]; conflict_codes?: ConflictCode[]; refusal?: string; refusal_into?: string }>(
-        "POST",
-        `/api/patients/${patientId}/${path}`,
-        { source: sourceId.trim(), reason: why.trim() },
-      );
+      res = await call<{
+        errors?: string[];
+        conflict_codes?: ConflictCode[];
+        refusal?: string;
+        refusal_into?: string;
+      }>("POST", `/api/patients/${patientId}/${path}`, {
+        source: sourceId.trim(),
+        reason: why.trim(),
+      });
     } finally {
       busy = false;
     }
@@ -71,7 +79,11 @@
       {#each replaces as r (r)}
         <li>
           <code>{r}</code>
-          <button type="button" disabled={busy} onclick={() => void send("unmerge", r, STRINGS.mergeUndone)}>
+          <button
+            type="button"
+            disabled={busy}
+            onclick={() => void send("unmerge", r, STRINGS.mergeUndone)}
+          >
             {STRINGS.mergeUndo}
           </button>
         </li>
@@ -82,7 +94,11 @@
   <input id="m-source" bind:value={source} autocomplete="off" />
   <label for="m-why">{STRINGS.mergeWhy}</label>
   <input id="m-why" bind:value={why} autocomplete="off" />
-  <button type="button" disabled={busy || !source.trim()} onclick={() => void send("merge", source, STRINGS.mergeDone)}>
+  <button
+    type="button"
+    disabled={busy || !source.trim()}
+    onclick={() => void send("merge", source, STRINGS.mergeDone)}
+  >
     {STRINGS.mergeDo}
   </button>
   {#if message}<p role="status">{message}</p>{/if}

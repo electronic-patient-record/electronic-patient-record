@@ -103,24 +103,44 @@ const WITH_CODES = {
 };
 
 for (const [locale, first, second] of [
-  ["de-001", "unterschiedliche geprüfte NHS-Nummern", "Geburtsdatum nicht verfügbar, um die Verknüpfung zu bestätigen"],
-  ["ar-001", "أرقام NHS الموثّقة مختلفة", "تاريخ الميلاد غير متوفر لتأكيد الربط"],
+  [
+    "de-001",
+    "unterschiedliche geprüfte NHS-Nummern",
+    "Geburtsdatum nicht verfügbar, um die Verknüpfung zu bestätigen",
+  ],
+  [
+    "ar-001",
+    "أرقام NHS الموثّقة مختلفة",
+    "تاريخ الميلاد غير متوفر لتأكيد الربط",
+  ],
 ] as const) {
-  test(`compare shows the reasons in ${locale}, and an unknown code in English`, async ({ page }) => {
-    await page.route("**/api/proxy/api/patients/compare", (route) => route.fulfill({ json: WITH_CODES }));
+  test(`compare shows the reasons in ${locale}, and an unknown code in English`, async ({
+    page,
+  }) => {
+    await page.route("**/api/proxy/api/patients/compare", (route) =>
+      route.fulfill({ json: WITH_CODES }),
+    );
     await page.goto(`/${locale}/patients/compare`);
     await page.getByLabel("Family name").first().fill("Smith");
     await page.getByRole("button", { name: "Compare" }).click();
     await expect(page.getByText(first, { exact: true })).toBeVisible();
     await expect(page.getByText(second, { exact: true })).toBeVisible();
-    await expect(page.getByText("a reason from a newer matcher", { exact: true })).toBeVisible();
-    await expect(page.getByText("different verified NHS numbers")).toHaveCount(0);
-    const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag22aa"]).analyze();
+    await expect(
+      page.getByText("a reason from a newer matcher", { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByText("different verified NHS numbers")).toHaveCount(
+      0,
+    );
+    const results = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag22aa"])
+      .analyze();
     expect(results.violations).toEqual([]);
   });
 }
 
-test("registering shows a possible duplicate's reasons in French", async ({ page }) => {
+test("registering shows a possible duplicate's reasons in French", async ({
+  page,
+}) => {
   const patient = {
     id: "11111111-1111-4111-8111-111111111111",
     names: [{ family: "Smith", given: ["Ann"] }],
@@ -152,5 +172,9 @@ test("registering shows a possible duplicate's reasons in French", async ({ page
   await page.goto("/fr-001/patients/new");
   await page.getByLabel("Family name").fill("Smyth");
   await page.getByRole("button", { name: "Register", exact: true }).click();
-  await expect(page.getByText("les noms se prononcent de façon proche mais s'écrivent différemment")).toBeVisible();
+  await expect(
+    page.getByText(
+      "les noms se prononcent de façon proche mais s'écrivent différemment",
+    ),
+  ).toBeVisible();
 });

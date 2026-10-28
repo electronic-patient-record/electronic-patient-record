@@ -57,7 +57,9 @@ export interface AllergyData {
 export function allergyLine(a: StoredAllergy): string {
   return [
     a.allergy.substance,
-    a.allergy.criticality ? `(${STRINGS.allergyCriticalities[a.allergy.criticality]})` : "",
+    a.allergy.criticality
+      ? `(${STRINGS.allergyCriticalities[a.allergy.criticality]})`
+      : "",
     `· ${STRINGS.allergyStatusLabels[a.allergy.status]}`,
   ]
     .filter(Boolean)
@@ -101,9 +103,11 @@ const RISK: Record<string, string> = {
   "unable-to-assess": STRINGS.allergyRiskUnassessed,
 };
 
-
 /** The banner's allergy line, and whether it carries a high-risk allergy (shown more strongly). */
-export function bannerAllergies(load: AllergyLoad | null, siteZone?: string): {
+export function bannerAllergies(
+  load: AllergyLoad | null,
+  siteZone?: string,
+): {
   text: string;
   high: boolean;
 } {
@@ -128,7 +132,10 @@ export function bannerAllergies(load: AllergyLoad | null, siteZone?: string): {
       };
     case "no-known":
       return {
-        text: STRINGS.allergyNoKnown.replace("{when}", siteWhenText(s.asserted_at, siteZone)),
+        text: STRINGS.allergyNoKnown.replace(
+          "{when}",
+          siteWhenText(s.asserted_at, siteZone),
+        ),
         high: false,
       };
     case "none-active":

@@ -7,6 +7,8 @@ import { trends, type StoredObservation } from "./vitals.js";
  * the latest. A newest reading with no value stays as it is (with its reason): an older reading is
  * not put in its place, because that would show a stale value as current.
  */
-export function latestReadings(observations: StoredObservation[]): StoredObservation[] {
+export function latestReadings(
+  observations: StoredObservation[],
+): StoredObservation[] {
   return trends(observations).flatMap((t) => (t.rows[0] ? [t.rows[0]] : []));
 }

@@ -54,7 +54,8 @@ export function noticeText(n: Notice): string {
       return STRINGS.noticeAmended.replace("{n}", String(n.version));
     case "refused": {
       const ground =
-        (STRINGS.noticeGrounds as Record<string, string>)[n.ground] ?? STRINGS.noticeGroundUnknown;
+        (STRINGS.noticeGrounds as Record<string, string>)[n.ground] ??
+        STRINGS.noticeGroundUnknown;
       const said = n.disagreement?.trim()
         ? ` ${STRINGS.noticeStatement} ${n.disagreement.trim()}`
         : ` ${STRINGS.noticeNoStatement}`;
@@ -108,7 +109,9 @@ export function parseNumber(text: string): number | null {
 /** "72 /min", or why there is no value. Never "0" or a dash for a value that is not there. */
 export function valueText(o: StoredObservation): string {
   if (o.value === null || o.value === undefined) {
-    const why = o.absent_reason ? STRINGS.vitalAbsent[o.absent_reason] : STRINGS.vitalAbsentUnstated;
+    const why = o.absent_reason
+      ? STRINGS.vitalAbsent[o.absent_reason]
+      : STRINGS.vitalAbsentUnstated;
     return `${STRINGS.vitalNoValue} ${why}`;
   }
   const unit = o.unit ? ` ${unitLabel(o.unit)}` : "";
@@ -120,8 +123,10 @@ export function valueText(o: StoredObservation): string {
  * ever says "normal" except the API's own `normal`, which means "within the range the sender gave".
  */
 export function assessmentText(o: StoredObservation): string {
-  if (o.value === null || o.value === undefined) return STRINGS.vitalNotAssessedNoValue;
-  if (o.flag === null || o.flag === undefined) return STRINGS.vitalNotAssessedNoRange;
+  if (o.value === null || o.value === undefined)
+    return STRINGS.vitalNotAssessedNoValue;
+  if (o.flag === null || o.flag === undefined)
+    return STRINGS.vitalNotAssessedNoRange;
   return STRINGS.vitalFlags[o.flag];
 }
 
@@ -131,8 +136,11 @@ export function rangeText(r: Range | null | undefined): string | null {
   const low = r.low ?? null;
   const high = r.high ?? null;
   if (low === null && high === null) return null;
-  if (low !== null && high !== null) return `${low} ${STRINGS.vitalRangeTo} ${high}`;
-  return low !== null ? `${STRINGS.vitalRangeFrom} ${low}` : `${STRINGS.vitalRangeUpTo} ${high}`;
+  if (low !== null && high !== null)
+    return `${low} ${STRINGS.vitalRangeTo} ${high}`;
+  return low !== null
+    ? `${STRINGS.vitalRangeFrom} ${low}`
+    : `${STRINGS.vitalRangeUpTo} ${high}`;
 }
 
 /** One line: name, value, the words on where it sits, and when, on the site's clock. */
@@ -164,7 +172,9 @@ export function trends(observations: StoredObservation[]): Trend[] {
   const known: string[] = VITALS.map((v) => v.loinc);
   const codes = [
     ...known.filter((c) => standing.some((o) => o.code === c)),
-    ...[...new Set(standing.map((o) => o.code))].filter((c) => !known.includes(c)).sort(),
+    ...[...new Set(standing.map((o) => o.code))]
+      .filter((c) => !known.includes(c))
+      .sort(),
   ];
   return codes.map((code) => ({
     code,
@@ -184,12 +194,18 @@ export interface HistoryLoad {
 }
 
 /** Every version of one observation, oldest first. */
-export async function loadHistory(patientId: string, observationId: string): Promise<HistoryLoad> {
+export async function loadHistory(
+  patientId: string,
+  observationId: string,
+): Promise<HistoryLoad> {
   const res = await call<{ versions: ObservationVersion[] }>(
     "GET",
     `/api/patients/${patientId}/observations/${observationId}/versions`,
   );
-  return { status: res.status, versions: res.status === 200 ? res.body.versions : null };
+  return {
+    status: res.status,
+    versions: res.status === 200 ? res.body.versions : null,
+  };
 }
 
 export interface VitalsLoad {
@@ -234,7 +250,14 @@ function zoneOffsetMs(zone: string, atUtcMs: number): number {
     second: "2-digit",
   }).formatToParts(new Date(atUtcMs));
   const g = (k: string) => Number(p.find((x) => x.type === k)?.value ?? "0");
-  const asUtc = Date.UTC(g("year"), g("month") - 1, g("day"), g("hour"), g("minute"), g("second"));
+  const asUtc = Date.UTC(
+    g("year"),
+    g("month") - 1,
+    g("day"),
+    g("hour"),
+    g("minute"),
+    g("second"),
+  );
   return asUtc - Math.floor(atUtcMs / 1000) * 1000;
 }
 
@@ -248,7 +271,13 @@ function zoneOffsetMs(zone: string, atUtcMs: number): number {
 export function wallTimeToUtc(wall: string, zone: string): string | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(wall.trim());
   if (!m) return null;
-  const [y, mo, d, h, mi] = m.slice(1).map(Number) as [number, number, number, number, number];
+  const [y, mo, d, h, mi] = m.slice(1).map(Number) as [
+    number,
+    number,
+    number,
+    number,
+    number,
+  ];
   const probe = new Date(Date.UTC(y, mo - 1, d, h, mi));
   if (
     probe.getUTCFullYear() !== y ||
@@ -307,7 +336,9 @@ export interface VitalForm {
 /** The request body for the form, or the sentence saying what to fix. Nothing is sent as 0 by default. */
 export function formToRequest(
   f: VitalForm,
-): { ok: true; record: Record<string, unknown> } | { ok: false; problem: string } {
+):
+  | { ok: true; record: Record<string, unknown> }
+  | { ok: false; problem: string } {
   const vital = VITALS.find((v) => v.key === f.vital);
   if (!vital) return { ok: false, problem: STRINGS.vitalPickOne };
   const at = wallTimeToUtc(f.measuredAt, f.siteZone);
@@ -318,11 +349,13 @@ export function formToRequest(
     status: "final",
   };
   if (f.noValue) {
-    if (!f.absentReason) return { ok: false, problem: STRINGS.vitalReasonNeeded };
+    if (!f.absentReason)
+      return { ok: false, problem: STRINGS.vitalReasonNeeded };
     record.absent_reason = f.absentReason;
   } else {
     const value = parseNumber(f.value);
-    if (value === null) return { ok: false, problem: STRINGS.vitalValueInvalid };
+    if (value === null)
+      return { ok: false, problem: STRINGS.vitalValueInvalid };
     record.value = value;
     record.unit = vital.unit;
   }
@@ -346,7 +379,9 @@ export function formToRequest(
  * The whole record for "entered in error" (the service's PUT takes the whole record): the stored
  * fields unchanged, with only the status changed. Nothing is recomputed, so no value is altered.
  */
-export function enteredInErrorRecord(o: StoredObservation): Record<string, unknown> {
+export function enteredInErrorRecord(
+  o: StoredObservation,
+): Record<string, unknown> {
   const record: Record<string, unknown> = {
     code: o.code,
     effective_at: o.effective_at,
