@@ -6,8 +6,23 @@ templates and structured forms; orders and results with closed-loop follow-up; p
 an external CDS service; care plans, teams, tasks, referrals; scheduling; patient portal; audit, consent,
 break-the-glass; FHIR R4 API, SMART App Launch, CDS Hooks client, HL7 v2 inbound.
 
-**Reach.** The product is for use worldwide. 1.0 ships the base FHIR R4 API plus the UK Core and US Core packs, because
-those are the ones this project can test today; every other country is added as a pack (IO-18) and is not claimed until
+**Reach.** The product is for use worldwide, by countries, regions and federations (a national health service, a state or
+province, a supranational body such as the European Union, a federation of providers).
+
+**Equity rule.** For every standard, protocol, convention or locale the product handles, the capability for one
+jurisdiction is not richer than for another by accident of where the project began. In practice: (1) the **core model is
+neutral** and carries no country's assumption (name order, a single family name, a national identifier, a date or number
+format, a calendar, a currency, a unit system, a first day of the week, a week of rest, a right-to-left script, a postal address shape);
+(2) a country's rules live in a **pack** that a deployment selects (FHIR profiles, terminologies, identifier systems,
+messaging such as HL7 v2 variants or national formats, consent and privacy rules, regulatory text, locale data); (3) the
+**same evidence** is asked of every pack (a validator or test passes, a local reviewer, an honest claim), and an unverified
+pack says so; (4) when two jurisdictions conflict, neither wins silently: the deployment's configuration decides and the
+record keeps the rule that applied; (5) a gap is **named**, with the country it affects, never left as an unlisted default.
+Today the repository is weighted to the UK and US (UK Core, US Core, NHS and HIPAA text, SNOMED CT UK, English strings);
+that is a known imbalance (task IO-19), not a design choice.
+
+ 1.0 ships the base FHIR R4 API plus the UK Core and US Core packs, because
+those are the ones this project can test today; every other country, and every other kind of standard, is added as a pack (IO-18, IO-19) and is not claimed until
 its pack validates. Regulatory text that names one country (for example UK MDR 2002 below, DCB0129, HIPAA) is that
 country's rule, not a universal one; a deployer in another country applies their own.
 

@@ -6,7 +6,10 @@ Planned; nothing here is built yet unless stated. **Built (2026-10-21):** `/fhir
 
 ## National standards
 
-The target is worldwide, so FHIR support means **each country's own standard**, not UK Core and US Core alone.
+The target is worldwide, so FHIR support means **each country's own standard**, not UK Core and US Core alone, under the
+[equity rule](../02-scope.md). The same pack idea covers other protocols: HL7 v2 national variants, CDA and C-CDA, openEHR
+and national messaging, and the federations and exchanges a region runs (for example the European Health Data Space,
+national and state exchanges, and the US TEFCA). Those too are packs, not special cases.
 
 1. **Base is international.** The stored record is base FHIR (R4 today, R5 as a derived read, see below). A country's rules
    are layered on, never baked into the base model.

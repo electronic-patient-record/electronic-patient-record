@@ -972,6 +972,12 @@ what a clinician or a carer sees.
   **Acceptance:** the R5 validator accepts what each route returns; a planted lossy field makes the route fail rather than
   answer; the route and audit-failure censuses cover the new routes; the capability statement says base R5, no UK Core or
   US Core claim. Settles OQ-PA3 for the read side and unblocks PA-9.
+- [ ] **IO-19 (M) — Equity audit: find UK and US assumptions in the core.** Per the equity rule in
+  [`spec/02-scope.md`](spec/02-scope.md). Search the model, API, UI and specs for a country's assumption presented as a
+  default (name shape, identifier, address, date, calendar, unit, script and direction, week, currency, consent and privacy
+  rule, regulatory text) and list each with the countries it excludes and a proposed pack boundary. **Not clinical** to
+  audit; fixing an identifier or name assumption may be **clinical** (wrong-patient risk), so those get a hazard row first (AS-1).
+  **Acceptance:** a table in `spec/` of each finding, its file, who it excludes, and the planned fix or the reason to keep it.
 - [ ] **IO-18 (L) — National FHIR profile packs, worldwide.** Per [`spec/interoperability/index.md`](spec/interoperability/index.md)
   "National standards": a pack describes one country's core guide, terminologies, identifier systems and extensions; a
   deployment enables packs; `metadata` advertises only enabled, validated ones. Start by writing the pack format and

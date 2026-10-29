@@ -4,10 +4,13 @@ Build open-source electronic patient record (EPR) software that is **safe, stand
 
 - **Safe**: an append-only longitudinal record; wrong-patient and missed-result hazards designed against, not patched.
 - **Standards-native**: FHIR R4 is both the data model and the API; SNOMED CT, LOINC and UCUM for codes.
-- **Worldwide**: the target is every country, not the UK alone. UK and US material in this repository is the first
-  worked example, not the boundary. For FHIR, each country's own national standard (its core profiles, terminology and
-  identifiers) is supported as a **national profile pack** ([interoperability](interoperability/index.md), "National
-  standards"). A country is supported when its pack passes that country's validator, and not before.
+- **Worldwide and equitable**: the target is every country, region and federation, not the United States or the United
+  Kingdom alone. UK and US material in this repository is the first worked example, not the boundary. Standards,
+  protocols, conventions and locales get **equitable capability**: no country's way is the built-in default that others
+  must work around, and each is supported through a pluggable pack with the same mechanism and the same evidence rule
+  ([equity rule](02-scope.md), "Reach"). For FHIR that is a **national profile pack** per country
+  ([interoperability](interoperability/index.md), "National standards"). A pack is supported when its own validator or
+  test passes, and not before.
 - **Auditable**: every read and write is recorded; patients can see who accessed their record.
 - **Usable**: designed against documented causes of clinician burnout (documentation burden, alert fatigue, inbox
   load, latency). See [usability](usability/index.md).

@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-29 - Spec: equity across countries, regions and federations (IO-19 planned)
+
+- Widens the previous entry from FHIR to everything: `spec/01-purpose-and-vision.md` "Worldwide and equitable"; `spec/02-scope.md` gains the **Equity rule** (neutral core, country rules in packs, the same evidence for every pack, conflicts decided by configuration and recorded, gaps named) and names regions and federations; `spec/interoperability/index.md` says the pack idea also covers HL7 v2 variants, CDA, openEHR and regional exchanges; `spec/locales.md` says locale data is a pack and lists right-to-left, calendars, name order and plural rules; task IO-19 added (audit the core for UK and US assumptions).
+- **Not done / not verified:** nothing is built or audited; I did not search the code or specs for country assumptions, so the claim that the repository is UK and US weighted rests on the files I have read, not a census; the federations named are from memory and unchecked; the example list of assumptions is not exhaustive; compliance (`spec/12`) and the glossary still read UK-first; no hazard row because no behaviour changed.
+
 ## 2026-10-29 - Spec: worldwide target, national FHIR profile packs (IO-18 planned)
 
 - `spec/01-purpose-and-vision.md` gains "Worldwide"; `spec/02-scope.md` gains "Reach" and says country-named rules (UK MDR, DCB0129, HIPAA) are that country's; `spec/interoperability/index.md` gains "National standards" (base FHIR international; one profile pack per country; supported only when that country's validator passes; terminology not assumed; machine-assembled until a local reviewer); task IO-18 added.
