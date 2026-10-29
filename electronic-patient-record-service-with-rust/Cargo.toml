@@ -51,7 +51,7 @@ authentication-verifier = { version = "0.9.1", default-features = false, feature
 # R4 only (each release is ~135k generated lines).
 hl7 = "0.2.3"
 er7 = "0.2.2"
-fhir = { version = "4.2.4", default-features = false, features = ["r4"] }
+fhir = { version = "4.2.4", default-features = false, features = ["r4", "r5"] }
 snomed = "0.56.1"
 
 [dev-dependencies]

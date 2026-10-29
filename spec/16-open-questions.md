@@ -21,7 +21,7 @@
 | OQ-M3 | Do we build closed-loop barcode scanning ourselves or integrate a wristband and drug-barcode service? (EM-2) | maintainer |
 | OQ-PA1 | Does the EPR defer to the Patient Administration System (PAS), keep a minimal scheduler behind a port, or neither? **Proposed 2026-10-23, not yet confirmed by the maintainer: a minimal scheduler behind a scheduling port the PAS can implement** (PA-1, plan.md §18.2; the split is in `spec/02-scope.md`) | maintainer |
 | OQ-PA2 | Which system owns the person identity, and how does a merge reach the PAS? (PA-2) | maintainer |
-| OQ-PA3 | FHIR R4 or R5 at the PAS boundary, and who builds the edge? (PA-9; IO-16 proposes a read-only R5 facade derived from R4) | maintainer |
+| OQ-PA3 | FHIR R4 or R5 at the PAS boundary, and who builds the edge? (PA-9; IO-16 built the read-only R5 facade derived from R4 on 2026-10-29; the write side and the PAS mapping stay open) | maintainer |
 | OQ-PA4 | Do the SNOMED CT UK acuity concepts the PAS cites exist and mean what it says? (PA-10) | maintainer |
 | OQ-E1 | Does the EPR own resuscitation status (DNACPR or ReSPECT) and show it in the banner, or read it from a shared care record? Recommendation: a read-only copy with its source and date. (EC-5) | maintainer |
 | OQ-E2 | How is an unidentified patient's record joined to the real record later? Recommendation: a merge with a reason, never an automatic link. (EC-2) | maintainer |

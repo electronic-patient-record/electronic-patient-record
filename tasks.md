@@ -965,7 +965,7 @@ what a clinician or a carer sees.
   what it displays.
   **Acceptance:** a duplicate event changes nothing, a cancelled appointment disappears from the worklist, and a stale
   feed is shown as stale.
-- [ ] **IO-16 (L) — Read-only FHIR R5 facade.** Per [`spec/interoperability/index.md`](spec/interoperability/index.md) "FHIR R5":
+- [x] **IO-16 (L) — Read-only FHIR R5 facade.** **Landed 2026-10-29 (H-037, `controllers/fhir_r5.rs`):** the five read routes, derived from the R4 handlers, loss or warning fails the response, one hand-mapped retyping (`reaction.manifestation`), `self` link on search sets, the HL7 validator accepts every converted body against 5.0.0 in CI. **Not done:** IO-17 (the differences were not read from the specification), AuditEvent, Consent and Provenance in R5, any R5 write, the `fhirVersion` rule on R4, a partner reading it. Original: Per [`spec/interoperability/index.md`](spec/interoperability/index.md) "FHIR R5":
   `/fhir/R5/metadata`, `Patient`, `AllergyIntolerance` and `Observation` reads, derived from the stored R4 resource with the
   `fhir` crate's `convert::between::<R4, R5>`; a loss report on a clinical resource fails the response; policy rows, audit
   and the amendment notice as for R4; `fhir` gets the `r5` feature. **Clinical-impact:** a hazard row first.

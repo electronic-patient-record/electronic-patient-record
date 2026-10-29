@@ -7,6 +7,7 @@
 | `/api/patients`, `/api/patients/{id}` | CRUD | planned (ID-3) |
 | `/api/audit` | GET | planned (AU-2) |
 | `/fhir/R4/metadata` | GET | built; a CapabilityStatement whose resource types and interactions are generated from the mounted routes (parses as FHIR R4); the notes and search parameters on each are written by hand |
+| `/fhir/R5/metadata`, `/fhir/R5/Patient`, `/fhir/R5/Patient/{id}`, `/fhir/R5/AllergyIntolerance`, `/fhir/R5/Observation` | GET | built (IO-16); a read-only R5 view derived from the R4 answer, base R5 with no UK Core or US Core claim; see [interoperability](interoperability/index.md) "FHIR R5" |
 | `/fhir/R4/{Type}` and `/{id}`, `_history`, `$everything`, `$export`, `Patient/$match`, `$summary` | | planned (RC-, IO-) |
 | `/.well-known/smart-configuration` | GET | planned (IO-2) |
 

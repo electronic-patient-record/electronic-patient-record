@@ -38,7 +38,7 @@ const FHIR_JSON: &str = "application/fhir+json; charset=utf-8";
 const BASE: &str = "/fhir/R4";
 
 /// A FHIR resource as a response, with a weak `ETag` for the version when it is one patient.
-fn fhir(status: StatusCode, body: &serde_json::Value, version: Option<i32>) -> Response {
+pub(super) fn fhir(status: StatusCode, body: &serde_json::Value, version: Option<i32>) -> Response {
     let mut response = (status, body.to_string()).into_response();
     let headers = response.headers_mut();
     headers.insert(header::CONTENT_TYPE, HeaderValue::from_static(FHIR_JSON));
@@ -51,7 +51,7 @@ fn fhir(status: StatusCode, body: &serde_json::Value, version: Option<i32>) -> R
 }
 
 /// An `OperationOutcome` with one issue.
-fn outcome(status: StatusCode, code: &str, diagnostics: &str) -> Response {
+pub(super) fn outcome(status: StatusCode, code: &str, diagnostics: &str) -> Response {
     let severity = if status.is_server_error() {
         "fatal"
     } else {
@@ -304,7 +304,7 @@ fn patient_from(
     Ok(read.patient)
 }
 
-async fn read_patient(
+pub(super) async fn read_patient(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
     Extension(subject): Extension<Subject>,
@@ -317,7 +317,7 @@ async fn read_patient(
     one(r, StatusCode::OK, false)
 }
 
-async fn search_patients(
+pub(super) async fn search_patients(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
     Extension(subject): Extension<Subject>,
@@ -587,7 +587,7 @@ fn allergy_bundle(patient: &str, body: &serde_json::Value) -> Result<serde_json:
 
 /// `GET /fhir/R4/AllergyIntolerance?patient=` : the same handler, so the same gate, care
 /// relationship, purpose of use, consent and audit row as `/api/patients/{id}/allergies`.
-async fn search_allergies(
+pub(super) async fn search_allergies(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
     Extension(subject): Extension<Subject>,
@@ -673,7 +673,7 @@ fn observation_bundle(
 
 /// `GET /fhir/R4/Observation?patient=` : the same service function, so the same gate, care
 /// relationship, purpose of use, consent and audit row as `/api/patients/{id}/observations`.
-async fn search_observations(
+pub(super) async fn search_observations(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
     Extension(subject): Extension<Subject>,
@@ -1435,5 +1435,103 @@ mod tests {
         .unwrap();
         assert!(new.get("active").is_none());
         assert_eq!(new["link"][0]["type"], "replaces");
+    }
+
+    /// What `/fhir/R5` serves is these same bodies converted (IO-16). Each must convert with no loss
+    /// and no warning, or the route would answer 500 for a real record.
+    fn r5_of(r4: &serde_json::Value) -> serde_json::Value {
+        match super::super::fhir_r5::to_r5(r4, "/fhir/R5/x") {
+            Ok(v) => v,
+            Err(e) => panic!("the R4 body does not convert to R5 without loss: {e:?}\n{r4}"),
+        }
+    }
+
+    #[test]
+    fn the_allergy_bundle_converts_to_r5_and_keeps_the_reaction_and_the_status() {
+        let body = allergy_body(
+            serde_json::json!({ "state": "active", "items": [] }),
+            "active",
+        );
+        let mut body = body;
+        body["allergies"][0]["allergy"]["reaction"] = serde_json::json!("rash");
+        let b = r5_of(&allergy_bundle("P1", &body).unwrap());
+        let a = &b["entry"][0]["resource"];
+        assert_eq!(
+            a["reaction"][0]["manifestation"][0]["concept"]["text"],
+            "rash"
+        );
+        assert_eq!(a["clinicalStatus"]["coding"][0]["code"], "active");
+        assert_eq!(a["code"]["text"], "Penicillin");
+    }
+
+    #[test]
+    fn the_no_known_allergies_statement_and_the_not_recorded_warning_survive_r5() {
+        let none = serde_json::json!({
+            "allergies": [],
+            "summary": { "state": "no-known", "asserted_at": "2026-10-21T09:30:00Z", "asserted_by": "x" },
+        });
+        let b = r5_of(&allergy_bundle("P1", &none).unwrap());
+        assert_eq!(
+            b["entry"][0]["resource"]["code"]["coding"][0]["code"],
+            "716186003"
+        );
+        let mut absent = allergy_body(serde_json::json!({ "state": "not-recorded" }), "active");
+        absent["allergies"] = serde_json::json!([]);
+        let b = r5_of(&allergy_bundle("P1", &absent).unwrap());
+        let said =
+            b["entry"].as_array().unwrap().last().unwrap()["resource"]["issue"][0]["diagnostics"]
+                .as_str()
+                .unwrap()
+                .to_string();
+        assert!(said.contains("does not mean"), "{said}");
+    }
+
+    #[test]
+    fn an_observation_bundle_converts_to_r5_with_its_value_unit_and_a_warning_when_empty() {
+        use crate::observations_store::Status;
+        let b = r5_of(
+            &observation_bundle("P1", &[observation(Status::Final)], &Default::default()).unwrap(),
+        );
+        let o = &b["entry"][0]["resource"];
+        assert_eq!(o["valueQuantity"]["value"], 71.0);
+        assert_eq!(o["valueQuantity"]["unit"], "/min");
+        let b = r5_of(&observation_bundle("P1", &[], &Default::default()).unwrap());
+        assert!(b.to_string().contains("does not mean"));
+    }
+
+    #[test]
+    fn a_patient_with_a_merge_link_converts_to_r5() {
+        let json = with_links(
+            patient_json(&stored("p1", "Smith")).unwrap(),
+            Some("p2"),
+            &["p0".to_string()],
+        )
+        .unwrap();
+        let r5 = r5_of(&json);
+        assert_eq!(r5["active"], false);
+        assert_eq!(r5["link"][0]["type"], "replaced-by");
+        assert_eq!(r5["name"][0]["family"], "Smith");
+    }
+
+    #[test]
+    fn a_range_and_an_amendment_notice_survive_the_conversion_to_r5() {
+        use crate::amendment::Notice;
+        use crate::observations::Range;
+        use crate::observations_store::Status;
+        let mut o = observation(Status::Final);
+        o.record.range = Some(Range {
+            low: Some(60.0),
+            high: Some(100.0),
+        });
+        let mut notices = std::collections::BTreeMap::new();
+        notices.insert(o.id.clone(), vec![Notice::Pending]);
+        let b = r5_of(&observation_bundle("P1", &[o], &notices).unwrap());
+        let r = &b["entry"][0]["resource"];
+        assert_eq!(r["referenceRange"][0]["low"]["value"], 60.0);
+        assert_eq!(r["referenceRange"][0]["high"]["value"], 100.0);
+        assert!(
+            r.to_string().to_lowercase().contains("amend") || r["note"].is_array(),
+            "{r}"
+        );
     }
 }

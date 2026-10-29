@@ -67,7 +67,7 @@ jobs:
       - run: cargo test --workspace --locked
 
   fhir-validator:
-    name: FHIR validator (what the API writes, base R4)
+    name: FHIR validator (what the API writes, base R4 and R5)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

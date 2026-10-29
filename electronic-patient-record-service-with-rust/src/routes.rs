@@ -130,6 +130,36 @@ pub const TABLE: &[(&str, &str, Resource, Action)] = &[
     ),
     (
         "GET",
+        "/fhir/R5/metadata",
+        Resource::PatientIdentity,
+        Action::Read,
+    ),
+    (
+        "GET",
+        "/fhir/R5/Patient",
+        Resource::PatientIdentity,
+        Action::Search,
+    ),
+    (
+        "GET",
+        "/fhir/R5/Patient/{id}",
+        Resource::PatientIdentity,
+        Action::Read,
+    ),
+    (
+        "GET",
+        "/fhir/R5/AllergyIntolerance",
+        Resource::AllergyIntolerance,
+        Action::Read,
+    ),
+    (
+        "GET",
+        "/fhir/R5/Observation",
+        Resource::Observation,
+        Action::Read,
+    ),
+    (
+        "GET",
         "/fhir/R4/AllergyIntolerance",
         Resource::AllergyIntolerance,
         Action::Read,

@@ -1903,6 +1903,7 @@ dependencies = [
  "fhir-core",
  "fhir-derive-macros",
  "fhir-r4",
+ "fhir-r5",
  "indoc",
  "serde",
  "serde_json",
@@ -1939,6 +1940,21 @@ version = "4.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8e0da81442ac5e821075b5684709aca0557209499b4844713e8e3576a22dcfb4"
 dependencies = [
+ "fhir-core",
+ "fhir-derive-macros",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "vec1",
+]
+
+[[package]]
+name = "fhir-r5"
+version = "4.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6f282191c7d5f9c5c0ce2825e8141c65d857ef525a7fafadafa2d93dc4c314c"
+dependencies = [
+ "convert_case",
  "fhir-core",
  "fhir-derive-macros",
  "serde",

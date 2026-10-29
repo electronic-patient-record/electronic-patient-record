@@ -306,6 +306,51 @@ async fn who_may_record_read_and_retract_an_observation() {
             );
         }
 
+        // The R5 view is the same decision, the same audit row and the same refusals, converted (IO-16).
+        let r5_url = format!("/fhir/R5/Observation?patient={pid}");
+        let r5 = server.get(&r5_url).add_header(ch.clone(), cv.clone()).await;
+        assert_eq!(r5.status_code(), StatusCode::OK, "{}", r5.text());
+        let r5: Value = r5.json();
+        assert_eq!(r5["entry"][0]["resource"]["valueQuantity"]["value"], 71.37);
+        assert_eq!(r5["entry"][0]["resource"]["interpretation"][0]["coding"][0]["code"], "N");
+        assert_eq!(r5["link"][0]["relation"], "self");
+        assert!(r5["entry"][0]["fullUrl"].as_str().unwrap().starts_with("/fhir/R5/Observation/"), "{r5}");
+        for (who_h, who_v) in [(rh.clone(), rv.clone()), (ph.clone(), pv.clone())] {
+            assert_eq!(
+                server.get(&r5_url).add_header(who_h, who_v).await.status_code(),
+                StatusCode::FORBIDDEN
+            );
+        }
+        let denied = server
+            .get(&format!("/fhir/R5/Observation?patient={sid}"))
+            .add_header(ch.clone(), cv.clone())
+            .await;
+        assert_eq!(denied.status_code(), StatusCode::FORBIDDEN);
+        assert!(denied.text().contains("does not mean"), "{}", denied.text());
+        // Another release asked for in Accept is refused, never answered in this one; writes are not served.
+        let asked = server
+            .get(&r5_url)
+            .add_header(ch.clone(), cv.clone())
+            .add_header(HeaderName::from_static("accept"), HeaderValue::from_static("application/fhir+json; fhirVersion=4.0"))
+            .await;
+        assert_eq!(asked.status_code(), StatusCode::NOT_ACCEPTABLE);
+        let meta = server.get("/fhir/R5/metadata").add_header(ch.clone(), cv.clone()).await;
+        assert_eq!(meta.status_code(), StatusCode::OK);
+        assert_eq!(meta.json::<Value>()["fhirVersion"], "5.0.0");
+        for write in [
+            server.post("/fhir/R5/Patient").add_header(ch.clone(), cv.clone()).json(&json!({})).await,
+            server.put(&format!("/fhir/R5/Patient/{pid}")).add_header(ch.clone(), cv.clone()).json(&json!({})).await,
+        ] {
+            assert!(
+                matches!(write.status_code(), StatusCode::FORBIDDEN | StatusCode::METHOD_NOT_ALLOWED | StatusCode::NOT_FOUND),
+                "{}",
+                write.status_code()
+            );
+        }
+        let patient = server.get(&format!("/fhir/R5/Patient/{pid}")).add_header(ch.clone(), cv.clone()).await;
+        assert_eq!(patient.status_code(), StatusCode::OK, "{}", patient.text());
+        assert_eq!(patient.json::<Value>()["resourceType"], "Patient");
+
         // The history keeps every version, oldest first, with its reason; the retraction does not hide
         // the values it replaced. The same access decision as the list applies.
         let versions_url = format!("{url}/{nurse_id}/versions");

@@ -8,6 +8,7 @@ mod common;
 pub mod consents;
 pub mod feed;
 pub mod fhir;
+pub mod fhir_r5;
 pub mod hazards;
 pub mod links;
 pub mod me;
@@ -29,6 +30,7 @@ pub fn all_routes() -> AppRoutes {
         .add_route(me::routes())
         .add_route(metrics::routes())
         .add_route(fhir::routes())
+        .add_route(fhir_r5::routes())
         .add_route(feed::routes())
         .add_route(break_glass::routes())
         .add_route(hazards::routes())

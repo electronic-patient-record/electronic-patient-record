@@ -208,17 +208,27 @@ fn jar() -> PathBuf {
 static ONE_AT_A_TIME: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 fn validate(jar: &Path, files: &[PathBuf]) -> (bool, String) {
+    validate_as(jar, "4.0.1", true, files)
+}
+
+/// `version` is the release to check against. The amendment-notice extension is loaded for both: it is
+/// the same definition, and R5 needs it to know the extension the notice carries.
+fn validate_as(jar: &Path, version: &str, with_profile: bool, files: &[PathBuf]) -> (bool, String) {
     let _turn = ONE_AT_A_TIME
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let out = Command::new("java")
+    let mut command = Command::new("java");
+    command
         .arg("-jar")
         .arg(jar)
-        .args(["-version", "4.0.1", "-tx", "n/a", "-ig"])
-        .arg(concat!(
+        .args(["-version", version, "-tx", "n/a"]);
+    if with_profile {
+        command.arg("-ig").arg(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/fhir/StructureDefinition-amendment-notice.json"
-        ))
+        ));
+    }
+    let out = command
         .args(files)
         .output()
         .expect("java must be on the PATH");
@@ -265,4 +275,53 @@ fn fhir_validator_refuses_a_broken_patient() {
     std::fs::write(&path, v.to_string()).unwrap();
     let (ok, text) = validate(&jar, &[path]);
     assert!(!ok, "the broken patient passed:\n{text}");
+}
+
+/// `/fhir/R5` serves the R4 body converted (IO-16). Every resource it can serve is converted exactly
+/// as the route does and checked against base R5 (5.0.0). `AuditEvent` is not served in R5.
+#[test]
+#[ignore = "needs Java and the validator jar: set FHIR_VALIDATOR_JAR"]
+fn fhir_validator_accepts_every_resource_the_r5_facade_serves() {
+    let jar = jar();
+    let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("fhir-validator-r5");
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut files = Vec::new();
+    for (name, v) in resources() {
+        if name == "audit-event" {
+            continue;
+        }
+        let converted = electronic_patient_record::controllers::fhir_r5::to_r5(
+            &v,
+            "/fhir/R5/Patient?family=Smith",
+        )
+        .unwrap_or_else(|e| panic!("{name} does not convert to R5 without loss: {e:?}"));
+        let path = dir.join(format!("{name}.json"));
+        std::fs::write(&path, serde_json::to_string_pretty(&converted).unwrap()).unwrap();
+        files.push(path);
+    }
+    let (ok, text) = validate_as(&jar, "5.0.0", true, &files);
+    assert!(ok, "the validator reported errors:\n{text}");
+    assert!(
+        !text.contains("Error @"),
+        "the validator reported errors:\n{text}"
+    );
+}
+
+/// A control for the R5 run: the oracle must be able to fail on R5.
+#[test]
+#[ignore = "needs Java and the validator jar: set FHIR_VALIDATOR_JAR"]
+fn fhir_validator_refuses_a_broken_r5_patient() {
+    let jar = jar();
+    let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("fhir-validator-r5");
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut v = value(&fhir_patient::to_fhir(&patient()).unwrap());
+    v["gender"] = json!("not-a-code");
+    let mut converted =
+        electronic_patient_record::controllers::fhir_r5::to_r5(&v, "/fhir/R5/Patient?family=Smith")
+            .unwrap();
+    converted["noSuchElement"] = json!(true);
+    let path = dir.join("broken-patient.json");
+    std::fs::write(&path, converted.to_string()).unwrap();
+    let (ok, text) = validate_as(&jar, "5.0.0", true, &[path]);
+    assert!(!ok, "the broken R5 patient passed:\n{text}");
 }

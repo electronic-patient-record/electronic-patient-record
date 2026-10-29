@@ -8,9 +8,17 @@ Planned; nothing here is built yet unless stated. **Built (2026-10-21):** `/fhir
 
 R4 (4.0.1) stays the baseline: it is what UK Core and US Core track. R5 (5.0.0) is added as a **second, read-only facade at
 `/fhir/R5`**, built from the same stored record, so that a partner that speaks R5 (the patient administration system does,
-OQ-PA3) does not need its own edge. Planned; **nothing of it is built.** The `/api` rule against version segments does not
+OQ-PA3) does not need its own edge. Planned here, and **the read side is built (see below).** The `/api` rule against version segments does not
 apply: that rule is about the application API, which versions by the `Accepts-version` header, and FHIR already carries its
 release in the path (`/fhir/R4`).
+
+**Built 2026-10-29 (IO-16), read side only:** `GET /fhir/R5/metadata`, `Patient` (search and read by id),
+`AllergyIntolerance` and `Observation` (search by patient). Each route calls its R4 twin and converts the body, so the gate,
+care relationship, purpose, consent and audit row are the R4 ones. The conversion fails the response (500 outcome, no value
+named) if it reports any loss or warning; one retyping is mapped by hand (`AllergyIntolerance.reaction.manifestation`, a
+`CodeableConcept` in R4, a `CodeableReference` in R5, so the R4 value goes in `concept`) and any other is still a failure.
+A search set gets the `self` link R5 requires (bdl-18). Not built: `AuditEvent`, `Consent`, `Provenance`, any write,
+`fhirVersion` negotiation on R4, and the check of the differences table below (IO-17).
 
 **Rules**
 
