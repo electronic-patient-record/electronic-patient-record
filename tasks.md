@@ -972,7 +972,15 @@ what a clinician or a carer sees.
   **Acceptance:** the R5 validator accepts what each route returns; a planted lossy field makes the route fail rather than
   answer; the route and audit-failure censuses cover the new routes; the capability statement says base R5, no UK Core or
   US Core claim. Settles OQ-PA3 for the read side and unblocks PA-9.
-- [ ] **IO-17 (S) — Check R5 against the specification.** Read the R4 to R5 differences for Patient, AllergyIntolerance,
+- [ ] **IO-18 (L) — National FHIR profile packs, worldwide.** Per [`spec/interoperability/index.md`](spec/interoperability/index.md)
+  "National standards": a pack describes one country's core guide, terminologies, identifier systems and extensions; a
+  deployment enables packs; `metadata` advertises only enabled, validated ones. Start by writing the pack format and
+  moving the existing UK Core and US Core references into it, then survey which countries publish a FHIR core guide.
+  **Clinical** (identifiers and codes decide which patient and which allergy a clinician sees): add a hazard row first (AS-1).
+  **Acceptance:** two packs (UK Core, US Core) load from the same format; the HL7 validator passes each with a control that
+  fails; a deployment with neither pack advertises base FHIR only; a survey table lists each country, its guide, its
+  version and a link, with unverified rows marked.
+- [ ] **IO-17 (S) — Check R5 against the specification.** **Landed 2026-10-29 in part:** the table now follows the HL7 R5 differences page for the six resources, `fhirVersion` is read (no status code for an unsupported version), and no UK Core or US Core R5 was found. **Not met:** Subscriptions is still `[uncertain]`; the page was read through a summariser, not line by line. Left open. Original: Read the R4 to R5 differences for Patient, AllergyIntolerance,
   Observation, AuditEvent, Consent and Provenance from the HL7 cross-version pages and fix the table in the spec; confirm
   whether UK Core or US Core has an R5 release; confirm the `fhirVersion` content-negotiation rule.
   **Acceptance:** every `[uncertain]` mark in that table is resolved with a link.

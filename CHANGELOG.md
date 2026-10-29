@@ -2,6 +2,16 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-29 - Spec: worldwide target, national FHIR profile packs (IO-18 planned)
+
+- `spec/01-purpose-and-vision.md` gains "Worldwide"; `spec/02-scope.md` gains "Reach" and says country-named rules (UK MDR, DCB0129, HIPAA) are that country's; `spec/interoperability/index.md` gains "National standards" (base FHIR international; one profile pack per country; supported only when that country's validator passes; terminology not assumed; machine-assembled until a local reviewer); task IO-18 added.
+- **Not done / not verified:** nothing is built, no pack mechanism exists; the example country guides are from memory and unchecked; the existing `metadata` still names UK Core and US Core only; other specs (compliance, glossary, roadmap) still read UK-first and were not revised; no hazard row yet because no behaviour changed; translations and locale work (`spec/locales.md`) were not touched.
+
+## 2026-10-29 - Spec: R5 differences read from HL7 (IO-17, in part)
+
+- `spec/interoperability/index.md`: the R4 to R5 table is replaced by the differences HL7 lists for Patient, AllergyIntolerance, Observation, AuditEvent, Consent and Provenance (<https://hl7.org/fhir/R5/diff.html>). New finding: R5 `AllergyIntolerance` deletes `recorder` and `asserter` for `participant`. `fhirVersion` rule written down: HL7 gives no status code for an unsupported version, so our 406 is a choice. No R5 release of UK Core (R4 line) or US Core 9.0.0 (R4) found.
+- **Not done / not verified:** Subscriptions still `[uncertain]`; the pages were read through a summarising fetch tool, not line by line; no code changed, so whether the converter handles `participant` for an allergy with a recorder is untested; the earlier note that the service's allergy `recorder` survives conversion is unchecked; no hazard row, no behaviour change. IO-17 stays open.
+
 ## 2026-10-29 - Service: read-only FHIR R5 facade (IO-16)
 
 - **Built:** `controllers/fhir_r5.rs` and five routes under `/fhir/R5` (`metadata`, `Patient`, `Patient/{id}`, `AllergyIntolerance`, `Observation`), each with a policy row. A route calls its R4 handler and converts the body with `fhir::convert::between::<R4, R5>` (`fhir` gets the `r5` feature); any loss or warning on anything but an `OperationOutcome` is a 500 outcome that names no value; `reaction.manifestation` is mapped by hand to a `CodeableReference`; a search set gets a `self` link; links are rebased to `/fhir/R5`; an `Accept` with another `fhirVersion` is 406. H-037 added (open, unreviewed).

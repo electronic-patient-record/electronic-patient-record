@@ -39,7 +39,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | SE | 3 | 9 |
 | DO | 0 | 8 |
 | OR | 0 | 9 |
-| IO | 1 | 16 |
+| IO | 1 | 17 |
 | CA | 0 | 8 |
 | AS | 0 | 18 |
 | CQ | 24 | 15 |
@@ -48,6 +48,6 @@ no network, database or compilation; counts are source lines, not test runs):
 | EM | 0 | 16 |
 | PA | 1 | 16 |
 | EC | 0 | 13 |
-| **Total** | **40** | **173** |
+| **Total** | **40** | **174** |
 
 <!-- generated:end -->
