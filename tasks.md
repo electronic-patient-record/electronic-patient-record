@@ -972,7 +972,7 @@ what a clinician or a carer sees.
   **Acceptance:** the R5 validator accepts what each route returns; a planted lossy field makes the route fail rather than
   answer; the route and audit-failure censuses cover the new routes; the capability statement says base R5, no UK Core or
   US Core claim. Settles OQ-PA3 for the read side and unblocks PA-9.
-- [ ] **IO-19 (M) — Equity audit: find UK and US assumptions in the core.** Per the equity rule in
+- [ ] **IO-19 (M) — Equity audit: find UK and US assumptions in the core.** **Landed 2026-10-29 in part:** [`spec/equity-audit.md`](spec/equity-audit.md) lists 13 findings from a keyword search. **Not met:** not a census; no finding is fixed; the compliance and terminology rows were not re-read. Left open. Original: Per the equity rule in
   [`spec/02-scope.md`](spec/02-scope.md). Search the model, API, UI and specs for a country's assumption presented as a
   default (name shape, identifier, address, date, calendar, unit, script and direction, week, currency, consent and privacy
   rule, regulatory text) and list each with the countries it excludes and a proposed pack boundary. **Not clinical** to

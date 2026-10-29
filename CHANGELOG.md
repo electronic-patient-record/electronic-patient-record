@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-29 - Spec: equity audit of the core (IO-19, in part)
+
+- New `spec/equity-audit.md`: 13 findings, each with file, who is excluded, a proposed pack boundary and whether it is clinical. Largest: the NHS number is the only deterministic identifier in the matcher; the phone default is 44; names are one family string plus ordered givens; Soundex and nicknames are English-oriented; units are one fixed table; only English strings exist and right-to-left is a one-entry list.
+- **Not done / not verified:** found by keyword search, not a census; no code changed, so none is fixed; the compliance and terminology rows were not re-read; example countries and laws are from memory. Row 8 (access-log zone label) was first misread as a US date format and corrected after reading the function; other date displays were not read. Several rows are clinical and need a hazard row before a fix. IO-19 stays open.
+
 ## 2026-10-29 - Spec: equity across countries, regions and federations (IO-19 planned)
 
 - Widens the previous entry from FHIR to everything: `spec/01-purpose-and-vision.md` "Worldwide and equitable"; `spec/02-scope.md` gains the **Equity rule** (neutral core, country rules in packs, the same evidence for every pack, conflicts decided by configuration and recorded, gaps named) and names regions and federations; `spec/interoperability/index.md` says the pack idea also covers HL7 v2 variants, CDA, openEHR and regional exchanges; `spec/locales.md` says locale data is a pack and lists right-to-left, calendars, name order and plural rules; task IO-19 added (audit the core for UK and US assumptions).
