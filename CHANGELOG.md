@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-30 - Spec: architecture status re-read (OS-9, in part)
+
+- **Changed:** `spec/08-architecture.md` called the FHIR facade and the policy engine "planned" and listed only the M0 shell as built; both are in `src/` (`controllers/fhir.rs`, `fhir_r5.rs`, `policy.rs`, `authz.rs`), as are consent, break-glass, the audit chain and the ADT feed. The diagram and closing sentence now say so.
+- **Not done / not verified:** only the "planned" and "built" claims in section 8 were checked, by file existence; whether every route is policy-checked and audited was not traced; other spec files were not re-read; no code changed.
+
 ## 2026-10-30 - Governance: code of conduct (OS-14)
 
 - **Built:** `CODE_OF_CONDUCT.md`, the Contributor Covenant 2.1 text fetched from contributor-covenant.org, with the one placeholder filled: reports go to the maintainer's address (the one `SECURITY.md` already publishes) with the subject `CONDUCT: electronic-patient-record`. `CONTRIBUTING.md` and `GOVERNANCE.md` link to it; `llms.txt` and `llms.json` list it.
