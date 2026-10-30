@@ -61,6 +61,8 @@ COPY --from=builder --chown=epr:epr \
     /app/electronic-patient-record
 # loco reads config/<LOCO_ENV>.yaml at run time (it is not baked into the binary).
 COPY --chown=epr:epr electronic-patient-record-service-with-rust/config ./config
+# Country packs (OS-10): data the service reads at start from EPR_PACKS_DIR (default packs). None is enabled unless EPR_PACKS names it.
+COPY --chown=epr:epr packs ./packs
 RUN chown -R epr:epr /app
 
 USER epr
