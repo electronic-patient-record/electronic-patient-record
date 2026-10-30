@@ -1,6 +1,8 @@
 ## 7. Non-Functional Requirements
 
-Targets, not measurements. Nothing here has been measured yet.
+Targets, not measurements. Nothing here has been measured yet. Where the field stands on each is in
+[`benchmark.md`](benchmark.md) (2026-10-30): NFR-2 has first numbers but not for a chart or a typeahead ([BENCHMARKS.md](../BENCHMARKS.md), OS-5), NFR-3's stateless tier is true of the UI only when `EPR_SESSION_REDIS_URL` is set
+(OS-8, built, not run behind two replicas), NFR-6's rate limiting does not exist (OS-2), NFR-8's OTLP is not built and waits on OQ-OS4, though a labelled request-duration histogram is served at `/metrics` (OS-6).
 
 - **NFR-1 Safety.** Hazard log before shipping (DCB0129 shape); no automatic patient link on missing evidence.
 - **NFR-2 Performance.** Chart open p95 ≤ 1 s; patient search/typeahead p95 ≤ 200 ms; order sign p95 ≤ 2 s; FHIR

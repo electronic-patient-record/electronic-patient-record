@@ -16,7 +16,8 @@
 //! [`crate::policy`]. With login off there is no subject and no authorization either; that is
 //! for development only and the service refuses to start that way in production.
 //!
-//! Not built yet: consent, break-the-glass grants, record-level decisions. See tasks SE-2 to SE-4.
+//! Consent (`consent.rs`), break-the-glass (`break_glass.rs`) and record-level decisions (`policy.rs`) are
+//! built; what is still open is listed under tasks SE-2 to SE-4.
 
 use crate::policy::Subject;
 use authentication_verifier::Verifier;

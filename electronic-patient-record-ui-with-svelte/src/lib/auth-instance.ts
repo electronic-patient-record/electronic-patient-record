@@ -5,9 +5,52 @@ import type { Cookies } from "@sveltejs/kit";
 import { Auth } from "./auth.js";
 import { DEFAULT_LOCALE, normalizeLocale, type Locale } from "./locales.js";
 import { loadOidcConfig } from "./oidc.js";
+import { createClient } from "redis";
+import {
+  MemoryBackend,
+  RedisBackend,
+  type SessionBackend,
+} from "./session-backends.js";
+import { parseKey } from "./session-crypto.js";
 import { SessionStore, type Session } from "./session.js";
 
 let instance: Auth | null | undefined;
+
+/**
+ * Memory unless `EPR_SESSION_REDIS_URL` is set. Redis needs `EPR_SESSION_ENCRYPTION_KEY` too (32
+ * bytes, base64): tokens are encrypted before they leave this process. Half a setting stops startup.
+ */
+export function backendFrom(
+  redisUrl: string,
+  encryptionKey: string,
+): SessionBackend {
+  if (!redisUrl) {
+    if (encryptionKey)
+      throw new Error(
+        "EPR_SESSION_ENCRYPTION_KEY is set without EPR_SESSION_REDIS_URL",
+      );
+    return new MemoryBackend();
+  }
+  if (!encryptionKey)
+    throw new Error("EPR_SESSION_REDIS_URL needs EPR_SESSION_ENCRYPTION_KEY");
+  const key = parseKey(encryptionKey);
+  const client = createClient({ url: redisUrl });
+  client.on("error", (e) => console.error("session store (Redis):", e.message));
+  let connecting: Promise<unknown> | null = null;
+  const ready = async () => {
+    connecting ??= client.connect();
+    await connecting;
+  };
+  return new RedisBackend(
+    {
+      get: async (k) => (await ready(), client.get(k)),
+      set: async (k, v, o) => (await ready(), client.set(k, v, o)),
+      getDel: async (k) => (await ready(), client.getDel(k)),
+      del: async (k) => (await ready(), client.del(k)),
+    },
+    key,
+  );
+}
 
 export function getAuth(): Auth | null {
   if (instance === undefined) {
@@ -21,7 +64,15 @@ export function getAuth(): Auth | null {
     instance = config
       ? new Auth(
           config,
-          new SessionStore(config.idleSeconds, config.absoluteSeconds),
+          new SessionStore(
+            config.idleSeconds,
+            config.absoluteSeconds,
+            undefined,
+            backendFrom(
+              env.EPR_SESSION_REDIS_URL,
+              env.EPR_SESSION_ENCRYPTION_KEY,
+            ),
+          ),
         )
       : null;
   }
@@ -36,15 +87,23 @@ export function cookieName(base: string, secure: boolean): string {
 export const SESSION_COOKIE = "epr_session";
 export const LOGIN_COOKIE = "epr_login";
 
-export function sessionFrom(
+export async function sessionFrom(
   auth: Auth | null,
   cookies: Cookies,
   secure: boolean,
   options: { activity?: boolean } = {},
-): Session | null {
-  return auth
-    ? auth.store.get(cookies.get(cookieName(SESSION_COOKIE, secure)), options)
-    : null;
+): Promise<Session | null> {
+  if (!auth) return null;
+  try {
+    return await auth.store.get(
+      cookies.get(cookieName(SESSION_COOKIE, secure)),
+      options,
+    );
+  } catch (e) {
+    // The shared store is unreachable: show the reader as signed out, but delete nothing.
+    console.error("session lookup failed:", e instanceof Error ? e.message : e);
+    return null;
+  }
 }
 
 /**

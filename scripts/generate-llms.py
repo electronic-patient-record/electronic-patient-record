@@ -58,6 +58,7 @@ SECTIONS = [
         ("Persistence", "spec/10-persistence.md", "Append-only tables and audit triggers."),
         ("Testing strategy", "spec/11-testing-strategy.md", "Gates, census tests, oracles."),
         ("Compliance", "spec/12-compliance.md", "The regulatory position and what is not claimed."),
+        ("Benchmark", "spec/benchmark.md", "Where the repository stands against open-source EPR, EHR and FHIR systems."),
         ("Roadmap", "spec/15-roadmap.md", "Milestones M0 onward."),
         ("Open questions", "spec/16-open-questions.md", "Decisions that need a maintainer, a clinician or the Clinical Safety Officer."),
         ("Plan", "plan.md", "The long plan behind the task queue."),
@@ -82,6 +83,7 @@ SECTIONS = [
 ]
 OPTIONAL = [
     ("Contributing", "CONTRIBUTING.md", "How to contribute."),
+    ("Code of conduct", "CODE_OF_CONDUCT.md", "Contributor Covenant 2.1 and how to report."),
     ("AI statement", "AI_STATEMENT.md", "How AI is used in this project."),
     ("RFC", "RFC.md", "Request for comments."),
     ("News", "NEWS.md", "Project news."),

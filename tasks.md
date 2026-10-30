@@ -24,6 +24,7 @@ IDs are grouped by prefix so they do not collide with the numbered build-out in
 | `EM-` | Typical EPR modules and the gaps against them (research 2026-10-23) | M7 or post-1.0, decided by EM-1 |
 | `PA-` | Ideas from the Patient Administration System and the boundary with it (research 2026-10-23) | PA-1 first; the rest by milestone |
 | `EC-` | Ideas from the emergency care system repository (research 2026-10-24; a synthetic source) | EC-1 first; the rest by milestone |
+| `OS-` | Ideas from other open-source EPR and EHR systems: engineering practice, capabilities, configuration (research 2026-10-30) | OS-9 first; the rest by milestone |
 
 Sizes: S ≈ one business day, M ≈ a few business days, L ≈ a business week or
 more.
@@ -36,7 +37,7 @@ Conventions:
 
 - Absent evidence is `null` with a reason (FHIR `dataAbsentReason`), never
   zero.
-- Every new endpoint is pinned in `src/openapi.rs`, and FHIR interactions are
+- Every new endpoint is pinned in the OpenAPI document (`src/openapi.rs`, derived from the route table; refresh `openapi.json` with `EPR_BLESS=1 cargo test --test openapi_census`), and FHIR interactions are
   pinned in the CapabilityStatement.
 - Every read and write is audited.
 - People stay references.
@@ -248,7 +249,7 @@ Conventions:
   **Acceptance:** a Playwright run against a Keycloak container signs in, calls a protected API route, and signs out; a
   tampered or expired session is refused; no token is readable by page scripts.
   **Met by hand** (`playwright.keycloak.config.ts`: 5 passed, 1 skipped) except expiry, which is unit-tested with a stub provider.
-  **Not built:** a shared session store (it is in process memory); the end-to-end run in CI; Keycloak-initiated logout; Entra ID;
+  **Not built:** the end-to-end run in CI (a shared session store is OS-8); Keycloak-initiated logout; Entra ID;
   translated sign-in strings.
 
 ## M4 — Documentation
@@ -554,8 +555,8 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
 - [x] **CQ-17 (M) — Observability.** **Landed 2026-10-23:** request id earlier the same day (in `detail.request_id`; `TraceLayer` was already loco's default), then `/metrics` with three counters (`src/metrics.rs`, `tests/metrics.rs`). **Not built:** no scrape config, dashboard or alert rule; counters are in memory with no labels and restart at zero; `/metrics` has no authentication (404 unless `EPR_METRICS` is on); no latency or request counters; the DB-gated suites were not run, and the env switch is tested through `metrics::enabled`, not through the live router. tower-http `TraceLayer`, `x-request-id` carried into the audit `detail`, and
   Prometheus counters for audit-append failures, unaudited refusals and refused feed messages.
   **Acceptance:** a test sees the request id in an audit row; `/metrics` exposes the counters.
-- [ ] **CQ-18 (L) — Audit chain throughput.** One global advisory lock (`audit.rs:25`) is held until the outer
-  commit, so audited requests run one at a time. Measure it (AS-6), then decide: a shorter critical section, or a
+- [ ] **CQ-18 (L) — Audit chain throughput.** One global advisory lock (`LOCK_KEY` at `audit.rs:23`, taken at `audit.rs:431`; line numbers as of 2026-10-30) is held until the outer
+  commit, so audited requests run one at a time. Measure it (AS-6; first numbers in `BENCHMARKS.md`, 2026-10-30: 166 to 194 audited writes a second at 1, 8 and 32 clients, consistent with the lock but not proof), then decide: a shorter critical section, or a
   chain per partition with a periodic anchor. Spec change first.
   **Acceptance:** the measured audited-write rate is recorded in `BENCHMARKS.md` with the decision.
 
@@ -978,7 +979,7 @@ what a clinician or a carer sees.
   rule, regulatory text) and list each with the countries it excludes and a proposed pack boundary. **Not clinical** to
   audit; fixing an identifier or name assumption may be **clinical** (wrong-patient risk), so those get a hazard row first (AS-1).
   **Acceptance:** a table in `spec/` of each finding, its file, who it excludes, and the planned fix or the reason to keep it.
-- [ ] **IO-18 (L) — National FHIR profile packs, worldwide.** Per [`spec/interoperability/index.md`](spec/interoperability/index.md)
+- [ ] **IO-18 (L) — National FHIR profile packs, worldwide.** The mechanism is designed in `spec/interoperability/index.md` "Pack mechanism" (OS-10, proposed). Per [`spec/interoperability/index.md`](spec/interoperability/index.md)
   "National standards": a pack describes one country's core guide, terminologies, identifier systems and extensions; a
   deployment enables packs; `metadata` advertises only enabled, validated ones. Start by writing the pack format and
   moving the existing UK Core and US Core references into it, then survey which countries publish a FHIR core guide.
@@ -1095,3 +1096,77 @@ otherwise. Nothing here is built.
   for hazard-linked tasks as Gherkin files run by one runner, with the feature file winning over code. One feature set,
   not twelve ports.
   **Acceptance:** two tasks have feature files that run in CI, and the result says what the format cost and gave.
+
+## Research 2026-10-30 — other open-source EPR and EHR systems
+
+Ranked in plan.md §22; the evidence is [`spec/benchmark.md`](spec/benchmark.md) (twelve repositories, exact stars and
+dates, every cell cited). Items are **Not clinical** unless they say otherwise. Nothing here is built.
+
+- [ ] **OS-1 (S) — Benchmark record.** **Landed 2026-10-30 in part:** `spec/benchmark.md` and `.sota/last-scan.json`
+  (rubric version 1: 11 of 25 table-stakes met, 14 gaps). **Open:** re-run the scan when the OS items land and
+  record the delta; decide whether `.sota/` is committed or ignored.
+  **Acceptance:** a second `.sota/last-scan.json` with a "since last scan" line in `spec/benchmark.md`.
+- [ ] **OS-2 (M) — Rate limiting and sign-in lockout.** **Clinical** (a limit can refuse a clinician): hazard row first
+  (AS-1), and OQ-OS1 decided. `src/rate_limit.rs` as a `tower` layer keyed by subject or client address, Redis-backed
+  (the config already names `EPR_REDIS_URL`), mounted in `app.rs`; strict limits on sign-in and `$match`, generous
+  per-subject limits elsewhere; 429 with `Retry-After`; each refusal audited. Removes the config comments that promise
+  `src/rate_limit.rs` today. Pattern: Medplum `packages/server/src/ratelimit.ts`, Haste `crates/rate-limit`.
+  **Acceptance:** `tests/http_rate_limit.rs` shows the limit trips, the header is set, the refusal is audited, and a
+  clinician-rate replay of `tests/budgets` never trips; SE-7 cites it.
+- [ ] **OS-3 (L) — Transactional outbox and a worker.** Migration `outbox_events` (append-only, `delivered_at`, triggers
+  as on `audit_events`); `src/outbox.rs` `enqueue(txn, event)` called in the same transaction as the audit row; one
+  loco worker registered in `connect_workers` that delivers and records delivery; the worker runs `policy::evaluate`
+  and the consent check before any disclosure. Makes `spec/08` "events leave through an outbox" true and unblocks IO-6.
+  Pattern: Haste `crates/worker/src/async_jobs` with `async_jobs.sql`; Medplum `packages/server/src/workers/`.
+  **Acceptance:** an event enqueued in a transaction that rolls back is never delivered; one that commits is delivered
+  once; delivery refused by policy is audited; the chaos sweep covers the worker.
+- [ ] **OS-4 (S) — Coverage, SAST and dependency audit from CI.** **Landed 2026-10-30 in part (unrun on GitHub):** `ci.yml` jobs `coverage` (`cargo llvm-cov`, floors 95 percent of lines for the matcher and 50 for the service's database-free tests, lcov artefact), `codeql` (JavaScript and TypeScript) and `pnpm-audit` (high and above), all in `ci-ok`. The two coverage commands were run locally, and a floor of 99 fails as it should. **Not met:** no Rust SAST (OQ-OS3 open); no UI coverage (needs `@vitest/coverage-v8`); the service figure leaves out the 112 database-gated tests, so it understates real coverage; no codecov upload or trend; the floors are measured numbers, not targets. Left open. Original: Extends CQ-25 with the field's shape: a `coverage`
+  job (`cargo llvm-cov --workspace --lcov`, `vitest --coverage`) with a floor that cannot drop; `codeql.yml` for the UI
+  now and for Rust when confirmed (OQ-OS3), semgrep meanwhile; `pnpm audit --audit-level high`. Pattern: Helios
+  `ci.yml` `coverage`, OpenMRS `codeql-analysis.yml`, OpenEMR `semgrep.yml`.
+  **Acceptance:** `ci-ok` needs the three jobs; the coverage floor is recorded in `agents/testing.md` with what it does
+  not prove.
+- [ ] **OS-5 (M) — Published performance numbers.** **Landed 2026-10-30 in part:** `BENCHMARKS.md` and `scripts/load/measure.mjs` (Node, no dependencies; k6 is not installed here): audited writes, reads and searches at 1, 8 and 32 clients, one run on an Apple M4 Max. Audited writes stay at 166 to 194 a second at every concurrency, consistent with the audit lock of CQ-18. **Not met:** no CI job on `main`, no regression gate; the lock is a hypothesis (no wait events, no pool sweep, no run without the append); the 1 s chart-open and 200 ms typeahead targets are not measured because no chart and no typeahead index exist; one client on the same host, debug logging on, one 10 second run. Left open. Original: `scripts/load/audited-writes.js` (k6) and a read mix against
+  compose; `BENCHMARKS.md` records machine, commit, numbers and the audit-lock finding; a CI job on pushes to `main`
+  stores the result as an artefact. First half of AS-6; CQ-18 decides on it. Pattern: EHRbase `tests/perf/*.jmx` in
+  every build, Helios `fhir-benchmark.yml`.
+  **Acceptance:** `BENCHMARKS.md` exists with one audited-write rate and one chart-open p95, and `spec/07` NFR-2 cites it.
+- [ ] **OS-6 (M) — Tracing and labelled metrics.** **Landed 2026-10-30 in part:** `metrics::duration_mw`, the outermost layer, records `epr_http_request_duration_seconds` (11 buckets from 5 ms to 10 s) labelled by method, matched route template and status, so refusals are timed too; a request matching no route is `unmatched`, and series are capped at 1000 with the rest folded into `overflow`. Tests: 3 unit tests (cumulative buckets, cap, escaping) and `tests/metrics.rs` through a real router (ids in paths never reach a label). `/_readiness` was already a database, queue and cache ping returning 503 (loco 1.2 `controller/monitoring.rs`), so nothing was built for it. **Not met:** no OTLP tracing: loco's logger sets up the subscriber itself, an exporter means replacing it, and what may leave the process is a privacy decision (OQ-OS4) not made here. The counters and histogram are not persisted and have no exemplars; the route label was not run against a live database this time. Left open. Original: `tracing-opentelemetry` with an OTLP exporter behind
+  `EPR_OTLP_ENDPOINT`; a request-duration histogram labelled by route and status; the three counters kept; `/_readiness`
+  checks the database. Pattern: Helios `crates/observability`, Medplum `packages/server/src/otel/`.
+  **Acceptance:** a span per request with the request id; `tests/metrics.rs` sees the histogram; NFR-8 ticked for OTLP.
+- [ ] **OS-7 (M) — OpenAPI with a freshness gate.** **Landed 2026-10-30 in part:** `src/openapi.rs` derives an OpenAPI 3.1 document from the served routes and the policy table (51 paths, 62 operations); served at `GET /api/openapi.json` (policy row: patient identity, read, as for `/fhir/R4/metadata`); committed as `openapi.json`; `tests/openapi_census.rs` (5 tests) fails when the copy is stale (checked by corrupting it), when a served route is missing (a planted route appears), on a version segment, and on duplicate operation ids; `EPR_BLESS=1` accepts a change. No `utoipa` and no new dependency. **Not met:** no request or response schemas, so no client can be generated; no per-operation responses beyond default, 401 and 403; the document is derived from the route table, so it cannot say what a handler really returns; the route is authenticated, so an unauthenticated integrator cannot fetch it. Left open. Original: `src/openapi.rs` (`utoipa`) served at `/api/openapi.json`; a
+  census test that every route in `all_routes()` appears in it with its policy row; CI fails when a committed copy
+  differs. Pattern: OpenEMR `.github/workflows/api-docs.yml`, Haste `crates/openapi-schema-generator`.
+  **Acceptance:** the census passes; a planted route without a document entry fails it.
+- [ ] **OS-8 (S) — Shared UI session store.** **Landed 2026-10-30 in part:** `SessionStore` now keeps the policy and delegates storage to a backend (`session-backends.ts`): memory (default, unchanged behaviour) or Redis via `EPR_SESSION_REDIS_URL` plus `EPR_SESSION_ENCRYPTION_KEY`, with records encrypted (AES-256-GCM, `session-crypto.ts`) under a hashed key, TTL expiry, `GETDEL` for single-use login attempts, a persisted token refresh, and a 503 that keeps the cookie when Redis is down. The store API is now async (callers and 13 tests converted). 17 new unit tests against a fake Redis (two replicas sharing a store), and an opt-in live test that passed against a real Redis 7 through node-redis. Lint, `check`, `check:tests`, 246 vitest and 85 Playwright pass. **Not met:** no run behind two real UI processes and a proxy (the acceptance asks for Playwright against two replicas); Redis sessions are not counted, so the 10,000 cap is memory-only; no key rotation (a new key signs everyone out); no `compose.yaml` wiring or deployment docs beyond the UI spec; the Redis must be treated as holding session secrets (encrypted, but its availability is now sign-in availability). Left open. Original: A `SessionStore` interface in `src/lib/session.ts` with the in-memory
+  store and a Redis store selected by environment; two UI replicas behind one proxy share a sign-in. Pattern: OpenEMR
+  `LockingRedisSessionHandler.php`, Helios `cluster-smoke.yml`.
+  **Acceptance:** a Playwright run against two replicas keeps the session; `spec/07` NFR-3 ticked for the UI.
+- [ ] **OS-9 (S) — Documentation census and the six stale statements.** **Landed 2026-10-30 in part:** `tests/doc_census.rs` (2 tests; run against the old files it failed on seven missing paths) and five of the six fixes (config comments, `policy.rs`, `auth.rs`, `SECURITY.md`, `deny.toml`). **Not met:** `spec/08` is marked "not built" but not re-read line by line; the census reads only `config/*.yaml`, `deny.toml` and `SECURITY.md`, not `tasks.md` or `spec/` (they name planned files on purpose) and not doc comments in `src/`; it checks that a path exists, not that the description is true. Left open. Original: `tests/doc_census.rs`: every `src/*.rs` path
+  named in `config/*.yaml`, `SECURITY.md`, `deny.toml`, `tasks.md` and `spec/` exists. Then fix: the config comments
+  naming `rate_limit.rs`, `response_cache.rs`, `http_security.rs`; `policy.rs:12-13` ("nothing calls `evaluate`");
+  `auth.rs:19` ("not built: consent, break-the-glass"); `SECURITY.md` (authorization and break-glass "not built", only
+  compare audited, probes the only public paths while `/metrics` is public too); `deny.toml` header (`security.yml`);
+  `spec/08` (tantivy, outbox, row-level security are planned, not built). Extends CQ-28.
+  **Acceptance:** the census passes with zero exceptions and a planted missing path fails it.
+- [ ] **OS-10 (M) — Pack mechanism, designed from working examples.** **Landed 2026-10-30 as a design (proposed, not built, not confirmed by the maintainer):** `spec/interoperability/index.md` "Pack mechanism (design, OS-10)" names the file format (TOML rules, CSV tables, one directory per pack), the load order (neutral core, enabled packs in order, a read-only override directory, environment), the four validation steps including the pack's own test vectors and the HL7 validator control, conflict handling (same key stops startup unless the deployer names the winner, recorded in a hashed effective rule set), what no pack may do, where matcher and service change, and a three-step first slice. OQ-OS5 and OQ-OS6 open. **Not met:** nothing is built; no prototype loader was written to test the design; the borrowed shapes were read from documentation, not code; the effective-rule-set hash on records needs a migration and a hazard row that do not exist. Left open until a first slice (phone calling code from a pack) lands. Original: Design note in `spec/interoperability/index.md`
+  for IO-18 and IO-19: packs are versioned data loaded idempotently (OpenMRS Initializer domains), each with a typed
+  schema, defaults and validators (O3 `defineConfigSchema`), one `enabled` key per pack (HAPI starter), and a deployer
+  overrides directories, never forks (Ozone child distro). **Clinical** when a pack changes identifiers or codes: the
+  hazard row lands with IO-18.
+  **Acceptance:** the note names the file format, the load order, the validator, and what happens when two packs
+  conflict (the equity rule, item 4).
+- [x] **OS-11 (S) — Secret scanning in CI.** **Landed 2026-10-30 (unrun on GitHub).** `ci.yml` job `secrets` (in `ci-ok`) runs gitleaks 8.30.1, downloaded and checked against a pinned SHA-256, over the full history with redacted output. A first local scan of 202 commits found 2 findings, both loco's scaffold `auth.jwt.secret` in the development and test configs from the first commit; the service builds loco without its `auth` feature and nothing in `src/` reads the block, so they are allow-listed by fingerprint with a reason in `.gitleaksignore` (not rotated, since they protect nothing, and they remain in history). Rescan: no leaks; a planted AWS-style key in a throwaway repo is caught. **Not verified:** the job has not run on GitHub; it scans git history, not ignored files or container layers; gitleaks finds patterns, not every secret; no pre-commit hook (Metriport runs one; ours could be added to `.githooks/pre-commit`); the two allow-listed values stay readable in history. Original: A `gitleaks` job over the full history, with an allow-list file that
+  names each exception. Nobody in the field runs it in CI.
+  **Acceptance:** a planted test key in a branch fails the job.
+- [x] **OS-12 (S) — Expiring advisory ignores.** **Landed 2026-10-30.** `cargo deny` itself showed that 12 of the service's 13 ignores and all 11 of the matcher's were "advisory was not encountered" (the locked anyhow, quick-xml and crossbeam-epoch are patched; protobuf, async-std, paste, instant, proc-macro-error(2), fxhash and rustls-pemfile are not in the tree), so they were deleted, and the earlier claim that they were unfixable without a loco bump was wrong. One remains, RUSTSEC-2024-0449 (`unsafe-libyaml`, unmaintained, a normal dependency of loco's YAML config parsing), with a reason and `expires 2027-01-30`. `tests/advisory_expiry.rs` (3 tests) fails on a missing, past or far-future date in either `deny.toml`; `tests/doc_census.rs` now also reads the matcher's `deny.toml`, whose header still named a `security.yml` that does not exist (fixed). Full `cargo deny check` passes on both crates. **Not verified:** which code paths of `unsafe-libyaml` run; the test proves a date is written, not that its reason is right; the check uses the advisory database as of today, so a new advisory can still fail CI (as intended). Original: Each `RUSTSEC` ignore in both `deny.toml` files gets a reason and a
+  `re-check by` date; a test fails when a date has passed.
+  **Acceptance:** the test exists and the 13 current ignores carry dates.
+- [ ] **OS-13 (M) — Audit retention and partitioning.** After the retention schedule sets periods (governance):
+  monthly partitions of `audit_events`, a chain anchor per partition, and an archive step that moves, never deletes.
+  Pattern: HAPI `server_jpa_partitioning/`, EHRbase `ehrbase.versioning.*.data-retention`. **Clinical** (an audit row
+  a patient cannot see any more): hazard row first.
+  **Acceptance:** `tests/audit_chain.rs` verifies across a partition boundary; no migration adds a delete.
+- [x] **OS-14 (S) — Code of conduct.** `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1) linked from `CONTRIBUTING.md`.
+  **Acceptance:** the links check passes.

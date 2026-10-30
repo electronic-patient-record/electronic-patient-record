@@ -41,3 +41,16 @@ same path, chosen by the header.
   base-URL convention. A different FHIR release would be a separate mount, not an API version.
 
 **Not built:** reading the header, the list of versions, and the refusal of an unknown one. This is the rule, not code.
+
+### OpenAPI document (OS-7)
+
+`GET /api/openapi.json` (authenticated, the same policy row as `/fhir/R4/metadata`) and the committed copy
+[`openapi.json`](../electronic-patient-record-service-with-rust/openapi.json) list every served path and method with its
+authentication requirement and, for protected routes, the policy resource and action (`x-epr-resource`,
+`x-epr-action`). The document is **derived** from `controllers::all_routes()` and `routes::TABLE`, never written by
+hand, and `tests/openapi_census.rs` fails when the committed copy is stale, a served route is missing, a public route
+lacks its marker, or a path carries a version segment.
+
+**It does not describe request or response bodies**, so a client cannot be generated from it; it is an inventory of the
+surface, not a contract. FHIR shapes are in `/fhir/R4/metadata`. Body schemas are open work (OS-7).
+

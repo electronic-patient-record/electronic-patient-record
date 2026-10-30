@@ -102,7 +102,7 @@ describe("Auth sign-in", () => {
     expect(form.get("redirect_uri")).toBe(
       "http://127.0.0.1:3000/auth/callback",
     );
-    expect(m.store.get(session.id)).not.toBeNull();
+    expect(await m.store.get(session.id)).not.toBeNull();
   });
 
   it("refuses a state mismatch, a provider error, and a missing or reused login", async () => {
@@ -126,7 +126,7 @@ describe("Auth sign-in", () => {
     await expect(
       m.auth.finishLogin(undefined, { code: "c", state: "s", error: null }),
     ).rejects.toThrow(/no sign-in/);
-    expect(m.store.size()).toBe(0);
+    expect(await m.store.size()).toBe(0);
   });
 
   it("refuses an id token with the wrong nonce", async () => {
@@ -135,7 +135,7 @@ describe("Auth sign-in", () => {
     await expect(
       m.auth.finishLogin(a.loginId, { code: "c", state: a.state, error: null }),
     ).rejects.toThrow(/nonce/);
-    expect(m.store.size()).toBe(0);
+    expect(await m.store.size()).toBe(0);
   });
 
   it("refuses a discovery document for another issuer, or with an insecure endpoint", async () => {
@@ -155,7 +155,7 @@ describe("Auth sign-in", () => {
   it("never lets a hostile returnTo through", async () => {
     const m = make({ token: () => goodToken("x") });
     const { loginId } = await m.auth.startLogin("//evil.example");
-    expect(m.store.takeLogin(loginId)?.returnTo).toBe("/");
+    expect((await m.store.takeLogin(loginId))?.returnTo).toBe("/");
   });
 });
 
@@ -211,7 +211,7 @@ describe("Auth tokens and sign-out", () => {
     const session = await signedIn(m, box);
     m.clock.t += 295;
     expect(await m.auth.accessToken(session)).toBeNull();
-    expect(m.store.get(session.id)).toBeNull();
+    expect(await m.store.get(session.id)).toBeNull();
   });
 
   it("keeps the session when the provider is down, slow or answers badly, and throws so the caller can retry", async () => {
@@ -237,7 +237,7 @@ describe("Auth tokens and sign-out", () => {
       await expect(m.auth.accessToken(session)).rejects.toThrow(
         AuthUnavailableError,
       );
-      expect(m.store.get(session.id)).not.toBeNull();
+      expect(await m.store.get(session.id)).not.toBeNull();
       expect(session.refreshToken).toBe("refresh-1");
     }
   });
@@ -270,7 +270,7 @@ describe("Auth tokens and sign-out", () => {
     const session = await signedIn(m, box);
     m.clock.t += 295;
     expect(await m.auth.accessToken(session)).toBeNull();
-    expect(m.store.get(session.id)).toBeNull();
+    expect(await m.store.get(session.id)).toBeNull();
   });
 
   it("signs out locally first, and tells the provider with the refresh token", async () => {
@@ -278,7 +278,7 @@ describe("Auth tokens and sign-out", () => {
     const m = make({ token: () => goodToken(box.n) });
     const session = await signedIn(m, box);
     await m.auth.signOut(session.id);
-    expect(m.store.get(session.id)).toBeNull();
+    expect(await m.store.get(session.id)).toBeNull();
     const logout = m.calls.find((c) => c.url.endsWith("/logout"))!;
     expect(logout.form!.get("refresh_token")).toBe("refresh-1");
     expect(logout.form!.get("client_id")).toBe("epr-web");
@@ -297,6 +297,6 @@ describe("Auth tokens and sign-out", () => {
       () => m.clock.t,
     );
     await down.signOut(session.id);
-    expect(m.store.get(session.id)).toBeNull();
+    expect(await m.store.get(session.id)).toBeNull();
   });
 });

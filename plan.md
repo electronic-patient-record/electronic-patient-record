@@ -1131,3 +1131,111 @@ IO-17 (read the specification) then IO-16. OQ-PA3 stays open until IO-16 lands.
 - [UK Core R4 package on get-ig.org](https://get-ig.org/fhir.r4.ukcore.stu3.currentbuild) (fhirVersions 4.0.1)
 - the `fhir` 4.2.4 crate source: features `r5`, module `convert`
 
+
+## 22. Research pass 2026-10-30: other open-source EPR and EHR systems
+
+The request: research and improve code quality, maintainability, security and scalability by studying other open-source
+EPR and EHR systems, and gather their capabilities, features and configuration. The result is
+[`spec/benchmark.md`](spec/benchmark.md) (the field, two matrices, ranked gaps) and the `OS-` tasks. Nothing was built.
+
+Evidence base, stated plainly: twelve repositories were read through the GitHub API (`contents` listings and raw files)
+and their documentation sites, not cloned; exact stars and push dates from one API call on 2026-10-30; our own side was
+inventoried file by file first. GitHub code search was rate-limited in three of five sweeps, so a few cells are marked
+unverified in the spec. Three distributions (Bahmni, Ozone, GNU Health) were read for capabilities only.
+
+### 22.1 Assessment
+
+- **Inside the repository we are at or above the field.** Lint and clippy at `-D warnings`, `#![forbid(unsafe_code)]`
+  and `#![deny(missing_docs)]` on the service, zero `unwrap` outside tests, four census tests, a seeded hostile-input
+  sweep, a hand-run mutation pass, cargo-deny, Dependabot, provenance attestation and a CycloneDX SBOM on release, an
+  audit chain that refuses an unaudited write, break-glass with review, an in-product hazard register. No comparator has
+  the census tests, the write refusal or the hazard register; only Blaze signs and attests; nobody ships an SBOM.
+- **What we lack is operational.** Of 25 table-stakes items, 7 are missing and 7 partial (`spec/benchmark.md`): no
+  coverage or SAST published from CI, no rate limit (the config comments promise one that does not exist), no job
+  runner or outbox (promised in `spec/08` and the config), no performance numbers (CQ-18 waits on them), counters but
+  no tracing, a CapabilityStatement but no OpenAPI (and `tasks.md` names an `src/openapi.rs` that does not exist), an
+  in-process UI session store, English-only strings, no extension mechanism yet, and six stale documents.
+- **Functionally we are a scaffold and the field is not.** OpenEMR, OpenMRS, Marley, GNU Health and VistA each ship
+  scheduling, encounters, notes, orders, results, medicines and billing. That is the roadmap (M2–M7), not a finding;
+  the benchmark takes from them the *configuration* patterns, not the modules.
+- **The two Rust comparators are instructive.** Haste (axum, sqlx, 39 crates) runs pedantic clippy, daily cargo-audit,
+  Trivy, proptest and a built-in OIDC and SMART server; Helios (axum, 22 crates) publishes llvm-cov coverage, runs
+  Inferno, Playwright with axe and a two-node cluster smoke test in CI, and ships Fluent locales. Neither uses
+  cargo-deny, nextest or `forbid(unsafe_code)`; we do the first and last.
+- **Corrections to our own claims found on the way:** the `audit.rs:25` line in CQ-18 is now `audit.rs:23` (the key)
+  and `:431` (the lock); `policy.rs` says nothing calls `evaluate`, but `controllers/common.rs:172` and `adt_feed.rs:162`
+  do; `auth.rs:19` says consent and break-glass are not built; `SECURITY.md` says the same and that only compare
+  writes an audit row; `deny.toml` cites a `security.yml` workflow that does not exist; `spec/08` lists tantivy, an
+  outbox and row-level security that are not in `Cargo.toml` or any migration.
+
+### 22.2 Ideas, assessed
+
+| Rank | Idea | Who does it | Value here | Cost and caveat |
+|---|---|---|---|---|
+| 1 | **Rate limit and login lockout**, Redis-backed, audited refusals | Medplum `ratelimit.ts`, Haste `crates/rate-limit`, OpenMRS lockout | `$match` and sign-in without a limit are an enumeration risk; the config already promises it | ~2 days (OS-2); the limit must never refuse a clinician mid-task silently: 429 with `Retry-After`, logged |
+| 2 | **Outbox and a worker** in the same transaction as the audit row | Haste `crates/worker` + `async_jobs.sql`, Medplum `workers/`, HAPI Batch2 | Unblocks IO-6 subscriptions, CDS Hooks, HL7 v2 out, and `$export`; keeps "events leave through an outbox" true | ~3 days (OS-3); append-only table, delivery recorded, never a delete |
+| 3 | **Coverage, SAST, audit from CI** | Helios `cargo-llvm-cov` → codecov; OpenMRS CodeQL; OpenEMR semgrep | Cheapest way to see the untested paths; the field treats it as a floor | ~1 day (OS-4, extends CQ-25); CodeQL's Rust support must be confirmed, else semgrep |
+| 4 | **Published performance numbers** in `BENCHMARKS.md`, run on `main` | EHRbase JMeter in every build, Helios `fhir-benchmark.yml`, Blaze `docs/performance.md` | CQ-18 (the audit lock) cannot be decided without a number | ~2 days (OS-5, half of AS-6) |
+| 5 | **OTLP tracing and labelled metrics, database-checking readiness** | Helios `crates/observability`, Medplum `otel/`, HAPI starter OTel agent | NFR-8 promises it; three counters cannot find a slow route | ~2 days (OS-6) |
+| 6 | **OpenAPI with a freshness gate and a route census** | OpenEMR `api-docs.yml`, Haste `openapi-schema-generator`, Medplum `openapi.ts` | `tasks.md` has claimed `src/openapi.rs` since M0 | ~2 days (OS-7) |
+| 7 | **Shared UI session store** | OpenEMR `LockingRedisSessionHandler.php`, Medplum Redis sessions | NFR-3 says stateless app tier; the UI is not | ~1 day (OS-8) |
+| 8 | **Documentation census**: a test that every source path named in config, `SECURITY.md`, `deny.toml`, `tasks.md` exists | OpenEMR's freshness gate (idea) | Six stale statements found today; the test keeps it at zero | ~half a day (OS-9) |
+| 9 | **Packs as versioned data, loaded idempotently, with typed schemas and `*_enabled` keys** | OpenMRS Initializer and O3 config schemas, HAPI starter keys, Ozone child-distro | The IO-18 and IO-19 mechanism, designed from working examples | design first (OS-10) |
+| 10 | **Access policy as data** | Medplum AccessPolicy | The ABAC half of `policy.rs` could become reviewable configuration for clinical governance | post-1.0; the policy table header says it is an engineer's draft (OQ-OS2) |
+| 11 | **Secret scanning in CI** | nobody in CI; Metriport at pre-commit | Cheap; we would lead | ~1 hour (OS-11) |
+| 12 | **Expiring advisory ignores** | — | 13 `RUSTSEC` ignores with no re-check date is drift waiting to happen | ~1 hour (OS-12); **done 2026-10-30**, and it found 12 of the 13 were dead |
+| 13 | **Audit retention and partitioning** | HAPI partitioning, EHRbase `data-retention`, Blaze `job-prune` | The retention schedule is a draft; the table grows forever | design after governance sets periods (OS-13) |
+| 14 | **cosign on images** | Blaze | We attest provenance and ship an SBOM; signing adds a verifiable pull | ~half a day, inside CQ-23 |
+| 15 | **Inferno (g)(10) in CI** | OpenEMR, Helios, Haste | The conformance oracle for SMART, bulk data and US Core, when those exist | after IO-2 and IO-4 |
+| 16 | **Pedantic clippy** | Haste | Marginal over `-D warnings` with `missing_docs`; many allows | skip for now |
+| 17 | **Fuzz target** for the HL7 v2 parser and the matcher | Haste proptest, Blaze test.check | Already in CQ-30 and `spec/11` | keep there |
+| 18 | **A code of conduct** | EHRbase, OpenEMR | Governance hygiene; most of the field lacks it too | ~1 hour (OS-14) |
+
+Rejected: copying any comparator's clinical modules (the roadmap already orders them); a plugin API in the service
+(packs are data, not code, by the equity rule); Elasticsearch as a search backend (Postgres suffices until measured).
+
+### 22.3 Risks
+
+- Rate limiting and lockout can deny a clinician at the bedside. A limit on sign-in must favour a slow refusal over a
+  lockout, say so in the message, and be in the hazard log before it ships (`clinical-impact`).
+- An outbox that delivers a subscription without the consent and policy check of the read path is a disclosure. The
+  worker must evaluate the same `policy::evaluate` as a read.
+- Coverage numbers invite gaming; the gate should be a floor that cannot drop, not a target to chase.
+- Benchmarks on a laptop are not a capacity claim; `BENCHMARKS.md` records the machine and the commit.
+
+### 22.4 Open questions (to move to spec/16-open-questions.md)
+
+- **OQ-OS1.** Does a request limit apply to clinicians at all, or only to unauthenticated and integrator traffic?
+  Recommendation: per-subject limits high enough never to trip in clinical use, strict on sign-in and `$match`.
+- **OQ-OS2.** Should the ABAC policy become data (Medplum-style) reviewable by clinical governance, or stay code with
+  the census tests? Recommendation: stay code until a Clinical Safety Officer asks to review it.
+- **OQ-OS3.** Is CodeQL's Rust analysis acceptable as the SAST gate, or semgrep? Recommendation: CodeQL for the UI now,
+  Rust when its support is confirmed, semgrep meanwhile.
+
+### 22.5 Order of work
+
+OS-9 (the documentation census and the six fixes) first, because the stale statements mislead every later reader;
+then OS-4 (coverage and SAST, a day); then OS-2 (rate limit, with a hazard row) and OS-3 (outbox and worker); OS-5 and
+OS-6 together (numbers and tracing, which CQ-18 needs); OS-7 (OpenAPI); OS-8; OS-10 as the design step for IO-18.
+OS-11 to OS-14 whenever a day has an hour spare.
+
+### 22.6 Sources (this pass)
+
+Repositories, read through the API on 2026-10-30: [openemr/openemr](https://github.com/openemr/openemr),
+[medplum/medplum](https://github.com/medplum/medplum), [hapifhir/hapi-fhir](https://github.com/hapifhir/hapi-fhir) and
+[hapi-fhir-jpaserver-starter](https://github.com/hapifhir/hapi-fhir-jpaserver-starter),
+[openmrs/openmrs-core](https://github.com/openmrs/openmrs-core), [samply/blaze](https://github.com/samply/blaze),
+[ehrbase/ehrbase](https://github.com/ehrbase/ehrbase), [metriport/metriport](https://github.com/metriport/metriport),
+[hastehealth/hastehealth](https://github.com/hastehealth/hastehealth), [HeliosSoftware/hfs](https://github.com/HeliosSoftware/hfs),
+[earthians/marley](https://github.com/earthians/marley), [WorldVistA/VistA](https://github.com/WorldVistA/VistA),
+[HospitalRun/hospitalrun-frontend](https://github.com/HospitalRun/hospitalrun-frontend) (archived).
+Documentation: [Medplum access policies](https://www.medplum.com/docs/access/access-policies) and
+[bots](https://www.medplum.com/docs/bots); [OpenMRS Initializer](https://github.com/mekomsolutions/openmrs-module-initializer/tree/master/readme)
+and [O3 configuration system](https://o3-docs.vercel.app/docs/configuration-system);
+[OpenEMR features](https://www.open-emr.org/wiki/index.php/OpenEMR_Features) and
+[emergency access](https://www.open-emr.org/wiki/index.php/6._Emergency_Access_Procedure);
+[Ozone distributions](https://docs.ozone-his.com/implementers/create-distro/);
+[GNU Health features](https://docs.gnuhealth.org/his/features.html); [Frappe DocTypes](https://docs.frappe.io/framework/user/en/basics/doctypes);
+[EHRbase](https://github.com/ehrbase/ehrbase) `application.yml`; HAPI starter `application.yaml`.
+Secondary (capabilities only): Purkayastha et al. 2019, *Healthcare Informatics Research* 25(2), comparison of
+open-source EHRs ([PMC6517630](https://pmc.ncbi.nlm.nih.gov/articles/PMC6517630)).

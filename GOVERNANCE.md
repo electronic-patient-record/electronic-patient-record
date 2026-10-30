@@ -60,4 +60,5 @@ the current maintainer invites them. Write to the address in
 ## Code of conduct
 
 Be courteous and specific, assume good faith, and criticise the work, not the
-person. Harassment is not tolerated; report it to the maintainer.
+person. Harassment is not tolerated; the full policy and how to report is in
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).

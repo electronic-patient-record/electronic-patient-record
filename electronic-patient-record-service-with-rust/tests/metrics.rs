@@ -107,3 +107,33 @@ fn metrics_is_a_public_route_and_is_served() {
         .any(|r| r.uri == "/metrics");
     assert!(served, "/metrics is not in all_routes()");
 }
+
+#[tokio::test]
+async fn the_duration_histogram_is_labelled_by_route_template_never_by_path() {
+    let app = Router::new()
+        .route("/things/{id}", get(|| async { "ok" }))
+        .route("/refuses", get(|| async { StatusCode::FORBIDDEN }))
+        .layer(axum::middleware::from_fn(metrics::duration_mw));
+    for uri in [
+        "/things/patient-zq7x-secret",
+        "/things/another-id",
+        "/refuses",
+        "/no/such/route/with-an-id-zq7y",
+    ] {
+        app.clone()
+            .oneshot(Request::get(uri).body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+    }
+    let text = body(metrics::response(true)).await;
+    assert!(
+        text.contains(r#"route="/things/{id}",status="200""#),
+        "{text}"
+    );
+    assert!(text.contains(r#"route="/refuses",status="403""#), "{text}");
+    assert!(text.contains(r#"route="unmatched",status="404""#), "{text}");
+    for leaked in ["zq7x", "secret", "another-id", "zq7y", "with-an-id"] {
+        assert!(!text.contains(leaked), "{leaked} leaked into a label");
+    }
+    assert!(text.contains("# TYPE epr_http_request_duration_seconds histogram"));
+}

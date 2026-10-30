@@ -83,7 +83,7 @@ export class Auth {
     const verifier = randomToken(48);
     const state = randomToken();
     const nonce = randomToken();
-    const loginId = this.store.beginLogin({
+    const loginId = await this.store.beginLogin({
       state,
       nonce,
       verifier,
@@ -102,7 +102,7 @@ export class Auth {
     loginId: string | undefined,
     params: { code: string | null; state: string | null; error: string | null },
   ): Promise<{ session: Session; returnTo: string }> {
-    const attempt = this.store.takeLogin(loginId); // single use, even on failure
+    const attempt = await this.store.takeLogin(loginId); // single use, even on failure
     if (!attempt) throw new AuthError("no sign-in in progress");
     if (params.error)
       throw new AuthError("the identity provider refused the sign-in");
@@ -124,7 +124,7 @@ export class Auth {
     });
     if (problem) throw new AuthError(problem);
 
-    const session = this.store.create({
+    const session = await this.store.create({
       accessToken: token.access_token,
       refreshToken: token.refresh_token ?? null,
       idToken: token.id_token ?? null,
@@ -161,7 +161,7 @@ export class Auth {
    */
   private async refresh(session: Session): Promise<boolean> {
     if (!session.refreshToken) {
-      this.store.delete(session.id);
+      await this.store.delete(session.id);
       return false;
     }
     try {
@@ -172,10 +172,11 @@ export class Auth {
       session.accessToken = token.access_token;
       session.refreshToken = token.refresh_token ?? session.refreshToken;
       session.accessExpiresAt = this.now() + token.expires_in;
+      await this.store.save(session); // a shared store must see the rotated refresh token
       return true;
     } catch (e) {
       if (e instanceof AuthError && e.code === "invalid_grant") {
-        this.store.delete(session.id);
+        await this.store.delete(session.id);
         return false;
       }
       throw new AuthUnavailableError("sign-in service unavailable", {
@@ -190,7 +191,7 @@ export class Auth {
    * failure does not keep the reader signed in here.
    */
   async signOut(sessionId: string | undefined): Promise<void> {
-    const session = this.store.delete(sessionId);
+    const session = await this.store.delete(sessionId);
     if (!session?.refreshToken) return;
     try {
       const endpoints = await this.endpoints();

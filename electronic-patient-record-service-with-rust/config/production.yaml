@@ -31,9 +31,8 @@ server:
     limit_payload:
       enable: true
       body_limit: 2mb
-    # CORS is NOT enabled here: the service applies its own explicit allow-list
-    # (EPR_CORS_ORIGINS, comma-separated exact origins;
-    # unset = same-origin only; src/http_security.rs).
+    # CORS is NOT enabled here. No CORS code exists in this service yet, so only the browser's
+    # same-origin rule applies (tasks SE-7 and OS-2 plan an explicit allow-list).
     cors:
       enable: false
 
@@ -90,7 +89,7 @@ database:
 # health is part of `/_readiness` (503 when Redis is unreachable or the password is wrong; `/_health` stays 200).
 # EPR_REDIS_URL is required: `redis://:password@host:6379/0`, or `rediss://` for TLS.
 # Development, tests and the insecure `container-dev` profile keep the in-memory cache and need no Redis.
-# Used for the critical-path answer only (src/response_cache.rs).
+# Nothing in src/ reads the cache yet; it is configured for the outbox and the rate limiter (OS-2, OS-3).
 cache:
   kind: Redis
   uri: {{ get_env(name="EPR_REDIS_URL") }}

@@ -29,6 +29,7 @@ pub fn all_routes() -> AppRoutes {
         .add_route(audit::routes())
         .add_route(me::routes())
         .add_route(metrics::routes())
+        .add_route(crate::openapi::routes())
         .add_route(fhir::routes())
         .add_route(fhir_r5::routes())
         .add_route(feed::routes())

@@ -50,9 +50,19 @@ cross-subproject contract.
 - **Banner refresh** (`/patients/[id]`): the page re-reads the record when the tab becomes visible and once a minute while it is visible (each look is an audited read, so not more often). A clean form simply catches up. A dirty form (any edit or a reason) is never overwritten: the banner shows the newer record, an alert says "Someone else changed this record (now version N)", the typing stays, and "Reload and discard my changes" is the explicit way to drop it. Saving the old version is still refused by the server (409).
 - **Accessibility**: skip link, landmarks, labelled inputs, `role="alert"` on failure, axe (WCAG 2.2 AA) on each page and on the duplicate view.
 
+### Session storage (OS-8)
+
+Sessions live in this process's memory unless `EPR_SESSION_REDIS_URL` is set, in which case `EPR_SESSION_ENCRYPTION_KEY`
+(32 bytes, base64) must be set too; half a setting stops startup. In Redis each record is encrypted (AES-256-GCM, bound to
+its storage key) and stored under a SHA-256 of the cookie value, so Redis holds no token and nothing that works as a cookie.
+Expiry is the record's TTL (idle or absolute, whichever comes first) and a background look does not extend it. A login
+attempt is read with `GETDEL`, so it is single-use across replicas. If Redis is unreachable the proxy answers 503 and keeps
+the cookie, and the page shows the reader as signed out without deleting anything. Sessions are not counted in Redis, so the
+10,000 cap applies to memory only; set `maxmemory` on the Redis. Rotating the key signs everyone out.
+
 ## 2. Not built
 
-A session store shared between UI replicas (the store is in process memory); Keycloak-initiated logout; the Keycloak end-to-end
+A shared session store is built but off by default (below); it was not exercised behind two real UI processes. Keycloak-initiated logout; the Keycloak end-to-end
 run in CI; patient search,
 registration, banner, summary; the clinical pages; the Lily widgets and `DataTable`; translations; the inbox; the
 portal; dark-theme toggle (colours follow `prefers-color-scheme`).

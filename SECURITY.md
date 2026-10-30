@@ -30,7 +30,7 @@ Checked by tests where a test is named (this is a pre-release scaffold, see
 - Login enforcement is **on** by default; the service refuses to start without
   token verification keys, and refuses `production` with login off
   (`auth::tests`).
-- Health probes are the only unauthenticated paths (`auth::tests`).
+- Health probes and `/metrics` are the only unauthenticated paths (`auth::tests`, `tests/route_census.rs`).
 - Keycloak access tokens are accepted only with the right signature, issuer, audience, expiry and verified email, and a
   half-configured Keycloak stops the service starting (`tests/keycloak_guard.rs`).
 - The audit table refuses `UPDATE`, `DELETE` and `TRUNCATE`
@@ -44,9 +44,9 @@ Checked by tests where a test is named (this is a pre-release scaffold, see
 
 **This software is not for clinical use and holds no clinical record yet.** No
 third party has audited it, and no certification (ONC, DTAC, DSPT, DCB0129,
-HIPAA) is claimed. Authorization beyond "has a valid token" (roles, consent,
-break-the-glass), audit of every access (only the compare route writes an audit row today), and sign-in are planned and
-not built (`tasks.md`: SE-*, AU-*). A deployer is responsible for their own
+HIPAA) is claimed. Roles, consent, break-the-glass and a hash-chained audit trail are built for the routes listed in
+`spec/14-implementation-status.md` and refuse a write whose audit row cannot be written; rate limiting, a clinical
+record and a completed hazard review are not built (`tasks.md`: SE-*, AU-*, OS-2). A deployer is responsible for their own
 configuration, keys, backups and assessment.
 
 ## Scope

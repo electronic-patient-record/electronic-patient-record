@@ -92,8 +92,10 @@ impl Hooks for App {
             ))
             .layer(axum::middleware::from_fn(auth::require_auth_mw))
             .layer(axum::middleware::from_fn(authz::no_nul_mw))
-            // Outermost: the request id is settled before authentication or the audit trail.
-            .layer(axum::middleware::from_fn(authz::request_id_mw)))
+            // The request id is settled before authentication or the audit trail.
+            .layer(axum::middleware::from_fn(authz::request_id_mw))
+            // Outermost: time every request, refusals included, labelled by route template (OS-6).
+            .layer(axum::middleware::from_fn(crate::metrics::duration_mw)))
     }
 
     async fn connect_workers(_ctx: &AppContext, _queue: &Queue) -> Result<()> {

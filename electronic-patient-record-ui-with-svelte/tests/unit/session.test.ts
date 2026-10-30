@@ -16,59 +16,59 @@ function store(idle = 100, abs = 1000) {
 }
 
 describe("SessionStore", () => {
-  it("issues a fresh unguessable id per session", () => {
+  it("issues a fresh unguessable id per session", async () => {
     const { s } = store();
-    const a = s.create(init);
-    const b = s.create(init);
+    const a = await s.create(init);
+    const b = await s.create(init);
     expect(a.id).not.toBe(b.id);
     expect(a.id.length).toBeGreaterThanOrEqual(43); // 256 bits, base64url
   });
-  it("ends an idle session, but activity keeps it alive", () => {
+  it("ends an idle session, but activity keeps it alive", async () => {
     const { s, clock } = store(100, 1000);
-    const { id } = s.create(init);
+    const { id } = await s.create(init);
     clock.t = 90;
-    expect(s.get(id)).not.toBeNull();
+    expect(await s.get(id)).not.toBeNull();
     clock.t = 180; // 90 s since last activity
-    expect(s.get(id)).not.toBeNull();
+    expect(await s.get(id)).not.toBeNull();
     clock.t = 281; // 101 s idle
-    expect(s.get(id)).toBeNull();
-    expect(s.size()).toBe(0);
+    expect(await s.get(id)).toBeNull();
+    expect(await s.size()).toBe(0);
   });
-  it("does not count a background request as activity (CQ-8)", () => {
+  it("does not count a background request as activity (CQ-8)", async () => {
     const { s, clock } = store(100, 1000);
-    const { id } = s.create(init);
+    const { id } = await s.create(init);
     // A page polling every 60 s with nobody at the keyboard: the session still ends on time.
     for (clock.t = 60; clock.t <= 60 * 5; clock.t += 60) {
-      const live = s.get(id, { activity: false });
+      const live = await s.get(id, { activity: false });
       if (clock.t <= 100) expect(live).not.toBeNull();
       else expect(live).toBeNull();
     }
-    expect(s.size()).toBe(0);
+    expect(await s.size()).toBe(0);
   });
-  it("ends a session at the absolute limit however active", () => {
+  it("ends a session at the absolute limit however active", async () => {
     const { s, clock } = store(100, 250);
-    const { id } = s.create(init);
+    const { id } = await s.create(init);
     for (clock.t = 50; clock.t <= 250; clock.t += 50)
-      expect(s.get(id)).not.toBeNull();
+      expect(await s.get(id)).not.toBeNull();
     clock.t = 251;
-    expect(s.get(id)).toBeNull();
+    expect(await s.get(id)).toBeNull();
   });
-  it("returns null for a missing, unknown or deleted id", () => {
+  it("returns null for a missing, unknown or deleted id", async () => {
     const { s } = store();
-    expect(s.get(undefined)).toBeNull();
-    expect(s.get("nope")).toBeNull();
-    const { id } = s.create(init);
+    expect(await s.get(undefined)).toBeNull();
+    expect(await s.get("nope")).toBeNull();
+    const { id } = await s.create(init);
     s.delete(id);
-    expect(s.get(id)).toBeNull();
+    expect(await s.get(id)).toBeNull();
   });
-  it("makes a login attempt single-use and short-lived", () => {
+  it("makes a login attempt single-use and short-lived", async () => {
     const { s, clock } = store();
     const attempt = { state: "s", nonce: "n", verifier: "v", returnTo: "/" };
-    const id = s.beginLogin(attempt);
-    expect(s.takeLogin(id)?.state).toBe("s");
-    expect(s.takeLogin(id)).toBeNull();
-    const late = s.beginLogin(attempt);
+    const id = await s.beginLogin(attempt);
+    expect((await s.takeLogin(id))?.state).toBe("s");
+    expect(await s.takeLogin(id)).toBeNull();
+    const late = await s.beginLogin(attempt);
     clock.t = LOGIN_TTL_SECONDS + 1;
-    expect(s.takeLogin(late)).toBeNull();
+    expect(await s.takeLogin(late)).toBeNull();
   });
 });

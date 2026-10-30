@@ -100,6 +100,12 @@ pub const TABLE: &[(&str, &str, Resource, Action)] = &[
     ),
     (
         "GET",
+        "/api/openapi.json",
+        Resource::PatientIdentity,
+        Action::Read,
+    ),
+    (
+        "GET",
         "/fhir/R4/metadata",
         Resource::PatientIdentity,
         Action::Read,

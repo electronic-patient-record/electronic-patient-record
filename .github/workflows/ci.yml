@@ -261,10 +261,89 @@ jobs:
           echo "rust-toolchain.toml=$want CI=$RUST_TOOLCHAIN"
           test "$want" = "$RUST_TOOLCHAIN"
 
+  coverage:
+    name: Coverage floor (matcher, service unit tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@1.99.1
+        with:
+          components: llvm-tools-preview
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            ${{ env.MATCHER }}
+            ${{ env.API }}
+      # Floors sit just under the figures measured on 2026-10-30 (matcher 97.65 percent of lines;
+      # service database-free tests 52.24 percent). A floor may rise; lowering one needs a written reason.
+      - name: Matcher lines
+        working-directory: electronic-patient-record-matcher-with-rust
+        run: cargo llvm-cov --locked --lcov --output-path lcov.info --fail-under-lines 95
+      - name: Service lines (database-free tests only)
+        working-directory: electronic-patient-record-service-with-rust
+        run: cargo llvm-cov --locked --lib --lcov --output-path lcov.info --fail-under-lines 50
+      - uses: actions/upload-artifact@v5
+        with:
+          name: coverage-lcov
+          path: |
+            electronic-patient-record-matcher-with-rust/lcov.info
+            electronic-patient-record-service-with-rust/lcov.info
+
+  codeql:
+    name: CodeQL (JavaScript and TypeScript)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: javascript-typescript
+          build-mode: none
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:javascript-typescript
+
+  pnpm-audit:
+    name: pnpm audit (high and above)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: electronic-patient-record-ui-with-svelte
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11
+      - run: pnpm audit --audit-level high
+
+  secrets:
+    name: Secret scan (gitleaks, full history)
+    runs-on: ubuntu-latest
+    env:
+      GITLEAKS_VERSION: "8.30.1"
+      # SHA-256 of gitleaks_8.30.1_linux_x64.tar.gz from the release's checksums file.
+      GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks (pinned by checksum)
+        run: |
+          curl -sSfL -o gitleaks.tgz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tgz" | sha256sum -c -
+          tar -xzf gitleaks.tgz gitleaks
+      # Findings are redacted in the log. Accepted ones are listed, with a reason, in `.gitleaksignore`.
+      - run: ./gitleaks git --redact --no-banner --exit-code 1 .
+
   ci-ok:
     name: ci-ok
     if: always()
-    needs: [matcher, api, api-db, fhir-validator, deny, ui, docs, hazard-log, hazard-signoff, container, fresh-clone]
+    needs: [matcher, api, api-db, fhir-validator, deny, coverage, codeql, pnpm-audit, secrets, ui, docs, hazard-log, hazard-signoff, container, fresh-clone]
     runs-on: ubuntu-latest
     steps:
       - run: |

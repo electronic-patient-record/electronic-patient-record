@@ -28,7 +28,7 @@ export const handle: Handle = async (input) => {
   const { event } = input;
   const secure = isHttps(event.url, forwardedProto(event.request));
   // A background look (BACKGROUND_HEADER) is not activity: it must not keep an idle session alive.
-  const session = sessionFrom(getAuth(), event.cookies, secure, {
+  const session = await sessionFrom(getAuth(), event.cookies, secure, {
     activity: !isBackground(event.request.headers.get(BACKGROUND_HEADER)),
   });
   event.locals.user = session

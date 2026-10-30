@@ -104,11 +104,10 @@ settings:
   # (src/auth.rs). This test config opts OUT explicitly so local work and the
   # test suites run without minting tokens. Production never sets this key.
   require_auth: false
-  # Request rate limiting (src/rate_limit.rs) is on by default; off here so test
-  # suites and local loops are not throttled. Production leaves it on.
+  # Reserved for request rate limiting, which is not built yet (task OS-2); nothing reads this key.
   rate_limit: false
 
-# In-memory cache so the response cache (src/response_cache.rs) is exercised by the tests.
+# In-memory cache; nothing in src/ reads it yet.
 cache:
   kind: InMem
   max_capacity: 33554432

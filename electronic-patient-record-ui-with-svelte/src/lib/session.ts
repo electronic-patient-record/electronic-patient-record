@@ -1,7 +1,10 @@
 // Server-side session store for the backend-for-frontend. The browser holds one
 // opaque, random id in an httpOnly cookie; the tokens never leave the server.
-// This store is in process memory: a restart signs everyone out, and it cannot
-// be shared by several UI replicas (tracked in tasks.md, SE-9 "Not built").
+// This file holds the policy (idle and absolute expiry, fresh ids, single-use login
+// attempts); where records live is a backend (session-backends.ts): in this process's memory
+// by default (a restart signs everyone out and replicas do not share it), or in Redis,
+// encrypted, when several UI replicas must share sign-ins (OS-8).
+import { MemoryBackend, type SessionBackend } from "./session-backends.js";
 import { randomToken } from "./oidc.js";
 
 export interface Session {
@@ -29,18 +32,36 @@ export const MAX_SESSIONS = 10_000;
 export const LOGIN_TTL_SECONDS = 600;
 
 export class SessionStore {
-  private sessions = new Map<string, Session>();
-  private attempts = new Map<string, LoginAttempt>();
-
   constructor(
     private idleSeconds: number,
     private absoluteSeconds: number,
     private now: () => number = () => Math.floor(Date.now() / 1000),
+    private backend: SessionBackend = new MemoryBackend(),
   ) {}
 
-  create(init: Omit<Session, "id" | "createdAt" | "lastSeen">): Session {
-    this.sweep();
-    if (this.sessions.size >= MAX_SESSIONS) {
+  private live = (s: Session): boolean => {
+    const now = this.now();
+    return (
+      now - s.lastSeen <= this.idleSeconds &&
+      now - s.createdAt <= this.absoluteSeconds
+    );
+  };
+
+  /** Seconds a record may sit unwritten: until it would be idle or past its absolute limit. */
+  private ttl(s: Session): number {
+    const now = this.now();
+    return Math.min(
+      this.idleSeconds - (now - s.lastSeen),
+      this.absoluteSeconds - (now - s.createdAt),
+    );
+  }
+
+  async create(
+    init: Omit<Session, "id" | "createdAt" | "lastSeen">,
+  ): Promise<Session> {
+    this.backend.sweep(this.live, this.attemptLive);
+    const count = await this.backend.countSessions();
+    if (count !== null && count >= MAX_SESSIONS) {
       // Refuse rather than evict someone mid-task.
       throw new Error("too many sessions");
     }
@@ -52,7 +73,7 @@ export class SessionStore {
       createdAt: now,
       lastSeen: now,
     };
-    this.sessions.set(session.id, session);
+    await this.backend.putSession(session, this.ttl(session));
     return session;
   }
 
@@ -60,66 +81,62 @@ export class SessionStore {
    * Returns the live session, or null. The request counts as activity unless `activity` is false
    * (a background look, which must not keep an unattended workstation signed in).
    */
-  get(
+  async get(
     id: string | undefined,
     { activity = true }: { activity?: boolean } = {},
-  ): Session | null {
+  ): Promise<Session | null> {
     if (!id) return null;
-    const session = this.sessions.get(id);
+    const session = await this.backend.getSession(id);
     if (!session) return null;
-    const now = this.now();
-    if (
-      now - session.lastSeen > this.idleSeconds ||
-      now - session.createdAt > this.absoluteSeconds
-    ) {
-      this.sessions.delete(id);
+    if (!this.live(session)) {
+      await this.backend.deleteSession(id);
       return null;
     }
-    if (activity) session.lastSeen = now;
+    if (activity) {
+      session.lastSeen = this.now();
+      await this.backend.putSession(session, this.ttl(session));
+    }
     return session;
   }
 
-  delete(id: string | undefined): Session | null {
+  /** Writes a session this process changed (a refreshed token), keeping its expiry. */
+  async save(session: Session): Promise<void> {
+    await this.backend.putSession(session, this.ttl(session));
+  }
+
+  async delete(id: string | undefined): Promise<Session | null> {
     if (!id) return null;
-    const session = this.sessions.get(id) ?? null;
-    this.sessions.delete(id);
-    return session;
+    return this.backend.deleteSession(id);
   }
 
-  size(): number {
-    return this.sessions.size;
+  async size(): Promise<number | null> {
+    return this.backend.countSessions();
   }
 
-  beginLogin(attempt: Omit<LoginAttempt, "createdAt">): string {
-    this.sweep();
-    if (this.attempts.size >= MAX_SESSIONS)
+  async beginLogin(attempt: Omit<LoginAttempt, "createdAt">): Promise<string> {
+    this.backend.sweep(this.live, this.attemptLive);
+    if (
+      this.backend instanceof MemoryBackend &&
+      this.backend.attemptCount() >= MAX_SESSIONS
+    )
       throw new Error("too many sign-in attempts");
     const id = randomToken();
-    this.attempts.set(id, { ...attempt, createdAt: this.now() });
+    await this.backend.putAttempt(
+      id,
+      { ...attempt, createdAt: this.now() },
+      LOGIN_TTL_SECONDS,
+    );
     return id;
   }
 
-  /** A login attempt is single-use: taking it removes it. */
-  takeLogin(id: string | undefined): LoginAttempt | null {
+  /** A login attempt is single-use: taking it removes it, whichever replica takes it. */
+  async takeLogin(id: string | undefined): Promise<LoginAttempt | null> {
     if (!id) return null;
-    const attempt = this.attempts.get(id) ?? null;
-    this.attempts.delete(id);
-    if (!attempt || this.now() - attempt.createdAt > LOGIN_TTL_SECONDS)
-      return null;
+    const attempt = await this.backend.takeAttempt(id);
+    if (!attempt || !this.attemptLive(attempt)) return null;
     return attempt;
   }
 
-  private sweep(): void {
-    const now = this.now();
-    for (const [id, s] of this.sessions) {
-      if (
-        now - s.lastSeen > this.idleSeconds ||
-        now - s.createdAt > this.absoluteSeconds
-      )
-        this.sessions.delete(id);
-    }
-    for (const [id, a] of this.attempts) {
-      if (now - a.createdAt > LOGIN_TTL_SECONDS) this.attempts.delete(id);
-    }
-  }
+  private attemptLive = (a: LoginAttempt): boolean =>
+    this.now() - a.createdAt <= LOGIN_TTL_SECONDS;
 }

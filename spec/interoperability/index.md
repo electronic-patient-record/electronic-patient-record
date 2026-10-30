@@ -35,6 +35,98 @@ Status: **planned, nothing built.** The list of countries above is from my knowl
 checked against each publisher (task IO-18). Today the service has UK Core and US Core as references only; no pack mechanism
 exists.
 
+### Pack mechanism (design, OS-10)
+
+**Proposed 2026-10-30. Not built, and not confirmed by the maintainer** (OQ-OS5, OQ-OS6). It turns the seven rules above into
+a mechanism and names where today's country assumptions (`spec/equity-audit.md`) would move. It borrows four working shapes
+from other systems and rejects two (sources at the end).
+
+**1. A pack is data, never code.** No pack runs anything. A rule that needs an algorithm (a check digit) names one from a
+small closed set that lives in the service and the matcher (`mod11` with weights, `mod10-luhn`, `mod23`, and so on); adding
+an algorithm is an ordinary reviewed code change with test vectors. This is the line between a deployer's configuration and
+the manufacturer's software, and it keeps a pack reviewable by someone who is not a programmer.
+
+**2. Shape on disk.** One directory per pack, `packs/<id>/`, with a manifest and one file per domain. The rule files are
+TOML (typed, comments allowed for the reviewer, one strict parser with unknown keys refused); tables of names are CSV.
+
+| File | Holds | Replaces (equity audit row) |
+|---|---|---|
+| `pack.toml` | `id`, `version` (semver), `kind` (`country`, `region`, `federation`), `requires` (core range, other packs), `sources` (URL and date read for each rule), `reviewed` (`none`, or reviewer, role and date) | none |
+| `identifiers.toml` | per identifier: system URI, length and pattern, allowed separators, check rule (algorithm and parameters), placeholder rule, `weight` = `decides` or `supports`, and test vectors (valid, invalid, placeholder) | row 1: the NHS number rule in `matcher/src/nhs.rs` and `engine.rs` |
+| `names.toml`, `names/*.csv` | name parts that exist, comparison rule per locale, nickname and phonetic tables; absence is "no claim" | rows 2 and 3 |
+| `phone.toml` | calling code and the trunk-prefix rule (not always `0`; Italy keeps it) | row 4: the constant 44 |
+| `address.toml` | which address parts exist and which carry evidence (a country with no postcode names none) | row 5 |
+| `units.toml` | display unit per quantity, with the stored UCUM unit always shown | row 9 |
+| `terminology.toml` | code systems the country uses, and which are not licensed here | rows 6 and 12 |
+| `fhir.toml` | core guide name, package id, version, profiles and extensions it adds | row 6; IO-18 |
+| `locales/`, `regulatory.md` | locale data (script direction, calendar, plural rules); the regimes the pack maps, never a claim of compliance | rows 10 and 11 |
+
+Row 13 (sex and gender) is not a pack: it is a data-model question and stays with the maintainer.
+
+**3. Typed schema and validators.** Each file has a Rust struct that refuses unknown keys. Loading then runs four checks, and
+any failure stops startup: (a) the schema; (b) semantic rules (a named algorithm exists, a pattern compiles, a system URI is
+absolute, a calling code is a number); (c) **the pack's own test vectors pass** through the real code, and its invalid and
+placeholder vectors are refused; (d) for a FHIR pack, the HL7 validator accepts the pack's example resources with its
+package loaded and **a control must fail** (rule 4 above). A pack with no vectors does not load.
+
+**4. One `enabled` list per deployment.** The deployment, not the pack, switches packs on: `packs.enabled = ["uk-core",
+"us-core"]` in the service configuration, overridable by an environment variable. A pack that is installed and not listed
+does nothing. `metadata` advertises only enabled packs that passed (c) and (d); a deployment with none gets base FHIR.
+
+**5. Load order and merge.**
+1. Core defaults, which are neutral: no identifier decides, no phone default, every name part optional.
+2. Enabled packs in the order listed, each validated alone first.
+3. The deployer's override directory (`packs-override/`, mounted read-only). It may set a value a pack left open or choose
+   in a conflict (below). It may not add an algorithm or run code.
+4. Environment variables, for secrets and per-host values only.
+
+The result is one **effective rule set**, loaded once at start (never edited at runtime, unlike a concept dictionary), whose
+SHA-256 is logged at startup and written on every patient version, link decision and audit row it influenced, so a record
+always says which rules applied.
+
+**6. Conflicts (equity rule, item 4).** Two packs may both define a thing without clashing: two identifier systems coexist and
+each applies to its own system, so a deployment serving two countries can have two deterministic identifiers. They clash
+only when they set **the same key** to different values (the phone calling code; the same identifier system URI; the same
+unit for one quantity). A clash stops startup unless the deployer's override names the winner for that key
+(`resolve."phone.calling_code" = "au"`). Neither pack wins silently, and the resolution is part of the effective rule set,
+so it is in the hash.
+
+**7. What no pack can do.** The validator and a census test refuse a pack that: lets absent evidence count as agreement or
+as zero; lets a missing field allow an automatic patient link; lowers a core threshold or minimum-evidence rule; makes an
+identifier decide without a check rule, a placeholder rule and vectors; adds any delete or overwrite of clinical data; or
+claims review it does not have. Packs add evidence kinds and tighten rules; they cannot loosen a guard.
+
+**8. Where the code changes.** The matcher stays a pure library: it receives the identifier and phone rules as values in its
+configuration (a matcher change, spec first, with its own version bump), never reads a file. The service loads packs, builds
+the rule set and passes it in. Today's NHS rule becomes the first identifier rule of a `uk` pack with its current vectors,
+and the default configuration reproduces today's behaviour exactly, so the existing tests are the regression guard.
+
+**9. Review and honesty.** `reviewed = none` is printed at startup and exposed to the deployer; a pack built from a
+published guide stays "machine-assembled" until a person who works with that standard signs it. Changing the enabled packs on
+a running deployment changes who is linked to whom, so it is a **clinical** change: a hazard row first (AS-1), and before it
+goes live a dry run that replays a labelled corpus (ID-1) under the old and the new rule sets and lists every pair whose
+decision changed.
+
+**10. First slice, in order.** (a) The phone calling code from a pack (row 4, smallest, a wrong code can fake a match) with
+the service finally setting `default_calling_code`; (b) the NHS number as the first identifier rule, behaviour unchanged;
+(c) a second identifier rule from a sourced guide (Australia's IHI: 16 digits, prefix `800360`, Luhn) to prove the mechanism
+is not NHS-shaped. Each is its own commit with a hazard row.
+
+**Borrowed.** OpenMRS Initializer loads metadata domains (concepts, roles, privileges, global properties, forms, MDM rules)
+idempotently from a config folder ([readme](https://github.com/mekomsolutions/openmrs-module-initializer/tree/master/readme));
+OpenMRS 3 declares a typed schema with defaults and validators per module and merges config files, later wins
+([configuration system](https://o3-docs.vercel.app/docs/configuration-system)); the HAPI JPA starter puts each optional
+feature behind one `*_enabled` key overridable by environment
+([application.yaml](https://github.com/hapifhir/hapi-fhir-jpaserver-starter/blob/master/src/main/resources/application.yaml));
+Ozone builds a distribution as a child project that overrides only configuration directories, never a fork
+([create a distro](https://docs.ozone-his.com/implementers/create-distro/)). **Rejected:** a metadata dictionary editable at
+runtime through an admin screen (a change to who links to whom must not be one click, and must be hashed and reviewed), and
+Medplum-style bots (packs are data, not code). I read these from their documentation, not their code.
+
+**Not decided here:** the file format and where packs live (OQ-OS5); whether an unreviewed pack may be enabled in
+production (OQ-OS6); how a pack carries translations (locale packs follow `spec/locales.md`); whether the ABAC policy becomes
+a pack-like data file (OQ-OS2); a signing scheme for packs (none exists, and none is proposed until a deployer asks).
+
 ## FHIR R5
 
 R4 (4.0.1) stays the baseline: it is what UK Core and US Core track. R5 (5.0.0) is added as a **second, read-only facade at

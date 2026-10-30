@@ -29,9 +29,8 @@ server:
     limit_payload:
       enable: true
       body_limit: 2mb
-    # CORS is NOT enabled here: the service applies its own explicit allow-list
-    # (EPR_CORS_ORIGINS, comma-separated exact origins;
-    # unset = same-origin only; src/http_security.rs).
+    # CORS is NOT enabled here. No CORS code exists in this service yet, so only the browser's
+    # same-origin rule applies (tasks SE-7 and OS-2 plan an explicit allow-list).
     cors:
       enable: false
 
@@ -89,7 +88,7 @@ cache:
   kind: InMem
   max_capacity: 33554432 # 32MiB (default if not specified)
 
-# Explicit opt-out (src/auth.rs, src/rate_limit.rs). Production never sets these.
+# Explicit opt-out (src/auth.rs). Production never sets these.
 settings:
   require_auth: false
   rate_limit: false

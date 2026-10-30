@@ -9,8 +9,8 @@
 //! 2. **The record decision** ([`evaluate`]): may this subject perform this action on *this*
 //!    record, given the relationship to the patient, the record's security labels, the purpose of
 //!    use, the patient's consent and any break-the-glass grant? It is attribute-based (ABAC) and
-//!    is called by a handler once it has loaded the record. No handler reads a stored record
-//!    today, so nothing calls it yet; the tests exercise it.
+//!    is called by a handler once it has loaded the record (`controllers/common.rs` and `adt_feed.rs`
+//!    call it today); the tests exercise it too.
 //!
 //! Rules that hold for every input (and are property-tested across the whole matrix):
 //!

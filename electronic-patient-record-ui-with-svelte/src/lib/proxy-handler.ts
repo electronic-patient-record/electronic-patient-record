@@ -49,9 +49,18 @@ export function createProxyHandler(deps: ProxyDeps): RequestHandler {
       }
       const secure = isHttps(url, deps.forwardedProto(request));
       const name = deps.cookieName(deps.sessionCookie, secure);
-      const session = auth.store.get(cookies.get(name), {
-        activity: !isBackground(request.headers.get(BACKGROUND_HEADER)),
-      });
+      let session: Awaited<ReturnType<typeof auth.store.get>>;
+      try {
+        session = await auth.store.get(cookies.get(name), {
+          activity: !isBackground(request.headers.get(BACKGROUND_HEADER)),
+        });
+      } catch {
+        // The shared session store is unreachable: the reader is not signed out, so keep the cookie.
+        return json(
+          { error: "session store unavailable, try again" },
+          { status: 503, headers: { "retry-after": "5" } },
+        );
+      }
       let token: string | null;
       try {
         token = session ? await auth.accessToken(session) : null;

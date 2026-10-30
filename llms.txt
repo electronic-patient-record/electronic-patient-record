@@ -32,6 +32,7 @@
 - [Persistence](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/10-persistence.md): Append-only tables and audit triggers.
 - [Testing strategy](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/11-testing-strategy.md): Gates, census tests, oracles.
 - [Compliance](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/12-compliance.md): The regulatory position and what is not claimed.
+- [Benchmark](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/benchmark.md): Where the repository stands against open-source EPR, EHR and FHIR systems.
 - [Roadmap](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/15-roadmap.md): Milestones M0 onward.
 - [Open questions](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/16-open-questions.md): Decisions that need a maintainer, a clinician or the Clinical Safety Officer.
 - [Plan](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/plan.md): The long plan behind the task queue.
@@ -59,6 +60,7 @@
 ## Optional
 
 - [Contributing](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CONTRIBUTING.md): How to contribute.
+- [Code of conduct](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md): Contributor Covenant 2.1 and how to report.
 - [AI statement](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AI_STATEMENT.md): How AI is used in this project.
 - [RFC](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/RFC.md): Request for comments.
 - [News](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/NEWS.md): Project news.

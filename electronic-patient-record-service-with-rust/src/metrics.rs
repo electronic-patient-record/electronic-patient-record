@@ -8,10 +8,19 @@
 //! seldom holds one), so a deployer exposes it on an internal network only.
 
 use axum::{
+    extract::{MatchedPath, Request},
     http::{StatusCode, header},
+    middleware::Next,
     response::{IntoResponse, Response},
 };
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::{
+    collections::BTreeMap,
+    sync::{
+        Mutex,
+        atomic::{AtomicU64, Ordering},
+    },
+    time::Instant,
+};
 
 /// A monotonically increasing count.
 #[derive(Debug, Default)]
@@ -47,6 +56,107 @@ pub static UNAUDITED_REFUSALS: Counter = Counter::new();
 /// HL7 messages refused, whether or not the refusal was stored.
 pub static FEED_REFUSALS: Counter = Counter::new();
 
+/// Upper bounds, in seconds, of the request-duration buckets.
+pub const BUCKETS: [f64; 11] = [
+    0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0,
+];
+
+/// Most distinct `(method, route, status)` series kept. Routes are templates, so the real count is
+/// small; the cap only guards against a bug that puts an unbounded value in a label. Past it,
+/// observations fold into the route `overflow`.
+const MAX_SERIES: usize = 1000;
+
+/// The route label for a request that matched no route.
+const UNMATCHED: &str = "unmatched";
+
+#[derive(Debug, Clone, Default)]
+struct Histogram {
+    /// Observations at or under each bound, not yet cumulative.
+    buckets: [u64; BUCKETS.len()],
+    count: u64,
+    sum: f64,
+}
+
+type Series = BTreeMap<(String, String, u16), Histogram>;
+
+static REQUESTS: Mutex<Series> = Mutex::new(BTreeMap::new());
+
+fn observe_in(series: &mut Series, method: &str, route: &str, status: u16, seconds: f64) {
+    let key = (method.to_string(), route.to_string(), status);
+    let key = if series.contains_key(&key) || series.len() < MAX_SERIES {
+        key
+    } else {
+        (method.to_string(), "overflow".to_string(), status)
+    };
+    let h = series.entry(key).or_default();
+    h.count += 1;
+    h.sum += seconds;
+    if let Some(i) = BUCKETS.iter().position(|b| seconds <= *b) {
+        h.buckets[i] += 1;
+    }
+}
+
+/// Record one request. `route` is the matched route template, never the raw path.
+pub fn observe(method: &str, route: &str, status: u16, seconds: f64) {
+    let mut guard = REQUESTS.lock().unwrap_or_else(|e| e.into_inner());
+    observe_in(&mut guard, method, route, status, seconds);
+}
+
+/// Middleware that times every request and labels it by method, matched route template and status.
+/// It carries no patient identifier: a request that matched no route is labelled `unmatched`.
+pub async fn duration_mw(request: Request, next: Next) -> Response {
+    let started = Instant::now();
+    let method = request.method().as_str().to_string();
+    let route = request
+        .extensions()
+        .get::<MatchedPath>()
+        .map_or_else(|| UNMATCHED.to_string(), |m| m.as_str().to_string());
+    let response = next.run(request).await;
+    observe(
+        &method,
+        &route,
+        response.status().as_u16(),
+        started.elapsed().as_secs_f64(),
+    );
+    response
+}
+
+fn escape(label: &str) -> String {
+    label
+        .replace('\\', "\\\\")
+        .replace('"', "\\\"")
+        .replace('\n', "\\n")
+}
+
+fn render_histograms(series: &Series) -> String {
+    if series.is_empty() {
+        return String::new();
+    }
+    let name = "epr_http_request_duration_seconds";
+    let mut out = format!(
+        "# HELP {name} Request duration by method, matched route template and status.\n# TYPE {name} histogram\n"
+    );
+    for ((method, route, status), h) in series {
+        let labels = format!(
+            "method=\"{}\",route=\"{}\",status=\"{status}\"",
+            escape(method),
+            escape(route)
+        );
+        let mut cumulative = 0;
+        for (bound, n) in BUCKETS.iter().zip(h.buckets) {
+            cumulative += n;
+            out.push_str(&format!(
+                "{name}_bucket{{{labels},le=\"{bound}\"}} {cumulative}\n"
+            ));
+        }
+        out.push_str(&format!(
+            "{name}_bucket{{{labels},le=\"+Inf\"}} {}\n{name}_sum{{{labels}}} {}\n{name}_count{{{labels}}} {}\n",
+            h.count, h.sum, h.count
+        ));
+    }
+    out
+}
+
 /// `(name, help, counter)` for everything served.
 fn all() -> [(&'static str, &'static str, &'static Counter); 3] {
     [
@@ -71,7 +181,10 @@ fn all() -> [(&'static str, &'static str, &'static Counter); 3] {
 /// The counters in the Prometheus text exposition format.
 #[must_use]
 pub fn render() -> String {
-    render_of(&all())
+    let mut out = render_of(&all());
+    let series = REQUESTS.lock().unwrap_or_else(|e| e.into_inner());
+    out.push_str(&render_histograms(&series));
+    out
 }
 
 fn render_of(counters: &[(&str, &str, &Counter)]) -> String {
@@ -123,6 +236,52 @@ mod tests {
             render_of(&[("x_total", "An x.", &c)]),
             "# HELP x_total An x.\n# TYPE x_total counter\nx_total 2\n"
         );
+    }
+
+    #[test]
+    fn a_histogram_is_cumulative_and_ends_at_the_count() {
+        let mut series = Series::new();
+        observe_in(&mut series, "GET", "/x/{id}", 200, 0.004);
+        observe_in(&mut series, "GET", "/x/{id}", 200, 0.2);
+        observe_in(&mut series, "GET", "/x/{id}", 200, 30.0);
+        let text = render_histograms(&series);
+        let l = "method=\"GET\",route=\"/x/{id}\",status=\"200\"";
+        assert!(
+            text.contains(&format!("_bucket{{{l},le=\"0.005\"}} 1\n")),
+            "{text}"
+        );
+        assert!(
+            text.contains(&format!("_bucket{{{l},le=\"0.25\"}} 2\n")),
+            "{text}"
+        );
+        assert!(
+            text.contains(&format!("_bucket{{{l},le=\"10\"}} 2\n")),
+            "{text}"
+        );
+        assert!(
+            text.contains(&format!("_bucket{{{l},le=\"+Inf\"}} 3\n")),
+            "{text}"
+        );
+        assert!(text.contains(&format!("_count{{{l}}} 3\n")), "{text}");
+    }
+
+    #[test]
+    fn series_are_capped_and_overflow_is_labelled() {
+        let mut series = Series::new();
+        for i in 0..MAX_SERIES + 50 {
+            observe_in(&mut series, "GET", &format!("/r{i}"), 200, 0.001);
+        }
+        assert_eq!(
+            series.len(),
+            MAX_SERIES + 1,
+            "one extra series for overflow"
+        );
+        assert_eq!(series[&("GET".into(), "overflow".into(), 200)].count, 50);
+    }
+
+    #[test]
+    fn label_values_are_escaped() {
+        assert_eq!(escape("a\"b\\c\nd"), "a\\\"b\\\\c\\nd");
     }
 
     #[test]

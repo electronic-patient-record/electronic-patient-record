@@ -1,32 +1,24 @@
-# cargo-deny supply-chain policy (SEC-I1). Used by the `security.yml`
-# workflow's `cargo deny check` step. Copied per crate (drift-accepted,
+# cargo-deny supply-chain policy (SEC-I1). Used by the `deny` job
+# of `.github/workflows/ci.yml` (`cargo deny check`). Copied per crate (drift-accepted,
 # same posture as the other per-crate configs); keep the crates in sync
 # when this policy changes.
 
 [advisories]
 version = 2
 yanked = "warn"
-# Transitive advisories carried by the shared Rust/Loco dependency tree
-# (mostly via loco-rs -> opendal / sqlx / async deps). They are not
-# fixable at the service/library level without an upstream loco-rs bump,
-# so they are accepted here WITH this note and revisited on the next
-# loco-rs upgrade. Matcher / library crates with small trees do not pull
-# these (an unused ignore is a harmless warning). Real, actionable
-# advisories NOT on this list still fail the build.
+# Every ignore says why and when it lapses. Write the lapse date as `expires YYYY-MM-DD` in the
+# comment on the same line; `tests/advisory_expiry.rs` fails when a date has passed, is missing, or is
+# more than about six months ahead, so an ignore cannot sit here forgotten. Re-check by running
+# `cargo deny check advisories` with the ignore removed: if it no longer fires (`advisory-not-detected`
+# warns about a dead one), delete the line. Real, actionable advisories not listed here fail the build.
+#
+# 2026-10-30: twelve earlier ignores were removed because `cargo deny` reported each as not encountered
+# (the locked versions are patched or the crate is no longer in the tree).
 ignore = [
-    "RUSTSEC-2024-0370", # proc-macro-error (unmaintained), transitive
-    "RUSTSEC-2024-0384", # instant (unmaintained), transitive
-    "RUSTSEC-2024-0436", # paste (unmaintained), transitive
-    "RUSTSEC-2024-0437", # protobuf recursion, transitive
-    "RUSTSEC-2025-0052", # transitive advisory (loco tree)
-    "RUSTSEC-2026-0173", # transitive advisory (loco tree)
-    "RUSTSEC-2026-0190", # transitive advisory (loco tree)
-    "RUSTSEC-2026-0194", # transitive advisory (loco tree)
-    "RUSTSEC-2026-0195", # quick-xml namespace-declaration DoS, transitive (opendal)
-    "RUSTSEC-2026-0204", # transitive advisory (loco tree)
-    "RUSTSEC-2025-0057", # transitive advisory (loco tree)
-    "RUSTSEC-2024-0449", # unsafe-libyaml (unmaintained), transitive: loco-rs -> loco-gen -> rrgen -> serde_yaml; added 2026-10-13
-    "RUSTSEC-2025-0134", # rustls-pemfile (unmaintained; a thin wrapper over rustls-pki-types), transitive (loco tree); added 2026-10-10
+    # unmaintained (not a vulnerability). A normal dependency of loco-rs through serde_yaml_ng, and of
+    # loco-gen -> rrgen -> serde_yaml; it parses the deployer's own YAML config files, not patient input.
+    # Which code paths of it run was not traced. Revisit on the next loco-rs upgrade.
+    "RUSTSEC-2024-0449", # unsafe-libyaml; added 2026-10-13; expires 2027-01-30
 ]
 
 [licenses]

@@ -86,6 +86,8 @@ Topics that span several numbered chapters and are kept whole:
   Spans §6, §7, §11.
 - [Emergency triage](triage/index.md) — post-1.0: pluggable triage pack, append-only assessments, FHIR mapping,
   Manchester Triage System content policy. Spans §5, §6.
+- [Benchmark](benchmark.md) — the repository against twelve open-source EPR, EHR and FHIR systems on code quality,
+  maintainability, security and scalability, plus their capabilities and configuration (2026-10-30, OS-1).
 - [Equity audit](equity-audit.md) — country assumptions found in the core (IO-19): identifier, names, phone code, dates,
   units, locales, regulation.
 - [Locales](locales.md) — `<language>-<region>` names, same rules as the

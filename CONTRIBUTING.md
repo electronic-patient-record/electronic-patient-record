@@ -57,7 +57,7 @@ while. A small, focused change with its test is merged faster than a large one.
 
 ## Conduct
 
-See the code of conduct in [GOVERNANCE.md](GOVERNANCE.md#code-of-conduct).
+This project follows the [Contributor Covenant 2.1](CODE_OF_CONDUCT.md).
 
 ## Security
 

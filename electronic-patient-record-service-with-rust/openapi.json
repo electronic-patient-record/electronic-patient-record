@@ -1,0 +1,2018 @@
+{
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "description": "NOT FOR CLINICAL USE. An inventory of the served routes with their authentication and policy requirements, derived from the code. Request and response bodies are not described. The API is versioned by the Accepts-version header; no path carries a version segment.",
+    "title": "Electronic Patient Record service",
+    "version": "0.1.0",
+    "x-epr-derived-from": [
+      "controllers::all_routes",
+      "routes::TABLE"
+    ]
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/_health": {
+      "get": {
+        "operationId": "get_health",
+        "responses": {
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [],
+        "summary": "GET /_health",
+        "tags": [
+          "health"
+        ],
+        "x-epr-public": true
+      }
+    },
+    "/_ping": {
+      "get": {
+        "operationId": "get_ping",
+        "responses": {
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [],
+        "summary": "GET /_ping",
+        "tags": [
+          "ping"
+        ],
+        "x-epr-public": true
+      }
+    },
+    "/_readiness": {
+      "get": {
+        "operationId": "get_readiness",
+        "responses": {
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [],
+        "summary": "GET /_readiness",
+        "tags": [
+          "readiness"
+        ],
+        "x-epr-public": true
+      }
+    },
+    "/api/audit": {
+      "get": {
+        "operationId": "getApiAudit",
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/audit",
+        "tags": [
+          "audit"
+        ],
+        "x-epr-action": "Search",
+        "x-epr-resource": "AuditLog"
+      }
+    },
+    "/api/audit/export": {
+      "get": {
+        "operationId": "getApiAuditExport",
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/audit/export",
+        "tags": [
+          "audit"
+        ],
+        "x-epr-action": "Export",
+        "x-epr-resource": "AuditLog"
+      }
+    },
+    "/api/audit/verify": {
+      "get": {
+        "operationId": "getApiAuditVerify",
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/audit/verify",
+        "tags": [
+          "audit"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "AuditLog"
+      }
+    },
+    "/api/break-glass/reviews": {
+      "get": {
+        "operationId": "getApiBreak-glassReviews",
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/break-glass/reviews",
+        "tags": [
+          "break-glass"
+        ],
+        "x-epr-action": "Search",
+        "x-epr-resource": "BreakGlass"
+      }
+    },
+    "/api/break-glass/reviews/count": {
+      "get": {
+        "operationId": "getApiBreak-glassReviewsCount",
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/break-glass/reviews/count",
+        "tags": [
+          "break-glass"
+        ],
+        "x-epr-action": "Search",
+        "x-epr-resource": "BreakGlass"
+      }
+    },
+    "/api/break-glass/reviews/{id}": {
+      "post": {
+        "operationId": "postApiBreak-glassReviewsId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/break-glass/reviews/{id}",
+        "tags": [
+          "break-glass"
+        ],
+        "x-epr-action": "Update",
+        "x-epr-resource": "BreakGlass"
+      }
+    },
+    "/api/feed/refusals": {
+      "get": {
+        "operationId": "getApiFeedRefusals",
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/feed/refusals",
+        "tags": [
+          "feed"
+        ],
+        "x-epr-action": "Search",
+        "x-epr-resource": "FeedQueue"
+      }
+    },
+    "/api/feed/refusals/count": {
+      "get": {
+        "operationId": "getApiFeedRefusalsCount",
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/feed/refusals/count",
+        "tags": [
+          "feed"
+        ],
+        "x-epr-action": "Search",
+        "x-epr-resource": "FeedQueue"
+      }
+    },
+    "/api/feed/refusals/{id}": {
+      "get": {
+        "operationId": "getApiFeedRefusalsId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/feed/refusals/{id}",
+        "tags": [
+          "feed"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "FeedQueue"
+      }
+    },
+    "/api/feed/refusals/{id}/resolve": {
+      "post": {
+        "operationId": "postApiFeedRefusalsIdResolve",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/feed/refusals/{id}/resolve",
+        "tags": [
+          "feed"
+        ],
+        "x-epr-action": "Update",
+        "x-epr-resource": "FeedQueue"
+      }
+    },
+    "/api/hazards": {
+      "get": {
+        "operationId": "getApiHazards",
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/hazards",
+        "tags": [
+          "hazards"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "Hazard"
+      },
+      "post": {
+        "operationId": "postApiHazards",
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/hazards",
+        "tags": [
+          "hazards"
+        ],
+        "x-epr-action": "Create",
+        "x-epr-resource": "Hazard"
+      }
+    },
+    "/api/hazards/{hazard_id}": {
+      "put": {
+        "operationId": "putApiHazardsHazard_id",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "hazard_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "PUT /api/hazards/{hazard_id}",
+        "tags": [
+          "hazards"
+        ],
+        "x-epr-action": "Update",
+        "x-epr-resource": "Hazard"
+      }
+    },
+    "/api/me/patients": {
+      "get": {
+        "operationId": "getApiMePatients",
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/me/patients",
+        "tags": [
+          "me"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "PatientIdentity"
+      }
+    },
+    "/api/me/patients/{id}/access-log": {
+      "get": {
+        "operationId": "getApiMePatientsIdAccess-log",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/me/patients/{id}/access-log",
+        "tags": [
+          "me"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "PatientIdentity"
+      }
+    },
+    "/api/openapi.json": {
+      "get": {
+        "operationId": "getApiOpenapi.json",
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/openapi.json",
+        "tags": [
+          "openapi.json"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "PatientIdentity"
+      }
+    },
+    "/api/patients": {
+      "get": {
+        "operationId": "getApiPatients",
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/patients",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Search",
+        "x-epr-resource": "PatientIdentity"
+      },
+      "post": {
+        "operationId": "postApiPatients",
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/patients",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Create",
+        "x-epr-resource": "PatientIdentity"
+      }
+    },
+    "/api/patients/compare": {
+      "post": {
+        "operationId": "postApiPatientsCompare",
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/patients/compare",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Search",
+        "x-epr-resource": "PatientIdentity"
+      }
+    },
+    "/api/patients/{id}": {
+      "get": {
+        "operationId": "getApiPatientsId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/patients/{id}",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "PatientIdentity"
+      },
+      "put": {
+        "operationId": "putApiPatientsId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "PUT /api/patients/{id}",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Update",
+        "x-epr-resource": "PatientIdentity"
+      }
+    },
+    "/api/patients/{id}/allergies": {
+      "get": {
+        "operationId": "getApiPatientsIdAllergies",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/patients/{id}/allergies",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "AllergyIntolerance"
+      },
+      "post": {
+        "operationId": "postApiPatientsIdAllergies",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/patients/{id}/allergies",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Create",
+        "x-epr-resource": "AllergyIntolerance"
+      }
+    },
+    "/api/patients/{id}/allergies/{allergy_id}": {
+      "put": {
+        "operationId": "putApiPatientsIdAllergiesAllergy_id",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "allergy_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "PUT /api/patients/{id}/allergies/{allergy_id}",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Update",
+        "x-epr-resource": "AllergyIntolerance"
+      }
+    },
+    "/api/patients/{id}/allergy-statement": {
+      "put": {
+        "operationId": "putApiPatientsIdAllergy-statement",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "PUT /api/patients/{id}/allergy-statement",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Create",
+        "x-epr-resource": "AllergyIntolerance"
+      }
+    },
+    "/api/patients/{id}/amendments": {
+      "get": {
+        "operationId": "getApiPatientsIdAmendments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/patients/{id}/amendments",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "Amendment"
+      },
+      "post": {
+        "operationId": "postApiPatientsIdAmendments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/patients/{id}/amendments",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Create",
+        "x-epr-resource": "Amendment"
+      }
+    },
+    "/api/patients/{id}/amendments/{amendment_id}": {
+      "put": {
+        "operationId": "putApiPatientsIdAmendmentsAmendment_id",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "amendment_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "PUT /api/patients/{id}/amendments/{amendment_id}",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Update",
+        "x-epr-resource": "Amendment"
+      }
+    },
+    "/api/patients/{id}/break-glass": {
+      "post": {
+        "operationId": "postApiPatientsIdBreak-glass",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/patients/{id}/break-glass",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Create",
+        "x-epr-resource": "BreakGlass"
+      }
+    },
+    "/api/patients/{id}/consents": {
+      "get": {
+        "operationId": "getApiPatientsIdConsents",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/patients/{id}/consents",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "Consent"
+      },
+      "post": {
+        "operationId": "postApiPatientsIdConsents",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/patients/{id}/consents",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Create",
+        "x-epr-resource": "Consent"
+      }
+    },
+    "/api/patients/{id}/consents/{consent_id}": {
+      "put": {
+        "operationId": "putApiPatientsIdConsentsConsent_id",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "consent_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "PUT /api/patients/{id}/consents/{consent_id}",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Update",
+        "x-epr-resource": "Consent"
+      }
+    },
+    "/api/patients/{id}/links": {
+      "get": {
+        "operationId": "getApiPatientsIdLinks",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/patients/{id}/links",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "PatientLink"
+      }
+    },
+    "/api/patients/{id}/merge": {
+      "post": {
+        "operationId": "postApiPatientsIdMerge",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/patients/{id}/merge",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Create",
+        "x-epr-resource": "PatientLink"
+      }
+    },
+    "/api/patients/{id}/observations": {
+      "get": {
+        "operationId": "getApiPatientsIdObservations",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/patients/{id}/observations",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "Observation"
+      },
+      "post": {
+        "operationId": "postApiPatientsIdObservations",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/patients/{id}/observations",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Create",
+        "x-epr-resource": "Observation"
+      }
+    },
+    "/api/patients/{id}/observations/{observation_id}": {
+      "put": {
+        "operationId": "putApiPatientsIdObservationsObservation_id",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "observation_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "PUT /api/patients/{id}/observations/{observation_id}",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Update",
+        "x-epr-resource": "Observation"
+      }
+    },
+    "/api/patients/{id}/observations/{observation_id}/versions": {
+      "get": {
+        "operationId": "getApiPatientsIdObservationsObservation_idVersions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "observation_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/patients/{id}/observations/{observation_id}/versions",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "Observation"
+      }
+    },
+    "/api/patients/{id}/photo": {
+      "get": {
+        "operationId": "getApiPatientsIdPhoto",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/patients/{id}/photo",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "PatientIdentity"
+      },
+      "put": {
+        "operationId": "putApiPatientsIdPhoto",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "PUT /api/patients/{id}/photo",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Update",
+        "x-epr-resource": "PatientIdentity"
+      }
+    },
+    "/api/patients/{id}/photo/withdraw": {
+      "post": {
+        "operationId": "postApiPatientsIdPhotoWithdraw",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/patients/{id}/photo/withdraw",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Update",
+        "x-epr-resource": "PatientIdentity"
+      }
+    },
+    "/api/patients/{id}/relationships": {
+      "get": {
+        "operationId": "getApiPatientsIdRelationships",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/patients/{id}/relationships",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "CareRelationship"
+      },
+      "post": {
+        "operationId": "postApiPatientsIdRelationships",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/patients/{id}/relationships",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Create",
+        "x-epr-resource": "CareRelationship"
+      }
+    },
+    "/api/patients/{id}/relationships/{relationship_id}": {
+      "put": {
+        "operationId": "putApiPatientsIdRelationshipsRelationship_id",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "relationship_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "PUT /api/patients/{id}/relationships/{relationship_id}",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Update",
+        "x-epr-resource": "CareRelationship"
+      }
+    },
+    "/api/patients/{id}/unmerge": {
+      "post": {
+        "operationId": "postApiPatientsIdUnmerge",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/patients/{id}/unmerge",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Update",
+        "x-epr-resource": "PatientLink"
+      }
+    },
+    "/fhir/R4/AllergyIntolerance": {
+      "get": {
+        "operationId": "getFhirR4AllergyIntolerance",
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /fhir/R4/AllergyIntolerance",
+        "tags": [
+          "fhir-r4"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "AllergyIntolerance"
+      }
+    },
+    "/fhir/R4/AuditEvent": {
+      "get": {
+        "operationId": "getFhirR4AuditEvent",
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /fhir/R4/AuditEvent",
+        "tags": [
+          "fhir-r4"
+        ],
+        "x-epr-action": "Search",
+        "x-epr-resource": "AuditLog"
+      }
+    },
+    "/fhir/R4/Observation": {
+      "get": {
+        "operationId": "getFhirR4Observation",
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /fhir/R4/Observation",
+        "tags": [
+          "fhir-r4"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "Observation"
+      }
+    },
+    "/fhir/R4/Patient": {
+      "get": {
+        "operationId": "getFhirR4Patient",
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /fhir/R4/Patient",
+        "tags": [
+          "fhir-r4"
+        ],
+        "x-epr-action": "Search",
+        "x-epr-resource": "PatientIdentity"
+      },
+      "post": {
+        "operationId": "postFhirR4Patient",
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /fhir/R4/Patient",
+        "tags": [
+          "fhir-r4"
+        ],
+        "x-epr-action": "Create",
+        "x-epr-resource": "PatientIdentity"
+      }
+    },
+    "/fhir/R4/Patient/{id}": {
+      "get": {
+        "operationId": "getFhirR4PatientId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /fhir/R4/Patient/{id}",
+        "tags": [
+          "fhir-r4"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "PatientIdentity"
+      },
+      "put": {
+        "operationId": "putFhirR4PatientId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "PUT /fhir/R4/Patient/{id}",
+        "tags": [
+          "fhir-r4"
+        ],
+        "x-epr-action": "Update",
+        "x-epr-resource": "PatientIdentity"
+      }
+    },
+    "/fhir/R4/metadata": {
+      "get": {
+        "operationId": "getFhirR4Metadata",
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /fhir/R4/metadata",
+        "tags": [
+          "fhir-r4"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "PatientIdentity"
+      }
+    },
+    "/fhir/R5/AllergyIntolerance": {
+      "get": {
+        "operationId": "getFhirR5AllergyIntolerance",
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /fhir/R5/AllergyIntolerance",
+        "tags": [
+          "fhir-r5"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "AllergyIntolerance"
+      }
+    },
+    "/fhir/R5/Observation": {
+      "get": {
+        "operationId": "getFhirR5Observation",
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /fhir/R5/Observation",
+        "tags": [
+          "fhir-r5"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "Observation"
+      }
+    },
+    "/fhir/R5/Patient": {
+      "get": {
+        "operationId": "getFhirR5Patient",
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /fhir/R5/Patient",
+        "tags": [
+          "fhir-r5"
+        ],
+        "x-epr-action": "Search",
+        "x-epr-resource": "PatientIdentity"
+      }
+    },
+    "/fhir/R5/Patient/{id}": {
+      "get": {
+        "operationId": "getFhirR5PatientId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /fhir/R5/Patient/{id}",
+        "tags": [
+          "fhir-r5"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "PatientIdentity"
+      }
+    },
+    "/fhir/R5/metadata": {
+      "get": {
+        "operationId": "getFhirR5Metadata",
+        "responses": {
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /fhir/R5/metadata",
+        "tags": [
+          "fhir-r5"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "PatientIdentity"
+      }
+    },
+    "/metrics": {
+      "get": {
+        "operationId": "getMetrics",
+        "responses": {
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [],
+        "summary": "GET /metrics",
+        "tags": [
+          "metrics"
+        ],
+        "x-epr-public": true
+      }
+    }
+  }
+}

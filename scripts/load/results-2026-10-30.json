@@ -1,0 +1,115 @@
+{
+ "base": "http://127.0.0.1:5190",
+ "seconds_per_step": 10,
+ "seeded": 200,
+ "results": [
+  {
+   "name": "write (register, audited)",
+   "concurrency": 1,
+   "requests": 1774,
+   "per_second": 177.3,
+   "p50_ms": 4.5,
+   "p95_ms": 11.9,
+   "p99_ms": 18.9,
+   "statuses": {
+    "201": 1774
+   }
+  },
+  {
+   "name": "read (chart open, audited)",
+   "concurrency": 1,
+   "requests": 970,
+   "per_second": 97,
+   "p50_ms": 9.6,
+   "p95_ms": 18.9,
+   "p99_ms": 26.9,
+   "statuses": {
+    "200": 970
+   }
+  },
+  {
+   "name": "search (family prefix, audited)",
+   "concurrency": 1,
+   "requests": 1815,
+   "per_second": 181.5,
+   "p50_ms": 4.5,
+   "p95_ms": 13.2,
+   "p99_ms": 19.9,
+   "statuses": {
+    "200": 1815
+   }
+  },
+  {
+   "name": "write (register, audited)",
+   "concurrency": 8,
+   "requests": 1661,
+   "per_second": 165.6,
+   "p50_ms": 32.3,
+   "p95_ms": 110.7,
+   "p99_ms": 158.5,
+   "statuses": {
+    "201": 1661
+   }
+  },
+  {
+   "name": "read (chart open, audited)",
+   "concurrency": 8,
+   "requests": 7221,
+   "per_second": 721.6,
+   "p50_ms": 9.3,
+   "p95_ms": 22.4,
+   "p99_ms": 40.1,
+   "statuses": {
+    "200": 7221
+   }
+  },
+  {
+   "name": "search (family prefix, audited)",
+   "concurrency": 8,
+   "requests": 8637,
+   "per_second": 863.2,
+   "p50_ms": 7.7,
+   "p95_ms": 19.8,
+   "p99_ms": 36.6,
+   "statuses": {
+    "200": 8637
+   }
+  },
+  {
+   "name": "write (register, audited)",
+   "concurrency": 32,
+   "requests": 1975,
+   "per_second": 194,
+   "p50_ms": 164.5,
+   "p95_ms": 191,
+   "p99_ms": 203.4,
+   "statuses": {
+    "201": 1975
+   }
+  },
+  {
+   "name": "read (chart open, audited)",
+   "concurrency": 32,
+   "requests": 7003,
+   "per_second": 698.2,
+   "p50_ms": 42.8,
+   "p95_ms": 65.4,
+   "p99_ms": 99.2,
+   "statuses": {
+    "200": 7003
+   }
+  },
+  {
+   "name": "search (family prefix, audited)",
+   "concurrency": 32,
+   "requests": 7318,
+   "per_second": 729.5,
+   "p50_ms": 35.9,
+   "p95_ms": 91.4,
+   "p99_ms": 132.1,
+   "statuses": {
+    "200": 7318
+   }
+  }
+ ]
+}

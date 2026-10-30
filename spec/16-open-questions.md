@@ -26,5 +26,11 @@
 | OQ-E1 | Does the EPR own resuscitation status (DNACPR or ReSPECT) and show it in the banner, or read it from a shared care record? Recommendation: a read-only copy with its source and date. (EC-5) | maintainer |
 | OQ-E2 | How is an unidentified patient's record joined to the real record later? Recommendation: a merge with a reason, never an automatic link. (EC-2) | maintainer |
 | OQ-E3 | Does the ED board need a major-incident mode in 1.0? Recommendation: no, post-1.0. (EC-9) | maintainer |
+| OQ-OS1 | Does a request limit apply to clinicians, or only to unauthenticated and integrator traffic? Recommendation: per-subject limits that never trip in clinical use, strict on sign-in and `$match`. (OS-2, plan.md §22.4) | maintainer, Clinical Safety Officer |
+| OQ-OS2 | Should the ABAC policy become data reviewable by clinical governance (Medplum-style), or stay code with census tests? Recommendation: code until a Clinical Safety Officer asks to review it. (plan.md §22.2) | maintainer |
+| OQ-OS4 | What may an OTLP exporter send out of the process? Spans can carry request ids, route templates, subject and timings; SQL spans from `sqlx::query` can carry statement text. Recommendation: export only the service's own spans, never `sqlx::query` or `tower_http` fields, with the subject hashed, and record the collector as a recipient in `governance/record-of-processing.md` first. (OS-6, plan.md §22) | maintainer, data protection officer |
+| OQ-OS5 | Pack file format and home: TOML rules with CSV tables in `packs/` inside this repository, or YAML like the service config, or one repository per pack? Recommendation: TOML and CSV, in this repository until a second maintainer owns a country. (OS-10) | maintainer |
+| OQ-OS6 | May a pack with `reviewed = none` be enabled in production? Recommendation: yes, with a startup warning and a line in `metadata`, because the alternative is no country support at all; never labelled reviewed. (OS-10) | maintainer, Clinical Safety Officer |
+| OQ-OS3 | CodeQL's Rust analysis or semgrep as the SAST gate? Recommendation: CodeQL for the UI now, Rust when confirmed, semgrep meanwhile. (OS-4) | maintainer |
 
 No answers recorded yet, except where a row says decided or proposed.

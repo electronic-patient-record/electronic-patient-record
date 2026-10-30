@@ -124,6 +124,12 @@
           "description": "The regulatory position and what is not claimed."
         },
         {
+          "title": "Benchmark",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/benchmark.md",
+          "path": "spec/benchmark.md",
+          "description": "Where the repository stands against open-source EPR, EHR and FHIR systems."
+        },
+        {
           "title": "Roadmap",
           "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/15-roadmap.md",
           "path": "spec/15-roadmap.md",
@@ -231,6 +237,12 @@
       "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CONTRIBUTING.md",
       "path": "CONTRIBUTING.md",
       "description": "How to contribute."
+    },
+    {
+      "title": "Code of conduct",
+      "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md",
+      "path": "CODE_OF_CONDUCT.md",
+      "description": "Contributor Covenant 2.1 and how to report."
     },
     {
       "title": "AI statement",

@@ -1,0 +1,10 @@
+# Findings gitleaks reports that are not live credentials. One fingerprint per line, a reason above
+# each. A new finding fails CI (`secrets` job); do not add a line without a reason and a date.
+
+# 2026-10-30: loco's scaffold `auth.jwt.secret` in the development and test configs, from the first
+# commit. The service builds loco without its `auth` feature (Cargo.toml) and nothing in `src/` reads
+# that block; sign-in is PASETO and Keycloak (`src/auth.rs`). It is an unused placeholder, not a
+# credential, and production.yaml does not carry one. It stays in history; it was not rotated
+# because it protects nothing.
+faa5d2f97efcedc9398b322e47ea7acbae55dd64:electronic-patient-record-service-with-rust/config/development.yaml:generic-api-key:103
+faa5d2f97efcedc9398b322e47ea7acbae55dd64:electronic-patient-record-service-with-rust/config/test.yaml:generic-api-key:97
