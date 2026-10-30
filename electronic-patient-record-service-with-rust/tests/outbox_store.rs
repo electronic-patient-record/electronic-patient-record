@@ -306,3 +306,34 @@ async fn events_and_attempts_cannot_be_edited_deleted_or_truncated() {
         assert!(e.to_string().contains("append-only"), "{sql}: {e}");
     }
 }
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn the_loop_delivers_without_being_asked_again() {
+    let db = db().await;
+    let recipient = format!("sink-{}", nanos());
+    let payload = serde_json::json!({"n": 7});
+    let id = outbox::enqueue(&db, event(&recipient, None, &payload))
+        .await
+        .unwrap();
+    let (all, calls) = sinks(&recipient, false);
+    let chain: &'static Chain = Box::leak(Box::new(Chain::unkeyed()));
+    let task = tokio::spawn(outbox::run_loop(
+        db.clone(),
+        chain,
+        all,
+        std::time::Duration::from_millis(50),
+    ));
+    for _ in 0..100 {
+        if attempts(&db, &id, "delivered").await == 1 {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    }
+    task.abort();
+    assert_eq!(
+        calls.load(Ordering::SeqCst),
+        1,
+        "delivered once by the loop"
+    );
+}

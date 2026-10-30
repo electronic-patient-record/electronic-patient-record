@@ -83,6 +83,22 @@ impl Hooks for App {
             );
             tokio::spawn(mllp::serve(listener, ctx.db.clone(), config));
         }
+        // The outbox loop is off unless `EPR_OUTBOX_INTERVAL_SECS` is set (OS-3). Its only sink is the
+        // log sink, which sends nothing; a real sink arrives with IO-6.
+        if let Some(every) = crate::outbox::interval_from_env().map_err(loco_rs::Error::Message)? {
+            let mut sinks = crate::outbox::Sinks::new();
+            sinks.insert("log".to_string(), Box::new(crate::outbox::LogSink));
+            tracing::warn!(
+                seconds = every.as_secs(),
+                "outbox loop is ON (log sink only)"
+            );
+            tokio::spawn(crate::outbox::run_loop(
+                ctx.db.clone(),
+                crate::audit::chain(),
+                sinks,
+                every,
+            ));
+        }
         // The last layer added runs first: authenticate, then authorize.
         let gate = authz::Authz { db: ctx.db.clone() };
         Ok(router

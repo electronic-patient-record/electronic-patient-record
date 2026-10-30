@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-30 - Service: outbox loop and a log sink (OS-3, in part)
+
+- **Built:** `outbox::run_loop` (runs `run_once` on an interval, logs a database failure and carries on), `LogSink` (logs the event id, kind and recipient, never the payload or the patient), and `EPR_OUTBOX_INTERVAL_SECS`: off unless set, 1 to 3600 seconds, a bad value stops the service starting; when set, `app.rs` spawns the loop with the `log` sink only. Service `spec/index.md` has the row. Tests: `parse_interval` (unit) and `the_loop_delivers_without_being_asked_again` (database-gated); 295 unit tests and the 7 outbox database tests pass, fmt and clippy `-D warnings` pass.
+- **Not done / not verified:** the wiring in `app.rs` was compiled but the service was not started with the variable set; nothing enqueues, so with the loop on it finds nothing; no real sink (IO-6); no loco worker; no backoff, so a failing event is retried at every interval until 5 failures; with several service replicas every one runs the loop, which the claim lock allows but the load was not tried; the loop has no graceful shutdown; the setting is read once at start; CI has not run on this.
+
 ## 2026-10-30 - Service: transactional outbox and delivery runner (OS-3, in part)
 
 - **Built:** migration 17 with append-only `outbox_events` and `outbox_attempts` (triggers refuse update, delete and truncate); `src/outbox.rs`: `enqueue` joins the caller's transaction, `decide` makes the read path's decision for the recipient (`policy::evaluate` with its roles and purpose, no relationship, the patient's consent; any allow that carries a masking obligation is refused), `run_once` claims one event per transaction with `FOR UPDATE SKIP LOCKED`, calls the recipient's `Sink` only on an allow, and records `delivered`, `refused` (final, audited) or `failed` (up to 5, one attempt per run). A failed consent lookup is a failure, never a delivery. `spec/08` has the design; `spec/10` lists the tables; H-038 is open (added, not reviewed); 14 inventory rows classify the columns.

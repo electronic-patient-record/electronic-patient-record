@@ -176,6 +176,75 @@ pub fn decide(
     }
 }
 
+/// A sink that logs the event's id, kind and recipient and nothing else: no payload and no patient. It
+/// proves the loop end to end and sends nothing anywhere.
+pub struct LogSink;
+
+#[async_trait]
+impl Sink for LogSink {
+    async fn deliver(&self, event: &Event) -> Result<(), String> {
+        tracing::info!(id = %event.id, kind = %event.kind, recipient = %event.recipient, "outbox event delivered to the log");
+        Ok(())
+    }
+}
+
+/// How often the loop runs when `EPR_OUTBOX_INTERVAL_SECS` is set, in seconds. Unset means the loop is
+/// off. A value that is not a whole number from 1 to 3600 stops the service starting.
+///
+/// # Errors
+///
+/// The text of the bad setting.
+pub fn interval_from_env() -> Result<Option<std::time::Duration>, String> {
+    parse_interval(std::env::var("EPR_OUTBOX_INTERVAL_SECS").ok().as_deref())
+}
+
+/// [`interval_from_env`] over a value already read.
+///
+/// # Errors
+///
+/// The text of the bad setting.
+pub fn parse_interval(raw: Option<&str>) -> Result<Option<std::time::Duration>, String> {
+    let Some(raw) = raw else {
+        return Ok(None);
+    };
+    match raw.trim().parse::<u64>() {
+        Ok(n) if (1..=3600).contains(&n) => Ok(Some(std::time::Duration::from_secs(n))),
+        _ => Err(format!(
+            "EPR_OUTBOX_INTERVAL_SECS must be a whole number of seconds from 1 to 3600, not {raw:?}"
+        )),
+    }
+}
+
+/// Run [`run_once`] every `every`, for ever. A database failure is logged and the loop carries on, so a
+/// restart of the database does not end delivery; a panic in a sink ends only that run's task.
+pub async fn run_loop(
+    db: DatabaseConnection,
+    chain: &'static Chain,
+    sinks: Sinks,
+    every: std::time::Duration,
+) {
+    let mut tick = tokio::time::interval(every);
+    tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+    loop {
+        tick.tick().await;
+        match run_once(&db, chain, &sinks, BATCH).await {
+            Ok(r) if r != Report::default() => {
+                tracing::info!(
+                    delivered = r.delivered,
+                    refused = r.refused,
+                    failed = r.failed,
+                    "outbox run"
+                );
+            }
+            Ok(_) => {}
+            Err(e) => tracing::error!(error = %e, "outbox run failed"),
+        }
+    }
+}
+
+/// Events one run of the loop may take.
+const BATCH: u32 = 100;
+
 fn now() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -347,6 +416,18 @@ mod tests {
 
     fn roles(r: &[&str]) -> Vec<String> {
         r.iter().map(|s| (*s).to_string()).collect()
+    }
+
+    #[test]
+    fn the_loop_interval_is_off_unless_set_and_refuses_nonsense() {
+        assert_eq!(parse_interval(None), Ok(None));
+        for bad in ["0", "3601", "-1", "soon", ""] {
+            assert!(parse_interval(Some(bad)).is_err(), "{bad:?}");
+        }
+        assert_eq!(
+            parse_interval(Some(" 30 ")),
+            Ok(Some(std::time::Duration::from_secs(30)))
+        );
     }
 
     #[test]
