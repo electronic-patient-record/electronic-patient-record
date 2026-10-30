@@ -99,6 +99,8 @@ impl Hooks for App {
                 every,
             ));
         }
+        // Country packs the deployment enables (OS-10). A pack that does not load stops the service.
+        crate::packs::init().map_err(loco_rs::Error::Message)?;
         // Request limits per token subject (OS-2). A bad setting stops the service starting.
         let limits = crate::rate_limit::Limits::from_env().map_err(loco_rs::Error::Message)?;
         let limiter = crate::rate_limit::Gate {

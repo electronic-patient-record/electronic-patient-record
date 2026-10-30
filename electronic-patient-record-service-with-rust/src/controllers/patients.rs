@@ -16,7 +16,7 @@ use axum::{
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };
-use electronic_patient_record_matcher::{MatchResult, MatchingEngine, Patient};
+use electronic_patient_record_matcher::{MatchResult, Patient};
 use loco_rs::prelude::*;
 use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};
@@ -34,7 +34,7 @@ pub struct CompareRequest {
 /// reads nothing from the database, so there is nothing to audit yet.
 #[must_use]
 pub fn compare_patients(request: &CompareRequest) -> MatchResult {
-    MatchingEngine::default().compare(&request.a, &request.b)
+    crate::packs::engine().compare(&request.a, &request.b)
 }
 
 /// Compare, and audit the access **before** returning the result. The audit detail records the
@@ -119,7 +119,7 @@ pub struct Candidate {
 /// by score (highest first). A `NonMatch` is not a candidate.
 #[must_use]
 pub fn likely_duplicates(new: &Patient, existing: Vec<store::Stored>) -> Vec<Candidate> {
-    let engine = MatchingEngine::default();
+    let engine = crate::packs::engine();
     let mut found: Vec<Candidate> = existing
         .into_iter()
         .filter_map(|e| {

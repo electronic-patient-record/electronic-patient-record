@@ -112,6 +112,8 @@ the service finally setting `default_calling_code`; (b) the NHS number as the fi
 (c) a second identifier rule from a sourced guide (Australia's IHI: 16 digits, prefix `800360`, Luhn) to prove the mechanism
 is not NHS-shaped. Each is its own commit with a hazard row.
 
+**Built (a), 2026-10-30:** `packs/<id>/pack.toml` and `phone.toml` (calling code, `[[match]]` and `[[differ]]` vectors), `src/packs.rs` (schema that refuses unknown keys, id equals directory, code 1 to 999, vectors run through the real matcher, no vectors no load, a clash needs `EPR_PACK_WINNER_PHONE_CALLING_CODE`, a SHA-256 of the rules logged at start), `EPR_PACKS` (unset means none, and nothing changes), `EPR_PACKS_DIR`, and the service's three matching call sites now take their engine from `packs::engine()`. Packs `uk` (44) and `au` (61) ship, both `reviewed = "none"`. **Not built:** the override directory, the rule-set hash on records (needs a migration), the neutral core (the matcher still defaults to 44, so an empty list is today's UK behaviour, not neutral), any other pack key, a dry run over a labelled corpus (ID-1), the HL7 validator step, steps (b) and (c). H-040.
+
 **Borrowed.** OpenMRS Initializer loads metadata domains (concepts, roles, privileges, global properties, forms, MDM rules)
 idempotently from a config folder ([readme](https://github.com/mekomsolutions/openmrs-module-initializer/tree/master/readme));
 OpenMRS 3 declares a typed schema with defaults and validators per module and merges config files, later wins

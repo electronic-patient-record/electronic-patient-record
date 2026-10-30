@@ -1,0 +1,12 @@
+# The calling code assumed for a phone number written with a leading 0 (E.164: United Kingdom is +44).
+calling_code = 44
+
+# The same number written locally and internationally must match under this code.
+[[match]]
+local = "07700 900123"
+international = "+44 7700 900123"
+
+# A number from another country must not match the local one.
+[[differ]]
+local = "07700 900123"
+international = "+61 7700 900123"

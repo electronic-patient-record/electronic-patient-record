@@ -1,0 +1,10 @@
+# The calling code assumed for a phone number written with a leading 0 (E.164: Australia is +61).
+calling_code = 61
+
+[[match]]
+local = "0412 345 678"
+international = "+61 412 345 678"
+
+[[differ]]
+local = "0412 345 678"
+international = "+44 412 345 678"

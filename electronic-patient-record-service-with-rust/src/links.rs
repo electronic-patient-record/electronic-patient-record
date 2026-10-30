@@ -21,7 +21,7 @@
 use crate::ids;
 use crate::patients_store::{self, StoreError};
 use crate::store::pg;
-use electronic_patient_record_matcher::{ConflictCode, Decision, MatchingEngine, Patient};
+use electronic_patient_record_matcher::{ConflictCode, Decision, Patient};
 use sea_orm::ConnectionTrait;
 use serde::Serialize;
 
@@ -110,7 +110,7 @@ impl From<NotSamePerson> for StoreError {
 ///
 /// The reason, in words.
 pub fn judge(source: &Patient, target: &Patient) -> Result<(f64, &'static str), NotSamePerson> {
-    let result = MatchingEngine::default().compare(source, target);
+    let result = crate::packs::engine().compare(source, target);
     match result.decision {
         Decision::NonMatch => Err(NotSamePerson {
             codes: result.conflict_codes.clone(),

@@ -40,6 +40,7 @@ sea-orm = { version = "2.0", features = ["sqlx-sqlite", "sqlx-postgres", "runtim
 # Keyed integrity MACs for the audit hash chain; SHA-256 for the unkeyed fallback.
 integrity-mac = "0.2.0"
 sha2 = "0.11"
+toml = "1"
 electronic-patient-record-migration = { version = "0.1.0", path = "migration" }
 # The matcher's `Patient` is the API identity DTO, with no adapter layer. Published crate.
 electronic-patient-record-matcher = "0.4.0"
