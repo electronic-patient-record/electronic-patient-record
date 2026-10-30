@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-30 - Service: transactional outbox and delivery runner (OS-3, in part)
+
+- **Built:** migration 17 with append-only `outbox_events` and `outbox_attempts` (triggers refuse update, delete and truncate); `src/outbox.rs`: `enqueue` joins the caller's transaction, `decide` makes the read path's decision for the recipient (`policy::evaluate` with its roles and purpose, no relationship, the patient's consent; any allow that carries a masking obligation is refused), `run_once` claims one event per transaction with `FOR UPDATE SKIP LOCKED`, calls the recipient's `Sink` only on an allow, and records `delivered`, `refused` (final, audited) or `failed` (up to 5, one attempt per run). A failed consent lookup is a failure, never a delivery. `spec/08` has the design; `spec/10` lists the tables; H-038 is open (added, not reviewed); 14 inventory rows classify the columns.
+- **Tests:** 4 unit tests and 6 database-gated tests (rollback never delivered, commit delivered once, a refusing patient and a disallowing role get nothing and are audited once, a failing sink stops at 5, a recipient with no sink is not lost, the tables are append-only). All 114 database-gated tests pass except the 4 `fhir_validator` ones, which need `FHIR_VALIDATOR_JAR` set (not set here) and panic before any outbox code runs; 294 unit tests, fmt and clippy `-D warnings` pass.
+- **Not done / not verified:** nothing calls `enqueue` and no sink exists (IO-6), so no event leaves the service; no loop calls `run_once` and there is no loco worker; no backoff; delivery is at least once and a claim race between two runners can deliver twice (the race was reasoned about, not provoked); the producer supplies the roles and purpose, with no registered-subscriber check; a sink's error text is stored as given, so "names no clinical content" is a rule, not a check; no queue-depth metric or stuck-event alert; the chaos sweep does not cover the runner; CI has not run on this.
+
 ## 2026-10-30 - CI: UI coverage floor (OS-4, in part)
 
 - **Built:** `@vitest/coverage-v8` 5.0.5 (dev); `vite.config.ts` sets floors of 90 percent of lines and 84 of branches over `src/lib/**/*.ts`; the UI job runs `vitest run --coverage`. Measured: lines 92.17, branches 86.57, 246 tests pass. `coverage/` is ignored by git, prettier and eslint.

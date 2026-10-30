@@ -33,6 +33,7 @@ pub mod mllp;
 pub mod observations;
 pub mod observations_store;
 pub mod openapi;
+pub mod outbox;
 pub mod patients_store;
 pub mod photos_store;
 pub mod policy;

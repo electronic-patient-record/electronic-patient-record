@@ -24,6 +24,7 @@ mod m20261024_000013_patient_drill;
 mod m20261026_000014_observations;
 mod m20261027_000015_amendments;
 mod m20261028_000016_hazard_events;
+mod m20261030_000017_outbox;
 
 /// Whether a `down` that drops clinical tables may run: only in development or test, and only when
 /// `EPR_ALLOW_DESTRUCTIVE_DOWN=true` says so. A missing environment name counts as production.
@@ -69,6 +70,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261026_000014_observations::Migration),
             Box::new(m20261027_000015_amendments::Migration),
             Box::new(m20261028_000016_hazard_events::Migration),
+            Box::new(m20261030_000017_outbox::Migration),
         ]
     }
 }

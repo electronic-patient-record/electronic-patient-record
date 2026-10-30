@@ -12,8 +12,32 @@ UI (SvelteKit + BFF)  ──►  Service (loco.rs / Axum)  ──►  Matcher (p
 
 Dependency direction is strictly downward. Events are to leave through a transactional outbox (subscriptions, webhooks,
 CDS Hooks, HL7 v2 adapter). Multi-tenancy is to be by `tenant_id` + PostgreSQL row-level security.
-**Not built as of 2026-10-30:** the outbox (OS-3), tantivy, the terminology service adapters beyond fixtures, `tenant_id`
+**Not built as of 2026-10-30:** the outbox's sinks, loop and producers (OS-3 built only the table, `enqueue` and the delivery runner), tantivy, the terminology service adapters beyond fixtures, `tenant_id`
 and row-level security; none is in `Cargo.toml` or a migration. The diagram shows the target; the
 [benchmark](benchmark.md) shows what comparable systems run today. Authentication: OIDC upstream,
 PASETO v4.public verified offline; SMART scopes map onto the same policy engine (OQ-3). Detail and rationale:
 [`../plan.md`](../plan.md) §6. Built (checked against `src/` on 2026-10-30): the UI, the service with the auth guard, the policy engine, consent, break-glass, the audit chain, the FHIR R4 facade and read-only R5 view, the ADT feed, the matcher.
+
+### Outbox (OS-3, first slice)
+
+An event that must leave the service (a subscription notice, a webhook, a CDS Hook, an HL7 v2 message) is first written
+to `outbox_events` **in the same transaction as the change and its audit row**. A rollback therefore removes the event;
+a commit keeps it. The table is append-only like every record table: triggers refuse `UPDATE`, `DELETE` and `TRUNCATE`.
+What happened to an event is a second append-only table, `outbox_attempts` (`delivered`, `refused` or `failed`, with a
+reason that names no clinical content). "Pending" means no `delivered` or `refused` attempt and fewer than five `failed`
+ones.
+
+An event names its **recipient** (a registered sink), the **roles and purpose of use** that recipient acts under, the
+**resource kind**, and the **patient** if any. Before a sink is called the delivery runner makes the read path's own
+decision for that recipient: `policy::evaluate` with the recipient's roles, no relationship (a recipient has none), the
+patient's consent from `consents_store`, and the purpose. Anything but an allow is a `refused` attempt, is audited, and is
+never retried. A failed consent lookup is a `failed` attempt, never a delivery. A disclosure that skipped this check
+would be a disclosure the read path refuses.
+
+Delivery is at least once: a crash after the sink answers and before the attempt commits delivers again, so every sink
+receives the event id and must treat a repeat as a repeat. Claiming uses `FOR UPDATE SKIP LOCKED`, so two runners never
+hold the same event.
+
+**Not built in this slice:** a sink (none exists until IO-6), a loop that calls the runner, retry backoff, a loco
+worker (loco's queue needs Redis; the table is the queue here), metrics for queue depth, and any producer: nothing calls
+`enqueue` yet.

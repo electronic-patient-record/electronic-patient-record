@@ -1113,7 +1113,7 @@ dates, every cell cited). Items are **Not clinical** unless they say otherwise. 
   `src/rate_limit.rs` today. Pattern: Medplum `packages/server/src/ratelimit.ts`, Haste `crates/rate-limit`.
   **Acceptance:** `tests/http_rate_limit.rs` shows the limit trips, the header is set, the refusal is audited, and a
   clinician-rate replay of `tests/budgets` never trips; SE-7 cites it.
-- [ ] **OS-3 (L) — Transactional outbox and a worker.** Migration `outbox_events` (append-only, `delivered_at`, triggers
+- [ ] **OS-3 (L) — Transactional outbox and a worker.** **Landed 2026-10-30 in part:** migration 17 (`outbox_events`, `outbox_attempts`, append-only triggers), `src/outbox.rs` (`enqueue` in the caller's transaction, `decide`, `run_once`, a `Sink` trait), `tests/outbox_store.rs` (6, database-gated), 4 unit tests, hazard H-038, personal-data inventory rows. **Not met:** no producer calls `enqueue`; no sink (IO-6); no loop and no loco worker in `connect_workers` (loco's queue needs Redis, so the table is the queue); no backoff; the chaos sweep does not cover it; no metrics or alert for stuck events. Left open. Original: Migration `outbox_events` (append-only, `delivered_at`, triggers
   as on `audit_events`); `src/outbox.rs` `enqueue(txn, event)` called in the same transaction as the audit row; one
   loco worker registered in `connect_workers` that delivers and records delivery; the worker runs `policy::evaluate`
   and the consent check before any disclosure. Makes `spec/08` "events leave through an outbox" true and unblocks IO-6.

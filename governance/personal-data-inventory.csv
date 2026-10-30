@@ -205,3 +205,17 @@ relationship_versions,recorded_at,none,When the version was written,record
 relationship_versions,author,staff-identifier,Who wrote the version,record
 relationship_versions,reason,free-text,Why the version was written as typed,record
 relationship_versions,body,identifier,The care or proxy relationship,record
+outbox_events,id,none,Random event id; a sink uses it to recognise a repeat,feed
+outbox_events,created_at,none,When the event was written,feed
+outbox_events,kind,none,What happened as the recipient knows it,feed
+outbox_events,recipient,none,Name of the registered sink,feed
+outbox_events,recipient_roles,none,Roles the recipient acts under,feed
+outbox_events,purpose,none,Purpose of use the recipient acts under,feed
+outbox_events,resource,none,Kind of record the event discloses,feed
+outbox_events,patient_id,identifier,The patient concerned,feed
+outbox_events,payload,health,What is sent to the recipient ; patient data when a patient is named,feed
+outbox_attempts,id,none,Attempt counter,feed
+outbox_attempts,event_id,none,The event attempted,feed
+outbox_attempts,attempted_at,none,When the attempt was made,feed
+outbox_attempts,outcome,none,Delivered or refused or failed,feed
+outbox_attempts,reason,none,Stable reason code or the sink's error text ; names no clinical content,feed
