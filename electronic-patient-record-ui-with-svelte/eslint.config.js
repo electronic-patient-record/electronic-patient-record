@@ -10,6 +10,7 @@ export default ts.config(
       "build/",
       ".svelte-kit/",
       "node_modules/",
+      "coverage/",
       "test-results/",
       "playwright-report/",
     ],

@@ -49,5 +49,13 @@ export default defineConfig({
     include: ["tests/unit/**/*.{test,spec}.{ts,js}"],
     environment: "jsdom",
     globals: true,
+    coverage: {
+      provider: "v8",
+      include: ["src/lib/**/*.ts"],
+      reporter: ["text-summary", "lcov"],
+      // Floors sit just under the figures measured on 2026-10-30 (lines 92.17, branches 86.57).
+      // A floor may rise; lowering one needs a written reason.
+      thresholds: { lines: 90, branches: 84 },
+    },
   },
 });

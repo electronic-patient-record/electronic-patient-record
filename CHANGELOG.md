@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-30 - CI: UI coverage floor (OS-4, in part)
+
+- **Built:** `@vitest/coverage-v8` 5.0.5 (dev); `vite.config.ts` sets floors of 90 percent of lines and 84 of branches over `src/lib/**/*.ts`; the UI job runs `vitest run --coverage`. Measured: lines 92.17, branches 86.57, 246 tests pass. `coverage/` is ignored by git, prettier and eslint.
+- **Not done / not verified:** `.svelte` components and `src/routes` are outside the figure, so it describes library code, not the pages; the 2 skipped tests (live Redis) are not counted; a floor of 99 percent fails with exit 1 as it should; the job has not run on GitHub; no Rust SAST (OQ-OS3); no hazard row (no behaviour changed).
+
 ## 2026-10-30 - Spec: architecture status re-read (OS-9, in part)
 
 - **Changed:** `spec/08-architecture.md` called the FHIR facade and the policy engine "planned" and listed only the M0 shell as built; both are in `src/` (`controllers/fhir.rs`, `fhir_r5.rs`, `policy.rs`, `authz.rs`), as are consent, break-glass, the audit chain and the ADT feed. The diagram and closing sentence now say so.

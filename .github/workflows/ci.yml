@@ -163,7 +163,7 @@ jobs:
       - run: pnpm run lint
       - run: pnpm run check
       - run: pnpm run check:tests
-      - run: pnpm exec vitest run
+      - run: pnpm exec vitest run --coverage
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm exec playwright test
         env:
