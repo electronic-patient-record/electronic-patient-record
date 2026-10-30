@@ -66,6 +66,9 @@ pub static OUTBOX_REFUSED: Counter = Counter::new();
 /// sink that is down or an event that cannot be sent.
 pub static OUTBOX_FAILED: Counter = Counter::new();
 
+/// Requests refused because their subject was past a request limit (OS-2).
+pub static RATE_LIMITED: Counter = Counter::new();
+
 /// Upper bounds, in seconds, of the request-duration buckets.
 pub const BUCKETS: [f64; 11] = [
     0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0,
@@ -168,7 +171,7 @@ fn render_histograms(series: &Series) -> String {
 }
 
 /// `(name, help, counter)` for everything served.
-fn all() -> [(&'static str, &'static str, &'static Counter); 6] {
+fn all() -> [(&'static str, &'static str, &'static Counter); 7] {
     [
         (
             "epr_audit_append_failures_total",
@@ -184,6 +187,11 @@ fn all() -> [(&'static str, &'static str, &'static Counter); 6] {
             "epr_feed_refused_messages_total",
             "HL7 messages refused.",
             &FEED_REFUSALS,
+        ),
+        (
+            "epr_rate_limited_total",
+            "Requests refused for being past a request limit.",
+            &RATE_LIMITED,
         ),
         (
             "epr_outbox_delivered_total",

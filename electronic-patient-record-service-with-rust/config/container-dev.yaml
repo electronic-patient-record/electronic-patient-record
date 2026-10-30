@@ -91,4 +91,6 @@ cache:
 # Explicit opt-out (src/auth.rs). Production never sets these.
 settings:
   require_auth: false
+  # Not read. Request limits are set by EPR_RATE_LIMIT_PER_MINUTE and EPR_RATE_LIMIT_COMPARE_PER_MINUTE
+  # (src/rate_limit.rs, task OS-2); they are on by default.
   rate_limit: false

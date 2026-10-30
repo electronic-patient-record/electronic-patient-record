@@ -35,6 +35,7 @@ async fn metrics_is_404_when_off_and_lists_every_counter_when_on() {
         "epr_audit_append_failures_total",
         "epr_unaudited_refusals_total",
         "epr_feed_refused_messages_total",
+        "epr_rate_limited_total",
         "epr_outbox_delivered_total",
         "epr_outbox_refused_total",
         "epr_outbox_failed_total",

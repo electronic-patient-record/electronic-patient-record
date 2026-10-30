@@ -39,6 +39,7 @@ pub mod photos_store;
 pub mod policy;
 pub mod privacy;
 pub mod proxy;
+pub mod rate_limit;
 pub mod relationships;
 pub mod routes;
 pub mod site;

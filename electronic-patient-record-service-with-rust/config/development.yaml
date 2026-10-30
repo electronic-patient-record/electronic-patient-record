@@ -116,5 +116,6 @@ settings:
   # (src/auth.rs). This development config opts OUT explicitly so local work and the
   # test suites run without minting tokens. Production never sets this key.
   require_auth: false
-  # Reserved for request rate limiting, which is not built yet (task OS-2); nothing reads this key.
+  # Not read. Request limits are set by EPR_RATE_LIMIT_PER_MINUTE and EPR_RATE_LIMIT_COMPARE_PER_MINUTE
+  # (src/rate_limit.rs, task OS-2); they are on by default.
   rate_limit: false

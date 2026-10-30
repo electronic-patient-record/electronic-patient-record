@@ -99,12 +99,22 @@ impl Hooks for App {
                 every,
             ));
         }
-        // The last layer added runs first: authenticate, then authorize.
+        // Request limits per token subject (OS-2). A bad setting stops the service starting.
+        let limits = crate::rate_limit::Limits::from_env().map_err(loco_rs::Error::Message)?;
+        let limiter = crate::rate_limit::Gate {
+            limiter: std::sync::Arc::new(crate::rate_limit::Limiter::new(limits)),
+            db: ctx.db.clone(),
+        };
+        // The last layer added runs first: authenticate, count, then authorize.
         let gate = authz::Authz { db: ctx.db.clone() };
         Ok(router
             .layer(axum::middleware::from_fn_with_state(
                 gate,
                 authz::authorize_mw,
+            ))
+            .layer(axum::middleware::from_fn_with_state(
+                limiter,
+                crate::rate_limit::rate_limit_mw,
             ))
             .layer(axum::middleware::from_fn(auth::require_auth_mw))
             .layer(axum::middleware::from_fn(authz::no_nul_mw))

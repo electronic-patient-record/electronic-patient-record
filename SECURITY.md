@@ -45,8 +45,8 @@ Checked by tests where a test is named (this is a pre-release scaffold, see
 **This software is not for clinical use and holds no clinical record yet.** No
 third party has audited it, and no certification (ONC, DTAC, DSPT, DCB0129,
 HIPAA) is claimed. Roles, consent, break-the-glass and a hash-chained audit trail are built for the routes listed in
-`spec/14-implementation-status.md` and refuse a write whose audit row cannot be written; rate limiting, a clinical
-record and a completed hazard review are not built (`tasks.md`: SE-*, AU-*, OS-2). A deployer is responsible for their own
+`spec/14-implementation-status.md` and refuse a write whose audit row cannot be written; a per-subject request limit exists (`src/rate_limit.rs`, in the process only); a clinical
+record, a sign-in lockout, a limit shared between replicas and a completed hazard review are not built (`tasks.md`: SE-*, AU-*, OS-2). A deployer is responsible for their own
 configuration, keys, backups and assessment.
 
 ## Scope
