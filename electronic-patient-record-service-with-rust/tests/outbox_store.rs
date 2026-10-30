@@ -252,7 +252,7 @@ async fn a_failing_sink_is_retried_a_fixed_number_of_times_then_left() {
 
     let (all, calls) = sinks(&recipient, true);
     for _ in 0..(MAX_FAILURES + 3) {
-        outbox::run_once(&db, &Chain::unkeyed(), &all, 100)
+        outbox::run_once_with(&db, &Chain::unkeyed(), &all, 100, 0)
             .await
             .unwrap();
     }
@@ -336,4 +336,28 @@ async fn the_loop_delivers_without_being_asked_again() {
         1,
         "delivered once by the loop"
     );
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn a_failed_event_waits_before_its_retry() {
+    let db = db().await;
+    let recipient = format!("sink-{}", nanos());
+    let payload = serde_json::json!({"n": 8});
+    let id = outbox::enqueue(&db, event(&recipient, None, &payload))
+        .await
+        .unwrap();
+    let (all, calls) = sinks(&recipient, true);
+    let chain = Chain::unkeyed();
+    for _ in 0..3 {
+        outbox::run_once_with(&db, &chain, &all, 100, 3600)
+            .await
+            .unwrap();
+    }
+    assert_eq!(
+        calls.load(Ordering::SeqCst),
+        1,
+        "the retry is not due for an hour"
+    );
+    assert_eq!(attempts(&db, &id, "failed").await, 1);
 }

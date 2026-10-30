@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-30 - Service: backoff between outbox retries (OS-3, in part)
+
+- **Built:** a failed event waits 30 seconds before its first retry and twice as long after each further failure (exponent capped at 10), decided in the claim query from the failure count and the newest failed attempt. `run_once` uses it; `run_once_with` takes the base in seconds so a test can use 0. A new database-gated test shows a failed event is not retried within the wait (3 runs, 1 call); the retry-limit test uses base 0. The 8 outbox database tests passed on four consecutive runs; fmt and clippy `-D warnings` pass.
+- **Not done / not verified:** only the first wait was tested, not the doubling or the cap; the wait is measured by the database clock from the previous attempt, so a clock step changes it; the 30 seconds is a guess, not a measured figure; the setting is not configurable at run time; the 114-test database suite was not re-run, only the outbox file; CI has not run.
+
 ## 2026-10-30 - Service: outbox loop and a log sink (OS-3, in part)
 
 - **Built:** `outbox::run_loop` (runs `run_once` on an interval, logs a database failure and carries on), `LogSink` (logs the event id, kind and recipient, never the payload or the patient), and `EPR_OUTBOX_INTERVAL_SECS`: off unless set, 1 to 3600 seconds, a bad value stops the service starting; when set, `app.rs` spawns the loop with the `log` sink only. Service `spec/index.md` has the row. Tests: `parse_interval` (unit) and `the_loop_delivers_without_being_asked_again` (database-gated); 295 unit tests and the 7 outbox database tests pass, fmt and clippy `-D warnings` pass.

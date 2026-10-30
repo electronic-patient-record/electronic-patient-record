@@ -25,7 +25,7 @@ to `outbox_events` **in the same transaction as the change and its audit row**. 
 a commit keeps it. The table is append-only like every record table: triggers refuse `UPDATE`, `DELETE` and `TRUNCATE`.
 What happened to an event is a second append-only table, `outbox_attempts` (`delivered`, `refused` or `failed`, with a
 reason that names no clinical content). "Pending" means no `delivered` or `refused` attempt and fewer than five `failed`
-ones.
+ones. A failed event waits before its retry: 30 seconds after the first failure, doubling after each (capped at 2^10 times).
 
 An event names its **recipient** (a registered sink), the **roles and purpose of use** that recipient acts under, the
 **resource kind**, and the **patient** if any. Before a sink is called the delivery runner makes the read path's own
@@ -38,6 +38,6 @@ Delivery is at least once: a crash after the sink answers and before the attempt
 receives the event id and must treat a repeat as a repeat. Claiming uses `FOR UPDATE SKIP LOCKED`, so two runners never
 hold the same event.
 
-**Not built in this slice:** a sink (none exists until IO-6), a loop that calls the runner, retry backoff, a loco
+**Not built in this slice:** a sink (none exists until IO-6), a loop that calls the runner, a loco
 worker (loco's queue needs Redis; the table is the queue here), metrics for queue depth, and any producer: nothing calls
 `enqueue` yet.

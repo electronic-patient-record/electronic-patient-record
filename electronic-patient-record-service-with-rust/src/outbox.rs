@@ -251,6 +251,9 @@ fn now() -> i64 {
         .map_or(0, |d| i64::try_from(d.as_secs()).unwrap_or(i64::MAX))
 }
 
+/// Seconds a first failure waits before its retry; each further failure doubles it (capped at 2^10 times).
+pub const BACKOFF_BASE_SECS: i64 = 30;
+
 /// Claim and process up to `limit` pending events, each in its own transaction, and say what happened.
 ///
 /// # Errors
@@ -261,6 +264,21 @@ pub async fn run_once(
     chain: &Chain,
     sinks: &Sinks,
     limit: u32,
+) -> Result<Report, StoreError> {
+    run_once_with(db, chain, sinks, limit, BACKOFF_BASE_SECS).await
+}
+
+/// [`run_once`] with the first retry's wait in seconds; 0 retries at the next run (for tests).
+///
+/// # Errors
+///
+/// [`StoreError::Db`] when the database fails; the event being processed stays pending.
+pub async fn run_once_with(
+    db: &DatabaseConnection,
+    chain: &Chain,
+    sinks: &Sinks,
+    limit: u32,
+    backoff_secs: i64,
 ) -> Result<Report, StoreError> {
     let mut report = Report::default();
     // An event gets at most one attempt per run, so a failure waits for the next run instead of
@@ -277,7 +295,7 @@ pub async fn run_once(
         .map_err(db_err)?;
     for _ in 0..limit {
         let tx = db.begin().await.map_err(db_err)?;
-        let Some(event) = claim(&tx, mark).await? else {
+        let Some(event) = claim(&tx, mark, backoff_secs).await? else {
             tx.rollback().await.map_err(db_err)?;
             break;
         };
@@ -318,7 +336,11 @@ pub async fn run_once(
 
 /// The oldest pending event not attempted since `mark` (the newest attempt when the run began), locked so
 /// no other runner takes it.
-async fn claim(tx: &impl ConnectionTrait, mark: i64) -> Result<Option<Event>, StoreError> {
+async fn claim(
+    tx: &impl ConnectionTrait,
+    mark: i64,
+    backoff_secs: i64,
+) -> Result<Option<Event>, StoreError> {
     let row = tx
         .query_one_raw(pg(
             &format!(
@@ -330,11 +352,17 @@ async fn claim(tx: &impl ConnectionTrait, mark: i64) -> Result<Option<Event>, St
                    AND NOT EXISTS (SELECT 1 FROM outbox_attempts a WHERE a.event_id = e.id AND a.id > $1)
                    AND (SELECT count(*) FROM outbox_attempts a
                         WHERE a.event_id = e.id AND a.outcome = 'failed') < {MAX_FAILURES}
+                   AND NOT EXISTS (
+                       SELECT 1 FROM outbox_attempts a
+                       WHERE a.event_id = e.id AND a.outcome = 'failed'
+                       HAVING max(a.attempted_at)
+                              + make_interval(secs => $2::double precision
+                                  * power(2, least(count(*) - 1, 10))) > now())
                  ORDER BY e.created_at, e.id
                  LIMIT 1
                  FOR UPDATE OF e SKIP LOCKED"
             ),
-            vec![mark.into()],
+            vec![mark.into(), backoff_secs.into()],
         ))
         .await
         .map_err(db_err)?;
