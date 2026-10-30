@@ -13,7 +13,7 @@ document, a shared session store, and an extension mechanism. Functionally the r
 field is not; that gap is the roadmap, not a finding.
 
 **Tier: LAGGING** (14 of 25 table-stakes items missing or partial) · **Coverage** `████░░░░░░` 44% (11/25 table-stakes met)
-· **Field:** 12 repositories · **Since last scan:** baseline, no prior scan to diff. Scan record:
+· **Field:** 12 repositories · **Since last scan:** coverage 44% to 44% (11/25, none of the partials became met), tier LAGGING unchanged, 14 gaps unchanged; three table-stakes items went from missing to partial (published coverage, SAST, performance numbers) and background jobs went from missing to partial, so 3 are still missing (SMART app launch, rate limiting, extension mechanism); two edge items are newly met (secret scanning, code of conduct); rubric version 1 unchanged, field not re-fetched (re-scored from repository evidence on 2026-10-30). Scan record:
 `.sota/last-scan.json`; the fixed scoring axis: `.sota/rubric.open-source-ehr-engineering.json`.
 
 ## Field framing

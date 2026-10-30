@@ -1102,9 +1102,8 @@ otherwise. Nothing here is built.
 Ranked in plan.md §22; the evidence is [`spec/benchmark.md`](spec/benchmark.md) (twelve repositories, exact stars and
 dates, every cell cited). Items are **Not clinical** unless they say otherwise. Nothing here is built.
 
-- [ ] **OS-1 (S) — Benchmark record.** **Landed 2026-10-30 in part:** `spec/benchmark.md` and `.sota/last-scan.json`
-  (rubric version 1: 11 of 25 table-stakes met, 14 gaps). **Open:** re-run the scan when the OS items land and
-  record the delta; decide whether `.sota/` is committed or ignored.
+- [x] **OS-1 (S) — Benchmark record.** **Landed 2026-10-30 in part:** `spec/benchmark.md` and `.sota/last-scan.json`
+  (rubric version 1: 11 of 25 table-stakes met, 14 gaps). **Re-scored 2026-10-30** against the same rubric from repository evidence (the field was not re-fetched): see the "Since last scan" line in `spec/benchmark.md`; `.sota/` is committed (the record travels with the repo). **Open:** a re-scan that re-fetches the field once more OS items land.
   **Acceptance:** a second `.sota/last-scan.json` with a "since last scan" line in `spec/benchmark.md`.
 - [ ] **OS-2 (M) — Rate limiting and sign-in lockout.** **Clinical** (a limit can refuse a clinician): hazard row first
   (AS-1), and OQ-OS1 decided. `src/rate_limit.rs` as a `tower` layer keyed by subject or client address, Redis-backed

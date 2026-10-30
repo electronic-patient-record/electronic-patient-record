@@ -48,7 +48,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | EM | 0 | 16 |
 | PA | 1 | 16 |
 | EC | 0 | 13 |
-| OS | 3 | 11 |
-| **Total** | **43** | **186** |
+| OS | 4 | 10 |
+| **Total** | **44** | **185** |
 
 <!-- generated:end -->

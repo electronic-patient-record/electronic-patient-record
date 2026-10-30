@@ -1,0 +1,277 @@
+{
+  "date": "2026-10-30",
+  "domains": [
+    "open-source-ehr-engineering"
+  ],
+  "rubric_version": 1,
+  "field": [
+    {
+      "repo": "openemr/openemr",
+      "stars": 5559,
+      "pushed": "2026-10-30",
+      "type": "popular"
+    },
+    {
+      "repo": "medplum/medplum",
+      "stars": 2772,
+      "pushed": "2026-10-30",
+      "type": "popular"
+    },
+    {
+      "repo": "hapifhir/hapi-fhir",
+      "stars": 2424,
+      "pushed": "2026-10-30",
+      "type": "canonical"
+    },
+    {
+      "repo": "openmrs/openmrs-core",
+      "stars": 1957,
+      "pushed": "2026-10-29",
+      "type": "canonical"
+    },
+    {
+      "repo": "samply/blaze",
+      "stars": 231,
+      "pushed": "2026-10-30",
+      "type": "technically advanced"
+    },
+    {
+      "repo": "ehrbase/ehrbase",
+      "stars": 387,
+      "pushed": "2026-10-29",
+      "type": "canonical"
+    },
+    {
+      "repo": "metriport/metriport",
+      "stars": 795,
+      "pushed": "2026-08-28",
+      "type": "technically advanced"
+    },
+    {
+      "repo": "hastehealth/hastehealth",
+      "stars": 84,
+      "pushed": "2026-10-29",
+      "type": "technically advanced"
+    },
+    {
+      "repo": "HeliosSoftware/hfs",
+      "stars": 57,
+      "pushed": "2026-10-30",
+      "type": "technically advanced"
+    },
+    {
+      "repo": "earthians/marley",
+      "stars": 552,
+      "pushed": "2026-10-29",
+      "type": "niche-relevant"
+    },
+    {
+      "repo": "WorldVistA/VistA",
+      "stars": 143,
+      "pushed": "2026-10-28",
+      "type": "canonical"
+    },
+    {
+      "repo": "HospitalRun/hospitalrun-frontend",
+      "stars": 6889,
+      "pushed": "2023-01-09",
+      "type": "stale-reference",
+      "archived": true
+    }
+  ],
+  "matrix": [
+    {
+      "id": "lint-format-ci",
+      "us": "met",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "unit-integration-ci",
+      "us": "met",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "coverage-published",
+      "us": "partial",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "sast-ci",
+      "us": "partial",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "dependency-vuln-scan-ci",
+      "us": "met",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "disclosure-policy",
+      "us": "partial",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "dependency-updates",
+      "us": "met",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "hardened-container",
+      "us": "partial",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "oidc-auth",
+      "us": "met",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "smart-app-launch",
+      "us": "missing",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "access-policy-audit",
+      "us": "met",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "rate-limiting",
+      "us": "missing",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "security-headers-csp",
+      "us": "met",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "horizontal-scaling",
+      "us": "partial",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "db-pooling",
+      "us": "met",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "background-jobs",
+      "us": "partial",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "pagination-limits",
+      "us": "met",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "performance-benchmarks",
+      "us": "partial",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "observability",
+      "us": "partial",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "api-docs",
+      "us": "partial",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "architecture-docs-current",
+      "us": "partial",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "release-process",
+      "us": "met",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "i18n-infrastructure",
+      "us": "partial",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "pinned-toolchain",
+      "us": "met",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "extension-mechanism",
+      "us": "missing",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "signing-provenance-sbom",
+      "us": "met",
+      "tier": "edge"
+    },
+    {
+      "id": "secret-scanning-ci",
+      "us": "met",
+      "tier": "edge"
+    },
+    {
+      "id": "property-fuzz-tests",
+      "us": "partial",
+      "tier": "edge"
+    },
+    {
+      "id": "e2e-accessibility",
+      "us": "met",
+      "tier": "edge"
+    },
+    {
+      "id": "bulk-export",
+      "us": "missing",
+      "tier": "edge"
+    },
+    {
+      "id": "audit-retention-partitioning",
+      "us": "missing",
+      "tier": "edge"
+    },
+    {
+      "id": "encryption-guidance",
+      "us": "partial",
+      "tier": "edge"
+    },
+    {
+      "id": "conformance-ci",
+      "us": "partial",
+      "tier": "edge"
+    },
+    {
+      "id": "identity-matching",
+      "us": "met",
+      "tier": "edge"
+    },
+    {
+      "id": "contributing-coc",
+      "us": "met",
+      "tier": "edge"
+    }
+  ],
+  "coverage": {
+    "met": 11,
+    "total": 25,
+    "pct": 44
+  },
+  "tier": "LAGGING",
+  "gaps_total": 14,
+  "previous": {
+    "date": "2026-10-30",
+    "coverage": {
+      "met": 11,
+      "total": 25,
+      "pct": 44
+    },
+    "tier": "LAGGING",
+    "gaps_total": 14
+  },
+  "note": "Re-scored from repo evidence on 2026-10-30 after OS-3 to OS-12 and OS-14; the field of comparators was not re-fetched."
+}

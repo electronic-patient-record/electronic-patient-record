@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-30 - Benchmark: re-scored and the scan record committed (OS-1)
+
+- **Changed:** `.sota/last-scan.json` re-scored against rubric version 1 from repository evidence: published coverage, SAST, performance numbers and background jobs moved from missing to partial; secret scanning and the code of conduct are met (edge); coverage stays 44% (11 of 25 met), tier LAGGING, 14 gaps; the previous run is kept under `previous`. `spec/benchmark.md` has the "Since last scan" line. `.sota/` is now committed.
+- **Not done / not verified:** the comparators were not re-fetched, so this measures us against the same field, not today's field; the scores are my judgement from files, with no second reviewer; "partial" is a call (published coverage has floors and an artifact but no trend; the outbox has no producer); the maintainer may prefer `.sota/` ignored, which is one `.gitignore` line and a `git rm --cached`.
+
 ## 2026-10-30 - Service: outbox outcome counters (OS-3, in part)
 
 - **Built:** `epr_outbox_delivered_total`, `epr_outbox_refused_total` and `epr_outbox_failed_total` on `/metrics`, counted after the attempt is committed. No labels and no patient data. The metrics test lists them; the delivery test checks the delivered counter rises. Unit tests, fmt, clippy `-D warnings` and the 8 outbox database tests pass.
