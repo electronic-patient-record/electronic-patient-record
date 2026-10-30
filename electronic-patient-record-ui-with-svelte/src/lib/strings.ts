@@ -26,6 +26,8 @@ export const STRINGS = {
   error: "The comparison failed.",
   forbidden: "Your role does not allow this.",
   signInRequired: "Sign in to continue.",
+  rateLimited:
+    "Too many requests just now. This one was not carried out and nothing was changed. Wait a moment and try again.",
   idleWarning:
     "You will be signed out in about {n} min because nothing has been done. Anything not saved would be lost.",
   idleEnded:

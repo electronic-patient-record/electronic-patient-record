@@ -152,6 +152,7 @@ describe("commonProblem", () => {
   it("maps the statuses every page treats alike", () => {
     expect(commonProblem(401)).toBe("signInRequired");
     expect(commonProblem(403)).toBe("forbidden");
+    expect(commonProblem(429)).toBe("rateLimited");
     expect(commonProblem(0)).toBe("error");
     expect(commonProblem(502)).toBe("error");
     expect(commonProblem(404)).toBeNull();

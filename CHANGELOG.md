@@ -7,6 +7,11 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - **Changed:** `.sota/last-scan.json` re-scored against rubric version 1 from repository evidence: published coverage, SAST, performance numbers and background jobs moved from missing to partial; secret scanning and the code of conduct are met (edge); coverage stays 44% (11 of 25 met), tier LAGGING, 14 gaps; the previous run is kept under `previous`. `spec/benchmark.md` has the "Since last scan" line. `.sota/` is now committed.
 - **Not done / not verified:** the comparators were not re-fetched, so this measures us against the same field, not today's field; the scores are my judgement from files, with no second reviewer; "partial" is a call (published coverage has floors and an artifact but no trend; the outbox has no producer); the maintainer may prefer `.sota/` ignored, which is one `.gitignore` line and a `git rm --cached`.
 
+## 2026-10-30 - UI: a refused request says so (OS-2, H-039)
+
+- **Built:** the proxy now forwards `Retry-After`; `commonProblem(429)` returns `rateLimited`, whose text says the request was not carried out and nothing was changed; the 24 call sites that use `STRINGS[common]` show it. Tests: one proxy test (429 and `Retry-After: 17` pass through) and one `commonProblem` case. 247 vitest and 85 Playwright pass; lint, `check` and `check:tests` pass; UI coverage lines 92.18, branches 86.6.
+- **Not done / not verified:** no page was driven to a 429 in a browser, so the wording on screen is unseen; pages that handle their own statuses without `commonProblem` were not audited and may still show nothing useful; the wording is English only and unreviewed; the UI does not wait or retry by itself and does not show the `Retry-After` figure; H-039 stays open.
+
 ## 2026-10-30 - Service: per-subject request limits (OS-2, in part)
 
 - **Clinical risk:** a limit is a refusal a clinician could meet. H-039 is added `open` (not reviewed); OQ-OS1 is marked assumed, because the Clinical Safety Officer has not answered it.

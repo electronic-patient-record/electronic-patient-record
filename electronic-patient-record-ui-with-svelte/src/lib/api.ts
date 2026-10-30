@@ -104,9 +104,11 @@ export async function sendBytes<T = unknown>(
 /** The message key for the statuses every page treats alike, or null for the page to handle. */
 export function commonProblem(
   status: number,
-): "signInRequired" | "forbidden" | "error" | null {
+): "signInRequired" | "forbidden" | "rateLimited" | "error" | null {
   if (status === 401) return "signInRequired";
   if (status === 403) return "forbidden";
+  // The service refused before doing anything (a request limit): never an empty result.
+  if (status === 429) return "rateLimited";
   if (status === 0 || status >= 500) return "error";
   return null;
 }

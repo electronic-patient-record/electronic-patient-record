@@ -140,6 +140,22 @@ describe("proxy handler", () => {
     expect(t.seen).toEqual([]);
   });
 
+  it("passes a request limit's 429 and its Retry-After through to the page", async () => {
+    const t = setup({
+      fetchFn: (async () =>
+        new Response('{"error":"too many requests"}', {
+          status: 429,
+          headers: {
+            "content-type": "application/json",
+            "retry-after": "17",
+          },
+        })) as unknown as typeof fetch,
+    });
+    const res = await t.call("api/patients");
+    expect(res.status).toBe(429);
+    expect(res.headers.get("retry-after")).toBe("17");
+  });
+
   it("answers 401 and clears the cookie when there is no valid session", async () => {
     const t = setup({ token: async () => null });
     const res = await t.call("api/patients");
