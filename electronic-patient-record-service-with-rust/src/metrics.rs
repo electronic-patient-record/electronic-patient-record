@@ -56,6 +56,16 @@ pub static UNAUDITED_REFUSALS: Counter = Counter::new();
 /// HL7 messages refused, whether or not the refusal was stored.
 pub static FEED_REFUSALS: Counter = Counter::new();
 
+/// Outbox events delivered to their sink (OS-3).
+pub static OUTBOX_DELIVERED: Counter = Counter::new();
+
+/// Outbox events refused by the policy or the patient's consent. Each is also an audit row.
+pub static OUTBOX_REFUSED: Counter = Counter::new();
+
+/// Outbox delivery attempts that failed. A count that keeps rising while `delivered` does not is a
+/// sink that is down or an event that cannot be sent.
+pub static OUTBOX_FAILED: Counter = Counter::new();
+
 /// Upper bounds, in seconds, of the request-duration buckets.
 pub const BUCKETS: [f64; 11] = [
     0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0,
@@ -158,7 +168,7 @@ fn render_histograms(series: &Series) -> String {
 }
 
 /// `(name, help, counter)` for everything served.
-fn all() -> [(&'static str, &'static str, &'static Counter); 3] {
+fn all() -> [(&'static str, &'static str, &'static Counter); 6] {
     [
         (
             "epr_audit_append_failures_total",
@@ -174,6 +184,21 @@ fn all() -> [(&'static str, &'static str, &'static Counter); 3] {
             "epr_feed_refused_messages_total",
             "HL7 messages refused.",
             &FEED_REFUSALS,
+        ),
+        (
+            "epr_outbox_delivered_total",
+            "Outbox events delivered.",
+            &OUTBOX_DELIVERED,
+        ),
+        (
+            "epr_outbox_refused_total",
+            "Outbox events refused by policy or consent.",
+            &OUTBOX_REFUSED,
+        ),
+        (
+            "epr_outbox_failed_total",
+            "Outbox delivery attempts that failed.",
+            &OUTBOX_FAILED,
         ),
     ]
 }

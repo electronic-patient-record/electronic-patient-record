@@ -39,5 +39,5 @@ receives the event id and must treat a repeat as a repeat. Claiming uses `FOR UP
 hold the same event.
 
 **Not built in this slice:** a sink (none exists until IO-6), a loop that calls the runner, a loco
-worker (loco's queue needs Redis; the table is the queue here), metrics for queue depth, and any producer: nothing calls
+worker (loco's queue needs Redis; the table is the queue here), a queue-depth gauge (the three outcome counters exist), and any producer: nothing calls
 `enqueue` yet.

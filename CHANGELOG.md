@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-30 - Service: outbox outcome counters (OS-3, in part)
+
+- **Built:** `epr_outbox_delivered_total`, `epr_outbox_refused_total` and `epr_outbox_failed_total` on `/metrics`, counted after the attempt is committed. No labels and no patient data. The metrics test lists them; the delivery test checks the delivered counter rises. Unit tests, fmt, clippy `-D warnings` and the 8 outbox database tests pass.
+- **Not done / not verified:** the refused and failed counters are not asserted in a test; no queue-depth gauge (the metrics module has counters only) and no alert, so a stuck event shows only as a failed count that keeps rising; counters restart at zero with the process and with several replicas each reports its own; no hazard row (no behaviour a clinician sees changed); CI has not run.
+
 ## 2026-10-30 - Service: backoff between outbox retries (OS-3, in part)
 
 - **Built:** a failed event waits 30 seconds before its first retry and twice as long after each further failure (exponent capped at 10), decided in the claim query from the failure count and the newest failed attempt. `run_once` uses it; `run_once_with` takes the base in seconds so a test can use 0. A new database-gated test shows a failed event is not retried within the wait (3 runs, 1 call); the retry-limit test uses base 0. The 8 outbox database tests passed on four consecutive runs; fmt and clippy `-D warnings` pass.

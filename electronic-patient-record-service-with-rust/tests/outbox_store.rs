@@ -12,6 +12,7 @@ use async_trait::async_trait;
 use electronic_patient_record::audit::Chain;
 use electronic_patient_record::consent::{ConsentRecord, Effect, Kind, Provision, Status};
 use electronic_patient_record::consents_store;
+use electronic_patient_record::metrics;
 use electronic_patient_record::outbox::{self, Event, MAX_FAILURES, NewEvent, Sink, Sinks};
 use electronic_patient_record::patients_store;
 use electronic_patient_record::policy::{Purpose, Resource, Role};
@@ -143,10 +144,12 @@ async fn a_rolled_back_event_is_never_delivered_and_a_committed_one_is_delivered
 
     let (all, calls) = sinks(&recipient, false);
     let chain = Chain::unkeyed();
+    let before = metrics::OUTBOX_DELIVERED.get();
     outbox::run_once(&db, &chain, &all, 100).await.unwrap();
     outbox::run_once(&db, &chain, &all, 100).await.unwrap();
 
     assert_eq!(calls.load(Ordering::SeqCst), 1, "delivered exactly once");
+    assert!(metrics::OUTBOX_DELIVERED.get() > before, "counted");
     assert_eq!(attempts(&db, &kept, "delivered").await, 1);
     assert_eq!(
         count(

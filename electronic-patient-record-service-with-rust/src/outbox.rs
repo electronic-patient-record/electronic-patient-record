@@ -330,6 +330,12 @@ pub async fn run_once_with(
                 .map_err(|e| db_err(e.to_string()))?;
         }
         tx.commit().await.map_err(db_err)?;
+        // Counted once the attempt is on record, so a rolled back run is not counted.
+        match outcome {
+            "delivered" => crate::metrics::OUTBOX_DELIVERED.inc(),
+            "refused" => crate::metrics::OUTBOX_REFUSED.inc(),
+            _ => crate::metrics::OUTBOX_FAILED.inc(),
+        }
     }
     Ok(report)
 }
