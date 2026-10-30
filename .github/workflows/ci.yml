@@ -293,20 +293,26 @@ jobs:
             electronic-patient-record-service-with-rust/lcov.info
 
   codeql:
-    name: CodeQL (JavaScript and TypeScript)
+    name: CodeQL (${{ matrix.language }})
     runs-on: ubuntu-latest
     permissions:
       contents: read
       security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        # Rust analysis is generally available without a build since CodeQL 2.23.3 (GitHub changelog,
+        # 2025-10-14); both run with `build-mode: none`.
+        language: [javascript-typescript, rust]
     steps:
       - uses: actions/checkout@v7
       - uses: github/codeql-action/init@v4
         with:
-          languages: javascript-typescript
+          languages: ${{ matrix.language }}
           build-mode: none
       - uses: github/codeql-action/analyze@v4
         with:
-          category: /language:javascript-typescript
+          category: /language:${{ matrix.language }}
 
   pnpm-audit:
     name: pnpm audit (high and above)

@@ -7,6 +7,11 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - **Changed:** `.sota/last-scan.json` re-scored against rubric version 1 from repository evidence: published coverage, SAST, performance numbers and background jobs moved from missing to partial; secret scanning and the code of conduct are met (edge); coverage stays 44% (11 of 25 met), tier LAGGING, 14 gaps; the previous run is kept under `previous`. `spec/benchmark.md` has the "Since last scan" line. `.sota/` is now committed.
 - **Not done / not verified:** the comparators were not re-fetched, so this measures us against the same field, not today's field; the scores are my judgement from files, with no second reviewer; "partial" is a call (published coverage has floors and an artifact but no trend; the outbox has no producer); the maintainer may prefer `.sota/` ignored, which is one `.gitignore` line and a `git rm --cached`.
 
+## 2026-10-30 - CI: CodeQL scans Rust too (OS-4, in part; OQ-OS3 assumed)
+
+- **Changed:** the `codeql` job is a matrix over `javascript-typescript` and `rust`, both `build-mode: none`, each with its own category; `ci-ok` still needs the job. The reason: CodeQL's Rust analysis is generally available without a build since CodeQL 2.23.3 ([GitHub changelog](https://github.blog/changelog/2025-10-14-codeql-scanning-rust-and-c-c-without-builds-is-now-generally-available)).
+- **Not done / not verified:** the job has not run on GitHub; I do not know whether CodeQL parses this workspace's Rust (edition, loco macros) or how many alerts it will raise on the first run, and a first-run failure would block `ci-ok` until triaged; support was confirmed from a search summary of the changelog, not the CodeQL documentation; the matrix leg names changed (`CodeQL (rust)`), which matters if branch protection lists the old name; semgrep was not added; the service's first scan may be slow.
+
 ## 2026-10-30 - Packs: the phone calling code from a pack (OS-10, first slice a)
 
 - **Clinical risk:** the calling code decides whether two phone numbers are scored as one. H-040 is added `open` (not reviewed). OQ-OS3, OQ-OS5 and OQ-OS6 are marked assumed: the maintainer chose "take my recommendations", the Clinical Safety Officer has not answered OQ-OS6.
