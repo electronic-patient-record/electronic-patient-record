@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-31 - Packs: the `au` pack turns the IHI rule on (OS-10, step c)
+
+- **Clinical risk:** with `EPR_PACKS` naming `au`, a shared valid IHI can link two records automatically and two different valid IHIs forbid a link. H-041 is added `open` (not reviewed). A deployment that does not enable `au` is unchanged.
+- **Built:** `packs/au/identifiers.toml` (`use_ihi = true`, one match and one differ vector, invented numbers); `src/packs.rs` reads an optional `identifiers.toml` with unknown keys refused, every number checked as a valid IHI, the vectors run through the real matcher, `RuleSet.use_ihi` (any pack on means on), the hash includes it, and `packs::engine()` sets the matcher's `use_ihi`. `tests/packs.rs` has 5 new tests (14 in all). fmt and clippy `-D warnings` pass.
+- **Not done / not verified:** the service was not started with `EPR_PACKS=au`, so the wiring in `app.rs` and a real IHI through the API were not seen; the IHI numbers are invented and the rule was not checked against an official test number or the specification; no person has reviewed the pack; a pack can only turn the rule on, never off; step (b) as a rule list is not done; CI has not run on this commit.
+
 ## 2026-10-31 - UI: the three IHI conflict codes are translated (OS-10)
 
 - **Built:** `different_ihis`, `same_ihi_different_birth_dates` and `same_ihi_different_names` have a sentence in each of the eight locales (`translations.ts`, `conflicts.ts`); the conflict test covers twelve codes and now finds the numbered codes by name, not by position. 247 vitest pass, lint, `check` and `check:tests` pass; coverage lines 92.2, branches 86.65.

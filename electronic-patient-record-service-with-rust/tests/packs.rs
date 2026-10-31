@@ -177,3 +177,118 @@ fn the_code_decides_what_a_local_number_means() {
     });
     assert_ne!(score(&au), Some(1.0));
 }
+
+const IHI_A: &str = "8003608166690016";
+const IHI_B: &str = "8003608166690024";
+
+/// A scratch pack that also carries an `identifiers.toml`.
+fn with_identifiers(identifiers: &str) -> PathBuf {
+    let dir = scratch("t", MANIFEST, PHONE);
+    std::fs::write(dir.join("t").join("identifiers.toml"), identifiers).unwrap();
+    dir
+}
+
+fn good_identifiers() -> String {
+    format!(
+        "use_ihi = true\n[[match]]\na = \"{IHI_A}\"\nb = \"{IHI_A}\"\n[[differ]]\na = \"{IHI_A}\"\nb = \"{IHI_B}\"\n"
+    )
+}
+
+#[test]
+fn only_a_pack_that_says_so_turns_the_ihi_rule_on() {
+    assert!(
+        !packs::load(&shipped(), &[], None).unwrap().use_ihi,
+        "no pack"
+    );
+    assert!(
+        !packs::load(&shipped(), &ids(&["uk"]), None)
+            .unwrap()
+            .use_ihi,
+        "uk has no identifiers.toml"
+    );
+    let au = packs::load(&shipped(), &ids(&["au"]), None).unwrap();
+    assert!(au.use_ihi && au.packs[0].use_ihi);
+}
+
+#[test]
+fn turning_the_ihi_rule_on_changes_the_hash() {
+    let off = packs::load(&scratch("t", MANIFEST, PHONE), &ids(&["t"]), None).unwrap();
+    let on = packs::load(&with_identifiers(&good_identifiers()), &ids(&["t"]), None).unwrap();
+    assert!(!off.use_ihi && on.use_ihi);
+    assert_ne!(off.hash(), on.hash());
+}
+
+#[test]
+fn an_identifiers_file_that_breaks_a_rule_does_not_load() {
+    let cases: [(String, &str); 7] = [
+        (
+            format!("{}extra = 1\n", good_identifiers()),
+            "unknown field",
+        ),
+        (
+            format!("use_ihi = true\n[[differ]]\na = \"{IHI_A}\"\nb = \"{IHI_B}\"\n"),
+            "needs at least one",
+        ),
+        (
+            format!("use_ihi = true\n[[match]]\na = \"{IHI_A}\"\nb = \"{IHI_A}\"\n"),
+            "needs at least one",
+        ),
+        (
+            format!(
+                "use_ihi = true\n[[match]]\na = \"8003608166690017\"\nb = \"8003608166690017\"\n[[differ]]\na = \"{IHI_A}\"\nb = \"{IHI_B}\"\n"
+            ),
+            "not a valid IHI",
+        ),
+        (
+            format!(
+                "use_ihi = true\n[[match]]\na = \"{IHI_A}\"\nb = \"{IHI_B}\"\n[[differ]]\na = \"{IHI_A}\"\nb = \"{IHI_B}\"\n"
+            ),
+            "must link and do not",
+        ),
+        (
+            format!(
+                "use_ihi = true\n[[match]]\na = \"{IHI_A}\"\nb = \"{IHI_A}\"\n[[differ]]\na = \"{IHI_A}\"\nb = \"{IHI_A}\"\n"
+            ),
+            "must not link and do",
+        ),
+        ("use_ihi = true\n".to_string(), "needs at least one"),
+    ];
+    for (text, why) in cases {
+        let e = packs::load(&with_identifiers(&text), &ids(&["t"]), None).unwrap_err();
+        assert!(e.contains(why), "{why}: {e}");
+    }
+}
+
+#[test]
+fn a_pack_with_the_rule_set_to_false_does_not_turn_it_on() {
+    let text = good_identifiers().replace("use_ihi = true", "use_ihi = false");
+    let rules = packs::load(&with_identifiers(&text), &ids(&["t"]), None).unwrap();
+    assert!(!rules.use_ihi);
+}
+
+#[test]
+fn the_ihi_rule_decides_only_when_it_is_on() {
+    use electronic_patient_record_matcher::{
+        Decision, HumanName, IHI_SYSTEM, Identifier, MatchConfig,
+    };
+    let person = |ihi: &str| Patient {
+        names: vec![HumanName {
+            family: Some("Nguyen".into()),
+            given: vec!["Lan".into()],
+        }],
+        birth_date: Some("1980-03-14".into()),
+        identifiers: vec![Identifier {
+            system: IHI_SYSTEM.into(),
+            value: ihi.into(),
+        }],
+        ..Patient::default()
+    };
+    let on = MatchingEngine::new(MatchConfig {
+        use_ihi: true,
+        ..MatchConfig::default()
+    });
+    let off = MatchingEngine::default();
+    let (a, b) = (person(IHI_A), person(IHI_B));
+    assert_eq!(on.compare(&a, &b).decision, Decision::NonMatch);
+    assert_ne!(off.compare(&a, &b).decision, Decision::NonMatch);
+}

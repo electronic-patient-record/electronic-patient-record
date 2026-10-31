@@ -1,0 +1,13 @@
+# Treat a shared Australian IHI as a deterministic identifier, as the NHS number is treated.
+# Sixteen digits, prefix 800360, Luhn check digit. The numbers below are invented for these vectors.
+use_ihi = true
+
+# One IHI that two records share: with everything else agreeing, the pair must link.
+[[match]]
+a = "8003608166690016"
+b = "8003608166690016"
+
+# Two different valid IHIs: the pair must never link, however alike the people are.
+[[differ]]
+a = "8003608166690016"
+b = "8003608166690024"

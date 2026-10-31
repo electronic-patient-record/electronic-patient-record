@@ -1,6 +1,7 @@
 //! Country packs, first slice (task OS-10; `spec/interoperability/index.md` "Pack mechanism").
 //!
-//! A pack is data: `packs/<id>/pack.toml` and `phone.toml`. Only the phone calling code is built. The
+//! A pack is data: `packs/<id>/pack.toml`, `phone.toml` and an optional `identifiers.toml` (the Australian IHI
+//! rule, off unless a pack turns it on). Only these two keys are built. The
 //! packs a deployment enables (`EPR_PACKS`, comma-separated ids) are loaded once at start and checked: the
 //! files must have exactly the known keys, the id must match the directory, the code must be 1 to 999, and
 //! the pack's own vectors must pass through the real matcher (a pack with no vectors does not load). Two
@@ -9,7 +10,9 @@
 //! own default applies. The effective rules have a SHA-256, logged at start; it is not yet written on the
 //! records the rules influenced (that needs a migration).
 
-use electronic_patient_record_matcher::{MatchConfig, MatchingEngine, Patient, Telecom};
+use electronic_patient_record_matcher::{
+    Decision, HumanName, IHI_SYSTEM, Identifier, MatchConfig, MatchingEngine, Patient, Telecom,
+};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use std::path::Path;
@@ -44,6 +47,25 @@ struct Phone {
     differ: Vec<Pair>,
 }
 
+/// Two IHIs a pack says must link (the same number) or must not (different numbers).
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct IhiPair {
+    a: String,
+    b: String,
+}
+
+/// `identifiers.toml`.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Identifiers {
+    use_ihi: bool,
+    #[serde(default, rename = "match")]
+    matches: Vec<IhiPair>,
+    #[serde(default)]
+    differ: Vec<IhiPair>,
+}
+
 /// One loaded pack.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Loaded {
@@ -55,6 +77,8 @@ pub struct Loaded {
     pub reviewed: String,
     /// The calling code it sets.
     pub calling_code: u16,
+    /// Whether it turns the IHI rule on.
+    pub use_ihi: bool,
 }
 
 /// What the enabled packs add up to.
@@ -64,6 +88,8 @@ pub struct RuleSet {
     pub packs: Vec<Loaded>,
     /// The calling code in force, or `None` for the matcher's default.
     pub calling_code: Option<u16>,
+    /// Whether the IHI rule is on: any enabled pack turns it on, none can turn it off.
+    pub use_ihi: bool,
 }
 
 impl RuleSet {
@@ -71,9 +97,10 @@ impl RuleSet {
     #[must_use]
     pub fn hash(&self) -> String {
         let mut text = format!(
-            "phone.calling_code={}",
+            "phone.calling_code={};identifiers.use_ihi={}",
             self.calling_code
-                .map_or("default".to_string(), |c| c.to_string())
+                .map_or("default".to_string(), |c| c.to_string()),
+            self.use_ihi
         );
         for p in &self.packs {
             text.push_str(&format!(";{}@{}", p.id, p.version));
@@ -113,6 +140,66 @@ fn same_phone(code: u16, a: &str, b: &str) -> bool {
         .fields
         .iter()
         .any(|f| f.field == "telecom" && f.similarity == Some(1.0))
+}
+
+/// Two records alike in every way but their IHIs, compared with the rule on.
+fn compare_ihis(a: &str, b: &str) -> Decision {
+    let with = |ihi: &str| Patient {
+        names: vec![HumanName {
+            family: Some("Nguyen".into()),
+            given: vec!["Lan".into()],
+        }],
+        birth_date: Some("1980-03-14".into()),
+        identifiers: vec![Identifier {
+            system: IHI_SYSTEM.into(),
+            value: ihi.into(),
+        }],
+        ..Patient::default()
+    };
+    MatchingEngine::new(MatchConfig {
+        use_ihi: true,
+        ..MatchConfig::default()
+    })
+    .compare(&with(a), &with(b))
+    .decision
+}
+
+/// Check `identifiers.toml`, when the pack has one, and say whether it turns the IHI rule on.
+fn load_identifiers(root: &Path, id: &str) -> Result<bool, String> {
+    let path = root.join("identifiers.toml");
+    if !path.exists() {
+        return Ok(false);
+    }
+    let ids: Identifiers = read(&path)?;
+    if ids.matches.is_empty() || ids.differ.is_empty() {
+        return Err(format!(
+            "pack {id}: identifiers.toml needs at least one [[match]] and one [[differ]] vector"
+        ));
+    }
+    for v in ids.matches.iter().chain(&ids.differ) {
+        for n in [&v.a, &v.b] {
+            if !electronic_patient_record_matcher::is_valid_ihi(n) {
+                return Err(format!("pack {id}: {n:?} is not a valid IHI"));
+            }
+        }
+    }
+    for v in &ids.matches {
+        if v.a != v.b || compare_ihis(&v.a, &v.b) != Decision::AutoLink {
+            return Err(format!(
+                "pack {id}: IHI vector {:?} and {:?} must link and do not",
+                v.a, v.b
+            ));
+        }
+    }
+    for v in &ids.differ {
+        if v.a == v.b || compare_ihis(&v.a, &v.b) != Decision::NonMatch {
+            return Err(format!(
+                "pack {id}: IHI vector {:?} and {:?} must not link and do",
+                v.a, v.b
+            ));
+        }
+    }
+    Ok(ids.use_ihi)
 }
 
 fn load_one(dir: &Path, id: &str) -> Result<Loaded, String> {
@@ -163,11 +250,13 @@ fn load_one(dir: &Path, id: &str) -> Result<Loaded, String> {
             ));
         }
     }
+    let use_ihi = load_identifiers(&root, id)?;
     Ok(Loaded {
         id: manifest.id,
         version: manifest.version,
         reviewed: manifest.reviewed,
         calling_code: phone.calling_code,
+        use_ihi,
     })
 }
 
@@ -209,9 +298,11 @@ pub fn load(dir: &Path, enabled: &[String], winner: Option<&str>) -> Result<Rule
             ));
         }
     };
+    let use_ihi = packs.iter().any(|p| p.use_ihi);
     Ok(RuleSet {
         packs,
         calling_code,
+        use_ihi,
     })
 }
 
@@ -251,11 +342,12 @@ pub fn init() -> Result<&'static RuleSet, String> {
 /// The matching engine for the rules in force: the matcher's default when no pack is enabled.
 #[must_use]
 pub fn engine() -> MatchingEngine {
-    match RULES.get().and_then(|r| r.calling_code) {
-        Some(code) => MatchingEngine::new(MatchConfig {
-            default_calling_code: code,
-            ..MatchConfig::default()
-        }),
-        None => MatchingEngine::default(),
-    }
+    let rules = RULES.get();
+    MatchingEngine::new(MatchConfig {
+        default_calling_code: rules
+            .and_then(|r| r.calling_code)
+            .unwrap_or(MatchConfig::default().default_calling_code),
+        use_ihi: rules.is_some_and(|r| r.use_ihi),
+        ..MatchConfig::default()
+    })
 }
