@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-31
+
+- **Added:** an opt-in Australian IHI rule (OS-10, step c). `MatchConfig::use_ihi` (default `false`, `#[serde(default)]`, so a saved config still loads) makes a shared valid IHI (system `http://ns.electronichealth.net.au/id/hi/ihi/1.0`; sixteen digits, prefix `800360`, Luhn) decide as a shared NHS number does, with the same guards; two different valid IHIs give `NonMatch`. New `ihi` module (`is_valid_ihi`, `IHI_SYSTEM`) and three new `ConflictCode` variants, `different_ihis`, `same_ihi_different_birth_dates`, `same_ihi_different_names`. The default behaviour is unchanged: every existing test passes untouched.
+- **Changed:** the NHS lookup is now one helper shared with the IHI. A clash on either number forbids a link even when the other number is shared.
+- **Not done / not verified:** the IHI rule is not enabled by any pack yet; the check was tested against numbers the tests complete themselves, not against an official test IHI; the prefix and Luhn rule come from the plan's sourced note and were not re-read against the Digital Health specification for this release; `ConflictCode` has new variants, so a caller that matches exhaustively must handle them (a semver-minor break for such a caller, which is why this is 0.5.0).
+
 ## [0.4.0] - 2026-10-26
 
 - **Changed:** a shared valid NHS number no longer links automatically when the given name, family name or birth date is absent on either record: the pair goes to `Review` with a `FieldUnavailable` conflict per missing field, as for every other pair (CQ-37). A fully present agreeing pair still links, and a family name that differs (marriage) with everything else present still links. Behaviour change for any caller that relied on a bare number linking.

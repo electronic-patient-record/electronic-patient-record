@@ -1,6 +1,7 @@
 //! The matching engine: a pure, total, deterministic function from two
 //! patients to an explainable result. No clocks, no randomness, no IO.
 
+use crate::ihi::{IHI_SYSTEM, is_valid_ihi};
 use crate::nhs::{NHS_NUMBER_SYSTEM, canonical_identifier, is_valid_nhs_number};
 use crate::normalize::{
     PartialDate, are_nicknames, fold_name, fold_postcode, fold_telecom, is_usable_name,
@@ -53,6 +54,9 @@ pub struct MatchConfig {
     /// Country calling code assumed for a phone number written with a leading `0` (44 for the UK).
     #[serde(default = "default_calling_code")]
     pub default_calling_code: u16,
+    /// Treat a shared valid Australian IHI as the NHS number is treated (off by default).
+    #[serde(default)]
+    pub use_ihi: bool,
 }
 
 fn default_calling_code() -> u16 {
@@ -70,6 +74,7 @@ impl Default for MatchConfig {
             min_birth_date_for_auto: 0.99,
             min_evidence_weight: 0.5,
             default_calling_code: default_calling_code(),
+            use_ihi: false,
         }
     }
 }
@@ -156,6 +161,9 @@ pub enum ConflictCode {
     DifferentNhsNumbers,
     SameNhsDifferentBirthDates,
     SameNhsDifferentNames,
+    DifferentIhis,
+    SameIhiDifferentBirthDates,
+    SameIhiDifferentNames,
     NamesSoundAlike,
     NamesSwapped,
     ExtraGivenName,
@@ -182,6 +190,9 @@ impl ConflictCode {
             Self::DifferentNhsNumbers => "different verified NHS numbers".into(),
             Self::SameNhsDifferentBirthDates => "same NHS number but different birth dates".into(),
             Self::SameNhsDifferentNames => "same NHS number but different names".into(),
+            Self::DifferentIhis => "different verified IHIs".into(),
+            Self::SameIhiDifferentBirthDates => "same IHI but different birth dates".into(),
+            Self::SameIhiDifferentNames => "same IHI but different names".into(),
             Self::NamesSoundAlike => "names sound alike but are spelled differently".into(),
             Self::NamesSwapped => "given and family names appear swapped".into(),
             Self::ExtraGivenName => "one record has a given name the other lacks".into(),
@@ -352,20 +363,51 @@ impl MatchingEngine {
         let mut deterministic = None;
         let mut decision;
 
-        // National identifier: a shared valid NHS number decides; two different valid ones forbid a link.
-        let (nhs_a, nhs_b) = (valid_nhs_numbers(a), valid_nhs_numbers(b));
-        let shared = nhs_a.iter().any(|n| nhs_b.contains(n));
-        let clash = !nhs_a.is_empty() && !nhs_b.is_empty() && !shared;
+        // National identifiers: a shared valid number decides; two different valid ones forbid a link.
+        // The IHI counts only when `use_ihi` is on; a clash on either number forbids a link.
+        let (nhs_a, nhs_b) = (
+            valid_numbers(a, NHS_NUMBER_SYSTEM, is_valid_nhs_number),
+            valid_numbers(b, NHS_NUMBER_SYSTEM, is_valid_nhs_number),
+        );
+        let (ihi_a, ihi_b) = if self.config.use_ihi {
+            (
+                valid_numbers(a, IHI_SYSTEM, is_valid_ihi),
+                valid_numbers(b, IHI_SYSTEM, is_valid_ihi),
+            )
+        } else {
+            (vec![], vec![])
+        };
+        let nhs_shared = nhs_a.iter().any(|n| nhs_b.contains(n));
+        let ihi_shared = ihi_a.iter().any(|n| ihi_b.contains(n));
+        let nhs_clash = !nhs_a.is_empty() && !nhs_b.is_empty() && !nhs_shared;
+        let ihi_clash = !ihi_a.is_empty() && !ihi_b.is_empty() && !ihi_shared;
+        let clash = nhs_clash || ihi_clash;
+        let shared = nhs_shared || ihi_shared;
         let dob_conflict = matches!((full_date(a), full_date(b)), (Some(x), Some(y)) if x != y);
 
         if clash {
-            conflicts.push(ConflictCode::DifferentNhsNumbers);
+            conflicts.push(if nhs_clash {
+                ConflictCode::DifferentNhsNumbers
+            } else {
+                ConflictCode::DifferentIhis
+            });
             decision = Decision::NonMatch;
         } else if shared {
-            deterministic = Some("shared verified NHS number".to_string());
+            deterministic = Some(
+                if nhs_shared {
+                    "shared verified NHS number"
+                } else {
+                    "shared verified IHI"
+                }
+                .to_string(),
+            );
             score = 1.0;
             if dob_conflict {
-                conflicts.push(ConflictCode::SameNhsDifferentBirthDates);
+                conflicts.push(if nhs_shared {
+                    ConflictCode::SameNhsDifferentBirthDates
+                } else {
+                    ConflictCode::SameIhiDifferentBirthDates
+                });
             }
             // A family name alone may change (marriage); both names disagreeing suggests a
             // mistyped or reused number.
@@ -373,7 +415,11 @@ impl MatchingEngine {
             if given.is_some_and(|s| s < c.min_given_for_auto)
                 && family.is_some_and(|s| s < c.min_family_for_auto)
             {
-                conflicts.push(ConflictCode::SameNhsDifferentNames);
+                conflicts.push(if nhs_shared {
+                    ConflictCode::SameNhsDifferentNames
+                } else {
+                    ConflictCode::SameIhiDifferentNames
+                });
             }
             // The rule for every other pair holds here too: missing evidence is not agreement, so a
             // shared number with no given name, family name or birth date to check it against is for a
@@ -800,10 +846,10 @@ fn telecom_similarity(a: &Patient, b: &Patient, calling_code: u16) -> Option<(f6
     Some((if any_match { 1.0 } else { 0.0 }, email_match))
 }
 
-fn valid_nhs_numbers(p: &Patient) -> Vec<String> {
+fn valid_numbers(p: &Patient, system: &str, valid: fn(&str) -> bool) -> Vec<String> {
     p.identifiers
         .iter()
-        .filter(|i| i.system == NHS_NUMBER_SYSTEM && is_valid_nhs_number(&i.value))
+        .filter(|i| i.system == system && valid(&i.value))
         .map(|i| canonical_identifier(&i.value))
         .collect()
 }

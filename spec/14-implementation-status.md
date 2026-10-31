@@ -18,12 +18,12 @@ no network, database or compilation; counts are source lines, not test runs):
 | Fact | Value | Method |
 |---|---|---|
 | Service version | 0.1.0 | `version` in the service `Cargo.toml` |
-| Matcher version | 0.4.0 | `version` in the matcher `Cargo.toml` |
+| Matcher version | 0.5.0 | `version` in the matcher `Cargo.toml` |
 | Front-end version | 0.1.0 | `version` in the front-end `package.json` |
 | Migrations | 17 | files named `m2*.rs` in `migration/src` |
 | Route registrations | 58 | `.add(` calls in `src/controllers/*.rs` |
 | Service tests | 474, plus 123 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
-| Matcher tests | 96, plus 0 `#[ignore]`d | the same patterns in the matcher |
+| Matcher tests | 105, plus 0 `#[ignore]`d | the same patterns in the matcher |
 | Front-end unit tests (vitest) | 233 | `it(` / `test(` lines in `tests/unit` |
 | Front-end end-to-end tests (Playwright) | 81 | `test(` lines in `tests/e2e` |
 | Locales | 10 | entries of `LOCALES` in `src/lib/locales.ts` |

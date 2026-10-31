@@ -70,6 +70,10 @@ values** (ID-1 asks for a 200-pair labelled corpus before they are trusted).
     stated basis still the shared number.
 - **Two different valid NHS numbers** give `NonMatch` with a conflict, however alike the demographics.
 - Invalid NHS numbers are ignored for matching.
+- An **Australian IHI** (system `http://ns.electronichealth.net.au/id/hi/ihi/1.0`; sixteen digits, prefix `800360`,
+  Luhn check digit) is a deterministic key only when `MatchConfig::use_ihi` is true (default false). It then behaves
+  as the NHS number does (same guards, conflicts `different_ihis`, `same_ihi_different_birth_dates`,
+  `same_ihi_different_names`, basis "shared verified IHI"). A clash on either number gives `NonMatch`.
 - Other identifiers (MRN) do not decide a match yet.
 
 ## 5. Known gaps
