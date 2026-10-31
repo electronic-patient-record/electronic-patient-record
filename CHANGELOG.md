@@ -2,6 +2,27 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-31 - Matcher 0.5.0 published to crates.io
+
+- **Done:** `electronic-patient-record-matcher` 0.5.0 is on crates.io, published from `4621cd9` after CI on that commit was green. A published version cannot be changed or removed (only yanked).
+- **Not done / not verified:** no git tag or GitHub release was made; the service still depends on 0.4.0 and was not tested against the published 0.5.0 crate; the caveats in the 0.5.0 entry below still stand.
+
+## 2026-10-31 - Hazard log: H-039 row was malformed CSV
+
+- **Fixed:** the H-039 `controls` field held a quoted sentence with unescaped double quotes, so the row split into the wrong columns and `scripts/check-hazard-log.py` failed the docs job on the first push. The quotes are doubled; the wording is unchanged and H-039 stays `open`.
+- **Not done / not verified:** I did not run the checker when I added the row on 2026-10-30, and it is not in the pre-commit hook, so the fault reached CI; the hook was not changed. This entry was itself missing from the first fix commit (see the correction below).
+
+## 2026-10-31 - Matcher 0.5.0: an opt-in IHI rule (OS-10, step c)
+
+- **Clinical risk:** a deterministic identifier decides links. The rule is off by default, so nothing changes until a deployment turns it on; H-040 (packs) covers a pack-driven change and stays `open`.
+- **Built:** matcher `ihi` module, `MatchConfig::use_ihi`, three conflict codes (`different_ihis`, `same_ihi_different_birth_dates`, `same_ihi_different_names`), 7 integration tests and 2 unit tests; matcher spec section 4; version 0.5.0. A clash on either number forbids a link even when the other is shared. Matcher fmt, clippy `-D warnings`, all tests and `cargo deny` pass; CI on `4621cd9` is green.
+- **Not done / not verified:** the service still depends on 0.4.0, so nothing reaches the API until it moves to 0.5.0 and a pack sets `use_ihi`; the UI shows a code it does not know as the English text and has no translation for the three new codes; the IHI rule was tested against numbers the tests complete themselves, not an official test IHI, and the prefix and Luhn rule were not re-read against the Digital Health specification; step (b) is only partly done (one shared lookup, no pack-configurable rule list); `ConflictCode` has new variants, so a caller that matches exhaustively must handle them.
+
+## 2026-10-31 - Outbox: queue depth and stuck gauges (OS-3, in part)
+
+- **Built:** `outbox::depth` counts events still to be tried and events left after `MAX_FAILURES` failures; `run_loop` sets the gauges `epr_outbox_pending` and `epr_outbox_stuck` after each run; `metrics.rs` gained a `Gauge` type. Tests: `/metrics` lists both; a database test checks the counts move by (1, 1). No clinical effect.
+- **Not done / not verified:** no alert rule ships; the gauges read zero until the first loop run and stay zero when the loop is off, which looks like "empty"; the depth query has no tuned index; the loop was not run live. `sccache` is no longer installed here, so builds ran with `RUSTC_WRAPPER` empty.
+
 ## 2026-10-31 - Outbox: the doubling of the retry wait is tested (OS-3, in part)
 
 - **Built:** one database-gated test, `the_wait_after_a_failure_doubles_with_each_failure`: events with 1 to 4 earlier failures, stamped in the past by an insert, are skipped just inside the wait (30, 60, 120, 240 seconds) and taken just past it. No code or spec changed. The 9 outbox store tests pass against Postgres; fmt and clippy `-D warnings` pass.
