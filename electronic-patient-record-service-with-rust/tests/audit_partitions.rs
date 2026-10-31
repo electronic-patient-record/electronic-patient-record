@@ -326,8 +326,12 @@ async fn archiving_moves_partitions_keeps_an_anchor_and_the_chain_goes_on() {
     ] {
         assert!(s.refused(sql).await, "{sql}");
     }
-    // The current month has no partition now; the maintenance step makes it, and writing carries on.
-    assert!(audit_retention::ensure_partitions(&s.db, 24).await.unwrap() >= 1);
+    // The archive step made this month's partition again, so writing carries on at once and the
+    // maintenance step finds nothing to make.
+    assert_eq!(
+        audit_retention::ensure_partitions(&s.db, 24).await.unwrap(),
+        0
+    );
     audit::append(&s.db, &chain, &event(20)).await.unwrap();
     assert_eq!(
         audit::verify(&s.db, &chain).await.unwrap(),
@@ -355,7 +359,6 @@ async fn an_empty_live_table_continues_the_chain_from_the_newest_anchor() {
         audit::verify(&s.db, &chain).await.unwrap(),
         Verdict::Intact { rows: 0 }
     );
-    audit_retention::ensure_partitions(&s.db, 24).await.unwrap();
     audit::append(&s.db, &chain, &event(30)).await.unwrap();
     assert_eq!(
         s.text("SELECT prev_digest FROM audit_events")
@@ -434,9 +437,7 @@ async fn the_verify_answer_counts_archived_rows_and_is_a_409_when_the_archive_is
     )
     .await
     .unwrap();
-    // The current month's partition went to the archive; the verification writes an audit row, so the
-    // maintenance step makes it again first.
-    audit_retention::ensure_partitions(&s.db, 24).await.unwrap();
+    // The verification writes an audit row at once: the archive step left this month's partition.
     let who = Agent("auditor-1".into());
     let (status, body) = verify_audited(&s.db, &chain, &who, None).await.unwrap();
     assert_eq!(status, StatusCode::OK);

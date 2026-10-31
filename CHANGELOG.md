@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-31 - Audit: archiving no longer leaves the current month without a partition (OS-13, in part; H-042)
+
+- **Clinical risk:** removes a window in which an access could not be audited (and so was refused) right after an archive. H-042 text updated; it stays `open`.
+- **Built:** migration 20 renames `audit_archive_before` to `audit_archive_move` and creates a new `audit_archive_before` that calls it and then `audit_ensure_partitions(24)` in the same transaction. The tests that called the maintenance step by hand after an archive no longer do: an append and a verification work at once, and a maintenance run right after finds nothing to make (`ensure_partitions` returns 0). `down` refuses, as for the other clinical migrations. `spec/08-architecture.md`, `tasks.md` and H-042 updated.
+- **Not done / not verified:** the migration was run on empty scratch databases only. A partition range freed by archiving a month that is not the current one is not remade (it is in the past, and nothing writes there). The service was not started. Gates: fmt, clippy `-D warnings`, the database suite with Postgres 18 (only the four `fhir_validator` tests fail, as without `FHIR_VALIDATOR_JAR`); the no-database tests do not touch migrations and were not re-run.
+
 ## 2026-10-31 - Audit: the verify endpoint checks the archive too (OS-13, in part; H-042)
 
 - **Clinical risk:** the answer of `GET /api/audit/verify` can now be `409` for damage in an archived partition, and an intact answer carries `archive_rows`. H-042 text updated; it stays `open`.

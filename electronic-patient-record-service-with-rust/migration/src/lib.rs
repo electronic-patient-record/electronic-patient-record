@@ -27,6 +27,7 @@ mod m20261028_000016_hazard_events;
 mod m20261030_000017_outbox;
 mod m20261031_000018_audit_partitions;
 mod m20261031_000019_audit_archive_view;
+mod m20261031_000020_audit_archive_keeps_partitions;
 
 /// Whether a `down` that drops clinical tables may run: only in development or test, and only when
 /// `EPR_ALLOW_DESTRUCTIVE_DOWN=true` says so. A missing environment name counts as production.
@@ -75,6 +76,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261030_000017_outbox::Migration),
             Box::new(m20261031_000018_audit_partitions::Migration),
             Box::new(m20261031_000019_audit_archive_view::Migration),
+            Box::new(m20261031_000020_audit_archive_keeps_partitions::Migration),
         ]
     }
 }
