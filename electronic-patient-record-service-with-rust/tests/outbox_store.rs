@@ -414,3 +414,31 @@ async fn the_wait_after_a_failure_doubles_with_each_failure() {
         );
     }
 }
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn depth_counts_pending_and_stuck_events_and_not_finished_ones() {
+    let db = db().await;
+    let (p0, s0) = outbox::depth(&db).await.unwrap();
+    let payload = serde_json::json!({"n": 10});
+    let mut ids = vec![];
+    for _ in 0..3 {
+        let r = format!("sink-{}", nanos());
+        ids.push(
+            outbox::enqueue(&db, event(&r, None, &payload))
+                .await
+                .unwrap(),
+        );
+    }
+    // 0: untouched (pending). 1: failed MAX_FAILURES times (stuck). 2: delivered (neither).
+    fail_in_the_past(&db, &ids[1], u32::try_from(MAX_FAILURES).unwrap(), 5).await;
+    db.execute_raw(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        "INSERT INTO outbox_attempts (event_id, outcome) VALUES ($1::uuid, 'delivered')",
+        vec![ids[2].clone().into()],
+    ))
+    .await
+    .unwrap();
+    let (p1, s1) = outbox::depth(&db).await.unwrap();
+    assert_eq!((p1 - p0, s1 - s0), (1, 1));
+}

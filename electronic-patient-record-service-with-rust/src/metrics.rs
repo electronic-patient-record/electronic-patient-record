@@ -45,6 +45,29 @@ impl Counter {
     }
 }
 
+/// A value that can go down as well as up. Set by the loop that knows it; zero until the first set.
+#[derive(Debug, Default)]
+pub struct Gauge(AtomicU64);
+
+impl Gauge {
+    /// A gauge at zero.
+    #[must_use]
+    pub const fn new() -> Self {
+        Self(AtomicU64::new(0))
+    }
+
+    /// Replace the value.
+    pub fn set(&self, value: u64) {
+        self.0.store(value, Ordering::Relaxed);
+    }
+
+    /// The current value.
+    #[must_use]
+    pub fn get(&self) -> u64 {
+        self.0.load(Ordering::Relaxed)
+    }
+}
+
 /// Audit appends that failed. Every one failed the request it belonged to (an access that cannot be
 /// audited does not happen), so a rising count is an outage of the audit trail.
 pub static AUDIT_APPEND_FAILURES: Counter = Counter::new();
@@ -65,6 +88,13 @@ pub static OUTBOX_REFUSED: Counter = Counter::new();
 /// Outbox delivery attempts that failed. A count that keeps rising while `delivered` does not is a
 /// sink that is down or an event that cannot be sent.
 pub static OUTBOX_FAILED: Counter = Counter::new();
+
+/// Outbox events still to be tried, as of the last run of the loop (OS-3). Zero when the loop is off.
+pub static OUTBOX_PENDING: Gauge = Gauge::new();
+
+/// Outbox events that failed `MAX_FAILURES` times and are left: nothing retries them, so a value above
+/// zero needs a person.
+pub static OUTBOX_STUCK: Gauge = Gauge::new();
 
 /// Requests refused because their subject was past a request limit (OS-2).
 pub static RATE_LIMITED: Counter = Counter::new();
@@ -211,10 +241,32 @@ fn all() -> [(&'static str, &'static str, &'static Counter); 7] {
     ]
 }
 
+/// `(name, help, gauge)` for everything served.
+fn gauges() -> [(&'static str, &'static str, &'static Gauge); 2] {
+    [
+        (
+            "epr_outbox_pending",
+            "Outbox events still to be tried, as of the last loop run.",
+            &OUTBOX_PENDING,
+        ),
+        (
+            "epr_outbox_stuck",
+            "Outbox events that failed too often and are left.",
+            &OUTBOX_STUCK,
+        ),
+    ]
+}
+
 /// The counters in the Prometheus text exposition format.
 #[must_use]
 pub fn render() -> String {
     let mut out = render_of(&all());
+    for (name, help, gauge) in gauges() {
+        out.push_str(&format!(
+            "# HELP {name} {help}\n# TYPE {name} gauge\n{name} {}\n",
+            gauge.get()
+        ));
+    }
     let series = REQUESTS.lock().unwrap_or_else(|e| e.into_inner());
     out.push_str(&render_histograms(&series));
     out

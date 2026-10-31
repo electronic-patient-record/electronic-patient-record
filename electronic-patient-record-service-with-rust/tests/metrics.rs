@@ -43,6 +43,9 @@ async fn metrics_is_404_when_off_and_lists_every_counter_when_on() {
         assert!(text.contains(&format!("# TYPE {name} counter")), "{name}");
         assert!(text.contains(&format!("\n{name} ")), "{name} has a value");
     }
+    for name in ["epr_outbox_pending", "epr_outbox_stuck"] {
+        assert!(text.contains(&format!("# TYPE {name} gauge")), "{name}");
+    }
 }
 
 #[tokio::test]

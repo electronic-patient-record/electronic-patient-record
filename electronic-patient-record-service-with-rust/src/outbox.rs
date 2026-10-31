@@ -239,7 +239,43 @@ pub async fn run_loop(
             Ok(_) => {}
             Err(e) => tracing::error!(error = %e, "outbox run failed"),
         }
+        match depth(&db).await {
+            Ok((pending, stuck)) => {
+                crate::metrics::OUTBOX_PENDING.set(u64::try_from(pending).unwrap_or(0));
+                crate::metrics::OUTBOX_STUCK.set(u64::try_from(stuck).unwrap_or(0));
+            }
+            Err(e) => tracing::error!(error = %e, "outbox depth failed"),
+        }
     }
+}
+
+/// Events still to be tried and events left after `MAX_FAILURES` failures, as `(pending, stuck)`.
+///
+/// # Errors
+///
+/// [`StoreError::Db`] when the database fails.
+pub async fn depth(db: &DatabaseConnection) -> Result<(i64, i64), StoreError> {
+    let row = db
+        .query_one_raw(pg(
+            &format!(
+                "SELECT count(*) FILTER (WHERE f < {MAX_FAILURES}) AS pending,
+                        count(*) FILTER (WHERE f >= {MAX_FAILURES}) AS stuck
+                 FROM (SELECT (SELECT count(*) FROM outbox_attempts a
+                               WHERE a.event_id = e.id AND a.outcome = 'failed') AS f
+                       FROM outbox_events e
+                       WHERE NOT EXISTS (SELECT 1 FROM outbox_attempts a
+                                         WHERE a.event_id = e.id
+                                           AND a.outcome IN ('delivered', 'refused'))) t"
+            ),
+            vec![],
+        ))
+        .await
+        .map_err(db_err)?
+        .ok_or_else(|| StoreError::Db("no depth row".into()))?;
+    Ok((
+        row.try_get("", "pending").map_err(db_err)?,
+        row.try_get("", "stuck").map_err(db_err)?,
+    ))
 }
 
 /// Events one run of the loop may take.
