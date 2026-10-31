@@ -413,3 +413,45 @@ async fn the_archive_check_finds_an_archived_table_that_no_longer_matches_its_an
     }
     s.finish().await;
 }
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn the_verify_answer_counts_archived_rows_and_is_a_409_when_the_archive_is_damaged() {
+    use axum::http::StatusCode;
+    use electronic_patient_record::auth::Agent;
+    use electronic_patient_record::controllers::audit::verify_audited;
+
+    let s = Scratch::new(None).await;
+    let chain = Chain::unkeyed();
+    for n in 0..3 {
+        audit::append(&s.db, &chain, &event(n)).await.unwrap();
+    }
+    append_next_month(&s, &chain, 10).await;
+    s.text(
+        "SELECT array_to_string(audit_archive_before(
+             (date_trunc('month', now() AT TIME ZONE 'UTC') + interval '1 month') AT TIME ZONE 'UTC'
+             + interval '1 day'), ',')",
+    )
+    .await
+    .unwrap();
+    // The current month's partition went to the archive; the verification writes an audit row, so the
+    // maintenance step makes it again first.
+    audit_retention::ensure_partitions(&s.db, 24).await.unwrap();
+    let who = Agent("auditor-1".into());
+    let (status, body) = verify_audited(&s.db, &chain, &who, None).await.unwrap();
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["archive_rows"], 3);
+    assert_eq!(body["intact"], true);
+
+    s.exec("ALTER TABLE audit_archive.audit_events_p0 DISABLE TRIGGER USER")
+        .await;
+    s.exec("UPDATE audit_archive.audit_events_p0 SET agent = 'someone-else' WHERE id = 2")
+        .await;
+    s.exec("ALTER TABLE audit_archive.audit_events_p0 ENABLE TRIGGER USER")
+        .await;
+    let (status, body) = verify_audited(&s.db, &chain, &who, None).await.unwrap();
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert_eq!(body["first_broken_id"], 2);
+    assert!(body["reason"].as_str().unwrap().contains("audit_events_p0"));
+    s.finish().await;
+}

@@ -76,7 +76,20 @@ pub async fn verify_audited(
     agent: &Agent,
     checkpoint: Option<&Head>,
 ) -> Result<(StatusCode, serde_json::Value), audit::AuditError> {
-    let (verdict, head) = audit::verify_against(db, chain, audit::VERIFY_BATCH, checkpoint).await?;
+    let (live, head) = audit::verify_against(db, chain, audit::VERIFY_BATCH, checkpoint).await?;
+    // The archived partitions are checked against their anchors too (OS-13). Damage there outranks a
+    // finding in the live rows' key; a live break is reported as before.
+    let archive = audit::verify_archive(db, chain, audit::VERIFY_BATCH).await?;
+    let archive_rows = match &archive {
+        Verdict::Intact { rows } | Verdict::Unchecked { rows, .. } => *rows,
+        Verdict::Broken { .. } => 0,
+    };
+    let verdict = match (archive, live) {
+        (broken @ Verdict::Broken { .. }, _) => broken,
+        (_, broken @ Verdict::Broken { .. }) => broken,
+        (unchecked @ Verdict::Unchecked { .. }, Verdict::Intact { .. }) => unchecked,
+        (_, other) => other,
+    };
     let assurance = assurance(chain.keyed(), checkpoint.is_some());
     let (status, body) = match &verdict {
         Verdict::Intact { rows } => (
@@ -84,6 +97,7 @@ pub async fn verify_audited(
             serde_json::json!({
                 "intact": true,
                 "rows": rows,
+                "archive_rows": archive_rows,
                 "keyed": chain.keyed(),
                 "head": head,
                 "checkpoint_confirmed": checkpoint.is_some(),

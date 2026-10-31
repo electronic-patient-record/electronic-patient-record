@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-31 - Audit: the verify endpoint checks the archive too (OS-13, in part; H-042)
+
+- **Clinical risk:** the answer of `GET /api/audit/verify` can now be `409` for damage in an archived partition, and an intact answer carries `archive_rows`. H-042 text updated; it stays `open`.
+- **Built:** `verify_audited` runs `audit::verify_archive` after the live check. Damage in the archive outranks a live finding; a live break is reported as before; an archive the service lacks the key for is the same `424`. Status codes are unchanged; `archive_rows` is the only new field. Two tests: `tests/audit_chain.rs` asserts `archive_rows` is 0 when nothing is archived; a new test in `tests/audit_partitions.rs` archives, expects 200 with `archive_rows` 3, edits an archived row with the triggers disabled and expects 409 naming the partition. `spec/08-architecture.md` and `tasks.md` updated.
+- **Found while testing:** after an archive the current month's partition is gone, so the audit row that a verification writes fails until the maintenance step has run; the loop makes it within six hours, and the test calls it first. A verify served after an archive but before the next loop tick would answer 500 for that call.
+- **Not done / not verified:** nothing runs the verify endpoint on a schedule. The maintenance loop does not call the check. The check reads the whole archive on every call and was not timed over large archives; `archive_rows` is not in the OpenAPI document or the UI. The running service was not started. Gates: fmt, clippy `-D warnings`, 356 tests without a database, the database suite with Postgres 18 (only the four `fhir_validator` tests fail, as without `FHIR_VALIDATOR_JAR`).
+
 ## 2026-10-31 - Audit: an archived table is checked against its anchor (OS-13, in part; H-042)
 
 - **Built:** `audit::verify_archive` reads each archived partition in batches and checks the anchors link head to tail, and that the table holds the anchor's row count, first and last id and last digest, with its chain recomputed from `first_prev_digest`; a missing table, a missing, extra or edited row is `Broken` at that anchor or row. The per-row event rebuild is now one helper shared with `verify_against`. One database test (6 in `tests/audit_partitions.rs`): intact with a small batch, then a row edited with the triggers disabled (as a database owner could) is found. `spec/08-architecture.md`, H-042 and `tasks.md` updated; the hazard stays `open`.

@@ -376,6 +376,7 @@ async fn a_published_head_catches_removed_newest_rows_and_a_rewritten_head() {
     let head: Head = serde_json::from_value(body["head"].clone()).unwrap();
     assert_eq!(head.id, ids[4]);
     assert_eq!(body["checkpoint_confirmed"], false);
+    assert_eq!(body["archive_rows"], 0, "nothing archived");
 
     // More rows after the checkpoint: still fine, and the checkpoint is confirmed.
     audit::append(&s.db, &chain, &event(5)).await.unwrap();
