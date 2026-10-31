@@ -99,6 +99,14 @@ impl Hooks for App {
                 every,
             ));
         }
+        // Audit partitions are made ahead and, when `EPR_AUDIT_ARCHIVE_AFTER_MONTHS` is set, old ones are
+        // moved to the archive schema (OS-13). A bad setting stops the service starting.
+        let archive_after =
+            crate::audit_retention::archive_months_from_env().map_err(loco_rs::Error::Message)?;
+        tokio::spawn(crate::audit_retention::run_loop(
+            ctx.db.clone(),
+            archive_after,
+        ));
         // Country packs the deployment enables (OS-10). A pack that does not load stops the service.
         crate::packs::init().map_err(loco_rs::Error::Message)?;
         // Request limits per token subject (OS-2). A bad setting stops the service starting.

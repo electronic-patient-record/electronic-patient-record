@@ -14,6 +14,7 @@ pub mod amendments_store;
 pub mod api_error;
 pub mod app;
 pub mod audit;
+pub mod audit_retention;
 pub mod auth;
 pub mod authz;
 pub mod break_glass;

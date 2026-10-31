@@ -41,3 +41,12 @@ hold the same event.
 **Not built in this slice:** a sink (none exists until IO-6), a loop that calls the runner, a loco
 worker (loco's queue needs Redis; the table is the queue here), a queue-depth gauge (the three outcome counters exist), and any producer: nothing calls
 `enqueue` yet.
+
+## Audit partitions and archive (OS-13)
+
+`audit_events` is partitioned by month on `recorded_at` (migration 18). The old table was not copied or dropped: it became the first partition (`audit_events_p0`), so rows keep their ids and the hash chain is untouched. The append-only triggers moved to the parent in the same transaction; each partition has its own `TRUNCATE` trigger. `audit_ensure_partitions(n)` makes this month and the next `n` (the migration makes 24; the service calls it at start and every six hours, because an insert with no partition fails and an access that cannot be audited does not happen).
+
+`audit_archive_before(cutoff)` moves the oldest partitions that end at or before `cutoff` into the `audit_archive` schema: it records an anchor first (`first_prev_digest`, `last_digest`, `row_count`, in the append-only `audit_archive_anchors`), then detaches, moves, and puts the row trigger back (detaching drops the inherited one). Nothing is deleted. The chain check and the next append start from the newest anchor, so the chain holds across a partition boundary, across an archive, and when every live partition is empty. The service archives only when `EPR_AUDIT_ARCHIVE_AFTER_MONTHS` (1 to 1200) is set, and only whole months back; unset means never.
+
+**Not built:** a view or search over the archive (an archived row leaves a patient's access log and the audit search; hence off by default); a check that an archived table still matches its anchor; a retention period set by governance (OQ-OS7); anything that prevents the database owner dropping a partition. Hazard H-042.
+

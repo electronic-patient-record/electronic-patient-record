@@ -5,7 +5,7 @@
 | Class | Covers | Period | Today |
 | --- | --- | --- | --- |
 | `record` | Patient identity, consent, relationships, links, photos, allergies, observations, amendment requests, the hazard register (each with its `_current` view) | Not set | Kept for ever. The clinical record is append-only: there is no delete path and no migration may add one |
-| `audit` | `audit_events`, `break_glass_grants`, `break_glass_reviews` | Not set | Kept for ever; `audit_events` is protected by database triggers and a hash chain |
+| `audit` | `audit_events`, `break_glass_grants`, `break_glass_reviews` | Not set | Kept for ever by default; `audit_events` is protected by database triggers and a hash chain, is partitioned by month, and can move whole old partitions to the `audit_archive` schema when `EPR_AUDIT_ARCHIVE_AFTER_MONTHS` is set (off by default; moves, never deletes; H-042, OQ-OS7). `audit_archive_anchors` records each move |
 | `feed` | `feed_refusals` and `feed_refusal_resolutions`: HL7 messages the service refused, with the raw message | Not set | Kept for ever. The raw message holds identity and may hold more, so it is the strongest case for a shorter period |
 
 ## What is not decided

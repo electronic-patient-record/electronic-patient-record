@@ -67,6 +67,8 @@ fn inventory_rows_are_well_formed_and_unique() {
     assert!(!seen.is_empty());
 }
 
+// A partition of `audit_events` holds the parent's columns, which are classified under the parent (OS-13);
+// every column of every other table, and of the parent, must still be listed.
 #[tokio::test]
 #[ignore = "needs Postgres: set DATABASE_URL"]
 async fn every_database_column_is_classified_and_no_stale_row_remains() {
@@ -77,7 +79,8 @@ async fn every_database_column_is_classified_and_no_stale_row_remains() {
         .query_all_raw(Statement::from_string(
             DbBackend::Postgres,
             "SELECT table_name, column_name FROM information_schema.columns \
-             WHERE table_schema = 'public' AND table_name NOT LIKE 'seaql%'"
+             WHERE table_schema = 'public' AND table_name NOT LIKE 'seaql%' \
+               AND table_name NOT IN (SELECT relname::text FROM pg_class WHERE relispartition)"
                 .to_string(),
         ))
         .await

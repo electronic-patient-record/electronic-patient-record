@@ -443,6 +443,11 @@ async fn append_row(
         .map(|r| r.try_get::<String>("", "digest"))
         .transpose()
         .map_err(err)?;
+    // With every partition archived the table is empty, and the chain continues from the newest anchor.
+    let prev = match prev {
+        Some(p) => Some(p),
+        None => newest_anchor(&tx).await?.map(|(_, digest)| digest),
+    };
     let at: String = tx
         .query_one_raw(pg(
             &format!("SELECT to_char(clock_timestamp() AT TIME ZONE 'UTC', '{TS_FORMAT}') AS ts"),
@@ -485,6 +490,23 @@ async fn append_row(
     let id: i64 = row.try_get("", "id").map_err(err)?;
     tx.commit().await.map_err(err)?;
     Ok(id)
+}
+
+/// The id and digest of the newest archived row (the newest anchor), or `None` when nothing is archived.
+async fn newest_anchor(db: &impl ConnectionTrait) -> Result<Option<(i64, String)>, AuditError> {
+    db.query_one_raw(pg(
+        "SELECT last_id, last_digest FROM audit_archive_anchors ORDER BY last_id DESC LIMIT 1",
+        vec![],
+    ))
+    .await
+    .map_err(err)?
+    .map(|r| {
+        Ok((
+            r.try_get::<i64>("", "last_id").map_err(err)?,
+            r.try_get::<String>("", "last_digest").map_err(err)?,
+        ))
+    })
+    .transpose()
 }
 
 /// The result of verifying the whole chain.
@@ -1033,8 +1055,11 @@ pub async fn verify_against(
     let mut unchecked: usize = 0;
     let mut first_unchecked: Option<i64> = None;
     let mut causes = std::collections::BTreeSet::new();
-    let mut previous: Option<String> = None;
-    let mut last_id: i64 = 0;
+    // Rows moved to the archive are not re-read: the check starts at the newest anchor.
+    let (mut last_id, mut previous) = match newest_anchor(db).await? {
+        Some((id, digest)) => (id, Some(digest)),
+        None => (0, None),
+    };
     let mut checked: usize = 0;
     loop {
         let rows = db

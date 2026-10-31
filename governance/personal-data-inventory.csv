@@ -219,3 +219,10 @@ outbox_attempts,event_id,none,The event attempted,feed
 outbox_attempts,attempted_at,none,When the attempt was made,feed
 outbox_attempts,outcome,none,Delivered or refused or failed,feed
 outbox_attempts,reason,none,Stable reason code or the sink's error text ; names no clinical content,feed
+audit_archive_anchors,partition,none,Name of an archived audit partition,audit
+audit_archive_anchors,first_id,none,First audit row id in the partition,audit
+audit_archive_anchors,last_id,none,Last audit row id in the partition,audit
+audit_archive_anchors,row_count,none,Rows in the partition when archived,audit
+audit_archive_anchors,first_prev_digest,none,Hash chain link into the partition,audit
+audit_archive_anchors,last_digest,none,Hash chain link out of the partition,audit
+audit_archive_anchors,archived_at,none,When the partition was archived,audit

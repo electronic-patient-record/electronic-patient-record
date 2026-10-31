@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-31 - Audit: monthly partitions and an archive step (OS-13, in part; H-042)
+
+- **Clinical risk:** an audit row that leaves `audit_events` is not shown in a patient's access log; a missing partition fails the write. H-042 is added `open` (not reviewed). OQ-OS7 (the period) is marked assumed: the maintainer chose "partitions and archive step". Archiving is **off unless `EPR_AUDIT_ARCHIVE_AFTER_MONTHS` is set**, so by default nothing leaves `audit_events`.
+- **Built:** migration 18 attaches the old table as the first partition (ids, rows and chain unchanged; triggers moved to the parent in one transaction; a `TRUNCATE` trigger on each partition), `audit_archive_anchors` (append-only), `audit_ensure_partitions`, `audit_archive_before` (anchor, detach, move, row trigger restored). `src/audit_retention.rs` runs the maintenance every six hours; `audit::append` and `verify` start from the newest anchor. 5 new database tests (partitioned and append-only, rows before the migration keep ids and chain, chain across a boundary and a break on the far side, archive with anchor and the chain going on, an empty live table continues from the anchor); 1 unit test. Inventory rows for the anchors; the census test now skips partitions, which hold the parent's columns (every column of every real table is still required). fmt and clippy `-D warnings` pass; plain tests 356 pass; with Postgres 124 pass and the 4 `fhir_validator` fail as always.
+- **Found while testing:** detaching a partition drops its inherited row trigger, which would have left archived rows editable; the archive function now creates it again, and a test tries to edit, delete and truncate an archived table.
+- **Not done / not verified:** no period is set by governance; a patient's access log and the audit search do not read the archive, and no view joins it; nothing checks an archived table against its anchor's row count or hash chain; the migration ran on empty scratch databases and one with a few rows, not on a large table (the attach scans every row once, under a lock); a database owner can still drop a partition; the loop was not run at a real month change or in a running service; `down` always refuses; CI has not run on this commit.
+
 ## 2026-10-31 - Packs: the `au` pack turns the IHI rule on (OS-10, step c)
 
 - **Clinical risk:** with `EPR_PACKS` naming `au`, a shared valid IHI can link two records automatically and two different valid IHIs forbid a link. H-041 is added `open` (not reviewed). A deployment that does not enable `au` is unchanged.
