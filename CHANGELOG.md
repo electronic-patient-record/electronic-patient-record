@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-31 - Service: depends on matcher 0.5.0 (OS-10)
+
+- **Changed:** `Cargo.toml` and `Cargo.lock` take the published matcher 0.5.0. No service code changed, and `use_ihi` is off in every engine the service builds, so behaviour is unchanged. fmt, clippy `-D warnings`, database-free tests and `cargo deny` pass; with Postgres, 119 ignored tests pass and the 4 `fhir_validator` tests fail as always without `FHIR_VALIDATOR_JAR`.
+- **Not done / not verified:** no pack key turns the IHI rule on, so it is unreachable from the service (that is a clinical-impact change and needs a hazard-log update); the UI has no translation for the three new conflict codes; CI has not run on this commit.
+
 ## 2026-10-31 - Matcher 0.5.0 published to crates.io
 
 - **Done:** `electronic-patient-record-matcher` 0.5.0 is on crates.io, published from `4621cd9` after CI on that commit was green. A published version cannot be changed or removed (only yanked).
