@@ -48,5 +48,7 @@ worker (loco's queue needs Redis; the table is the queue here), a queue-depth ga
 
 `audit_archive_before(cutoff)` moves the oldest partitions that end at or before `cutoff` into the `audit_archive` schema: it records an anchor first (`first_prev_digest`, `last_digest`, `row_count`, in the append-only `audit_archive_anchors`), then detaches, moves, and puts the row trigger back (detaching drops the inherited one). Nothing is deleted. The chain check and the next append start from the newest anchor, so the chain holds across a partition boundary, across an archive, and when every live partition is empty. The service archives only when `EPR_AUDIT_ARCHIVE_AFTER_MONTHS` (1 to 1200) is set, and only whole months back; unset means never.
 
-**Not built:** a view or search over the archive (an archived row leaves a patient's access log and the audit search; hence off by default); a check that an archived table still matches its anchor; a retention period set by governance (OQ-OS7); anything that prevents the database owner dropping a partition. Hazard H-042.
+`audit_events_all` (migration 19) is the live table and every archived partition as one view, rebuilt in the same transaction as each move; a patient's access log and the audit search read it, so an archived row is still listed. The chain check and the append read `audit_events` and the anchors, never the view.
+
+**Not built:** a check that an archived table still matches its anchor; a retention period set by governance (OQ-OS7); anything that prevents the database owner dropping a partition. Hazard H-042.
 

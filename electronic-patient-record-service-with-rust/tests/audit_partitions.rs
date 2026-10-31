@@ -288,6 +288,29 @@ async fn archiving_moves_partitions_keeps_an_anchor_and_the_chain_goes_on() {
         audit::verify(&s.db, &chain).await.unwrap(),
         Verdict::Intact { rows: 2 }
     );
+    // An archived row is still in a patient's access log: the view reads the archive too.
+    let log = audit::patient_log(
+        &s.db,
+        "0",
+        "someone",
+        &audit::PatientLogFilter::default(),
+        10,
+    )
+    .await
+    .unwrap();
+    assert_eq!(log.len(), 1, "Patient/0 was written before the archive");
+    let found = audit::search(
+        &s.db,
+        &audit::AuditQuery {
+            agent: Some("user-1".into()),
+            ..audit::AuditQuery::default()
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(found.len(), 1, "the audit search finds an archived row");
+    assert_eq!(s.n("SELECT count(*) FROM audit_events_all").await, 4);
+    assert_eq!(s.n("SELECT count(*) FROM audit_events").await, 2);
     // The archive and the anchors stay append-only.
     for sql in [
         "UPDATE audit_archive.audit_events_p0 SET agent = 'x'",

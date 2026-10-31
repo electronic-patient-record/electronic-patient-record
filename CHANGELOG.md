@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-31 - Audit: the archive stays visible through a view (OS-13, in part; H-042)
+
+- **Built:** migration 19 adds `audit_events_all` (the live table plus every table in `audit_archive`, as a `UNION ALL` over explicit columns) and `audit_refresh_all_view()`; `audit_archive_before` is replaced to rebuild the view in the same transaction as each move. The patient access log and the audit search read the view; the chain check and the append still read `audit_events` and the anchors. The archive test now also finds an archived row through `patient_log` and `search`. Inventory rows for the view's 13 columns. fmt and clippy `-D warnings` pass; with Postgres 124 pass and the 4 `fhir_validator` fail as always.
+- **Not done / not verified:** the view's speed over many archived partitions was not measured; any new reader of `audit_events` that skips the view will miss archived rows; the earlier entry's "not built" about the log and search no longer holds, but its other gaps do (no governance period, no check of an archive against its anchor, no large-table run); H-042 stays `open`; CI has not run on this commit.
+
 ## 2026-10-31 - Audit: monthly partitions and an archive step (OS-13, in part; H-042)
 
 - **Clinical risk:** an audit row that leaves `audit_events` is not shown in a patient's access log; a missing partition fails the write. H-042 is added `open` (not reviewed). OQ-OS7 (the period) is marked assumed: the maintainer chose "partitions and archive step". Archiving is **off unless `EPR_AUDIT_ARCHIVE_AFTER_MONTHS` is set**, so by default nothing leaves `audit_events`.

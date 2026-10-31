@@ -625,7 +625,7 @@ pub async fn patient_log(
                 "SELECT id, to_char(recorded_at AT TIME ZONE 'UTC', '{TS_FORMAT}') AS ts,
                         action::text AS action, outcome, agent, resource_ref, purpose_of_use, break_glass,
                         detail->'actor' AS actor
-                 FROM audit_events
+                 FROM audit_events_all
                  WHERE lower(patient_ref) = lower($1) AND ($2::bigint IS NULL OR id < $2)
                    AND ($4::text IS NULL OR recorded_at >= $4::timestamptz)
                    AND ($5::text IS NULL OR recorded_at < $5::timestamptz)
@@ -921,7 +921,7 @@ async fn search_with(
                         action::text AS action, outcome, agent, patient_ref, resource_ref,
                         purpose_of_use, break_glass, network_address, detail,
                         digest, prev_digest
-                 FROM audit_events
+                 FROM audit_events_all
                  WHERE ($1::text IS NULL OR agent = $1)
                    AND ($2::text IS NULL OR lower(patient_ref) = 'patient/' || lower($2))
                    AND ($3::text IS NULL OR action::text = $3)

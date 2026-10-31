@@ -226,3 +226,16 @@ audit_archive_anchors,row_count,none,Rows in the partition when archived,audit
 audit_archive_anchors,first_prev_digest,none,Hash chain link into the partition,audit
 audit_archive_anchors,last_digest,none,Hash chain link out of the partition,audit
 audit_archive_anchors,archived_at,none,When the partition was archived,audit
+audit_events_all,id,none,Random record id,audit
+audit_events_all,recorded_at,none,When the version was written,audit
+audit_events_all,action,none,Audited action,audit
+audit_events_all,outcome,none,Outcome code,audit
+audit_events_all,agent,staff-identifier,Who or what acted,audit
+audit_events_all,patient_ref,identifier,Patient the action was about,audit
+audit_events_all,resource_ref,none,Resource the action was about,audit
+audit_events_all,purpose_of_use,none,Purpose of use declared,audit
+audit_events_all,break_glass,none,Whether emergency access applied,audit
+audit_events_all,network_address,staff-trace,Address the request came from,audit
+audit_events_all,detail,free-text,Structured detail of the audit row; it holds no values by design but is classified cautiously,audit
+audit_events_all,prev_digest,none,Hash chain,audit
+audit_events_all,digest,none,Hash chain,audit
