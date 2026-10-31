@@ -364,3 +364,53 @@ async fn a_failed_event_waits_before_its_retry() {
     );
     assert_eq!(attempts(&db, &id, "failed").await, 1);
 }
+
+/// Add `n` failed attempts to an event, each stamped `age_secs` ago (the table is append-only, so the
+/// clock is set on insert).
+async fn fail_in_the_past(db: &DatabaseConnection, id: &str, n: u32, age_secs: i64) {
+    for _ in 0..n {
+        db.execute_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            "INSERT INTO outbox_attempts (event_id, attempted_at, outcome, reason)
+             VALUES ($1::uuid, now() - make_interval(secs => $2::double precision), 'failed', 'earlier')",
+            vec![id.into(), age_secs.into()],
+        ))
+        .await
+        .unwrap();
+    }
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn the_wait_after_a_failure_doubles_with_each_failure() {
+    let db = db().await;
+    let chain = Chain::unkeyed();
+    // With a 30 second base the wait is 30, 60, 120, 240 seconds after the 1st to 4th failure.
+    // Each case: (failures so far, age of the last in seconds, due).
+    for (failures, age, due) in [
+        (1, 20, false),
+        (1, 40, true),
+        (2, 50, false),
+        (2, 70, true),
+        (3, 110, false),
+        (3, 130, true),
+        (4, 230, false),
+        (4, 250, true),
+    ] {
+        let recipient = format!("sink-{}", nanos());
+        let payload = serde_json::json!({"n": 9});
+        let id = outbox::enqueue(&db, event(&recipient, None, &payload))
+            .await
+            .unwrap();
+        fail_in_the_past(&db, &id, failures, age).await;
+        let (all, calls) = sinks(&recipient, false);
+        outbox::run_once_with(&db, &chain, &all, 100, 30)
+            .await
+            .unwrap();
+        assert_eq!(
+            calls.load(Ordering::SeqCst),
+            u32::from(due),
+            "{failures} failures, last {age}s ago"
+        );
+    }
+}

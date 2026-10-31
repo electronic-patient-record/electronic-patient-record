@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-31 - Outbox: the doubling of the retry wait is tested (OS-3, in part)
+
+- **Built:** one database-gated test, `the_wait_after_a_failure_doubles_with_each_failure`: events with 1 to 4 earlier failures, stamped in the past by an insert, are skipped just inside the wait (30, 60, 120, 240 seconds) and taken just past it. No code or spec changed. The 9 outbox store tests pass against Postgres; fmt and clippy `-D warnings` pass.
+- **Not done / not verified:** the cap (the wait stops doubling after 2^10) is not tested and cannot be reached: an event stops being claimed after `MAX_FAILURES` (5) failures, so the exponent never passes 4; the cap is dead code until that limit rises. The boundaries have a margin of 10 to 20 seconds, so a very slow database could make the test flaky; the test did not run in CI.
+
 ## 2026-10-30 - Benchmark: re-scored and the scan record committed (OS-1)
 
 - **Changed:** `.sota/last-scan.json` re-scored against rubric version 1 from repository evidence: published coverage, SAST, performance numbers and background jobs moved from missing to partial; secret scanning and the code of conduct are met (edge); coverage stays 44% (11 of 25 met), tier LAGGING, 14 gaps; the previous run is kept under `previous`. `spec/benchmark.md` has the "Since last scan" line. `.sota/` is now committed.
