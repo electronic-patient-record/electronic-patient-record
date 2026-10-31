@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-31 - Audit: a test that a successful patient read leaves an audit row (OS-9, in part)
+
+- **Clinical risk:** none to behaviour; it adds a guard for H-042's neighbour, the claim that access is audited. No hazard row changed.
+- **Built:** `tests/audit_coverage.rs` creates a patient and calls each patient-scoped `GET` in `routes::TABLE` (15 routes, R4 and R5 FHIR reads included; a photo and an observation are created first), asserting a 2xx and a rise in `audit_events_all`. All 15 pass. Checked (before the photo and observation fixtures were added) by demanding an impossible rise: it then named every route walked. `tasks.md` OS-9 updated; the note that `authz::authorize_mw` audits only refusals is recorded.
+- **Not done / not verified:** nothing is skipped. Not walked: writes, `/api/audit`, feed, break-glass, hazard, `/api/me` reads. It counts rows, so it cannot tell that the row names the right patient or action. Login was off; role-dependent paths were not exercised. Gates run: fmt, clippy on the test, the test itself; the full suite was not re-run.
+
 ## 2026-10-31 - Audit: archiving no longer leaves the current month without a partition (OS-13, in part; H-042)
 
 - **Clinical risk:** removes a window in which an access could not be audited (and so was refused) right after an archive. H-042 text updated; it stays `open`.
