@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-31 - Audit: an archived table is checked against its anchor (OS-13, in part; H-042)
+
+- **Built:** `audit::verify_archive` reads each archived partition in batches and checks the anchors link head to tail, and that the table holds the anchor's row count, first and last id and last digest, with its chain recomputed from `first_prev_digest`; a missing table, a missing, extra or edited row is `Broken` at that anchor or row. The per-row event rebuild is now one helper shared with `verify_against`. One database test (6 in `tests/audit_partitions.rs`): intact with a small batch, then a row edited with the triggers disabled (as a database owner could) is found. `spec/08-architecture.md`, H-042 and `tasks.md` updated; the hazard stays `open`.
+- **Not done / not verified:** nothing calls `verify_archive` yet: the verify endpoint and the maintenance loop still start at the newest anchor, so a damaged archive is found only when someone runs it. The check was not timed over many or large archived partitions. It cannot tell a dropped partition from one never archived if its anchor was also removed (the anchors are append-only by trigger, not by ownership). Gates: fmt, clippy `-D warnings`, 356 tests without a database, the database suite with Postgres 18 (only the four `fhir_validator` tests fail, as without `FHIR_VALIDATOR_JAR`).
+
 ## 2026-10-31 - Audit: the archive stays visible through a view (OS-13, in part; H-042)
 
 - **Built:** migration 19 adds `audit_events_all` (the live table plus every table in `audit_archive`, as a `UNION ALL` over explicit columns) and `audit_refresh_all_view()`; `audit_archive_before` is replaced to rebuild the view in the same transaction as each move. The patient access log and the audit search read the view; the chain check and the append still read `audit_events` and the anchors. The archive test now also finds an archived row through `patient_log` and `search`. Inventory rows for the view's 13 columns. fmt and clippy `-D warnings` pass; with Postgres 124 pass and the 4 `fhir_validator` fail as always.

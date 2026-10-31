@@ -50,5 +50,7 @@ worker (loco's queue needs Redis; the table is the queue here), a queue-depth ga
 
 `audit_events_all` (migration 19) is the live table and every archived partition as one view, rebuilt in the same transaction as each move; a patient's access log and the audit search read it, so an archived row is still listed. The chain check and the append read `audit_events` and the anchors, never the view.
 
-**Not built:** a check that an archived table still matches its anchor; a retention period set by governance (OQ-OS7); anything that prevents the database owner dropping a partition. Hazard H-042.
+`audit::verify_archive` checks each archived table against its anchor: the anchors link head to tail, and the table still has the anchor's row count, first and last id and last digest, with its own chain recomputed from `first_prev_digest`. A missing table, a missing or extra row or an edited row is `Broken`. It is a library function; `GET /api/audit/verify` still starts at the newest anchor and does not call it.
+
+**Not built:** calling `verify_archive` from the verify endpoint or the maintenance loop; a retention period set by governance (OQ-OS7); anything that prevents the database owner dropping a partition. Hazard H-042.
 

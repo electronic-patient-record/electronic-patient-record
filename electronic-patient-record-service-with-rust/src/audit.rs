@@ -1112,24 +1112,7 @@ pub async fn verify_against(
                     head,
                 ));
             }
-            let action = match r.try_get::<String>("", "action").map_err(err)?.as_str() {
-                "C" => Action::Create,
-                "R" => Action::Read,
-                "U" => Action::Update,
-                "D" => Action::Delete,
-                _ => Action::Execute,
-            };
-            let event = Event {
-                action,
-                outcome: r.try_get("", "outcome").map_err(err)?,
-                agent: r.try_get("", "agent").map_err(err)?,
-                patient_ref: r.try_get("", "patient_ref").map_err(err)?,
-                resource_ref: r.try_get("", "resource_ref").map_err(err)?,
-                purpose_of_use: r.try_get("", "purpose_of_use").map_err(err)?,
-                break_glass: r.try_get("", "break_glass").map_err(err)?,
-                network_address: r.try_get("", "network_address").map_err(err)?,
-                detail: r.try_get("", "detail").map_err(err)?,
-            };
+            let event = event_from_row(r)?;
             let ts: String = r.try_get("", "ts").map_err(err)?;
             match chain.check(&digest, previous.as_deref(), &ts, &event) {
                 RowCheck::Valid => {}
@@ -1174,6 +1157,168 @@ pub async fn verify_against(
             previous = Some(digest);
         }
     }
+}
+
+/// The event a stored row records, for recomputing its digest.
+fn event_from_row(r: &sea_orm::QueryResult) -> Result<Event, AuditError> {
+    let action = match r.try_get::<String>("", "action").map_err(err)?.as_str() {
+        "C" => Action::Create,
+        "R" => Action::Read,
+        "U" => Action::Update,
+        "D" => Action::Delete,
+        _ => Action::Execute,
+    };
+    Ok(Event {
+        action,
+        outcome: r.try_get("", "outcome").map_err(err)?,
+        agent: r.try_get("", "agent").map_err(err)?,
+        patient_ref: r.try_get("", "patient_ref").map_err(err)?,
+        resource_ref: r.try_get("", "resource_ref").map_err(err)?,
+        purpose_of_use: r.try_get("", "purpose_of_use").map_err(err)?,
+        break_glass: r.try_get("", "break_glass").map_err(err)?,
+        network_address: r.try_get("", "network_address").map_err(err)?,
+        detail: r.try_get("", "detail").map_err(err)?,
+    })
+}
+
+/// Check every archived partition against its anchor (OS-13): the anchors link head to tail, and each
+/// archived table still has the anchor's row count, first and last id and last digest, with its own
+/// chain recomputed from the anchor's `first_prev_digest`. [`verify_against`] starts at the newest anchor
+/// and does not re-read the archive; this is the check that does. [`Verdict::Broken`] carries the anchor's
+/// first id when a table is missing or does not match its anchor.
+///
+/// # Errors
+///
+/// When the anchors or the archive cannot be read.
+pub async fn verify_archive(
+    db: &DatabaseConnection,
+    chain: &Chain,
+    batch: i64,
+) -> Result<Verdict, AuditError> {
+    let anchors = db
+        .query_all_raw(pg(
+            "SELECT partition, first_id, last_id, row_count, first_prev_digest, last_digest
+             FROM audit_archive_anchors ORDER BY first_id",
+            vec![],
+        ))
+        .await
+        .map_err(err)?;
+    let mut checked: usize = 0;
+    let mut unchecked: usize = 0;
+    let mut first_unchecked: Option<i64> = None;
+    let mut causes = std::collections::BTreeSet::new();
+    let mut linked_to: Option<String> = None;
+    for a in &anchors {
+        let partition: String = a.try_get("", "partition").map_err(err)?;
+        let first_id: i64 = a.try_get("", "first_id").map_err(err)?;
+        let last_id: i64 = a.try_get("", "last_id").map_err(err)?;
+        let row_count: i64 = a.try_get("", "row_count").map_err(err)?;
+        let first_prev: Option<String> = a.try_get("", "first_prev_digest").map_err(err)?;
+        let last_digest: String = a.try_get("", "last_digest").map_err(err)?;
+        let broken = |reason: String| Verdict::Broken {
+            id: first_id,
+            reason: format!("archived partition {partition}: {reason}"),
+        };
+        if first_prev != linked_to {
+            return Ok(broken("does not link to the previous anchor".into()));
+        }
+        // The name came from our own anchors, but it is still a name in SQL: refuse anything else.
+        if partition.is_empty()
+            || !partition
+                .chars()
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
+        {
+            return Ok(broken(
+                "the anchor's partition name is not a plain name".into(),
+            ));
+        }
+        let mut after = first_id - 1;
+        let mut previous = first_prev.clone();
+        let mut count: i64 = 0;
+        let mut newest: Option<(i64, String)> = None;
+        loop {
+            let rows = db
+                .query_all_raw(pg(
+                    &format!(
+                        "SELECT id, to_char(recorded_at AT TIME ZONE 'UTC', '{TS_FORMAT}') AS ts,
+                                action::text AS action, outcome, agent, patient_ref, resource_ref,
+                                purpose_of_use, break_glass, network_address, detail, prev_digest, digest
+                         FROM audit_archive.{partition} WHERE id > $1 ORDER BY id LIMIT $2"
+                    ),
+                    vec![after.into(), batch.into()],
+                ))
+                .await;
+            let Ok(rows) = rows else {
+                return Ok(broken("the table is missing or cannot be read".into()));
+            };
+            if rows.is_empty() {
+                break;
+            }
+            for r in &rows {
+                count += 1;
+                let id: i64 = r.try_get("", "id").map_err(err)?;
+                after = id;
+                let stored_prev: Option<String> = r.try_get("", "prev_digest").map_err(err)?;
+                let digest: String = r.try_get("", "digest").map_err(err)?;
+                if stored_prev != previous {
+                    return Ok(Verdict::Broken {
+                        id,
+                        reason: format!(
+                            "archived partition {partition}: does not link to the previous row"
+                        ),
+                    });
+                }
+                let ts: String = r.try_get("", "ts").map_err(err)?;
+                match chain.check(&digest, previous.as_deref(), &ts, &event_from_row(r)?) {
+                    RowCheck::Valid => {}
+                    RowCheck::Mismatch => {
+                        return Ok(Verdict::Broken {
+                            id,
+                            reason: format!(
+                                "archived partition {partition}: digest does not match its content"
+                            ),
+                        });
+                    }
+                    RowCheck::KeyNotHeld(key) => {
+                        unchecked += 1;
+                        first_unchecked.get_or_insert(id);
+                        causes.insert(format!("key {key} is not held"));
+                    }
+                    RowCheck::SchemeUnknown(scheme) => {
+                        unchecked += 1;
+                        first_unchecked.get_or_insert(id);
+                        causes.insert(format!("scheme {scheme} is not understood by this build"));
+                    }
+                }
+                previous = Some(digest.clone());
+                newest = Some((id, digest));
+            }
+        }
+        if count != row_count {
+            return Ok(broken(format!(
+                "holds {count} rows, the anchor says {row_count}"
+            )));
+        }
+        match newest {
+            Some((id, digest)) if id == last_id && digest == last_digest => {}
+            _ => {
+                return Ok(broken(
+                    "its last row is not the one the anchor recorded".into(),
+                ));
+            }
+        }
+        checked += usize::try_from(count).unwrap_or(usize::MAX);
+        linked_to = Some(last_digest);
+    }
+    Ok(match first_unchecked {
+        None => Verdict::Intact { rows: checked },
+        Some(first_id) => Verdict::Unchecked {
+            rows: checked,
+            unchecked,
+            first_id,
+            causes: causes.into_iter().collect(),
+        },
+    })
 }
 
 #[cfg(test)]

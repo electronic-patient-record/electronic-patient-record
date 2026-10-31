@@ -65,6 +65,10 @@ impl Scratch {
             .and_then(|r| r.try_get_by_index(0).ok())
     }
 
+    async fn exec(&self, sql: &str) {
+        self.db.execute_unprepared(sql).await.unwrap();
+    }
+
     async fn refused(&self, sql: &str) -> bool {
         self.db
             .execute_unprepared(sql)
@@ -364,5 +368,48 @@ async fn an_empty_live_table_continues_the_chain_from_the_newest_anchor() {
         audit::verify(&s.db, &chain).await.unwrap(),
         Verdict::Intact { rows: 1 }
     );
+    s.finish().await;
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn the_archive_check_finds_an_archived_table_that_no_longer_matches_its_anchor() {
+    let s = Scratch::new(None).await;
+    let chain = Chain::unkeyed();
+    for n in 0..3 {
+        audit::append(&s.db, &chain, &event(n)).await.unwrap();
+    }
+    append_next_month(&s, &chain, 10).await;
+    // No archive yet: nothing to check.
+    assert_eq!(
+        audit::verify_archive(&s.db, &chain, 2).await.unwrap(),
+        Verdict::Intact { rows: 0 }
+    );
+    s.text(
+        "SELECT array_to_string(audit_archive_before(
+             (date_trunc('month', now() AT TIME ZONE 'UTC') + interval '1 month') AT TIME ZONE 'UTC'
+             + interval '1 day'), ',')",
+    )
+    .await
+    .unwrap();
+    // A small batch crosses batches; the archive is intact.
+    assert_eq!(
+        audit::verify_archive(&s.db, &chain, 2).await.unwrap(),
+        Verdict::Intact { rows: 3 }
+    );
+    // The triggers refuse an edit, so a superuser who disables them is the case: do that, edit, restore.
+    s.exec("ALTER TABLE audit_archive.audit_events_p0 DISABLE TRIGGER USER")
+        .await;
+    s.exec("UPDATE audit_archive.audit_events_p0 SET agent = 'someone-else' WHERE id = 2")
+        .await;
+    s.exec("ALTER TABLE audit_archive.audit_events_p0 ENABLE TRIGGER USER")
+        .await;
+    match audit::verify_archive(&s.db, &chain, 2).await.unwrap() {
+        Verdict::Broken { id, reason } => {
+            assert_eq!(id, 2);
+            assert!(reason.contains("audit_events_p0"), "{reason}");
+        }
+        other => panic!("expected a break, got {other:?}"),
+    }
     s.finish().await;
 }
