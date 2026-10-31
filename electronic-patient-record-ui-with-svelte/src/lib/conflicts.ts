@@ -14,6 +14,9 @@ export type ConflictCode =
   | { code: "different_nhs_numbers" }
   | { code: "same_nhs_different_birth_dates" }
   | { code: "same_nhs_different_names" }
+  | { code: "different_ihis" }
+  | { code: "same_ihi_different_birth_dates" }
+  | { code: "same_ihi_different_names" }
   | { code: "names_sound_alike" }
   | { code: "names_swapped" }
   | { code: "extra_given_name" }
@@ -54,6 +57,12 @@ export function conflictText(c: ConflictCode, locale: Locale): string | null {
       return w.sameNhsDifferentBirthDates;
     case "same_nhs_different_names":
       return w.sameNhsDifferentNames;
+    case "different_ihis":
+      return w.differentIhis;
+    case "same_ihi_different_birth_dates":
+      return w.sameIhiDifferentBirthDates;
+    case "same_ihi_different_names":
+      return w.sameIhiDifferentNames;
     case "names_sound_alike":
       return w.namesSoundAlike;
     case "names_swapped":

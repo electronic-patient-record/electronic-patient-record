@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-10-31 - UI: the three IHI conflict codes are translated (OS-10)
+
+- **Built:** `different_ihis`, `same_ihi_different_birth_dates` and `same_ihi_different_names` have a sentence in each of the eight locales (`translations.ts`, `conflicts.ts`); the conflict test covers twelve codes and now finds the numbered codes by name, not by position. 247 vitest pass, lint, `check` and `check:tests` pass; coverage lines 92.2, branches 86.65.
+- **Not done / not verified:** the new sentences are machine-written and no speaker has read them (this is clinical wording, hazard H-001); "IHI" is left as the abbreviation in every locale; Playwright was not re-run (no page changed); nothing in the service can send these codes until a pack turns `use_ihi` on.
+
 ## 2026-10-31 - Service: depends on matcher 0.5.0 (OS-10)
 
 - **Changed:** `Cargo.toml` and `Cargo.lock` take the published matcher 0.5.0. No service code changed, and `use_ihi` is off in every engine the service builds, so behaviour is unchanged. fmt, clippy `-D warnings`, database-free tests and `cargo deny` pass; with Postgres, 119 ignored tests pass and the 4 `fhir_validator` tests fail as always without `FHIR_VALIDATOR_JAR`.

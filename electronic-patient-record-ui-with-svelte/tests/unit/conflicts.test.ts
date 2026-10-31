@@ -9,7 +9,7 @@ import {
 } from "../../src/lib/conflicts";
 import { LOCALES } from "../../src/lib/locales";
 
-// The nine codes, with the exact English the matcher (0.3.0) writes for each beside them.
+// The twelve codes, with the exact English the matcher (0.5.0) writes for each beside them.
 const CODES: [ConflictCode, string][] = [
   [{ code: "different_nhs_numbers" }, "different verified NHS numbers"],
   [
@@ -17,6 +17,12 @@ const CODES: [ConflictCode, string][] = [
     "same NHS number but different birth dates",
   ],
   [{ code: "same_nhs_different_names" }, "same NHS number but different names"],
+  [{ code: "different_ihis" }, "different verified IHIs"],
+  [
+    { code: "same_ihi_different_birth_dates" },
+    "same IHI but different birth dates",
+  ],
+  [{ code: "same_ihi_different_names" }, "same IHI but different names"],
   [
     { code: "names_sound_alike" },
     "names sound alike but are spelled differently",
@@ -48,7 +54,7 @@ describe("conflict codes in every locale (CQ-38; translations machine-written, u
       expect(conflictText(code, "en-001")).toBe(english);
   });
   for (const locale of LOCALES.filter((l) => l !== "en-001")) {
-    it(`${locale}: each of the nine codes has a sentence of its own, with its numbers`, () => {
+    it(`${locale}: each of the twelve codes has a sentence of its own, with its numbers`, () => {
       const seen = new Set<string>();
       for (const [code, english] of CODES) {
         const t = conflictText(code, locale);
@@ -59,14 +65,21 @@ describe("conflict codes in every locale (CQ-38; translations machine-written, u
       }
       expect(seen.size).toBe(CODES.length);
       // The numbers survive, in the locale's own digits.
+      const byCode = (name: string) => CODES.find(([c]) => c.code === name)![0];
       const digits = (n: number, d: number) =>
         new Intl.NumberFormat(locale, {
           minimumFractionDigits: d,
           maximumFractionDigits: d,
         }).format(n);
-      expect(conflictText(CODES[7]![0], locale)).toContain(digits(0.42, 2));
-      expect(conflictText(CODES[7]![0], locale)).toContain(digits(0.9, 2));
-      expect(conflictText(CODES[8]![0], locale)).toContain(digits(40, 0));
+      expect(conflictText(byCode("field_below_minimum"), locale)).toContain(
+        digits(0.42, 2),
+      );
+      expect(conflictText(byCode("field_below_minimum"), locale)).toContain(
+        digits(0.9, 2),
+      );
+      expect(conflictText(byCode("evidence_thin"), locale)).toContain(
+        digits(40, 0),
+      );
     });
   }
   it("falls back to the English text for a code, a field or a number it does not know, never to nothing", () => {
