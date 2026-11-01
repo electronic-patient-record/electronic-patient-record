@@ -28,12 +28,17 @@ fn bearer(token: &str) -> (HeaderName, HeaderValue) {
     )
 }
 
-fn rand_letter() -> u8 {
-    (std::time::SystemTime::now()
+fn unique_name() -> String {
+    let mut n = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
-        .subsec_nanos()
-        % 26) as u8
+        .as_nanos();
+    let mut s = String::from("glass");
+    while n > 0 {
+        s.push((b'a' + (n % 26) as u8) as char);
+        n /= 26;
+    }
+    s
 }
 
 const HASH: &str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
@@ -249,15 +254,14 @@ async fn real_responses_of_the_role_gated_routes_validate_against_the_served_sch
 
         // Break glass: a clinician with no relationship opens one; an auditor lists, counts and
         // reviews. The admin registers the patient.
-        let name: String = std::iter::repeat_with(|| (b'a' + rand_letter()) as char)
-            .take(12)
-            .collect();
+        let name = unique_name();
         let patient = server
             .post("/api/patients")
             .add_header(mh.clone(), mv.clone())
             .json(
                 &json!({ "patient": { "names": [{ "family": name, "given": [name] }],
-                "birth_date": "1944-05-06" } }),
+                "birth_date": "1944-05-06" },
+                "override_reason": "schema check; earlier runs left similar records" }),
             )
             .await;
         assert_eq!(
@@ -410,12 +414,179 @@ async fn real_responses_of_the_role_gated_routes_validate_against_the_served_sch
             &twice.json(),
         );
 
+        // Audit: search, export (both formats), verify (intact), and the refusals.
+        let get_audit = |path: String| {
+            server
+                .get(&path)
+                .add_header(ah.clone(), av.clone())
+                .add_header(purpose.clone(), audit.clone())
+        };
+        let found = get_audit(format!("/api/audit?patient={pid}&break_glass=true")).await;
+        assert_eq!(found.status_code(), StatusCode::OK, "{}", found.text());
+        expect(
+            "audit search",
+            "/api/audit",
+            "get",
+            StatusCode::OK,
+            &found.json(),
+        );
+        assert!(
+            !found.json::<Value>()["events"]
+                .as_array()
+                .unwrap()
+                .is_empty(),
+            "the break-glass reads of this patient are in the trail"
+        );
+        let all = get_audit("/api/audit?outcome=0".to_string()).await;
+        assert_eq!(all.status_code(), StatusCode::OK, "{}", all.text());
+        expect(
+            "audit search outcome",
+            "/api/audit",
+            "get",
+            StatusCode::OK,
+            &all.json(),
+        );
+        let bad = get_audit("/api/audit?outcome=notanumber".to_string()).await;
+        assert_eq!(bad.status_code(), StatusCode::BAD_REQUEST, "{}", bad.text());
+        // A value of the wrong type is refused by the framework as plain text, which the document says.
+        assert!(
+            bad.header("content-type")
+                .to_str()
+                .unwrap()
+                .starts_with("text/plain"),
+            "{:?}",
+            bad.header("content-type")
+        );
+        assert!(bad.text().contains("outcome"), "{}", bad.text());
+        let bad_date = get_audit("/api/audit?from=notadate".to_string()).await;
+        assert_eq!(
+            bad_date.status_code(),
+            StatusCode::BAD_REQUEST,
+            "{}",
+            bad_date.text()
+        );
+        expect(
+            "audit search bad date",
+            "/api/audit",
+            "get",
+            StatusCode::BAD_REQUEST,
+            &bad_date.json(),
+        );
+
+        let csv = get_audit(format!("/api/audit/export?patient={pid}")).await;
+        assert_eq!(csv.status_code(), StatusCode::OK, "{}", csv.text());
+        assert!(
+            csv.header("content-type")
+                .to_str()
+                .unwrap()
+                .starts_with("text/csv")
+        );
+        assert!(
+            csv.text()
+                .starts_with("id,at,action,outcome,agent,patient,")
+        );
+        let nd = get_audit(format!("/api/audit/export?patient={pid}&format=ndjson")).await;
+        assert_eq!(nd.status_code(), StatusCode::OK, "{}", nd.text());
+        assert_eq!(nd.header("content-type"), "application/x-ndjson");
+        let first: Value = serde_json::from_str(nd.text().lines().next().unwrap()).unwrap();
+        let mut found = Vec::new();
+        check(
+            &doc,
+            &json!({"$ref": "#/components/schemas/AuditRow"}),
+            &first,
+            "$",
+            &mut found,
+        );
+        assert!(found.is_empty(), "an exported row: {found:?}");
+        let bad_format = get_audit("/api/audit/export?format=xml".to_string()).await;
+        assert_eq!(
+            bad_format.status_code(),
+            StatusCode::BAD_REQUEST,
+            "{}",
+            bad_format.text()
+        );
+        expect(
+            "audit export bad",
+            "/api/audit/export",
+            "get",
+            StatusCode::BAD_REQUEST,
+            &bad_format.json(),
+        );
+
+        let verified = get_audit("/api/audit/verify".to_string()).await;
+        assert_eq!(
+            verified.status_code(),
+            StatusCode::OK,
+            "{}",
+            verified.text()
+        );
+        expect(
+            "audit verify",
+            "/api/audit/verify",
+            "get",
+            StatusCode::OK,
+            &verified.json(),
+        );
+        let head = verified.json::<Value>()["head"].clone();
+        let confirmed = get_audit(format!(
+            "/api/audit/verify?checkpoint_id={}&checkpoint_digest={}",
+            head["id"],
+            head["digest"].as_str().unwrap()
+        ))
+        .await;
+        assert_eq!(
+            confirmed.status_code(),
+            StatusCode::OK,
+            "{}",
+            confirmed.text()
+        );
+        assert_eq!(confirmed.json::<Value>()["checkpoint_confirmed"], true);
+        expect(
+            "audit verify checkpoint",
+            "/api/audit/verify",
+            "get",
+            StatusCode::OK,
+            &confirmed.json(),
+        );
+        let half = get_audit("/api/audit/verify?checkpoint_id=1".to_string()).await;
+        assert_eq!(
+            half.status_code(),
+            StatusCode::BAD_REQUEST,
+            "{}",
+            half.text()
+        );
+        expect(
+            "audit verify half",
+            "/api/audit/verify",
+            "get",
+            StatusCode::BAD_REQUEST,
+            &half.json(),
+        );
+        let denied = server
+            .get("/api/audit")
+            .add_header(ch.clone(), cv.clone())
+            .add_header(purpose.clone(), audit.clone())
+            .await;
+        assert_eq!(
+            denied.status_code(),
+            StatusCode::FORBIDDEN,
+            "{}",
+            denied.text()
+        );
+        expect(
+            "audit clinician",
+            "/api/audit",
+            "get",
+            StatusCode::FORBIDDEN,
+            &denied.json(),
+        );
+
         assert!(
             problems.is_empty(),
             "schema mismatches:\n{}",
             problems.join("\n")
         );
-        assert!(checked >= 16, "only {checked} responses were checked");
+        assert!(checked >= 24, "only {checked} responses were checked");
     })
     .await;
 }

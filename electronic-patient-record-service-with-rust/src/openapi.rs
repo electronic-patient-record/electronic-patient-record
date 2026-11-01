@@ -526,6 +526,97 @@ fn hazard_schemas() -> Value {
     })
 }
 
+const AUDIT_CRITERIA: &[&str] = &[
+    "agent",
+    "patient",
+    "action",
+    "outcome",
+    "purpose",
+    "break_glass",
+    "from",
+    "to",
+    "after",
+    "through",
+    "before",
+];
+
+fn audit_schemas() -> Value {
+    json!({
+        "AuditRow": {
+            "type": "object",
+            "required": ["id", "at", "action", "outcome", "agent", "patient", "resource", "purpose", "break_glass", "network_address", "detail"],
+            "description": "One audit row as an auditor sees it. A search leaves the digests out; an export adds `digest` and `prev_digest` so the chain can be re-verified elsewhere.",
+            "properties": {
+                "id": {"type": "integer"},
+                "at": {"type": "string", "description": "UTC, with microseconds."},
+                "action": {"enum": ["C", "R", "U", "D", "E"]},
+                "outcome": {"enum": [0, 4, 8, 12]},
+                "agent": {"type": "string", "description": "The token sub."},
+                "patient": {"type": ["string", "null"], "description": "Patient/<id> when the access named one."},
+                "resource": {"type": ["string", "null"]},
+                "purpose": {"type": ["string", "null"]},
+                "break_glass": {"type": "boolean"},
+                "network_address": {"type": ["string", "null"]},
+                "detail": {"type": ["object", "null"], "additionalProperties": true, "description": "Structured detail; never demographics or consent content."},
+                "digest": {"type": "string"},
+                "prev_digest": {"type": "string"}
+            }
+        },
+        "AuditSearch": {
+            "type": "object", "required": ["events", "next"],
+            "description": "Up to one page, newest first. `next` is the `before` for the following page, or null at the end.",
+            "properties": {
+                "events": {"type": "array", "items": {"$ref": "#/components/schemas/AuditRow"}},
+                "next": {"type": ["integer", "null"]}
+            }
+        },
+        "AuditHead": {
+            "type": ["object", "null"],
+            "description": "The chain's head: publish it where the database's owner cannot write, and pass it back as a checkpoint.",
+            "required": ["id", "digest"],
+            "properties": {"id": {"type": "integer"}, "digest": {"type": "string"}}
+        },
+        "AuditVerified": {
+            "type": "object",
+            "required": ["intact", "rows", "archive_rows", "keyed", "head", "checkpoint_confirmed", "assurance"],
+            "description": "200: the chain checked out. `assurance` says in words what that does and does not prove.",
+            "properties": {
+                "intact": {"enum": [true]},
+                "rows": {"type": "integer"}, "archive_rows": {"type": "integer"},
+                "keyed": {"type": "boolean"},
+                "head": {"$ref": "#/components/schemas/AuditHead"},
+                "checkpoint_confirmed": {"type": "boolean"},
+                "assurance": {"type": "string"}
+            }
+        },
+        "AuditBroken": {
+            "type": "object", "required": ["intact", "first_broken_id", "reason", "keyed", "assurance"],
+            "description": "409: a row was found altered. A monitor that reads only the status still notices.",
+            "properties": {
+                "intact": {"enum": [false]},
+                "first_broken_id": {"type": "integer"},
+                "reason": {"type": "string"},
+                "keyed": {"type": "boolean"}, "assurance": {"type": "string"}
+            }
+        },
+        "AuditUnchecked": {
+            "type": "object",
+            "required": ["intact", "tampering_found", "error", "rows", "unchecked", "first_unchecked_id", "causes", "keyed", "head", "assurance"],
+            "description": "424: nothing was found wrong, but some rows could not be checked because this service does not hold the key that made their digest. A key problem, not evidence of tampering.",
+            "properties": {
+                "intact": {"enum": [false]}, "tampering_found": {"enum": [false]},
+                "error": {"enum": ["key-not-held"]},
+                "rows": {"type": "integer"}, "unchecked": {"type": "integer"},
+                "first_unchecked_id": {"type": "integer"},
+                "causes": {"type": "array", "items": {"type": "string"}},
+                "keyed": {"type": "boolean"},
+                "head": {"$ref": "#/components/schemas/AuditHead"},
+                "assurance": {"type": "string"}
+            }
+        }
+    })
+}
+
 fn break_glass_schemas() -> Value {
     json!({
         "OpenBreakGlass": {
@@ -617,6 +708,7 @@ fn link_schemas() -> Value {
 fn patient_schemas() -> Value {
     let mut all = Map::new();
     for part in [
+        audit_schemas(),
         break_glass_schemas(),
         hazard_schemas(),
         link_schemas(),
@@ -807,6 +899,24 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
     ("GET", "/api/patients/{id}/amendments", "AmendmentList", &[]),
     ("GET", "/api/patients/{id}/links", "PatientLinkList", &[]),
     ("GET", "/api/hazards", "HazardList", &[]),
+    (
+        "GET",
+        "/api/audit",
+        "AuditSearch",
+        &[
+            "agent",
+            "patient",
+            "action",
+            "outcome",
+            "purpose",
+            "break_glass",
+            "from",
+            "to",
+            "after",
+            "through",
+            "before",
+        ],
+    ),
     ("GET", "/api/break-glass/reviews", "BreakGlassList", &[]),
     (
         "GET",
@@ -872,6 +982,91 @@ fn all_schemas() -> Value {
         .expect("an object")
         .extend(patient_schemas().as_object().expect("an object").clone());
     all
+}
+
+/// The audit export is a file and the verify answer has three shapes by status, so neither fits the
+/// tables above. Search gets its 400 here.
+fn audit_operation(
+    method: &str,
+    path: &str,
+    op: &mut Map<String, Value>,
+    responses: &mut Map<String, Value>,
+) {
+    let json_body = |d: &str, name: &str| {
+        json!({"description": d, "content": {"application/json": {
+            "schema": {"$ref": format!("#/components/schemas/{name}")}}}})
+    };
+    match (method, path) {
+        ("GET", "/api/audit") => {
+            responses.insert(
+                "400".into(),
+                json!({"description": "A criterion that is refused. A date or instant that does not parse is the JSON `Error`; a value of the wrong type (outcome or before not a number, break_glass not true or false) is refused by the framework before the handler runs, as plain text, not JSON.",
+                       "content": {
+                           "application/json": {"schema": {"$ref": "#/components/schemas/Error"}},
+                           "text/plain": {"schema": {"type": "string"}}}}),
+            );
+        }
+        ("GET", "/api/audit/export") => {
+            let mut parameters = Vec::new();
+            parameters.push(json!({"name": "format", "in": "query", "required": false,
+                "description": "csv (the default) or ndjson.", "schema": {"enum": ["csv", "ndjson"]}}));
+            for name in AUDIT_CRITERIA {
+                let schema = match *name {
+                    "break_glass" => json!({"type": "boolean"}),
+                    "outcome" | "before" => json!({"type": "integer"}),
+                    _ => json!({"type": "string"}),
+                };
+                parameters.push(
+                    json!({"name": name, "in": "query", "required": false, "schema": schema}),
+                );
+            }
+            op.insert("parameters".into(), Value::Array(parameters));
+            let file = json!({"schema": {"type": "string"}});
+            responses.insert(
+                "200".into(),
+                json!({"description": "The rows with their digests, as an attachment. The export is itself audited. Up to 10000 rows; when there are more, `x-next-before` is the `before` for the next file.",
+                       "headers": {"x-next-before": {"schema": {"type": "integer"}}},
+                       "content": {"text/csv": file.clone(), "application/x-ndjson": file}}),
+            );
+            responses.insert(
+                "400".into(),
+                json_body(
+                    "A criterion that does not parse, or a format that is neither.",
+                    "Error",
+                ),
+            );
+        }
+        ("GET", "/api/audit/verify") => {
+            op.insert(
+                "parameters".into(),
+                json!([
+                    {"name": "checkpoint_id", "in": "query", "required": false, "schema": {"type": "integer"},
+                     "description": "The head id from an earlier answer; give both checkpoint parts or neither."},
+                    {"name": "checkpoint_digest", "in": "query", "required": false, "schema": {"type": "string"}}
+                ]),
+            );
+            responses.insert(
+                "200".into(),
+                json_body("The chain is intact.", "AuditVerified"),
+            );
+            responses.insert(
+                "400".into(),
+                json_body("Only one of the two checkpoint parts was given.", "Error"),
+            );
+            responses.insert(
+                "409".into(),
+                json_body("A row was found altered.", "AuditBroken"),
+            );
+            responses.insert(
+                "424".into(),
+                json_body(
+                    "Not fully checked: a key is missing. Not evidence of tampering.",
+                    "AuditUnchecked",
+                ),
+            );
+        }
+        _ => {}
+    }
 }
 
 /// The photo routes carry image bytes and query parameters, not a JSON body, so the tables above
@@ -1019,10 +1214,10 @@ pub fn document_for(served: &[(String, String)]) -> Value {
                 .cloned()
                 .unwrap_or_default();
             for name in *query {
-                let schema = if *name == "drill" {
-                    json!({"type": "boolean"})
-                } else {
-                    json!({"type": "string"})
+                let schema = match *name {
+                    "drill" | "break_glass" => json!({"type": "boolean"}),
+                    "outcome" | "before" | "checkpoint_id" => json!({"type": "integer"}),
+                    _ => json!({"type": "string"}),
                 };
                 parameters.push(
                     json!({"name": name, "in": "query", "required": false, "schema": schema}),
@@ -1033,6 +1228,7 @@ pub fn document_for(served: &[(String, String)]) -> Value {
             }
         }
         photo_operation(method, path, &mut op, &mut responses);
+        audit_operation(method, path, &mut op, &mut responses);
         // Asking again for a grant that is open answers 200 with the same grant.
         if path == "/api/patients/{id}/break-glass" && method == "POST" {
             responses.insert(
@@ -1791,6 +1987,58 @@ mod tests {
         for (_, _, success, _) in READS {
             assert!(schemas.contains_key(*success), "{success} is not defined");
         }
+    }
+
+    #[test]
+    fn the_audit_schemas_match_the_types() {
+        use crate::audit::{Action, AuditRow};
+        let row = |digest: Option<String>| AuditRow {
+            id: 1,
+            at: "t".into(),
+            action: "R".into(),
+            outcome: 0,
+            agent: "a".into(),
+            patient: None,
+            resource: None,
+            purpose: None,
+            break_glass: false,
+            network_address: None,
+            detail: None,
+            prev_digest: digest.clone(),
+            digest,
+        };
+        // A search leaves the digests out; absent evidence is still a null key, not a missing one.
+        let search = serde_json::to_value(row(None)).unwrap();
+        let export = serde_json::to_value(row(Some("d".into()))).unwrap();
+        let all = properties("AuditRow");
+        let mut without: std::collections::BTreeSet<String> = all.clone();
+        without.remove("digest");
+        without.remove("prev_digest");
+        assert_eq!(keys(&search), without);
+        assert_eq!(keys(&export), all);
+        let schema = patient_schemas();
+        let _ = &schema;
+        let doc = all_schemas();
+        let words: Vec<String> = doc["AuditRow"]["properties"]["action"]["enum"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|w| w.as_str().unwrap().to_string())
+            .collect();
+        let said: Vec<String> = [
+            Action::Create,
+            Action::Read,
+            Action::Update,
+            Action::Delete,
+            Action::Execute,
+        ]
+        .iter()
+        .map(|a| a.code().to_string())
+        .collect();
+        assert_eq!(words, said);
+        // Every criterion the search takes is a documented query parameter.
+        let (_, _, _, query) = READS.iter().find(|r| r.1 == "/api/audit").unwrap();
+        assert_eq!(*query, AUDIT_CRITERIA);
     }
 
     #[test]

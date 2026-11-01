@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-01 - OpenAPI: the audit routes (OS-7, in part)
+
+- **Clinical risk:** none to behaviour; the document describes, it does not change a response. The audit trail is how misuse of a record is found, so the schema records what `verify` proves (`assurance`) and the three statuses a monitor must tell apart: 200 intact, 409 a row altered, 424 not fully checked because a key is missing (not evidence of tampering).
+- **Built:** `AuditRow`, `AuditSearch`, `AuditHead`, `AuditVerified`, `AuditBroken`, `AuditUnchecked`; `GET /api/audit` (eleven typed query parameters; 200, 400), `GET /api/audit/export` (CSV or NDJSON attachment, `x-next-before` header; 400), `GET /api/audit/verify` (checkpoint parameters; 200, 400, 409, 424). A unit test checks the row keys with and without digests, the action codes against `Action::code`, and the search parameters against the criteria list. `tests/openapi_responses_roles.rs` (login on) validates eight more real responses (24 in all): searches by patient and by outcome, a bad date, an export refused for its format, a verify, a verify with its own head as checkpoint, a half checkpoint, a clinician refused (403); and checks the content types of a real CSV and NDJSON export and validates an exported NDJSON row against `AuditRow`.
+- **Found, not fixed:** a criterion of the wrong type (`outcome=notanumber`) is refused by the framework with a plain-text 400, not the JSON `Error` a bad date gets. The document now describes both; making them agree is a behaviour change left as a follow-up in OS-7.
+- **Not done / not verified:** the 409 (altered row) and 424 (key not held) bodies come from the code; the database refuses edits to the trail, so the test could not produce them. The `AuditBroken` and `AuditUnchecked` schemas are therefore unchecked against a real response. The export's CSV body is not validated beyond its header line; the 10000-row cap and `x-next-before` were not exercised. The FHIR `AuditEvent` search is not described here. Whether the `detail` object ever holds a non-object was not checked.
+
 ## 2026-11-01 - OpenAPI: the break-glass routes (OS-7, in part)
 
 - **Clinical risk:** none to behaviour; the document describes, it does not change a response. Break glass lets a clinician read a record they have no relationship with, and the review is the control on it, so the schema states that the reason and the note are required, that asking again does not extend a grant, and that a grant can be reviewed once.
