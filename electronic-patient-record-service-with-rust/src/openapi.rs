@@ -131,6 +131,29 @@ fn patient_schemas() -> Value {
                 "drill": {"type": "boolean"}
             }
         },
+        "PatientView": {
+            "type": "object",
+            "required": ["id", "version", "author", "patient", "replaces", "site_time_zone"],
+            "description": "A patient as read: the stored version plus the photo version, merge status and the site time zone.",
+            "properties": {
+                "id": {"type": "string"},
+                "version": {"type": "integer"},
+                "author": {"type": "string"},
+                "patient": {"$ref": "#/components/schemas/Patient"},
+                "drill": {"type": "boolean"},
+                "photo_version": {"type": ["integer", "null"], "description": "Null when there is no photo or it was withdrawn."},
+                "replaced_by": {"type": ["string", "null"], "description": "The surviving record, when this one was merged away."},
+                "replaces": {"type": "array", "items": {"type": "string"}},
+                "site_time_zone": {"type": "string"}
+            }
+        },
+        "PatientSearchResults": {
+            "type": "object", "required": ["results", "limit"],
+            "properties": {
+                "results": {"type": "array", "items": {"$ref": "#/components/schemas/Stored"}},
+                "limit": {"type": "integer", "description": "The most results returned."}
+            }
+        },
         "DuplicateConflict": {
             "type": "object", "required": ["error", "candidates", "candidates_cut"],
             "description": "409 on create: likely duplicates. A candidate the caller may not see is {\"restricted\": true}.",
@@ -174,6 +197,17 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
         "200",
         "Stored",
         "VersionConflict",
+    ),
+];
+
+/// `(method, path, success schema, query parameters)` for the described reads.
+const READS: &[(&str, &str, &str, &[&str])] = &[
+    ("GET", "/api/patients/{id}", "PatientView", &[]),
+    (
+        "GET",
+        "/api/patients",
+        "PatientSearchResults",
+        &["family", "birth_date", "identifier", "drill"],
     ),
 ];
 
@@ -274,6 +308,33 @@ pub fn document_for(served: &[(String, String)]) -> Value {
                 json!({"description": "The stored patient.", "content": {"application/json": {
                     "schema": {"$ref": format!("#/components/schemas/{success}")}}}}),
             );
+        }
+        if let Some((_, _, success, query)) =
+            READS.iter().find(|(m, p, ..)| m == method && p == path)
+        {
+            responses.insert(
+                "200".into(),
+                json!({"description": "OK.", "content": {"application/json": {
+                    "schema": {"$ref": format!("#/components/schemas/{success}")}}}}),
+            );
+            let mut parameters = op
+                .get("parameters")
+                .and_then(Value::as_array)
+                .cloned()
+                .unwrap_or_default();
+            for name in *query {
+                let schema = if *name == "drill" {
+                    json!({"type": "boolean"})
+                } else {
+                    json!({"type": "string"})
+                };
+                parameters.push(
+                    json!({"name": name, "in": "query", "required": false, "schema": schema}),
+                );
+            }
+            if !parameters.is_empty() {
+                op.insert("parameters".into(), Value::Array(parameters));
+            }
         }
         op.insert("responses".into(), Value::Object(responses));
         paths
@@ -512,5 +573,47 @@ mod tests {
                 "lacks {key}"
             );
         }
+    }
+
+    #[test]
+    fn the_read_schemas_name_exactly_the_fields_the_service_sends() {
+        use crate::controllers::patients::PatientView;
+        use crate::patients_store::{SEARCH_LIMIT, Search, Stored};
+        let stored = Stored {
+            id: "x".into(),
+            version: 1,
+            author: "a".into(),
+            patient: full_patient(),
+            drill: false,
+        };
+        let view = serde_json::to_value(PatientView {
+            stored: stored.clone(),
+            photo_version: Some(1),
+            replaced_by: Some("y".into()),
+            replaces: vec!["z".into()],
+            site_time_zone: "UTC".into(),
+        })
+        .unwrap();
+        assert_eq!(keys(&view), properties("PatientView"));
+        let results = serde_json::json!({"results": [stored], "limit": SEARCH_LIMIT});
+        assert_eq!(keys(&results), properties("PatientSearchResults"));
+        // Every documented query parameter is one `Search` reads, and each is accepted.
+        let (_, _, _, query) = READS.iter().find(|r| r.1 == "/api/patients").unwrap();
+        let all: serde_json::Map<String, Value> = query
+            .iter()
+            .map(|k| {
+                (
+                    (*k).to_string(),
+                    if *k == "drill" {
+                        true.into()
+                    } else {
+                        "v".into()
+                    },
+                )
+            })
+            .collect();
+        let parsed: Search = serde_json::from_value(Value::Object(all)).unwrap();
+        assert!(parsed.drill && parsed.family.is_some() && parsed.birth_date.is_some());
+        assert!(parsed.identifier.is_some());
     }
 }

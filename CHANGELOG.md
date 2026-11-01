@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-01 - OpenAPI: the patient read and search responses (OS-7, in part)
+
+- **Clinical risk:** none; the document describes, it does not change a response.
+- **Built:** `PatientView` (200 of `GET /api/patients/{id}`) and `PatientSearchResults` (200 of `GET /api/patients`, with the `family`, `birth_date`, `identifier` and `drill` query parameters). One unit test: the schemas' property names equal the keys of a real serialised `PatientView` and of the search body, and the documented query parameters all deserialise into `Search`. `openapi.json`, spec 09 and `tasks.md` updated.
+- **Not done / not verified:** the search body is built in the test the way the handler builds it, so a change in the handler would not be caught; a new `Search` field would not be caught either (the test checks the documented ones are accepted, not that none is missing). The `X-Purpose-Of-Use` header is not documented. The 404 of the read and the 400 of the search are not described. No real HTTP response was compared. Gates: fmt, clippy `-D warnings`, openapi census (5), unit tests (6).
+
 ## 2026-11-01 - OpenAPI: the 409 and 422 responses of patient create and update (OS-7, in part)
 
 - **Clinical risk:** none; the document describes, it does not change a response.

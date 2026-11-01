@@ -197,6 +197,77 @@
         },
         "type": "object"
       },
+      "PatientSearchResults": {
+        "properties": {
+          "limit": {
+            "description": "The most results returned.",
+            "type": "integer"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/Stored"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "results",
+          "limit"
+        ],
+        "type": "object"
+      },
+      "PatientView": {
+        "description": "A patient as read: the stored version plus the photo version, merge status and the site time zone.",
+        "properties": {
+          "author": {
+            "type": "string"
+          },
+          "drill": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "patient": {
+            "$ref": "#/components/schemas/Patient"
+          },
+          "photo_version": {
+            "description": "Null when there is no photo or it was withdrawn.",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "replaced_by": {
+            "description": "The surviving record, when this one was merged away.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "replaces": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "site_time_zone": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "author",
+          "patient",
+          "replaces",
+          "site_time_zone"
+        ],
+        "type": "object"
+      },
       "Stored": {
         "properties": {
           "author": {
@@ -1037,7 +1108,51 @@
     "/api/patients": {
       "get": {
         "operationId": "getApiPatients",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "family",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "birth_date",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "identifier",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "drill",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientSearchResults"
+                }
+              }
+            },
+            "description": "OK."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -1209,6 +1324,16 @@
           }
         ],
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientView"
+                }
+              }
+            },
+            "description": "OK."
+          },
           "401": {
             "content": {
               "application/json": {
