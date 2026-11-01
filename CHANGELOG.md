@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-01 - OpenAPI: request and success schemas for patient create and update (OS-7, in part)
+
+- **Clinical risk:** none; the document describes, it does not change a response.
+- **Built:** `Patient`, `Stored`, `CreatePatient` and `UpdatePatient` schemas; `POST /api/patients` (201) and `PUT /api/patients/{id}` (200) carry a request body and a success response. Two unit tests: the schemas' property names equal the fields a fully populated `Patient` and `Stored` serialise (both directions), and equal what `CreateRequest` and `UpdateRequest` accept, including which keys are required. `openapi.json`, `spec/09-api-surface.md` and `tasks.md` updated.
+- **Not done / not verified:** the schemas are hand-written; the tests check property names and required keys, not types, formats or enum values beyond the property list. No real HTTP response was compared to them (the database tests were not run for this). The 409 and 422 responses of these two routes are not described. Every other route still has no body schema, so a client cannot yet be generated for the service as a whole. Gates: fmt, clippy `-D warnings`, openapi census (5), unit tests (4).
+
 ## 2026-11-01 - OpenAPI: the error bodies are described (OS-7, in part)
 
 - **Clinical risk:** none; the document describes, it does not change a response.

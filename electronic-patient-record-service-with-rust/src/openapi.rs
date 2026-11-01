@@ -7,11 +7,13 @@
 //! missing from the document is therefore not possible, and `tests/openapi_census.rs` fails when
 //! the committed copy differs from what this module produces.
 //!
-//! **What it describes of bodies:** only the error bodies, which `api_error.rs` builds in one place
+//! **What it describes of bodies:** the error bodies, which `api_error.rs` builds in one place
 //! (`components.schemas.Error`, `ErrorList` and `OperationOutcome`, referenced by the 401 and 403
 //! responses; a unit test checks real `ApiError` bodies against the required keys). **What it does
-//! not describe:** any request body or success response, so a client cannot be generated from it.
-//! It is an inventory of the surface with its authentication and authorization requirements, not
+//! not describe:** any request body or success response except the patient create and update pair below, so a client cannot be generated from it.
+//! The patient identity record (`Patient`, `Stored`, `CreatePatient`, `UpdatePatient`) is described for
+//! `POST /api/patients` and `PUT /api/patients/{id}`; unit tests compare each schema's property names
+//! with the fields the real types serialise, in both directions. It is an inventory of the surface with its authentication and authorization requirements, not
 //! a contract. FHIR resource shapes are in `/fhir/R4/metadata`.
 
 use crate::{auth, controllers, policy::Resource, routes};
@@ -88,6 +90,71 @@ fn error_ref(path: &str) -> (&'static str, Value) {
     }
 }
 
+/// The patient identity schemas, matching the matcher's `Patient`, `patients_store::Stored` and the
+/// request types in `controllers/patients.rs`.
+fn patient_schemas() -> Value {
+    let pair = json!({"type": "object", "required": ["system", "value"],
+        "properties": {"system": {"type": "string"}, "value": {"type": "string"}}});
+    json!({
+        "Patient": {
+            "type": "object",
+            "description": "The thin identity record (the matcher's Patient). Absent evidence is null or empty, never zero.",
+            "properties": {
+                "id": {"type": ["string", "null"]},
+                "names": {"type": "array", "items": {"type": "object", "properties": {
+                    "family": {"type": ["string", "null"]},
+                    "given": {"type": "array", "items": {"type": "string"}}}}},
+                "birth_date": {"type": ["string", "null"], "description": "ISO 8601; may be partial (YYYY, YYYY-MM, YYYY-MM-DD)."},
+                "sex": {"enum": ["male", "female", "other", "unknown", null]},
+                "identifiers": {"type": "array", "items": pair.clone()},
+                "addresses": {"type": "array", "items": {"type": "object", "properties": {
+                    "postal_code": {"type": ["string", "null"]}}}},
+                "telecom": {"type": "array", "items": pair}
+            }
+        },
+        "Stored": {
+            "type": "object", "required": ["id", "version", "author", "patient"],
+            "properties": {
+                "id": {"type": "string", "description": "Server-assigned UUID."},
+                "version": {"type": "integer", "description": "1 for the first version."},
+                "author": {"type": "string"},
+                "patient": {"$ref": "#/components/schemas/Patient"},
+                "drill": {"type": "boolean"}
+            }
+        },
+        "CreatePatient": {
+            "type": "object", "required": ["patient"],
+            "properties": {
+                "patient": {"$ref": "#/components/schemas/Patient"},
+                "reason": {"type": ["string", "null"]},
+                "override_reason": {"type": ["string", "null"], "description": "Register despite likely duplicates (409 otherwise); a reason is required."},
+                "drill": {"type": "boolean"}
+            }
+        },
+        "UpdatePatient": {
+            "type": "object", "required": ["patient", "expected_version"],
+            "properties": {
+                "patient": {"$ref": "#/components/schemas/Patient"},
+                "expected_version": {"type": "integer", "description": "Any other current version is a 409."},
+                "reason": {"type": ["string", "null"]}
+            }
+        }
+    })
+}
+
+/// `(method, path, request schema, success status, success schema)` for the routes whose bodies
+/// are described.
+const BODIES: &[(&str, &str, &str, &str, &str)] = &[
+    ("POST", "/api/patients", "CreatePatient", "201", "Stored"),
+    (
+        "PUT",
+        "/api/patients/{id}",
+        "UpdatePatient",
+        "200",
+        "Stored",
+    ),
+];
+
 /// The error schemas, matching `api_error.rs`.
 fn error_schemas() -> Value {
     json!({
@@ -112,6 +179,14 @@ fn error_schemas() -> Value {
             "additionalProperties": true
         }
     })
+}
+
+fn all_schemas() -> Value {
+    let mut all = error_schemas();
+    all.as_object_mut()
+        .expect("an object")
+        .extend(patient_schemas().as_object().expect("an object").clone());
+    all
 }
 
 /// The document for the given routes. Pure, so a test can plant a route and see it appear.
@@ -154,6 +229,20 @@ pub fn document_for(served: &[(String, String)]) -> Value {
                 op.insert("x-epr-action".into(), json!(format!("{:?}", req.action)));
             }
         }
+        if let Some((_, _, request, status, success)) =
+            BODIES.iter().find(|(m, p, ..)| m == method && p == path)
+        {
+            op.insert(
+                "requestBody".into(),
+                json!({"required": true, "content": {"application/json": {
+                    "schema": {"$ref": format!("#/components/schemas/{request}")}}}}),
+            );
+            responses.insert(
+                (*status).into(),
+                json!({"description": "The stored patient.", "content": {"application/json": {
+                    "schema": {"$ref": format!("#/components/schemas/{success}")}}}}),
+            );
+        }
         op.insert("responses".into(), Value::Object(responses));
         paths
             .entry(path.clone())
@@ -173,7 +262,7 @@ pub fn document_for(served: &[(String, String)]) -> Value {
         "paths": paths,
         "components": {
             "securitySchemes": {"bearerAuth": {"type": "http", "scheme": "bearer"}},
-            "schemas": error_schemas()
+            "schemas": all_schemas()
         }
     })
 }
@@ -251,5 +340,125 @@ mod tests {
             }
         }
         assert!(seen > 0);
+    }
+
+    fn properties(name: &str) -> std::collections::BTreeSet<String> {
+        patient_schemas()[name]["properties"]
+            .as_object()
+            .expect("properties")
+            .keys()
+            .cloned()
+            .collect()
+    }
+
+    fn keys(value: &Value) -> std::collections::BTreeSet<String> {
+        value
+            .as_object()
+            .expect("an object")
+            .keys()
+            .cloned()
+            .collect()
+    }
+
+    fn full_patient() -> electronic_patient_record_matcher::Patient {
+        use electronic_patient_record_matcher::{
+            Address, AdministrativeSex, HumanName, Identifier, Patient, Telecom,
+        };
+        Patient {
+            id: Some("i".into()),
+            names: vec![HumanName {
+                family: Some("f".into()),
+                given: vec!["g".into()],
+            }],
+            birth_date: Some("2000".into()),
+            sex: Some(AdministrativeSex::Other),
+            identifiers: vec![Identifier {
+                system: "s".into(),
+                value: "v".into(),
+            }],
+            addresses: vec![Address {
+                postal_code: Some("p".into()),
+            }],
+            telecom: vec![Telecom {
+                system: "s".into(),
+                value: "v".into(),
+            }],
+        }
+    }
+
+    #[test]
+    fn the_patient_schemas_name_exactly_the_fields_the_types_serialise() {
+        let patient = serde_json::to_value(full_patient()).unwrap();
+        assert_eq!(keys(&patient), properties("Patient"));
+        let schema = patient_schemas();
+        let inner = |field: &str, of: &str| -> std::collections::BTreeSet<String> {
+            schema["Patient"]["properties"][field]["items"][of]
+                .as_object()
+                .expect("item properties")
+                .keys()
+                .cloned()
+                .collect()
+        };
+        assert_eq!(keys(&patient["names"][0]), inner("names", "properties"));
+        assert_eq!(
+            keys(&patient["addresses"][0]),
+            inner("addresses", "properties")
+        );
+        assert_eq!(
+            keys(&patient["identifiers"][0]),
+            inner("identifiers", "properties")
+        );
+        assert_eq!(keys(&patient["telecom"][0]), inner("telecom", "properties"));
+
+        let stored = serde_json::to_value(crate::patients_store::Stored {
+            id: "x".into(),
+            version: 1,
+            author: "a".into(),
+            patient: full_patient(),
+            drill: false,
+        })
+        .unwrap();
+        assert_eq!(keys(&stored), properties("Stored"));
+    }
+
+    #[test]
+    fn the_request_schemas_name_exactly_the_fields_the_handlers_read() {
+        use crate::controllers::patients::{CreateRequest, UpdateRequest};
+        let create: CreateRequest = serde_json::from_value(serde_json::json!({
+            "patient": {}, "reason": "r", "override_reason": "o", "drill": true
+        }))
+        .unwrap();
+        assert!(create.drill);
+        let update: UpdateRequest = serde_json::from_value(serde_json::json!({
+            "patient": {}, "expected_version": 1, "reason": "r"
+        }))
+        .unwrap();
+        assert_eq!(update.expected_version, 1);
+        // The required keys are the ones the types cannot default.
+        assert!(serde_json::from_value::<CreateRequest>(serde_json::json!({})).is_err());
+        assert!(
+            serde_json::from_value::<UpdateRequest>(serde_json::json!({"patient": {}})).is_err()
+        );
+        let schema = patient_schemas();
+        assert_eq!(
+            schema["CreatePatient"]["required"],
+            serde_json::json!(["patient"])
+        );
+        assert_eq!(
+            schema["UpdatePatient"]["required"],
+            serde_json::json!(["patient", "expected_version"])
+        );
+        assert_eq!(
+            properties("CreatePatient"),
+            ["patient", "reason", "override_reason", "drill"]
+                .map(String::from)
+                .into()
+        );
+        assert_eq!(
+            properties("UpdatePatient"),
+            ["patient", "expected_version", "reason"]
+                .map(String::from)
+                .into()
+        );
     }
 }

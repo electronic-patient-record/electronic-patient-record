@@ -1,6 +1,33 @@
 {
   "components": {
     "schemas": {
+      "CreatePatient": {
+        "properties": {
+          "drill": {
+            "type": "boolean"
+          },
+          "override_reason": {
+            "description": "Register despite likely duplicates (409 otherwise); a reason is required.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "patient": {
+            "$ref": "#/components/schemas/Patient"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "patient"
+        ],
+        "type": "object"
+      },
       "Error": {
         "additionalProperties": true,
         "description": "api_error.rs: fixed wording; extra fields such as current_version or break_glass_offer may follow.",
@@ -46,6 +73,154 @@
         "required": [
           "resourceType",
           "issue"
+        ],
+        "type": "object"
+      },
+      "Patient": {
+        "description": "The thin identity record (the matcher's Patient). Absent evidence is null or empty, never zero.",
+        "properties": {
+          "addresses": {
+            "items": {
+              "properties": {
+                "postal_code": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "birth_date": {
+            "description": "ISO 8601; may be partial (YYYY, YYYY-MM, YYYY-MM-DD).",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "identifiers": {
+            "items": {
+              "properties": {
+                "system": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "system",
+                "value"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "names": {
+            "items": {
+              "properties": {
+                "family": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "given": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "sex": {
+            "enum": [
+              "male",
+              "female",
+              "other",
+              "unknown",
+              null
+            ]
+          },
+          "telecom": {
+            "items": {
+              "properties": {
+                "system": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "system",
+                "value"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "Stored": {
+        "properties": {
+          "author": {
+            "type": "string"
+          },
+          "drill": {
+            "type": "boolean"
+          },
+          "id": {
+            "description": "Server-assigned UUID.",
+            "type": "string"
+          },
+          "patient": {
+            "$ref": "#/components/schemas/Patient"
+          },
+          "version": {
+            "description": "1 for the first version.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "author",
+          "patient"
+        ],
+        "type": "object"
+      },
+      "UpdatePatient": {
+        "properties": {
+          "expected_version": {
+            "description": "Any other current version is a 409.",
+            "type": "integer"
+          },
+          "patient": {
+            "$ref": "#/components/schemas/Patient"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "patient",
+          "expected_version"
         ],
         "type": "object"
       }
@@ -862,7 +1037,27 @@
       },
       "post": {
         "operationId": "postApiPatients",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePatient"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Stored"
+                }
+              }
+            },
+            "description": "The stored patient."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -1003,7 +1198,27 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePatient"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Stored"
+                }
+              }
+            },
+            "description": "The stored patient."
+          },
           "401": {
             "content": {
               "application/json": {
