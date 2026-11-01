@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-01 - OpenAPI: the hazard register, and the first role-gated test (OS-7, in part)
+
+- **Clinical risk:** none to behaviour; the document describes, it does not change a response. The hazard register is the safety case's own record, and only the Clinical Safety Officer retires a hazard; the schema says so and the test shows a clinician's retirement refused. No hazard was set to `accepted` or `closed`; the test's hazards live only in its throwaway database.
+- **Built:** `CreateHazard`, `UpdateHazard`, `Hazard`, `HazardEvidence`, `HazardControl`, `StoredHazard`, `HazardList`; `GET` and `POST /api/hazards` and `PUT /api/hazards/{hazard_id}` with 200/201, 409 and 422. A unit test compares the keys with the serialised types and the enum words (evidence kinds, states, events) with serde, and checks each event body parses. `tests/openapi_responses_roles.rs` (login on, test identity provider) validates eight real responses: raise, a refused rating, list (auditor, audit purpose), a control, a clinician's retirement (403), a stale step (409), a retirement by the Clinical Safety Officer, and a missing token (401). The checker moved to `tests/openapi_support/mod.rs` and both tests use it. The success text for 201 no longer says "the stored patient".
+- **Not done / not verified:** `UpdateHazard` is one object with every event's fields optional, not a `oneOf` (the checker has no `oneOf`, and requests are not validated by it); which fields each event needs is in the description and the unit test only. The 403 for a non-CSO retirement was checked against `Error`, but the body's extra wording was not. `/api/hazards` has no read-one route. Break-glass, audit, feed and `/api/me` are still undescribed.
+
 ## 2026-11-01 - OpenAPI: merge, unmerge and links (OS-7, in part)
 
 - **Clinical risk:** none to behaviour; the document describes, it does not change a response. A merge joins two patient records, so a wrong schema here could lead an integrator to merge without a reason; the schema marks `reason` required, as the handler does.

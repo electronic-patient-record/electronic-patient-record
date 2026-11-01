@@ -474,6 +474,33 @@
         ],
         "type": "object"
       },
+      "CreateHazard": {
+        "description": "Raise a hazard. Refused (422) if the title is blank or longer than 200 characters, or a rating is outside 1 to 5.",
+        "properties": {
+          "likelihood": {
+            "description": "Before controls.",
+            "maximum": 5,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "severity": {
+            "description": "Before controls.",
+            "maximum": 5,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "title": {
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "severity",
+          "likelihood"
+        ],
+        "type": "object"
+      },
       "CreateObservation": {
         "properties": {
           "observation": {
@@ -585,6 +612,129 @@
         },
         "required": [
           "errors"
+        ],
+        "type": "object"
+      },
+      "Hazard": {
+        "properties": {
+          "controls": {
+            "items": {
+              "$ref": "#/components/schemas/HazardControl"
+            },
+            "type": "array"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/HazardEvidence"
+            },
+            "type": "array"
+          },
+          "likelihood": {
+            "type": "integer"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "raised_by": {
+            "type": "string"
+          },
+          "reopened": {
+            "description": "How many times it was reopened.",
+            "type": "integer"
+          },
+          "retired_by": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "severity": {
+            "type": "integer"
+          },
+          "state": {
+            "enum": [
+              "open",
+              "retired"
+            ]
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "severity",
+          "likelihood",
+          "state",
+          "raised_by",
+          "controls",
+          "evidence",
+          "retired_by",
+          "note",
+          "reopened"
+        ],
+        "type": "object"
+      },
+      "HazardControl": {
+        "properties": {
+          "by": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "by",
+          "text"
+        ],
+        "type": "object"
+      },
+      "HazardEvidence": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "removal-change",
+              "test-run",
+              "review-record",
+              "census"
+            ]
+          },
+          "reference": {
+            "type": "string"
+          },
+          "sha256": {
+            "description": "64 lowercase hex digits.",
+            "type": "string"
+          },
+          "taken_at": {
+            "description": "UTC; not in the future.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "reference",
+          "taken_at",
+          "sha256"
+        ],
+        "type": "object"
+      },
+      "HazardList": {
+        "properties": {
+          "hazards": {
+            "description": "Newest first.",
+            "items": {
+              "$ref": "#/components/schemas/StoredHazard"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "hazards"
         ],
         "type": "object"
       },
@@ -1272,6 +1422,35 @@
         ],
         "type": "object"
       },
+      "StoredHazard": {
+        "properties": {
+          "author": {
+            "type": "string"
+          },
+          "hazard": {
+            "$ref": "#/components/schemas/Hazard"
+          },
+          "id": {
+            "type": "string"
+          },
+          "recorded_at": {
+            "description": "UTC.",
+            "type": "string"
+          },
+          "version": {
+            "description": "1 for the hazard as raised.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "author",
+          "recorded_at",
+          "hazard"
+        ],
+        "type": "object"
+      },
       "StoredObservation": {
         "description": "The ObservationRecord fields sit beside these, not under a key.",
         "properties": {
@@ -1476,6 +1655,48 @@
         "required": [
           "consent",
           "expected_version"
+        ],
+        "type": "object"
+      },
+      "UpdateHazard": {
+        "description": "One step on a hazard, on the version last seen. `control` needs `text`; `retire` needs `evidence` and `note` and is refused with 403 unless the token holds the clinical-safety-officer role (the body never says who); `reopen` needs `reason`. Other fields for the event are refused.",
+        "properties": {
+          "event": {
+            "enum": [
+              "control",
+              "retire",
+              "reopen"
+            ]
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/HazardEvidence"
+            },
+            "maxItems": 20,
+            "type": "array"
+          },
+          "expected_version": {
+            "type": "integer"
+          },
+          "note": {
+            "description": "For retire.",
+            "maxLength": 2000,
+            "type": "string"
+          },
+          "reason": {
+            "description": "For reopen.",
+            "maxLength": 2000,
+            "type": "string"
+          },
+          "text": {
+            "description": "For control.",
+            "maxLength": 2000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_version",
+          "event"
         ],
         "type": "object"
       },
@@ -2070,6 +2291,16 @@
       "get": {
         "operationId": "getApiHazards",
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HazardList"
+                }
+              }
+            },
+            "description": "OK."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -2108,7 +2339,27 @@
       },
       "post": {
         "operationId": "postApiHazards",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateHazard"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredHazard"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -2128,6 +2379,16 @@
               }
             },
             "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
           },
           "default": {
             "description": "Bodies are not described in this document; see spec/09-api-surface.md."
@@ -2159,7 +2420,27 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateHazard"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredHazard"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -2179,6 +2460,26 @@
               }
             },
             "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionConflict"
+                }
+              }
+            },
+            "description": "A likely duplicate or a stale expected_version."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
           },
           "default": {
             "description": "Bodies are not described in this document; see spec/09-api-surface.md."
@@ -2435,7 +2736,7 @@
                 }
               }
             },
-            "description": "The stored patient."
+            "description": "The stored record."
           },
           "401": {
             "content": {
@@ -2626,7 +2927,7 @@
                 }
               }
             },
-            "description": "The stored patient."
+            "description": "The stored record."
           },
           "401": {
             "content": {
@@ -2776,7 +3077,7 @@
                 }
               }
             },
-            "description": "The stored patient."
+            "description": "The stored record."
           },
           "401": {
             "content": {
@@ -2865,7 +3166,7 @@
                 }
               }
             },
-            "description": "The stored patient."
+            "description": "The stored record."
           },
           "401": {
             "content": {
@@ -2956,7 +3257,7 @@
                 }
               }
             },
-            "description": "The stored patient."
+            "description": "The stored record."
           },
           "401": {
             "content": {
@@ -3106,7 +3407,7 @@
                 }
               }
             },
-            "description": "The stored patient."
+            "description": "The stored record."
           },
           "401": {
             "content": {
@@ -3195,7 +3496,7 @@
                 }
               }
             },
-            "description": "The stored patient."
+            "description": "The stored record."
           },
           "401": {
             "content": {
@@ -3396,7 +3697,7 @@
                 }
               }
             },
-            "description": "The stored patient."
+            "description": "The stored record."
           },
           "401": {
             "content": {
@@ -3485,7 +3786,7 @@
                 }
               }
             },
-            "description": "The stored patient."
+            "description": "The stored record."
           },
           "401": {
             "content": {
@@ -3637,7 +3938,7 @@
                 }
               }
             },
-            "description": "The stored patient."
+            "description": "The stored record."
           },
           "401": {
             "content": {
@@ -3777,7 +4078,7 @@
                 }
               }
             },
-            "description": "The stored patient."
+            "description": "The stored record."
           },
           "401": {
             "content": {
@@ -3866,7 +4167,7 @@
                 }
               }
             },
-            "description": "The stored patient."
+            "description": "The stored record."
           },
           "401": {
             "content": {
@@ -4394,7 +4695,7 @@
                 }
               }
             },
-            "description": "The stored patient."
+            "description": "The stored record."
           },
           "401": {
             "content": {
@@ -4483,7 +4784,7 @@
                 }
               }
             },
-            "description": "The stored patient."
+            "description": "The stored record."
           },
           "401": {
             "content": {
@@ -4574,7 +4875,7 @@
                 }
               }
             },
-            "description": "The stored patient."
+            "description": "The stored record."
           },
           "401": {
             "content": {

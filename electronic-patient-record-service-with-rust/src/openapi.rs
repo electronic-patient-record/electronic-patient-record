@@ -457,6 +457,75 @@ fn amendment_schemas() -> Value {
     })
 }
 
+fn hazard_schemas() -> Value {
+    let evidence = json!({"type": "array", "maxItems": 20, "items": {"$ref": "#/components/schemas/HazardEvidence"}});
+    json!({
+        "CreateHazard": {
+            "type": "object", "required": ["title", "severity", "likelihood"],
+            "description": "Raise a hazard. Refused (422) if the title is blank or longer than 200 characters, or a rating is outside 1 to 5.",
+            "properties": {
+                "title": {"type": "string", "maxLength": 200},
+                "severity": {"type": "integer", "minimum": 1, "maximum": 5, "description": "Before controls."},
+                "likelihood": {"type": "integer", "minimum": 1, "maximum": 5, "description": "Before controls."}
+            }
+        },
+        "UpdateHazard": {
+            "type": "object", "required": ["expected_version", "event"],
+            "description": "One step on a hazard, on the version last seen. `control` needs `text`; `retire` needs `evidence` and `note` and is refused with 403 unless the token holds the clinical-safety-officer role (the body never says who); `reopen` needs `reason`. Other fields for the event are refused.",
+            "properties": {
+                "expected_version": {"type": "integer"},
+                "event": {"enum": ["control", "retire", "reopen"]},
+                "text": {"type": "string", "maxLength": 2000, "description": "For control."},
+                "evidence": evidence,
+                "note": {"type": "string", "maxLength": 2000, "description": "For retire."},
+                "reason": {"type": "string", "maxLength": 2000, "description": "For reopen."}
+            }
+        },
+        "HazardEvidence": {
+            "type": "object", "required": ["kind", "reference", "taken_at", "sha256"],
+            "properties": {
+                "kind": {"enum": ["removal-change", "test-run", "review-record", "census"]},
+                "reference": {"type": "string"},
+                "taken_at": {"type": "string", "description": "UTC; not in the future."},
+                "sha256": {"type": "string", "description": "64 lowercase hex digits."}
+            }
+        },
+        "HazardControl": {
+            "type": "object", "required": ["by", "text"],
+            "properties": {"by": {"type": "string"}, "text": {"type": "string"}}
+        },
+        "Hazard": {
+            "type": "object",
+            "required": ["title", "severity", "likelihood", "state", "raised_by", "controls", "evidence", "retired_by", "note", "reopened"],
+            "properties": {
+                "title": {"type": "string"},
+                "severity": {"type": "integer"}, "likelihood": {"type": "integer"},
+                "state": {"enum": ["open", "retired"]},
+                "raised_by": {"type": "string"},
+                "controls": {"type": "array", "items": {"$ref": "#/components/schemas/HazardControl"}},
+                "evidence": {"type": "array", "items": {"$ref": "#/components/schemas/HazardEvidence"}},
+                "retired_by": {"type": ["string", "null"]},
+                "note": {"type": ["string", "null"]},
+                "reopened": {"type": "integer", "description": "How many times it was reopened."}
+            }
+        },
+        "StoredHazard": {
+            "type": "object", "required": ["id", "version", "author", "recorded_at", "hazard"],
+            "properties": {
+                "id": {"type": "string"},
+                "version": {"type": "integer", "description": "1 for the hazard as raised."},
+                "author": {"type": "string"},
+                "recorded_at": {"type": "string", "description": "UTC."},
+                "hazard": {"$ref": "#/components/schemas/Hazard"}
+            }
+        },
+        "HazardList": {
+            "type": "object", "required": ["hazards"],
+            "properties": {"hazards": {"type": "array", "description": "Newest first.", "items": {"$ref": "#/components/schemas/StoredHazard"}}}
+        }
+    })
+}
+
 fn link_schemas() -> Value {
     json!({
         "LinkRequest": {
@@ -493,6 +562,7 @@ fn link_schemas() -> Value {
 fn patient_schemas() -> Value {
     let mut all = Map::new();
     for part in [
+        hazard_schemas(),
         link_schemas(),
         amendment_schemas(),
         identity_schemas(),
@@ -609,6 +679,22 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
     ),
     (
         "POST",
+        "/api/hazards",
+        "CreateHazard",
+        "201",
+        "StoredHazard",
+        "",
+    ),
+    (
+        "PUT",
+        "/api/hazards/{hazard_id}",
+        "UpdateHazard",
+        "200",
+        "StoredHazard",
+        "VersionConflict",
+    ),
+    (
+        "POST",
         "/api/patients/{id}/merge",
         "LinkRequest",
         "201",
@@ -648,6 +734,7 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
     ("GET", "/api/patients/{id}/consents", "ConsentList", &[]),
     ("GET", "/api/patients/{id}/amendments", "AmendmentList", &[]),
     ("GET", "/api/patients/{id}/links", "PatientLinkList", &[]),
+    ("GET", "/api/hazards", "HazardList", &[]),
     (
         "GET",
         "/api/patients/{id}/relationships",
@@ -835,7 +922,7 @@ pub fn document_for(served: &[(String, String)]) -> Value {
             );
             responses.insert(
                 (*status).into(),
-                json!({"description": "The stored patient.", "content": {"application/json": {
+                json!({"description": "The stored record.", "content": {"application/json": {
                     "schema": {"$ref": format!("#/components/schemas/{success}")}}}}),
             );
         }
@@ -1617,6 +1704,87 @@ mod tests {
         for (_, _, success, _) in READS {
             assert!(schemas.contains_key(*success), "{success} is not defined");
         }
+    }
+
+    #[test]
+    fn the_hazard_schemas_match_the_types() {
+        use crate::hazard::{Control, Evidence, EvidenceKind, Hazard, State};
+        let evidence = Evidence {
+            kind: EvidenceKind::ReviewRecord,
+            reference: "r".into(),
+            taken_at: chrono::Utc::now(),
+            sha256: "0".repeat(64),
+        };
+        let hazard = Hazard {
+            title: "t".into(),
+            severity: 1,
+            likelihood: 1,
+            state: State::Retired,
+            raised_by: "a".into(),
+            controls: vec![Control {
+                by: "a".into(),
+                text: "t".into(),
+            }],
+            evidence: vec![evidence.clone()],
+            retired_by: None,
+            note: None,
+            reopened: 0,
+        };
+        let value = serde_json::to_value(&hazard).unwrap();
+        assert_eq!(keys(&value), properties("Hazard"));
+        assert_eq!(keys(&value["controls"][0]), properties("HazardControl"));
+        assert_eq!(keys(&value["evidence"][0]), properties("HazardEvidence"));
+        let stored = serde_json::to_value(crate::hazard_store::StoredHazard {
+            id: "i".into(),
+            version: 1,
+            author: "a".into(),
+            recorded_at: "t".into(),
+            hazard,
+        })
+        .unwrap();
+        assert_eq!(keys(&stored), properties("StoredHazard"));
+        // The words are the ones serde writes, variant by variant.
+        let schema = patient_schemas();
+        let words = |v: &Value| v["enum"].as_array().unwrap().clone();
+        assert_eq!(
+            words(&schema["HazardEvidence"]["properties"]["kind"]),
+            [
+                EvidenceKind::RemovalChange,
+                EvidenceKind::TestRun,
+                EvidenceKind::ReviewRecord,
+                EvidenceKind::Census
+            ]
+            .map(|k| serde_json::to_value(k).unwrap())
+            .to_vec()
+        );
+        assert_eq!(
+            words(&schema["Hazard"]["properties"]["state"]),
+            [State::Open, State::Retired]
+                .map(|k| serde_json::to_value(k).unwrap())
+                .to_vec()
+        );
+        // Each event parses with exactly the fields the schema names for it.
+        use crate::controllers::hazards::UpdateRequest;
+        for body in [
+            serde_json::json!({"expected_version": 1, "event": "control", "text": "t"}),
+            serde_json::json!({"expected_version": 1, "event": "reopen", "reason": "r"}),
+            serde_json::json!({"expected_version": 1, "event": "retire", "note": "n",
+                "evidence": [serde_json::to_value(&evidence).unwrap()]}),
+        ] {
+            assert!(
+                serde_json::from_value::<UpdateRequest>(body.clone()).is_ok(),
+                "{body}"
+            );
+            for key in keys(&body) {
+                assert!(properties("UpdateHazard").contains(&key), "{key}");
+            }
+        }
+        assert_eq!(
+            words(&schema["UpdateHazard"]["properties"]["event"]),
+            ["control", "retire", "reopen"]
+                .map(|w| serde_json::json!(w))
+                .to_vec()
+        );
     }
 
     #[test]
