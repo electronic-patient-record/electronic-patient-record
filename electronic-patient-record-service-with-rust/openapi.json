@@ -1,6 +1,123 @@
 {
   "components": {
     "schemas": {
+      "AllergyList": {
+        "description": "Every allergy in every status, the no-known-allergies statement, the banner summary and amendment notices by allergy id. The statement, summary and notices are described only as objects.",
+        "properties": {
+          "allergies": {
+            "items": {
+              "$ref": "#/components/schemas/StoredAllergy"
+            },
+            "type": "array"
+          },
+          "amendment_notices": {
+            "type": "object"
+          },
+          "statement": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "summary": {
+            "properties": {
+              "state": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "state"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "allergies",
+          "statement",
+          "summary",
+          "amendment_notices"
+        ],
+        "type": "object"
+      },
+      "AllergyRecord": {
+        "description": "One allergy as recorded. An absent optional field means not stated; criticality is never defaulted to low.",
+        "properties": {
+          "category": {
+            "enum": [
+              "food",
+              "medication",
+              "environment",
+              "biologic"
+            ]
+          },
+          "coding": {
+            "properties": {
+              "code": {
+                "maxLength": 64,
+                "type": "string"
+              },
+              "system": {
+                "description": "A URI; a SNOMED CT code is checked.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "system",
+              "code"
+            ],
+            "type": "object"
+          },
+          "criticality": {
+            "enum": [
+              "low",
+              "high",
+              "unable-to-assess"
+            ]
+          },
+          "onset": {
+            "description": "YYYY, YYYY-MM or YYYY-MM-DD.",
+            "type": "string"
+          },
+          "reaction": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "inactive",
+              "entered-in-error"
+            ]
+          },
+          "substance": {
+            "description": "In words; required.",
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "required": [
+          "substance",
+          "status"
+        ],
+        "type": "object"
+      },
+      "CreateAllergy": {
+        "properties": {
+          "allergy": {
+            "$ref": "#/components/schemas/AllergyRecord"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "allergy"
+        ],
+        "type": "object"
+      },
       "CreatePatient": {
         "properties": {
           "drill": {
@@ -293,6 +410,59 @@
           "version",
           "author",
           "patient"
+        ],
+        "type": "object"
+      },
+      "StoredAllergy": {
+        "properties": {
+          "allergy": {
+            "$ref": "#/components/schemas/AllergyRecord"
+          },
+          "author": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "recorded_at": {
+            "description": "UTC.",
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "patient_id",
+          "version",
+          "author",
+          "recorded_at",
+          "allergy"
+        ],
+        "type": "object"
+      },
+      "UpdateAllergy": {
+        "properties": {
+          "allergy": {
+            "$ref": "#/components/schemas/AllergyRecord"
+          },
+          "expected_version": {
+            "type": "integer"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "allergy",
+          "expected_version"
         ],
         "type": "object"
       },
@@ -1240,7 +1410,7 @@
                 }
               }
             },
-            "description": "A likely duplicate (create) or a stale expected_version (update)."
+            "description": "A likely duplicate or a stale expected_version."
           },
           "422": {
             "content": {
@@ -1431,7 +1601,7 @@
                 }
               }
             },
-            "description": "A likely duplicate (create) or a stale expected_version (update)."
+            "description": "A likely duplicate or a stale expected_version."
           },
           "422": {
             "content": {
@@ -1474,6 +1644,16 @@
           }
         ],
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AllergyList"
+                }
+              }
+            },
+            "description": "OK."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -1522,7 +1702,27 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAllergy"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredAllergy"
+                }
+              }
+            },
+            "description": "The stored patient."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -1542,6 +1742,16 @@
               }
             },
             "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
           },
           "default": {
             "description": "Bodies are not described in this document; see spec/09-api-surface.md."
@@ -1581,7 +1791,27 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAllergy"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredAllergy"
+                }
+              }
+            },
+            "description": "The stored patient."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -1601,6 +1831,26 @@
               }
             },
             "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionConflict"
+                }
+              }
+            },
+            "description": "A likely duplicate or a stale expected_version."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
           },
           "default": {
             "description": "Bodies are not described in this document; see spec/09-api-surface.md."

@@ -154,6 +154,56 @@ fn patient_schemas() -> Value {
                 "limit": {"type": "integer", "description": "The most results returned."}
             }
         },
+        "AllergyRecord": {
+            "type": "object", "required": ["substance", "status"],
+            "description": "One allergy as recorded. An absent optional field means not stated; criticality is never defaulted to low.",
+            "properties": {
+                "substance": {"type": "string", "maxLength": 200, "description": "In words; required."},
+                "coding": {"type": "object", "required": ["system", "code"], "properties": {
+                    "system": {"type": "string", "description": "A URI; a SNOMED CT code is checked."},
+                    "code": {"type": "string", "maxLength": 64}}},
+                "category": {"enum": ["food", "medication", "environment", "biologic"]},
+                "criticality": {"enum": ["low", "high", "unable-to-assess"]},
+                "reaction": {"type": "string", "maxLength": 500},
+                "onset": {"type": "string", "description": "YYYY, YYYY-MM or YYYY-MM-DD."},
+                "status": {"enum": ["active", "inactive", "entered-in-error"]}
+            }
+        },
+        "StoredAllergy": {
+            "type": "object",
+            "required": ["id", "patient_id", "version", "author", "recorded_at", "allergy"],
+            "properties": {
+                "id": {"type": "string"}, "patient_id": {"type": "string"},
+                "version": {"type": "integer"}, "author": {"type": "string"},
+                "recorded_at": {"type": "string", "description": "UTC."},
+                "allergy": {"$ref": "#/components/schemas/AllergyRecord"}
+            }
+        },
+        "CreateAllergy": {
+            "type": "object", "required": ["allergy"],
+            "properties": {
+                "allergy": {"$ref": "#/components/schemas/AllergyRecord"},
+                "reason": {"type": ["string", "null"]}
+            }
+        },
+        "UpdateAllergy": {
+            "type": "object", "required": ["allergy", "expected_version"],
+            "properties": {
+                "allergy": {"$ref": "#/components/schemas/AllergyRecord"},
+                "expected_version": {"type": "integer"},
+                "reason": {"type": ["string", "null"]}
+            }
+        },
+        "AllergyList": {
+            "type": "object", "required": ["allergies", "statement", "summary", "amendment_notices"],
+            "description": "Every allergy in every status, the no-known-allergies statement, the banner summary and amendment notices by allergy id. The statement, summary and notices are described only as objects.",
+            "properties": {
+                "allergies": {"type": "array", "items": {"$ref": "#/components/schemas/StoredAllergy"}},
+                "statement": {"type": ["object", "null"]},
+                "summary": {"type": "object", "required": ["state"], "properties": {"state": {"type": "string"}}},
+                "amendment_notices": {"type": "object"}
+            }
+        },
         "DuplicateConflict": {
             "type": "object", "required": ["error", "candidates", "candidates_cut"],
             "description": "409 on create: likely duplicates. A candidate the caller may not see is {\"restricted\": true}.",
@@ -180,7 +230,8 @@ fn patient_schemas() -> Value {
 }
 
 /// `(method, path, request schema, success status, success schema, 409 schema)` for the routes
-/// whose bodies are described. Each also answers 422 with `ErrorList`.
+/// whose bodies are described; an empty 409 schema means the route has none. Each also answers 422
+/// with `ErrorList`.
 const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
     (
         "POST",
@@ -198,11 +249,28 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
         "Stored",
         "VersionConflict",
     ),
+    (
+        "POST",
+        "/api/patients/{id}/allergies",
+        "CreateAllergy",
+        "201",
+        "StoredAllergy",
+        "",
+    ),
+    (
+        "PUT",
+        "/api/patients/{id}/allergies/{allergy_id}",
+        "UpdateAllergy",
+        "200",
+        "StoredAllergy",
+        "VersionConflict",
+    ),
 ];
 
 /// `(method, path, success schema, query parameters)` for the described reads.
 const READS: &[(&str, &str, &str, &[&str])] = &[
     ("GET", "/api/patients/{id}", "PatientView", &[]),
+    ("GET", "/api/patients/{id}/allergies", "AllergyList", &[]),
     (
         "GET",
         "/api/patients",
@@ -293,11 +361,13 @@ pub fn document_for(served: &[(String, String)]) -> Value {
                 json!({"required": true, "content": {"application/json": {
                     "schema": {"$ref": format!("#/components/schemas/{request}")}}}}),
             );
-            responses.insert(
-                "409".into(),
-                json!({"description": "A likely duplicate (create) or a stale expected_version (update).",
-                       "content": {"application/json": {"schema": {"$ref": format!("#/components/schemas/{conflict}")}}}}),
-            );
+            if !conflict.is_empty() {
+                responses.insert(
+                    "409".into(),
+                    json!({"description": "A likely duplicate or a stale expected_version.",
+                           "content": {"application/json": {"schema": {"$ref": format!("#/components/schemas/{conflict}")}}}}),
+                );
+            }
             responses.insert(
                 "422".into(),
                 json!({"description": "The record was refused, one line per reason.",
@@ -615,5 +685,123 @@ mod tests {
         let parsed: Search = serde_json::from_value(Value::Object(all)).unwrap();
         assert!(parsed.drill && parsed.family.is_some() && parsed.birth_date.is_some());
         assert!(parsed.identifier.is_some());
+    }
+
+    #[test]
+    fn the_allergy_schemas_match_the_types() {
+        use crate::allergies::{
+            AllergyRecord, Category, Coding, Criticality, Status, StoredAllergy,
+        };
+        let schema = patient_schemas();
+        let record = AllergyRecord {
+            substance: "s".into(),
+            coding: Some(Coding {
+                system: "u".into(),
+                code: "c".into(),
+            }),
+            category: Some(Category::Food),
+            criticality: Some(Criticality::UnableToAssess),
+            reaction: Some("r".into()),
+            onset: Some("2000".into()),
+            status: Status::EnteredInError,
+        };
+        let value = serde_json::to_value(&record).unwrap();
+        assert_eq!(keys(&value), properties("AllergyRecord"));
+        assert_eq!(
+            keys(&value["coding"]),
+            schema["AllergyRecord"]["properties"]["coding"]["properties"]
+                .as_object()
+                .unwrap()
+                .keys()
+                .cloned()
+                .collect()
+        );
+        // The enum words are the ones serde writes, variant by variant.
+        let words = |name: &str| -> Vec<Value> {
+            schema["AllergyRecord"]["properties"][name]["enum"]
+                .as_array()
+                .unwrap()
+                .clone()
+        };
+        let said = |v: &[Value]| v.to_vec();
+        assert_eq!(
+            words("category"),
+            said(
+                &[
+                    Category::Food,
+                    Category::Medication,
+                    Category::Environment,
+                    Category::Biologic
+                ]
+                .map(|c| serde_json::to_value(c).unwrap())
+            )
+        );
+        assert_eq!(
+            words("criticality"),
+            said(
+                &[
+                    Criticality::Low,
+                    Criticality::High,
+                    Criticality::UnableToAssess
+                ]
+                .map(|c| serde_json::to_value(c).unwrap())
+            )
+        );
+        assert_eq!(
+            words("status"),
+            said(
+                &[Status::Active, Status::Inactive, Status::EnteredInError]
+                    .map(|c| serde_json::to_value(c).unwrap())
+            )
+        );
+        // A bare record omits what was not stated, and still has the required keys.
+        let bare = serde_json::to_value(AllergyRecord {
+            substance: "s".into(),
+            coding: None,
+            category: None,
+            criticality: None,
+            reaction: None,
+            onset: None,
+            status: Status::Active,
+        })
+        .unwrap();
+        for key in schema["AllergyRecord"]["required"].as_array().unwrap() {
+            assert!(bare.get(key.as_str().unwrap()).is_some());
+        }
+        let stored = serde_json::to_value(StoredAllergy {
+            id: "i".into(),
+            patient_id: "p".into(),
+            version: 1,
+            author: "a".into(),
+            recorded_at: "t".into(),
+            allergy: record,
+        })
+        .unwrap();
+        assert_eq!(keys(&stored), properties("StoredAllergy"));
+        let create: crate::controllers::allergies::CreateRequest =
+            serde_json::from_value(serde_json::json!({"allergy": bare, "reason": "r"})).unwrap();
+        assert!(create.reason.is_some());
+        assert!(
+            serde_json::from_value::<crate::controllers::allergies::UpdateRequest>(
+                serde_json::json!({"allergy": bare})
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn the_allergy_list_schema_names_the_fields_the_handler_sends() {
+        use crate::allergies::Summary;
+        use crate::controllers::allergies::AllergyList;
+        let list = serde_json::to_value(AllergyList {
+            allergies: vec![],
+            statement: None,
+            summary: Summary::Active { items: vec![] },
+            amendment_notices: std::collections::BTreeMap::new(),
+        })
+        .unwrap();
+        assert_eq!(keys(&list), properties("AllergyList"));
+        assert_eq!(list["summary"]["state"], "active");
+        assert!(list["statement"].is_null());
     }
 }

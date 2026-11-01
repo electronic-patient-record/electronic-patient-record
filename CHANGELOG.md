@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-01 - OpenAPI: the allergy list, create and update (OS-7, in part)
+
+- **Clinical risk:** none to behaviour; the document describes, it does not change a response. It states in the schema that an absent `criticality` means not stated.
+- **Built:** `AllergyRecord`, `StoredAllergy`, `CreateAllergy`, `UpdateAllergy` and `AllergyList`, and the 200/201, 409 (update only) and 422 responses of `GET` and `POST /api/patients/{id}/allergies` and `PUT …/allergies/{allergy_id}`. Three unit tests: property names equal the serialised keys (with every optional field set), the `category`, `criticality` and `status` words equal what serde writes for each variant, required keys are present on a bare record, and the list's top-level keys equal `AllergyList`'s. `openapi.json`, spec 09 and `tasks.md` updated.
+- **Not done / not verified:** `statement`, `summary` and `amendment_notices` are described only as objects (`summary` has its `state`). The allergy create was read for a 409 and none was found, so none is documented; that was a reading of the handler, not a test. The allergy-statement route (`PUT …/allergy-statement`) is not described. Length limits in the schema are copied from `allergies::validate` by hand and not tested. No real HTTP response was compared. Gates: fmt, clippy `-D warnings`, openapi census (5), unit tests (8).
+
 ## 2026-11-01 - OpenAPI: the patient read and search responses (OS-7, in part)
 
 - **Clinical risk:** none; the document describes, it does not change a response.
