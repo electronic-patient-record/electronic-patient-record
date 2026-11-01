@@ -102,6 +102,145 @@
         ],
         "type": "object"
       },
+      "AmendmentList": {
+        "properties": {
+          "amendments": {
+            "items": {
+              "$ref": "#/components/schemas/AmendmentView"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "amendments"
+        ],
+        "type": "object"
+      },
+      "AmendmentView": {
+        "properties": {
+          "author": {
+            "type": "string"
+          },
+          "due": {
+            "description": "When a decision is due (RFC 3339).",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "notice": {
+            "additionalProperties": true,
+            "description": "What a reader of the record must be told; null when there is nothing to tell (seen after a withdrawal).",
+            "properties": {
+              "notice": {
+                "enum": [
+                  "pending",
+                  "amended",
+                  "refused"
+                ]
+              }
+            },
+            "required": [
+              "notice"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "overdue": {
+            "type": "boolean"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "recorded_at": {
+            "type": "string"
+          },
+          "request": {
+            "properties": {
+              "extension": {
+                "description": "The written reason for the one extension, once taken.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "received_at": {
+                "type": "string"
+              },
+              "requester": {
+                "type": "string"
+              },
+              "state": {
+                "additionalProperties": true,
+                "description": "Tagged by state; accepted, applied and denied carry their own fields.",
+                "properties": {
+                  "state": {
+                    "enum": [
+                      "requested",
+                      "accepted",
+                      "applied",
+                      "denied",
+                      "withdrawn"
+                    ]
+                  }
+                },
+                "required": [
+                  "state"
+                ],
+                "type": "object"
+              },
+              "target": {
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "id",
+                  "version"
+                ],
+                "type": "object"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "target",
+              "requester",
+              "text",
+              "received_at",
+              "extension",
+              "state"
+            ],
+            "type": "object"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "patient_id",
+          "version",
+          "author",
+          "recorded_at",
+          "request",
+          "notice",
+          "due",
+          "overdue"
+        ],
+        "type": "object"
+      },
       "ConsentList": {
         "properties": {
           "consents": {
@@ -236,6 +375,35 @@
         },
         "required": [
           "allergy"
+        ],
+        "type": "object"
+      },
+      "CreateAmendment": {
+        "description": "A patient asks for a record to be corrected. Who asks is the token, never the body.",
+        "properties": {
+          "kind": {
+            "enum": [
+              "Observation",
+              "AllergyIntolerance"
+            ]
+          },
+          "target_id": {
+            "type": "string"
+          },
+          "text": {
+            "description": "What should change, in the patient's words.",
+            "type": "string"
+          },
+          "version": {
+            "description": "The version the patient read.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "target_id",
+          "version",
+          "text"
         ],
         "type": "object"
       },
@@ -1089,6 +1257,47 @@
         "required": [
           "allergy",
           "expected_version"
+        ],
+        "type": "object"
+      },
+      "UpdateAmendment": {
+        "additionalProperties": true,
+        "description": "One step. accept, deny, apply and extend need the clinician role; withdraw and disagree need the patient role. Each step carries its own fields: accept and extend a reason; deny a ground and a reason; apply a version; disagree a statement; withdraw none.",
+        "properties": {
+          "expected_version": {
+            "type": "integer"
+          },
+          "ground": {
+            "enum": [
+              "not-ours",
+              "accurate-and-complete",
+              "not-available-to-requester",
+              "other"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "statement": {
+            "type": "string"
+          },
+          "step": {
+            "enum": [
+              "accept",
+              "deny",
+              "apply",
+              "extend",
+              "withdraw",
+              "disagree"
+            ]
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_version",
+          "step"
         ],
         "type": "object"
       },
@@ -2623,6 +2832,16 @@
           }
         ],
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AmendmentList"
+                }
+              }
+            },
+            "description": "OK."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -2671,7 +2890,27 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAmendment"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AmendmentView"
+                }
+              }
+            },
+            "description": "The stored patient."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -2691,6 +2930,16 @@
               }
             },
             "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
           },
           "default": {
             "description": "Bodies are not described in this document; see spec/09-api-surface.md."
@@ -2730,7 +2979,27 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAmendment"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AmendmentView"
+                }
+              }
+            },
+            "description": "The stored patient."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -2750,6 +3019,26 @@
               }
             },
             "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionConflict"
+                }
+              }
+            },
+            "description": "A likely duplicate or a stale expected_version."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
           },
           "default": {
             "description": "Bodies are not described in this document; see spec/09-api-surface.md."

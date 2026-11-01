@@ -476,7 +476,71 @@ async fn real_responses_validate_against_the_served_schemas() {
             &mut problems,
         );
 
-        assert!(checked >= 23, "only {checked} responses were checked");
+        // Amendments: ask, list, a step, and a stale step.
+        let asked = server
+            .post(&format!("/api/patients/{id}/amendments"))
+            .json(&json!({ "kind": "Observation", "target_id": observation_id,
+                "version": 1, "text": "the reading was taken at rest" }))
+            .await;
+        assert_eq!(asked.status_code(), StatusCode::CREATED, "{}", asked.text());
+        let asked: Value = asked.json();
+        let p = "/api/patients/{id}/amendments";
+        expect(
+            "amendment create",
+            p,
+            "post",
+            StatusCode::CREATED,
+            &asked,
+            &mut problems,
+        );
+        let list = server.get(&format!("/api/patients/{id}/amendments")).await;
+        assert_eq!(list.status_code(), StatusCode::OK, "{}", list.text());
+        expect(
+            "amendment list",
+            p,
+            "get",
+            StatusCode::OK,
+            &list.json(),
+            &mut problems,
+        );
+        let url = format!(
+            "/api/patients/{id}/amendments/{}",
+            asked["id"].as_str().unwrap()
+        );
+        let step = server
+            .put(&url)
+            .json(&json!({ "expected_version": 1, "step": "withdraw" }))
+            .await;
+        assert_eq!(step.status_code(), StatusCode::OK, "{}", step.text());
+        let put = "/api/patients/{id}/amendments/{amendment_id}";
+        expect(
+            "amendment step",
+            put,
+            "put",
+            StatusCode::OK,
+            &step.json(),
+            &mut problems,
+        );
+        let stale = server
+            .put(&url)
+            .json(&json!({ "expected_version": 1, "step": "withdraw" }))
+            .await;
+        assert_eq!(
+            stale.status_code(),
+            StatusCode::CONFLICT,
+            "{}",
+            stale.text()
+        );
+        expect(
+            "amendment stale step",
+            put,
+            "put",
+            StatusCode::CONFLICT,
+            &stale.json(),
+            &mut problems,
+        );
+
+        assert!(checked >= 27, "only {checked} responses were checked");
         assert!(
             problems.is_empty(),
             "responses that do not match their schema:\n{}",

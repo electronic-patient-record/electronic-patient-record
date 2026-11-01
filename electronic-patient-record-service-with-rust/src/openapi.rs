@@ -376,9 +376,68 @@ fn relationship_schemas() -> Value {
     })
 }
 
+fn amendment_schemas() -> Value {
+    json!({
+        "CreateAmendment": {
+            "type": "object", "required": ["kind", "target_id", "version", "text"],
+            "description": "A patient asks for a record to be corrected. Who asks is the token, never the body.",
+            "properties": {
+                "kind": {"enum": ["Observation", "AllergyIntolerance"]},
+                "target_id": {"type": "string"},
+                "version": {"type": "integer", "description": "The version the patient read."},
+                "text": {"type": "string", "description": "What should change, in the patient's words."}
+            }
+        },
+        "UpdateAmendment": {
+            "type": "object", "required": ["expected_version", "step"],
+            "description": "One step. accept, deny, apply and extend need the clinician role; withdraw and disagree need the patient role. Each step carries its own fields: accept and extend a reason; deny a ground and a reason; apply a version; disagree a statement; withdraw none.",
+            "additionalProperties": true,
+            "properties": {
+                "expected_version": {"type": "integer"},
+                "step": {"enum": ["accept", "deny", "apply", "extend", "withdraw", "disagree"]},
+                "reason": {"type": "string"},
+                "ground": {"enum": ["not-ours", "accurate-and-complete", "not-available-to-requester", "other"]},
+                "version": {"type": "integer"},
+                "statement": {"type": "string"}
+            }
+        },
+        "AmendmentView": {
+            "type": "object",
+            "required": ["id", "patient_id", "version", "author", "recorded_at", "request", "notice", "due", "overdue"],
+            "properties": {
+                "id": {"type": "string"}, "patient_id": {"type": "string"},
+                "version": {"type": "integer"}, "author": {"type": "string"},
+                "recorded_at": {"type": "string"},
+                "request": {"type": "object", "required": ["target", "requester", "text", "received_at", "extension", "state"],
+                    "properties": {
+                        "target": {"type": "object", "required": ["kind", "id", "version"], "properties": {
+                            "kind": {"type": "string"}, "id": {"type": "string"}, "version": {"type": "integer"}}},
+                        "requester": {"type": "string"},
+                        "text": {"type": "string"},
+                        "received_at": {"type": "string"},
+                        "extension": {"type": ["string", "null"], "description": "The written reason for the one extension, once taken."},
+                        "state": {"type": "object", "required": ["state"], "additionalProperties": true,
+                            "description": "Tagged by state; accepted, applied and denied carry their own fields.",
+                            "properties": {"state": {"enum": ["requested", "accepted", "applied", "denied", "withdrawn"]}}}
+                    }},
+                "notice": {"type": ["object", "null"], "required": ["notice"], "additionalProperties": true,
+                    "description": "What a reader of the record must be told; null when there is nothing to tell (seen after a withdrawal).",
+                    "properties": {"notice": {"enum": ["pending", "amended", "refused"]}}},
+                "due": {"type": "string", "description": "When a decision is due (RFC 3339)."},
+                "overdue": {"type": "boolean"}
+            }
+        },
+        "AmendmentList": {
+            "type": "object", "required": ["amendments"],
+            "properties": {"amendments": {"type": "array", "items": {"$ref": "#/components/schemas/AmendmentView"}}}
+        }
+    })
+}
+
 fn patient_schemas() -> Value {
     let mut all = Map::new();
     for part in [
+        amendment_schemas(),
         identity_schemas(),
         allergy_schemas(),
         observation_schemas(),
@@ -483,6 +542,22 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
         "StoredRelationship",
         "VersionConflict",
     ),
+    (
+        "POST",
+        "/api/patients/{id}/amendments",
+        "CreateAmendment",
+        "201",
+        "AmendmentView",
+        "",
+    ),
+    (
+        "PUT",
+        "/api/patients/{id}/amendments/{amendment_id}",
+        "UpdateAmendment",
+        "200",
+        "AmendmentView",
+        "VersionConflict",
+    ),
 ];
 
 /// `(method, path, success schema, query parameters)` for the described reads.
@@ -490,6 +565,7 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
     ("GET", "/api/patients/{id}", "PatientView", &[]),
     ("GET", "/api/patients/{id}/allergies", "AllergyList", &[]),
     ("GET", "/api/patients/{id}/consents", "ConsentList", &[]),
+    ("GET", "/api/patients/{id}/amendments", "AmendmentList", &[]),
     (
         "GET",
         "/api/patients/{id}/relationships",
@@ -1337,6 +1413,83 @@ mod tests {
         }
         for (_, _, success, _) in READS {
             assert!(schemas.contains_key(*success), "{success} is not defined");
+        }
+    }
+
+    #[test]
+    fn the_amendment_schemas_match_the_types() {
+        use crate::amendment::{Ground, Notice, State};
+        use crate::controllers::amendments::{CreateRequest, UpdateRequest};
+        let schema = patient_schemas();
+        let props = &schema["AmendmentView"]["properties"];
+        assert_eq!(
+            enum_words(&props["request"]["properties"]["state"]["properties"]["state"]),
+            ["requested", "accepted", "applied", "denied", "withdrawn"]
+                .map(Value::from)
+                .to_vec()
+        );
+        // The tags are the ones serde writes.
+        let tag = |state: State| serde_json::to_value(state).unwrap()["state"].clone();
+        assert_eq!(tag(State::Requested), "requested");
+        assert_eq!(tag(State::Applied { version: 2 }), "applied");
+        assert_eq!(tag(State::Withdrawn), "withdrawn");
+        assert_eq!(
+            tag(State::Accepted {
+                by: "b".into(),
+                reason: "r".into()
+            }),
+            "accepted"
+        );
+        assert_eq!(
+            tag(State::Denied {
+                by: "b".into(),
+                ground: Ground::Other,
+                reason: "r".into(),
+                disagreement: None
+            }),
+            "denied"
+        );
+        let notice = |n: Notice| serde_json::to_value(n).unwrap()["notice"].clone();
+        assert_eq!(notice(Notice::Pending), "pending");
+        assert_eq!(notice(Notice::Amended { version: 2 }), "amended");
+        assert_eq!(
+            notice(Notice::Refused {
+                ground: Ground::Other,
+                disagreement: None
+            }),
+            "refused"
+        );
+        assert_eq!(
+            enum_words(&props["notice"]["properties"]["notice"]),
+            ["pending", "amended", "refused"].map(Value::from).to_vec()
+        );
+        let grounds = [
+            Ground::NotOurs,
+            Ground::AccurateAndComplete,
+            Ground::NotAvailableToRequester,
+            Ground::Other,
+        ];
+        assert_eq!(
+            enum_words(&schema["UpdateAmendment"]["properties"]["ground"]),
+            said(&grounds)
+        );
+        // Every step word is accepted by the real request type, and the create keys are required.
+        for step in ["accept", "deny", "apply", "extend", "withdraw", "disagree"] {
+            let body = serde_json::json!({"expected_version": 1, "step": step, "reason": "r",
+                "ground": "other", "version": 2, "statement": "s"});
+            assert!(
+                serde_json::from_value::<UpdateRequest>(body).is_ok(),
+                "{step}"
+            );
+        }
+        assert!(enum_words(&schema["UpdateAmendment"]["properties"]["step"]).len() == 6);
+        for key in schema["CreateAmendment"]["required"].as_array().unwrap() {
+            let mut body = serde_json::json!({"kind": "Observation", "target_id": "t", "version": 1, "text": "x"});
+            body.as_object_mut().unwrap().remove(key.as_str().unwrap());
+            assert!(
+                serde_json::from_value::<CreateRequest>(body).is_err(),
+                "{key} is required"
+            );
         }
     }
 }

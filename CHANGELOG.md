@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-01 - OpenAPI: the amendment routes (OS-7, in part)
+
+- **Clinical risk:** none to behaviour; the document describes, it does not change a response. Amendments are how a patient asks for the clinical record to be corrected, so the schema states who may take which step (deciding steps need the clinician role; withdraw and disagree need the patient role).
+- **Built:** `CreateAmendment`, `UpdateAmendment`, `AmendmentView` and `AmendmentList`; the 201, 200, 409 (stale step) and 422 responses of `GET`, `POST` and `PUT` on `/api/patients/{id}/amendments`. A unit test checks the state, notice, step and ground words against what serde writes and the real request types. `tests/openapi_responses.rs` asks for an amendment on a real observation, lists, withdraws and sends a stale step, and validates all four responses; it found that `notice` is `null` after a withdrawal, so the schema allows null. The new table rows were checked to apply (a unit test fails when a request schema is unused).
+- **Not done / not verified:** the other steps (accept, deny, apply, extend, disagree) were not sent for real, so the `accepted`, `applied` and `denied` state bodies are described only as "an object with a `state`" and their extra fields are not in the schema. The login was off, so the role split between clinician and patient steps was not exercised. Which states give a `null` notice is not stated. Gates: fmt, clippy `-D warnings`, openapi census (5), unit tests (13), `openapi_responses` (2, with Postgres 18).
+
 ## 2026-11-01 - OpenAPI: the response test also calls every PUT and each stale PUT (OS-7)
 
 - **Clinical risk:** none; test only.
