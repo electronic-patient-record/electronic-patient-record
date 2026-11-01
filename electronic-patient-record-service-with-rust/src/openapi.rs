@@ -457,9 +457,43 @@ fn amendment_schemas() -> Value {
     })
 }
 
+fn link_schemas() -> Value {
+    json!({
+        "LinkRequest": {
+            "type": "object", "required": ["source", "reason"],
+            "description": "Merge, or unmerge, another record with the one in the path (which survives). The reason is the provenance of the change and is required. A refusal is a 422 ErrorList that may also carry `refusal` (a stable code), `refusal_into` and `conflict_codes`.",
+            "properties": {
+                "source": {"type": "string", "description": "The record merged away, or to be separated again."},
+                "reason": {"type": "string"}
+            }
+        },
+        "PatientLink": {
+            "type": "object",
+            "required": ["id", "version", "author", "reason", "source", "target", "status", "match_score", "match_decision", "recorded_at"],
+            "properties": {
+                "id": {"type": "string"},
+                "version": {"type": "integer", "description": "1 when merged; 2 when unmerged."},
+                "author": {"type": "string"},
+                "reason": {"type": "string"},
+                "source": {"type": "string", "description": "The record merged away."},
+                "target": {"type": "string", "description": "The record that survives."},
+                "status": {"type": "string", "description": "active or reversed."},
+                "match_score": {"type": ["number", "null"], "description": "The matcher's score at merge time, if computed."},
+                "match_decision": {"type": ["string", "null"], "description": "auto_link or review, if computed."},
+                "recorded_at": {"type": "string", "description": "UTC."}
+            }
+        },
+        "PatientLinkList": {
+            "type": "object", "required": ["links"],
+            "properties": {"links": {"type": "array", "items": {"$ref": "#/components/schemas/PatientLink"}}}
+        }
+    })
+}
+
 fn patient_schemas() -> Value {
     let mut all = Map::new();
     for part in [
+        link_schemas(),
         amendment_schemas(),
         identity_schemas(),
         allergy_schemas(),
@@ -575,6 +609,22 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
     ),
     (
         "POST",
+        "/api/patients/{id}/merge",
+        "LinkRequest",
+        "201",
+        "PatientLink",
+        "",
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/unmerge",
+        "LinkRequest",
+        "200",
+        "PatientLink",
+        "",
+    ),
+    (
+        "POST",
         "/api/patients/{id}/amendments",
         "CreateAmendment",
         "201",
@@ -597,6 +647,7 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
     ("GET", "/api/patients/{id}/allergies", "AllergyList", &[]),
     ("GET", "/api/patients/{id}/consents", "ConsentList", &[]),
     ("GET", "/api/patients/{id}/amendments", "AmendmentList", &[]),
+    ("GET", "/api/patients/{id}/links", "PatientLinkList", &[]),
     (
         "GET",
         "/api/patients/{id}/relationships",
@@ -1565,6 +1616,53 @@ mod tests {
         }
         for (_, _, success, _) in READS {
             assert!(schemas.contains_key(*success), "{success} is not defined");
+        }
+    }
+
+    #[test]
+    fn the_link_schemas_match_the_types() {
+        let value = serde_json::to_value(crate::links::StoredLink {
+            id: "i".into(),
+            version: 1,
+            author: "a".into(),
+            reason: "r".into(),
+            source: "s".into(),
+            target: "t".into(),
+            status: "active".into(),
+            match_score: None,
+            match_decision: None,
+            recorded_at: "t".into(),
+        })
+        .unwrap();
+        // Absent evidence is null, not a missing key, so a null score still has its key.
+        assert_eq!(keys(&value), properties("PatientLink"));
+        let schema = patient_schemas();
+        let mut required: Vec<_> = schema["PatientLink"]["required"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap().to_string())
+            .collect();
+        required.sort();
+        assert_eq!(
+            required
+                .into_iter()
+                .collect::<std::collections::BTreeSet<_>>(),
+            properties("PatientLink")
+        );
+        assert!(
+            serde_json::from_value::<crate::controllers::links::LinkRequest>(
+                serde_json::json!({"source": "x", "reason": "y"})
+            )
+            .is_ok()
+        );
+        for missing in [
+            serde_json::json!({"source": "x"}),
+            serde_json::json!({"reason": "y"}),
+        ] {
+            assert!(
+                serde_json::from_value::<crate::controllers::links::LinkRequest>(missing).is_err()
+            );
         }
     }
 

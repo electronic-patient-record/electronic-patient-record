@@ -316,6 +316,35 @@ async fn real_responses_validate_against_the_served_schemas() {
             &mut problems,
         );
 
+        // Merge, links, unmerge: a second record of the same person, then a refusal.
+        let twin = server
+            .post("/api/patients")
+            .json(&json!({ "patient": stored["patient"], "override_reason": "same person, for the check" }))
+            .await;
+        assert_eq!(twin.status_code(), StatusCode::CREATED, "{}", twin.text());
+        let twin_id = twin.json::<Value>()["id"].as_str().unwrap().to_string();
+        let merged = server
+            .post(&format!("/api/patients/{id}/merge"))
+            .json(&json!({ "source": twin_id, "reason": "same person" }))
+            .await;
+        assert_eq!(merged.status_code(), StatusCode::CREATED, "{}", merged.text());
+        expect("merge", "/api/patients/{id}/merge", "post", StatusCode::CREATED, &merged.json(), &mut problems);
+        let links = server.get(&format!("/api/patients/{id}/links")).await;
+        assert_eq!(links.status_code(), StatusCode::OK, "{}", links.text());
+        expect("links", "/api/patients/{id}/links", "get", StatusCode::OK, &links.json(), &mut problems);
+        let refused = server
+            .post(&format!("/api/patients/{id}/merge"))
+            .json(&json!({ "source": id, "reason": "same" }))
+            .await;
+        assert_eq!(refused.status_code(), StatusCode::UNPROCESSABLE_ENTITY);
+        expect("merge refused", "/api/patients/{id}/merge", "post", StatusCode::UNPROCESSABLE_ENTITY, &refused.json(), &mut problems);
+        let unmerged = server
+            .post(&format!("/api/patients/{id}/unmerge"))
+            .json(&json!({ "source": twin_id, "reason": "mistake" }))
+            .await;
+        assert_eq!(unmerged.status_code(), StatusCode::OK, "{}", unmerged.text());
+        expect("unmerge", "/api/patients/{id}/unmerge", "post", StatusCode::OK, &unmerged.json(), &mut problems);
+
         // Photo: put, read, stale put, missing version, withdraw, read after withdraw.
         let photo = format!("/api/patients/{id}/photo");
         let png: Vec<u8> = vec![0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3];
@@ -679,7 +708,7 @@ async fn real_responses_validate_against_the_served_schemas() {
             &mut problems,
         );
 
-        assert!(checked >= 34, "only {checked} responses were checked");
+        assert!(checked >= 38, "only {checked} responses were checked");
         assert!(
             problems.is_empty(),
             "responses that do not match their schema:\n{}",

@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-01 - OpenAPI: merge, unmerge and links (OS-7, in part)
+
+- **Clinical risk:** none to behaviour; the document describes, it does not change a response. A merge joins two patient records, so a wrong schema here could lead an integrator to merge without a reason; the schema marks `reason` required, as the handler does.
+- **Built:** `LinkRequest`, `PatientLink`, `PatientLinkList`; `POST …/merge` (201, 422), `POST …/unmerge` (200, 422) and `GET …/links` (200). A unit test compares `PatientLink` with the serialised `StoredLink` (a null score still has its key) and checks that `LinkRequest` needs both fields. `tests/openapi_responses.rs` merges a real second record of the same person, lists the links, sends a self-merge (422) and unmerges, validating all four (at least 38 responses now).
+- **Not done / not verified:** the 422 body's extra fields (`refusal`, `refusal_into`, `conflict_codes`) are described in prose only; `ErrorList` allows extra keys. A merge refused by the matcher (`conflict_codes`) and a source already merged were not sent. `status` is a string; its two words (`active`, `reversed`) are in the description, not an enum. Login was off, so the administrator-only gating was not exercised.
+
 ## 2026-11-01 - OpenAPI: the photo routes (OS-7, in part)
 
 - **Clinical risk:** none to behaviour; the document describes, it does not change a response. A patient's photo is shown in the banner to confirm identity, so the schema says it is never cached (`private, no-store`) and that a write needs `expected_version`.

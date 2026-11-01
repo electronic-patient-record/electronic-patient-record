@@ -588,6 +588,23 @@
         ],
         "type": "object"
       },
+      "LinkRequest": {
+        "description": "Merge, or unmerge, another record with the one in the path (which survives). The reason is the provenance of the change and is required. A refusal is a 422 ErrorList that may also carry `refusal` (a stable code), `refusal_into` and `conflict_codes`.",
+        "properties": {
+          "reason": {
+            "type": "string"
+          },
+          "source": {
+            "description": "The record merged away, or to be separated again.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "reason"
+        ],
+        "type": "object"
+      },
       "ObservationList": {
         "properties": {
           "amendment_notices": {
@@ -905,6 +922,80 @@
             "type": "array"
           }
         },
+        "type": "object"
+      },
+      "PatientLink": {
+        "properties": {
+          "author": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "match_decision": {
+            "description": "auto_link or review, if computed.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "match_score": {
+            "description": "The matcher's score at merge time, if computed.",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "recorded_at": {
+            "description": "UTC.",
+            "type": "string"
+          },
+          "source": {
+            "description": "The record merged away.",
+            "type": "string"
+          },
+          "status": {
+            "description": "active or reversed.",
+            "type": "string"
+          },
+          "target": {
+            "description": "The record that survives.",
+            "type": "string"
+          },
+          "version": {
+            "description": "1 when merged; 2 when unmerged.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "author",
+          "reason",
+          "source",
+          "target",
+          "status",
+          "match_score",
+          "match_decision",
+          "recorded_at"
+        ],
+        "type": "object"
+      },
+      "PatientLinkList": {
+        "properties": {
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/PatientLink"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "links"
+        ],
         "type": "object"
       },
       "PatientSearchResults": {
@@ -3467,6 +3558,16 @@
           }
         ],
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientLinkList"
+                }
+              }
+            },
+            "description": "OK."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -3517,7 +3618,27 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientLink"
+                }
+              }
+            },
+            "description": "The stored patient."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -3537,6 +3658,16 @@
               }
             },
             "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
           },
           "default": {
             "description": "Bodies are not described in this document; see spec/09-api-surface.md."
@@ -4424,7 +4555,27 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientLink"
+                }
+              }
+            },
+            "description": "The stored patient."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -4444,6 +4595,16 @@
               }
             },
             "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
           },
           "default": {
             "description": "Bodies are not described in this document; see spec/09-api-surface.md."
