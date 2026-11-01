@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-01 - OpenAPI: the feed refusal routes (OS-7, in part)
+
+- **Clinical risk:** none to behaviour; the document describes, it does not change a response. A refused feed message is an update that did not reach the record, so the queue is how it is noticed; the schema says a listing never carries the message text, only a single read does.
+- **Built:** `FeedRefusal`, `FeedResolution` (null while open), `FeedRefusalList`, `FeedRefusalCount`, `ResolveFeedRefusal`; `GET /api/feed/refusals`, `…/count`, `…/{id}` and `POST …/{id}/resolve` (200, 409, 422). A unit test compares the keys of an open listing entry and a read, resolved one with the serialised `Entry`, and the outcome and kind words with serde. `tests/openapi_responses_roles.rs` stores a refusal through `feed_queue::record`, then validates six more real responses (30 in all): list, count, read, a blank reason, a close, a second close.
+- **Not done / not verified:** the 404 for an unknown refusal id was not requested, so it is not in the document. The `conflict` kind and the `handled` outcome were not sent. The `reasons` text is "in words" and not checked. The messages the feed itself would refuse (over the TCP listener) were not driven; the refusal was stored directly, so how the feed fills `event`, `control_id` and `peer` is covered by the feed's own tests, not this one. Only the clinical admin was used; the other roles' refusals (403) were not requested here.
+
 ## 2026-11-01 - OpenAPI: the audit routes (OS-7, in part)
 
 - **Clinical risk:** none to behaviour; the document describes, it does not change a response. The audit trail is how misuse of a record is found, so the schema records what `verify` proves (`assurance`) and the three statuses a monitor must tell apart: 200 intact, 409 a row altered, 424 not fully checked because a key is missing (not evidence of tampering).

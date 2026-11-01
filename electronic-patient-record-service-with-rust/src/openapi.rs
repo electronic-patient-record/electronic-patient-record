@@ -540,6 +540,59 @@ const AUDIT_CRITERIA: &[&str] = &[
     "before",
 ];
 
+fn feed_schemas() -> Value {
+    json!({
+        "ResolveFeedRefusal": {
+            "type": "object", "required": ["outcome", "reason"],
+            "description": "Close a refused feed message. The reason (1 to 500 characters) is required; a refusal already closed is a 409.",
+            "properties": {
+                "outcome": {"enum": ["handled", "dismissed"], "description": "handled: the cause was fixed or the content entered another way. dismissed: it needs nothing done."},
+                "reason": {"type": "string", "maxLength": 500}
+            }
+        },
+        "FeedResolution": {
+            "type": ["object", "null"], "description": "Null while the refusal is open.",
+            "required": ["resolved_by", "resolved_at", "outcome", "reason"],
+            "properties": {
+                "resolved_by": {"type": "string"},
+                "resolved_at": {"type": "string", "description": "UTC."},
+                "outcome": {"enum": ["handled", "dismissed"]},
+                "reason": {"type": "string"}
+            }
+        },
+        "FeedRefusal": {
+            "type": "object",
+            "required": ["id", "received_at", "agent", "peer", "event", "control_id", "kind", "reasons", "resolution"],
+            "description": "One message the feed refused. `message`, the text as received, is present only when one refusal is read, never in a listing.",
+            "properties": {
+                "id": {"type": "string"},
+                "received_at": {"type": "string", "description": "UTC."},
+                "agent": {"type": "string", "description": "The feed's audit agent."},
+                "peer": {"type": ["string", "null"], "description": "The sender's address."},
+                "event": {"type": "string", "description": "The HL7 event such as A08, or ?."},
+                "control_id": {"type": "string", "description": "The sender's message control id (MSH-10), or ?."},
+                "kind": {"enum": ["unsupported", "conflict"]},
+                "reasons": {"type": "array", "items": {"type": "string"}, "description": "In words; names no patient data."},
+                "message": {"type": "string"},
+                "resolution": {"$ref": "#/components/schemas/FeedResolution"}
+            }
+        },
+        "FeedRefusalList": {
+            "type": "object", "required": ["refusals", "limit", "site_time_zone"],
+            "description": "Open refusals, up to `limit`.",
+            "properties": {
+                "refusals": {"type": "array", "items": {"$ref": "#/components/schemas/FeedRefusal"}},
+                "limit": {"type": "integer"},
+                "site_time_zone": {"type": "string"}
+            }
+        },
+        "FeedRefusalCount": {
+            "type": "object", "required": ["open"],
+            "properties": {"open": {"type": "integer"}}
+        }
+    })
+}
+
 fn audit_schemas() -> Value {
     json!({
         "AuditRow": {
@@ -708,6 +761,7 @@ fn link_schemas() -> Value {
 fn patient_schemas() -> Value {
     let mut all = Map::new();
     for part in [
+        feed_schemas(),
         audit_schemas(),
         break_glass_schemas(),
         hazard_schemas(),
@@ -843,6 +897,14 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
     ),
     (
         "POST",
+        "/api/feed/refusals/{id}/resolve",
+        "ResolveFeedRefusal",
+        "200",
+        "FeedRefusal",
+        "Error",
+    ),
+    (
+        "POST",
         "/api/hazards",
         "CreateHazard",
         "201",
@@ -899,6 +961,9 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
     ("GET", "/api/patients/{id}/amendments", "AmendmentList", &[]),
     ("GET", "/api/patients/{id}/links", "PatientLinkList", &[]),
     ("GET", "/api/hazards", "HazardList", &[]),
+    ("GET", "/api/feed/refusals", "FeedRefusalList", &[]),
+    ("GET", "/api/feed/refusals/count", "FeedRefusalCount", &[]),
+    ("GET", "/api/feed/refusals/{id}", "FeedRefusal", &[]),
     (
         "GET",
         "/api/audit",
@@ -1987,6 +2052,60 @@ mod tests {
         for (_, _, success, _) in READS {
             assert!(schemas.contains_key(*success), "{success} is not defined");
         }
+    }
+
+    #[test]
+    fn the_feed_schemas_match_the_types() {
+        use crate::feed_queue::{Entry, Kind, Outcome, Resolution};
+        let entry = |message: Option<String>, resolution: Option<Resolution>| Entry {
+            id: "i".into(),
+            received_at: "t".into(),
+            agent: "feed".into(),
+            peer: None,
+            event: "A08".into(),
+            control_id: "1".into(),
+            kind: "unsupported".into(),
+            reasons: vec!["r".into()],
+            message,
+            resolution,
+        };
+        let resolution = Resolution {
+            resolved_by: "a".into(),
+            resolved_at: "t".into(),
+            outcome: "handled".into(),
+            reason: "r".into(),
+        };
+        let listed = serde_json::to_value(entry(None, None)).unwrap();
+        assert!(
+            listed["resolution"].is_null(),
+            "open means a null resolution, not a missing key"
+        );
+        let mut without = properties("FeedRefusal");
+        without.remove("message");
+        assert_eq!(keys(&listed), without);
+        let read = serde_json::to_value(entry(Some("m".into()), Some(resolution))).unwrap();
+        assert_eq!(keys(&read), properties("FeedRefusal"));
+        assert_eq!(keys(&read["resolution"]), properties("FeedResolution"));
+        let schema = patient_schemas();
+        let words = |v: &Value| v["enum"].as_array().unwrap().clone();
+        assert_eq!(
+            words(&schema["ResolveFeedRefusal"]["properties"]["outcome"]),
+            [Outcome::Handled, Outcome::Dismissed]
+                .map(|o| serde_json::to_value(o).unwrap())
+                .to_vec()
+        );
+        assert_eq!(
+            words(&schema["FeedRefusal"]["properties"]["kind"]),
+            [Kind::Unsupported, Kind::Conflict]
+                .map(|k| serde_json::to_value(k).unwrap())
+                .to_vec()
+        );
+        assert!(
+            serde_json::from_value::<crate::controllers::feed::ResolveRequest>(
+                serde_json::json!({"outcome": "dismissed", "reason": "r"})
+            )
+            .is_ok()
+        );
     }
 
     #[test]

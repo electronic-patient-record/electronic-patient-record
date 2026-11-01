@@ -79,7 +79,7 @@ async fn real_responses_of_the_role_gated_routes_validate_against_the_served_sch
     let auditor = token("auditor", "0c4f1e2a-0000-4000-8000-0000000000d3");
     let admin = token("clinical-admin", "0c4f1e2a-0000-4000-8000-0000000000d4");
 
-    request::<App, _, _>(|server, _ctx| async move {
+    request::<App, _, _>(|server, ctx| async move {
         let (oh, ov) = bearer(&cso);
         let (ch, cv) = bearer(&clinician);
         let (ah, av) = bearer(&auditor);
@@ -581,12 +581,120 @@ async fn real_responses_of_the_role_gated_routes_validate_against_the_served_sch
             &denied.json(),
         );
 
+        // Feed refusals: the feed stores one; the admin lists, counts, reads and closes it.
+        let reasons = vec!["no PID segment".to_string()];
+        let control = unique_name();
+        let stored = electronic_patient_record::feed_queue::record(
+            &ctx.db,
+            electronic_patient_record::feed_queue::New {
+                agent: "feed",
+                peer: Some("127.0.0.1"),
+                event: "A08",
+                control_id: &control,
+                kind: electronic_patient_record::feed_queue::Kind::Unsupported,
+                reasons: &reasons,
+                message: "MSH|^~\\&|",
+            },
+        )
+        .await
+        .expect("a refusal is stored");
+        let queue = "/api/feed/refusals";
+        let listed = server.get(queue).add_header(mh.clone(), mv.clone()).await;
+        assert_eq!(listed.status_code(), StatusCode::OK, "{}", listed.text());
+        expect("feed list", queue, "get", StatusCode::OK, &listed.json());
+        assert!(listed.text().contains(&control), "the new refusal is open");
+        assert!(
+            !listed.text().contains("MSH|"),
+            "a listing never carries the message"
+        );
+        let counted = server
+            .get("/api/feed/refusals/count")
+            .add_header(mh.clone(), mv.clone())
+            .await;
+        assert_eq!(counted.status_code(), StatusCode::OK, "{}", counted.text());
+        expect(
+            "feed count",
+            "/api/feed/refusals/count",
+            "get",
+            StatusCode::OK,
+            &counted.json(),
+        );
+        let one = format!("{queue}/{stored}");
+        let read = server.get(&one).add_header(mh.clone(), mv.clone()).await;
+        assert_eq!(read.status_code(), StatusCode::OK, "{}", read.text());
+        expect(
+            "feed read",
+            "/api/feed/refusals/{id}",
+            "get",
+            StatusCode::OK,
+            &read.json(),
+        );
+        assert!(
+            read.json::<Value>()["message"].is_string(),
+            "a read carries the message"
+        );
+        let blank = server
+            .post(&format!("{one}/resolve"))
+            .add_header(mh.clone(), mv.clone())
+            .json(&json!({ "outcome": "dismissed", "reason": " " }))
+            .await;
+        assert_eq!(
+            blank.status_code(),
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "{}",
+            blank.text()
+        );
+        expect(
+            "feed blank reason",
+            "/api/feed/refusals/{id}/resolve",
+            "post",
+            StatusCode::UNPROCESSABLE_ENTITY,
+            &blank.json(),
+        );
+        let closed = server
+            .post(&format!("{one}/resolve"))
+            .add_header(mh.clone(), mv.clone())
+            .json(&json!({ "outcome": "dismissed", "reason": "a test message" }))
+            .await;
+        assert_eq!(closed.status_code(), StatusCode::OK, "{}", closed.text());
+        expect(
+            "feed resolve",
+            "/api/feed/refusals/{id}/resolve",
+            "post",
+            StatusCode::OK,
+            &closed.json(),
+        );
+        assert_eq!(closed.json::<Value>()["resolution"]["outcome"], "dismissed");
+        let twice = server
+            .post(&format!("{one}/resolve"))
+            .add_header(mh.clone(), mv.clone())
+            .json(&json!({ "outcome": "handled", "reason": "again" }))
+            .await;
+        assert_eq!(
+            twice.status_code(),
+            StatusCode::CONFLICT,
+            "{}",
+            twice.text()
+        );
+        expect(
+            "feed twice",
+            "/api/feed/refusals/{id}/resolve",
+            "post",
+            StatusCode::CONFLICT,
+            &twice.json(),
+        );
+        let gone = server.get(queue).add_header(mh.clone(), mv.clone()).await;
+        assert!(
+            !gone.text().contains(&control),
+            "a closed refusal leaves the open list"
+        );
+
         assert!(
             problems.is_empty(),
             "schema mismatches:\n{}",
             problems.join("\n")
         );
-        assert!(checked >= 24, "only {checked} responses were checked");
+        assert!(checked >= 30, "only {checked} responses were checked");
     })
     .await;
 }

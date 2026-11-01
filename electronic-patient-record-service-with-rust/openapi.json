@@ -983,6 +983,133 @@
         ],
         "type": "object"
       },
+      "FeedRefusal": {
+        "description": "One message the feed refused. `message`, the text as received, is present only when one refusal is read, never in a listing.",
+        "properties": {
+          "agent": {
+            "description": "The feed's audit agent.",
+            "type": "string"
+          },
+          "control_id": {
+            "description": "The sender's message control id (MSH-10), or ?.",
+            "type": "string"
+          },
+          "event": {
+            "description": "The HL7 event such as A08, or ?.",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "unsupported",
+              "conflict"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "peer": {
+            "description": "The sender's address.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reasons": {
+            "description": "In words; names no patient data.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "received_at": {
+            "description": "UTC.",
+            "type": "string"
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/FeedResolution"
+          }
+        },
+        "required": [
+          "id",
+          "received_at",
+          "agent",
+          "peer",
+          "event",
+          "control_id",
+          "kind",
+          "reasons",
+          "resolution"
+        ],
+        "type": "object"
+      },
+      "FeedRefusalCount": {
+        "properties": {
+          "open": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "open"
+        ],
+        "type": "object"
+      },
+      "FeedRefusalList": {
+        "description": "Open refusals, up to `limit`.",
+        "properties": {
+          "limit": {
+            "type": "integer"
+          },
+          "refusals": {
+            "items": {
+              "$ref": "#/components/schemas/FeedRefusal"
+            },
+            "type": "array"
+          },
+          "site_time_zone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "refusals",
+          "limit",
+          "site_time_zone"
+        ],
+        "type": "object"
+      },
+      "FeedResolution": {
+        "description": "Null while the refusal is open.",
+        "properties": {
+          "outcome": {
+            "enum": [
+              "handled",
+              "dismissed"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "resolved_at": {
+            "description": "UTC.",
+            "type": "string"
+          },
+          "resolved_by": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resolved_by",
+          "resolved_at",
+          "outcome",
+          "reason"
+        ],
+        "type": [
+          "object",
+          "null"
+        ]
+      },
       "Hazard": {
         "properties": {
           "controls": {
@@ -1712,6 +1839,27 @@
           "subject",
           "kind",
           "status"
+        ],
+        "type": "object"
+      },
+      "ResolveFeedRefusal": {
+        "description": "Close a refused feed message. The reason (1 to 500 characters) is required; a refusal already closed is a 409.",
+        "properties": {
+          "outcome": {
+            "description": "handled: the cause was fixed or the content entered another way. dismissed: it needs nothing done.",
+            "enum": [
+              "handled",
+              "dismissed"
+            ]
+          },
+          "reason": {
+            "maxLength": 500,
+            "type": "string"
+          }
+        },
+        "required": [
+          "outcome",
+          "reason"
         ],
         "type": "object"
       },
@@ -2874,6 +3022,16 @@
       "get": {
         "operationId": "getApiFeedRefusals",
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedRefusalList"
+                }
+              }
+            },
+            "description": "OK."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -2915,6 +3073,16 @@
       "get": {
         "operationId": "getApiFeedRefusalsCount",
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedRefusalCount"
+                }
+              }
+            },
+            "description": "OK."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -2966,6 +3134,16 @@
           }
         ],
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedRefusal"
+                }
+              }
+            },
+            "description": "OK."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -3016,7 +3194,27 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveFeedRefusal"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedRefusal"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -3036,6 +3234,26 @@
               }
             },
             "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "A likely duplicate or a stale expected_version."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
           },
           "default": {
             "description": "Bodies are not described in this document; see spec/09-api-surface.md."
