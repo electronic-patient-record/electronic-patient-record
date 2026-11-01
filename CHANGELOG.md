@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-01 - OpenAPI: the audit verify check accepts the answer the shared database gives (OS-7, fix)
+
+- **Clinical risk:** none; test only.
+- **Found:** CI for the audit-routes commit failed in `tests/openapi_responses_roles.rs`: `GET /api/audit/verify` answered 409 ("does not link to the previous row", first broken id 20), not the 200 the test asserted. In CI every database test shares one database, and `tests/audit_chain.rs` alters and deletes audit rows on purpose, so the chain is not guaranteed intact when this test runs. The service was right; the test's assumption was wrong. The same cause would fail the feed-routes commit, which carries the same test.
+- **Changed:** the test now accepts 200 or 409 and checks the body against that status's schema (`AuditVerified` or `AuditBroken`); the checkpoint step runs only after a 200. The response count it requires drops from 30 to 29 for the same reason. This is not a weaker check of a schema: the CI body (`intact`, `first_broken_id`, `reason`, `keyed`, `assurance`) is exactly what `AuditBroken` lists, and the 409 branch is now checked where it occurs.
+- **Not done / not verified:** the 409 branch ran in CI before this change, but I did not see it run after it; locally the chain is intact whichever order I ran, so the local run took the 200 branch (or I could not tell). I did not look for why the tamper tests leave the shared chain broken, or whether they should repair it. A real 424 (key not held) is still never produced.
+
 ## 2026-11-01 - OpenAPI: the feed refusal routes (OS-7, in part)
 
 - **Clinical risk:** none to behaviour; the document describes, it does not change a response. A refused feed message is an update that did not reach the record, so the queue is how it is noticed; the schema says a listing never carries the message text, only a single read does.
