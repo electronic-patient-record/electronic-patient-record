@@ -102,6 +102,32 @@
         ],
         "type": "object"
       },
+      "AllergyStatement": {
+        "properties": {
+          "author": {
+            "type": "string"
+          },
+          "no_known_allergies": {
+            "description": "false when the statement was withdrawn.",
+            "type": "boolean"
+          },
+          "recorded_at": {
+            "description": "UTC.",
+            "type": "string"
+          },
+          "version": {
+            "description": "1 for the first statement.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "author",
+          "recorded_at",
+          "no_known_allergies"
+        ],
+        "type": "object"
+      },
       "AmendmentList": {
         "properties": {
           "amendments": {
@@ -375,6 +401,30 @@
         },
         "required": [
           "allergy"
+        ],
+        "type": "object"
+      },
+      "CreateAllergyStatement": {
+        "description": "State, or withdraw, \"no known allergies\". Refused with 422 if an active allergy exists, or if there is no statement to withdraw.",
+        "properties": {
+          "expected_version": {
+            "description": "The statement version last seen; 0 for none.",
+            "type": "integer"
+          },
+          "none_known": {
+            "description": "true states it; false withdraws an earlier statement.",
+            "type": "boolean"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "none_known",
+          "expected_version"
         ],
         "type": "object"
       },
@@ -2780,7 +2830,27 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAllergyStatement"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AllergyStatement"
+                }
+              }
+            },
+            "description": "The stored patient."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -2800,6 +2870,26 @@
               }
             },
             "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionConflict"
+                }
+              }
+            },
+            "description": "A likely duplicate or a stale expected_version."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
           },
           "default": {
             "description": "Bodies are not described in this document; see spec/09-api-surface.md."

@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-01 - OpenAPI: the allergy-statement route (OS-7, in part)
+
+- **Clinical risk:** none to behaviour; the document describes, it does not change a response. The statement "no known allergies" drives the allergy banner, so the schema records that it is refused while an allergy is active.
+- **Built:** `CreateAllergyStatement` and `AllergyStatement`; the 200, 409 (stale `expected_version`) and 422 responses of `PUT /api/patients/{id}/allergy-statement`. A unit test checks the response keys against `Assertion` and the request's required keys and parsing against `StatementRequest`. `tests/openapi_responses.rs` sends a real 422 (active allergy), a real 200 and a real stale 409 and validates the 200 and 409 against the served schemas (at least 29 responses now).
+- **Not done / not verified:** the withdraw step (`none_known: false`) succeeding was not sent; the 422 body was not validated; the `statement` field inside `AllergyList` is still described only as an object or null. Login was off, so the clinician-only gating was not exercised. Gates: fmt, census (5), openapi unit tests (14) and the real-response test pass locally; clippy and the full suite are run before the push.
+
 ## 2026-11-01 - OpenAPI: the amendment routes (OS-7, in part)
 
 - **Clinical risk:** none to behaviour; the document describes, it does not change a response. Amendments are how a patient asks for the clinical record to be corrected, so the schema states who may take which step (deciding steps need the clinician role; withdraw and disagree need the patient role).

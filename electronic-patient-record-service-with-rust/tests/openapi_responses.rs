@@ -267,6 +267,55 @@ async fn real_responses_validate_against_the_served_schemas() {
             &mut problems,
         );
 
+        // Allergy statement: refused while an allergy is active, so make a patient with none.
+        let blocked = server
+            .put(&format!("/api/patients/{id}/allergy-statement"))
+            .json(&json!({ "none_known": true, "expected_version": 0 }))
+            .await;
+        assert_eq!(blocked.status_code(), StatusCode::UNPROCESSABLE_ENTITY);
+        let ended = server
+            .put(&format!(
+                "/api/patients/{id}/allergies/{}",
+                made["id"].as_str().unwrap()
+            ))
+            .json(
+                &json!({ "allergy": {"substance": "penicillin", "status": "inactive"},
+                "expected_version": 2 }),
+            )
+            .await;
+        assert_eq!(ended.status_code(), StatusCode::OK, "{}", ended.text());
+        let stated = server
+            .put(&format!("/api/patients/{id}/allergy-statement"))
+            .json(&json!({ "none_known": true, "expected_version": 0, "reason": "r" }))
+            .await;
+        assert_eq!(stated.status_code(), StatusCode::OK, "{}", stated.text());
+        expect(
+            "allergy statement",
+            "/api/patients/{id}/allergy-statement",
+            "put",
+            StatusCode::OK,
+            &stated.json(),
+            &mut problems,
+        );
+        let stale = server
+            .put(&format!("/api/patients/{id}/allergy-statement"))
+            .json(&json!({ "none_known": false, "expected_version": 0 }))
+            .await;
+        assert_eq!(
+            stale.status_code(),
+            StatusCode::CONFLICT,
+            "{}",
+            stale.text()
+        );
+        expect(
+            "allergy statement stale",
+            "/api/patients/{id}/allergy-statement",
+            "put",
+            StatusCode::CONFLICT,
+            &stale.json(),
+            &mut problems,
+        );
+
         // Observation: create (with a value, and without one), list, versions, update.
         let value_obs = json!({ "code": "8867-4", "value": 72.0, "unit": "/min",
             "range": {"low": 60.0, "high": 100.0}, "critical": {"low": 40.0},
@@ -540,7 +589,7 @@ async fn real_responses_validate_against_the_served_schemas() {
             &mut problems,
         );
 
-        assert!(checked >= 27, "only {checked} responses were checked");
+        assert!(checked >= 29, "only {checked} responses were checked");
         assert!(
             problems.is_empty(),
             "responses that do not match their schema:\n{}",

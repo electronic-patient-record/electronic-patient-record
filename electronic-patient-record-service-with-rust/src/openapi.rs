@@ -221,6 +221,24 @@ fn allergy_schemas() -> Value {
                 "reason": {"type": ["string", "null"]}
             }
         },
+        "CreateAllergyStatement": {
+            "type": "object", "required": ["none_known", "expected_version"],
+            "description": "State, or withdraw, \"no known allergies\". Refused with 422 if an active allergy exists, or if there is no statement to withdraw.",
+            "properties": {
+                "none_known": {"type": "boolean", "description": "true states it; false withdraws an earlier statement."},
+                "expected_version": {"type": "integer", "description": "The statement version last seen; 0 for none."},
+                "reason": {"type": ["string", "null"]}
+            }
+        },
+        "AllergyStatement": {
+            "type": "object", "required": ["version", "author", "recorded_at", "no_known_allergies"],
+            "properties": {
+                "version": {"type": "integer", "description": "1 for the first statement."},
+                "author": {"type": "string"},
+                "recorded_at": {"type": "string", "description": "UTC."},
+                "no_known_allergies": {"type": "boolean", "description": "false when the statement was withdrawn."}
+            }
+        },
         "AllergyList": {
             "type": "object", "required": ["allergies", "statement", "summary", "amendment_notices"],
             "description": "Every allergy in every status, the no-known-allergies statement, the banner summary and amendment notices by allergy id. The statement, summary and notices are described only as objects.",
@@ -492,6 +510,14 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
         "UpdateAllergy",
         "200",
         "StoredAllergy",
+        "VersionConflict",
+    ),
+    (
+        "PUT",
+        "/api/patients/{id}/allergy-statement",
+        "CreateAllergyStatement",
+        "200",
+        "AllergyStatement",
         "VersionConflict",
     ),
     (
@@ -1097,6 +1123,39 @@ mod tests {
         assert!(
             serde_json::from_value::<crate::controllers::allergies::UpdateRequest>(
                 serde_json::json!({"allergy": bare})
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn the_allergy_statement_schemas_match_the_types() {
+        use crate::allergies::Assertion;
+        let value = serde_json::to_value(Assertion {
+            version: 1,
+            author: "a".into(),
+            recorded_at: "t".into(),
+            no_known_allergies: true,
+        })
+        .unwrap();
+        assert_eq!(keys(&value), properties("AllergyStatement"));
+        let schema = patient_schemas();
+        let request = &schema["CreateAllergyStatement"];
+        let mut required: Vec<_> = request["required"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap().to_string())
+            .collect();
+        required.sort();
+        assert_eq!(required, ["expected_version", "none_known"]);
+        let parsed: crate::controllers::allergies::StatementRequest =
+            serde_json::from_value(serde_json::json!({"none_known": true, "expected_version": 0}))
+                .unwrap();
+        assert!(parsed.none_known && parsed.reason.is_none());
+        assert!(
+            serde_json::from_value::<crate::controllers::allergies::StatementRequest>(
+                serde_json::json!({"none_known": true})
             )
             .is_err()
         );
