@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-01 - OpenAPI: the response test also calls every PUT and each stale PUT (OS-7)
+
+- **Clinical risk:** none; test only.
+- **Built:** `tests/openapi_responses.rs` now also updates a fresh observation, consent and relationship (200) and repeats the update with the old `expected_version` (409), and sends a stale allergy update, validating each real response against the served schema. At least 23 responses are checked. All pass against Postgres 18, so the `VersionConflict` and stored-record schemas hold for every described PUT.
+- **Not done / not verified:** the 422 and 404 bodies are still not requested; the validator is the same small one (no `allOf`, `oneOf`, formats or length limits). CI runs this test with the other database-gated tests (`cargo test --workspace -- --ignored`); that was read in `ci.yml`, not yet seen passing on GitHub for this commit.
+
 ## 2026-11-01 - OpenAPI: real responses are checked against the schemas, and three slices are corrected (OS-7)
 
 - **Clinical risk:** none to behaviour; the document describes, it does not change a response. It was wrong in places an integrator would have relied on, which is the reason for this entry.

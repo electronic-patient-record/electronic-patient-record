@@ -385,7 +385,98 @@ async fn real_responses_validate_against_the_served_schemas() {
             &mut problems,
         );
 
-        assert!(checked >= 15, "only {checked} responses were checked");
+        // Updates and stale updates: every PUT the document describes, on fresh records.
+        let puts: [(&str, &str, &str, Value); 3] = [
+            (
+                "observation",
+                "observations",
+                "/api/patients/{id}/observations/{observation_id}",
+                json!({ "observation": { "code": "8867-4", "value": 70.0, "unit": "/min",
+                    "effective_at": "2026-10-26T10:00:00Z", "status": "final" } }),
+            ),
+            (
+                "consent",
+                "consents",
+                "/api/patients/{id}/consents/{consent_id}",
+                json!({ "consent": { "kind": "general", "status": "active",
+                    "provisions": [{ "effect": "permit" }] } }),
+            ),
+            (
+                "relationship",
+                "relationships",
+                "/api/patients/{id}/relationships/{relationship_id}",
+                json!({ "relationship": { "subject": "0c4f1e2a-0000-4000-8000-0000000000c2",
+                    "kind": "care-team", "status": "active" } }),
+            ),
+        ];
+        for (name, plural, template, body) in puts {
+            let made = server
+                .post(&format!("/api/patients/{id}/{plural}"))
+                .json(&body)
+                .await;
+            assert_eq!(
+                made.status_code(),
+                StatusCode::CREATED,
+                "{name}: {}",
+                made.text()
+            );
+            let made: Value = made.json();
+            let url = format!(
+                "/api/patients/{id}/{plural}/{}",
+                made["id"].as_str().unwrap()
+            );
+            let mut change = body.clone();
+            change["expected_version"] = json!(1);
+            change["reason"] = json!("check");
+            let ok = server.put(&url).json(&change).await;
+            assert_eq!(ok.status_code(), StatusCode::OK, "{name}: {}", ok.text());
+            expect(
+                &format!("{name} update"),
+                template,
+                "put",
+                StatusCode::OK,
+                &ok.json(),
+                &mut problems,
+            );
+            let stale = server.put(&url).json(&change).await;
+            assert_eq!(
+                stale.status_code(),
+                StatusCode::CONFLICT,
+                "{name}: {}",
+                stale.text()
+            );
+            expect(
+                &format!("{name} stale update"),
+                template,
+                "put",
+                StatusCode::CONFLICT,
+                &stale.json(),
+                &mut problems,
+            );
+        }
+        let stale = server
+            .put(&format!(
+                "/api/patients/{id}/allergies/{}",
+                made["id"].as_str().unwrap()
+            ))
+            .json(&json!({ "allergy": allergy, "expected_version": 1 }))
+            .await;
+        assert_eq!(
+            stale.status_code(),
+            StatusCode::CONFLICT,
+            "{}",
+            stale.text()
+        );
+        expect(
+            "allergy stale update",
+            "/api/patients/{id}/allergies/{allergy_id}",
+            "put",
+            StatusCode::CONFLICT,
+            &stale.json(),
+            &mut problems,
+        );
+
+        assert!(checked >= 23, "only {checked} responses were checked");
         assert!(
             problems.is_empty(),
             "responses that do not match their schema:\n{}",
