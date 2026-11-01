@@ -28,6 +28,29 @@
         ],
         "type": "object"
       },
+      "DuplicateConflict": {
+        "description": "409 on create: likely duplicates. A candidate the caller may not see is {\"restricted\": true}.",
+        "properties": {
+          "candidates": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "candidates_cut": {
+            "type": "boolean"
+          },
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "candidates",
+          "candidates_cut"
+        ],
+        "type": "object"
+      },
       "Error": {
         "additionalProperties": true,
         "description": "api_error.rs: fixed wording; extra fields such as current_version or break_glass_offer may follow.",
@@ -221,6 +244,22 @@
         "required": [
           "patient",
           "expected_version"
+        ],
+        "type": "object"
+      },
+      "VersionConflict": {
+        "description": "409 on update: expected_version is not the current one.",
+        "properties": {
+          "current_version": {
+            "type": "integer"
+          },
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "current_version"
         ],
         "type": "object"
       }
@@ -1078,6 +1117,26 @@
             },
             "description": "The policy engine refused the request; the refusal is audited."
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DuplicateConflict"
+                }
+              }
+            },
+            "description": "A likely duplicate (create) or a stale expected_version (update)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
+          },
           "default": {
             "description": "Bodies are not described in this document; see spec/09-api-surface.md."
           }
@@ -1238,6 +1297,26 @@
               }
             },
             "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionConflict"
+                }
+              }
+            },
+            "description": "A likely duplicate (create) or a stale expected_version (update)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
           },
           "default": {
             "description": "Bodies are not described in this document; see spec/09-api-surface.md."

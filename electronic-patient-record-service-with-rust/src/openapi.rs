@@ -131,6 +131,20 @@ fn patient_schemas() -> Value {
                 "drill": {"type": "boolean"}
             }
         },
+        "DuplicateConflict": {
+            "type": "object", "required": ["error", "candidates", "candidates_cut"],
+            "description": "409 on create: likely duplicates. A candidate the caller may not see is {\"restricted\": true}.",
+            "properties": {
+                "error": {"type": "string"},
+                "candidates": {"type": "array", "items": {"type": "object"}},
+                "candidates_cut": {"type": "boolean"}
+            }
+        },
+        "VersionConflict": {
+            "type": "object", "required": ["error", "current_version"],
+            "description": "409 on update: expected_version is not the current one.",
+            "properties": {"error": {"type": "string"}, "current_version": {"type": "integer"}}
+        },
         "UpdatePatient": {
             "type": "object", "required": ["patient", "expected_version"],
             "properties": {
@@ -142,16 +156,24 @@ fn patient_schemas() -> Value {
     })
 }
 
-/// `(method, path, request schema, success status, success schema)` for the routes whose bodies
-/// are described.
-const BODIES: &[(&str, &str, &str, &str, &str)] = &[
-    ("POST", "/api/patients", "CreatePatient", "201", "Stored"),
+/// `(method, path, request schema, success status, success schema, 409 schema)` for the routes
+/// whose bodies are described. Each also answers 422 with `ErrorList`.
+const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
+    (
+        "POST",
+        "/api/patients",
+        "CreatePatient",
+        "201",
+        "Stored",
+        "DuplicateConflict",
+    ),
     (
         "PUT",
         "/api/patients/{id}",
         "UpdatePatient",
         "200",
         "Stored",
+        "VersionConflict",
     ),
 ];
 
@@ -229,13 +251,23 @@ pub fn document_for(served: &[(String, String)]) -> Value {
                 op.insert("x-epr-action".into(), json!(format!("{:?}", req.action)));
             }
         }
-        if let Some((_, _, request, status, success)) =
+        if let Some((_, _, request, status, success, conflict)) =
             BODIES.iter().find(|(m, p, ..)| m == method && p == path)
         {
             op.insert(
                 "requestBody".into(),
                 json!({"required": true, "content": {"application/json": {
                     "schema": {"$ref": format!("#/components/schemas/{request}")}}}}),
+            );
+            responses.insert(
+                "409".into(),
+                json!({"description": "A likely duplicate (create) or a stale expected_version (update).",
+                       "content": {"application/json": {"schema": {"$ref": format!("#/components/schemas/{conflict}")}}}}),
+            );
+            responses.insert(
+                "422".into(),
+                json!({"description": "The record was refused, one line per reason.",
+                       "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorList"}}}}),
             );
             responses.insert(
                 (*status).into(),
@@ -460,5 +492,25 @@ mod tests {
                 .map(String::from)
                 .into()
         );
+    }
+
+    #[test]
+    fn the_conflict_schemas_match_what_the_service_sends() {
+        let version =
+            ApiError::from(&crate::patients_store::StoreError::Conflict { current: 3 }).body();
+        let schema = patient_schemas();
+        for key in schema["VersionConflict"]["required"].as_array().unwrap() {
+            assert!(version.get(key.as_str().unwrap()).is_some(), "lacks {key}");
+        }
+        let duplicate = ApiError::conflict("possible duplicate")
+            .with("candidates", serde_json::json!([]))
+            .with("candidates_cut", false)
+            .body();
+        for key in schema["DuplicateConflict"]["required"].as_array().unwrap() {
+            assert!(
+                duplicate.get(key.as_str().unwrap()).is_some(),
+                "lacks {key}"
+            );
+        }
     }
 }

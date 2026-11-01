@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-01 - OpenAPI: the 409 and 422 responses of patient create and update (OS-7, in part)
+
+- **Clinical risk:** none; the document describes, it does not change a response.
+- **Built:** `DuplicateConflict` (create: `error`, `candidates`, `candidates_cut`) and `VersionConflict` (update: `error`, `current_version`) schemas, and a 409 and a 422 (`ErrorList`) on `POST /api/patients` and `PUT /api/patients/{id}`. One unit test: the version conflict is the real `ApiError` built from `StoreError::Conflict`; `openapi.json` re-blessed.
+- **Not done / not verified:** the duplicate body in the test is built by hand to mirror `controllers/patients.rs`, not taken from the handler, so it would not catch a change there; the HTTP database test `http_patients` already exercises the real 409 but does not compare it to the schema. A candidate is described only as an object. Gates: fmt, clippy `-D warnings`, openapi census (5), unit tests (5).
+
 ## 2026-11-01 - OpenAPI: request and success schemas for patient create and update (OS-7, in part)
 
 - **Clinical risk:** none; the document describes, it does not change a response.
