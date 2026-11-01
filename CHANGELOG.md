@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-01 - OpenAPI: the break-glass routes (OS-7, in part)
+
+- **Clinical risk:** none to behaviour; the document describes, it does not change a response. Break glass lets a clinician read a record they have no relationship with, and the review is the control on it, so the schema states that the reason and the note are required, that asking again does not extend a grant, and that a grant can be reviewed once.
+- **Built:** `OpenBreakGlass`, `ReviewBreakGlass`, `BreakGlassGrant`, `BreakGlassReview` (null until reviewed), `BreakGlassList`, `BreakGlassCount`; `POST /api/patients/{id}/break-glass` (201, 200, 422), `GET /api/break-glass/reviews`, `GET /api/break-glass/reviews/count`, `POST /api/break-glass/reviews/{id}` (200, 409, 422). A unit test compares the keys with the serialised `Grant` (an unreviewed one has a null `review`), checks the outcome words against serde and the request types. `tests/openapi_responses_roles.rs` validates eight more real responses (16 in all): a blank reason, an open, a repeat open, the list, the count, a blank review note, a review, a second review.
+- **Not done / not verified:** the 409 body is the plain `Error` (no `current_version`), as the handler sends it. The grant's `overdue` true case and a grant on an unknown patient (404) were not requested. The checker does not support `oneOf`, so `review` is described as a nullable object. The time limit of a grant is not in the schema. The list is capped at `limit`; paging beyond it was not tested.
+
 ## 2026-11-01 - OpenAPI: the hazard register, and the first role-gated test (OS-7, in part)
 
 - **Clinical risk:** none to behaviour; the document describes, it does not change a response. The hazard register is the safety case's own record, and only the Clinical Safety Officer retires a hazard; the schema says so and the test shows a clinician's retirement refused. No hazard was set to `accepted` or `closed`; the test's hazards live only in its throwaway database.

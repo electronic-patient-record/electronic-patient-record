@@ -267,6 +267,119 @@
         ],
         "type": "object"
       },
+      "BreakGlassCount": {
+        "properties": {
+          "overdue": {
+            "type": "integer"
+          },
+          "unreviewed": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "unreviewed",
+          "overdue"
+        ],
+        "type": "object"
+      },
+      "BreakGlassGrant": {
+        "properties": {
+          "expires_at": {
+            "description": "UTC.",
+            "type": "string"
+          },
+          "granted_at": {
+            "description": "UTC.",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "overdue": {
+            "description": "Unreviewed for longer than the review window; never true once reviewed.",
+            "type": "boolean"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "review": {
+            "$ref": "#/components/schemas/BreakGlassReview"
+          },
+          "subject": {
+            "description": "The token subject who opened it.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "patient_id",
+          "subject",
+          "reason",
+          "granted_at",
+          "expires_at",
+          "review",
+          "overdue"
+        ],
+        "type": "object"
+      },
+      "BreakGlassList": {
+        "description": "Unreviewed grants, oldest first, up to `limit`.",
+        "properties": {
+          "grants": {
+            "items": {
+              "$ref": "#/components/schemas/BreakGlassGrant"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "site_time_zone": {
+            "description": "How the site reads times, for the review screen.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "grants",
+          "limit",
+          "site_time_zone"
+        ],
+        "type": "object"
+      },
+      "BreakGlassReview": {
+        "description": "Null until someone reviews the grant.",
+        "properties": {
+          "note": {
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "appropriate",
+              "inappropriate"
+            ]
+          },
+          "reviewed_at": {
+            "description": "UTC.",
+            "type": "string"
+          },
+          "reviewed_by": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reviewed_by",
+          "reviewed_at",
+          "outcome",
+          "note"
+        ],
+        "type": [
+          "object",
+          "null"
+        ]
+      },
       "ConsentList": {
         "properties": {
           "consents": {
@@ -957,6 +1070,18 @@
         ],
         "type": "object"
       },
+      "OpenBreakGlass": {
+        "description": "Declare an emergency to read a record without a relationship. The reason is required; a blank one is refused (422). Asking again while a grant is open answers 200 with the same grant and does not extend it.",
+        "properties": {
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "type": "object"
+      },
       "OperationOutcome": {
         "additionalProperties": true,
         "properties": {
@@ -1332,6 +1457,25 @@
           "subject",
           "kind",
           "status"
+        ],
+        "type": "object"
+      },
+      "ReviewBreakGlass": {
+        "description": "Someone else's verdict on a grant. The note is required. A grant already reviewed is a 409.",
+        "properties": {
+          "note": {
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "appropriate",
+              "inappropriate"
+            ]
+          }
+        },
+        "required": [
+          "outcome",
+          "note"
         ],
         "type": "object"
       },
@@ -1974,6 +2118,16 @@
       "get": {
         "operationId": "getApiBreak-glassReviews",
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BreakGlassList"
+                }
+              }
+            },
+            "description": "OK."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -2015,6 +2169,16 @@
       "get": {
         "operationId": "getApiBreak-glassReviewsCount",
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BreakGlassCount"
+                }
+              }
+            },
+            "description": "OK."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -2065,7 +2229,27 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewBreakGlass"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BreakGlassGrant"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -2085,6 +2269,26 @@
               }
             },
             "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "A likely duplicate or a stale expected_version."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
           },
           "default": {
             "description": "Bodies are not described in this document; see spec/09-api-surface.md."
@@ -3568,7 +3772,37 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenBreakGlass"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BreakGlassGrant"
+                }
+              }
+            },
+            "description": "A grant is already open; it is returned and not extended."
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BreakGlassGrant"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -3588,6 +3822,16 @@
               }
             },
             "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
           },
           "default": {
             "description": "Bodies are not described in this document; see spec/09-api-surface.md."

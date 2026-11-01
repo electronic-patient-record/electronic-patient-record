@@ -526,6 +526,61 @@ fn hazard_schemas() -> Value {
     })
 }
 
+fn break_glass_schemas() -> Value {
+    json!({
+        "OpenBreakGlass": {
+            "type": "object", "required": ["reason"],
+            "description": "Declare an emergency to read a record without a relationship. The reason is required; a blank one is refused (422). Asking again while a grant is open answers 200 with the same grant and does not extend it.",
+            "properties": {"reason": {"type": "string"}}
+        },
+        "ReviewBreakGlass": {
+            "type": "object", "required": ["outcome", "note"],
+            "description": "Someone else's verdict on a grant. The note is required. A grant already reviewed is a 409.",
+            "properties": {
+                "outcome": {"enum": ["appropriate", "inappropriate"]},
+                "note": {"type": "string"}
+            }
+        },
+        "BreakGlassReview": {
+            "type": ["object", "null"], "description": "Null until someone reviews the grant.",
+            "required": ["reviewed_by", "reviewed_at", "outcome", "note"],
+            "properties": {
+                "reviewed_by": {"type": "string"},
+                "reviewed_at": {"type": "string", "description": "UTC."},
+                "outcome": {"enum": ["appropriate", "inappropriate"]},
+                "note": {"type": "string"}
+            }
+        },
+        "BreakGlassGrant": {
+            "type": "object",
+            "required": ["id", "patient_id", "subject", "reason", "granted_at", "expires_at", "review", "overdue"],
+            "properties": {
+                "id": {"type": "string"},
+                "patient_id": {"type": "string"},
+                "subject": {"type": "string", "description": "The token subject who opened it."},
+                "reason": {"type": "string"},
+                "granted_at": {"type": "string", "description": "UTC."},
+                "expires_at": {"type": "string", "description": "UTC."},
+                "review": {"$ref": "#/components/schemas/BreakGlassReview"},
+                "overdue": {"type": "boolean", "description": "Unreviewed for longer than the review window; never true once reviewed."}
+            }
+        },
+        "BreakGlassList": {
+            "type": "object", "required": ["grants", "limit", "site_time_zone"],
+            "description": "Unreviewed grants, oldest first, up to `limit`.",
+            "properties": {
+                "grants": {"type": "array", "items": {"$ref": "#/components/schemas/BreakGlassGrant"}},
+                "limit": {"type": "integer"},
+                "site_time_zone": {"type": "string", "description": "How the site reads times, for the review screen."}
+            }
+        },
+        "BreakGlassCount": {
+            "type": "object", "required": ["unreviewed", "overdue"],
+            "properties": {"unreviewed": {"type": "integer"}, "overdue": {"type": "integer"}}
+        }
+    })
+}
+
 fn link_schemas() -> Value {
     json!({
         "LinkRequest": {
@@ -562,6 +617,7 @@ fn link_schemas() -> Value {
 fn patient_schemas() -> Value {
     let mut all = Map::new();
     for part in [
+        break_glass_schemas(),
         hazard_schemas(),
         link_schemas(),
         amendment_schemas(),
@@ -679,6 +735,22 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
     ),
     (
         "POST",
+        "/api/patients/{id}/break-glass",
+        "OpenBreakGlass",
+        "201",
+        "BreakGlassGrant",
+        "",
+    ),
+    (
+        "POST",
+        "/api/break-glass/reviews/{id}",
+        "ReviewBreakGlass",
+        "200",
+        "BreakGlassGrant",
+        "Error",
+    ),
+    (
+        "POST",
         "/api/hazards",
         "CreateHazard",
         "201",
@@ -735,6 +807,13 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
     ("GET", "/api/patients/{id}/amendments", "AmendmentList", &[]),
     ("GET", "/api/patients/{id}/links", "PatientLinkList", &[]),
     ("GET", "/api/hazards", "HazardList", &[]),
+    ("GET", "/api/break-glass/reviews", "BreakGlassList", &[]),
+    (
+        "GET",
+        "/api/break-glass/reviews/count",
+        "BreakGlassCount",
+        &[],
+    ),
     (
         "GET",
         "/api/patients/{id}/relationships",
@@ -954,6 +1033,14 @@ pub fn document_for(served: &[(String, String)]) -> Value {
             }
         }
         photo_operation(method, path, &mut op, &mut responses);
+        // Asking again for a grant that is open answers 200 with the same grant.
+        if path == "/api/patients/{id}/break-glass" && method == "POST" {
+            responses.insert(
+                "200".into(),
+                json!({"description": "A grant is already open; it is returned and not extended.",
+                       "content": {"application/json": {"schema": {"$ref": "#/components/schemas/BreakGlassGrant"}}}}),
+            );
+        }
         op.insert("responses".into(), Value::Object(responses));
         paths
             .entry(path.clone())
@@ -1704,6 +1791,58 @@ mod tests {
         for (_, _, success, _) in READS {
             assert!(schemas.contains_key(*success), "{success} is not defined");
         }
+    }
+
+    #[test]
+    fn the_break_glass_schemas_match_the_types() {
+        use crate::break_glass::{Grant, Outcome, Review};
+        let review = Review {
+            reviewed_by: "a".into(),
+            reviewed_at: "t".into(),
+            outcome: "appropriate".into(),
+            note: "n".into(),
+        };
+        let grant = |review| Grant {
+            id: "i".into(),
+            patient_id: "p".into(),
+            subject: "s".into(),
+            reason: "r".into(),
+            granted_at: "t".into(),
+            expires_at: "t".into(),
+            expires_unix: 0,
+            review,
+            overdue: false,
+        };
+        let open = serde_json::to_value(grant(None)).unwrap();
+        assert_eq!(keys(&open), properties("BreakGlassGrant"));
+        assert!(
+            open["review"].is_null(),
+            "an unreviewed grant has a null review"
+        );
+        let reviewed = serde_json::to_value(grant(Some(review))).unwrap();
+        assert_eq!(keys(&reviewed["review"]), properties("BreakGlassReview"));
+        let schema = patient_schemas();
+        assert_eq!(
+            schema["ReviewBreakGlass"]["properties"]["outcome"]["enum"]
+                .as_array()
+                .unwrap()
+                .clone(),
+            [Outcome::Appropriate, Outcome::Inappropriate]
+                .map(|o| serde_json::to_value(o).unwrap())
+                .to_vec()
+        );
+        assert!(
+            serde_json::from_value::<crate::controllers::break_glass::ReviewRequest>(
+                serde_json::json!({"outcome": "appropriate", "note": "n"})
+            )
+            .is_ok()
+        );
+        assert!(
+            serde_json::from_value::<crate::controllers::break_glass::OpenRequest>(
+                serde_json::json!({})
+            )
+            .is_err()
+        );
     }
 
     #[test]
