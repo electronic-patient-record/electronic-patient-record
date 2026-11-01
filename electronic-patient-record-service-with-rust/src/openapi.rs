@@ -92,7 +92,7 @@ fn error_ref(path: &str) -> (&'static str, Value) {
 
 /// The patient identity schemas, matching the matcher's `Patient`, `patients_store::Stored` and the
 /// request types in `controllers/patients.rs`.
-fn patient_schemas() -> Value {
+fn identity_schemas() -> Value {
     let pair = json!({"type": "object", "required": ["system", "value"],
         "properties": {"system": {"type": "string"}, "value": {"type": "string"}}});
     json!({
@@ -131,6 +131,14 @@ fn patient_schemas() -> Value {
                 "drill": {"type": "boolean"}
             }
         },
+        "UpdatePatient": {
+            "type": "object", "required": ["patient", "expected_version"],
+            "properties": {
+                "patient": {"$ref": "#/components/schemas/Patient"},
+                "expected_version": {"type": "integer", "description": "Any other current version is a 409."},
+                "reason": {"type": ["string", "null"]}
+            }
+        },
         "PatientView": {
             "type": "object",
             "required": ["id", "version", "author", "patient", "replaces", "site_time_zone"],
@@ -154,6 +162,25 @@ fn patient_schemas() -> Value {
                 "limit": {"type": "integer", "description": "The most results returned."}
             }
         },
+        "DuplicateConflict": {
+            "type": "object", "required": ["error", "candidates", "candidates_cut"],
+            "description": "409 on create: likely duplicates. A candidate the caller may not see is {\"restricted\": true}.",
+            "properties": {
+                "error": {"type": "string"},
+                "candidates": {"type": "array", "items": {"type": "object"}},
+                "candidates_cut": {"type": "boolean"}
+            }
+        },
+        "VersionConflict": {
+            "type": "object", "required": ["error", "current_version"],
+            "description": "409 on update: expected_version is not the current one.",
+            "properties": {"error": {"type": "string"}, "current_version": {"type": "integer"}}
+        }
+    })
+}
+
+fn allergy_schemas() -> Value {
+    json!({
         "AllergyRecord": {
             "type": "object", "required": ["substance", "status"],
             "description": "One allergy as recorded. An absent optional field means not stated; criticality is never defaulted to low.",
@@ -203,7 +230,12 @@ fn patient_schemas() -> Value {
                 "summary": {"type": "object", "required": ["state"], "properties": {"state": {"type": "string"}}},
                 "amendment_notices": {"type": "object"}
             }
-        },
+        }
+    })
+}
+
+fn observation_schemas() -> Value {
+    json!({
         "ObservationRecord": {
             "type": "object", "required": ["code", "effective_at", "status"],
             "description": "A vital sign. A value needs a unit; no value needs an absent_reason; absence is never zero.",
@@ -261,30 +293,102 @@ fn patient_schemas() -> Value {
             "description": "Oldest first. Each item is a StoredObservation with a reason beside it.",
             "properties": {"versions": {"type": "array", "items": {"type": "object", "required": ["reason"],
                 "properties": {"reason": {"type": ["string", "null"]}}}}}
-        },
-        "DuplicateConflict": {
-            "type": "object", "required": ["error", "candidates", "candidates_cut"],
-            "description": "409 on create: likely duplicates. A candidate the caller may not see is {\"restricted\": true}.",
-            "properties": {
-                "error": {"type": "string"},
-                "candidates": {"type": "array", "items": {"type": "object"}},
-                "candidates_cut": {"type": "boolean"}
-            }
-        },
-        "VersionConflict": {
-            "type": "object", "required": ["error", "current_version"],
-            "description": "409 on update: expected_version is not the current one.",
-            "properties": {"error": {"type": "string"}, "current_version": {"type": "integer"}}
-        },
-        "UpdatePatient": {
-            "type": "object", "required": ["patient", "expected_version"],
-            "properties": {
-                "patient": {"$ref": "#/components/schemas/Patient"},
-                "expected_version": {"type": "integer", "description": "Any other current version is a 409."},
-                "reason": {"type": ["string", "null"]}
-            }
         }
     })
+}
+
+fn consent_schemas() -> Value {
+    json!({
+        "ConsentRecord": {
+            "type": "object", "required": ["status"],
+            "description": "Provisions are required for a general consent and none for a national-data-opt-out. The opt-out is held by this service only; no national check is built.",
+            "properties": {
+                "kind": {"enum": ["general", "national-data-opt-out"]},
+                "status": {"enum": ["active", "inactive", "entered-in-error"]},
+                "provisions": {"type": "array", "items": {"type": "object", "required": ["effect"], "properties": {
+                    "effect": {"enum": ["permit", "deny"]},
+                    "actors": {"type": "array", "items": {"type": "string"}}, "purposes": {"type": "array", "items": {"type": "string"}}, "resources": {"type": "array", "items": {"type": "string"}}, "labels": {"type": "array", "items": {"type": "string"}},
+                    "period": {"type": ["object", "null"], "properties": {"start": {"type": ["string", "null"]}, "end": {"type": ["string", "null"]}}, "description": "YYYY-MM-DD (UTC), both ends optional and inclusive."}}, "description": "An empty list means any."}},
+                "period": {"type": ["object", "null"], "properties": {"start": {"type": ["string", "null"]}, "end": {"type": ["string", "null"]}}, "description": "YYYY-MM-DD (UTC), both ends optional and inclusive."}
+            }
+        },
+        "StoredConsent": {
+            "type": "object", "required": ["id", "patient_id", "version", "author", "consent"],
+            "properties": {
+                "id": {"type": "string"}, "patient_id": {"type": "string"},
+                "version": {"type": "integer"}, "author": {"type": "string"},
+                "consent": {"$ref": "#/components/schemas/ConsentRecord"}
+            }
+        },
+        "CreateConsent": {
+            "type": "object", "required": ["consent"],
+            "properties": {"consent": {"$ref": "#/components/schemas/ConsentRecord"}, "reason": {"type": ["string", "null"]}}
+        },
+        "UpdateConsent": {
+            "type": "object", "required": ["consent", "expected_version"],
+            "properties": {"consent": {"$ref": "#/components/schemas/ConsentRecord"},
+                "expected_version": {"type": "integer"}, "reason": {"type": ["string", "null"]}}
+        },
+        "ConsentList": {
+            "type": "object", "required": ["consents"],
+            "properties": {"consents": {"type": "array", "items": {"$ref": "#/components/schemas/StoredConsent"}}}
+        }
+    })
+}
+
+fn relationship_schemas() -> Value {
+    json!({
+        "RelationshipRecord": {
+            "type": "object", "required": ["subject", "kind", "status"],
+            "description": "Who may treat or act for a patient. proxy is required for kind proxy and refused for every other kind.",
+            "properties": {
+                "subject": {"type": "string", "description": "The token sub of the person."},
+                "kind": {"enum": ["care-team", "active-encounter", "self", "proxy"]},
+                "status": {"enum": ["active", "ended"]},
+                "period": {"type": ["object", "null"], "properties": {"start": {"type": ["string", "null"]}, "end": {"type": ["string", "null"]}}, "description": "YYYY-MM-DD (UTC), both ends optional and inclusive."},
+                "proxy": {"type": ["object", "null"], "required": ["basis", "scopes", "expires_at"], "properties": {
+                    "basis": {"enum": ["parental-responsibility", "power-of-attorney", "deputyship", "patient-request"]},
+                    "scopes": {"type": "array", "items": {"enum": ["identity", "allergies", "photo", "access-log"]}},
+                    "expires_at": {"type": "integer", "description": "Unix seconds."}}}
+            }
+        },
+        "StoredRelationship": {
+            "type": "object", "required": ["id", "patient_id", "version", "author", "relationship"],
+            "properties": {
+                "id": {"type": "string"}, "patient_id": {"type": "string"},
+                "version": {"type": "integer"}, "author": {"type": "string"},
+                "relationship": {"$ref": "#/components/schemas/RelationshipRecord"}
+            }
+        },
+        "CreateRelationship": {
+            "type": "object", "required": ["relationship"],
+            "properties": {"relationship": {"$ref": "#/components/schemas/RelationshipRecord"},
+                "reason": {"type": ["string", "null"], "description": "For self or proxy, how identity was checked."}}
+        },
+        "UpdateRelationship": {
+            "type": "object", "required": ["relationship", "expected_version"],
+            "properties": {"relationship": {"$ref": "#/components/schemas/RelationshipRecord"},
+                "expected_version": {"type": "integer"}, "reason": {"type": ["string", "null"]}}
+        },
+        "RelationshipList": {
+            "type": "object", "required": ["relationships"],
+            "properties": {"relationships": {"type": "array", "items": {"$ref": "#/components/schemas/StoredRelationship"}}}
+        }
+    })
+}
+
+fn patient_schemas() -> Value {
+    let mut all = Map::new();
+    for part in [
+        identity_schemas(),
+        allergy_schemas(),
+        observation_schemas(),
+        consent_schemas(),
+        relationship_schemas(),
+    ] {
+        all.extend(part.as_object().expect("an object").clone());
+    }
+    Value::Object(all)
 }
 
 /// `(method, path, request schema, success status, success schema, 409 schema)` for the routes
@@ -329,6 +433,13 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
 const READS: &[(&str, &str, &str, &[&str])] = &[
     ("GET", "/api/patients/{id}", "PatientView", &[]),
     ("GET", "/api/patients/{id}/allergies", "AllergyList", &[]),
+    ("GET", "/api/patients/{id}/consents", "ConsentList", &[]),
+    (
+        "GET",
+        "/api/patients/{id}/relationships",
+        "RelationshipList",
+        &[],
+    ),
     (
         "GET",
         "/api/patients/{id}/observations",
@@ -981,5 +1092,171 @@ mod tests {
         let mut expect = properties("StoredObservation");
         expect.insert("reason".into());
         assert_eq!(keys(version), expect);
+    }
+
+    fn nested(name: &str, field: &str) -> std::collections::BTreeSet<String> {
+        patient_schemas()[name]["properties"][field]["properties"]
+            .as_object()
+            .expect("nested properties")
+            .keys()
+            .cloned()
+            .collect()
+    }
+
+    fn enum_words(schema: &Value) -> Vec<Value> {
+        schema["enum"].as_array().expect("an enum").clone()
+    }
+
+    fn said<T: serde::Serialize>(all: &[T]) -> Vec<Value> {
+        all.iter()
+            .map(|v| serde_json::to_value(v).unwrap())
+            .collect()
+    }
+
+    #[test]
+    fn the_consent_schemas_match_the_types() {
+        use crate::consent::{ConsentRecord, Effect, Kind, Period, Provision, Status};
+        use crate::consents_store::StoredConsent;
+        let schema = patient_schemas();
+        let period = Period {
+            start: Some("2026-01-01".into()),
+            end: None,
+        };
+        let record = ConsentRecord {
+            kind: Kind::General,
+            status: Status::Active,
+            provisions: vec![Provision {
+                effect: Effect::Deny,
+                actors: vec![],
+                purposes: vec![],
+                resources: vec![],
+                labels: vec![],
+                period: Some(period.clone()),
+            }],
+            period: Some(period),
+        };
+        let value = serde_json::to_value(&record).unwrap();
+        assert_eq!(keys(&value), properties("ConsentRecord"));
+        let provision = &schema["ConsentRecord"]["properties"]["provisions"]["items"];
+        let provision_keys: std::collections::BTreeSet<String> = provision["properties"]
+            .as_object()
+            .unwrap()
+            .keys()
+            .cloned()
+            .collect();
+        assert_eq!(keys(&value["provisions"][0]), provision_keys);
+        let period_keys: std::collections::BTreeSet<String> = schema["ConsentRecord"]["properties"]
+            ["period"]["properties"]
+            .as_object()
+            .unwrap()
+            .keys()
+            .cloned()
+            .collect();
+        assert_eq!(keys(&value["period"]), period_keys);
+        let props = &schema["ConsentRecord"]["properties"];
+        assert_eq!(
+            enum_words(&props["kind"]),
+            said(&[Kind::General, Kind::NationalDataOptOut])
+        );
+        assert_eq!(
+            enum_words(&props["status"]),
+            said(&[Status::Active, Status::Inactive, Status::EnteredInError])
+        );
+        assert_eq!(
+            enum_words(&provision["properties"]["effect"]),
+            said(&[Effect::Permit, Effect::Deny])
+        );
+        let stored = serde_json::to_value(StoredConsent {
+            id: "i".into(),
+            patient_id: "p".into(),
+            version: 1,
+            author: "a".into(),
+            consent: record,
+        })
+        .unwrap();
+        assert_eq!(keys(&stored), properties("StoredConsent"));
+        let list = serde_json::json!({"consents": [stored]});
+        assert_eq!(keys(&list), properties("ConsentList"));
+        use crate::controllers::consents::{CreateRequest, UpdateRequest};
+        let body = serde_json::json!({"status": "active"});
+        assert!(
+            serde_json::from_value::<CreateRequest>(
+                serde_json::json!({"consent": body, "reason": "r"})
+            )
+            .is_ok()
+        );
+        assert!(
+            serde_json::from_value::<UpdateRequest>(serde_json::json!({"consent": body})).is_err()
+        );
+    }
+
+    #[test]
+    fn the_relationship_schemas_match_the_types() {
+        use crate::consent::Period;
+        use crate::proxy::{Basis, Scope, Terms};
+        use crate::relationships::{Kind, RelationshipRecord, Status, StoredRelationship};
+        let schema = patient_schemas();
+        let record = RelationshipRecord {
+            subject: "s".into(),
+            kind: Kind::Proxy,
+            status: Status::Active,
+            period: Some(Period {
+                start: None,
+                end: None,
+            }),
+            proxy: Some(Terms {
+                basis: Basis::PatientRequest,
+                scopes: [Scope::Identity].into(),
+                expires_at: 1,
+            }),
+        };
+        let value = serde_json::to_value(&record).unwrap();
+        assert_eq!(keys(&value), properties("RelationshipRecord"));
+        assert_eq!(keys(&value["proxy"]), nested("RelationshipRecord", "proxy"));
+        let props = &schema["RelationshipRecord"]["properties"];
+        assert_eq!(
+            enum_words(&props["kind"]),
+            said(&[
+                Kind::CareTeam,
+                Kind::ActiveEncounter,
+                Kind::SelfPatient,
+                Kind::Proxy
+            ])
+        );
+        assert_eq!(
+            enum_words(&props["status"]),
+            said(&[Status::Active, Status::Ended])
+        );
+        assert_eq!(
+            enum_words(&props["proxy"]["properties"]["basis"]),
+            said(&[
+                Basis::ParentalResponsibility,
+                Basis::PowerOfAttorney,
+                Basis::Deputyship,
+                Basis::PatientRequest
+            ])
+        );
+        assert_eq!(
+            enum_words(&props["proxy"]["properties"]["scopes"]["items"]),
+            said(&[
+                Scope::Identity,
+                Scope::Allergies,
+                Scope::Photo,
+                Scope::AccessLog
+            ])
+        );
+        let stored = serde_json::to_value(StoredRelationship {
+            id: "i".into(),
+            patient_id: "p".into(),
+            version: 1,
+            author: "a".into(),
+            relationship: record,
+        })
+        .unwrap();
+        assert_eq!(keys(&stored), properties("StoredRelationship"));
+        assert_eq!(
+            keys(&serde_json::json!({"relationships": [stored]})),
+            properties("RelationshipList")
+        );
     }
 }

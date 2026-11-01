@@ -101,6 +101,126 @@
         ],
         "type": "object"
       },
+      "ConsentList": {
+        "properties": {
+          "consents": {
+            "items": {
+              "$ref": "#/components/schemas/StoredConsent"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "consents"
+        ],
+        "type": "object"
+      },
+      "ConsentRecord": {
+        "description": "Provisions are required for a general consent and none for a national-data-opt-out. The opt-out is held by this service only; no national check is built.",
+        "properties": {
+          "kind": {
+            "enum": [
+              "general",
+              "national-data-opt-out"
+            ]
+          },
+          "period": {
+            "description": "YYYY-MM-DD (UTC), both ends optional and inclusive.",
+            "properties": {
+              "end": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "start": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "provisions": {
+            "items": {
+              "description": "An empty list means any.",
+              "properties": {
+                "actors": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "effect": {
+                  "enum": [
+                    "permit",
+                    "deny"
+                  ]
+                },
+                "labels": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "period": {
+                  "description": "YYYY-MM-DD (UTC), both ends optional and inclusive.",
+                  "properties": {
+                    "end": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "start": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "type": [
+                    "object",
+                    "null"
+                  ]
+                },
+                "purposes": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "resources": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "effect"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "inactive",
+              "entered-in-error"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "type": "object"
+      },
       "CreateAllergy": {
         "properties": {
           "allergy": {
@@ -115,6 +235,23 @@
         },
         "required": [
           "allergy"
+        ],
+        "type": "object"
+      },
+      "CreateConsent": {
+        "properties": {
+          "consent": {
+            "$ref": "#/components/schemas/ConsentRecord"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "consent"
         ],
         "type": "object"
       },
@@ -159,6 +296,24 @@
         },
         "required": [
           "patient"
+        ],
+        "type": "object"
+      },
+      "CreateRelationship": {
+        "properties": {
+          "reason": {
+            "description": "For self or proxy, how identity was checked.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "relationship": {
+            "$ref": "#/components/schemas/RelationshipRecord"
+          }
+        },
+        "required": [
+          "relationship"
         ],
         "type": "object"
       },
@@ -511,6 +666,106 @@
         ],
         "type": "object"
       },
+      "RelationshipList": {
+        "properties": {
+          "relationships": {
+            "items": {
+              "$ref": "#/components/schemas/StoredRelationship"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "relationships"
+        ],
+        "type": "object"
+      },
+      "RelationshipRecord": {
+        "description": "Who may treat or act for a patient. proxy is required for kind proxy and refused for every other kind.",
+        "properties": {
+          "kind": {
+            "enum": [
+              "care-team",
+              "active-encounter",
+              "self",
+              "proxy"
+            ]
+          },
+          "period": {
+            "description": "YYYY-MM-DD (UTC), both ends optional and inclusive.",
+            "properties": {
+              "end": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "start": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "proxy": {
+            "properties": {
+              "basis": {
+                "enum": [
+                  "parental-responsibility",
+                  "power-of-attorney",
+                  "deputyship",
+                  "patient-request"
+                ]
+              },
+              "expires_at": {
+                "description": "Unix seconds.",
+                "type": "integer"
+              },
+              "scopes": {
+                "items": {
+                  "enum": [
+                    "identity",
+                    "allergies",
+                    "photo",
+                    "access-log"
+                  ]
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "basis",
+              "scopes",
+              "expires_at"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "status": {
+            "enum": [
+              "active",
+              "ended"
+            ]
+          },
+          "subject": {
+            "description": "The token sub of the person.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject",
+          "kind",
+          "status"
+        ],
+        "type": "object"
+      },
       "Stored": {
         "properties": {
           "author": {
@@ -568,6 +823,33 @@
           "author",
           "recorded_at",
           "allergy"
+        ],
+        "type": "object"
+      },
+      "StoredConsent": {
+        "properties": {
+          "author": {
+            "type": "string"
+          },
+          "consent": {
+            "$ref": "#/components/schemas/ConsentRecord"
+          },
+          "id": {
+            "type": "string"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "patient_id",
+          "version",
+          "author",
+          "consent"
         ],
         "type": "object"
       },
@@ -668,6 +950,33 @@
         ],
         "type": "object"
       },
+      "StoredRelationship": {
+        "properties": {
+          "author": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "relationship": {
+            "$ref": "#/components/schemas/RelationshipRecord"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "patient_id",
+          "version",
+          "author",
+          "relationship"
+        ],
+        "type": "object"
+      },
       "UpdateAllergy": {
         "properties": {
           "allergy": {
@@ -685,6 +994,27 @@
         },
         "required": [
           "allergy",
+          "expected_version"
+        ],
+        "type": "object"
+      },
+      "UpdateConsent": {
+        "properties": {
+          "consent": {
+            "$ref": "#/components/schemas/ConsentRecord"
+          },
+          "expected_version": {
+            "type": "integer"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "consent",
           "expected_version"
         ],
         "type": "object"
@@ -728,6 +1058,27 @@
         },
         "required": [
           "patient",
+          "expected_version"
+        ],
+        "type": "object"
+      },
+      "UpdateRelationship": {
+        "properties": {
+          "expected_version": {
+            "type": "integer"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "relationship": {
+            "$ref": "#/components/schemas/RelationshipRecord"
+          }
+        },
+        "required": [
+          "relationship",
           "expected_version"
         ],
         "type": "object"
@@ -2388,6 +2739,16 @@
           }
         ],
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentList"
+                }
+              }
+            },
+            "description": "OK."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -3038,6 +3399,16 @@
           }
         ],
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelationshipList"
+                }
+              }
+            },
+            "description": "OK."
+          },
           "401": {
             "content": {
               "application/json": {

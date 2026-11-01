@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-01 - OpenAPI: the consent and relationship routes (OS-7, in part)
+
+- **Clinical risk:** none to behaviour; the document describes, it does not change a response. These two record types decide who may see a record, so a wrong schema would mislead an integrator; the tests below are the guard.
+- **Built:** `ConsentRecord` (kind, status, provisions, period), `RelationshipRecord` (with the proxy terms: basis, scopes, expiry), and for each the stored, create, update and list forms; the 200/201, 409 (update only) and 422 responses of `GET`, `POST` and `PUT` on `/api/patients/{id}/consents` and `/relationships`. Two unit tests: property names equal the serialised keys with every optional field set, including provisions, periods and proxy terms; every enum word (consent kind, status and effect; relationship kind, status, basis and scope) equals what serde writes, variant by variant; the required request keys are enforced by the real request types. `patient_schemas` was split into five functions, because one `json!` call hit the macro recursion limit; the committed document gained 371 lines and lost none. `openapi.json`, spec 09 and `tasks.md` updated.
+- **Not done / not verified:** a provision's `actors`, `purposes`, `resources` and `labels` are arrays of strings; their allowed words (roles, purposes, resource names, label codes) are not listed in the schema or tested. The consent and relationship validation rules (a general consent needs provisions; the proxy terms rules) are in the prose only. No 409 documented for create. The relationship schemas were not compared with a real response. Gates: fmt, clippy `-D warnings`, openapi census (5), unit tests (11).
+
 ## 2026-11-01 - OpenAPI: the observation list, create, update and versions (OS-7, in part)
 
 - **Clinical risk:** none to behaviour; the document describes, it does not change a response. The schema says a value needs a unit, no value needs an `absent_reason`, and absence is never zero.
