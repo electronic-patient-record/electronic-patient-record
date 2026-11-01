@@ -204,6 +204,64 @@ fn patient_schemas() -> Value {
                 "amendment_notices": {"type": "object"}
             }
         },
+        "ObservationRecord": {
+            "type": "object", "required": ["code", "effective_at", "status"],
+            "description": "A vital sign. A value needs a unit; no value needs an absent_reason; absence is never zero.",
+            "properties": {
+                "code": {"type": "string", "description": "LOINC."},
+                "value": {"type": "number"},
+                "unit": {"type": "string", "description": "UCUM; required with a value."},
+                "absent_reason": {"enum": ["not-done", "declined", "failed", "unknown"]},
+                "range": {"type": "object", "properties": {"low": {"type": "number"}, "high": {"type": "number"}}, "description": "Either end may be absent (unbounded); inclusive."}, "critical": {"type": "object", "properties": {"low": {"type": "number"}, "high": {"type": "number"}}, "description": "Either end may be absent (unbounded); inclusive."},
+                "effective_at": {"type": "string", "description": "RFC 3339; stored and returned in UTC."},
+                "status": {"enum": ["final", "entered-in-error"]}
+            }
+        },
+        "StoredObservation": {
+            "type": "object",
+            "required": ["id", "patient_id", "version", "author", "recorded_at", "site_zone", "code", "effective_at", "status", "flag"],
+            "description": "The ObservationRecord fields sit beside these, not under a key.",
+            "properties": {
+                "id": {"type": "string"}, "patient_id": {"type": "string"},
+                "version": {"type": "integer"}, "author": {"type": "string"},
+                "recorded_at": {"type": "string"}, "site_zone": {"type": "string"},
+                "flag": {"enum": ["critical-low", "low", "normal", "high", "critical-high", null],
+                         "description": "Computed now; null when it cannot be said."},
+                "code": {"type": "string"}, "value": {"type": "number"}, "unit": {"type": "string"},
+                "absent_reason": {"enum": ["not-done", "declined", "failed", "unknown"]},
+                "range": {"type": "object", "properties": {"low": {"type": "number"}, "high": {"type": "number"}}, "description": "Either end may be absent (unbounded); inclusive."}, "critical": {"type": "object", "properties": {"low": {"type": "number"}, "high": {"type": "number"}}, "description": "Either end may be absent (unbounded); inclusive."},
+                "effective_at": {"type": "string"},
+                "status": {"enum": ["final", "entered-in-error"]}
+            }
+        },
+        "CreateObservation": {
+            "type": "object", "required": ["observation"],
+            "properties": {
+                "observation": {"$ref": "#/components/schemas/ObservationRecord"},
+                "reason": {"type": ["string", "null"]}
+            }
+        },
+        "UpdateObservation": {
+            "type": "object", "required": ["observation", "expected_version"],
+            "properties": {
+                "observation": {"$ref": "#/components/schemas/ObservationRecord"},
+                "expected_version": {"type": "integer"},
+                "reason": {"type": ["string", "null"]}
+            }
+        },
+        "ObservationList": {
+            "type": "object", "required": ["observations", "amendment_notices"],
+            "properties": {
+                "observations": {"type": "array", "items": {"$ref": "#/components/schemas/StoredObservation"}},
+                "amendment_notices": {"type": "object", "description": "By observation id; described only as an object."}
+            }
+        },
+        "ObservationVersions": {
+            "type": "object", "required": ["versions"],
+            "description": "Oldest first. Each item is a StoredObservation with a reason beside it.",
+            "properties": {"versions": {"type": "array", "items": {"type": "object", "required": ["reason"],
+                "properties": {"reason": {"type": ["string", "null"]}}}}}
+        },
         "DuplicateConflict": {
             "type": "object", "required": ["error", "candidates", "candidates_cut"],
             "description": "409 on create: likely duplicates. A candidate the caller may not see is {\"restricted\": true}.",
@@ -271,6 +329,18 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
 const READS: &[(&str, &str, &str, &[&str])] = &[
     ("GET", "/api/patients/{id}", "PatientView", &[]),
     ("GET", "/api/patients/{id}/allergies", "AllergyList", &[]),
+    (
+        "GET",
+        "/api/patients/{id}/observations",
+        "ObservationList",
+        &[],
+    ),
+    (
+        "GET",
+        "/api/patients/{id}/observations/{observation_id}/versions",
+        "ObservationVersions",
+        &[],
+    ),
     (
         "GET",
         "/api/patients",
@@ -803,5 +873,113 @@ mod tests {
         assert_eq!(keys(&list), properties("AllergyList"));
         assert_eq!(list["summary"]["state"], "active");
         assert!(list["statement"].is_null());
+    }
+
+    #[test]
+    fn the_observation_schemas_match_the_types() {
+        use crate::controllers::observations::{ObservationList, VersionList};
+        use crate::observations::{AbsentReason, Flag, Range};
+        use crate::observations_store::{
+            ObservationRecord, ObservationVersion, Status, StoredObservation,
+        };
+        let schema = patient_schemas();
+        let record = ObservationRecord {
+            code: "8867-4".into(),
+            value: Some(1.0),
+            unit: Some("/min".into()),
+            absent_reason: Some(AbsentReason::NotDone),
+            range: Some(Range {
+                low: Some(1.0),
+                high: Some(2.0),
+            }),
+            critical: Some(Range {
+                low: Some(0.0),
+                high: Some(3.0),
+            }),
+            effective_at: "2026-01-01T00:00:00Z".into(),
+            status: Status::EnteredInError,
+        };
+        let value = serde_json::to_value(&record).unwrap();
+        assert_eq!(keys(&value), properties("ObservationRecord"));
+        let range_props: std::collections::BTreeSet<String> =
+            schema["ObservationRecord"]["properties"]["range"]["properties"]
+                .as_object()
+                .unwrap()
+                .keys()
+                .cloned()
+                .collect();
+        assert_eq!(keys(&value["range"]), range_props);
+        let words = |schema_name: &str, field: &str| -> Vec<Value> {
+            schema[schema_name]["properties"][field]["enum"]
+                .as_array()
+                .unwrap()
+                .clone()
+        };
+        let said = |v: Vec<Value>| v;
+        assert_eq!(
+            words("ObservationRecord", "absent_reason"),
+            said(
+                [
+                    AbsentReason::NotDone,
+                    AbsentReason::Declined,
+                    AbsentReason::Failed,
+                    AbsentReason::Unknown
+                ]
+                .map(|r| serde_json::to_value(r).unwrap())
+                .to_vec()
+            )
+        );
+        assert_eq!(
+            words("ObservationRecord", "status"),
+            said(
+                [Status::Final, Status::EnteredInError]
+                    .map(|r| serde_json::to_value(r).unwrap())
+                    .to_vec()
+            )
+        );
+        let mut flags: Vec<Value> = [
+            Flag::CriticalLow,
+            Flag::Low,
+            Flag::Normal,
+            Flag::High,
+            Flag::CriticalHigh,
+        ]
+        .map(|f| serde_json::to_value(f).unwrap())
+        .to_vec();
+        flags.push(Value::Null);
+        assert_eq!(words("StoredObservation", "flag"), flags);
+
+        let stored = StoredObservation {
+            id: "i".into(),
+            patient_id: "p".into(),
+            version: 1,
+            author: "a".into(),
+            recorded_at: "t".into(),
+            site_zone: "UTC".into(),
+            record,
+            flag: Some(Flag::Normal),
+        };
+        let flat = serde_json::to_value(&stored).unwrap();
+        assert_eq!(keys(&flat), properties("StoredObservation"));
+        let list = serde_json::to_value(ObservationList {
+            observations: vec![stored.clone()],
+            amendment_notices: std::collections::BTreeMap::new(),
+        })
+        .unwrap();
+        assert_eq!(keys(&list), properties("ObservationList"));
+        let versions = serde_json::to_value(VersionList {
+            versions: vec![ObservationVersion {
+                reason: None,
+                stored,
+            }],
+        })
+        .unwrap();
+        assert_eq!(keys(&versions), properties("ObservationVersions"));
+        let version = &versions["versions"][0];
+        assert!(version.get("reason").is_some());
+        // The version item is a StoredObservation plus `reason`.
+        let mut expect = properties("StoredObservation");
+        expect.insert("reason".into());
+        assert_eq!(keys(version), expect);
     }
 }

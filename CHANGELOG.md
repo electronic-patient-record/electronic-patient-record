@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-01 - OpenAPI: the observation list, create, update and versions (OS-7, in part)
+
+- **Clinical risk:** none to behaviour; the document describes, it does not change a response. The schema says a value needs a unit, no value needs an `absent_reason`, and absence is never zero.
+- **Built:** `ObservationRecord`, `StoredObservation` (the record's fields sit beside the stored ones, as the flattened type serialises), `CreateObservation`, `UpdateObservation`, `ObservationList` and `ObservationVersions`; the 200/201, 409 (update only) and 422 responses of the four observation routes. One unit test: property names equal the serialised keys with every optional field set, including the flattened stored form and the version item (stored plus `reason`); the `absent_reason`, `status` and `flag` words equal what serde writes, variant by variant. `openapi.json`, spec 09 and `tasks.md` updated.
+- **Not done / not verified:** `amendment_notices` is only an object, and a version item is described as an object with `reason` (the rest is in the prose, and the test checks it, but a client generator would not see it). The "value needs a unit" rule and the supported-code table (`observations::SUPPORTED`) are not in the schema. No 409 documented for create (none read in the handler). No real HTTP response was compared. Gates: fmt, clippy `-D warnings`, openapi census (5), unit tests (9).
+
 ## 2026-11-01 - OpenAPI: the allergy list, create and update (OS-7, in part)
 
 - **Clinical risk:** none to behaviour; the document describes, it does not change a response. It states in the schema that an absent `criticality` means not stated.

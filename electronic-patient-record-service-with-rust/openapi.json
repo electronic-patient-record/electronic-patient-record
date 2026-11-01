@@ -118,6 +118,23 @@
         ],
         "type": "object"
       },
+      "CreateObservation": {
+        "properties": {
+          "observation": {
+            "$ref": "#/components/schemas/ObservationRecord"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "observation"
+        ],
+        "type": "object"
+      },
       "CreatePatient": {
         "properties": {
           "drill": {
@@ -194,6 +211,115 @@
         },
         "required": [
           "errors"
+        ],
+        "type": "object"
+      },
+      "ObservationList": {
+        "properties": {
+          "amendment_notices": {
+            "description": "By observation id; described only as an object.",
+            "type": "object"
+          },
+          "observations": {
+            "items": {
+              "$ref": "#/components/schemas/StoredObservation"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "observations",
+          "amendment_notices"
+        ],
+        "type": "object"
+      },
+      "ObservationRecord": {
+        "description": "A vital sign. A value needs a unit; no value needs an absent_reason; absence is never zero.",
+        "properties": {
+          "absent_reason": {
+            "enum": [
+              "not-done",
+              "declined",
+              "failed",
+              "unknown"
+            ]
+          },
+          "code": {
+            "description": "LOINC.",
+            "type": "string"
+          },
+          "critical": {
+            "description": "Either end may be absent (unbounded); inclusive.",
+            "properties": {
+              "high": {
+                "type": "number"
+              },
+              "low": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "effective_at": {
+            "description": "RFC 3339; stored and returned in UTC.",
+            "type": "string"
+          },
+          "range": {
+            "description": "Either end may be absent (unbounded); inclusive.",
+            "properties": {
+              "high": {
+                "type": "number"
+              },
+              "low": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "status": {
+            "enum": [
+              "final",
+              "entered-in-error"
+            ]
+          },
+          "unit": {
+            "description": "UCUM; required with a value.",
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "code",
+          "effective_at",
+          "status"
+        ],
+        "type": "object"
+      },
+      "ObservationVersions": {
+        "description": "Oldest first. Each item is a StoredObservation with a reason beside it.",
+        "properties": {
+          "versions": {
+            "items": {
+              "properties": {
+                "reason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "reason"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "versions"
         ],
         "type": "object"
       },
@@ -445,6 +571,103 @@
         ],
         "type": "object"
       },
+      "StoredObservation": {
+        "description": "The ObservationRecord fields sit beside these, not under a key.",
+        "properties": {
+          "absent_reason": {
+            "enum": [
+              "not-done",
+              "declined",
+              "failed",
+              "unknown"
+            ]
+          },
+          "author": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "critical": {
+            "description": "Either end may be absent (unbounded); inclusive.",
+            "properties": {
+              "high": {
+                "type": "number"
+              },
+              "low": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "effective_at": {
+            "type": "string"
+          },
+          "flag": {
+            "description": "Computed now; null when it cannot be said.",
+            "enum": [
+              "critical-low",
+              "low",
+              "normal",
+              "high",
+              "critical-high",
+              null
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "range": {
+            "description": "Either end may be absent (unbounded); inclusive.",
+            "properties": {
+              "high": {
+                "type": "number"
+              },
+              "low": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "recorded_at": {
+            "type": "string"
+          },
+          "site_zone": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "final",
+              "entered-in-error"
+            ]
+          },
+          "unit": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "patient_id",
+          "version",
+          "author",
+          "recorded_at",
+          "site_zone",
+          "code",
+          "effective_at",
+          "status",
+          "flag"
+        ],
+        "type": "object"
+      },
       "UpdateAllergy": {
         "properties": {
           "allergy": {
@@ -462,6 +685,27 @@
         },
         "required": [
           "allergy",
+          "expected_version"
+        ],
+        "type": "object"
+      },
+      "UpdateObservation": {
+        "properties": {
+          "expected_version": {
+            "type": "integer"
+          },
+          "observation": {
+            "$ref": "#/components/schemas/ObservationRecord"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "observation",
           "expected_version"
         ],
         "type": "object"
@@ -2405,6 +2649,16 @@
           }
         ],
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObservationList"
+                }
+              }
+            },
+            "description": "OK."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -2572,6 +2826,16 @@
           }
         ],
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObservationVersions"
+                }
+              }
+            },
+            "description": "OK."
+          },
           "401": {
             "content": {
               "application/json": {
