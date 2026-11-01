@@ -7,9 +7,12 @@
 //! missing from the document is therefore not possible, and `tests/openapi_census.rs` fails when
 //! the committed copy differs from what this module produces.
 //!
-//! **What it does not describe:** request and response bodies. No schema is stated, so a client
-//! cannot be generated from it. It is an inventory of the surface with its authentication and
-//! authorization requirements, not a contract. FHIR resource shapes are in `/fhir/R4/metadata`.
+//! **What it describes of bodies:** only the error bodies, which `api_error.rs` builds in one place
+//! (`components.schemas.Error`, `ErrorList` and `OperationOutcome`, referenced by the 401 and 403
+//! responses; a unit test checks real `ApiError` bodies against the required keys). **What it does
+//! not describe:** any request body or success response, so a client cannot be generated from it.
+//! It is an inventory of the surface with its authentication and authorization requirements, not
+//! a contract. FHIR resource shapes are in `/fhir/R4/metadata`.
 
 use crate::{auth, controllers, policy::Resource, routes};
 use axum::{Json, response::Response};
@@ -70,6 +73,47 @@ fn resource_name(resource: Resource) -> String {
     format!("{resource:?}")
 }
 
+/// The media type and schema of an error body on `path`: an `OperationOutcome` under `/fhir`.
+fn error_ref(path: &str) -> (&'static str, Value) {
+    if path.starts_with("/fhir/") {
+        (
+            "application/fhir+json",
+            json!({"$ref": "#/components/schemas/OperationOutcome"}),
+        )
+    } else {
+        (
+            "application/json",
+            json!({"$ref": "#/components/schemas/Error"}),
+        )
+    }
+}
+
+/// The error schemas, matching `api_error.rs`.
+fn error_schemas() -> Value {
+    json!({
+        "Error": {
+            "type": "object", "required": ["error"],
+            "properties": {"error": {"type": "string"}},
+            "additionalProperties": true,
+            "description": "api_error.rs: fixed wording; extra fields such as current_version or break_glass_offer may follow."
+        },
+        "ErrorList": {
+            "type": "object", "required": ["errors"],
+            "properties": {"errors": {"type": "array", "items": {"type": "string"}}},
+            "additionalProperties": true,
+            "description": "422: the record was refused, one line per reason."
+        },
+        "OperationOutcome": {
+            "type": "object", "required": ["resourceType", "issue"],
+            "properties": {
+                "resourceType": {"const": "OperationOutcome"},
+                "issue": {"type": "array", "items": {"type": "object"}}
+            },
+            "additionalProperties": true
+        }
+    })
+}
+
 /// The document for the given routes. Pure, so a test can plant a route and see it appear.
 #[must_use]
 pub fn document_for(served: &[(String, String)]) -> Value {
@@ -94,10 +138,15 @@ pub fn document_for(served: &[(String, String)]) -> Value {
             op.insert("x-epr-public".into(), json!(true));
         } else {
             op.insert("security".into(), json!([{"bearerAuth": []}]));
-            responses.insert("401".into(), json!({"description": "No valid token."}));
+            let error = error_ref(path);
+            responses.insert(
+                "401".into(),
+                json!({"description": "No valid token.", "content": {error.0: {"schema": error.1.clone()}}}),
+            );
             responses.insert(
                 "403".into(),
-                json!({"description": "The policy engine refused the request; the refusal is audited."}),
+                json!({"description": "The policy engine refused the request; the refusal is audited.",
+                       "content": {error.0: {"schema": error.1}}}),
             );
             let m = axum::http::Method::from_bytes(method.as_bytes());
             if let Some((_, req)) = m.ok().and_then(|m| routes::lookup(&m, path)) {
@@ -118,12 +167,13 @@ pub fn document_for(served: &[(String, String)]) -> Value {
         "info": {
             "title": "Electronic Patient Record service",
             "version": env!("CARGO_PKG_VERSION"),
-            "description": "NOT FOR CLINICAL USE. An inventory of the served routes with their authentication and policy requirements, derived from the code. Request and response bodies are not described. The API is versioned by the Accepts-version header; no path carries a version segment.",
+            "description": "NOT FOR CLINICAL USE. An inventory of the served routes with their authentication and policy requirements, derived from the code. Only error bodies are described; request bodies and success responses are not. The API is versioned by the Accepts-version header; no path carries a version segment.",
             "x-epr-derived-from": ["controllers::all_routes", "routes::TABLE"]
         },
         "paths": paths,
         "components": {
-            "securitySchemes": {"bearerAuth": {"type": "http", "scheme": "bearer"}}
+            "securitySchemes": {"bearerAuth": {"type": "http", "scheme": "bearer"}},
+            "schemas": error_schemas()
         }
     })
 }
@@ -150,4 +200,56 @@ async fn serve() -> Response {
 #[must_use]
 pub fn routes() -> Routes {
     Routes::new().add("/api/openapi.json", get(serve))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::api_error::ApiError;
+
+    fn required(name: &str) -> Vec<String> {
+        error_schemas()[name]["required"]
+            .as_array()
+            .expect("required list")
+            .iter()
+            .map(|v| v.as_str().expect("key").to_string())
+            .collect()
+    }
+
+    #[test]
+    fn real_error_bodies_carry_the_keys_the_schemas_require() {
+        let plain = ApiError::forbidden().with("break_glass_offer", true).body();
+        for key in required("Error") {
+            assert!(plain.get(&key).is_some(), "Error body lacks {key}");
+        }
+        let list = ApiError::invalid(vec!["x".into()]).body();
+        for key in required("ErrorList") {
+            assert!(list.get(&key).is_some(), "ErrorList body lacks {key}");
+        }
+    }
+
+    #[test]
+    fn every_error_response_points_at_a_schema_that_exists() {
+        let doc = document();
+        let schemas = doc["components"]["schemas"].as_object().expect("schemas");
+        let mut seen = 0;
+        for (_, methods) in doc["paths"].as_object().expect("paths") {
+            for (_, op) in methods.as_object().expect("methods") {
+                for code in ["401", "403"] {
+                    let Some(r) = op["responses"].get(code) else {
+                        continue;
+                    };
+                    let reference = r["content"]
+                        .as_object()
+                        .and_then(|c| c.values().next())
+                        .and_then(|m| m["schema"]["$ref"].as_str())
+                        .expect("a $ref");
+                    let name = reference.rsplit('/').next().unwrap();
+                    assert!(schemas.contains_key(name), "{reference} is not defined");
+                    seen += 1;
+                }
+            }
+        }
+        assert!(seen > 0);
+    }
 }

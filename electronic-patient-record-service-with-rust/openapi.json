@@ -1,5 +1,55 @@
 {
   "components": {
+    "schemas": {
+      "Error": {
+        "additionalProperties": true,
+        "description": "api_error.rs: fixed wording; extra fields such as current_version or break_glass_offer may follow.",
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "type": "object"
+      },
+      "ErrorList": {
+        "additionalProperties": true,
+        "description": "422: the record was refused, one line per reason.",
+        "properties": {
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "errors"
+        ],
+        "type": "object"
+      },
+      "OperationOutcome": {
+        "additionalProperties": true,
+        "properties": {
+          "issue": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "resourceType": {
+            "const": "OperationOutcome"
+          }
+        },
+        "required": [
+          "resourceType",
+          "issue"
+        ],
+        "type": "object"
+      }
+    },
     "securitySchemes": {
       "bearerAuth": {
         "scheme": "bearer",
@@ -8,7 +58,7 @@
     }
   },
   "info": {
-    "description": "NOT FOR CLINICAL USE. An inventory of the served routes with their authentication and policy requirements, derived from the code. Request and response bodies are not described. The API is versioned by the Accepts-version header; no path carries a version segment.",
+    "description": "NOT FOR CLINICAL USE. An inventory of the served routes with their authentication and policy requirements, derived from the code. Only error bodies are described; request bodies and success responses are not. The API is versioned by the Accepts-version header; no path carries a version segment.",
     "title": "Electronic Patient Record service",
     "version": "0.1.0",
     "x-epr-derived-from": [
@@ -71,9 +121,23 @@
         "operationId": "getApiAudit",
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -98,9 +162,23 @@
         "operationId": "getApiAuditExport",
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -125,9 +203,23 @@
         "operationId": "getApiAuditVerify",
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -152,9 +244,23 @@
         "operationId": "getApiBreak-glassReviews",
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -179,9 +285,23 @@
         "operationId": "getApiBreak-glassReviewsCount",
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -216,9 +336,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -243,9 +377,23 @@
         "operationId": "getApiFeedRefusals",
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -270,9 +418,23 @@
         "operationId": "getApiFeedRefusalsCount",
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -307,9 +469,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -344,9 +520,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -371,9 +561,23 @@
         "operationId": "getApiHazards",
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -396,9 +600,23 @@
         "operationId": "postApiHazards",
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -433,9 +651,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -460,9 +692,23 @@
         "operationId": "getApiMePatients",
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -497,9 +743,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -524,9 +784,23 @@
         "operationId": "getApiOpenapi.json",
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -551,9 +825,23 @@
         "operationId": "getApiPatients",
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -576,9 +864,23 @@
         "operationId": "postApiPatients",
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -603,9 +905,23 @@
         "operationId": "postApiPatientsCompare",
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -640,9 +956,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -675,9 +1005,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -712,9 +1056,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -747,9 +1105,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -792,9 +1164,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -829,9 +1215,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -866,9 +1266,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -901,9 +1315,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -946,9 +1374,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -983,9 +1425,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -1020,9 +1476,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -1055,9 +1525,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -1100,9 +1584,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -1137,9 +1635,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -1174,9 +1686,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -1211,9 +1737,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -1246,9 +1786,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -1291,9 +1845,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -1336,9 +1904,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -1373,9 +1955,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -1408,9 +2004,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -1445,9 +2055,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -1482,9 +2106,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -1517,9 +2155,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -1562,9 +2214,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -1599,9 +2265,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -1626,9 +2306,23 @@
         "operationId": "getFhirR4AllergyIntolerance",
         "responses": {
           "401": {
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcome"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcome"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -1653,9 +2347,23 @@
         "operationId": "getFhirR4AuditEvent",
         "responses": {
           "401": {
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcome"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcome"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -1680,9 +2388,23 @@
         "operationId": "getFhirR4Observation",
         "responses": {
           "401": {
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcome"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcome"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -1707,9 +2429,23 @@
         "operationId": "getFhirR4Patient",
         "responses": {
           "401": {
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcome"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcome"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -1732,9 +2468,23 @@
         "operationId": "postFhirR4Patient",
         "responses": {
           "401": {
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcome"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcome"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -1769,9 +2519,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcome"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcome"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -1804,9 +2568,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcome"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcome"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -1831,9 +2609,23 @@
         "operationId": "getFhirR4Metadata",
         "responses": {
           "401": {
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcome"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcome"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -1858,9 +2650,23 @@
         "operationId": "getFhirR5AllergyIntolerance",
         "responses": {
           "401": {
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcome"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcome"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -1885,9 +2691,23 @@
         "operationId": "getFhirR5Observation",
         "responses": {
           "401": {
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcome"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcome"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -1912,9 +2732,23 @@
         "operationId": "getFhirR5Patient",
         "responses": {
           "401": {
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcome"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcome"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -1949,9 +2783,23 @@
         ],
         "responses": {
           "401": {
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcome"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcome"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {
@@ -1976,9 +2824,23 @@
         "operationId": "getFhirR5Metadata",
         "responses": {
           "401": {
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcome"
+                }
+              }
+            },
             "description": "No valid token."
           },
           "403": {
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcome"
+                }
+              }
+            },
             "description": "The policy engine refused the request; the refusal is audited."
           },
           "default": {

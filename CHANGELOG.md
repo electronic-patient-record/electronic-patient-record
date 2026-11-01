@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-01 - OpenAPI: the error bodies are described (OS-7, in part)
+
+- **Clinical risk:** none; the document describes, it does not change a response.
+- **Built:** `components.schemas` gains `Error`, `ErrorList` and `OperationOutcome`; every 401 and 403 references the one that fits its path (`/fhir/` gets the outcome). Two unit tests in `src/openapi.rs`: real `ApiError` bodies carry the keys the schemas require, and each reference resolves. `openapi.json`, `spec/09-api-surface.md` and `tasks.md` updated.
+- **Not done / not verified:** no request body or success response is described, so no client can be generated. The schemas are written by hand beside `api_error.rs`; the tests check required keys, not every field, and the 422 `ErrorList` is not referenced by any operation yet. A real 403 over HTTP was not compared to the schema. Gates: fmt, clippy `-D warnings`, the openapi census (5) and unit tests (2); the full suite was not re-run.
+
 ## 2026-10-31 - Audit: a test that a successful patient read leaves an audit row (OS-9, in part)
 
 - **Clinical risk:** none to behaviour; it adds a guard for H-042's neighbour, the claim that access is audited. No hazard row changed.
