@@ -1,0 +1,431 @@
+//! DB-gated, through the real router with login off (OS-7): real responses from the routes the
+//! OpenAPI document describes validate against the schemas that document serves.
+//!
+//! The validator is small and strict where it matters: an object must have its `required` keys and,
+//! unless the schema allows more, no key outside `properties`; an `enum` must contain the value;
+//! types are checked. It does not implement all of JSON Schema (no `allOf`, `oneOf`, formats or
+//! length limits), and it only sees what these requests produce: optional fields left out of a
+//! request are not exercised.
+//!
+//! ```text
+//! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
+//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//!   cargo test --test openapi_responses -- --ignored --test-threads=1
+//! ```
+
+use axum::http::StatusCode;
+use electronic_patient_record::app::App;
+use loco_rs::testing::prelude::request;
+use serde_json::{Value, json};
+
+fn letters(label: &str) -> String {
+    let mut n = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let mut s = String::new();
+    while n > 0 {
+        s.push((b'a' + (n % 26) as u8) as char);
+        n /= 26;
+    }
+    format!("{label}{s}")
+}
+
+fn resolve<'a>(doc: &'a Value, schema: &'a Value) -> &'a Value {
+    match schema["$ref"].as_str() {
+        Some(r) => {
+            let name = r
+                .strip_prefix("#/components/schemas/")
+                .expect("a local ref");
+            &doc["components"]["schemas"][name]
+        }
+        None => schema,
+    }
+}
+
+fn type_ok(kind: &str, value: &Value) -> bool {
+    match kind {
+        "object" => value.is_object(),
+        "array" => value.is_array(),
+        "string" => value.is_string(),
+        "integer" => value.is_i64() || value.is_u64(),
+        "number" => value.is_number(),
+        "boolean" => value.is_boolean(),
+        "null" => value.is_null(),
+        _ => false,
+    }
+}
+
+/// Problems found, each with the path to the value.
+fn check(doc: &Value, schema: &Value, value: &Value, at: &str, out: &mut Vec<String>) {
+    let schema = resolve(doc, schema);
+    if let Some(words) = schema["enum"].as_array()
+        && !words.contains(value)
+    {
+        out.push(format!("{at}: {value} is not one of {words:?}"));
+        return;
+    }
+    match &schema["type"] {
+        Value::String(k) if !type_ok(k, value) => {
+            out.push(format!("{at}: expected {k}, got {value}"));
+            return;
+        }
+        Value::Array(ks)
+            if !ks
+                .iter()
+                .filter_map(Value::as_str)
+                .any(|k| type_ok(k, value)) =>
+        {
+            out.push(format!("{at}: expected one of {ks:?}, got {value}"));
+            return;
+        }
+        _ => {}
+    }
+    if let (Some(object), Some(props)) = (value.as_object(), schema["properties"].as_object()) {
+        for key in schema["required"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+        {
+            if !object.contains_key(key) {
+                out.push(format!("{at}: lacks required {key}"));
+            }
+        }
+        for (key, inner) in object {
+            match props.get(key) {
+                Some(s) => check(doc, s, inner, &format!("{at}.{key}"), out),
+                None if schema["additionalProperties"] == json!(true) => {}
+                None => out.push(format!("{at}: {key} is not in the schema")),
+            }
+        }
+    }
+    if let (Some(items), Some(item_schema)) = (value.as_array(), schema.get("items")) {
+        for (i, item) in items.iter().enumerate() {
+            check(doc, item_schema, item, &format!("{at}[{i}]"), out);
+        }
+    }
+}
+
+/// The schema a document gives for `method path` at `status`.
+fn response_schema<'a>(doc: &'a Value, path: &str, method: &str, status: &str) -> &'a Value {
+    let content = &doc["paths"][path][method]["responses"][status]["content"]["application/json"];
+    assert!(
+        !content.is_null(),
+        "{method} {path} has no {status} body in the document"
+    );
+    &content["schema"]
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn real_responses_validate_against_the_served_schemas() {
+    // SAFETY: set before the app boots; the suite runs single-threaded.
+    unsafe { std::env::set_var("EPR_REQUIRE_AUTH", "false") };
+    request::<App, _, _>(|server, _ctx| async move {
+        let doc: Value = server.get("/api/openapi.json").await.json();
+        let mut problems: Vec<String> = Vec::new();
+        let mut checked = 0;
+        let mut expect = |label: &str,
+                          path: &str,
+                          method: &str,
+                          status: StatusCode,
+                          body: &Value,
+                          problems: &mut Vec<String>| {
+            let schema = response_schema(&doc, path, method, status.as_str());
+            let mut found = Vec::new();
+            check(&doc, schema, body, "$", &mut found);
+            checked += 1;
+            problems.extend(
+                found
+                    .into_iter()
+                    .map(|p| format!("{label} ({method} {path}): {p}")),
+            );
+        };
+
+        // Patient: create, read, search, update.
+        let family = letters("spec");
+        let created = server
+            .post("/api/patients")
+            .json(&json!({ "patient": {
+                "names": [{"family": family, "given": ["Sam"]}],
+                "birth_date": "1931-02-03", "sex": "other",
+                "identifiers": [{"system": "urn:test", "value": "1"}],
+                "addresses": [{"postal_code": "AB1 2CD"}],
+                "telecom": [{"system": "phone", "value": "0123"}]
+            }, "override_reason": "spec check" }))
+            .await;
+        assert_eq!(
+            created.status_code(),
+            StatusCode::CREATED,
+            "{}",
+            created.text()
+        );
+        let stored: Value = created.json();
+        expect(
+            "create",
+            "/api/patients",
+            "post",
+            StatusCode::CREATED,
+            &stored,
+            &mut problems,
+        );
+        let id = stored["id"].as_str().unwrap().to_string();
+
+        let read = server.get(&format!("/api/patients/{id}")).await;
+        assert_eq!(read.status_code(), StatusCode::OK);
+        expect(
+            "read",
+            "/api/patients/{id}",
+            "get",
+            StatusCode::OK,
+            &read.json(),
+            &mut problems,
+        );
+
+        let found = server.get(&format!("/api/patients?family={family}")).await;
+        assert_eq!(found.status_code(), StatusCode::OK, "{}", found.text());
+        expect(
+            "search",
+            "/api/patients",
+            "get",
+            StatusCode::OK,
+            &found.json(),
+            &mut problems,
+        );
+
+        let updated = server
+            .put(&format!("/api/patients/{id}"))
+            .json(&json!({ "patient": stored["patient"], "expected_version": 1, "reason": "r" }))
+            .await;
+        assert_eq!(updated.status_code(), StatusCode::OK, "{}", updated.text());
+        expect(
+            "update",
+            "/api/patients/{id}",
+            "put",
+            StatusCode::OK,
+            &updated.json(),
+            &mut problems,
+        );
+
+        let stale = server
+            .put(&format!("/api/patients/{id}"))
+            .json(&json!({ "patient": stored["patient"], "expected_version": 1 }))
+            .await;
+        assert_eq!(stale.status_code(), StatusCode::CONFLICT);
+        expect(
+            "stale update",
+            "/api/patients/{id}",
+            "put",
+            StatusCode::CONFLICT,
+            &stale.json(),
+            &mut problems,
+        );
+
+        // Allergy: create, list, update.
+        let allergy = json!({ "substance": "penicillin", "category": "medication",
+            "criticality": "high", "reaction": "rash", "onset": "2020", "status": "active" });
+        let made = server
+            .post(&format!("/api/patients/{id}/allergies"))
+            .json(&json!({ "allergy": allergy, "reason": "r" }))
+            .await;
+        assert_eq!(made.status_code(), StatusCode::CREATED, "{}", made.text());
+        let made: Value = made.json();
+        let p = "/api/patients/{id}/allergies";
+        expect(
+            "allergy create",
+            p,
+            "post",
+            StatusCode::CREATED,
+            &made,
+            &mut problems,
+        );
+        let list = server.get(&format!("/api/patients/{id}/allergies")).await;
+        assert_eq!(list.status_code(), StatusCode::OK);
+        expect(
+            "allergy list",
+            p,
+            "get",
+            StatusCode::OK,
+            &list.json(),
+            &mut problems,
+        );
+        let changed = server
+            .put(&format!(
+                "/api/patients/{id}/allergies/{}",
+                made["id"].as_str().unwrap()
+            ))
+            .json(&json!({ "allergy": allergy, "expected_version": 1 }))
+            .await;
+        assert_eq!(changed.status_code(), StatusCode::OK, "{}", changed.text());
+        expect(
+            "allergy update",
+            "/api/patients/{id}/allergies/{allergy_id}",
+            "put",
+            StatusCode::OK,
+            &changed.json(),
+            &mut problems,
+        );
+
+        // Observation: create (with a value, and without one), list, versions, update.
+        let value_obs = json!({ "code": "8867-4", "value": 72.0, "unit": "/min",
+            "range": {"low": 60.0, "high": 100.0}, "critical": {"low": 40.0},
+            "effective_at": "2026-10-26T09:30:00Z", "status": "final" });
+        let absent_obs = json!({ "code": "8867-4", "absent_reason": "declined",
+            "effective_at": "2026-10-26T09:31:00Z", "status": "final" });
+        let p = "/api/patients/{id}/observations";
+        let mut observation_id = String::new();
+        for obs in [value_obs.clone(), absent_obs] {
+            let r = server
+                .post(&format!("/api/patients/{id}/observations"))
+                .json(&json!({ "observation": obs }))
+                .await;
+            assert_eq!(r.status_code(), StatusCode::CREATED, "{}", r.text());
+            let body: Value = r.json();
+            observation_id = body["id"].as_str().unwrap().to_string();
+            expect(
+                "observation create",
+                p,
+                "post",
+                StatusCode::CREATED,
+                &body,
+                &mut problems,
+            );
+        }
+        let list = server
+            .get(&format!("/api/patients/{id}/observations"))
+            .await;
+        assert_eq!(list.status_code(), StatusCode::OK);
+        expect(
+            "observation list",
+            p,
+            "get",
+            StatusCode::OK,
+            &list.json(),
+            &mut problems,
+        );
+        let versions = server
+            .get(&format!(
+                "/api/patients/{id}/observations/{observation_id}/versions"
+            ))
+            .await;
+        assert_eq!(versions.status_code(), StatusCode::OK);
+        expect(
+            "observation versions",
+            "/api/patients/{id}/observations/{observation_id}/versions",
+            "get",
+            StatusCode::OK,
+            &versions.json(),
+            &mut problems,
+        );
+
+        // Consent and relationship: create, list.
+        let consent = server
+            .post(&format!("/api/patients/{id}/consents"))
+            .json(&json!({ "consent": { "kind": "general", "status": "active",
+                "provisions": [{ "effect": "deny", "purposes": ["research"] }],
+                "period": { "start": "2026-01-01" } }, "reason": "r" }))
+            .await;
+        assert_eq!(
+            consent.status_code(),
+            StatusCode::CREATED,
+            "{}",
+            consent.text()
+        );
+        expect(
+            "consent create",
+            "/api/patients/{id}/consents",
+            "post",
+            StatusCode::CREATED,
+            &consent.json(),
+            &mut problems,
+        );
+        let list = server.get(&format!("/api/patients/{id}/consents")).await;
+        assert_eq!(list.status_code(), StatusCode::OK);
+        expect(
+            "consent list",
+            "/api/patients/{id}/consents",
+            "get",
+            StatusCode::OK,
+            &list.json(),
+            &mut problems,
+        );
+
+        let relationship = server
+            .post(&format!("/api/patients/{id}/relationships"))
+            .json(
+                &json!({ "relationship": { "subject": "0c4f1e2a-0000-4000-8000-0000000000c1",
+                "kind": "care-team", "status": "active" } }),
+            )
+            .await;
+        assert_eq!(
+            relationship.status_code(),
+            StatusCode::CREATED,
+            "{}",
+            relationship.text()
+        );
+        expect(
+            "relationship create",
+            "/api/patients/{id}/relationships",
+            "post",
+            StatusCode::CREATED,
+            &relationship.json(),
+            &mut problems,
+        );
+        let list = server
+            .get(&format!("/api/patients/{id}/relationships"))
+            .await;
+        assert_eq!(list.status_code(), StatusCode::OK);
+        expect(
+            "relationship list",
+            "/api/patients/{id}/relationships",
+            "get",
+            StatusCode::OK,
+            &list.json(),
+            &mut problems,
+        );
+
+        assert!(checked >= 15, "only {checked} responses were checked");
+        assert!(
+            problems.is_empty(),
+            "responses that do not match their schema:\n{}",
+            problems.join("\n")
+        );
+    })
+    .await;
+}
+
+#[test]
+fn the_validator_finds_what_it_is_meant_to_find() {
+    let doc = json!({ "components": { "schemas": {
+        "T": { "type": "object", "required": ["a"],
+               "properties": { "a": { "enum": ["x", "y"] }, "n": { "type": ["integer", "null"] } } }
+    } } });
+    let schema = json!({ "$ref": "#/components/schemas/T" });
+    let run = |v: Value| {
+        let mut out = Vec::new();
+        check(&doc, &schema, &v, "$", &mut out);
+        out
+    };
+    assert!(run(json!({ "a": "x", "n": null })).is_empty());
+    assert!(
+        run(json!({ "n": 1 }))
+            .iter()
+            .any(|p| p.contains("lacks required a"))
+    );
+    assert!(
+        run(json!({ "a": "z" }))
+            .iter()
+            .any(|p| p.contains("not one of"))
+    );
+    assert!(
+        run(json!({ "a": "x", "extra": 1 }))
+            .iter()
+            .any(|p| p.contains("not in the schema"))
+    );
+    assert!(
+        run(json!({ "a": "x", "n": "s" }))
+            .iter()
+            .any(|p| p.contains("expected one of"))
+    );
+}

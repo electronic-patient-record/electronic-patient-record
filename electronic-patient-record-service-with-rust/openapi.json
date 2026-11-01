@@ -20,6 +20,7 @@
             ]
           },
           "summary": {
+            "additionalProperties": true,
             "properties": {
               "state": {
                 "type": "string"
@@ -452,23 +453,116 @@
         ],
         "type": "object"
       },
+      "ObservationVersion": {
+        "description": "A StoredObservation plus the reason this version was written.",
+        "properties": {
+          "absent_reason": {
+            "enum": [
+              "not-done",
+              "declined",
+              "failed",
+              "unknown"
+            ]
+          },
+          "author": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "critical": {
+            "description": "Either end may be absent (unbounded); inclusive.",
+            "properties": {
+              "high": {
+                "type": "number"
+              },
+              "low": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "effective_at": {
+            "type": "string"
+          },
+          "flag": {
+            "description": "Computed now; null when it cannot be said.",
+            "enum": [
+              "critical-low",
+              "low",
+              "normal",
+              "high",
+              "critical-high",
+              null
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "range": {
+            "description": "Either end may be absent (unbounded); inclusive.",
+            "properties": {
+              "high": {
+                "type": "number"
+              },
+              "low": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "recorded_at": {
+            "type": "string"
+          },
+          "site_zone": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "final",
+              "entered-in-error"
+            ]
+          },
+          "unit": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "patient_id",
+          "version",
+          "author",
+          "recorded_at",
+          "site_zone",
+          "code",
+          "effective_at",
+          "status",
+          "flag",
+          "reason"
+        ],
+        "type": "object"
+      },
       "ObservationVersions": {
-        "description": "Oldest first. Each item is a StoredObservation with a reason beside it.",
+        "description": "Oldest first.",
         "properties": {
           "versions": {
             "items": {
-              "properties": {
-                "reason": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                }
-              },
-              "required": [
-                "reason"
-              ],
-              "type": "object"
+              "$ref": "#/components/schemas/ObservationVersion"
             },
             "type": "array"
           }
@@ -2797,7 +2891,27 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateConsent"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredConsent"
+                }
+              }
+            },
+            "description": "The stored patient."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -2817,6 +2931,16 @@
               }
             },
             "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
           },
           "default": {
             "description": "Bodies are not described in this document; see spec/09-api-surface.md."
@@ -2856,7 +2980,27 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateConsent"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredConsent"
+                }
+              }
+            },
+            "description": "The stored patient."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -2876,6 +3020,26 @@
               }
             },
             "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionConflict"
+                }
+              }
+            },
+            "description": "A likely duplicate or a stale expected_version."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
           },
           "default": {
             "description": "Bodies are not described in this document; see spec/09-api-surface.md."
@@ -3068,7 +3232,27 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateObservation"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredObservation"
+                }
+              }
+            },
+            "description": "The stored patient."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -3088,6 +3272,16 @@
               }
             },
             "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
           },
           "default": {
             "description": "Bodies are not described in this document; see spec/09-api-surface.md."
@@ -3127,7 +3321,27 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateObservation"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredObservation"
+                }
+              }
+            },
+            "description": "The stored patient."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -3147,6 +3361,26 @@
               }
             },
             "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionConflict"
+                }
+              }
+            },
+            "description": "A likely duplicate or a stale expected_version."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
           },
           "default": {
             "description": "Bodies are not described in this document; see spec/09-api-surface.md."
@@ -3457,7 +3691,27 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRelationship"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredRelationship"
+                }
+              }
+            },
+            "description": "The stored patient."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -3477,6 +3731,16 @@
               }
             },
             "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
           },
           "default": {
             "description": "Bodies are not described in this document; see spec/09-api-surface.md."
@@ -3516,7 +3780,27 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRelationship"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredRelationship"
+                }
+              }
+            },
+            "description": "The stored patient."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -3536,6 +3820,26 @@
               }
             },
             "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionConflict"
+                }
+              }
+            },
+            "description": "A likely duplicate or a stale expected_version."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
           },
           "default": {
             "description": "Bodies are not described in this document; see spec/09-api-surface.md."

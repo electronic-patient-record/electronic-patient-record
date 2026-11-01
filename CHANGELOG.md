@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-01 - OpenAPI: real responses are checked against the schemas, and three slices are corrected (OS-7)
+
+- **Clinical risk:** none to behaviour; the document describes, it does not change a response. It was wrong in places an integrator would have relied on, which is the reason for this entry.
+- **Found:** the earlier entries for observations, consents and relationships said their create and update routes carried request bodies and 201/200/409 responses. They did not: six rows were never added to the `BODIES` table (a scripted edit silently did not match after `cargo fmt` reflowed the lines before it). Only their list and read schemas were in the document. Two schemas were also wrong: `AllergyList.summary` carries more than `state` (for example `items`), and an observation version is a full observation plus `reason`, not an object with `reason`.
+- **Built:** `tests/openapi_responses.rs` (database-gated, login off) creates a patient, allergies, observations (with a value and with an absent reason), a consent and a relationship, calls the described routes, and validates 15 responses (including a real 409) against the schemas the service serves, with a small validator (required keys, keys outside `properties`, enums, types) that has its own non-database test. The six rows are added, the two schemas fixed, and `ObservationVersion` is derived from `StoredObservation` so the two cannot differ. A unit test fails when a `Create…` or `Update…` schema is not used by any operation, or a table row names a schema that does not exist. Re-blessed document: 210 lines added, none removed.
+- **Not done / not verified:** the validator does not implement `allOf`, `oneOf`, formats or length limits, and sees only the optional fields these requests set; the 422 and 404 responses and the consent and relationship updates were not requested; the PUT routes of observations, consents and relationships were not called. Gates: fmt, clippy `-D warnings`, openapi census (5), unit tests (12), `openapi_responses` (2, with Postgres 18).
+
 ## 2026-11-01 - OpenAPI: the consent and relationship routes (OS-7, in part)
 
 - **Clinical risk:** none to behaviour; the document describes, it does not change a response. These two record types decide who may see a record, so a wrong schema would mislead an integrator; the tests below are the guard.

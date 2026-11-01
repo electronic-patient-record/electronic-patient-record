@@ -227,7 +227,7 @@ fn allergy_schemas() -> Value {
             "properties": {
                 "allergies": {"type": "array", "items": {"$ref": "#/components/schemas/StoredAllergy"}},
                 "statement": {"type": ["object", "null"]},
-                "summary": {"type": "object", "required": ["state"], "properties": {"state": {"type": "string"}}},
+                "summary": {"type": "object", "required": ["state"], "additionalProperties": true, "properties": {"state": {"type": "string"}}},
                 "amendment_notices": {"type": "object"}
             }
         }
@@ -290,9 +290,8 @@ fn observation_schemas() -> Value {
         },
         "ObservationVersions": {
             "type": "object", "required": ["versions"],
-            "description": "Oldest first. Each item is a StoredObservation with a reason beside it.",
-            "properties": {"versions": {"type": "array", "items": {"type": "object", "required": ["reason"],
-                "properties": {"reason": {"type": ["string", "null"]}}}}}
+            "description": "Oldest first.",
+            "properties": {"versions": {"type": "array", "items": {"$ref": "#/components/schemas/ObservationVersion"}}}
         }
     })
 }
@@ -388,6 +387,15 @@ fn patient_schemas() -> Value {
     ] {
         all.extend(part.as_object().expect("an object").clone());
     }
+    // A version is a StoredObservation with the reason it was written beside it.
+    let mut version = all["StoredObservation"].clone();
+    version["properties"]["reason"] = json!({"type": ["string", "null"]});
+    version["required"]
+        .as_array_mut()
+        .expect("required list")
+        .push(json!("reason"));
+    version["description"] = json!("A StoredObservation plus the reason this version was written.");
+    all.insert("ObservationVersion".into(), version);
     Value::Object(all)
 }
 
@@ -425,6 +433,54 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
         "UpdateAllergy",
         "200",
         "StoredAllergy",
+        "VersionConflict",
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/observations",
+        "CreateObservation",
+        "201",
+        "StoredObservation",
+        "",
+    ),
+    (
+        "PUT",
+        "/api/patients/{id}/observations/{observation_id}",
+        "UpdateObservation",
+        "200",
+        "StoredObservation",
+        "VersionConflict",
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/consents",
+        "CreateConsent",
+        "201",
+        "StoredConsent",
+        "",
+    ),
+    (
+        "PUT",
+        "/api/patients/{id}/consents/{consent_id}",
+        "UpdateConsent",
+        "200",
+        "StoredConsent",
+        "VersionConflict",
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/relationships",
+        "CreateRelationship",
+        "201",
+        "StoredRelationship",
+        "",
+    ),
+    (
+        "PUT",
+        "/api/patients/{id}/relationships/{relationship_id}",
+        "UpdateRelationship",
+        "200",
+        "StoredRelationship",
         "VersionConflict",
     ),
 ];
@@ -1089,9 +1145,7 @@ mod tests {
         let version = &versions["versions"][0];
         assert!(version.get("reason").is_some());
         // The version item is a StoredObservation plus `reason`.
-        let mut expect = properties("StoredObservation");
-        expect.insert("reason".into());
-        assert_eq!(keys(version), expect);
+        assert_eq!(keys(version), properties("ObservationVersion"));
     }
 
     fn nested(name: &str, field: &str) -> std::collections::BTreeSet<String> {
@@ -1258,5 +1312,31 @@ mod tests {
             keys(&serde_json::json!({"relationships": [stored]})),
             properties("RelationshipList")
         );
+    }
+
+    #[test]
+    fn every_request_schema_is_used_by_a_request_body_and_every_named_schema_exists() {
+        let doc = document();
+        let schemas = doc["components"]["schemas"].as_object().expect("schemas");
+        let text = doc["paths"].to_string();
+        for name in schemas.keys() {
+            if name.starts_with("Create") || name.starts_with("Update") {
+                assert!(
+                    text.contains(&format!("#/components/schemas/{name}\"")),
+                    "{name} is defined but no operation uses it"
+                );
+            }
+        }
+        for (_, _, request, _, success, conflict) in BODIES {
+            for name in [request, success, conflict] {
+                assert!(
+                    name.is_empty() || schemas.contains_key(*name),
+                    "{name} is not defined"
+                );
+            }
+        }
+        for (_, _, success, _) in READS {
+            assert!(schemas.contains_key(*success), "{success} is not defined");
+        }
     }
 }
