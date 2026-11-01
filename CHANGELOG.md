@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-01 - OpenAPI: the photo routes (OS-7, in part)
+
+- **Clinical risk:** none to behaviour; the document describes, it does not change a response. A patient's photo is shown in the banner to confirm identity, so the schema says it is never cached (`private, no-store`) and that a write needs `expected_version`.
+- **Built:** `PhotoVersion`; `GET /api/patients/{id}/photo` (200 `image/png` or `image/jpeg`, 404), `PUT` (image body, required `expected_version`, optional `reason`; 200, 400, 409, 422) and `POST …/photo/withdraw` (no body; 200, 400, 409, 422). A unit test checks the shape. `tests/openapi_responses.rs` stores a real PNG, reads it back (content type, cache header and bytes compared), sends a stale and a version-less `PUT`, withdraws, and reads again (404), validating the five JSON responses against the served schemas (at least 34 responses now).
+- **Not done / not verified:** the JPEG and WebP-style refusals, the size limit and the 422 body were not sent for real, so the 422 text is from the code, not a response. The `PhotoVersion` keys are checked only against a real response (the handler builds that JSON inline, so there is no type to compare). Login was off, so the role split was not exercised. The 404 for an unknown patient was not requested separately from the withdrawn case.
+
 ## 2026-11-01 - OpenAPI: the allergy-statement route (OS-7, in part)
 
 - **Clinical risk:** none to behaviour; the document describes, it does not change a response. The statement "no known allergies" drives the allergy banner, so the schema records that it is refused while an allergy is active.

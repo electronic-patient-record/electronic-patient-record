@@ -316,6 +316,96 @@ async fn real_responses_validate_against_the_served_schemas() {
             &mut problems,
         );
 
+        // Photo: put, read, stale put, missing version, withdraw, read after withdraw.
+        let photo = format!("/api/patients/{id}/photo");
+        let png: Vec<u8> = vec![0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3];
+        let put_png = |query: &str| {
+            server
+                .put(&format!("{photo}{query}"))
+                .add_header(
+                    axum::http::HeaderName::from_static("content-type"),
+                    axum::http::HeaderValue::from_static("image/png"),
+                )
+                .bytes(png.clone().into())
+        };
+        let stored_photo = put_png("?expected_version=0").await;
+        assert_eq!(
+            stored_photo.status_code(),
+            StatusCode::OK,
+            "{}",
+            stored_photo.text()
+        );
+        expect(
+            "photo put",
+            "/api/patients/{id}/photo",
+            "put",
+            StatusCode::OK,
+            &stored_photo.json(),
+            &mut problems,
+        );
+        let shown = server.get(&photo).await;
+        assert_eq!(shown.status_code(), StatusCode::OK);
+        assert_eq!(shown.header("content-type"), "image/png");
+        assert_eq!(shown.header("cache-control"), "private, no-store");
+        assert_eq!(shown.as_bytes().as_ref(), png.as_slice());
+        let stale_photo = put_png("?expected_version=0").await;
+        assert_eq!(
+            stale_photo.status_code(),
+            StatusCode::CONFLICT,
+            "{}",
+            stale_photo.text()
+        );
+        expect(
+            "photo stale",
+            "/api/patients/{id}/photo",
+            "put",
+            StatusCode::CONFLICT,
+            &stale_photo.json(),
+            &mut problems,
+        );
+        let no_version = put_png("").await;
+        assert_eq!(
+            no_version.status_code(),
+            StatusCode::BAD_REQUEST,
+            "{}",
+            no_version.text()
+        );
+        expect(
+            "photo no version",
+            "/api/patients/{id}/photo",
+            "put",
+            StatusCode::BAD_REQUEST,
+            &no_version.json(),
+            &mut problems,
+        );
+        let withdrawn = server
+            .post(&format!("{photo}/withdraw?expected_version=1&reason=r"))
+            .await;
+        assert_eq!(
+            withdrawn.status_code(),
+            StatusCode::OK,
+            "{}",
+            withdrawn.text()
+        );
+        expect(
+            "photo withdraw",
+            "/api/patients/{id}/photo/withdraw",
+            "post",
+            StatusCode::OK,
+            &withdrawn.json(),
+            &mut problems,
+        );
+        let gone = server.get(&photo).await;
+        assert_eq!(gone.status_code(), StatusCode::NOT_FOUND, "{}", gone.text());
+        expect(
+            "photo gone",
+            "/api/patients/{id}/photo",
+            "get",
+            StatusCode::NOT_FOUND,
+            &gone.json(),
+            &mut problems,
+        );
+
         // Observation: create (with a value, and without one), list, versions, update.
         let value_obs = json!({ "code": "8867-4", "value": 72.0, "unit": "/min",
             "range": {"low": 60.0, "high": 100.0}, "critical": {"low": 40.0},
@@ -589,7 +679,7 @@ async fn real_responses_validate_against_the_served_schemas() {
             &mut problems,
         );
 
-        assert!(checked >= 29, "only {checked} responses were checked");
+        assert!(checked >= 34, "only {checked} responses were checked");
         assert!(
             problems.is_empty(),
             "responses that do not match their schema:\n{}",

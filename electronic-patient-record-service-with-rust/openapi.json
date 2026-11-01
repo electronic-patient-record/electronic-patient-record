@@ -978,6 +978,22 @@
         ],
         "type": "object"
       },
+      "PhotoVersion": {
+        "description": "What a photo write answers: the new version, and whether it withdrew the photo.",
+        "properties": {
+          "version": {
+            "type": "integer"
+          },
+          "withdrawn": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "version",
+          "withdrawn"
+        ],
+        "type": "object"
+      },
       "RelationshipList": {
         "properties": {
           "relationships": {
@@ -3861,6 +3877,23 @@
           }
         ],
         "responses": {
+          "200": {
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The current photo, never cached (private, no-store)."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -3880,6 +3913,16 @@
               }
             },
             "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No such patient, or no photo (none stored, or withdrawn)."
           },
           "default": {
             "description": "Bodies are not described in this document; see spec/09-api-surface.md."
@@ -3907,9 +3950,63 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "The photo version last seen; 0 when there is none. Without it the answer is 400.",
+            "in": "query",
+            "name": "expected_version",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "reason",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
+        "requestBody": {
+          "content": {
+            "image/jpeg": {
+              "schema": {
+                "format": "binary",
+                "type": "string"
+              }
+            },
+            "image/png": {
+              "schema": {
+                "format": "binary",
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoVersion"
+                }
+              }
+            },
+            "description": "The new photo version."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "expected_version was not given."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -3929,6 +4026,26 @@
               }
             },
             "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionConflict"
+                }
+              }
+            },
+            "description": "A stale expected_version."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The file was refused (not a PNG or JPEG, or too large), or there was no photo to withdraw."
           },
           "default": {
             "description": "Bodies are not described in this document; see spec/09-api-surface.md."
@@ -3958,9 +4075,46 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "The photo version last seen; 0 when there is none. Without it the answer is 400.",
+            "in": "query",
+            "name": "expected_version",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "reason",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoVersion"
+                }
+              }
+            },
+            "description": "The new photo version."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "expected_version was not given."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -3980,6 +4134,26 @@
               }
             },
             "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionConflict"
+                }
+              }
+            },
+            "description": "A stale expected_version."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The file was refused (not a PNG or JPEG, or too large), or there was no photo to withdraw."
           },
           "default": {
             "description": "Bodies are not described in this document; see spec/09-api-surface.md."

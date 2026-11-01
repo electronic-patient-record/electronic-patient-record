@@ -171,6 +171,11 @@ fn identity_schemas() -> Value {
                 "candidates_cut": {"type": "boolean"}
             }
         },
+        "PhotoVersion": {
+            "type": "object", "required": ["version", "withdrawn"],
+            "description": "What a photo write answers: the new version, and whether it withdrew the photo.",
+            "properties": {"version": {"type": "integer"}, "withdrawn": {"type": "boolean"}}
+        },
         "VersionConflict": {
             "type": "object", "required": ["error", "current_version"],
             "description": "409 on update: expected_version is not the current one.",
@@ -652,6 +657,71 @@ fn all_schemas() -> Value {
     all
 }
 
+/// The photo routes carry image bytes and query parameters, not a JSON body, so the tables above
+/// cannot describe them. `GET` answers the image; `PUT` takes one; `POST …/withdraw` takes none.
+fn photo_operation(
+    method: &str,
+    path: &str,
+    op: &mut Map<String, Value>,
+    responses: &mut Map<String, Value>,
+) {
+    if path != "/api/patients/{id}/photo" && path != "/api/patients/{id}/photo/withdraw" {
+        return;
+    }
+    let error = |d: &str, name: &str| {
+        json!({"description": d, "content": {"application/json": {
+            "schema": {"$ref": format!("#/components/schemas/{name}")}}}})
+    };
+    if method == "GET" {
+        let image = json!({"schema": {"type": "string", "format": "binary"}});
+        responses.insert(
+            "200".into(),
+            json!({"description": "The current photo, never cached (private, no-store).",
+                   "content": {"image/png": image.clone(), "image/jpeg": image}}),
+        );
+        responses.insert(
+            "404".into(),
+            error(
+                "No such patient, or no photo (none stored, or withdrawn).",
+                "Error",
+            ),
+        );
+        return;
+    }
+    let mut parameters = op
+        .get("parameters")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    parameters.push(json!({"name": "expected_version", "in": "query", "required": true,
+        "description": "The photo version last seen; 0 when there is none. Without it the answer is 400.",
+        "schema": {"type": "integer"}}));
+    parameters.push(
+        json!({"name": "reason", "in": "query", "required": false, "schema": {"type": "string"}}),
+    );
+    op.insert("parameters".into(), Value::Array(parameters));
+    if method == "PUT" {
+        let image = json!({"schema": {"type": "string", "format": "binary"}});
+        op.insert(
+            "requestBody".into(),
+            json!({"required": true, "content": {"image/png": image.clone(), "image/jpeg": image}}),
+        );
+    }
+    responses.insert(
+        "200".into(),
+        error("The new photo version.", "PhotoVersion"),
+    );
+    responses.insert(
+        "400".into(),
+        error("expected_version was not given.", "Error"),
+    );
+    responses.insert(
+        "409".into(),
+        error("A stale expected_version.", "VersionConflict"),
+    );
+    responses.insert("422".into(), error("The file was refused (not a PNG or JPEG, or too large), or there was no photo to withdraw.", "ErrorList"));
+}
+
 /// The document for the given routes. Pure, so a test can plant a route and see it appear.
 #[must_use]
 pub fn document_for(served: &[(String, String)]) -> Value {
@@ -745,6 +815,7 @@ pub fn document_for(served: &[(String, String)]) -> Value {
                 op.insert("parameters".into(), Value::Array(parameters));
             }
         }
+        photo_operation(method, path, &mut op, &mut responses);
         op.insert("responses".into(), Value::Object(responses));
         paths
             .entry(path.clone())
@@ -1125,6 +1196,28 @@ mod tests {
                 serde_json::json!({"allergy": bare})
             )
             .is_err()
+        );
+    }
+
+    #[test]
+    fn the_photo_routes_are_described_as_images_with_a_required_version() {
+        let doc = document();
+        let put = &doc["paths"]["/api/patients/{id}/photo"]["put"];
+        assert!(put["requestBody"]["content"]["image/png"].is_object());
+        assert!(put["requestBody"]["content"]["image/jpeg"].is_object());
+        let version = put["parameters"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|p| p["name"] == "expected_version")
+            .expect("expected_version is a parameter");
+        assert_eq!(version["required"], true);
+        assert!(doc["paths"]["/api/patients/{id}/photo"]["get"]["responses"]["200"]["content"]["image/png"].is_object());
+        let withdraw = &doc["paths"]["/api/patients/{id}/photo/withdraw"]["post"];
+        assert!(withdraw.get("requestBody").is_none());
+        assert_eq!(
+            withdraw["responses"]["200"]["content"]["application/json"]["schema"]["$ref"],
+            "#/components/schemas/PhotoVersion"
         );
     }
 
