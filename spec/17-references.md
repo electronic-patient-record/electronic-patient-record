@@ -9,3 +9,5 @@ Inferno (inferno.healthit.gov). Evidence: Melnick 2020; Arndt 2017; Steinkamp 20
 Open-source systems read for the [benchmark](benchmark.md) (2026-10-30, plan.md §22.6): OpenEMR, Medplum, HAPI FHIR
 and its JPA starter, OpenMRS core, Blaze, EHRbase, Metriport, Haste Health and Helios (both Rust), Marley Health
 (formerly Frappe Health), VistA, HospitalRun (archived); Bahmni, Ozone HIS and GNU Health for capabilities only.
+
+A proof-of-concept FHIR guide read in part for the [closed-loop referral model](interoperability/closed-loop-referral.md) (2026-11-02, plan.md §24.8): *Care Coordination and 360 Referrals* v0.1.0, <https://kevinmayfield.github.io/PatientCareCoordination/en/index.html> (seven pages; one author; no licence stated; "must not be used for implementation or clinical purposes").

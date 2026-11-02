@@ -1311,3 +1311,104 @@ OF-3 after OQ-OF1; OF-4 after OQ-OF2. OF-5 and OF-7 are notes that need no sched
 The PAS repository's `spec/compare/openfront-hospital/index.md` (read in full, 2026-11-02); through it, the repository
 <https://github.com/openshiporg/openfront-hospital> (not opened by me). This repository: `src/controllers/patients.rs`
 (`search_service`), `src/controllers/*.rs` (`expected_version`), `tests/audit_coverage.rs`, `migration/src/`.
+
+
+## 24. Research pass 2026-11-02: the Care Coordination and 360 Referrals guide
+
+The request: research <https://kevinmayfield.github.io/PatientCareCoordination/en/index.html>, assess it, advise, and add
+the ideas to `plan.md`, `tasks.md` and `spec/*`. Nothing was built. The draft state model is in
+[`spec/interoperability/closed-loop-referral.md`](spec/interoperability/closed-loop-referral.md).
+
+**Evidence base, stated plainly.** I read seven pages of the guide through a page-to-text fetch that answers a prompt, not the
+raw pages: the home page, closed-loop referral (360X), the order-and-report workflow pattern, the NHS England services
+assessment, patient flags, virtual wards and dynamic care planning. I did **not** read its other pages (the referral
+forms, outcome reports, EU Health Data API, directory, patient identity, transport and data-model pages, the BaRS and
+diagnostics appendices), its source repository, or the IHE and HL7 specifications it builds on, so everything about 360X, QEDm, MHD
+and DCP is the guide's own account. The fetch tool summarises, so a quotation below is the summary's, not checked against the page.
+
+### 24.1 What it is
+
+An HL7 FHIR R4 Implementation Guide, version 0.1.0, "Draft as of 2026-11-02", built with the FHIR build tools, **copyright
+Kevin Mayfield (one named author)**, **no licence stated**, under an example domain (`fhir.acmeexample.org.uk`). It calls itself
+"a proof of concept", "demonstration only", "not an authoritative source", "not endorsed by NHS England, IHE or HL7", and says
+it "must not be used for implementation or clinical purposes". Its subject is the **closed-loop referral**: a clinician
+refers, the recipient accepts or declines, delivers care, and returns a result "so the referrer knows what happened". It adapts
+IHE 360X to England, proposes one **order-out-and-report-back** pattern that also covers lab tests, imaging and prescriptions,
+and assesses eRS, BaRS, Transfer of Care, MESH, GP Connect, IM1 and EPS against it, recording their gaps. It adds a draft patient-flag
+pattern, virtual wards (hospital at home) and dynamic care planning (a shared, versioned care plan).
+
+### 24.2 Assessment
+
+- **A design reference, not a dependency, and nothing to copy.** One author, a draft a day old, no licence, and a stated ban on clinical use.
+  Its value is the questions it asks and the gaps it finds, which we can check against our own plan.
+- **It fills a thin spot in our plan.** CA-3 is two lines ("`ServiceRequest` plus `Task`, with status tracked until the outcome
+  is received") and PA-14 adds redirects and returns. The guide gives a concrete state table, an identifier rule and a FHIR
+  mapping to test ours against (24.4).
+- **Its sharpest finding is ours too.** The commonest gap in the national services is an outcome that does not say which referral
+  it answers. We have no written rule for an outcome that cannot be matched to its request (OR-4 routes results to the ordering clinician; it says nothing about an unmatched one), so PC-2 proposes one: show it to a person, do not file it.
+- **Where we are ahead.** It has no authorisation, consent, break-the-glass or tamper-evident audit design beyond a mention of
+  audit events; no timeouts, retries, acknowledgements or escalation ("the source has no section on timeouts"); identifiers
+  that are typed (system and value) only in the sense of NHS Number plus a local MRN, where BaRS leaves a patient with no NHS Number
+  an untyped local identifier. We have typed identifiers, `expected_version` on every update, an outbox, and a policy engine.
+- **Where it is England-shaped, and so a pack, not core.** eRS and its UBRN, BaRS, MESH, Kettering XML, GP Connect, IM1, EPS and
+  CP-IS are NHS England services. `spec/02-scope.md`'s equity rule puts them in a pack; the core model carries a neutral
+  "referral identifier" and "flag".
+- **Its own doubts are the useful part.** It marks the very states we would want (`information-requested`, `deferred`,
+  `redirected`) and who raises a redirected referral as "To confirm", and whether a flag should be checked before a scheduled referral
+  as "Open". We copy that habit: our spec marks a proposal a proposal.
+
+### 24.3 Overlap with what we already plan
+
+| The guide | Ours | Gap |
+|---|---|---|
+| Referral request, accept or decline, outcome | CA-3, PA-14 | no state table, no identifier rule |
+| Order-out-and-report-back for lab, imaging, medicines | OR-1 CPOE, OR-4 results inbox and closed loop, EM-2 | three closed loops designed apart |
+| Care plan shared by several providers | CA-2 | no rule for who may change which part |
+| Reasonable adjustments | PA-6 | no flag that points to a plan someone else owns |
+| Interim note, repeatable | none | add to CA-3 |
+| Subscription and event notice for status | IO-6, OS-3 (outbox) | not tied to a referral's status |
+| Hospital discharge report as the outcome | CA-1 discharge summary | not aligned to a published document shape |
+| Virtual ward | none | post-1.0, a design note |
+
+### 24.4 Ideas, assessed
+
+| Rank | Idea | Where the guide has it | Value here | Cost and caveat |
+|---|---|---|---|---|
+| 1 | **An explicit referral state table, refused transitions, one stored status** | 360X page: nine states, three provisional | CA-3 is under-specified; the guide faults BaRS for inferring status from several resources' statuses | ~2 days (PC-1); a pure function with tests first, no database; the three provisional states stay "proposed" |
+| 2 | **One referral id on every message and report; an outcome with no referral goes to an unmatched queue** | "The referral identifier closes the loop"; "most often missing from NHS letters today" | Closes the commonest real gap; reuses the shape of the feed-refusal queue | ~3 days (PC-2); clinical (a lost outcome) |
+| 3 | **Timeouts and escalation: no response, accepted with no outcome, appointment passed with no outcome** | none: the guide says it has no such rule | CA-3 already asks for "N days"; the guide shows nobody else defined it | ~2 days (PC-3), with a fake clock; clinical; needs OQ-PC3 (the periods) |
+| 4 | **A cancellation is a request, shown as such** | PCC-58: the recipient "may not honour it" | A clinician who believes a referral is cancelled while the service still sees the patient is a real hazard | ~1 day (PC-4); clinical; hazard row first |
+| 5 | **One order-and-report workflow for referral, test, imaging and medicine** | the workflow-pattern page: same steps, same `basedOn` link | OR-4, CA-3 and EM-2 would otherwise be three loops with three bugs | a design decision (PC-5); no code until OR-1 and CA-3 are scheduled |
+| 6 | **Patient flags that point to a plan, not copy it; reading one notifies the owner** | patient-flags page | Safeguarding detail must not spread into referrals and letters; PA-6 needs somewhere to live | ~3 days for a design (PC-7); clinical and the most sensitive item here |
+| 7 | **A shared care plan where each contributor changes only their own parts and retries on a version conflict** | DCP page | Fits `expected_version`, which we already have; adds the ownership rule | folds into CA-2 (PC-6); clinical |
+| 8 | Referral content by reference, not copy | "data sharing through APIs … highly recommended"; a flag's detail "SHOULD NOT" be copied into a referral | Smaller referrals, less spread of sensitive data | a rule and a test in CA-3 (PC-2) |
+| 9 | Hospital at home as an inpatient-class encounter at the patient's home, with a step-up or step-down route | virtual-wards page | Informs CA-1 | a design note only (PC-8); OQ-PC1 says whether it is in scope |
+| 10 | Discharge and outcome documents shaped as HL7 Europe's Hospital Discharge Report | reports and appendices | CA-1's discharge summary is unspecified | a note (PC-9); the guide itself says emergency and mental-health discharge do not fit yet |
+
+### 24.5 Risks
+
+- **Following an unreviewed proof of concept.** Every rule above is "from the source, to be checked against 360X". The tasks say so and start with a pure model and tests, not a database.
+- **Safeguarding.** Flags about child protection, looked-after children and FGM are the most sensitive data a record can hold. Task PC-7 is a design with a hazard row and the Clinical Safety Officer, not a build. Nothing here sets a hazard to accepted.
+- **England bias.** Letting UBRN, CP-IS or MESH into the core would break the equity rule. They are pack content.
+- **Two loops.** If the PAS also runs a referral loop, two copies of status will disagree. PA-1's boundary stands: the EPR owns the clinical loop, the PAS the administration, linked by an external reference; a state table does not change that.
+- **A state machine is not a safety case.** A refused transition is a bug found early; it is not evidence that the loop never drops a referral.
+
+### 24.6 Open questions (to move to spec/16-open-questions.md)
+
+- **OQ-PC1.** Is hospital at home (a home-located inpatient stay with monitoring) in scope for 1.0? Recommendation: no; a design note in CA-1, post-1.0.
+- **OQ-PC2.** Who may cancel or redirect a referral, and may a recipient redirect without the referrer's consent? The guide leaves both open. Recommendation: only the referrer cancels (a request the recipient may refuse); only the recipient redirects, creating a new linked referral; both audited.
+- **OQ-PC3.** What are N and M for a referral with no response, or accepted with no outcome? Recommendation: configuration per service type with no default for urgent referrals, so a deployment must choose.
+
+### 24.7 Order of work
+
+PC-1 (the state table, pure) and PC-4 (the cancel-request rule and its hazard row) first, because they cost little and shape everything else;
+then PC-2 (the identifier rule and the unmatched queue) and PC-3 (timeouts, after OQ-PC3); PC-5 as the decision before OR-1 or CA-3 is scheduled. PC-6 and PC-7 with CA-2 and PA-6.
+PC-8 and PC-9 are notes.
+
+### 24.8 Sources (this pass)
+
+All fetched 2026-11-02 from <https://kevinmayfield.github.io/PatientCareCoordination/en/>: [`index.html`](https://kevinmayfield.github.io/PatientCareCoordination/en/index.html),
+[`360X.html`](https://kevinmayfield.github.io/PatientCareCoordination/en/360X.html), [`WorkflowPatterns.html`](https://kevinmayfield.github.io/PatientCareCoordination/en/WorkflowPatterns.html),
+[`NHSEngland.html`](https://kevinmayfield.github.io/PatientCareCoordination/en/NHSEngland.html), [`PatientFlags.html`](https://kevinmayfield.github.io/PatientCareCoordination/en/PatientFlags.html),
+[`VirtualWards.html`](https://kevinmayfield.github.io/PatientCareCoordination/en/VirtualWards.html), [`DCP.html`](https://kevinmayfield.github.io/PatientCareCoordination/en/DCP.html).
+Named by the guide and not read: IHE PCC 360X Rev. 1.2 (Trial Implementation), HL7 Europe Hospital Discharge Report 1.0.0 (STU 1), the EU Health Data API, IHE QEDm, MHD and DCP.

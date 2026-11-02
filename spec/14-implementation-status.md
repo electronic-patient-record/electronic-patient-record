@@ -50,6 +50,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | EC | 0 | 13 |
 | OS | 4 | 10 |
 | OF | 2 | 5 |
-| **Total** | **46** | **190** |
+| PC | 0 | 9 |
+| **Total** | **46** | **199** |
 
 <!-- generated:end -->

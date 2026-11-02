@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-02 - Research pass: the Care Coordination and 360 Referrals guide (plan.md §24, tasks series PC)
+
+- **Clinical risk:** none now; documents only. PC-2, PC-3, PC-4, PC-6 and PC-7 are marked clinical and say a hazard row comes first; no hazard row was added because nothing was built. Nothing was set to accepted or closed.
+- **Built:** `plan.md` §24 (what it is, assessment, overlap table, ten ideas ranked, risks, three open questions, order of work, sources); `tasks.md` series `PC` (PC-1 to PC-9); the draft `spec/interoperability/closed-loop-referral.md` (a referral state table, seven rules, the source's FHIR mapping, flags as an idea); OQ-PC1 to OQ-PC3 in `spec/16-open-questions.md`; a reference in `spec/17-references.md`; `PC` added to the status script's prefixes.
+- **Not done / not verified:** I read seven pages of the guide through a summarising page fetch, not the raw pages, and not its other pages, its repository, or the IHE and HL7 specifications it rests on, so everything about 360X, QEDm, MHD and DCP is the guide's own account and the quotations are the summary's. The guide is a one-author draft with no stated licence that forbids clinical use; nothing was copied. The state table is proposed and untested; no code, hazard row or test exists for any item. The open questions are unanswered.
+
 ## 2026-11-02 - The UI sends an Idempotency-Key on four creates (OF-1)
 
 - **Clinical risk:** yes, the same as H-043, whose controls and residual text now name the UI's part. A registration, allergy, relationship or consent submitted twice (a double click, a retry) is now stored once when it goes through the UI.
