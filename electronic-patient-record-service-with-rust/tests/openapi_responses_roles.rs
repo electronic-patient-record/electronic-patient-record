@@ -52,6 +52,7 @@ async fn real_responses_of_the_role_gated_routes_validate_against_the_served_sch
         "clinical-admin",
         "clinician",
         "auditor",
+        "proxy",
     ];
     let map: Value = roles
         .iter()
@@ -78,12 +79,15 @@ async fn real_responses_of_the_role_gated_routes_validate_against_the_served_sch
     let clinician = token("clinician", "0c4f1e2a-0000-4000-8000-0000000000d2");
     let auditor = token("auditor", "0c4f1e2a-0000-4000-8000-0000000000d3");
     let admin = token("clinical-admin", "0c4f1e2a-0000-4000-8000-0000000000d4");
+    let proxy_sub = "0c4f1e2a-0000-4000-8000-0000000000d5";
+    let proxy = token("proxy", proxy_sub);
 
     request::<App, _, _>(|server, ctx| async move {
         let (oh, ov) = bearer(&cso);
         let (ch, cv) = bearer(&clinician);
         let (ah, av) = bearer(&auditor);
         let (mh, mv) = bearer(&admin);
+        let (xh, xv) = bearer(&proxy);
         let purpose = HeaderName::from_static("x-purpose-of-use");
         let audit = HeaderValue::from_static("audit");
 
@@ -695,12 +699,124 @@ async fn real_responses_of_the_role_gated_routes_validate_against_the_served_sch
             "a closed refusal leaves the open list"
         );
 
+        // The patient's own routes: a proxy whose terms list the identity and the access log.
+        let expires = i64::try_from(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
+        )
+        .unwrap()
+            + 3600;
+        let tie = server
+            .post(&format!("/api/patients/{pid}/relationships"))
+            .add_header(mh.clone(), mv.clone())
+            .json(&json!({
+                "relationship": { "subject": proxy_sub, "kind": "proxy", "status": "active",
+                    "proxy": { "basis": "parental-responsibility",
+                               "scopes": ["identity", "access-log"], "expires_at": expires } },
+                "reason": "schema check" }))
+            .await;
+        assert_eq!(tie.status_code(), StatusCode::CREATED, "{}", tie.text());
+        let patient_access = HeaderValue::from_static("patient-access");
+        let own = server
+            .get("/api/me/patients")
+            .add_header(xh.clone(), xv.clone())
+            .add_header(purpose.clone(), patient_access.clone())
+            .await;
+        assert_eq!(own.status_code(), StatusCode::OK, "{}", own.text());
+        let own: Value = own.json();
+        assert!(
+            own["records"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|r| r["patient"]["id"] == pid.as_str() && r["relationship"] == "proxy"),
+            "the proxy sees the record: {own}"
+        );
+        expect(
+            "own records",
+            "/api/me/patients",
+            "get",
+            StatusCode::OK,
+            &own,
+        );
+        let log_url = format!("/api/me/patients/{pid}/access-log");
+        let log = server
+            .get(&log_url)
+            .add_header(xh.clone(), xv.clone())
+            .add_header(purpose.clone(), patient_access.clone())
+            .await;
+        assert_eq!(log.status_code(), StatusCode::OK, "{}", log.text());
+        let log: Value = log.json();
+        assert!(
+            !log["entries"].as_array().unwrap().is_empty(),
+            "the registration and the proxy's own reads are in the log: {log}"
+        );
+        expect(
+            "access log",
+            "/api/me/patients/{id}/access-log",
+            "get",
+            StatusCode::OK,
+            &log,
+        );
+        let refused_only = server
+            .get(&format!("{log_url}?refused=false&by=you"))
+            .add_header(xh.clone(), xv.clone())
+            .add_header(purpose.clone(), patient_access.clone())
+            .await;
+        assert_eq!(refused_only.status_code(), StatusCode::OK);
+        expect(
+            "access log filtered",
+            "/api/me/patients/{id}/access-log",
+            "get",
+            StatusCode::OK,
+            &refused_only.json(),
+        );
+        let bad = server
+            .get(&format!("{log_url}?by=nobody"))
+            .add_header(xh.clone(), xv.clone())
+            .add_header(purpose.clone(), patient_access.clone())
+            .await;
+        assert_eq!(bad.status_code(), StatusCode::BAD_REQUEST, "{}", bad.text());
+        expect(
+            "access log bad filter",
+            "/api/me/patients/{id}/access-log",
+            "get",
+            StatusCode::BAD_REQUEST,
+            &bad.json(),
+        );
+        let csv = server
+            .get(&format!("{log_url}?format=csv"))
+            .add_header(xh.clone(), xv.clone())
+            .add_header(purpose.clone(), patient_access.clone())
+            .await;
+        assert_eq!(csv.status_code(), StatusCode::OK, "{}", csv.text());
+        assert_eq!(
+            csv.header("content-type").to_str().unwrap(),
+            "text/csv; charset=utf-8"
+        );
+        assert!(csv.text().starts_with("id,at_utc,by,roles,"));
+        let unrelated = server
+            .get(&log_url)
+            .add_header(ch.clone(), cv.clone())
+            .add_header(purpose.clone(), patient_access.clone())
+            .await;
+        assert_eq!(unrelated.status_code(), StatusCode::FORBIDDEN);
+        expect(
+            "access log refused",
+            "/api/me/patients/{id}/access-log",
+            "get",
+            StatusCode::FORBIDDEN,
+            &unrelated.json(),
+        );
+
         assert!(
             problems.is_empty(),
             "schema mismatches:\n{}",
             problems.join("\n")
         );
-        assert!(checked >= 29, "only {checked} responses were checked");
+        assert!(checked >= 35, "only {checked} responses were checked");
     })
     .await;
 }

@@ -593,6 +593,50 @@ fn feed_schemas() -> Value {
     })
 }
 
+fn me_schemas() -> Value {
+    json!({
+        "OwnRecord": {
+            "type": "object", "required": ["relationship", "patient", "photo_version"],
+            "description": "One record the caller is, or is a proxy for.",
+            "properties": {
+                "relationship": {"enum": ["self", "proxy"]},
+                "patient": {"$ref": "#/components/schemas/Stored"},
+                "photo_version": {"type": ["integer", "null"], "description": "Null when there is no photo or it was withdrawn."}
+            }
+        },
+        "OwnRecordList": {
+            "type": "object", "required": ["records"],
+            "description": "Only records the full record-level decision allows; a refused one is left out (and the refusal audited).",
+            "properties": {"records": {"type": "array", "items": {"$ref": "#/components/schemas/OwnRecord"}}}
+        },
+        "AccessLogEntry": {
+            "type": "object",
+            "required": ["id", "at", "by", "roles", "organisations", "did", "what", "refused", "purpose", "break_glass"],
+            "description": "One access in words a patient can read. A staff identifier is never in it.",
+            "properties": {
+                "id": {"type": "integer"},
+                "at": {"type": "string", "description": "UTC."},
+                "by": {"enum": ["you", "staff"]},
+                "roles": {"type": "array", "items": {"type": "string"}, "description": "Empty for `you` and for rows older than role recording."},
+                "organisations": {"type": "array", "items": {"type": "string"}},
+                "did": {"enum": ["was refused access to", "created", "viewed", "changed", "removed", "used"]},
+                "what": {"enum": ["consent choices", "care relationships", "identity record", "record"]},
+                "refused": {"type": "boolean"},
+                "purpose": {"type": ["string", "null"]},
+                "break_glass": {"type": "boolean"}
+            }
+        },
+        "AccessLogPage": {
+            "type": "object", "required": ["entries", "next"],
+            "description": "Newest first, 50 a page. `next` is the `before` for the older page, or null.",
+            "properties": {
+                "entries": {"type": "array", "items": {"$ref": "#/components/schemas/AccessLogEntry"}},
+                "next": {"type": ["integer", "null"]}
+            }
+        }
+    })
+}
+
 fn audit_schemas() -> Value {
     json!({
         "AuditRow": {
@@ -761,6 +805,7 @@ fn link_schemas() -> Value {
 fn patient_schemas() -> Value {
     let mut all = Map::new();
     for part in [
+        me_schemas(),
         feed_schemas(),
         audit_schemas(),
         break_glass_schemas(),
@@ -961,6 +1006,13 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
     ("GET", "/api/patients/{id}/amendments", "AmendmentList", &[]),
     ("GET", "/api/patients/{id}/links", "PatientLinkList", &[]),
     ("GET", "/api/hazards", "HazardList", &[]),
+    ("GET", "/api/me/patients", "OwnRecordList", &[]),
+    (
+        "GET",
+        "/api/me/patients/{id}/access-log",
+        "AccessLogPage",
+        &["before", "from", "to", "by", "refused", "purpose", "format"],
+    ),
     ("GET", "/api/feed/refusals", "FeedRefusalList", &[]),
     ("GET", "/api/feed/refusals/count", "FeedRefusalCount", &[]),
     ("GET", "/api/feed/refusals/{id}", "FeedRefusal", &[]),
@@ -1280,7 +1332,7 @@ pub fn document_for(served: &[(String, String)]) -> Value {
                 .unwrap_or_default();
             for name in *query {
                 let schema = match *name {
-                    "drill" | "break_glass" => json!({"type": "boolean"}),
+                    "drill" | "break_glass" | "refused" => json!({"type": "boolean"}),
                     "outcome" | "before" | "checkpoint_id" => json!({"type": "integer"}),
                     _ => json!({"type": "string"}),
                 };
@@ -1290,6 +1342,23 @@ pub fn document_for(served: &[(String, String)]) -> Value {
             }
             if !parameters.is_empty() {
                 op.insert("parameters".into(), Value::Array(parameters));
+            }
+        }
+        if method == "GET" && path == "/api/me/patients/{id}/access-log" {
+            responses.insert(
+                "400".into(),
+                json!({"description": "A filter the log does not understand: by is not you or staff, purpose is not a purpose-of-use code, format is not csv, or a date does not parse.",
+                       "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}),
+            );
+            if let Some(ok) = responses.get_mut("200").and_then(Value::as_object_mut)
+                && let Some(content) = ok.get_mut("content").and_then(Value::as_object_mut)
+            {
+                content.insert("text/csv".into(), json!({"schema": {"type": "string"}}));
+                ok.insert("description".into(), json!("The JSON page, or with `format=csv` an attachment of up to 1000 rows (`x-next-before` is the `before` for the next file)."));
+                ok.insert(
+                    "headers".into(),
+                    json!({"x-next-before": {"schema": {"type": "integer"}}}),
+                );
             }
         }
         photo_operation(method, path, &mut op, &mut responses);
@@ -2051,6 +2120,56 @@ mod tests {
         }
         for (_, _, success, _) in READS {
             assert!(schemas.contains_key(*success), "{success} is not defined");
+        }
+    }
+
+    #[test]
+    fn the_me_schemas_match_the_types() {
+        use crate::audit::PatientLogRow;
+        let row = |agent: &str, outcome: i16| PatientLogRow {
+            id: 1,
+            at: "t".into(),
+            action: "R".into(),
+            outcome,
+            agent: agent.into(),
+            resource: Some("Patient".into()),
+            purpose: None,
+            break_glass: false,
+            roles: vec!["clinician".into()],
+            organisations: vec![],
+        };
+        let schema = patient_schemas();
+        let words = |v: &Value| -> Vec<String> {
+            v["enum"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|w| w.as_str().unwrap().to_string())
+                .collect()
+        };
+        for (r, caller) in [
+            (row("me", 0), "me"),
+            (row("them", 0), "me"),
+            (row("them", 4), "me"),
+        ] {
+            let e = crate::controllers::me::entry(&r, caller);
+            assert_eq!(keys(&e), properties("AccessLogEntry"));
+            for (field, name) in [("by", "by"), ("did", "did"), ("what", "what")] {
+                let w = e[field].as_str().unwrap().to_string();
+                assert!(
+                    words(&schema["AccessLogEntry"]["properties"][name]).contains(&w),
+                    "{field} {w} is not in the schema"
+                );
+            }
+        }
+        for kind in [
+            crate::relationships::Kind::SelfPatient,
+            crate::relationships::Kind::Proxy,
+        ] {
+            assert!(
+                words(&schema["OwnRecord"]["properties"]["relationship"])
+                    .contains(&kind.as_str().to_string())
+            );
         }
     }
 

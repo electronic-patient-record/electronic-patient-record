@@ -163,7 +163,7 @@ fn log_csv(entries: &[serde_json::Value]) -> String {
 /// One access, in words a patient can read. Who did it is never a staff identifier: `you` is the
 /// caller's own activity, everything else is `staff` with the roles and organisations the token
 /// carried when the row was written (none for older rows).
-fn entry(row: &PatientLogRow, caller: &str) -> serde_json::Value {
+pub(crate) fn entry(row: &PatientLogRow, caller: &str) -> serde_json::Value {
     let refused = row.outcome != 0;
     let what = match row.resource.as_deref().unwrap_or("") {
         r if r.starts_with("Consent") => "consent choices",

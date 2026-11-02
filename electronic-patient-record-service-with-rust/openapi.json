@@ -1,6 +1,102 @@
 {
   "components": {
     "schemas": {
+      "AccessLogEntry": {
+        "description": "One access in words a patient can read. A staff identifier is never in it.",
+        "properties": {
+          "at": {
+            "description": "UTC.",
+            "type": "string"
+          },
+          "break_glass": {
+            "type": "boolean"
+          },
+          "by": {
+            "enum": [
+              "you",
+              "staff"
+            ]
+          },
+          "did": {
+            "enum": [
+              "was refused access to",
+              "created",
+              "viewed",
+              "changed",
+              "removed",
+              "used"
+            ]
+          },
+          "id": {
+            "type": "integer"
+          },
+          "organisations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "purpose": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "refused": {
+            "type": "boolean"
+          },
+          "roles": {
+            "description": "Empty for `you` and for rows older than role recording.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "what": {
+            "enum": [
+              "consent choices",
+              "care relationships",
+              "identity record",
+              "record"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "at",
+          "by",
+          "roles",
+          "organisations",
+          "did",
+          "what",
+          "refused",
+          "purpose",
+          "break_glass"
+        ],
+        "type": "object"
+      },
+      "AccessLogPage": {
+        "description": "Newest first, 50 a page. `next` is the `before` for the older page, or null.",
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/AccessLogEntry"
+            },
+            "type": "array"
+          },
+          "next": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "entries",
+          "next"
+        ],
+        "type": "object"
+      },
       "AllergyList": {
         "description": "Every allergy in every status, the no-known-allergies statement, the banner summary and amendment notices by allergy id. The statement, summary and notices are described only as objects.",
         "properties": {
@@ -1480,6 +1576,48 @@
         "required": [
           "resourceType",
           "issue"
+        ],
+        "type": "object"
+      },
+      "OwnRecord": {
+        "description": "One record the caller is, or is a proxy for.",
+        "properties": {
+          "patient": {
+            "$ref": "#/components/schemas/Stored"
+          },
+          "photo_version": {
+            "description": "Null when there is no photo or it was withdrawn.",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "relationship": {
+            "enum": [
+              "self",
+              "proxy"
+            ]
+          }
+        },
+        "required": [
+          "relationship",
+          "patient",
+          "photo_version"
+        ],
+        "type": "object"
+      },
+      "OwnRecordList": {
+        "description": "Only records the full record-level decision allows; a refused one is left out (and the refusal audited).",
+        "properties": {
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/OwnRecord"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "records"
         ],
         "type": "object"
       },
@@ -3487,6 +3625,16 @@
       "get": {
         "operationId": "getApiMePatients",
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnRecordList"
+                }
+              }
+            },
+            "description": "OK."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -3535,9 +3683,97 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "by",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "refused",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "purpose",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessLogPage"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The JSON page, or with `format=csv` an attachment of up to 1000 rows (`x-next-before` is the `before` for the next file).",
+            "headers": {
+              "x-next-before": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "A filter the log does not understand: by is not you or staff, purpose is not a purpose-of-use code, format is not csv, or a date does not parse."
+          },
           "401": {
             "content": {
               "application/json": {
