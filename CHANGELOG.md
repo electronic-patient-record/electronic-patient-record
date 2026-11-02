@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-02 - Hazard H-044 and the unmatched-outcome design (PC-2, design only)
+
+- **Clinical risk:** yes. A referral outcome or decline that is filed against the wrong referral, or none, leaves the referrer waiting for a reply that has come, or acting on one that belongs elsewhere. Hazard **H-044** is added: severity 4, likelihood 3, status `open`, not accepted (only the Clinical Safety Officer does that). Its controls are the design below and the pure state table; its residual risk says plainly that nothing is implemented and that today the hazard is unmitigated.
+- **Built:** documents only. The four-case design (matched and allowed, matched but refused by the state table, no match, no id) and the clearance queue, in `spec/interoperability/closed-loop-referral.md`; `tasks.md` PC-2 updated.
+- **Not done / not verified:** there is no code, table, route, worklist or test: referral storage (CA-3) is not built, so there is nothing for an outcome to match. The design rests on one unreviewed source and has not been checked against IHE 360X. Who owns the queue when the sender is another organisation, and how long an entry may wait, are undecided. The severity and likelihood are my estimate, not a clinical assessment.
+
 ## 2026-11-02 - A flaky patient test gets an override on its setup create
 
 - **Clinical risk:** none; a test only.

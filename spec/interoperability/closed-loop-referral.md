@@ -39,6 +39,21 @@ The three provisional states are marked "To confirm" in the source, as is who ra
 
 `ServiceRequest` for the request (the referral id is `identifier`; the form is `supportingInfo`); `Task` for the state (`basedOn` the request; `businessStatus` for states FHIR's `Task.status` lacks; `on-hold` for `deferred`); `Appointment` (`basedOn` the referral); `Composition` for an interim note and for the outcome (the outcome as a HL7 Europe Hospital Discharge Report document). The source gives **no table from our states to `Task.status`**; that is ours to write and to test.
 
+## Outcomes and the unmatched queue (PC-2, hazard H-044)
+
+An outcome, decline or interim note names the referral it answers by the referral id. On arrival there are four cases, each audited:
+
+| Case | What happens |
+|---|---|
+| The id matches a live referral and the event is allowed in its state | The referral moves (`next` in `src/referral.rs`) and the referrer's worklist shows it. |
+| The id matches a referral but the event is not allowed (an outcome after `cancelled`, a decline after `completed`) | Refused by the state table; the message goes to the queue with the reason, and the referrer is told. It is never dropped. |
+| The id matches no referral | The message goes to the queue. It is **not** matched by patient and date. |
+| The message carries no id | The same queue, marked "no referral id", because this is the source's most common real gap. |
+
+The **queue** is a list a person must clear, in the shape of the feed-refusal queue: each entry keeps the message as received, why it did not match, who cleared it, how (matched by hand to a named referral, or dismissed with a reason) and when. A clearance is a new row, never an edit. A count shows on the referrer's worklist and to the owning team, so an unmatched outcome has a place where someone looks. A hand match is a separate, audited act by a person with a role, and it records both ids; it does not change the sender's message.
+
+Not designed here: who owns the queue when the sender is another organisation (OQ-PC2's neighbour), how long an uncleared entry may wait (PC-3), and the table for the referral itself (CA-3). A referral id mistyped as another real one cannot be caught by software.
+
 ## Patient flags: an idea, not a design
 
 The source proposes a `Flag` that **points to** a plan someone else owns (child protection, looked-after status, a risk, a reasonable adjustment) instead of copying it, says who to contact, is not a `Condition`, and notifies the owner when it is read. R4's `Flag` cannot reference a `CarePlan` without an extension, and which extension is "To confirm". Task PC-7 holds the questions; PA-6 already covers reasonable adjustments.
