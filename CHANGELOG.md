@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-02 - OpenAPI: GET /metrics (OS-7, in part)
+
+- **Clinical risk:** none; the document describes, it does not change a response.
+- **Built:** `GET /metrics` answers 200 as `text/plain; version=0.0.4; charset=utf-8` (the Prometheus text format) and 404 with no body when `EPR_METRICS` is off. A unit test checks the document's content type against the header `metrics::response(true)` really sends, and that the 404 has no body.
+- **Not done / not verified:** the route was not requested through the router, so the check is against `metrics::response`, not a served response. The body is described as a string; the counter names and the exposition format are not in the schema. `EPR_METRICS` being read from the environment on every request was not tested. Other routes still have only the default response (for example `GET /api/openapi.json`, the FHIR routes and the health probes).
+
 ## 2026-11-02 - OpenAPI: the patient's own routes (OS-7, in part)
 
 - **Clinical risk:** none to behaviour; the document describes, it does not change a response. These routes are what a patient or proxy sees of their own record and who has accessed it, so the schema states that a staff identifier is never in the log, that a record the policy refuses is left out of the list, and that the log is for the patient and proxy only (a clinician gets 403).

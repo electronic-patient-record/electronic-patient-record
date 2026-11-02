@@ -6748,6 +6748,19 @@
       "get": {
         "operationId": "getMetrics",
         "responses": {
+          "200": {
+            "content": {
+              "text/plain; version=0.0.4; charset=utf-8": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The process counters in the Prometheus text format. Public, like the health probes; only when `EPR_METRICS` is on."
+          },
+          "404": {
+            "description": "Metrics are off (`EPR_METRICS` is not set). The body is empty."
+          },
           "default": {
             "description": "Bodies are not described in this document; see spec/09-api-surface.md."
           }

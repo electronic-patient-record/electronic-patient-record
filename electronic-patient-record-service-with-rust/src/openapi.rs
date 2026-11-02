@@ -1361,6 +1361,17 @@ pub fn document_for(served: &[(String, String)]) -> Value {
                 );
             }
         }
+        if method == "GET" && path == "/metrics" {
+            responses.insert(
+                "200".into(),
+                json!({"description": "The process counters in the Prometheus text format. Public, like the health probes; only when `EPR_METRICS` is on.",
+                       "content": {"text/plain; version=0.0.4; charset=utf-8": {"schema": {"type": "string"}}}}),
+            );
+            responses.insert(
+                "404".into(),
+                json!({"description": "Metrics are off (`EPR_METRICS` is not set). The body is empty."}),
+            );
+        }
         photo_operation(method, path, &mut op, &mut responses);
         audit_operation(method, path, &mut op, &mut responses);
         // Asking again for a grant that is open answers 200 with the same grant.
@@ -2121,6 +2132,24 @@ mod tests {
         for (_, _, success, _) in READS {
             assert!(schemas.contains_key(*success), "{success} is not defined");
         }
+    }
+
+    #[test]
+    fn the_metrics_route_is_described_with_the_content_type_it_sends() {
+        let doc = document();
+        let ok = &doc["paths"]["/metrics"]["get"]["responses"]["200"]["content"];
+        let sent = crate::metrics::response(true);
+        let sent = sent.headers()["content-type"].to_str().unwrap().to_string();
+        assert!(ok.get(&sent).is_some(), "the document lacks {sent}");
+        assert_eq!(
+            crate::metrics::response(false).status(),
+            axum::http::StatusCode::NOT_FOUND
+        );
+        assert!(
+            doc["paths"]["/metrics"]["get"]["responses"]["404"]
+                .get("content")
+                .is_none()
+        );
     }
 
     #[test]
