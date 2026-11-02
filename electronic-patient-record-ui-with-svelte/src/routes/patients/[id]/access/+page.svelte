@@ -2,6 +2,7 @@
   import { Busy } from "#lib/busy.svelte.js";
   import { page } from "$app/state";
   import { call, commonProblem } from "#lib/api.js";
+  import { newIdempotencyKey } from "#lib/idempotency.js";
   import {
     describeConsent,
     describeProxy,
@@ -32,6 +33,9 @@
 
   let rels = $state<StoredRelationship[] | null>(null);
   let relMessage = $state<string | null>(null);
+  // One key per create; a new one after each success (OF-1).
+  let relKey = newIdempotencyKey();
+  let consentKey = newIdempotencyKey();
   let consents = $state<StoredConsent[] | null>(null);
   let consentMessage = $state<string | null>(null);
 
@@ -107,17 +111,24 @@
 
   async function addRelationshipNow() {
     relMessage = null;
-    const res = await call("POST", `/api/patients/${id}/relationships`, {
-      relationship: relationshipRecord(
-        subject,
-        kind,
-        relStart,
-        relEnd,
-        proxyTerms(basis, proxyScopes, lastDay),
-      ),
-      reason: relWhy.trim() || undefined,
-    });
+    const res = await call(
+      "POST",
+      `/api/patients/${id}/relationships`,
+      {
+        relationship: relationshipRecord(
+          subject,
+          kind,
+          relStart,
+          relEnd,
+          proxyTerms(basis, proxyScopes, lastDay),
+        ),
+        reason: relWhy.trim() || undefined,
+      },
+      undefined,
+      { idempotencyKey: relKey },
+    );
     if (res.status === 201) {
+      relKey = newIdempotencyKey();
       subject = relStart = relEnd = relWhy = lastDay = "";
       proxyScopes = [];
     }
@@ -148,11 +159,15 @@
 
   async function addConsentNow() {
     consentMessage = null;
-    const res = await call("POST", `/api/patients/${id}/consents`, {
-      consent: formToConsent(cform),
-      reason: consentWhy.trim() || undefined,
-    });
+    const res = await call(
+      "POST",
+      `/api/patients/${id}/consents`,
+      { consent: formToConsent(cform), reason: consentWhy.trim() || undefined },
+      undefined,
+      { idempotencyKey: consentKey },
+    );
     if (res.status === 201) {
+      consentKey = newIdempotencyKey();
       cform = emptyConsentForm();
       consentWhy = "";
     }

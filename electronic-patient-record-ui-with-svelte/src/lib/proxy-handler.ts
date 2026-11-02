@@ -4,6 +4,7 @@ import { error, json, type RequestHandler } from "@sveltejs/kit";
 import { AuthUnavailableError, type Auth } from "./auth.js";
 import {
   BACKGROUND_HEADER,
+  idempotencyKeyHeader,
   isBackground,
   proxyTarget,
   purposeHeader,
@@ -39,6 +40,9 @@ export function createProxyHandler(deps: ProxyDeps): RequestHandler {
     // API versions are chosen by this header, never by the path (spec/09-api-surface.md).
     const version = versionHeader(request.headers.get("accepts-version"));
     if (version) headers["accepts-version"] = version;
+    // A create sent with a key is run once by the API (OF-1).
+    const key = idempotencyKeyHeader(request.headers.get("idempotency-key"));
+    if (key) headers["idempotency-key"] = key;
     const auth = deps.getAuth();
     if (auth) {
       if (
@@ -116,6 +120,8 @@ export function createProxyHandler(deps: ProxyDeps): RequestHandler {
             "retry-after",
             // Where the next page or the rest of a cut export starts (the access log's CSV).
             "x-next-before",
+            // Set when the API answered a retry from the first answer (OF-1).
+            "idempotent-replayed",
           ]
             .map((h) => [h, upstream.headers.get(h)] as const)
             .filter(([, v]) => v !== null) as [string, string][],

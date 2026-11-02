@@ -4,6 +4,7 @@
   // allergies" (RC-5, in part). Shown only to a role that may read allergies. Nothing is deleted:
   // ending an allergy or marking it entered in error is a new version, and entered in error is final.
   import { call, commonProblem } from "./api.js";
+  import { newIdempotencyKey } from "./idempotency.js";
   import type {
     AllergyData,
     AllergyRecord,
@@ -33,6 +34,8 @@
   let onset = $state("");
   let why = $state("");
   let message = $state<string | null>(null);
+  // One key per allergy; a new one after each success (OF-1).
+  let idempotencyKey = newIdempotencyKey();
 
   const label = (a: StoredAllergy) =>
     [
@@ -74,12 +77,16 @@
       ...(reaction.trim() ? { reaction: reaction.trim() } : {}),
       ...(onset.trim() ? { onset: onset.trim() } : {}),
     };
-    const res = await call("POST", `/api/patients/${patientId}/allergies`, {
-      allergy,
-      reason: why.trim() || undefined,
-    });
+    const res = await call(
+      "POST",
+      `/api/patients/${patientId}/allergies`,
+      { allergy, reason: why.trim() || undefined },
+      undefined,
+      { idempotencyKey },
+    );
     if (res.status === 201) {
       substance = category = criticality = reaction = onset = why = "";
+      idempotencyKey = newIdempotencyKey();
     }
     await done(res);
   }

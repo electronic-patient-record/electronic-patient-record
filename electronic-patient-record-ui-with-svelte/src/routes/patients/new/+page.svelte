@@ -3,6 +3,7 @@
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
   import { call, commonProblem } from "#lib/api.js";
+  import { newIdempotencyKey } from "#lib/idempotency.js";
   import { DEFAULT_LOCALE, localizePath } from "#lib/locales.js";
   import PatientFields from "#lib/PatientFields.svelte";
   import {
@@ -23,6 +24,8 @@
   let overrideReason = $state("");
   let problems = $state<string[]>([]);
   let message = $state<string | null>(null);
+  // One key for this registration: a double click or a retry stores one patient (OF-1).
+  const idempotencyKey = newIdempotencyKey();
   let candidates = $state<Candidate[]>([]);
   // More records matched than the server compares; only the closest were (CQ-36).
   let candidatesCut = $state(false);
@@ -53,11 +56,17 @@
         candidates?: Candidate[];
         candidates_cut?: boolean;
       }
-    >("POST", "/api/patients", {
-      patient: formToPatient(override ? submitted : form),
-      reason: reason.trim() || undefined,
-      override_reason: override ? overrideReason.trim() : undefined,
-    });
+    >(
+      "POST",
+      "/api/patients",
+      {
+        patient: formToPatient(override ? submitted : form),
+        reason: reason.trim() || undefined,
+        override_reason: override ? overrideReason.trim() : undefined,
+      },
+      undefined,
+      { idempotencyKey },
+    );
     const common = commonProblem(res.status);
     if (common) {
       message = STRINGS[common];

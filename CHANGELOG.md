@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-02 - The UI sends an Idempotency-Key on four creates (OF-1)
+
+- **Clinical risk:** yes, the same as H-043, whose controls and residual text now name the UI's part. A registration, allergy, relationship or consent submitted twice (a double click, a retry) is now stored once when it goes through the UI.
+- **Built:** `idempotencyKeyHeader` in `src/lib/proxy.ts` (the API's rule: 1 to 128 of letters, digits and `. _ : -`); the proxy forwards a well-formed key and passes back `Idempotent-Replayed`; `call` takes `idempotencyKey`; `src/lib/idempotency.ts` makes a UUID key; patient registration (one key for the page), allergy, relationship and consent forms (a new key after each success). Unit tests for the helper, the proxy and the client.
+- **Not done / not verified:** the other UI creates (observation, amendment, break-glass review, feed resolution) send no key. No browser test double-clicks a form, so the end-to-end effect through the UI is not shown; the API side is (`tests/http_idempotency.rs`). The key is made in the browser with `crypto.randomUUID`, and a page reload makes a new one, so a retry after a reload is not protected. A refused first request releases its key, so a second submit after an error sends the same key with the corrected body; that was shown at the API, not through a form.
+
 ## 2026-11-02 - Idempotency keys on creates (OF-1, in part)
 
 - **Clinical risk:** yes. A create that is sent twice stores two records, and a duplicated allergy or observation can be read as two things. The change adds a guard and a second copy of an answer; hazard **H-043** (`governance/clinical-safety/hazard-log.csv`) is added, status `open`, severity 4, likelihood 2. It is not accepted: only the Clinical Safety Officer does that.

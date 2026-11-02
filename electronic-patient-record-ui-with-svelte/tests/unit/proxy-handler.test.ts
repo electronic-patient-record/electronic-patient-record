@@ -91,6 +91,20 @@ describe("proxy handler", () => {
     });
   });
 
+  it("forwards a well-formed Idempotency-Key and drops a malformed one", async () => {
+    const t = setup({});
+    await t.call("api/patients", {
+      method: "POST",
+      headers: { "idempotency-key": "abc-123", origin: PUBLIC },
+    });
+    await t.call("api/patients", {
+      method: "POST",
+      headers: { "idempotency-key": "a b", origin: PUBLIC },
+    });
+    expect(t.seen[0].headers["idempotency-key"]).toBe("abc-123");
+    expect(t.seen[1].headers["idempotency-key"]).toBeUndefined();
+  });
+
   it("drops a malformed version header and an unknown purpose", async () => {
     const t = setup({});
     await t.call("api/patients", {

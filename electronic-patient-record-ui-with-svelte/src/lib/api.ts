@@ -22,7 +22,11 @@ export async function call<T = unknown>(
   body?: unknown,
   purpose?: string,
   // A background look does not keep the session alive (CQ-8).
-  { background = false }: { background?: boolean } = {},
+  // A create sent with a key is run once by the API (OF-1); see `idempotency.ts`.
+  {
+    background = false,
+    idempotencyKey,
+  }: { background?: boolean; idempotencyKey?: string } = {},
 ): Promise<ApiResult<T>> {
   if (!background) noteActivity();
   try {
@@ -30,6 +34,7 @@ export async function call<T = unknown>(
       method,
       headers: {
         ...(background ? { "x-epr-background": "1" } : {}),
+        ...(idempotencyKey ? { "idempotency-key": idempotencyKey } : {}),
         ...(body === undefined ? {} : { "content-type": "application/json" }),
         ...((purpose ?? defaultPurpose)
           ? { "x-purpose-of-use": (purpose ?? defaultPurpose)! }

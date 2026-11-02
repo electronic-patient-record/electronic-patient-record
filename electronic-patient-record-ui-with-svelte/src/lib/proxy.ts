@@ -58,6 +58,16 @@ export function purposeHeader(value: string | null | undefined): string | null {
 }
 
 /**
+ * The `Idempotency-Key` value to forward, or null. The API runs a keyed create once (OF-1); only 1 to 128
+ * letters, digits and `. _ : -` pass, the same rule the API enforces, so nothing odd reaches it.
+ */
+export function idempotencyKeyHeader(
+  value: string | null | undefined,
+): string | null {
+  return value && /^[A-Za-z0-9._:-]{1,128}$/.test(value) ? value : null;
+}
+
+/**
  * The `Accepts-version` value to forward, or null. The API is versioned by this header, never by the
  * path; only a short token of letters, digits, dots and hyphens passes, so nothing odd reaches the API.
  */

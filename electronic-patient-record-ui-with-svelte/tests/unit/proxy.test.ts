@@ -3,6 +3,7 @@ import {
   isBackground,
   proxyTarget,
   purposeHeader,
+  idempotencyKeyHeader,
   versionHeader,
 } from "../../src/lib/proxy";
 
@@ -53,6 +54,25 @@ describe("isBackground (CQ-8)", () => {
     expect(isBackground("1")).toBe(true);
     for (const v of [null, undefined, "", "0", "true", "yes"])
       expect(isBackground(v)).toBe(false);
+  });
+});
+
+describe("idempotencyKeyHeader", () => {
+  it("passes the key the API accepts and drops anything else", () => {
+    for (const v of ["a", "Abc-123_x.y:z", "k".repeat(128)]) {
+      expect(idempotencyKeyHeader(v)).toBe(v);
+    }
+    for (const v of [
+      null,
+      undefined,
+      "",
+      "a b",
+      "a/b",
+      "a\r\nx: y",
+      "k".repeat(129),
+    ]) {
+      expect(idempotencyKeyHeader(v)).toBeNull();
+    }
   });
 });
 

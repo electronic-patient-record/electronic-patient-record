@@ -18,6 +18,23 @@ describe("call", () => {
     expect(second?.headers).toEqual({ "content-type": "application/json" });
   });
 
+  it("sends an Idempotency-Key only when given", async () => {
+    const fetchMock = vi.fn(async () => new Response("{}", { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await call("POST", "/api/patients", { a: 1 }, undefined, {
+      idempotencyKey: "k-1",
+    });
+    await call("POST", "/api/patients", { a: 1 });
+    const [keyed, plain] = fetchMock.mock.calls.map(
+      (c) => (c as unknown as [string, RequestInit])[1],
+    );
+    expect(keyed?.headers).toEqual({
+      "content-type": "application/json",
+      "idempotency-key": "k-1",
+    });
+    expect(plain?.headers).toEqual({ "content-type": "application/json" });
+  });
+
   it("turns a network failure into status 0 and an empty body into null", async () => {
     vi.stubGlobal(
       "fetch",
