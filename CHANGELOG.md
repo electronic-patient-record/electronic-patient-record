@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-02 - A census of the search routes' audit rows (OF-2)
+
+- **Clinical risk:** none to behaviour; a test only. It guards what a clinician or auditor relies on: that a search of patient records leaves a trail.
+- **Built:** `tests/audit_search_coverage.rs` (database-gated, login off) calls each of the nine `Search` routes in `routes::TABLE` and requires 200 and at least one new audit row; `/api/patients/compare` is exempt with its reason (it reads no stored record). A `Search` route that is neither called nor exempt fails the test. All nine passed on the first run; the census failed as intended when I removed one route from the table.
+- **Not done / not verified:** the test counts rows before and after, so a row written by something else in the same moment would hide a missing one (the suite runs single-threaded). It does not read the row's detail, so it does not prove the searched values stay out of it. `GET /api/hazards` and `GET /api/me/patients` are `Read` lists, outside this census. The FHIR `$match` route and the FHIR `AllergyIntolerance` and `Observation` searches are not called here. Not run in CI yet.
+
 ## 2026-11-02 - Research pass: Openfront Hospital (plan.md §23, tasks series OF) and the schema map (OF-6)
 
 - **Clinical risk:** none now; documents and a generated page. OF-1 (idempotency key on creates) and OF-3 (record hold) are marked clinical and say a hazard row comes first; no hazard was added because nothing was built.

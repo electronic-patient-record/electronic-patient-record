@@ -1182,7 +1182,7 @@ opened). Items are **Not clinical** unless they say otherwise.
   original status; the same key with a different body is a 422; keys expire. Hazard row first.
   **Acceptance:** a test posts one allergy twice with one key and finds one record and two identical answers; a changed
   body is refused; an expired key writes again. **Not met until built.**
-- [ ] **OF-2 (S) — Every search and list is audited.** Patient search audits the criteria kinds, the result count and the
+- [x] **OF-2 (S) — Every search and list is audited.** **Landed 2026-11-02 for the `Search` routes:** `tests/audit_search_coverage.rs` (database-gated) calls each `Search` route in `routes::TABLE` (the patient search on `/api` and FHIR R4 and R5, the audit search and FHIR `AuditEvent`, the feed refusals and break-glass reviews with their counts) and requires 200 and a new audit row; a `Search` route neither called nor exempted fails (checked by removing one). `/api/patients/compare` is exempt: it reads no stored record. **Not met:** the `Read` lists (`/api/hazards`, `/api/me/patients`) are not in this census, `$match` and the other FHIR searches (`AllergyIntolerance`, `Observation`) are covered by `tests/audit_coverage.rs` only through a `patient` search, and what a row's detail says is not checked here. Original plan: Patient search audits the criteria kinds, the result count and the
   count hidden by consent (`search_service`); `tests/audit_coverage.rs` walks the 15 patient-scoped reads. Extend the census to
   the FHIR searches, `$match`, `/api/patients/compare`, `/api/hazards` and the feed and break-glass lists, so a new list route fails
   without an audit row. **Not proposed:** a digest of the criteria (a hashed birth date is easy to reverse).
