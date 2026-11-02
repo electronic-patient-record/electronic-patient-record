@@ -107,9 +107,19 @@ async fn fhir_refusals_are_operation_outcomes_and_never_carry_candidates() {
         let family = tag("fhir");
         let created = server
             .post("/api/patients")
-            .json(&serde_json::json!({ "patient": patient(&family, &dob(777)) }))
+            // Setup, not the thing under test: a long-lived test database can hold a record this one
+            // resembles by chance (a birth date repeats), which would answer 409, so the override is given.
+            .json(&serde_json::json!({
+                "patient": patient(&family, &dob(777)),
+                "override_reason": "test setup; earlier runs may have left a similar record"
+            }))
             .await;
-        assert_eq!(created.status_code(), StatusCode::CREATED);
+        assert_eq!(
+            created.status_code(),
+            StatusCode::CREATED,
+            "{}",
+            created.text()
+        );
         let id = created.json::<serde_json::Value>()["id"]
             .as_str()
             .expect("id")

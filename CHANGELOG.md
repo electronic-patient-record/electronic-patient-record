@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-02 - A flaky patient test gets an override on its setup create
+
+- **Clinical risk:** none; a test only.
+- **Changed:** in `tests/http_patients.rs`, `fhir_refusals_are_operation_outcomes_and_never_carry_candidates` creates its patient with an `override_reason`. It failed once in a local full database run with the create answering something other than 201, and passed when rerun; I did not see the failing response, so a duplicate-check 409 from a chance repeat of the birth date in my long-lived test database is the likely cause, not a proven one. The create is setup, and the test still checks the FHIR duplicate refusal later (a 409 with no candidates) against that record.
+- **Not done / not verified:** the other tests in the file build their records the same way and were not changed; they may fail the same way. CI starts from a fresh database and has not shown this failure. I ran the file once after the change; one pass does not show a flake is gone.
+
 ## 2026-11-02 - A test that an Idempotency-Key belongs to its subject (OF-1)
 
 - **Clinical risk:** none to behaviour; a test only. It guards H-043's cause "a key shared across subjects would hand one person another's answer"; the hazard text now says per-subject separation is tested.
