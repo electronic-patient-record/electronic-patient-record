@@ -5,7 +5,7 @@
 //! row), a different body under the same key (422), a malformed key (400), a refused first request
 //! that releases its key, a key that is still pending (409), an expired key that writes again, and a
 //! request without a key (unchanged: it writes twice). Not covered: per-subject separation (login is
-//! off, so there is one subject), the hourly purge loop, a crash between the write and the stored
+//! off here; `http_idempotency_roles.rs` covers it), the hourly purge loop, a crash between the write and the stored
 //! answer, and the `/fhir/` creates.
 //!
 //! ```text

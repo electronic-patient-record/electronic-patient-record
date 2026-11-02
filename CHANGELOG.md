@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-02 - A test that an Idempotency-Key belongs to its subject (OF-1)
+
+- **Clinical risk:** none to behaviour; a test only. It guards H-043's cause "a key shared across subjects would hand one person another's answer"; the hazard text now says per-subject separation is tested.
+- **Built:** `tests/http_idempotency_roles.rs` (database-gated, login on): two clinicians send the same key and body to `POST /api/hazards`; each gets its own record, a retry by either replays that subject's own answer with `Idempotent-Replayed`, writes nothing, and the replay's audit row names the replaying subject; `idempotency_keys` holds one row per subject and key. I checked it can fail by making the middleware key on a constant instead of the subject: the test failed, and I restored the file.
+- **Not done / not verified:** only one route (hazard raise) and one role (clinician) were used. The hourly purge loop and a crash between the write and the stored answer are still untested. A raised hazard is a real row in the shared test database (the register is append-only), as in the other role-gated tests. Not run in CI yet.
+
 ## 2026-11-02 - The referral state table (PC-1)
 
 - **Clinical risk:** none yet; the module is pure and nothing calls it. It is written so that a later referral cannot be shown as cancelled before the recipient confirms (PC-4): `cancelled` has exactly one way in, the recipient's confirmation of a request. No hazard row was added because nothing a clinician sees has changed; PC-4 adds it when the UI is built.
