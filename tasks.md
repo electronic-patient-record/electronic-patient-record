@@ -351,7 +351,7 @@ Conventions:
   **Acceptance:** an ADT state machine test passes. The discharge summary pulls the active problems and medications.
 - [ ] **CA-2 (M) — Care plans, goals, care teams, tasks.**
   **Acceptance:** a task assigned to a care team appears in each member's worklist.
-- [ ] **CA-3 (M) — Referrals with closed loop.** `ServiceRequest` plus
+- [ ] **CA-3 (M) — Referrals with closed loop.** **First slice landed 2026-11-02:** the append-only store only: migration 22 (`referral_versions`, `referral_current`, triggers refuse update, delete and truncate), `src/referrals_store.rs` (`request`, `advance` with a `Step`, `current`, `for_patient`, `history`) over the pure state table of PC-1, enforcing the sender's role, a note where the event needs one, a stale `expected_version` as a conflict and an existing patient; `tests/referrals_store.rs` (5, database-gated). **Not met:** no route, policy row, screen, FHIR mapping, audit row, worklist, timeouts (PC-3), unmatched-outcome queue (PC-2) or appointment detail; `Book` carries no date; nothing calls the store, so no referral can be made through the service. `ServiceRequest` plus
   `Task`, with status tracked until the outcome is received.
   **Boundary (PA-1, proposed):** the EPR owns the clinical request and its closed loop; referral administration and triage outcomes stay in a PAS, linked by external reference.
   **Acceptance:** a referral with no response after N days escalates (fake clock).

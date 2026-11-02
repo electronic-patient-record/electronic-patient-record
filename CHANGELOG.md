@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-02 - The referral store (CA-3, first slice)
+
+- **Clinical risk:** yes (a referral and its outcome are what a clinician relies on to know a patient was seen). The row for hazard **H-044** now says what is in place (the store and its rules) and what is not (routes, the unmatched-outcome queue, any screen), and that the hazard stays unmitigated in use. Still `open`, not accepted.
+- **Built:** migration 22 (`referral_versions` with a state check, `referral_current`, three triggers that refuse update, delete and truncate; `down` is refused outside development like the other clinical tables); `src/referrals_store.rs` over the pure table of PC-1: `request`, `advance`, `current`, `for_patient`, `history`. The store enforces what the pure table cannot: the sender's role (the referrer asks to cancel; only the recipient confirms), a note for the events that say something, a stale version as a conflict, and an existing patient. `Event::as_str` added to `referral.rs`. `tests/referrals_store.rs` (5, database-gated): request to outcome with the full history, a cancellation as a request, a decline after acceptance, a missing or blank note, the wrong role, a stale version, an unlisted transition, an unknown patient, and the three triggers. The 18 columns of the table and view are classified in `governance/personal-data-inventory.csv` and `referrals` is named in the `record` retention class.
+- **Not done / not verified:** no route, policy row, audit row, screen, FHIR mapping, worklist or timeouts; nothing calls the store, so no referral can be made through the service. The referral id is a server UUID; carrying it on an incoming outcome and the unmatched queue (PC-2) are not built. `Book` and `RecordNoShow` carry no appointment date. The actor is passed in by the caller and not checked against the token. Concurrent writers were not tested (the append is the same primitive as the other stores). The state table is still from one unreviewed source. The `referrals` retention period is unset like the others.
+
 ## 2026-11-02 - Indexing the new documents and modules
 
 - **Clinical risk:** none; documents only.

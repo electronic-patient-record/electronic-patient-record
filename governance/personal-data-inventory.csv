@@ -249,3 +249,19 @@ idempotency_keys,status,none,The HTTP status of the kept answer,transient
 idempotency_keys,content_type,none,The content type of the kept answer,transient
 idempotency_keys,response,health,The answer as first sent; patient data for a create,transient
 idempotency_keys,created_at,none,When the key was first used; it expires 24 hours later,transient
+referral_versions,referral_id,none,Random referral id; carried by every later message so an outcome can be matched,record
+referral_versions,version,none,1 for the request; each step is the next version,record
+referral_versions,patient_id,identifier,The patient referred,record
+referral_versions,recorded_at,none,When this step was written,record
+referral_versions,author,staff-identifier,Who wrote this step (the token subject),record
+referral_versions,state,health,Where the referral is; that a patient was referred and how far it got is health information,record
+referral_versions,event,free-text,What happened in this step: the event and who and when and the sender's note,record
+referral_versions,body,health,The request: recipient and reason and question and priority and external identifiers,record
+referral_current,referral_id,none,Random referral id,record
+referral_current,version,none,Version counter,record
+referral_current,patient_id,identifier,Links the referral to the patient,record
+referral_current,recorded_at,none,When the latest step was written,record
+referral_current,author,staff-identifier,Who wrote the latest step,record
+referral_current,state,health,Where the referral is,record
+referral_current,event,free-text,What happened in the latest step,record
+referral_current,body,health,The request,record

@@ -44,6 +44,7 @@ pub mod privacy;
 pub mod proxy;
 pub mod rate_limit;
 pub mod referral;
+pub mod referrals_store;
 pub mod relationships;
 pub mod routes;
 pub mod site;

@@ -195,6 +195,26 @@ impl Event {
         Event::Redirect,
     ];
 
+    /// The kebab-case word stored for this event.
+    #[must_use]
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Event::Accept => "accept",
+            Event::Decline => "decline",
+            Event::Book => "book",
+            Event::RecordNoShow => "record-no-show",
+            Event::InterimNote => "interim-note",
+            Event::Outcome => "outcome",
+            Event::RequestCancel => "request-cancel",
+            Event::ConfirmCancel => "confirm-cancel",
+            Event::RequestInformation => "request-information",
+            Event::ProvideInformation => "provide-information",
+            Event::Defer => "defer",
+            Event::Resume => "resume",
+            Event::Redirect => "redirect",
+        }
+    }
+
     /// Who sends this event.
     #[must_use]
     pub fn actor(self) -> Actor {
@@ -434,6 +454,16 @@ mod tests {
             provisional,
             ["information-requested", "deferred", "redirected"]
         );
+    }
+
+    #[test]
+    fn the_event_words_are_unique_kebab_case() {
+        let mut words = BTreeSet::new();
+        for e in Event::ALL {
+            let w = e.as_str();
+            assert!(w.chars().all(|c| c.is_ascii_lowercase() || c == '-'), "{w}");
+            assert!(words.insert(w), "{e:?} repeats a word");
+        }
     }
 
     #[test]
