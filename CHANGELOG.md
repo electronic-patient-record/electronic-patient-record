@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-02 - The referral state table (PC-1)
+
+- **Clinical risk:** none yet; the module is pure and nothing calls it. It is written so that a later referral cannot be shown as cancelled before the recipient confirms (PC-4): `cancelled` has exactly one way in, the recipient's confirmation of a request. No hazard row was added because nothing a clinician sees has changed; PC-4 adds it when the UI is built.
+- **Built:** `src/referral.rs`: `State` (12), `Event` (13), `Actor`, `next(state, event)` returning the next state or `Refused`, and 8 unit tests including an exhaustive check of every state and event pair against a second listing of the table, and a walk that finds every state reachable and none a dead end. The draft spec's `deferred` row now lists a cancel request, as the code does.
+- **Not done / not verified:** nothing calls it, so there is no stored referral, route or screen. The table is a proposal from one unreviewed proof-of-concept guide (seven pages read, summarised) and has not been checked against IHE 360X, which I have not read. The three provisional states are the source's own "to confirm". The actor of each event is named, not enforced. The mapping to FHIR `Task.status` and `businessStatus` is not written.
+
 ## 2026-11-02 - Research pass: the Care Coordination and 360 Referrals guide (plan.md §24, tasks series PC)
 
 - **Clinical risk:** none now; documents only. PC-2, PC-3, PC-4, PC-6 and PC-7 are marked clinical and say a hazard row comes first; no hazard row was added because nothing was built. Nothing was set to accepted or closed.

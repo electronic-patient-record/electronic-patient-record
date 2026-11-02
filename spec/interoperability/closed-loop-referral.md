@@ -1,6 +1,6 @@
 # Closed-loop referral: a draft state model
 
-**Draft, proposed 2026-11-02. Nothing here is built.** It sharpens task CA-3 (referrals with closed loop) and PA-14 (outcomes beyond accept and reject) from one outside source, read in part: the *Care Coordination and 360 Referrals* proof-of-concept FHIR guide ([home](https://kevinmayfield.github.io/PatientCareCoordination/en/index.html), v0.1.0, "Draft as of 2026-11-02", one author, no licence stated). That guide says it is "not an authoritative source" and "must not be used for implementation or clinical purposes", and it marks several of its own rules "To confirm". Its authority is IHE's 360X profile, which I have **not** read. See [`plan.md` §24](../../plan.md). Copy nothing from it without finding its licence.
+**Draft, proposed 2026-11-02.** The table below is written as a pure function in `src/referral.rs` (PC-1) with tests; nothing calls it yet, so no referral is stored or shown. It sharpens task CA-3 (referrals with closed loop) and PA-14 (outcomes beyond accept and reject) from one outside source, read in part: the *Care Coordination and 360 Referrals* proof-of-concept FHIR guide ([home](https://kevinmayfield.github.io/PatientCareCoordination/en/index.html), v0.1.0, "Draft as of 2026-11-02", one author, no licence stated). That guide says it is "not an authoritative source" and "must not be used for implementation or clinical purposes", and it marks several of its own rules "To confirm". Its authority is IHE's 360X profile, which I have **not** read. See [`plan.md` §24](../../plan.md). Copy nothing from it without finding its licence.
 
 ## The loop
 
@@ -20,7 +20,7 @@ A clinician (the **referrer**) sends a request; a service (the **recipient**) ac
 | `cancel-requested` | the referrer asks to cancel | `cancelled` (the recipient confirms), `completed` (the recipient reports an outcome instead) |
 | `cancelled` | the recipient confirms | (end) |
 | `information-requested` *(provisional)* | the recipient needs more | `requested` when it is supplied |
-| `deferred` *(provisional)* | the recipient puts it on hold | `accepted` |
+| `deferred` *(provisional)* | the recipient puts it on hold | `accepted`, a cancel request |
 | `redirected` *(provisional)* | the recipient sends it elsewhere | (end; a **new** referral with a **new** id replaces it) |
 
 The three provisional states are marked "To confirm" in the source, as is who raises the replacement referral. Treat them as proposals.
