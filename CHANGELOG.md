@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-02 - Dependencies: UI npm-ui group (dependabot #4) and the service lockfile
+
+- **Clinical risk:** none to behaviour intended; UI libraries and Rust patch releases. The picker bar and Svelte render what a clinician reads, so a visual regression there would matter; none was looked for beyond the tests below.
+- **Changed:** the three npm-ui updates in dependabot's branch (`@lilydesignsystem/svelte-picker-bar` 0.4.0 to 0.5.1, `redis`, `svelte`) merged; the service `Cargo.lock` takes the semver-compatible updates `cargo` resolved (for example arrow 60.0.0 to 60.1.0).
+- **Not done / not verified:** UI lint, check, 247 unit tests and 85 Playwright tests passed locally on the merged tree; no manual look at the picker bar's new version, and its release notes (helpers, themes) were not read for changes that affect this UI. The lockfile update was exercised by the service gates (fmt, clippy, tests without a database) and the roles test; the full database-gated suite was not run against it. The `dtolnay/rust-toolchain` 1.120.0 bump (PR #1) was closed, not merged: it would change the Rust toolchain, which `rust-toolchain.toml` pins to 1.99.1.
+
 ## 2026-11-02 - Audit routes answer a wrong-typed query with the JSON error (OS-7, behaviour change)
 
 - **Clinical risk:** none to what a clinician sees or decides. This is an error-body change on two audit-reader routes; no audit row, policy decision or result changes.
