@@ -47,6 +47,12 @@
           "description": "Generated: exactly what is built and how many tests pass."
         },
         {
+          "title": "Schema map",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/schema-map.md",
+          "path": "spec/schema-map.md",
+          "description": "Generated: every table and view the migrations create, with columns."
+        },
+        {
           "title": "Tasks",
           "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/tasks.md",
           "path": "tasks.md",

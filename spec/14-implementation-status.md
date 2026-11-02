@@ -49,6 +49,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | PA | 1 | 16 |
 | EC | 0 | 13 |
 | OS | 4 | 10 |
-| **Total** | **44** | **185** |
+| OF | 1 | 6 |
+| **Total** | **45** | **191** |
 
 <!-- generated:end -->

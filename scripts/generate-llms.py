@@ -44,6 +44,7 @@ SECTIONS = [
         ("AGENTS", "AGENTS.md", "How work is done here: spec first, one commit per item, the gates, and the things that are easy to get wrong."),
         ("Specification index", "spec/index.md", "Entry point to the specification."),
         ("Implementation status", "spec/14-implementation-status.md", "Generated: exactly what is built and how many tests pass."),
+        ("Schema map", "spec/schema-map.md", "Generated: every table and view the migrations create, with columns."),
         ("Tasks", "tasks.md", "The task queue with what landed, what is open and what was not verified."),
         ("Changelog", "CHANGELOG.md", "Every change, newest first, each stating what was not done or not verified."),
     ]),

@@ -24,6 +24,7 @@ if has '\.(md|csv|rs|ts|svelte)$|^scripts/|^tasks\.md$'; then
   echo "pre-commit: generated docs are current"
   sh scripts/generate-status.sh --check || fail=1
   python3 scripts/generate-llms.py --check || fail=1
+  python3 scripts/generate-schema-map.py --check || fail=1
 fi
 if has '\.md$'; then
   python3 scripts/check-links.py . >/dev/null || { echo "pre-commit: broken links (python3 scripts/check-links.py .)"; fail=1; }

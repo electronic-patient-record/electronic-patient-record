@@ -20,7 +20,7 @@ Version 0.1.0. Rust 1.99.1 (pinned in `rust-toolchain.toml`; minimum supported 1
    verified. Never weaken a guard or a census test to get green; fix the cause or record why.
 4. **Clinical risk.** If a change could alter what a clinician sees, decides or signs, say so and update `governance/clinical-safety/hazard-log.csv` (task AS-1) in the same commit; a `clinical-impact` PR without that change fails CI. Never set a hazard to `accepted` or `closed`: only the Clinical Safety Officer does. When unsure, treat it as clinical.
 5. **Run the gates before pushing** (below), and `sh scripts/generate-status.sh` after adding tests or ticking tasks, and
-   `python3 scripts/generate-llms.py` after adding or moving a document it lists (`llms.txt`, `llms.json`), or the docs job fails.
+   `python3 scripts/generate-llms.py` after adding or moving a document it lists (`llms.txt`, `llms.json`), or the docs job fails; `python3 scripts/generate-schema-map.py` after a migration adds a table or view (`spec/schema-map.md`).
 
 ## Gates
 
@@ -33,7 +33,7 @@ cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings &&
 # UI (another project may hold port 4173: use PW_PORT)
 cd electronic-patient-record-ui-with-svelte && pnpm run lint && pnpm run check && pnpm run check:tests && pnpm exec vitest run && PW_PORT=4183 CI=true pnpm exec playwright test
 # docs
-python3 scripts/check-links.py . && sh scripts/generate-status.sh --check && python3 scripts/generate-llms.py --check
+python3 scripts/check-links.py . && sh scripts/generate-status.sh --check && python3 scripts/generate-llms.py --check && python3 scripts/generate-schema-map.py --check
 ```
 
 ## Things that are easy to get wrong

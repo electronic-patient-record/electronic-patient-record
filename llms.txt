@@ -17,6 +17,7 @@
 - [AGENTS](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AGENTS.md): How work is done here: spec first, one commit per item, the gates, and the things that are easy to get wrong.
 - [Specification index](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/index.md): Entry point to the specification.
 - [Implementation status](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/14-implementation-status.md): Generated: exactly what is built and how many tests pass.
+- [Schema map](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/schema-map.md): Generated: every table and view the migrations create, with columns.
 - [Tasks](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/tasks.md): The task queue with what landed, what is open and what was not verified.
 - [Changelog](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CHANGELOG.md): Every change, newest first, each stating what was not done or not verified.
 

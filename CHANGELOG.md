@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-02 - Research pass: Openfront Hospital (plan.md §23, tasks series OF) and the schema map (OF-6)
+
+- **Clinical risk:** none now; documents and a generated page. OF-1 (idempotency key on creates) and OF-3 (record hold) are marked clinical and say a hazard row comes first; no hazard was added because nothing was built.
+- **Built:** `plan.md` §23 (assessment, seven ideas ranked, risks, two open questions OQ-OF1 and OQ-OF2 in `spec/16-open-questions.md`, order of work, sources); `tasks.md` series `OF` (OF-1 to OF-7, OF-6 ticked); `scripts/generate-schema-map.py` and `spec/schema-map.md` (18 tables, 11 views from the migrations), checked by `--check` in the docs job and the pre-commit hook, listed in `llms.txt` and `llms.json`; `OF` added to the status script's prefixes.
+- **Corrected from the comparison:** it was written for the PAS and says the Rust API has no version check and does not audit searches. In this service every REST update already takes `expected_version` (409 with `current_version`), the FHIR update takes `If-Match`, and patient search already audits the criteria kinds, the count and the count hidden by consent. The real gaps here are idempotency on creates and a census over every search route.
+- **Not done / not verified:** I read the PAS comparison, not Openfront's repository, so every claim about Openfront is second-hand. OF-1 to OF-5 and OF-7 are not built: none of them has code, a test or a hazard row. The `expected_version` and search-audit statements were checked by reading `search_service` and listing the controllers, not by a full audit of every route. The schema map lists name and SQL type only, misses tables built at run time (the audit partitions), and the `--check` was exercised by corrupting the page once.
+
 ## 2026-11-02 - Dependencies: UI npm-ui group (dependabot #4) and the service lockfile
 
 - **Clinical risk:** none to behaviour intended; UI libraries and Rust patch releases. The picker bar and Svelte render what a clinician reads, so a visual regression there would matter; none was looked for beyond the tests below.

@@ -1239,3 +1239,75 @@ and [O3 configuration system](https://o3-docs.vercel.app/docs/configuration-syst
 [EHRbase](https://github.com/ehrbase/ehrbase) `application.yml`; HAPI starter `application.yaml`.
 Secondary (capabilities only): Purkayastha et al. 2019, *Healthcare Informatics Research* 25(2), comparison of
 open-source EHRs ([PMC6517630](https://pmc.ncbi.nlm.nih.gov/articles/PMC6517630)).
+
+
+## 23. Research pass 2026-11-02: Openfront Hospital, read through the PAS comparison
+
+The request: read the Patient Administration System's comparison of Openfront Hospital and add its ideas here. The source
+is that repository's `spec/compare/openfront-hospital/index.md` (researched 2026-11-02 from the public repository
+<https://github.com/openshiporg/openfront-hospital>: README, schema map, model and mutation file lists, three model files).
+**I read the comparison, not the repository**, so every claim about Openfront below is second-hand, and the comparison
+itself says nothing was run. It was written for the PAS, where the gaps differ from ours; each idea below was
+re-checked against this repository's code before it was ranked. Nothing is built by this pass except where a task says so.
+
+### 23.1 Assessment
+
+- **Two of the comparison's three headline gaps are not gaps here, or only partly.** Every REST update in this service
+  already carries `expected_version` and answers 409 with `current_version`; the FHIR update takes `If-Match`. Patient
+  search already writes an audit row (which criteria kinds were used, how many results, how many hidden by consent, never
+  the values). What is missing is narrower: **a retried create has no idempotency key** (two clicks, or a client retry
+  after a timeout, can write two allergies), and **not every search and list route is proven audited** (the census walks
+  the 15 patient-scoped reads, not the FHIR searches or `$match`).
+- **Records governance is a real gap.** There is no hold that blocks archiving or disposal, no recorded retention
+  decision, and the audit export is a synchronous download, not an expiring job. OS-13 archives and never deletes, so
+  a hold is cheap to honour now and expensive to retrofit.
+- **Wards, beds and the front desk belong to the PAS side of the boundary** (`spec/02-scope.md`, OQ-PA1). Timed bed
+  reservation, an occupancy event log and an arrival queue are design notes for CA-1 and PA-8, not new EPR features.
+- **Per-area permission flags and a first-administrator bootstrap do not fit.** Sign-in and roles are Keycloak's, and the
+  policy matrix (`spec/access-control`) already separates areas by role. We have no password accounts to bootstrap.
+- **A schema map is cheap and keeps itself true.** One generated table of every table, its migration and its columns,
+  checked in CI like the implementation status.
+- **Do not copy:** clinical lists, claims and payments, a second patient master, anonymous self-booking. The comparison
+  reaches the same view.
+
+### 23.2 Ideas, assessed
+
+| Rank | Idea | Source | Value here | Cost and caveat |
+|---|---|---|---|---|
+| 1 | **Idempotency key on creates** (`Idempotency-Key`, replay the stored answer, refuse a changed body) | Openfront `operationKey` | A duplicate allergy or consent is a clinical-record error, and retries are normal | ~2 days (OF-1); clinical, hazard row; the key store needs an expiry and must not hold more than the response already shows |
+| 2 | **Prove every search and list is audited** | Openfront `PhiReadAudit` | Closes the "searches are not audited" worry for the routes not yet walked | ~1 day (OF-2); a digest of the criteria is not proposed: a hash of a date of birth is easy to reverse |
+| 3 | **Record hold and a retention decision record** | Openfront `RecordHold`, `RetentionDisposition` | Archiving (OS-13) is not yet a decision anyone has recorded; a hold must stop it | ~4 days (OF-3); clinical; needs OQ-OF1 answered first |
+| 4 | **Schema map generated from the migrations, checked in CI** | Openfront `docs/schema-map.md` | New readers and the data-protection assessment need one list of what is stored | ~1 day (OF-6); built with this pass |
+| 5 | **Expiring, encrypted export jobs** | Openfront `ExportJob` | The 10000-row cap makes a full audit export a loop of files | ~3 days (OF-4); needs OQ-OF2 (where the key lives) |
+| 6 | **Timed bed reservation, occupancy event log, arrival queue** | Openfront `BedReservation`, `BedOccupancyEvent`, `CareQueueTicket` | Design input for CA-1 and PA-8 | notes only (OF-5); built on the PAS side |
+| 7 | Per-area permission flags; once-only first-admin bootstrap | Openfront capability flags | None while Keycloak holds identity | not adopted (OF-7, a record of the decision) |
+
+### 23.3 Risks and what is uncertain
+
+- The comparison's "not found" statements come from a text search in the PAS repository; ours come from this one, read for
+  this pass (the `expected_version` routes, the `Search` audit detail and the `FHIR If-Match`), not from a full audit.
+- An idempotency store is a second place a response is kept. If the response holds patient data, the store holds it
+  too, so it needs the same retention and the same erasure rules as the record.
+- A legal hold changes what a clinician can no longer see only if archiving hides rows; it does not (the
+  `audit_events_all` view). It still changes what an operator may do, so it is audited and needs a role.
+- Openfront is early (about 30 commits, one star as of the comparison) and mostly untested in its repository. It is a
+  design reference.
+
+### 23.4 Open questions (to move to spec/16-open-questions.md)
+
+- **OQ-OF1.** Who may place and lift a record hold, and does a hold also stop an archive that only moves rows?
+  Recommendation: a named governance role, never the clinician role; a hold stops disposal, and stops archiving too
+  until governance says archive-only is acceptable.
+- **OQ-OF2.** Where does the key for an encrypted export live, and how long does a job live? Recommendation: a key held
+  outside the database, a job that expires in 24 hours, and no export without an audit row.
+
+### 23.5 Order of work
+
+OF-6 first (built with this pass, no risk); then OF-2 (a census, no behaviour change); then OF-1 (hazard row first);
+OF-3 after OQ-OF1; OF-4 after OQ-OF2. OF-5 and OF-7 are notes that need no schedule.
+
+### 23.6 Sources (this pass)
+
+The PAS repository's `spec/compare/openfront-hospital/index.md` (read in full, 2026-11-02); through it, the repository
+<https://github.com/openshiporg/openfront-hospital> (not opened by me). This repository: `src/controllers/patients.rs`
+(`search_service`), `src/controllers/*.rs` (`expected_version`), `tests/audit_coverage.rs`, `migration/src/`.
