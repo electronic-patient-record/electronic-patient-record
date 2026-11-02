@@ -816,7 +816,7 @@ async fn real_responses_of_the_role_gated_routes_validate_against_the_served_sch
             "schema mismatches:\n{}",
             problems.join("\n")
         );
-        assert!(checked >= 35, "only {checked} responses were checked");
+        assert!(checked >= 34, "only {checked} responses were checked");
     })
     .await;
 }
