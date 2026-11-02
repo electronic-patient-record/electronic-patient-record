@@ -13,6 +13,19 @@
 
 All routes except the three probes require a valid bearer token (built). Tests keep the mounted FHIR routes and the CapabilityStatement equal (IO-1): the route list is generated, and `the_capability_statement_lists_exactly_the_mounted_routes`, `…_notes_name_exactly_the_mounted_types_that_have_any` and `…_lists_the_search_parameters_the_code_reads` check the generator and the hand-written part.
 
+### Idempotent creates (OF-1)
+
+A `POST` under `/api` may carry `Idempotency-Key: <1 to 128 of letters, digits, . _ : ->`. The request runs once per
+(token subject, key). A retry with the same method, path and body returns the first answer, status and body, with
+`Idempotent-Replayed: true`, and writes nothing; the replay is audited (resource `IdempotentReplay`) and is refused
+(500) if that row cannot be written. The same key with a different method, path or body is 422; a key whose first
+request is unfinished, or ended without an answer being kept, is 409. A key that is not well formed is 400. Only a
+success is kept: a refusal or failure releases the key so the corrected request can use it. Keys are per subject and
+expire after 24 hours (`idempotency_keys`, purged hourly); the stored answer can hold patient data, so it is the one
+place a copy of a record is kept outside the append-only tables, and it is the only table here that deletes. If the
+key cannot be checked the request is refused, not run unguarded. A request without the header behaves as before.
+`/fhir/` creates are not covered. Hazard H-043.
+
 ### Error bodies
 
 Every refusal and failure is built by `api_error::ApiError`, never by hand (`tests/error_census.rs`):

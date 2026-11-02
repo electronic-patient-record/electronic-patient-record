@@ -25,6 +25,7 @@ pub mod feed_queue;
 pub mod gate;
 pub mod hazard;
 pub mod hazard_store;
+pub mod idempotency;
 pub mod ids;
 pub mod interop;
 pub mod link_token;

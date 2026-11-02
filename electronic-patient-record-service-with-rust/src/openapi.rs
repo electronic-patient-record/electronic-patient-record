@@ -1380,6 +1380,19 @@ pub fn document_for(served: &[(String, String)]) -> Value {
                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/BreakGlassGrant"}}}}),
             );
         }
+        if method == "POST" && path.starts_with("/api/") {
+            let mut parameters = op
+                .get("parameters")
+                .and_then(Value::as_array)
+                .cloned()
+                .unwrap_or_default();
+            parameters.push(json!({
+                "name": "Idempotency-Key", "in": "header", "required": false,
+                "description": "1 to 128 letters, digits or . _ : -. A retry with the same key and the same request returns the first answer (header `Idempotent-Replayed: true`) and writes nothing; the same key for a different request is a 422; a key whose first request is unfinished is a 409. Only a success is kept; keys expire after 24 hours.",
+                "schema": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9._:-]+$"}
+            }));
+            op.insert("parameters".into(), Value::Array(parameters));
+        }
         op.insert("responses".into(), Value::Object(responses));
         paths
             .entry(path.clone())
@@ -2130,6 +2143,33 @@ mod tests {
         for (_, _, success, _) in READS {
             assert!(schemas.contains_key(*success), "{success} is not defined");
         }
+    }
+
+    #[test]
+    fn every_post_under_api_takes_the_idempotency_key_the_middleware_reads() {
+        let doc = document();
+        let mut posts = 0;
+        for (path, item) in doc["paths"].as_object().unwrap() {
+            let Some(op) = item.get("post") else { continue };
+            if !path.starts_with("/api/") {
+                continue;
+            }
+            posts += 1;
+            let param = op["parameters"]
+                .as_array()
+                .and_then(|p| p.iter().find(|p| p["in"] == "header"))
+                .unwrap_or_else(|| panic!("{path} has no header parameter"));
+            assert_eq!(
+                param["name"].as_str().unwrap().to_ascii_lowercase(),
+                crate::idempotency::HEADER
+            );
+            assert_eq!(param["required"], false);
+            // The documented pattern is the one the middleware enforces.
+            let pattern = param["schema"]["pattern"].as_str().unwrap();
+            assert_eq!(pattern, "^[A-Za-z0-9._:-]+$");
+            assert_eq!(param["schema"]["maxLength"], 128);
+        }
+        assert!(posts >= 10, "only {posts} POST routes under /api");
     }
 
     #[test]

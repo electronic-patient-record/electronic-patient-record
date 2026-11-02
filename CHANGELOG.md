@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-02 - Idempotency keys on creates (OF-1, in part)
+
+- **Clinical risk:** yes. A create that is sent twice stores two records, and a duplicated allergy or observation can be read as two things. The change adds a guard and a second copy of an answer; hazard **H-043** (`governance/clinical-safety/hazard-log.csv`) is added, status `open`, severity 4, likelihood 2. It is not accepted: only the Clinical Safety Officer does that.
+- **Built:** migration 21 (`idempotency_keys`); `src/idempotency.rs` (a middleware inside authorization: a keyed `POST` under `/api` runs once per subject and key; a replay returns the stored answer with `Idempotent-Replayed: true` and is audited; a different request under the key is 422; a pending key is 409; a refusal releases the key; keys expire after 24 hours and an hourly loop removes them); the `Idempotency-Key` header in the OpenAPI document on every `/api` `POST` (a unit test checks the documented pattern and length against the middleware); `spec/09-api-surface.md`; open question OQ-OF3, **assumed** by taking its recommendation (the maintainer has not answered). The migration's `down` drops the table everywhere because it holds no clinical record; it is the only table here that deletes.
+- **Also changed:** the personal-data inventory census failed on the new table until its ten columns were classified (`governance/personal-data-inventory.csv`). None of the three retention classes fits a table that deletes after a day, so a fourth, `transient`, was added to the census's allowed list and to `governance/retention-schedule.md`. That widens what the census accepts; it does not skip any column. The 24-hour period is a code constant no one has reviewed.
+- **Not done / not verified:** no client sends the header, so no real create is protected yet (the UI is unchanged); a client that omits it is as exposed as before. `/fhir/` creates are not covered. Login was off in the test, so per-subject separation was not exercised; the hourly purge loop, the 1 MB request and 4 MB response limits, and a crash between the write and the stored answer were not tested. A 5xx after a successful write releases the key and a retry can write again. The stored answer is patient data outside the append-only tables for up to a day. The full database-gated suite has not been run in CI against migration 21.
+
 ## 2026-11-02 - A census of the search routes' audit rows (OF-2)
 
 - **Clinical risk:** none to behaviour; a test only. It guards what a clinician or auditor relies on: that a search of patient records leaves a trail.

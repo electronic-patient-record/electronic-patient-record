@@ -4,7 +4,7 @@ Every table and view the service's migrations create. **Generated** by [`scripts
 
 Not listed: tables made by a statement built at run time (the monthly `audit_events` partitions), and what a column means (the migrations carry few comments, so only the name and SQL type are shown). The clinical tables are append-only: a change is a new row, and triggers refuse `UPDATE`, `DELETE` and `TRUNCATE`.
 
-18 tables, 11 views.
+19 tables, 11 views.
 
 ## Tables
 
@@ -21,6 +21,7 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `feed_refusal_resolutions` | `m20261021_000009_feed_refusals` | `refusal_id` UUID, `resolved_at` TIMESTAMPTZ, `resolved_by` TEXT, `outcome` TEXT, `reason` TEXT |
 | `feed_refusals` | `m20261021_000009_feed_refusals` | `refusal_id` UUID, `received_at` TIMESTAMPTZ, `agent` TEXT, `peer` TEXT, `event` TEXT, `control_id` TEXT, `kind` TEXT, `reasons` JSONB, `message` TEXT |
 | `hazard_versions` | `m20261028_000016_hazard_events` | `hazard_id` UUID, `version` INTEGER, `recorded_at` TIMESTAMPTZ, `author` TEXT, `state` TEXT, `event` JSONB, `body` JSONB |
+| `idempotency_keys` | `m20261102_000021_idempotency_keys` | `subject` TEXT, `key` TEXT, `method` TEXT, `path` TEXT, `body_digest` TEXT, `state` TEXT, `status` SMALLINT, `content_type` TEXT, `response` BYTEA, `created_at` TIMESTAMPTZ |
 | `observation_versions` | `m20261026_000014_observations` | `observation_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `status` TEXT, `effective_at` TIMESTAMPTZ, `site_zone` TEXT, `body` JSONB |
 | `outbox_attempts` | `m20261030_000017_outbox` | `id` BIGSERIAL, `event_id` UUID, `attempted_at` TIMESTAMPTZ, `outcome` TEXT, `reason` TEXT |
 | `outbox_events` | `m20261030_000017_outbox` | `id` UUID, `created_at` TIMESTAMPTZ, `kind` TEXT, `recipient` TEXT, `recipient_roles` TEXT[], `purpose` TEXT, `resource` TEXT, `patient_id` UUID, `payload` JSONB |

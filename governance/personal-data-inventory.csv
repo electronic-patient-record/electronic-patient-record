@@ -239,3 +239,13 @@ audit_events_all,network_address,staff-trace,Address the request came from,audit
 audit_events_all,detail,free-text,Structured detail of the audit row; it holds no values by design but is classified cautiously,audit
 audit_events_all,prev_digest,none,Hash chain,audit
 audit_events_all,digest,none,Hash chain,audit
+idempotency_keys,subject,staff-identifier,Whose key it is; keys are per token subject,transient
+idempotency_keys,key,none,The client's random retry key,transient
+idempotency_keys,method,none,The request method the key was first used with,transient
+idempotency_keys,path,identifier,The request path; it names the patient for a patient-scoped create,transient
+idempotency_keys,body_digest,health,A SHA-256 of the request body so a changed request under the key is refused; derived from patient data,transient
+idempotency_keys,state,none,Pending or done,transient
+idempotency_keys,status,none,The HTTP status of the kept answer,transient
+idempotency_keys,content_type,none,The content type of the kept answer,transient
+idempotency_keys,response,health,The answer as first sent; patient data for a create,transient
+idempotency_keys,created_at,none,When the key was first used; it expires 24 hours later,transient

@@ -115,9 +115,16 @@ impl Hooks for App {
             limiter: std::sync::Arc::new(crate::rate_limit::Limiter::new(limits)),
             db: ctx.db.clone(),
         };
-        // The last layer added runs first: authenticate, count, then authorize.
+        // Expired idempotency keys hold answers that can name a patient: remove them (OF-1).
+        tokio::spawn(crate::idempotency::run_loop(ctx.db.clone()));
+        let keys = crate::idempotency::Gate { db: ctx.db.clone() };
+        // The last layer added runs first: authenticate, count, authorize, then the idempotency key.
         let gate = authz::Authz { db: ctx.db.clone() };
         Ok(router
+            .layer(axum::middleware::from_fn_with_state(
+                keys,
+                crate::idempotency::idempotency_mw,
+            ))
             .layer(axum::middleware::from_fn_with_state(
                 gate,
                 authz::authorize_mw,

@@ -23,7 +23,7 @@ const CATEGORIES: [&str; 8] = [
     "staff-trace",
     "none",
 ];
-const RETENTION: [&str; 3] = ["record", "audit", "feed"];
+const RETENTION: [&str; 4] = ["record", "audit", "feed", "transient"];
 
 fn inventory() -> Vec<[String; 5]> {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))

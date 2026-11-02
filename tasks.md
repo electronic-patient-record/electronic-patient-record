@@ -1176,7 +1176,7 @@ dates, every cell cited). Items are **Not clinical** unless they say otherwise. 
 Ranked in plan.md §23. The source is the PAS repository's comparison, read second-hand (the repository itself was not
 opened). Items are **Not clinical** unless they say otherwise.
 
-- [ ] **OF-1 (M) — Idempotency key on creates.** **Clinical** (a duplicate allergy, consent or observation). Today a
+- [ ] **OF-1 (M) — Idempotency key on creates.** **Landed 2026-11-02 in part (OQ-OF3 assumed; hazard H-043 open, not accepted):** `src/idempotency.rs` (middleware inside authorization, table `idempotency_keys` from migration 21, hourly purge), `Idempotency-Key` on every `POST` under `/api` and in the OpenAPI document, `tests/http_idempotency.rs` (database-gated: replay returns the same body and writes nothing and is audited; a different body 422; a bad key 400; a refusal releases the key; a pending key 409; an expired key writes again; no header changes nothing). **Not met:** no client sends the header yet (the UI does not); `/fhir/` creates are not covered; per-subject separation, the purge loop and a crash between the write and the stored answer are not tested; a 5xx after a successful write releases the key. Left open. **Clinical** (a duplicate allergy, consent or observation). Today a
   retried `POST` writes twice; updates are already safe (`expected_version`, 409 with `current_version`). A
   `Idempotency-Key` header on the create routes: the same key and the same body returns the stored answer with the
   original status; the same key with a different body is a 422; keys expire. Hazard row first.
