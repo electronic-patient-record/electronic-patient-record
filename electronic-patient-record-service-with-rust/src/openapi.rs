@@ -1117,10 +1117,8 @@ fn audit_operation(
         ("GET", "/api/audit") => {
             responses.insert(
                 "400".into(),
-                json!({"description": "A criterion that is refused. A date or instant that does not parse is the JSON `Error`; a value of the wrong type (outcome or before not a number, break_glass not true or false) is refused by the framework before the handler runs, as plain text, not JSON.",
-                       "content": {
-                           "application/json": {"schema": {"$ref": "#/components/schemas/Error"}},
-                           "text/plain": {"schema": {"type": "string"}}}}),
+                json!({"description": "A criterion that is refused: a date or instant that does not parse, or a value of the wrong type (outcome or before not a number, break_glass not true or false). Always the JSON `Error`.",
+                       "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}),
             );
         }
         ("GET", "/api/audit/export") => {

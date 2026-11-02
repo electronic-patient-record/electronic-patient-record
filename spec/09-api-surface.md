@@ -23,6 +23,7 @@ Every refusal and failure is built by `api_error::ApiError`, never by hand (`tes
 - On `/fhir/`: an `OperationOutcome` with one issue, served as `application/fhir+json`. The issue codes are `login`,
   `forbidden`, `not-found`, `conflict`, `invalid` and `exception`.
 - The authentication (401) and route-gate (403) middleware answer the same way, by path, and never as plain text.
+- A criterion of the wrong type on the audit routes (`outcome=x`, `checkpoint_id=x`) is the same JSON 400 as a bad date, not the framework's plain text.
 - A 500 says `internal error`. The cause is logged and never sent.
 
 ### API versioning

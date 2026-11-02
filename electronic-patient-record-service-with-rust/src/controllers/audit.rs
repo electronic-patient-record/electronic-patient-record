@@ -15,7 +15,7 @@ use crate::auth::Agent;
 use crate::policy::{self, Purpose, Resource, Subject};
 use axum::{
     Extension,
-    extract::Query,
+    extract::{Query, rejection::QueryRejection},
     http::StatusCode,
     response::{IntoResponse, Response},
 };
@@ -192,8 +192,17 @@ async fn search(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
     Extension(subject): Extension<Subject>,
-    Query(query): Query<audit::AuditQuery>,
+    query: Result<Query<audit::AuditQuery>, QueryRejection>,
 ) -> Response {
+    let Query(query) = match query {
+        Ok(q) => q,
+        Err(_) => {
+            return ApiError::bad_request(
+                "a criterion has the wrong type: outcome and before are whole numbers, break_glass is true or false",
+            )
+            .into_response();
+        }
+    };
     if let Err(r) = authorize(
         &ctx.db,
         &agent,
@@ -394,8 +403,14 @@ async fn verify(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
     Extension(subject): Extension<Subject>,
-    Query(query): Query<CheckpointQuery>,
+    query: Result<Query<CheckpointQuery>, QueryRejection>,
 ) -> Response {
+    let Query(query) = match query {
+        Ok(q) => q,
+        Err(_) => {
+            return ApiError::bad_request("checkpoint_id must be a whole number").into_response();
+        }
+    };
     let checkpoint = match query.head() {
         Ok(c) => c,
         Err(m) => return ApiError::new(StatusCode::BAD_REQUEST, m.to_string()).into_response(),

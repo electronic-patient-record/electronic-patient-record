@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-02 - Audit routes answer a wrong-typed query with the JSON error (OS-7, behaviour change)
+
+- **Clinical risk:** none to what a clinician sees or decides. This is an error-body change on two audit-reader routes; no audit row, policy decision or result changes.
+- **Changed:** `GET /api/audit` (`outcome` or `before` not a whole number, `break_glass` not true or false) and `GET /api/audit/verify` (`checkpoint_id` not a whole number) now answer 400 with the JSON `Error`, as a bad date already did, not the framework's plain-text 400. The OpenAPI 400 for search names only the JSON body. `tests/openapi_responses_roles.rs` checks both real 400s against the schema (36 responses required in all).
+- **Not done / not verified:** a client that read the old plain-text message will see JSON. The new message is fixed wording and does not say which criterion failed, where the framework text named the key. `GET /api/audit/export` already read pairs and is unchanged; the other routes that use a typed `Query` (the patient access log, for one) were not checked for the same plain-text answer.
+
 ## 2026-11-02 - OpenAPI: GET /metrics (OS-7, in part)
 
 - **Clinical risk:** none; the document describes, it does not change a response.

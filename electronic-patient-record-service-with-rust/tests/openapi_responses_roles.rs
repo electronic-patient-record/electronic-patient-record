@@ -452,16 +452,15 @@ async fn real_responses_of_the_role_gated_routes_validate_against_the_served_sch
         );
         let bad = get_audit("/api/audit?outcome=notanumber".to_string()).await;
         assert_eq!(bad.status_code(), StatusCode::BAD_REQUEST, "{}", bad.text());
-        // A value of the wrong type is refused by the framework as plain text, which the document says.
-        assert!(
-            bad.header("content-type")
-                .to_str()
-                .unwrap()
-                .starts_with("text/plain"),
-            "{:?}",
-            bad.header("content-type")
-        );
+        // A value of the wrong type is the JSON `Error`, like a bad date.
         assert!(bad.text().contains("outcome"), "{}", bad.text());
+        expect(
+            "audit search wrong type",
+            "/api/audit",
+            "get",
+            StatusCode::BAD_REQUEST,
+            &bad.json(),
+        );
         let bad_date = get_audit("/api/audit?from=notadate".to_string()).await;
         assert_eq!(
             bad_date.status_code(),
@@ -571,6 +570,21 @@ async fn real_responses_of_the_role_gated_routes_validate_against_the_served_sch
             "get",
             StatusCode::BAD_REQUEST,
             &half.json(),
+        );
+        let typed =
+            get_audit("/api/audit/verify?checkpoint_id=x&checkpoint_digest=y".to_string()).await;
+        assert_eq!(
+            typed.status_code(),
+            StatusCode::BAD_REQUEST,
+            "{}",
+            typed.text()
+        );
+        expect(
+            "audit verify wrong type",
+            "/api/audit/verify",
+            "get",
+            StatusCode::BAD_REQUEST,
+            &typed.json(),
         );
         let denied = server
             .get("/api/audit")
@@ -816,7 +830,7 @@ async fn real_responses_of_the_role_gated_routes_validate_against_the_served_sch
             "schema mismatches:\n{}",
             problems.join("\n")
         );
-        assert!(checked >= 34, "only {checked} responses were checked");
+        assert!(checked >= 36, "only {checked} responses were checked");
     })
     .await;
 }
