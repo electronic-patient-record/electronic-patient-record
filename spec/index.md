@@ -88,6 +88,10 @@ Topics that span several numbered chapters and are kept whole:
   Manchester Triage System content policy. Spans §5, §6.
 - [Benchmark](benchmark.md) — the repository against twelve open-source EPR, EHR and FHIR systems on code quality,
   maintainability, security and scalability, plus their capabilities and configuration (2026-10-30, OS-1).
+- [Schema map](schema-map.md) — every table and view the migrations create, with columns; generated and checked in CI
+  (OF-6).
+- [Closed-loop referral](interoperability/closed-loop-referral.md) — a draft referral state model, rules and the
+  unmatched-outcome design, from one unreviewed outside guide (PC-1, PC-2; plan.md §24). Spans §5, §6, §9.
 - [Equity audit](equity-audit.md) — country assumptions found in the core (IO-19): identifier, names, phone code, dates,
   units, locales, regulation.
 - [Locales](locales.md) — `<language>-<region>` names, same rules as the

@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-02 - Indexing the new documents and modules
+
+- **Clinical risk:** none; documents only.
+- **Changed:** `spec/index.md` lists the schema map and the closed-loop referral draft; `llms.txt` and `llms.json` list the referral draft; the service spec's component table has rows for the idempotent creates (`idempotency.rs`) and the referral state table (`referral.rs`), each with its hazard and its evidence.
+- **Not done / not verified:** the README and `index.md` at the repository root were not changed (they do not list spec documents individually). The test counts in the new rows were read from the tests I wrote, not from the generated status page. No other module in the service was checked against the component table, so it may be missing other rows.
+
 ## 2026-11-02 - Hazard H-044 and the unmatched-outcome design (PC-2, design only)
 
 - **Clinical risk:** yes. A referral outcome or decline that is filed against the wrong referral, or none, leaves the referrer waiting for a reply that has come, or acting on one that belongs elsewhere. Hazard **H-044** is added: severity 4, likelihood 3, status `open`, not accepted (only the Clinical Safety Officer does that). Its controls are the design below and the pure state table; its residual risk says plainly that nothing is implemented and that today the hazard is unmitigated.

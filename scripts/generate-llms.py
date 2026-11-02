@@ -60,6 +60,7 @@ SECTIONS = [
         ("Testing strategy", "spec/11-testing-strategy.md", "Gates, census tests, oracles."),
         ("Compliance", "spec/12-compliance.md", "The regulatory position and what is not claimed."),
         ("Benchmark", "spec/benchmark.md", "Where the repository stands against open-source EPR, EHR and FHIR systems."),
+        ("Closed-loop referral (draft)", "spec/interoperability/closed-loop-referral.md", "A draft referral state model and the unmatched-outcome design; a proposal, nothing stores a referral yet."),
         ("Roadmap", "spec/15-roadmap.md", "Milestones M0 onward."),
         ("Open questions", "spec/16-open-questions.md", "Decisions that need a maintainer, a clinician or the Clinical Safety Officer."),
         ("Plan", "plan.md", "The long plan behind the task queue."),

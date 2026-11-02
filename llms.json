@@ -136,6 +136,12 @@
           "description": "Where the repository stands against open-source EPR, EHR and FHIR systems."
         },
         {
+          "title": "Closed-loop referral (draft)",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/interoperability/closed-loop-referral.md",
+          "path": "spec/interoperability/closed-loop-referral.md",
+          "description": "A draft referral state model and the unmatched-outcome design; a proposal, nothing stores a referral yet."
+        },
+        {
           "title": "Roadmap",
           "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/15-roadmap.md",
           "path": "spec/15-roadmap.md",
