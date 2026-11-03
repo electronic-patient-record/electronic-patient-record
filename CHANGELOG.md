@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-03 - Referral routes (CA-3, second slice)
+
+- **Clinical risk:** yes. A referral can now be sent and answered through the service; hazard **H-044** now lists the routes as a control and says what is still missing. Not set to accepted or closed.
+- **Built:** `GET`/`POST /api/patients/{id}/referrals`, `GET …/{referral_id}` (history) and `POST …/{referral_id}/events`; new policy resource `Referral` (clinician, nurse, allied health read/send/step; patient and proxy read); four route-table rows; audited successes and refusals (ids, versions, states, role, no text); OpenAPI schemas and a unit test that they match the types; `Event::parse`; `tests/http_referrals.rs` (login on: wrong-role, stale, note-required, end-state, receptionist, cross-patient, patient read, no clinical text in audit rows); the policy matrix size guard went from 15 to 16 resources; both write routes are in the audit-failure census (`tests/audit_switch`, `tests/http_audit_refusal.rs`): with the audit row made unwritable, the send and the step are refused and write nothing.
+- **Not done / not verified:** **OQ-PC2 is assumed, not answered**: the sender is the referrer and any other permitted subject with a care relationship is the recipient, so nothing proves the recipient is the team the referral names. The redirect does not create a linked referral. No screen, no inbound-outcome matching or clearance queue, no FHIR mapping, no timeouts, no `Idempotency-Key` test on these routes (the middleware covers every POST under `/api`, unproven here). `tests/openapi_responses_roles.rs` does not check these responses against the schemas yet. Break-the-glass reads and consent refusals of referrals are not tested.
+
 ## 2026-11-02 - The referral store (CA-3, first slice)
 
 - **Clinical risk:** yes (a referral and its outcome are what a clinician relies on to know a patient was seen). The row for hazard **H-044** now says what is in place (the store and its rules) and what is not (routes, the unmatched-outcome queue, any screen), and that the hazard stays unmitigated in use. Still `open`, not accepted.

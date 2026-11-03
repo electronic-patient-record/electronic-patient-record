@@ -99,6 +99,30 @@ pub const TABLE: &[(&str, &str, Resource, Action)] = &[
         Action::Update,
     ),
     (
+        "POST",
+        "/api/patients/{id}/referrals",
+        Resource::Referral,
+        Action::Create,
+    ),
+    (
+        "GET",
+        "/api/patients/{id}/referrals",
+        Resource::Referral,
+        Action::Read,
+    ),
+    (
+        "GET",
+        "/api/patients/{id}/referrals/{referral_id}",
+        Resource::Referral,
+        Action::Read,
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/referrals/{referral_id}/events",
+        Resource::Referral,
+        Action::Update,
+    ),
+    (
         "GET",
         "/api/openapi.json",
         Resource::PatientIdentity,

@@ -215,6 +215,12 @@ impl Event {
         }
     }
 
+    /// The event a kebab-case word names, as [`Event::as_str`] writes it.
+    #[must_use]
+    pub fn parse(word: &str) -> Option<Event> {
+        Event::ALL.into_iter().find(|e| e.as_str() == word)
+    }
+
     /// Who sends this event.
     #[must_use]
     pub fn actor(self) -> Actor {

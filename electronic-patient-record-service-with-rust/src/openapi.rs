@@ -257,6 +257,58 @@ fn allergy_schemas() -> Value {
     })
 }
 
+fn referral_schemas() -> Value {
+    json!({
+        "ReferralRecord": {
+            "type": "object", "required": ["recipient", "reason", "question", "priority"],
+            "description": "The request. It does not change after it is made; the steps are in the versions.",
+            "properties": {
+                "recipient": {"type": "string", "description": "The service or clinician, as the referrer names it."},
+                "reason": {"type": "string"},
+                "question": {"type": "string"},
+                "priority": {"enum": ["routine", "urgent", "asap", "stat"]},
+                "external_ids": {"type": "array", "items": {"type": "object", "required": ["system", "value"], "properties": {
+                    "system": {"type": "string"}, "value": {"type": "string"}}}}
+            }
+        },
+        "StoredReferral": {
+            "type": "object",
+            "required": ["id", "version", "author", "recorded_at", "patient_id", "state", "referral", "last_event"],
+            "description": "One version of a referral. States marked provisional in spec/interoperability/closed-loop-referral.md are information-requested, deferred and redirected.",
+            "properties": {
+                "id": {"type": "string"}, "version": {"type": "integer"},
+                "author": {"type": "string", "description": "Who wrote this version."},
+                "recorded_at": {"type": "string", "description": "UTC."},
+                "patient_id": {"type": "string"},
+                "state": {"enum": ["requested","accepted","declined","appointment-booked","no-show","interim-report","completed","cancel-requested","cancelled","information-requested","deferred","redirected"]},
+                "referral": {"$ref": "#/components/schemas/ReferralRecord"},
+                "last_event": {"type": "object", "description": "The event, who sent it, in which role, when, and the note."}
+            }
+        },
+        "CreateReferral": {
+            "type": "object", "required": ["referral"],
+            "properties": {"referral": {"$ref": "#/components/schemas/ReferralRecord"}}
+        },
+        "ReferralEvent": {
+            "type": "object", "required": ["event", "expected_version"],
+            "description": "The next step. The sender of the referral acts as the referrer; any other subject with the permission acts as the recipient (OQ-PC2, assumed). Refused with 422 when the state table does not allow the event, the role is wrong, or a needed note is missing.",
+            "properties": {
+                "event": {"enum": ["accept","decline","book","record-no-show","interim-note","outcome","request-cancel","confirm-cancel","request-information","provide-information","defer","resume","redirect"]},
+                "expected_version": {"type": "integer"},
+                "note": {"type": ["string", "null"]}
+            }
+        },
+        "ReferralList": {
+            "type": "object", "required": ["referrals"],
+            "properties": {"referrals": {"type": "array", "items": {"$ref": "#/components/schemas/StoredReferral"}}}
+        },
+        "ReferralHistory": {
+            "type": "object", "required": ["versions"],
+            "properties": {"versions": {"type": "array", "items": {"$ref": "#/components/schemas/StoredReferral"}}}
+        }
+    })
+}
+
 fn observation_schemas() -> Value {
     json!({
         "ObservationRecord": {
@@ -814,6 +866,7 @@ fn patient_schemas() -> Value {
         amendment_schemas(),
         identity_schemas(),
         allergy_schemas(),
+        referral_schemas(),
         observation_schemas(),
         consent_schemas(),
         relationship_schemas(),
@@ -874,6 +927,22 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
         "CreateAllergyStatement",
         "200",
         "AllergyStatement",
+        "VersionConflict",
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/referrals",
+        "CreateReferral",
+        "201",
+        "StoredReferral",
+        "",
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/referrals/{referral_id}/events",
+        "ReferralEvent",
+        "200",
+        "StoredReferral",
         "VersionConflict",
     ),
     (
@@ -1002,6 +1071,13 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
 const READS: &[(&str, &str, &str, &[&str])] = &[
     ("GET", "/api/patients/{id}", "PatientView", &[]),
     ("GET", "/api/patients/{id}/allergies", "AllergyList", &[]),
+    ("GET", "/api/patients/{id}/referrals", "ReferralList", &[]),
+    (
+        "GET",
+        "/api/patients/{id}/referrals/{referral_id}",
+        "ReferralHistory",
+        &[],
+    ),
     ("GET", "/api/patients/{id}/consents", "ConsentList", &[]),
     ("GET", "/api/patients/{id}/amendments", "AmendmentList", &[]),
     ("GET", "/api/patients/{id}/links", "PatientLinkList", &[]),
@@ -1672,6 +1748,55 @@ mod tests {
         let parsed: Search = serde_json::from_value(Value::Object(all)).unwrap();
         assert!(parsed.drill && parsed.family.is_some() && parsed.birth_date.is_some());
         assert!(parsed.identifier.is_some());
+    }
+
+    #[test]
+    fn the_referral_schemas_match_the_types() {
+        use crate::referral::{Event, State};
+        use crate::referrals_store::{ExternalId, Priority, Referral};
+        let schema = patient_schemas();
+        let record = Referral {
+            recipient: "r".into(),
+            reason: "r".into(),
+            question: "q".into(),
+            priority: Priority::Stat,
+            external_ids: vec![ExternalId {
+                system: "s".into(),
+                value: "v".into(),
+            }],
+        };
+        let value = serde_json::to_value(&record).unwrap();
+        assert_eq!(keys(&value), properties("ReferralRecord"));
+        let words = |schema: &Value| -> Vec<String> {
+            schema["enum"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|w| w.as_str().unwrap().to_string())
+                .collect()
+        };
+        assert_eq!(
+            words(&schema["StoredReferral"]["properties"]["state"]),
+            State::ALL.map(|s| s.as_str().to_string())
+        );
+        assert_eq!(
+            words(&schema["ReferralEvent"]["properties"]["event"]),
+            Event::ALL.map(|e| e.as_str().to_string())
+        );
+        assert_eq!(
+            words(&schema["ReferralRecord"]["properties"]["priority"]),
+            [
+                Priority::Routine,
+                Priority::Urgent,
+                Priority::Asap,
+                Priority::Stat
+            ]
+            .map(|p| serde_json::to_value(p)
+                .unwrap()
+                .as_str()
+                .unwrap()
+                .to_string())
+        );
     }
 
     #[test]

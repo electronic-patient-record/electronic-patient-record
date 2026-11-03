@@ -114,6 +114,17 @@ async fn a_successful_read_of_a_patient_record_leaves_an_audit_row() {
             .as_str()
             .expect("observation id")
             .to_string();
+        let sent = server
+            .post(&format!("/api/patients/{id}/referrals"))
+            .json(&serde_json::json!({ "referral": {
+                "recipient": "Cardiology outpatients", "reason": "chest pain",
+                "question": "please assess", "priority": "routine" } }))
+            .await;
+        assert_eq!(sent.status_code(), StatusCode::CREATED, "{}", sent.text());
+        let referral_id = sent.json::<serde_json::Value>()["id"]
+            .as_str()
+            .expect("referral id")
+            .to_string();
 
         let mut unaudited = Vec::new();
         let mut seen = 0;
@@ -128,6 +139,7 @@ async fn a_successful_read_of_a_patient_record_leaves_an_audit_row() {
                 template
                     .replace("{id}", &id)
                     .replace("{observation_id}", &observation_id)
+                    .replace("{referral_id}", &referral_id)
             } else {
                 format!("{template}?patient={id}")
             };

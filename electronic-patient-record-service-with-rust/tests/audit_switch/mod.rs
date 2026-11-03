@@ -8,7 +8,7 @@ use sea_orm::{ConnectionTrait, DatabaseConnection, Statement};
 use std::future::Future;
 
 /// The write routes driven with login off (`http_audit_refusal.rs`), spelled as in `routes::TABLE`.
-pub const LOGIN_OFF: [&str; 21] = [
+pub const LOGIN_OFF: [&str; 23] = [
     "POST /api/patients",
     "PUT /api/patients/{id}",
     "POST /fhir/R4/Patient",
@@ -16,6 +16,8 @@ pub const LOGIN_OFF: [&str; 21] = [
     "POST /api/patients/{id}/allergies",
     "PUT /api/patients/{id}/allergies/{allergy_id}",
     "PUT /api/patients/{id}/allergy-statement",
+    "POST /api/patients/{id}/referrals",
+    "POST /api/patients/{id}/referrals/{referral_id}/events",
     "POST /api/patients/{id}/observations",
     "PUT /api/patients/{id}/observations/{observation_id}",
     "POST /api/patients/{id}/amendments",

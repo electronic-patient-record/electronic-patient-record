@@ -1009,6 +1009,17 @@
         ],
         "type": "object"
       },
+      "CreateReferral": {
+        "properties": {
+          "referral": {
+            "$ref": "#/components/schemas/ReferralRecord"
+          }
+        },
+        "required": [
+          "referral"
+        ],
+        "type": "object"
+      },
       "CreateRelationship": {
         "properties": {
           "reason": {
@@ -1880,6 +1891,118 @@
         ],
         "type": "object"
       },
+      "ReferralEvent": {
+        "description": "The next step. The sender of the referral acts as the referrer; any other subject with the permission acts as the recipient (OQ-PC2, assumed). Refused with 422 when the state table does not allow the event, the role is wrong, or a needed note is missing.",
+        "properties": {
+          "event": {
+            "enum": [
+              "accept",
+              "decline",
+              "book",
+              "record-no-show",
+              "interim-note",
+              "outcome",
+              "request-cancel",
+              "confirm-cancel",
+              "request-information",
+              "provide-information",
+              "defer",
+              "resume",
+              "redirect"
+            ]
+          },
+          "expected_version": {
+            "type": "integer"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "event",
+          "expected_version"
+        ],
+        "type": "object"
+      },
+      "ReferralHistory": {
+        "properties": {
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/StoredReferral"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "versions"
+        ],
+        "type": "object"
+      },
+      "ReferralList": {
+        "properties": {
+          "referrals": {
+            "items": {
+              "$ref": "#/components/schemas/StoredReferral"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "referrals"
+        ],
+        "type": "object"
+      },
+      "ReferralRecord": {
+        "description": "The request. It does not change after it is made; the steps are in the versions.",
+        "properties": {
+          "external_ids": {
+            "items": {
+              "properties": {
+                "system": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "system",
+                "value"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "priority": {
+            "enum": [
+              "routine",
+              "urgent",
+              "asap",
+              "stat"
+            ]
+          },
+          "question": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "recipient": {
+            "description": "The service or clinician, as the referrer names it.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "recipient",
+          "reason",
+          "question",
+          "priority"
+        ],
+        "type": "object"
+      },
       "RelationshipList": {
         "properties": {
           "relationships": {
@@ -2230,6 +2353,62 @@
           "effective_at",
           "status",
           "flag"
+        ],
+        "type": "object"
+      },
+      "StoredReferral": {
+        "description": "One version of a referral. States marked provisional in spec/interoperability/closed-loop-referral.md are information-requested, deferred and redirected.",
+        "properties": {
+          "author": {
+            "description": "Who wrote this version.",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "last_event": {
+            "description": "The event, who sent it, in which role, when, and the note.",
+            "type": "object"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "recorded_at": {
+            "description": "UTC.",
+            "type": "string"
+          },
+          "referral": {
+            "$ref": "#/components/schemas/ReferralRecord"
+          },
+          "state": {
+            "enum": [
+              "requested",
+              "accepted",
+              "declined",
+              "appointment-booked",
+              "no-show",
+              "interim-report",
+              "completed",
+              "cancel-requested",
+              "cancelled",
+              "information-requested",
+              "deferred",
+              "redirected"
+            ]
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "author",
+          "recorded_at",
+          "patient_id",
+          "state",
+          "referral",
+          "last_event"
         ],
         "type": "object"
       },
@@ -6008,6 +6187,338 @@
         ],
         "x-epr-action": "Update",
         "x-epr-resource": "PatientIdentity"
+      }
+    },
+    "/api/patients/{id}/referrals": {
+      "get": {
+        "operationId": "getApiPatientsIdReferrals",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralList"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/patients/{id}/referrals",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "Referral"
+      },
+      "post": {
+        "operationId": "postApiPatientsIdReferrals",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "1 to 128 letters, digits or . _ : -. A retry with the same key and the same request returns the first answer (header `Idempotent-Replayed: true`) and writes nothing; the same key for a different request is a 422; a key whose first request is unfinished is a 409. Only a success is kept; keys expire after 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReferral"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredReferral"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/patients/{id}/referrals",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Create",
+        "x-epr-resource": "Referral"
+      }
+    },
+    "/api/patients/{id}/referrals/{referral_id}": {
+      "get": {
+        "operationId": "getApiPatientsIdReferralsReferral_id",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "referral_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralHistory"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/patients/{id}/referrals/{referral_id}",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "Referral"
+      }
+    },
+    "/api/patients/{id}/referrals/{referral_id}/events": {
+      "post": {
+        "operationId": "postApiPatientsIdReferralsReferral_idEvents",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "referral_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "1 to 128 letters, digits or . _ : -. A retry with the same key and the same request returns the first answer (header `Idempotent-Replayed: true`) and writes nothing; the same key for a different request is a 422; a key whose first request is unfinished is a 409. Only a success is kept; keys expire after 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReferralEvent"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredReferral"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionConflict"
+                }
+              }
+            },
+            "description": "A likely duplicate or a stale expected_version."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/patients/{id}/referrals/{referral_id}/events",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Update",
+        "x-epr-resource": "Referral"
       }
     },
     "/api/patients/{id}/relationships": {

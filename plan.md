@@ -1396,7 +1396,7 @@ pattern, virtual wards (hospital at home) and dynamic care planning (a shared, v
 ### 24.6 Open questions (to move to spec/16-open-questions.md)
 
 - **OQ-PC1.** Is hospital at home (a home-located inpatient stay with monitoring) in scope for 1.0? Recommendation: no; a design note in CA-1, post-1.0.
-- **OQ-PC2.** Who may cancel or redirect a referral, and may a recipient redirect without the referrer's consent? The guide leaves both open. Recommendation: only the referrer cancels (a request the recipient may refuse); only the recipient redirects, creating a new linked referral; both audited.
+- **OQ-PC2.** Who may cancel or redirect a referral, and may a recipient redirect without the referrer's consent? The guide leaves both open. Recommendation: only the referrer cancels (a request the recipient may refuse); only the recipient redirects, creating a new linked referral; both audited. **Assumed 2026-11-03, awaiting the maintainer:** the sender of a referral is the referrer, any other permitted subject with a care relationship is the recipient; the redirect-creates-a-linked-referral step is not built.
 - **OQ-PC3.** What are N and M for a referral with no response, or accepted with no outcome? Recommendation: configuration per service type with no default for urgent referrals, so a deployment must choose.
 
 ### 24.7 Order of work

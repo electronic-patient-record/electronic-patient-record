@@ -143,11 +143,13 @@ pub enum Resource {
     /// The hazard register (`hazard_store.rs`): hazards, their controls and the evidence that one was
     /// removed. It holds no patient data and belongs to no patient.
     Hazard,
+    /// A referral from one team to another, and the loop that closes it (`referrals_store.rs`).
+    Referral,
 }
 
 impl Resource {
     /// Every resource kind, in a fixed order.
-    pub const ALL: [Resource; 15] = [
+    pub const ALL: [Resource; 16] = [
         Resource::PatientIdentity,
         Resource::Encounter,
         Resource::Condition,
@@ -163,6 +165,7 @@ impl Resource {
         Resource::FeedQueue,
         Resource::BreakGlass,
         Resource::Hazard,
+        Resource::Referral,
     ];
 
     /// A stable name for audit rows and route tables.
@@ -184,6 +187,7 @@ impl Resource {
             Resource::FeedQueue => "FeedQueue",
             Resource::BreakGlass => "BreakGlass",
             Resource::Hazard => "Hazard",
+            Resource::Referral => "Referral",
         }
     }
 
@@ -508,7 +512,7 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         AllergyIntolerance as Allergy, Amendment, AuditLog, BreakGlass as Glass,
         CareRelationship as Rel, Condition, Consent as Cons, Document, Encounter,
         FeedQueue as Queue, Hazard, MedicationRequest as Meds, Observation,
-        PatientIdentity as Identity, PatientLink as Link,
+        PatientIdentity as Identity, PatientLink as Link, Referral,
     };
     match (role, resource) {
         // Clinicians: full clinical work, and register or correct identity.
@@ -521,6 +525,12 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         // step belongs to which role is checked by the route.
         (Role::Clinician, Amendment) => &[Read, Search, Update],
         (Role::Patient, Amendment) => &[Read, Search, Create, Update],
+        // Referrals: a treating role sends and answers them (which step belongs to the sender and
+        // which to the recipient is checked by the route, OQ-PC2); the patient and a proxy only read.
+        (Role::Clinician | Role::Nurse | Role::AlliedHealth, Referral) => {
+            &[Read, Search, Create, Update]
+        }
+        (Role::Patient | Role::Proxy, Referral) => &[Read, Search],
         // Nurses: record care; cannot withdraw others' entries; read-only on prescriptions.
         (Role::Nurse, Identity) => &[Read, Search],
         (Role::Nurse, Encounter | Condition | Observation | Allergy | Document) => {
@@ -1158,8 +1168,8 @@ mod tests {
                 }
             }
         }
-        // 11 roles × 15 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
-        assert_eq!(cells, 11 * 15 * 6 * 8 * 5 * 3 * 7 * 2);
+        // 11 roles × 16 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
+        assert_eq!(cells, 11 * 16 * 6 * 8 * 5 * 3 * 7 * 2);
         assert!(allows > 0);
     }
 

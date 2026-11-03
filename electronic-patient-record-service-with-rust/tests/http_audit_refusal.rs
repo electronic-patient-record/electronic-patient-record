@@ -191,6 +191,45 @@ async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_r
         })
         .await;
 
+        // Referral: send, then step. Login is off, so the sender is the referrer and may ask to cancel.
+        let referral = json!({
+            "recipient": "Cardiology outpatients", "reason": "chest pain",
+            "question": "please assess", "priority": "routine"
+        });
+        refused_then_accepted(db, "POST /api/patients/{id}/referrals", || async {
+            let r = server
+                .post(&format!("/api/patients/{id}/referrals"))
+                .json(&json!({ "referral": referral }))
+                .await;
+            (r.status_code(), r.text())
+        })
+        .await;
+        let listed = server
+            .get(&format!("/api/patients/{id}/referrals"))
+            .await
+            .json::<Value>();
+        let referral_id = listed["referrals"][0]["id"]
+            .as_str()
+            .expect("a referral id")
+            .to_string();
+        refused_then_accepted(
+            db,
+            "POST /api/patients/{id}/referrals/{referral_id}/events",
+            || async {
+                let r = server
+                    .post(&format!(
+                        "/api/patients/{id}/referrals/{referral_id}/events"
+                    ))
+                    .json(&json!({
+                        "event": "request-cancel", "expected_version": 1,
+                        "note": "no longer needed"
+                    }))
+                    .await;
+                (r.status_code(), r.text())
+            },
+        )
+        .await;
+
         // Observation create and update.
         let observation = json!({
             "code": "8867-4", "value": 72.0, "unit": "/min",

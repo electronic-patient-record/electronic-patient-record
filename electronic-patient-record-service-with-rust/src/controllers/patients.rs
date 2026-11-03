@@ -618,6 +618,16 @@ pub fn routes() -> Routes {
             put(super::allergies::update),
         )
         .add("/{id}/allergy-statement", put(super::allergies::statement))
+        .add("/{id}/referrals", get(super::referrals::list))
+        .add("/{id}/referrals", post(super::referrals::create))
+        .add(
+            "/{id}/referrals/{referral_id}",
+            get(super::referrals::history),
+        )
+        .add(
+            "/{id}/referrals/{referral_id}/events",
+            post(super::referrals::advance),
+        )
         .add("/{id}/observations", get(super::observations::list))
         .add("/{id}/observations", post(super::observations::create))
         .add(

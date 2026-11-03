@@ -16,6 +16,7 @@ pub mod metrics;
 pub mod observations;
 pub mod patients;
 pub mod photos;
+pub mod referrals;
 pub mod relationships;
 
 use loco_rs::controller::AppRoutes;
