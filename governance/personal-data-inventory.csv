@@ -280,3 +280,7 @@ referral_unmatched_clearances,cleared_by,staff-identifier,Who cleared it,record
 referral_unmatched_clearances,how,none,Matched by hand or dismissed,record
 referral_unmatched_clearances,referral_id,none,The referral it was matched to; a random id,record
 referral_unmatched_clearances,reason,free-text,Why it was cleared as typed by the person,record
+referral_acknowledgements,referral_id,none,Which referral was acknowledged; a random id,record
+referral_acknowledgements,version,none,Which version of the referral the sender has seen,record
+referral_acknowledgements,acknowledged_at,none,When the sender said they had seen it,record
+referral_acknowledgements,acknowledged_by,staff-identifier,The sender who acknowledged it,record

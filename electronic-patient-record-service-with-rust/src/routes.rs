@@ -123,6 +123,24 @@ pub const TABLE: &[(&str, &str, Resource, Action)] = &[
         Action::Update,
     ),
     (
+        "GET",
+        "/api/referrals/worklist",
+        Resource::ReferralWorklist,
+        Action::Search,
+    ),
+    (
+        "GET",
+        "/api/referrals/worklist/count",
+        Resource::ReferralWorklist,
+        Action::Search,
+    ),
+    (
+        "POST",
+        "/api/referrals/{referral_id}/acknowledge",
+        Resource::ReferralWorklist,
+        Action::Update,
+    ),
+    (
         "POST",
         "/api/referral-messages",
         Resource::ReferralQueue,

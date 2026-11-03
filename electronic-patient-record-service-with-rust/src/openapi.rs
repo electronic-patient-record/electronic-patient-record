@@ -727,6 +727,35 @@ fn referral_queue_schemas() -> Value {
         "ReferralQueueCount": {
             "type": "object", "required": ["open"],
             "properties": {"open": {"type": "integer"}}
+        },
+        "ReferralWorklistItem": {
+            "type": "object", "required": ["referral_id", "patient_id", "version", "state", "recorded_at"],
+            "description": "One referral the caller sent that waits for them. A pointer: no recipient, reason, question or note; open the referral through the patient's route.",
+            "properties": {
+                "referral_id": {"type": "string"}, "patient_id": {"type": "string"},
+                "version": {"type": "integer", "description": "The version that waits; acknowledge this one."},
+                "state": {"enum": ["declined", "redirected", "no-show", "deferred", "information-requested", "interim-report", "completed"]},
+                "recorded_at": {"type": "string", "description": "UTC."}
+            }
+        },
+        "ReferralWorklistList": {
+            "type": "object", "required": ["items", "limit", "more", "site_time_zone"],
+            "description": "The caller's waiting referrals, oldest first, up to `limit`.",
+            "properties": {
+                "items": {"type": "array", "items": {"$ref": "#/components/schemas/ReferralWorklistItem"}},
+                "limit": {"type": "integer"},
+                "more": {"type": "boolean", "description": "True when more are waiting than `limit` allowed: the list is cut short and the newest are not shown."},
+                "site_time_zone": {"type": "string"}
+            }
+        },
+        "AcknowledgeReferral": {
+            "type": "object", "required": ["version"],
+            "description": "The referrer has seen this version. Anything but the current version is a 409; so is a repeat. A referral the caller did not send is a 404.",
+            "properties": {"version": {"type": "integer"}}
+        },
+        "ReferralAcknowledged": {
+            "type": "object", "required": ["referral", "version", "acknowledged"],
+            "properties": {"referral": {"type": "string"}, "version": {"type": "integer"}, "acknowledged": {"type": "boolean"}}
         }
     })
 }
@@ -1123,6 +1152,14 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
     ),
     (
         "POST",
+        "/api/referrals/{referral_id}/acknowledge",
+        "AcknowledgeReferral",
+        "200",
+        "ReferralAcknowledged",
+        "Error",
+    ),
+    (
+        "POST",
         "/api/referral-queue/{id}/clear",
         "ClearReferralEntry",
         "200",
@@ -1212,6 +1249,18 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
         &[],
     ),
     ("GET", "/api/referral-queue/{id}", "ReferralQueueEntry", &[]),
+    (
+        "GET",
+        "/api/referrals/worklist",
+        "ReferralWorklistList",
+        &[],
+    ),
+    (
+        "GET",
+        "/api/referrals/worklist/count",
+        "ReferralQueueCount",
+        &[],
+    ),
     (
         "GET",
         "/api/audit",
@@ -1905,6 +1954,32 @@ mod tests {
                 .cloned()
                 .collect()
         );
+    }
+
+    #[test]
+    fn the_worklist_schema_matches_the_type_and_names_every_waiting_state() {
+        use crate::referral::State;
+        use crate::referral_worklist::{ATTENTION, Item};
+        let schema = patient_schemas();
+        let item = Item {
+            referral_id: "r".into(),
+            patient_id: "p".into(),
+            version: 2,
+            state: State::Declined,
+            recorded_at: "t".into(),
+        };
+        assert_eq!(
+            keys(&serde_json::to_value(&item).unwrap()),
+            properties("ReferralWorklistItem")
+        );
+        let listed: Vec<String> = schema["ReferralWorklistItem"]["properties"]["state"]["enum"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap().to_string())
+            .collect();
+        let real: Vec<String> = ATTENTION.iter().map(|s| s.as_str().to_string()).collect();
+        assert_eq!(listed, real);
     }
 
     #[test]

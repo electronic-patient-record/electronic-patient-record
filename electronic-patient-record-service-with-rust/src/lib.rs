@@ -46,6 +46,7 @@ pub mod proxy;
 pub mod rate_limit;
 pub mod referral;
 pub mod referral_unmatched;
+pub mod referral_worklist;
 pub mod referrals_store;
 pub mod relationships;
 pub mod routes;

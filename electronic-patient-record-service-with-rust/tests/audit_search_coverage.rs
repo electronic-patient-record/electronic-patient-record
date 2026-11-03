@@ -38,6 +38,8 @@ fn call(template: &str) -> Option<String> {
         | "/fhir/R4/AuditEvent"
         | "/api/feed/refusals"
         | "/api/feed/refusals/count"
+        | "/api/referrals/worklist"
+        | "/api/referrals/worklist/count"
         | "/api/referral-queue"
         | "/api/referral-queue/count"
         | "/api/break-glass/reviews"

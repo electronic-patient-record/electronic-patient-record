@@ -230,6 +230,45 @@ async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_r
         )
         .await;
 
+        // A decline puts a second referral on the worklist; acknowledging it is a write that must be audited.
+        let second = server
+            .post(&format!("/api/patients/{id}/referrals"))
+            .json(&json!({ "referral": referral }))
+            .await;
+        assert_eq!(
+            second.status_code(),
+            StatusCode::CREATED,
+            "{}",
+            second.text()
+        );
+        let second_id = second.json::<Value>()["id"].as_str().unwrap().to_string();
+        let declined = server
+            .post("/api/referral-messages")
+            .json(&json!({
+                "referral_ref": second_id, "event": "decline", "note": "no capacity",
+                "message": "Declined: no capacity"
+            }))
+            .await;
+        assert_eq!(
+            declined.status_code(),
+            StatusCode::OK,
+            "{}",
+            declined.text()
+        );
+        assert_eq!(declined.json::<Value>()["result"], "moved");
+        refused_then_accepted(
+            db,
+            "POST /api/referrals/{referral_id}/acknowledge",
+            || async {
+                let r = server
+                    .post(&format!("/api/referrals/{second_id}/acknowledge"))
+                    .json(&json!({ "version": 2 }))
+                    .await;
+                (r.status_code(), r.text())
+            },
+        )
+        .await;
+
         // An inbound referral message (queued: it names no referral), and its clearance.
         refused_then_accepted(db, "POST /api/referral-messages", || async {
             let r = server

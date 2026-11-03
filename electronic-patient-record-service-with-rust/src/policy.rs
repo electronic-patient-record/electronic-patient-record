@@ -148,11 +148,15 @@ pub enum Resource {
     ReferralQueue,
     /// A referral from one team to another, and the loop that closes it (`referrals_store.rs`).
     Referral,
+    /// The referrer's own list of referrals that wait for them (`referral_worklist.rs`). Ids and states only,
+    /// and only referrals the caller sent, so no care relationship applies; the referral itself opens through
+    /// [`Resource::Referral`].
+    ReferralWorklist,
 }
 
 impl Resource {
     /// Every resource kind, in a fixed order.
-    pub const ALL: [Resource; 17] = [
+    pub const ALL: [Resource; 18] = [
         Resource::PatientIdentity,
         Resource::Encounter,
         Resource::Condition,
@@ -170,6 +174,7 @@ impl Resource {
         Resource::Hazard,
         Resource::Referral,
         Resource::ReferralQueue,
+        Resource::ReferralWorklist,
     ];
 
     /// A stable name for audit rows and route tables.
@@ -193,6 +198,7 @@ impl Resource {
             Resource::Hazard => "Hazard",
             Resource::Referral => "Referral",
             Resource::ReferralQueue => "ReferralQueue",
+            Resource::ReferralWorklist => "ReferralWorklist",
         }
     }
 
@@ -216,6 +222,7 @@ impl Resource {
                 | Resource::BreakGlass
                 | Resource::Hazard
                 | Resource::ReferralQueue
+                | Resource::ReferralWorklist
         )
     }
 }
@@ -519,6 +526,7 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         CareRelationship as Rel, Condition, Consent as Cons, Document, Encounter,
         FeedQueue as Queue, Hazard, MedicationRequest as Meds, Observation,
         PatientIdentity as Identity, PatientLink as Link, Referral, ReferralQueue as RefQueue,
+        ReferralWorklist as Worklist,
     };
     match (role, resource) {
         // Clinicians: full clinical work, and register or correct identity.
@@ -537,6 +545,9 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
             &[Read, Search, Create, Update]
         }
         (Role::Patient | Role::Proxy, Referral) => &[Read, Search],
+        // The referrer's own worklist (assumed, awaiting the maintainer, OQ-PC5): a treating sender lists what
+        // came back and says they have seen it. Nobody else has one.
+        (Role::Clinician | Role::Nurse | Role::AlliedHealth, Worklist) => &[Search, Update],
         // Nurses: record care; cannot withdraw others' entries; read-only on prescriptions.
         (Role::Nurse, Identity) => &[Read, Search],
         (Role::Nurse, Encounter | Condition | Observation | Allergy | Document) => {
@@ -1186,8 +1197,8 @@ mod tests {
                 }
             }
         }
-        // 11 roles × 17 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
-        assert_eq!(cells, 11 * 17 * 6 * 8 * 5 * 3 * 7 * 2);
+        // 11 roles × 18 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
+        assert_eq!(cells, 11 * 18 * 6 * 8 * 5 * 3 * 7 * 2);
         assert!(allows > 0);
     }
 

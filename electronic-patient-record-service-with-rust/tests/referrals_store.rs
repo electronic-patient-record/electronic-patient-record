@@ -373,7 +373,8 @@ async fn the_database_refuses_to_edit_delete_or_truncate_a_referral_version() {
             "DELETE FROM referral_versions WHERE referral_id = '{}'",
             r.id
         ),
-        "TRUNCATE referral_versions".to_string(),
+        // CASCADE: acknowledgements reference the versions, and a bare TRUNCATE would be refused for that reason first.
+        "TRUNCATE referral_versions CASCADE".to_string(),
     ] {
         let e = db.execute_unprepared(&sql).await.unwrap_err();
         assert!(e.to_string().contains("append-only"), "{sql}: {e}");

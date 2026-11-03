@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-03 - The referrer's worklist, service side (PC-2, fourth slice)
+
+- **Clinical risk:** yes (H-044: a decline or outcome the referrer never sees). The service can now say which of a person's referrals have an answer they have not seen. The hazard row says no screen shows it yet. Not set to accepted or closed.
+- **Built:** migration 24 (`referral_acknowledgements`, append-only triggers); `src/referral_worklist.rs` (`list` with `more`, `count`, `acknowledge`: current version only, once, sender only); `GET /api/referrals/worklist`, `GET /api/referrals/worklist/count`, `POST /api/referrals/{referral_id}/acknowledge`, audited, in the route table, OpenAPI and the censuses; policy resource `ReferralWorklist` (the 18th; clinician, nurse and allied health may search and update; no care relationship, by design: the list holds only the caller's own referrals and no text); tests: 3 store tests, 1 HTTP test with login on, audit-failure test for the write, the policy invariant now 18 resources, a schema test that the listed states are the code's; personal-data inventory and retention schedule rows.
+- **Not done / not verified:** **no screen and no navigation count**, so no referrer sees it yet. **"The referrer" is the author of version 1 (OQ-PC5, assumed)**: a colleague covering for them sees nothing, and a sender who leaves strands their list. Acknowledging records a click, not that anyone acted. Which states wait is my judgement (not reviewed by a clinician); `cancel-requested` and `cancelled` do not wait. Nothing reminds anyone: no timeouts (PC-3), and a referral nobody has answered never appears. No worklist for a recipient or a team. The list is not filtered by consent or care relationship because it shows only ids and states of referrals the caller sent; a sender whose relationship has since ended still sees that a referral of theirs was answered. The database suite ran without `fhir_validator` (needs a jar).
+
 ## 2026-11-03 - The unmatched referral reply screen (PC-2, third slice)
 
 - **Clinical risk:** yes (H-044: an outcome that reaches no one). A person can now see and clear what was queued. The hazard row says what is still missing. Not set to accepted or closed.
