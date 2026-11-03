@@ -52,7 +52,7 @@ An outcome, decline or interim note names the referral it answers by the referra
 
 The **queue** is a list a person must clear, in the shape of the feed-refusal queue: each entry keeps the message as received, why it did not match, who cleared it, how (matched by hand to a named referral, or dismissed with a reason) and when. A clearance is a new row, never an edit. A count shows on the referrer's worklist and to the owning team, so an unmatched outcome has a place where someone looks. A hand match is a separate, audited act by a person with a role, and it records both ids; it does not change the sender's message.
 
-Not designed here: who owns the queue when the sender is another organisation (OQ-PC2's neighbour), how long an uncleared entry may wait (PC-3), and the table for the referral itself (CA-3). A referral id mistyped as another real one cannot be caught by software.
+**Built so far (2026-11-03): the store only** (`referral_unmatched.rs`, migration 23): the four cases above, the append-only entry and clearance, a hand match that records both ids. No route, policy row, audit row, screen or worklist count exists, so no inbound message can reach it yet, and the team that owns the queue is still undecided. Not designed here: who owns the queue when the sender is another organisation (OQ-PC2's neighbour), how long an uncleared entry may wait (PC-3), and the table for the referral itself (CA-3). A referral id mistyped as another real one cannot be caught by software.
 
 ## Patient flags: an idea, not a design
 

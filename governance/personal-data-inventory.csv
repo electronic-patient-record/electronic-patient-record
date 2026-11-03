@@ -265,3 +265,18 @@ referral_current,author,staff-identifier,Who wrote the latest step,record
 referral_current,state,health,Where the referral is,record
 referral_current,event,free-text,What happened in the latest step,record
 referral_current,body,health,The request,record
+referral_unmatched,unmatched_id,none,Random record id,record
+referral_unmatched,received_at,none,When the message arrived,record
+referral_unmatched,agent,staff-identifier,The sending system that delivered the message,record
+referral_unmatched,kind,none,Why it did not match (no id; unknown id; refused by the state table),record
+referral_unmatched,referral_ref,free-text,The referral id as the sender wrote it; may be mistyped or free text,record
+referral_unmatched,event,none,The event word as received,record
+referral_unmatched,reasons,none,Why the message did not match; names no patient data,record
+referral_unmatched,note,free-text,The sender's note as received,record
+referral_unmatched,message,health,The inbound message as received; it may carry a result or a decision,record
+referral_unmatched_clearances,unmatched_id,none,Which entry was cleared,record
+referral_unmatched_clearances,cleared_at,none,When it was cleared,record
+referral_unmatched_clearances,cleared_by,staff-identifier,Who cleared it,record
+referral_unmatched_clearances,how,none,Matched by hand or dismissed,record
+referral_unmatched_clearances,referral_id,none,The referral it was matched to; a random id,record
+referral_unmatched_clearances,reason,free-text,Why it was cleared as typed by the person,record

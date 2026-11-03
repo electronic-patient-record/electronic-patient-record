@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-03 - The unmatched-outcome queue store (PC-2, first slice)
+
+- **Clinical risk:** yes (H-044: an outcome that reaches no one). The hazard row now names the store as a control and says nothing feeds it yet. Not set to accepted or closed.
+- **Built:** migration 23 (`referral_unmatched`, `referral_unmatched_clearances`; triggers refuse update, delete and truncate on both; `down` refused outside development); `src/referral_unmatched.rs`; 4 database-gated tests; the 15 new columns are classified in `governance/personal-data-inventory.csv` (retention class `record`); schema map regenerated.
+- **Not done / not verified:** **the hazard is not reduced in use**: no route receives an inbound message, so nothing is ever queued by the service; there is no policy row, audit row, screen, worklist count or owner for the queue (OQ-PC2's neighbour). A hand match records the link and does not apply the event to the referral. A referral id mistyped as another real referral's id still matches the wrong one. The state table and the sender rule are unchanged and unreviewed. No concurrency test.
+
 ## 2026-11-03 - The referral screen (CA-3, third slice)
 
 - **Clinical risk:** yes (a clinician can now send and answer a referral from the patient page). H-044 lists the screen among its controls; it stays open and is not set to accepted or closed.
