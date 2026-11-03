@@ -4,7 +4,7 @@ SvelteKit (kit 3), Svelte 5 runes, TypeScript strict, adapter-node. Read [`spec/
 
 - **Status**: shell. Built: locale-prefixed URLs, security headers and a strict CSP, the `/api/proxy/*` BFF proxy,
   Keycloak sign-in with server-side sessions (`/auth/*`, off unless `EPR_OIDC_ISSUER` is set), a home page, patient
-  search, registration and compare pages, a patient record page with an access-log page, `/my-record`, and admin pages
+  search, registration and compare pages, a patient record page (allergies, referrals, vital signs, amendments) with an access-log page, `/my-record`, and admin pages
   for the HL7 feed and break-the-glass review (see `src/routes`). Not built: a shared session store, Lily widgets,
   the `DataTable` wrapper, translations (English only, except the access-log filter form on `/my-record`, machine-written in `src/lib/translations.ts` and unreviewed; the ten `LOCALES` fall back to English).
 - Environment variables are declared in `src/env.ts` (`defineEnvVars`) and read from `$app/env/private`.

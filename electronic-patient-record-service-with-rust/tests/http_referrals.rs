@@ -135,6 +135,15 @@ async fn who_may_take_which_step() {
         let sent: Value = sent.json();
         assert_eq!(sent["state"], "requested");
         assert_eq!(sent["version"], 1);
+        // The screen's buttons come from the service: accept from the recipient, cancel from the referrer.
+        let next: Vec<(&str, &str)> = sent["next"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|n| (n["event"].as_str().unwrap(), n["by"].as_str().unwrap()))
+            .collect();
+        assert!(next.contains(&("accept", "recipient")));
+        assert!(next.contains(&("request-cancel", "referrer")));
         let rid = sent["id"].as_str().unwrap().to_string();
         let events = format!("{base}/{rid}/events");
         let step =
@@ -195,7 +204,12 @@ async fn who_may_take_which_step() {
             "{}",
             cancelled.text()
         );
-        assert_eq!(cancelled.json::<Value>()["state"], "cancelled");
+        let cancelled: Value = cancelled.json();
+        assert_eq!(cancelled["state"], "cancelled");
+        assert!(
+            cancelled["next"].as_array().unwrap().is_empty(),
+            "an end state offers no step"
+        );
         // Nothing follows an end state.
         let after = step(rh.clone(), rv.clone(), "accept", 4, None).await;
         assert_eq!(after.status_code(), StatusCode::UNPROCESSABLE_ENTITY);

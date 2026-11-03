@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-03 - The referral screen (CA-3, third slice)
+
+- **Clinical risk:** yes (a clinician can now send and answer a referral from the patient page). H-044 lists the screen among its controls; it stays open and is not set to accepted or closed.
+- **Built:** every referral version now carries `next`, the events the state table allows with who sends each and whether a note is needed (`allowed_events`, unit-tested against `referral::next`; OpenAPI and `openapi.json` updated); `ReferralsSection.svelte` and `lib/referrals.ts` on `/patients/[id]`; strings (English); a Playwright test (send with an `Idempotency-Key`, a step with a note, referral text shown as text, an end state offers no button, axe clean); `tests/http_referrals.rs` checks `next`.
+- **Not done / not verified:** the screen cannot tell whether the signed-in person is the referrer, so it offers every listed step and the service refuses the wrong party's (shown as its 422 message). No patient-facing view, no translations (English only; the wording is mine and unreviewed by a clinician), no redirect, queue or timeouts. The e2e test stubs the API; no browser run against the real service. The section loads on every patient page and its call is not covered by the page-load budget tests.
+
 ## 2026-11-03 - Referral routes (CA-3, second slice)
 
 - **Clinical risk:** yes. A referral can now be sent and answered through the service; hazard **H-044** now lists the routes as a control and says what is still missing. Not set to accepted or closed.

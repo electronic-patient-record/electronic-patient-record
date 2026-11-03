@@ -65,6 +65,35 @@ pub struct Referral {
     pub external_ids: Vec<ExternalId>,
 }
 
+/// An event the state table allows from a referral's current state.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct NextEvent {
+    /// The event word to send.
+    pub event: &'static str,
+    /// Who sends it: `referrer` or `recipient`.
+    pub by: &'static str,
+    /// Whether it must come with a note.
+    pub needs_note: bool,
+}
+
+/// The events [`referral::next`] allows from `state`, in the order of [`Event::ALL`]. Read from the table
+/// itself, so a screen never carries its own copy.
+#[must_use]
+pub fn allowed_events(state: State) -> Vec<NextEvent> {
+    Event::ALL
+        .into_iter()
+        .filter(|e| referral::next(state, *e).is_ok())
+        .map(|e| NextEvent {
+            event: e.as_str(),
+            by: match e.actor() {
+                Actor::Referrer => "referrer",
+                Actor::Recipient => "recipient",
+            },
+            needs_note: needs_note(e),
+        })
+        .collect()
+}
+
 /// One referral as stored.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct StoredReferral {
@@ -84,6 +113,8 @@ pub struct StoredReferral {
     pub referral: Referral,
     /// What happened in this version: the event, who, the role, when, and the note.
     pub last_event: serde_json::Value,
+    /// What the state table allows next. Empty in an end state.
+    pub next: Vec<NextEvent>,
 }
 
 const TS: &str = "to_char(recorded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"')";
@@ -97,13 +128,16 @@ fn columns() -> String {
 fn row_to_referral(row: &sea_orm::QueryResult) -> Result<StoredReferral, StoreError> {
     let body: serde_json::Value = row.try_get("", "body").map_err(db_err)?;
     let state: String = row.try_get("", "state").map_err(db_err)?;
+    let state_value: State =
+        serde_json::from_value(serde_json::Value::String(state)).map_err(db_err)?;
     Ok(StoredReferral {
         id: row.try_get("", "id").map_err(db_err)?,
         version: row.try_get("", "version").map_err(db_err)?,
         author: row.try_get("", "author").map_err(db_err)?,
         recorded_at: row.try_get("", "at").map_err(db_err)?,
         patient_id: row.try_get("", "patient_id").map_err(db_err)?,
-        state: serde_json::from_value(serde_json::Value::String(state)).map_err(db_err)?,
+        state: state_value,
+        next: allowed_events(state_value),
         referral: serde_json::from_value(body).map_err(db_err)?,
         last_event: row.try_get("", "event").map_err(db_err)?,
     })
@@ -365,6 +399,31 @@ pub async fn advance(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_allowed_events_are_the_state_tables() {
+        for state in State::ALL {
+            let listed: Vec<&str> = allowed_events(state).iter().map(|n| n.event).collect();
+            let table: Vec<&str> = Event::ALL
+                .into_iter()
+                .filter(|e| referral::next(state, *e).is_ok())
+                .map(Event::as_str)
+                .collect();
+            assert_eq!(listed, table, "{state:?}");
+            assert_eq!(listed.is_empty(), state.is_end(), "{state:?}");
+        }
+        let requested = allowed_events(State::Requested);
+        assert!(
+            requested
+                .iter()
+                .any(|n| n.event == "accept" && n.by == "recipient" && !n.needs_note)
+        );
+        assert!(
+            requested
+                .iter()
+                .any(|n| n.event == "request-cancel" && n.by == "referrer" && n.needs_note)
+        );
+    }
 
     fn referral() -> Referral {
         Referral {

@@ -2370,6 +2370,32 @@
             "description": "The event, who sent it, in which role, when, and the note.",
             "type": "object"
           },
+          "next": {
+            "description": "What the state table allows next; empty in an end state.",
+            "items": {
+              "properties": {
+                "by": {
+                  "enum": [
+                    "referrer",
+                    "recipient"
+                  ]
+                },
+                "event": {
+                  "type": "string"
+                },
+                "needs_note": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "event",
+                "by",
+                "needs_note"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
           "patient_id": {
             "type": "string"
           },
@@ -2408,7 +2434,8 @@
           "patient_id",
           "state",
           "referral",
-          "last_event"
+          "last_event",
+          "next"
         ],
         "type": "object"
       },

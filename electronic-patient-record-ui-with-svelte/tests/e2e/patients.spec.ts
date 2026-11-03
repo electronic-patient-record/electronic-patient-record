@@ -3368,3 +3368,107 @@ test("a 500 that leaks internals shows the page's own words and none of the API'
   await expect(page.locator("body")).not.toContainText("store.rs");
   await axe(page);
 });
+
+test("a clinician sends a referral and takes a step; the service's list of next steps decides the buttons", async ({
+  page,
+}) => {
+  const sent: {
+    method: string;
+    url: string;
+    body: Json;
+    key: string | null;
+  }[] = [];
+  const R = (state: string, version: number, next: unknown[]) => ({
+    id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    version,
+    author: "dr",
+    recorded_at: "2026-10-21T09:00:00.000000Z",
+    patient_id: ANN.id,
+    state,
+    referral: {
+      recipient: "Cardiology <b>outpatients</b>",
+      reason: "Chest pain",
+      question: "Please assess",
+      priority: "urgent",
+    },
+    next,
+  });
+  let list: unknown[] = [];
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, ANN),
+  );
+  await page.route("**/api/proxy/api/patients/*/referrals", (route) => {
+    const req = route.request();
+    if (req.method() === "GET") return json(route, 200, { referrals: list });
+    sent.push({
+      method: "POST",
+      url: req.url(),
+      body: req.postDataJSON(),
+      key: req.headers()["idempotency-key"] ?? null,
+    });
+    list = [
+      R("requested", 1, [
+        { event: "accept", by: "recipient", needs_note: false },
+        { event: "request-cancel", by: "referrer", needs_note: true },
+      ]),
+    ];
+    return json(route, 201, list[0]);
+  });
+  await page.route(
+    "**/api/proxy/api/patients/*/referrals/*/events",
+    (route) => {
+      const req = route.request();
+      sent.push({
+        method: "POST",
+        url: req.url(),
+        body: req.postDataJSON(),
+        key: null,
+      });
+      list = [R("cancel-requested", 2, [])];
+      return json(route, 200, list[0]);
+    },
+  );
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  await expect(page.getByText("No referrals are recorded")).toBeVisible();
+
+  await page.getByLabel("Sent to (service or clinician)").fill("Cardiology");
+  await page.getByLabel("Reason", { exact: true }).fill("Chest pain");
+  await page.getByLabel("Question").fill("Please assess");
+  await page.getByLabel("Priority").selectOption("urgent");
+  await page.getByRole("button", { name: "Send referral" }).click();
+  await expect(page.getByText("Referral sent.")).toBeVisible();
+  expect(sent[0]?.body).toEqual({
+    referral: {
+      recipient: "Cardiology",
+      reason: "Chest pain",
+      question: "Please assess",
+      priority: "urgent",
+    },
+  });
+  expect(sent[0]?.key).toMatch(/^[A-Za-z0-9._:-]{1,128}$/);
+  // The referral's words are shown as text; the state is in words; the buttons are the service's list.
+  await expect(page.getByText("Cardiology <b>outpatients</b>")).toBeVisible();
+  await expect(page.getByText("Requested, not yet answered")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Accept/ })).toBeVisible();
+  await axe(page);
+
+  // A step that needs a note opens its field first and sends nothing until it is filled in.
+  await page.getByRole("button", { name: /^Ask to cancel/ }).click();
+  expect(sent).toHaveLength(1);
+  await page.getByLabel("Note (needed for this step)").fill("No longer needed");
+  await page
+    .getByRole("button", { name: "Ask to cancel", exact: true })
+    .click();
+  await expect(page.getByText("Done.")).toBeVisible();
+  expect(sent[1]?.body).toEqual({
+    event: "request-cancel",
+    expected_version: 1,
+    note: "No longer needed",
+  });
+  await expect(
+    page.getByText("Cancellation requested, not yet confirmed"),
+  ).toBeVisible();
+  // An end-state-like list with no next steps offers no buttons.
+  await expect(page.getByRole("button", { name: /^Accept/ })).toHaveCount(0);
+});

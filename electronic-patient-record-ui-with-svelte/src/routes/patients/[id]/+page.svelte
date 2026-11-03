@@ -4,6 +4,7 @@
   import { call, commonProblem, sendBytes } from "#lib/api.js";
   import { DEFAULT_LOCALE, localizePath } from "#lib/locales.js";
   import AllergySection from "#lib/AllergySection.svelte";
+  import ReferralsSection from "#lib/ReferralsSection.svelte";
   import BreakGlassSection from "#lib/BreakGlassSection.svelte";
   import { siteWhenText } from "#lib/access-log.js";
   import { loadAllergies, type AllergyLoad } from "#lib/allergies.js";
@@ -366,6 +367,11 @@
     {/if}
     <!-- Reloads when emergency access is opened: a refusal under no care relationship may lift. -->
     <VitalsSection
+      patientId={stored.id}
+      siteZone={stored.site_time_zone ?? "UTC"}
+      refresh={glassUntil}
+    />
+    <ReferralsSection
       patientId={stored.id}
       siteZone={stored.site_time_zone ?? "UTC"}
       refresh={glassUntil}
