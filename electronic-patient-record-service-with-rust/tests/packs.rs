@@ -17,13 +17,17 @@ fn ids(list: &[&str]) -> Vec<String> {
 
 /// A scratch packs directory holding one pack with the given files.
 fn scratch(id: &str, manifest: &str, phone: &str) -> PathBuf {
+    // A counter as well as the clock: the clock reads in microseconds on some systems, and tests run in
+    // parallel, so two of them could otherwise share (and overwrite) one directory.
+    static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
     let dir = std::env::temp_dir().join(format!(
-        "epr-packs-{}-{}",
+        "epr-packs-{}-{}-{}",
         std::process::id(),
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
-            .as_nanos()
+            .as_nanos(),
+        NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
     ));
     std::fs::create_dir_all(dir.join(id)).unwrap();
     std::fs::write(dir.join(id).join("pack.toml"), manifest).unwrap();

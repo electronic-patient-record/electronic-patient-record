@@ -647,6 +647,70 @@ fn feed_schemas() -> Value {
     })
 }
 
+fn referral_queue_schemas() -> Value {
+    json!({
+        "ReferralMessage": {
+            "type": "object", "required": ["message"],
+            "description": "An inbound referral message (an outcome, a decline, an interim note). It moves the referral it names, or is queued for a person; it is never dropped and never matched by patient and date. 200 either way.",
+            "properties": {
+                "referral_ref": {"type": ["string", "null"], "description": "The referral id as the sender wrote it. Absent or blank is queued as no-id."},
+                "event": {"type": ["string", "null"], "description": "A recipient event word such as outcome, decline or interim-note."},
+                "note": {"type": ["string", "null"], "description": "Needed by the events that need one."},
+                "message": {"type": "string", "description": "The message as received; required, cut at 1 MiB."}
+            }
+        },
+        "ReferralMessageResult": {
+            "type": "object", "required": ["result"],
+            "description": "moved: the referral and its new version and state. queued: the queue id and why. The message is not repeated.",
+            "properties": {
+                "result": {"enum": ["moved", "queued"]},
+                "referral": {"type": "string"}, "version": {"type": "integer"}, "state": {"type": "string"},
+                "queue_id": {"type": "string"},
+                "kind": {"enum": ["no-id", "unknown-id", "refused-by-table"]}
+            }
+        },
+        "ClearReferralEntry": {
+            "type": "object", "required": ["how", "reason"],
+            "description": "Clear a queued message. matched needs referral_id and records the link without changing the referral; dismissed names none. The reason (1 to 500 characters) is required; an entry already cleared is a 409.",
+            "properties": {
+                "how": {"enum": ["matched", "dismissed"]},
+                "referral_id": {"type": ["string", "null"]},
+                "reason": {"type": "string", "maxLength": 500}
+            }
+        },
+        "ReferralQueueEntry": {
+            "type": "object",
+            "required": ["id", "received_at", "agent", "kind", "referral_ref", "event", "reasons", "cleared"],
+            "description": "One message that did not match. `note` and `message`, as received, are present only when one entry is read, never in a listing or after a write.",
+            "properties": {
+                "id": {"type": "string"}, "received_at": {"type": "string", "description": "UTC."},
+                "agent": {"type": "string"},
+                "kind": {"enum": ["no-id", "unknown-id", "refused-by-table"]},
+                "referral_ref": {"type": ["string", "null"]}, "event": {"type": ["string", "null"]},
+                "reasons": {"type": "array", "items": {"type": "string"}, "description": "In words; names no patient data."},
+                "note": {"type": "string"}, "message": {"type": "string"},
+                "cleared": {"type": ["object", "null"], "description": "Null while open.", "required": ["cleared_by", "cleared_at", "how", "referral_id", "reason"],
+                    "properties": {
+                        "cleared_by": {"type": "string"}, "cleared_at": {"type": "string", "description": "UTC."},
+                        "how": {"enum": ["matched", "dismissed"]}, "referral_id": {"type": ["string", "null"]},
+                        "reason": {"type": "string"}}}
+            }
+        },
+        "ReferralQueueList": {
+            "type": "object", "required": ["entries", "limit", "site_time_zone"],
+            "description": "Open entries, up to `limit`.",
+            "properties": {
+                "entries": {"type": "array", "items": {"$ref": "#/components/schemas/ReferralQueueEntry"}},
+                "limit": {"type": "integer"}, "site_time_zone": {"type": "string"}
+            }
+        },
+        "ReferralQueueCount": {
+            "type": "object", "required": ["open"],
+            "properties": {"open": {"type": "integer"}}
+        }
+    })
+}
+
 fn me_schemas() -> Value {
     json!({
         "OwnRecord": {
@@ -861,6 +925,7 @@ fn patient_schemas() -> Value {
     for part in [
         me_schemas(),
         feed_schemas(),
+        referral_queue_schemas(),
         audit_schemas(),
         break_glass_schemas(),
         hazard_schemas(),
@@ -1021,6 +1086,22 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
     ),
     (
         "POST",
+        "/api/referral-messages",
+        "ReferralMessage",
+        "200",
+        "ReferralMessageResult",
+        "Error",
+    ),
+    (
+        "POST",
+        "/api/referral-queue/{id}/clear",
+        "ClearReferralEntry",
+        "200",
+        "ReferralQueueEntry",
+        "Error",
+    ),
+    (
+        "POST",
         "/api/hazards",
         "CreateHazard",
         "201",
@@ -1094,6 +1175,14 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
     ("GET", "/api/feed/refusals", "FeedRefusalList", &[]),
     ("GET", "/api/feed/refusals/count", "FeedRefusalCount", &[]),
     ("GET", "/api/feed/refusals/{id}", "FeedRefusal", &[]),
+    ("GET", "/api/referral-queue", "ReferralQueueList", &[]),
+    (
+        "GET",
+        "/api/referral-queue/count",
+        "ReferralQueueCount",
+        &[],
+    ),
+    ("GET", "/api/referral-queue/{id}", "ReferralQueueEntry", &[]),
     (
         "GET",
         "/api/audit",
@@ -1750,6 +1839,41 @@ mod tests {
         let parsed: Search = serde_json::from_value(Value::Object(all)).unwrap();
         assert!(parsed.drill && parsed.family.is_some() && parsed.birth_date.is_some());
         assert!(parsed.identifier.is_some());
+    }
+
+    #[test]
+    fn the_referral_queue_schemas_match_the_types() {
+        use crate::referral_unmatched::{Cleared, Entry};
+        let schema = patient_schemas();
+        let entry = Entry {
+            id: "i".into(),
+            received_at: "t".into(),
+            agent: "a".into(),
+            kind: "no-id".into(),
+            referral_ref: Some("r".into()),
+            event: Some("e".into()),
+            reasons: vec!["w".into()],
+            note: Some("n".into()),
+            message: Some("m".into()),
+            cleared: Some(Cleared {
+                cleared_by: "c".into(),
+                cleared_at: "t".into(),
+                how: "matched".into(),
+                referral_id: Some("r".into()),
+                reason: "w".into(),
+            }),
+        };
+        let value = serde_json::to_value(&entry).unwrap();
+        assert_eq!(keys(&value), properties("ReferralQueueEntry"));
+        assert_eq!(
+            keys(&value["cleared"]),
+            schema["ReferralQueueEntry"]["properties"]["cleared"]["properties"]
+                .as_object()
+                .unwrap()
+                .keys()
+                .cloned()
+                .collect()
+        );
     }
 
     #[test]

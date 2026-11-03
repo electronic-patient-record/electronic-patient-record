@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-03 - Inbound referral messages and the queue routes (PC-2, second slice)
+
+- **Clinical risk:** yes (H-044). An inbound message can now move a referral, and an unmatched one is kept where an administrator can find it. The hazard row lists the routes as a control and says what is missing. Not set to accepted or closed.
+- **Built:** `POST /api/referral-messages`, `GET /api/referral-queue`, `/count`, `/{id}`, `POST /api/referral-queue/{id}/clear`; policy resource `ReferralQueue` (17th); five route-table rows; audited receipts, views and clearances (ids, kinds, states; never text); OpenAPI schemas and a type-match test; both writes are in the audit-failure census; both searches in the audit-search census; `tests/http_referral_queue.rs` (login on); the policy matrix size guard went from 16 to 17 resources.
+- **Not done / not verified:** **who sends and who clears is assumed (OQ-PC4)**: the integrator sends, the clinical administrator clears. An inbound message moves a referral with no care relationship and nothing proves the sender is the recipient the referral names (the sender is the integrator's token subject). No screen, no worklist count for the referrer, no owner model for another organisation, no timeouts for an uncleared entry, no FHIR or HL7 mapping of an inbound message. A message over 1 MiB is cut, as the feed's is. **Also fixed, unrelated to referrals:** `tests/packs.rs` named its scratch directories from the process id and the clock; on macOS the clock reads in microseconds, so two parallel tests could share a directory and one failed intermittently (seen once in a gate run, not on CI). The name now carries a counter. Not verified on Linux or CI, where it was not seen to fail. **Test-database drift:** `break_glass` review lists show the oldest 50, so `openapi_responses_roles` fails on a local database with more than 50 unreviewed grants; it passes on a fresh one, as in CI. Not fixed; see PR-1. A hand match records the link and does not apply the event to the referral. No concurrency test.
+
 ## 2026-11-03 - The unmatched-outcome queue store (PC-2, first slice)
 
 - **Clinical risk:** yes (H-044: an outcome that reaches no one). The hazard row now names the store as a control and says nothing feeds it yet. Not set to accepted or closed.

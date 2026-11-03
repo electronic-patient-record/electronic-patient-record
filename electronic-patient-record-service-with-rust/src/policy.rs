@@ -143,13 +143,16 @@ pub enum Resource {
     /// The hazard register (`hazard_store.rs`): hazards, their controls and the evidence that one was
     /// removed. It holds no patient data and belongs to no patient.
     Hazard,
+    /// Inbound referral messages and the queue of those that did not match (`referral_unmatched.rs`). They
+    /// hold patient data but belong to no patient until matched, so no care relationship applies.
+    ReferralQueue,
     /// A referral from one team to another, and the loop that closes it (`referrals_store.rs`).
     Referral,
 }
 
 impl Resource {
     /// Every resource kind, in a fixed order.
-    pub const ALL: [Resource; 16] = [
+    pub const ALL: [Resource; 17] = [
         Resource::PatientIdentity,
         Resource::Encounter,
         Resource::Condition,
@@ -166,6 +169,7 @@ impl Resource {
         Resource::BreakGlass,
         Resource::Hazard,
         Resource::Referral,
+        Resource::ReferralQueue,
     ];
 
     /// A stable name for audit rows and route tables.
@@ -188,6 +192,7 @@ impl Resource {
             Resource::BreakGlass => "BreakGlass",
             Resource::Hazard => "Hazard",
             Resource::Referral => "Referral",
+            Resource::ReferralQueue => "ReferralQueue",
         }
     }
 
@@ -210,6 +215,7 @@ impl Resource {
                 | Resource::FeedQueue
                 | Resource::BreakGlass
                 | Resource::Hazard
+                | Resource::ReferralQueue
         )
     }
 }
@@ -512,7 +518,7 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         AllergyIntolerance as Allergy, Amendment, AuditLog, BreakGlass as Glass,
         CareRelationship as Rel, Condition, Consent as Cons, Document, Encounter,
         FeedQueue as Queue, Hazard, MedicationRequest as Meds, Observation,
-        PatientIdentity as Identity, PatientLink as Link, Referral,
+        PatientIdentity as Identity, PatientLink as Link, Referral, ReferralQueue as RefQueue,
     };
     match (role, resource) {
         // Clinicians: full clinical work, and register or correct identity.
@@ -562,6 +568,10 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         // Refused feed messages: an administrator reads and closes them. They are patient data, so
         // no one else sees them, and the feed itself can never read its own refusals back.
         (Role::ClinicalAdmin, Queue) => &[Read, Search, Update],
+        // Inbound referral messages and their queue (assumed, awaiting the maintainer): an integration sends,
+        // the clinical administrator reads and clears. The messages can hold a result or a decision.
+        (Role::Integrator, RefQueue) => &[Create],
+        (Role::ClinicalAdmin, RefQueue) => &[Read, Search, Update],
         // Break-the-glass: a treating role may open a grant (the engine then lifts only the missing
         // care relationship). Reviewing grants is the auditor's, who also sees the access trail.
         (Role::Clinician | Role::Nurse | Role::Pharmacist | Role::AlliedHealth, Glass) => &[Create],
@@ -1168,8 +1178,8 @@ mod tests {
                 }
             }
         }
-        // 11 roles × 16 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
-        assert_eq!(cells, 11 * 16 * 6 * 8 * 5 * 3 * 7 * 2);
+        // 11 roles × 17 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
+        assert_eq!(cells, 11 * 17 * 6 * 8 * 5 * 3 * 7 * 2);
         assert!(allows > 0);
     }
 

@@ -230,6 +230,29 @@ async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_r
         )
         .await;
 
+        // An inbound referral message (queued: it names no referral), and its clearance.
+        refused_then_accepted(db, "POST /api/referral-messages", || async {
+            let r = server
+                .post("/api/referral-messages")
+                .json(&json!({ "event": "outcome", "note": "seen", "message": "Seen; discharged" }))
+                .await;
+            (r.status_code(), r.text())
+        })
+        .await;
+        let queued = server.get("/api/referral-queue").await.json::<Value>();
+        let entry_id = queued["entries"][0]["id"]
+            .as_str()
+            .expect("a queue entry id")
+            .to_string();
+        refused_then_accepted(db, "POST /api/referral-queue/{id}/clear", || async {
+            let r = server
+                .post(&format!("/api/referral-queue/{entry_id}/clear"))
+                .json(&json!({ "how": "dismissed", "reason": "a test message" }))
+                .await;
+            (r.status_code(), r.text())
+        })
+        .await;
+
         // Observation create and update.
         let observation = json!({
             "code": "8867-4", "value": 72.0, "unit": "/min",

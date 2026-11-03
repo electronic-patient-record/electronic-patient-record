@@ -202,8 +202,10 @@ async fn a_message_that_does_not_match_is_queued_with_a_reason_and_changes_nothi
             "refused-by-table",
         ),
     ];
+    let mut mine = Vec::new();
     for (message, kind) in cases {
         let entry = queued(queue::file(&db, message, Utc::now()).await.unwrap());
+        mine.push(entry.id.clone());
         assert_eq!(entry.kind, kind, "{message:?}");
         assert_eq!(entry.reasons.len(), 1);
         assert!(entry.cleared.is_none());
@@ -253,7 +255,8 @@ async fn a_message_that_does_not_match_is_queued_with_a_reason_and_changes_nothi
     let open = queue::list_open(&db).await.unwrap();
     assert!(open.len() >= 8);
     assert!(open.iter().all(|e| e.message.is_none() && e.note.is_none()));
-    let one = queue::get(&db, &open[0].id).await.unwrap();
+    // Read one of this test's own entries, not whichever is oldest: other tests leave entries too.
+    let one = queue::get(&db, &mine[0]).await.unwrap();
     assert_eq!(one.message.as_deref(), Some(SECRET));
 }
 

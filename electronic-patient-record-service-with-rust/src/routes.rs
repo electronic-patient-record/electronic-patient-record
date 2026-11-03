@@ -123,6 +123,36 @@ pub const TABLE: &[(&str, &str, Resource, Action)] = &[
         Action::Update,
     ),
     (
+        "POST",
+        "/api/referral-messages",
+        Resource::ReferralQueue,
+        Action::Create,
+    ),
+    (
+        "GET",
+        "/api/referral-queue",
+        Resource::ReferralQueue,
+        Action::Search,
+    ),
+    (
+        "GET",
+        "/api/referral-queue/count",
+        Resource::ReferralQueue,
+        Action::Search,
+    ),
+    (
+        "GET",
+        "/api/referral-queue/{id}",
+        Resource::ReferralQueue,
+        Action::Read,
+    ),
+    (
+        "POST",
+        "/api/referral-queue/{id}/clear",
+        Resource::ReferralQueue,
+        Action::Update,
+    ),
+    (
         "GET",
         "/api/openapi.json",
         Resource::PatientIdentity,

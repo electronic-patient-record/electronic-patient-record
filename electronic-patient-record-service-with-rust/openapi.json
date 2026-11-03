@@ -731,6 +731,32 @@
           "null"
         ]
       },
+      "ClearReferralEntry": {
+        "description": "Clear a queued message. matched needs referral_id and records the link without changing the referral; dismissed names none. The reason (1 to 500 characters) is required; an entry already cleared is a 409.",
+        "properties": {
+          "how": {
+            "enum": [
+              "matched",
+              "dismissed"
+            ]
+          },
+          "reason": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "referral_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "how",
+          "reason"
+        ],
+        "type": "object"
+      },
       "ConsentList": {
         "properties": {
           "consents": {
@@ -1952,6 +1978,204 @@
         },
         "required": [
           "referrals"
+        ],
+        "type": "object"
+      },
+      "ReferralMessage": {
+        "description": "An inbound referral message (an outcome, a decline, an interim note). It moves the referral it names, or is queued for a person; it is never dropped and never matched by patient and date. 200 either way.",
+        "properties": {
+          "event": {
+            "description": "A recipient event word such as outcome, decline or interim-note.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "message": {
+            "description": "The message as received; required, cut at 1 MiB.",
+            "type": "string"
+          },
+          "note": {
+            "description": "Needed by the events that need one.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "referral_ref": {
+            "description": "The referral id as the sender wrote it. Absent or blank is queued as no-id.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "type": "object"
+      },
+      "ReferralMessageResult": {
+        "description": "moved: the referral and its new version and state. queued: the queue id and why. The message is not repeated.",
+        "properties": {
+          "kind": {
+            "enum": [
+              "no-id",
+              "unknown-id",
+              "refused-by-table"
+            ]
+          },
+          "queue_id": {
+            "type": "string"
+          },
+          "referral": {
+            "type": "string"
+          },
+          "result": {
+            "enum": [
+              "moved",
+              "queued"
+            ]
+          },
+          "state": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      },
+      "ReferralQueueCount": {
+        "properties": {
+          "open": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "open"
+        ],
+        "type": "object"
+      },
+      "ReferralQueueEntry": {
+        "description": "One message that did not match. `note` and `message`, as received, are present only when one entry is read, never in a listing or after a write.",
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "cleared": {
+            "description": "Null while open.",
+            "properties": {
+              "cleared_at": {
+                "description": "UTC.",
+                "type": "string"
+              },
+              "cleared_by": {
+                "type": "string"
+              },
+              "how": {
+                "enum": [
+                  "matched",
+                  "dismissed"
+                ]
+              },
+              "reason": {
+                "type": "string"
+              },
+              "referral_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "cleared_by",
+              "cleared_at",
+              "how",
+              "referral_id",
+              "reason"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "event": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "no-id",
+              "unknown-id",
+              "refused-by-table"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "reasons": {
+            "description": "In words; names no patient data.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "received_at": {
+            "description": "UTC.",
+            "type": "string"
+          },
+          "referral_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "received_at",
+          "agent",
+          "kind",
+          "referral_ref",
+          "event",
+          "reasons",
+          "cleared"
+        ],
+        "type": "object"
+      },
+      "ReferralQueueList": {
+        "description": "Open entries, up to `limit`.",
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/ReferralQueueEntry"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "site_time_zone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entries",
+          "limit",
+          "site_time_zone"
         ],
         "type": "object"
       },
@@ -6890,6 +7114,367 @@
         ],
         "x-epr-action": "Update",
         "x-epr-resource": "PatientLink"
+      }
+    },
+    "/api/referral-messages": {
+      "post": {
+        "operationId": "postApiReferral-messages",
+        "parameters": [
+          {
+            "description": "1 to 128 letters, digits or . _ : -. A retry with the same key and the same request returns the first answer (header `Idempotent-Replayed: true`) and writes nothing; the same key for a different request is a 422; a key whose first request is unfinished is a 409. Only a success is kept; keys expire after 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReferralMessage"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralMessageResult"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "A likely duplicate or a stale expected_version."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/referral-messages",
+        "tags": [
+          "referral-messages"
+        ],
+        "x-epr-action": "Create",
+        "x-epr-resource": "ReferralQueue"
+      }
+    },
+    "/api/referral-queue": {
+      "get": {
+        "operationId": "getApiReferral-queue",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralQueueList"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/referral-queue",
+        "tags": [
+          "referral-queue"
+        ],
+        "x-epr-action": "Search",
+        "x-epr-resource": "ReferralQueue"
+      }
+    },
+    "/api/referral-queue/count": {
+      "get": {
+        "operationId": "getApiReferral-queueCount",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralQueueCount"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/referral-queue/count",
+        "tags": [
+          "referral-queue"
+        ],
+        "x-epr-action": "Search",
+        "x-epr-resource": "ReferralQueue"
+      }
+    },
+    "/api/referral-queue/{id}": {
+      "get": {
+        "operationId": "getApiReferral-queueId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralQueueEntry"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/referral-queue/{id}",
+        "tags": [
+          "referral-queue"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "ReferralQueue"
+      }
+    },
+    "/api/referral-queue/{id}/clear": {
+      "post": {
+        "operationId": "postApiReferral-queueIdClear",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "1 to 128 letters, digits or . _ : -. A retry with the same key and the same request returns the first answer (header `Idempotent-Replayed: true`) and writes nothing; the same key for a different request is a 422; a key whose first request is unfinished is a 409. Only a success is kept; keys expire after 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClearReferralEntry"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralQueueEntry"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "A likely duplicate or a stale expected_version."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/referral-queue/{id}/clear",
+        "tags": [
+          "referral-queue"
+        ],
+        "x-epr-action": "Update",
+        "x-epr-resource": "ReferralQueue"
       }
     },
     "/fhir/R4/AllergyIntolerance": {

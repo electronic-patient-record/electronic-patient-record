@@ -16,6 +16,7 @@ pub mod metrics;
 pub mod observations;
 pub mod patients;
 pub mod photos;
+pub mod referral_queue;
 pub mod referrals;
 pub mod relationships;
 
@@ -36,4 +37,5 @@ pub fn all_routes() -> AppRoutes {
         .add_route(feed::routes())
         .add_route(break_glass::routes())
         .add_route(hazards::routes())
+        .add_route(referral_queue::routes())
 }
