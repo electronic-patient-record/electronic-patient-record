@@ -16,6 +16,9 @@
     feedCount,
     referralQueueCount,
     refreshReferralQueueCount,
+    worklistCount,
+    refreshWorklistCount,
+    isWorklistPage,
     isAdminPage,
     refreshFeedCount,
   } from "#lib/feed-count.svelte.js";
@@ -52,6 +55,12 @@
       feedCount.open = null;
       referralQueueCount.open = null;
     }
+  });
+  // The count of replies waiting for this person is fetched on the reply list and a patient's record only.
+  const worklistPage = $derived(isWorklistPage(page.url.pathname));
+  $effect(() => {
+    if (worklistPage) void refreshWorklistCount();
+    else worklistCount.open = null;
   });
   // Idle sign-out warning (CQ-8): background looks do not keep the session alive, so warn before the
   // limit and offer one press to stay. Checked every 15 s; the server decides, this only warns.
@@ -98,6 +107,12 @@
     <a href={localizePath("/", locale)}>{STRINGS.navHome}</a>
     <a href={localizePath("/patients", locale)}>{STRINGS.navPatients}</a>
     <a href={localizePath("/patients/new", locale)}>{STRINGS.registerLink}</a>
+    <a href={localizePath("/referrals", locale)}
+      >{STRINGS.navReplies}{#if worklistPage && worklistCount.open}
+        <span class="count"
+          >({STRINGS.wlCount.replace("{n}", String(worklistCount.open))})</span
+        >{/if}</a
+    >
     <a href={localizePath("/admin/feed", locale)}
       >{STRINGS.navFeed}{#if adminPage && feedCount.open}
         <span class="count"

@@ -39,3 +39,26 @@ export async function refreshReferralQueueCount(): Promise<void> {
       ? res.body.open
       : null;
 }
+
+/** Whether the referral-reply count is fetched on this path: the list itself and a patient's record, where a
+ *  clinician works. A role that may not have a worklist makes one audited refusal per load there. */
+export function isWorklistPage(pathname: string): boolean {
+  return (
+    /\/referrals\/?$/.test(pathname) ||
+    /\/patients\/(?!new\/?$|compare\/?$)[^/]+\/?$/.test(pathname)
+  );
+}
+
+// How many of this person's referrals have an answer they have not seen (H-044). Any status but 200 shows nothing.
+export const worklistCount = $state<{ open: number | null }>({ open: null });
+
+export async function refreshWorklistCount(): Promise<void> {
+  const res = await call<{ open: number }>(
+    "GET",
+    "/api/referrals/worklist/count",
+  );
+  worklistCount.open =
+    res.status === 200 && Number.isInteger(res.body?.open)
+      ? res.body.open
+      : null;
+}

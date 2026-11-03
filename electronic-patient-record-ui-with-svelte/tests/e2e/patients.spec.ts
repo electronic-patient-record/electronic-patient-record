@@ -3621,3 +3621,83 @@ test("the unmatched referral queue says when it is cut short, and a refused role
     page.getByRole("button", { name: "Show the message" }),
   ).toHaveCount(0);
 });
+
+const WORK = (over: Record<string, unknown> = {}) => ({
+  referral_id: "66666666-6666-4666-8666-666666666666",
+  patient_id: ANN.id,
+  version: 3,
+  state: "declined",
+  recorded_at: "2026-10-21T09:00:12.000000Z",
+  ...over,
+});
+
+test("a referrer sees the replies waiting for them, marks one seen with the version they saw, and a newer reply reloads the list", async ({
+  page,
+}) => {
+  let items = [WORK()];
+  const sent: Json[] = [];
+  let status = 200;
+  await page.route("**/api/proxy/api/referrals/worklist/count", (route) =>
+    json(route, 200, { open: items.length }),
+  );
+  await page.route("**/api/proxy/api/referrals/worklist", (route) =>
+    json(route, 200, {
+      items,
+      limit: 50,
+      more: false,
+      site_time_zone: "America/New_York",
+    }),
+  );
+  await page.route("**/api/proxy/api/referrals/*/acknowledge", (route) => {
+    sent.push(route.request().postDataJSON());
+    if (status === 200) items = [];
+    else items = [WORK({ version: 5, state: "completed" })];
+    return json(route, status, { acknowledged: true });
+  });
+  await page.goto("/en-001/referrals");
+  await expect(page.getByText("Declined · 2026-10-21 05:00 EDT")).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /Referral replies/ }),
+  ).toContainText("(1 waiting)");
+  await expect(
+    page.getByRole("link", { name: "Open the patient" }),
+  ).toHaveAttribute("href", new RegExp(`/patients/${ANN.id}$`));
+  await axe(page);
+
+  // A newer reply arrived meanwhile: 409, the list reloads and shows it.
+  status = 409;
+  await page.getByRole("button", { name: "Mark as seen" }).click();
+  await expect(page.getByText("A newer reply arrived")).toBeVisible();
+  await expect(page.getByText(/Completed, outcome received/)).toBeVisible();
+  expect(sent[0]).toEqual({ version: 3 });
+
+  status = 200;
+  await page.getByRole("button", { name: "Mark as seen" }).click();
+  await expect(page.getByText("Marked as seen.")).toBeVisible();
+  await expect(page.getByText("No replies are waiting for you.")).toBeVisible();
+  expect(sent[1]).toEqual({ version: 5 });
+});
+
+test("the reply list says when it was cut short, and a role without one is told so", async ({
+  page,
+}) => {
+  await page.route("**/api/proxy/api/referrals/worklist/count", (route) =>
+    json(route, 403, { error: "forbidden" }),
+  );
+  await page.route("**/api/proxy/api/referrals/worklist", (route) =>
+    json(route, 200, { items: [WORK()], limit: 50, more: true }),
+  );
+  await page.goto("/en-001/referrals");
+  await expect(
+    page.getByText("More are waiting, newer than these"),
+  ).toBeVisible();
+  await page.unroute("**/api/proxy/api/referrals/worklist");
+  await page.route("**/api/proxy/api/referrals/worklist", (route) =>
+    json(route, 403, { error: "forbidden" }),
+  );
+  await page.reload();
+  await expect(page.getByText("Your role does not allow this.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Mark as seen" })).toHaveCount(
+    0,
+  );
+});

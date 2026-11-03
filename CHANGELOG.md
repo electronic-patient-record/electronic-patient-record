@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-03 - The referrer's worklist screen (PC-2, fifth slice)
+
+- **Clinical risk:** yes (H-044: a decline or outcome the referrer never sees). A referrer can now see and mark what came back. The hazard row says what is still missing. Not set to accepted or closed.
+- **Built:** `/referrals` ("Replies to referrals you sent", in the navigation): what came back in words and when on the site clock, a link to the patient, "Mark as seen" (sends the version shown; a 409 reloads), says when the list is cut short; the waiting count beside the navigation link on that page and a patient's record; `lib/referral-worklist.ts`; strings; a unit test file and two e2e tests with axe.
+- **Not done / not verified:** tested against stubbed responses, not a running service, and no Keycloak sign-in test covers it. **The count shows only on two kinds of page**, so a referrer who opens neither is not told; showing it everywhere would make every page load an audited call. A role without a worklist (receptionist, administrator) makes one audited refusal per load of a patient record. The screen shows the state, not the recipient's words: reading the reply means opening the patient. "Marking seen" records a click, not an action. Nothing reminds anyone about a referral that has had no reply (PC-3). English only; no translation. Who counts as the referrer is still assumed (OQ-PC5).
+
 ## 2026-11-03 - The referrer's worklist, service side (PC-2, fourth slice)
 
 - **Clinical risk:** yes (H-044: a decline or outcome the referrer never sees). The service can now say which of a person's referrals have an answer they have not seen. The hazard row says no screen shows it yet. Not set to accepted or closed.

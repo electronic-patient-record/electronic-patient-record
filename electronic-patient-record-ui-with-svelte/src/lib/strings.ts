@@ -5,6 +5,19 @@ export const STRINGS = {
   skip: "Skip to main content",
   navHome: "Home",
   navPatients: "Patients",
+  navReplies: "Referral replies",
+  wlTitle: "Replies to referrals you sent",
+  wlIntro:
+    "A referral you sent that was declined, redirected, deferred, asked about, reported on, completed or missed by the patient stays here until you say you have seen it. Open the patient to read the reply, act on it, then mark it seen. Marking it seen records that you saw it, not that anything was done.",
+  wlNone: "No replies are waiting for you.",
+  wlCount: "{n} waiting",
+  wlMore:
+    "This is the oldest {n}. More are waiting, newer than these. Mark some seen to see the rest.",
+  wlOpen: "Open the patient",
+  wlAcknowledge: "Mark as seen",
+  wlSeen: "Marked as seen.",
+  wlChanged:
+    "A newer reply arrived or this was already marked. The list was reloaded.",
   navFeed: "Refused messages",
   navReferralQueue: "Unmatched referral replies",
   homeTitle: "Electronic Patient Record",
