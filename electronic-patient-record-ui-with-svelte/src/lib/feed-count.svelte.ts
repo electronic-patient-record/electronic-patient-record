@@ -11,6 +11,7 @@ import { call } from "./api.js";
 export function isAdminPage(pathname: string): boolean {
   return (
     /\/admin\/feed\/?$/.test(pathname) ||
+    /\/admin\/referral-queue\/?$/.test(pathname) ||
     /\/patients\/[^/]+\/access\/?$/.test(pathname)
   );
 }
@@ -20,6 +21,20 @@ export const feedCount = $state<{ open: number | null }>({ open: null });
 export async function refreshFeedCount(): Promise<void> {
   const res = await call<{ open: number }>("GET", "/api/feed/refusals/count");
   feedCount.open =
+    res.status === 200 && Number.isInteger(res.body?.open)
+      ? res.body.open
+      : null;
+}
+
+// How many inbound referral messages wait unmatched (PC-2). Same rules as the feed count: admin pages only,
+// and a role that may not see the queue (any status but 200) shows nothing.
+export const referralQueueCount = $state<{ open: number | null }>({
+  open: null,
+});
+
+export async function refreshReferralQueueCount(): Promise<void> {
+  const res = await call<{ open: number }>("GET", "/api/referral-queue/count");
+  referralQueueCount.open =
     res.status === 200 && Number.isInteger(res.body?.open)
       ? res.body.open
       : null;

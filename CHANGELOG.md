@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-03 - The unmatched referral reply screen (PC-2, third slice)
+
+- **Clinical risk:** yes (H-044: an outcome that reaches no one). A person can now see and clear what was queued. The hazard row says what is still missing. Not set to accepted or closed.
+- **Built:** `/admin/referral-queue` (list with kind in words, reasons and time on the site clock; show the note and message; clear by dismissal or hand match with a reason, a referral id for a match; 409 reloads; says when the list is cut short); the open count beside a new navigation link on admin pages; `lib/referral-queue.ts`; strings; a unit test file and two e2e tests with axe.
+- **Not done / not verified:** the screen was tested against stubbed responses, not a running service, and no Keycloak sign-in test covers it. The count is fetched on the same admin pages as the feed count, so a role that may not read the queue makes one audited refusal per page load there (as the feed count already does). The referrer gets no notice of a reply: no worklist count, no entry owner, no timeouts (PC-3). A hand match records a link only; the screen cannot open the referral, and does not check the typed id exists (the service does). English only; no translation.
+
 ## 2026-11-03 - Lists that are cut short say so (PR-1)
 
 - **Clinical risk:** yes (H-044: an oldest-first queue hides its newest entry once 50 are waiting). The hazard row names the new control and says the referral queue still has no screen. Not set to accepted or closed.

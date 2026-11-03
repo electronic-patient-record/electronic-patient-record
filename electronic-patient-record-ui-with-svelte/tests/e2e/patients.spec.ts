@@ -3511,3 +3511,113 @@ test("a clinician sends a referral and takes a step; the service's list of next 
   // An end-state-like list with no next steps offers no buttons.
   await expect(page.getByRole("button", { name: /^Accept/ })).toHaveCount(0);
 });
+
+const QUEUED = (over: Record<string, unknown> = {}) => ({
+  id: "55555555-5555-4555-8555-555555555555",
+  received_at: "2026-10-21T09:00:12.000000Z",
+  agent: "clinic-feed",
+  kind: "unknown-id",
+  referral_ref: "R-404",
+  event: "outcome",
+  reasons: ["no referral has the id R-404"],
+  cleared: null,
+  ...over,
+});
+
+test("an administrator reads an unmatched referral reply and clears it, by hand match only with a referral id", async ({
+  page,
+}) => {
+  let open = [QUEUED()];
+  const sent: { url: string; body: Json }[] = [];
+  await page.route("**/api/proxy/api/referral-queue/count", (route) =>
+    json(route, 200, { open: open.length }),
+  );
+  await page.route("**/api/proxy/api/referral-queue", (route) =>
+    json(route, 200, {
+      entries: open,
+      limit: 50,
+      more: false,
+      site_time_zone: "America/New_York",
+    }),
+  );
+  await page.route("**/api/proxy/api/referral-queue/*", (route) =>
+    json(route, 200, {
+      ...QUEUED(),
+      note: "Seen, booked for March",
+      message: "OBR|1||R-404\rOBX|1|TX|||Seen\r",
+    }),
+  );
+  await page.route("**/api/proxy/api/referral-queue/*/clear", (route) => {
+    sent.push({
+      url: route.request().url(),
+      body: route.request().postDataJSON(),
+    });
+    open = [];
+    return json(route, 200, QUEUED({ cleared: {} }));
+  });
+  await page.goto("/en-001/admin/referral-queue");
+  await expect(page.getByText("1 waiting").first()).toBeVisible();
+  await expect(page.getByText("no referral has the id R-404")).toBeVisible();
+  await expect(page.getByText("received 2026-10-21 05:00 EDT")).toBeVisible();
+  await expect(page.getByText("More are waiting")).toHaveCount(0);
+  await axe(page);
+
+  await page.getByRole("button", { name: "Show the message" }).click();
+  await expect(page.getByText("Seen, booked for March")).toBeVisible();
+  expect(await page.locator("pre").innerText()).toContain("\nOBX|1");
+  await axe(page);
+
+  // No reason, no request. A hand match needs the referral id as well.
+  await page.getByRole("button", { name: "Clear this entry" }).click();
+  await expect(
+    page.getByText("Give a reason, and the referral id"),
+  ).toBeVisible();
+  await page.getByLabel("How was it dealt with?").selectOption("matched");
+  await page.getByLabel("Reason (required)").fill("it is the Cardiology one");
+  await page.getByRole("button", { name: "Clear this entry" }).click();
+  expect(sent).toHaveLength(0);
+
+  await page
+    .getByLabel("Referral id (required for a hand match)")
+    .fill("ref-9");
+  await page.getByRole("button", { name: "Clear this entry" }).click();
+  await expect(page.getByText("Entry cleared.")).toBeVisible();
+  await expect(
+    page.getByText("No unmatched referral replies are waiting."),
+  ).toBeVisible();
+  expect(sent[0].url).toContain("/55555555-5555-4555-8555-555555555555/clear");
+  expect(sent[0].body).toEqual({
+    how: "matched",
+    referral_id: "ref-9",
+    reason: "it is the Cardiology one",
+  });
+});
+
+test("the unmatched referral queue says when it is cut short, and a refused role is told so", async ({
+  page,
+}) => {
+  await page.route("**/api/proxy/api/referral-queue/count", (route) =>
+    json(route, 200, { open: 51 }),
+  );
+  await page.route("**/api/proxy/api/referral-queue", (route) =>
+    json(route, 200, { entries: [QUEUED()], limit: 50, more: true }),
+  );
+  await page.goto("/en-001/admin/referral-queue");
+  await expect(
+    page.getByText("More are waiting, newer than these"),
+  ).toBeVisible();
+  // The navigation carries the count on the admin pages.
+  await expect(
+    page.getByRole("link", { name: /Unmatched referral replies/ }),
+  ).toContainText("(51 waiting)");
+
+  await page.unroute("**/api/proxy/api/referral-queue");
+  await page.route("**/api/proxy/api/referral-queue", (route) =>
+    json(route, 403, { error: "forbidden" }),
+  );
+  await page.reload();
+  await expect(page.getByText("Your role does not allow this.")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Show the message" }),
+  ).toHaveCount(0);
+});

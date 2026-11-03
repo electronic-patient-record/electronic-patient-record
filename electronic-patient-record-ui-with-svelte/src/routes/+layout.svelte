@@ -14,6 +14,8 @@
 
   import {
     feedCount,
+    referralQueueCount,
+    refreshReferralQueueCount,
     isAdminPage,
     refreshFeedCount,
   } from "#lib/feed-count.svelte.js";
@@ -43,8 +45,13 @@
   // The count of refused messages is fetched on the admin pages only.
   const adminPage = $derived(isAdminPage(page.url.pathname));
   $effect(() => {
-    if (adminPage) void refreshFeedCount();
-    else feedCount.open = null;
+    if (adminPage) {
+      void refreshFeedCount();
+      void refreshReferralQueueCount();
+    } else {
+      feedCount.open = null;
+      referralQueueCount.open = null;
+    }
   });
   // Idle sign-out warning (CQ-8): background looks do not keep the session alive, so warn before the
   // limit and offer one press to stay. Checked every 15 s; the server decides, this only warns.
@@ -95,6 +102,15 @@
       >{STRINGS.navFeed}{#if adminPage && feedCount.open}
         <span class="count"
           >({STRINGS.feedCount.replace("{n}", String(feedCount.open))})</span
+        >{/if}</a
+    >
+    <a href={localizePath("/admin/referral-queue", locale)}
+      >{STRINGS.navReferralQueue}{#if adminPage && referralQueueCount.open}
+        <span class="count"
+          >({STRINGS.rqCount.replace(
+            "{n}",
+            String(referralQueueCount.open),
+          )})</span
         >{/if}</a
     >
     <a href={localizePath("/admin/break-glass", locale)}>{STRINGS.navGlass}</a>
