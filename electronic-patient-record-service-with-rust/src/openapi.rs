@@ -650,11 +650,11 @@ fn feed_schemas() -> Value {
             }
         },
         "FeedRefusalList": {
-            "type": "object", "required": ["refusals", "limit", "site_time_zone"],
+            "type": "object", "required": ["refusals", "limit", "more", "site_time_zone"],
             "description": "Open refusals, up to `limit`.",
             "properties": {
                 "refusals": {"type": "array", "items": {"$ref": "#/components/schemas/FeedRefusal"}},
-                "limit": {"type": "integer"},
+                "limit": {"type": "integer"}, "more": {"type": "boolean", "description": "True when more entries are waiting than `limit` allowed: the list is cut short and the newest are not shown."},
                 "site_time_zone": {"type": "string"}
             }
         },
@@ -717,11 +717,11 @@ fn referral_queue_schemas() -> Value {
             }
         },
         "ReferralQueueList": {
-            "type": "object", "required": ["entries", "limit", "site_time_zone"],
+            "type": "object", "required": ["entries", "limit", "more", "site_time_zone"],
             "description": "Open entries, up to `limit`.",
             "properties": {
                 "entries": {"type": "array", "items": {"$ref": "#/components/schemas/ReferralQueueEntry"}},
-                "limit": {"type": "integer"}, "site_time_zone": {"type": "string"}
+                "limit": {"type": "integer"}, "more": {"type": "boolean", "description": "True when more entries are waiting than `limit` allowed: the list is cut short and the newest are not shown."}, "site_time_zone": {"type": "string"}
             }
         },
         "ReferralQueueCount": {
@@ -897,11 +897,12 @@ fn break_glass_schemas() -> Value {
             }
         },
         "BreakGlassList": {
-            "type": "object", "required": ["grants", "limit", "site_time_zone"],
+            "type": "object", "required": ["grants", "limit", "more", "site_time_zone"],
             "description": "Unreviewed grants, oldest first, up to `limit`.",
             "properties": {
                 "grants": {"type": "array", "items": {"$ref": "#/components/schemas/BreakGlassGrant"}},
                 "limit": {"type": "integer"},
+                "more": {"type": "boolean", "description": "True when more grants are waiting than `limit` allowed: the list is cut short and the newest are not shown."},
                 "site_time_zone": {"type": "string", "description": "How the site reads times, for the review screen."}
             }
         },

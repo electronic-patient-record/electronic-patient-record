@@ -45,7 +45,8 @@ fn failure(e: StoreError) -> Response {
     }
 }
 
-/// `GET /api/feed/refusals`: the open refusals, oldest first, up to the list limit, without their message text.
+/// `GET /api/feed/refusals`: the open refusals, oldest first, up to the list limit, without their message text; `more`
+/// says whether any were left behind (PR-1).
 /// The list does not say when it was cut short (PR-1). Audited.
 async fn list(
     State(ctx): State<AppContext>,
@@ -90,7 +91,7 @@ async fn list(
     {
         return r.into_response();
     }
-    Json(serde_json::json!({ "refusals": open, "limit": queue::LIST_LIMIT, "site_time_zone": crate::site::time_zone() })).into_response()
+    Json(serde_json::json!({ "refusals": open.rows, "limit": queue::LIST_LIMIT, "more": open.more, "site_time_zone": crate::site::time_zone() })).into_response()
 }
 
 /// How many are waiting, for the admin screens' navigation. No message text, no ids. Audited like

@@ -198,7 +198,8 @@ async fn receive(
     }
 }
 
-/// `GET /api/referral-queue`: the open entries, oldest first, up to the list limit, without their text. Audited.
+/// `GET /api/referral-queue`: the open entries, oldest first, up to the list limit, without their text; `more` says
+/// whether any were left behind (PR-1). Audited.
 async fn list(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -230,7 +231,7 @@ async fn list(
         return r.into_response();
     }
     Json(serde_json::json!({
-        "entries": open, "limit": queue::LIST_LIMIT, "site_time_zone": crate::site::time_zone()
+        "entries": open.rows, "limit": queue::LIST_LIMIT, "more": open.more, "site_time_zone": crate::site::time_zone()
     }))
     .into_response()
 }

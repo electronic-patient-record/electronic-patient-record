@@ -217,18 +217,20 @@ pub async fn record(db: &impl ConnectionTrait, new: New<'_>) -> Result<String, S
 /// # Errors
 ///
 /// [`StoreError::Db`].
-pub async fn list_open(db: &impl ConnectionTrait) -> Result<Vec<Entry>, StoreError> {
+pub async fn list_open(db: &impl ConnectionTrait) -> Result<crate::page::Page<Entry>, StoreError> {
     let rows = db
         .query_all_raw(pg(
             &format!(
-                "{} WHERE r.refusal_id IS NULL ORDER BY f.received_at, f.refusal_id LIMIT {LIST_LIMIT}",
-                select(false)
+                "{} WHERE r.refusal_id IS NULL ORDER BY f.received_at, f.refusal_id LIMIT {}",
+                select(false),
+                LIST_LIMIT + 1
             ),
             vec![],
         ))
         .await
         .map_err(db_err)?;
-    rows.iter().map(to_entry).collect()
+    let fetched = rows.iter().map(to_entry).collect::<Result<Vec<_>, _>>()?;
+    Ok(crate::page::Page::cut(fetched, LIST_LIMIT))
 }
 
 /// How many refusals nobody has closed.

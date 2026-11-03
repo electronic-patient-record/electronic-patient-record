@@ -232,7 +232,7 @@ async fn grants_and_reviews_cannot_be_changed_or_removed() {
 }
 
 async fn old_grant(
-    db: &DatabaseConnection,
+    db: &impl ConnectionTrait,
     patient: &str,
     subject: &str,
     hours_ago: i64,
@@ -293,4 +293,27 @@ async fn a_grant_unreviewed_for_longer_than_the_limit_is_overdue_until_it_is_rev
     .unwrap();
     assert_eq!(glass::count_overdue(&db).await.unwrap(), before);
     assert!(!glass::get(&db, &outside).await.unwrap().overdue);
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn a_review_list_longer_than_the_list_limit_says_it_was_cut_short() {
+    // PR-1 (hazard H-044): oldest first and capped, so the newest unreviewed access is the one hidden.
+    // Done in a transaction that is rolled back, so other tests' counts of unreviewed grants are untouched.
+    use sea_orm::TransactionTrait;
+    let db = db().await;
+    let p = patient(&db).await;
+    let txn = db.begin().await.unwrap();
+    let mut open = glass::count_unreviewed(&txn).await.unwrap();
+    while open < i64::try_from(glass::LIST_LIMIT).unwrap() + 1 {
+        old_grant(&txn, &p, &unique("dr"), 1).await;
+        open += 1;
+    }
+    let page = glass::unreviewed(&txn).await.unwrap();
+    assert_eq!(page.len() as u64, glass::LIST_LIMIT);
+    assert!(
+        page.more,
+        "{open} are unreviewed but the list does not say it is cut"
+    );
+    txn.rollback().await.unwrap();
 }

@@ -15,6 +15,8 @@
   const busy = new Busy();
   let open = $state<Refusal[] | null>(null);
   let limit = $state(50);
+  // The service says when the list was cut short; an older API says nothing, so a full list counts as cut.
+  let more = $state(false);
   let message = $state<string | null>(null);
   // One entry's message is shown at a time, fetched when asked for (a listing carries no text).
   let shown = $state<Refusal | null>(null);
@@ -26,6 +28,7 @@
     const res = await call<{
       refusals: Refusal[];
       limit: number;
+      more?: boolean;
       site_time_zone?: string;
     }>("GET", "/api/feed/refusals");
     const problem = commonProblem(res.status);
@@ -35,6 +38,7 @@
     } else if (res.status === 200) {
       open = res.body.refusals;
       limit = res.body.limit;
+      more = res.body.more ?? open.length >= limit;
       siteZone = res.body.site_time_zone;
       void refreshFeedCount();
     } else message = STRINGS.error;
@@ -101,7 +105,7 @@
     <p>{STRINGS.feedNone}</p>
   {:else}
     <p>{STRINGS.feedCount.replace("{n}", String(open.length))}</p>
-    {#if open.length >= limit}
+    {#if more}
       <p>{STRINGS.feedMore.replace("{n}", String(limit))}</p>
     {/if}
     <ul>

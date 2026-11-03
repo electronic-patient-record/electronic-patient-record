@@ -1145,6 +1145,45 @@ test("the break-the-glass review list marks a grant that has waited too long", a
   await axe(page);
 });
 
+test("a break-glass review list that was cut short says so, and one that was not does not", async ({
+  page,
+}) => {
+  const grants = [
+    {
+      id: "a",
+      patient_id: ANN.id,
+      subject: "dr-who",
+      reason: "collapsed",
+      granted_at: "2026-10-20T10:00:00.000000Z",
+      expires_at: "2026-10-20T14:00:00.000000Z",
+    },
+  ];
+  await page.route("**/api/proxy/api/break-glass/reviews", (route) =>
+    json(route, 200, { grants, limit: 50, more: true }),
+  );
+  await page.goto("/en-001/admin/break-glass");
+  await expect(
+    page.getByText("More are waiting, newer than these"),
+  ).toBeVisible();
+  await page.unroute("**/api/proxy/api/break-glass/reviews");
+  await page.route("**/api/proxy/api/break-glass/reviews", (route) =>
+    json(route, 200, { grants, limit: 50, more: false }),
+  );
+  await page.goto("/en-001/admin/break-glass");
+  await expect(page.getByText("collapsed")).toBeVisible();
+  await expect(page.getByText("More are waiting")).toHaveCount(0);
+});
+
+test("the refused-message queue says it was cut short when the service says so, even with few rows", async ({
+  page,
+}) => {
+  await page.route("**/api/proxy/api/feed/refusals", (route) =>
+    json(route, 200, { refusals: [REFUSAL()], limit: 50, more: true }),
+  );
+  await page.goto("/en-001/admin/feed");
+  await expect(page.getByText("This is the oldest 50.")).toBeVisible();
+});
+
 test("break-the-glass and allergy-statement times are on the site's clock, with UTC beside them", async ({
   page,
 }) => {

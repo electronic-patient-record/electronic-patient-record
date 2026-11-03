@@ -247,18 +247,20 @@ pub async fn get(db: &impl ConnectionTrait, id: &str) -> Result<Grant, StoreErro
 /// # Errors
 ///
 /// [`StoreError::Db`].
-pub async fn unreviewed(db: &impl ConnectionTrait) -> Result<Vec<Grant>, StoreError> {
+pub async fn unreviewed(db: &impl ConnectionTrait) -> Result<crate::page::Page<Grant>, StoreError> {
     let rows = db
         .query_all_raw(pg(
             &format!(
-                "{} WHERE r.grant_id IS NULL ORDER BY g.granted_at, g.grant_id LIMIT {LIST_LIMIT}",
-                select()
+                "{} WHERE r.grant_id IS NULL ORDER BY g.granted_at, g.grant_id LIMIT {}",
+                select(),
+                LIST_LIMIT + 1
             ),
             vec![],
         ))
         .await
         .map_err(db_err)?;
-    rows.iter().map(to_grant).collect()
+    let fetched = rows.iter().map(to_grant).collect::<Result<Vec<_>, _>>()?;
+    Ok(crate::page::Page::cut(fetched, LIST_LIMIT))
 }
 
 /// How many grants nobody has reviewed.

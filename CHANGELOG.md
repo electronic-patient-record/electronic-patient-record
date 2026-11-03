@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-03 - Lists that are cut short say so (PR-1)
+
+- **Clinical risk:** yes (H-044: an oldest-first queue hides its newest entry once 50 are waiting). The hazard row names the new control and says the referral queue still has no screen. Not set to accepted or closed.
+- **Built:** `src/page.rs` (`Page<T>`: rows plus `more`); the feed-refusal, break-glass review and referral-queue stores fetch one row beyond the limit; the three list routes answer `more` beside `limit` (OpenAPI schemas and `openapi.json` updated, field added, none renamed); the break-glass screen shows a message when the list is cut, the feed screen uses `more` instead of guessing from the row count; three database tests fill each store past 50 inside a rolled-back transaction and see 50 rows and `more: true`; a unit test covers exactly 50 (`more: false`) and 51; two UI e2e tests.
+- **Not done / not verified:** "showing 50 of N" is not built (the screens say the list is cut, not how many). Exactly-50 giving `more: false` is tested on `Page::cut` only, not against a database, because the shared test database already holds more than 50 break-glass grants and cannot be brought to exactly 50 without deleting. The referral queue has no screen, so nobody is told on screen that its list is cut. The count routes and the worklist badge are unchanged. The e2e tests stub the service; they do not prove the service sends `more` (the database tests and the OpenAPI census do). The intermittent `http_amendments` failure is still uninvestigated.
+
 ## 2026-11-03 - Rustdoc and code comments across the service and the matcher
 
 - **Clinical risk:** none; comments, documentation and a lint only. No behaviour changed.

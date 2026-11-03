@@ -688,6 +688,10 @@
           "limit": {
             "type": "integer"
           },
+          "more": {
+            "description": "True when more grants are waiting than `limit` allowed: the list is cut short and the newest are not shown.",
+            "type": "boolean"
+          },
           "site_time_zone": {
             "description": "How the site reads times, for the review screen.",
             "type": "string"
@@ -696,6 +700,7 @@
         "required": [
           "grants",
           "limit",
+          "more",
           "site_time_zone"
         ],
         "type": "object"
@@ -1195,6 +1200,10 @@
           "limit": {
             "type": "integer"
           },
+          "more": {
+            "description": "True when more entries are waiting than `limit` allowed: the list is cut short and the newest are not shown.",
+            "type": "boolean"
+          },
           "refusals": {
             "items": {
               "$ref": "#/components/schemas/FeedRefusal"
@@ -1208,6 +1217,7 @@
         "required": [
           "refusals",
           "limit",
+          "more",
           "site_time_zone"
         ],
         "type": "object"
@@ -2168,6 +2178,10 @@
           "limit": {
             "type": "integer"
           },
+          "more": {
+            "description": "True when more entries are waiting than `limit` allowed: the list is cut short and the newest are not shown.",
+            "type": "boolean"
+          },
           "site_time_zone": {
             "type": "string"
           }
@@ -2175,6 +2189,7 @@
         "required": [
           "entries",
           "limit",
+          "more",
           "site_time_zone"
         ],
         "type": "object"

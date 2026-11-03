@@ -364,6 +364,8 @@ export const STRINGS = {
   glassReviewIntro:
     "Times a clinician opened a patient's record in an emergency without a care relationship. Each waits here until someone other than that clinician records whether it was appropriate.",
   glassReviewNone: "No emergency access is waiting for review.",
+  glassReviewMore:
+    "This is the oldest {n}. More are waiting, newer than these. Review some to see the rest.",
   glassBy: "opened by",
   glassOverdue: "OVERDUE FOR REVIEW",
   glassFor: "patient",

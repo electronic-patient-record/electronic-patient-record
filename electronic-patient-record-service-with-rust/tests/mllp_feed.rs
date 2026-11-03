@@ -422,7 +422,7 @@ async fn a_refused_message_waits_in_the_queue_until_a_person_closes_it_once() {
 
     assert_eq!(queue::count_open(&db).await.unwrap(), waiting + 2);
     // A listing carries no message text.
-    for e in queue::list_open(&db).await.unwrap() {
+    for e in queue::list_open(&db).await.unwrap().rows {
         assert_eq!(e.message, None);
         assert!(e.resolution.is_none());
     }
@@ -511,4 +511,40 @@ async fn a_refused_message_waits_in_the_queue_until_a_person_closes_it_once() {
         let e = db.execute_unprepared(&sql).await.unwrap_err().to_string();
         assert!(e.contains("append-only"), "{sql}: {e}");
     }
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn a_refusal_list_longer_than_the_list_limit_says_it_was_cut_short() {
+    // PR-1 (hazard H-044): oldest first and capped, so the newest refusal is the one hidden. Done in a
+    // transaction that is rolled back, so the shared test database stays as it was.
+    use electronic_patient_record::feed_queue::{self as queue, Kind, New};
+    use sea_orm::TransactionTrait;
+    let db = db().await;
+    let txn = db.begin().await.unwrap();
+    let mut open = queue::count_open(&txn).await.unwrap();
+    while open < i64::try_from(queue::LIST_LIMIT).unwrap() + 1 {
+        queue::record(
+            &txn,
+            New {
+                agent: "clinic-feed",
+                peer: None,
+                event: "A01",
+                control_id: "c",
+                kind: Kind::Unsupported,
+                reasons: &[],
+                message: "MSH|^~\\&|",
+            },
+        )
+        .await
+        .unwrap();
+        open += 1;
+    }
+    let page = queue::list_open(&txn).await.unwrap();
+    assert_eq!(page.len() as u64, queue::LIST_LIMIT);
+    assert!(
+        page.more,
+        "{open} are open but the list does not say it is cut"
+    );
+    txn.rollback().await.unwrap();
 }

@@ -154,8 +154,8 @@ async fn guard(
     Ok(purpose)
 }
 
-/// `GET /api/break-glass/reviews`: the grants nobody has reviewed, oldest first, up to the list limit. The list does
-/// not say when it was cut short (PR-1). Audited.
+/// `GET /api/break-glass/reviews`: the grants nobody has reviewed, oldest first, up to the list limit, and `more` says
+/// whether any were left behind (PR-1). Audited.
 async fn list(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -186,7 +186,7 @@ async fn list(
     {
         return r.into_response();
     }
-    Json(serde_json::json!({ "grants": grants, "limit": store::LIST_LIMIT, "site_time_zone": crate::site::time_zone() })).into_response()
+    Json(serde_json::json!({ "grants": grants.rows, "limit": store::LIST_LIMIT, "more": grants.more, "site_time_zone": crate::site::time_zone() })).into_response()
 }
 
 /// `GET /api/break-glass/reviews/count`: how many grants are unreviewed and how many of those are overdue. Audited.

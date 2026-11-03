@@ -1229,7 +1229,7 @@ Ranked in plan.md §24; the draft model is [`spec/interoperability/closed-loop-r
 
 Ranked in plan.md §25. Each item was checked against this repository's code; a check that was not made is said so. Nothing here is built.
 
-- [ ] **PR-1 (S) — A list that is cut says so.** **Clinical** (H-044: an oldest-first queue hides the newest entry). The feed-refusal list, the
+- [x] **PR-1 (S) — A list that is cut says so.** *(Built 2026-11-03, without the count wording: the screens say the list is cut, not "of N".)* **Clinical** (H-044: an oldest-first queue hides the newest entry). The feed-refusal list, the
   break-glass review list and the referral queue list return the oldest 50 with a `limit` and no flag. Fetch `limit + 1` rows, answer
   `more: true` when there were more, keep `limit`, and have the three screens say "showing 50 of N" using the count route; the feed screen
   already warns, the break-glass review screen does not, and the referral queue has no screen. Add the field, do not rename one.

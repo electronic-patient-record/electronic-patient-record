@@ -17,6 +17,9 @@
 
   const busy = new Busy();
   let grants = $state<Grant[] | null>(null);
+  let limit = $state(50);
+  // The service says when the list was cut short; an older API says nothing, so a full list counts as cut.
+  let more = $state(false);
   let siteZone = $state<string | undefined>(undefined);
   let message = $state<string | null>(null);
   let open = $state<string | null>(null);
@@ -24,16 +27,20 @@
   let note = $state("");
 
   async function load() {
-    const res = await call<{ grants: Grant[]; site_time_zone?: string }>(
-      "GET",
-      "/api/break-glass/reviews",
-    );
+    const res = await call<{
+      grants: Grant[];
+      limit?: number;
+      more?: boolean;
+      site_time_zone?: string;
+    }>("GET", "/api/break-glass/reviews");
     const problem = commonProblem(res.status);
     if (problem) {
       grants = null;
       message = STRINGS[problem];
     } else if (res.status === 200) {
       grants = res.body.grants;
+      limit = res.body.limit ?? 50;
+      more = res.body.more ?? grants.length >= limit;
       siteZone = res.body.site_time_zone;
     } else message = STRINGS.error;
   }
@@ -79,6 +86,9 @@
   {#if grants.length === 0}
     <p>{STRINGS.glassReviewNone}</p>
   {:else}
+    {#if more}<p role="status">
+        {STRINGS.glassReviewMore.replace("{n}", String(limit))}
+      </p>{/if}
     <ul>
       {#each grants as g (g.id)}
         <li>
