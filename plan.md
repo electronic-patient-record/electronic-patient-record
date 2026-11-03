@@ -1412,3 +1412,72 @@ All fetched 2026-11-02 from <https://kevinmayfield.github.io/PatientCareCoordina
 [`NHSEngland.html`](https://kevinmayfield.github.io/PatientCareCoordination/en/NHSEngland.html), [`PatientFlags.html`](https://kevinmayfield.github.io/PatientCareCoordination/en/PatientFlags.html),
 [`VirtualWards.html`](https://kevinmayfield.github.io/PatientCareCoordination/en/VirtualWards.html), [`DCP.html`](https://kevinmayfield.github.io/PatientCareCoordination/en/DCP.html).
 Named by the guide and not read: IHE PCC 360X Rev. 1.2 (Trial Implementation), HL7 Europe Hospital Discharge Report 1.0.0 (STU 1), the EU Health Data API, IHE QEDm, MHD and DCP.
+
+## 25. Research pass 2026-11-03: the patient-administration-system repository, read for what the record can learn
+
+The request: research `~/git/patient-administration-system/patient-administration-system` and add any improvements. Nothing was built.
+This is the sister project (Rust PAS, SvelteKit UI), not an outside source, so it is read as a working example: what it did
+after the points already taken in §23 (Openfront) and §24 (care coordination) that this repository lacks. Each idea below was
+**checked against this repository's code** before being written down; the check is named, and where a check was not made it says so.
+
+**Evidence base, stated plainly.** I read the PAS at commit `4f75348` (2026-11-03): its `tasks.md` task titles and the first lines of
+about eighty of them, `spec/hazard/index.md`, `governance/production-readiness.md`, the names of its `governance/` files and its
+recent commit messages (OFH-1, OFH-4, OFH-10, PCC-1, PCC-2, PCC-5). I did **not** read its code, its `plan.md`, its UI, or the bodies of
+its governance documents other than the production-readiness checklist, so I cannot say how well any of its controls work. The task
+text is the PAS author's own account of what landed. The PAS covers appointments, waiting lists, wards, messaging and national
+integration; those belong to a PAS under the boundary decision PA-1 (`spec/02-scope.md`) and are **not** proposed here.
+
+### 25.1 What was already taken from it
+
+Idempotency keys (OF-1), the read-auditing and refusal-audit censuses (OF-2, CQ-39), the schema map (OF-6), the closed-loop referral
+table (PC-1) and the identifier rule (PC-2) all came from earlier passes. The PAS has since moved on from them in ways that matter below.
+
+### 25.2 Ideas, ranked
+
+| ID | Idea | Source in the PAS | Checked here | Value | Cost |
+|---|---|---|---|---|---|
+| PR-1 | A list that is cut says so. | QUAL-14 (`paging`, `PageMeta`) | `feed_queue`, `break_glass` and the new referral queue return the oldest 50 with a `limit` and no flag; audit search already answers `truncated`; the feed screen warns when it shows `limit` rows, the break-glass review screen does not. A local test database with 57 unreviewed grants hid the newest from the list (seen 2026-11-03). | High: an oldest-first safety queue hides what arrived last | S |
+| PR-2 | A hazard control names its test, and the log check proves the test exists. | SAFE-5, SAFE-6 | `scripts/check-hazard-log.py` checks that each `evidence` path exists, not that a named test does; a control can survive a renamed test. | High for assurance | S |
+| PR-3 | A stored list of words is checked against the database `CHECK` that guards it. | QUAL-28 | `referral_versions.state` has a `CHECK` of 12 words and `State::ALL` has 12, tied only by a unit test of serde; no test reads the constraint (no test in `tests/` reads `pg_constraint`). | Medium | S |
+| PR-4 | A background job runs on one replica at a time. | QUAL-2 (`run_exclusive`, an advisory lock per job name) | `outbox::run_loop` claims with `FOR UPDATE SKIP LOCKED` and the idempotency purge is a plain `DELETE`; `audit_retention::run_loop` makes and archives partitions with no lock. **Not checked:** whether two replicas archiving at once fail harmlessly. | Medium, unverified | S |
+| PR-5 | A controllable clock. | QUAL-25 (`Clock`, `FixedClock`) | 15 `Utc::now`/`SystemTime::now` calls in `src/`; tests move time by writing rows (the expired idempotency key test does). PC-3's timeouts cannot be tested without one. | Medium; needed by PC-3 | M |
+| PR-6 | REST reads carry the version as an `ETag`, and a write may send it as `If-Match`. | OFH-1, OFH-10 (NFR-27) | Only the FHIR routes send a weak `ETag`; REST writes carry `expected_version` in the body. A decision, not a defect: see OQ-PR1. | Medium | M |
+| PR-7 | Governance documents the PAS has and this repository lacks: a data-flow description, an MFA plan, a production-readiness checklist, an audit of national assumptions. | `governance/` listing; `production-readiness.md` read in full | `governance/` here holds the DPIA, record of processing, retention schedule, translation register and `clinical-safety/`; the four named documents are absent (a grep of `plan.md`, `tasks.md` and `spec/` for "production-readiness", "MFA plan" and "national-assumptions" finds none). | Medium: they are what a deploying organisation asks for | S each |
+| PR-8 | Not adopted, recorded so it is not asked again: a weekly mutation run, appointment and bed features, waiting-list validation, PIFU, transport, reminder ladders. | QUAL-18 and others | Mutation testing is already an acceptance line in `tasks.md`; the rest is PAS scope (PA-1). | none | none |
+
+### 25.3 Assessment
+
+The strongest finding is PR-1, because it is a safety defect that appeared in this session's own test run and not a stylistic point: the
+referral queue (H-044), the feed-refusal queue and the break-glass review list all show oldest first, so once 50 entries are waiting the
+ones added last are the ones nobody sees, and only one of the three screens says so. The cure is cheap and the PAS already has the shape
+(a page-meta that says the list was cut).
+
+PR-2 and PR-3 are cheap checks that remove ways for a record of assurance to be quietly wrong. PR-4 may be nothing, and is written as a
+question for that reason. PR-5 should be done with PC-3, not before. PR-6 is a choice about API style, not a gap, and PR-7 is writing, not code.
+
+### 25.4 Risks
+
+- **PR-1** changes the shape of three responses; the UI and the OpenAPI document must change in the same commit and an older client must
+  keep working (add a field, do not rename one).
+- **PR-2** will fail the hazard-log check on every hazard that names a file but not a test; the first run will be a long list. Land it as
+  a report first, then make it a failure.
+- **PR-3** can only compare words; it cannot say a word means what the code thinks.
+- The PAS is the same author's code and the same style of claim. Its tasks say "landed" about its own work; nothing here was run.
+
+### 25.5 Open questions (moved to spec/16-open-questions.md)
+
+- **OQ-PR1.** Should REST reads send an `ETag` and accept `If-Match` beside the body field `expected_version`? Recommendation: yes, additive, with the body field kept; decide before any generic client or cache sits in front of the API.
+- **OQ-PR2.** Is a deployment expected to run more than one service replica? Recommendation: assume yes, and settle PR-4 now; the cost is small and a single-replica assumption is easy to forget.
+
+### 25.6 Order of work
+
+PR-1 first (a safety defect, with a test that reproduces it), then PR-2 as a report, PR-3, PR-4's check, PR-7 as writing at any time. PR-5 with
+PC-3. PR-6 after OQ-PR1.
+
+### 25.7 Sources (this pass)
+
+Read 2026-11-03 in `~/git/patient-administration-system/patient-administration-system` at commit `4f75348`: `tasks.md` (QUAL-2, QUAL-14,
+QUAL-18, QUAL-25, QUAL-28, SAFE-1 to SAFE-6, OFH-1, OFH-4, OFH-10, OFH-11, PCC-1 to PCC-8, DTAC-0 to DTAC-12, NEW-1 to NEW-22),
+`spec/hazard/index.md`, `governance/production-readiness.md`, the file names under `governance/`, `spec/compare/`, and `git log` messages.
+This repository: `src/feed_queue.rs`, `src/break_glass.rs`, `src/referral_unmatched.rs`, `src/audit.rs`, `src/audit_retention.rs`, `src/outbox.rs`,
+`scripts/check-hazard-log.py`, `src/routes/admin/*` in the UI, and `tests/`.

@@ -51,6 +51,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | OS | 4 | 10 |
 | OF | 2 | 5 |
 | PC | 1 | 8 |
-| **Total** | **47** | **198** |
+| PR | 0 | 8 |
+| **Total** | **47** | **206** |
 
 <!-- generated:end -->

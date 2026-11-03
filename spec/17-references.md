@@ -11,3 +11,5 @@ and its JPA starter, OpenMRS core, Blaze, EHRbase, Metriport, Haste Health and H
 (formerly Frappe Health), VistA, HospitalRun (archived); Bahmni, Ozone HIS and GNU Health for capabilities only.
 
 A proof-of-concept FHIR guide read in part for the [closed-loop referral model](interoperability/closed-loop-referral.md) (2026-11-02, plan.md §24.8): *Care Coordination and 360 Referrals* v0.1.0, <https://kevinmayfield.github.io/PatientCareCoordination/en/index.html> (seven pages; one author; no licence stated; "must not be used for implementation or clinical purposes").
+
+The sister project, read for what this record can learn (2026-11-03, plan.md §25.7): the patient administration system in `~/git/patient-administration-system/patient-administration-system` at commit `4f75348` (a local checkout, same author; task titles and first lines, `spec/hazard/index.md`, `governance/production-readiness.md`, file names and commit messages; its code was not read).

@@ -1223,3 +1223,36 @@ Ranked in plan.md §24; the draft model is [`spec/interoperability/closed-loop-r
 - [ ] **PC-7 (M) — Patient flags that point to a plan.** **Clinical, the most sensitive item here.** Design only: a flag of four kinds (plan pointer, status, risk, need with content), not a `Condition`; the plan stays with its owner; reading a flag is audited and notifies the owner through the outbox; R4's missing `Flag` to `CarePlan` link needs an extension that the source leaves "To confirm". Reuses PA-6 for reasonable adjustments. The national schemes (CP-IS and others) are pack content. **Acceptance:** a design note with a hazard row and the Clinical Safety Officer's questions; no code.
 - [ ] **PC-8 (S) — Design note: hospital at home.** An inpatient-class encounter at the patient's home with a step-up or step-down route, daily monitoring with escalation thresholds in the care plan, and the limit "not where face-to-face care is required". Blocked on OQ-PC1; for CA-1 and CA-2. **Acceptance:** the note is in CA-1.
 - [ ] **PC-9 (S) — Outcome documents.** Shape CA-1's discharge summary and CA-3's outcome toward HL7 Europe's Hospital Discharge Report, noting the guide's own gaps (emergency and mental-health discharge do not fit; an outpatient letter is unsettled). **Acceptance:** a note in CA-1 and CA-3.
+
+
+## Research 2026-11-03 — the patient-administration-system repository
+
+Ranked in plan.md §25. Each item was checked against this repository's code; a check that was not made is said so. Nothing here is built.
+
+- [ ] **PR-1 (S) — A list that is cut says so.** **Clinical** (H-044: an oldest-first queue hides the newest entry). The feed-refusal list, the
+  break-glass review list and the referral queue list return the oldest 50 with a `limit` and no flag. Fetch `limit + 1` rows, answer
+  `more: true` when there were more, keep `limit`, and have the three screens say "showing 50 of N" using the count route; the feed screen
+  already warns, the break-glass review screen does not, and the referral queue has no screen. Add the field, do not rename one.
+  **Acceptance:** a test with 51 open entries in each queue sees `more: true` and 50 rows; a test with 50 sees `more: false`; the
+  break-glass screen has an e2e test of the message. Hazard row H-044 updated in the same commit.
+- [ ] **PR-2 (S) — A control names its test.** In `governance/clinical-safety/hazard-log.csv`, a control may name `file::test_name`;
+  `scripts/check-hazard-log.py` fails when the file or the function does not exist. First as a report listing every hazard with no named
+  test, then as a failure for hazards marked mitigated. A change to a file a hazard names lists that hazard in the pull request (a hint for
+  the Clinical Safety Officer, not a decision). **Acceptance:** renaming a named test fails the check; the report lists the rest.
+- [ ] **PR-3 (S) — Stored words checked against the database.** A database-gated test reads each `CHECK (… IN (…))` list from the catalogue
+  and compares it with the code's list: referral states, queue kinds and clearances, and the existing allergy, observation and amendment
+  states. **Acceptance:** adding a word to `State` without the migration fails the test, and the reverse.
+- [ ] **PR-4 (S) — One replica runs a background job.** First **check** whether two replicas running `audit_retention::run_loop` at once make
+  or archive a partition twice or fail harmlessly (not checked). Then, if it matters, take a transaction-scoped advisory lock per job
+  name. **Acceptance:** a test runs the job body twice at once and sees one effect and no error.
+- [ ] **PR-5 (M) — A controllable clock.** `Clock` and `FixedClock` in the service, used by idempotency expiry, break-glass expiry and
+  referral timeouts. **Do with PC-3.** **Acceptance:** the idempotency 24-hour expiry is tested by moving the clock, not a row.
+- [ ] **PR-6 (M, a decision) — `ETag` and `If-Match` on REST.** After OQ-PR1. Additive: a REST `GET` of a versioned record sends its version
+  as `ETag`; a write may send `If-Match` and a mismatch is the same 409 as a stale `expected_version`. **Acceptance:** the decision in
+  `spec/16-open-questions.md`; if yes, a test per versioned route.
+- [ ] **PR-7 (S each) — Four governance documents.** `governance/data-flow.md` (who sends what to whom, from the routes and the feed),
+  `governance/mfa-plan.md` (what Keycloak enforces and what is left to the deployment), `governance/production-readiness.md` (a checklist
+  that ticks only with evidence) and `governance/national-assumptions.md` (a pass over code and spec for rules that belong to one country,
+  against the equity rule in `spec/02-scope.md`). Documents only; none is a claim that anything is done. **Acceptance:** each exists, is
+  linked from `spec/index.md`, and says plainly what it has not checked.
+- [ ] **PR-8 (S) — Not adopted: a weekly mutation run and the PAS-scope features.** Recorded so the question is not asked again.

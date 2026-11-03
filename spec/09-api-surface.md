@@ -21,6 +21,10 @@ All routes except the three probes require a valid bearer token (built). Tests k
 
 `POST /api/referral-messages` (`{referral_ref?, event?, note?, message}`) is an outcome, decline or interim note from a recipient system. It moves the referral it names, or is queued; the answer is 200 either way (`{result: "moved", referral, version, state}` or `{result: "queued", queue_id, kind}`) and never repeats the message. A queued message has one of three kinds: `no-id`, `unknown-id`, `refused-by-table` (the state table, the wrong sender, a missing note or an unknown event). `GET /api/referral-queue/count`, `GET /api/referral-queue` (open entries, no text) and `GET /api/referral-queue/{id}` (with the note and message as received) and `POST /api/referral-queue/{id}/clear` (`{how: "matched" | "dismissed", referral_id?, reason}`; a hand match records the link and changes nothing in the referral; once only, 409 after). Resource `ReferralQueue`: **assumed, awaiting the maintainer (OQ-PC4)**: the integrator role sends, the clinical administrator reads and clears; no care relationship applies. Audit rows carry ids, kinds, states and the way a message was cleared, never the message, a note or a reason.
 
+### Lists that are cut short (proposed, PR-1)
+
+**Proposed 2026-11-03, not built.** Today the feed-refusal list, the break-glass review list and the referral queue list return the oldest 50 and a `limit`, with no sign that more are waiting; audit search already answers `truncated`. The proposal is to fetch one row more than the limit, answer `more: true` when it arrives, and have every screen that shows such a list say "showing {limit} of {count}". The field is added; no field is renamed. A queue shown oldest first hides the newest entry once 50 are waiting, so this is a safety rule for the queues and a courtesy for the rest.
+
 ### Idempotent creates (OF-1)
 
 A `POST` under `/api` may carry `Idempotency-Key: <1 to 128 of letters, digits, . _ : ->`. The request runs once per

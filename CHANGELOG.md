@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-03 - Research pass: the patient-administration-system repository (plan.md §25)
+
+- **Clinical risk:** none by itself; documents only. PR-1 is a proposed safety rule for three queues (H-044 is the nearest hazard); the hazard row is not changed until it is built.
+- **Built:** `plan.md` §25 (assessment, eight ideas ranked, risks, open questions, order of work, sources); task series `PR` (PR-1 to PR-8, registered in `scripts/generate-status.sh`); OQ-PR1 and OQ-PR2 in `spec/16-open-questions.md`; a proposed rule in `spec/09-api-surface.md`; the sister project in `spec/17-references.md`.
+- **Not done / not verified:** no code. I read the other repository's task titles, its hazard rule, its production-readiness checklist and its commit messages, **not its code or its plan**, so I cannot say how well any of its controls work. Each idea was checked against this repository's code where the table says so; PR-4 (replicas) was not checked and is written as a question. The `PR` items are not scheduled. The idea that the break-glass screen hides the newest grants rests on one local test database that held 57 unreviewed grants; it was not reproduced in a browser.
+
 ## 2026-11-03 - Inbound referral messages and the queue routes (PC-2, second slice)
 
 - **Clinical risk:** yes (H-044). An inbound message can now move a referral, and an unmatched one is kept where an administrator can find it. The hazard row lists the routes as a control and says what is missing. Not set to accepted or closed.
