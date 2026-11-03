@@ -14,11 +14,17 @@ use serde::{Deserialize, Serialize};
 /// the fields that both records actually carry.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Weights {
+    /// Weight of the family-name similarity.
     pub family: f64,
+    /// Weight of the given-name similarity.
     pub given: f64,
+    /// Weight of the birth-date similarity.
     pub birth_date: f64,
+    /// Weight of the administrative-sex comparison.
     pub sex: f64,
+    /// Weight of the postcode comparison.
     pub postal_code: f64,
+    /// Weight of the phone and email comparison.
     pub telecom: f64,
 }
 
@@ -38,6 +44,7 @@ impl Default for Weights {
 /// Thresholds and guards.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct MatchConfig {
+    /// The field weights.
     pub weights: Weights,
     /// At or above this (and every guard passing) the pair may be linked automatically.
     pub auto_link_threshold: f64,
@@ -82,14 +89,19 @@ impl Default for MatchConfig {
 /// Why a `MatchConfig` is refused by `MatchConfig::validate`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum ConfigError {
+    /// A weight is negative, infinite or NaN.
     #[error("a weight is negative or not a finite number")]
     InvalidWeight,
+    /// Every weight is zero, so no field would count.
     #[error("the weights sum to zero, so no field would count")]
     NoWeight,
+    /// A threshold or minimum is outside 0 to 1, or not a number.
     #[error("a threshold is outside 0 to 1 or not a finite number")]
     ThresholdOutOfRange,
+    /// The review threshold is above the auto-link threshold, which would let a pair link automatically below the review line.
     #[error("review_threshold is above auto_link_threshold")]
     ThresholdsInverted,
+    /// The default calling code is outside 1 to 999.
     #[error("default_calling_code is outside 1 to 999")]
     InvalidCallingCode,
 }
@@ -138,8 +150,11 @@ impl MatchConfig {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum GuardField {
+    /// The given name.
     GivenName,
+    /// The family name.
     FamilyName,
+    /// The birth date.
     BirthDate,
 }
 
@@ -158,27 +173,41 @@ impl GuardField {
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "code", rename_all = "snake_case")]
 pub enum ConflictCode {
+    /// Both records carry a verified NHS number and the numbers differ.
     DifferentNhsNumbers,
+    /// The NHS numbers match but the birth dates differ.
     SameNhsDifferentBirthDates,
+    /// The NHS numbers match but the names differ.
     SameNhsDifferentNames,
+    /// Both records carry a verified IHI and the numbers differ.
     DifferentIhis,
+    /// The IHIs match but the birth dates differ.
     SameIhiDifferentBirthDates,
+    /// The IHIs match but the names differ.
     SameIhiDifferentNames,
+    /// The names sound alike (Soundex) but are spelled differently.
     NamesSoundAlike,
+    /// The given and family names appear to be swapped between the records.
     NamesSwapped,
+    /// One record has a given name the other lacks.
     ExtraGivenName,
     /// A name or date needed to confirm the link is absent on one or both records.
     FieldUnavailable {
+        /// Which name or date is missing.
         field: GuardField,
     },
     /// A name or date is less similar than the auto-link minimum.
     FieldBelowMinimum {
+        /// Which name or date fell short.
         field: GuardField,
+        /// The similarity found.
         similarity: f64,
+        /// The auto-link minimum it fell below.
         minimum: f64,
     },
     /// Less of the total field weight is present than `min_evidence_weight`.
     EvidenceThin {
+        /// The share of the total field weight that is present, as a percentage.
         percent_present: f64,
     },
 }
@@ -218,8 +247,11 @@ impl ConflictCode {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Decision {
+    /// May be linked automatically: the score is high enough and every guard passed.
     AutoLink,
+    /// Goes to a person to decide.
     Review,
+    /// Not treated as a match.
     NonMatch,
 }
 
@@ -227,17 +259,24 @@ pub enum Decision {
 /// record lacks the field; `note` says why.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FieldScore {
+    /// The field's name.
     pub field: String,
+    /// How alike the two records are on this field, or `None` (never zero) when either record lacks it.
     pub similarity: Option<f64>,
+    /// The weight the field carried in the configuration used.
     pub weight: f64,
+    /// In words, why the field scored as it did.
     pub note: String,
 }
 
 /// The explainable result.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MatchResult {
+    /// The overall score, renormalised over the fields both records carry.
     pub score: f64,
+    /// What to do with the pair.
     pub decision: Decision,
+    /// One entry per compared field.
     pub fields: Vec<FieldScore>,
     /// Set when a verified national identifier decided the score.
     pub deterministic: Option<String>,
@@ -259,6 +298,8 @@ pub struct MatchingEngine {
 }
 
 impl MatchingEngine {
+    /// An engine with this configuration, unchecked. Use [`MatchingEngine::try_new`] to refuse a configuration that
+    /// [`MatchConfig::validate`] rejects.
     pub fn new(config: MatchConfig) -> Self {
         Self { config }
     }
@@ -269,6 +310,7 @@ impl MatchingEngine {
         Ok(Self { config })
     }
 
+    /// The configuration in use.
     pub fn config(&self) -> &MatchConfig {
         &self.config
     }

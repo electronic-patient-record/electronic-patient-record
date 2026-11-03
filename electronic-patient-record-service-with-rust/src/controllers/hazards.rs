@@ -59,6 +59,8 @@ pub struct HazardList {
     pub hazards: Vec<StoredHazard>,
 }
 
+/// A store error as this route's answer: a refused record is a 422 listing what to fix; anything else keeps its own
+/// status through `ApiError::from` (a miss is 404, a stale version 409).
 fn failure(e: StoreError) -> ApiError {
     match e {
         StoreError::BadQuery(m) => ApiError::invalid(vec![m]),
@@ -105,6 +107,8 @@ fn step_details(event: &Event) -> serde_json::Value {
     }
 }
 
+/// `GET /api/hazards`: every hazard's current version, with its controls and, for a retired one, the evidence and who
+/// retired it. Audited.
 pub(super) async fn list(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -152,6 +156,7 @@ pub(super) async fn list(
     Json(HazardList { hazards }).into_response()
 }
 
+/// `POST /api/hazards`: raise a hazard (`{title, severity, likelihood}`). Any permitted writer may raise one.
 pub(super) async fn create(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -222,6 +227,9 @@ pub(super) async fn create(
     }
 }
 
+/// `PUT /api/hazards/{hazard_id}`: one step of a hazard, `{expected_version, event}`, where the event is `control`,
+/// `retire` or `reopen`. Only the Clinical Safety Officer retires a hazard, and must give evidence; any writer may
+/// reopen.
 pub(super) async fn update(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,

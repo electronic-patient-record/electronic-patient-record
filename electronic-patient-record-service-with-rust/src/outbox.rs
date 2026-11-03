@@ -182,6 +182,7 @@ pub struct LogSink;
 
 #[async_trait]
 impl Sink for LogSink {
+    /// Delivers by writing a log line and nothing else; no message leaves the service.
     async fn deliver(&self, event: &Event) -> Result<(), String> {
         tracing::info!(id = %event.id, kind = %event.kind, recipient = %event.recipient, "outbox event delivered to the log");
         Ok(())
@@ -281,6 +282,7 @@ pub async fn depth(db: &DatabaseConnection) -> Result<(i64, i64), StoreError> {
 /// Events one run of the loop may take.
 const BATCH: u32 = 100;
 
+/// The current time in whole seconds since the Unix epoch; a clock before 1970 reads as 0 and one beyond range saturates.
 fn now() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

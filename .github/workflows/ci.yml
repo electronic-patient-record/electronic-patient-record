@@ -45,6 +45,10 @@ jobs:
       - run: cargo fmt --check
       - run: cargo clippy --all-targets --all-features -- -D warnings
       - run: cargo test --locked
+      # Documentation builds clean, private items included: a broken link or an undocumented public item fails here.
+      - run: cargo doc --no-deps --document-private-items
+        env:
+          RUSTDOCFLAGS: -D warnings
 
   api:
     name: API (fmt, clippy, database-free tests)
@@ -65,6 +69,9 @@ jobs:
       # Every test that needs no database, in every crate and test binary, and the doctests: a new test
       # file runs without a workflow edit (CQ-24). Database tests are `#[ignore]`d and run in `api-db`.
       - run: cargo test --workspace --locked
+      - run: cargo doc --no-deps --document-private-items --workspace
+        env:
+          RUSTDOCFLAGS: -D warnings
 
   fhir-validator:
     name: FHIR validator (what the API writes, base R4 and R5)

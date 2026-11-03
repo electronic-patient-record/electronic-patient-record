@@ -29,6 +29,8 @@ pub(super) fn purpose_of(headers: &HeaderMap) -> Result<Purpose, ApiError> {
     }
 }
 
+/// The answer when an access could not be audited: the real error is logged and the caller gets a plain 500, because
+/// the service never answers an access it could not record.
 pub(super) fn audit_failed(e: &AuditError) -> ApiError {
     tracing::error!(error = %e, "refusing to answer: the access could not be audited");
     ApiError::internal()
@@ -241,6 +243,8 @@ pub(super) async fn commit(tx: sea_orm::DatabaseTransaction) -> Result<(), ApiEr
     })
 }
 
+/// The current time as seconds since the Unix epoch, for the policy engine's expiry checks. A clock before 1970 reads
+/// as 0 and one beyond the range saturates at `i64::MAX`.
 pub(super) fn time_now() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

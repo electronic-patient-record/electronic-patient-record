@@ -37,6 +37,8 @@ pub fn served() -> Vec<(String, String)> {
         .collect()
 }
 
+/// The operation id of a route: the lower-case method followed by the path's segments in capitals with the braces
+/// removed, so `GET /api/patients/{id}` is `getApiPatientsId`. The census requires them to be unique.
 fn operation_id(method: &str, path: &str) -> String {
     let words: Vec<String> = path
         .split('/')
@@ -52,6 +54,8 @@ fn operation_id(method: &str, path: &str) -> String {
     format!("{}{}", method.to_ascii_lowercase(), words.concat())
 }
 
+/// The tag a route is grouped under: the segment after `api` (`/api/patients/{id}` is `patients`), `fhir-r4` or `fhir-r5`
+/// for the FHIR routes, else the first segment with any leading underscore removed, else `root`.
 fn tag(path: &str) -> String {
     let mut parts = path.split('/').filter(|s| !s.is_empty());
     match (parts.next(), parts.next()) {
@@ -62,6 +66,7 @@ fn tag(path: &str) -> String {
     }
 }
 
+/// The `parameters` entries for the `{name}` segments of a path: each a required string in the path.
 fn path_parameters(path: &str) -> Vec<Value> {
     path.split('/')
         .filter_map(|s| s.strip_prefix('{').and_then(|s| s.strip_suffix('}')))
@@ -71,6 +76,7 @@ fn path_parameters(path: &str) -> Vec<Value> {
         .collect()
 }
 
+/// The route table's name for a resource kind, as the document's `x-resource` extension writes it.
 fn resource_name(resource: Resource) -> String {
     format!("{resource:?}")
 }
@@ -184,6 +190,8 @@ fn identity_schemas() -> Value {
     })
 }
 
+/// The schemas for allergies: the record, the stored version, the create and update bodies, the "no known allergies"
+/// statement and the list. A unit test compares their property names with what the real types serialise.
 fn allergy_schemas() -> Value {
     json!({
         "AllergyRecord": {
@@ -257,6 +265,8 @@ fn allergy_schemas() -> Value {
     })
 }
 
+/// The schemas for referrals: the record, a stored version (with its `next` events), the send and step bodies, and the
+/// list and history. The state and event words are checked against `State::ALL` and `Event::ALL` by a unit test.
 fn referral_schemas() -> Value {
     json!({
         "ReferralRecord": {
@@ -311,6 +321,8 @@ fn referral_schemas() -> Value {
     })
 }
 
+/// The schemas for observations (vital signs): the record, the stored version, the create and update bodies, the list and
+/// the version history.
 fn observation_schemas() -> Value {
     json!({
         "ObservationRecord": {
@@ -373,6 +385,7 @@ fn observation_schemas() -> Value {
     })
 }
 
+/// The schemas for consents: the record with its provisions, the stored version, the create and update bodies and the list.
 fn consent_schemas() -> Value {
     json!({
         "ConsentRecord": {
@@ -412,6 +425,7 @@ fn consent_schemas() -> Value {
     })
 }
 
+/// The schemas for care relationships: the record (with a proxy's terms), the stored version, the bodies and the list.
 fn relationship_schemas() -> Value {
     json!({
         "RelationshipRecord": {
@@ -453,6 +467,7 @@ fn relationship_schemas() -> Value {
     })
 }
 
+/// The schemas for amendment requests: the create body, the step body, the view with its notice and due time, and the list.
 fn amendment_schemas() -> Value {
     json!({
         "CreateAmendment": {
@@ -511,6 +526,8 @@ fn amendment_schemas() -> Value {
     })
 }
 
+/// The schemas for the hazard register: a hazard with its controls and evidence, the stored version, the create and step
+/// bodies and the list.
 fn hazard_schemas() -> Value {
     let evidence = json!({"type": "array", "maxItems": 20, "items": {"$ref": "#/components/schemas/HazardEvidence"}});
     json!({
@@ -594,6 +611,7 @@ const AUDIT_CRITERIA: &[&str] = &[
     "before",
 ];
 
+/// The schemas for the feed-refusal queue: an entry, its resolution, the resolve body, the list and the count.
 fn feed_schemas() -> Value {
     json!({
         "ResolveFeedRefusal": {
@@ -647,6 +665,8 @@ fn feed_schemas() -> Value {
     })
 }
 
+/// The schemas for inbound referral messages and the unmatched queue: the message, its result, the entry, the clear body,
+/// the list and the count.
 fn referral_queue_schemas() -> Value {
     json!({
         "ReferralMessage": {
@@ -711,6 +731,7 @@ fn referral_queue_schemas() -> Value {
     })
 }
 
+/// The schemas for `/api/me`: the caller's own records and the access-log page.
 fn me_schemas() -> Value {
     json!({
         "OwnRecord": {
@@ -755,6 +776,8 @@ fn me_schemas() -> Value {
     })
 }
 
+/// The schemas for the audit routes: a row, a search page, the chain head and the three verify answers (intact, broken,
+/// unchecked).
 fn audit_schemas() -> Value {
     json!({
         "AuditRow": {
@@ -832,6 +855,8 @@ fn audit_schemas() -> Value {
     })
 }
 
+/// The schemas for break-the-glass: the declaration, the review body and the review, the grant, the review list and the
+/// count.
 fn break_glass_schemas() -> Value {
     json!({
         "OpenBreakGlass": {
@@ -887,6 +912,7 @@ fn break_glass_schemas() -> Value {
     })
 }
 
+/// The schemas for merge and unmerge: the request, a link and the list of links.
 fn link_schemas() -> Value {
     json!({
         "LinkRequest": {
@@ -920,6 +946,8 @@ fn link_schemas() -> Value {
     })
 }
 
+/// Every body schema the service describes, joined from the parts above in order (a name used by two parts would
+/// replace the earlier one), plus `ObservationVersion`, a `StoredObservation` with the reason beside it.
 fn patient_schemas() -> Value {
     let mut all = Map::new();
     for part in [
@@ -1260,6 +1288,7 @@ fn error_schemas() -> Value {
     })
 }
 
+/// The error schemas together with the body schemas: the document's `components.schemas`.
 fn all_schemas() -> Value {
     let mut all = error_schemas();
     all.as_object_mut()
@@ -1598,6 +1627,7 @@ pub fn rendered() -> String {
     text
 }
 
+/// `GET /api/openapi.json`: the document this module builds.
 async fn serve() -> Response {
     Json(document()).into_response()
 }

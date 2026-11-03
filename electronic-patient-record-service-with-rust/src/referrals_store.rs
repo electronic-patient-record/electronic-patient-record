@@ -119,12 +119,19 @@ pub struct StoredReferral {
 
 const TS: &str = "to_char(recorded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"')";
 
+/// The columns every referral read selects, aliased to the names [`row_to_referral`] reads. `at` is the
+/// version's time in UTC to the microsecond.
 fn columns() -> String {
     format!(
         "referral_id::text AS id, version, author, patient_id::text AS patient_id, state, {TS} AS at, event, body"
     )
 }
 
+/// Read one row into a [`StoredReferral`], working out the events the state table allows next ([`allowed_events`]).
+///
+/// # Errors
+///
+/// [`StoreError::Db`] when a column is missing or a stored word is not a known state.
 fn row_to_referral(row: &sea_orm::QueryResult) -> Result<StoredReferral, StoreError> {
     let body: serde_json::Value = row.try_get("", "body").map_err(db_err)?;
     let state: String = row.try_get("", "state").map_err(db_err)?;
@@ -143,10 +150,13 @@ fn row_to_referral(row: &sea_orm::QueryResult) -> Result<StoredReferral, StoreEr
     })
 }
 
+/// A refusal the writer can fix (a blank field, a missing note, a step the table does not allow): the 422 kind.
 fn refuse(message: impl Into<String>) -> StoreError {
     StoreError::BadQuery(message.into())
 }
 
+/// Refuse a blank value, or one longer than `max` characters. `what` names the field in the message, which
+/// never contains the value itself.
 fn text(what: &str, value: &str, max: usize) -> Result<(), StoreError> {
     if value.trim().is_empty() {
         return Err(refuse(format!("the {what} must not be blank")));
@@ -166,6 +176,12 @@ pub fn needs_note(event: Event) -> bool {
     )
 }
 
+/// Check a request before it is stored: the recipient, reason and question must be present and no longer than
+/// their limits, there may be at most `MAX_EXTERNAL` external identifiers, and each needs a system and a value.
+///
+/// # Errors
+///
+/// [`StoreError::BadQuery`] naming the first field that fails.
 fn check(referral: &Referral) -> Result<(), StoreError> {
     text("recipient", &referral.recipient, MAX_SHORT)?;
     text("reason", &referral.reason, MAX_TEXT)?;

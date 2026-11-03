@@ -43,6 +43,8 @@ pub struct ReviewRequest {
     pub note: String,
 }
 
+/// A store error as a response: 422 for something the caller can fix, 409 for a grant already reviewed, anything else
+/// through the shared store failure.
 fn failure(e: StoreError) -> Response {
     match e {
         StoreError::BadQuery(m) => ApiError::invalid(vec![m.to_string()]).into_response(),
@@ -53,6 +55,9 @@ fn failure(e: StoreError) -> Response {
     }
 }
 
+/// `POST /api/patients/{id}/break-glass`: a treating clinician with no care relationship declares an emergency and
+/// gives a reason. The grant lasts four hours and is not extended by asking again. The grant and its audit row are
+/// one transaction, and the audit row is itself flagged break-glass.
 async fn open(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -123,6 +128,11 @@ async fn open(
     }
 }
 
+/// The shared start of the review routes: read the purpose of use and authorise `action` on the `BreakGlass` resource.
+///
+/// # Errors
+///
+/// The purpose header is unknown (400), or the role, purpose or policy refuses (403).
 async fn guard(
     ctx: &AppContext,
     agent: &Agent,
@@ -144,6 +154,8 @@ async fn guard(
     Ok(purpose)
 }
 
+/// `GET /api/break-glass/reviews`: the grants nobody has reviewed, oldest first, up to the list limit. The list does
+/// not say when it was cut short (PR-1). Audited.
 async fn list(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -177,6 +189,7 @@ async fn list(
     Json(serde_json::json!({ "grants": grants, "limit": store::LIST_LIMIT, "site_time_zone": crate::site::time_zone() })).into_response()
 }
 
+/// `GET /api/break-glass/reviews/count`: how many grants are unreviewed and how many of those are overdue. Audited.
 async fn count(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -214,6 +227,8 @@ async fn count(
     Json(serde_json::json!({ "unreviewed": n, "overdue": overdue })).into_response()
 }
 
+/// `POST /api/break-glass/reviews/{id}`: record whether a grant was appropriate, with a note. The person who opened a
+/// grant may not review it. A grant is reviewed once (409 after).
 async fn review(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,

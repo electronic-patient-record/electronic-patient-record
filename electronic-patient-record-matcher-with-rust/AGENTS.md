@@ -10,5 +10,5 @@ Pure Rust library: patient identity matching for a master patient index. Read [`
   agreeing; a missing field blocks `AutoLink` (it goes to `Review`). Two different valid NHS numbers are
   `NonMatch`. Do not loosen a guard to make a test pass; a wrong automatic link is a patient safety incident.
 - `Patient` is also the service's API DTO. Change it here, and update the entity spec §5 and the UI types in one commit.
-- Gates: `cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test`.
+- Gates: `cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test`, and `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --document-private-items` (every public item is documented: `#![deny(missing_docs)]`).
 - Not built: the labelled corpus (ID-1), fuzz target, benches, phonetic matching, address-line matching.

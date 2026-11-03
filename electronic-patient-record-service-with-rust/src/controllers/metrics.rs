@@ -5,6 +5,7 @@ use crate::metrics;
 use axum::response::Response;
 use loco_rs::prelude::*;
 
+/// `GET /metrics`: the Prometheus text exposition, or 404 when metrics are not enabled.
 async fn serve() -> Response {
     metrics::response(metrics::enabled(
         std::env::var("EPR_METRICS").ok().as_deref(),

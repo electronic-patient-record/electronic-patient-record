@@ -5,6 +5,8 @@
 //! why two records were or were not linked. Missing evidence is `None`, never
 //! zero, and it blocks an automatic link rather than counting as agreement.
 
+#![deny(missing_docs)]
+
 pub mod engine;
 pub mod ihi;
 pub mod nhs;

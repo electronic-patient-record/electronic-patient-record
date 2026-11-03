@@ -165,6 +165,11 @@ pub enum Refusal {
     RecordedTheControl,
 }
 
+/// Trim `value` and refuse it if it is blank or longer than `max` characters.
+///
+/// # Errors
+///
+/// [`Refusal::Blank`] or [`Refusal::TooLong`], naming `what`.
 fn text(what: &'static str, value: &str, max: usize) -> Result<String, Refusal> {
     let v = value.trim();
     if v.is_empty() {
@@ -176,6 +181,11 @@ fn text(what: &'static str, value: &str, max: usize) -> Result<String, Refusal> 
     }
 }
 
+/// A severity or likelihood rating, which must be from 1 to 5.
+///
+/// # Errors
+///
+/// [`Refusal::BadRating`].
 fn rating(n: u8) -> Result<u8, Refusal> {
     if (1..=5).contains(&n) {
         Ok(n)
@@ -184,6 +194,7 @@ fn rating(n: u8) -> Result<u8, Refusal> {
     }
 }
 
+/// Whether `s` is a 64-character lower-case hexadecimal SHA-256 digest.
 fn is_sha256(s: &str) -> bool {
     s.len() == 64 && s.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
 }

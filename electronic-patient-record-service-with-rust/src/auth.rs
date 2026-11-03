@@ -47,6 +47,7 @@ pub fn is_public_path(path: &str) -> bool {
     matches!(path, "/_health" | "/_ping" | "/_readiness" | "/metrics")
 }
 
+/// The value of an environment variable, or `default` when it is unset or blank.
 fn env_or(name: &str, default: &str) -> String {
     std::env::var(name)
         .ok()

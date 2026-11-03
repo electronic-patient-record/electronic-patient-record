@@ -39,6 +39,7 @@ pub enum Kind {
 }
 
 impl Kind {
+    /// The kebab-case word stored in `referral_unmatched.kind` (the column has a matching `CHECK`).
     fn as_str(self) -> &'static str {
         match self {
             Kind::NoId => "no-id",
@@ -132,6 +133,8 @@ pub struct Entry {
 
 const TS: &str = "'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"'";
 
+/// The `SELECT` for a queue entry joined to its clearance, if any. `with_text` chooses whether the note and
+/// message (patient data) are selected; a listing passes `false` so they never leave in bulk.
 fn select(with_text: bool) -> String {
     let (note, message) = if with_text {
         ("u.note", "u.message")
@@ -149,6 +152,11 @@ fn select(with_text: bool) -> String {
     )
 }
 
+/// Read one row of [`select`] into an [`Entry`]. A row with a `cleared_by` has a clearance; one without is open.
+///
+/// # Errors
+///
+/// [`StoreError::Db`] when a column is missing or the stored reasons are not a JSON array of strings.
 fn to_entry(row: &sea_orm::QueryResult) -> Result<Entry, StoreError> {
     let get = |c: &str| row.try_get::<String>("", c).map_err(db_err);
     let opt = |c: &str| row.try_get::<Option<String>>("", c).map_err(db_err);
@@ -176,6 +184,7 @@ fn to_entry(row: &sea_orm::QueryResult) -> Result<Entry, StoreError> {
     })
 }
 
+/// `text` cut to at most `max` bytes, backing up to a character boundary so the result is still valid UTF-8.
 fn cut(text: &str, max: usize) -> &str {
     if text.len() <= max {
         return text;
@@ -187,6 +196,12 @@ fn cut(text: &str, max: usize) -> &str {
     &text[..end]
 }
 
+/// Keep an inbound message that did not match, with the one `reason` it did not, and answer [`Filed::Queued`]
+/// without the note or message text. The caller has already decided the message cannot move a referral.
+///
+/// # Errors
+///
+/// [`StoreError::Db`] when the insert or the read-back fails.
 async fn queue(
     db: &impl ConnectionTrait,
     inbound: &Inbound<'_>,

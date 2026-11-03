@@ -32,6 +32,11 @@ pub struct StoredConsent {
 const COLUMNS: &str =
     "consent_id::text AS id, patient_id::text AS patient_id, version, author, body";
 
+/// Read one row into a [`StoredConsent`].
+///
+/// # Errors
+///
+/// [`StoreError::Db`] when a column is missing or the stored body is unreadable.
 fn row_to_stored(row: &sea_orm::QueryResult) -> Result<StoredConsent, StoreError> {
     let body: serde_json::Value = row.try_get("", "body").map_err(db_err)?;
     Ok(StoredConsent {

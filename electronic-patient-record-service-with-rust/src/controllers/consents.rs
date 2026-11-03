@@ -44,10 +44,13 @@ pub struct UpdateRequest {
     pub reason: Option<String>,
 }
 
+/// A list of problems as a 422 answer.
 fn invalid(problems: &[String]) -> Response {
     ApiError::invalid(problems.to_vec()).into_response()
 }
 
+/// `POST /api/patients/{id}/consents`: record a consent as version 1. Clinical administrators and the patient create
+/// them. Audit rows carry ids, versions and counts, never the provisions.
 pub(super) async fn create(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -124,6 +127,7 @@ pub(super) async fn create(
     }
 }
 
+/// `GET /api/patients/{id}/consents`: every consent record with its current version. Audited with the count.
 pub(super) async fn list(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -177,6 +181,8 @@ pub(super) async fn list(
     }
 }
 
+/// `PUT /api/patients/{id}/consents/{consent_id}`: change a consent as a new version; withdrawing one is an update to
+/// `status: inactive`. A stale `expected_version` is a 409.
 pub(super) async fn update(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,

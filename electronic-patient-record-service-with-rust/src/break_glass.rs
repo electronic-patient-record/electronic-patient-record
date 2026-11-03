@@ -37,6 +37,8 @@ pub fn review_due_hours() -> i64 {
     )
 }
 
+/// The review deadline in hours from a setting: a whole number from 1 to 8760 (a year), else the default. A bad value
+/// falls back rather than stopping the service.
 fn due_hours_from(value: Option<&str>) -> i64 {
     value
         .and_then(|v| v.trim().parse::<i64>().ok())
@@ -95,6 +97,7 @@ pub enum Outcome {
 }
 
 impl Outcome {
+    /// The word stored in `break_glass_reviews.outcome`.
     fn as_str(self) -> &'static str {
         match self {
             Outcome::Appropriate => "appropriate",
@@ -105,6 +108,8 @@ impl Outcome {
 
 const TS: &str = "'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"'";
 
+/// The `SELECT` for a grant joined to its review, if any, with the expiry both as text and as a Unix second for the
+/// policy engine.
 fn select() -> String {
     format!(
         "SELECT g.grant_id::text AS id, g.patient_id::text AS patient_id, g.subject, g.reason,
@@ -120,6 +125,11 @@ fn select() -> String {
     )
 }
 
+/// Read one row of [`select`] into a [`Grant`]; a row with a `reviewed_by` has a review, one without is unreviewed.
+///
+/// # Errors
+///
+/// [`StoreError::Db`] when a column is missing.
 fn to_grant(row: &sea_orm::QueryResult) -> Result<Grant, StoreError> {
     let get = |c: &str| row.try_get::<String>("", c).map_err(db_err);
     let reviewed_by: Option<String> = row.try_get("", "reviewed_by").map_err(db_err)?;

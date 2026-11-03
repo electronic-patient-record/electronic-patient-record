@@ -140,6 +140,7 @@ fn request_of(uri: &axum::http::Uri) -> String {
         .map_or_else(|| uri.path().to_string(), ToString::to_string)
 }
 
+/// A conversion failure as a 500 `OperationOutcome` saying why.
 fn failed(why: &str) -> Response {
     outcome(StatusCode::INTERNAL_SERVER_ERROR, "exception", why)
 }
@@ -162,6 +163,7 @@ fn wrong_release(headers: &HeaderMap) -> Option<Response> {
     })
 }
 
+/// `GET /fhir/R5/Patient/{id}`: the R4 read, converted. A request asking for another FHIR release is refused first.
 async fn read_patient(
     OriginalUri(uri): OriginalUri,
     state: State<AppContext>,
@@ -180,6 +182,7 @@ async fn read_patient(
     .await
 }
 
+/// `GET /fhir/R5/Patient`: the R4 search, converted.
 async fn search_patients(
     OriginalUri(uri): OriginalUri,
     state: State<AppContext>,
@@ -198,6 +201,8 @@ async fn search_patients(
     .await
 }
 
+/// `GET /fhir/R5/AllergyIntolerance`: the R4 search, converted. A conversion that loses anything on a clinical resource
+/// fails the response.
 async fn search_allergies(
     OriginalUri(uri): OriginalUri,
     state: State<AppContext>,
@@ -216,6 +221,8 @@ async fn search_allergies(
     .await
 }
 
+/// `GET /fhir/R5/Observation`: the R4 search, converted. A conversion that loses anything on a clinical resource fails
+/// the response.
 async fn search_observations(
     OriginalUri(uri): OriginalUri,
     state: State<AppContext>,
@@ -259,6 +266,7 @@ fn capability() -> serde_json::Value {
     })
 }
 
+/// `GET /fhir/R5/metadata`: the R5 capability statement.
 async fn metadata(headers: HeaderMap) -> Response {
     if let Some(refused) = wrong_release(&headers) {
         return refused;

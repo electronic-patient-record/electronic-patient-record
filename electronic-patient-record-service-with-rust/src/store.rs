@@ -25,6 +25,7 @@ macro_rules! store_errors {
         /// The store's name in its errors.
         const STORE: &str = $store;
 
+        /// A database failure in this store, as a `StoreError::Db` that names the store.
         fn db_err(e: impl std::fmt::Display) -> $crate::patients_store::StoreError {
             $crate::store::db_err(STORE, e)
         }

@@ -150,6 +150,7 @@ pub fn merge_update(
     Ok((out != *existing).then_some(out))
 }
 
+/// The subject the feed acts as: the integrator role only, so it can do exactly what the policy table gives that role.
 fn feed_subject() -> Subject {
     Subject {
         roles: std::collections::BTreeSet::from([Role::Integrator]),
@@ -173,6 +174,7 @@ fn permitted(action: policy::Action) -> bool {
     .allowed()
 }
 
+/// A store failure as a refusal the sender should retry (`Temporary`); the real error is logged and never sent.
 fn temporary(e: &StoreError) -> Refusal {
     tracing::error!(error = %e, "an ADT message could not be applied");
     Refusal::Temporary("temporary failure, please retry".into())

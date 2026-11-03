@@ -85,6 +85,7 @@ pub enum Missing {
     Roles(Vec<String>),
 }
 
+/// Whether an approval counts at `now`: not revoked, started, and not past its end.
 fn in_force(a: &Approval, now: i64) -> bool {
     !a.revoked && a.from <= now && a.until.is_none_or(|u| now < u)
 }

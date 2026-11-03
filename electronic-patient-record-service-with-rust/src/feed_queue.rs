@@ -36,6 +36,7 @@ pub enum Kind {
 }
 
 impl Kind {
+    /// The word stored in `feed_refusals.kind`.
     fn as_str(self) -> &'static str {
         match self {
             Kind::Unsupported => "unsupported",
@@ -55,6 +56,7 @@ pub enum Outcome {
 }
 
 impl Outcome {
+    /// The word stored in `feed_refusal_resolutions.outcome`.
     fn as_str(self) -> &'static str {
         match self {
             Outcome::Handled => "handled",
@@ -104,6 +106,8 @@ pub struct Entry {
 
 const TS: &str = "'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"'";
 
+/// The `SELECT` for a refusal joined to its resolution, if any. `with_message` chooses whether the raw HL7 message (patient
+/// data) is selected; a listing passes `false` so it never leaves in bulk.
 fn select(with_message: bool) -> String {
     format!(
         "SELECT f.refusal_id::text AS id,
@@ -121,6 +125,11 @@ fn select(with_message: bool) -> String {
     )
 }
 
+/// Read one row of [`select`] into an [`Entry`]; a row with a `resolved_by` has a resolution, one without is open.
+///
+/// # Errors
+///
+/// [`StoreError::Db`] when a column is missing or the stored reasons are not a JSON array of strings.
 fn to_entry(row: &sea_orm::QueryResult) -> Result<Entry, StoreError> {
     let get = |c: &str| row.try_get::<String>("", c).map_err(db_err);
     let reasons: Vec<String> = serde_json::from_str(&get("reasons")?).map_err(db_err)?;

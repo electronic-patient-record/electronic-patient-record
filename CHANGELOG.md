@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-03 - Rustdoc and code comments across the service and the matcher
+
+- **Clinical risk:** none; comments, documentation and a lint only. No behaviour changed.
+- **Built:** a doc comment on 221 functions that had none (route handlers, stores, row readers, error mappers, policy and audit helpers, schema builders, the `Hooks` implementation), each written from reading the function and checked against its route table, module header or tests; doc comments on the 62 public fields and variants of the matcher (`Weights`, `MatchConfig`, `ConfigError`, `GuardField`, `ConflictCode`, `Decision`, `FieldScore`, `MatchResult`, `PartialDate`, the patient types); three rustdoc errors fixed (two links to private items, one redundant link target); `#![deny(missing_docs)]` on the matcher (the service already had it); a `cargo doc -D warnings --document-private-items` step in both Rust CI jobs and in the gate list in `AGENTS.md`. A few comments I first wrote were wrong or too firm (what `after_routes` starts, what a clock reading 0 does, which schemas a group holds) and were corrected against the code before this entry.
+- **Not done / not verified:** the 7 methods of trait implementations (`fmt`, `from`, `into_response`) are left to their traits' docs, except `From<&StoreError>`. No doctest examples were added, so a comment is not executed. The migration crate, the UI's TypeScript and Svelte files and the test files were not touched. The scan counted functions without a `///`; it did not judge whether an existing comment is still true, and it did not cover types, constants or struct fields in the service (those are covered by `deny(missing_docs)` only where public). The comments describe behaviour as read from the code on 2026-11-03; nothing tests that they stay true. `# Errors` sections were added only where the function returns a `Result`.
+
 ## 2026-11-03 - Research pass: the patient-administration-system repository (plan.md §25)
 
 - **Clinical risk:** none by itself; documents only. PR-1 is a proposed safety rule for three queues (H-044 is the nearest hazard); the hazard row is not changed until it is built.

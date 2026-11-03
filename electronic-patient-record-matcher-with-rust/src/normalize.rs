@@ -118,8 +118,11 @@ pub fn normalize_phone(value: &str, default_code: u16) -> String {
 /// A parsed, possibly partial, ISO 8601 date.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PartialDate {
+    /// The year.
     pub year: u16,
+    /// The month, or `None` when only the year was given.
     pub month: Option<u8>,
+    /// The day, or `None` when the date has no day.
     pub day: Option<u8>,
 }
 

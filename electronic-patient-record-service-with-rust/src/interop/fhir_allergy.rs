@@ -23,6 +23,7 @@ const CLINICAL_STATUS: &str = "http://terminology.hl7.org/CodeSystem/allergyinto
 const VERIFICATION_STATUS: &str =
     "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification";
 
+/// The FHIR category code for an allergy category.
 fn category(c: Category) -> &'static str {
     match c {
         Category::Food => "food",
@@ -32,6 +33,7 @@ fn category(c: Category) -> &'static str {
     }
 }
 
+/// The FHIR criticality code. A criticality that was not stated is left out elsewhere, never defaulted to low.
 fn criticality(c: Criticality) -> &'static str {
     match c {
         Criticality::Low => "low",
@@ -40,10 +42,17 @@ fn criticality(c: Criticality) -> &'static str {
     }
 }
 
+/// A `CodeableConcept` holding one coding in `system` with `code`.
 fn status_coding(system: &str, code: &str) -> Value {
     json!({ "coding": [{ "system": system, "code": code }] })
 }
 
+/// Read a built JSON value back as a FHIR `AllergyIntolerance` and run the model's own validation, so a resource the model
+/// rejects is never returned.
+///
+/// # Errors
+///
+/// The parse error or the validation issues, as text.
 fn parse(json: Value) -> Result<Resource, String> {
     let resource: Resource = serde_json::from_value(json).map_err(|e| e.to_string())?;
     let issues = resource.validate();

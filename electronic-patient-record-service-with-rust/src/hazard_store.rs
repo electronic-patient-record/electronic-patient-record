@@ -29,10 +29,16 @@ pub struct StoredHazard {
 
 const TS: &str = "to_char(recorded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"')";
 
+/// The columns every hazard read selects, aliased to the names [`row_to_hazard`] reads.
 fn columns() -> String {
     format!("hazard_id::text AS id, version, author, {TS} AS at, body")
 }
 
+/// Read one row into a [`StoredHazard`].
+///
+/// # Errors
+///
+/// [`StoreError::Db`] when a column is missing or the stored body is unreadable.
 fn row_to_hazard(row: &sea_orm::QueryResult) -> Result<StoredHazard, StoreError> {
     let body: serde_json::Value = row.try_get("", "body").map_err(db_err)?;
     Ok(StoredHazard {
@@ -44,6 +50,7 @@ fn row_to_hazard(row: &sea_orm::QueryResult) -> Result<StoredHazard, StoreError>
     })
 }
 
+/// A refused hazard step as the writer's to fix: a 422 kind, with a sentence that never repeats the free text.
 fn refused(r: Refusal) -> StoreError {
     StoreError::BadQuery(match r {
         Refusal::NotTheCso => "only the Clinical Safety Officer can retire a hazard".to_string(),

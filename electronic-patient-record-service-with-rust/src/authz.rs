@@ -37,6 +37,7 @@ pub enum Refusal {
 }
 
 impl Refusal {
+    /// The kebab-case code an audit row records for a refusal.
     fn code(self) -> &'static str {
         match self {
             Refusal::NoPolicy => "no-policy-for-route",
@@ -154,6 +155,9 @@ pub async fn authorize_mw(State(authz): State<Authz>, req: Request, next: Next) 
         .await
 }
 
+/// The authorization decision for one request: look up the route and the subject's roles ([`check`]), and let the request
+/// through, or audit the refusal and answer 403 (JSON on `/api`, an `OperationOutcome` on `/fhir`). The audit row names the
+/// route template, never the raw path.
 async fn authorize_inner(authz: Authz, req: Request, next: Next) -> Response {
     let method = req.method().clone();
     let path = req.uri().path().to_string();

@@ -124,6 +124,8 @@ type Series = BTreeMap<(String, String, u16), Histogram>;
 
 static REQUESTS: Mutex<Series> = Mutex::new(BTreeMap::new());
 
+/// Record one request in `series`, keyed by method, route template and status. Once there are `MAX_SERIES` series, a new
+/// key is counted under the route `overflow` instead, so a flood of distinct routes cannot grow the table without limit.
 fn observe_in(series: &mut Series, method: &str, route: &str, status: u16, seconds: f64) {
     let key = (method.to_string(), route.to_string(), status);
     let key = if series.contains_key(&key) || series.len() < MAX_SERIES {
@@ -164,6 +166,7 @@ pub async fn duration_mw(request: Request, next: Next) -> Response {
     response
 }
 
+/// A Prometheus label value with backslash, double quote and newline escaped.
 fn escape(label: &str) -> String {
     label
         .replace('\\', "\\\\")
@@ -171,6 +174,7 @@ fn escape(label: &str) -> String {
         .replace('\n', "\\n")
 }
 
+/// The request-duration histogram, one set of lines per method, route template and status.
 fn render_histograms(series: &Series) -> String {
     if series.is_empty() {
         return String::new();
@@ -272,6 +276,7 @@ pub fn render() -> String {
     out
 }
 
+/// Counters in the text format, each with its `HELP` and `TYPE` lines.
 fn render_of(counters: &[(&str, &str, &Counter)]) -> String {
     let mut out = String::new();
     for (name, help, counter) in counters {

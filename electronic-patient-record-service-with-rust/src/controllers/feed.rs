@@ -33,6 +33,8 @@ pub struct ResolveRequest {
     pub reason: String,
 }
 
+/// A store error as a response: 422 for something the caller can fix, 409 for a refusal already resolved, anything else
+/// through the shared store failure.
 fn failure(e: StoreError) -> Response {
     match e {
         StoreError::BadQuery(m) => ApiError::invalid(vec![m.to_string()]).into_response(),
@@ -43,6 +45,8 @@ fn failure(e: StoreError) -> Response {
     }
 }
 
+/// `GET /api/feed/refusals`: the open refusals, oldest first, up to the list limit, without their message text.
+/// The list does not say when it was cut short (PR-1). Audited.
 async fn list(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -137,6 +141,8 @@ async fn count(
     Json(serde_json::json!({ "open": open })).into_response()
 }
 
+/// `GET /api/feed/refusals/{id}`: one refusal with the message as received. Audited before the text leaves; the audit
+/// row names the refusal, its HL7 event and kind, never the message.
 async fn read(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -185,6 +191,8 @@ async fn read(
     Json(entry).into_response()
 }
 
+/// `POST /api/feed/refusals/{id}/resolve`: close a refusal with an outcome and a reason (required). A refusal closes
+/// once (409 after). The answer does not repeat the message text.
 async fn resolve(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,

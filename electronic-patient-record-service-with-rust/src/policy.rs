@@ -688,6 +688,8 @@ pub fn evaluate(request: &Request) -> Decision {
     })
 }
 
+/// How many labels the `Mask` obligations hide. [`evaluate`] uses it to prefer, among a subject's roles that allow the
+/// access, the decision that hides least.
 fn masked(obligations: &[Obligation]) -> usize {
     obligations
         .iter()
@@ -698,10 +700,16 @@ fn masked(obligations: &[Obligation]) -> usize {
         .sum()
 }
 
+/// A refusal. `btg_offer` says break-the-glass could lift it.
 fn deny(reason: DenyReason, btg_offer: bool) -> Decision {
     Decision::Deny { reason, btg_offer }
 }
 
+/// The record decision for one role. In order: the role may do the action to the resource at all; the purpose fits the
+/// role; a patient or proxy acts only through their own relationship; a refused consent stops every disclosure to
+/// anyone but the patient, and break-the-glass does not lift it; clinical content needs a care relationship, or an
+/// unexpired break-the-glass grant with a reason for a treating role reading it; then security labels the role may not
+/// see become a `Mask` obligation (substance-use records also need the patient's consent). Every allow carries `Audit`.
 fn evaluate_role(role: Role, r: &Request) -> Decision {
     if !permitted(role, r.resource).contains(&r.action) {
         return deny(DenyReason::NotPermitted, false);

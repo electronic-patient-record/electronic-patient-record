@@ -177,6 +177,9 @@ impl From<ApiError> for Box<Response> {
 }
 
 impl From<&StoreError> for ApiError {
+    /// A miss is a 404, a stale version a 409 carrying `current_version`, a refused query a 400 and a merge that is not
+    /// the same person a 422 with `conflict_codes`. A database failure is logged and answered as a plain 500: its text
+    /// is never sent.
     fn from(e: &StoreError) -> Self {
         match e {
             StoreError::NotFound => Self::not_found(),

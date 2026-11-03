@@ -2,7 +2,7 @@
 //!
 //! MLLP is a thin frame around an HL7 message on a TCP stream: `<VT> message <FS><CR>` (bytes
 //! `0x0B`, then `0x1C 0x0D`). The listener reads frames, hands each message to
-//! [`adt_feed::process`](crate::adt_feed::process) and writes the acknowledgement back in a frame.
+//! [`crate::adt_feed::process`] and writes the acknowledgement back in a frame.
 //!
 //! **MLLP has no authentication and no encryption.** The listener is therefore off unless
 //! `EPR_MLLP_BIND` is set, refuses a non-loopback address unless `EPR_MLLP_ALLOW_REMOTE=true`, and
@@ -224,12 +224,15 @@ impl Config {
     }
 }
 
+/// Whether an address is a loopback one. A bind to any other address is refused unless `EPR_MLLP_ALLOW_REMOTE=true`,
+/// because MLLP has no authentication or encryption.
 fn is_loopback(ip: IpAddr) -> bool {
     ip.is_loopback()
 }
 
 static ACK_COUNTER: AtomicU64 = AtomicU64::new(1);
 
+/// The current time in whole seconds since the Unix epoch; a clock before 1970 reads as 0 and one beyond range saturates.
 fn now() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -262,6 +265,9 @@ pub async fn serve(listener: TcpListener, db: DatabaseConnection, config: Config
     }
 }
 
+/// Serve one connection: read bytes, answer every complete frame in the buffer with [`adt_feed::process`] (an `AA`, `AE` or
+/// `AR` acknowledgement, framed), and close on a stream that is not valid MLLP, a message that is not UTF-8 or a frame
+/// that is not an HL7 message. Each message is given an acknowledgement id from a process-wide counter.
 async fn connection(
     mut stream: TcpStream,
     peer: SocketAddr,

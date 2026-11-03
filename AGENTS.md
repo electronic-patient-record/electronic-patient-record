@@ -27,6 +27,8 @@ Version 0.1.0. Rust 1.99.1 (pinned in `rust-toolchain.toml`; minimum supported 1
 ```bash
 # matcher and service
 cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test
+# and the documentation, private items included (a broken link or a missing public doc fails)
+RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --document-private-items
 # service database tests need Postgres 18 (ports 5432/6379 are often taken: override them)
 #   TEST_DB_PORT=5543 TEST_REDIS_PORT=6390 podman compose -f electronic-patient-record-service-with-rust/compose.test.yaml up -d --wait
 #   DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test cargo test --test audit_immutable -- --ignored --test-threads=1

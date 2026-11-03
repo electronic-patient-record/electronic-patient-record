@@ -61,6 +61,8 @@ pub async fn compare_audited(
     Ok(result)
 }
 
+/// `POST /api/patients/compare`: compare two patient identity records the caller supplies with the matcher and answer
+/// the decision with its reasons. It reads no stored record; the comparison is audited.
 async fn compare(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -320,6 +322,8 @@ pub(super) async fn create_service(
     Ok(stored)
 }
 
+/// `POST /api/patients`: register a patient. A possible duplicate is refused (409) unless an `override_reason` is given;
+/// the work is [`create_service`], which the FHIR route also calls. 201 with the stored patient.
 pub(super) async fn create(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -333,6 +337,13 @@ pub(super) async fn create(
     }
 }
 
+/// The read behind `GET /api/patients/{id}`, shared with the FHIR route: authorise the read (role, care relationship or
+/// break-the-glass grant, purpose, consent), load the record, say where a merged record went, and audit before the
+/// content leaves.
+///
+/// # Errors
+///
+/// An `ApiError` for a refused purpose or decision (403), a missing record (404) or a failed audit write (500).
 pub(super) async fn read_service(
     ctx: &AppContext,
     agent: &Agent,
@@ -409,6 +420,7 @@ pub(super) async fn read_service(
     }
 }
 
+/// `GET /api/patients/{id}`: one patient with, for a merged record, where it went and, for a survivor, what it replaced.
 pub(super) async fn read(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -422,6 +434,12 @@ pub(super) async fn read(
     }
 }
 
+/// The update behind `PUT /api/patients/{id}`, shared with the FHIR route: authorise the update, check the
+/// `expected_version`, store the change as a new version and write the audit row in one transaction.
+///
+/// # Errors
+///
+/// An `ApiError`: 403 for a refused decision, 404 for a missing record, 409 for a stale version, 422 for a refused record.
 pub(super) async fn update_service(
     ctx: &AppContext,
     agent: &Agent,
@@ -494,6 +512,7 @@ pub(super) async fn update_service(
     }
 }
 
+/// `PUT /api/patients/{id}`: correct a patient's identity as a new version. A stale `expected_version` is a 409.
 pub(super) async fn update(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -508,6 +527,14 @@ pub(super) async fn update(
     }
 }
 
+/// The search behind `GET /api/patients`, shared with the FHIR route: authorise the search, run it, drop what a
+/// patient's consent refuses this subject, and audit which criteria were used and how many matched, not their values.
+/// A result hidden by consent is not counted in the response; the audit row says how many there were.
+///
+/// # Errors
+///
+/// An `ApiError`: 403 for a refused decision, 400 for a search with none of `family`, `birth_date` or `identifier`, or
+/// 500 for a failed audit write.
 pub(super) async fn search_service(
     ctx: &AppContext,
     agent: &Agent,
@@ -584,6 +611,8 @@ pub(super) async fn search_service(
     }
 }
 
+/// `GET /api/patients`: search current versions by `family`, `birth_date` or `identifier`, up to the search limit. See
+/// [`search_service`].
 pub(super) async fn search(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,

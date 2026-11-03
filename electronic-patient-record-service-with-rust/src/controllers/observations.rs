@@ -71,6 +71,8 @@ pub struct VersionList {
     pub versions: Vec<store::ObservationVersion>,
 }
 
+/// A store error as this route's answer: a refused record is a 422 listing what to fix; anything else keeps its own
+/// status through `ApiError::from` (a miss is 404, a stale version 409).
 fn failure(e: StoreError) -> ApiError {
     match e {
         // A refused record is the writer's to fix, like a refused identity record.
@@ -164,6 +166,8 @@ pub(super) async fn list_service(
     })
 }
 
+/// `GET /api/patients/{id}/observations`: every observation in every status, newest measurement first, each with its
+/// computed flag. Audited with the count.
 pub(super) async fn list(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -233,6 +237,8 @@ pub(super) async fn versions(
     Json(VersionList { versions: all }).into_response()
 }
 
+/// `POST /api/patients/{id}/observations`: record one. A refused record is a 422 `{errors, error_codes}` and the
+/// refusal is audited. The audit row holds ids, versions and statuses, never a value, unit or range.
 pub(super) async fn create(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -318,6 +324,8 @@ pub(super) async fn create(
     }
 }
 
+/// `PUT /api/patients/{id}/observations/{observation_id}`: correct an observation or mark it entered in error, as a new
+/// version. Marking entered in error is its own permission. A stale `expected_version` is a 409.
 pub(super) async fn update(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,

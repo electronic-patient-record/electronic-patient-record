@@ -170,6 +170,7 @@ pub enum Refusal {
     AlreadyExtended,
 }
 
+/// Whether `s` is empty once trimmed.
 fn blank(s: &str) -> bool {
     s.trim().is_empty()
 }
@@ -302,6 +303,11 @@ impl Request {
         Ok(next)
     }
 
+    /// A decision needs a reason, and may not be made by the person who made the request.
+    ///
+    /// # Errors
+    ///
+    /// [`Refusal::SelfDecision`] or [`Refusal::Blank`].
     fn check_decider(&self, by: &str, reason: &str) -> Result<(), Refusal> {
         if by == self.requester {
             return Err(Refusal::SelfDecision);
@@ -312,6 +318,11 @@ impl Request {
         Ok(())
     }
 
+    /// A step of the requester's own may be taken only by the person who made the request.
+    ///
+    /// # Errors
+    ///
+    /// [`Refusal::NotTheRequester`].
     fn check_requester(&self, by: &str) -> Result<(), Refusal> {
         if by == self.requester {
             Ok(())

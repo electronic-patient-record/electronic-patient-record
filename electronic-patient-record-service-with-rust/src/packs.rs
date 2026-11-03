@@ -112,11 +112,17 @@ impl RuleSet {
     }
 }
 
+/// Read and parse a TOML file, with the path in any error.
+///
+/// # Errors
+///
+/// The read or parse error, as text with the path.
 fn read<T: for<'de> Deserialize<'de>>(path: &Path) -> Result<T, String> {
     let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
     toml::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))
 }
 
+/// Two patients that differ only in one phone number, for testing a pack's phone rules.
 fn phones(a: &str, b: &str) -> (Patient, Patient) {
     let with = |value: &str| Patient {
         telecom: vec![Telecom {
@@ -202,6 +208,14 @@ fn load_identifiers(root: &Path, id: &str) -> Result<bool, String> {
     Ok(ids.use_ihi)
 }
 
+/// Load one pack from `dir/<id>`: the id must be lowercase letters, digits and hyphens; `pack.toml` must carry the same id,
+/// a name, a version and `reviewed` of `none` or `reviewed`; `phone.toml` needs a calling code from 1 to 999 and at least
+/// one matching and one differing vector, and every vector must behave as it says; then the optional identifier rule.
+/// A pack that fails any check is not loaded.
+///
+/// # Errors
+///
+/// A sentence naming the pack and the check that failed.
 fn load_one(dir: &Path, id: &str) -> Result<Loaded, String> {
     if id.is_empty()
         || !id

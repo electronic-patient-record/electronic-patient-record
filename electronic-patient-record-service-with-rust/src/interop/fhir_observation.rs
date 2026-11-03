@@ -21,6 +21,7 @@ const CATEGORY: &str = "http://terminology.hl7.org/CodeSystem/observation-catego
 const INTERPRETATION: &str = "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation";
 const ABSENT: &str = "http://terminology.hl7.org/CodeSystem/data-absent-reason";
 
+/// The FHIR `data-absent-reason` code for why a value is missing. Absence is stated with a reason, never as zero.
 fn absent_code(r: AbsentReason) -> &'static str {
     match r {
         AbsentReason::NotDone => "not-performed",
@@ -30,6 +31,7 @@ fn absent_code(r: AbsentReason) -> &'static str {
     }
 }
 
+/// The FHIR interpretation code and its display text for a computed flag (`LL`, `L`, `N`, `H`, `HH`).
 fn interpretation(f: Flag) -> (&'static str, &'static str) {
     match f {
         Flag::CriticalLow => ("LL", "Critically low"),
@@ -40,10 +42,13 @@ fn interpretation(f: Flag) -> (&'static str, &'static str) {
     }
 }
 
+/// A UCUM quantity: the value with its unit as both the display and the code.
 fn quantity(value: f64, unit: &str) -> Value {
     json!({ "value": value, "unit": unit, "system": UCUM, "code": unit })
 }
 
+/// The reference range as FHIR low and high quantities, or `None` when there is no unit, because a bound without a unit
+/// would be a bare number.
 fn reference_range(r: &Range, unit: Option<&str>) -> Option<Value> {
     // A bound without a unit would be a bare number; leave the range out instead.
     let unit = unit?;
@@ -57,6 +62,12 @@ fn reference_range(r: &Range, unit: Option<&str>) -> Option<Value> {
     (r.low.is_some() || r.high.is_some()).then_some(out)
 }
 
+/// Read a built JSON value back as a FHIR `Observation` and run the model's own validation, so a resource the model
+/// rejects is never returned.
+///
+/// # Errors
+///
+/// The parse error or the validation issues, as text.
 fn parse(json: Value) -> Result<Resource, String> {
     let resource: Resource = serde_json::from_value(json).map_err(|e| e.to_string())?;
     let issues = resource.validate();

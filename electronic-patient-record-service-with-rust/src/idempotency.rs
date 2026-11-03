@@ -77,6 +77,7 @@ pub enum Reservation {
     Mismatch,
 }
 
+/// A SHA-256 digest as `sha256:` and 64 lower-case hexadecimal digits, for comparing request bodies.
 fn digest_of(bytes: &[u8]) -> String {
     Sha256::digest(bytes)
         .iter()
@@ -219,6 +220,8 @@ pub async fn run_loop(db: DatabaseConnection) {
     }
 }
 
+/// The stored answer as a response: its status (200 if the stored one is not a valid status), its body, its content type if
+/// it has a valid one, and `Idempotent-Replayed: true`.
 fn replayed(stored: Stored) -> Response {
     let mut response = (
         StatusCode::from_u16(stored.status).unwrap_or(StatusCode::OK),

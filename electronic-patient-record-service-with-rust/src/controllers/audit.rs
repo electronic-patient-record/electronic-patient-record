@@ -188,6 +188,9 @@ pub(super) async fn search_audited(
     Ok((rows, next))
 }
 
+/// `GET /api/audit`: search the trail, newest first, 50 per page, with `next` to continue. Auditor only. The search is
+/// itself an access, so it writes a row naming the criteria used and the count, not their values. A criterion of the
+/// wrong type is a JSON 400.
 async fn search(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -399,6 +402,8 @@ async fn export(
     response
 }
 
+/// `GET /api/audit/verify`: recompute the hash chain and report whether it is intact. Auditor only. Verifying is itself
+/// an access and writes its own audit row; if that cannot be written the answer is a 500 with no result.
 async fn verify(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,

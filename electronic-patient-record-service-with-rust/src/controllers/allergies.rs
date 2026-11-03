@@ -62,6 +62,8 @@ pub struct StatementRequest {
     pub reason: Option<String>,
 }
 
+/// A store error as this route's answer: a refused record is a 422 listing what to fix; anything else keeps its own
+/// status through `ApiError::from` (a miss is 404, a stale version 409).
 fn failure(e: StoreError) -> ApiError {
     match e {
         // A refused record or statement is the writer's to fix, like a refused identity record.
@@ -115,6 +117,13 @@ pub struct AllergyList {
     pub amendment_notices: std::collections::BTreeMap<String, Vec<crate::amendment::Notice>>,
 }
 
+/// The read behind `GET /api/patients/{id}/allergies`, kept apart so the patient banner can call it: authorise the
+/// read, load the allergies and the statement, work out the banner summary, audit the read before the content
+/// leaves, and attach the amendment notices a reader must be told.
+///
+/// # Errors
+///
+/// An `ApiError` for a refused purpose or policy decision, a store failure, or an audit row that could not be written.
 pub(super) async fn list_service(
     ctx: &AppContext,
     agent: &Agent,
@@ -183,6 +192,8 @@ pub(super) async fn list_service(
     })
 }
 
+/// `GET /api/patients/{id}/allergies`: every allergy in every status, the "no known allergies" statement and the
+/// banner summary. See [`list_service`].
 pub(super) async fn list(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -196,6 +207,8 @@ pub(super) async fn list(
     }
 }
 
+/// `POST /api/patients/{id}/allergies`: record an allergy. 201 with the stored first version. The write and its audit
+/// row are one transaction; the row holds the id, version and status, never the substance or reaction.
 pub(super) async fn create(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -270,6 +283,10 @@ pub(super) async fn create(
     }
 }
 
+/// `PUT /api/patients/{id}/allergies/{allergy_id}`: change, end or retract an allergy as a new version.
+///
+/// Marking an allergy entered in error is its own permission (`MarkEnteredInError`), so a nurse may update an allergy
+/// but not retract one. A stale `expected_version` is a 409.
 pub(super) async fn update(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -352,6 +369,8 @@ pub(super) async fn update(
     }
 }
 
+/// `PUT /api/patients/{id}/allergy-statement`: state, or withdraw, "no known allergies". Stating it needs the create
+/// permission and withdrawing it the update permission. Refused with 422 if an active allergy exists.
 pub(super) async fn statement(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,

@@ -31,6 +31,8 @@ pub struct LinkRequest {
     pub reason: String,
 }
 
+/// A store error as a response: a refused merge is a 422 that also carries the machine-readable `refusal` code (and
+/// `refusal_into`, the surviving record, where the refusal names one); anything else through the shared store failure.
 fn failure(e: StoreError) -> Response {
     match e {
         StoreError::BadQuery(m) => {
@@ -47,6 +49,9 @@ fn failure(e: StoreError) -> Response {
     }
 }
 
+/// The shared body of merge and unmerge: authorise a create (merge) or update (unmerge) of a `PatientLink`, apply the
+/// change and write its audit row in one transaction. `{id}` is `target`, the record that survives; the body's
+/// `source` is the record merged away or to be separated again.
 async fn change(
     ctx: &AppContext,
     agent: &Agent,
@@ -154,6 +159,7 @@ async fn change(
     }
 }
 
+/// `POST /api/patients/{id}/merge`: merge the record named in the body into `{id}`. An administrator's act.
 pub(super) async fn merge(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -165,6 +171,7 @@ pub(super) async fn merge(
     change(&ctx, &agent, &subject, &headers, &target, &request, true).await
 }
 
+/// `POST /api/patients/{id}/unmerge`: separate a record that was merged into `{id}`. An administrator's act.
 pub(super) async fn unmerge(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -176,6 +183,7 @@ pub(super) async fn unmerge(
     change(&ctx, &agent, &subject, &headers, &target, &request, false).await
 }
 
+/// `GET /api/patients/{id}/links`: the merges involving this record. A clinician may read them. Audited.
 pub(super) async fn list(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,

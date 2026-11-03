@@ -62,6 +62,7 @@ pub struct Limits {
 }
 
 impl Default for Limits {
+    /// The built-in limits: `DEFAULT_GENERAL` and `DEFAULT_COMPARE` requests per `WINDOW_SECS` window.
     fn default() -> Self {
         Limits {
             general: DEFAULT_GENERAL,
@@ -110,6 +111,7 @@ impl Limits {
         })
     }
 
+    /// The limit for a request class.
     fn of(self, class: Class) -> u32 {
         match class {
             Class::General => self.general,
@@ -198,6 +200,7 @@ pub struct Gate {
     pub db: DatabaseConnection,
 }
 
+/// The current time in whole seconds since the Unix epoch; a clock before 1970 reads as 0.
 fn now() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

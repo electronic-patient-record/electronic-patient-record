@@ -62,6 +62,11 @@ pub fn validate(bytes: &[u8]) -> Result<&'static str, String> {
     sniff(bytes).ok_or_else(|| "the photo must be a PNG or a JPEG".into())
 }
 
+/// Read one row into a [`StoredPhoto`].
+///
+/// # Errors
+///
+/// [`StoreError::Db`] when a column is missing.
 fn row_to_photo(row: &sea_orm::QueryResult) -> Result<StoredPhoto, StoreError> {
     Ok(StoredPhoto {
         patient_id: row.try_get("", "patient_id").map_err(db_err)?,

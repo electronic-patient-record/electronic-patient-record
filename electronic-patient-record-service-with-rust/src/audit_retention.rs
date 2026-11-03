@@ -16,6 +16,7 @@ const EVERY: std::time::Duration = std::time::Duration::from_secs(6 * 60 * 60);
 /// The most months of audit rows `EPR_AUDIT_ARCHIVE_AFTER_MONTHS` may keep online.
 const MAX_MONTHS: u32 = 1200;
 
+/// A displayable error as the text the callers return.
 fn err(e: impl std::fmt::Display) -> String {
     e.to_string()
 }

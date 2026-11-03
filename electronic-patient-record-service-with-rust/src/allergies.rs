@@ -72,6 +72,7 @@ impl Status {
         }
     }
 
+    /// The status a stored word names, or `None` for one the service does not write.
     fn parse(s: &str) -> Option<Status> {
         match s {
             "active" => Some(Status::Active),
@@ -281,12 +282,18 @@ pub fn summarise(allergies: &[StoredAllergy], statement: Option<&Assertion>) -> 
 
 const TS: &str = "to_char(recorded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"')";
 
+/// The columns every allergy read selects, aliased to the names [`row_to_allergy`] reads.
 fn columns() -> String {
     format!(
         "allergy_id::text AS id, patient_id::text AS patient_id, version, author, {TS} AS at, status, body"
     )
 }
 
+/// Read one row into a [`StoredAllergy`]. The `status` column is the source of truth and replaces the status in the stored body.
+///
+/// # Errors
+///
+/// [`StoreError::Db`] when a column is missing or the stored body or status is unreadable.
 fn row_to_allergy(row: &sea_orm::QueryResult) -> Result<StoredAllergy, StoreError> {
     let body: serde_json::Value = row.try_get("", "body").map_err(db_err)?;
     let status: String = row.try_get("", "status").map_err(db_err)?;

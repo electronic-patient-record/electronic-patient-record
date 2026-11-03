@@ -113,6 +113,8 @@ fn patient_json(stored: &Stored) -> Result<serde_json::Value, String> {
     serde_json::to_value(resource).map_err(|e| e.to_string())
 }
 
+/// A stored patient that cannot be expressed as FHIR is a 500 `OperationOutcome` that says only `internal error`; the
+/// real reason is logged, never sent.
 fn internal(why: &str) -> Response {
     tracing::error!(error = %why, "could not express a stored patient as FHIR");
     outcome(
@@ -304,6 +306,8 @@ fn patient_from(
     Ok(read.patient)
 }
 
+/// `GET /fhir/R4/Patient/{id}`: the patient through [`patients::read_service`], so the gate, consent and audit row are
+/// the JSON route's. Carries a weak `ETag` for the version.
 pub(super) async fn read_patient(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -317,6 +321,8 @@ pub(super) async fn read_patient(
     one(r, StatusCode::OK, false)
 }
 
+/// `GET /fhir/R4/Patient`: a search by `family`, `birthdate` or `identifier` through [`patients::search_service`], as a
+/// searchset `Bundle`. An unsupported parameter is a 400 `OperationOutcome`.
 pub(super) async fn search_patients(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -338,6 +344,9 @@ pub(super) async fn search_patients(
     }
 }
 
+/// `POST /fhir/R4/Patient`: create a patient from a FHIR resource through [`patients::create_service`]. A resource with an
+/// element the identity record cannot hold is refused (422), and a possible duplicate is refused (409) without the
+/// candidates; there is no override on this route. 201.
 async fn create_patient(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -361,6 +370,8 @@ async fn create_patient(
     one(r, StatusCode::CREATED, false)
 }
 
+/// `PUT /fhir/R4/Patient/{id}`: update a patient from a FHIR resource. `If-Match` (a weak version such as `W/"1"`) is
+/// required, and a stale one is a 409. 200 with the new version's `ETag`.
 async fn update_patient(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -439,6 +450,8 @@ fn audit_query_from(pairs: &[(String, String)]) -> Result<crate::audit::AuditQue
     Ok(q)
 }
 
+/// `GET /fhir/R4/AuditEvent`: the audit trail as FHIR `AuditEvent`s through the same criteria and gate as `/api/audit`
+/// (auditor only). A search parameter this does not know is refused, not ignored.
 async fn search_audit_events(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,

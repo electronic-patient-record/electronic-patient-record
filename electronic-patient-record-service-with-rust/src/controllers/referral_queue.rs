@@ -56,6 +56,8 @@ pub struct ClearRequest {
     pub reason: String,
 }
 
+/// A store error as a response: 422 for something the caller can fix, 409 for a clearance that already happened,
+/// anything else through the shared store failure.
 fn failure(e: StoreError) -> Response {
     match e {
         StoreError::BadQuery(m) => ApiError::invalid(vec![m]).into_response(),
@@ -66,6 +68,12 @@ fn failure(e: StoreError) -> Response {
     }
 }
 
+/// The shared start of every queue route: read the purpose of use and authorise `action` on the `ReferralQueue`
+/// resource. No patient is named, so no care relationship applies.
+///
+/// # Errors
+///
+/// The purpose header is unknown (400), or the role, purpose or policy refuses (403, audited by `authorize`).
 async fn guard(
     ctx: &AppContext,
     agent: &Agent,
@@ -87,6 +95,10 @@ async fn guard(
     Ok(purpose)
 }
 
+/// `POST /api/referral-messages`: file an inbound message. It moves the referral it names, or is queued; the answer is
+/// 200 either way and never repeats the message.
+///
+/// A blank message is a 422. A racing step is audited as a refusal and answered 409, so the sender may send again.
 async fn receive(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -186,6 +198,7 @@ async fn receive(
     }
 }
 
+/// `GET /api/referral-queue`: the open entries, oldest first, up to the list limit, without their text. Audited.
 async fn list(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -222,6 +235,7 @@ async fn list(
     .into_response()
 }
 
+/// `GET /api/referral-queue/count`: how many entries are open. Audited like any other search of the queue.
 async fn count(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -255,6 +269,7 @@ async fn count(
     Json(serde_json::json!({ "open": open })).into_response()
 }
 
+/// `GET /api/referral-queue/{id}`: one entry with the note and message as received. Audited before the text leaves.
 async fn read(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -290,6 +305,8 @@ async fn read(
     Json(entry).into_response()
 }
 
+/// `POST /api/referral-queue/{id}/clear`: match an entry by hand to a named referral, or dismiss it. A reason is
+/// required and an entry clears once (409 after). The answer does not repeat the message.
 async fn clear(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,

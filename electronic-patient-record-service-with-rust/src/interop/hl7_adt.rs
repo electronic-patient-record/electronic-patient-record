@@ -46,6 +46,8 @@ pub enum Rejection {
     Invalid(Vec<String>),
 }
 
+/// The administrative sex an HL7 code names: `M`, `F`, `O`; and `U`, `A` or `N` (unknown, ambiguous, not applicable) all
+/// become unknown, because none is a usable answer. Any other code is `None`.
 fn sex(code: &str) -> Option<AdministrativeSex> {
     match code.trim().to_ascii_uppercase().as_str() {
         "M" => Some(AdministrativeSex::Male),
@@ -88,6 +90,7 @@ fn repetitions(message: &er7::Message, field: &str, probes: &[&str]) -> Vec<usiz
         .collect()
 }
 
+/// The trimmed text at an HL7 path in a message, or an empty string when the path is absent or unreadable.
 fn get(message: &er7::Message, path: &str) -> String {
     message
         .query(path)

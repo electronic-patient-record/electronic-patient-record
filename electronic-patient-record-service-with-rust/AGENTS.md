@@ -16,7 +16,7 @@ loco.rs (Axum 0.8) service on PostgreSQL 18. Read [`spec/index.md`](spec/index.m
   UPDATE/DELETE/TRUNCATE; keep the DB-gated test green.
 - The binary needs the explicit `[[bin]]` entry in `Cargo.toml` (it lives in `src/bin/main.rs`).
 - `loco-rs` has `default-features = false` and no `auth` feature (no `jsonwebtoken`/`rsa`).
-- Gates: `cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test --lib`; then
+- Gates: `cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test --lib`, and `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --document-private-items --workspace`; then
   the DB-gated tests (see the repository `AGENTS.md`).
 - **Every new endpoint needs a row in `src/routes.rs` `TABLE`** (method, path template, resource, action). A route
   without one is refused with 403 for every caller, and `tests/route_census.rs` fails. Pick the resource and action

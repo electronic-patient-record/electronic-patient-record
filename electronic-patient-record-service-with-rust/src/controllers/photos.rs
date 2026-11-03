@@ -33,6 +33,8 @@ pub struct VersionQuery {
     pub reason: Option<String>,
 }
 
+/// The stored photo as an image response with its own content type, or `None` when it has none or the type is not a
+/// valid header. It carries `nosniff` so a browser treats the bytes only as an image, and is kept out of shared caches.
 fn image_response(photo: &StoredPhoto) -> Option<Response> {
     let (content_type, bytes) = (photo.content_type.as_deref()?, photo.bytes.as_ref()?);
     let mut r = (StatusCode::OK, Bytes::from(bytes.clone())).into_response();
@@ -66,6 +68,7 @@ fn image_response(photo: &StoredPhoto) -> Option<Response> {
     Some(r)
 }
 
+/// `GET /api/patients/{id}/photo`: the current photo, read under the same decision as the identity record. Audited.
 pub(super) async fn read(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -120,6 +123,9 @@ pub(super) async fn read(
     }
 }
 
+/// The shared body of the photo write routes: authorise an update of the identity record, require `expected_version`
+/// (a write without it is a 400), apply the change and write the audit row in one transaction. `bytes` is `None` to
+/// withdraw. The audit row holds the size and type, never the image.
 async fn write(
     ctx: &AppContext,
     agent: &Agent,
@@ -223,6 +229,7 @@ async fn write(
     }
 }
 
+/// `PUT /api/patients/{id}/photo?expected_version=N`: store an image as the next version. The bytes are checked on the way in.
 pub(super) async fn put(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -235,6 +242,7 @@ pub(super) async fn put(
     write(&ctx, &agent, &subject, &headers, &id, &query, Some(&body)).await
 }
 
+/// `POST /api/patients/{id}/photo/withdraw?expected_version=N`: withdraw the photo as the next version.
 pub(super) async fn withdraw(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,

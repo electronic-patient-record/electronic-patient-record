@@ -38,12 +38,18 @@ pub struct StoredAmendment {
 
 const TS: &str = "to_char(recorded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"')";
 
+/// The columns every amendment read selects, aliased to the names [`row_to_amendment`] reads.
 fn columns() -> String {
     format!(
         "amendment_id::text AS id, patient_id::text AS patient_id, version, author, {TS} AS at, body"
     )
 }
 
+/// Read one row into a [`StoredAmendment`].
+///
+/// # Errors
+///
+/// [`StoreError::Db`] when a column is missing or the stored body is unreadable.
 fn row_to_amendment(row: &sea_orm::QueryResult) -> Result<StoredAmendment, StoreError> {
     let body: serde_json::Value = row.try_get("", "body").map_err(db_err)?;
     Ok(StoredAmendment {
@@ -56,6 +62,7 @@ fn row_to_amendment(row: &sea_orm::QueryResult) -> Result<StoredAmendment, Store
     })
 }
 
+/// A refused amendment step as the writer's to fix: a 422 kind, with a sentence that never repeats the request text.
 fn refused(r: Refusal) -> StoreError {
     StoreError::BadQuery(match r {
         Refusal::WrongState => "the request is not in a state that allows this".to_string(),

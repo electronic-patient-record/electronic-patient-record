@@ -107,6 +107,7 @@ impl Step {
         }
     }
 
+    /// The audit-store [`Event`] this step writes, with `by` (the token subject, never the body) where the event records who.
     fn event(self, by: &str) -> Event {
         let by = by.to_string();
         match self {
@@ -120,6 +121,8 @@ impl Step {
     }
 }
 
+/// A store error as this route's answer: a refused record is a 422 listing what to fix; anything else keeps its own
+/// status through `ApiError::from` (a miss is 404, a stale version 409).
 fn failure(e: StoreError) -> ApiError {
     match e {
         StoreError::BadQuery(m) => ApiError::invalid(vec![m]),
@@ -170,6 +173,8 @@ async fn refused(
     .err()
 }
 
+/// `GET /api/patients/{id}/amendments`: every amendment request about the patient's records, newest first, each
+/// with its notice and the time a decision is due. Audited.
 pub(super) async fn list(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -228,6 +233,8 @@ pub(super) async fn list(
     .into_response()
 }
 
+/// `POST /api/patients/{id}/amendments`: the patient asks for a record to be amended. The requester is the token
+/// subject. The request text is stored but never copied into the audit row.
 pub(super) async fn create(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -307,6 +314,8 @@ pub(super) async fn create(
     }
 }
 
+/// `PUT /api/patients/{id}/amendments/{amendment_id}`: one step of a request. Deciding steps need the clinician role
+/// and the requester's own steps (`withdraw`, `disagree`) the patient role; a stale `expected_version` is a 409.
 pub(super) async fn update(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,

@@ -89,6 +89,7 @@ pub enum TerminologyError {
 }
 
 impl std::fmt::Display for TerminologyError {
+    /// The message is the reader's to show: it names the system, version or code, and never the patient.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Unpinned(m) => write!(f, "{m}"),
@@ -191,6 +192,9 @@ const MAPS: &[(&str, &str, &str, &str, &str)] =
     &[(LOINC, "8867-4", SNOMED, "364075005", "relatedto")];
 
 impl Fixture {
+    /// Check a call against what the fixture holds, returning the pinned version. A call with no version, or one other than
+    /// `FIXTURE_VERSION`, is [`TerminologyError::Unpinned`]; a system other than SNOMED CT or LOINC is
+    /// [`TerminologyError::UnknownSystem`].
     fn check(system: &str, version: Option<&str>) -> Result<String, TerminologyError> {
         let held = [SNOMED, LOINC];
         let Some(v) = version.filter(|v| !v.trim().is_empty()) else {
@@ -209,6 +213,7 @@ impl Fixture {
         Ok(v.to_string())
     }
 
+    /// The fixture's concept for a code in a system, or `None`. The fixture holds one display per code.
     fn find(system: &str, version: &str, code: &str) -> Option<Concept> {
         CODES
             .iter()
@@ -224,6 +229,7 @@ impl Fixture {
 
 #[async_trait]
 impl TerminologyService for Fixture {
+    /// The two systems the fixture holds, both at `FIXTURE_VERSION`.
     fn pinned(&self) -> Vec<Pinned> {
         [SNOMED, LOINC]
             .into_iter()
@@ -234,6 +240,7 @@ impl TerminologyService for Fixture {
             .collect()
     }
 
+    /// Look a code up in the embedded subset.
     async fn lookup(
         &self,
         system: &str,
@@ -248,6 +255,8 @@ impl TerminologyService for Fixture {
         })
     }
 
+    /// Whether a code is in the subset and, when `display` is given, whether it matches. A wrong code or display is an answer
+    /// (`result: false` with a message), not an error.
     async fn validate_code(
         &self,
         system: &str,
@@ -275,6 +284,8 @@ impl TerminologyService for Fixture {
         })
     }
 
+    /// The LOINC concepts of the fixture's vital-signs value set, ordered by code and cut to `count`. Any other value set is
+    /// [`TerminologyError::UnknownValueSet`].
     async fn expand(
         &self,
         value_set: &str,
@@ -295,6 +306,8 @@ impl TerminologyService for Fixture {
         Ok(out)
     }
 
+    /// The targets the fixture maps a code to in `target_system` (today only LOINC 8867-4, heart rate, to SNOMED CT
+    /// 364075005, as "related to"). A code with no mapping gives an empty list.
     async fn translate(
         &self,
         system: &str,

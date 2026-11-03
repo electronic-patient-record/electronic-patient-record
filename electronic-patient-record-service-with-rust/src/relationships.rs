@@ -46,6 +46,7 @@ impl Kind {
         }
     }
 
+    /// The policy engine's relationship for this kind.
     fn relationship(self) -> Relationship {
         match self {
             Kind::CareTeam => Relationship::CareTeam,
@@ -67,6 +68,7 @@ pub enum Status {
 }
 
 impl Status {
+    /// The stored word for a status.
     fn as_str(self) -> &'static str {
         match self {
             Status::Active => "active",
@@ -165,6 +167,8 @@ pub fn resolve<'a>(
         .unwrap_or(Relationship::None)
 }
 
+/// Whether a proxy relationship allows the requested scope now: only when it has terms and a scope was asked for, and the
+/// terms allow it at `now`. A proxy with no terms, or a request that names no scope, is not allowed.
 fn proxy_allows(r: &RelationshipRecord, scope: Option<Scope>, now: i64) -> bool {
     match (&r.proxy, scope) {
         (Some(t), Some(scope)) => {
@@ -192,6 +196,11 @@ pub struct StoredRelationship {
 const COLUMNS: &str =
     "relationship_id::text AS id, patient_id::text AS patient_id, version, author, body";
 
+/// Read one row into a [`StoredRelationship`].
+///
+/// # Errors
+///
+/// [`StoreError::Db`] when a column is missing or the stored body is unreadable.
 fn row_to_stored(row: &sea_orm::QueryResult) -> Result<StoredRelationship, StoreError> {
     let body: serde_json::Value = row.try_get("", "body").map_err(db_err)?;
     Ok(StoredRelationship {

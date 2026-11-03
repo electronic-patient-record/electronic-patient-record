@@ -6,7 +6,7 @@
 //! (role, relationship, consent), so a proxy whose access the patient has refused sees nothing.
 //!
 //! `GET /api/me/patients/{id}/access-log` is the patient-visible access log (task SE-6): who
-//! touched this record and when. See [`access_log`].
+//! touched this record and when. See the private `access_log` handler.
 
 use super::common::{
     Access, audit_failed, audit_resource, authorize, authorize_scoped, store_failure, time_now,
@@ -25,6 +25,8 @@ use axum::{
 };
 use loco_rs::prelude::*;
 
+/// `GET /api/me/patients`: the records the caller is, or is a proxy for, each through the full record-level decision at
+/// the fixed purpose `patient-access`. A record the decision refuses is left out and the refusal audited.
 async fn patients_of_caller(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,

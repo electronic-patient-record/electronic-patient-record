@@ -42,6 +42,7 @@ impl Status {
         }
     }
 
+    /// The stored word for a status, or `None` for one the service does not write.
     fn parse(s: &str) -> Option<Status> {
         match s {
             "final" => Some(Status::Final),
@@ -116,6 +117,8 @@ pub struct StoredObservation {
     pub flag: Option<Flag>,
 }
 
+/// Parse `effective_at` (RFC 3339) and refuse a time before 1900 or more than `FUTURE_SKEW_MINUTES` ahead of `now`, with
+/// a stable error code and a sentence. A reading cannot be dated in the future, but a little clock skew is allowed.
 fn parse_effective(
     text: &str,
     now: DateTime<Utc>,
@@ -172,6 +175,8 @@ pub fn refusal(
 const TS: &str = "to_char(recorded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"')";
 const EFF: &str = "to_char(effective_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"')";
 
+/// The columns every observation read selects, aliased to the names [`row_to_observation`] reads. `at` is when the
+/// version was written and `effective` when the reading was taken, both UTC.
 fn columns() -> String {
     format!(
         "observation_id::text AS id, patient_id::text AS patient_id, version, author, {TS} AS at, \
@@ -179,6 +184,12 @@ fn columns() -> String {
     )
 }
 
+/// Read one row into a [`StoredObservation`]. The `status` and `effective` columns are the source of truth and replace the
+/// values in the stored body.
+///
+/// # Errors
+///
+/// [`StoreError::Db`] when a column is missing or the stored body or status is unreadable.
 fn row_to_observation(row: &sea_orm::QueryResult) -> Result<StoredObservation, StoreError> {
     let body: serde_json::Value = row.try_get("", "body").map_err(db_err)?;
     let status: String = row.try_get("", "status").map_err(db_err)?;
@@ -199,6 +210,7 @@ fn row_to_observation(row: &sea_orm::QueryResult) -> Result<StoredObservation, S
     })
 }
 
+/// The record's problems as one [`StoreError::BadQuery`] (the sentences joined with `; `), or `None` when it is acceptable.
 fn bad(record: &ObservationRecord, now: DateTime<Utc>) -> Option<StoreError> {
     let problems = validate(record, now);
     (!problems.is_empty()).then(|| {
@@ -212,6 +224,11 @@ fn bad(record: &ObservationRecord, now: DateTime<Utc>) -> Option<StoreError> {
     })
 }
 
+/// `effective_at` as UTC text to the microsecond, for the column.
+///
+/// # Errors
+///
+/// [`StoreError::BadQuery`] when the time does not parse or is out of range.
 fn utc_text(record: &ObservationRecord, now: DateTime<Utc>) -> Result<String, StoreError> {
     parse_effective(&record.effective_at, now)
         .map(|t| t.to_rfc3339_opts(SecondsFormat::Micros, true))

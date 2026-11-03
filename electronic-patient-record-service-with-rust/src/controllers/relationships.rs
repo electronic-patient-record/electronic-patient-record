@@ -40,6 +40,8 @@ pub struct UpdateRequest {
     pub reason: Option<String>,
 }
 
+/// The audit detail for a relationship: its id, version, kind, subject and whether it ended, plus a proxy's terms
+/// (ids and times, not clinical content), so the grant can be traced. It holds no demographics.
 fn detail(s: &store::StoredRelationship) -> serde_json::Value {
     // The subject is an identifier, not demographics; it is in the row so the grant can be traced.
     serde_json::json!({
@@ -53,6 +55,7 @@ fn detail(s: &store::StoredRelationship) -> serde_json::Value {
     })
 }
 
+/// Audit a refusal of a relationship write (a miss, a stale version or a refused record) and return the answer.
 async fn refused(
     ctx: &AppContext,
     agent: &Agent,
@@ -82,6 +85,8 @@ async fn refused(
     store_failure(e)
 }
 
+/// `POST /api/patients/{id}/relationships`: record who is on the care team, or who is the patient or their proxy.
+/// Clinical administrators only, never the person who would gain access by it.
 pub(super) async fn create(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -154,6 +159,7 @@ pub(super) async fn create(
     }
 }
 
+/// `GET /api/patients/{id}/relationships`: the relationships recorded for the patient, current version of each. Audited.
 pub(super) async fn list(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -206,6 +212,8 @@ pub(super) async fn list(
     }
 }
 
+/// `PUT /api/patients/{id}/relationships/{relationship_id}`: change or end a relationship as a new version.
+/// A stale `expected_version` is a 409.
 pub(super) async fn update(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,

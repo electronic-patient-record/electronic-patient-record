@@ -138,6 +138,7 @@ pub fn refusal(patient: &Patient) -> Option<crate::api_error::ApiError> {
     Some(crate::api_error::ApiError::invalid(messages).with("error_codes", codes))
 }
 
+/// Whether `d` is a plausible birth date written `YYYY`, `YYYY-MM` or `YYYY-MM-DD`, from the year 1800.
 pub(crate) fn valid_birth_date(d: &str) -> bool {
     let parts: Vec<&str> = d.split('-').collect();
     let num = |s: &str, len: usize| {
@@ -167,6 +168,11 @@ pub(crate) fn valid_birth_date(d: &str) -> bool {
     }
 }
 
+/// Read one row into a [`Stored`] patient, putting the row's id into the record.
+///
+/// # Errors
+///
+/// [`StoreError::Db`] when a column is missing or the stored body is unreadable.
 fn row_to_stored(row: &sea_orm::QueryResult) -> Result<Stored, StoreError> {
     let id: String = row.try_get("", "id").map_err(db_err)?;
     let body: serde_json::Value = row.try_get("", "body").map_err(db_err)?;
@@ -447,6 +453,7 @@ impl Search {
     }
 }
 
+/// `s` as a `LIKE` prefix pattern: trimmed, with `%`, `_` and `\` escaped so the text is matched literally.
 fn like_prefix(s: &str) -> String {
     let mut out = String::new();
     for c in s.trim().chars() {

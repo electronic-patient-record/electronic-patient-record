@@ -155,10 +155,12 @@ pub enum Flag {
     CriticalHigh,
 }
 
+/// Whether a bound is absent or a finite number (not infinity or NaN).
 fn finite(x: Option<f64>) -> bool {
     x.is_none_or(f64::is_finite)
 }
 
+/// What is wrong with a reference range, if anything: a bound that is not finite, or a low end above the high end.
 fn range_problem(name: &str, r: &Range) -> Option<String> {
     if !finite(r.low) || !finite(r.high) {
         return Some(format!("the {name} range has a number that is not finite"));

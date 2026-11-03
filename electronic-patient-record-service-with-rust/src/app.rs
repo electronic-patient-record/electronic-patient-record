@@ -22,10 +22,12 @@ pub struct App;
 
 #[async_trait]
 impl Hooks for App {
+    /// The crate name, which loco uses to find its configuration and name the application.
     fn app_name() -> &'static str {
         env!("CARGO_CRATE_NAME")
     }
 
+    /// The crate version and the build it came from: `BUILD_SHA`, else `GITHUB_SHA` (CI), else `dev` for a local build.
     fn app_version() -> String {
         format!(
             "{} ({})",
@@ -36,6 +38,7 @@ impl Hooks for App {
         )
     }
 
+    /// Start the application: create it from the configuration with the migrations in `migration/`.
     async fn boot(
         mode: StartMode,
         environment: &Environment,
@@ -44,14 +47,27 @@ impl Hooks for App {
         create_app::<Self, Migrator>(mode, environment, config).await
     }
 
+    /// No loco initializers: the service's own setup is in [`Hooks::after_routes`].
     async fn initializers(_ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
         Ok(vec![])
     }
 
+    /// Every route the service serves, from [`controllers::all_routes`], the one list the route census also reads.
     fn routes(_ctx: &AppContext) -> AppRoutes {
         controllers::all_routes()
     }
 
+    /// Wire everything that is not a route, then wrap the routes in the middleware stack.
+    ///
+    /// In order: the authentication settings (`require_auth` from configuration, always on in production); the
+    /// site time zone; the MLLP listener, only when `EPR_MLLP_BIND` is set; the outbox loop, only when
+    /// `EPR_OUTBOX_INTERVAL_SECS` is set; the audit-partition loop (archiving only when
+    /// `EPR_AUDIT_ARCHIVE_AFTER_MONTHS` is set); the country packs; the per-subject request limits; and the
+    /// idempotency-key purge loop. A setting that is present but wrong stops the service starting: a feature that
+    /// was asked for and is silently absent is worse than no service.
+    ///
+    /// The layers, outermost (first to run) to innermost: request timing, request id, NUL-byte refusal,
+    /// authentication, rate limit, authorization, idempotency key.
     async fn after_routes(router: AxumRouter, ctx: &AppContext) -> Result<AxumRouter> {
         let config_require = ctx
             .config
@@ -141,16 +157,20 @@ impl Hooks for App {
             .layer(axum::middleware::from_fn(crate::metrics::duration_mw)))
     }
 
+    /// No background worker queue: the loops started in [`Hooks::after_routes`] do the periodic work.
     async fn connect_workers(_ctx: &AppContext, _queue: &Queue) -> Result<()> {
         Ok(())
     }
 
+    /// No loco tasks are registered.
     fn register_tasks(_tasks: &mut Tasks) {}
 
+    /// Does nothing: the clinical record is append-only, so the service has no truncate.
     async fn truncate(_ctx: &AppContext) -> Result<()> {
         Ok(())
     }
 
+    /// Does nothing: the service ships no seed data.
     async fn seed(_ctx: &AppContext, _base: &Path) -> Result<()> {
         Ok(())
     }

@@ -209,6 +209,7 @@ pub enum RowCheck {
     SchemeUnknown(String),
 }
 
+/// Lower-case hexadecimal text of `bytes`, as the digests are written.
 fn hex(bytes: &[u8]) -> String {
     bytes.iter().fold(String::new(), |mut s, b| {
         let _ = write!(s, "{b:02x}");
@@ -249,7 +250,7 @@ const KEY_CONFIG: KeyConfig = KeyConfig::new("electronic-patient-record", "EPR")
 
 static CHAIN: OnceLock<Chain> = OnceLock::new();
 
-/// The process-wide chain, configured from the environment (see [`KEY_CONFIG`]). A key file that
+/// The process-wide chain, configured from the environment (see the private `KEY_CONFIG`). A key file that
 /// cannot be read leaves the chain unkeyed and logs why; it never falls back to a stale inline key.
 pub fn chain() -> &'static Chain {
     CHAIN.get_or_init(|| {
@@ -287,6 +288,7 @@ impl std::fmt::Display for AuditError {
 
 impl std::error::Error for AuditError {}
 
+/// An audit failure from any displayable error, keeping only its text.
 fn err(e: impl std::fmt::Display) -> AuditError {
     AuditError(e.to_string())
 }
@@ -420,6 +422,14 @@ pub async fn append(
     result
 }
 
+/// Write one audit row in its own transaction. Takes the chain's advisory lock so two writers cannot fork the chain, reads
+/// the previous digest (or the newest archive anchor when every partition has been archived), stamps the row from the
+/// database clock, computes the digest over the previous digest, the time and the event, and inserts it. The event is
+/// first given the request's actor, request id and break-glass flag.
+///
+/// # Errors
+///
+/// [`AuditError`] for any database failure. The caller then refuses the request.
 async fn append_row(
     db: &(impl ConnectionTrait + TransactionTrait),
     chain: &Chain,
@@ -879,6 +889,9 @@ pub async fn export(db: &DatabaseConnection, q: &AuditQuery) -> Result<Vec<Audit
     search_with(db, q, EXPORT_LIMIT + 1, true).await
 }
 
+/// The search behind [`search`] and [`export`]: validate the criteria (an unknown `action` or `outcome` is a
+/// [`SearchError::BadQuery`]), then read at most `limit` rows newest first. `digests` adds each row's digest and previous
+/// digest, which an export needs and a search leaves out.
 async fn search_with(
     db: &DatabaseConnection,
     q: &AuditQuery,

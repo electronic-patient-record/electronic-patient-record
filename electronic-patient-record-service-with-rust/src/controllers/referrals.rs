@@ -67,6 +67,8 @@ pub struct ReferralHistory {
     pub versions: Vec<StoredReferral>,
 }
 
+/// A store error as an API error: a refused request is a 422 listing what to fix; anything else keeps its own status
+/// (a miss is 404, a stale version 409).
 fn failure(e: StoreError) -> ApiError {
     match e {
         StoreError::BadQuery(m) => ApiError::invalid(vec![m]),
@@ -105,6 +107,10 @@ async fn refused(
     .err()
 }
 
+/// `GET /api/patients/{id}/referrals`: the patient's referrals, current version of each, newest first.
+///
+/// Authorised as a read of `Referral` for the patient (role, care relationship, purpose, consent), and audited with
+/// the count before the content leaves.
 pub(super) async fn list(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -153,6 +159,9 @@ pub(super) async fn list(
     Json(ReferralList { referrals }).into_response()
 }
 
+/// `GET /api/patients/{id}/referrals/{referral_id}`: every version of one referral, oldest first.
+///
+/// A referral id that belongs to another patient is a 404, never a disclosure. The read is audited.
 pub(super) async fn history(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -207,6 +216,10 @@ pub(super) async fn history(
     Json(ReferralHistory { versions }).into_response()
 }
 
+/// `POST /api/patients/{id}/referrals`: send a referral. The sender (the token subject) becomes the referrer.
+///
+/// The write and its audit row are one transaction; the audit row holds the id, version, state and priority, never
+/// the reason or question. 201 with the first version.
 pub(super) async fn create(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
@@ -282,6 +295,11 @@ pub(super) async fn create(
     }
 }
 
+/// `POST /api/patients/{id}/referrals/{referral_id}/events`: take the next step of a referral.
+///
+/// The role is worked out from the history by [`step`] (OQ-PC2, assumed); the state table decides whether the event
+/// may follow. 422 for a refused step, 409 for a stale `expected_version`. The step and its audit row are one
+/// transaction.
 pub(super) async fn advance(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,

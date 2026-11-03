@@ -61,6 +61,7 @@ pub struct StoredLink {
 
 const TS: &str = "to_char(recorded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"')";
 
+/// The columns every link read selects, aliased to the names [`row_to_link`] reads.
 fn columns() -> String {
     format!(
         "link_id::text AS id, version, author, reason, source_patient_id::text AS source,
@@ -68,6 +69,11 @@ fn columns() -> String {
     )
 }
 
+/// Read one row into a [`StoredLink`].
+///
+/// # Errors
+///
+/// [`StoreError::Db`] when a column is missing.
 fn row_to_link(r: &sea_orm::QueryResult) -> Result<StoredLink, StoreError> {
     Ok(StoredLink {
         id: r.try_get("", "id").map_err(db_err)?,
@@ -279,6 +285,11 @@ pub async fn list(
     rows.iter().map(row_to_link).collect()
 }
 
+/// Take the merge advisory lock for this transaction, so two merges or unmerges are applied one at a time.
+///
+/// # Errors
+///
+/// [`StoreError::Db`] when the lock cannot be taken.
 async fn lock(db: &impl ConnectionTrait) -> Result<(), StoreError> {
     db.execute_raw(pg(
         "SELECT pg_advisory_xact_lock($1)",
