@@ -7,13 +7,18 @@
 //! referral is a new item. The list carries ids, the state and a time: no recipient, reason, question or note.
 //! It is a pointer; the referral itself is read through the patient's route, with the full record-level decision.
 //!
-//! Not here: a worklist for the recipient, a team or a role (the service has no model of a team), reminders,
-//! and timeouts for a referral that has had no reply (PC-3).
+//! A referral is also listed when it has gone quiet for longer than the configured period ([`Why::NoResponse`],
+//! [`Why::NoOutcome`], PC-3, `referral_timeouts.rs`); such an item cannot be acknowledged and leaves the list when
+//! the referral moves (or when the sender asks to cancel it).
+//!
+//! Not here: a worklist for the recipient, a team or a role (the service has no model of a team), reminders, and
+//! an appointment date that has passed (`Book` carries no date).
 
 use crate::ids;
 use crate::page::Page;
 use crate::patients_store::StoreError;
 use crate::referral::State;
+use crate::referral_timeouts::Timeouts;
 use crate::store::pg;
 use sea_orm::ConnectionTrait;
 use serde::Serialize;
@@ -46,8 +51,10 @@ pub struct Item {
     pub patient_id: String,
     /// The version that is waiting.
     pub version: i32,
-    /// The state that put it here.
+    /// The state it is in.
     pub state: State,
+    /// Why it is on the list: a reply to acknowledge, or a timeout (PC-3).
+    pub why: Why,
     /// When that version was written (UTC).
     pub recorded_at: String,
 }
@@ -61,32 +68,97 @@ fn attention_sql() -> String {
         .join(", ")
 }
 
-/// The part of the query shared by the list and the count: this person's referrals, current version in
-/// [`ATTENTION`], not acknowledged.
-fn waiting() -> String {
+/// The states in which a referral with no outcome is timed against [`Timeouts::no_outcome`].
+pub const AWAITING_OUTCOME: [State; 3] = [
+    State::Accepted,
+    State::AppointmentBooked,
+    State::InterimReport,
+];
+
+/// Why a referral is on the list.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Why {
+    /// The recipient answered in a way that waits for the sender; acknowledge it.
+    Reply,
+    /// Nobody has answered for longer than the configured period (PC-3). It leaves when the referral moves.
+    NoResponse,
+    /// It was accepted but no outcome has come for longer than the configured period (PC-3).
+    NoOutcome,
+}
+
+/// `OR` of one clause per configured priority: the referral's priority and a current version older than that
+/// many days. `false` when nothing is configured. The words and numbers come from [`Timeouts::parse`], which
+/// accepts only the four priority words and whole numbers of days.
+fn overdue_sql(periods: &std::collections::BTreeMap<String, u32>) -> String {
+    if periods.is_empty() {
+        return "false".into();
+    }
+    periods
+        .iter()
+        .map(|(priority, days)| {
+            format!(
+                "(c.body->>'priority' = '{priority}' AND c.recorded_at < now() - interval '{days} days')"
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(" OR ")
+}
+
+/// The query shared by the list and the count: this person's referrals with a reason to be on the list, as a
+/// sub-select with a `why` column.
+fn waiting(timeouts: &Timeouts) -> String {
+    let outcome_states = AWAITING_OUTCOME
+        .iter()
+        .map(|s| format!("'{}'", s.as_str()))
+        .collect::<Vec<_>>()
+        .join(", ");
     format!(
-        "FROM referral_current c
-         JOIN referral_versions first ON first.referral_id = c.referral_id AND first.version = 1
-         LEFT JOIN referral_acknowledgements a ON a.referral_id = c.referral_id AND a.version = c.version
-         WHERE first.author = $1 AND a.referral_id IS NULL AND c.state IN ({})",
-        attention_sql()
+        "FROM (
+           SELECT c.referral_id, c.patient_id, c.version, c.state, c.recorded_at,
+                  CASE
+                    WHEN a.referral_id IS NULL AND c.state IN ({attention}) THEN 'reply'
+                    WHEN c.state = 'requested' AND ({response}) THEN 'no-response'
+                    WHEN c.state IN ({outcome_states}) AND ({outcome}) THEN 'no-outcome'
+                  END AS why
+           FROM referral_current c
+           JOIN referral_versions first ON first.referral_id = c.referral_id AND first.version = 1
+           LEFT JOIN referral_acknowledgements a ON a.referral_id = c.referral_id AND a.version = c.version
+           WHERE first.author = $1
+         ) c WHERE c.why IS NOT NULL",
+        attention = attention_sql(),
+        response = overdue_sql(&timeouts.no_response),
+        outcome = overdue_sql(&timeouts.no_outcome),
     )
 }
 
 /// The referrals `by` sent that wait for them, oldest first, up to [`LIST_LIMIT`]; `more` says whether any were
-/// left behind (PR-1).
+/// left behind (PR-1). Timed against the periods [`crate::referral_timeouts::init`] checked.
 ///
 /// # Errors
 ///
 /// [`StoreError::Db`].
 pub async fn list(db: &impl ConnectionTrait, by: &str) -> Result<Page<Item>, StoreError> {
+    list_with(db, by, &crate::referral_timeouts::current()).await
+}
+
+/// [`list`] against given periods.
+///
+/// # Errors
+///
+/// [`StoreError::Db`].
+pub async fn list_with(
+    db: &impl ConnectionTrait,
+    by: &str,
+    timeouts: &Timeouts,
+) -> Result<Page<Item>, StoreError> {
     let rows = db
         .query_all_raw(pg(
             &format!(
-                "SELECT c.referral_id::text AS id, c.patient_id::text AS patient_id, c.version, c.state,
+                "SELECT c.referral_id::text AS id, c.patient_id::text AS patient_id, c.version, c.state, c.why,
                         to_char(c.recorded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS at
                  {} ORDER BY c.recorded_at, c.referral_id LIMIT {}",
-                waiting(),
+                waiting(timeouts),
                 LIST_LIMIT + 1
             ),
             vec![by.into()],
@@ -96,30 +168,51 @@ pub async fn list(db: &impl ConnectionTrait, by: &str) -> Result<Page<Item>, Sto
     let mut items = Vec::with_capacity(rows.len());
     for row in &rows {
         let word: String = row.try_get("", "state").map_err(db_err)?;
-        let state = ATTENTION
+        let state = State::ALL
             .into_iter()
             .find(|s| s.as_str() == word)
             .ok_or_else(|| db_err(format!("unexpected state {word}")))?;
+        let why: String = row.try_get("", "why").map_err(db_err)?;
+        let why = match why.as_str() {
+            "reply" => Why::Reply,
+            "no-response" => Why::NoResponse,
+            "no-outcome" => Why::NoOutcome,
+            other => return Err(db_err(format!("unexpected reason {other}"))),
+        };
         items.push(Item {
             referral_id: row.try_get("", "id").map_err(db_err)?,
             patient_id: row.try_get("", "patient_id").map_err(db_err)?,
             version: row.try_get("", "version").map_err(db_err)?,
             state,
+            why,
             recorded_at: row.try_get("", "at").map_err(db_err)?,
         });
     }
     Ok(Page::cut(items, LIST_LIMIT))
 }
 
-/// How many referrals wait for `by`.
+/// How many referrals wait for `by`, against the checked periods.
 ///
 /// # Errors
 ///
 /// [`StoreError::Db`].
 pub async fn count(db: &impl ConnectionTrait, by: &str) -> Result<i64, StoreError> {
+    count_with(db, by, &crate::referral_timeouts::current()).await
+}
+
+/// [`count`] against given periods.
+///
+/// # Errors
+///
+/// [`StoreError::Db`].
+pub async fn count_with(
+    db: &impl ConnectionTrait,
+    by: &str,
+    timeouts: &Timeouts,
+) -> Result<i64, StoreError> {
     let row = db
         .query_one_raw(pg(
-            &format!("SELECT count(*) AS n {}", waiting()),
+            &format!("SELECT count(*) AS n {}", waiting(timeouts)),
             vec![by.into()],
         ))
         .await

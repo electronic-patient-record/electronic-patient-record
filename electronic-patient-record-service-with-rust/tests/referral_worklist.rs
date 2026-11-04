@@ -17,7 +17,8 @@
 use chrono::Utc;
 use electronic_patient_record::patients_store::{self, StoreError};
 use electronic_patient_record::referral::{Actor, Event, State};
-use electronic_patient_record::referral_worklist as wl;
+use electronic_patient_record::referral_timeouts::Timeouts;
+use electronic_patient_record::referral_worklist::{self as wl, Why};
 use electronic_patient_record::referrals_store::{self as store, Priority, Referral, Step};
 use electronic_patient_record_matcher::{HumanName, Patient};
 use electronic_patient_record_migration::{Migrator, MigratorTrait};
@@ -269,4 +270,118 @@ async fn the_database_refuses_to_edit_delete_or_truncate_an_acknowledgement() {
         let e = db.execute_unprepared(&sql).await.unwrap_err();
         assert!(e.to_string().contains("append-only"), "{sql}: {e}");
     }
+}
+
+/// Move a referral's current version back in time, the only way a test can make one old: versions are
+/// append-only, so this writes through a session that is allowed to, inside the test database.
+async fn age(db: &DatabaseConnection, id: &str, version: i32, days: i32) {
+    db.execute_unprepared("ALTER TABLE referral_versions DISABLE TRIGGER USER")
+        .await
+        .unwrap();
+    db.execute_unprepared(&format!(
+        "UPDATE referral_versions SET recorded_at = now() - interval '{days} days'
+         WHERE referral_id = '{id}' AND version = {version}"
+    ))
+    .await
+    .unwrap();
+    db.execute_unprepared("ALTER TABLE referral_versions ENABLE TRIGGER USER")
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn a_referral_that_has_gone_quiet_is_listed_only_for_a_priority_with_a_period() {
+    // PC-3, hazard H-044. Priority is `routine` in the helper's referral.
+    let db = db().await;
+    let r = referral(&db).await;
+    let ids = |page: &electronic_patient_record::page::Page<wl::Item>| -> Vec<(String, Why)> {
+        page.iter()
+            .map(|i| (i.referral_id.clone(), i.why))
+            .collect()
+    };
+    let none = Timeouts::default();
+    let routine_2 = Timeouts::parse(Some(
+        r#"{"no_response_days":{"routine":2},"no_outcome_days":{"routine":5}}"#,
+    ))
+    .unwrap();
+    let urgent_only = Timeouts::parse(Some(r#"{"no_response_days":{"urgent":1}}"#)).unwrap();
+
+    // New: not quiet yet.
+    assert!(
+        !ids(&wl::list_with(&db, "dr-1", &routine_2).await.unwrap())
+            .iter()
+            .any(|(i, _)| *i == r.id)
+    );
+    // Old and unanswered: listed with a reason, but only where a period is set for its priority.
+    age(&db, &r.id, 1, 3).await;
+    assert!(
+        ids(&wl::list_with(&db, "dr-1", &routine_2).await.unwrap())
+            .contains(&(r.id.clone(), Why::NoResponse))
+    );
+    assert!(
+        !ids(&wl::list_with(&db, "dr-1", &none).await.unwrap())
+            .iter()
+            .any(|(i, _)| *i == r.id)
+    );
+    assert!(
+        !ids(&wl::list_with(&db, "dr-1", &urgent_only).await.unwrap())
+            .iter()
+            .any(|(i, _)| *i == r.id)
+    );
+    let before = wl::count_with(&db, "dr-1", &none).await.unwrap();
+    assert_eq!(
+        wl::count_with(&db, "dr-1", &routine_2).await.unwrap(),
+        before + 1
+    );
+    // It is the sender's alone, and a timeout cannot be acknowledged.
+    assert!(
+        !ids(&wl::list_with(&db, "someone-else", &routine_2)
+            .await
+            .unwrap())
+        .iter()
+        .any(|(i, _)| *i == r.id)
+    );
+    assert!(matches!(
+        wl::acknowledge(&db, &r.id, 1, "dr-1").await,
+        Err(StoreError::BadQuery(_))
+    ));
+
+    // Accepted: the clock restarts and the reason changes to no outcome once that is old too.
+    step(
+        &db,
+        &r.id,
+        1,
+        Actor::Recipient,
+        "cardio-1",
+        Event::Accept,
+        None,
+    )
+    .await;
+    assert!(
+        !ids(&wl::list_with(&db, "dr-1", &routine_2).await.unwrap())
+            .iter()
+            .any(|(i, _)| *i == r.id)
+    );
+    age(&db, &r.id, 2, 6).await;
+    assert!(
+        ids(&wl::list_with(&db, "dr-1", &routine_2).await.unwrap())
+            .contains(&(r.id.clone(), Why::NoOutcome))
+    );
+
+    // An outcome ends it: a completed referral waits as a reply, not a timeout.
+    step(
+        &db,
+        &r.id,
+        2,
+        Actor::Recipient,
+        "cardio-1",
+        Event::Outcome,
+        Some("seen"),
+    )
+    .await;
+    assert!(
+        ids(&wl::list_with(&db, "dr-1", &routine_2).await.unwrap())
+            .contains(&(r.id.clone(), Why::Reply))
+    );
 }

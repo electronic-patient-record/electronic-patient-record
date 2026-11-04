@@ -729,22 +729,26 @@ fn referral_queue_schemas() -> Value {
             "properties": {"open": {"type": "integer"}}
         },
         "ReferralWorklistItem": {
-            "type": "object", "required": ["referral_id", "patient_id", "version", "state", "recorded_at"],
+            "type": "object", "required": ["referral_id", "patient_id", "version", "state", "why", "recorded_at"],
             "description": "One referral the caller sent that waits for them. A pointer: no recipient, reason, question or note; open the referral through the patient's route.",
             "properties": {
                 "referral_id": {"type": "string"}, "patient_id": {"type": "string"},
                 "version": {"type": "integer", "description": "The version that waits; acknowledge this one."},
-                "state": {"enum": ["declined", "redirected", "no-show", "deferred", "information-requested", "interim-report", "completed"]},
+                "state": {"enum": ["requested", "accepted", "declined", "appointment-booked", "no-show", "interim-report", "completed", "information-requested", "deferred", "redirected"]},
+                "why": {"enum": ["reply", "no-response", "no-outcome"], "description": "reply: acknowledge it. no-response and no-outcome are timeouts (PC-3): they cannot be acknowledged and leave when the referral moves."},
                 "recorded_at": {"type": "string", "description": "UTC."}
             }
         },
         "ReferralWorklistList": {
-            "type": "object", "required": ["items", "limit", "more", "site_time_zone"],
-            "description": "The caller's waiting referrals, oldest first, up to `limit`.",
+            "type": "object", "required": ["items", "limit", "more", "untimed", "site_time_zone"],
+            "description": "The caller's waiting referrals, oldest first, up to `limit`. `untimed` names the priorities for which no timeout is configured (OQ-PC3): a referral of that priority never goes quiet on this list.",
             "properties": {
                 "items": {"type": "array", "items": {"$ref": "#/components/schemas/ReferralWorklistItem"}},
                 "limit": {"type": "integer"},
                 "more": {"type": "boolean", "description": "True when more are waiting than `limit` allowed: the list is cut short and the newest are not shown."},
+                "untimed": {"type": "object", "required": ["no_response", "no_outcome"], "properties": {
+                    "no_response": {"type": "array", "items": {"enum": ["routine", "urgent", "asap", "stat"]}},
+                    "no_outcome": {"type": "array", "items": {"enum": ["routine", "urgent", "asap", "stat"]}}}},
                 "site_time_zone": {"type": "string"}
             }
         },
@@ -1959,13 +1963,14 @@ mod tests {
     #[test]
     fn the_worklist_schema_matches_the_type_and_names_every_waiting_state() {
         use crate::referral::State;
-        use crate::referral_worklist::{ATTENTION, Item};
+        use crate::referral_worklist::{ATTENTION, AWAITING_OUTCOME, Item, Why};
         let schema = patient_schemas();
         let item = Item {
             referral_id: "r".into(),
             patient_id: "p".into(),
             version: 2,
             state: State::Declined,
+            why: Why::Reply,
             recorded_at: "t".into(),
         };
         assert_eq!(
@@ -1978,7 +1983,16 @@ mod tests {
             .iter()
             .map(|v| v.as_str().unwrap().to_string())
             .collect();
-        let real: Vec<String> = ATTENTION.iter().map(|s| s.as_str().to_string()).collect();
+        // The states a worklist item can be in: those that wait for the sender, those timed for an answer
+        // (`requested`) and those timed for an outcome.
+        let mut real: Vec<String> = ATTENTION.iter().map(|s| s.as_str().to_string()).collect();
+        real.push("requested".into());
+        real.extend(AWAITING_OUTCOME.iter().map(|s| s.as_str().to_string()));
+        let (mut listed, mut real) = (listed, real);
+        listed.sort();
+        listed.dedup();
+        real.sort();
+        real.dedup();
         assert_eq!(listed, real);
     }
 

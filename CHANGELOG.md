@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-03 - Timeouts: a referral that has gone quiet reaches its sender (PC-3, first slice)
+
+- **Clinical risk:** yes (H-044: a referrer waiting for a reply that is not coming). The hazard row says what is still missing. Not set to accepted or closed.
+- **Built:** `EPR_REFERRAL_TIMEOUTS` (JSON, periods in days per priority for "no response" and "no outcome"; **no default**; a malformed or unknown value stops the service starting); `src/referral_timeouts.rs`; the worklist lists a referral still `requested`, or `accepted`/`appointment-booked`/`interim-report`, whose current version is older than its priority's period, with `why` `no-response` or `no-outcome`, and answers `untimed` (the priorities with no period); the screen words a timeout apart from a reply, offers no "Mark as seen" for it, and names the priorities that will not time out; 4 parse tests, a database test of the whole sequence, OpenAPI updated, 2 UI tests. Also fixed a latent flake in the referral e2e test: `getByText("Done.")` also matched a paragraph of the merge section, depending on render timing; it now matches exactly.
+- **Not done / not verified:** **nothing is on by default**: until a deployment sets the periods, no referral ever times out, and only the on-screen warning says so. Periods are per priority, not per service type (assumed OQ-PC3). The clock runs from the current version, so any new version restarts it, and a timeout cannot be snoozed or acknowledged: it stays until the referral moves or the sender asks to cancel it. **An appointment date that has passed is not covered** (`Book` carries no date). Only the sender is told: no reminder, escalation or team. The database test ages a referral by disabling the append-only trigger for one statement in the test database, which the real service never does. The periods' suitability is not clinically reviewed. Tested against stubs in the UI, not a running service.
+
 ## 2026-11-03 - The referrer's worklist screen (PC-2, fifth slice)
 
 - **Clinical risk:** yes (H-044: a decline or outcome the referrer never sees). A referrer can now see and mark what came back. The hazard row says what is still missing. Not set to accepted or closed.

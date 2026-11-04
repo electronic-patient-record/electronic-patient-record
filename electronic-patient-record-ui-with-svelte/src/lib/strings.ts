@@ -13,6 +13,12 @@ export const STRINGS = {
   wlCount: "{n} waiting",
   wlMore:
     "This is the oldest {n}. More are waiting, newer than these. Mark some seen to see the rest.",
+  wlWhy: {
+    "no-response": "No answer yet",
+    "no-outcome": "Accepted, no outcome yet",
+  },
+  wlUntimed:
+    "No waiting period is set for: {list}. A referral of those priorities that goes quiet will not appear here.",
   wlOpen: "Open the patient",
   wlAcknowledge: "Mark as seen",
   wlSeen: "Marked as seen.",

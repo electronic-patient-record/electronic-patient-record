@@ -2288,18 +2288,29 @@
           },
           "state": {
             "enum": [
+              "requested",
+              "accepted",
               "declined",
-              "redirected",
+              "appointment-booked",
               "no-show",
-              "deferred",
-              "information-requested",
               "interim-report",
-              "completed"
+              "completed",
+              "information-requested",
+              "deferred",
+              "redirected"
             ]
           },
           "version": {
             "description": "The version that waits; acknowledge this one.",
             "type": "integer"
+          },
+          "why": {
+            "description": "reply: acknowledge it. no-response and no-outcome are timeouts (PC-3): they cannot be acknowledged and leave when the referral moves.",
+            "enum": [
+              "reply",
+              "no-response",
+              "no-outcome"
+            ]
           }
         },
         "required": [
@@ -2307,12 +2318,13 @@
           "patient_id",
           "version",
           "state",
+          "why",
           "recorded_at"
         ],
         "type": "object"
       },
       "ReferralWorklistList": {
-        "description": "The caller's waiting referrals, oldest first, up to `limit`.",
+        "description": "The caller's waiting referrals, oldest first, up to `limit`. `untimed` names the priorities for which no timeout is configured (OQ-PC3): a referral of that priority never goes quiet on this list.",
         "properties": {
           "items": {
             "items": {
@@ -2329,12 +2341,44 @@
           },
           "site_time_zone": {
             "type": "string"
+          },
+          "untimed": {
+            "properties": {
+              "no_outcome": {
+                "items": {
+                  "enum": [
+                    "routine",
+                    "urgent",
+                    "asap",
+                    "stat"
+                  ]
+                },
+                "type": "array"
+              },
+              "no_response": {
+                "items": {
+                  "enum": [
+                    "routine",
+                    "urgent",
+                    "asap",
+                    "stat"
+                  ]
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "no_response",
+              "no_outcome"
+            ],
+            "type": "object"
           }
         },
         "required": [
           "items",
           "limit",
           "more",
+          "untimed",
           "site_time_zone"
         ],
         "type": "object"

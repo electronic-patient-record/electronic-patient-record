@@ -3499,7 +3499,7 @@ test("a clinician sends a referral and takes a step; the service's list of next 
   await page
     .getByRole("button", { name: "Ask to cancel", exact: true })
     .click();
-  await expect(page.getByText("Done.")).toBeVisible();
+  await expect(page.getByText("Done.", { exact: true })).toBeVisible();
   expect(sent[1]?.body).toEqual({
     event: "request-cancel",
     expected_version: 1,
@@ -3627,6 +3627,7 @@ const WORK = (over: Record<string, unknown> = {}) => ({
   patient_id: ANN.id,
   version: 3,
   state: "declined",
+  why: "reply",
   recorded_at: "2026-10-21T09:00:12.000000Z",
   ...over,
 });
@@ -3676,6 +3677,30 @@ test("a referrer sees the replies waiting for them, marks one seen with the vers
   await expect(page.getByText("Marked as seen.")).toBeVisible();
   await expect(page.getByText("No replies are waiting for you.")).toBeVisible();
   expect(sent[1]).toEqual({ version: 5 });
+});
+
+test("a referral that has gone quiet is listed without a Mark as seen button, and priorities with no waiting period are named", async ({
+  page,
+}) => {
+  await page.route("**/api/proxy/api/referrals/worklist/count", (route) =>
+    json(route, 200, { open: 1 }),
+  );
+  await page.route("**/api/proxy/api/referrals/worklist", (route) =>
+    json(route, 200, {
+      items: [WORK({ state: "requested", why: "no-response", version: 1 })],
+      limit: 50,
+      more: false,
+      untimed: { no_response: ["urgent"], no_outcome: ["routine", "urgent"] },
+    }),
+  );
+  await page.goto("/en-001/referrals");
+  await expect(page.getByText("No answer yet ·")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Mark as seen" })).toHaveCount(
+    0,
+  );
+  await expect(
+    page.getByText("No waiting period is set for: Routine, Urgent."),
+  ).toBeVisible();
 });
 
 test("the reply list says when it was cut short, and a role without one is told so", async ({

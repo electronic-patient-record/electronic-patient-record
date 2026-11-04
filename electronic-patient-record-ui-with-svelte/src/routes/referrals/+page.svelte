@@ -4,6 +4,8 @@
   import {
     acknowledgeBody,
     itemHeadline,
+    untimedWarning,
+    type Untimed,
     type WorkItem,
   } from "#lib/referral-worklist.js";
   import { refreshWorklistCount } from "#lib/feed-count.svelte.js";
@@ -18,6 +20,7 @@
   // The service says when the list was cut short (PR-1); an older one says nothing, so a full list counts as cut.
   let more = $state(false);
   let message = $state<string | null>(null);
+  let untimed = $state<Untimed | undefined>(undefined);
   let siteZone = $state<string | undefined>(undefined);
 
   async function load() {
@@ -25,6 +28,7 @@
       items: WorkItem[];
       limit: number;
       more?: boolean;
+      untimed?: Untimed;
       site_time_zone?: string;
     }>("GET", "/api/referrals/worklist");
     const problem = commonProblem(res.status);
@@ -35,6 +39,7 @@
       items = res.body.items;
       limit = res.body.limit;
       more = res.body.more ?? items.length >= limit;
+      untimed = res.body.untimed;
       siteZone = res.body.site_time_zone;
       void refreshWorklistCount();
     } else message = STRINGS.error;
@@ -65,6 +70,7 @@
 <h1>{STRINGS.wlTitle}</h1>
 <p>{STRINGS.wlIntro}</p>
 {#if message}<p role="status">{message}</p>{/if}
+{#if untimedWarning(untimed)}<p role="status">{untimedWarning(untimed)}</p>{/if}
 {#if items !== null}
   {#if items.length === 0}
     <p>{STRINGS.wlNone}</p>
@@ -80,11 +86,14 @@
           <a href={localizePath(`/patients/${i.patient_id}`, locale)}
             >{STRINGS.wlOpen}</a
           >
-          <button
-            disabled={busy.on}
-            type="button"
-            onclick={() => void acknowledge(i)}>{STRINGS.wlAcknowledge}</button
-          >
+          {#if i.why === "reply"}
+            <button
+              disabled={busy.on}
+              type="button"
+              onclick={() => void acknowledge(i)}
+              >{STRINGS.wlAcknowledge}</button
+            >
+          {/if}
         </li>
       {/each}
     </ul>

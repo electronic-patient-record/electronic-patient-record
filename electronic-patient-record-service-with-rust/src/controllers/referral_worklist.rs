@@ -83,7 +83,8 @@ async fn list(
         Ok(p) => p,
         Err(r) => return r.into_response(),
     };
-    let page = match worklist::list(&ctx.db, &agent.0).await {
+    let timeouts = crate::referral_timeouts::current();
+    let page = match worklist::list_with(&ctx.db, &agent.0, &timeouts).await {
         Ok(p) => p,
         Err(e) => return failure(e),
     };
@@ -105,6 +106,7 @@ async fn list(
     }
     Json(serde_json::json!({
         "items": page.rows, "limit": worklist::LIST_LIMIT, "more": page.more,
+        "untimed": { "no_response": timeouts.untimed_no_response(), "no_outcome": timeouts.untimed_no_outcome() },
         "site_time_zone": crate::site::time_zone()
     }))
     .into_response()
