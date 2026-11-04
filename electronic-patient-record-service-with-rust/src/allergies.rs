@@ -62,6 +62,9 @@ pub enum Status {
 }
 
 impl Status {
+    /// Every status (the stored words are checked against the database `CHECK`, PR-3).
+    pub const ALL: [Status; 3] = [Status::Active, Status::Inactive, Status::EnteredInError];
+
     /// The stored word.
     #[must_use]
     pub fn as_str(self) -> &'static str {

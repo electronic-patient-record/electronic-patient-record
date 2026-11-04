@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-04 - Stored words checked against the database (PR-3, first slice)
+
+- **Clinical risk:** none (a test and two `ALL` constants). No hazard row changed.
+- **Built:** `tests/stored_words.rs` reads each `CHECK (col IN (...))` list from `pg_constraint` and compares it with the code's words for referral states, allergy statuses and consent statuses; `Status::ALL` added to `allergies` and `consent`. A word changed in code only, or in the database only, fails the test (shown by changing one word).
+- **Not done / not verified:** amendment states (a tagged enum with no list), observation statuses, relationship kinds, unmatched-queue kinds and clearances, feed and break-glass outcomes are not compared. A variant left out of an `ALL` array is not caught. The parser reads quoted words from the constraint text as Postgres prints it, on the Postgres version in `compose.test.yaml` only. Not run in CI by me: the `api-db` job runs ignored tests, so it should pick it up, unconfirmed until CI reports.
+
 ## 2026-11-04 - A control may name its test (PR-2, first slice)
 
 - **Clinical risk:** governance only (no behaviour change). H-044 evidence now names four tests. Not set to accepted or closed.
