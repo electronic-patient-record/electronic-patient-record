@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-04 - Temporary identity in the matcher (TT-1, in part; H-047 not yet controlled)
+
+- **Clinical risk:** yes, but **not yet in effect.** The matcher source now withholds a temporary identity's names and birth date and blocks `AutoLink`. The service uses the published matcher 0.5.0, so its behaviour is unchanged. H-047 stays `open`, and its row says so.
+- **Built:** `Patient.temporary_identity`, conflict code `temporary_identity`, rule 7 in the matcher spec, `tests/temporary_identity.rs`; translated conflict text in the UI, which is unused until the API sends the code.
+- **Not done / not verified:** no matcher release was published, as that is the maintainer's decision. The service, OpenAPI schema, a way to set the flag and the banner are not changed. The UI strings are machine-written. The matcher (109 tests) and UI (259 tests) passed locally; with the matcher unchanged for the service, its suite was not rerun. Local Rust builds went through a `kache` compiler cache that served a stale library until it was bypassed.
+
 ## 2026-11-04 - CI: test builds use line tables, so the runner stops running out of disk
 
 - **Clinical risk:** none (CI configuration). No hazard row changed.

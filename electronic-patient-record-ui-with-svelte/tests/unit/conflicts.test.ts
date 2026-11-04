@@ -30,6 +30,10 @@ const CODES: [ConflictCode, string][] = [
   [{ code: "names_swapped" }, "given and family names appear swapped"],
   [{ code: "extra_given_name" }, "one record has a given name the other lacks"],
   [
+    { code: "temporary_identity" },
+    "a temporary identity's names and birth date are not evidence",
+  ],
+  [
     { code: "field_unavailable", field: "birth_date" },
     "birth date not available to confirm the link",
   ],

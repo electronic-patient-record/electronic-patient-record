@@ -78,4 +78,9 @@ pub struct Patient {
     /// Phone numbers and email addresses.
     #[serde(default)]
     pub telecom: Vec<Telecom>,
+    /// The names and birth date are temporary, set by a person for someone who cannot yet be
+    /// identified. They are held for care and are not evidence of who the person is: the matcher
+    /// treats them as absent, because a safe temporary name looks like a real one.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub temporary_identity: bool,
 }

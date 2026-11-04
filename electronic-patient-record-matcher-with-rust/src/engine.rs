@@ -205,6 +205,8 @@ pub enum ConflictCode {
         /// The auto-link minimum it fell below.
         minimum: f64,
     },
+    /// A record's identity is temporary, so its names and birth date were not used as evidence.
+    TemporaryIdentity,
     /// Less of the total field weight is present than `min_evidence_weight`.
     EvidenceThin {
         /// The share of the total field weight that is present, as a percentage.
@@ -236,6 +238,9 @@ impl ConflictCode {
                 "{} similarity {similarity:.2} below {minimum:.2}",
                 field.label()
             ),
+            Self::TemporaryIdentity => {
+                "a temporary identity's names and birth date are not evidence".into()
+            }
             Self::EvidenceThin { percent_present } => {
                 format!("only {percent_present:.0}% of the evidence is present")
             }
@@ -316,7 +321,27 @@ impl MatchingEngine {
     }
 
     /// Compare two patients. Symmetric: `compare(a, b)` equals `compare(b, a)`.
+    ///
+    /// If either record's identity is temporary, the names and birth dates of both are withheld,
+    /// so the pair takes the path for missing evidence and can never be linked automatically.
     pub fn compare(&self, a: &Patient, b: &Patient) -> MatchResult {
+        if !a.temporary_identity && !b.temporary_identity {
+            return self.compare_evidence(a, b);
+        }
+        let withheld = |p: &Patient| Patient {
+            names: Vec::new(),
+            birth_date: None,
+            ..p.clone()
+        };
+        let mut result = self.compare_evidence(&withheld(a), &withheld(b));
+        let code = ConflictCode::TemporaryIdentity;
+        result.conflicts.insert(0, code.message());
+        result.conflict_codes.insert(0, code);
+        result
+    }
+
+    /// The comparison itself, on whatever evidence the records offer.
+    fn compare_evidence(&self, a: &Patient, b: &Patient) -> MatchResult {
         let w = &self.config.weights;
         let mut family = family_similarity(a, b);
         let (mut given, given_extra) = match given_similarity(a, b) {

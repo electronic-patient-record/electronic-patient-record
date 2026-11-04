@@ -20,7 +20,13 @@ reviewer can see why two records were or were not linked.
    birth date to be present and above their minimums (`min_given_for_auto` 0.85, `min_family_for_auto` 0.85,
    `min_birth_date_for_auto` 0.99), and at least `min_evidence_weight` (0.5) of the total weight present. Otherwise the
    decision falls to `Review` and `conflicts` lists the reasons.
+   A record marked `temporary_identity` offers no names or birth date as evidence (rule 7).
 6. **Diacritics are preserved.** Folding is NFKC plus lowercase; accents are never stripped.
+7. **A temporary identity is not evidence.** A person sets `temporary_identity` on a record for someone who cannot yet be
+   identified. If either record has it, the names and birth dates of both are withheld, the conflict `temporary_identity`
+   comes first, and the decision can never be `AutoLink`, even with a shared NHS number. The placeholder list cannot do
+   this: a safer temporary name, as NHS alert NHS/PSA/RE/2018/008 recommends, looks like a real one. `Review` remains possible on
+   other evidence, and the flag only applies when set: the matcher does not guess that a name is temporary (H-047).
 
 ## 3. Scoring
 

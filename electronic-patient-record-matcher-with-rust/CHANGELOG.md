@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- **Added:** `Patient.temporary_identity` and the conflict code `temporary_identity` (TT-1, hazard H-047). If either record has the flag, names and birth dates are withheld and `AutoLink` is impossible.
+- **Not done / not verified:** not released: the service uses the published 0.5.0, so this has no effect there yet. The new field and enum variant need a version bump. The flag must be set by a person; nothing sets it, and the matcher does not detect a temporary name. Nothing in FHIR carries it.
+
 ## [0.5.0] - 2026-10-31
 
 - **Added:** an opt-in Australian IHI rule (OS-10, step c). `MatchConfig::use_ihi` (default `false`, `#[serde(default)]`, so a saved config still loads) makes a shared valid IHI (system `http://ns.electronichealth.net.au/id/hi/ihi/1.0`; sixteen digits, prefix `800360`, Luhn) decide as a shared NHS number does, with the same guards; two different valid IHIs give `NonMatch`. New `ihi` module (`is_valid_ihi`, `IHI_SYSTEM`) and three new `ConflictCode` variants, `different_ihis`, `same_ihi_different_birth_dates`, `same_ihi_different_names`. The default behaviour is unchanged: every existing test passes untouched.
