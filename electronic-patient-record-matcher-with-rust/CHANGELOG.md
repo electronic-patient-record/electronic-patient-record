@@ -2,8 +2,11 @@
 
 ## [Unreleased]
 
-- **Added:** `Patient.temporary_identity` and the conflict code `temporary_identity` (TT-1, hazard H-047). If either record has the flag, names and birth dates are withheld and `AutoLink` is impossible.
-- **Not done / not verified:** not released: the service uses the published 0.5.0, so this has no effect there yet. The new field and enum variant need a version bump. The flag must be set by a person; nothing sets it, and the matcher does not detect a temporary name. Nothing in FHIR carries it.
+## [0.6.0] - 2026-11-04
+
+- **Added:** `Patient.temporary_identity` and the conflict code `temporary_identity` (TT-1, hazard H-047). If either record has the flag, names and birth dates are withheld and `AutoLink` is impossible. Omitted from JSON when false, and defaults to false, so existing records read as before.
+- **Breaking:** a `Patient` struct literal must name the new field or use `..Patient::default()`, and an exhaustive match on `ConflictCode` needs the new variant.
+- **Not done / not verified:** the flag must be set by a person; the matcher does not detect a temporary name. Nothing in FHIR carries it. No clinician has reviewed the rule. The service does not use this release yet.
 
 ## [0.5.0] - 2026-10-31
 
