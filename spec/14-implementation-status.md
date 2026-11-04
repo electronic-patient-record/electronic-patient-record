@@ -52,6 +52,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | OF | 2 | 5 |
 | PC | 1 | 8 |
 | PR | 4 | 4 |
-| **Total** | **51** | **202** |
+| LC | 0 | 13 |
+| **Total** | **51** | **215** |
 
 <!-- generated:end -->

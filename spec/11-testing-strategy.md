@@ -6,6 +6,8 @@ patient-matching corpus (ID-1), fuzzing (matcher, HL7 v2 parser), load (1M patie
 cases traced to the hazard log, NISTIR 7804 summative usability testing. What each gate proves and does not prove:
 [`../agents/testing.md`](../agents/testing.md).
 
+Where the gates run, and a proposal to run more of them locally first with GitHub as the independent second check: [`local-ci.md`](local-ci.md) (LC, 2026-11-04; nothing built).
+
 Against the field ([benchmark](benchmark.md), 2026-10-30): the census tests, the seeded hostile-input sweep and the
 hand-run mutation pass have no counterpart in any comparator. Missing here and usual there: coverage measured and
 gated in CI (OS-4), a performance run on `main` with published numbers (OS-5), a documentation census (OS-9),

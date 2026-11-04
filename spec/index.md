@@ -96,6 +96,7 @@ Topics that span several numbered chapters and are kept whole:
   units, locales, regulation.
 - [Locales](locales.md) — `<language>-<region>` names, same rules as the
   project-portfolio-management repository.
+- [Local CI/CD](local-ci.md) — more of the checking on the author's machine, GitHub as the independent second witness; a proposal from plan.md §26 (LC)
 - [Data flow](../governance/data-flow.md) — who sends what to whom, read from the routes, the feed and the outbox (draft, PR-7)
 - [MFA plan](../governance/mfa-plan.md) — what the service checks, what Keycloak enforces, what is left to the deployment (draft, PR-7)
 - [Production readiness](../governance/production-readiness.md) — a checklist that ticks only with evidence; nothing is ticked (draft, PR-7)

@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-04 - Research pass: local CI/CD (plan.md §26, tasks LC-1 to LC-13)
+
+- **Clinical risk:** none (documents only). No hazard row changed.
+- **Built:** `plan.md` §26 (what CI does today, why it feels unreliable and costly with sources, nine options assessed, advice, ranked ideas, risks, order of work, sources); `tasks.md` section and the `LC-` prefix (also in `scripts/generate-status.sh`); `spec/local-ci.md`; four open questions (OQ-LC1 to OQ-LC4); `spec/17-references.md`; a pointer in `spec/11-testing-strategy.md` and `spec/index.md`.
+- **Not done / not verified:** no code, no workflow or hook was changed and no tool was installed or run, so every speed claim is open. The repository is public, so the cost today rests on GitHub's statement about public repositories; the account's billing page was not read. Of the 14 recent failures three were opened (all our own); eleven were not. Service-container support in act, Forgejo and Woodpecker, hosted-runner prices, local use of CodeQL, and arm64 against x86-64 effects were not checked. Third-party incident counts disagree. AGENTS.md was not changed (see OQ-LC4).
+
 ## 2026-11-04 - Not adopted, recorded (PR-8)
 
 - **Clinical risk:** none (a paragraph). No hazard row changed.

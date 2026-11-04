@@ -1481,3 +1481,115 @@ QUAL-18, QUAL-25, QUAL-28, SAFE-1 to SAFE-6, OFH-1, OFH-4, OFH-10, OFH-11, PCC-1
 `spec/hazard/index.md`, `governance/production-readiness.md`, the file names under `governance/`, `spec/compare/`, and `git log` messages.
 This repository: `src/feed_queue.rs`, `src/break_glass.rs`, `src/referral_unmatched.rs`, `src/audit.rs`, `src/audit_retention.rs`, `src/outbox.rs`,
 `scripts/check-hazard-log.py`, `src/routes/admin/*` in the UI, and `tests/`.
+
+## 26. Research pass 2026-11-04: more of the checking done locally, less waiting on GitHub
+
+The request: research how to do more with local CI/CD rather than relying on GitHub, which the author finds unreliable and costly; assess and advise;
+add ideas to `plan.md`, `tasks.md` and `spec/*`. **Nothing was built or installed**, and none of the tools below was run. The reading is of this
+repository's own CI and run history (via `gh`, 2026-11-04) and of the sources in §26.7; vendor pages are marked as such.
+
+### 26.1 What the repository does today (checked)
+
+- `.github/workflows/ci.yml` has 15 jobs behind one aggregate check, `ci-ok`; `release.yml` builds on a version tag. Every job runs on `ubuntu-latest`.
+- One recent green run (push, 2026-11-04) took **39.6 job-minutes** across its jobs and **about 11 to 16 minutes** by the clock. The largest: the container build
+  11.2, CodeQL for Rust 8.6, the API clippy job 4.8, the database tests 4.3.
+- The last 200 runs: **143 success, 14 failure, 39 cancelled, 1 running**. The cancellations are the `cancel-in-progress` rule meeting the one-commit-one-push habit
+  (a newer push cancels the older run). Of the 14 failures I opened three: a database-gated test, a UI type check and a UI image build, all **real failures of our own**, not platform faults.
+  The other eleven were not opened, so "GitHub's own faults made none of them red" is **not** established.
+- The repository is **public** (`gh repo view`). GitHub states that standard hosted-runner use on public repositories remains free, so **the money cost today is nil**; the cost is
+  waiting: about 15 minutes per push, and a push per item by the project's own rule (AGENTS.md).
+- The author's machine is an Apple-silicon Mac (arm64, 16 cores, 128 GB) with Podman 6.1.4. CI is x86-64 Linux. The gates already run locally (AGENTS.md "Gates"); the
+  pre-commit hook runs only the cheap ones; `electronic-patient-record-service-with-rust/compose.test.yaml` starts the test Postgres.
+
+### 26.2 Why GitHub feels unreliable and costly (sourced, third-party figures marked)
+
+- **Reliability.** GitHub's own July 2026 availability report lists eight incidents, three of them on Actions: on 9 July hosted-runner jobs were delayed or failed to start (about 8% of runs delayed
+  over five minutes, about 2% failed to start, 9 h 18 m); on 19 to 20 July **self-hosted and larger runners** were delayed by an expired certificate (5 h 10 m, up to 21.4% of runs); on 25 July workflow runs
+  failed (about 25% then about 60% in two windows). A third-party tracker counts 257 GitHub incidents in 12 months, 57 of them Actions outages, but trackers disagree with each other (another counts 178),
+  so treat the counts as indicative.
+  **A self-hosted runner does not escape this**: the 19 to 20 July incident hit self-hosted runners and spared standard hosted ones.
+- **Cost.** In December 2025 GitHub announced up to 39% lower hosted-runner prices from 1 January 2026 and a $0.002-per-minute platform charge, including for self-hosted runners from 1 March 2026.
+  GitHub then **postponed** the self-hosted charge "to take time to re-evaluate our approach", with no new date. So a design that leans on free self-hosted minutes is exposed to a policy that
+  is only paused. The price per minute of hosted Linux was **not** checked, and I give no dollar figure.
+- **If the repository became private**: the Free plan's included compute is described as "over 33 hours" (about 2,000 minutes). At about 40 job-minutes per run and 8 to 12 pushes on a busy day, the
+  allowance would last roughly a week. That is arithmetic on today's habits, not a quote from GitHub.
+
+### 26.3 The options, assessed
+
+| Option | What it is | For | Against | Verdict |
+|---|---|---|---|---|
+| **A. Local gates, one command, tiered** | `scripts/ci-local.sh` runs the AGENTS.md gates; a pre-push hook runs the fast tier; GitHub stays as the second, clean-room check | No new service; uses what already works; the 128 GB machine is faster than a 2-core hosted runner (to be measured, not assumed) | Self-attested; arm64 not x86-64; depends on one person's machine | **Do first** (LC-2 to LC-6) |
+| **B. One definition of each gate** | `ci.yml` calls the same `scripts/gates/*` the local command calls | Local and remote cannot drift; shrinks YAML | A refactor of 15 jobs; actions such as CodeQL and cargo-deny have no local twin | Do after A, gate by gate (LC-3) |
+| **C. Trim what GitHub runs** | Path filters, heavy jobs only on `main` or a schedule, fewer pushes | Cuts minutes and waiting with no new tool; `ci-ok` already treats `skipped` as pass | Less checking per commit; a schedule finds problems later | **Do** (LC-7), with the cost named |
+| **D. `act`** | Runs the GitHub workflow files locally in containers (MIT licence) | Same YAML, no rewrite | Talks to the Docker API; a community thread says it does not transparently support Podman; **service containers under Podman were not confirmed** (we use `services: postgres`) | A one-day spike only (LC-9) |
+| **E. Self-hosted GitHub runner on our machine** | A runner process on a box we own | Minutes not billed today | GitHub: self-hosted runners "should almost never be used for public repositories" (any fork PR can run on it); still needs GitHub to dispatch (the July outage); the postponed fee returns on GitHub's timetable | **Not adopted** for this public repository (LC-13) |
+| **F. Forgejo plus Forgejo Runner (Podman)** | Our own forge with its own CI; GitHub becomes a mirror | Independence from GitHub's queue and billing; workflows in `.forgejo/workflows` are close to GitHub's | Docs: "not designed to be compatible"; some job keys are ignored (`permissions`, `continue-on-error`; `timeout-minutes` in v12); the runner is remote code execution on our host; service-container support **not confirmed**; we operate it | Spike only if OQ-LC2 is yes (LC-10) |
+| **G. Woodpecker CI** | Lightweight container-first CI, `woodpecker-cli exec` for local runs | Small, runs locally | Which forges it supports and how services work were **not confirmed** here | Not assessed further |
+| **H. Dagger** | Pipelines written in code, run by an engine container locally and in any CI; its docs list Podman | Same pipeline on laptop and CI | Rewrites every job in an SDK; one more engine to run and trust | Defer; revisit if B proves hard |
+| **I. Faster builds** (`cargo nextest`, `sccache`, a faster linker) | Cuts compile and test time | Helps every option | Figures come from a CI vendor's blog and a training book, **not our code**; a cold cache removes the gain; sccache can slow release builds | Measure first (LC-8); adopt only what measured |
+
+### 26.4 Advice
+
+1. **Make local the first gate and GitHub the independent second check.** Do not leave GitHub. The `fresh-clone`, `secrets`, `deny` and CodeQL jobs, and the clean x86-64 environment, catch what one person's machine cannot (the intermittent `http_amendments` failure, not yet investigated, is a reminder that a pass on one machine is one observation). Local runs save the waiting; they do not replace the witness.
+2. **Do A, C and the measuring first** (LC-1 to LC-8): all are small, need no new service and pay back at once. Record a baseline (LC-1) before changing anything so the gain is shown, not asserted.
+3. **A locally produced pass is self-attested.** Sources on SLSA say a self-hosted build does not reach Build Level 2 by itself. For this project that means: use the local record to push with confidence and to
+   explain a commit, **not** as the evidence a Clinical Safety Officer relies on; releases keep building in the hosted clean room (`release.yml`) until OQ-LC3 is answered.
+4. **Plan for GitHub being down at release time**: today a tag push builds the release only on GitHub. Write the by-hand route down (LC-11) and keep a second remote of the source, so an outage delays a release but cannot strand the code.
+5. **Fix the cause of the shared-database flakes.** Local runs meet the shared test database's leftovers (this session met two: more than 50 unreviewed break-glass grants, and 28 old idempotency keys). A scratch database per run (LC-4) removes that whole class and matches CI's fresh one.
+6. **Do not adopt Forgejo, act or Dagger on reading alone.** Spike each for a day against three jobs and write down what failed (LC-9, LC-10). The `services:` Postgres is the likely trouble.
+7. **Keep the one-commit-per-item rule but not necessarily one push per commit** (OQ-LC4): 39 of 200 runs were cancelled by a newer push; pushing when the local gates are green and checking CI on the last commit of a batch would save most of them. This is the author's call.
+
+### 26.5 Ideas, ranked
+
+| ID | Idea | Checked here | Value | Cost |
+|---|---|---|---|---|
+| LC-1 | Measure the baseline: job minutes, wall time, cancelled share, failures by cause, from `gh` | Numbers in §26.1 were got this way for one run and 200 statuses; no 30-day table | Shows what to cut | S |
+| LC-2 | `scripts/ci-local.sh --fast / --full`: the AGENTS.md gates in one command with a result table | AGENTS.md lists the gates; no such script exists (`ls scripts`) | Removes the long command lines I paste by hand | S |
+| LC-3 | One definition per gate, called by both `ci.yml` and the script | 15 jobs, many inline `run:` blocks | No drift | M |
+| LC-4 | A scratch database per local run, dropped after | The shared-DB failures met this session | Removes a flake class | S |
+| LC-5 | `.githooks/pre-push` running the fast tier for the projects touched | `.githooks/pre-commit` exists; `install-hooks.sh` installs hooks | Red CI for formatting stops reaching GitHub | S |
+| LC-6 | A signed local gate record (commit, clean tree, tool versions, results, durations, host arch) | Commits are already ssh-signed | Evidence of what ran, honestly labelled self-attested | S |
+| LC-7 | Trim GitHub: path filters, heavy jobs on `main`/schedule | `ci-ok` fails only on `failure`/`cancelled`, so a skipped job passes | Fewer minutes, less waiting | S |
+| LC-8 | Speed spike: `cargo build --timings`, nextest, sccache, linker; adopt on measured gain | Numbers elsewhere are a vendor's | Maybe halves the loop | S |
+| LC-9 | `act` spike on three jobs under Podman | Not run | Cheap test of the "same YAML" route | S |
+| LC-10 | Forgejo and Forgejo Runner spike, GitHub as mirror | Not run; needs OQ-LC2 | Full independence | M |
+| LC-11 | A "GitHub is down" route: release by hand, a second remote of the source | `release.yml` runs only on a tag push | An outage no longer blocks a release | S |
+| LC-12 | A preflight in the script: Podman VM clock drift, ports 5543 and 6390, `PW_PORT`, jars | AGENTS.md documents the clock-drift failure | Fewer confusing local failures | S |
+| LC-13 | Record "no self-hosted GitHub runner on the public repository" as not adopted | GitHub's secure-use page | Settles the question | S |
+
+### 26.6 Risks
+
+- A local pass that differs from CI breeds false confidence: arm64 against x86-64, a dirty tree, a stale test database, a different Postgres version. LC-6 refuses a dirty tree and records the arch; CI stays as the check.
+- A pre-push hook that is slow gets skipped with `--no-verify`. Keep the fast tier under a few minutes or measure why not.
+- A second forge adds an operations burden and an attack surface (the runner runs repository code on our host). For a safety-related record that burden should be chosen, not drifted into.
+- Counting on a postponed fee never returning, or on a vendor blog's speed figures holding for our code.
+- Treating a local record as clinical-safety evidence without anyone agreeing it may be.
+
+### 26.7 Open questions (in `spec/16-open-questions.md`)
+
+OQ-LC1 stay public; OQ-LC2 a second forge; OQ-LC3 may a local record count as evidence; OQ-LC4 push cadence.
+
+### 26.8 Order of work
+
+LC-1, LC-2, LC-4, LC-5, LC-12, then LC-7 and LC-6, then LC-8; LC-3 gate by gate; LC-11 before the next release; LC-9 and LC-10 only after the above and OQ-LC2.
+
+### 26.9 Sources (read 2026-11-04)
+
+- GitHub, *2026 pricing changes for GitHub Actions* (hosted price cut from 1 January 2026; self-hosted charge postponed 15 December 2025; public repositories stay free): <https://github.com/resources/insights/2026-pricing-changes-for-github-actions>
+- GitHub changelog, *Update to GitHub Actions pricing* (16 December 2025, the announcement): <https://github.blog/changelog/2025-12-16-coming-soon-simpler-pricing-and-a-better-experience-for-github-actions/>
+- GitHub, *Availability report: July 2026* (the three Actions incidents quoted): <https://github.blog/news-insights/company-news/github-availability-report-july-2026/>
+- GitHub Docs, *Secure use reference* (self-hosted runners on public repositories; just-in-time runners): <https://docs.github.com/en/actions/reference/security/secure-use>
+- IncidentHub (third party), *GitHub reliability and outage history 2025 to 2026*: <https://blog.incidenthub.cloud/github-reliability-outage-history-2025-2026> (counts disagree with StatusGator; indicative only)
+- Forgejo, *Forgejo Actions administration*: <https://forgejo.org/docs/latest/admin/actions/>; *Forgejo Actions and GitHub Actions* (differences): <https://forgejo.org/docs/next/user/actions/github-actions/>
+- Community guides to the Forgejo runner under rootless Podman (socket exposure caveat): <https://berrypi.codeberg.page/info/forgejo-runner/>, <https://honeypot.net/2025/05/15/i-wanted-to-experiment-with.html>, issue <https://code.forgejo.org/forgejo/runner/issues/139>
+- nektos/act (MIT; Docker API): <https://github.com/nektos/act>; community thread on Podman: <https://github.com/ChristopherHX/github-act-runner/discussions/178>
+- Woodpecker CI introduction: <https://woodpecker-ci.org/docs/intro>
+- Dagger integrations (any OCI runtime, Podman listed): <https://docs.dagger.io/integrations>
+- Depot, *Guide to faster Rust builds in CI* (vendor; nextest, sccache, mold): <https://depot.dev/blog/guide-to-faster-rust-builds-in-ci>
+- Self-hosted builds and SLSA Build Level 2 (secondary guide): <https://guptadeepak.com/guides/verified-builds-slsa-sigstore/>
+
+### 26.10 Not done, not verified
+
+No tool above was installed or run. The billing page of the author's account was not read, so "the cost today is nil" rests on GitHub's statement about public repositories. Eleven of the 14 recent failures were not opened.
+The one-run timing is one run. Hosted-runner prices, mold on macOS, whether the CodeQL command-line tool may be used locally, Woodpecker's forge support, and every service-container claim (act, Forgejo, Woodpecker) were not checked.
+Third-party incident counts disagree. No benchmark was run on this repository, so no speed-up is claimed.
