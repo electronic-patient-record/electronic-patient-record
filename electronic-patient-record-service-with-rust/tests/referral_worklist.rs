@@ -14,7 +14,8 @@
 //!   cargo test --test referral_worklist -- --ignored --test-threads=1
 //! ```
 
-use chrono::Utc;
+use chrono::{Duration, Utc};
+use electronic_patient_record::clock::{Clock, FixedClock};
 use electronic_patient_record::patients_store::{self, StoreError};
 use electronic_patient_record::referral::{Actor, Event, State};
 use electronic_patient_record::referral_timeouts::Timeouts;
@@ -32,6 +33,11 @@ async fn db() -> DatabaseConnection {
 }
 
 async fn referral(db: &DatabaseConnection) -> store::StoredReferral {
+    referral_by(db, "dr-1").await
+}
+
+/// A referral sent by `author`.
+async fn referral_by(db: &DatabaseConnection, author: &str) -> store::StoredReferral {
     let family = format!(
         "wl{}",
         std::time::SystemTime::now()
@@ -41,7 +47,7 @@ async fn referral(db: &DatabaseConnection) -> store::StoredReferral {
     );
     let patient = patients_store::create(
         db,
-        "dr-1",
+        author,
         Some("referral worklist test"),
         &Patient {
             names: vec![HumanName {
@@ -56,7 +62,7 @@ async fn referral(db: &DatabaseConnection) -> store::StoredReferral {
     .unwrap();
     store::request(
         db,
-        "dr-1",
+        author,
         &patient.id,
         &Referral {
             recipient: "Cardiology outpatients".into(),
@@ -272,29 +278,21 @@ async fn the_database_refuses_to_edit_delete_or_truncate_an_acknowledgement() {
     }
 }
 
-/// Move a referral's current version back in time, the only way a test can make one old: versions are
-/// append-only, so this writes through a session that is allowed to, inside the test database.
-async fn age(db: &DatabaseConnection, id: &str, version: i32, days: i32) {
-    db.execute_unprepared("ALTER TABLE referral_versions DISABLE TRIGGER USER")
-        .await
-        .unwrap();
-    db.execute_unprepared(&format!(
-        "UPDATE referral_versions SET recorded_at = now() - interval '{days} days'
-         WHERE referral_id = '{id}' AND version = {version}"
-    ))
-    .await
-    .unwrap();
-    db.execute_unprepared("ALTER TABLE referral_versions ENABLE TRIGGER USER")
-        .await
-        .unwrap();
-}
-
 #[tokio::test]
 #[ignore = "needs Postgres: set DATABASE_URL"]
 async fn a_referral_that_has_gone_quiet_is_listed_only_for_a_priority_with_a_period() {
     // PC-3, hazard H-044. Priority is `routine` in the helper's referral.
     let db = db().await;
-    let r = referral(&db).await;
+    let sender = format!(
+        "dr-clock-{}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    );
+    let r = referral_by(&db, &sender).await;
+    // The clock starts at the real time and is moved; no row is rewritten (PR-5).
+    let clock = FixedClock::new(Utc::now());
     let ids = |page: &electronic_patient_record::page::Page<wl::Item>| -> Vec<(String, Why)> {
         page.iter()
             .map(|i| (i.referral_id.clone(), i.why))
@@ -309,41 +307,51 @@ async fn a_referral_that_has_gone_quiet_is_listed_only_for_a_priority_with_a_per
 
     // New: not quiet yet.
     assert!(
-        !ids(&wl::list_with(&db, "dr-1", &routine_2).await.unwrap())
-            .iter()
-            .any(|(i, _)| *i == r.id)
+        !ids(&wl::list_at(&db, &sender, &routine_2, clock.now())
+            .await
+            .unwrap())
+        .iter()
+        .any(|(i, _)| *i == r.id)
     );
     // Old and unanswered: listed with a reason, but only where a period is set for its priority.
-    age(&db, &r.id, 1, 3).await;
+    clock.advance(Duration::days(3));
     assert!(
-        ids(&wl::list_with(&db, "dr-1", &routine_2).await.unwrap())
-            .contains(&(r.id.clone(), Why::NoResponse))
+        ids(&wl::list_at(&db, &sender, &routine_2, clock.now())
+            .await
+            .unwrap())
+        .contains(&(r.id.clone(), Why::NoResponse))
     );
     assert!(
-        !ids(&wl::list_with(&db, "dr-1", &none).await.unwrap())
+        !ids(&wl::list_at(&db, &sender, &none, clock.now()).await.unwrap())
             .iter()
             .any(|(i, _)| *i == r.id)
     );
     assert!(
-        !ids(&wl::list_with(&db, "dr-1", &urgent_only).await.unwrap())
-            .iter()
-            .any(|(i, _)| *i == r.id)
+        !ids(&wl::list_at(&db, &sender, &urgent_only, clock.now())
+            .await
+            .unwrap())
+        .iter()
+        .any(|(i, _)| *i == r.id)
     );
-    let before = wl::count_with(&db, "dr-1", &none).await.unwrap();
+    let before = wl::count_at(&db, &sender, &none, clock.now())
+        .await
+        .unwrap();
     assert_eq!(
-        wl::count_with(&db, "dr-1", &routine_2).await.unwrap(),
+        wl::count_at(&db, &sender, &routine_2, clock.now())
+            .await
+            .unwrap(),
         before + 1
     );
     // It is the sender's alone, and a timeout cannot be acknowledged.
     assert!(
-        !ids(&wl::list_with(&db, "someone-else", &routine_2)
+        !ids(&wl::list_at(&db, "someone-else", &routine_2, clock.now())
             .await
             .unwrap())
         .iter()
         .any(|(i, _)| *i == r.id)
     );
     assert!(matches!(
-        wl::acknowledge(&db, &r.id, 1, "dr-1").await,
+        wl::acknowledge(&db, &r.id, 1, &sender).await,
         Err(StoreError::BadQuery(_))
     ));
 
@@ -359,14 +367,18 @@ async fn a_referral_that_has_gone_quiet_is_listed_only_for_a_priority_with_a_per
     )
     .await;
     assert!(
-        !ids(&wl::list_with(&db, "dr-1", &routine_2).await.unwrap())
-            .iter()
-            .any(|(i, _)| *i == r.id)
+        !ids(&wl::list_at(&db, &sender, &routine_2, clock.now())
+            .await
+            .unwrap())
+        .iter()
+        .any(|(i, _)| *i == r.id)
     );
-    age(&db, &r.id, 2, 6).await;
+    clock.advance(Duration::days(6));
     assert!(
-        ids(&wl::list_with(&db, "dr-1", &routine_2).await.unwrap())
-            .contains(&(r.id.clone(), Why::NoOutcome))
+        ids(&wl::list_at(&db, &sender, &routine_2, clock.now())
+            .await
+            .unwrap())
+        .contains(&(r.id.clone(), Why::NoOutcome))
     );
 
     // An outcome ends it: a completed referral waits as a reply, not a timeout.
@@ -381,7 +393,9 @@ async fn a_referral_that_has_gone_quiet_is_listed_only_for_a_priority_with_a_per
     )
     .await;
     assert!(
-        ids(&wl::list_with(&db, "dr-1", &routine_2).await.unwrap())
-            .contains(&(r.id.clone(), Why::Reply))
+        ids(&wl::list_at(&db, &sender, &routine_2, clock.now())
+            .await
+            .unwrap())
+        .contains(&(r.id.clone(), Why::Reply))
     );
 }

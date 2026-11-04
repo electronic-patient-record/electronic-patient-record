@@ -91,6 +91,7 @@ pub enum Why {
 /// many days. `false` when nothing is configured. The words and numbers come from [`Timeouts::parse`], which
 /// accepts only the four priority words and whole numbers of days.
 fn overdue_sql(periods: &std::collections::BTreeMap<String, u32>) -> String {
+    // `$2` is the time the clock shows (PR-5), so a test moves the clock instead of the rows.
     if periods.is_empty() {
         return "false".into();
     }
@@ -98,7 +99,7 @@ fn overdue_sql(periods: &std::collections::BTreeMap<String, u32>) -> String {
         .iter()
         .map(|(priority, days)| {
             format!(
-                "(c.body->>'priority' = '{priority}' AND c.recorded_at < now() - interval '{days} days')"
+                "(c.body->>'priority' = '{priority}' AND c.recorded_at < $2::timestamptz - interval '{days} days')"
             )
         })
         .collect::<Vec<_>>()
@@ -152,6 +153,20 @@ pub async fn list_with(
     by: &str,
     timeouts: &Timeouts,
 ) -> Result<Page<Item>, StoreError> {
+    list_at(db, by, timeouts, chrono::Utc::now()).await
+}
+
+/// [`list_with`] judging how long a referral has waited by `at`, the time a [`crate::clock::Clock`] shows.
+///
+/// # Errors
+///
+/// [`StoreError::Db`].
+pub async fn list_at(
+    db: &impl ConnectionTrait,
+    by: &str,
+    timeouts: &Timeouts,
+    at: chrono::DateTime<chrono::Utc>,
+) -> Result<Page<Item>, StoreError> {
     let rows = db
         .query_all_raw(pg(
             &format!(
@@ -161,7 +176,7 @@ pub async fn list_with(
                 waiting(timeouts),
                 LIST_LIMIT + 1
             ),
-            vec![by.into()],
+            vec![by.into(), at.into()],
         ))
         .await
         .map_err(db_err)?;
@@ -210,10 +225,24 @@ pub async fn count_with(
     by: &str,
     timeouts: &Timeouts,
 ) -> Result<i64, StoreError> {
+    count_at(db, by, timeouts, chrono::Utc::now()).await
+}
+
+/// [`count_with`] judging by `at`.
+///
+/// # Errors
+///
+/// [`StoreError::Db`].
+pub async fn count_at(
+    db: &impl ConnectionTrait,
+    by: &str,
+    timeouts: &Timeouts,
+    at: chrono::DateTime<chrono::Utc>,
+) -> Result<i64, StoreError> {
     let row = db
         .query_one_raw(pg(
             &format!("SELECT count(*) AS n {}", waiting(timeouts)),
-            vec![by.into()],
+            vec![by.into(), at.into()],
         ))
         .await
         .map_err(db_err)?

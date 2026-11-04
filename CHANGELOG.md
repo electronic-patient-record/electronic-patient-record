@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-04 - The referral timeouts take their time from the clock (PR-5, second slice)
+
+- **Clinical risk:** none to behaviour (the service passes the real time); the H-044 timeout test is now stronger. The hazard row is unchanged and the hazard stays open.
+- **Built:** `referral_worklist::list_at` and `count_at` judge "gone quiet" by a time passed in (`$2::timestamptz`); `list_with` and `count_with` pass the real time. The PC-3 test moves a `FixedClock` by days instead of rewriting `recorded_at` with triggers switched off, and uses its own sender so the shared test database's older rows cannot push it off the first page.
+- **Not done / not verified:** break-glass grant expiry and review-overdue still use the database's `now()` (the grant's own `granted_at` and `expires_at` come from the database too, so moving them needs a store change); the controllers do not take a clock from the app state, so the HTTP tests cannot move time; `recorded_at` is still stamped by the database, so a clock that runs ahead of the database makes referrals look older than they are.
+
 ## 2026-11-04 - A controllable clock, first slice (PR-5)
 
 - **Clinical risk:** none (idempotency keys only). No hazard row changed.

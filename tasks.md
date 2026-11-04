@@ -1245,7 +1245,7 @@ Ranked in plan.md §25. Each item was checked against this repository's code; a 
 - [x] **PR-4 (S) — One replica runs a background job.** *(Built 2026-11-04; checked first, see CHANGELOG.)* First **check** whether two replicas running `audit_retention::run_loop` at once make
   or archive a partition twice or fail harmlessly (not checked). Then, if it matters, take a transaction-scoped advisory lock per job
   name. **Acceptance:** a test runs the job body twice at once and sees one effect and no error.
-- [ ] **PR-5 (M) — A controllable clock.** *(First slice 2026-11-04: `Clock`, `SystemClock`, `FixedClock` and idempotency expiry; break-glass expiry and referral timeouts are still on the database `now()`.)* `Clock` and `FixedClock` in the service, used by idempotency expiry, break-glass expiry and
+- [ ] **PR-5 (M) — A controllable clock.** *(Slices 2026-11-04: `Clock`, `SystemClock`, `FixedClock` and idempotency expiry; then the referral timeouts. Break-glass expiry and review-overdue are still on the database `now()`.)* `Clock` and `FixedClock` in the service, used by idempotency expiry, break-glass expiry and
   referral timeouts. **Do with PC-3.** **Acceptance:** the idempotency 24-hour expiry is tested by moving the clock, not a row.
 - [ ] **PR-6 (M, a decision) — `ETag` and `If-Match` on REST.** After OQ-PR1. Additive: a REST `GET` of a versioned record sends its version
   as `ETag`; a write may send `If-Match` and a mismatch is the same 409 as a stale `expected_version`. **Acceptance:** the decision in
