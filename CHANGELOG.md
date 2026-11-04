@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-04 - Not adopted, recorded (PR-8)
+
+- **Clinical risk:** none (a paragraph). No hazard row changed.
+- **Built:** a "Considered and not adopted" paragraph in `spec/02-scope.md`: the weekly mutation run, and the Patient Administration System features (appointments and beds beyond the minimal ones, waiting-list validation, PIFU, transport, reminder ladders).
+- **Not done / not verified:** the reasons given for the mutation run (cost, survivors need judging) are the author's, not measured: no run was timed. No user, clinician or maintainer other than the author has agreed that these stay out.
+
 ## 2026-11-04 - Four governance documents (PR-7)
 
 - **Clinical risk:** none (documents only). No hazard row changed.

@@ -1202,7 +1202,7 @@ opened). Items are **Not clinical** unless they say otherwise.
   a table created by something other than a `CREATE TABLE` in a migration would be missed.
   **Acceptance:** adding a table without regenerating fails the docs job.
 - [ ] **OF-7 (S) — Per-area flags and a first-admin bootstrap: not adopted.** Identity and roles are Keycloak's; the policy
-  matrix separates areas by role; there are no local password accounts. Recorded so the question is not asked again. Reopen if
+  matrix separates areas by role; there are no local password accounts. Recorded so the question is not asked again. *(Recorded 2026-11-04 in `spec/02-scope.md`.)* Reopen if
   a deployment runs without Keycloak.
 
 
@@ -1255,4 +1255,4 @@ Ranked in plan.md §25. Each item was checked against this repository's code; a 
   that ticks only with evidence) and `governance/national-assumptions.md` (a pass over code and spec for rules that belong to one country,
   against the equity rule in `spec/02-scope.md`). Documents only; none is a claim that anything is done. **Acceptance:** each exists, is
   linked from `spec/index.md`, and says plainly what it has not checked.
-- [ ] **PR-8 (S) — Not adopted: a weekly mutation run and the PAS-scope features.** Recorded so the question is not asked again.
+- [x] **PR-8 (S) — Not adopted: a weekly mutation run and the PAS-scope features.** Recorded so the question is not asked again.

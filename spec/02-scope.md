@@ -52,6 +52,13 @@ scheduler behind a **scheduling port** that the PAS can implement.
 
 Until the maintainer confirms, nothing here is built, and the CA items keep their text with a note.
 
+**Considered and not adopted (PR-8, 2026-11-04; recorded so the question is not asked again).** (1) A weekly scheduled
+mutation-testing run: mutation testing stays a by-hand acceptance line (`matcher/tests/fields.rs` records the killed mutants), because a run over the whole
+workspace is slow and its survivors need a person to judge; revisit if a faster tool or a clinical reason appears. (2) Appointment and bed management beyond the minimal
+scheduler and bed board above, waiting-list validation, patient-initiated follow-up (PIFU), transport and reminder ladders: these are
+Patient Administration System scope under the table above and are not built here. A referral timeout only puts the referral on its sender's list; it sends no reminder.
+Not adopted is a decision of the repository's author, not of a clinical safety officer or a user; reopen it with a new reason.
+
 **Medical device boundary.** Calculators and AI that make diagnostic or therapeutic decisions may be Software as a
 Medical Device (UK MDR 2002). Such features stay in a separate module behind a flag, with a regulatory assessment
 first (OQ-6).
