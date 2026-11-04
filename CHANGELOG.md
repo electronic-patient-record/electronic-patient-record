@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-04 - Matcher 0.6.0 published; OQ-BV1 decided
+
+- **Clinical risk:** none changed in the running service: it still uses matcher 0.5.0, so H-047 stays `open`. The decision shapes BV-1, which is not built, so H-046 is unchanged.
+- **Built:** `electronic-patient-record-matcher` 0.6.0 on crates.io. OQ-BV1 recorded as the maintainer's decision: any report of a death holds outbound contact until a person confirms it.
+- **Not done / not verified:** no git tag, as for earlier releases. The upload went ahead on the local gates, the dry run and the matcher's `cargo deny` job; it did not wait for the CI test job, through a filter error. The service has not moved to 0.6.0. The decision has not been reviewed by a Clinical Safety Officer or bereaved families.
+
 ## 2026-11-04 - Temporary identity in the matcher (TT-1, in part; H-047 not yet controlled)
 
 - **Clinical risk:** yes, but **not yet in effect.** The matcher source now withholds a temporary identity's names and birth date and blocks `AutoLink`. The service uses the published matcher 0.5.0, so its behaviour is unchanged. H-047 stays `open`, and its row says so.

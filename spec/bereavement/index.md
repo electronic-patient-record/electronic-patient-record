@@ -323,7 +323,7 @@ Proposals only. The order is mine.
 2. **Add an append-only `death_assertions` store**, not a column on the identity record, because a death has evidence, status and conflict. A read model gives the one banner answer. Whether the matcher's `Patient` also carries a date of death, for matching and merge stops, is open question 3 below; the rule is to change the matcher and its spec, never to add an adapter.
 3. **A route census for the living.** In the manner of the existing census tests: every outbound route has a test that an active death assertion stops it. A new route fails until it names its behaviour.
 4. **An effects ledger.** Every automatic effect records the assertion that caused it. Withdrawal lists them for a person.
-5. **Stop on report, confirm by a person.** Any assertion holds outbound contact at once. A named worker confirms within a period that a clinician sets.
+5. **Stop on report, confirm by a person (decided, OQ-BV1).** Any assertion holds outbound contact at once. A named worker confirms within a period that a clinician sets.
 6. **Map FHIR and HL7.** `deceasedDateTime` when a date is known, `deceasedBoolean` otherwise, never both [FHIRDEC]; read PID-29 and PID-30; send a message that says when a death could not be applied.
 7. **A pack for national feeds**: PDS events 1, 2 and U in England, latest by `meta.lastUpdated`, and other country packs.
 8. **A pathway outcome of "patient died"**, and a template step for "what is still owed". Add a referral event for a death, with a spec, a table test and a change to the recipient's confirmation rule.
@@ -338,7 +338,7 @@ Proposals only. The order is mine.
 ## Open questions
 
 1. Who may record each status, and may a receptionist record a report from a family member?
-2. Does any assertion stop contact, or only a confirmed one? Which is the greater harm, and who decides?
+2. Decided 2026-11-04 by the maintainer (OQ-BV1): any report holds contact until a person confirms it. Still to settle: who confirms, and how soon a held contact that matters, such as an appointment for a living patient, is released.
 3. Does a date of death belong on the matcher's `Patient`, and does it change a match?
 4. What may a next of kin be told, in which country, when the patient said nothing?
 5. Does a section 4(3) note need particular wording or form, and may a patient make it through a portal?
