@@ -1295,3 +1295,20 @@ Ranked in plan.md §27. Nothing here is built. Specs: `spec/mobile-viewability.m
 - [ ] **XP-12 (M, after CA-2, OQ-CP3) — Pathway template model.** Versioned, immutable templates as `PlanDefinition`; applying one makes a patient's `CarePlan`; moving a patient to a newer version is explicit and audited. **Acceptance:** a test publishes version 2 and leaves a patient on version 1 until migrated.
 - [ ] **XP-13 (L, after XP-12, OQ-PD1) — Clinician pathway editor.** A constrained visual editor in clinical language; draft, review (a different named reviewer), publish; a simulation on synthetic patients that finds an unowned step or a loop with no timer. **Acceptance:** a clinician builds and publishes a three-step pathway without help in a usability session; a template with an unowned step cannot be published.
 - [ ] **XP-14 (S) — Pathway analytics.** Time in each step, open loops and skipped steps from data that exists (referrals first). **Acceptance:** a report on synthetic data; output rules (minimum cell size) applied.
+
+## Research 2026-11-04 — comparisons with other EPRs
+
+Ranked in plan.md §28. Nothing here is built. Specs: `spec/<vendor>/index.md`, twelve pages.
+
+- [ ] **VC-1 (S, clinical) — Close every sent item.** Extend the closed-loop referral model to discharge and transfer messages, so a non-delivery becomes a visible queue item (Dedalus, EMIS). **Acceptance:** a design in `spec/interoperability/closed-loop-referral.md`.
+- [ ] **VC-2 (S, clinical) — No silent destination.** A property test: an order or referral to a service with no owner appears in a queue a named role reads (Oracle Cerner). **Acceptance:** the test exists, with the first order or referral route that can reach one.
+- [ ] **VC-3 (S) — A checkable capability statement.** Generate the FHIR conformance page and a table of who may read what from the code (Epic, Altera, Dedalus, System C). **Acceptance:** a generated page, checked for freshness in the docs job.
+- [ ] **VC-4 (S, clinical) — Degraded mode.** What a clinician sees when the service is slow or unreachable, with the questions the OIG raised about outages. **Acceptance:** a section in `spec/07`, tied to OQ-5.
+- [ ] **VC-5 (S) — A go-live note.** A staged plan, a known-defects list shared before go-live, migration reconciliation, emergency-department peak load as a requirement, and a planned slow start. **Acceptance:** a note in `spec/15-roadmap.md` and an NFR entry.
+- [ ] **VC-6 (S, clinical) — A preference holds on every path.** A test that a changed preference is honoured by the FHIR facade, HL7 and exports (the 2018 SystmOne opt-out error). **Acceptance:** a census-style test naming each outbound route.
+- [ ] **VC-7 (S) — A budget for generated work.** Each automatic worklist item names its reader and owner (the in-basket pattern). **Acceptance:** a rule in `spec/pathway-design.md`.
+- [ ] **VC-8 (M) — Sharing in two directions.** Offer and accept per organisation, each with a recorded basis, on top of consent and care relationships (TPP). **Acceptance:** a design note in `spec/access-control/`.
+- [ ] **VC-9 (S) — Field conditions in the mobile spec.** Wi-Fi blackspots, out-of-hours support, nurse-on-phone tasks first and a sync target as acceptance criteria. **Acceptance:** added to `spec/mobile-viewability.md`.
+- [ ] **VC-10 (S, clinical) — Machine-written text.** A distinct provenance state with human sign-off, and each sentence linked to its source, before any ambient or summary feature. **Acceptance:** a rule in `spec/05`, with a hazard before any build.
+- [ ] **VC-11 (S) — The smallest deployment.** One-node profile with costs, and a public sandbox on synthetic patients. **Acceptance:** a note in `spec/02-scope.md`.
+- [ ] **VC-12 (S, clinical) — Discharge from a team is not the end.** A rule that closing one team's work does not close the pathway, and an "open to another team" signal in the banner (Access Rio). **Acceptance:** added to `spec/pathway-design.md`.

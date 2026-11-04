@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-04 - Research pass: comparisons with twelve other EPRs (plan.md §28, VC-1 to VC-12)
+
+- **Clinical risk:** none now (documents only). VC-1, VC-2, VC-4, VC-6, VC-10 and VC-12 would change what a clinician sees; hazard rows are due with the first code. No hazard row changed.
+- **Built:** twelve `spec/<vendor>/index.md` pages; `plan.md` §28; tasks VC-1 to VC-12; `spec/index.md`, `spec/17`.
+- **Not done / not verified:** no code; no product was seen or used and nobody who uses one was asked. Vendor claims are claims; incident accounts are public reports, not findings of cause.
+
 ## 2026-11-04 - Research pass: mobile, care settings, specialty views, pathway design, private analysis (plan.md §27, XP-1 to XP-14)
 
 - **Clinical risk:** none now (documents only). Mobile layout, setting profiles, specialty views and clinician-edited pathways each change what a clinician sees; hazard rows are due with the first code (XP-3 names the first). No hazard row changed.

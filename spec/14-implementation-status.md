@@ -54,6 +54,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | PR | 4 | 4 |
 | LC | 1 | 12 |
 | XP | 0 | 14 |
-| **Total** | **52** | **228** |
+| VC | 0 | 12 |
+| **Total** | **52** | **240** |
 
 <!-- generated:end -->

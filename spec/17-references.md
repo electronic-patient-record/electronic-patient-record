@@ -25,3 +25,5 @@ UK Renal Registry annual report and data-flow pages (<https://ukkidney.org/sites
 HL7 Clinical Practice Guidelines IG, documentation methodology and pathway definition profile (<https://hl7.org/fhir/uv/cpg/documentation-methodology.html>, <https://hl7.org/fhir/uv/cpg/StructureDefinition-cpg-pathwaydefinition.html>);
 HomomorphicEncryption.org standard (<https://homomorphicencryption.org/standard/>), ISO/IEC 18033-6 (<https://www.iso.org/standard/67740.html>), a Chalmers thesis on FHE with differential privacy for healthcare analytics (<https://odr.chalmers.se/items/5d2cf46b-ce60-459c-95df-3c9bd6d53987>).
 Most of these were seen as search results or in part; none was read in full.
+
+Other EPRs, read 2026-11-04 (plan.md §28): each `spec/<vendor>/index.md` lists its own sources; most were seen as search results, and many are trade press or third-party guides.

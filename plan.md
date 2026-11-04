@@ -1664,3 +1664,27 @@ OQ-MV1 devices and offline; OQ-ST1 which settings in 1.0; OQ-ST2 mental-health l
 Nothing was built. I did not run a phone or an emulator, install a homomorphic-encryption library, read the full text of any standard, or talk to a clinician. The acute versus community comparison is the author's observation supported by examples, with no direct comparison source found.
 Renal content comes from registry material and a research paper, not a renal clinician; vascular access and transplant are unsourced. The HL7 pathway material was read from search results and part of one guide. The ActCode values for `Encounter.class` are to be checked.
 Third-party and student-thesis sources on homomorphic encryption are indicative only. No hazard row was added (documents only); rows are due with the first code.
+
+## 28. Research pass 2026-11-04: comparisons with other EPRs
+
+The request: compare with Epic, Nervecentre, Oracle Cerner, System C, Altera, Alcidion, TPP SystmOne, EMIS and others, one `spec/<slug>/index.md` each. Twelve pages: [Epic](spec/epic/index.md), [Oracle Health (Cerner)](spec/oracle-cerner/index.md), [MEDITECH](spec/meditech/index.md), [Nervecentre](spec/nervecentre/index.md), [Alcidion](spec/alcidion/index.md), [System C](spec/system-c/index.md), [TPP SystmOne](spec/tpp-system-one/index.md), [EMIS](spec/emis/index.md), [Access Rio](spec/access-rio/index.md), [Altera](spec/altera/index.md), [InterSystems TrakCare](spec/intersystems-trakcare/index.md), [Dedalus](spec/dedalus/index.md). Documents only; **no vendor document under contract, no product demonstrated, nobody who uses these systems consulted.** Marketing, trade press and third-party guides are marked as such on each page.
+
+### 28.1 Assessment
+
+The vendors are not this project's competitors in any real sense: they are working products, and this is a scaffold (M0) with no clinical record. What they give is a list of ways a working EPR has failed in public. Five patterns repeat across the pages, and they are worth more than any feature list:
+
+| Pattern | Pages | What it means here |
+|---|---|---|
+| A message left and nobody noticed it did not arrive | Dedalus, EMIS, Oracle Cerner | The closed-loop referral should cover discharge and transfer messages, and an order to an unowned destination must surface (VC-1, VC-2) |
+| Go-live is where it goes wrong | Epic, Oracle Cerner, System C, TrakCare, Nervecentre | A staged plan, a known-defects list and a migration reconciliation are part of the product's safety (VC-5) |
+| Outages and poor signal | EMIS, Oracle Cerner, Nervecentre | Downtime is a designed mode, not an exception (VC-4, VC-9) |
+| A sharing preference missed on one path | TPP SystmOne | Prove a preference on every outbound path by test (VC-6) |
+| Conformance claims nobody can check | Altera, Dedalus, System C, Epic | Generate ours from the code; publish who may read what (VC-3) |
+
+### 28.2 Ideas, ranked
+
+VC-1 to VC-12 in `tasks.md`, in value order. Ideas on the vendor pages that restate existing work (setting profiles, legal status, the Mental Health Act record) stay with XP-5 to XP-7.
+
+### 28.3 Not done, not verified
+
+Each page has its own "Not verified" list. Vendor claims are claims. Incident accounts are public reports, usually from trade press or inspectors, and are not a finding of cause. No page says a product is better or worse overall, and none should be read that way. No hazard row was added: the patterns are candidates for the Clinical Safety Officer.

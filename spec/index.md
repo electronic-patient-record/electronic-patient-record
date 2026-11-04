@@ -101,6 +101,7 @@ Topics that span several numbered chapters and are kept whole:
 - [Pathway design](pathway-design.md) — clinicians design, review, publish and redesign care pathways (XP)
 - [Privacy-preserving analysis](privacy-analytics.md) — homomorphic encryption and its alternatives for secondary use, post-1.0 (XP)
 - [Local CI/CD](local-ci.md) — more of the checking on the author's machine, GitHub as the independent second witness; a proposal from plan.md §26 (LC)
+- [Other EPRs compared](epic/index.md) — public-source comparisons, one page each: [Epic](epic/index.md), [Oracle Health (Cerner)](oracle-cerner/index.md), [MEDITECH](meditech/index.md), [Nervecentre](nervecentre/index.md), [Alcidion](alcidion/index.md), [System C](system-c/index.md), [TPP SystmOne](tpp-system-one/index.md), [EMIS](emis/index.md), [Access Rio](access-rio/index.md), [Altera](altera/index.md), [InterSystems TrakCare](intersystems-trakcare/index.md), [Dedalus](dedalus/index.md) (VC, plan.md §28).
 - [Data flow](../governance/data-flow.md) — who sends what to whom, read from the routes, the feed and the outbox (draft, PR-7)
 - [MFA plan](../governance/mfa-plan.md) — what the service checks, what Keycloak enforces, what is left to the deployment (draft, PR-7)
 - [Production readiness](../governance/production-readiness.md) — a checklist that ticks only with evidence; nothing is ticked (draft, PR-7)
