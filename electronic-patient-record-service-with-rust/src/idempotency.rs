@@ -17,6 +17,7 @@
 use crate::api_error::ApiError;
 use crate::audit::{self, Action, Event};
 use crate::auth::Agent;
+use crate::clock::{Clock, SystemClock};
 use crate::store::pg;
 use axum::{
     body::{Body, to_bytes},
@@ -101,22 +102,46 @@ pub async fn reserve(
     path: &str,
     digest: &str,
 ) -> Result<Reservation, DbErr> {
+    reserve_at(db, &SystemClock, subject, key, method, path, digest).await
+}
+
+/// [`reserve`] with the time taken from `clock`: the key is stamped, and judged expired, by that time.
+///
+/// # Errors
+///
+/// A database failure.
+pub async fn reserve_at(
+    db: &impl ConnectionTrait,
+    clock: &dyn Clock,
+    subject: &str,
+    key: &str,
+    method: &str,
+    path: &str,
+    digest: &str,
+) -> Result<Reservation, DbErr> {
+    let now = clock.now();
     db.execute_raw(pg(
         "DELETE FROM idempotency_keys WHERE subject = $1 AND key = $2
-         AND created_at < now() - make_interval(secs => $3)",
-        vec![subject.into(), key.into(), (TTL_SECS as f64).into()],
+         AND created_at < $4::timestamptz - make_interval(secs => $3)",
+        vec![
+            subject.into(),
+            key.into(),
+            (TTL_SECS as f64).into(),
+            now.into(),
+        ],
     ))
     .await?;
     let inserted = db
         .execute_raw(pg(
-            "INSERT INTO idempotency_keys (subject, key, method, path, body_digest, state)
-             VALUES ($1, $2, $3, $4, $5, 'pending') ON CONFLICT (subject, key) DO NOTHING",
+            "INSERT INTO idempotency_keys (subject, key, method, path, body_digest, state, created_at)
+             VALUES ($1, $2, $3, $4, $5, 'pending', $6::timestamptz) ON CONFLICT (subject, key) DO NOTHING",
             vec![
                 subject.into(),
                 key.into(),
                 method.into(),
                 path.into(),
                 digest.into(),
+                now.into(),
             ],
         ))
         .await?;
@@ -197,10 +222,19 @@ pub async fn release(db: &impl ConnectionTrait, subject: &str, key: &str) -> Res
 ///
 /// A database failure.
 pub async fn purge_expired(db: &impl ConnectionTrait) -> Result<u64, DbErr> {
+    purge_expired_at(db, &SystemClock).await
+}
+
+/// [`purge_expired`] with the time taken from `clock`.
+///
+/// # Errors
+///
+/// A database failure.
+pub async fn purge_expired_at(db: &impl ConnectionTrait, clock: &dyn Clock) -> Result<u64, DbErr> {
     Ok(db
         .execute_raw(pg(
-            "DELETE FROM idempotency_keys WHERE created_at < now() - make_interval(secs => $1)",
-            vec![(TTL_SECS as f64).into()],
+            "DELETE FROM idempotency_keys WHERE created_at < $2::timestamptz - make_interval(secs => $1)",
+            vec![(TTL_SECS as f64).into(), clock.now().into()],
         ))
         .await?
         .rows_affected())

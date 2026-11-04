@@ -18,6 +18,7 @@ pub mod audit_retention;
 pub mod auth;
 pub mod authz;
 pub mod break_glass;
+pub mod clock;
 pub mod consent;
 pub mod consents_store;
 pub mod controllers;

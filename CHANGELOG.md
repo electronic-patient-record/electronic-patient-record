@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-04 - A controllable clock, first slice (PR-5)
+
+- **Clinical risk:** none (idempotency keys only). No hazard row changed.
+- **Built:** `src/clock.rs` (`Clock`, `SystemClock`, `FixedClock::advance`); `idempotency::reserve_at` and `purge_expired_at` take the clock and stamp `created_at` from it, `reserve` and `purge_expired` call them with `SystemClock`. `tests/idempotency_clock.rs` moves a `FixedClock` past the 24-hour life (held just inside, new just past, purged after) in a rolled-back transaction; 1 unit test of the clock.
+- **Not done / not verified:** the HTTP middleware still uses `SystemClock` (no clock in the app state), so the existing HTTP test still rewrites a row; break-glass grant expiry and review-overdue, and the referral timeouts, still compare against the database's `now()` in SQL and are not on the clock; `outbox`, `mllp` and `rate_limit` keep their own `now()` helpers. Keys written before this change carry the database's time and are judged by the service's: a skew between the two clocks moves the edge of the 24 hours by that much.
+
 ## 2026-11-04 - One replica runs the audit maintenance job (PR-4)
 
 - **Clinical risk:** none to what a clinician sees; it touches audit retention (H-042) only by making the job safer. No hazard row changed.
