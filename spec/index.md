@@ -102,6 +102,13 @@ Topics that span several numbered chapters and are kept whole:
 - [Privacy-preserving analysis](privacy-analytics.md) — homomorphic encryption and its alternatives for secondary use, post-1.0 (XP)
 - [Local CI/CD](local-ci.md) — more of the checking on the author's machine, GitHub as the independent second witness; a proposal from plan.md §26 (LC)
 - [Other EPRs compared](epic/index.md) — public-source comparisons, one page each: [Epic](epic/index.md), [Oracle Health (Cerner)](oracle-cerner/index.md), [MEDITECH](meditech/index.md), [Nervecentre](nervecentre/index.md), [Alcidion](alcidion/index.md), [System C](system-c/index.md), [TPP SystmOne](tpp-system-one/index.md), [EMIS](emis/index.md), [Access Rio](access-rio/index.md), [Altera](altera/index.md), [InterSystems TrakCare](intersystems-trakcare/index.md), [Dedalus](dedalus/index.md) (VC, plan.md §28).
+- [Measuring clinical safety](clinical-safety/measurement.md) — measures by hazard class, what software cannot measure, the risks of measuring (SM, plan.md §29).
+- [Maternity](maternity/index.md) — the pathway, two patients and one episode, hidden disclosures, build or integrate (MT).
+- [Manual steps](manual-steps/index.md) — how information changes when a person is in the middle (DX).
+- [Data exchange](data-exchange/index.md) — getting data in and out: migration, import runs, `$export`, patient copies (DX).
+- [Data quality](data-quality/index.md) — rules, dictionary, duplicate sweep and governance (DX).
+- [Productivity measurement](productivity-measurement/index.md) — before-and-after measures for phasing in the EPR (PM).
+- [Training](training/index.md) and the [training overlay](training-overlay/index.md) — what training will be available, and learning on the real screens safely apart from real patients; a design, not built (TO).
 - [Data flow](../governance/data-flow.md) — who sends what to whom, read from the routes, the feed and the outbox (draft, PR-7)
 - [MFA plan](../governance/mfa-plan.md) — what the service checks, what Keycloak enforces, what is left to the deployment (draft, PR-7)
 - [Production readiness](../governance/production-readiness.md) — a checklist that ticks only with evidence; nothing is ticked (draft, PR-7)

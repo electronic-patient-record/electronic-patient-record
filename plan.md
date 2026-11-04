@@ -1688,3 +1688,28 @@ VC-1 to VC-12 in `tasks.md`, in value order. Ideas on the vendor pages that rest
 ### 28.3 Not done, not verified
 
 Each page has its own "Not verified" list. Vendor claims are claims. Incident accounts are public reports, usually from trade press or inspectors, and are not a finding of cause. No page says a product is better or worse overall, and none should be read that way. No hazard row was added: the patterns are candidates for the Clinical Safety Officer.
+
+## 29. Research pass 2026-11-04: clinical safety measures, maternity, manual steps, data in and out, data quality, productivity, training
+
+The request, eight points: how do we measure clinical safety; how does maternity work; how does the information change at a manual step; how do you get data in and out; data quality assurance and governance; how to measure before-and-after productivity; what training will be available; and build a training overlay. Documents only: **the training overlay is a design, not a build, and no clinician, midwife, trainer or records manager was consulted.** Specs: [measuring clinical safety](spec/clinical-safety/measurement.md), [maternity](spec/maternity/index.md), [manual steps](spec/manual-steps/index.md), [data exchange](spec/data-exchange/index.md), [data quality](spec/data-quality/index.md), [productivity measurement](spec/productivity-measurement/index.md), [training](spec/training/index.md), [training overlay](spec/training-overlay/index.md).
+
+### 29.1 Assessment
+
+| Point | What the repository has | My assessment |
+|---|---|---|
+| Measuring safety | A hazard log; an audit trail and queues that could be measured | **No measure is a verdict.** About sixteen measures across seven hazard classes, thresholds left to a baseline and the Clinical Safety Officer. Start with identity measures, which the scaffold can already compute (SM-3). Nobody can review any of it until OQ-2 is answered |
+| Maternity | Twins are never auto-linked; nothing else | **Decide build or integrate first (OQ-MT1).** The identity and access layers are ours whichever way that goes: two patients, one event; hidden disclosures; a baby's own consent. My recommendation is to integrate with a specialist system and own the pathway, identity and access layers |
+| Manual steps | Append-only versions with author and time | **A value's history must say how it got there.** Reported by, transcribed from, and when it occurred, each `null` with a reason, never defaulted (DX-8). A back-keyed entry must not carry the keying time (DX-9) |
+| Data in and out | Inbound ADT, FHIR reads, feed refusal queue, no bulk import or `$export` | **An import is a run with an identity**: checksum, mapping version, operator, counts, and a dry run that writes nothing (DX-1, DX-2). "Empty must never become none" |
+| Data quality | Matcher, refusal queues, census tests | **Rules in a catalogue, a dictionary a census can check, and a duplicate sweep** (DX-4 to DX-6). A score never without its denominator, and never read as clinical truth |
+| Productivity | Audit stream, no baseline | **Measure teams, not people, and never speed without its paired safety measure** (PM-1, PM-5). A go-live dip is expected and is not evidence either way |
+| Training | Synthetic data for tests | **Competence, not completion.** A role-to-task matrix drives the lessons; downtime is practised (TO-7, TO-8) |
+| Training overlay | Nothing | **Training must never be mistakable for real care.** A separate deployment and realm with an `EPR_ENVIRONMENT` setting that has no default, then an overlay on the real screens. TO-1 comes first because it is the safety control |
+
+### 29.2 Ideas, ranked
+
+SM-1 to SM-5, MT-1 to MT-4, DX-1 to DX-10, PM-1 to PM-5 and TO-1 to TO-9 in `tasks.md`. Do first: TO-1 (a real risk once anyone runs a demonstration), SM-1 and SM-3 (small, and they make the hazard log useful), DX-8 (it shapes every clinical table, so it is cheapest before they exist), MT-1 (a decision).
+
+### 29.3 Not done, not verified
+
+Nothing was built, including the overlay. Each page has a "Not verified" list; candidate hazards on them are candidates, not rows in the log, and are added with the first code. Figures from the literature (error rates, burden) are as reported and are not baselines for this project. Maternity content comes from public reviews and data-set documents, not from a midwife or an obstetrician, and must not be used as clinical content. No measure has been computed.

@@ -55,6 +55,11 @@ no network, database or compilation; counts are source lines, not test runs):
 | LC | 1 | 12 |
 | XP | 0 | 14 |
 | VC | 0 | 12 |
-| **Total** | **52** | **240** |
+| SM | 0 | 5 |
+| MT | 0 | 4 |
+| DX | 0 | 10 |
+| PM | 0 | 5 |
+| TO | 0 | 9 |
+| **Total** | **52** | **273** |
 
 <!-- generated:end -->

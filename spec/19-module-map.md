@@ -16,6 +16,10 @@ so every module in 1.0 or M7 gets hazard rows (EM-16) before its code.
 | Setting profiles, specialty packs | after CA-1, CA-2 | XP-5 to XP-7, XP-10, XP-11 | OQ-ST1, OQ-SP1 |
 | Clinician pathway design | after CA-2 | XP-12 to XP-14 | OQ-CP3 |
 | Privacy-preserving analysis | post-1.0 | XP-8, XP-9 | OQ-HE1, DPO |
+| Clinical safety measures | now (reports), after AS-1 | SM-1 to SM-5 | OQ-2 |
+| Maternity | decision first | MT-1 to MT-4 | OQ-MT1 |
+| Bulk import, `$export`, data quality | M2 onward | DX-1 to DX-10 | OQ-DE*, OQ-DQ*, OQ-MS* |
+| Training environment and overlay | TO-1 before any demonstration | TO-1 to TO-9 | OQ-TR* |
 | Care pathways and plans, referrals, scheduling, ADT | M7 | CA-1 to CA-4 | scheduling follows OQ-PA1 |
 | eMAR (closed-loop administration) | M7 | EM-2 | OQ-M3 (build or integrate scanning) |
 | Nursing assessments and risk tools | M7 | EM-3 | OQ-M2 (licences) |

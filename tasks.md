@@ -1312,3 +1312,41 @@ Ranked in plan.md §28. Nothing here is built. Specs: `spec/<vendor>/index.md`, 
 - [ ] **VC-10 (S, clinical) — Machine-written text.** A distinct provenance state with human sign-off, and each sentence linked to its source, before any ambient or summary feature. **Acceptance:** a rule in `spec/05`, with a hazard before any build.
 - [ ] **VC-11 (S) — The smallest deployment.** One-node profile with costs, and a public sandbox on synthetic patients. **Acceptance:** a note in `spec/02-scope.md`.
 - [ ] **VC-12 (S, clinical) — Discharge from a team is not the end.** A rule that closing one team's work does not close the pathway, and an "open to another team" signal in the banner (Access Rio). **Acceptance:** added to `spec/pathway-design.md`.
+
+## Research 2026-11-04 — safety measures, maternity, manual steps, data, productivity, training
+
+Ranked in plan.md §29. Nothing here is built. Specs: `spec/clinical-safety/measurement.md`, `spec/maternity/`, `spec/manual-steps/`, `spec/data-exchange/`, `spec/data-quality/`, `spec/productivity-measurement/`, `spec/training/`, `spec/training-overlay/`.
+
+- [ ] **SM-1 (S) — A measure per hazard.** Add a `measure` column to the hazard log and a report of hazards without one. **Acceptance:** `scripts/check-hazard-log.py --report` lists them; no hazard status changes.
+- [ ] **SM-2 (S) — A measures registry.** One entry per measure: definition, numerator, denominator, owner, review cadence, the hazards it serves. **Acceptance:** a page under `spec/clinical-safety/`.
+- [ ] **SM-3 (M, clinical) — Identity measures.** Queue age, merge and unmerge rate, duplicates, computed from what exists. **Acceptance:** a report on synthetic data, "no data" shown as such.
+- [ ] **SM-4 (M, clinical) — An unsafe case pack.** Fixed wrong-patient, allergy and lost-referral scenarios run in CI and at each deployment, with a stored score. **Acceptance:** the pack runs in CI.
+- [ ] **SM-5 (S) — A planted failure per measure.** Break the control and show that the measure moves. **Acceptance:** one test per computed measure.
+- [ ] **MT-1 (S, decision) — Build or integrate maternity.** Settle OQ-MT1. **Acceptance:** a recorded decision, with a clinician.
+- [ ] **MT-2 (S, clinical) — The birth event.** A birth creates a new baby `Patient` and a mother-baby relationship that matcher and merge refuse to treat as identity; a temporary identifier with a reason; a separate proxy and consent set. **Acceptance:** a design in `spec/maternity/index.md`.
+- [ ] **MT-3 (S, clinical) — Birth census.** No two records from one birth event can merge; twins are never auto-linked. **Acceptance:** a test, with the first birth route.
+- [ ] **MT-4 (M, with a midwife) — A maternity pathway template.** For `spec/pathway-design.md`; clinical content as proposals. **Acceptance:** a midwife and an obstetrician have reviewed it, and the review is recorded.
+- [ ] **DX-1 (S) — The import run.** Id, source system, checksum, mapping version, operator, counts in, out and refused, status; every imported version points to its run. **Acceptance:** a design in `spec/data-exchange/index.md`.
+- [ ] **DX-2 (M, clinical) — Dry run and reconciliation.** Match and map, write nothing, keep the report. **Acceptance:** a synthetic import whose report accounts for every row.
+- [ ] **DX-3 (M) — `$export`.** System and patient level, asynchronous NDJSON, Provenance included; declared in `metadata` only once a validator passes. **Acceptance:** the validator run is recorded.
+- [ ] **DX-4 (S) — A rule catalogue.** One row per rule: id, field, Kahn category, entry or batch, severity, owner, test. **Acceptance:** a catalogue in `spec/data-quality/`.
+- [ ] **DX-5 (M) — A data dictionary with a census.** Generated from the schema, extended by hand; a new clinical field with no dictionary row or rule fails. **Acceptance:** the census test.
+- [ ] **DX-6 (M, clinical) — A duplicate sweep.** The matcher at batch scale, pairs above a threshold listed for a steward, reversed merges counted. **Acceptance:** a report on synthetic data.
+- [ ] **DX-7 (S) — A data-quality issue register.** Append-only, with severity, owner, status, hazard link and resolution. **Acceptance:** a design note.
+- [ ] **DX-8 (S, clinical) — How a value got here.** `reported_by`, `transcribed_from` and `occurred_at` on every clinical version, `null` with a reason, never defaulted; decide before more clinical tables exist. **Acceptance:** a rule in `spec/05`.
+- [ ] **DX-9 (M, clinical) — Back-keying.** A downtime screen that asks for the event time first and will not default it to now. **Acceptance:** a test that it refuses.
+- [ ] **DX-10 (M, clinical) — A downtime extract.** A read-only, printable ward or clinic extract on a schedule. **Acceptance:** a hazard row and a drill record.
+- [ ] **PM-1 (S) — A measurement protocol.** Definitions pinned from Sinsky et al., normalised per 8 scheduled hours. **Acceptance:** a page in `spec/productivity-measurement/`; OQ-PM1 answered.
+- [ ] **PM-2 (M) — Team-level time measures.** From the audit stream, with a minimum cell size and a plain statement of what they cannot show. **Acceptance:** a report on synthetic data; no staff-level output.
+- [ ] **PM-3 (M) — Timed critical tasks.** Scripts on synthetic patients each release, shared with training. **Acceptance:** a series across two releases.
+- [ ] **PM-4 (S) — A roll-out record.** Order of phases, hold points, go or no-go answers, decision-maker. **Acceptance:** a template in the clinical safety file.
+- [ ] **PM-5 (M) — Paired measures.** A dashboard that cannot show a speed measure without its paired safety measure. **Acceptance:** a test of that refusal.
+- [ ] **TO-1 (S, clinical) — Training mode cannot be mistaken.** `EPR_ENVIRONMENT` with no default, synthetic marks, a persistent banner, a separate realm, nothing sent outward. **Acceptance:** tests that the service refuses to start without the setting and that training mode reaches no outbound path; a hazard row.
+- [ ] **TO-2 (S) — Synthetic training data.** Seed and reset, documented generator, no real person's data. **Acceptance:** a reset command.
+- [ ] **TO-3 (M, clinical) — The overlay and one scenario.** Scenario format, the overlay component, "register a patient"; it never covers the banner, an allergy or an alert. **Acceptance:** a test that those stay visible with the overlay open.
+- [ ] **TO-4 (S) — Checks and progress.** Each step checked, progress recorded. **Acceptance:** a scenario that fails on a wrong step.
+- [ ] **TO-5 (M, with a trainer) — More scenarios.** **Acceptance:** a trainer's review is recorded.
+- [ ] **TO-6 (M) — Just-in-time help.** Later, in production, with the same text as the documentation. **Acceptance:** one source for both.
+- [ ] **TO-7 (S) — A role-to-task matrix.** One per setting, from which lessons are listed. **Acceptance:** a matrix in `spec/training/`.
+- [ ] **TO-8 (S, clinical) — A downtime drill pack.** With the downtime extract and paper forms. **Acceptance:** one recorded drill.
+- [ ] **TO-9 (S) — Release notes for trainers.** What changed, per role, so material does not go stale. **Acceptance:** added to the release checklist.

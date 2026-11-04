@@ -14,6 +14,8 @@
 
 **Directions of 2026-11-04 (XP-1 to XP-14, plan.md §27; not yet placed on a milestone).** Mobile viewability starts now because it touches screens already built; setting profiles and specialty packs follow CA-1 and CA-2; clinician pathway design follows the pathway model (M7); homomorphic-encryption analysis is post-1.0 and a spike first.
 
+**Directions of 2026-11-04 (VC, SM, MT, DX, PM, TO, QA, RA, PI, HM, VW; plan.md §28 to §31; not yet placed on a milestone).** Two items are time-sensitive: DX-8 is cheapest before more clinical tables exist, and PI-1 must precede SE-4.
+
 **After 1.0: emergency triage.** Manchester Triage System work (`TR-1` to `TR-13` in `tasks.md`, plan.md §15) is not
 on a milestone. It needs the Encounter and vitals work of M2 and M7, and the pack interface may take more than one
 triage system but only one is planned. Decided 2026-10-23 (OQ-T2, OQ-T4). TR-1 (licence) must finish before any

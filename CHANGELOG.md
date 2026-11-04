@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-04 - Research pass: safety measures, maternity, manual steps, data in and out, data quality, productivity, training (plan.md §29)
+
+- **Clinical risk:** none now (documents only). Most of these tasks change what a clinician sees and are marked `clinical`; the candidate hazards on each page go in the log with the first code. No hazard row changed.
+- **Built:** eight spec pages, including the training overlay design; `plan.md` §29; tasks SM-1 to SM-5, MT-1 to MT-4, DX-1 to DX-10, PM-1 to PM-5, TO-1 to TO-9; `spec/index`, `15`, `16`, `17`, `19`.
+- **Not done / not verified:** no code. **The training overlay asked for is designed, not built.** No clinician, midwife, trainer or records manager was asked. Maternity content must not be used as clinical content. Literature figures are as reported. No measure has been computed.
+
 ## 2026-11-04 - Research pass: comparisons with twelve other EPRs (plan.md §28, VC-1 to VC-12)
 
 - **Clinical risk:** none now (documents only). VC-1, VC-2, VC-4, VC-6, VC-10 and VC-12 would change what a clinician sees; hazard rows are due with the first code. No hazard row changed.
