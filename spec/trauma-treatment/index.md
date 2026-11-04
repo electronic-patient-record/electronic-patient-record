@@ -39,7 +39,7 @@ Stated as evidence, not as instruction.
 - HSSIB found that information lost at transitions eroded trust, and that for young people repeatedly retelling history "had the potential to re-traumatise" [HSSIB25].
 - NHS England tells organisations to give access to past records so that people need not repeat themselves [SSS].
 - NICE asks that assessments be comprehensive, that transitions be supported, and that who monitors be agreed in writing where care is shared (1.2.3, 1.2.4) [NG116]. It also suggests a key professional for continuity, in its rationale [NG116].
-- **Evidence gap.** I found no empirical study that tests one shared trauma history against repeated assessment. The retelling sources are guidance or low quality. One overview says repeated telling in a safe therapeutic context differs from telling in an adversarial one, and that fragmented recall can fit traumatic stress [RETELL] (weak source). So "tell it once" is a sensible aim, not a proven intervention.
+- **Evidence gap.** I found no empirical study that tests one shared trauma history against repeated assessment. The retelling sources are guidance. So "tell it once" is a sensible aim, not a proven intervention.
 
 **What a record can do**, my reasoning:
 
@@ -314,7 +314,7 @@ Proposals only.
 - **The matcher finding** comes from reading the spec. It was not run.
 - **Not researched:** scribes in resuscitation, evidence and police at the bedside, casualty bureaux, US and Australian unknown-patient practice, the VA/DoD guideline, Freedom from Torture, DPA 2018 Schedule 2 paragraph 16, and US privilege law.
 - **Code:** read and grepped, not run. No test was added.
-- Link check 2026-11-04: these cited pages returned 404. They may have moved, but what rests on them is unconfirmed: https://bikes.fan/corpus/gen-961/biographical-criticism/trauma-narratives.html; https://www.england.nhs.uk/wp-content/uploads/2018/03/concept-operations-management-mass-casualties.pdf
+- Link check 2026-11-04: these cited pages returned 404. They may have moved, but what rests on them is unconfirmed: https://www.england.nhs.uk/wp-content/uploads/2018/03/concept-operations-management-mass-casualties.pdf
 
 ## Sources
 
@@ -330,7 +330,6 @@ Read 2026-11-04. Marks: **(fetched)** the page was opened and summarised by the 
 - [HSSIB24] HSSIB, Patients at risk of self-harm: continuous observation: https://www.hssib.org.uk/patient-safety-investigations/patients-at-risk-of-self-harm-continuous-observation/investigation-report/ (fetched)
 - [HSSIB25] HSSIB, Mental health inpatient settings: https://www.hssib.org.uk/patient-safety-investigations/mental-health-inpatient-settings/fifth-investigation-report/ (fetched)
 - [SSS] NHS England, Staying safe from suicide, copy: https://www.infocop.es/wp-content/uploads/2025/06/NHS-England-Staying-safe-from-suicide.pdf (PDF text)
-- [RETELL] Overview of trauma narratives: https://bikes.fan/corpus/gen-961/biographical-criticism/trauma-narratives.html (snippet; low quality, kept only to show how weak this evidence is)
 - [SARC] NHS England, National service specification for SARCs: https://www.england.nhs.uk/wp-content/uploads/2018/04/PRN00577-national-service-specification-sexual-assault-referral-centres-updated.pdf (PDF text, relevant passages)
 - [SARCLOCAL] Devon and Cornwall SARC: https://sarchelp.co.uk/professionals/guidance-patient-disclosure/ (fetched); https://sarchelp.co.uk/sarcs/what-is-a-sarc/ (snippet)
 - [FFLM] FFLM, SARC storage of forensic samples, July 2024: https://fflm.ac.uk/wp-content/uploads/2024/07/SARC-Storage-of-Forensic-Samples-the-Human-Tissue-Act-Jul-24.pdf (snippet)
