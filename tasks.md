@@ -1350,3 +1350,20 @@ Ranked in plan.md §29. Nothing here is built. Specs: `spec/clinical-safety/meas
 - [ ] **TO-7 (S) — A role-to-task matrix.** One per setting, from which lessons are listed. **Acceptance:** a matrix in `spec/training/`.
 - [ ] **TO-8 (S, clinical) — A downtime drill pack.** With the downtime extract and paper forms. **Acceptance:** one recorded drill.
 - [ ] **TO-9 (S) — Release notes for trainers.** What changed, per role, so material does not go stale. **Acceptance:** added to the release checklist.
+
+## Research 2026-11-04 — system quality attributes
+
+Ranked in plan.md §30. Nothing here is built. Pages: `docs/<attribute>/index.md`.
+
+- [ ] **QA-1 (S) — Requirement-to-test trace.** A table generated from FR ids, extending `scripts/generate-status.sh`. **Acceptance:** generated and checked in the docs job; untraced rows shown.
+- [ ] **QA-2 (S) — Mutation runs on the safety code.** Consent, policy and audit refusal, by hand, per release, survivors recorded (extends CQ-30; the weekly run stays declined, PR-8). **Acceptance:** a first recorded run.
+- [ ] **QA-3 (S) — Scheduled audit verification.** Run `GET /api/audit/verify` daily, alert on 409 or 424, record the result. **Acceptance:** a runbook and a planted failure.
+- [ ] **QA-4 (S) — Draft retention periods.** Per class from the NHS Records Management Code, labelled unreviewed, as a starting point for a controller. **Acceptance:** a table in the DPIA.
+- [ ] **QA-5 (S) — No identifiers in logs.** A test that no identifier appears in `tracing` output on the main routes. **Acceptance:** the test.
+- [ ] **QA-6 (S) — A low-resource profile.** One core, 2 GiB, 3G latency as a named test target, from the equity rule. **Acceptance:** a measured run recorded in `BENCHMARKS.md`.
+- [ ] **QA-7 (S) — OpenAPI breaking-change check.** Add it to the OS-7 freshness gate. **Acceptance:** a planted break fails.
+- [ ] **QA-8 (S) — Build on the minimum Rust version.** **Acceptance:** a CI job on 1.97.
+- [ ] **QA-9 (M) — ASVS table with evidence.** Level chosen with a reason; each row linked to evidence, no compliance claimed. **Acceptance:** a table under `docs/security/`.
+- [ ] **QA-10 (S) — A threat model per data flow.** STRIDE, one short entry per row in `governance/data-flow.md`. **Acceptance:** the entries exist.
+- [ ] **QA-11 (S, decision) — The audit chain's witness.** Decide whether to publish the chain head externally, and whether a keyed MAC is enough. **Acceptance:** a recorded decision.
+- [ ] **QA-12 (S, decision) — Tenancy before more tables.** Is one deployment one tenant for 1.0? Retrofitting `tenant_id` on append-only tables is costly (SE-5). **Acceptance:** a recorded decision.

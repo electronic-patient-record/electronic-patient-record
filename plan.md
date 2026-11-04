@@ -1713,3 +1713,19 @@ SM-1 to SM-5, MT-1 to MT-4, DX-1 to DX-10, PM-1 to PM-5 and TO-1 to TO-9 in `tas
 ### 29.3 Not done, not verified
 
 Nothing was built, including the overlay. Each page has a "Not verified" list; candidate hazards on them are candidates, not rows in the log, and are added with the first code. Figures from the literature (error rates, burden) are as reported and are not baselines for this project. Maternity content comes from public reviews and data-set documents, not from a midwife or an obstetrician, and must not be used as clinical content. No measure has been computed.
+
+## 30. Research pass 2026-11-04: system quality attributes
+
+The request: research system quality attributes, one `docs/<attribute>/index.md` each. Twelve pages, indexed at [`docs/index.md`](docs/index.md): ISO/IEC 25010:2023's nine product-quality characteristics, plus interoperability, privacy and auditability, which matter too much here to stay as sub-characteristics. Documents only.
+
+### 30.1 Assessment
+
+The pages agree on one thing: **the project's strongest quality evidence is about safety of change (census tests, guards, audit refusal); the weakest is about operation.** Nothing has been restored from a backup, so NFR-3's RPO and RTO cannot be tested. Nothing has run on two replicas. Coverage floors have not run on GitHub, and mutation testing covers two matcher files. Flexibility is entirely design. Privacy has no retention periods. Where a page gives a target, read it as a target.
+
+### 30.2 Ideas, ranked
+
+QA-1 to QA-12 in `tasks.md`. Many ideas on these pages extend existing tasks (AS-7 restore, OS-5 benchmarks, SE-5 tenancy, SE-10 second factor, AU-3, CQ-18) and are noted on the pages rather than repeated. AS-7 stays the highest-value operational item.
+
+### 30.3 Not done, not verified
+
+The ISO/IEC 25010:2023 wording comes from secondary summaries; the standard was not read. For the reliability, security, privacy and auditability pages, the crashed session's own note said only one source was checked at the time and the others were cited from memory; a link check on 2026-11-04 tests that they exist, not that they say what is claimed. Legal points on those pages (the subject-access deadline, the Article 17 health exemption) are recalled and need checking. Each page's "Not verified" section says so.

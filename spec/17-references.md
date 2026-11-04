@@ -29,3 +29,5 @@ Most of these were seen as search results or in part; none was read in full.
 Other EPRs, read 2026-11-04 (plan.md §28): each `spec/<vendor>/index.md` lists its own sources; most were seen as search results, and many are trade press or third-party guides.
 
 Clinical safety measures, maternity, manual steps, data exchange, data quality, productivity and training, read 2026-11-04 (plan.md §29): each page lists its own sources; most were seen as search results.
+
+System quality attributes, read 2026-11-04 (plan.md §30): each `docs/<attribute>/index.md` lists its own sources; ISO/IEC 25010:2023 was read only through secondary summaries.

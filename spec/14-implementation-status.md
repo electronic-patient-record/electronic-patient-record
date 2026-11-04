@@ -60,6 +60,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | DX | 0 | 10 |
 | PM | 0 | 5 |
 | TO | 0 | 9 |
-| **Total** | **52** | **273** |
+| QA | 0 | 12 |
+| **Total** | **52** | **285** |
 
 <!-- generated:end -->

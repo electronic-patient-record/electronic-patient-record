@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-04 - Research pass: system quality attributes (plan.md §30, QA-1 to QA-12)
+
+- **Clinical risk:** none (documents only). No hazard row changed.
+- **Built:** `docs/index.md` and twelve `docs/<attribute>/index.md` pages; `plan.md` §30; tasks QA-1 to QA-12; `spec/index.md`, `spec/17`.
+- **Not done / not verified:** no code. ISO/IEC 25010:2023 was not read. Several sources on the reliability, security, privacy and auditability pages were cited from memory; a link check tested only that they exist. Recalled legal points on those pages need checking.
+
 ## 2026-11-04 - Research pass: safety measures, maternity, manual steps, data in and out, data quality, productivity, training (plan.md §29)
 
 - **Clinical risk:** none now (documents only). Most of these tasks change what a clinician sees and are marked `clinical`; the candidate hazards on each page go in the log with the first code. No hazard row changed.
