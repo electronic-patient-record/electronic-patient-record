@@ -103,8 +103,6 @@ jobs:
   api-db:
     name: API (Postgres 18 tests)
     runs-on: ubuntu-latest
-    env:
-      CARGO_PROFILE_DEV_DEBUG: line-tables-only
     defaults:
       run:
         working-directory: electronic-patient-record-service-with-rust
@@ -121,6 +119,7 @@ jobs:
           --health-cmd "pg_isready -U loco -d electronic_patient_record_test"
           --health-interval 5s --health-timeout 5s --health-retries 20
     env:
+      CARGO_PROFILE_DEV_DEBUG: line-tables-only
       DATABASE_URL: postgres://loco:loco@localhost:5432/electronic_patient_record_test
     steps:
       - uses: actions/checkout@v7
