@@ -241,7 +241,7 @@ Proposals only. None is to be built before clinicians, observers and people with
 2. **Three-state check:** seen, not seen with a reason, or no holder. Equal effort for each. The chart never interpolates.
 3. **Both clocks on every screen** for observations: when it happened and when it was written; late entries say so. This uses what `observation_versions` already holds.
 4. **A short observer view** on a phone, for one patient: the plan, what helps, the next check, take over and hand over.
-5. **A census test for risk words.** In the manner of the existing census tests, the core fails a check if a `risk_level`-shaped field appears; a pack that adds one must declare it.
+5. **A census test for risk words.** Built (SW-1): `electronic-patient-record-service-with-rust/tests/risk_field_census.rs` fails if a `risk_level`-shaped field appears in the core; a pack that adds one must declare it. It sees field names only: it cannot stop a score written in free text or held under another name.
 6. **A safety plan owned by the person**, versioned, printable, with a recipient list the person controls.
 7. **An emergency rule for a safety fact** with [OQ-PI2](../16-open-questions.md): what break-glass shows of a plan.
 8. **Follow-up as a pathway step** with an owner and a loop-back, reusing the referral pattern.

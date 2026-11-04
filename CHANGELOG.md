@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-04 - A census test keeps a risk score out of the core (SW-1)
+
+- **Clinical risk:** none now: a guard, with no change to what a clinician sees. It blocks a future field that would. No hazard row changed.
+- **Built:** `electronic-patient-record-service-with-rust/tests/risk_field_census.rs`, over the service, migrations, matcher and UI; `spec/11`, `spec/suicide-watch`; SW-1 ticked.
+- **Not done / not verified:** it reads names only, so a score in free text, or under another name, passes. The shapes are my list and no clinician has reviewed it. NG225 was read from a third-party copy. Only this test, with `cargo fmt` and clippy for it, was run locally, not the whole suite; a field planted in a UI file made it fail, and the plant was removed. No pack mechanism exists yet to declare an exception, only the `DECLARED` list.
+
 ## 2026-11-04 - Two stale status statements corrected
 
 - **Clinical risk:** none (documents only). No hazard row changed.

@@ -8,6 +8,8 @@ cases traced to the hazard log, NISTIR 7804 summative usability testing. What ea
 
 Where the gates run, and a proposal to run more of them locally first with GitHub as the independent second check: [`local-ci.md`](local-ci.md) (LC, 2026-11-04; nothing built).
 
+**Risk field census (SW-1).** `tests/risk_field_census.rs` fails if a field shaped like a suicide or self-harm risk score appears in the service, migrations, matcher or UI, because NICE NG225 advises against such tools ([suicide watch](suicide-watch/index.md)). It reads names only.
+
 Against the field ([benchmark](benchmark.md), 2026-10-30): the census tests, the seeded hostile-input sweep and the
 hand-run mutation pass have no counterpart in any comparator. Missing here and usual there: coverage measured and
 gated in CI (OS-4), a performance run on `main` with published numbers (OS-5), a documentation census (OS-9),
