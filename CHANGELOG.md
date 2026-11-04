@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-04 - CI: test builds use line tables, so the runner stops running out of disk
+
+- **Clinical risk:** none (CI configuration). No hazard row changed.
+- **Built:** `CARGO_PROFILE_DEV_DEBUG=line-tables-only` on the `api` and `api-db` jobs. Commit `2456a7a` failed in `cargo test` with `No space left` and linker bus errors, across unrelated test binaries; SW-1's new test added one more to 58.
+- **Not done / not verified:** the size saved was not measured. The `coverage` job was not changed, because it may need full debug information. Disk use on the runner was not recorded, so the remaining margin is unknown.
+
 ## 2026-11-04 - A census test keeps a risk score out of the core (SW-1)
 
 - **Clinical risk:** none now: a guard, with no change to what a clinician sees. It blocks a future field that would. No hazard row changed.
