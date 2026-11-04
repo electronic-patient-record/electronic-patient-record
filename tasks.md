@@ -1242,7 +1242,7 @@ Ranked in plan.md §25. Each item was checked against this repository's code; a 
 - [ ] **PR-3 (S) — Stored words checked against the database.** *(First slice 2026-11-04: referral states, allergy and consent statuses, `tests/stored_words.rs`; amendment, observation and queue words not yet.)* A database-gated test reads each `CHECK (… IN (…))` list from the catalogue
   and compares it with the code's list: referral states, queue kinds and clearances, and the existing allergy, observation and amendment
   states. **Acceptance:** adding a word to `State` without the migration fails the test, and the reverse.
-- [ ] **PR-4 (S) — One replica runs a background job.** First **check** whether two replicas running `audit_retention::run_loop` at once make
+- [x] **PR-4 (S) — One replica runs a background job.** *(Built 2026-11-04; checked first, see CHANGELOG.)* First **check** whether two replicas running `audit_retention::run_loop` at once make
   or archive a partition twice or fail harmlessly (not checked). Then, if it matters, take a transaction-scoped advisory lock per job
   name. **Acceptance:** a test runs the job body twice at once and sees one effect and no error.
 - [ ] **PR-5 (M) — A controllable clock.** `Clock` and `FixedClock` in the service, used by idempotency expiry, break-glass expiry and

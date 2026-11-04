@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-04 - One replica runs the audit maintenance job (PR-4)
+
+- **Clinical risk:** none to what a clinician sees; it touches audit retention (H-042) only by making the job safer. No hazard row changed.
+- **Checked first** (scratch database, a second session started while the first held its transaction open): two replicas making partitions together: the second returned `Ok(0)`, no error. Two replicas archiving together: the second failed with `relation "audit_events_p0" does not exist` and the first's work stood, so nothing was archived twice and no anchor was doubled; the cost was a false "audit archive failed" error in the log.
+- **Built:** `audit_retention::run_once` takes a transaction-scoped `pg_try_advisory_xact_lock` (`LOCK_KEY`) and does nothing, saying `Ran::Skipped`, when another replica holds it; the loop uses it; `ensure_partitions` and `archive_older_than` take any connection. 2 database tests: a run is skipped while the lock is held; two runs at once make each partition once and neither fails.
+- **Not done / not verified:** the "two at once" test passes without the lock too (making partitions was already safe; the archive race needs exact timing), so it guards the result, not the lock; the lock test is what proves the lock. One lock for the whole job, not per step. Only checked on one Postgres, one machine, not with two real processes. A replica that skips waits for its next tick, six hours, so a failed round on the first replica is retried by whoever ticks next.
+
 ## 2026-11-04 - Stored words checked against the database (PR-3, first slice)
 
 - **Clinical risk:** none (a test and two `ALL` constants). No hazard row changed.

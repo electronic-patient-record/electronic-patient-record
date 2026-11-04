@@ -456,3 +456,64 @@ async fn the_verify_answer_counts_archived_rows_and_is_a_409_when_the_archive_is
     assert!(body["reason"].as_str().unwrap().contains("audit_events_p0"));
     s.finish().await;
 }
+
+/// The number of monthly partitions of `audit_events` right now.
+async fn partitions(s: &Scratch) -> i64 {
+    s.n("SELECT count(*) FROM pg_inherits WHERE inhparent = 'audit_events'::regclass")
+        .await
+}
+
+/// PR-4: while another replica holds the job's lock, a run does nothing and says so; afterwards it runs.
+#[tokio::test]
+#[ignore = "needs DATABASE_URL"]
+async fn a_run_while_another_replica_holds_the_lock_is_skipped() {
+    use sea_orm::TransactionTrait;
+    let s = Scratch::new(None).await;
+    let before = partitions(&s).await;
+    let other = s.db.begin().await.unwrap();
+    other
+        .execute_unprepared(&format!(
+            "SELECT pg_advisory_xact_lock({})",
+            audit_retention::LOCK_KEY
+        ))
+        .await
+        .unwrap();
+    let skipped = audit_retention::run_once(&s.db, before as i32 + 6, None).await;
+    assert_eq!(skipped, Ok(audit_retention::Ran::Skipped));
+    assert_eq!(
+        partitions(&s).await,
+        before,
+        "a skipped run changes nothing"
+    );
+    other.commit().await.unwrap();
+    let ran = audit_retention::run_once(&s.db, 36, None).await.unwrap();
+    assert!(
+        matches!(ran, audit_retention::Ran::Done { made, .. } if made > 0),
+        "{ran:?}"
+    );
+    assert!(partitions(&s).await > before);
+    s.finish().await;
+}
+
+/// PR-4: two replicas running the job body at the same moment: neither fails, and the work is done once.
+#[tokio::test]
+#[ignore = "needs DATABASE_URL"]
+async fn two_replicas_running_at_once_do_the_work_once_and_neither_fails() {
+    let s = Scratch::new(None).await;
+    let before = partitions(&s).await;
+    let (a, b) = tokio::join!(
+        audit_retention::run_once(&s.db, 36, Some(1200)),
+        audit_retention::run_once(&s.db, 36, Some(1200)),
+    );
+    let (a, b) = (a.expect("first"), b.expect("second"));
+    let made = |r: &audit_retention::Ran| match r {
+        audit_retention::Ran::Done { made, .. } => *made,
+        audit_retention::Ran::Skipped => 0,
+    };
+    assert_eq!(
+        i64::from(made(&a) + made(&b)),
+        partitions(&s).await - before,
+        "{a:?} {b:?}"
+    );
+    s.finish().await;
+}
