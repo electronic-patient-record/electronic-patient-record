@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-04 - Research pass: bereavement, suicide watch, survivor grief, trauma treatment (plan.md §32); hazards H-046, H-047
+
+- **Clinical risk:** **yes, two rows.** New hazards, both `open`: H-046, a death on an inbound HL7 message is dropped silently, and the record has no concept of death; H-047, a temporary name for an unknown patient reads as real evidence to the matcher. No code changed. Most new tasks are marked `clinical`.
+- **Built:** four spec pages; `plan.md` §32; tasks BV-1 to BV-8, SG-1 to SG-5, SW-1 to SW-7, TT-1 to TT-7; `spec/index`, `16`, `17`, `19`; hazards H-046 and H-047.
+- **Not done / not verified:** no code, so **both hazards are logged, not fixed**; they come from reading code and the spec, not from running a message or a name. No clinician, lawyer, or person with lived experience has reviewed this. All law is a lay reading. NICE pages returned 403, so NG225 and NG116 came from third-party copies. The Lampard Inquiry has not reported. Evidence is English-language, mostly from high-income countries. The service spec still says referrals have no route.
+
 ## 2026-11-04 - The project site, and QA-4 pointed at the right file
 
 - **Clinical risk:** none (a public description of the project; no change to the record). Every page says not for clinical use, and a build check fails without it. No hazard row changed.

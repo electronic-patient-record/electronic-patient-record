@@ -65,6 +65,10 @@ no network, database or compilation; counts are source lines, not test runs):
 | PI | 0 | 9 |
 | HM | 0 | 5 |
 | VW | 0 | 6 |
-| **Total** | **52** | **312** |
+| BV | 0 | 8 |
+| SG | 0 | 5 |
+| SW | 0 | 7 |
+| TT | 0 | 7 |
+| **Total** | **52** | **339** |
 
 <!-- generated:end -->

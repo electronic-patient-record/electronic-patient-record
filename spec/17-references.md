@@ -33,3 +33,5 @@ Clinical safety measures, maternity, manual steps, data exchange, data quality, 
 System quality attributes, read 2026-11-04 (plan.md §30): each `docs/<attribute>/index.md` lists its own sources; ISO/IEC 25010:2023 was read only through secondary summaries.
 
 Roles, protected information, care homes, virtual wards and step-down, read 2026-11-04 (plan.md §31): each page lists its own sources and how each was read. HL7 sensitivity codes: <https://www.hl7.org/fhir/R4/v3/InformationSensitivityPolicy/vs.html>. Gender Recognition Act 2004 s.22: <https://www.legislation.gov.uk/ukpga/2004/7/section/22>.
+
+Bereavement, survivor grief, suicide watch and trauma treatment, read 2026-11-04 (plan.md §32): each page lists its own sources and how each was read. NICE NG225 and NG116 were read from third-party copies.

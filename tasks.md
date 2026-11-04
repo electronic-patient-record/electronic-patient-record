@@ -1399,3 +1399,35 @@ Ranked in plan.md §31. Nothing here is built. Specs: `spec/access-control/roles
 - [ ] **VW-4 (M, clinical) — A monitoring plan.** Measure, frequency, threshold, reason, who reads it and when; remote readings with source and device, and missing shown as missing. **Acceptance:** a design and a hazard row.
 - [ ] **VW-5 (S, clinical) — A structured handover built from the record.** Previewed, each missing item shown as "missing", never blank. **Acceptance:** a design, mapping to PRSB later.
 - [ ] **VW-6 (S) — Destination data.** Cover, exclusions, return route and capacity for the picker, starting with a manual figure; read the virtual wards data set DAPB4073. **Acceptance:** a design.
+
+## Research 2026-11-04 — bereavement, suicide watch, survivor grief, trauma treatment
+
+Ranked in plan.md §32. Nothing here is built. None is to be built before clinicians and people with lived experience have shaped it. Specs: `spec/bereavement/`, `spec/survivor-grief/`, `spec/suicide-watch/`, `spec/trauma-treatment/`.
+
+- [ ] **BV-1 (M, clinical) — Death assertions.** An append-only store with evidence, source and status, not a column on identity; a read model gives one banner answer; settle whether the matcher's `Patient` carries a date. **Acceptance:** a spec, then a table test; H-046 updated.
+- [ ] **BV-2 (S, clinical) — Read a death from the feed.** Read PID-29 and PID-30; say when a death could not be applied, rather than answer as if all was well; map FHIR `deceased[x]`. **Acceptance:** a test with a death message; H-046 updated, status set only by the Clinical Safety Officer.
+- [ ] **BV-3 (S, clinical) — A route census for the living.** Every outbound route has a test that an active death assertion stops it. **Acceptance:** the census, with the routes that exist now.
+- [ ] **BV-4 (M, clinical) — An effects ledger.** Each automatic effect records its assertion, so that a withdrawn death lists what to restore. **Acceptance:** a wrong-patient test.
+- [ ] **BV-5 (S, clinical) — End the proxy at death.** A separate person-acting-after-death relationship, with basis, scope and end date. **Acceptance:** a test that a proxy stops.
+- [ ] **BV-6 (S) — After-death wishes.** In the person's words, surviving merges, including a section 4(3) note. **Acceptance:** a design; legal review recorded.
+- [ ] **BV-7 (M, clinical) — What is still owed.** A pathway outcome of "patient died", a referral event, and a worklist with a named owner for pending results. **Acceptance:** a design, with the referral table test.
+- [ ] **BV-8 (S) — Death scenarios in the synthetic data.** Expected, sudden, coroner, wrong patient, withdrawn, baby, twin. **Acceptance:** the scenarios exist; no jokes in test data.
+- [ ] **SG-1 (S, clinical) — Three step types.** Information given, signposted, referred, each saying plainly what it will not tell you. **Acceptance:** added to `spec/pathway-design.md`.
+- [ ] **SG-2 (S, clinical) — Do not build.** Record the refusals: a family view, a household view, a list of people bereaved by suicide, an automatic referral, an anniversary mailing, a grief risk score. **Acceptance:** a rule in the specification and a date-derived-message route test.
+- [ ] **SG-3 (S) — Consent for contact.** Who, how, when, how often, withdrawn when; separate from access consent. **Acceptance:** a design.
+- [ ] **SG-4 (S) — A directory pack.** Services with owner, area, languages, last checked, and referral or self-referral; a stale entry shows as stale. **Acceptance:** a design; no phone number in core code.
+- [ ] **SG-5 (M, with people who have been bereaved) — Co-design.** A panel before any screen, with people paid and protected. **Acceptance:** a recorded plan; OQ-PI6 answered.
+- [ ] **SW-1 (S, clinical) — No risk score in the core.** A census test that fails on a `risk_level`-shaped field; a pack that adds one must declare it. **Acceptance:** the test.
+- [ ] **SW-2 (S, clinical) — Show both clocks.** When it happened and when it was written, on every observation screen; late entries say so; bound `effective_at`. Do not claim this detects a false entry. **Acceptance:** a UI test; the summary page changed.
+- [ ] **SW-3 (M, clinical) — An observation order and holder ledger.** Setting-neutral, with three-state checks: seen, not seen with a reason, no holder. The chart never interpolates. **Acceptance:** a design, shaped by observers.
+- [ ] **SW-4 (M, clinical) — A safety plan the person owns.** Versioned, printable, with a recipient list the person controls; settle what break-glass shows with OQ-PI2. **Acceptance:** a design, with people with lived experience.
+- [ ] **SW-5 (S, clinical) — Follow-up as a pathway step.** An owner and a loop-back, reusing the referral pattern. **Acceptance:** added to `spec/pathway-design.md`.
+- [ ] **SW-6 (S) — Reason-neutral lists.** "Enhanced care" and a level, not why; add a support worker role with RA-2. **Acceptance:** a design.
+- [ ] **SW-7 (S, clinical) — Preserve after an event.** A hold on records tied to a learning response, including the audit archive. **Acceptance:** a design; the archive's lack of a hold addressed.
+- [ ] **TT-1 (S, clinical) — A temporary identity state.** Set by a person, always shown, honoured by the matcher as absent evidence; change the matcher spec first. **Acceptance:** a test with a safe-format name and an estimated date proves no auto-link and a clear banner; H-047 updated.
+- [ ] **TT-2 (M, clinical) — Bulk arrival.** One action, with a drill mode on synthetic data, and an expected-arrival record that becomes real by a person's link. **Acceptance:** a design.
+- [ ] **TT-3 (M, clinical, after legal and survivor review) — Two layers of trauma history.** A summary the person approves, and a restricted narrative. **Acceptance:** reviews recorded before any code.
+- [ ] **TT-4 (M, clinical, after legal review) — A therapy note class.** A narrow audience, with a written summary as the only crossing; `SDV`, `VIO` and `PSYTHPN` with PI-2. **Acceptance:** OQ-TT1 answered.
+- [ ] **TT-5 (S) — A disclosure request record.** Release named items only, with third-party marks. **Acceptance:** a design; legal review recorded.
+- [ ] **TT-6 (S, clinical) — Trauma pathway templates.** Rehabilitation prescription as a document, and psychological review as a default step, offered and declinable. **Acceptance:** clinician review recorded.
+- [ ] **TT-7 (S) — A registry extract as a test.** NMTR, NTDS and the bi-national dataset test whether the core holds the right facts. **Acceptance:** a gap list.

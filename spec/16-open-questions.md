@@ -70,5 +70,9 @@
 | OQ-PI4 | Is a deliberate break between old and new records ever bridged, and who decides? Recommendation: only with the patient's approval. Open. | Clinical Safety Officer, data protection officer, patients |
 | OQ-PI5 | Should a mask say anything? "Restricted information exists" helps a clinician and harms a person being watched. Recommendation: differ by viewer. Open. | Clinical Safety Officer, data protection officer |
 | OQ-PI6 | Who is consulted before any build: people living with HIV, trans patients, survivors, young people, and how? Open. | maintainer |
+| OQ-BV1 | Does any report of a death stop contact, or only a confirmed one? Recommendation: any report holds outbound contact, and a person confirms. Open; the other questions are on [bereavement](bereavement/index.md). | Clinical Safety Officer, bereaved families |
+| OQ-SG1 | How does a service support someone with no record here, and is one contact attempt the right default? See [survivor grief](survivor-grief/index.md). Open. | clinical advisers, people bereaved |
+| OQ-SW1 | Who shapes observation records first, and what may an observer see of the reason? Recommendation: no risk score in the core either way. See [suicide watch](suicide-watch/index.md). Open. | Clinical Safety Officer, observers, people with lived experience |
+| OQ-TT1 | A therapy note cannot be withdrawn from an append-only record. Is restriction enough, given section 28 of the Victims and Prisoners Act 2024 and its code? See [trauma treatment](trauma-treatment/index.md). Open: needs a lawyer and survivors. | maintainer, legal, survivors |
 
 No answers recorded yet, except where a row says decided or proposed.
