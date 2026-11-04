@@ -3,6 +3,9 @@
 - **EPR / EHR / EMR**: electronic patient record / health record / medical record. Used loosely; this project says EPR.
 - **Care pathway**: the planned, goal-directed route a patient takes through care for a condition or need, across teams, settings, organisations and time; the organising unit of this record ([5.2.1](05-domain-model.md)). Held as a `CarePlan`, from a `PlanDefinition` template where one is used.
 - **Encounter / episode of care**: one contact / a period in which an organisation takes responsibility, kept for tracking, reporting or billing. Both happen along a care pathway; neither is the unit the record is organised by, and no clinical rule depends on an episode existing.
+- **Care setting / setting profile**: acute, community or mental-health care; a profile chooses the work-unit view, forms and legal-status records on one record ([care settings](care-settings.md)).
+- **Specialty view**: how one specialty (for example renal) sees and works the same record, delivered as a pack; it adds and never hides safety information.
+- **Homomorphic encryption (HE)**: computing on encrypted data; slow and limited, considered only for secondary-use analysis, never the clinical path ([privacy-preserving analysis](privacy-analytics.md)).
 - **Problem list**: the clinician-maintained list of active and resolved conditions.
 - **CPOE**: computerised provider order entry. **CDS**: clinical decision support.
 - **MPI**: master patient index. **Overlay**: two people merged into one record (a safety incident). **Duplicate**: one

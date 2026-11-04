@@ -96,6 +96,10 @@ Topics that span several numbered chapters and are kept whole:
   units, locales, regulation.
 - [Locales](locales.md) — `<language>-<region>` names, same rules as the
   project-portfolio-management repository.
+- [Mobile viewability](mobile-viewability.md) — the record usable on a phone: reflow, touch targets, a banner that stays whole; a direction, nothing built (XP)
+- [Care settings and specialty views](care-settings.md) — acute, community and mental health on one record; specialty views such as renal as packs (XP)
+- [Pathway design](pathway-design.md) — clinicians design, review, publish and redesign care pathways (XP)
+- [Privacy-preserving analysis](privacy-analytics.md) — homomorphic encryption and its alternatives for secondary use, post-1.0 (XP)
 - [Local CI/CD](local-ci.md) — more of the checking on the author's machine, GitHub as the independent second witness; a proposal from plan.md §26 (LC)
 - [Data flow](../governance/data-flow.md) — who sends what to whom, read from the routes, the feed and the outbox (draft, PR-7)
 - [MFA plan](../governance/mfa-plan.md) — what the service checks, what Keycloak enforces, what is left to the deployment (draft, PR-7)

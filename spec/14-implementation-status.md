@@ -53,6 +53,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | PC | 1 | 8 |
 | PR | 4 | 4 |
 | LC | 1 | 12 |
-| **Total** | **52** | **214** |
+| XP | 0 | 14 |
+| **Total** | **52** | **228** |
 
 <!-- generated:end -->

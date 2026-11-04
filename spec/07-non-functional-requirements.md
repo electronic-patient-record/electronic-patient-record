@@ -9,7 +9,7 @@ Targets, not measurements. Nothing here has been measured yet. Where the field s
   read p50 ≤ 10 ms.
 - **NFR-3 Availability.** 99.9%; stateless app tier; PostgreSQL replication; RPO ≤ 5 min, RTO ≤ 4 h; restoration within 72 h
   (proposed HIPAA rule). Downtime snapshot ([plan](../plan.md) §6.5).
-- **NFR-4 Accessibility.** WCAG 2.2 AA; axe on every page; keyboard-only operation of critical tasks.
+- **NFR-4 Accessibility.** WCAG 2.2 AA; axe on every page; keyboard-only operation of critical tasks. **Mobile viewability** is part of it: reflow at 320 CSS pixels, touch targets, and a patient banner that stays whole on a phone ([mobile viewability](mobile-viewability.md); proposed 2026-11-04, nothing built).
 - **NFR-5 i18n.** Ten locales, `<language>-<region>` names ([locales](locales.md)); times UTC with the user's zone at the edge.
 - **NFR-6 Security.** Login enforced by default; TLS 1.2+ (prefer 1.3); AES-256 at rest; MFA; per-tenant keys;
   no secrets in code or images; non-root containers; cargo-deny, SBOM, ZAP.

@@ -1593,3 +1593,74 @@ LC-1, LC-2, LC-4, LC-5, LC-12, then LC-7 and LC-6, then LC-8; LC-3 gate by gate;
 No tool above was installed or run. The billing page of the author's account was not read, so "the cost today is nil" rests on GitHub's statement about public repositories. Eleven of the 14 recent failures were not opened.
 The one-run timing is one run. Hosted-runner prices, mold on macOS, whether the CodeQL command-line tool may be used locally, Woodpecker's forge support, and every service-container claim (act, Forgejo, Woodpecker) were not checked.
 Third-party incident counts disagree. No benchmark was run on this repository, so no speed-up is claimed.
+
+## 27. Research pass 2026-11-04: mobile viewability, care settings, specialty views, pathway design and homomorphic encryption
+
+The request (five points): emphasise mobile viewability; close the gap that systems are built for one of acute, community or mental-health care, so an acute provider adding community or
+mental health finds it works badly; add homomorphic encryption for data analysis; add specialties such as a renal-specific view; let clinicians design and redesign care pathways. Documents only; **nothing built,
+no tool installed, no clinician consulted.** Specs: [`mobile-viewability`](spec/mobile-viewability.md), [`care-settings`](spec/care-settings.md), [`pathway-design`](spec/pathway-design.md), [`privacy-analytics`](spec/privacy-analytics.md).
+Builds on §26's parent idea, the pathway-first rule (spec/05 §5.2.1).
+
+### 27.1 Assessment
+
+| Point | What the repository has | What the sources say | My assessment |
+|---|---|---|---|
+| Mobile viewability | A viewport tag and a dark-mode query; Playwright on desktop Chrome only; `<table>`s in four screens; idempotency keys already make a retry safe | WCAG 2.2: reflow at 320 CSS px, targets at least 24 px | **Highest value and cheapest.** The UI already exists, so each screen added without a phone test adds debt. Do first (XP-1 to XP-4). The banner on a small screen is a **patient-safety** point, not cosmetics |
+| Acute versus community and mental health | The scope says ambulatory first, inpatient core next; CA-1 plans encounters and a minimal bed board | Trade-press and supplier examples: mobile access, Mental Health Act compliance, statutory returns, long caseload care | **Agree it is a real design risk**, and the pathway-first rule is the main defence: a discharge ends a stay, not the care. Make "no bed, no admission in the core" a stated rule now (XP-5), build profiles later |
+| Homomorphic encryption | Encryption at rest and an integrity MAC; nothing for analysis | Orders of magnitude slower, megabyte ciphertexts, thin operations and standards | **A narrow tool, post-1.0, spike first.** It will not make clinical care safer and does not by itself make an output safe; pair it with output rules. Compare with a trusted research environment and differential privacy before committing (XP-8) |
+| Specialty views | Lily widgets, packs mechanism designed (OS-10) | A renal registry feed and dated, uneven eGFR results are real constraints | **Do as packs on one record.** A separate record per specialty is the failure to avoid. Renal as the worked example, written with a renal clinician |
+| Clinician-designed pathways | Nothing; pathway basics are CA-2 | HL7 CPG layering exists; `PlanDefinition` is hard for clinicians; **no clinician-authored tool found** | **The most valuable and the riskiest.** Valuable because the people who know the pathway can fix it; risky because a changed template changes live care. Needs versioning, review and simulation (XP-12, XP-13) |
+
+### 27.2 Ideas, ranked
+
+| ID | Idea | Value | Cost |
+|---|---|---|---|
+| XP-1 | Mobile audit: Playwright phone projects, axe and a no-horizontal-scroll check at 320 px; record what breaks | High | S |
+| XP-2 | Make the core screens reflow: banner, patient list, record page, referral screens | High | M |
+| XP-3 | A hazard row and a rule for what the banner and allergies show at 320 px | High | S |
+| XP-4 | A design note for poor signal: downtime snapshot read, queued writes (OQ-5, OQ-MV1) | Medium | S |
+| XP-5 | Read the spec and code for acute-only assumptions (bed, admission, discharge as end of care) and list them | High | S |
+| XP-6 | Setting profiles (acute, community, mental health): work-unit view and defaults, after CA-1 and CA-2 | High | M |
+| XP-7 | What a legal-status record needs for mental health, as a pack, no country's law in the core | Medium | S |
+| XP-8 | Homomorphic-encryption spike on synthetic data, with differential privacy and plaintext as comparators | Medium | S |
+| XP-9 | Secondary-use export design: purpose of use, minimum cell size, the data protection officer's question | Medium | S |
+| XP-10 | Specialty-pack design: what a pack holds, review status, how a view adds and never hides | High | S |
+| XP-11 | Renal view on synthetic data, written with a renal clinician | Medium | M |
+| XP-12 | Pathway template model: versioned, immutable, applied to a patient as a plan; migration rules | High | M |
+| XP-13 | Clinician pathway editor with draft, review, publish and a simulation | High | L |
+| XP-14 | Pathway analytics: time in step, open loops, skipped steps | Medium | S |
+
+### 27.3 Advice and order
+
+1. **Mobile first (XP-1, then XP-3 and XP-2).** It improves what exists and shapes everything after.
+2. **XP-5 now, profiles later.** The cheap, valuable thing is to stop the core assuming a bed; the profile mechanism waits for CA-1 and CA-2 (and OQ-ST1).
+3. **Pathway model before the editor.** XP-12 needs CA-2 and OQ-CP3; XP-13 is an L-sized item whose safety case (review, versioning, simulation) is the real work, not the drawing.
+4. **Homomorphic encryption last and small.** XP-8 is a week on synthetic data; the answer may well be "use a trusted research environment".
+5. **Renal with a renal clinician or not at all** (XP-10, XP-11): no one outside renal care should decide what the summary page leads with.
+
+### 27.4 Risks
+
+- A phone layout that hides allergies, alerts or the patient's identity to fit.
+- A setting profile that becomes a fork, so acute and community drift into two systems.
+- A pathway template changed in the editor that silently changes live patients' care.
+- Treating encrypted data as no longer personal, or sending out a small-cell aggregate.
+- A specialty view that hides safety information, or ships clinical content nobody reviewed.
+- Claiming any of this is done: every item is a direction.
+
+### 27.5 Open questions (spec/16-open-questions.md)
+
+OQ-MV1 devices and offline; OQ-ST1 which settings in 1.0; OQ-ST2 mental-health law as a pack; OQ-SP1 who authors a specialty pack; OQ-HE1 status of encrypted data; OQ-HE2 whether to do homomorphic encryption at all; OQ-PD1 who may publish a pathway template.
+
+### 27.6 Sources (read 2026-11-04; most as search results or in part)
+
+- WCAG 2.2 success criteria 2.5.8 and 1.4.10, via secondary summaries: <https://kb.daisy.org/publishing/docs/wcag/target-size-minimum.html> (confirm on w3.org).
+- Community and mental-health EPR examples: <https://www.digitalhealth.net/2016/06/special-report-mental-health-systems/>; <https://www.theaccessgroup.com/en-gb/health-social-care/health-and-support-case-studies/health-related-case-studies/somerset-partnership-nhs-foundation-trust/>; <https://buildingbetterhealthcare.com/lincolnshire-nhs-trust-goes-live-with-rio-electronic-patient-record--148402>.
+- Renal: UK Renal Registry, <https://ukkidney.org/sites/renal.org/files/23rd_UKRR_ANNUAL_REPORT.pdf> and its Q&A, <https://renalregistry.atlassian.net/wiki/spaces/UD/pages/2359853069/Questions+and+Answers+-+UKRR>; a primary-care renal-data study, <https://eprints.soton.ac.uk/398654/1/AcceptedNDT20160625.pdf>.
+- Pathway design: HL7 Clinical Practice Guidelines IG, <https://hl7.org/fhir/uv/cpg/documentation-methodology.html> and <https://hl7.org/fhir/uv/cpg/StructureDefinition-cpg-pathwaydefinition.html>; FHIR `PlanDefinition`, <https://hl7.org/fhir/R4/plandefinition.html>.
+- Homomorphic encryption: <https://homomorphicencryption.org/standard/>; ISO/IEC 18033-6, <https://www.iso.org/standard/67740.html>; Chalmers thesis, <https://odr.chalmers.se/items/5d2cf46b-ce60-459c-95df-3c9bd6d53987>.
+
+### 27.7 Not done, not verified
+
+Nothing was built. I did not run a phone or an emulator, install a homomorphic-encryption library, read the full text of any standard, or talk to a clinician. The acute versus community comparison is the author's observation supported by examples, with no direct comparison source found.
+Renal content comes from registry material and a research paper, not a renal clinician; vascular access and transplant are unsourced. The HL7 pathway material was read from search results and part of one guide. The ActCode values for `Encounter.class` are to be checked.
+Third-party and student-thesis sources on homomorphic encryption are indicative only. No hazard row was added (documents only); rows are due with the first code.

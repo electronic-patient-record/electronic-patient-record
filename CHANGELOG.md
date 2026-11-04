@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-04 - Research pass: mobile, care settings, specialty views, pathway design, private analysis (plan.md §27, XP-1 to XP-14)
+
+- **Clinical risk:** none now (documents only). Mobile layout, setting profiles, specialty views and clinician-edited pathways each change what a clinician sees; hazard rows are due with the first code (XP-3 names the first). No hazard row changed.
+- **Built:** `spec/mobile-viewability.md`, `spec/care-settings.md`, `spec/pathway-design.md`, `spec/privacy-analytics.md`; edits to `spec/05`, `06` (FR-8.10 to FR-8.12), `07` (NFR-4), `04`, `15`, `19`, `index`; seven open questions (OQ-MV1, OQ-ST1, OQ-ST2, OQ-SP1, OQ-HE1, OQ-HE2, OQ-PD1); `plan.md` §27; `tasks.md` `XP-1` to `XP-14` and the `XP-` prefix.
+- **Not done / not verified:** no code; no phone or emulator was used; no homomorphic-encryption library was installed (the speed and size figures come from two theses by search result); no clinician or renal specialist was consulted, so the renal content is from registry material and one paper; the acute versus community comparison is the author's observation backed by trade-press examples, with no direct comparison source; WCAG values come from secondary summaries; the HL7 pathway material was read in part.
+
 ## 2026-11-04 - Spec: the care pathway comes before the separate episode
 
 - **Clinical risk:** none now (documents only); the direction changes what the record will show, so a pathway hazard row is to be added with the first code (said in `spec/05` §5.2.1). No hazard row changed.

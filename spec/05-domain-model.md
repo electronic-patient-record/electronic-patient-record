@@ -46,6 +46,8 @@ Design rules that follow:
 7. **Not claimed.** There is no pathway engine, no guideline authoring and no automatic instantiation. Nothing here has had clinical review. A hazard row for pathways (for example a pathway that looks
    "on track" while a step was missed, or a template applied to the wrong patient) is added with the first code, in the same commit (AGENTS.md), not now.
 
+Related: how a pathway is designed and changed by clinicians is in [pathway design](pathway-design.md); how acute, community and mental-health settings and specialty views sit on the same record is in [care settings](care-settings.md).
+
 ### 5.3 Versioning and provenance
 
 Every change writes a new `resource_version` row (never an update in place) with `meta.versionId`, author, time, reason
