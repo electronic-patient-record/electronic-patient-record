@@ -288,8 +288,8 @@ pub enum Label {
     Hiv,
     /// `SUD`: substance use disorder (42 CFR Part 2).
     SubstanceUse,
-    /// `ETH`: ethnicity-related.
-    Ethnicity,
+    /// `ETH`: substance abuse, HL7's older code beside `SUD` (PI-1, H-045). Not ethnicity.
+    SubstanceAbuse,
 }
 
 impl Label {
@@ -300,7 +300,7 @@ impl Label {
         Label::Psychiatry,
         Label::Hiv,
         Label::SubstanceUse,
-        Label::Ethnicity,
+        Label::SubstanceAbuse,
     ];
 
     /// The FHIR code.
@@ -312,7 +312,7 @@ impl Label {
             Label::Psychiatry => "PSY",
             Label::Hiv => "HIV",
             Label::SubstanceUse => "SUD",
-            Label::Ethnicity => "ETH",
+            Label::SubstanceAbuse => "ETH",
         }
     }
 
@@ -331,7 +331,7 @@ impl Label {
             Label::Psychiatry => &[Clinician, Nurse, AlliedHealth, Patient],
             Label::Hiv => &[Clinician, Nurse, Pharmacist, Patient],
             Label::SubstanceUse => &[Clinician, Patient],
-            Label::Ethnicity => &[Clinician, Nurse, AlliedHealth, Patient],
+            Label::SubstanceAbuse => &[Clinician, Patient],
         }
     }
 }
@@ -833,6 +833,32 @@ mod tests {
         for role in Role::ALL {
             assert_eq!(Role::parse(role.as_str()), Some(role));
         }
+    }
+
+    /// PI-1, H-045: each code keeps the meaning HL7 gives it, in the FHIR R4 sensitivity and
+    /// confidentiality value sets. `ETH` means substance abuse there, whatever it looks like.
+    #[test]
+    fn label_codes_keep_their_hl7_meanings() {
+        for (code, label) in [
+            ("R", Label::Restricted),
+            ("V", Label::VeryRestricted),
+            ("PSY", Label::Psychiatry),
+            ("HIV", Label::Hiv),
+            ("SUD", Label::SubstanceUse),
+            ("ETH", Label::SubstanceAbuse),
+        ] {
+            assert_eq!(Label::parse(code), Some(label), "{code}");
+        }
+        assert_eq!(Label::ALL.len(), 6, "a new label needs a row here");
+    }
+
+    /// Two HL7 codes for one kind of information must not differ in who sees it.
+    #[test]
+    fn the_two_substance_labels_unmask_for_the_same_roles() {
+        assert_eq!(
+            Label::SubstanceAbuse.unmasked_for(),
+            Label::SubstanceUse.unmasked_for()
+        );
     }
 
     #[test]

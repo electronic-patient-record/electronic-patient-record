@@ -10,11 +10,11 @@ Some information harms a person if the wrong person learns it, and the harm can 
 
 The service can already mask a labelled record. It cannot yet do most of what this page lists, and no clinical record carries a label yet (SE-4).
 
-## A defect found in this pass: `ETH` means substance use, not ethnicity
+## A defect found in this pass, now fixed: `ETH` means substance use, not ethnicity
 
-`Label::Ethnicity` in `electronic-patient-record-service-with-rust/src/policy.rs` uses the code `ETH` and documents it as "ethnicity-related". In the HL7 code system, `ETH` is **"substance abuse information sensitivity"** [HL7R4] [HL7THO]. A record that arrives from another system labelled `ETH` would be read here as ethnicity, and shown unmasked to nurses and allied health, where the same content labelled `SUD` is shown only to the clinician and the patient.
+The service used the code `ETH` for an ethnicity label. In the HL7 code system, `ETH` is **"substance abuse information sensitivity"** [HL7R4] [HL7THO]. A record arriving from another system labelled `ETH` would have been read as ethnicity and shown unmasked to nurses and allied health, where the same content labelled `SUD` is shown only to the clinician and the patient.
 
-It is latent today: nothing stores a label on a clinical record, and the code only enters through a consent provision. It becomes live with SE-4 or with the first inbound label. See hazard H-045 and task PI-1. The fix is a clinical and policy decision (does the project need an ethnicity label at all?), so this pass changes no code.
+It was latent: nothing stored a label on a clinical record. Fixed 2026-11-04 (PI-1, H-045): the maintainer decided the project has no ethnicity label (OQ-PI1), so `Label::SubstanceAbuse` carries `ETH` with the same roles as `SUD`, and a test pins each code to its HL7 meaning. HL7's `RACE` code is available if a data protection officer later asks for it.
 
 ## Categories
 
@@ -89,7 +89,7 @@ A label only works where something checks it. Each route is a place that must be
 
 | Need | This project today | Gap |
 | --- | --- | --- |
-| Labels | Six: `R`, `V`, `PSY`, `HIV`, `SUD`, `ETH` | `ETH` means the wrong thing (H-045). None for `STD`, `SEX`, `SDV`, `VIO`, `GENDER`, `ADOL`, `GDIS`, `EMP`, `CEL`, location |
+| Labels | Six: `R`, `V`, `PSY`, `HIV`, `SUD`, `ETH` | None for `STD`, `SEX`, `SDV`, `VIO`, `GENDER`, `ADOL`, `GDIS`, `EMP`, `CEL`, location |
 | Unmasking | A role list per label, then consent; break-glass never unmasks a label | Unreviewed. No relationship or service test: a clinician in any team unmasks `HIV` |
 | Records with labels | None: nothing stores a label on clinical content | SE-4 |
 | Who applies a label | Nobody; no route | No rule for sensitive by default, no steward, no lift process |
@@ -105,7 +105,7 @@ A label only works where something checks it. Each route is a place that must be
 
 For the Clinical Safety Officer; none is accepted or closed by this page. H-045 is in the [hazard log](../../governance/clinical-safety/hazard-log.csv) as `open`. The rest go in with the first code that creates the exposure.
 
-1. **A label misread between systems** (H-045). `ETH` is read as ethnicity, not substance use.
+1. **A label misread between systems** (H-045, controlled, unreviewed). `ETH` was read as ethnicity, not substance use. The same risk applies to any code added later.
 2. **A safeguarding or domestic-abuse entry reaches the abuser** through a portal, a proxy view, a letter or a text.
 3. **A masked fact is needed in an emergency.** An HIV medicine, an interaction or a safeguarding alert is hidden, and break-glass does not unmask a label. This is the reverse of H-007 and at least as serious.
 4. **A former name or gender is shown or searchable**, in the UI, a letter, an audit view or an export.
@@ -119,7 +119,7 @@ For the Clinical Safety Officer; none is accepted or closed by this page. H-045 
 
 ## Ideas
 
-1. **Fix `ETH` first** (PI-1): rename to the HL7 meaning or drop it, decide whether an ethnicity label is wanted at all, and map every code to a pinned HL7 release with a test.
+1. **`ETH` is fixed** (PI-1): it has its HL7 meaning, and a test pins each code. Checking the pin against HL7 itself remains to do.
 2. **Extend the labels** through a value set pinned to one HL7 release, with `STD`, `SEX`, `SDV`, `VIO`, `GENDER`, `ADOL`, `GDIS`, `EMP`, `CEL` as proposals; local policy says who sees each.
 3. **Sensitive by default, by rule.** A coded list (a pack) marks a condition, a medicine, a clinic or a service as carrying a label, with a person able to add one by hand. Absent evidence is never "not sensitive".
 4. **A label steward and a lift process.** Who may add, who may lift, a reason, a named reviewer who is not the subject; append-only.
@@ -138,7 +138,7 @@ For the Clinical Safety Officer; none is accepted or closed by this page. H-045 
 
 Summarised as OQ-PI1 to OQ-PI6 in [open questions](../16-open-questions.md).
 
-1. Does the project want an ethnicity label, or was `ETH` a misreading? (OQ-PI1)
+1. Decided: no ethnicity label (OQ-PI1).
 2. What does break-glass show of a labelled record? Today, nothing; is that safe? (OQ-PI2)
 3. Does s.22 of the Gender Recognition Act, with its orders, allow a clinician to see gender history for care, and what does that mean outside the UK? (OQ-PI3)
 4. Is a deliberate break between old and new records ever bridged, and who decides? (OQ-PI4)

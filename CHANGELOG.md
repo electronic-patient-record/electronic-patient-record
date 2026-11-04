@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-04 - `ETH` now means what HL7 says: substance abuse (PI-1, H-045)
+
+- **Clinical risk:** **yes.** A record labelled `ETH` now unmasks for the clinician and the patient only, not nurses or allied health. No clinical record carries a label yet, so nothing changes on screen today. H-045 moves to `controlled-unreviewed`; it is not closed.
+- **Built:** `Label::Ethnicity` replaced by `Label::SubstanceAbuse`, keeping the code `ETH`; tests pin each code and hold `ETH` and `SUD` to the same roles; OQ-PI1 recorded as the maintainer's decision.
+- **Not done / not verified:** the pin is written by hand from the FHIR R4 value set read as a summary, and is not checked against HL7 automatically. A stored consent rule naming `ETH` now means substance abuse; none exists in a real deployment, but no migration handles that. The other sensitivity labels (PI-2) are not added. No clinician or data protection officer reviewed the decision or the role list.
+
 ## 2026-11-04 - Matcher 0.6.0 published; OQ-BV1 decided
 
 - **Clinical risk:** none changed in the running service: it still uses matcher 0.5.0, so H-047 stays `open`. The decision shapes BV-1, which is not built, so H-046 is unchanged.

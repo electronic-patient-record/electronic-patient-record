@@ -505,9 +505,9 @@ mod tests {
         let r = vec![record(vec![d])];
         assert_eq!(verdict(&r, &ctx()), policy::Consent::NotRecorded);
         let mut c = ctx();
-        c.labels = BTreeSet::from([Label::Psychiatry, Label::Ethnicity]);
+        c.labels = BTreeSet::from([Label::Psychiatry, Label::SubstanceAbuse]);
         assert_eq!(verdict(&r, &c), policy::Consent::Deny);
-        c.labels = BTreeSet::from([Label::Ethnicity]);
+        c.labels = BTreeSet::from([Label::SubstanceAbuse]);
         assert_eq!(verdict(&r, &c), policy::Consent::NotRecorded);
     }
 

@@ -1372,7 +1372,7 @@ Ranked in plan.md §30. Nothing here is built. Pages: `docs/<attribute>/index.md
 
 Ranked in plan.md §31. Nothing here is built. Specs: `spec/access-control/roles-and-assignments.md`, `spec/access-control/protected-information.md`, `spec/care-homes/`, `spec/virtual-ward/`, `spec/step-down-facility/`.
 
-- [ ] **PI-1 (S, clinical, before SE-4) — Fix the `ETH` label.** HL7 `ETH` is substance abuse; `policy.rs` reads it as ethnicity (H-045). Settle OQ-PI1, align the code, the UI's `LABELS` and the specs, and test each code against a pinned HL7 release. **Acceptance:** the test; H-045 updated, status set only by the Clinical Safety Officer.
+- [x] **PI-1 (S, clinical, before SE-4) — Fix the `ETH` label.** **Landed 2026-11-04:** the maintainer decided there is no ethnicity label (OQ-PI1). `Label::SubstanceAbuse` carries `ETH` with the same roles as `SUD`; tests pin each code to its HL7 meaning and hold the two substance labels together. H-045 is `controlled-unreviewed`; only the Clinical Safety Officer may go further.
 - [ ] **PI-2 (S, clinical) — Extend the labels.** A value set pinned to one HL7 release, with who sees each as local policy. **Acceptance:** a design in `spec/access-control/`; clinical review recorded.
 - [ ] **PI-3 (M, clinical) — Sensitive by default.** A coded list in a pack, plus a steward's lift process: who may add, who may lift, a reason, a reviewer who is not the subject. **Acceptance:** a design; absent evidence never counts as not sensitive.
 - [ ] **PI-4 (M, clinical, after legal and lived-experience review) — Protected identity.** Suppress former names in search, banner, letters and exports; history readable only by a named role, with a reason, and audited. **Acceptance:** reviews recorded before any code.
