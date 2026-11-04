@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-04 - The CI baseline (LC-1)
+
+- **Clinical risk:** none (a read-only script and a table). No hazard row changed.
+- **Built:** `scripts/ci-baseline.py` (runs by outcome, wall time and minutes per job, from `gh`); the table in `spec/local-ci.md`. Findings: 16.5 runs a day, median 13.4 minutes by the clock and 42.3 job-minutes per successful run; 20% of runs cancelled by a newer push; the container build and CodeQL for Rust are 58% of job-minutes.
+- **Not done / not verified:** failures are sorted by step name only, logs were not read, and nine of the fourteen were outside the window examined; queue time before a job starts (where a platform slowdown would show) is not measured; minutes are not rounded as GitHub bills them; the script has no test and was run once.
+
 ## 2026-11-04 - Research pass: local CI/CD (plan.md §26, tasks LC-1 to LC-13)
 
 - **Clinical risk:** none (documents only). No hazard row changed.

@@ -15,6 +15,36 @@ locally first with GitHub as a second, independent witness, and what that does a
 Measured 2026-11-04 (one run and the last 200 statuses; the 30-day table is task LC-1): about 40 job-minutes and 11 to 16 minutes by the clock per push; 143 success, 14 failure, 39 cancelled. The repository is public, so
 standard hosted minutes are free; the cost is waiting.
 
+## Baseline, measured 2026-11-04 (LC-1)
+
+`python3 scripts/ci-baseline.py --runs 200 --job-runs 40` (reads with `gh`; changes nothing). 197 completed runs on `main`, 2026-10-23 to 2026-11-04 (11.9 days, **16.5 runs a day**).
+
+| Outcome | Runs | Share |
+|---|---|---|
+| success | 144 | 73% |
+| failure | 14 | 7% |
+| cancelled by a newer push | 39 | 20% |
+
+Successful runs: wall time **median 13.4 min, p90 15.6, max 38.3**. Job minutes per successful run (newest 32): **median 42.3, max 48.7**. At 16.5 runs a day that is about 700 job-minutes a day.
+
+| Job (newest 32 successful runs) | Median min | Max |
+|---|---|---|
+| Container images build (Podman) | 14.8 | 15.8 |
+| CodeQL (rust) | 9.7 | 11.9 |
+| API (Postgres 18 tests) | 4.5 | 5.8 |
+| API (fmt, clippy, database-free tests) | 4.0 | 6.1 |
+| FHIR validator | 2.2 | 6.3 |
+| UI (check, unit, browser tests) | 2.1 | 2.8 |
+| Coverage floor | 1.9 | 3.5 |
+| CodeQL (javascript-typescript) | 1.4 | 1.7 |
+| The other eight jobs together | about 3.4 | |
+
+**Reading it.** Two jobs, the container build and CodeQL for Rust, are about 24.5 of the 42.3 job-minutes (58%), and the container build alone sets the wall time. Trimming those (LC-7) or moving them off every push saves more than any speed-up of the Rust tests (LC-8).
+
+**Failures in the newest 40 runs (five jobs, three runs):** the UI type check and the UI image build (2026-11-03 06:04); the database-gated test step three times (2026-11-01 22:01 and 22:46, 2026-11-02 01:33). Each failed in a step that runs our tests or our build, not in checkout, tool install or runner start-up, which is what a platform fault would look like. **I did not read the logs**, so "ours" is an inference from the step names; the other nine failures were outside this window and were not looked at.
+
+**Not measured:** minutes are start to end, not GitHub's per-job rounding up; queue time before a job starts is not in these numbers (it is where a platform slowdown would show); one 38.3-minute wall time was not looked into.
+
 ## The model proposed
 
 1. **Tier 1 becomes one command and a hook** (`scripts/ci-local.sh --fast` on pre-push; `--full` before a batch of pushes), against a scratch database, with a preflight for the known local traps.
