@@ -2,6 +2,8 @@
 
 **Draft, proposed 2026-11-02.** The table below is written as a pure function in `src/referral.rs` (PC-1) with tests; nothing calls it yet, so no referral is stored or shown. It sharpens task CA-3 (referrals with closed loop) and PA-14 (outcomes beyond accept and reject) from one outside source, read in part: the *Care Coordination and 360 Referrals* proof-of-concept FHIR guide ([home](https://kevinmayfield.github.io/PatientCareCoordination/en/index.html), v0.1.0, "Draft as of 2026-11-02", one author, no licence stated). That guide says it is "not an authoritative source" and "must not be used for implementation or clinical purposes", and it marks several of its own rules "To confirm". Its authority is IHE's 360X profile, which I have **not** read. See [`plan.md` §24](../../plan.md). Copy nothing from it without finding its licence.
 
+**Where a referral sits (2026-11-04).** A referral is one **step on a care pathway** ([domain model 5.2.1](../05-domain-model.md)), not a record on its own: the loop below says whether that step is open or closed, and the pathway says who owns the patient's route and what comes next. Today a referral stands alone (no pathway is built), so an unanswered referral is caught by the referrer's worklist and the timeouts (H-044) rather than by the pathway.
+
 ## The loop
 
 A clinician (the **referrer**) sends a request; a service (the **recipient**) accepts or declines, may book, may report in between, and ends with an outcome that tells the referrer what happened. The loop is closed only when the referrer receives a decline or an outcome. The EPR owns the clinical request and the loop; referral administration stays with a PAS ([`../02-scope.md`](../02-scope.md), PA-1).

@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-04 - Spec: the care pathway comes before the separate episode
+
+- **Clinical risk:** none now (documents only); the direction changes what the record will show, so a pathway hazard row is to be added with the first code (said in `spec/05` §5.2.1). No hazard row changed.
+- **Built:** `spec/05-domain-model.md` §5.2.1 (the principle, why, seven design rules, FHIR mapping); `spec/01` (a "pathway-centred" aim); `spec/04` (glossary: care pathway; episode and encounter reworded); `spec/06` (FR-8.2 reworded, FR-8.8 and FR-8.9 added); `spec/02`, `spec/15`, `spec/19` (wording and order: pathways and plans first); `spec/interoperability/closed-loop-referral.md` (a referral is a step); OQ-CP1 to OQ-CP4; `spec/17-references.md`; notes on CA-1 and CA-2 in `tasks.md`.
+- **Not done / not verified:** no code, no schema and no screen; the roadmap order is a recommendation, not a plan anyone has agreed. The FHIR quotations come from three R4 pages, two read only in part; the mapping to `CarePlan`, `PlanDefinition` and `Encounter` is the author's reading, not checked against UK Core, US Core or a national profile. No clinician has reviewed the rules, and the claim that care is lost between episodes rests on the project's own hazard H-044, not on a cited study.
+
 ## 2026-11-04 - The CI baseline (LC-1)
 
 - **Clinical risk:** none (a read-only script and a table). No hazard row changed.

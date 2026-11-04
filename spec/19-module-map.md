@@ -12,7 +12,7 @@ so every module in 1.0 or M7 gets hazard rows (EM-16) before its code.
 | Orders and results | 1.0 | OR-1 to OR-6 | covered |
 | e-Obs and NEWS2 | 1.0 | DO-5, RC-11 | covered |
 | Patient portal | M7 | CA-5 | covered |
-| Care plans, referrals, scheduling, ADT | M7 | CA-1 to CA-4 | scheduling follows OQ-PA1 |
+| Care pathways and plans, referrals, scheduling, ADT | M7 | CA-1 to CA-4 | scheduling follows OQ-PA1 |
 | eMAR (closed-loop administration) | M7 | EM-2 | OQ-M3 (build or integrate scanning) |
 | Nursing assessments and risk tools | M7 | EM-3 | OQ-M2 (licences) |
 | Discharge summary and clinic letters | M7 | EM-8 | PRSB standard uncertain |

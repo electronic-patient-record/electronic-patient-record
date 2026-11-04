@@ -11,6 +11,8 @@ Build open-source electronic patient record (EPR) software that is **safe, stand
   ([equity rule](02-scope.md), "Reach"). For FHIR that is a **national profile pack** per country
   ([interoperability](interoperability/index.md), "National standards"). A pack is supported when its own validator or
   test passes, and not before.
+- **Pathway-centred**: care is organised around the patient's **care pathway**, the planned route through care across teams and organisations, not around separate episodes of care, because what is lost is lost
+  between episodes. Encounters and episodes are events along a pathway. See [domain model 5.2.1](05-domain-model.md); a direction only, nothing built.
 - **Auditable**: every read and write is recorded; patients can see who accessed their record.
 - **Usable**: designed against documented causes of clinician burnout (documentation burden, alert fatigue, inbox
   load, latency). See [usability](usability/index.md).

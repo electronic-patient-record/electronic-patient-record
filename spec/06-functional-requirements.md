@@ -32,8 +32,9 @@ FR-7.1 CapabilityStatement. FR-7.2 SMART App Launch 2.2. FR-7.3 US Core / UK Cor
 FR-7.5 IPS `$summary`. FR-7.6 Subscriptions. FR-7.7 SQL-on-FHIR views. FR-7.8 EHI export.
 
 ### 6.8 Care coordination (CA-, M7)
-FR-8.1 Encounters and ADT. FR-8.2 Care plans and tasks. FR-8.3 Referrals with closed loop. FR-8.4 Scheduling.
-FR-8.5 Patient portal with proxy access. FR-8.6 Team inbox. FR-8.7 Downtime snapshot.
+FR-8.1 Encounters and ADT (events along a pathway, [5.2.1](05-domain-model.md)). FR-8.2 Care pathways, plans, goals and tasks: the organising unit of the record. FR-8.3 Referrals with closed loop (a step of a pathway). FR-8.4 Scheduling.
+FR-8.5 Patient portal with proxy access. FR-8.6 Team inbox. FR-8.7 Downtime snapshot. FR-8.8 Pathway view: a patient's open pathways first, each with an owner, a current step and a next step or the reason there is none.
+FR-8.9 Pathway handover: a pathway survives discharge, transfer and referral and ends only by a recorded outcome; a pathway with no owner is listed.
 
 ### 6.9 Assurance (AS-)
 FR-9.1 Hazard log. FR-9.2 Governance pack. FR-9.3 SAFER mapping. FR-9.4 Usability programme. FR-9.5 Budgets.

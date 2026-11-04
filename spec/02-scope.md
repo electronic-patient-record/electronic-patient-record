@@ -3,7 +3,7 @@
 **In scope for 1.0** (ambulatory first, inpatient core next): patient identity and registration; summary and banner;
 problems, allergies, medications, immunisations, histories, vitals and flowsheets; encounters and basic ADT; notes,
 templates and structured forms; orders and results with closed-loop follow-up; prescribing with interaction checks via
-an external CDS service; care plans, teams, tasks, referrals; scheduling; patient portal; audit, consent,
+an external CDS service; care pathways and plans, teams, tasks, referrals (the pathway is the organising unit, [5.2.1](05-domain-model.md)); scheduling; patient portal; audit, consent,
 break-the-glass; FHIR R4 API, SMART App Launch, CDS Hooks client, HL7 v2 inbound.
 
 **Reach.** The product is for use worldwide, by countries, regions and federations (a national health service, a state or

@@ -1,7 +1,8 @@
 ## 4. Glossary
 
 - **EPR / EHR / EMR**: electronic patient record / health record / medical record. Used loosely; this project says EPR.
-- **Encounter / episode of care**: one contact / a grouping of related care over time.
+- **Care pathway**: the planned, goal-directed route a patient takes through care for a condition or need, across teams, settings, organisations and time; the organising unit of this record ([5.2.1](05-domain-model.md)). Held as a `CarePlan`, from a `PlanDefinition` template where one is used.
+- **Encounter / episode of care**: one contact / a period in which an organisation takes responsibility, kept for tracking, reporting or billing. Both happen along a care pathway; neither is the unit the record is organised by, and no clinical rule depends on an episode existing.
 - **Problem list**: the clinician-maintained list of active and resolved conditions.
 - **CPOE**: computerised provider order entry. **CDS**: clinical decision support.
 - **MPI**: master patient index. **Overlay**: two people merged into one record (a safety incident). **Duplicate**: one

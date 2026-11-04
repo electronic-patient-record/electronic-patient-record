@@ -9,7 +9,7 @@
 | M4 | Documentation | Notes, templates, addenda, copy-forward provenance, forms, flowsheets, NEWS2 |
 | M5 | Orders and results | CPOE, order sets, HL7 v2 ORU, results inbox, CDS Hooks |
 | M6 | Interop and apps | SMART 2.2, CapabilityStatement, Bulk, IPS, Inferno (g)(10) in CI |
-| M7 | Care and access | Encounters/ADT, care plans, referrals, scheduling, portal, downtime snapshot |
+| M7 | Care and access | Care pathways and plans first (CA-2), then encounters/ADT, referrals as pathway steps, scheduling, portal, downtime snapshot |
 | M8 | Assurance | Hazard log complete; NISTIR 7804 test (SUS ≥ 75); DTAC/DPIA drafts; load test; 1.0 candidate |
 
 **After 1.0: emergency triage.** Manchester Triage System work (`TR-1` to `TR-13` in `tasks.md`, plan.md §15) is not
