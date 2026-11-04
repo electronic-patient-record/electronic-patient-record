@@ -110,6 +110,9 @@ Topics that span several numbered chapters and are kept whole:
 - [Productivity measurement](productivity-measurement/index.md) — before-and-after measures for phasing in the EPR (PM).
 - [Training](training/index.md) and the [training overlay](training-overlay/index.md) — what training will be available, and learning on the real screens safely apart from real patients; a design, not built (TO).
 - [System quality attributes](../docs/index.md) — twelve pages under `docs/`, from ISO/IEC 25010:2023 plus interoperability, privacy and auditability (QA, plan.md §30).
+- [Roles and assignments](access-control/roles-and-assignments.md) and [protected information](access-control/protected-information.md) — who holds access and how it ends; sexual health, HIV, gender history, violence and other especially sensitive information, and every route it can leak by (RA, PI, plan.md §31).
+- [Care homes](care-homes/index.md) — integration, handover and medicines at the boundary (HM).
+- [Virtual ward](virtual-ward/index.md) and [step-down facility](step-down-facility/index.md) — discharge into either, one workflow with a destination (VW).
 - [Data flow](../governance/data-flow.md) — who sends what to whom, read from the routes, the feed and the outbox (draft, PR-7)
 - [MFA plan](../governance/mfa-plan.md) — what the service checks, what Keycloak enforces, what is left to the deployment (draft, PR-7)
 - [Production readiness](../governance/production-readiness.md) — a checklist that ticks only with evidence; nothing is ticked (draft, PR-7)

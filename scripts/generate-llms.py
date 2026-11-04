@@ -61,6 +61,8 @@ SECTIONS = [
         ("Compliance", "spec/12-compliance.md", "The regulatory position and what is not claimed."),
         ("Benchmark", "spec/benchmark.md", "Where the repository stands against open-source EPR, EHR and FHIR systems."),
         ("Closed-loop referral (draft)", "spec/interoperability/closed-loop-referral.md", "A draft referral state model and the unmatched-outcome design; a proposal, nothing stores a referral yet."),
+        ("Protected information", "spec/access-control/protected-information.md", "Especially sensitive information and every route it can leak by; a proposal, not built."),
+        ("System quality attributes", "docs/index.md", "Twelve pages on quality attributes, from ISO/IEC 25010:2023."),
         ("Roadmap", "spec/15-roadmap.md", "Milestones M0 onward."),
         ("Open questions", "spec/16-open-questions.md", "Decisions that need a maintainer, a clinician or the Clinical Safety Officer."),
         ("Plan", "plan.md", "The long plan behind the task queue."),

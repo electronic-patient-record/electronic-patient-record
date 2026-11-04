@@ -1729,3 +1729,27 @@ QA-1 to QA-12 in `tasks.md`. Many ideas on these pages extend existing tasks (AS
 ### 30.3 Not done, not verified
 
 The ISO/IEC 25010:2023 wording comes from secondary summaries; the standard was not read. For the reliability, security, privacy and auditability pages, the crashed session's own note said only one source was checked at the time and the others were cited from memory; a link check on 2026-11-04 tests that they exist, not that they say what is claimed. Legal points on those pages (the subject-access deadline, the Article 17 health exemption) are recalled and need checking. Each page's "Not verified" section says so.
+
+## 31. Research pass 2026-11-04: roles and protected information, care homes, virtual wards and step-down
+
+Three requests: research EPR roles, assignments, permissions and operations, especially for highly protected information such as sexually transmitted infections, gender transition and violent attacks; research care home integration; research how a clinician discharges into a virtual ward or step-down facility. Specs: [roles and assignments](spec/access-control/roles-and-assignments.md), [protected information](spec/access-control/protected-information.md), [care homes](spec/care-homes/index.md), [virtual ward](spec/virtual-ward/index.md), [step-down facility](spec/step-down-facility/index.md). Documents only, **except one new hazard row, H-045.** No lawyer, clinician, data protection officer, care home or patient was consulted.
+
+### 31.1 Assessment
+
+| Point | What the repository has | My assessment |
+|---|---|---|
+| Roles and assignments | 11 roles, a route gate, a record decision, care relationships, break-glass | **The algorithm is ahead of the human process.** No assignment record, no end dates, no cover, no recertification, no monitoring. Real misuse is usually stale access or a log nobody read (RA-1, RA-5, RA-6) |
+| Protected information | Six labels, masking designed, no labelled record | **A defect: `ETH` means substance use in HL7, and the code reads it as ethnicity (H-045, PI-1).** Fix before SE-4. Beyond that, a mask on a screen is the smallest part: most leaks are portals, proxies, letters, texts, printouts and exports (PI-7). Hiding is not free either: break-glass shows nothing of a labelled record, which may be a hazard of its own (OQ-PI2) |
+| Gender history | Nothing | **The hardest case.** A deliberate break between records meets the matcher, the append-only record and clinical safety, and s.22 of the Gender Recognition Act may make disclosure an offence. Do not build before a lawyer and trans patients have reviewed it (PI-4, PI-5) |
+| Care homes | Care relationships, closed-loop referral | **Integrate, do not replace.** England has assured suppliers and a shared dataset; the main risk is the transfer of medicines. An organisation as a holder of a care relationship is the first thing to test (HM-1) |
+| Virtual ward, step-down | Closed-loop referral | **One discharge workflow, many destinations.** Discharge blocked until acceptance, a "who is responsible" panel, and missing observations shown as missing. Hospital at home stays out of 1.0 until pathways exist (OQ-PC1) |
+
+### 31.2 Ideas, ranked
+
+RA-1 to RA-7, PI-1 to PI-9, HM-1 to HM-5 and VW-1 to VW-6 in `tasks.md`. PI-1 comes first of everything in this pass: it is small, and it blocks SE-4.
+
+### 31.3 Not done, not verified
+
+Nothing was built. The protected-information page was written after the crash of the session that researched it, from that session's saved search results, and no new searches were run: it inherits their limits. All law is a lay reading. The order under s.22 of the Gender Recognition Act, the point that matters most, was not read. Adoption, witness protection, psychotherapy-note law and genetic-information law were not researched. Whether any immigration data-sharing agreement is in force is unknown. People with lived experience of these categories have not seen the page. Each page has a "Not verified" list. Only H-045 went into the log; the remaining candidate hazards go in with the first code.
+
+A link check of all 401 URLs cited in §28 to §31 ran on 2026-11-04: 20 returned 404 and are noted on the page that cites them, and what rests on them is unconfirmed. Another 95 returned 403 and 24 did not answer; those are mostly bot walls and timeouts, and were not treated as dead, but they are not confirmed either. A live link shows that a page exists, not that it says what is claimed.

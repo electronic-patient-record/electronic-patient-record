@@ -1367,3 +1367,35 @@ Ranked in plan.md §30. Nothing here is built. Pages: `docs/<attribute>/index.md
 - [ ] **QA-10 (S) — A threat model per data flow.** STRIDE, one short entry per row in `governance/data-flow.md`. **Acceptance:** the entries exist.
 - [ ] **QA-11 (S, decision) — The audit chain's witness.** Decide whether to publish the chain head externally, and whether a keyed MAC is enough. **Acceptance:** a recorded decision.
 - [ ] **QA-12 (S, decision) — Tenancy before more tables.** Is one deployment one tenant for 1.0? Retrofitting `tenant_id` on append-only tables is costly (SE-5). **Acceptance:** a recorded decision.
+
+## Research 2026-11-04 — roles, protected information, care homes, virtual wards
+
+Ranked in plan.md §31. Nothing here is built. Specs: `spec/access-control/roles-and-assignments.md`, `spec/access-control/protected-information.md`, `spec/care-homes/`, `spec/virtual-ward/`, `spec/step-down-facility/`.
+
+- [ ] **PI-1 (S, clinical, before SE-4) — Fix the `ETH` label.** HL7 `ETH` is substance abuse; `policy.rs` reads it as ethnicity (H-045). Settle OQ-PI1, align the code, the UI's `LABELS` and the specs, and test each code against a pinned HL7 release. **Acceptance:** the test; H-045 updated, status set only by the Clinical Safety Officer.
+- [ ] **PI-2 (S, clinical) — Extend the labels.** A value set pinned to one HL7 release, with who sees each as local policy. **Acceptance:** a design in `spec/access-control/`; clinical review recorded.
+- [ ] **PI-3 (M, clinical) — Sensitive by default.** A coded list in a pack, plus a steward's lift process: who may add, who may lift, a reason, a reviewer who is not the subject. **Acceptance:** a design; absent evidence never counts as not sensitive.
+- [ ] **PI-4 (M, clinical, after legal and lived-experience review) — Protected identity.** Suppress former names in search, banner, letters and exports; history readable only by a named role, with a reason, and audited. **Acceptance:** reviews recorded before any code.
+- [ ] **PI-5 (M, clinical, after PI-4) — A deliberate break in the matcher.** A "do not link" pair that the matcher honours and does not reveal, and a patient-approved way to carry safety facts across. **Acceptance:** a spec change to the matcher; tests.
+- [ ] **PI-6 (M, clinical) — Alias and no-information patients.** True identity kept; a display name; silence in the directory; the banner always says it is an alias. **Acceptance:** a design and a hazard row.
+- [ ] **PI-7 (S, clinical) — A route census.** Every output route must state its label behaviour, or a test fails. **Acceptance:** the census, with the routes that exist now.
+- [ ] **PI-8 (M, clinical) — Hidden information and proxy limits.** A class whose existence is not shown; dated proxies with hidden-from lists; a parent's access narrowing as a child grows; a coercion flag. **Acceptance:** a design shared with [maternity](spec/maternity/index.md).
+- [ ] **PI-9 (S, decision) — What break-glass shows of a labelled record.** At least the safety fact; settle OQ-PI2 with clinicians. **Acceptance:** a recorded decision; the policy test changed to match.
+- [ ] **RA-1 (M) — Role assignment record.** User, role, organisation, sponsor, start, end, reason, ended-by; append-only. **Acceptance:** `policy::Subject` built from live assignments.
+- [ ] **RA-2 (M, clinical) — Sub-roles.** A second tier under the 11 families; add privacy officer, system administrator and label steward. **Acceptance:** the role matrix test extended; clinical review recorded.
+- [ ] **RA-3 (M) — Teams.** Ward, service and pathway; a relationship derived from membership, with an end date. **Acceptance:** a design; OQ answered on whether membership alone is a relationship.
+- [ ] **RA-4 (S) — Cover.** A cover assignment with a mandatory end date and a distinct audit marker. **Acceptance:** a test.
+- [ ] **RA-5 (S) — Recertification.** A report of old assignments by owner, with confirm or end recorded. **Acceptance:** the report on synthetic data.
+- [ ] **RA-6 (M) — Privacy monitoring.** Scheduled reports: same surname or address, volume, after leave, repeated break-glass reasons; a recorded outcome. **Acceptance:** planted cases are found.
+- [ ] **RA-7 (S) — Separation of duties.** Conflict rules between roles, and a student or locum role with co-sign and expiry. **Acceptance:** added to the role matrix test.
+- [ ] **HM-1 (S) — An organisation holds the relationship.** Test `CareRelationship` against a care home: staff inherit by rota and purpose. **Acceptance:** a list of what it lacks.
+- [ ] **HM-2 (M, clinical) — A discharge-to-care-home handover.** Medicines changed, stopped, new, with reasons; allergies, capacity and attorney, ReSPECT, a named owner. **Acceptance:** a design, after medications are built.
+- [ ] **HM-3 (S) — A minimum data set from MODS.** Map, do not invent; list what is missing. **Acceptance:** the mapping, reviewed with an assured supplier.
+- [ ] **HM-4 (S) — A typed, dated proxy.** Attorney, relative, advocate, each with authority, start, end and hidden-from flags (with PI-8). **Acceptance:** a design.
+- [ ] **HM-5 (M, clinical) — Observations in from a home.** Source, observer, time, unit and a "last recorded" age; any score is an optional reviewed pack. **Acceptance:** a design and a hazard row.
+- [ ] **VW-1 (M, clinical) — One discharge workflow.** A pathway template shared across destinations; the destination changes the criteria, not the shape (CA-1, CA-3, PA-14). **Acceptance:** a design.
+- [ ] **VW-2 (S, clinical) — Blocked until accepted.** A visible override with a reason, audited; `arrived` as a step, with "accepted but not arrived" on the referrer's worklist. **Acceptance:** tests, with a hazard row.
+- [ ] **VW-3 (S, clinical) — Who is responsible.** Owner team, named clinician, out-of-hours route, and since when, on the first view of a pathway. **Acceptance:** shown at 320 px.
+- [ ] **VW-4 (M, clinical) — A monitoring plan.** Measure, frequency, threshold, reason, who reads it and when; remote readings with source and device, and missing shown as missing. **Acceptance:** a design and a hazard row.
+- [ ] **VW-5 (S, clinical) — A structured handover built from the record.** Previewed, each missing item shown as "missing", never blank. **Acceptance:** a design, mapping to PRSB later.
+- [ ] **VW-6 (S) — Destination data.** Cover, exclusions, return route and capacity for the picker, starting with a manual figure; read the virtual wards data set DAPB4073. **Acceptance:** a design.

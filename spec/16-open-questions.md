@@ -64,5 +64,11 @@
 | OQ-MS1 to OQ-MS5 | Manual steps: signing a transcribed entry, who back-keys, a scan as a document, `occurred_at` later than `recorded_at`, paste marking. See [manual steps](manual-steps/index.md). | Clinical Safety Officer |
 | OQ-PM1 to OQ-PM5 | Productivity: who owns measurement, who is measured first, staff-side agreement and data-protection basis, low-resource sites, control sites. See [productivity measurement](productivity-measurement/index.md). | maintainer, deploying sites |
 | OQ-TR1 to OQ-TR5 | Training: gating access on training, certifying trainers, evidence that it worked, low-resource sites, patients and proxies. See [training](training/index.md). | maintainer, deploying sites |
+| OQ-PI1 | Does the project want an ethnicity label? `ETH` is HL7's substance-abuse code, so the current label is wrong either way (H-045, PI-1). Open. | maintainer, Clinical Safety Officer |
+| OQ-PI2 | What does break-glass show of a labelled record? Today nothing, which may hide an interaction or an alert in an emergency. Recommendation: at least the safety fact, never the narrative. Open. | Clinical Safety Officer, clinical advisers |
+| OQ-PI3 | Does s.22 of the Gender Recognition Act 2004, with its orders, allow a clinician to see gender history for care? What is the position elsewhere? Open: needs a lawyer. | maintainer, legal |
+| OQ-PI4 | Is a deliberate break between old and new records ever bridged, and who decides? Recommendation: only with the patient's approval. Open. | Clinical Safety Officer, data protection officer, patients |
+| OQ-PI5 | Should a mask say anything? "Restricted information exists" helps a clinician and harms a person being watched. Recommendation: differ by viewer. Open. | Clinical Safety Officer, data protection officer |
+| OQ-PI6 | Who is consulted before any build: people living with HIV, trans patients, survivors, young people, and how? Open. | maintainer |
 
 No answers recorded yet, except where a row says decided or proposed.

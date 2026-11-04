@@ -16,6 +16,10 @@ so every module in 1.0 or M7 gets hazard rows (EM-16) before its code.
 | Setting profiles, specialty packs | after CA-1, CA-2 | XP-5 to XP-7, XP-10, XP-11 | OQ-ST1, OQ-SP1 |
 | Clinician pathway design | after CA-2 | XP-12 to XP-14 | OQ-CP3 |
 | Privacy-preserving analysis | post-1.0 | XP-8, XP-9 | OQ-HE1, DPO |
+| Roles, assignments, privacy monitoring | after SE-1 | RA-1 to RA-7 | OQ-2 |
+| Protected information | PI-1 before SE-4 | PI-1 to PI-9 | OQ-PI1 to OQ-PI6 |
+| Care home integration | after CA-2 | HM-1 to HM-5 | [care homes](care-homes/index.md) |
+| Virtual ward, step-down discharge | after CA-2 | VW-1 to VW-6 | OQ-PC1 |
 | Clinical safety measures | now (reports), after AS-1 | SM-1 to SM-5 | OQ-2 |
 | Maternity | decision first | MT-1 to MT-4 | OQ-MT1 |
 | Bulk import, `$export`, data quality | M2 onward | DX-1 to DX-10 | OQ-DE*, OQ-DQ*, OQ-MS* |

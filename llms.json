@@ -142,6 +142,18 @@
           "description": "A draft referral state model and the unmatched-outcome design; a proposal, nothing stores a referral yet."
         },
         {
+          "title": "Protected information",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/access-control/protected-information.md",
+          "path": "spec/access-control/protected-information.md",
+          "description": "Especially sensitive information and every route it can leak by; a proposal, not built."
+        },
+        {
+          "title": "System quality attributes",
+          "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/docs/index.md",
+          "path": "docs/index.md",
+          "description": "Twelve pages on quality attributes, from ISO/IEC 25010:2023."
+        },
+        {
           "title": "Roadmap",
           "url": "https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/15-roadmap.md",
           "path": "spec/15-roadmap.md",

@@ -61,6 +61,10 @@ no network, database or compilation; counts are source lines, not test runs):
 | PM | 0 | 5 |
 | TO | 0 | 9 |
 | QA | 0 | 12 |
-| **Total** | **52** | **285** |
+| RA | 0 | 7 |
+| PI | 0 | 9 |
+| HM | 0 | 5 |
+| VW | 0 | 6 |
+| **Total** | **52** | **312** |
 
 <!-- generated:end -->

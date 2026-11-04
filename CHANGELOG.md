@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-04 - Research pass: roles, protected information, care homes, virtual wards (plan.md §31); hazard H-045
+
+- **Clinical risk:** **yes, one row.** New hazard H-045, `open`: the code reads `ETH` as ethnicity, but HL7 defines it as substance abuse. Latent: no clinical record stores a label. No code changed; PI-1 must precede SE-4. Everything else is documents only; most tasks are marked `clinical`.
+- **Built:** `spec/access-control/roles-and-assignments.md`, `protected-information.md`, `spec/care-homes/`, `spec/virtual-ward/`, `spec/step-down-facility/`; `plan.md` §31; tasks RA-1 to RA-7, PI-1 to PI-9, HM-1 to HM-5, VW-1 to VW-6; `spec/index`, `16`, `17`, `19`; hazard H-045.
+- **Not done / not verified:** no code, so **H-045 is logged, not fixed.** `protected-information.md` was written from a crashed session's saved results, with no new searches. All law is a lay reading; the order under s.22 of the Gender Recognition Act was not read. Adoption, witness protection and psychotherapy-note law were not researched. No lawyer, clinician, data protection officer or person with lived experience has reviewed it.
+
 ## 2026-11-04 - Research pass: system quality attributes (plan.md §30, QA-1 to QA-12)
 
 - **Clinical risk:** none (documents only). No hazard row changed.
