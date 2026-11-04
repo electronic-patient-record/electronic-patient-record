@@ -1235,7 +1235,7 @@ Ranked in plan.md §25. Each item was checked against this repository's code; a 
   already warns, the break-glass review screen does not, and the referral queue has no screen. Add the field, do not rename one.
   **Acceptance:** a test with 51 open entries in each queue sees `more: true` and 50 rows; a test with 50 sees `more: false`; the
   break-glass screen has an e2e test of the message. Hazard row H-044 updated in the same commit.
-- [ ] **PR-2 (S) — A control names its test.** In `governance/clinical-safety/hazard-log.csv`, a control may name `file::test_name`;
+- [ ] **PR-2 (S) — A control names its test.** *(First slice 2026-11-04: the `path::test_name` form is checked and `--report` lists the rest; only H-044 names tests so far; the failure for hazards with controls and the pull-request hint are not built.)* In `governance/clinical-safety/hazard-log.csv`, a control may name `file::test_name`;
   `scripts/check-hazard-log.py` fails when the file or the function does not exist. First as a report listing every hazard with no named
   test, then as a failure for hazards marked mitigated. A change to a file a hazard names lists that hazard in the pull request (a hint for
   the Clinical Safety Officer, not a decision). **Acceptance:** renaming a named test fails the check; the report lists the rest.

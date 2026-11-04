@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 """Check the clinical hazard log (task AS-1): governance/clinical-safety/hazard-log.csv.
 
-Usage: python3 scripts/check-hazard-log.py [repo-root]
+Usage: python3 scripts/check-hazard-log.py [--report] [repo-root]
        python3 scripts/check-hazard-log.py --base <git-ref> --author <login> [repo-root]
 
 It checks the shape, not the clinical judgement: the columns, unique ids, severity and likelihood in
 1..5 with score = severity x likelihood, a known status, an ISO `added` date, evidence paths that
 exist, and that no hazard is `accepted` or `closed` without a named reviewer. Only a person (the
 Clinical Safety Officer, OQ-2) may set those, so an automated change cannot close a hazard.
+
+An evidence entry may be `path::test_name`: the control then names the test that proves it, and the check
+fails when the file or the test function is missing (renaming a named test fails it). `--report` lists
+the hazards that name no test yet; that is a report, not a failure, until the log has named them (PR-2).
 
 With `--base` it also compares the log with that revision (CQ-21). A change that moves a hazard into
 `accepted` or `closed`, adds one in either status, or changes `reviewed_by` fails unless `--author`
@@ -18,6 +22,7 @@ import csv
 import datetime
 import io
 import os
+import re
 import subprocess
 import sys
 
@@ -27,6 +32,38 @@ STATUSES = {"open", "controlled-unreviewed", "accepted", "closed"}
 LOG = os.path.join("governance", "clinical-safety", "hazard-log.csv")
 REVIEWERS = os.path.join("governance", "clinical-safety", "reviewers.txt")
 SIGNED_OFF = {"accepted", "closed"}
+
+
+def split_evidence(cell):
+    """Evidence entries: a path, or `path::test_name` when the control names the test that proves it."""
+    return [e.strip() for e in cell.split(";") if e.strip()]
+
+
+def named_tests(row):
+    """The `(path, name)` pairs a hazard's evidence names."""
+    return [tuple(e.split("::", 1)) for e in split_evidence(row["evidence"]) if "::" in e]
+
+
+def test_exists(root, path, name):
+    """True when `path` holds a test called `name`: `fn name` (Rust), `def name` (Python), else the
+    word itself (a test title in TypeScript)."""
+    try:
+        with open(os.path.join(root, path), encoding="utf-8") as f:
+            text = f.read()
+    except OSError:
+        return False
+    word = re.escape(name)
+    if path.endswith(".rs"):
+        return re.search(rf"\bfn\s+{word}\b", text) is not None
+    if path.endswith(".py"):
+        return re.search(rf"\bdef\s+{word}\b", text) is not None
+    return name in text
+
+
+def without_a_named_test(rows):
+    """Ids of hazards whose evidence names no test, split into those with controls in place and the rest."""
+    bare = [r for r in rows if not named_tests(r)]
+    return ([r["id"] for r in bare if r["status"] != "open"], [r["id"] for r in bare if r["status"] == "open"])
 
 
 def problems(rows, header, root):
@@ -65,9 +102,12 @@ def problems(rows, header, root):
             found.append(f"{where}: {r['status']} needs reviewed_by (a named person)")
         if r["status"] == "controlled-unreviewed" and not r["controls"].strip():
             found.append(f"{where}: controlled-unreviewed needs controls")
-        for path in filter(None, (p.strip() for p in r["evidence"].split(";"))):
+        for entry in split_evidence(r["evidence"]):
+            path, _, name = entry.partition("::")
             if not os.path.exists(os.path.join(root, path)):
                 found.append(f"{where}: evidence path does not exist: {path}")
+            elif "::" in entry and not test_exists(root, path, name):
+                found.append(f"{where}: {path} has no test called {name}")
     return found
 
 
@@ -111,9 +151,12 @@ def read_rows(text):
 def main(argv):
     args = argv[1:]
     base_ref = author = None
+    report = False
     while args and args[0].startswith("--"):
         flag = args.pop(0)
-        if flag == "--base" and args:
+        if flag == "--report":
+            report = True
+        elif flag == "--base" and args:
             base_ref = args.pop(0)
         elif flag == "--author" and args:
             author = args.pop(0)
@@ -137,6 +180,10 @@ def main(argv):
     if found:
         print(f"{len(found)} problem(s) in the hazard log", file=sys.stderr)
         return 1
+    controlled, still_open = without_a_named_test(rows)
+    if report:
+        print(f"no named test, controls in place ({len(controlled)}): {', '.join(controlled) or 'none'}")
+        print(f"no named test, still open ({len(still_open)}): {', '.join(still_open) or 'none'}")
     open_n = sum(r["status"] == "open" for r in rows)
     print(f"hazard log ok: {len(rows)} hazards, {open_n} open, none accepted or closed without a reviewer")
     return 0

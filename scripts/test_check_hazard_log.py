@@ -50,6 +50,18 @@ class HazardLog(unittest.TestCase):
     def test_missing_evidence_files_are_caught(self):
         self.assertTrue(any("does not exist" in p for p in self.check(row(evidence="AGENTS.md;nope/none.rs"))))
 
+    def test_a_named_test_must_exist(self):
+        here = "scripts/test_check_hazard_log.py"
+        self.assertEqual(self.check(row(evidence=f"{here}::test_a_good_row_passes")), [])
+        self.assertTrue(any("no test called" in p for p in self.check(row(evidence=f"{here}::test_renamed"))))
+        self.assertTrue(any("does not exist" in p for p in self.check(row(evidence="nope.py::test_x"))))
+
+    def test_the_report_lists_hazards_with_no_named_test(self):
+        named = row(id="H-001", status="controlled-unreviewed", evidence="scripts/test_check_hazard_log.py::test_x")
+        bare = row(id="H-002", status="controlled-unreviewed")
+        still_open = row(id="H-003")
+        self.assertEqual(chk.without_a_named_test([named, bare, still_open]), (["H-002"], ["H-003"]))
+
     def test_wrong_columns_are_caught(self):
         self.assertTrue(chk.problems([], ["id"], ROOT))
 

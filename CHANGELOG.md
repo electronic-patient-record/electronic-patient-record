@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-04 - A control may name its test (PR-2, first slice)
+
+- **Clinical risk:** governance only (no behaviour change). H-044 evidence now names four tests. Not set to accepted or closed.
+- **Built:** `scripts/check-hazard-log.py` reads `path::test_name` in the evidence column and fails when the file or the `fn`/`def` is missing (renaming a named test fails the check); `--report` lists hazards with no named test; 3 script tests; `risk-management-plan.md` says how.
+- **Not done / not verified:** the report is not a failure yet: 19 hazards with controls and 24 open ones name no test, and only H-044 does. The failure for controlled hazards, and the pull-request hint listing hazards whose named files changed, are not built. A TypeScript test is found by its title appearing anywhere in the file, which is weaker than a function check. The check proves a test of that name exists, not that it covers the control.
+
 ## 2026-11-03 - Timeouts: a referral that has gone quiet reaches its sender (PC-3, first slice)
 
 - **Clinical risk:** yes (H-044: a referrer waiting for a reply that is not coming). The hazard row says what is still missing. Not set to accepted or closed.

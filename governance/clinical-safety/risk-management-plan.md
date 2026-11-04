@@ -23,7 +23,7 @@ identity, consent, care relationships, an audit trail and a clinician and patien
    disclosed, changed or lost. Add it to [`hazard-log.csv`](hazard-log.csv) with its cause and effect.
 2. **Rate.** Severity 1 (minor) to 5 (catastrophic) and likelihood 1 (very low) to 5 (very high), before the controls are
    counted on; `score = severity x likelihood`. The ratings in the log are **proposed by the author and not validated**.
-3. **Control.** Name each control and point at the evidence (a test or a file). A control with no evidence is not a control.
+3. **Control.** Name each control and point at the evidence (a test or a file). Write `path::test_name` in the evidence column to name the test; `scripts/check-hazard-log.py` fails when the file or the function is missing, and `--report` lists the hazards that name no test yet. A control with no evidence is not a control.
 4. **Residual.** Say what is left: what the controls do not cover. This column is never empty.
 5. **Review.** Only the CSO sets a hazard to `accepted` or `closed`, and records their name in `reviewed_by`.
    `scripts/check-hazard-log.py` refuses either status without a name. On every pull request it also compares the log
