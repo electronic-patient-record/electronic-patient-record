@@ -1,13 +1,13 @@
 ## 14. Implementation Status
 
 **Not for clinical use.** The repository is still the M0 scaffold in its release status, but code now exists for patient
-identity, consent, care relationships, allergies, photos, merge and unmerge, break-the-glass, an HL7 ADT feed and a hash-chained
-audit trail. What is built and what is not is stated per feature in each project's `spec/index.md`
+identity, consent, care relationships, allergies, observations, amendment requests, closed-loop referrals, photos, merge and
+unmerge, break-the-glass, an HL7 ADT feed and a hash-chained audit trail. What is built and what is not is stated per feature in each project's `spec/index.md`
 ([service](../electronic-patient-record-service-with-rust/spec/index.md),
 [matcher](../electronic-patient-record-matcher-with-rust/spec/index.md),
 [UI](../electronic-patient-record-ui-with-svelte/spec/index.md)) and in the entries of [`CHANGELOG.md`](../CHANGELOG.md),
 which also say what was not run. The table that stood here was hand-written and went stale; the counts below are generated.
-Nothing has run on GitHub yet (CQ-20).
+CI runs on GitHub on each push; a run's result is on the repository's Actions page, not here.
 
 <!-- generated:start -->
 <!-- This block is written by scripts/generate-status.sh; do not edit it by hand. -->

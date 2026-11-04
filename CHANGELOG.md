@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-04 - Two stale status statements corrected
+
+- **Clinical risk:** none (documents only). No hazard row changed.
+- **Built:** `spec/14` now lists observations, amendment requests and referrals, and no longer says nothing has run on GitHub. The service spec no longer says referrals have no route.
+- **Not done / not verified:** `grep` confirmed the three controllers exist; I did not check the rest of the service spec for similar drift, and the PC-1 row's "nothing calls" wording was not reviewed.
+
 ## 2026-11-04 - Research pass: bereavement, suicide watch, survivor grief, trauma treatment (plan.md §32); hazards H-046, H-047
 
 - **Clinical risk:** **yes, two rows.** New hazards, both `open`: H-046, a death on an inbound HL7 message is dropped silently, and the record has no concept of death; H-047, a temporary name for an unknown patient reads as real evidence to the matcher. No code changed. Most new tasks are marked `clinical`.
