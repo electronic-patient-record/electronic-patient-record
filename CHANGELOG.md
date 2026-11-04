@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-04 - Four governance documents (PR-7)
+
+- **Clinical risk:** none (documents only). No hazard row changed.
+- **Built:** `governance/data-flow.md`, `mfa-plan.md`, `production-readiness.md`, `national-assumptions.md`, linked from `spec/index.md`. Findings worth reading: the service reads no `acr`/`amr` claim so it cannot require a second factor; the development realm sets none; `outbox::enqueue` has no caller, so nothing is sent out through the outbox yet; `/metrics`, when on, is public; no backup procedure exists; no readiness item is ticked.
+- **Not done / not verified:** all four are drafts from reading code and configuration, with no running deployment, network capture, data protection officer or clinician. The national-assumptions pass is a keyword-and-reading pass over newer code only and does not re-check the earlier audit. What Redis holds was not checked. Not a claim that anything listed is done.
+
 ## 2026-11-04 - The referral timeouts take their time from the clock (PR-5, second slice)
 
 - **Clinical risk:** none to behaviour (the service passes the real time); the H-044 timeout test is now stronger. The hazard row is unchanged and the hazard stays open.

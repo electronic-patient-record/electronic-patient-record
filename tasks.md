@@ -1250,7 +1250,7 @@ Ranked in plan.md §25. Each item was checked against this repository's code; a 
 - [ ] **PR-6 (M, a decision) — `ETag` and `If-Match` on REST.** After OQ-PR1. Additive: a REST `GET` of a versioned record sends its version
   as `ETag`; a write may send `If-Match` and a mismatch is the same 409 as a stale `expected_version`. **Acceptance:** the decision in
   `spec/16-open-questions.md`; if yes, a test per versioned route.
-- [ ] **PR-7 (S each) — Four governance documents.** `governance/data-flow.md` (who sends what to whom, from the routes and the feed),
+- [x] **PR-7 (S each) — Four governance documents.** *(Built 2026-11-04 as drafts, each saying what it has not checked.)* `governance/data-flow.md` (who sends what to whom, from the routes and the feed),
   `governance/mfa-plan.md` (what Keycloak enforces and what is left to the deployment), `governance/production-readiness.md` (a checklist
   that ticks only with evidence) and `governance/national-assumptions.md` (a pass over code and spec for rules that belong to one country,
   against the equity rule in `spec/02-scope.md`). Documents only; none is a claim that anything is done. **Acceptance:** each exists, is

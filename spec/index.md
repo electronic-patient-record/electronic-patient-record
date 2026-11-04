@@ -96,6 +96,10 @@ Topics that span several numbered chapters and are kept whole:
   units, locales, regulation.
 - [Locales](locales.md) — `<language>-<region>` names, same rules as the
   project-portfolio-management repository.
+- [Data flow](../governance/data-flow.md) — who sends what to whom, read from the routes, the feed and the outbox (draft, PR-7)
+- [MFA plan](../governance/mfa-plan.md) — what the service checks, what Keycloak enforces, what is left to the deployment (draft, PR-7)
+- [Production readiness](../governance/production-readiness.md) — a checklist that ticks only with evidence; nothing is ticked (draft, PR-7)
+- [National assumptions](../governance/national-assumptions.md) — a second pass over code built after the equity audit (draft, PR-7)
 
 ## Shared invariants (summary; §5.8 is canonical)
 
