@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-04 - The project site, and QA-4 pointed at the right file
+
+- **Clinical risk:** none (a public description of the project; no change to the record). Every page says not for clinical use, and a build check fails without it. No hazard row changed.
+- **Built:** <https://electronic-patient-record.github.io> in its own repository (SvelteKit 3, `@lilydesignsystem`, GitHub Pages): home, status, research, about. Linked from `README.md`. QA-4 now names `governance/retention-schedule.md`.
+- **Not done / not verified:** the site's facts are a dated, hand-copied snapshot of `spec/14`, so they go stale. It has no browser test suite in CI and no automated accessibility run; it was checked by hand in Chromium at 1280 and 320 px. Only English. `spec/14`'s summary sentence omits observations, referrals and amendments and still says nothing has run on GitHub; the site lists what the controllers show, and that sentence was not changed here.
+
 ## 2026-11-04 - Research pass: roles, protected information, care homes, virtual wards (plan.md §31); hazard H-045
 
 - **Clinical risk:** **yes, one row.** New hazard H-045, `open`: the code reads `ETH` as ethnicity, but HL7 defines it as substance abuse. Latent: no clinical record stores a label. No code changed; PI-1 must precede SE-4. Everything else is documents only; most tasks are marked `clinical`.

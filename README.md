@@ -6,6 +6,8 @@ with FHIR R4 as both data model and API, and explainable patient identity matchi
 > **Pre-release scaffold. Not for clinical use. Do not enter real patient data.** There is no clinical record yet;
 > see [`spec/14-implementation-status.md`](spec/14-implementation-status.md) for exactly what is built.
 
+Project site: <https://electronic-patient-record.github.io> (source: [electronic-patient-record.github.io](https://github.com/electronic-patient-record/electronic-patient-record.github.io)).
+
 | Subproject | What it is | Run | Test |
 |---|---|---|---|
 | [`electronic-patient-record-matcher-with-rust`](electronic-patient-record-matcher-with-rust) | Rust library: the `Patient` identity type and the explainable matching engine | `cargo run -- a.json b.json` | `cargo test`, `cargo clippy --all-targets --all-features -- -D warnings`, `cargo fmt --check` |
