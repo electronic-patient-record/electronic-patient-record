@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - A report of death holds outbound events (BV-3; H-046 stays open)
+
+- **Clinical risk:** **yes, once anything sends.** The outbox runner now holds every event about a patient with a standing report. Nothing enqueues and no sink exists, so nothing changes today. H-046 stays `open`.
+- **Built:** the hold in `outbox.rs`, first in the runner, leaving the event pending so that a withdrawal releases it; `Report.held`; tests that a feed report holds, a confirmation keeps the hold, a withdrawal releases it, and held events do not starve others; `tests/outbound_census.rs`.
+- **Not done / not verified:** every event is held, including one that ought to reach someone after a death. A held event writes no row, so nothing but the logged run count and `pending` depth shows it, and it can wait for ever. The census reads source text, so a way out through a crate it does not list would pass. All 163 database tests that CI runs here ran on local Postgres 18 with the build cache truly off, which covers the commits below as well. The 4 FHIR validator tests need Java and are left to CI.
+
 ## 2026-11-05 - A date of death in the matcher, as weak evidence (BV-1, in part; OQ-BV3)
 
 - **Clinical risk:** **not yet in effect.** The service uses the published matcher, so nothing changes until a release. Once it does, a shared date of death adds a little to a match score, which can move a pair across a threshold; H-001 records this. H-046 stays `open`.

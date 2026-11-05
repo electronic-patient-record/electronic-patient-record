@@ -7,12 +7,17 @@
 //! recipient's [`Sink`]. Every outcome is an append-only `outbox_attempts` row, and a delivery or a
 //! refusal is also an audit row naming the event, never its content.
 //!
+//! Any standing report that the patient has died holds an event about them (BV-3, OQ-BV1): it is not
+//! delivered, writes no attempt and stays pending, because a refusal is final and a withdrawn report
+//! must release it. A failed look at the death store is a failed attempt, never a delivery.
+//!
 //! Delivery is at least once. A refusal is final; a failure is retried up to [`MAX_FAILURES`] times.
 //! Nothing calls [`enqueue`] yet and no sink exists (IO-6): this module is the mechanism, not a feature.
 
 use crate::audit::{self, Action as AuditAction, Chain};
 use crate::consent;
 use crate::consents_store;
+use crate::death_store;
 use crate::ids;
 use crate::patients_store::StoreError;
 use crate::policy::{self, Consent, Decision, Purpose, Relationship, Resource, Role, Subject};
@@ -89,6 +94,8 @@ pub struct Report {
     pub refused: u32,
     /// Attempts that failed.
     pub failed: u32,
+    /// Events held by a report that the patient has died. They stay pending.
+    pub held: u32,
 }
 
 /// Write an event, in the caller's transaction, and return its id.
@@ -319,6 +326,8 @@ pub async fn run_once_with(
     backoff_secs: i64,
 ) -> Result<Report, StoreError> {
     let mut report = Report::default();
+    // Events held in this run: they have no attempt row, so `claim` is told to pass over them.
+    let mut held: Vec<String> = Vec::new();
     // An event gets at most one attempt per run, so a failure waits for the next run instead of
     // using up every retry at once.
     let mark: i64 = db
@@ -331,13 +340,21 @@ pub async fn run_once_with(
         .ok_or_else(|| StoreError::Db("no row".into()))?
         .try_get("", "m")
         .map_err(db_err)?;
-    for _ in 0..limit {
+    let mut taken = 0;
+    while taken < limit {
         let tx = db.begin().await.map_err(db_err)?;
-        let Some(event) = claim(&tx, mark, backoff_secs).await? else {
+        let Some(event) = claim(&tx, mark, backoff_secs, &held).await? else {
             tx.rollback().await.map_err(db_err)?;
             break;
         };
         let (outcome, reason) = process(&tx, &event, sinks).await;
+        if outcome == HELD {
+            tx.rollback().await.map_err(db_err)?;
+            report.held += 1;
+            held.push(event.id);
+            continue;
+        }
+        taken += 1;
         tx.execute_raw(pg(
             "INSERT INTO outbox_attempts (event_id, outcome, reason) VALUES ($1::uuid, $2, $3)",
             vec![
@@ -384,6 +401,7 @@ async fn claim(
     tx: &impl ConnectionTrait,
     mark: i64,
     backoff_secs: i64,
+    held: &[String],
 ) -> Result<Option<Event>, StoreError> {
     let row = tx
         .query_one_raw(pg(
@@ -393,6 +411,7 @@ async fn claim(
                  FROM outbox_events e
                  WHERE NOT EXISTS (SELECT 1 FROM outbox_attempts a
                                    WHERE a.event_id = e.id AND a.outcome IN ('delivered', 'refused'))
+                   AND e.id <> ALL($3::uuid[])
                    AND NOT EXISTS (SELECT 1 FROM outbox_attempts a WHERE a.event_id = e.id AND a.id > $1)
                    AND (SELECT count(*) FROM outbox_attempts a
                         WHERE a.event_id = e.id AND a.outcome = 'failed') < {MAX_FAILURES}
@@ -406,7 +425,7 @@ async fn claim(
                  LIMIT 1
                  FOR UPDATE OF e SKIP LOCKED"
             ),
-            vec![mark.into(), backoff_secs.into()],
+            vec![mark.into(), backoff_secs.into(), ids::uuids(held).into()],
         ))
         .await
         .map_err(db_err)?;
@@ -425,6 +444,9 @@ async fn claim(
     .transpose()
 }
 
+/// The outcome of an event held by a report of death. Never stored.
+const HELD: &str = "held";
+
 /// Decide and deliver one event: the outcome and its reason.
 async fn process(
     tx: &impl ConnectionTrait,
@@ -432,6 +454,14 @@ async fn process(
     sinks: &Sinks,
 ) -> (&'static str, Option<String>) {
     let failed = |why: &str| ("failed", Some(why.to_string()));
+    // First, so that nothing about a held event is decided or sent.
+    if let Some(patient) = &event.patient_id {
+        match death_store::answer(tx, patient).await {
+            Ok(answer) if answer.holds_contact() => return (HELD, None),
+            Ok(_) => {}
+            Err(_) => return failed("death-lookup"),
+        }
+    }
     let Some(sink) = sinks.get(&event.recipient) else {
         return failed("no-sink");
     };

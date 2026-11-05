@@ -12,6 +12,10 @@ use async_trait::async_trait;
 use electronic_patient_record::audit::Chain;
 use electronic_patient_record::consent::{ConsentRecord, Effect, Kind, Provision, Status};
 use electronic_patient_record::consents_store;
+use electronic_patient_record::death::{
+    self, Actor, Occurred, Source, Status as DeathStatus, Step,
+};
+use electronic_patient_record::death_store;
 use electronic_patient_record::metrics;
 use electronic_patient_record::outbox::{self, Event, MAX_FAILURES, NewEvent, Sink, Sinks};
 use electronic_patient_record::patients_store;
@@ -221,6 +225,113 @@ async fn a_patients_refusal_stops_the_delivery_and_is_audited_once() {
     )
     .await;
     assert_eq!(audited, 1, "the refusal is audited");
+}
+
+/// BV-3: any report holds an event, whoever made it; a person confirming it keeps the hold; a
+/// withdrawal releases it, and the event is then delivered once.
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn a_report_of_death_holds_an_event_until_it_is_withdrawn() {
+    let db = db().await;
+    let recipient = format!("sink-{}", nanos());
+    let id = patient(&db).await;
+    let other = patient(&db).await;
+    let payload = serde_json::json!({"n": 1});
+    let tx = db.begin().await.unwrap();
+    let held = outbox::enqueue(&tx, event(&recipient, Some(&id), &payload))
+        .await
+        .unwrap();
+    let free = outbox::enqueue(&tx, event(&recipient, Some(&other), &payload))
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+
+    let made = death::report(
+        Source::OtherSystem,
+        Actor::Feed("mllp:adt-feed".into()),
+        Occurred::NotKnown {
+            reason: "the message gave no date".into(),
+        },
+        "HL7 ADT A08 C1",
+        chrono::Utc::now(),
+    )
+    .unwrap();
+    let stored = death_store::report(&db, &id, &made).await.unwrap();
+
+    let (all, calls) = sinks(&recipient, false);
+    let chain = Chain::unkeyed();
+    let run = outbox::run_once(&db, &chain, &all, 100).await.unwrap();
+    assert!(run.held >= 1, "{run:?}");
+    assert_eq!(calls.load(Ordering::SeqCst), 1, "only the other patient's");
+    assert_eq!(attempts(&db, &free, "delivered").await, 1);
+    let attempted = "SELECT count(*) AS n FROM outbox_attempts WHERE event_id = $1::uuid";
+    assert_eq!(count(&db, attempted, &held).await, 0, "held, not refused");
+
+    // Confirmed, it is still held.
+    let by = Actor::Person("nurse-1".into());
+    let step = |to, reason: &str| Step {
+        to,
+        by: by.clone(),
+        reason: reason.into(),
+    };
+    let verified = step(DeathStatus::Verified, "seen");
+    death_store::advance(&db, &id, &stored.id, 1, &verified)
+        .await
+        .unwrap();
+    outbox::run_once(&db, &chain, &all, 100).await.unwrap();
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+
+    // Withdrawn, it goes, once.
+    let wrong = step(DeathStatus::WithdrawnInError, "the wrong record");
+    death_store::advance(&db, &id, &stored.id, 2, &wrong)
+        .await
+        .unwrap();
+    outbox::run_once(&db, &chain, &all, 100).await.unwrap();
+    outbox::run_once(&db, &chain, &all, 100).await.unwrap();
+    assert_eq!(calls.load(Ordering::SeqCst), 2);
+    assert_eq!(attempts(&db, &held, "delivered").await, 1);
+}
+
+/// BV-3: held events do not use up a run, so they cannot starve one that may go.
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn held_events_do_not_use_up_a_run() {
+    let db = db().await;
+    let recipient = format!("sink-{}", nanos());
+    let id = patient(&db).await;
+    let other = patient(&db).await;
+    let payload = serde_json::json!({"n": 1});
+    let made = death::report(
+        Source::Hospital,
+        Actor::Person("nurse-1".into()),
+        Occurred::NotKnown {
+            reason: "not told".into(),
+        },
+        "the ward rang",
+        chrono::Utc::now(),
+    )
+    .unwrap();
+    death_store::report(&db, &id, &made).await.unwrap();
+    let tx = db.begin().await.unwrap();
+    for _ in 0..3 {
+        outbox::enqueue(&tx, event(&recipient, Some(&id), &payload))
+            .await
+            .unwrap();
+    }
+    outbox::enqueue(&tx, event(&recipient, Some(&other), &payload))
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+    let (all, calls) = sinks(&recipient, false);
+    let chain = Chain::unkeyed();
+    // Runs of one: a held event must not count as the one.
+    for _ in 0..50 {
+        outbox::run_once(&db, &chain, &all, 1).await.unwrap();
+        if calls.load(Ordering::SeqCst) == 1 {
+            return;
+        }
+    }
+    panic!("the deliverable event never went");
 }
 
 #[tokio::test]

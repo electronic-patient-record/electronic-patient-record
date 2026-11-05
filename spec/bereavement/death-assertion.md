@@ -2,7 +2,7 @@
 
 The rules for recording that a person has died (BV-1). A first draft for clinical and legal review: no clinician, medical examiner or bereaved person has reviewed it. The reasons and sources are on [bereavement](index.md).
 
-**Built:** the rules and the read model in `electronic-patient-record-service-with-rust/src/death.rs`, and the append-only store in `death_store.rs` (table `death_assertion_versions`, view `death_assertion_current`, migration 25). The routes are in `controllers/deaths.rs`. The banner on the patient and summary pages says so, and `DeathSection.svelte` reports and takes steps. An HL7 message with PID-29 or PID-30 stores a report, as below. FHIR is below. **Not built:** anything that a hold acts on. The service has no outbound contact yet, so nothing is held today.
+**Built:** the rules and the read model in `electronic-patient-record-service-with-rust/src/death.rs`, and the append-only store in `death_store.rs` (table `death_assertion_versions`, view `death_assertion_current`, migration 25). The routes are in `controllers/deaths.rs`. The banner on the patient and summary pages says so, and `DeathSection.svelte` reports and takes steps. An HL7 message with PID-29 or PID-30 stores a report, as below. FHIR is below. **The hold:** the outbox runner holds any event about a patient with a standing assertion, as below. Nothing enqueues and no sink exists, so nothing is held in use today.
 
 ## The model
 
@@ -65,6 +65,12 @@ An HL7 ADT message with PID-29, or PID-30 of `Y`, stores a report from that feed
 | The message cannot be applied for another reason, or its event is not handled, such as `A03` | Refused as before, and the refusal says the death was not recorded |
 
 A feed cannot retract a report: a later message with an indicator of `N` changes nothing. A report waits for a person to verify it; nothing tells anyone that one has arrived, except the banner when the record is opened.
+
+## The hold
+
+`outbox.rs` asks for the one answer before anything else about an event. While it holds, the event is not delivered, writes no attempt and stays pending; a withdrawal that leaves nothing standing releases it, and it goes at the next run. A hold is not a refusal, because a refusal is final. A failed look is a failed attempt, never a delivery. Held events do not use up a run. `tests/outbound_census.rs` fails if a new way out appears without a hold.
+
+Every event about the patient is held, whatever it is. That needs review: a message that must reach someone after a death, such as telling the patient's GP, is held too, and no route yet says which may go. The contact a person makes by hand is held only by the banner's words. Nothing shows a person what is held, or how long it has waited.
 
 ## FHIR
 
