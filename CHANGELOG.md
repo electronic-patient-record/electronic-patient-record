@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - A design for consent to contact (SG-3)
+
+- **Clinical risk:** none today: a design in `spec/survivor-grief/index.md`, with no code.
+- **Built:** nothing. The design covers who, how, when and how often, the defaults, and why this is apart from access consent.
+- **Not done / not verified:** no bereaved person, counsellor or lawyer has reviewed it. It cannot be used until the dead patient's wishes and hidden-from list exist (BV-6, PI-8). Four questions are open: people with no record, children, capacity, and whether an EPR should hold this at all. The defaults are my reasoning. I searched for no new sources.
+
 ## 2026-11-05 - Vital signs show both clocks, and say when an entry is late (SW-2, in part; H-034 stays open)
 
 - **Clinical risk:** **yes.** A clinician now sees when a reading was written beside when it was measured, and a first entry written more than 60 minutes after its measured time says "late entry". H-034 records this and stays `open`.

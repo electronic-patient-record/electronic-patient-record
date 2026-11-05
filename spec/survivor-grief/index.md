@@ -269,6 +269,40 @@ A rule of this project (SG-2), decided before anyone asked for these. The reason
 
 `electronic-patient-record-service-with-rust/tests/grief_census.rs` holds this. It fails on a name shaped like one of these in the service, migrations, matcher or UI; on a route about a family, a household or grief; on any new caller of `outbox::enqueue` until someone has looked at what starts it, and at once if that file works from one of those dates; if the outbox hold or the proxy stop reads the date; and if a death and a referral meet in code. It reads source text, so it finds names and calls, not intent. Something built under another name passes.
 
+## Design: a consent for contact (SG-3)
+
+A first draft of the record the section on [consent for proactive contact](#consent-for-proactive-contact-after-a-death) asks for. Nothing is built, and no bereaved person, counsellor or lawyer has reviewed it.
+
+**It is separate from access consent.** `consent.rs` decides who may see a record, and there a deny beats a permit and an unreadable provision denies. This decides whether anyone may reach out to a person. Mixing them would let a yes to one be read as a yes to the other.
+
+| Field | Holds | Default |
+|---|---|---|
+| Person | Whose consent this is, on their own record | Required. Never inferred from a family link |
+| Who | The named service or person who may make contact | Required. "The team" is not enough |
+| What about | The offer, in plain words | Required |
+| How | The channel and number or address the person chose | Required. Not taken from the record |
+| May it mention the death | Yes or no, for a message that others could read | No |
+| When | The earliest and latest moment, chosen by the person | Required. The person's own choice of date is theirs, not a rule (see [do not build](#do-not-build)) |
+| How often | How many attempts | One |
+| Given | When, to whom, and who recorded it | Required |
+| Ended | When and how, and by whom | Empty until it ends |
+
+Rules:
+
+1. **No consent, no contact.** Absent is no, never "not asked yet, so try".
+2. **It ends by itself.** After the latest moment or the last attempt it is over, and silence never extends it.
+3. **Withdrawal is simple and takes effect at once.** Any member of staff can record it, in any words, with no reason needed. Anything waiting to be sent stops.
+4. **Append-only.** A change is a new version, and a withdrawn consent stays in the history.
+5. **Two checks before any contact.** No report of death stands on this person, and the dead patient's wishes and hidden-from list do not forbid it. Those two are not built ([BV-6](../bereavement/index.md), PI-8), so **until they are, this cannot be used**: a consent could reach someone a patient wanted kept away.
+6. **A consent to contact is not a referral.** Sending a referral needs its own consent.
+
+Open:
+
+- **Who is asked.** A friend or a colleague may have no record here, and making one just to hold this is its own harm.
+- **A child.** Who gives this for a child or young person, and what a parent is told.
+- **Capacity.** What happens when a person cannot decide in the first days after a death.
+- **Whether an EPR should hold this at all**, rather than the service that makes the contact.
+
 ## Compared with this project
 
 | Need | Today | Gap | Verified against the code |
