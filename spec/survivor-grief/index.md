@@ -253,6 +253,22 @@ This section gathers what the sections above suggest.
 
 **What this project would need.** A consent for contact, on the survivor's record, naming what, by whom, when and how; with a withdrawal; and with a check against the dead patient's wishes and hidden-from list. A single contact attempt per offer unless the person agrees to more. The channel chosen by the person, and no message that mentions the death on a shared phone (my reasoning).
 
+## Do not build
+
+A rule of this project (SG-2), decided before anyone asked for these. The reasons are on this page. It is a first draft of the rule: no counsellor, clinician or bereaved person has reviewed it.
+
+| Refused | Why |
+|---|---|
+| A family or household view | Seeing one person gives no right to see another; family link data is itself sensitive |
+| A list of people bereaved by suicide | It would be inferred from links that may be wrong, about a cause unsettled for months |
+| An automatic referral | A referral comes in with its consent recorded, and a charity with no EPR could not answer one |
+| An anniversary mailing, or any message from a date | The evidence supports no rule, and the harm of an unwanted message is plain |
+| A grief risk score | A score can close support or rank who gets help |
+
+"A message from a date" means one derived from a date of death, a due date or a dead child's birth date. If a person asks for a contact on a date, that is their plan on their pathway, and they can cancel it. That is not built.
+
+`electronic-patient-record-service-with-rust/tests/grief_census.rs` holds this. It fails on a name shaped like one of these in the service, migrations, matcher or UI; on a route about a family, a household or grief; on any new caller of `outbox::enqueue` until someone has looked at what starts it, and at once if that file works from one of those dates; if the outbox hold or the proxy stop reads the date; and if a death and a referral meet in code. It reads source text, so it finds names and calls, not intent. Something built under another name passes.
+
 ## Compared with this project
 
 | Need | Today | Gap | Verified against the code |
@@ -267,12 +283,12 @@ This section gathers what the sections above suggest.
 | `PSY` as confidence | Unmasks for `Clinician, Nurse, AlliedHealth, Patient`; no team test | A service test | `src/policy.rs`, `unmasked_for` |
 | Records carrying a label | None; masking not applied | SE-4 before any counselling note | [protected information](../access-control/protected-information.md) |
 | Consent for contact | Consent provisions cover access, not contact | A contact consent | [service spec](../../electronic-patient-record-service-with-rust/spec/index.md) SE-2 |
-| Outbound messages | Outbox built; nothing enqueues; only a `log` sink | A date-driven rule must not exist; a route test | `src/outbox.rs` |
+| Outbound messages | Outbox built; nothing enqueues; only a `log` sink | A date-driven rule must not exist; `tests/grief_census.rs` fails on one | `src/outbox.rs` |
 | Scores | Only the matcher's score is allow-listed; a `score` column trips PA-3 | Reason and allow-list if an outcome is stored | `tests/support_only.rs`, [service spec](../../electronic-patient-record-service-with-rust/spec/index.md) |
 | Observation model for an outcome | Eight vital signs only, each with one UCUM unit | A questionnaire or outcome model | `src/observations.rs`, service spec RC-6 |
 | Counsellor role | Eleven roles; `allied-health` is the nearest | A counsellor or volunteer role, a service limit | `src/policy.rs` |
 | Proxy view of a survivor's note | A proxy reads identity, allergies, photo, access log by scope; nothing else | Keep a bereavement note out of every scope | `src/proxy.rs`, service spec PA-5 |
-| Family or household view | None | **Keep it that way** | Search of `src/routes.rs` for `family` and `household`: no hits |
+| Family or household view | None | **Keep it that way** | `tests/grief_census.rs` searches `src/routes.rs` for `family` and `household` |
 | Third-party review of an export | No patient-copy export | A human review step | [data exchange](../data-exchange/index.md) |
 | Purpose of use | Seven purposes | Likely fits `treatment`; a voluntary service's use is unclear | `src/policy.rs`, `Purpose` |
 
@@ -317,7 +333,7 @@ Proposals only.
 7. **A service-limited label** for counselling. Prerequisite: SE-4. Prefer holding no notes in the shared record.
 8. **A "with whom" field for a joint session**, stored only within the service, and a reviewer step before any disclosure.
 9. **A "reported by the person" form of words** for facts about other people, and a warning on a paste from another patient's record.
-10. **Do not build** a family view, a household view, a list of people bereaved by suicide, an automatic referral, an anniversary mailing, or a grief risk score.
+10. **Do not build** a family view, a household view, a list of people bereaved by suicide, an automatic referral, an anniversary mailing, or a grief risk score. Now a rule: see [do not build](#do-not-build).
 11. **Offer a parent-held or person-held summary**, so that a person does not have to retell. Printed or on a phone; a printed copy has its own risk.
 12. **A questionnaire model** for outcome measures, with version, licence note and language.
 13. **Co-design**: a panel with bereaved people, parents, suicide-bereaved people, a counsellor and a voluntary service before any screen. See OQ-PI6 in [open questions](../16-open-questions.md).

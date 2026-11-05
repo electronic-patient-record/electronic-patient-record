@@ -1413,7 +1413,7 @@ Ranked in plan.md §32. Most of this is not built. None was to be built before c
 - [ ] **BV-7 (M, clinical) — What is still owed.** A pathway outcome of "patient died", a referral event, and a worklist with a named owner for pending results. **Acceptance:** a design, with the referral table test.
 - [ ] **BV-8 (S) — Death scenarios in the synthetic data.** Expected, sudden, coroner, wrong patient, withdrawn, baby, twin. **Acceptance:** the scenarios exist; no jokes in test data.
 - [ ] **SG-1 (S, clinical) — Three step types.** Information given, signposted, referred, each saying plainly what it will not tell you. **Acceptance:** added to `spec/pathway-design.md`.
-- [ ] **SG-2 (S, clinical) — Do not build.** Record the refusals: a family view, a household view, a list of people bereaved by suicide, an automatic referral, an anniversary mailing, a grief risk score. **Acceptance:** a rule in the specification and a date-derived-message route test.
+- [x] **SG-2 (S, clinical) — Do not build.** Record the refusals: a family view, a household view, a list of people bereaved by suicide, an automatic referral, an anniversary mailing, a grief risk score. **Acceptance:** a rule in the specification and a date-derived-message route test.
 - [ ] **SG-3 (S) — Consent for contact.** Who, how, when, how often, withdrawn when; separate from access consent. **Acceptance:** a design.
 - [ ] **SG-4 (S) — A directory pack.** Services with owner, area, languages, last checked, and referral or self-referral; a stale entry shows as stale. **Acceptance:** a design; no phone number in core code.
 - [ ] **SG-5 (M, with people who have been bereaved) — Co-design.** A panel before any screen, with people paid and protected. **Acceptance:** a recorded plan; OQ-PI6 answered.

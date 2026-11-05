@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - What is not built for people who are bereaved, as a rule and a test (SG-2)
+
+- **Clinical risk:** none in behaviour: this adds a rule and a test. It limits what may be built later.
+- **Built:** a "Do not build" section in `spec/survivor-grief/index.md`; `tests/grief_census.rs`, six tests that need no database.
+- **Not done / not verified:** no counsellor, clinician or bereaved person has reviewed the rule. The test reads source text, so a refused thing under another name passes, and a comment using a listed word fails. Nothing enqueues today, so the date test guards the first caller and has never fired on real code; it blocks that file if it mentions a birth date for any reason, which may be too broad. A date of death also reaches the matcher (OQ-BV3) and is not a message, so this does not cover it. A contact a person asks for on a date is not built.
+
 ## 2026-11-05 - A label census for every output route (PI-7)
 
 - **Clinical risk:** none in behaviour: this adds a test. It does put a gap in writing: no route applies a security label. A record cannot carry one, `authorize` always asks with none, and nothing acts on `Mask`, so the policy engine's masking rules, which are tested on their own, reach no screen.
