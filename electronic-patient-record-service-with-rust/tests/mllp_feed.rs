@@ -258,6 +258,15 @@ async fn conflicts_duplicates_unsupported_and_invalid_messages_are_refused_and_c
     assert!(ack.contains("may be the same person"), "{ack}");
     assert!(by_mrn(&db, &other).await.is_empty());
 
+    // A death is not answered as if all was well, and the record does not change (BV-2, H-046).
+    let death = format!("{}20261104", "|".repeat(21));
+    let ack = send(&mut s, &adt("A08", "C7", &mrn, &family, &d, &death))
+        .await
+        .unwrap();
+    assert_eq!(code(&ack), "AE");
+    assert!(ack.contains("reports a death"), "{ack}");
+    assert_eq!(by_mrn(&db, &mrn).await[0].version, 1);
+
     // A message type this adapter does not handle is rejected, and one with no usable patient is an error.
     let oru =
         adt("A28", "C4", &tag("m"), &family, &d, "").replace("ADT^A28^ADT_A05", "ORU^R01^ORU_R01");

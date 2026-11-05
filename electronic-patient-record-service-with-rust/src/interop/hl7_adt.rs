@@ -75,6 +75,16 @@ fn birth_date(ts: &str) -> Option<String> {
     }
 }
 
+/// Why a message that reports a death is refused. Date-free: it reaches the audit log.
+pub const DEATH_NOT_APPLIED: &str = "this message reports a death, which this service cannot record yet: nothing was applied, and a person must act on it";
+
+/// Whether PID-29 (date of death) or PID-30 (death indicator) reports a death. Any date counts, even
+/// beside an indicator of `N`, as any report does (OQ-BV1). `""` is HL7's explicit null, not a report.
+fn reports_a_death(date: &str, indicator: &str) -> bool {
+    let given = |s: &str| !s.trim().is_empty() && s.trim() != "\"\"";
+    given(date) || indicator.trim().eq_ignore_ascii_case("Y")
+}
+
 /// Every repetition of a field, as long as at least one of `probe` components is present.
 fn repetitions(message: &er7::Message, field: &str, probes: &[&str]) -> Vec<usize> {
     (1..=20)
@@ -208,7 +218,10 @@ pub fn patient_from_adt(text: &str) -> Result<Inbound, Rejection> {
             "PID-8 {raw_sex:?} is not a known sex code; left blank"
         ));
     }
-    let problems = patients_store::validate(&patient);
+    let mut problems = patients_store::validate(&patient);
+    if reports_a_death(&get(&message, "PID-29"), &get(&message, "PID-30")) {
+        problems.push(DEATH_NOT_APPLIED.to_string());
+    }
     if !problems.is_empty() {
         return Err(Rejection::Invalid(problems));
     }
@@ -422,5 +435,35 @@ mod tests {
             acknowledgement("hello", &patient_from_adt("hello"), "ACK4", ts),
             None
         );
+    }
+
+    #[test]
+    fn a_death_in_pid_29_or_30_is_refused_and_says_why() {
+        let message = |tail: &str| {
+            format!(
+                "MSH|^~\\&|REG|CLINIC|EPR|HOSP|20261021090000||ADT^A08^ADT_A01|C1|P|2.5\rEVN|A08|20261021090000\rPID|1||M1^^^LOCAL||Smith^Ann||19800314|F{tail}\r"
+            )
+        };
+        let pipes = "|".repeat(21);
+        for tail in [
+            format!("{pipes}20261104"),
+            format!("{pipes}20261104|Y"),
+            format!("{pipes}20261104|N"),
+            format!("{pipes}|Y"),
+        ] {
+            match patient_from_adt(&message(&tail)) {
+                Err(Rejection::Invalid(why)) => {
+                    assert!(why.contains(&DEATH_NOT_APPLIED.to_string()))
+                }
+                other => panic!("{tail}: {other:?}"),
+            }
+        }
+        for tail in [
+            String::new(),
+            format!("{pipes}|N"),
+            format!("{pipes}\"\"|\"\""),
+        ] {
+            assert!(patient_from_adt(&message(&tail)).is_ok(), "{tail}");
+        }
     }
 }

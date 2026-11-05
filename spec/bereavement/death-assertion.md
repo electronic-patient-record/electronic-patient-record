@@ -2,7 +2,7 @@
 
 The rules for recording that a person has died (BV-1). A first draft for clinical and legal review: no clinician, medical examiner or bereaved person has reviewed it. The reasons and sources are on [bereavement](index.md).
 
-**Built:** the rules and the read model, pure, in `electronic-patient-record-service-with-rust/src/death.rs`. **Not built:** storage, a route, a screen, or anything that a hold acts on. The service has no outbound contact yet, so nothing is held today.
+**Built:** the rules and the read model, pure, in `electronic-patient-record-service-with-rust/src/death.rs`. **Not built:** storage, a route, a screen, or anything that a hold acts on. Until a death can be recorded, a report that arrives is refused rather than dropped: an HL7 message with PID-29 or PID-30 is answered `AE`, changes nothing and waits in the feed queue for a person, and a FHIR write with `deceased[x]` gets a 422. The service has no outbound contact yet, so nothing is held today.
 
 ## The model
 

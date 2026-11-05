@@ -1196,6 +1196,16 @@ mod tests {
         let extra = r#"{"resourceType":"Patient","maritalStatus":{"text":"M"},"name":[{"family":"Smith"}]}"#;
         let r = patient_from(extra, None).err().unwrap();
         assert_eq!(r.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        // A death cannot be recorded yet, so a FHIR write that reports one is refused too (BV-2).
+        for death in [
+            r#""deceasedBoolean":true"#,
+            r#""deceasedDateTime":"2026-11-04""#,
+        ] {
+            let body =
+                format!(r#"{{"resourceType":"Patient",{death},"name":[{{"family":"Smith"}}]}}"#);
+            let r = patient_from(&body, None).err().unwrap();
+            assert_eq!(r.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        }
         let other = r#"{"resourceType":"Patient","id":"22222222-2222-4222-8222-222222222222","name":[{"family":"Smith"}]}"#;
         assert_eq!(
             patient_from(other, Some("11111111-1111-4111-8111-111111111111"))

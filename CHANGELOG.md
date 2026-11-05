@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - A reported death is refused, not dropped (BV-2, in part; H-046 stays open)
+
+- **Clinical risk:** **yes, for the feed.** An HL7 message with a date of death or a `Y` death indicator used to be applied and answered `AA`, with the death ignored. It is now answered `AE`, changes nothing, and waits in the feed queue. So other details on that message are no longer applied either. A FHIR write with `deceased[x]` was already refused and now has a test. H-046 stays `open`, as its status is the Clinical Safety Officer's.
+- **Built:** `PID-29` and `PID-30` read in `hl7_adt.rs`; tests on the mapper, over MLLP against Postgres, and on the FHIR route. A date beside an indicator of `N` counts as a report, under OQ-BV1; HL7's `""` null does not.
+- **Not done / not verified:** the death cannot be recorded, so this rests on a person working the queue, and nothing holds contact. An `A03` discharge is refused as an unhandled event and does not mention the death. A FHIR read cannot show a death. Tried only on test messages, not a real sender's. Local database tests ran `mllp_feed` only, on local Postgres 18, as the Podman VM would not start; CI runs the rest.
+
 ## 2026-11-05 - Death assertions: the spec and the rules (BV-1, in part; H-046 stays open)
 
 - **Clinical risk:** none in effect: nothing calls the new code, so nothing changes for a clinician. It sets the rules a later change will put in front of one. H-046 stays `open`.
