@@ -1,5 +1,6 @@
 //! HTTP controllers.
 
+pub mod adjustments;
 pub mod allergies;
 pub mod amendments;
 pub mod audit;

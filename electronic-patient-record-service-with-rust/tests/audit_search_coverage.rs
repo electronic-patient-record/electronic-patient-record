@@ -31,6 +31,7 @@ const EXEMPT: &[(&str, &str)] = &[(
 /// The call for a search route: its path with a query that matches nothing in particular.
 fn call(template: &str, patient: &str) -> Option<String> {
     Some(match template {
+        "/api/patients/{id}/adjustments" => format!("/api/patients/{patient}/adjustments"),
         "/api/patients/{id}/death/assertions" => {
             format!("/api/patients/{patient}/death/assertions")
         }

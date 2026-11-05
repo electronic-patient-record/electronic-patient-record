@@ -561,6 +561,37 @@ async fn real_responses_validate_against_the_served_schemas() {
             &mut problems,
         );
 
+        // Adjustments: a record, the list, a change and a stale change.
+        let p = "/api/patients/{id}/adjustments";
+        let made = server
+            .post(&format!("/api/patients/{id}/adjustments"))
+            .json(&json!({ "code": "interpreter-spoken", "note": "Polish",
+                "review_by": "2099-01-01", "reason": "they asked" }))
+            .await;
+        made.assert_status(StatusCode::CREATED);
+        let made: Value = made.json();
+        expect("adjustment record", p, "post", StatusCode::CREATED, &made, &mut problems);
+        let list = server.get(&format!("/api/patients/{id}/adjustments")).await;
+        list.assert_status_ok();
+        expect("adjustments", p, "get", StatusCode::OK, &list.json(), &mut problems);
+        let one = format!(
+            "/api/patients/{id}/adjustments/{}",
+            made["id"].as_str().unwrap_or_default()
+        );
+        let change = server
+            .put(&one)
+            .json(&json!({ "expected_version": 1, "action": "review", "reason": "still needed" }))
+            .await;
+        change.assert_status_ok();
+        let put = "/api/patients/{id}/adjustments/{adjustment_id}";
+        expect("adjustment change", put, "put", StatusCode::OK, &change.json(), &mut problems);
+        let stale = server
+            .put(&one)
+            .json(&json!({ "expected_version": 1, "action": "end", "reason": "stale" }))
+            .await;
+        stale.assert_status(StatusCode::CONFLICT);
+        expect("adjustment stale", put, "put", StatusCode::CONFLICT, &stale.json(), &mut problems);
+
         // Death assertions: the answer, a report, the list, a step and a stale step.
         let p = "/api/patients/{id}/death/assertions";
         let reported = server

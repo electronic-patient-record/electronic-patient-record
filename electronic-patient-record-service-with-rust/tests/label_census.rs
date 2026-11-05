@@ -44,6 +44,7 @@ const OUTPUT: &[(&str, &str, Label)] = &[
         "/api/patients/{id}/referrals/{referral_id}",
         NotApplied,
     ),
+    ("GET", "/api/patients/{id}/adjustments", NotApplied),
     ("GET", "/api/patients/{id}/death", NotApplied),
     ("GET", "/api/patients/{id}/death/assertions", NotApplied),
     ("GET", "/api/me/patients", NotApplied),

@@ -7,6 +7,8 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
+pub mod adjustments;
+pub mod adjustments_store;
 pub mod adt_feed;
 pub mod allergies;
 pub mod amendment;

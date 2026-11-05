@@ -953,7 +953,7 @@ what a clinician or a carer sees.
   recorder, an expiry, and revocation, as the model for CA-5 proxy access and adolescent confidentiality.
   **Acceptance:** a proxy cannot read outside its scopes, an expired or revoked proxy is refused (fake clock), and every
   use is in the patient's access log.
-- [ ] **PA-6 (M) — Reasonable adjustments and communication needs.** **Clinical.** A coded record with a review date
+- [ ] **PA-6 (M) — Reasonable adjustments and communication needs.** **Service landed 2026-11-05** (rules, append-only store, routes, H-048; see `spec/reasonable-adjustments/index.md`). **Open:** the banner and the page, and PN-4; nothing beside an appointment, because the record holds none. **Clinical.** A coded record with a review date
   (interpreter need, BSL, easy read, pictorial pain scale preferred), shown in the patient banner and read by PN-4. The
   code list's licence is **[uncertain]**.
   **Acceptance:** an overdue review shows, an adjustment is visible beside the appointment and the banner, and an
@@ -1431,3 +1431,14 @@ Ranked in plan.md §32. Most of this is not built. None was to be built before c
 - [ ] **TT-5 (S) — A disclosure request record.** Release named items only, with third-party marks. **Acceptance:** a design; legal review recorded.
 - [ ] **TT-6 (S, clinical) — Trauma pathway templates.** Rehabilitation prescription as a document, and psychological review as a default step, offered and declinable. **Acceptance:** clinician review recorded.
 - [ ] **TT-7 (S) — A registry extract as a test.** NMTR, NTDS and the bi-national dataset test whether the core holds the right facts. **Acceptance:** a gap list.
+
+## Research 2026-11-05 — the patient administration system's modules
+
+Ranked in plan.md §33. PA-6 was built from this pass. These were each checked against this repository as the plan says; none is built.
+
+- [ ] **PX-1 (M, clinical) — A patient's own needs.** See and correct them on "my record", and a proxy scope for them. **Acceptance:** a patient reads and asks to change their own; a proxy sees them only with the scope; a test of each.
+- [ ] **PX-2 (S, clinical) — Reviews that are overdue.** Across patients, oldest first, and a list that is cut says so (PR-1). **Acceptance:** a route and a screen; a test with one overdue and one in time; who owns the list is decided.
+- [ ] **PX-3 (S) — An adjustment as a FHIR `Flag`.** R4 and R5, with this project's code system, and no national code until its licence is checked. **Acceptance:** the FHIR validator passes on an active and an ended one.
+- [ ] **PX-4 (M) — An `AuditEvent` claims BALP only when it meets it.** A check per event, and a row that cannot meet the profile is still exported, without the claim. **Acceptance:** a test per constraint.
+- [ ] **PX-5 (S) — Health says what is down.** The database and each configured dependency, with one answer reused for 5 seconds. **Acceptance:** a stopped dependency shows as degraded; many calls make one check.
+- [x] **PX-6 (S) — Not adopted: PAS-scope features.** Recorded in plan.md §33, so the question is not asked again.

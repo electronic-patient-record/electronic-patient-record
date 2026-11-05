@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - Reasonable adjustments and communication needs, in the service (PA-6, in part; H-048)
+
+- **Clinical risk:** **yes.** A new record of what a person needs in order to use care. Hazard H-048 is added, `open`. An adjustment informs staff and changes nothing by itself. Nothing shows it yet: the screens are the next commit.
+- **Built:** `adjustments.rs` (23 codes, the rules), `adjustments_store.rs`, migration 26, three routes under `/api/patients/{id}/adjustments`, the policy resource `Adjustment`, and every census. Read from the patient administration system's `adjustments`, `interpreter` and `needs_review` modules at `15e6389`, and reworked: versions here are append-only, and every change needs a reason. Research in plan.md §33, with PX-1 to PX-6 in `tasks.md`.
+- **Not done / not verified:** no clinician, disabled person, interpreter or lawyer has reviewed the catalogue, the words or who may write. A patient and a proxy have no route. No FHIR `Flag`, no list across patients, and no national code list, because no licence was checked. The Accessible Information Standard is cited as the PAS cites it; I did not read it. "Overdue" uses UTC. Two writers at once can record the same need twice. A refused consent hides a need from staff, and that needs review. FHIR validator tests were not run locally; 164 database tests were, against a throwaway Postgres, with kache bypassed.
+
 ## 2026-11-05 - Tests for the server hook and the patient banner (CQ-35, in part)
 
 - **Clinical risk:** none in behaviour: this adds tests. They cover the banner's report-of-death alert and the session rule that a background look is not activity (H-025).

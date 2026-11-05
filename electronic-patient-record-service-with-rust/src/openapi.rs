@@ -585,6 +585,52 @@ fn amendment_schemas() -> Value {
                 "dates_differ": {"type": "boolean"},
                 "holds_contact": {"type": "boolean"}
             }
+        },
+        "RecordAdjustment": {
+            "type": "object", "required": ["code", "reason"], "additionalProperties": false,
+            "properties": {
+                "code": {"type": "string", "description": "A code from the catalogue in `src/adjustments.rs`."},
+                "note": {"type": ["string", "null"], "maxLength": 200, "description": "A short note. `interpreter-spoken` needs the language here."},
+                "review_by": {"type": ["string", "null"], "description": "`YYYY-MM-DD`, today or later."},
+                "reason": {"type": "string"}
+            }
+        },
+        "ChangeAdjustment": {
+            "type": "object", "required": ["expected_version", "action", "reason"], "additionalProperties": false,
+            "properties": {
+                "expected_version": {"type": "integer"},
+                "action": {"enum": ["review", "end"], "description": "`end` is final."},
+                "review_by": {"type": ["string", "null"], "description": "For a review, the next date, `YYYY-MM-DD`."},
+                "reason": {"type": "string"}
+            }
+        },
+        "Adjustment": {
+            "type": "object",
+            "required": ["id", "patient_id", "version", "author", "recorded_at", "adjustment", "category", "display", "overdue"],
+            "properties": {
+                "id": {"type": "string"},
+                "patient_id": {"type": "string"},
+                "version": {"type": "integer"},
+                "author": {"type": "string"},
+                "recorded_at": {"type": "string"},
+                "adjustment": {
+                    "type": "object", "required": ["code", "note", "status", "review_by", "reason"],
+                    "properties": {
+                        "code": {"type": "string"},
+                        "note": {"type": ["string", "null"]},
+                        "status": {"enum": ["active", "ended"]},
+                        "review_by": {"type": ["string", "null"]},
+                        "reason": {"type": "string"}
+                    }
+                },
+                "category": {"type": "string"},
+                "display": {"type": "string"},
+                "overdue": {"type": "boolean", "description": "The date to check it with the person has passed."}
+            }
+        },
+        "AdjustmentList": {
+            "type": "object", "required": ["adjustments"],
+            "properties": {"adjustments": {"type": "array", "items": {"$ref": "#/components/schemas/Adjustment"}}}
         }
     })
 }
@@ -1267,6 +1313,22 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
     ),
     (
         "POST",
+        "/api/patients/{id}/adjustments",
+        "RecordAdjustment",
+        "201",
+        "Adjustment",
+        "",
+    ),
+    (
+        "PUT",
+        "/api/patients/{id}/adjustments/{adjustment_id}",
+        "ChangeAdjustment",
+        "200",
+        "Adjustment",
+        "VersionConflict",
+    ),
+    (
+        "POST",
         "/api/patients/{id}/death/assertions",
         "ReportDeath",
         "201",
@@ -1312,6 +1374,12 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
     ),
     ("GET", "/api/patients/{id}/consents", "ConsentList", &[]),
     ("GET", "/api/patients/{id}/amendments", "AmendmentList", &[]),
+    (
+        "GET",
+        "/api/patients/{id}/adjustments",
+        "AdjustmentList",
+        &[],
+    ),
     ("GET", "/api/patients/{id}/death", "DeathAnswer", &[]),
     (
         "GET",

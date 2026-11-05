@@ -1774,3 +1774,28 @@ BV-1 to BV-8, SG-1 to SG-5, SW-1 to SW-7 and TT-1 to TT-7 in `tasks.md`. Do firs
 ### 32.3 Not done, not verified
 
 Nothing was built. Each page has a "Not verified" list. NICE pages returned 403, so NG225 and NG116 were read from third-party PDF copies and their wording may differ; other NICE guidelines were seen through search. All law is a lay reading; the Crime and Policing Act 2026 was not read. The Lampard Inquiry has not reported, so nothing from it is a finding. No study was found behind "tell your story once", and no measure of letters reaching dead patients. Whether a sexual assault referral centre's records are kept apart from GP records was not found. Evidence is English-language and mostly from high-income countries. H-046 and H-047 come from reading code and the spec, not from running a message or a name through it. A link check on 2026-11-04 tests only that cited pages exist. Candidate hazards on the pages go in the log with the first code. `electronic-patient-record-service-with-rust/spec/index.md` says referrals have no route, though they do; that was not changed here.
+
+## 33. Research pass 2026-11-05: the patient administration system's modules
+
+The request: research `~/git/patient-administration-system/patient-administration-system` and add capabilities to this repository. Unlike §25, which read task titles and no code, this pass read the module headers of 19 PAS modules at commit `15e6389`, `src/adjustments/mod.rs` to line 200, and NFR-28 and NEW-25. It did not read the rest of the PAS code or run it, so what the PAS says of itself is the PAS's account.
+
+The PA-1 boundary stands: appointments, waiting lists, wards, reminders, transport and interpreter booking belong to a PAS. The test here was whether a capability is about the person and the record, not about running a service.
+
+### 33.1 Built from this pass
+
+PA-6, reasonable adjustments and communication needs, in [`spec/reasonable-adjustments/index.md`](spec/reasonable-adjustments/index.md). The PAS's catalogue of 20 codes was taken with its wording, and three interpreter codes added, because the PAS holds those in a separate module. Changes from the PAS: versions are append-only here, where the PAS sets columns on one row; every change needs a reason; a spoken interpreter needs a language; a person may need two languages at once.
+
+### 33.2 Ideas, ranked
+
+| ID | Idea | Source in the PAS | Checked here | Value | Cost |
+|---|---|---|---|---|---|
+| PX-1 | The patient sees and can correct their own needs. | NEW-20; the Accessible Information Standard's first step is to ask | No route for a patient or a proxy in `controllers/adjustments.rs` | High | M |
+| PX-2 | Reviews that are overdue, across patients, oldest first, for a person to follow up. | `needs_review` | Overdue shows only on one record | High | S |
+| PX-3 | An adjustment as a FHIR `Flag`. | `adjustments::to_flag` | No `Flag` route. Needs a decision on code systems | Medium | S |
+| PX-4 | A FHIR `AuditEvent` claims a BALP profile only when it meets the profile's constraints. | `audit_export::violations` | `spec/audit/index.md` says BALP shape; whether every row meets it was not checked | Medium | M |
+| PX-5 | `/_health` says which dependency is down, with one answer reused for 5 seconds so an open route cannot drive load. | NFR-28 | `/_health` is loco's built-in; not read further | Medium | S |
+| PX-6 | Not adopted, so the question is not asked again: waiting-list validation, standby, PIFU, transport, ward movements, reminder ladders, delivery receipts and billing are PAS scope. Support flags wait for PC-7. Red, amber and green tolerances wait for the rule in `spec/clinical-safety/measurement.md` that a threshold follows a baseline. | `list_validation`, `standby`, `pifu`, `transport`, `adt`, `support`, `tolerance` | PA-1 | none | none |
+
+### 33.3 Not done, not verified
+
+The catalogue's words were written for a PAS and read by no clinician here. The Accessible Information Standard is cited as the PAS cites it; I did not read it for this pass. No national code list was checked for licence.

@@ -364,6 +364,37 @@ async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_r
         )
         .await;
 
+        // A reasonable adjustment and a change to it.
+        refused_then_accepted(db, "POST /api/patients/{id}/adjustments", || async {
+            let r = server
+                .post(&format!("/api/patients/{id}/adjustments"))
+                .json(&json!({ "code": "large-print", "reason": "they asked" }))
+                .await;
+            (r.status_code(), r.text())
+        })
+        .await;
+        let listed = server
+            .get(&format!("/api/patients/{id}/adjustments"))
+            .await
+            .json::<Value>();
+        let adjustment_id = listed["adjustments"][0]["id"]
+            .as_str()
+            .expect("an adjustment id")
+            .to_string();
+        refused_then_accepted(
+            db,
+            "PUT /api/patients/{id}/adjustments/{adjustment_id}",
+            || async {
+                let r = server
+                    .put(&format!("/api/patients/{id}/adjustments/{adjustment_id}"))
+                    .json(&json!({ "expected_version": 1, "action": "end",
+                        "reason": "no longer needed" }))
+                    .await;
+                (r.status_code(), r.text())
+            },
+        )
+        .await;
+
         // A death report and a step on it.
         refused_then_accepted(db, "POST /api/patients/{id}/death/assertions", || async {
             let r = server

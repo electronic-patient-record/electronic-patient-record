@@ -122,6 +122,9 @@ pub enum Resource {
     MedicationRequest,
     /// A patient's request to amend a record, and the decision on it (`amendments_store.rs`).
     Amendment,
+    /// A reasonable adjustment or communication need (`adjustments_store.rs`). Not clinical in the sense
+    /// below: reception must know before the person arrives, and no care relationship applies.
+    Adjustment,
     /// A report that a patient has died, and the steps on it (`death_store.rs`). Not clinical in the
     /// sense below: reception must see it before ringing a family, and no care relationship applies.
     DeathAssertion,
@@ -159,13 +162,14 @@ pub enum Resource {
 
 impl Resource {
     /// Every resource kind, in a fixed order.
-    pub const ALL: [Resource; 19] = [
+    pub const ALL: [Resource; 20] = [
         Resource::PatientIdentity,
         Resource::Encounter,
         Resource::Condition,
         Resource::Observation,
         Resource::MedicationRequest,
         Resource::Amendment,
+        Resource::Adjustment,
         Resource::DeathAssertion,
         Resource::AllergyIntolerance,
         Resource::Document,
@@ -191,6 +195,7 @@ impl Resource {
             Resource::Observation => "Observation",
             Resource::MedicationRequest => "MedicationRequest",
             Resource::Amendment => "Amendment",
+            Resource::Adjustment => "Adjustment",
             Resource::DeathAssertion => "DeathAssertion",
             Resource::AllergyIntolerance => "AllergyIntolerance",
             Resource::Document => "Document",
@@ -219,6 +224,7 @@ impl Resource {
         !matches!(
             self,
             Resource::PatientIdentity
+                | Resource::Adjustment
                 | Resource::DeathAssertion
                 | Resource::Consent
                 | Resource::AuditLog
@@ -528,11 +534,11 @@ impl Decision {
 fn permitted(role: Role, resource: Resource) -> &'static [Action] {
     use Action::{Create, Export, MarkEnteredInError as Eie, Read, Search, Update};
     use Resource::{
-        AllergyIntolerance as Allergy, Amendment, AuditLog, BreakGlass as Glass,
-        CareRelationship as Rel, Condition, Consent as Cons, DeathAssertion as Death, Document,
-        Encounter, FeedQueue as Queue, Hazard, MedicationRequest as Meds, Observation,
-        PatientIdentity as Identity, PatientLink as Link, Referral, ReferralQueue as RefQueue,
-        ReferralWorklist as Worklist,
+        Adjustment as Adjust, AllergyIntolerance as Allergy, Amendment, AuditLog,
+        BreakGlass as Glass, CareRelationship as Rel, Condition, Consent as Cons,
+        DeathAssertion as Death, Document, Encounter, FeedQueue as Queue, Hazard,
+        MedicationRequest as Meds, Observation, PatientIdentity as Identity, PatientLink as Link,
+        Referral, ReferralQueue as RefQueue, ReferralWorklist as Worklist,
     };
     match (role, resource) {
         // Clinicians: full clinical work, and register or correct identity.
@@ -545,6 +551,17 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         // step belongs to which role is checked by the route.
         (Role::Clinician, Amendment) => &[Read, Search, Update],
         (Role::Patient, Amendment) => &[Read, Search, Create, Update],
+        // Reasonable adjustments (PA-6, unreviewed): anyone who meets patients reads and records them.
+        // A patient and a proxy have no route yet.
+        (
+            Role::Clinician
+            | Role::Nurse
+            | Role::Pharmacist
+            | Role::AlliedHealth
+            | Role::Receptionist
+            | Role::ClinicalAdmin,
+            Adjust,
+        ) => &[Read, Search, Create, Update],
         // Death assertions (OQ-BV2, decided by the maintainer, not yet reviewed): any member of staff
         // may report and read the one answer; a clinician or nurse reads the assertions and takes a
         // step; the route keeps withdrawal to a clinician. An integration can only report.
@@ -1238,8 +1255,8 @@ mod tests {
                 }
             }
         }
-        // 11 roles × 19 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
-        assert_eq!(cells, 11 * 19 * 6 * 8 * 5 * 3 * 7 * 2);
+        // 11 roles × 20 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
+        assert_eq!(cells, 11 * 20 * 6 * 8 * 5 * 3 * 7 * 2);
         assert!(allows > 0);
     }
 

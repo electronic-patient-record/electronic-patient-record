@@ -33,6 +33,7 @@ mod m20261102_000022_referrals;
 mod m20261103_000023_referral_unmatched;
 mod m20261103_000024_referral_acknowledgements;
 mod m20261105_000025_death_assertions;
+mod m20261105_000026_adjustments;
 
 /// Whether a `down` that drops clinical tables may run: only in development or test, and only when
 /// `EPR_ALLOW_DESTRUCTIVE_DOWN=true` says so. A missing environment name counts as production.
@@ -87,6 +88,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261103_000023_referral_unmatched::Migration),
             Box::new(m20261103_000024_referral_acknowledgements::Migration),
             Box::new(m20261105_000025_death_assertions::Migration),
+            Box::new(m20261105_000026_adjustments::Migration),
         ]
     }
 }

@@ -4,12 +4,13 @@ Every table and view the service's migrations create. **Generated** by [`scripts
 
 Not listed: tables made by a statement built at run time (the monthly `audit_events` partitions), and what a column means (the migrations carry few comments, so only the name and SQL type are shown). The clinical tables are append-only: a change is a new row, and triggers refuse `UPDATE`, `DELETE` and `TRUNCATE`.
 
-24 tables, 13 views.
+25 tables, 14 views.
 
 ## Tables
 
 | Table | Created in | Columns |
 |---|---|---|
+| `adjustment_versions` | `m20261105_000026_adjustments` | `adjustment_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `status` TEXT, `body` JSONB |
 | `allergy_assertion_versions` | `m20261021_000007_allergies` | `patient_id` UUID, `version` INTEGER, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `kind` TEXT |
 | `allergy_versions` | `m20261021_000007_allergies` | `allergy_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `status` TEXT, `body` JSONB |
 | `amendment_versions` | `m20261027_000015_amendments` | `amendment_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `state` TEXT, `target_kind` TEXT, `target_id` UUID, `event` JSONB, `body` JSONB |
@@ -39,6 +40,7 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 
 | View | Created in |
 |---|---|
+| `adjustment_current` | `m20261105_000026_adjustments` |
 | `allergy_assertion_current` | `m20261021_000007_allergies` |
 | `allergy_current` | `m20261021_000007_allergies` |
 | `amendment_current` | `m20261027_000015_amendments` |

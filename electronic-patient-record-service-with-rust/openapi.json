@@ -109,6 +109,97 @@
         ],
         "type": "object"
       },
+      "Adjustment": {
+        "properties": {
+          "adjustment": {
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "note": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "reason": {
+                "type": "string"
+              },
+              "review_by": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "status": {
+                "enum": [
+                  "active",
+                  "ended"
+                ]
+              }
+            },
+            "required": [
+              "code",
+              "note",
+              "status",
+              "review_by",
+              "reason"
+            ],
+            "type": "object"
+          },
+          "author": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "display": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "overdue": {
+            "description": "The date to check it with the person has passed.",
+            "type": "boolean"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "recorded_at": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "patient_id",
+          "version",
+          "author",
+          "recorded_at",
+          "adjustment",
+          "category",
+          "display",
+          "overdue"
+        ],
+        "type": "object"
+      },
+      "AdjustmentList": {
+        "properties": {
+          "adjustments": {
+            "items": {
+              "$ref": "#/components/schemas/Adjustment"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "adjustments"
+        ],
+        "type": "object"
+      },
       "AllergyList": {
         "description": "Every allergy in every status, the no-known-allergies statement, the banner summary and amendment notices by allergy id. The statement, summary and notices are described only as objects.",
         "properties": {
@@ -747,6 +838,37 @@
           "object",
           "null"
         ]
+      },
+      "ChangeAdjustment": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "description": "`end` is final.",
+            "enum": [
+              "review",
+              "end"
+            ]
+          },
+          "expected_version": {
+            "type": "integer"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "review_by": {
+            "description": "For a review, the next date, `YYYY-MM-DD`.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "expected_version",
+          "action",
+          "reason"
+        ],
+        "type": "object"
       },
       "ClearReferralEntry": {
         "description": "Clear a queued message. matched needs referral_id and records the link without changing the referral; dismissed names none. The reason (1 to 500 characters) is required; an entry already cleared is a 409.",
@@ -2092,6 +2214,38 @@
         "required": [
           "version",
           "withdrawn"
+        ],
+        "type": "object"
+      },
+      "RecordAdjustment": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "description": "A code from the catalogue in `src/adjustments.rs`.",
+            "type": "string"
+          },
+          "note": {
+            "description": "A short note. `interpreter-spoken` needs the language here.",
+            "maxLength": 200,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "review_by": {
+            "description": "`YYYY-MM-DD`, today or later.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "code",
+          "reason"
         ],
         "type": "object"
       },
@@ -5063,6 +5217,257 @@
         ],
         "x-epr-action": "Update",
         "x-epr-resource": "PatientIdentity"
+      }
+    },
+    "/api/patients/{id}/adjustments": {
+      "get": {
+        "operationId": "getApiPatientsIdAdjustments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdjustmentList"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/patients/{id}/adjustments",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Search",
+        "x-epr-resource": "Adjustment"
+      },
+      "post": {
+        "operationId": "postApiPatientsIdAdjustments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "1 to 128 letters, digits or . _ : -. A retry with the same key and the same request returns the first answer (header `Idempotent-Replayed: true`) and writes nothing; the same key for a different request is a 422; a key whose first request is unfinished is a 409. Only a success is kept; keys expire after 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordAdjustment"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Adjustment"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/patients/{id}/adjustments",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Create",
+        "x-epr-resource": "Adjustment"
+      }
+    },
+    "/api/patients/{id}/adjustments/{adjustment_id}": {
+      "put": {
+        "operationId": "putApiPatientsIdAdjustmentsAdjustment_id",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "adjustment_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeAdjustment"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Adjustment"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionConflict"
+                }
+              }
+            },
+            "description": "A likely duplicate or a stale expected_version."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "PUT /api/patients/{id}/adjustments/{adjustment_id}",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Update",
+        "x-epr-resource": "Adjustment"
       }
     },
     "/api/patients/{id}/allergies": {

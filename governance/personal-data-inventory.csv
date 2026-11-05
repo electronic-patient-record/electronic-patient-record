@@ -87,6 +87,20 @@ consent_versions,author,staff-identifier,Who wrote the version,record
 consent_versions,reason,free-text,Why the version was written as typed,record
 consent_versions,status,none,State of the record,record
 consent_versions,body,preference,The consent decision,record
+adjustment_current,adjustment_id,none,Random record id,record
+adjustment_current,version,none,Version counter,record
+adjustment_current,patient_id,identifier,Links a record to the patient,record
+adjustment_current,recorded_at,none,When the version was written,record
+adjustment_current,author,staff-identifier,Who wrote the version,record
+adjustment_current,status,none,Whether the adjustment still applies,record
+adjustment_current,body,health,What a person needs ; its note and review date and reason,record
+adjustment_versions,adjustment_id,none,Random record id,record
+adjustment_versions,version,none,Version counter,record
+adjustment_versions,patient_id,identifier,Links a record to the patient,record
+adjustment_versions,recorded_at,none,When the version was written,record
+adjustment_versions,author,staff-identifier,Who wrote the version,record
+adjustment_versions,status,none,Whether the adjustment still applies,record
+adjustment_versions,body,health,What a person needs ; its note and review date and reason,record
 death_assertion_current,assertion_id,none,Random record id,record
 death_assertion_current,version,none,Version counter,record
 death_assertion_current,patient_id,identifier,Links a record to the patient,record
