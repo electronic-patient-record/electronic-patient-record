@@ -1,8 +1,8 @@
 //! Audit retention (task OS-13): monthly partitions of `audit_events` and an archive step that moves, never
 //! deletes (migration 18 holds the SQL). The maintenance loop makes the partitions ahead of time, because
 //! an insert with no partition fails and an access that cannot be audited does not happen. Archiving is
-//! off unless `EPR_AUDIT_ARCHIVE_AFTER_MONTHS` is set: archived rows leave `audit_events`, so a patient's
-//! access log no longer lists them (hazard H-042).
+//! off unless `EPR_AUDIT_ARCHIVE_AFTER_MONTHS` is set: archived rows leave `audit_events`, and a patient's
+//! access log and the audit search still list them through the `audit_events_all` view (hazard H-042).
 
 use crate::store::pg;
 use sea_orm::{ConnectionTrait, DatabaseConnection, TransactionTrait};

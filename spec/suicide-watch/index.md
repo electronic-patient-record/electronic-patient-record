@@ -167,7 +167,7 @@ So the jurisdictions differ. A US deployment may need a screen and a recorded le
 - **Records.** Mental health records in England are reported as retained for 20 years, or 10 years after death [RET]; the older schedule said 8. Detained patients' records may be kept longer [RET]. I found no rule on inquiry or coroner holds for England, and no moratorium source for Lampard. A 2023 prison report says records were altered after a death [PPO] (press).
 - **NSW and US.** Not researched.
 
-**What this project would need.** A legal hold on a person's record and its audit rows. Today `audit_retention.rs` can move audit rows to an archive after a set number of months, so a patient's log no longer lists them (hazard H-042). A mark on anything written after a known death or serious event, so it reads as afterwards. A frozen export for the investigator and coroner, with what was shown to whom and when. Family access under a stated rule, and a bereaved person's request logged. A way to ask staff for their account that is outside the clinical record. The record should support learning; it should not become the only witness.
+**What this project would need.** A legal hold on a person's record and its audit rows. Today `audit_retention.rs` can move audit rows to an archive after a set number of months; they stay readable through `audit_events_all`, and nothing marks them as held (hazard H-042). A mark on anything written after a known death or serious event, so it reads as afterwards. A frozen export for the investigator and coroner, with what was shown to whom and when. Family access under a stated rule, and a bereaved person's request logged. A way to ask staff for their account that is outside the clinical record. The record should support learning; it should not become the only witness.
 
 ## The system's own risks
 
@@ -208,6 +208,34 @@ Rules:
 
 Open: whether an observer needs the reason (OQ-SW1); whether "enhanced care" itself is read as "suicide watch" on a ward where most orders are; and what a shared screen in a corridor should show at all.
 
+## Design: preserve after an event (SW-7)
+
+A first draft, for a Clinical Safety Officer and a lawyer. Nothing is built. **A correction:** this page used to say that archiving takes audit rows out of a patient's log. It does not: the log and the audit search read `audit_events_all`, which includes the archive. The research was wrong, and the gap is narrower than it said.
+
+**What is at risk today, and what is not.**
+
+| What could be lost | Today | Needed |
+|---|---|---|
+| A clinical entry | Append-only; no delete path | Nothing more |
+| An audit row | Moved, never deleted; a trigger refuses change, and the archive keeps it | A rule for the future, below |
+| The archive itself | A database owner can drop the schema. `GET /api/audit/verify` finds a damaged archive; nothing stops the owner | Outside the service: access to the database and tested backups |
+| What a screen showed at the time | Not kept. The versions are, so it can be rebuilt only in part | A frozen export, later |
+| How a late entry reads | It shows its written time ([SW-2](#falsified-and-back-filled-records)) | A mark, below |
+
+**The archive and a hold.** Moving rows to the archive destroys nothing, so a hold need not stop it, and stopping it for one patient would hold a whole month of everyone's rows. The hold stands in front of anything that would destroy. No such thing exists. **The rule: any future retention job, export-and-purge or archive removal must refuse a row or record under a hold, and no such job may ship without a test that it does.**
+
+**A hold.** An append-only record: patient, the learning response or inquiry it belongs to, who placed it, when, why, and when and by whom it was lifted. Placing it is simple and takes effect at once. Lifting it needs a named person and a reason, and a second person who did not place it. It changes no access: an investigator gets no new right to read by holding a record, and nothing about a hold reaches a proxy or a patient's view.
+
+**A mark.** Anything written after a known event reads as written afterwards. It compares `recorded_at`, the database's clock, with the time of the event, and never `effective_at`. A hold may name the event, or a [death assertion](../bereavement/death-assertion.md) may be it. A mark says when, not that an entry is wrong: people must go on writing after a death, and a late entry made in good faith is not an accusation.
+
+Open:
+
+- Who may place and lift a hold.
+- Whether staff should see that a record is held, since it may change what they write.
+- Whether a report that is later withdrawn leaves a mark.
+- What a family may see, and when.
+- How long a hold lasts when nobody lifts it. Retention law and the schedule [RET] were not read for this.
+
 ## Compared with this project
 
 "Verified" names what I read in the code on 2026-11-04.
@@ -228,7 +256,7 @@ Open: whether an observer needs the reason (OQ-SW1); whether "enhanced care" its
 | Amendment | Patient route for `Observation` and `AllergyIntolerance` | No route for narrative or a plan, as those do not exist | `service spec` RC-4, `amendment.rs` |
 | Alerts, risk score | None. Alert text appears only in code tests | Good: nothing to remove. FR-6.5 is unbuilt | grep of `src` |
 | Legal status, capacity | None; XP-7 is a design note task | All of it | `tasks.md` XP-7 |
-| Legal hold, post-event mark | Audit archive moves rows out of the patient's log if switched on | No hold | `audit_retention.rs` |
+| Legal hold, post-event mark | The audit archive moves rows, if switched on, and they stay in the patient's log through `audit_events_all`. Nothing deletes an audit row | No hold, no mark | `audit_retention.rs`, migration 19 |
 | Notifications, letters | No outbound messages to people; an outbox decides per recipient | Build each with a label test | `outbox.rs` |
 
 I searched `src` and `migration` for suicide, self-harm, safety plan, observation level, Mental Health Act and trauma, and found nothing.

@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - A design for preserving records after an event (SW-7), and a correction
+
+- **Clinical risk:** none in behaviour: a design in `spec/suicide-watch/index.md` and a corrected comment.
+- **Correction:** the suicide watch research and a comment in `audit_retention.rs` said archived audit rows leave a patient's access log. They do not: the log and the audit search read `audit_events_all`. The comment dated from before that view; I repeated it in the research without checking.
+- **Built:** nothing new. The task asks that the archive's lack of a hold be addressed: the design says a hold need not stop the archive, since nothing is destroyed, and sets a rule for anything that would destroy.
+- **Not done / not verified:** no test holds that rule, because nothing destroys yet, so it is words until the first such job. A database owner can still drop the archive, and only access control and backups outside the service answer that. No Clinical Safety Officer or lawyer has reviewed this. Retention law was not read. Five questions are open, including whether staff should know a record is held.
+
 ## 2026-11-05 - A design for reason-neutral lists (SW-6)
 
 - **Clinical risk:** none today: a design in `spec/suicide-watch/index.md`, with no code. If built, it decides who can see that a person is being watched.
