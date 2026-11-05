@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - Death assertions: the spec and the rules (BV-1, in part; H-046 stays open)
+
+- **Clinical risk:** none in effect: nothing calls the new code, so nothing changes for a clinician. It sets the rules a later change will put in front of one. H-046 stays `open`.
+- **Built:** `spec/bereavement/death-assertion.md`; `death.rs`, pure, with a state table test and one read model; OQ-BV2 and OQ-BV3 added.
+- **Not done / not verified:** no store, route, banner or HL7 reading, and nothing a hold acts on. The role draft and the recommendation on the matcher are mine and undecided. No clinician, medical examiner, lawyer or bereaved person has reviewed any of it. `found_at`, `place`, `verified_at` and `coroner_referred` are left for the store.
+
 ## 2026-11-05 - Temporary identity in the service and the UI (TT-1, H-047)
 
 - **Clinical risk:** **yes.** A person can now mark a record as a temporary identity. Its name and birth date stop counting as evidence, it can never link itself to another record, and the banner, patient search and FHIR all say so. H-047 moved to `controlled-unreviewed`, not `closed`.

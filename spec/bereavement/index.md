@@ -42,7 +42,7 @@ End-of-life records are a lead-in, not the topic of this page.
 
 ### What this project would need
 
-A proposed `DeathAssertion`, append-only like the other version tables:
+The rules are now specified on [death assertions](death-assertion.md). A proposed `DeathAssertion`, append-only like the other version tables:
 
 | Field | Why | If absent |
 |---|---|---|
