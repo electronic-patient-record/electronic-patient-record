@@ -18,10 +18,29 @@ In FHIR the template is a `PlanDefinition`. HL7's Clinical Practice Guidelines g
 6. **Every pathway change is audited**: who changed what, when, from which version, reviewed by whom.
 7. **No automatic clinical decisions.** A template proposes steps and reminds; the clinician decides. Decision rules that read patient data are the clinical-decision-support problem of FR-6.5 and carry its safeguards (alert fatigue, override capture).
 
+## Three step types for a contact outside the record (SG-1)
+
+A referral loop closes only if the recipient answers. A charity with no EPR and a service that takes self-referrals never will, so a referral to them stays open for ever, or a person believes someone is being supported when no one rang ([survivor grief](survivor-grief/index.md#referral-to-services-outside-the-nhs)). The vocabulary of step types therefore holds three, and a step says plainly what it will not tell you. A first draft: no clinician or bereavement service has reviewed these words.
+
+| Step | Records | Closes | Says on the step |
+|---|---|---|---|
+| **Information given** | What was offered, to whom and on what date | At once | "This does not tell you it was read or helped." |
+| **Signposted** | The named service the person was told about, and that the choice is theirs | At once | "This does not tell you the person made contact. The outcome will not be known." |
+| **Referred** | The service that received it, and the person's consent | When the service answers, as a referral does today | "This does not tell you the person was seen until the service answers." |
+
+- **Referred needs a recipient that takes referrals, and the person's consent.** No consent, no referral. A service that takes only self-referrals can be signposted to and not referred to, and the [directory](survivor-grief/index.md#referral-to-services-outside-the-nhs) says which it is.
+- **The first two make no timer and no loop-back,** so no alarm appears on a worklist that nobody can clear. An unanswered step is not a stalled pathway, and the simulation in requirement 4 does not report it as one.
+- **The words stay with the step**: on the patient's pathway, in a letter and in a handover, so that "signposted" is never read as "being supported".
+- **A later question to the person** is optional, needs their agreement to be contacted, and is a step of its own.
+- **None of these is safety cover.** A person in crisis needs a clinical route, and a template must not offer these three in its place.
+- **None starts by itself.** A template proposes; a person offers (requirement 7, and [do not build](survivor-grief/index.md#do-not-build)).
+
+Applies beyond grief, for example to a care home or a voluntary service. Nothing is built: this waits for the template model (`XP-12`).
+
 ## Order of work
 
 Template model and versioning (`XP-12`) after the pathway basics (CA-2) and OQ-CP3; the editor (`XP-13`) after that; pathway analytics (`XP-14`) can start earlier because it reads data that exists.
 
 ## Not done, not verified
 
-No tool was built or evaluated. The HL7 layering is from the guide's documentation pages and a few papers read by search result, not in full. Whether clinicians find a constrained editor usable is untested and needs summative testing with clinicians (NFR-10).
+No tool was built or evaluated. The three step types are the project's reasoning from the survivor grief research, not taken from a guideline, and no one who would use them has seen them. The HL7 layering is from the guide's documentation pages and a few papers read by search result, not in full. Whether clinicians find a constrained editor usable is untested and needs summative testing with clinicians (NFR-10).

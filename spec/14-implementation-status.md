@@ -66,9 +66,9 @@ no network, database or compilation; counts are source lines, not test runs):
 | HM | 0 | 5 |
 | VW | 0 | 6 |
 | BV | 3 | 5 |
-| SG | 1 | 4 |
+| SG | 2 | 3 |
 | SW | 1 | 6 |
 | TT | 1 | 6 |
-| **Total** | **60** | **331** |
+| **Total** | **61** | **330** |
 
 <!-- generated:end -->

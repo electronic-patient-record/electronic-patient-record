@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - Three step types for a contact outside the record (SG-1)
+
+- **Clinical risk:** none today: this is a design in `spec/pathway-design.md`, with no code. If built, the words on a step shape what a clinician believes has happened to a person.
+- **Built:** nothing. The design covers information given, signposted and referred, what each says it will not tell you, and which have no timer.
+- **Not done / not verified:** no clinician, bereavement service or bereaved person has reviewed the design or its wording. The steps wait for the template model (XP-12). The task is ticked because its acceptance was adding this to the spec, and that does not mean it works in practice.
+
 ## 2026-11-05 - Seven deaths as test data (BV-8)
 
 - **Clinical risk:** none in behaviour: this adds a test.
