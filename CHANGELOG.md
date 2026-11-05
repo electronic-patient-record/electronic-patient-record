@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - A label census for every output route (PI-7)
+
+- **Clinical risk:** none in behaviour: this adds a test. It does put a gap in writing: no route applies a security label. A record cannot carry one, `authorize` always asks with none, and nothing acts on `Mask`, so the policy engine's masking rules, which are tested on their own, reach no screen.
+- **Built:** `tests/label_census.rs`: 43 output routes, 34 of them `NotApplied`, and two tests that fail when labels reach a decision or a route acts on a mask.
+- **Not done / not verified:** the census's classing is mine, from each route's name and what I know of it; I did not read every handler. It reads source text. Other POST and PUT answers are not listed, on the reasoning that they return what was written; a 409 that returns duplicate candidates is one to check. It is not the test the spec asks for, that a labelled record does not appear, which needs labelled records.
+
 ## 2026-11-05 - A proxy stops while a report of death stands (BV-5, in part; H-046 stays open)
 
 - **Clinical risk:** **yes.** Any standing report, confirmed or not, including one from a feed, stops a proxy reading the record, the photo and the access log, and removes it from their "my record". A false report therefore locks out a parent or carer until a clinician withdraws it. H-046 stays `open`.
