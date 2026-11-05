@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - A proxy stops at a confirmed death, not at a report (BV-5; H-046 stays open)
+
+- **Clinical risk:** **yes.** Decided by the maintainer. This reverses the earlier entry: a proxy now keeps access while an unconfirmed report stands, and stops, like the patient's own login, once a person confirms the death. A wrong report no longer cuts off a parent or carer. The new risk is that a proxy can read the record of someone who has died until a person confirms it, and could learn of the death or read what the patient kept private. Outbound contact is still held at any report (OQ-BV1). H-046 records this.
+- **Built:** the one check in `relationships::lookup`, the test, the spec and the hazard row.
+- **Not done / not verified:** nothing alerts staff that a report has arrived, so that window has no limit. The words a proxy sees need people who have been through it. No Clinical Safety Officer has reviewed this.
+
 ## 2026-11-05 - Say that audit events are modelled on BALP, not conforming (PX-4, in part)
 
 - **Clinical risk:** none in behaviour: words only.

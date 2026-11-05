@@ -1,8 +1,8 @@
 //! DB-gated, through the real router with login **on** (BV-1, OQ-BV2): any member of staff may report
 //! and read the one answer, a clinician or nurse may read the assertions and take a step, only a
 //! clinician may withdraw, a patient and a proxy have none of it, the reporter is the token, a stale
-//! version is 409, the audit trail never holds a reason, and a proxy stops while a report stands and
-//! comes back when it is withdrawn (BV-5), and the patient's own login stops once a death is confirmed. One test, because the token guard is
+//! version is 409, the audit trail never holds a reason, and a proxy and the patient's own login stop
+//! once a death is confirmed, not at a report, and come back when it is withdrawn (BV-5). One test, because the token guard is
 //! configured once per process.
 //!
 //! ```text
@@ -238,11 +238,11 @@ async fn who_may_report_confirm_and_withdraw() {
         assert_eq!(read["meta"]["tag"][0]["code"], "death-reported");
         assert!(read.get("deceasedDateTime").is_none(), "{read}");
 
-        // A proxy stops at the report, on every path, and the list does not say why (BV-5).
-        assert_eq!(as_proxy(record.clone()).await.status_code(), StatusCode::FORBIDDEN);
-        assert_eq!(as_proxy(log.clone()).await.status_code(), StatusCode::FORBIDDEN);
-        assert!(!as_proxy("/api/me/patients".into()).await.text().contains(&id));
-        // A report alone does not stop the patient's own login: they may be alive.
+        // A report alone does not stop a proxy: the patient may be alive (BV-5).
+        assert_eq!(as_proxy(record.clone()).await.status_code(), StatusCode::OK);
+        assert_eq!(as_proxy(log.clone()).await.status_code(), StatusCode::OK);
+        assert!(as_proxy("/api/me/patients".into()).await.text().contains(&id));
+        // Nor the patient's own login.
         assert_eq!(as_self(record.clone()).await.status_code(), StatusCode::OK);
         assert_eq!(as_self(log.clone()).await.status_code(), StatusCode::OK);
         assert!(as_self("/api/me/patients".into()).await.text().contains(&id));
@@ -277,7 +277,11 @@ async fn who_may_report_confirm_and_withdraw() {
             .json(&json!({ "expected_version": 1, "to": "verified", "reason": "seen by the nurse" }))
             .await;
         assert_eq!(verified.status_code(), StatusCode::OK, "{}", verified.text());
-        // Confirmed, the patient's own login stops, on every path.
+        // Confirmed, a proxy stops, on every path, and the list does not say why.
+        assert_eq!(as_proxy(record.clone()).await.status_code(), StatusCode::FORBIDDEN);
+        assert_eq!(as_proxy(log.clone()).await.status_code(), StatusCode::FORBIDDEN);
+        assert!(!as_proxy("/api/me/patients".into()).await.text().contains(&id));
+        // So does the patient's own login.
         assert_eq!(as_self(record.clone()).await.status_code(), StatusCode::FORBIDDEN);
         assert_eq!(as_self(log.clone()).await.status_code(), StatusCode::FORBIDDEN);
         assert!(!as_self("/api/me/patients".into()).await.text().contains(&id));

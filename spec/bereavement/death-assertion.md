@@ -72,11 +72,11 @@ A feed cannot retract a report: a later message with an indicator of `N` changes
 
 Every event about the patient is held, whatever it is. That needs review: a message that must reach someone after a death, such as telling the patient's GP, is held too, and no route yet says which may go. The contact a person makes by hand is held only by the banner's words. Nothing shows a person what is held, or how long it has waited.
 
-## A proxy
+## A proxy and the patient's own login
 
-A proxy has no relationship to a patient while any assertion stands: an unconfirmed report is enough, because a disclosure cannot be undone. `relationships::lookup` works this out on each request, so the relationship itself is not ended and a withdrawal restores it with nothing to do by hand. This covers the record, the photo, the access log and "my record", which leaves the patient out.
+Decided by the maintainer on 2026-11-05: a proxy and a patient's own login both stop when a person has **confirmed** the death, not at a report. A report is unchecked and can be wrong, and it must not cut a parent, a carer or a living patient off from the record. `relationships::lookup` works this out on each request, so the relationship itself is not ended and a withdrawal restores it with nothing to do by hand. This covers the record, the photo, the access log and "my record", which leaves the patient out.
 
-The cost is that a false report locks out a parent or carer until a clinician withdraws it, and they see only that the record is gone, because the list says nothing to a proxy about a death. Those words need people who have been through it. A person acting after death, with a basis, a scope and an end date, is not built.
+The cost runs both ways. While a report waits for a person, a proxy can still read the record, and a relative could learn something from it before anyone has spoken to them, or read what the patient kept private. Neither can be undone, and nothing alerts staff that a report has arrived. A person wrongly confirmed as dead, and their proxy, lose the record until a clinician withdraws it, and see only that it has gone, because the list says nothing about a death. Those words need people who have been through it. A person acting after death, with a basis, a scope and an end date, is not built.
 
 ## The matcher
 
@@ -86,10 +86,6 @@ Decided as OQ-BV3: the matcher's `Patient` has `death_date` as weak evidence (ma
 - **A date in dispute is left out**, so that it cannot move a score. Nor is a date used once a report is withdrawn. An unconfirmed report's date does count: this is a judgement for review.
 - **A client cannot send it.** A patient write with `death_date` is a 422 with the code `death_date_not_accepted`, and `POST /api/patients/compare` refuses it too.
 - **Only a merge uses it**, because only a merge compares two stored records. A new registration has no date, so the field does not count there.
-
-## A patient's own login
-
-Decided by the maintainer on 2026-11-05: a patient's own login stops at death. It stops when a person has **confirmed** the death, not at a report, because a living person wrongly reported by a feed would otherwise lose their own record. That reading of "at death" is the implementer's, for review. It is worked out in the same place and on each request, so a withdrawal restores it. It covers the record, the photo, the access log and "my record". The cost is that a person wrongly confirmed as dead loses their record until a clinician withdraws it, and is told nothing about why.
 
 ## FHIR
 

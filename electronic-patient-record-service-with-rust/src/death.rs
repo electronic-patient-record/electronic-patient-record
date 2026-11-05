@@ -276,7 +276,8 @@ pub enum Answer {
 }
 
 impl Answer {
-    /// Whether a person has confirmed the death. This, and not a report, stops the patient's own login.
+    /// Whether a person has confirmed the death. This, and not a report, stops a proxy and the patient's own
+    /// login.
     #[must_use]
     pub fn confirmed(&self) -> bool {
         matches!(
