@@ -182,6 +182,32 @@ So the jurisdictions differ. A US deployment may need a screen and a recorded le
 
 **What this project would need.** No free-standing "suicide risk" flag. Instead: an active observation order that ends; a current safety plan; a narrative formulation. If a pack adds a flag, it is time-boxed, has a named reviewer, an end reason and a follow-up on ending. It shows only to those who need it, and is never inferred by software. The person knows it exists, unless a clinician records why not.
 
+## Design: reason-neutral lists (SW-6)
+
+A first draft. Nothing is built: the project has no ward list, bed board or observation order yet (SW-3). No nurse, observer or person who has been observed has reviewed it.
+
+A ward list is read by whoever passes it, and it may be on a screen. The reason someone is watched is the most sensitive thing on that screen, and the people who need the level usually do not need the reason.
+
+| Shown | On a list or board | To the observer | To the care team, opening the record |
+|---|---|---|---|
+| That enhanced care is in place | Yes, as "Enhanced care" | Yes | Yes |
+| The level, with the pack's words | Yes | Yes | Yes |
+| Who holds it now, and when the next check is due | Yes | Yes | Yes |
+| What to watch for and what to do | No | Yes, as written for this order | Yes |
+| The reason | No | Only what the order's author chose to include (OQ-SW1) | Yes, under the usual access rules |
+
+Rules:
+
+1. **One word for every reason.** The list says "Enhanced care" whether the reason is self-harm, falls, confusion or a risk to others, so the words cannot give it away. A level that exists only for one reason gives the reason away too, so the pack must not have one.
+2. **No code, colour, icon or sort order on a list may stand for a reason**, and the reason is not in a list's search or export.
+3. **A list shows only what a person holding that list needs.** A receptionist's view does not show the level. Which roles see which column is pack data, and is for clinicians to set.
+4. **The reason stays restricted on the order**, as a labelled field, under PI-3's rules when they exist. Break-glass does not change what a list shows.
+5. **The level goes when the order ends.** An ended order leaves no mark on a list, so that a person is not known for it afterwards.
+
+**A support worker role.** Support workers do most of this work and have no role here, so with RA-2 add a `support-worker` sub-role, and a visiting observer with a time-boxed relationship. Their authority: see the list and their own order, record checks, and no care planning, which matches unregistered staff under [ETOC-POL]. The role does not exist yet, and a role matrix change is a clinical change.
+
+Open: whether an observer needs the reason (OQ-SW1); whether "enhanced care" itself is read as "suicide watch" on a ward where most orders are; and what a shared screen in a corridor should show at all.
+
 ## Compared with this project
 
 "Verified" names what I read in the code on 2026-11-04.

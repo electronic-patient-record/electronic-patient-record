@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - A design for reason-neutral lists (SW-6)
+
+- **Clinical risk:** none today: a design in `spec/suicide-watch/index.md`, with no code. If built, it decides who can see that a person is being watched.
+- **Built:** nothing. No ward list exists to change, and no role was added.
+- **Not done / not verified:** no nurse, observer or person who has been observed has reviewed it. The table of who sees what is my reasoning, and whether an observer needs the reason is OQ-SW1. "Enhanced care" may come to mean one thing on some wards, and I have no evidence either way. The support worker role waits for RA-2.
+
 ## 2026-11-05 - A design for a directory pack (SG-4)
 
 - **Clinical risk:** none today: a design and a test, with no change in behaviour.
