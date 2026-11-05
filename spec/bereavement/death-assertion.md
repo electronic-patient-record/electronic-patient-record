@@ -78,6 +78,15 @@ A proxy has no relationship to a patient while any assertion stands: an unconfir
 
 The cost is that a false report locks out a parent or carer until a clinician withdraws it, and they see only that the record is gone, because the list says nothing to a proxy about a death. Those words need people who have been through it. A person acting after death, with a basis, a scope and an end date, is not built.
 
+## The matcher
+
+Decided as OQ-BV3: the matcher's `Patient` has `death_date` as weak evidence (matcher 0.7.0, weight 0.05, counted only when both records have one). The assertion stays apart from identity.
+
+- **It comes only from a standing assertion.** `death_store::for_matching` fills it from the one answer, and nothing else does. It is never stored on the identity.
+- **A date in dispute is left out**, so that it cannot move a score. Nor is a date used once a report is withdrawn. An unconfirmed report's date does count: this is a judgement for review.
+- **A client cannot send it.** A patient write with `death_date` is a 422 with the code `death_date_not_accepted`, and `POST /api/patients/compare` refuses it too.
+- **Only a merge uses it**, because only a merge compares two stored records. A new registration has no date, so the field does not count there.
+
 ## A patient's own login
 
 Decided by the maintainer on 2026-11-05: a patient's own login stops at death. It stops when a person has **confirmed** the death, not at a report, because a living person wrongly reported by a feed would otherwise lose their own record. That reading of "at death" is the implementer's, for review. It is worked out in the same place and on each request, so a withdrawal restores it. It covers the record, the photo, the access log and "my record". The cost is that a person wrongly confirmed as dead loses their record until a clinician withdraws it, and is told nothing about why.
@@ -114,6 +123,5 @@ They show one thing to review. A coroner's `2026-09` beside a hospital's `2026-0
 
 ## Not settled
 
-- **A date of death in the matcher (OQ-BV3, decided, not in the service).** The matcher's `Patient` has `death_date` as weak match evidence, in the unreleased crate. To use it the service needs that release, must fill the field only from a standing assertion, and must never accept it from a client. The assertion stays apart from identity.
 - **How soon a held contact is reviewed, and who owns that.** OQ-BV1 says a person confirms; it does not say by when.
 - **Other fields on [the proposal](index.md#what-this-project-would-need).** `found_at`, `place`, `verified_at` and `coroner_referred` are not in this slice. They can be added to the stored body without a migration, once someone has said which are required.

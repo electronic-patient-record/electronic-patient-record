@@ -68,6 +68,13 @@ async fn compare(
     Extension(agent): Extension<Agent>,
     Json(request): Json<CompareRequest>,
 ) -> Result<Response> {
+    // Compare takes what the caller sends, and a date of death comes only from an assertion (OQ-BV3).
+    if request.a.death_date.is_some() || request.b.death_date.is_some() {
+        return Ok(ApiError::invalid(vec![
+            "a date of death is not part of an identity".to_string(),
+        ])
+        .into_response());
+    }
     match compare_audited(&ctx.db, audit::chain(), &agent, &request).await {
         Ok(result) => format::json(result),
         Err(e) => {

@@ -147,6 +147,22 @@ pub async fn answer(db: &impl ConnectionTrait, patient_id: &str) -> Result<Answe
     Ok(death::answer(&all))
 }
 
+/// A patient as the matcher should see them: the stored identity, with `death_date` from a standing,
+/// undisputed assertion. This is the only place the field is filled (OQ-BV3).
+///
+/// # Errors
+///
+/// [`StoreError::NotFound`] (no such patient).
+pub async fn for_matching(
+    db: &impl ConnectionTrait,
+    patient_id: &str,
+    patient: &electronic_patient_record_matcher::Patient,
+) -> Result<electronic_patient_record_matcher::Patient, StoreError> {
+    let mut seen = patient.clone();
+    seen.death_date = death::match_date(&answer(db, patient_id).await?);
+    Ok(seen)
+}
+
 /// One assertion's current version.
 ///
 /// # Errors

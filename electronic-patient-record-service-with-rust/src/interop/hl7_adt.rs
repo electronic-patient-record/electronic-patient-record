@@ -220,6 +220,7 @@ pub fn patient_from_adt(text: &str) -> Result<Inbound, Rejection> {
     let raw_sex = get(&message, "PID-8");
     let raw_birth = get(&message, "PID-7");
     let patient = Patient {
+        death_date: None,
         id: None,
         names,
         birth_date: birth_date(&raw_birth),

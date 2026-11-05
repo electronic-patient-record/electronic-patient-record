@@ -590,6 +590,7 @@ mod tests {
 
     fn person() -> Patient {
         Patient {
+            death_date: None,
             temporary_identity: false,
             id: Some("x".into()),
             names: vec![

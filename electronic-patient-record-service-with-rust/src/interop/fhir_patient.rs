@@ -318,6 +318,7 @@ pub fn from_fhir_json(text: &str) -> Result<FromFhir, Unreadable> {
         });
     Ok(FromFhir {
         patient: Patient {
+            death_date: None,
             id: None,
             names,
             birth_date: text_of(&raw, "birthDate"),
@@ -343,6 +344,7 @@ mod tests {
             version: 3,
             author: "a".into(),
             patient: Patient {
+                death_date: None,
                 id: Some("11111111-1111-4111-8111-111111111111".into()),
                 names: vec![
                     HumanName {

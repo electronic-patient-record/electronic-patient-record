@@ -1920,6 +1920,7 @@ mod tests {
             Address, AdministrativeSex, HumanName, Identifier, Patient, Telecom,
         };
         Patient {
+            death_date: None,
             id: Some("i".into()),
             names: vec![HumanName {
                 family: Some("f".into()),

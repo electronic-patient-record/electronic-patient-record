@@ -366,7 +366,11 @@ pub async fn merge(
             "{TARGET_ALREADY_MERGED}{into}{TARGET_ALREADY_MERGED_END}"
         )));
     }
-    let (score, decision) = judge(&source.patient, &target.patient).map_err(StoreError::from)?;
+    let (score, decision) = judge(
+        &crate::death_store::for_matching(db, &source.id, &source.patient).await?,
+        &crate::death_store::for_matching(db, &target.id, &target.patient).await?,
+    )
+    .map_err(StoreError::from)?;
     let row = db
         .query_one_raw(pg(
             &format!(

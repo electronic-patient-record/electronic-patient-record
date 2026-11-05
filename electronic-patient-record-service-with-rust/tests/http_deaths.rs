@@ -106,6 +106,26 @@ async fn who_may_report_confirm_and_withdraw() {
         let answer = format!("/api/patients/{id}/death");
         let assertions = format!("/api/patients/{id}/death/assertions");
 
+        // A client cannot supply a date of death: only a standing assertion does (OQ-BV3).
+        let (h, v) = auth(&reception);
+        let refused = server
+            .post("/api/patients")
+            .add_header(h, v)
+            .add_header(purpose.clone(), ops.clone())
+            .json(&json!({ "patient": { "names": [{ "family": "Deathtest", "given": ["Z"] }],
+                "death_date": "2026-01-01" }, "override_reason": "x" }))
+            .await;
+        assert_eq!(refused.status_code(), StatusCode::UNPROCESSABLE_ENTITY, "{}", refused.text());
+        assert!(refused.text().contains("death_date_not_accepted"), "{}", refused.text());
+        let (h, v) = auth(&reception);
+        let refused = server
+            .post("/api/patients/compare")
+            .add_header(h, v)
+            .add_header(purpose.clone(), ops.clone())
+            .json(&json!({ "a": { "names": [], "death_date": "2026-01-01" }, "b": { "names": [] } }))
+            .await;
+        assert_eq!(refused.status_code(), StatusCode::UNPROCESSABLE_ENTITY, "{}", refused.text());
+
         // A proxy with the identity and access log scopes, reading before anything is reported.
         let expires = i64::try_from(nanos() / 1_000_000_000).unwrap() + 3600;
         let (h, v) = auth(&admin);
@@ -227,6 +247,14 @@ async fn who_may_report_confirm_and_withdraw() {
         assert_eq!(as_self(log.clone()).await.status_code(), StatusCode::OK);
         assert!(as_self("/api/me/patients".into()).await.text().contains(&id));
 
+        // The matcher sees the date of the report, and it is not stored on the identity.
+        let stored = electronic_patient_record::patients_store::current(&ctx.db, &id).await.unwrap();
+        assert_eq!(stored.patient.death_date, None);
+        let seen = electronic_patient_record::death_store::for_matching(&ctx.db, &id, &stored.patient)
+            .await
+            .unwrap();
+        assert_eq!(seen.death_date.as_deref(), Some("2026-11-01"));
+
         // Reception can neither read the reasons nor take a step.
         let (h, v) = auth(&reception);
         let denied = server.get(&assertions).add_header(h, v).add_header(purpose.clone(), ops.clone()).await;
@@ -327,6 +355,11 @@ async fn who_may_report_confirm_and_withdraw() {
             .await
             .json();
         assert!(gone.get("deceasedDateTime").is_none(), "{gone}");
+        // Withdrawn, the matcher sees no date.
+        let seen = electronic_patient_record::death_store::for_matching(&ctx.db, &id, &stored.patient)
+            .await
+            .unwrap();
+        assert_eq!(seen.death_date, None);
         // Withdrawn, the proxy is back, with nothing to restore by hand.
         assert_eq!(as_proxy(record.clone()).await.status_code(), StatusCode::OK);
         assert!(as_proxy("/api/me/patients".into()).await.text().contains(&id));

@@ -295,6 +295,21 @@ impl Answer {
     }
 }
 
+/// The date the matcher may use as weak evidence (OQ-BV3): the one answer's date, as a day or less. None
+/// when no assertion stands, none gives a date, or those that stand disagree, because a date in dispute
+/// must not move a match score.
+#[must_use]
+pub fn match_date(answer: &Answer) -> Option<String> {
+    match answer {
+        Answer::Asserted {
+            occurred: Some(at),
+            dates_differ: false,
+            ..
+        } => Some(at.split('T').next().unwrap_or(at).to_string()),
+        _ => None,
+    }
+}
+
 /// The answer for all of a patient's assertions, each at its current version.
 #[must_use]
 pub fn answer(assertions: &[Assertion]) -> Answer {
@@ -352,6 +367,25 @@ mod tests {
             status,
             reason: "r".into(),
         }
+    }
+
+    #[test]
+    fn the_matcher_sees_a_date_only_when_one_stands_undisputed() {
+        let one = answer(&[at(Reported, known("2026-10-12"))]);
+        assert_eq!(match_date(&one).as_deref(), Some("2026-10-12"));
+        let instant = answer(&[at(Verified, known("2026-10-27T04:10:00Z"))]);
+        assert_eq!(match_date(&instant).as_deref(), Some("2026-10-27"));
+        let partial = answer(&[at(Reported, known("2026-10"))]);
+        assert_eq!(match_date(&partial).as_deref(), Some("2026-10"));
+        let differ = answer(&[
+            at(Verified, known("2026-10-12")),
+            at(Reported, known("2026-10-13")),
+        ]);
+        assert_eq!(match_date(&differ), None);
+        let gone = answer(&[at(Withdrawn, known("2026-10-12"))]);
+        assert_eq!(match_date(&gone), None);
+        let none = answer(&[at(Reported, Occurred::NotKnown { reason: "r".into() })]);
+        assert_eq!(match_date(&none), None);
     }
 
     #[test]

@@ -88,7 +88,7 @@ pub fn validate(patient: &Patient) -> Vec<String> {
 
 /// [`validate`] with a stable code beside each message, in the same order, so a client can say it in
 /// the reader's language: `family_name_required`, `birth_date_invalid`, `nhs_number_placeholder`,
-/// `nhs_number_check_digit`, `identifier_incomplete`.
+/// `nhs_number_check_digit`, `identifier_incomplete`, `death_date_not_accepted`.
 #[must_use]
 pub fn validate_coded(patient: &Patient) -> Vec<(&'static str, String)> {
     let mut problems = Vec::new();
@@ -108,6 +108,15 @@ pub fn validate_coded(patient: &Patient) -> Vec<(&'static str, String)> {
         problems.push((
             "birth_date_invalid",
             format!("birth_date {d:?} is not YYYY, YYYY-MM or YYYY-MM-DD"),
+        ));
+    }
+    // The field is the matcher's, and is filled only from a standing assertion (OQ-BV3). A death has an
+    // author and a reason, so it is reported on its own route and never arrives with an identity.
+    if patient.death_date.is_some() {
+        problems.push((
+            "death_date_not_accepted",
+            "a date of death is not part of an identity: report it at /api/patients/{id}/death/assertions"
+                .to_string(),
         ));
     }
     for id in &patient.identifiers {

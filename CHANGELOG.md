@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - A date of death reaches the matcher, from an assertion only (BV-1; H-001)
+
+- **Clinical risk:** **yes.** On a merge, a shared date of death from standing assertions now adds a little to the score, which can move a pair across a threshold. H-001 stays open.
+- **Built:** the service on matcher 0.7.0; `death::match_date` and `death_store::for_matching`, the only filler; a refusal of `death_date` in the patient validator and on `/compare`. BV-1 is ticked.
+- **My decisions, for review:** a date in dispute is left out; an unconfirmed report's date counts, because a merge is a person's act and they see the record.
+- **Not done / not verified:** the weight has not been tried on real data. Only `Cargo.lock`'s matcher entry was changed in this commit; the maintainer's other lockfile bumps stay uncommitted, so this was tested with them and CI tests it without. The merge audit does not record that a date of death counted. No clinician has reviewed this.
+
 ## 2026-11-05 - Matcher 0.7.0 (OQ-BV3)
 
 - **Clinical risk:** **not yet in effect.** The release adds `Patient.death_date` as weak match evidence. Nothing changes until the service uses it, which is the next commit. H-001 records the risk.
