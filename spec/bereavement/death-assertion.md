@@ -2,7 +2,7 @@
 
 The rules for recording that a person has died (BV-1). A first draft for clinical and legal review: no clinician, medical examiner or bereaved person has reviewed it. The reasons and sources are on [bereavement](index.md).
 
-**Built:** the rules and the read model in `electronic-patient-record-service-with-rust/src/death.rs`, and the append-only store in `death_store.rs` (table `death_assertion_versions`, view `death_assertion_current`, migration 25). The routes are in `controllers/deaths.rs`. **Not built:** a screen, a feed that writes a report, or anything that a hold acts on. Until a feed can record a death, a report that arrives is refused rather than dropped: an HL7 message with PID-29 or PID-30 is answered `AE`, changes nothing and waits in the feed queue for a person, and a FHIR write with `deceased[x]` gets a 422. The service has no outbound contact yet, so nothing is held today.
+**Built:** the rules and the read model in `electronic-patient-record-service-with-rust/src/death.rs`, and the append-only store in `death_store.rs` (table `death_assertion_versions`, view `death_assertion_current`, migration 25). The routes are in `controllers/deaths.rs`. The banner on the patient and summary pages says so, and `DeathSection.svelte` reports and takes steps. **Not built:** a feed that writes a report, or anything that a hold acts on. Until a feed can record a death, a report that arrives is refused rather than dropped: an HL7 message with PID-29 or PID-30 is answered `AE`, changes nothing and waits in the feed queue for a person, and a FHIR write with `deceased[x]` gets a 422. The service has no outbound contact yet, so nothing is held today.
 
 ## The model
 

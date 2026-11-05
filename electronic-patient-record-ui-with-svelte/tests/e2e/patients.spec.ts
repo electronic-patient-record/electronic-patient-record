@@ -242,7 +242,9 @@ test("editing sends the expected version and keeps what the form does not show",
   await page.getByLabel("Birth date").fill("1980-03-15");
   await page.getByLabel("Reason").fill("corrected");
   await page.getByRole("button", { name: "Save changes" }).click();
-  await expect(page.getByRole("status")).toHaveText("Saved. Version 3.");
+  await expect(
+    page.getByRole("status").filter({ hasText: "Saved." }),
+  ).toHaveText("Saved. Version 3.");
   expect(put!.expected_version).toBe(2);
   expect(put!.reason).toBe("corrected");
   expect(put!.patient.birth_date).toBe("1980-03-15");
@@ -1116,6 +1118,144 @@ test("a drill record says so at the top of its banner, and a real one does not",
     await expect(banner).toContainText("SMITH, Ann");
     await expect(banner).not.toContainText("DRILL");
   }
+});
+
+test("a report of death shows in the banner, holds contact, and a step needs a reason", async ({
+  page,
+}) => {
+  await page.route("**/api/proxy/api/patients/p-1", (route) =>
+    json(route, 200, {
+      id: "p-1",
+      version: 1,
+      author: "a",
+      recorded_at: "2026-11-01T00:00:00Z",
+      patient: {
+        names: [{ family: "Smith", given: ["Ann"] }],
+        identifiers: [],
+      },
+    }),
+  );
+  let answer: Record<string, unknown> = {
+    answer: "not-known-to-have-died",
+    holds_contact: false,
+  };
+  const row = {
+    id: "d-1",
+    patient_id: "p-1",
+    version: 1,
+    author: "desk",
+    recorded_at: "2026-11-02T09:00:00Z",
+    assertion: {
+      source: "family-member",
+      reported_by: { kind: "person", id: "desk" },
+      occurred: { kind: "known", at: "2026-11-01" },
+      status: "reported",
+      reason: "<b>the daughter rang</b>",
+    },
+  };
+  let rows: unknown[] = [];
+  const sent: unknown[] = [];
+  await page.route("**/api/proxy/api/patients/p-1/death", (route) =>
+    json(route, 200, answer),
+  );
+  await page.route(
+    "**/api/proxy/api/patients/p-1/death/assertions",
+    (route) => {
+      if (route.request().method() !== "POST")
+        return json(route, 200, { assertions: rows });
+      sent.push(route.request().postDataJSON());
+      rows = [row];
+      answer = {
+        answer: "asserted",
+        status: "reported",
+        confirmed: false,
+        occurred: "2026-11-01",
+        dates_differ: false,
+        holds_contact: true,
+      };
+      return json(route, 201, row);
+    },
+  );
+  await page.route(
+    "**/api/proxy/api/patients/p-1/death/assertions/d-1",
+    (route) => {
+      sent.push(route.request().postDataJSON());
+      rows = [];
+      answer = { answer: "not-known-to-have-died", holds_contact: false };
+      return json(route, 200, row);
+    },
+  );
+  await page.goto("/en-001/patients/p-1");
+  const banner = page.getByRole("region", { name: "Patient banner" });
+  await expect(banner).toBeVisible();
+  await expect(banner.getByRole("alert")).toHaveCount(0);
+  await expect(
+    page.getByText("This does not confirm that the person is living."),
+  ).toBeVisible();
+
+  // Nothing is sent without who told us.
+  await page.getByRole("button", { name: "Report a death" }).click();
+  await page.getByRole("button", { name: "Save the report" }).click();
+  await expect(page.getByText("Say who told us.")).toBeVisible();
+  await page.getByLabel("Who told us").selectOption("family-member");
+  await page.getByLabel("Date of death").fill("2026-11-01");
+  await page
+    .getByLabel("Reason (kept in the history)")
+    .fill("the daughter rang");
+  await page.getByRole("button", { name: "Save the report" }).click();
+  await expect(banner.getByRole("alert")).toContainText("Not confirmed");
+  await expect(banner.getByRole("alert")).toContainText(
+    "Contact is held until a person checks this.",
+  );
+  // Words from a report are text.
+  await expect(page.getByText("<b>the daughter rang</b>")).toBeVisible();
+  await axe(page);
+
+  await page
+    .getByRole("button", { name: "Withdrawn, recorded in error" })
+    .click();
+  await page.getByRole("button", { name: "Confirm" }).click();
+  await expect(page.getByText("Give a reason.", { exact: true })).toBeVisible();
+  await page
+    .getByLabel("Reason (kept in the history)")
+    .first()
+    .fill("wrong record");
+  await page.getByRole("button", { name: "Confirm" }).click();
+  await expect(banner.getByRole("alert")).toHaveCount(0);
+  expect(sent).toEqual([
+    {
+      source: "family-member",
+      occurred: { kind: "known", at: "2026-11-01" },
+      reason: "the daughter rang",
+    },
+    { expected_version: 1, to: "withdrawn-in-error", reason: "wrong record" },
+  ]);
+});
+
+test("a failed look at a death is said, not read as nothing reported", async ({
+  page,
+}) => {
+  await page.route("**/api/proxy/api/patients/p-1", (route) =>
+    json(route, 200, {
+      id: "p-1",
+      version: 1,
+      author: "a",
+      recorded_at: "2026-11-01T00:00:00Z",
+      patient: {
+        names: [{ family: "Smith", given: ["Ann"] }],
+        identifiers: [],
+      },
+    }),
+  );
+  await page.route("**/api/proxy/api/patients/p-1/death", (route) =>
+    json(route, 500, {}),
+  );
+  await page.goto("/en-001/patients/p-1");
+  await expect(
+    page.getByText(
+      "Could not check whether this person has been reported as having died.",
+    ),
+  ).toBeVisible();
 });
 
 test("a temporary identity says so in the banner and in search, and an edit keeps it", async ({

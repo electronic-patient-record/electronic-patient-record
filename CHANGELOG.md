@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - A report of death in the banner (BV-1, in part; H-046 stays open)
+
+- **Clinical risk:** **yes.** The banner now tells staff that a patient has been reported as having died, or that a death is confirmed, and that contact is held. Staff can report, step and withdraw from the patient page. Nothing in the service holds contact yet, because it sends nothing: the words "contact is held" are the rule, for the staff member to follow. H-046 stays `open`.
+- **Built:** `lib/death.ts`, `DeathSection.svelte`, the banner line on the patient and summary pages, unit tests, and two browser tests with a mocked API.
+- **Not done / not verified:** not tried against the real service or with real roles. The steps are offered to every role and a refused one answers "forbidden" when pressed, so a nurse is offered a withdrawal they cannot make. The words are mine, English only, and no clinician or bereaved person has read them. The date field is free text checked by the service. The summary page has no report form. Patient search and the merge screens show nothing about a death, and "my record" does not show it to a patient or proxy. One older browser test now picks out its status line, as the page can hold a second.
+
 ## 2026-11-05 - Death assertion routes, and who may take each step (BV-1, in part; OQ-BV2, OQ-BV3; H-046 stays open)
 
 - **Clinical risk:** **yes, for what staff can do.** Any member of staff can now record that a patient has died through the API, a clinician or nurse can confirm it, and a clinician can withdraw it. No screen uses these routes yet and nothing acts on a hold, so a clinician sees no change. H-046 stays `open`.

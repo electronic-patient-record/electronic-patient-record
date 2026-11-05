@@ -8,6 +8,8 @@
   import BreakGlassSection from "#lib/BreakGlassSection.svelte";
   import { siteWhenText } from "#lib/access-log.js";
   import { loadAllergies, type AllergyLoad } from "#lib/allergies.js";
+  import { loadDeath, type DeathLoad } from "#lib/death.js";
+  import DeathSection from "#lib/DeathSection.svelte";
   import { patientProblemList } from "#lib/conflicts.js";
   import MergeSection from "#lib/MergeSection.svelte";
   import AmendmentsSection from "#lib/AmendmentsSection.svelte";
@@ -38,6 +40,9 @@
   // One allergy call per look, shared by the banner and the allergy section: each is an audited
   // read, and two views of the same answer must not disagree.
   let allergies = $state<AllergyLoad | null>(null);
+  // What the banner says about a death, read for the patient on screen.
+  let death = $state<DeathLoad | null>(null);
+  let deathTicket = 0;
   // When emergency access opened on this page ends, kept after the form has gone.
   let glassUntil = $state<string | null>(null);
 
@@ -55,12 +60,21 @@
     if (current(forId) && ticket === allergyTicket) allergies = res;
   }
 
+  async function reloadDeath() {
+    const forId = id;
+    const ticket = ++deathTicket;
+    const res = await loadDeath(forId ?? "");
+    if (current(forId) && ticket === deathTicket) death = res;
+  }
+
   async function load() {
     const forId = id;
     const ticket = ++loadTicket;
+    void reloadDeath();
     if (stored?.id !== forId) {
       stored = null;
       allergies = null;
+      death = null;
       form = emptyForm();
       reason = "";
       glassUntil = null;
@@ -310,7 +324,7 @@
 {/if}
 
 {#if stored}
-  <PatientBanner stored={latest ?? stored} {allergies} />
+  <PatientBanner stored={latest ?? stored} {allergies} {death} />
   {#if age}
     {#if age.stale}
       <p role="alert">{STRINGS.dataMayBeOld.replace("{time}", age.readAt)}</p>
@@ -341,6 +355,11 @@
   </p>
   <!-- A record merged into another is read-only: its changes go to the surviving record. -->
   {#if !stored.replaced_by}
+    <DeathSection
+      patientId={stored.id}
+      siteZone={stored.site_time_zone ?? "UTC"}
+      onchange={reloadDeath}
+    />
     {#if allergies?.status === 403 && allergies.offer}
       <BreakGlassSection
         patientId={stored.id}

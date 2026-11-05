@@ -9,6 +9,7 @@
     loadAllergies,
     type AllergyLoad,
   } from "#lib/allergies.js";
+  import { loadDeath, type DeathLoad } from "#lib/death.js";
   import PatientBanner from "#lib/PatientBanner.svelte";
   import type { Stored } from "#lib/patient.js";
   import { latestReadings } from "#lib/summary.js";
@@ -28,6 +29,7 @@
   let stored = $state<Stored | null>(null);
   let allergies = $state<AllergyLoad | null>(null);
   let vitals = $state<VitalsLoad | null>(null);
+  let death = $state<DeathLoad | null>(null);
   let loading = $state(true);
   let message = $state<string | null>(null);
 
@@ -41,6 +43,7 @@
     stored = null;
     allergies = null;
     vitals = null;
+    death = null;
     message = null;
     loading = true;
     const res = await call<Stored>("GET", `/api/patients/${forId}`);
@@ -52,13 +55,15 @@
     else if (res.status !== 200) message = STRINGS.error;
     else {
       stored = res.body;
-      const [a, v] = await Promise.all([
+      const [a, v, d] = await Promise.all([
         loadAllergies(forId),
         loadObservations(forId),
+        loadDeath(forId),
       ]);
       if (mine !== ticket) return;
       allergies = a;
       vitals = v;
+      death = d;
     }
   }
 
@@ -88,7 +93,7 @@
 {/if}
 
 {#if stored}
-  <PatientBanner {stored} {allergies} />
+  <PatientBanner {stored} {allergies} {death} />
 
   <section aria-labelledby="sum-allergies-h">
     <h2 id="sum-allergies-h">{STRINGS.summaryAllergies}</h2>

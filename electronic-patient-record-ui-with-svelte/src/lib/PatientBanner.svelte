@@ -11,6 +11,7 @@
   } from "./patient.js";
   import { bannerAllergies, type AllergyLoad } from "./allergies.js";
   import { fetchBlob } from "./api.js";
+  import { bannerDeath, type DeathLoad } from "./death.js";
   import { STRINGS } from "./strings.js";
 
   // `purpose` is the purpose of use the photo is fetched under: "my record" passes
@@ -20,6 +21,7 @@
     today = new Date(),
     purpose,
     allergies = null,
+    death = null,
   }: {
     stored: Stored;
     today?: Date;
@@ -27,7 +29,10 @@
     // What the allergy call returned, or null while it is still loading. The page makes the call
     // (once) and hands it to the banner and the allergy section.
     allergies?: AllergyLoad | null;
+    // What the death call returned. Staff pages pass it; a patient's own view does not ask.
+    death?: DeathLoad | null;
   } = $props();
+  const deathLine = $derived(bannerDeath(death));
   const allergyLine = $derived(
     bannerAllergies(allergies, stored.site_time_zone),
   );
@@ -86,6 +91,11 @@
 <section class="banner" aria-label={STRINGS.bannerLabel}>
   {#if stored.drill}
     <p class="drill" role="alert">{STRINGS.bannerDrill}</p>
+  {/if}
+  {#if deathLine.kind === "asserted"}
+    <p class="drill" role="alert">{deathLine.text}</p>
+  {:else if deathLine.kind === "unknown"}
+    <p role="status">{deathLine.text}</p>
   {/if}
   {#if p.temporary_identity}
     <p class="drill" role="alert">{STRINGS.bannerTemporaryIdentity}</p>
