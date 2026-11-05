@@ -396,12 +396,22 @@ pub async fn lookup(
         })
         .collect::<Result<Vec<_>, _>>()?;
     let relationship = resolve(&records, now, scope);
-    if relationship == Relationship::Proxy
-        && crate::death_store::answer(db, &patient_id)
-            .await?
-            .holds_contact()
-    {
-        return Ok(Relationship::None);
+    // Worked out on each request, so that a withdrawal restores access with nothing to do by hand. A proxy
+    // stops at any report; the patient's own login stops only once a person has confirmed the death, so
+    // that a living person wrongly reported keeps their own record (decided 2026-11-05).
+    if matches!(
+        relationship,
+        Relationship::Proxy | Relationship::SelfPatient
+    ) {
+        let answer = crate::death_store::answer(db, &patient_id).await?;
+        let stops = if relationship == Relationship::Proxy {
+            answer.holds_contact()
+        } else {
+            answer.confirmed()
+        };
+        if stops {
+            return Ok(Relationship::None);
+        }
     }
     Ok(relationship)
 }

@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - A patient's own login stops once a death is confirmed (BV-5; H-046 stays open)
+
+- **Clinical risk:** **yes.** A confirmed death stops the patient's own access to the record, the photo, the access log and "my record". A withdrawal restores it, with nothing to do by hand. H-046 stays `open`.
+- **Built:** the check in `relationships::lookup`, beside the proxy's, and `Answer::confirmed`; assertions in `tests/http_deaths.rs` that a report does not stop it, a confirmation does, and a withdrawal restores it.
+- **My decision, for review:** "at death" is read as confirmed, not any report, so that a living person wrongly reported by a feed keeps their record. The maintainer decided the login stops; the threshold is mine.
+- **Not done / not verified:** a person wrongly confirmed as dead loses their record until a clinician withdraws it, and sees only that it is gone; those words need people who have been through it. A token already issued is not revoked: it stops working on the record, not on sign-in. A person acting after death is still not built. No Clinical Safety Officer has reviewed this.
+
 ## 2026-11-05 - A need as a FHIR Flag (PX-3)
 
 - **Clinical risk:** **yes, once anything reads it.** Another system can now read what a person needs, with the same access decision and audit row as the list. An ended need goes out as `inactive`.

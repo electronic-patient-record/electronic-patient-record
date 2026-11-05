@@ -76,7 +76,11 @@ Every event about the patient is held, whatever it is. That needs review: a mess
 
 A proxy has no relationship to a patient while any assertion stands: an unconfirmed report is enough, because a disclosure cannot be undone. `relationships::lookup` works this out on each request, so the relationship itself is not ended and a withdrawal restores it with nothing to do by hand. This covers the record, the photo, the access log and "my record", which leaves the patient out.
 
-The cost is that a false report locks out a parent or carer until a clinician withdraws it, and they see only that the record is gone, because the list says nothing to a proxy about a death. Those words need people who have been through it. A patient's own login does not stop, because a living person wrongly reported as dead would lose their own record. The [bereavement](index.md) page asks for it to stop as well; that is not settled. A person acting after death, with a basis, a scope and an end date, is not built.
+The cost is that a false report locks out a parent or carer until a clinician withdraws it, and they see only that the record is gone, because the list says nothing to a proxy about a death. Those words need people who have been through it. A person acting after death, with a basis, a scope and an end date, is not built.
+
+## A patient's own login
+
+Decided by the maintainer on 2026-11-05: a patient's own login stops at death. It stops when a person has **confirmed** the death, not at a report, because a living person wrongly reported by a feed would otherwise lose their own record. That reading of "at death" is the implementer's, for review. It is worked out in the same place and on each request, so a withdrawal restores it. It covers the record, the photo, the access log and "my record". The cost is that a person wrongly confirmed as dead loses their record until a clinician withdraws it, and is told nothing about why.
 
 ## FHIR
 

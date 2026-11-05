@@ -2,7 +2,7 @@
 //! and read the one answer, a clinician or nurse may read the assertions and take a step, only a
 //! clinician may withdraw, a patient and a proxy have none of it, the reporter is the token, a stale
 //! version is 409, the audit trail never holds a reason, and a proxy stops while a report stands and
-//! comes back when it is withdrawn (BV-5). One test, because the token guard is
+//! comes back when it is withdrawn (BV-5), and the patient's own login stops once a death is confirmed. One test, because the token guard is
 //! configured once per process.
 //!
 //! ```text
@@ -78,7 +78,8 @@ async fn who_may_report_confirm_and_withdraw() {
     let nurse = token("nurse", "0c4f1e2a-0000-4000-8000-0000000000d2");
     const RECEPTION: &str = "0c4f1e2a-0000-4000-8000-0000000000d3";
     let reception = token("receptionist", RECEPTION);
-    let patient = token("patient", "0c4f1e2a-0000-4000-8000-0000000000d4");
+    const OWN: &str = "0c4f1e2a-0000-4000-8000-0000000000d4";
+    let patient = token("patient", OWN);
     let auditor = token("auditor", "0c4f1e2a-0000-4000-8000-0000000000d5");
     let admin = token("clinical-admin", "0c4f1e2a-0000-4000-8000-0000000000d6");
     const PROXY: &str = "0c4f1e2a-0000-4000-8000-0000000000d7";
@@ -118,6 +119,16 @@ async fn who_may_report_confirm_and_withdraw() {
                 "reason": "seen" }))
             .await;
         assert_eq!(related.status_code(), StatusCode::CREATED, "{}", related.text());
+        // And the patient's own login.
+        let (h, v) = auth(&admin);
+        let own = server
+            .post(&format!("/api/patients/{id}/relationships"))
+            .add_header(h, v)
+            .add_header(purpose.clone(), ops.clone())
+            .json(&json!({ "relationship": { "subject": OWN, "kind": "self", "status": "active" },
+                "reason": "seen" }))
+            .await;
+        assert_eq!(own.status_code(), StatusCode::CREATED, "{}", own.text());
         let portal = HeaderValue::from_static("patient-access");
         let as_proxy = |path: String| {
             let (h, v) = auth(&proxy);
@@ -128,6 +139,12 @@ async fn who_may_report_confirm_and_withdraw() {
         assert_eq!(as_proxy(record.clone()).await.status_code(), StatusCode::OK);
         assert_eq!(as_proxy(log.clone()).await.status_code(), StatusCode::OK);
         assert!(as_proxy("/api/me/patients".into()).await.text().contains(&id));
+        let as_self = |path: String| {
+            let (h, v) = auth(&patient);
+            server.get(&path).add_header(h, v).add_header(purpose.clone(), portal.clone())
+        };
+        assert_eq!(as_self(record.clone()).await.status_code(), StatusCode::OK);
+        assert!(as_self("/api/me/patients".into()).await.text().contains(&id));
 
         // Nothing yet: not known, which is not the same as living, and nothing is held.
         let (h, v) = auth(&reception);
@@ -205,6 +222,10 @@ async fn who_may_report_confirm_and_withdraw() {
         assert_eq!(as_proxy(record.clone()).await.status_code(), StatusCode::FORBIDDEN);
         assert_eq!(as_proxy(log.clone()).await.status_code(), StatusCode::FORBIDDEN);
         assert!(!as_proxy("/api/me/patients".into()).await.text().contains(&id));
+        // A report alone does not stop the patient's own login: they may be alive.
+        assert_eq!(as_self(record.clone()).await.status_code(), StatusCode::OK);
+        assert_eq!(as_self(log.clone()).await.status_code(), StatusCode::OK);
+        assert!(as_self("/api/me/patients".into()).await.text().contains(&id));
 
         // Reception can neither read the reasons nor take a step.
         let (h, v) = auth(&reception);
@@ -228,6 +249,10 @@ async fn who_may_report_confirm_and_withdraw() {
             .json(&json!({ "expected_version": 1, "to": "verified", "reason": "seen by the nurse" }))
             .await;
         assert_eq!(verified.status_code(), StatusCode::OK, "{}", verified.text());
+        // Confirmed, the patient's own login stops, on every path.
+        assert_eq!(as_self(record.clone()).await.status_code(), StatusCode::FORBIDDEN);
+        assert_eq!(as_self(log.clone()).await.status_code(), StatusCode::FORBIDDEN);
+        assert!(!as_self("/api/me/patients".into()).await.text().contains(&id));
         let (h, v) = auth(&nurse);
         let stale = server
             .put(&step)
@@ -305,6 +330,9 @@ async fn who_may_report_confirm_and_withdraw() {
         // Withdrawn, the proxy is back, with nothing to restore by hand.
         assert_eq!(as_proxy(record.clone()).await.status_code(), StatusCode::OK);
         assert!(as_proxy("/api/me/patients".into()).await.text().contains(&id));
+        assert_eq!(as_self(record.clone()).await.status_code(), StatusCode::OK);
+        assert_eq!(as_self(log.clone()).await.status_code(), StatusCode::OK);
+        assert!(as_self("/api/me/patients".into()).await.text().contains(&id));
         let (h, v) = auth(&reception);
         let released: Value = server.get(&answer).add_header(h, v).add_header(purpose.clone(), ops.clone()).await.json();
         assert_eq!(released["holds_contact"], false);

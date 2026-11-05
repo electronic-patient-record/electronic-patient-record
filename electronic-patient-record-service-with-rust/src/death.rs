@@ -276,6 +276,18 @@ pub enum Answer {
 }
 
 impl Answer {
+    /// Whether a person has confirmed the death. This, and not a report, stops the patient's own login.
+    #[must_use]
+    pub fn confirmed(&self) -> bool {
+        matches!(
+            self,
+            Answer::Asserted {
+                confirmed: true,
+                ..
+            }
+        )
+    }
+
     /// Whether outbound contact is held. Any assertion that stands holds it (OQ-BV1).
     #[must_use]
     pub fn holds_contact(&self) -> bool {
