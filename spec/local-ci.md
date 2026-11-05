@@ -45,7 +45,20 @@ Successful runs: wall time **median 13.4 min, p90 15.6, max 38.3**. Job minutes 
 
 **Not measured:** minutes are start to end, not GitHub's per-job rounding up; queue time before a job starts is not in these numbers (it is where a platform slowdown would show); one 38.3-minute wall time was not looked into.
 
-## The model proposed
+## One command (LC-2, built 2026-11-05)
+
+`sh scripts/ci-local.sh --fast` runs fmt, clippy, the docs, the database-free tests, the UI's lint, type checks and unit tests, and the document checks. `--full` adds the database tests, the UI browser tests, the FHIR validator and both container builds. `--list` names the gates.
+
+It prints a table of gate, result and seconds, keeps each gate's output in `target/ci-local/`, and runs every gate even after a failure, so one run shows everything that is wrong. It exits 0 when all passed, 1 when a gate failed, and 2 when a gate could not run. A gate that cannot run says `SKIP` and why, and that fails the run, so nothing is skipped silently. `EPR_CI_ALLOW_SKIP=1` lets it exit 0; the table still shows the skip.
+
+It bypasses the `kache` compiler cache by default, because kache has served stale libraries and fails under load (`EPR_CI_KEEP_CACHE=1` keeps it). The database gate uses `DATABASE_URL` if set, or starts a throwaway Postgres 18 and removes it afterwards.
+
+| CI job | Here |
+|---|---|
+| Matcher, API, UI, docs, FHIR validator, API database tests | The same gates, except that UI unit tests run without the coverage report |
+| Container images | Built. **Not** the checks that the API refuses to start with no keys and demands a token |
+| `cargo deny`, CodeQL, `pnpm audit`, the secret scan, the coverage floor, the fresh clone, the two hazard-log pull-request checks | GitHub only |
+
 
 1. **Tier 1 becomes one command and a hook** (`scripts/ci-local.sh --fast` on pre-push; `--full` before a batch of pushes), against a scratch database, with a preflight for the known local traps.
 2. **Tier 2 stays on GitHub as the independent check**, trimmed so it does not repeat work that cannot change (path filters, heavy jobs on `main` or nightly).

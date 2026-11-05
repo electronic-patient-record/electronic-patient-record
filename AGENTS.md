@@ -24,6 +24,8 @@ Version 0.1.0. Rust 1.99.1 (pinned in `rust-toolchain.toml`; minimum supported 1
 
 ## Gates
 
+`sh scripts/ci-local.sh --fast` runs the gates below that need no database, and `--full` runs them all, with a table of results ([`spec/local-ci.md`](spec/local-ci.md)). By hand:
+
 ```bash
 # matcher and service
 cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test

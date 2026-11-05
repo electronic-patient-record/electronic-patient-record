@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - One command for the gates (LC-2)
+
+- **Clinical risk:** none: a developer script.
+- **Built:** `scripts/ci-local.sh`, with `--fast`, `--full` and `--list`. It reports every gate, never skips one silently, starts and removes its own Postgres, and bypasses `kache`.
+- **Checked:** a deliberately broken unit test exited 1 with `ui-unit` FAIL, and every other gate still ran. `--full` passed all 22 gates, with the service database tests, the FHIR validator and both container builds, on the author's Mac.
+- **Not done / not verified:** it is not all of CI. `cargo deny`, CodeQL, `pnpm audit`, the secret scan, the coverage floor, the fresh clone, the hazard-log pull-request checks and the container start checks stay on GitHub. It was not run on Linux, nor on a tree without the maintainer's uncommitted `Cargo.lock` bumps. The port is fixed unless `EPR_CI_PG_PORT` is set, so two `--full` runs at once collide; LC-4 covers that. The SKIP path was checked by reading it, not by forcing a skip.
+
 ## 2026-11-05 - A proxy stops at a confirmed death, not at a report (BV-5; H-046 stays open)
 
 - **Clinical risk:** **yes.** Decided by the maintainer. This reverses the earlier entry: a proxy now keeps access while an unconfirmed report stands, and stops, like the patient's own login, once a person confirms the death. A wrong report no longer cuts off a parent or carer. The new risk is that a proxy can read the record of someone who has died until a person confirms it, and could learn of the death or read what the patient kept private. Outbound contact is still held at any report (OQ-BV1). H-046 records this.
