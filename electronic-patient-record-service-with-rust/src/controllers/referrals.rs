@@ -25,13 +25,13 @@ use crate::patients_store::StoreError;
 use crate::policy::{self, Purpose, Resource, Subject};
 use crate::referral::{Actor, Event};
 use crate::referrals_store::{self as store, Referral, Step, StoredReferral};
+use axa::prelude::*;
 use axum::{
     Extension,
     extract::{Json, Path},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };
-use loco_rs::prelude::*;
 use serde::{Deserialize, Serialize};
 
 /// Send a referral.

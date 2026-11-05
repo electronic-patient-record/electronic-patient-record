@@ -15,11 +15,11 @@
 //!   cargo test --test audit_coverage -- --ignored --test-threads=1
 //! ```
 
+use axa::testing::prelude::request;
 use axum::http::StatusCode;
 use electronic_patient_record::app::App;
 use electronic_patient_record::routes;
 use electronic_patient_record_matcher::{HumanName, Patient};
-use loco_rs::testing::prelude::request;
 use sea_orm::{ConnectionTrait, DatabaseConnection, Statement};
 
 /// Patient-scoped GETs this test does not call, with the reason.

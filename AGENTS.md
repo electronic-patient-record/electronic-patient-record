@@ -4,7 +4,7 @@ Entry point for AI coding agents at the repository root. Three projects live her
 
 | Project | Directory | Guide |
 | --- | --- | --- |
-| Service (loco.rs REST + FHIR API, PostgreSQL) | `electronic-patient-record-service-with-rust` | [AGENTS.md](electronic-patient-record-service-with-rust/AGENTS.md) |
+| Service (Axum and `axa`, REST + FHIR API, PostgreSQL) | `electronic-patient-record-service-with-rust` | [AGENTS.md](electronic-patient-record-service-with-rust/AGENTS.md) |
 | Matcher (pure Rust library, patient identity) | `electronic-patient-record-matcher-with-rust` | [AGENTS.md](electronic-patient-record-matcher-with-rust/AGENTS.md) |
 | Clinician UI (SvelteKit, Svelte 5, backend-for-frontend) | `electronic-patient-record-ui-with-svelte` | [AGENTS.md](electronic-patient-record-ui-with-svelte/AGENTS.md) |
 
@@ -57,7 +57,7 @@ python3 scripts/check-links.py . && sh scripts/generate-status.sh --check && pyt
 - SvelteKit 3: environment variables are declared in `src/env.ts` with `defineEnvVars` and read from
   `$app/env/private`, not `$env/dynamic/private`. Computed styles use Svelte's `style:` directive; the CSP forbids
   inline `style=""`.
-- `axum-test` and `jsonwebtoken` follow `loco-rs`; do not bump them alone.
+- `axum-test` follows `axa`: a second copy gives errors that say `TestServer` does not match `TestServer`.
 - Run `sh scripts/install-hooks.sh` once per clone: it makes git run `.githooks/pre-commit` (UI lint, `cargo fmt --check`, generated docs, links; only what the staged files need). Skip once with `--no-verify`; CI runs everything either way.
 - Use Podman (`podman build`, `podman compose`), not Docker, everywhere: instructions, scripts and CI. Container files are named `Containerfile` and `.containerignore`.
 - The Podman VM's clock drifts (after sleep, say). Keycloak then issues tokens that are already expired by the host's clock, and the API answers

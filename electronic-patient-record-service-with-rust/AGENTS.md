@@ -1,6 +1,6 @@
 # AGENTS.md — Service
 
-loco.rs (Axum 0.8) service on PostgreSQL 18. Read [`spec/index.md`](spec/index.md) first.
+Axum 0.8 service on `axa`, on PostgreSQL 18. Read [`spec/index.md`](spec/index.md) first.
 
 - **Status**: early. Built: app wiring, secure-by-default PASETO and Keycloak guard (`src/auth.rs`), the policy engine and
   its route gate (`src/policy.rs`, `src/authz.rs`, `src/routes.rs`), the hash-chained audit (`src/audit.rs`),
@@ -10,12 +10,11 @@ loco.rs (Axum 0.8) service on PostgreSQL 18. Read [`spec/index.md`](spec/index.m
   from the named roles). Not built: the rest of the resource store, FHIR endpoints, break-the-glass grants, masking, a
   any export. Mappings to other formats live in `src/interop` (FHIR R4 `Patient`, HL7 v2 ADT with acknowledgements, SNOMED identifier check; library only, no endpoint). Care relationships (`src/relationships.rs`) are recorded by an administrator; nothing derives them from encounters.
 - **Two token kinds**: `v4.…` goes to the PASETO verifier, anything else to Keycloak (when `EPR_KEYCLOAK_URL` is set). Never route one to the other. The token's `role` attribute (Keycloak: `EPR_KEYCLOAK_ROLE_MAP_FILE=operations/keycloak/role-map.json`) is the only thing authorization reads. See `operations/keycloak/README.md`.
-- **Auth is on unless explicitly off.** `settings.require_auth: false` is set only in development/test config.
+- **Auth is on unless explicitly off.** The defaults in `src/app.rs` (off only in `development`, `test` and `container-dev`) is set only in development/test config.
   The service refuses to start with login off in `production`, and with login on and no keys or key URL.
 - **Append-only.** No migration may add a delete path for clinical data. `audit_events` has triggers refusing
   UPDATE/DELETE/TRUNCATE; keep the DB-gated test green.
 - The binary needs the explicit `[[bin]]` entry in `Cargo.toml` (it lives in `src/bin/main.rs`).
-- `loco-rs` has `default-features = false` and no `auth` feature (no `jsonwebtoken`/`rsa`).
 - Gates: `cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test --lib`, and `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --document-private-items --workspace`; then
   the DB-gated tests (see the repository `AGENTS.md`).
 - **Every new endpoint needs a row in `src/routes.rs` `TABLE`** (method, path template, resource, action). A route

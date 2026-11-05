@@ -1,6 +1,6 @@
 ---
 name: electronic-patient-record
-description: How to work in the electronic-patient-record monorepo (matcher, loco.rs service, SvelteKit UI): spec-first, one commit per item, the gates, and the clinical-safety rules. Use before changing code, specs, the hazard log or translations here.
+description: How to work in the electronic-patient-record monorepo (matcher, Axum service, SvelteKit UI): spec-first, one commit per item, the gates, and the clinical-safety rules. Use before changing code, specs, the hazard log or translations here.
 ---
 
 # Working in electronic-patient-record

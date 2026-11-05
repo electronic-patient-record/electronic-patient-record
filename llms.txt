@@ -1,6 +1,6 @@
 # Electronic Patient Record
 
-> Open-source electronic patient record software: a safe, append-only, audited longitudinal patient record with FHIR R4 as both data model and API, and explainable patient identity matching. A Rust matcher library, a Rust service (loco.rs, PostgreSQL) and a SvelteKit 3 / Svelte 5 UI, specified in spec/. Pre-release scaffold (milestone M0): NOT FOR CLINICAL USE; do not enter real patient data; no accreditation, certification or clinical validation is claimed.
+> Open-source electronic patient record software: a safe, append-only, audited longitudinal patient record with FHIR R4 as both data model and API, and explainable patient identity matching. A Rust matcher library, a Rust service (Axum, PostgreSQL) and a SvelteKit 3 / Svelte 5 UI, specified in spec/. Pre-release scaffold (milestone M0): NOT FOR CLINICAL USE; do not enter real patient data; no accreditation, certification or clinical validation is claimed.
 
 - The specification in spec/ and each project's spec/index.md is the source of truth; code and docs follow it. A behavioural change is one commit with a spec edit, a code edit and a test edit.
 - One item, one commit, one push, then look at CI. Stage named files, never `git add -A`.

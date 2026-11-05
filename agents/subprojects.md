@@ -1,7 +1,7 @@
 # Subprojects
 
 ```
-UI (SvelteKit)  ──REST/FHIR──►  Service (loco.rs)  ──crates.io dependency──►  Matcher (pure)
+UI (SvelteKit)  ──REST/FHIR──►  Service (Axum, axa)  ──crates.io dependency──►  Matcher (pure)
                                      │
                                      └──► PostgreSQL 18
 ```

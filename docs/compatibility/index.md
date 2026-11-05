@@ -20,7 +20,7 @@ Version compatibility is the second pressure. Hospitals run browsers and operati
 - **FHIR releases.** R4 is stored; R5 is a read-only derived facade (`/fhir/R5`, IO-16, built 2026-10-29), where a loss or warning in conversion fails the response. `fhirVersion` is read; there is no status code for an unsupported version yet (IO-17 partly). R6 is watch-only (IO-15). The decision on where the version is chosen is open (PA-9, OQ-PA3).
 - **Pinned platform.** Rust 1.99.1 pinned in `rust-toolchain.toml` with 1.97 as the minimum; Node 26, pnpm, Podman, PostgreSQL 18 for tests (`AGENTS.md`). Podman rather than Docker everywhere.
 - **Co-existence in practice.** The guide records that ports 5432 and 6379 are often taken and gives override variables; `localhost` can resolve to IPv6 where another project listens, so tests use `127.0.0.1`; the UI test port is overridable (`PW_PORT`). These are developer-machine cases, not hospital cases.
-- **Dependency coupling.** `axum-test` and `jsonwebtoken` follow `loco-rs` and must not be bumped alone (`AGENTS.md`); `cargo-deny` and Dependabot are in CI (NFR-11).
+- **Dependency coupling.** `axum-test` follows `axa` and must not be bumped alone (`AGENTS.md`); `cargo-deny` and Dependabot are in CI (NFR-11).
 - **UI environment.** Browser support list is not stated in the specs I read; mobile viewability is proposed (NFR-4) and nothing is built. A stateless UI tier depends on `EPR_SESSION_REDIS_URL` (OS-8, built, not run behind two replicas).
 - **Not built:** a deprecation policy for the `Accepts-version` values, a published support matrix, rolling-upgrade tests (old and new service replicas against one schema), a migration compatibility check, container image scanning (CQ-23, CQ-27).
 

@@ -15,6 +15,7 @@ use crate::patients_store::StoreError;
 use crate::photos_store::{self as store, StoredPhoto};
 use crate::policy::{self, Resource, Subject};
 use crate::proxy::Scope;
+use axa::prelude::*;
 use axum::{
     Extension,
     body::Bytes,
@@ -22,7 +23,6 @@ use axum::{
     http::{HeaderMap, HeaderName, HeaderValue, StatusCode, header},
     response::{IntoResponse, Response},
 };
-use loco_rs::prelude::*;
 
 /// Which photo version the writer last saw (0 for none).
 #[derive(Debug, serde::Deserialize)]

@@ -18,7 +18,9 @@ async fn down_in_production_is_an_error_and_the_tables_remain() {
     // environment is ours.
     // SAFETY: the only test in this binary, and no other thread reads the environment yet.
     unsafe {
-        std::env::set_var("LOCO_ENV", "production");
+        std::env::set_var("APP_ENV", "production");
+        // The older name must not be able to loosen it.
+        std::env::set_var("LOCO_ENV", "development");
         std::env::set_var("EPR_ALLOW_DESTRUCTIVE_DOWN", "true");
     }
     let e = Migrator::down(&db, Some(12)).await.unwrap_err();

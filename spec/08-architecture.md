@@ -1,7 +1,7 @@
 ## 8. Architecture
 
 ```
-UI (SvelteKit + BFF)  ──►  Service (loco.rs / Axum)  ──►  Matcher (pure, crates.io dependency)
+UI (SvelteKit + BFF)  ──►  Service (Axum, `axa`)  ──►  Matcher (pure, crates.io dependency)
                                 │   /api/…  native REST
                                 │   /fhir/R4/…  FHIR facade (built: src/controllers/fhir.rs); /fhir/R5/… read-only, derived (fhir_r5.rs)
                                 │   policy engine (built: src/policy.rs, authz.rs) → audit writer (built; every-access coverage not verified)
@@ -39,7 +39,7 @@ receives the event id and must treat a repeat as a repeat. Claiming uses `FOR UP
 hold the same event.
 
 **Not built in this slice:** a sink (none exists until IO-6), a loop that calls the runner, a loco
-worker (loco's queue needs Redis; the table is the queue here), a queue-depth gauge (the three outcome counters exist), and any producer: nothing calls
+worker (the table is the queue here), a queue-depth gauge (the three outcome counters exist), and any producer: nothing calls
 `enqueue` yet.
 
 ## Audit partitions and archive (OS-13)

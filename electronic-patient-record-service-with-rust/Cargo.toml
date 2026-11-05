@@ -20,12 +20,12 @@ name = "electronic-patient-record"
 path = "src/bin/main.rs"
 
 [workspace.dependencies]
-# `auth` is deliberately absent: it is loco's JWT support (`jsonwebtoken`, `rsa`).
-# This family issues PASETO v4.public, verified by `authentication-verifier`.
-loco-rs = { version = "1.2.0", default-features = false, features = ["cli", "with-db", "cache_inmem", "cache_redis", "worker"] }
+# The shared service plumbing. `sea-orm` is transitional, until the store moves to sqlx.
+axa = { version = "0.1.0", features = ["sea-orm"] }
 
 [dependencies]
-loco-rs = { workspace = true }
+axa = { workspace = true }
+clap = { version = "4", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
 serde_urlencoded = "0.7"
 uuid = { version = "1", features = ["v4"] }
@@ -57,5 +57,5 @@ snomed = "0.56.1"
 
 [dev-dependencies]
 authentication-verifier = { version = "0.9.1", default-features = false, features = ["test-idp"] }
-loco-rs = { workspace = true, features = ["testing"] }
+axa = { workspace = true, features = ["testing"] }
 tower = { version = "0.5", features = ["util"] }

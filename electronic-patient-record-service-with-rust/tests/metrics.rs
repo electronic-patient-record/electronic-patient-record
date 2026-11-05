@@ -108,10 +108,9 @@ async fn a_request_turned_away_before_the_audit_is_counted_and_shown() {
 #[test]
 fn metrics_is_a_public_route_and_is_served() {
     assert!(auth::is_public_path("/metrics"));
-    let served = electronic_patient_record::controllers::all_routes()
-        .collect()
-        .into_iter()
-        .any(|r| r.uri == "/metrics");
+    let served = electronic_patient_record::routes::mounted()
+        .iter()
+        .any(|(_, path)| path == "/metrics");
     assert!(served, "/metrics is not in all_routes()");
 }
 

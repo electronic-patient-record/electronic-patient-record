@@ -25,7 +25,7 @@
 name: electronic-patient-record
 
 x-api-environment: &api-environment
-  LOCO_ENV: production
+  APP_ENV: production
   PORT: "5150"
   DATABASE_URL: postgres://epr:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD (any value for local use)}@postgres:5432/electronic_patient_record
   EPR_REDIS_URL: redis://:${EPR_REDIS_PASSWORD:-${POSTGRES_PASSWORD}}@redis:6379/0
@@ -77,7 +77,7 @@ services:
       REDIS_PASS: ${EPR_REDIS_PASSWORD:-${POSTGRES_PASSWORD}}
 
   # One-shot: applies the migrations compiled into the binary, then exits.
-  # (config/production.yaml sets auto_migrate: false on purpose.)
+  # (Production does not migrate at start, on purpose.)
   migrate:
     build: *api-build
     image: electronic-patient-record-service:local

@@ -17,9 +17,9 @@
 //! ```
 
 use authentication_verifier::test_idp::{AUDIENCE, REALM, TestIdp};
+use axa::testing::prelude::request;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use electronic_patient_record::app::App;
-use loco_rs::testing::prelude::request;
 use sea_orm::{ConnectionTrait, Statement};
 use serde_json::{Value, json};
 

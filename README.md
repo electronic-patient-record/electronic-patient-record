@@ -11,7 +11,7 @@ Project site: <https://electronic-patient-record.github.io> (source: [electronic
 | Subproject | What it is | Run | Test |
 |---|---|---|---|
 | [`electronic-patient-record-matcher-with-rust`](electronic-patient-record-matcher-with-rust) | Rust library: the `Patient` identity type and the explainable matching engine | `cargo run -- a.json b.json` | `cargo test`, `cargo clippy --all-targets --all-features -- -D warnings`, `cargo fmt --check` |
-| [`electronic-patient-record-service-with-rust`](electronic-patient-record-service-with-rust) | loco.rs service; the API identity DTO is the matcher's `Patient` | `cargo run -- start` (needs Postgres) | `cargo test --lib`; `cargo test --test audit_immutable -- --ignored` (needs Postgres) |
+| [`electronic-patient-record-service-with-rust`](electronic-patient-record-service-with-rust) | Axum and `axa` service; the API identity DTO is the matcher's `Patient` | `cargo run -- start` (needs Postgres) | `cargo test --lib`; `cargo test --test audit_immutable -- --ignored` (needs Postgres) |
 | [`electronic-patient-record-ui-with-svelte`](electronic-patient-record-ui-with-svelte) | SvelteKit 3, Svelte 5 UI with a backend-for-frontend proxy | `pnpm install && pnpm dev` | `pnpm run check`, `pnpm exec vitest run`, `pnpm exec playwright test` |
 
 The Rust toolchain is pinned in [`rust-toolchain.toml`](rust-toolchain.toml) (1.99.1). The UI needs Node 26 and

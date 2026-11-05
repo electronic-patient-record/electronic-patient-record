@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - From Loco to axa (still on SeaORM)
+
+- **Clinical risk:** **yes, in how the service starts and what it allows.** No clinical rule changed. Login is off by default only in `development`, `test` and `container-dev`, as before. **Stricter:** any other environment name now gets the production login rules; Loco held only the exact name `production` to them, so `staging` could start without keys. The rollback guard reads `APP_ENV`, then `LOCO_ENV`, and a test holds that the older name cannot loosen it.
+- **Built:** `axa` 0.1 in place of `loco-rs`; `App::run`, written out; `config/` removed, with settings now in environment variables and `src/app.rs`; `routes::mounted`, which reads methods from the routers, so the censuses still compare what is served with what is written down. Dependencies fell from 651 to 509, and `unsafe-libyaml` and its advisory exception are gone.
+- **Changes on purpose:** a 60-second request timeout in production (`REQUEST_TIMEOUT_SECONDS`), security headers and HSTS added, the ETag middleware gone, and Redis no longer needed: no code used it, though `compose.yaml` still starts it. `/_health`, `/_ping` and `/_readiness` remain.
+- **Checked:** every gate in `scripts/ci-local.sh --full`, with 164 database tests. The real binary refuses production with no `DATABASE_URL` or no token keys, also under a mistyped environment; answers 401 with no token; sends the headers; and exits on SIGTERM. `db migrate` ran with `APP_ENV=production`.
+- **Not done / not verified:** whether 60 seconds is enough for `/api/audit/export`. `routes::methods_of` reads Axum's debug text, as Loco did; a test fails if that changes, and the better home for it is `axa`. In `development` the service binds to `localhost`, which answered on IPv6 only here. With no `APP_ENV` at all the service defaults to `development`, so login is off, bound to `localhost`; that is not new, and needs a guard. Only the entries this change needs were made to `Cargo.lock`. The move to sqlx is next.
+
 ## 2026-11-05 - How old a vital sign's measured time may be (SW-2; H-034 stays open)
 
 - **Clinical risk:** **yes.** Decided by the maintainer. A reading more than 7 days old now needs a typed reason, which stays in its history, and a reading before the patient's birth date is refused. No real reading can be lost to the 7 days: a reason always lets it through.

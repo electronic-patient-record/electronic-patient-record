@@ -19,13 +19,13 @@ use crate::auth::Agent;
 use crate::patients_store::StoreError;
 use crate::policy::{self, Purpose, Resource, Subject};
 use crate::referral_worklist as worklist;
+use axa::prelude::*;
 use axum::{
     Extension,
     extract::{Json, Path},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };
-use loco_rs::prelude::*;
 use serde::Deserialize;
 
 /// "I have seen this version."

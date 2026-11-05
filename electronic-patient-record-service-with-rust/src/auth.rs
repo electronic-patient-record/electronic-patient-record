@@ -1,7 +1,7 @@
 //! Secure-by-default bearer authentication.
 //!
 //! Login enforcement is ON unless a deployment says otherwise
-//! (`settings.require_auth: false` in config, or `EPR_REQUIRE_AUTH=false`).
+//! (the defaults in `app.rs`, or `EPR_REQUIRE_AUTH=false`).
 //! Two kinds of bearer token are accepted. A token starting `v4.` is a PASETO v4.public, verified
 //! offline against the authentication service's published Ed25519 keys. Any other token is offered
 //! to Keycloak, when `EPR_KEYCLOAK_URL` is set: its signature is checked against the realm's keys,

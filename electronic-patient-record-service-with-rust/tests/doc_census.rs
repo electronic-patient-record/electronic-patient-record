@@ -9,13 +9,7 @@ const ROOT: &str = env!("CARGO_MANIFEST_DIR");
 
 /// The documents scanned, relative to the service crate.
 fn scanned() -> Vec<String> {
-    let mut files: Vec<String> = fs::read_dir(Path::new(ROOT).join("config"))
-        .expect("config directory")
-        .filter_map(|e| e.ok())
-        .map(|e| format!("config/{}", e.file_name().to_string_lossy()))
-        .filter(|n| n.ends_with(".yaml"))
-        .collect();
-    files.push("deny.toml".into());
+    let mut files: Vec<String> = vec!["deny.toml".into()];
     files.push("../electronic-patient-record-matcher-with-rust/deny.toml".into());
     files.push("../SECURITY.md".into());
     files

@@ -1,4 +1,4 @@
-//! Electronic patient record service (loco.rs, Axum, PostgreSQL).
+//! Electronic patient record service (Axum, `axa`, PostgreSQL).
 //!
 //! Scaffold (milestone M0): the app wiring, a secure-by-default PASETO guard,
 //! the append-only audit table migration and one endpoint over the matcher.

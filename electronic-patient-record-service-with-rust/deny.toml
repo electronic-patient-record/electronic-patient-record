@@ -15,10 +15,6 @@ yanked = "warn"
 # 2026-10-30: twelve earlier ignores were removed because `cargo deny` reported each as not encountered
 # (the locked versions are patched or the crate is no longer in the tree).
 ignore = [
-    # unmaintained (not a vulnerability). A normal dependency of loco-rs through serde_yaml_ng, and of
-    # loco-gen -> rrgen -> serde_yaml; it parses the deployer's own YAML config files, not patient input.
-    # Which code paths of it run was not traced. Revisit on the next loco-rs upgrade.
-    "RUSTSEC-2024-0449", # unsafe-libyaml; added 2026-10-13; expires 2027-01-30
 ]
 
 [licenses]

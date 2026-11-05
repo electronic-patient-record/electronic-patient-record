@@ -7,7 +7,8 @@ the cross-subproject contract.
 
 | Area | Behaviour | Evidence |
 |---|---|---|
-| Login enforcement | On unless `settings.require_auth: false` or `EPR_REQUIRE_AUTH=false`; an explicit env value wins over config | `auth::tests::auth_is_on_by_default` |
+| Framework | Axum with `axa`, on SeaORM for now. Settings are environment variables: `axa`'s (`APP_ENV`, `DATABASE_URL`, `PORT`, `DB_*`, `LOG_*`, `REQUEST_TIMEOUT_SECONDS`) and `EPR_*`. `routes::mounted` reads the served routes from the routers themselves, for the censuses | `routes::tests::methods_are_read_from_what_is_mounted` |
+| Login enforcement | On unless the defaults in `src/app.rs` turn it off (only in `development`, `test` and `container-dev`) or `EPR_REQUIRE_AUTH=false`; an explicit env value wins over config | `auth::tests::auth_is_on_by_default` |
 | Startup gate | Refuses to start in `production` with login off; or with login on, no keys and no `EPR_PASETO_KEYS_URL` | `auth::tests::startup_gate`; run by hand |
 | Keycloak | With `EPR_KEYCLOAK_URL` set, a bearer token that does not start `v4.` is verified against the realm (signature, issuer `{url}/realms/{realm}`, audience, expiry, verified email); the caller is the token `sub`. Half-configured Keycloak, a remote `http://` URL, no audience, or a bad role map: refuses to start | `tests/keycloak_guard.rs` (8, DB-free, local OIDC stand-in); run by hand against Keycloak 26.3.0 under Podman |
 | Public paths | `/_health`, `/_ping`, `/_readiness` and `/metrics` only | `auth::tests`, `tests/metrics.rs` |

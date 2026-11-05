@@ -13,13 +13,13 @@ use crate::consent::{self, ConsentRecord};
 use crate::consents_store as store;
 use crate::patients_store::{self, StoreError};
 use crate::policy::{self, Resource, Subject};
+use axa::prelude::*;
 use axum::{
     Extension,
     extract::{Json, Path},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };
-use loco_rs::prelude::*;
 use serde::Deserialize;
 
 /// A new consent.

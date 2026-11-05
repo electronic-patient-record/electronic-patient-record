@@ -3,19 +3,12 @@
 //! without being given a resource and an action, and the UI cannot reach one that skips the
 //! policy engine, because the authorization middleware refuses any route without an entry.
 
-use electronic_patient_record::{auth, controllers, routes};
+use electronic_patient_record::{auth, routes};
 
 fn served() -> Vec<(String, String)> {
-    controllers::all_routes()
-        .collect()
+    routes::mounted()
         .into_iter()
-        .flat_map(|route| {
-            let uri = routes::normalise(&route.uri);
-            route
-                .actions
-                .into_iter()
-                .map(move |m| (m.to_string(), uri.clone()))
-        })
+        .map(|(method, path)| (method, routes::normalise(&path)))
         .collect()
 }
 

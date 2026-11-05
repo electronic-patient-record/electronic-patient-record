@@ -2,8 +2,8 @@
 //! needs no token, and 404 unless `EPR_METRICS` is on. See [`crate::metrics`].
 
 use crate::metrics;
+use axa::prelude::*;
 use axum::response::Response;
-use loco_rs::prelude::*;
 
 /// `GET /metrics`: the Prometheus text exposition, or 404 when metrics are not enabled.
 async fn serve() -> Response {

@@ -13,13 +13,13 @@ use crate::auth::Agent;
 use crate::links as store;
 use crate::patients_store::StoreError;
 use crate::policy::{self, Resource, Subject};
+use axa::prelude::*;
 use axum::{
     Extension,
     extract::{Json, Path},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };
-use loco_rs::prelude::*;
 use serde::Deserialize;
 
 /// Merge or unmerge another record with this one.

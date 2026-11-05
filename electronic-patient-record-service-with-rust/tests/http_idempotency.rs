@@ -14,9 +14,9 @@
 //!   cargo test --test http_idempotency -- --ignored --test-threads=1
 //! ```
 
+use axa::testing::prelude::request;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use electronic_patient_record::app::App;
-use loco_rs::testing::prelude::request;
 use sea_orm::{ConnectionTrait, DatabaseConnection, Statement};
 use serde_json::{Value, json};
 

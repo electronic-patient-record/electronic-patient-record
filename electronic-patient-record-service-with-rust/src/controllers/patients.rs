@@ -10,6 +10,7 @@ use crate::auth::Agent;
 use crate::links;
 use crate::patients_store::{self as store, Search, StoreError};
 use crate::policy::{self, Consent, Purpose, Resource, Subject};
+use axa::prelude::*;
 use axum::{
     Extension,
     extract::{Json, Path, Query},
@@ -17,7 +18,6 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use electronic_patient_record_matcher::{MatchResult, Patient};
-use loco_rs::prelude::*;
 use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};
 

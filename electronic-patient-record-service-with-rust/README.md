@@ -1,6 +1,6 @@
 # electronic-patient-record (service)
 
-loco.rs REST service. Scaffold; **not for clinical use**.
+REST service on Axum and `axa`. Scaffold; **not for clinical use**.
 
 ```sh
 TEST_DB_PORT=5543 TEST_REDIS_PORT=6390 podman compose -f compose.test.yaml up -d --wait

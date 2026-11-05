@@ -1,55 +1,136 @@
-//! loco.rs application wiring: the [`App`] `Hooks` implementation.
+//! Application wiring: the configuration, the command line, the routes and the middleware stack.
 
-use async_trait::async_trait;
-use axum::Router as AxumRouter;
-use electronic_patient_record_migration::Migrator;
-use loco_rs::{
-    Result,
-    app::{AppContext, Hooks, Initializer},
-    bgworker::Queue,
-    boot::{BootResult, StartMode, create_app},
-    config::Config,
-    controller::AppRoutes,
-    environment::Environment,
-    task::Tasks,
+use axa::{
+    AppContext, Environment, Error, Result,
+    boot::{BootResult, TestApp},
+    cli::{Cli, Command, DbCommand},
+    config::{Config, Defaults, MB},
+    routes::AppRoutes,
+    server,
 };
-use std::path::Path;
+use axum::Router as AxumRouter;
+use electronic_patient_record_migration::{Migrator, MigratorTrait};
 
 use crate::{auth, authz, controllers, mllp};
 
-/// The loco.rs application hooks.
+/// The application.
 pub struct App;
 
-#[async_trait]
-impl Hooks for App {
-    /// The crate name, which loco uses to find its configuration and name the application.
-    fn app_name() -> &'static str {
-        env!("CARGO_CRATE_NAME")
+/// What differs from `axa`'s defaults for this service.
+fn defaults() -> Defaults {
+    Defaults {
+        database: "electronic_patient_record",
+        port: 5150,
+        production_port: None,
+        body_limit: 2 * MB,
+        max_connections: 1,
+    }
+}
+
+/// The local Podman stack, which runs a release build with login off (see `compose.yaml`).
+const CONTAINER_DEV: &str = "container-dev";
+
+/// Whether `environment` is held to the production login rules. An unknown name is, so that a mistyped
+/// environment cannot start a service with login off.
+fn production_login(environment: &Environment) -> bool {
+    environment.is_production_like() && !is_container_dev(environment)
+}
+
+fn is_container_dev(environment: &Environment) -> bool {
+    matches!(environment, Environment::Other(name) if name == CONTAINER_DEV)
+}
+
+/// The default for login where a person has chosen a development environment: off. Anywhere else there is
+/// no default, so login is on. `EPR_REQUIRE_AUTH` overrides this, and production ignores it.
+fn default_require_auth(environment: &Environment) -> Option<bool> {
+    (matches!(environment, Environment::Development | Environment::Test)
+        || is_container_dev(environment))
+    .then_some(false)
+}
+
+impl TestApp for App {
+    /// Boot under the `test` environment, migrating the shared test database forward and keeping its rows.
+    async fn boot_test() -> Result<BootResult> {
+        let environment = Environment::Test;
+        let config = Config::from_env(&environment, &defaults())?;
+        let ctx = Self::context(environment, config).await?;
+        Migrator::up(&ctx.db, None).await?;
+        let router = Self::router(&ctx).await?;
+        Ok(BootResult {
+            app_context: ctx,
+            router: Some(router),
+        })
+    }
+}
+
+impl App {
+    /// Connect to the database and build the context.
+    ///
+    /// # Errors
+    ///
+    /// When the database cannot be reached.
+    pub async fn context(environment: Environment, config: Config) -> Result<AppContext> {
+        let db = axa::db::connect(&config.database).await?;
+        Ok(AppContext::new(environment, db, config))
     }
 
-    /// The crate version and the build it came from: `BUILD_SHA`, else `GITHUB_SHA` (CI), else `dev` for a local build.
-    fn app_version() -> String {
-        format!(
-            "{} ({})",
-            env!("CARGO_PKG_VERSION"),
-            option_env!("BUILD_SHA")
-                .or(option_env!("GITHUB_SHA"))
-                .unwrap_or("dev")
-        )
+    /// The routes in the standard middleware, wrapped in the service's own.
+    ///
+    /// # Errors
+    ///
+    /// When a setting is wrong, or a port cannot be opened.
+    pub async fn router(ctx: &AppContext) -> Result<AxumRouter> {
+        let router = Self::routes(ctx).into_app(ctx.clone())?;
+        Self::after_routes(router, ctx).await
     }
 
-    /// Start the application: create it from the configuration with the migrations in `migration/`.
-    async fn boot(
-        mode: StartMode,
-        environment: &Environment,
-        config: Config,
-    ) -> Result<BootResult> {
-        create_app::<Self, Migrator>(mode, environment, config).await
+    /// Run a database command. `down` and `reset` meet the migrations' refusal to drop clinical tables.
+    async fn db(ctx: &AppContext, command: DbCommand) -> Result<()> {
+        match command {
+            DbCommand::Migrate => Migrator::up(&ctx.db, None).await?,
+            DbCommand::Down { steps } => Migrator::down(&ctx.db, Some(steps)).await?,
+            DbCommand::Reset => Migrator::fresh(&ctx.db).await?,
+            DbCommand::Status => Migrator::status(&ctx.db).await?,
+            // The clinical record is append-only, so the service has no truncate.
+            DbCommand::Truncate => {
+                return Err(Error::string("this service has no truncate"));
+            }
+        }
+        Ok(())
     }
 
-    /// No loco initializers: the service's own setup is in [`Hooks::after_routes`].
-    async fn initializers(_ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
-        Ok(vec![])
+    /// Run the command line.
+    ///
+    /// # Errors
+    ///
+    /// When the configuration is refused, or the command fails.
+    pub async fn run(cli: Cli) -> Result<()> {
+        let environment = cli
+            .environment
+            .as_deref()
+            .map_or_else(Environment::from_env, Environment::parse);
+        let mut config = Config::from_env(&environment, &defaults())?;
+        if let Command::Start { binding, port, .. } = &cli.command {
+            if let Some(binding) = binding {
+                config.server.binding.clone_from(binding);
+            }
+            if let Some(port) = port {
+                config.server.port = *port;
+            }
+        }
+        let ctx = Self::context(environment, config).await?;
+        axa::logger::init(env!("CARGO_CRATE_NAME"), &ctx.config.logger);
+        if ctx.config.database.auto_migrate && !matches!(cli.command, Command::Db { .. }) {
+            Migrator::up(&ctx.db, None).await?;
+        }
+        match cli.command {
+            Command::Start { .. } => {
+                let router = Self::router(&ctx).await?;
+                server::serve(router, &ctx.config.server).await
+            }
+            Command::Db { command } => Self::db(&ctx, command).await,
+            Command::Task { .. } => Err(Error::string("this service registers no tasks")),
+        }
     }
 
     /// Every route the service serves, from [`controllers::all_routes`], the one list the route census also reads.
@@ -59,7 +140,7 @@ impl Hooks for App {
 
     /// Wire everything that is not a route, then wrap the routes in the middleware stack.
     ///
-    /// In order: the authentication settings (`require_auth` from configuration, always on in production); the
+    /// In order: the authentication settings (`default_require_auth`, always on in production); the
     /// site time zone; the MLLP listener, only when `EPR_MLLP_BIND` is set; the outbox loop, only when
     /// `EPR_OUTBOX_INTERVAL_SECS` is set; the audit-partition loop (archiving only when
     /// `EPR_AUDIT_ARCHIVE_AFTER_MONTHS` is set); the country packs; the per-subject request limits; and the
@@ -69,30 +150,24 @@ impl Hooks for App {
     /// The layers, outermost (first to run) to innermost: request timing, request id, NUL-byte refusal,
     /// authentication, rate limit, authorization, idempotency key.
     async fn after_routes(router: AxumRouter, ctx: &AppContext) -> Result<AxumRouter> {
-        let config_require = ctx
-            .config
-            .settings
-            .as_ref()
-            .and_then(|s| s.get("require_auth"))
-            .and_then(serde_json::Value::as_bool);
-        auth::init(ctx.environment == Environment::Production, config_require)
-            .await
-            .map_err(loco_rs::Error::Message)?;
+        auth::init(
+            production_login(&ctx.environment),
+            default_require_auth(&ctx.environment),
+        )
+        .await
+        .map_err(Error::Message)?;
         // The site's time zone, for the age on a banner: a name that is not an IANA zone stops the service.
-        crate::site::init().map_err(loco_rs::Error::Message)?;
+        crate::site::init().map_err(Error::Message)?;
         // The referral timeouts (PC-3): a setting that is wrong stops the service rather than switching one off.
-        crate::referral_timeouts::init().map_err(loco_rs::Error::Message)?;
+        crate::referral_timeouts::init().map_err(Error::Message)?;
         // The MLLP listener for HL7 v2 ADT feeds is off unless `EPR_MLLP_BIND` is set. A bad
         // setting, or a port that cannot be opened, stops the service starting: a feed that was
         // asked for and is silently absent is worse than no service.
-        if let Some(config) = mllp::Config::from_env().map_err(loco_rs::Error::Message)? {
+        if let Some(config) = mllp::Config::from_env().map_err(Error::Message)? {
             let listener = tokio::net::TcpListener::bind(config.bind)
                 .await
                 .map_err(|e| {
-                    loco_rs::Error::Message(format!(
-                        "cannot listen for MLLP on {}: {e}",
-                        config.bind
-                    ))
+                    Error::Message(format!("cannot listen for MLLP on {}: {e}", config.bind))
                 })?;
             tracing::warn!(
                 bind = %config.bind,
@@ -103,7 +178,7 @@ impl Hooks for App {
         }
         // The outbox loop is off unless `EPR_OUTBOX_INTERVAL_SECS` is set (OS-3). Its only sink is the
         // log sink, which sends nothing; a real sink arrives with IO-6.
-        if let Some(every) = crate::outbox::interval_from_env().map_err(loco_rs::Error::Message)? {
+        if let Some(every) = crate::outbox::interval_from_env().map_err(Error::Message)? {
             let mut sinks = crate::outbox::Sinks::new();
             sinks.insert("log".to_string(), Box::new(crate::outbox::LogSink));
             tracing::warn!(
@@ -120,15 +195,15 @@ impl Hooks for App {
         // Audit partitions are made ahead and, when `EPR_AUDIT_ARCHIVE_AFTER_MONTHS` is set, old ones are
         // moved to the archive schema (OS-13). A bad setting stops the service starting.
         let archive_after =
-            crate::audit_retention::archive_months_from_env().map_err(loco_rs::Error::Message)?;
+            crate::audit_retention::archive_months_from_env().map_err(Error::Message)?;
         tokio::spawn(crate::audit_retention::run_loop(
             ctx.db.clone(),
             archive_after,
         ));
         // Country packs the deployment enables (OS-10). A pack that does not load stops the service.
-        crate::packs::init().map_err(loco_rs::Error::Message)?;
+        crate::packs::init().map_err(Error::Message)?;
         // Request limits per token subject (OS-2). A bad setting stops the service starting.
-        let limits = crate::rate_limit::Limits::from_env().map_err(loco_rs::Error::Message)?;
+        let limits = crate::rate_limit::Limits::from_env().map_err(Error::Message)?;
         let limiter = crate::rate_limit::Gate {
             limiter: std::sync::Arc::new(crate::rate_limit::Limiter::new(limits)),
             db: ctx.db.clone(),
@@ -158,22 +233,33 @@ impl Hooks for App {
             // Outermost: time every request, refusals included, labelled by route template (OS-6).
             .layer(axum::middleware::from_fn(crate::metrics::duration_mw)))
     }
+}
 
-    /// No background worker queue: the loops started in [`Hooks::after_routes`] do the periodic work.
-    async fn connect_workers(_ctx: &AppContext, _queue: &Queue) -> Result<()> {
-        Ok(())
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn other(name: &str) -> Environment {
+        Environment::Other(name.to_string())
     }
 
-    /// No loco tasks are registered.
-    fn register_tasks(_tasks: &mut Tasks) {}
-
-    /// Does nothing: the clinical record is append-only, so the service has no truncate.
-    async fn truncate(_ctx: &AppContext) -> Result<()> {
-        Ok(())
+    #[test]
+    fn login_defaults_off_only_where_a_person_chose_a_development_environment() {
+        assert_eq!(default_require_auth(&Environment::Development), Some(false));
+        assert_eq!(default_require_auth(&Environment::Test), Some(false));
+        assert_eq!(default_require_auth(&other(CONTAINER_DEV)), Some(false));
+        assert_eq!(default_require_auth(&Environment::Production), None);
+        assert_eq!(default_require_auth(&other("staging")), None);
+        assert_eq!(default_require_auth(&other("productoin")), None);
     }
 
-    /// Does nothing: the service ships no seed data.
-    async fn seed(_ctx: &AppContext, _base: &Path) -> Result<()> {
-        Ok(())
+    #[test]
+    fn a_mistyped_environment_gets_the_production_login_rules() {
+        assert!(production_login(&Environment::Production));
+        assert!(production_login(&other("staging")));
+        assert!(production_login(&other("productoin")));
+        assert!(!production_login(&Environment::Development));
+        assert!(!production_login(&Environment::Test));
+        assert!(!production_login(&other(CONTAINER_DEV)));
     }
 }

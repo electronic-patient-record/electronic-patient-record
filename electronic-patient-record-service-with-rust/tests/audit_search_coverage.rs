@@ -15,11 +15,11 @@
 //!   cargo test --test audit_search_coverage -- --ignored --test-threads=1
 //! ```
 
+use axa::testing::prelude::request;
 use axum::http::StatusCode;
 use electronic_patient_record::app::App;
 use electronic_patient_record::policy::Action;
 use electronic_patient_record::routes;
-use loco_rs::testing::prelude::request;
 use sea_orm::{ConnectionTrait, DatabaseConnection, Statement};
 
 /// Search routes this test does not call, with the reason.

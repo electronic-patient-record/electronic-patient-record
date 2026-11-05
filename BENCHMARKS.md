@@ -52,4 +52,4 @@ Every response was a success (201 or 200); no errors.
 - Roughly 5,400 patients, not the 1 million of `plan.md` §6.6; no clinical data exists to load.
 - No Redis, no authentication, no TLS and no reverse proxy in the path.
 - Reproduce with the commands at the top of `scripts/load/measure.mjs` (Postgres from `compose.test.yaml`,
-  `db migrate`, `LOCO_ENV=container-dev`, a release build).
+  `db migrate`, `APP_ENV=container-dev`, a release build).

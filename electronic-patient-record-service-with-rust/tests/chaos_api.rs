@@ -19,9 +19,9 @@
 //!   cargo test --test chaos_api -- --ignored --test-threads=1 --nocapture
 //! ```
 
+use axa::testing::prelude::request;
 use axum::http::{HeaderName, HeaderValue, Method, StatusCode};
-use electronic_patient_record::{app::App, controllers, routes};
-use loco_rs::testing::prelude::request;
+use electronic_patient_record::{app::App, routes};
 use serde_json::{Value, json};
 
 /// xorshift64*: small, seedable, the same on every platform.
@@ -238,10 +238,12 @@ async fn no_route_panics_answers_500_or_leaks_internals_under_hostile_input() {
         .unwrap_or(2000);
     println!("EPR_CHAOS_SEED={seed} EPR_CHAOS_ITERATIONS={iterations}");
 
-    let table: Vec<(Vec<Method>, String)> = controllers::all_routes()
-        .collect()
+    let table: Vec<(Vec<Method>, String)> = routes::mounted()
         .into_iter()
-        .map(|route| (route.actions, routes::normalise(&route.uri)))
+        .map(|(method, path)| {
+            let method = Method::from_bytes(method.as_bytes()).expect("a mounted method");
+            (vec![method], routes::normalise(&path))
+        })
         .collect();
     assert!(
         table.len() >= 20,

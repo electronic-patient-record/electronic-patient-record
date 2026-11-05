@@ -8,10 +8,8 @@ updates:
       cargo-api:
         patterns: ["*"]
     ignore:
-      # loco-rs 1.2 depends on axum-test 17 and jsonwebtoken 9; do not bump them alone.
+      # axa 0.1 depends on axum-test 21; do not bump it alone.
       - dependency-name: axum-test
-        update-types: ["version-update:semver-major"]
-      - dependency-name: jsonwebtoken
         update-types: ["version-update:semver-major"]
   - package-ecosystem: cargo
     directory: /electronic-patient-record-matcher-with-rust

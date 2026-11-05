@@ -13,11 +13,8 @@
 #
 #   podman compose -f compose.test.yaml down -v
 #
-# Redis (the production cache provider) is started with Postgres, on 127.0.0.1:6379 with the password `loco`
-# (override the port with TEST_REDIS_PORT). The tests keep the in-memory cache (config/test.yaml) and do not
-# need it; it is there to run the service against Redis by hand:
-#
-#   EPR_REDIS_URL=redis://:loco@127.0.0.1:6379/0 LOCO_ENV=production ...
+# Redis is started with Postgres, on 127.0.0.1:6379 with the password `loco` (override the port with
+# TEST_REDIS_PORT). No code reads it, and the service no longer has a cache provider; it can go.
 #
 # The file is plain Compose spec.
 #
@@ -34,7 +31,7 @@ services:
     environment:
       POSTGRES_USER: loco
       POSTGRES_PASSWORD: loco
-      # Matches config/test.yaml, so a bare `cargo test -- --ignored`
+      # Matches the test default in `src/app.rs`, so a bare `cargo test -- --ignored`
       # finds its database.
       POSTGRES_DB: electronic_patient_record_test
     ports:

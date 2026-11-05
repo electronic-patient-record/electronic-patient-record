@@ -10,10 +10,10 @@
 //!   cargo test --test http_conflicts -- --ignored --test-threads=1
 //! ```
 
+use axa::testing::prelude::request;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use electronic_patient_record::app::App;
 use electronic_patient_record_matcher::{HumanName, Patient};
-use loco_rs::testing::prelude::request;
 use serde_json::{Value, json};
 
 const PNG: &[u8] = &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3];

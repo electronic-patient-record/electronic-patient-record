@@ -29,13 +29,13 @@ use crate::observations_store::StoredObservation;
 use crate::patients_store::{Search, Stored};
 use crate::policy::Subject;
 use crate::policy::{self, Purpose, Resource};
+use axa::prelude::*;
 use axum::{
     Extension,
     extract::{Path, Query, RawQuery},
     http::{HeaderMap, HeaderValue, StatusCode, header},
     response::{IntoResponse, Response},
 };
-use loco_rs::prelude::*;
 use std::collections::HashMap;
 
 const FHIR_JSON: &str = "application/fhir+json; charset=utf-8";
@@ -890,7 +890,7 @@ fn mounted_interactions() -> std::collections::BTreeMap<String, Vec<String>> {
         if kind == "metadata" {
             continue;
         }
-        for method in &handler.actions {
+        for method in crate::routes::methods_of(&handler.method) {
             let code = match (method.as_str(), rest) {
                 ("GET", []) => "search-type".to_string(),
                 ("POST", []) => "create".to_string(),
@@ -1404,7 +1404,11 @@ mod tests {
         let mounted: BTreeSet<String> = routes()
             .handlers
             .iter()
-            .flat_map(|h| h.actions.iter().map(|m| format!("{m} {}", h.uri)))
+            .flat_map(|h| {
+                crate::routes::methods_of(&h.method)
+                    .into_iter()
+                    .map(|m| format!("{m} {}", h.uri))
+            })
             .collect();
         let mut stated: BTreeSet<String> = BTreeSet::from(["GET /metadata".to_string()]);
         let cap = capability();

@@ -15,13 +15,13 @@ use crate::auth::Agent;
 use crate::feed_queue::{self as queue, Outcome};
 use crate::patients_store::StoreError;
 use crate::policy::{self, Resource, Subject};
+use axa::prelude::*;
 use axum::{
     Extension,
     extract::{Json, Path},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };
-use loco_rs::prelude::*;
 use serde::Deserialize;
 
 /// Close a refusal.

@@ -16,24 +16,17 @@
 //! with the fields the real types serialise, in both directions. It is an inventory of the surface with its authentication and authorization requirements, not
 //! a contract. FHIR resource shapes are in `/fhir/R4/metadata`.
 
-use crate::{auth, controllers, policy::Resource, routes};
+use crate::{auth, policy::Resource, routes};
+use axa::prelude::*;
 use axum::{Json, response::Response};
-use loco_rs::prelude::*;
 use serde_json::{Map, Value, json};
 
 /// The served `(method, path template)` pairs, normalised to `{name}` segments.
 #[must_use]
 pub fn served() -> Vec<(String, String)> {
-    controllers::all_routes()
-        .collect()
+    routes::mounted()
         .into_iter()
-        .flat_map(|route| {
-            let uri = routes::normalise(&route.uri);
-            route
-                .actions
-                .into_iter()
-                .map(move |m| (m.to_string(), uri.clone()))
-        })
+        .map(|(method, path)| (method, routes::normalise(&path)))
         .collect()
 }
 

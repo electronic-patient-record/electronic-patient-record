@@ -2,7 +2,7 @@
 
 | Path | Method | Status |
 |---|---|---|
-| `/_health`, `/_ping`, `/_readiness` | GET | loco built-ins; public |
+| `/_health`, `/_ping`, `/_readiness` | GET | `axa` built-ins; public |
 | `/api/patients/compare` | POST | built; body `{a, b}` of `Patient`; returns `MatchResult` |
 | `/api/patients`, `/api/patients/{id}` | CRUD | planned (ID-3) |
 | `/api/audit` | GET | planned (AU-2) |

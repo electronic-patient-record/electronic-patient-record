@@ -59,8 +59,6 @@ WORKDIR /app
 COPY --from=builder --chown=epr:epr \
     /app/electronic-patient-record-service-with-rust/target/release/electronic-patient-record \
     /app/electronic-patient-record
-# loco reads config/<LOCO_ENV>.yaml at run time (it is not baked into the binary).
-COPY --chown=epr:epr electronic-patient-record-service-with-rust/config ./config
 # Country packs (OS-10): data the service reads at start from EPR_PACKS_DIR (default packs). None is enabled unless EPR_PACKS names it.
 COPY --chown=epr:epr packs ./packs
 RUN chown -R epr:epr /app
@@ -71,8 +69,8 @@ EXPOSE 5150
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
     CMD curl --silent --fail http://localhost:5150/_health || exit 1
 
-# config/production.yaml; requires DATABASE_URL and EPR_REDIS_URL. See /compose.yaml.
-ENV LOCO_ENV=production \
+# Production settings; requires DATABASE_URL, and refuses to start without it. See /compose.yaml.
+ENV APP_ENV=production \
     PORT=5150
 
 CMD ["/app/electronic-patient-record", "start"]

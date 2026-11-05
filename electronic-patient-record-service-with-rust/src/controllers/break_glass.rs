@@ -18,13 +18,13 @@ use crate::auth::Agent;
 use crate::break_glass::{self as store, Outcome};
 use crate::patients_store::StoreError;
 use crate::policy::{self, Resource, Subject};
+use axa::prelude::*;
 use axum::{
     Extension,
     extract::{Json, Path},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };
-use loco_rs::prelude::*;
 use serde::Deserialize;
 
 /// Declare an emergency.

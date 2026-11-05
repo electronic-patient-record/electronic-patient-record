@@ -17,7 +17,7 @@ NAME = "Electronic Patient Record"
 SUMMARY = (
     "Open-source electronic patient record software: a safe, append-only, audited longitudinal patient record "
     "with FHIR R4 as both data model and API, and explainable patient identity matching. A Rust matcher library, "
-    "a Rust service (loco.rs, PostgreSQL) and a SvelteKit 3 / Svelte 5 UI, specified in spec/. "
+    "a Rust service (Axum, PostgreSQL) and a SvelteKit 3 / Svelte 5 UI, specified in spec/. "
     "Pre-release scaffold (milestone M0): NOT FOR CLINICAL USE; do not enter real patient data; no accreditation, "
     "certification or clinical validation is claimed."
 )
@@ -33,7 +33,7 @@ NOTES = [
 ]
 STACK = {
     "matcher": "Rust library (pure, deterministic, explainable identity matching), published as electronic-patient-record-matcher",
-    "service": "Rust, loco.rs (Axum, SeaORM), PostgreSQL 18, REST and FHIR R4",
+    "service": "Rust, Axum, axa and SeaORM, PostgreSQL 18, REST and FHIR R4",
     "ui": "SvelteKit 3, Svelte 5 runes, backend-for-frontend proxy",
 }
 

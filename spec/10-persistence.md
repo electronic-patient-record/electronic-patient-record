@@ -27,8 +27,8 @@ driver's error kind (a unique violation; the version tables have no other unique
 message text, and is answered as a version conflict naming the version now current.
 
 **No delete path in `down`.** A `down` that drops a clinical table (patient, consent, relationship, allergy,
-photo, link, feed, break-glass, audit) fails before it changes anything, unless `LOCO_ENV` is `development` or
-`test` **and** `EPR_ALLOW_DESTRUCTIVE_DOWN=true`. An unset `LOCO_ENV` counts as production. Index and view
+photo, link, feed, break-glass, audit) fails before it changes anything, unless `APP_ENV` (or the older `LOCO_ENV`) is `development` or
+`test` **and** `EPR_ALLOW_DESTRUCTIVE_DOWN=true`. Neither being set counts as production. Index and view
 migrations (5, 11, 12) can still be reversed.
 
 Migrations run with `db migrate`; production sets `auto_migrate: false` and runs the `migrate` compose service.

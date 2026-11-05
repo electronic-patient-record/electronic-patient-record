@@ -20,6 +20,7 @@ use crate::audit::Action;
 use crate::auth::Agent;
 use crate::patients_store::StoreError;
 use crate::policy::{self, Purpose, Resource, Subject};
+use axa::prelude::*;
 use axum::{
     Extension,
     extract::{Json, Path},
@@ -27,7 +28,6 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use chrono::Utc;
-use loco_rs::prelude::*;
 use serde::{Deserialize, Serialize};
 
 /// Record an adjustment.

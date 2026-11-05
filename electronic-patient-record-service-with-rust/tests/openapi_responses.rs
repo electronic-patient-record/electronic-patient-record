@@ -13,9 +13,9 @@
 //!   cargo test --test openapi_responses -- --ignored --test-threads=1
 //! ```
 
+use axa::testing::prelude::request;
 use axum::http::StatusCode;
 use electronic_patient_record::app::App;
-use loco_rs::testing::prelude::request;
 use serde_json::{Value, json};
 
 mod openapi_support;

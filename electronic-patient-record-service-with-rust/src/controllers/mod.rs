@@ -23,23 +23,33 @@ pub mod referral_worklist;
 pub mod referrals;
 pub mod relationships;
 
-use loco_rs::controller::AppRoutes;
+use axa::routes::AppRoutes;
 
-/// Every route the service serves. `App::routes` and the route census test both read this, so
-/// the census sees exactly what is served.
+/// Every group of routes the service serves, the health routes first. `App::routes` and the route census
+/// both read this, so the census sees exactly what is served.
+#[must_use]
+pub fn route_groups() -> Vec<axa::routes::Routes> {
+    vec![
+        axa::health::routes(),
+        patients::routes(),
+        audit::routes(),
+        me::routes(),
+        metrics::routes(),
+        crate::openapi::routes(),
+        fhir::routes(),
+        fhir_r5::routes(),
+        feed::routes(),
+        break_glass::routes(),
+        hazards::routes(),
+        referral_queue::routes(),
+        referral_worklist::routes(),
+    ]
+}
+
+/// Every route the service serves, as one table for the router.
 #[must_use]
 pub fn all_routes() -> AppRoutes {
-    AppRoutes::with_default_routes()
-        .add_route(patients::routes())
-        .add_route(audit::routes())
-        .add_route(me::routes())
-        .add_route(metrics::routes())
-        .add_route(crate::openapi::routes())
-        .add_route(fhir::routes())
-        .add_route(fhir_r5::routes())
-        .add_route(feed::routes())
-        .add_route(break_glass::routes())
-        .add_route(hazards::routes())
-        .add_route(referral_queue::routes())
-        .add_route(referral_worklist::routes())
+    route_groups()
+        .into_iter()
+        .fold(AppRoutes::empty(), AppRoutes::add_route)
 }

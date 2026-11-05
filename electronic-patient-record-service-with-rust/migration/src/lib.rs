@@ -45,13 +45,16 @@ fn down_allowed(env: Option<&str>, flag: Option<&str>) -> bool {
 /// break-glass, audit) unless [`down_allowed`]. The clinical record is never deleted; a `down` is a
 /// development convenience, and in any other environment it fails before it changes anything.
 pub(crate) fn refuse_clinical_down(migration: &str) -> Result<(), DbErr> {
-    let env = std::env::var("LOCO_ENV").ok();
+    // The same order as the service: `APP_ENV`, then the older `LOCO_ENV`. Nothing set counts as production.
+    let env = std::env::var("APP_ENV")
+        .or_else(|_| std::env::var("LOCO_ENV"))
+        .ok();
     let flag = std::env::var("EPR_ALLOW_DESTRUCTIVE_DOWN").ok();
     if down_allowed(env.as_deref(), flag.as_deref()) {
         Ok(())
     } else {
         Err(DbErr::Migration(format!(
-            "{migration}: down would drop clinical tables, which is allowed only with LOCO_ENV=development or test and EPR_ALLOW_DESTRUCTIVE_DOWN=true"
+            "{migration}: down would drop clinical tables, which is allowed only with APP_ENV=development or test and EPR_ALLOW_DESTRUCTIVE_DOWN=true"
         )))
     }
 }

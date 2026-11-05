@@ -77,7 +77,7 @@ pub fn check(
 const REQUEST_ID_HEADER: &str = "x-request-id";
 
 /// The caller's `x-request-id` kept to letters, digits, `_`, `-` and `@` (at most 255), or a fresh
-/// UUID when nothing is left. The same cleaning as loco's own request-id middleware, so its
+/// UUID when nothing is left. The same cleaning as Loco's was request-id middleware, so its
 /// answer to the caller is the id we audit under.
 #[must_use]
 pub fn clean_request_id(supplied: Option<&str>) -> String {

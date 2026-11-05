@@ -310,7 +310,7 @@ tokio::task_local! {
 }
 
 tokio::task_local! {
-    /// The request's `x-request-id` (loco's middleware accepts the caller's, cleaned, or makes one),
+    /// The request's `x-request-id` (the request id middleware accepts the caller's, cleaned, or makes one),
     /// set by the authorization middleware so every audit row written while handling the request
     /// carries it under `detail.request_id`, and a log line and an audit row can be joined.
     /// Rows written outside a request (tests, jobs) carry none.

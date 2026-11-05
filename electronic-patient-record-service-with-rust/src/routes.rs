@@ -6,6 +6,52 @@
 use crate::policy::{Action, Resource};
 use axum::http::Method;
 
+/// The HTTP methods a mounted route answers, in upper case. Axum keeps these private, so they are read from
+/// the method router's debug text, the one place it says. `get` also answers `HEAD`, which no route documents,
+/// so `HEAD` is left out beside `GET`. `methods_are_read_from_what_is_mounted` fails if that text changes.
+#[must_use]
+pub fn methods_of<S>(router: &axum::routing::MethodRouter<S>) -> Vec<String>
+where
+    S: Clone + Send + Sync + 'static,
+{
+    const FIELDS: [&str; 8] = [
+        "get", "head", "delete", "options", "patch", "post", "put", "trace",
+    ];
+    let text = format!("{router:?}");
+    let answers = |name: &str| {
+        text.split(&format!("{name}: "))
+            .nth(1)
+            .is_some_and(|rest| !rest.starts_with("None"))
+    };
+    let get = answers("get");
+    FIELDS
+        .iter()
+        .filter(|name| answers(name) && !(get && **name == "head"))
+        .map(|name| name.to_ascii_uppercase())
+        .collect()
+}
+
+/// Every mounted route as `(method, full path)`, read from the routers themselves and not from [`TABLE`], so
+/// that the censuses compare what is served with what is written down.
+#[must_use]
+pub fn mounted() -> Vec<(String, String)> {
+    let mut out = Vec::new();
+    for group in crate::controllers::route_groups() {
+        let prefix = group.prefix.unwrap_or_default();
+        for handler in group.handlers {
+            let path = format!("/{prefix}/{}", handler.uri)
+                .split('/')
+                .filter(|segment| !segment.is_empty())
+                .collect::<Vec<_>>()
+                .join("/");
+            for method in methods_of(&handler.method) {
+                out.push((method, format!("/{path}")));
+            }
+        }
+    }
+    out
+}
+
 /// What a route needs from the policy engine.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Requirement {
@@ -519,6 +565,27 @@ pub fn normalise(uri: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn methods_are_read_from_what_is_mounted() {
+        use axum::routing::{MethodRouter, delete, get, patch, post, put};
+        async fn answer() {}
+        let of = |r: MethodRouter<()>| methods_of(&r);
+        assert_eq!(of(get(answer)), ["GET"]);
+        assert_eq!(of(post(answer)), ["POST"]);
+        assert_eq!(of(put(answer)), ["PUT"]);
+        assert_eq!(of(delete(answer)), ["DELETE"]);
+        assert_eq!(of(patch(answer)), ["PATCH"]);
+        assert_eq!(of(get(answer).post(answer)), ["GET", "POST"]);
+    }
+
+    #[test]
+    fn every_mounted_route_has_a_method() {
+        let all = mounted();
+        assert!(all.len() > 50, "only {} routes", all.len());
+        assert!(all.contains(&("GET".to_string(), "/_health".to_string())));
+        assert!(all.iter().all(|(m, p)| !m.is_empty() && p.starts_with('/')));
+    }
 
     #[test]
     fn templates_match_whole_segments() {

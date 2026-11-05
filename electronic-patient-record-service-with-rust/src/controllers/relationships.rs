@@ -9,13 +9,13 @@ use crate::auth::Agent;
 use crate::patients_store::{self, StoreError};
 use crate::policy::{self, Resource, Subject};
 use crate::relationships::{self as store, RelationshipRecord};
+use axa::prelude::*;
 use axum::{
     Extension,
     extract::{Json, Path},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };
-use loco_rs::prelude::*;
 use serde::Deserialize;
 
 /// A new relationship.
