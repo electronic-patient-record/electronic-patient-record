@@ -666,7 +666,7 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
 
   Translations stay marked machine-written.
   **Acceptance:** a summer timestamp shows BST in `en-GB` (test).
-- [ ] **CQ-35 (M) — Component and server tests.** Component tests for the patient page and banner, plus tests for the
+- [ ] **CQ-35 (M) — Component and server tests.** **In part 2026-11-05:** `hooks.server.ts` and the banner are tested, each failing under deliberate mutation; the proxy handler already was. **Open:** a component test for the patient page, and splitting the photo and edit form out of it. Component tests for the patient page and banner, plus tests for the
   proxy handler and `hooks.server.ts`; split the photo and edit form out of `[id]/+page.svelte`.
   **Acceptance:** each new test fails under a deliberate mutation of the code it covers.
 

@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - Tests for the server hook and the patient banner (CQ-35, in part)
+
+- **Clinical risk:** none in behaviour: this adds tests. They cover the banner's report-of-death alert and the session rule that a background look is not activity (H-025).
+- **Built:** `tests/unit/hooks-server.test.ts` and `tests/unit/patient-banner.test.ts`, 18 tests, the first component test in the project. Eight deliberate mutations of `hooks.server.ts` and `PatientBanner.svelte` each made a test fail; that check was run by hand and is not in CI.
+- **Not done / not verified:** a component test for the patient page, and splitting the photo and edit form out of it, so CQ-35 stays open. The session and sign-in are mocked in the hook test, so a real login is not exercised there. The banner's photo and allergy lines were not mutated.
+
 ## 2026-11-05 - A design for preserving records after an event (SW-7), and a correction
 
 - **Clinical risk:** none in behaviour: a design in `spec/suicide-watch/index.md` and a corrected comment.
