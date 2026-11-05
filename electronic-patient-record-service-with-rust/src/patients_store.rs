@@ -49,6 +49,9 @@ pub enum StoreError {
         /// `MatchResult.conflict_codes` as JSON.
         conflict_codes: serde_json::Value,
     },
+    /// A version would drop `temporary_identity` with no reason given (TT-1). Every writer sends a
+    /// whole record, so a writer that does not know the flag would otherwise clear it unnoticed.
+    TemporaryIdentityCleared,
     /// The database failed.
     Db(String),
 }
@@ -60,10 +63,15 @@ impl std::fmt::Display for StoreError {
             StoreError::Conflict { current } => write!(f, "current version is {current}"),
             StoreError::BadQuery(e) => write!(f, "bad query: {e}"),
             StoreError::NotSamePerson { message, .. } => write!(f, "bad query: {message}"),
+            StoreError::TemporaryIdentityCleared => write!(f, "{TEMPORARY_IDENTITY_CLEARED}"),
             StoreError::Db(e) => write!(f, "database error: {e}"),
         }
     }
 }
+
+/// The English for [`StoreError::TemporaryIdentityCleared`].
+pub const TEMPORARY_IDENTITY_CLEARED: &str =
+    "this record is a temporary identity: giving a real identity needs a reason";
 
 /// Check a patient before it is stored. Returns every problem found.
 ///
@@ -286,7 +294,9 @@ pub async fn current(db: &impl ConnectionTrait, id: &str) -> Result<Stored, Stor
 /// # Errors
 ///
 /// [`StoreError::NotFound`] for an unknown id; [`StoreError::Conflict`] when `expected_version` is
-/// not the current version, including when a concurrent writer got there first.
+/// not the current version, including when a concurrent writer got there first;
+/// [`StoreError::TemporaryIdentityCleared`] when the record stops being a temporary identity and
+/// no reason says why.
 pub async fn update(
     db: &(impl ConnectionTrait + TransactionTrait),
     id: &str,
@@ -300,6 +310,12 @@ pub async fn update(
         return Err(StoreError::Conflict {
             current: now.version,
         });
+    }
+    if now.patient.temporary_identity
+        && !patient.temporary_identity
+        && reason.is_none_or(|r| r.trim().is_empty())
+    {
+        return Err(StoreError::TemporaryIdentityCleared);
     }
     let mut body = patient.clone();
     body.id = None;

@@ -22,10 +22,10 @@ no network, database or compilation; counts are source lines, not test runs):
 | Front-end version | 0.1.0 | `version` in the front-end `package.json` |
 | Migrations | 24 | files named `m2*.rs` in `migration/src` |
 | Route registrations | 70 | `.add(` calls in `src/controllers/*.rs` |
-| Service tests | 569, plus 159 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
+| Service tests | 575, plus 160 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
 | Matcher tests | 109, plus 0 `#[ignore]`d | the same patterns in the matcher |
-| Front-end unit tests (vitest) | 245 | `it(` / `test(` lines in `tests/unit` |
-| Front-end end-to-end tests (Playwright) | 89 | `test(` lines in `tests/e2e` |
+| Front-end unit tests (vitest) | 246 | `it(` / `test(` lines in `tests/unit` |
+| Front-end end-to-end tests (Playwright) | 90 | `test(` lines in `tests/e2e` |
 | Locales | 10 | entries of `LOCALES` in `src/lib/locales.ts` |
 
 **Task boxes in [`tasks.md`](../tasks.md)** (ticked / open, by prefix):
@@ -68,7 +68,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | BV | 0 | 8 |
 | SG | 0 | 5 |
 | SW | 1 | 6 |
-| TT | 0 | 7 |
-| **Total** | **54** | **337** |
+| TT | 1 | 6 |
+| **Total** | **55** | **336** |
 
 <!-- generated:end -->

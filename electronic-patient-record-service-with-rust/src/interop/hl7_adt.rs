@@ -195,6 +195,8 @@ pub fn patient_from_adt(text: &str) -> Result<Inbound, Rejection> {
             }]
         },
         telecom,
+        // Only a person says that an identity is temporary: a message never does (TT-1).
+        temporary_identity: false,
     };
     if !raw_birth.is_empty() && patient.birth_date.is_none() {
         warnings.push(format!(

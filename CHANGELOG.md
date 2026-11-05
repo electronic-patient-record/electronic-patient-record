@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - Temporary identity in the service and the UI (TT-1, H-047)
+
+- **Clinical risk:** **yes.** A person can now mark a record as a temporary identity. Its name and birth date stop counting as evidence, it can never link itself to another record, and the banner, patient search and FHIR all say so. H-047 moved to `controlled-unreviewed`, not `closed`.
+- **Built:** the service on matcher 0.6.0; the OpenAPI field; a checkbox at registration and on edit; the banner alert; a mark in patient search; FHIR `meta.tag`, read and written. Every writer replaces the whole record, so the store now refuses to drop the flag without a reason (422 `temporary_identity_reason_required`, in 7 languages, machine-written). An HL7 message keeps the flag and cannot set it. A merge with no other evidence is refused until a person ends the flag and enters the real details.
+- **Not done / not verified:** nothing checks the name format the NHS alert recommends, or that a marked name is temporary; the flag works only if someone sets it. A writer that drops the flag and gives a reason still ends it. Banner and checkbox text are English only. Lists other than patient search and the typed compare page do not show it, and the state does not cross to another hospital. Who may end the flag is anyone who may edit identity, and no clinician has reviewed that or the wording. Local database tests ran only for `http_patients`, `drill_records`, `links_store`, `mllp_feed` and `patients_store`, on a local Postgres 18 because the Podman VM would not start; CI runs the rest. `Cargo.lock` changes here are the matcher only: unrelated local dependency bumps stay uncommitted.
+
 ## 2026-11-04 - `ETH` now means what HL7 says: substance abuse (PI-1, H-045)
 
 - **Clinical risk:** **yes.** A record labelled `ETH` now unmasks for the clinician and the patient only, not nurses or allied health. No clinical record carries a label yet, so nothing changes on screen today. H-045 moves to `controlled-unreviewed`; it is not closed.

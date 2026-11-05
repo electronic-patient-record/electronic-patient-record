@@ -216,7 +216,7 @@ Link: [protected information](../access-control/protected-information.md), inclu
 
 | Need | Today | Gap | Verified against |
 |---|---|---|---|
-| Temporary identity state | None. A family name is required; `birth_date` may be year or year-month | No state; a phonetic name reads as real | `patients_store.rs` (`family_name_required`, `valid_birth_date`) |
+| Temporary identity state | Built 2026-11-05 (TT-1): `temporary_identity`, set by a person, shown in the banner, patient search and FHIR, ended only with a reason | The alert's name format is not checked; the state does not cross to another hospital | `patients_store.rs` (`update`), [matcher rule 7](../../electronic-patient-record-matcher-with-rust/spec/index.md), `PatientBanner.svelte` |
 | Placeholder names | Matcher folds `unknown` and similar to absent | Matches the convention the alert warns against; not the alert's format | [matcher spec](../../electronic-patient-record-matcher-with-rust/spec/index.md) |
 | Merge | Link, never a rewrite; reversible; allergies follow; reason required | Other data classes not built; merge during a transfusion unconsidered | `links.rs` |
 | Mass casualty registration | Duplicate check with a reasoned override; no bulk path | Bulk, offline | `controllers/patients.rs`; [manual steps](../manual-steps/index.md) |
@@ -235,7 +235,7 @@ Link: [protected information](../access-control/protected-information.md), inclu
 | Registry extract | None | A pack per country | grep of `src` |
 | Roles | Eleven | No trauma team leader (an encounter fact, not a role), therapist or independent adviser | `policy.rs` `Role` |
 
-I searched `src` and `migration` for trauma, unknown patient, temporary identity, major incident and mass casualty, and found nothing. The word `unknown` appears as a sex value and as an absent reason.
+When this page was written I searched `src` and `migration` for trauma, unknown patient, temporary identity, major incident and mass casualty, and found nothing; temporary identity has been built since. The word `unknown` appears as a sex value and as an absent reason.
 
 ## Candidate hazards
 

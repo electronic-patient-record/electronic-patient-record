@@ -475,6 +475,7 @@ mod tests {
 
     fn person() -> Patient {
         Patient {
+            temporary_identity: false,
             id: Some("x".into()),
             names: vec![
                 HumanName {
@@ -504,6 +505,23 @@ mod tests {
                 value: "01632 960001".into(),
             }],
         }
+    }
+
+    #[test]
+    fn a_message_never_ends_a_temporary_identity() {
+        let existing = Patient {
+            temporary_identity: true,
+            ..person()
+        };
+        let incoming = Patient {
+            names: vec![HumanName {
+                family: Some("Smyth".into()),
+                given: vec!["Ann".into()],
+            }],
+            ..person()
+        };
+        let next = merge_update(&existing, &incoming).unwrap().unwrap();
+        assert!(next.temporary_identity);
     }
 
     #[test]

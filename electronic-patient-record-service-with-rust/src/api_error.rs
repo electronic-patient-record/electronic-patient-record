@@ -177,8 +177,8 @@ impl From<ApiError> for Box<Response> {
 }
 
 impl From<&StoreError> for ApiError {
-    /// A miss is a 404, a stale version a 409 carrying `current_version`, a refused query a 400 and a merge that is not
-    /// the same person a 422 with `conflict_codes`. A database failure is logged and answered as a plain 500: its text
+    /// A miss is a 404, a stale version a 409 carrying `current_version`, a refused query a 400, a merge that is not
+    /// the same person a 422 with `conflict_codes`, and a temporary identity dropped with no reason a 422 with `error_codes`. A database failure is logged and answered as a plain 500: its text
     /// is never sent.
     fn from(e: &StoreError) -> Self {
         match e {
@@ -193,6 +193,8 @@ impl From<&StoreError> for ApiError {
             } => {
                 Self::invalid(vec![message.clone()]).with("conflict_codes", conflict_codes.clone())
             }
+            StoreError::TemporaryIdentityCleared => Self::invalid(vec![e.to_string()])
+                .with("error_codes", ["temporary_identity_reason_required"]),
             StoreError::Db(m) => {
                 tracing::error!(error = %m, "store failed");
                 Self::internal()

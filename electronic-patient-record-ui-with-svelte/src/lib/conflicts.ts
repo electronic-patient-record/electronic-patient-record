@@ -157,6 +157,7 @@ const PATIENT_PROBLEM: Record<string, keyof PatientProblemWords> = {
   nhs_number_placeholder: "nhsNumberPlaceholder",
   nhs_number_check_digit: "nhsNumberCheckDigit",
   identifier_incomplete: "identifierIncomplete",
+  temporary_identity_reason_required: "temporaryIdentityReasonRequired",
 };
 
 /**

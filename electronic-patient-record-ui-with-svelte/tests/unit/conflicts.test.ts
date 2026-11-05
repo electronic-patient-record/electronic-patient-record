@@ -201,6 +201,7 @@ describe("a refused patient", () => {
     "nhs_number_placeholder",
     "nhs_number_check_digit",
     "identifier_incomplete",
+    "temporary_identity_reason_required",
   ];
   const english = CODES.map((c) => `english ${c}`);
   it("says every code in every translated locale, and leaves English readers the API's own words", () => {

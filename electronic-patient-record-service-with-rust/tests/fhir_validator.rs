@@ -38,6 +38,7 @@ fn patient() -> Stored {
         version: 3,
         author: "someone".into(),
         patient: Patient {
+            temporary_identity: false,
             id: Some(PATIENT.into()),
             names: vec![HumanName {
                 family: Some("Smith".into()),

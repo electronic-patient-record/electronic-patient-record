@@ -19,6 +19,8 @@ export interface PatientRecord {
   identifiers: { system: string; value: string }[];
   addresses: { postal_code?: string | null }[];
   telecom: { system: string; value: string }[];
+  /** Set by a person for someone not yet identified (TT-1). Absent means false. */
+  temporary_identity?: boolean;
 }
 
 export interface Stored {
@@ -72,6 +74,7 @@ export interface PatientForm {
   sex: "" | Sex;
   nhsNumber: string;
   postalCode: string;
+  temporaryIdentity: boolean;
 }
 
 export const emptyForm = (): PatientForm => ({
@@ -81,6 +84,7 @@ export const emptyForm = (): PatientForm => ({
   sex: "",
   nhsNumber: "",
   postalCode: "",
+  temporaryIdentity: false,
 });
 
 const blankToNull = (s: string): string | null => s.trim() || null;
@@ -167,6 +171,7 @@ export function patientToForm(p: PatientRecord): PatientForm {
     nhsNumber:
       p.identifiers.find((i) => i.system === NHS_NUMBER_SYSTEM)?.value ?? "",
     postalCode: p.addresses[0]?.postal_code ?? "",
+    temporaryIdentity: p.temporary_identity === true,
   };
 }
 
@@ -209,6 +214,7 @@ export function formToPatient(
     identifiers,
     addresses,
     telecom: base?.telecom ?? [],
+    ...(form.temporaryIdentity ? { temporary_identity: true } : {}),
   };
 }
 

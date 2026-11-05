@@ -29,6 +29,16 @@ const rich: PatientRecord = {
 };
 
 describe("patientToForm / formToPatient", () => {
+  it("carries a temporary identity through an edit, and sends nothing for a real one", () => {
+    const held = { ...rich, temporary_identity: true };
+    const form = patientToForm(held);
+    expect(form.temporaryIdentity).toBe(true);
+    expect(formToPatient(form, held).temporary_identity).toBe(true);
+    expect(
+      "temporary_identity" in formToPatient(patientToForm(rich), rich),
+    ).toBe(false);
+  });
+
   it("round-trips the fields the form owns", () => {
     const form = patientToForm(rich);
     expect(form).toEqual({
@@ -38,6 +48,7 @@ describe("patientToForm / formToPatient", () => {
       sex: "female",
       nhsNumber: "9434765919",
       postalCode: "AB1 2CD",
+      temporaryIdentity: false,
     });
     expect(formToPatient(form, rich)).toEqual({ ...rich, id: undefined });
   });

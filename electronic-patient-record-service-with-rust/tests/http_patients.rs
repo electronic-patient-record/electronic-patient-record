@@ -268,6 +268,89 @@ async fn the_request_id_is_echoed_and_written_into_the_audit_row() {
     .await;
 }
 
+/// TT-1: the flag is stored, shown in FHIR, and survives every writer that replaces the whole
+/// record, until a person gives a reason.
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn a_temporary_identity_stays_until_a_person_gives_a_reason() {
+    login_off();
+    request::<App, _, _>(|server, _ctx| async move {
+        let family = tag("Whisky");
+        let born = dob(11);
+        let mut body = patient(&family, &born);
+        body["temporary_identity"] = true.into();
+        let made = server
+            .post("/api/patients")
+            .json(&serde_json::json!({ "patient": body }))
+            .await;
+        assert_eq!(made.status_code(), StatusCode::CREATED, "{}", made.text());
+        let made: serde_json::Value = made.json();
+        assert_eq!(made["patient"]["temporary_identity"], true);
+        let id = made["id"].as_str().unwrap().to_string();
+
+        // A second record with the same name and date is not a duplicate of it, and not linked to it.
+        let same = server
+            .post("/api/patients")
+            .json(&serde_json::json!({ "patient": patient(&family, &born) }))
+            .await;
+        assert_eq!(same.status_code(), StatusCode::CREATED, "{}", same.text());
+
+        // A writer that does not know the flag, with no reason, is refused and changes nothing.
+        let plain = server
+            .put(&format!("/api/patients/{id}"))
+            .json(&serde_json::json!({
+                "patient": patient(&family, &born), "expected_version": 1 }))
+            .await;
+        assert_eq!(plain.status_code(), StatusCode::UNPROCESSABLE_ENTITY);
+        let refused: serde_json::Value = plain.json();
+        assert_eq!(
+            refused["error_codes"][0],
+            "temporary_identity_reason_required"
+        );
+
+        // A FHIR read shows it, and writing that resource back keeps it.
+        let read: serde_json::Value = server.get(&format!("/fhir/R4/Patient/{id}")).await.json();
+        assert_eq!(read["meta"]["tag"][0]["code"], "temporary-identity");
+        let kept = server
+            .put(&format!("/fhir/R4/Patient/{id}"))
+            .add_header(
+                HeaderName::from_static("if-match"),
+                HeaderValue::from_static("W/\"1\""),
+            )
+            .json(&read)
+            .await;
+        assert_eq!(kept.status_code(), StatusCode::OK, "{}", kept.text());
+        let mut untagged = read.clone();
+        untagged["meta"].as_object_mut().unwrap().remove("tag");
+        let refused = server
+            .put(&format!("/fhir/R4/Patient/{id}"))
+            .add_header(
+                HeaderName::from_static("if-match"),
+                HeaderValue::from_static("W/\"2\""),
+            )
+            .json(&untagged)
+            .await;
+        assert_eq!(refused.status_code(), StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(
+            refused.json::<serde_json::Value>()["resourceType"],
+            "OperationOutcome"
+        );
+
+        // With a reason, it ends.
+        let cleared = server
+            .put(&format!("/api/patients/{id}"))
+            .json(&serde_json::json!({
+                "patient": patient(&family, &born),
+                "expected_version": 2,
+                "reason": "identified by a relative" }))
+            .await;
+        assert_eq!(cleared.status_code(), StatusCode::OK, "{}", cleared.text());
+        let cleared: serde_json::Value = cleared.json();
+        assert!(cleared["patient"].get("temporary_identity").is_none());
+    })
+    .await;
+}
+
 #[tokio::test]
 #[ignore = "needs Postgres: set DATABASE_URL"]
 async fn a_drill_registration_is_kept_apart_from_real_patients() {

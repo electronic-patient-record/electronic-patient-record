@@ -638,7 +638,8 @@ export type PatientProblemWords = Record<
   | "birthDateInvalid"
   | "nhsNumberPlaceholder"
   | "nhsNumberCheckDigit"
-  | "identifierIncomplete",
+  | "identifierIncomplete"
+  | "temporaryIdentityReasonRequired",
   string
 >;
 
@@ -650,6 +651,8 @@ const problem_de: PatientProblemWords = {
     "Die NHS-Nummer ist ein Platzhalter (zehnmal dieselbe Ziffer), keine vergebene Nummer.",
   nhsNumberCheckDigit: "Die NHS-Nummer besteht die Prüfziffernprüfung nicht.",
   identifierIncomplete: "Eine Kennung braucht ein System und einen Wert.",
+  temporaryIdentityReasonRequired:
+    "Dies ist eine vorläufige Identität: Für eine echte Identität ist eine Begründung erforderlich.",
 };
 
 const problem_es: PatientProblemWords = {
@@ -661,6 +664,8 @@ const problem_es: PatientProblemWords = {
   nhsNumberCheckDigit:
     "El número NHS no supera la comprobación del dígito de control.",
   identifierIncomplete: "Un identificador necesita un sistema y un valor.",
+  temporaryIdentityReasonRequired:
+    "Esta es una identidad temporal: para asignar una identidad real se necesita un motivo.",
 };
 
 const problem_fr: PatientProblemWords = {
@@ -671,6 +676,8 @@ const problem_fr: PatientProblemWords = {
     "Le numéro NHS est un numéro factice (dix fois le même chiffre), pas un numéro attribué.",
   nhsNumberCheckDigit: "Le numéro NHS échoue au contrôle de la clé.",
   identifierIncomplete: "Un identifiant a besoin d'un système et d'une valeur.",
+  temporaryIdentityReasonRequired:
+    "Ceci est une identité temporaire : un motif est obligatoire pour attribuer une identité réelle.",
 };
 
 const problem_zh: PatientProblemWords = {
@@ -679,6 +686,8 @@ const problem_zh: PatientProblemWords = {
   nhsNumberPlaceholder: "NHS 号码是占位符(同一数字重复十次),不是已签发的号码。",
   nhsNumberCheckDigit: "NHS 号码未通过校验位检查。",
   identifierIncomplete: "标识符需要系统和值。",
+  temporaryIdentityReasonRequired:
+    "这是临时身份：更改为真实身份时需要说明原因。",
 };
 
 const problem_hi: PatientProblemWords = {
@@ -689,6 +698,8 @@ const problem_hi: PatientProblemWords = {
     "NHS नंबर एक प्लेसहोल्डर है (एक ही अंक दस बार), जारी किया गया नंबर नहीं।",
   nhsNumberCheckDigit: "NHS नंबर चेक-डिजिट जाँच में विफल है।",
   identifierIncomplete: "पहचानकर्ता के लिए सिस्टम और मान दोनों आवश्यक हैं।",
+  temporaryIdentityReasonRequired:
+    "यह अस्थायी पहचान है: वास्तविक पहचान देने के लिए कारण आवश्यक है।",
 };
 
 const problem_ar: PatientProblemWords = {
@@ -699,6 +710,8 @@ const problem_ar: PatientProblemWords = {
     "رقم NHS عنصر نائب (عشر نسخ من رقم واحد) وليس رقمًا صادرًا.",
   nhsNumberCheckDigit: "رقم NHS لا يجتاز فحص رقم التحقق.",
   identifierIncomplete: "يحتاج المعرّف إلى نظام وقيمة.",
+  temporaryIdentityReasonRequired:
+    "هذه هوية مؤقتة: يلزم ذكر سبب لتعيين هوية حقيقية.",
 };
 
 const problem_cy: PatientProblemWords = {
@@ -709,6 +722,8 @@ const problem_cy: PatientProblemWords = {
     "Dim ond llanwr yw rhif GIG (deg copi o'r un digid), nid rhif a gyhoeddwyd.",
   nhsNumberCheckDigit: "Nid yw rhif GIG yn pasio'r prawf digid gwirio.",
   identifierIncomplete: "Mae angen system a gwerth ar ddynodydd.",
+  temporaryIdentityReasonRequired:
+    "Hunaniaeth dros dro yw hon: mae angen rheswm i roi hunaniaeth go iawn.",
 };
 
 export const PATIENT_PROBLEM_WORDS: Partial<

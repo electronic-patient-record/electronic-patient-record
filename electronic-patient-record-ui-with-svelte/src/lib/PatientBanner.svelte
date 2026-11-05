@@ -87,6 +87,9 @@
   {#if stored.drill}
     <p class="drill" role="alert">{STRINGS.bannerDrill}</p>
   {/if}
+  {#if p.temporary_identity}
+    <p class="drill" role="alert">{STRINGS.bannerTemporaryIdentity}</p>
+  {/if}
   <h2>{name || STRINGS.notAvailable}</h2>
   {#if stored.replaced_by}
     <p class="merged" role="alert">{STRINGS.bannerMerged}</p>

@@ -99,7 +99,12 @@
           {#each found as s (s.id)}
             {@const f = patientToForm(s.patient)}
             <tr>
-              <td>{label(s)}</td>
+              <td>
+                {label(s)}
+                {#if f.temporaryIdentity}
+                  <strong>({STRINGS.temporaryIdentity})</strong>
+                {/if}
+              </td>
               <td>{f.birthDate || STRINGS.notAvailable}</td>
               <td>{f.nhsNumber || STRINGS.notAvailable}</td>
               <td>

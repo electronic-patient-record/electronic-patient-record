@@ -1774,6 +1774,11 @@
               "type": "object"
             },
             "type": "array"
+          },
+          "temporary_identity": {
+            "default": false,
+            "description": "Set by a person for someone who cannot yet be identified. The names and birth date are then not evidence (matcher rule 7), and the record can never be linked automatically. Absent means false. Every write replaces the whole record, so a write that drops this needs a reason, or it is refused with temporary_identity_reason_required.",
+            "type": "boolean"
           }
         },
         "type": "object"

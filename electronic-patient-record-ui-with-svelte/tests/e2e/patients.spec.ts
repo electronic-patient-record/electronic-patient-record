@@ -1118,6 +1118,51 @@ test("a drill record says so at the top of its banner, and a real one does not",
   }
 });
 
+test("a temporary identity says so in the banner and in search, and an edit keeps it", async ({
+  page,
+}) => {
+  const UNKNOWN = {
+    ...ANN,
+    patient: {
+      ...ANN.patient,
+      names: [{ family: "Whisky", given: ["Foxtrot"] }],
+      birth_date: "1980",
+      identifiers: [],
+      temporary_identity: true,
+    },
+  };
+  let put: { patient?: { temporary_identity?: boolean } } = {};
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) => {
+    if (route.request().method() === "PUT") {
+      put = route.request().postDataJSON();
+      return json(route, 200, { ...UNKNOWN, version: UNKNOWN.version + 1 });
+    }
+    return json(route, 200, UNKNOWN);
+  });
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  const banner = page.getByRole("region", { name: "Patient banner" });
+  await expect(banner).toContainText("WHISKY, Foxtrot");
+  await expect(banner.getByRole("alert")).toHaveText(/TEMPORARY IDENTITY/);
+  await axe(page);
+
+  // An edit that leaves the box alone keeps the flag.
+  await expect(page.getByLabel("Temporary identity")).toBeChecked();
+  await page
+    .getByLabel("Reason (kept in the version history)")
+    .fill("corrected the sex");
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect.poll(() => put.patient?.temporary_identity).toBe(true);
+
+  await page.route(`**/api/proxy/api/patients?*`, (route) =>
+    json(route, 200, { results: [UNKNOWN], limit: 50 }),
+  );
+  await page.goto("/en-001/patients");
+  await page.getByLabel("Family name").fill("Whisky");
+  await page.getByRole("button", { name: "Search" }).click();
+  await expect(page.getByRole("table")).toContainText("(Temporary identity)");
+});
+
 test("the break-the-glass review list marks a grant that has waited too long", async ({
   page,
 }) => {

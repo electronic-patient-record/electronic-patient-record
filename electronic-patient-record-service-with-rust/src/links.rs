@@ -537,4 +537,50 @@ mod tests {
         let c = person("Smith", "John", "1980-03-14", None);
         assert_eq!(judge(&a, &c).is_ok(), judge(&c, &a).is_ok());
     }
+
+    /// The acceptance test for TT-1: a temporary name in the safer format, and an estimated birth
+    /// date. Without the flag the pair links itself, so the flag is what prevents it.
+    #[test]
+    fn a_safe_format_temporary_name_with_an_estimated_date_never_links_itself() {
+        let unknown = |temporary_identity| Patient {
+            names: vec![HumanName {
+                family: Some("Whisky".into()),
+                given: vec!["Foxtrot".into()],
+            }],
+            birth_date: Some("1980-01-01".into()),
+            temporary_identity,
+            ..Default::default()
+        };
+        let engine = crate::packs::engine();
+        assert_eq!(
+            engine.compare(&unknown(false), &unknown(false)).decision,
+            Decision::AutoLink
+        );
+        let held = engine.compare(&unknown(true), &unknown(false));
+        assert_ne!(held.decision, Decision::AutoLink);
+        assert_eq!(
+            held.conflict_codes.first(),
+            Some(&ConflictCode::TemporaryIdentity)
+        );
+    }
+
+    /// Once a person has cleared the flag and entered the real details, the ordinary rules apply, so
+    /// the temporary record can be merged into the person's own.
+    #[test]
+    fn a_temporary_record_merges_only_after_a_person_gives_it_a_real_identity() {
+        let real = Patient {
+            names: vec![HumanName {
+                family: Some("Smith".into()),
+                given: vec!["Ann".into()],
+            }],
+            birth_date: Some("1980-03-14".into()),
+            ..Default::default()
+        };
+        let held = Patient {
+            temporary_identity: true,
+            ..real.clone()
+        };
+        assert!(judge(&held, &real).is_err());
+        assert_eq!(judge(&real, &real).unwrap().1, "auto_link");
+    }
 }

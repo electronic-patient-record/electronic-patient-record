@@ -43,6 +43,10 @@ pub struct Unreadable(pub Vec<String>);
 /// The `meta.tag` system that marks a drill or test record.
 pub const DRILL_TAG_SYSTEM: &str = "urn:epr:record-kind";
 
+/// The `meta.tag` code, in [`DRILL_TAG_SYSTEM`], that marks a temporary identity (TT-1). Read as well
+/// as written, so a read, change and write through FHIR keeps it.
+pub const TEMPORARY_IDENTITY_TAG: &str = "temporary-identity";
+
 /// The stored record as a FHIR R4 `Patient` (a `Resource::Patient`, so it serializes with its
 /// `resourceType`), with `meta.versionId` set to the record version. The
 /// result is parsed through the typed R4 model, so it is known to be shaped as R4 requires.
@@ -57,13 +61,25 @@ pub fn to_fhir(stored: &Stored) -> Result<Resource, String> {
         "id": stored.id,
         "meta": { "versionId": stored.version.to_string() },
     });
+    let mut tags = Vec::new();
     if stored.drill {
         // A drill or test record says so in the resource itself (EC-10).
-        out["meta"]["tag"] = json!([{
+        tags.push(json!({
             "system": DRILL_TAG_SYSTEM,
             "code": "drill",
             "display": "DRILL - NOT A REAL PATIENT",
-        }]);
+        }));
+    }
+    if p.temporary_identity {
+        // So does a temporary identity, for any reader that is not the banner (TT-1).
+        tags.push(json!({
+            "system": DRILL_TAG_SYSTEM,
+            "code": TEMPORARY_IDENTITY_TAG,
+            "display": "TEMPORARY IDENTITY - NAME AND BIRTH DATE ARE NOT CONFIRMED",
+        }));
+    }
+    if !tags.is_empty() {
+        out["meta"]["tag"] = Value::Array(tags);
     }
     let map = out.as_object_mut().ok_or("not an object")?;
     if !p.identifiers.is_empty() {
@@ -243,6 +259,15 @@ pub fn from_fhir_json(text: &str) -> Result<FromFhir, Unreadable> {
                 .collect()
         })
         .unwrap_or_default();
+    let temporary_identity = raw
+        .pointer("/meta/tag")
+        .and_then(Value::as_array)
+        .is_some_and(|tags| {
+            tags.iter().any(|t| {
+                t.get("system").and_then(Value::as_str) == Some(DRILL_TAG_SYSTEM)
+                    && t.get("code").and_then(Value::as_str) == Some(TEMPORARY_IDENTITY_TAG)
+            })
+        });
     Ok(FromFhir {
         patient: Patient {
             id: None,
@@ -252,6 +277,7 @@ pub fn from_fhir_json(text: &str) -> Result<FromFhir, Unreadable> {
             identifiers,
             addresses,
             telecom,
+            temporary_identity,
         },
         dropped,
     })
@@ -289,6 +315,7 @@ mod tests {
                 addresses: vec![Address {
                     postal_code: Some("AB1 2CD".into()),
                 }],
+                temporary_identity: false,
                 telecom: vec![Telecom {
                     system: "phone".into(),
                     value: "01632 960001".into(),
@@ -321,6 +348,27 @@ mod tests {
         expected.id = None;
         assert_eq!(back.patient, expected);
         assert!(back.dropped.is_empty(), "{:?}", back.dropped);
+    }
+
+    #[test]
+    fn a_temporary_identity_carries_a_tag_that_survives_a_read_and_write() {
+        let text = |s: &Stored| serde_json::to_string(&to_fhir(s).unwrap()).unwrap();
+        let mut s = stored();
+        assert!(!text(&s).contains(TEMPORARY_IDENTITY_TAG));
+        s.patient.temporary_identity = true;
+        s.drill = true;
+        let text = text(&s);
+        let json: Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(json["meta"]["tag"][0]["code"], "drill");
+        assert_eq!(json["meta"]["tag"][1]["code"], TEMPORARY_IDENTITY_TAG);
+        assert!(from_fhir_json(&text).unwrap().patient.temporary_identity);
+    }
+
+    #[test]
+    fn a_tag_from_another_system_does_not_make_a_temporary_identity() {
+        let text = r#"{"resourceType":"Patient","meta":{"tag":[
+            {"system":"urn:other","code":"temporary-identity"}]}}"#;
+        assert!(!from_fhir_json(text).unwrap().patient.temporary_identity);
     }
 
     #[test]

@@ -63,3 +63,15 @@
     autocomplete="off"
   />
 {/if}
+{#if show("temporaryIdentity")}
+  <label for="{prefix}-temporary">
+    <input
+      id="{prefix}-temporary"
+      type="checkbox"
+      bind:checked={form.temporaryIdentity}
+      aria-describedby="{prefix}-temporary-hint"
+    />
+    {STRINGS.temporaryIdentity}
+  </label>
+  <small id="{prefix}-temporary-hint">{STRINGS.temporaryIdentityHint}</small>
+{/if}

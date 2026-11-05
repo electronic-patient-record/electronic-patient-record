@@ -72,6 +72,9 @@ export const STRINGS = {
   sexUnset: "Not recorded",
   sexes: { male: "Male", female: "Female", other: "Other", unknown: "Unknown" },
   givenHint: "Separate several given names with spaces.",
+  temporaryIdentity: "Temporary identity",
+  temporaryIdentityHint:
+    "For someone who cannot yet be identified. The name and birth date are not used to match records. To remove this, enter the real details and give a reason.",
   reason: "Reason (kept in the version history)",
   problems: "Please correct the following",
   duplicateTitle: "This patient may already be registered",
@@ -537,6 +540,8 @@ export const STRINGS = {
     "This record may not be current: it was last read at {time} and the latest check failed or is overdue. Check your connection.",
   bannerDrill:
     "DRILL — NOT A REAL PATIENT. Nothing recorded here belongs to a person.",
+  bannerTemporaryIdentity:
+    "TEMPORARY IDENTITY — NOT YET IDENTIFIED. The name and birth date are placeholders, not this person's own.",
   bannerMerged:
     "THIS RECORD WAS MERGED INTO ANOTHER. Do not use it; open the surviving record.",
   mergedNotice:

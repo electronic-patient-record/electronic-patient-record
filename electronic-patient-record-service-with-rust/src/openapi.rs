@@ -115,7 +115,8 @@ fn identity_schemas() -> Value {
                 "identifiers": {"type": "array", "items": pair.clone()},
                 "addresses": {"type": "array", "items": {"type": "object", "properties": {
                     "postal_code": {"type": ["string", "null"]}}}},
-                "telecom": {"type": "array", "items": pair}
+                "telecom": {"type": "array", "items": pair},
+                "temporary_identity": {"type": "boolean", "default": false, "description": "Set by a person for someone who cannot yet be identified. The names and birth date are then not evidence (matcher rule 7), and the record can never be linked automatically. Absent means false. Every write replaces the whole record, so a write that drops this needs a reason, or it is refused with temporary_identity_reason_required."}
             }
         },
         "Stored": {
@@ -1784,6 +1785,7 @@ mod tests {
                 system: "s".into(),
                 value: "v".into(),
             }],
+            temporary_identity: true,
         }
     }
 
