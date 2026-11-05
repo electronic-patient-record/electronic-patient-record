@@ -102,6 +102,12 @@ All of a patient's assertions, each at its current version, give one answer:
 
 `not-known-to-have-died` never means the person is known to be living, so no screen shows the word "alive". A withdrawal releases the hold only when no other assertion stands. A report on a record merged away counts for the surviving record.
 
+## Scenarios
+
+`electronic-patient-record-service-with-rust/tests/death_scenarios.rs` runs seven invented deaths through the rules (BV-8): expected, sudden, coroner, wrong patient, withdrawn, baby and twin. They are test data in that file, because the project has no seeded synthetic patients yet. No clinician or bereaved person has read them.
+
+They show one thing to review. A coroner's `2026-09` beside a hospital's `2026-09-14` sets `dates_differ`, though the two agree as far as each goes. It is the cautious reading, since a person looks, but it may be noise.
+
 ## Not settled
 
 - **A date of death in the matcher (OQ-BV3, decided, not in the service).** The matcher's `Patient` has `death_date` as weak match evidence, in the unreleased crate. To use it the service needs that release, must fill the field only from a standing assertion, and must never accept it from a client. The assertion stays apart from identity.

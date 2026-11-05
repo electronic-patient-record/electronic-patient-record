@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - Seven deaths as test data (BV-8)
+
+- **Clinical risk:** none in behaviour: this adds a test.
+- **Built:** `tests/death_scenarios.rs`: expected, sudden, coroner, wrong patient, withdrawn, baby and twin, through the pure rules, with the answer for each record, in plain words.
+- **Not done / not verified:** the scenarios are mine, and no clinician or bereaved person has read them. There is no seeded synthetic patient set in this repository, so they are not patients anyone can open, and they do not touch the routes, the store or the hold. A pregnancy lost before a record exists is not covered. The twin scenario shows the records are separate; it does not cover a letter to the living twin's parents that names the other child, or how the matcher treats twins once a date of death reaches it. A partial date beside a full one that agrees still sets `dates_differ`: recorded for review, not changed.
+
 ## 2026-11-05 - What is not built for people who are bereaved, as a rule and a test (SG-2)
 
 - **Clinical risk:** none in behaviour: this adds a rule and a test. It limits what may be built later.
