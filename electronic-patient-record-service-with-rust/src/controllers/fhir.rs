@@ -753,6 +753,83 @@ fn observation_bundle(
     }))
 }
 
+/// A `searchset` of a patient's reasonable adjustments, ended ones included, as `Flag`s. A list with
+/// nothing in it carries a warning: none recorded here does not mean the person has no needs.
+fn flag_bundle(
+    patient: &str,
+    all: &[crate::adjustments_store::StoredAdjustment],
+) -> Result<serde_json::Value, String> {
+    let mut entries = Vec::new();
+    for a in all {
+        entries.push(serde_json::json!({
+            "fullUrl": format!("{BASE}/Flag/{}", a.id),
+            "resource": crate::interop::fhir_flag::to_fhir(a, patient)?,
+            "search": { "mode": "match" },
+        }));
+    }
+    if entries.is_empty() {
+        entries.push(serde_json::json!({
+            "resource": {
+                "resourceType": "OperationOutcome",
+                "issue": [{
+                    "severity": "warning",
+                    "code": "incomplete",
+                    "diagnostics": "No need or reasonable adjustment has been recorded here. This does not mean the person has none.",
+                }],
+            },
+            "search": { "mode": "outcome" },
+        }));
+    }
+    Ok(serde_json::json!({
+        "resourceType": "Bundle",
+        "type": "searchset",
+        "entry": entries,
+    }))
+}
+
+/// `GET /fhir/R4/Flag?patient=`: the same service function, so the same gate, purpose of use, consent and
+/// audit row as `/api/patients/{id}/adjustments`.
+pub(super) async fn search_flags(
+    State(ctx): State<AppContext>,
+    Extension(agent): Extension<Agent>,
+    Extension(subject): Extension<Subject>,
+    headers: HeaderMap,
+    Query(params): Query<HashMap<String, String>>,
+) -> Response {
+    if let Err(m) = refuse_unknown(&params, &["patient"]) {
+        return outcome(StatusCode::BAD_REQUEST, "not-supported", &m);
+    }
+    let Some(patient) = params
+        .get("patient")
+        .map(|p| p.strip_prefix("Patient/").unwrap_or(p).to_string())
+        .filter(|p| !p.is_empty())
+    else {
+        return outcome(
+            StatusCode::BAD_REQUEST,
+            "required",
+            "the patient search parameter is required",
+        );
+    };
+    let list =
+        match super::adjustments::list_service(&ctx, &agent, &subject, &headers, &patient).await {
+            Ok(list) => list,
+            Err(e) => {
+                if e.status() == StatusCode::FORBIDDEN {
+                    return outcome(
+                        e.status(),
+                        "forbidden",
+                        "forbidden. This does not mean the person has no needs recorded.",
+                    );
+                }
+                return refusal(&e, false);
+            }
+        };
+    match flag_bundle(&patient, &list.adjustments) {
+        Ok(b) => fhir(StatusCode::OK, &b, None),
+        Err(e) => internal(&e),
+    }
+}
+
 /// `GET /fhir/R4/Observation?patient=` : the same service function, so the same gate, care
 /// relationship, purpose of use, consent and audit row as `/api/patients/{id}/observations`.
 pub(super) async fn search_observations(
@@ -839,7 +916,13 @@ fn mounted_interactions() -> std::collections::BTreeMap<String, Vec<String>> {
 /// what `resource_notes` has a case for) are those with something to say; a mounted type missing
 /// from it is still stated, with only its interactions.
 #[cfg(test)]
-const NOTED_TYPES: [&str; 4] = ["Patient", "AllergyIntolerance", "Observation", "AuditEvent"];
+const NOTED_TYPES: [&str; 5] = [
+    "Patient",
+    "AllergyIntolerance",
+    "Observation",
+    "Flag",
+    "AuditEvent",
+];
 
 fn resource_notes(kind: &str) -> serde_json::Value {
     match kind {
@@ -861,6 +944,12 @@ fn resource_notes(kind: &str) -> serde_json::Value {
         }),
         "Observation" => serde_json::json!({
             "documentation": "Vital signs only; search by patient only; read-only. Observations entered in error are not returned. A result with no observation is never a normal reading: it carries an OperationOutcome saying so. The critical range is not returned, and a flag the service could not compute is no interpretation, never normal.",
+            "searchParam": [
+                { "name": "patient", "type": "reference", "documentation": "required" },
+            ],
+        }),
+        "Flag" => serde_json::json!({
+            "documentation": "Reasonable adjustments and communication needs; search by patient only; read-only. Codes are this project's own. Ended needs are returned as inactive. A result with none in it carries a warning that this does not mean the person has none.",
             "searchParam": [
                 { "name": "patient", "type": "reference", "documentation": "required" },
             ],
@@ -924,6 +1013,7 @@ pub fn routes() -> Routes {
         .add("/Patient/{id}", put(update_patient))
         .add("/AllergyIntolerance", get(search_allergies))
         .add("/Observation", get(search_observations))
+        .add("/Flag", get(search_flags))
         .add("/AuditEvent", get(search_audit_events))
 }
 
@@ -1415,6 +1505,7 @@ mod tests {
         // AllergyIntolerance and Observation: patient only.
         assert_eq!(stated("AllergyIntolerance"), set(&["patient"]));
         assert_eq!(stated("Observation"), set(&["patient"]));
+        assert_eq!(stated("Flag"), set(&["patient"]));
 
         // AuditEvent: each stated parameter is accepted; common FHIR ones that are not stated are refused.
         let audit = [
@@ -1602,6 +1693,33 @@ mod tests {
         assert_eq!(o["valueQuantity"]["unit"], "/min");
         let b = r5_of(&observation_bundle("P1", &[], &Default::default()).unwrap());
         assert!(b.to_string().contains("does not mean"));
+    }
+
+    #[test]
+    fn a_flag_bundle_converts_to_r5_and_says_so_when_empty() {
+        let a = crate::adjustments_store::StoredAdjustment {
+            id: "44444444-4444-4444-8444-444444444444".into(),
+            patient_id: "P1".into(),
+            version: 1,
+            author: "a".into(),
+            recorded_at: "2026-11-05T09:31:00.123456Z".into(),
+            adjustment: crate::adjustments::record(
+                "large-print",
+                None,
+                None,
+                "they asked",
+                chrono::NaiveDate::from_ymd_opt(2026, 11, 5).unwrap(),
+            )
+            .unwrap(),
+            category: "communication".into(),
+            display: "Large print".into(),
+            overdue: false,
+        };
+        let b = r5_of(&flag_bundle("P1", &[a]).unwrap());
+        assert_eq!(b["entry"][0]["resource"]["resourceType"], "Flag");
+        assert_eq!(b["entry"][0]["resource"]["status"], "active");
+        let b = r5_of(&flag_bundle("P1", &[]).unwrap());
+        assert_eq!(b["entry"][0]["search"]["mode"], "outcome");
     }
 
     #[test]

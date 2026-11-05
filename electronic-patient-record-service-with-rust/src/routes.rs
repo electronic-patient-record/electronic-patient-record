@@ -230,6 +230,8 @@ pub const TABLE: &[(&str, &str, Resource, Action)] = &[
         Resource::AllergyIntolerance,
         Action::Read,
     ),
+    ("GET", "/fhir/R5/Flag", Resource::Adjustment, Action::Search),
+    ("GET", "/fhir/R4/Flag", Resource::Adjustment, Action::Search),
     (
         "GET",
         "/fhir/R5/Observation",

@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - A need as a FHIR Flag (PX-3)
+
+- **Clinical risk:** **yes, once anything reads it.** Another system can now read what a person needs, with the same access decision and audit row as the list. An ended need goes out as `inactive`.
+- **Built:** `interop/fhir_flag.rs`, `GET /fhir/R4/Flag` and `GET /fhir/R5/Flag`, both capability statements, and active and ended flags in the FHIR validator's set.
+- **Not done / not verified:** the validator needs Java and ran only in CI. No national profile is claimed and no national code used, so a reader will not recognise these codes without being told. A flag has no start date. The note goes out as written, and it is free text. No outside system has read one.
+
 ## 2026-11-05 - Needs on the banner and the patient page (PA-6, in part; H-048)
 
 - **Clinical risk:** **yes.** The patient and summary banners now say what a person needs, and whether a check is overdue. Staff read this before they speak to someone. A failed look says so, and an empty list says "none recorded" and that this does not mean there are none.

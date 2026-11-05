@@ -2,6 +2,7 @@
 //! The FHIR `Patient`, `AllergyIntolerance` and `AuditEvent` mappings are served by `controllers/fhir.rs`; the HL7 v2
 //! and SNOMED ones are library only (no listener yet: OR-3).
 //!
+//! - [`fhir_flag`]: a reasonable adjustment as a FHIR R4 `Flag` (out only).
 //! - [`fhir_allergy`]: an allergy as a FHIR R4 `AllergyIntolerance` (out only).
 //! - [`fhir_observation`]: a vital sign as a FHIR R4 `Observation` (out only; library only, no route yet: RC-6).
 //! - [`fhir_audit`]: an audit row as a FHIR R4 `AuditEvent` (BALP-shaped).
@@ -14,6 +15,7 @@
 
 pub mod fhir_allergy;
 pub mod fhir_audit;
+pub mod fhir_flag;
 pub mod fhir_observation;
 pub mod fhir_patient;
 pub mod hl7_adt;

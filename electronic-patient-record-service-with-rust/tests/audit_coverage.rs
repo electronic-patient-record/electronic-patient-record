@@ -60,6 +60,8 @@ fn patient_scoped(template: &str) -> bool {
         || template.starts_with("/fhir/R5/AllergyIntolerance")
         || template.starts_with("/fhir/R4/Observation")
         || template.starts_with("/fhir/R5/Observation")
+        || template.starts_with("/fhir/R4/Flag")
+        || template.starts_with("/fhir/R5/Flag")
 }
 
 #[tokio::test]

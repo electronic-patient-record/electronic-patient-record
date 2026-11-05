@@ -15,7 +15,7 @@ use electronic_patient_record::allergies::{
 };
 use electronic_patient_record::audit::AuditRow;
 use electronic_patient_record::interop::{
-    fhir_allergy, fhir_audit, fhir_observation, fhir_patient,
+    fhir_allergy, fhir_audit, fhir_flag, fhir_observation, fhir_patient,
 };
 use electronic_patient_record::observations::{AbsentReason, Flag, Range};
 use electronic_patient_record::observations_store::{
@@ -131,6 +131,28 @@ fn value<T: serde::Serialize>(r: &T) -> Value {
 }
 
 /// What the service writes, by name.
+/// A need, active or ended.
+fn flag(status: electronic_patient_record::adjustments::Status) -> Value {
+    let stored = electronic_patient_record::adjustments_store::StoredAdjustment {
+        id: "44444444-4444-4444-8444-444444444444".into(),
+        patient_id: PATIENT.into(),
+        version: 2,
+        author: "someone".into(),
+        recorded_at: "2026-11-05T09:31:00.123456Z".into(),
+        adjustment: electronic_patient_record::adjustments::Adjustment {
+            code: "interpreter-spoken".into(),
+            note: Some("Polish".into()),
+            status,
+            review_by: None,
+            reason: "they asked".into(),
+        },
+        category: "interpreting".into(),
+        display: "Spoken language interpreter".into(),
+        overdue: false,
+    };
+    fhir_flag::to_fhir(&stored, PATIENT).unwrap()
+}
+
 fn resources() -> Vec<(&'static str, Value)> {
     let p = value(&fhir_patient::to_fhir(&patient()).unwrap());
     let active = value(
@@ -189,6 +211,14 @@ fn resources() -> Vec<(&'static str, Value)> {
         ("allergy-inactive", inactive),
         ("no-known-allergies", none),
         ("audit-event", audit),
+        (
+            "flag-active",
+            flag(electronic_patient_record::adjustments::Status::Active),
+        ),
+        (
+            "flag-ended",
+            flag(electronic_patient_record::adjustments::Status::Ended),
+        ),
         ("observation-vital", vital),
         ("observation-declined", declined),
         ("observation-disputed", vital_disputed),

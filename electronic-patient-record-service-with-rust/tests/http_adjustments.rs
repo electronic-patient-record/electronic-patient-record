@@ -262,6 +262,31 @@ async fn who_may_record_review_and_end_an_adjustment() {
             .unwrap();
         assert_eq!(old["overdue"], true);
 
+        // The same list as FHIR, in both releases, with the same refusals.
+        let fhir = |t: String, base: &str| {
+            let (h, v) = bearer(&t);
+            server
+                .get(&format!("/fhir/{base}/Flag?patient={id}"))
+                .add_header(h, v)
+                .add_header(purpose.clone(), ops.clone())
+        };
+        for base in ["R4", "R5"] {
+            let got = fhir(nurse.clone(), base).await;
+            assert_eq!(got.status_code(), StatusCode::OK, "{}", got.text());
+            let got: Value = got.json();
+            let flags = got["entry"].as_array().unwrap();
+            assert_eq!(flags.len(), 3, "{got}");
+            assert!(flags.iter().any(|e| e["resource"]["status"] == "inactive"));
+            assert!(!got.to_string().contains("daughter"), "a reason went out");
+            let refused = fhir(patient.clone(), base).await;
+            assert_eq!(
+                refused.status_code(),
+                StatusCode::FORBIDDEN,
+                "{}",
+                refused.text()
+            );
+        }
+
         // The audit trail says something happened, and nothing of what the person needs.
         let audited = ctx
             .db

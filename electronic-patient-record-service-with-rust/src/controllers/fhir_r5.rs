@@ -241,6 +241,25 @@ async fn search_observations(
     .await
 }
 
+/// `GET /fhir/R5/Flag`: the R4 search, converted. A conversion that loses anything fails the response.
+async fn search_flags(
+    OriginalUri(uri): OriginalUri,
+    state: State<AppContext>,
+    agent: Extension<Agent>,
+    subject: Extension<Subject>,
+    headers: HeaderMap,
+    params: Query<HashMap<String, String>>,
+) -> Response {
+    if let Some(refused) = wrong_release(&headers) {
+        return refused;
+    }
+    derive(
+        r4::search_flags(state, agent, subject, headers, params).await,
+        &request_of(&uri),
+    )
+    .await
+}
+
 /// The R5 capability statement: base R5, reads only, no UK Core or US Core claim.
 fn capability() -> serde_json::Value {
     let read_search = |kind: &str, interactions: &[&str]| {
@@ -257,11 +276,12 @@ fn capability() -> serde_json::Value {
         "software": { "name": "electronic-patient-record", "version": env!("CARGO_PKG_VERSION") },
         "fhirVersion": "5.0.0",
         "format": ["json"],
-        "description": "NOT FOR CLINICAL USE. A read-only R5 view derived from the R4 record: Patient (read, search-type), AllergyIntolerance and Observation (search-type, by patient). Base R5 only: no UK Core or US Core conformance is claimed. A resource that cannot be converted without losing something is not served.",
+        "description": "NOT FOR CLINICAL USE. A read-only R5 view derived from the R4 record: Patient (read, search-type), AllergyIntolerance, Observation and Flag (search-type, by patient). Base R5 only: no UK Core or US Core conformance is claimed. A resource that cannot be converted without losing something is not served.",
         "rest": [{ "mode": "server", "resource": [
             read_search("Patient", &["read", "search-type"]),
             read_search("AllergyIntolerance", &["search-type"]),
             read_search("Observation", &["search-type"]),
+            read_search("Flag", &["search-type"]),
         ] }],
     })
 }
@@ -284,6 +304,7 @@ pub fn routes() -> Routes {
         .add("/Patient/{id}", get(read_patient))
         .add("/AllergyIntolerance", get(search_allergies))
         .add("/Observation", get(search_observations))
+        .add("/Flag", get(search_flags))
 }
 
 #[cfg(test)]

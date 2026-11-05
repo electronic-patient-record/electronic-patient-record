@@ -32,6 +32,8 @@ const EXEMPT: &[(&str, &str)] = &[(
 fn call(template: &str, patient: &str) -> Option<String> {
     Some(match template {
         "/api/patients/{id}/adjustments" => format!("/api/patients/{patient}/adjustments"),
+        "/fhir/R4/Flag" => format!("/fhir/R4/Flag?patient={patient}"),
+        "/fhir/R5/Flag" => format!("/fhir/R5/Flag?patient={patient}"),
         "/api/patients/{id}/death/assertions" => {
             format!("/api/patients/{patient}/death/assertions")
         }

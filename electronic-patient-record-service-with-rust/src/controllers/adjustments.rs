@@ -111,6 +111,51 @@ async fn refused(
     .err()
 }
 
+/// The list, as a value, for the JSON route and the FHIR search: one decision, one audit row.
+pub(super) async fn list_service(
+    ctx: &AppContext,
+    agent: &Agent,
+    subject: &Subject,
+    headers: &HeaderMap,
+    patient: &str,
+) -> Result<AdjustmentList, ApiError> {
+    let purpose = purpose_of(headers)?;
+    authorize(
+        &ctx.db,
+        agent,
+        subject,
+        Resource::Adjustment,
+        policy::Action::Search,
+        purpose,
+        Some(patient),
+    )
+    .await?;
+    let today = Utc::now().date_naive();
+    let adjustments = match store::list(&ctx.db, patient, today).await {
+        Ok(a) => a,
+        Err(e) => {
+            if let Some(r) = refused(ctx, agent, purpose, Action::Read, &e).await {
+                return Err(r);
+            }
+            return Err(failure(e));
+        }
+    };
+    audit_resource(
+        &ctx.db,
+        agent,
+        Access {
+            action: Action::Read,
+            outcome: 0,
+            purpose,
+            resource: "Adjustment",
+            patient_id: Some(patient),
+        },
+        serde_json::json!({ "adjustments": adjustments.len() }),
+    )
+    .await?;
+    Ok(AdjustmentList { adjustments })
+}
+
 /// `GET /api/patients/{id}/adjustments`: every adjustment, newest first. Audited.
 pub(super) async fn list(
     State(ctx): State<AppContext>,
@@ -119,50 +164,10 @@ pub(super) async fn list(
     headers: HeaderMap,
     Path(patient): Path<String>,
 ) -> Response {
-    let purpose = match purpose_of(&headers) {
-        Ok(p) => p,
-        Err(r) => return r.into_response(),
-    };
-    if let Err(r) = authorize(
-        &ctx.db,
-        &agent,
-        &subject,
-        Resource::Adjustment,
-        policy::Action::Search,
-        purpose,
-        Some(&patient),
-    )
-    .await
-    {
-        return r.into_response();
+    match list_service(&ctx, &agent, &subject, &headers, &patient).await {
+        Ok(list) => Json(list).into_response(),
+        Err(e) => e.into_response(),
     }
-    let today = Utc::now().date_naive();
-    let adjustments = match store::list(&ctx.db, &patient, today).await {
-        Ok(a) => a,
-        Err(e) => {
-            if let Some(r) = refused(&ctx, &agent, purpose, Action::Read, &e).await {
-                return r.into_response();
-            }
-            return failure(e).into_response();
-        }
-    };
-    if let Err(r) = audit_resource(
-        &ctx.db,
-        &agent,
-        Access {
-            action: Action::Read,
-            outcome: 0,
-            purpose,
-            resource: "Adjustment",
-            patient_id: Some(&patient),
-        },
-        serde_json::json!({ "adjustments": adjustments.len() }),
-    )
-    .await
-    {
-        return r.into_response();
-    }
-    Json(AdjustmentList { adjustments }).into_response()
 }
 
 /// `POST /api/patients/{id}/adjustments`: record one. The author is the token.

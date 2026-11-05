@@ -8848,6 +8848,47 @@
         "x-epr-resource": "AuditLog"
       }
     },
+    "/fhir/R4/Flag": {
+      "get": {
+        "operationId": "getFhirR4Flag",
+        "responses": {
+          "401": {
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcome"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcome"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /fhir/R4/Flag",
+        "tags": [
+          "fhir-r4"
+        ],
+        "x-epr-action": "Search",
+        "x-epr-resource": "Adjustment"
+      }
+    },
     "/fhir/R4/Observation": {
       "get": {
         "operationId": "getFhirR4Observation",
@@ -9149,6 +9190,47 @@
         ],
         "x-epr-action": "Read",
         "x-epr-resource": "AllergyIntolerance"
+      }
+    },
+    "/fhir/R5/Flag": {
+      "get": {
+        "operationId": "getFhirR5Flag",
+        "responses": {
+          "401": {
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcome"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcome"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /fhir/R5/Flag",
+        "tags": [
+          "fhir-r5"
+        ],
+        "x-epr-action": "Search",
+        "x-epr-resource": "Adjustment"
       }
     },
     "/fhir/R5/Observation": {

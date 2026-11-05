@@ -4,7 +4,7 @@ What a person needs in order to use care: an interpreter, large print, step-free
 
 **Built:** the rules in `electronic-patient-record-service-with-rust/src/adjustments.rs`, the append-only store in `adjustments_store.rs` (table `adjustment_versions`, view `adjustment_current`, migration 26) and the routes in `controllers/adjustments.rs`. The patient and summary banners show what stands and whether a check is overdue, and `AdjustmentsSection.svelte` on the patient page records, checks and ends a need. A failed look says so, and an empty list says "none recorded", which does not mean there are none.
 
-**Not built:** the patient's own view, a proxy scope, a FHIR `Flag`, a list across patients of reviews that are overdue, booking an interpreter, and anything beside an appointment, because the record holds no appointments.
+**Not built:** the patient's own view, a proxy scope, a list across patients of reviews that are overdue, booking an interpreter, and anything beside an appointment, because the record holds no appointments.
 
 ## Why this is in the record
 
@@ -50,6 +50,20 @@ No care relationship is needed, because reception must know before the person ar
 | `PUT /api/patients/{id}/adjustments/{adjustment_id}` | `{expected_version, action, review_by?, reason}`, where `action` is `review` or `end` |
 
 A stale `expected_version` is a 409 and a refused change a 422. Every read and write is audited; the audit row holds ids, versions and statuses, never a code, a note or a reason, because a code can say something about a person's health.
+
+## FHIR
+
+`GET /fhir/R4/Flag?patient=` and `GET /fhir/R5/Flag?patient=` answer with the same decision and audit row as the list. They are read-only.
+
+| Adjustment | `Flag` |
+|---|---|
+| Active | `status: active`, and no `period`, because a current version's time is its last change, not when the need began |
+| Ended | `status: inactive`, with `period.end` |
+| Code and category | `urn:epr:reasonable-adjustment` and `urn:epr:reasonable-adjustment-category`, this project's own |
+| Note | `code.text` |
+| Reason, review date, overdue | Not sent |
+
+The shape follows the [HL7 `Flag` resource](https://hl7.org/fhir/R4/flag.html). It does not claim the NHS England Reasonable Adjustment Flag or any national profile, because no national code is used. An empty result carries a warning that this does not mean the person has none.
 
 ## Not settled
 
