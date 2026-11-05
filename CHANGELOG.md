@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - `db reset` is refused outside development and test
+
+- **Clinical risk:** **yes: a defect in the previous entry, now fixed.** That commit mapped `db reset` to `Migrator::fresh`, which drops every table and does not go through the `down` guard, so one command could have destroyed clinical tables in production. It was on `main` for under an hour and was never deployed: nothing is.
+- **Built:** `reset_allowed`: only in `development` or `test`, with `EPR_ALLOW_DESTRUCTIVE_DOWN=true`, the same rule as `down`. A unit test covers each case.
+- **Not done / not verified:** the database-level protection is unchanged: anyone who can reach Postgres directly can still drop a table.
+
 ## 2026-11-05 - From Loco to axa (still on SeaORM)
 
 - **Clinical risk:** **yes, in how the service starts and what it allows.** No clinical rule changed. Login is off by default only in `development`, `test` and `container-dev`, as before. **Stricter:** any other environment name now gets the production login rules; Loco held only the exact name `production` to them, so `staging` could start without keys. The rollback guard reads `APP_ENV`, then `LOCO_ENV`, and a test holds that the older name cannot loosen it.

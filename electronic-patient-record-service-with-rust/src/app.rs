@@ -48,6 +48,12 @@ fn default_require_auth(environment: &Environment) -> Option<bool> {
     .then_some(false)
 }
 
+/// Whether `db reset` may run. `fresh` drops every table without going through a migration's `down`, so it
+/// gets the same rule as `down`: never in any environment but these two, and only when asked for by name.
+fn reset_allowed(environment: &Environment, flag: Option<&str>) -> bool {
+    matches!(environment, Environment::Development | Environment::Test) && flag == Some("true")
+}
+
 impl TestApp for App {
     /// Boot under the `test` environment, migrating the shared test database forward and keeping its rows.
     async fn boot_test() -> Result<BootResult> {
@@ -89,7 +95,16 @@ impl App {
         match command {
             DbCommand::Migrate => Migrator::up(&ctx.db, None).await?,
             DbCommand::Down { steps } => Migrator::down(&ctx.db, Some(steps)).await?,
-            DbCommand::Reset => Migrator::fresh(&ctx.db).await?,
+            DbCommand::Reset => {
+                let flag = std::env::var("EPR_ALLOW_DESTRUCTIVE_DOWN").ok();
+                if !reset_allowed(&ctx.environment, flag.as_deref()) {
+                    return Err(Error::string(
+                        "db reset drops every table, so it is refused outside development and test, \
+                         and needs EPR_ALLOW_DESTRUCTIVE_DOWN=true there",
+                    ));
+                }
+                Migrator::fresh(&ctx.db).await?;
+            }
             DbCommand::Status => Migrator::status(&ctx.db).await?,
             // The clinical record is append-only, so the service has no truncate.
             DbCommand::Truncate => {
@@ -251,6 +266,17 @@ mod tests {
         assert_eq!(default_require_auth(&Environment::Production), None);
         assert_eq!(default_require_auth(&other("staging")), None);
         assert_eq!(default_require_auth(&other("productoin")), None);
+    }
+
+    #[test]
+    fn db_reset_is_refused_unless_it_is_development_or_test_and_asked_for_by_name() {
+        assert!(reset_allowed(&Environment::Development, Some("true")));
+        assert!(reset_allowed(&Environment::Test, Some("true")));
+        assert!(!reset_allowed(&Environment::Development, None));
+        assert!(!reset_allowed(&Environment::Test, Some("yes")));
+        assert!(!reset_allowed(&Environment::Production, Some("true")));
+        assert!(!reset_allowed(&other(CONTAINER_DEV), Some("true")));
+        assert!(!reset_allowed(&other("staging"), Some("true")));
     }
 
     #[test]
