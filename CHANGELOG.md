@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - Matcher 0.7.0 (OQ-BV3)
+
+- **Clinical risk:** **not yet in effect.** The release adds `Patient.death_date` as weak match evidence. Nothing changes until the service uses it, which is the next commit. H-001 records the risk.
+- **Built:** the version, published to crates.io at the maintainer's direction. The matcher's 110 tests pass, with clippy, the docs and a publish dry run.
+- **Not done / not verified:** the 0.05 weight has not been tried on real data, and no clinician has reviewed it. A crates.io version cannot be taken back; it can only be yanked.
+
 ## 2026-11-05 - A patient's own login stops once a death is confirmed (BV-5; H-046 stays open)
 
 - **Clinical risk:** **yes.** A confirmed death stops the patient's own access to the record, the photo, the access log and "my record". A withdrawal restores it, with nothing to do by hand. H-046 stays `open`.

@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-05
+
 - **Added:** `Patient.death_date` and `Weights.death_date` (0.05), weak match evidence decided as OQ-BV3. Counted only when both records carry one. Omitted from JSON when absent, and defaults to absent, so existing records score as before.
 - **Breaking:** a `Patient` or `Weights` struct literal must name the new field or use `..Default::default()`.
 - **Not done / not verified:** the weight is a guess, like the others, and has not been tried on real data. Two people who die on one day, such as in one accident, gain a little score from it, and a shared date can raise a pair over `auto_link_threshold` when the guards already pass. Nothing has been reviewed by a clinician. The service does not use this field yet, and it must never accept it from a client: it should come only from a standing death assertion.
