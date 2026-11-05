@@ -2,7 +2,7 @@
 
 The rules for recording that a person has died (BV-1). A first draft for clinical and legal review: no clinician, medical examiner or bereaved person has reviewed it. The reasons and sources are on [bereavement](index.md).
 
-**Built:** the rules and the read model in `electronic-patient-record-service-with-rust/src/death.rs`, and the append-only store in `death_store.rs` (table `death_assertion_versions`, view `death_assertion_current`, migration 25). **Not built:** a route, a screen, a writer, or anything that a hold acts on, so the store is empty in use. Until a death can be recorded, a report that arrives is refused rather than dropped: an HL7 message with PID-29 or PID-30 is answered `AE`, changes nothing and waits in the feed queue for a person, and a FHIR write with `deceased[x]` gets a 422. The service has no outbound contact yet, so nothing is held today.
+**Built:** the rules and the read model in `electronic-patient-record-service-with-rust/src/death.rs`, and the append-only store in `death_store.rs` (table `death_assertion_versions`, view `death_assertion_current`, migration 25). The routes are in `controllers/deaths.rs`. **Not built:** a screen, a feed that writes a report, or anything that a hold acts on. Until a feed can record a death, a report that arrives is refused rather than dropped: an HL7 message with PID-29 or PID-30 is answered `AE`, changes nothing and waits in the feed queue for a person, and a FHIR write with `deceased[x]` gets a 422. The service has no outbound contact yet, so nothing is held today.
 
 ## The model
 
@@ -25,6 +25,31 @@ A death is an assertion with evidence, not a true-or-false field on the identity
 5. **Every report and step needs an author and a reason.** The reason is not optional on a withdrawal: a corrected record with no reason is the failure the US audit found ([bereavement](index.md#a-death-recorded-in-error)).
 6. **A date may be `YYYY`, `YYYY-MM`, `YYYY-MM-DD` or an RFC 3339 instant, or absent with a reason.** It cannot be later than now; a partial date is compared at its start.
 
+## Who may do what
+
+Decided by the maintainer as OQ-BV2, not yet reviewed by a Clinical Safety Officer.
+
+| Role | The one answer | The assertions, with reasons | Report | Step forward | Withdraw |
+|---|---|---|---|---|---|
+| Clinician | Yes | Yes | Yes | Yes | Yes |
+| Nurse | Yes | Yes | Yes | Yes | No |
+| Pharmacist, allied health, receptionist, clinical administrator | Yes | No | Yes | No | No |
+| Integration | No | No | Yes, as a feed | No | No |
+| Patient, proxy, auditor, Clinical Safety Officer | No | No | No | No | No |
+
+The decision names verifying and withdrawing. `certified` and `registered` are read as the same kind of step as verifying. No care relationship is needed, because reception must see the answer before ringing a family and the staff who confirm a death are often not on the care team. The reasons are kept from the wider group because they are free text and may hold clinical detail. A refused consent stops a read of the answer, as it stops any read by staff; this needs review, because a banner that cannot answer is less safe than one that can.
+
+## Routes
+
+| Route | Does |
+|---|---|
+| `GET /api/patients/{id}/death` | The one answer, and `holds_contact` |
+| `GET /api/patients/{id}/death/assertions` | Every assertion, newest first, withdrawn ones included |
+| `POST /api/patients/{id}/death/assertions` | Report: `{source, occurred, reason}`. The reporter is the token |
+| `PUT /api/patients/{id}/death/assertions/{assertion_id}` | One step: `{expected_version, to, reason}` |
+
+A stale `expected_version` is a 409 and a refused step a 422. Every read and write is audited; the audit row holds ids, versions and statuses, never a reason or a date.
+
 ## The one answer
 
 All of a patient's assertions, each at its current version, give one answer:
@@ -38,7 +63,6 @@ All of a patient's assertions, each at its current version, give one answer:
 
 ## Not settled
 
-- **Who may take each step (OQ-BV2).** The rules name a person, not a role. The draft for review: any member of staff may report, a clinician or nurse may verify, and only a clinician may withdraw.
-- **Does the matcher's `Patient` carry a date of death (OQ-BV3).** Recommendation: no. The assertion lives apart from identity, as this page describes, and a date of death is not used as match evidence. Not yet decided.
+- **A date of death in the matcher (OQ-BV3, decided, not built).** The matcher's `Patient` will carry a date of death as weak match evidence. The assertion stays apart from identity.
 - **How soon a held contact is reviewed, and who owns that.** OQ-BV1 says a person confirms; it does not say by when.
 - **Other fields on [the proposal](index.md#what-this-project-would-need).** `found_at`, `place`, `verified_at` and `coroner_referred` are not in this slice. They can be added to the stored body without a migration, once someone has said which are required.

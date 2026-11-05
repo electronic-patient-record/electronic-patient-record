@@ -667,6 +667,13 @@ pub fn routes() -> Routes {
             "/{id}/observations/{observation_id}",
             put(super::observations::update),
         )
+        .add("/{id}/death", get(super::deaths::answer))
+        .add("/{id}/death/assertions", get(super::deaths::list))
+        .add("/{id}/death/assertions", post(super::deaths::create))
+        .add(
+            "/{id}/death/assertions/{assertion_id}",
+            put(super::deaths::update),
+        )
         .add("/{id}/amendments", get(super::amendments::list))
         .add("/{id}/amendments", post(super::amendments::create))
         .add(

@@ -3,7 +3,8 @@
 //! reason.
 //!
 //! Reads follow a merge by provenance: a report on a record merged away counts for the surviving
-//! record, and a merged-away record is not one anything writes to. Nothing serves this store yet: who may take each step is undecided (OQ-BV2).
+//! record, and a merged-away record is not one anything writes to. The routes are in
+//! `controllers/deaths.rs`.
 
 use crate::death::{self, Actor, Answer, Assertion, Refusal, Step};
 use crate::ids;
@@ -53,7 +54,7 @@ fn row_to_assertion(row: &sea_orm::QueryResult) -> Result<StoredAssertion, Store
 }
 
 /// A refused step as the writer's to fix.
-fn refused(r: Refusal) -> StoreError {
+pub(crate) fn refused(r: Refusal) -> StoreError {
     StoreError::BadQuery(
         match r {
             Refusal::AuthorRequired => "an author is required",

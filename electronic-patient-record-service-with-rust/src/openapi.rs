@@ -523,6 +523,68 @@ fn amendment_schemas() -> Value {
         "AmendmentList": {
             "type": "object", "required": ["amendments"],
             "properties": {"amendments": {"type": "array", "items": {"$ref": "#/components/schemas/AmendmentView"}}}
+        },
+        "DeathOccurred": {
+            "type": "object", "required": ["kind"],
+            "description": "When the person died (`known`, with `at`), or why that is not known (`not-known`, with `reason`).",
+            "properties": {
+                "kind": {"enum": ["known", "not-known"]},
+                "at": {"type": "string", "description": "`YYYY`, `YYYY-MM`, `YYYY-MM-DD` or an RFC 3339 instant."},
+                "reason": {"type": "string"}
+            }
+        },
+        "ReportDeath": {
+            "type": "object", "required": ["source", "occurred", "reason"], "additionalProperties": false,
+            "properties": {
+                "source": {"enum": ["registrar", "national-demographics", "hospital", "general-practice", "care-home", "coroner", "family-member", "other-system"]},
+                "occurred": {"$ref": "#/components/schemas/DeathOccurred"},
+                "reason": {"type": "string"}
+            }
+        },
+        "StepDeathAssertion": {
+            "type": "object", "required": ["expected_version", "to", "reason"], "additionalProperties": false,
+            "properties": {
+                "expected_version": {"type": "integer"},
+                "to": {"enum": ["verified", "certified", "registered", "withdrawn-in-error"], "description": "Withdrawal needs the clinician role."},
+                "reason": {"type": "string"}
+            }
+        },
+        "DeathAssertion": {
+            "type": "object", "required": ["id", "patient_id", "version", "author", "recorded_at", "assertion"],
+            "properties": {
+                "id": {"type": "string"},
+                "patient_id": {"type": "string"},
+                "version": {"type": "integer"},
+                "author": {"type": "string"},
+                "recorded_at": {"type": "string"},
+                "assertion": {
+                    "type": "object", "required": ["source", "reported_by", "occurred", "status", "reason"],
+                    "properties": {
+                        "source": {"type": "string"},
+                        "reported_by": {"type": "object", "required": ["kind", "id"],
+                            "properties": {"kind": {"enum": ["person", "feed"]}, "id": {"type": "string"}}},
+                        "occurred": {"$ref": "#/components/schemas/DeathOccurred"},
+                        "status": {"enum": ["reported", "verified", "certified", "registered", "withdrawn-in-error"]},
+                        "reason": {"type": "string"}
+                    }
+                }
+            }
+        },
+        "DeathAssertionList": {
+            "type": "object", "required": ["assertions"],
+            "properties": {"assertions": {"type": "array", "items": {"$ref": "#/components/schemas/DeathAssertion"}}}
+        },
+        "DeathAnswer": {
+            "type": "object", "required": ["answer", "holds_contact"],
+            "description": "`not-known-to-have-died` never means the person is known to be living.",
+            "properties": {
+                "answer": {"enum": ["not-known-to-have-died", "asserted"]},
+                "status": {"enum": ["reported", "verified", "certified", "registered"]},
+                "confirmed": {"type": "boolean"},
+                "occurred": {"type": ["string", "null"]},
+                "dates_differ": {"type": "boolean"},
+                "holds_contact": {"type": "boolean"}
+            }
         }
     })
 }
@@ -1205,6 +1267,22 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
     ),
     (
         "POST",
+        "/api/patients/{id}/death/assertions",
+        "ReportDeath",
+        "201",
+        "DeathAssertion",
+        "",
+    ),
+    (
+        "PUT",
+        "/api/patients/{id}/death/assertions/{assertion_id}",
+        "StepDeathAssertion",
+        "200",
+        "DeathAssertion",
+        "VersionConflict",
+    ),
+    (
+        "POST",
         "/api/patients/{id}/amendments",
         "CreateAmendment",
         "201",
@@ -1234,6 +1312,13 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
     ),
     ("GET", "/api/patients/{id}/consents", "ConsentList", &[]),
     ("GET", "/api/patients/{id}/amendments", "AmendmentList", &[]),
+    ("GET", "/api/patients/{id}/death", "DeathAnswer", &[]),
+    (
+        "GET",
+        "/api/patients/{id}/death/assertions",
+        "DeathAssertionList",
+        &[],
+    ),
     ("GET", "/api/patients/{id}/links", "PatientLinkList", &[]),
     ("GET", "/api/hazards", "HazardList", &[]),
     ("GET", "/api/me/patients", "OwnRecordList", &[]),

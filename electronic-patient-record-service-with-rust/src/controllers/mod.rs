@@ -6,6 +6,7 @@ pub mod audit;
 pub mod break_glass;
 mod common;
 pub mod consents;
+pub mod deaths;
 pub mod feed;
 pub mod fhir;
 pub mod fhir_r5;

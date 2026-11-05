@@ -29,8 +29,11 @@ const EXEMPT: &[(&str, &str)] = &[(
 )];
 
 /// The call for a search route: its path with a query that matches nothing in particular.
-fn call(template: &str) -> Option<String> {
+fn call(template: &str, patient: &str) -> Option<String> {
     Some(match template {
+        "/api/patients/{id}/death/assertions" => {
+            format!("/api/patients/{patient}/death/assertions")
+        }
         "/api/patients" => "/api/patients?family=nobody".into(),
         "/fhir/R4/Patient" => "/fhir/R4/Patient?family=nobody".into(),
         "/fhir/R5/Patient" => "/fhir/R5/Patient?family=nobody".into(),
@@ -69,6 +72,18 @@ async fn a_successful_search_or_list_leaves_an_audit_row() {
         let mut unaudited = Vec::new();
         let mut unlisted = Vec::new();
         let mut seen = 0;
+        let made = server
+            .post("/api/patients")
+            .json(
+                &serde_json::json!({ "patient": { "names": [{ "family": "Searchcoverage" }],
+                "birth_date": "1911-02-03" }, "override_reason": "search coverage" }),
+            )
+            .await;
+        assert_eq!(made.status_code(), StatusCode::CREATED, "{}", made.text());
+        let patient = made.json::<serde_json::Value>()["id"]
+            .as_str()
+            .unwrap()
+            .to_string();
         for (method, template, _, action) in routes::TABLE {
             if *method != "GET" && *method != "POST" || *action != Action::Search {
                 continue;
@@ -76,7 +91,7 @@ async fn a_successful_search_or_list_leaves_an_audit_row() {
             if EXEMPT.iter().any(|(t, _)| t == template) {
                 continue;
             }
-            let Some(path) = call(template) else {
+            let Some(path) = call(template, &patient) else {
                 unlisted.push(*template);
                 continue;
             };

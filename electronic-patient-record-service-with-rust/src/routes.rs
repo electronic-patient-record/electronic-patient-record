@@ -340,6 +340,30 @@ pub const TABLE: &[(&str, &str, Resource, Action)] = &[
     ),
     (
         "GET",
+        "/api/patients/{id}/death",
+        Resource::DeathAssertion,
+        Action::Read,
+    ),
+    (
+        "GET",
+        "/api/patients/{id}/death/assertions",
+        Resource::DeathAssertion,
+        Action::Search,
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/death/assertions",
+        Resource::DeathAssertion,
+        Action::Create,
+    ),
+    (
+        "PUT",
+        "/api/patients/{id}/death/assertions/{assertion_id}",
+        Resource::DeathAssertion,
+        Action::Update,
+    ),
+    (
+        "GET",
         "/api/patients/{id}/amendments",
         Resource::Amendment,
         Action::Read,

@@ -122,6 +122,9 @@ pub enum Resource {
     MedicationRequest,
     /// A patient's request to amend a record, and the decision on it (`amendments_store.rs`).
     Amendment,
+    /// A report that a patient has died, and the steps on it (`death_store.rs`). Not clinical in the
+    /// sense below: reception must see it before ringing a family, and no care relationship applies.
+    DeathAssertion,
     /// FHIR `AllergyIntolerance`.
     AllergyIntolerance,
     /// FHIR `DocumentReference` / `Composition` (notes).
@@ -156,13 +159,14 @@ pub enum Resource {
 
 impl Resource {
     /// Every resource kind, in a fixed order.
-    pub const ALL: [Resource; 18] = [
+    pub const ALL: [Resource; 19] = [
         Resource::PatientIdentity,
         Resource::Encounter,
         Resource::Condition,
         Resource::Observation,
         Resource::MedicationRequest,
         Resource::Amendment,
+        Resource::DeathAssertion,
         Resource::AllergyIntolerance,
         Resource::Document,
         Resource::Consent,
@@ -187,6 +191,7 @@ impl Resource {
             Resource::Observation => "Observation",
             Resource::MedicationRequest => "MedicationRequest",
             Resource::Amendment => "Amendment",
+            Resource::DeathAssertion => "DeathAssertion",
             Resource::AllergyIntolerance => "AllergyIntolerance",
             Resource::Document => "Document",
             Resource::Consent => "Consent",
@@ -214,6 +219,7 @@ impl Resource {
         !matches!(
             self,
             Resource::PatientIdentity
+                | Resource::DeathAssertion
                 | Resource::Consent
                 | Resource::AuditLog
                 | Resource::CareRelationship
@@ -523,8 +529,8 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
     use Action::{Create, Export, MarkEnteredInError as Eie, Read, Search, Update};
     use Resource::{
         AllergyIntolerance as Allergy, Amendment, AuditLog, BreakGlass as Glass,
-        CareRelationship as Rel, Condition, Consent as Cons, Document, Encounter,
-        FeedQueue as Queue, Hazard, MedicationRequest as Meds, Observation,
+        CareRelationship as Rel, Condition, Consent as Cons, DeathAssertion as Death, Document,
+        Encounter, FeedQueue as Queue, Hazard, MedicationRequest as Meds, Observation,
         PatientIdentity as Identity, PatientLink as Link, Referral, ReferralQueue as RefQueue,
         ReferralWorklist as Worklist,
     };
@@ -539,6 +545,15 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         // step belongs to which role is checked by the route.
         (Role::Clinician, Amendment) => &[Read, Search, Update],
         (Role::Patient, Amendment) => &[Read, Search, Create, Update],
+        // Death assertions (OQ-BV2, decided by the maintainer, not yet reviewed): any member of staff
+        // may report and read the one answer; a clinician or nurse reads the assertions and takes a
+        // step; the route keeps withdrawal to a clinician. An integration can only report.
+        (Role::Clinician | Role::Nurse, Death) => &[Read, Search, Create, Update],
+        (
+            Role::Pharmacist | Role::AlliedHealth | Role::Receptionist | Role::ClinicalAdmin,
+            Death,
+        ) => &[Read, Create],
+        (Role::Integrator, Death) => &[Create],
         // Referrals: a treating role sends and answers them (which step belongs to the sender and
         // which to the recipient is checked by the route, OQ-PC2); the patient and a proxy only read.
         (Role::Clinician | Role::Nurse | Role::AlliedHealth, Referral) => {
@@ -1223,8 +1238,8 @@ mod tests {
                 }
             }
         }
-        // 11 roles × 18 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
-        assert_eq!(cells, 11 * 18 * 6 * 8 * 5 * 3 * 7 * 2);
+        // 11 roles × 19 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
+        assert_eq!(cells, 11 * 19 * 6 * 8 * 5 * 3 * 7 * 2);
         assert!(allows > 0);
     }
 

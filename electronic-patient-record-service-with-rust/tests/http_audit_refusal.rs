@@ -364,6 +364,41 @@ async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_r
         )
         .await;
 
+        // A death report and a step on it.
+        refused_then_accepted(db, "POST /api/patients/{id}/death/assertions", || async {
+            let r = server
+                .post(&format!("/api/patients/{id}/death/assertions"))
+                .json(&json!({ "source": "hospital",
+                    "occurred": { "kind": "known", "at": "2026-11-01" },
+                    "reason": "the ward telephoned" }))
+                .await;
+            (r.status_code(), r.text())
+        })
+        .await;
+        let listed = server
+            .get(&format!("/api/patients/{id}/death/assertions"))
+            .await
+            .json::<Value>();
+        let assertion_id = listed["assertions"][0]["id"]
+            .as_str()
+            .expect("an assertion id")
+            .to_string();
+        refused_then_accepted(
+            db,
+            "PUT /api/patients/{id}/death/assertions/{assertion_id}",
+            || async {
+                let r = server
+                    .put(&format!(
+                        "/api/patients/{id}/death/assertions/{assertion_id}"
+                    ))
+                    .json(&json!({ "expected_version": 1, "to": "withdrawn-in-error",
+                        "reason": "the wrong record" }))
+                    .await;
+                (r.status_code(), r.text())
+            },
+        )
+        .await;
+
         // The hazard register: raise a hazard, then record a control on it (a control needs no officer
         // role, so it works with login off; a retirement is refused without the role, by design).
         refused_then_accepted(db, "POST /api/hazards", || async {

@@ -1,5 +1,5 @@
 //! A report that a person has died (BV-1, first slice): the rules for one assertion and the single
-//! answer a set of assertions gives, pure. Nothing stores, serves or shows an assertion yet.
+//! answer a set of assertions gives, pure.
 //!
 //! A death is an assertion with evidence, not a true-or-false field, and it may be wrong. The spec is
 //! `spec/bereavement/death-assertion.md`.
@@ -14,7 +14,8 @@
 //! an author and a reason that are not blank; a date of death cannot be in the future; a withdrawn
 //! assertion stays in the history and stops counting.
 //!
-//! Which roles may take each step is not decided here (OQ-BV2).
+//! Which roles may take each step is not decided here but in the policy table and
+//! `controllers/deaths.rs` (OQ-BV2).
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

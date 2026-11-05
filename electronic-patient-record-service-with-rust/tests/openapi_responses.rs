@@ -561,6 +561,36 @@ async fn real_responses_validate_against_the_served_schemas() {
             &mut problems,
         );
 
+        // Death assertions: the answer, a report, the list, a step and a stale step.
+        let p = "/api/patients/{id}/death/assertions";
+        let reported = server
+            .post(&format!("/api/patients/{id}/death/assertions"))
+            .json(&json!({ "source": "hospital",
+                "occurred": { "kind": "not-known", "reason": "not yet told" },
+                "reason": "the ward telephoned" }))
+            .await;
+        assert_eq!(reported.status_code(), StatusCode::CREATED, "{}", reported.text());
+        let reported: Value = reported.json();
+        expect("death report", p, "post", StatusCode::CREATED, &reported, &mut problems);
+        let list = server.get(&format!("/api/patients/{id}/death/assertions")).await;
+        assert_eq!(list.status_code(), StatusCode::OK, "{}", list.text());
+        expect("death assertions", p, "get", StatusCode::OK, &list.json(), &mut problems);
+        let answer = server.get(&format!("/api/patients/{id}/death")).await;
+        assert_eq!(answer.status_code(), StatusCode::OK, "{}", answer.text());
+        expect("death answer", "/api/patients/{id}/death", "get", StatusCode::OK, &answer.json(), &mut problems);
+        let url = format!(
+            "/api/patients/{id}/death/assertions/{}",
+            reported["id"].as_str().unwrap()
+        );
+        let body = json!({ "expected_version": 1, "to": "withdrawn-in-error", "reason": "wrong record" });
+        let step = server.put(&url).json(&body).await;
+        assert_eq!(step.status_code(), StatusCode::OK, "{}", step.text());
+        let put = "/api/patients/{id}/death/assertions/{assertion_id}";
+        expect("death step", put, "put", StatusCode::OK, &step.json(), &mut problems);
+        let stale = server.put(&url).json(&body).await;
+        assert_eq!(stale.status_code(), StatusCode::CONFLICT, "{}", stale.text());
+        expect("death stale step", put, "put", StatusCode::CONFLICT, &stale.json(), &mut problems);
+
         // Amendments: ask, list, a step, and a stale step.
         let asked = server
             .post(&format!("/api/patients/{id}/amendments"))

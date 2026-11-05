@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - Death assertion routes, and who may take each step (BV-1, in part; OQ-BV2, OQ-BV3; H-046 stays open)
+
+- **Clinical risk:** **yes, for what staff can do.** Any member of staff can now record that a patient has died through the API, a clinician or nurse can confirm it, and a clinician can withdraw it. No screen uses these routes yet and nothing acts on a hold, so a clinician sees no change. H-046 stays `open`.
+- **Decided by the maintainer:** OQ-BV2 as drafted, and OQ-BV3: the matcher's `Patient` carries a date of death as weak match evidence. That was against my recommendation. Neither has been reviewed by a Clinical Safety Officer.
+- **Built:** four routes in `controllers/deaths.rs`; the policy resource `DeathAssertion`; OpenAPI schemas; `tests/http_deaths.rs`.
+- **My readings of the decision, for review:** `certified` and `registered` are treated like verifying. No care relationship is needed, so reception can see the answer. The reasons are kept from the wider staff group, as free text may hold clinical detail. A patient and a proxy can see none of this, and a refused consent stops a read of the answer.
+- **Not done / not verified:** the banner and screen, the feed writing a report, FHIR `deceased[x]`, and the matcher date. The integration role may report through this route, but the test covers only people.
+
 ## 2026-11-05 - An append-only store for death assertions (BV-1, in part; H-046 stays open)
 
 - **Clinical risk:** none in effect: nothing writes to the store or reads it, so nothing changes for a clinician. The migration adds a table that will hold personal data. H-046 stays `open`.
