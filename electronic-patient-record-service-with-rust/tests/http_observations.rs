@@ -51,7 +51,7 @@ fn observation(value: f64, unit: &str, status: &str) -> Value {
     json!({
         "code": "8867-4", "value": value, "unit": unit,
         "range": { "low": 60.0, "high": 100.0 },
-        "effective_at": "2026-10-26T09:30:00Z", "status": status
+        "effective_at": (chrono::Utc::now() - chrono::Duration::hours(1)).to_rfc3339(), "status": status
     })
 }
 
@@ -401,6 +401,43 @@ async fn who_may_record_read_and_retract_an_observation() {
             for secret in ["71.37", "/min", "\"low\"", "98.6", "degF"] {
                 assert!(!d.contains(secret), "{secret} leaked into the audit row: {d}");
             }
+        }
+
+        // An old reading needs a reason, and is never refused with one.
+        let mut old = observation(71.0, "/min", "final");
+        old["effective_at"] = json!("2025-01-01T09:00:00Z");
+        let asked = server
+            .post(&url)
+            .add_header(ch.clone(), cv.clone())
+            .json(&json!({ "observation": old }))
+            .await;
+        assert_eq!(asked.status_code(), StatusCode::UNPROCESSABLE_ENTITY, "{}", asked.text());
+        assert_eq!(
+            asked.json::<Value>()["error_codes"],
+            json!(["effective_at_reason_required"])
+        );
+        let late = server
+            .post(&url)
+            .add_header(ch.clone(), cv.clone())
+            .json(&json!({ "observation": old, "reason": "typed up after downtime" }))
+            .await;
+        assert_eq!(late.status_code(), StatusCode::CREATED, "{}", late.text());
+
+        // A time before the patient was born cannot be right, whatever the reason.
+        let born = server.get(&format!("/api/patients/{pid}")).add_header(ch.clone(), cv.clone()).await;
+        let born = born.json::<Value>()["patient"]["birth_date"].as_str().unwrap().to_string();
+        if !born.starts_with("1900") {
+            old["effective_at"] = json!("1900-01-01T09:00:00Z");
+            let impossible = server
+                .post(&url)
+                .add_header(ch.clone(), cv.clone())
+                .json(&json!({ "observation": old, "reason": "any reason" }))
+                .await;
+            assert_eq!(impossible.status_code(), StatusCode::UNPROCESSABLE_ENTITY, "{}", impossible.text());
+            assert_eq!(
+                impossible.json::<Value>()["error_codes"],
+                json!(["effective_at_before_birth"])
+            );
         }
     })
     .await;

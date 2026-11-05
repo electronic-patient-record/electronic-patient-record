@@ -146,6 +146,112 @@ fn parse_effective(
     Ok(at)
 }
 
+/// How many days old a measured time may be before a first entry needs a reason, unless
+/// `EPR_OBSERVATION_LATE_DAYS` says otherwise. A placeholder, for a clinician to set.
+pub const LATE_REASON_DAYS: i64 = 7;
+
+/// `EPR_OBSERVATION_LATE_DAYS` as a number of days from 1 to 3650, or the default. A bad value is not a
+/// reason to refuse readings or to stop asking, so the default applies and the log says so.
+#[must_use]
+pub fn late_days_from(value: Option<&str>) -> i64 {
+    match value.map(str::trim).filter(|v| !v.is_empty()) {
+        None => LATE_REASON_DAYS,
+        Some(v) => match v.parse::<i64>() {
+            Ok(days) if (1..=3650).contains(&days) => days,
+            _ => {
+                tracing::warn!(
+                    value = v,
+                    "EPR_OBSERVATION_LATE_DAYS is not 1 to 3650: using the default"
+                );
+                LATE_REASON_DAYS
+            }
+        },
+    }
+}
+
+/// The start of a birth date (`YYYY`, `YYYY-MM` or `YYYY-MM-DD`) in UTC, or `None` if it cannot be read.
+fn birth_start(birth_date: &str) -> Option<DateTime<Utc>> {
+    let mut parts = birth_date.splitn(3, '-');
+    let year: i32 = parts.next()?.parse().ok()?;
+    let month: u32 = parts.next().map_or(Some(1), |m| m.parse().ok())?;
+    let day: u32 = parts.next().map_or(Some(1), |d| d.parse().ok())?;
+    Some(
+        chrono::NaiveDate::from_ymd_opt(year, month, day)?
+            .and_hms_opt(0, 0, 0)?
+            .and_utc(),
+    )
+}
+
+/// What is wrong with a measured time for this patient, as a stable code and a sentence. A time before
+/// the patient was born is impossible, so it is refused; a day is allowed for the patient's time zone,
+/// because the birth date has none. A time older than `late_days` needs a reason, and is never refused
+/// with one: a real reading typed up after downtime must not be lost. Marking an entry in error is
+/// exempt, so that a mistaken date can always be retracted.
+#[must_use]
+pub fn timing_problems(
+    record: &ObservationRecord,
+    reason: Option<&str>,
+    birth_date: Option<&str>,
+    late_days: i64,
+    now: DateTime<Utc>,
+) -> Vec<(&'static str, String)> {
+    let mut problems = Vec::new();
+    if record.status == Status::EnteredInError {
+        return problems;
+    }
+    let Ok(at) = parse_effective(&record.effective_at, now) else {
+        return problems;
+    };
+    if birth_date
+        .and_then(birth_start)
+        .is_some_and(|born| at < born - Duration::days(1))
+    {
+        problems.push((
+            "effective_at_before_birth",
+            "the measured time is before the patient's birth date".to_string(),
+        ));
+    }
+    if at < now - Duration::days(late_days) && reason.is_none_or(|r| r.trim().is_empty()) {
+        problems.push((
+            "effective_at_reason_required",
+            format!(
+                "this reading is more than {late_days} days old: say why it is being entered now"
+            ),
+        ));
+    }
+    problems
+}
+
+/// The 422 for a time this patient's record cannot take, or `None`. A patient who does not exist is left
+/// to the write, which answers 404.
+///
+/// # Errors
+///
+/// [`StoreError::Db`] on a database failure.
+pub async fn timing_refusal(
+    db: &impl ConnectionTrait,
+    patient_id: &str,
+    record: &ObservationRecord,
+    reason: Option<&str>,
+    now: DateTime<Utc>,
+) -> Result<Option<crate::api_error::ApiError>, StoreError> {
+    let birth_date = match patients_store::current(db, patient_id).await {
+        Ok(p) => p.patient.birth_date,
+        Err(StoreError::NotFound) => return Ok(None),
+        Err(e) => return Err(e),
+    };
+    let late_days = late_days_from(std::env::var("EPR_OBSERVATION_LATE_DAYS").ok().as_deref());
+    let coded = timing_problems(record, reason, birth_date.as_deref(), late_days, now);
+    if coded.is_empty() {
+        return Ok(None);
+    }
+    let codes: Vec<&str> = coded.iter().map(|(c, _)| *c).collect();
+    let messages: Vec<String> = coded.iter().map(|(_, m)| m.clone()).collect();
+    Ok(Some(
+        crate::api_error::ApiError::invalid(messages).with("error_codes", codes),
+    ))
+}
+
 /// What is wrong with a record, as a stable code and a sentence, in a fixed order (the observation's
 /// own problems first); empty if nothing.
 #[must_use]
@@ -460,6 +566,7 @@ pub async fn update(
 mod tests {
     use super::*;
     use crate::observations::AbsentReason;
+    use chrono::TimeZone;
 
     fn now() -> DateTime<Utc> {
         DateTime::parse_from_rfc3339("2026-10-26T12:00:00Z")
@@ -547,6 +654,78 @@ mod tests {
             assert_eq!(Status::parse(s.as_str()), Some(s));
         }
         assert_eq!(Status::parse("amended"), None);
+    }
+
+    #[test]
+    fn a_reading_older_than_the_limit_needs_a_reason_and_is_never_refused_with_one() {
+        let now = Utc.with_ymd_and_hms(2026, 11, 5, 12, 0, 0).unwrap();
+        let eight = record("2026-10-28T12:00:00Z");
+        let codes = |r: Option<&str>, rec: &ObservationRecord| -> Vec<&str> {
+            timing_problems(rec, r, None, 7, now)
+                .into_iter()
+                .map(|(c, _)| c)
+                .collect()
+        };
+        assert_eq!(codes(None, &eight), ["effective_at_reason_required"]);
+        assert_eq!(codes(Some("  "), &eight), ["effective_at_reason_required"]);
+        assert!(codes(Some("typed up after downtime"), &eight).is_empty());
+        assert!(
+            codes(None, &record("2026-10-29T12:00:00Z")).is_empty(),
+            "seven days is in time"
+        );
+        let years = record("1950-01-01T00:00:00Z");
+        assert!(codes(Some("an imported record"), &years).is_empty());
+    }
+
+    #[test]
+    fn a_reading_before_the_birth_date_is_impossible_with_a_day_for_the_time_zone() {
+        let now = Utc.with_ymd_and_hms(2026, 11, 5, 12, 0, 0).unwrap();
+        let codes = |at: &str, born: &str| -> Vec<&str> {
+            timing_problems(&record(at), Some("r"), Some(born), 7, now)
+                .into_iter()
+                .map(|(c, _)| c)
+                .collect()
+        };
+        assert_eq!(
+            codes("2000-01-01T00:00:00Z", "2000-06-15"),
+            ["effective_at_before_birth"]
+        );
+        assert!(
+            codes("2000-06-14T20:00:00Z", "2000-06-15").is_empty(),
+            "the zone's day"
+        );
+        assert_eq!(
+            codes("2000-06-13T20:00:00Z", "2000-06-15"),
+            ["effective_at_before_birth"]
+        );
+        assert!(codes("2000-06-15T09:00:00Z", "2000-06-15").is_empty());
+        assert!(
+            codes("2000-03-01T09:00:00Z", "2000").is_empty(),
+            "a partial date, at its start"
+        );
+        assert_eq!(
+            codes("1999-12-01T09:00:00Z", "2000-01"),
+            ["effective_at_before_birth"]
+        );
+        assert!(codes("1950-01-01T00:00:00Z", "not a date").is_empty());
+    }
+
+    #[test]
+    fn a_mistaken_date_can_always_be_marked_in_error() {
+        let now = Utc.with_ymd_and_hms(2026, 11, 5, 12, 0, 0).unwrap();
+        let mut r = record("1950-01-01T00:00:00Z");
+        r.status = Status::EnteredInError;
+        assert!(timing_problems(&r, None, Some("2000-01-01"), 7, now).is_empty());
+    }
+
+    #[test]
+    fn the_late_days_setting_falls_back_to_the_default_when_it_cannot_be_used() {
+        assert_eq!(late_days_from(None), LATE_REASON_DAYS);
+        assert_eq!(late_days_from(Some("")), LATE_REASON_DAYS);
+        assert_eq!(late_days_from(Some("30")), 30);
+        for bad in ["0", "-1", "3651", "a week"] {
+            assert_eq!(late_days_from(Some(bad)), LATE_REASON_DAYS, "{bad}");
+        }
     }
 
     #[test]

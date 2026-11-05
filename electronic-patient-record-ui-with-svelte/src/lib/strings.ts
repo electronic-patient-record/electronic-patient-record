@@ -309,7 +309,7 @@ export const STRINGS = {
   vitalReasonLabel: "Why there is no value",
   vitalRangeLow: "Range from (optional)",
   vitalRangeHigh: "Range up to (optional)",
-  vitalWhy: "Reason for this entry (optional)",
+  vitalWhy: "Reason for this entry (needed for an old reading)",
   vitalSubmit: "Record vital sign",
   vitalInError: "Entered in error ({n})",
   vitalBy: "recorded by",

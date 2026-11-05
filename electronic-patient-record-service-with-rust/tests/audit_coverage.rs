@@ -109,7 +109,7 @@ async fn a_successful_read_of_a_patient_record_leaves_an_audit_row() {
             .json(&serde_json::json!({ "observation": {
                 "code": "8867-4", "value": 72.0, "unit": "/min",
                 "range": { "low": 60.0, "high": 100.0 },
-                "effective_at": "2026-10-26T09:30:00Z", "status": "final" } }))
+                "effective_at": "2026-10-26T09:30:00Z", "status": "final" }, "reason": "entered late" }))
             .await;
         assert_eq!(made.status_code(), StatusCode::CREATED, "{}", made.text());
         let observation_id = made.json::<serde_json::Value>()["id"]

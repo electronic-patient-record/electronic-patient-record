@@ -273,6 +273,26 @@ pub(super) async fn create(
         }
         return invalid.into_response();
     }
+    // The measured time against this patient: never before birth, and a reason if it is old.
+    match store::timing_refusal(
+        &ctx.db,
+        &patient,
+        &request.observation,
+        request.reason.as_deref(),
+        now,
+    )
+    .await
+    {
+        Ok(None) => {}
+        Ok(Some(invalid)) => {
+            let as_store = StoreError::BadQuery("the observation was refused".into());
+            if let Some(r) = refused(&ctx, &agent, purpose, Action::Create, &as_store).await {
+                return r.into_response();
+            }
+            return invalid.into_response();
+        }
+        Err(e) => return failure(e).into_response(),
+    }
     let tx = match begin(&ctx.db).await {
         Ok(t) => t,
         Err(r) => return r.into_response(),
@@ -364,6 +384,25 @@ pub(super) async fn update(
             return r.into_response();
         }
         return invalid.into_response();
+    }
+    match store::timing_refusal(
+        &ctx.db,
+        &patient,
+        &request.observation,
+        request.reason.as_deref(),
+        now,
+    )
+    .await
+    {
+        Ok(None) => {}
+        Ok(Some(invalid)) => {
+            let as_store = StoreError::BadQuery("the observation was refused".into());
+            if let Some(r) = refused(&ctx, &agent, purpose, Action::Update, &as_store).await {
+                return r.into_response();
+            }
+            return invalid.into_response();
+        }
+        Err(e) => return failure(e).into_response(),
     }
     let tx = match begin(&ctx.db).await {
         Ok(t) => t,

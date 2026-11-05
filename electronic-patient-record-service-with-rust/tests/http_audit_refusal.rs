@@ -295,7 +295,7 @@ async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_r
         // Observation create and update.
         let observation = json!({
             "code": "8867-4", "value": 72.0, "unit": "/min",
-            "effective_at": "2026-10-26T09:30:00Z", "status": "final"
+            "effective_at": (chrono::Utc::now() - chrono::Duration::hours(1)).to_rfc3339(), "status": "final"
         });
         refused_then_accepted(db, "POST /api/patients/{id}/observations", || async {
             let r = server
@@ -315,7 +315,7 @@ async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_r
             .to_string();
         let mistaken = json!({
             "code": "8867-4", "value": 72.0, "unit": "/min",
-            "effective_at": "2026-10-26T09:30:00Z", "status": "entered-in-error"
+            "effective_at": (chrono::Utc::now() - chrono::Duration::hours(1)).to_rfc3339(), "status": "entered-in-error"
         });
         refused_then_accepted(
             db,

@@ -1592,7 +1592,7 @@ test("a clinician corrects a vital sign and then marks it entered in error; the 
     section.getByText("Say what you are correcting and why."),
   ).toBeVisible();
   await section
-    .getByLabel("Reason for this entry (optional)")
+    .getByLabel("Reason for this entry (needed for an old reading)")
     .fill("keyed 172 for 72");
   await section.getByRole("button", { name: "Save correction" }).click();
   await expect(

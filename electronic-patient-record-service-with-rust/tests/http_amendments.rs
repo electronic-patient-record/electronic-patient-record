@@ -108,7 +108,7 @@ async fn who_may_ask_decide_and_withdraw() {
             .add_header(ch.clone(), cv.clone())
             .json(&json!({ "observation": {
                 "code": "8867-4", "value": 71.37, "unit": "/min",
-                "effective_at": "2026-10-26T09:30:00Z", "status": "final" } }))
+                "effective_at": "2026-10-26T09:30:00Z", "status": "final" }, "reason": "entered late" }))
             .await;
         assert_eq!(recorded.status_code(), StatusCode::CREATED, "{}", recorded.text());
         let observation_id = recorded.json::<Value>()["id"].as_str().unwrap().to_string();

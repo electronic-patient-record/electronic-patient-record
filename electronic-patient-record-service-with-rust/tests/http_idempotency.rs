@@ -49,7 +49,7 @@ fn observation(value: f64) -> Value {
     json!({ "observation": {
         "code": "8867-4", "value": value, "unit": "/min",
         "range": { "low": 60.0, "high": 100.0 },
-        "effective_at": "2026-10-26T09:30:00Z", "status": "final" } })
+        "effective_at": "2026-10-26T09:30:00Z", "status": "final" }, "reason": "entered late" })
 }
 
 #[tokio::test]

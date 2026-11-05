@@ -355,9 +355,9 @@ async fn real_responses_validate_against_the_served_schemas() {
         // Observation: create (with a value, and without one), list, versions, update.
         let value_obs = json!({ "code": "8867-4", "value": 72.0, "unit": "/min",
             "range": {"low": 60.0, "high": 100.0}, "critical": {"low": 40.0},
-            "effective_at": "2026-10-26T09:30:00Z", "status": "final" });
+            "effective_at": (chrono::Utc::now() - chrono::Duration::hours(1)).to_rfc3339(), "status": "final" });
         let absent_obs = json!({ "code": "8867-4", "absent_reason": "declined",
-            "effective_at": "2026-10-26T09:31:00Z", "status": "final" });
+            "effective_at": (chrono::Utc::now() - chrono::Duration::hours(1)).to_rfc3339(), "status": "final" });
         let p = "/api/patients/{id}/observations";
         let mut observation_id = String::new();
         for obs in [value_obs.clone(), absent_obs] {
@@ -477,7 +477,7 @@ async fn real_responses_validate_against_the_served_schemas() {
                 "observations",
                 "/api/patients/{id}/observations/{observation_id}",
                 json!({ "observation": { "code": "8867-4", "value": 70.0, "unit": "/min",
-                    "effective_at": "2026-10-26T10:00:00Z", "status": "final" } }),
+                    "effective_at": (chrono::Utc::now() - chrono::Duration::hours(1)).to_rfc3339(), "status": "final" } }),
             ),
             (
                 "consent",

@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - How old a vital sign's measured time may be (SW-2; H-034 stays open)
+
+- **Clinical risk:** **yes.** Decided by the maintainer. A reading more than 7 days old now needs a typed reason, which stays in its history, and a reading before the patient's birth date is refused. No real reading can be lost to the 7 days: a reason always lets it through.
+- **Built:** `timing_problems` and `timing_refusal`, on create and update; `EPR_OBSERVATION_LATE_DAYS` (1 to 3650, default 7); the form's label; tests of both rules through the routes. Marking an entry in error is exempt, so that a mistaken date can always be retracted. SW-2 is ticked.
+- **Not done / not verified:** 7 days is a placeholder, and no clinician has set it. A typed reason can be anything, so this slows a false back-dated entry and does not stop one. The form shows the reason box before it is needed and says so only in its label; the refusal then says why. A day is allowed around the birth date for time zones, so a reading a few hours before birth can pass. A mistyped date within 7 days is still accepted. A bad setting falls back to 7 and logs a warning. Birth dates that are wrong will refuse real readings until corrected.
+
 ## 2026-11-05 - One command for the gates (LC-2)
 
 - **Clinical risk:** none: a developer script.

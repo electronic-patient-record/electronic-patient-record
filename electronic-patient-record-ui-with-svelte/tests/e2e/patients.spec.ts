@@ -3512,7 +3512,7 @@ test("correcting a vital loads it into the form, needs a reason, and sends a new
   ).toBeVisible();
   expect(sent).toHaveLength(0);
   await section
-    .getByLabel("Reason for this entry (optional)")
+    .getByLabel("Reason for this entry (needed for an old reading)")
     .fill("keyed 172 for 72");
   await section.getByRole("button", { name: "Save correction" }).click();
   await expect(
