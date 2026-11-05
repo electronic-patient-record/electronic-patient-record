@@ -361,7 +361,9 @@ pub async fn update(
     row_to_stored(&row)
 }
 
-/// The relationship `subject` has to a patient now: the strongest one in force.
+/// The relationship `subject` has to a patient now: the strongest one in force. A proxy has none
+/// while a report that the patient has died stands (BV-5): this is worked out on each request, so
+/// nothing is ended and a withdrawal restores it. A failed look fails the request.
 ///
 /// # Errors
 ///
@@ -381,7 +383,7 @@ pub async fn lookup(
         pg(
             "SELECT body FROM relationship_current
              WHERE patient_id = $1::uuid AND subject = $2 AND status = 'active'",
-            vec![patient_id.into(), subject.into()],
+            vec![patient_id.clone().into(), subject.into()],
         ),
     )
     .await
@@ -393,7 +395,15 @@ pub async fn lookup(
             serde_json::from_value::<RelationshipRecord>(body).map_err(db_err)
         })
         .collect::<Result<Vec<_>, _>>()?;
-    Ok(resolve(&records, now, scope))
+    let relationship = resolve(&records, now, scope);
+    if relationship == Relationship::Proxy
+        && crate::death_store::answer(db, &patient_id)
+            .await?
+            .holds_contact()
+    {
+        return Ok(Relationship::None);
+    }
+    Ok(relationship)
 }
 
 /// The patients `subject` is, or is a proxy for, now: `(patient id, kind)` for each active

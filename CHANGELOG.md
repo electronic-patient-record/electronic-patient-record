@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - A proxy stops while a report of death stands (BV-5, in part; H-046 stays open)
+
+- **Clinical risk:** **yes.** Any standing report, confirmed or not, including one from a feed, stops a proxy reading the record, the photo and the access log, and removes it from their "my record". A false report therefore locks out a parent or carer until a clinician withdraws it. H-046 stays `open`.
+- **Built:** the check in `relationships::lookup`, the one place both routes ask, worked out per request so a withdrawal restores access; a test through the real router with login on.
+- **My decisions, for review:** that an unconfirmed report is enough, since a disclosure cannot be undone; and that a patient's own login does not stop, since a living person wrongly reported would lose their record.
+- **Not done / not verified:** the relationship for a person acting after death, which needs a lawyer. A proxy sees the record vanish and is told nothing: the words need people who have been through it. Each proxy request now makes more queries, and that was not measured. The photo path was not tested, though it uses the same lookup. All 163 database tests that CI runs here ran on local Postgres 18 with the build cache off; the FHIR validator is left to CI.
+
 ## 2026-11-05 - A report of death holds outbound events (BV-3; H-046 stays open)
 
 - **Clinical risk:** **yes, once anything sends.** The outbox runner now holds every event about a patient with a standing report. Nothing enqueues and no sink exists, so nothing changes today. H-046 stays `open`.

@@ -72,6 +72,12 @@ A feed cannot retract a report: a later message with an indicator of `N` changes
 
 Every event about the patient is held, whatever it is. That needs review: a message that must reach someone after a death, such as telling the patient's GP, is held too, and no route yet says which may go. The contact a person makes by hand is held only by the banner's words. Nothing shows a person what is held, or how long it has waited.
 
+## A proxy
+
+A proxy has no relationship to a patient while any assertion stands: an unconfirmed report is enough, because a disclosure cannot be undone. `relationships::lookup` works this out on each request, so the relationship itself is not ended and a withdrawal restores it with nothing to do by hand. This covers the record, the photo, the access log and "my record", which leaves the patient out.
+
+The cost is that a false report locks out a parent or carer until a clinician withdraws it, and they see only that the record is gone, because the list says nothing to a proxy about a death. Those words need people who have been through it. A patient's own login does not stop, because a living person wrongly reported as dead would lose their own record. The [bereavement](index.md) page asks for it to stop as well; that is not settled. A person acting after death, with a basis, a scope and an end date, is not built.
+
 ## FHIR
 
 | The one answer | R4 and R5 `Patient` on read and search |

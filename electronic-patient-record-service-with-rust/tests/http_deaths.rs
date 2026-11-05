@@ -1,7 +1,8 @@
 //! DB-gated, through the real router with login **on** (BV-1, OQ-BV2): any member of staff may report
 //! and read the one answer, a clinician or nurse may read the assertions and take a step, only a
 //! clinician may withdraw, a patient and a proxy have none of it, the reporter is the token, a stale
-//! version is 409, and the audit trail never holds a reason. One test, because the token guard is
+//! version is 409, the audit trail never holds a reason, and a proxy stops while a report stands and
+//! comes back when it is withdrawn (BV-5). One test, because the token guard is
 //! configured once per process.
 //!
 //! ```text
@@ -46,7 +47,15 @@ fn bearer(token: &str) -> (HeaderName, HeaderValue) {
 #[ignore = "needs Postgres: set DATABASE_URL"]
 async fn who_may_report_confirm_and_withdraw() {
     let idp = TestIdp::start().await;
-    let roles = ["clinician", "nurse", "receptionist", "patient", "auditor"];
+    let roles = [
+        "clinician",
+        "nurse",
+        "receptionist",
+        "patient",
+        "auditor",
+        "clinical-admin",
+        "proxy",
+    ];
     let map: Value = roles
         .iter()
         .map(|r| ((*r).to_string(), json!({ "role": [r] })))
@@ -71,6 +80,9 @@ async fn who_may_report_confirm_and_withdraw() {
     let reception = token("receptionist", RECEPTION);
     let patient = token("patient", "0c4f1e2a-0000-4000-8000-0000000000d4");
     let auditor = token("auditor", "0c4f1e2a-0000-4000-8000-0000000000d5");
+    let admin = token("clinical-admin", "0c4f1e2a-0000-4000-8000-0000000000d6");
+    const PROXY: &str = "0c4f1e2a-0000-4000-8000-0000000000d7";
+    let proxy = token("proxy", PROXY);
 
     request::<App, _, _>(|server, ctx| async move {
         let purpose = HeaderName::from_static("x-purpose-of-use");
@@ -92,6 +104,30 @@ async fn who_may_report_confirm_and_withdraw() {
         let id = made.json::<Value>()["id"].as_str().unwrap().to_string();
         let answer = format!("/api/patients/{id}/death");
         let assertions = format!("/api/patients/{id}/death/assertions");
+
+        // A proxy with the identity and access log scopes, reading before anything is reported.
+        let expires = i64::try_from(nanos() / 1_000_000_000).unwrap() + 3600;
+        let (h, v) = auth(&admin);
+        let related = server
+            .post(&format!("/api/patients/{id}/relationships"))
+            .add_header(h, v)
+            .add_header(purpose.clone(), ops.clone())
+            .json(&json!({ "relationship": { "subject": PROXY, "kind": "proxy", "status": "active",
+                "proxy": { "basis": "parental-responsibility",
+                    "scopes": ["identity", "access-log"], "expires_at": expires } },
+                "reason": "seen" }))
+            .await;
+        assert_eq!(related.status_code(), StatusCode::CREATED, "{}", related.text());
+        let portal = HeaderValue::from_static("patient-access");
+        let as_proxy = |path: String| {
+            let (h, v) = auth(&proxy);
+            server.get(&path).add_header(h, v).add_header(purpose.clone(), portal.clone())
+        };
+        let record = format!("/api/patients/{id}");
+        let log = format!("/api/me/patients/{id}/access-log");
+        assert_eq!(as_proxy(record.clone()).await.status_code(), StatusCode::OK);
+        assert_eq!(as_proxy(log.clone()).await.status_code(), StatusCode::OK);
+        assert!(as_proxy("/api/me/patients".into()).await.text().contains(&id));
 
         // Nothing yet: not known, which is not the same as living, and nothing is held.
         let (h, v) = auth(&reception);
@@ -164,6 +200,11 @@ async fn who_may_report_confirm_and_withdraw() {
             .json();
         assert_eq!(read["meta"]["tag"][0]["code"], "death-reported");
         assert!(read.get("deceasedDateTime").is_none(), "{read}");
+
+        // A proxy stops at the report, on every path, and the list does not say why (BV-5).
+        assert_eq!(as_proxy(record.clone()).await.status_code(), StatusCode::FORBIDDEN);
+        assert_eq!(as_proxy(log.clone()).await.status_code(), StatusCode::FORBIDDEN);
+        assert!(!as_proxy("/api/me/patients".into()).await.text().contains(&id));
 
         // Reception can neither read the reasons nor take a step.
         let (h, v) = auth(&reception);
@@ -261,6 +302,9 @@ async fn who_may_report_confirm_and_withdraw() {
             .await
             .json();
         assert!(gone.get("deceasedDateTime").is_none(), "{gone}");
+        // Withdrawn, the proxy is back, with nothing to restore by hand.
+        assert_eq!(as_proxy(record.clone()).await.status_code(), StatusCode::OK);
+        assert!(as_proxy("/api/me/patients".into()).await.text().contains(&id));
         let (h, v) = auth(&reception);
         let released: Value = server.get(&answer).add_header(h, v).add_header(purpose.clone(), ops.clone()).await.json();
         assert_eq!(released["holds_contact"], false);
