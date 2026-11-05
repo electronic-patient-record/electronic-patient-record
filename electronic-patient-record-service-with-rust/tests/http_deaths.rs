@@ -15,9 +15,10 @@ use authentication_verifier::test_idp::{AUDIENCE, REALM, TestIdp};
 use axa::testing::prelude::request;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use electronic_patient_record::app::App;
+use electronic_patient_record::pool::Pool;
 use electronic_patient_record_matcher::{HumanName, Patient};
-use sea_orm::{ConnectionTrait, Statement};
 use serde_json::{Value, json};
+use sqlx::{AssertSqlSafe, Row};
 
 fn nanos() -> u128 {
     std::time::SystemTime::now()
@@ -248,9 +249,9 @@ async fn who_may_report_confirm_and_withdraw() {
         assert!(as_self("/api/me/patients".into()).await.text().contains(&id));
 
         // The matcher sees the date of the report, and it is not stored on the identity.
-        let stored = electronic_patient_record::patients_store::current(&ctx.db, &id).await.unwrap();
+        let stored = electronic_patient_record::patients_store::current(&ctx.pool(), &id).await.unwrap();
         assert_eq!(stored.patient.death_date, None);
-        let seen = electronic_patient_record::death_store::for_matching(&ctx.db, &id, &stored.patient)
+        let seen = electronic_patient_record::death_store::for_matching(&ctx.pool(), &id, &stored.patient)
             .await
             .unwrap();
         assert_eq!(seen.death_date.as_deref(), Some("2026-11-01"));
@@ -360,7 +361,7 @@ async fn who_may_report_confirm_and_withdraw() {
             .json();
         assert!(gone.get("deceasedDateTime").is_none(), "{gone}");
         // Withdrawn, the matcher sees no date.
-        let seen = electronic_patient_record::death_store::for_matching(&ctx.db, &id, &stored.patient)
+        let seen = electronic_patient_record::death_store::for_matching(&ctx.pool(), &id, &stored.patient)
             .await
             .unwrap();
         assert_eq!(seen.death_date, None);
@@ -375,20 +376,16 @@ async fn who_may_report_confirm_and_withdraw() {
         assert_eq!(released["holds_contact"], false);
 
         // The audit trail has the writes and none of the words.
-        let rows = ctx
-            .db
-            .query_all_raw(Statement::from_string(
-                ctx.db.get_database_backend(),
-                format!(
+        let rows = sqlx::query(AssertSqlSafe(format!(
                     "SELECT detail::text AS d FROM audit_events
                      WHERE resource_ref = 'DeathAssertion' AND patient_ref = 'Patient/{id}'"
-                ),
-            ))
+                )))
+.fetch_all(&ctx.pool())
             .await
             .unwrap();
         assert!(rows.len() >= 3, "{}", rows.len());
         for row in rows {
-            let d: String = row.try_get("", "d").unwrap();
+            let d: String = row.try_get("d").unwrap();
             assert!(!d.contains(SECRET) && !d.contains("2026-11-01"), "{d}");
         }
     })

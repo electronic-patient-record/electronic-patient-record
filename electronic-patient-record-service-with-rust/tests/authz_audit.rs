@@ -15,23 +15,25 @@ use axum::routing::{get, post};
 use electronic_patient_record::auth::Agent;
 use electronic_patient_record::authz::{Authz, authorize_mw};
 use electronic_patient_record::policy::{Role, Subject};
-use electronic_patient_record_migration::{Migrator, MigratorTrait};
-use sea_orm::{ConnectionTrait, Database, DatabaseConnection, Statement};
+use sqlx::{PgPool, Row};
 use tower::ServiceExt;
 
-async fn db() -> DatabaseConnection {
+async fn db() -> PgPool {
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
-    let db = Database::connect(url).await.expect("connect");
-    Migrator::up(&db, None).await.expect("migrate");
+    let db = PgPool::connect(&url).await.expect("connect");
+    electronic_patient_record::MIGRATOR
+        .run(&db)
+        .await
+        .expect("migrate");
     db
 }
 
 /// The app as the middleware sees it: a caller with the given roles, already authenticated.
-fn app(db: DatabaseConnection, agent: &str, roles: &[Role]) -> Router {
+fn app(db: PgPool, agent: &str, roles: &[Role]) -> Router {
     app_in(db, agent, roles, &[])
 }
 
-fn app_in(db: DatabaseConnection, agent: &str, roles: &[Role], organisations: &[&str]) -> Router {
+fn app_in(db: PgPool, agent: &str, roles: &[Role], organisations: &[&str]) -> Router {
     let agent = Agent(agent.to_string());
     let subject = Subject {
         roles: roles.iter().copied().collect(),
@@ -70,20 +72,18 @@ async fn call(app: Router, method: Method, path: &str, body: &str) -> StatusCode
     .status()
 }
 
-async fn rows_for(db: &DatabaseConnection, agent: &str) -> Vec<(i16, String, String)> {
-    db.query_all_raw(Statement::from_sql_and_values(
-        db.get_database_backend(),
-        "SELECT outcome, resource_ref, detail::text AS detail FROM audit_events WHERE agent = $1 ORDER BY id",
-        [agent.into()],
-    ))
+async fn rows_for(db: &PgPool, agent: &str) -> Vec<(i16, String, String)> {
+    sqlx::query("SELECT outcome, resource_ref, detail::text AS detail FROM audit_events WHERE agent = $1 ORDER BY id")
+.bind(agent)
+.fetch_all(db)
     .await
     .unwrap()
     .iter()
     .map(|r| {
         (
-            r.try_get("", "outcome").unwrap(),
-            r.try_get("", "resource_ref").unwrap(),
-            r.try_get("", "detail").unwrap(),
+            r.try_get("outcome").unwrap(),
+            r.try_get("resource_ref").unwrap(),
+            r.try_get("detail").unwrap(),
         )
     })
     .collect()

@@ -20,10 +20,11 @@
 
 use crate::ids;
 use crate::patients_store::{self, StoreError};
-use crate::store::pg;
+use crate::pool::Db;
 use electronic_patient_record_matcher::{ConflictCode, Decision, Patient};
-use sea_orm::ConnectionTrait;
 use serde::Serialize;
+use sqlx::postgres::PgRow;
+use sqlx::{AssertSqlSafe, Row};
 
 crate::store_errors!("links");
 
@@ -74,18 +75,18 @@ fn columns() -> String {
 /// # Errors
 ///
 /// [`StoreError::Db`] when a column is missing.
-fn row_to_link(r: &sea_orm::QueryResult) -> Result<StoredLink, StoreError> {
+fn row_to_link(r: &PgRow) -> Result<StoredLink, StoreError> {
     Ok(StoredLink {
-        id: r.try_get("", "id").map_err(db_err)?,
-        version: r.try_get("", "version").map_err(db_err)?,
-        author: r.try_get("", "author").map_err(db_err)?,
-        reason: r.try_get("", "reason").map_err(db_err)?,
-        source: r.try_get("", "source").map_err(db_err)?,
-        target: r.try_get("", "target").map_err(db_err)?,
-        status: r.try_get("", "status").map_err(db_err)?,
-        match_score: r.try_get("", "match_score").map_err(db_err)?,
-        match_decision: r.try_get("", "match_decision").map_err(db_err)?,
-        recorded_at: r.try_get("", "at").map_err(db_err)?,
+        id: r.try_get("id").map_err(db_err)?,
+        version: r.try_get("version").map_err(db_err)?,
+        author: r.try_get("author").map_err(db_err)?,
+        reason: r.try_get("reason").map_err(db_err)?,
+        source: r.try_get("source").map_err(db_err)?,
+        target: r.try_get("target").map_err(db_err)?,
+        status: r.try_get("status").map_err(db_err)?,
+        match_score: r.try_get("match_score").map_err(db_err)?,
+        match_decision: r.try_get("match_decision").map_err(db_err)?,
+        recorded_at: r.try_get("at").map_err(db_err)?,
     })
 }
 
@@ -145,15 +146,16 @@ pub fn judge(source: &Patient, target: &Patient) -> Result<(f64, &'static str), 
 ///
 /// [`StoreError::Db`] on a database failure, or when the chain is longer than 16 merges.
 pub async fn merged_into(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     patient_id: &str,
 ) -> Result<Option<String>, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let Some(start) = ids::uuid(patient_id) else {
         return Ok(None);
     };
-    let row = db
-        .query_one_raw(pg(
-            "WITH RECURSIVE up(id, depth) AS (
+    let row = sqlx::query(
+        "WITH RECURSIVE up(id, depth) AS (
                  SELECT target_patient_id, 1 FROM patient_link_current
                  WHERE source_patient_id = $1::uuid AND status = 'active'
                UNION ALL
@@ -162,18 +164,20 @@ pub async fn merged_into(
                  WHERE l.status = 'active' AND up.depth < $2
              )
              SELECT id::text AS id, depth FROM up ORDER BY depth DESC LIMIT 1",
-            vec![start.into(), (MAX_DEPTH + 1).into()],
-        ))
-        .await
-        .map_err(db_err)?;
+    )
+    .bind(start)
+    .bind(MAX_DEPTH + 1)
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(db_err)?;
     let Some(row) = row else { return Ok(None) };
-    let depth: i32 = row.try_get("", "depth").map_err(db_err)?;
+    let depth: i32 = row.try_get("depth").map_err(db_err)?;
     if depth > MAX_DEPTH {
         return Err(db_err(format!(
             "record {patient_id} is merged through more than {MAX_DEPTH} records"
         )));
     }
-    row.try_get("", "id").map(Some).map_err(db_err)
+    row.try_get("id").map(Some).map_err(db_err)
 }
 
 /// [`sources_of`] for many targets in one query: each target's merged-in records, keyed by the
@@ -183,18 +187,19 @@ pub async fn merged_into(
 ///
 /// [`StoreError::Db`] on a database failure.
 pub async fn sources_of_many(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     targets: &[String],
 ) -> Result<std::collections::HashMap<String, Vec<String>>, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let mut by_target: std::collections::HashMap<String, Vec<String>> =
         std::collections::HashMap::new();
     let targets = ids::uuids(targets);
     if targets.is_empty() {
         return Ok(by_target);
     }
-    let rows = db
-        .query_all_raw(pg(
-            "WITH RECURSIVE src(root, id) AS (
+    let rows = sqlx::query(
+        "WITH RECURSIVE src(root, id) AS (
                  SELECT target_patient_id, source_patient_id FROM patient_link_current
                  WHERE target_patient_id = ANY($1::uuid[]) AND status = 'active'
                UNION
@@ -202,13 +207,14 @@ pub async fn sources_of_many(
                  JOIN src ON l.target_patient_id = src.id WHERE l.status = 'active'
              )
              SELECT root::text AS root, id::text AS id FROM src ORDER BY root, id",
-            vec![targets.into()],
-        ))
-        .await
-        .map_err(db_err)?;
+    )
+    .bind(targets)
+    .fetch_all(&mut *db)
+    .await
+    .map_err(db_err)?;
     for r in &rows {
-        let root: String = r.try_get("", "root").map_err(db_err)?;
-        let id: String = r.try_get("", "id").map_err(db_err)?;
+        let root: String = r.try_get("root").map_err(db_err)?;
+        let id: String = r.try_get("id").map_err(db_err)?;
         by_target.entry(root).or_default().push(id);
     }
     Ok(by_target)
@@ -219,16 +225,14 @@ pub async fn sources_of_many(
 /// # Errors
 ///
 /// [`StoreError::Db`] on a database failure.
-pub async fn sources_of(
-    db: &impl ConnectionTrait,
-    target: &str,
-) -> Result<Vec<String>, StoreError> {
+pub async fn sources_of(db: impl Into<Db<'_>>, target: &str) -> Result<Vec<String>, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let Some(target) = ids::uuid(target) else {
         return Ok(Vec::new());
     };
-    let rows = db
-        .query_all_raw(pg(
-            "WITH RECURSIVE src(id) AS (
+    let rows = sqlx::query(
+        "WITH RECURSIVE src(id) AS (
                  SELECT source_patient_id FROM patient_link_current
                  WHERE target_patient_id = $1::uuid AND status = 'active'
                UNION
@@ -236,12 +240,13 @@ pub async fn sources_of(
                  JOIN src ON l.target_patient_id = src.id WHERE l.status = 'active'
              )
              SELECT id::text AS id FROM src ORDER BY id",
-            vec![target.into()],
-        ))
-        .await
-        .map_err(db_err)?;
+    )
+    .bind(target)
+    .fetch_all(&mut *db)
+    .await
+    .map_err(db_err)?;
     rows.iter()
-        .map(|r| r.try_get("", "id").map_err(db_err))
+        .map(|r| r.try_get("id").map_err(db_err))
         .collect()
 }
 
@@ -252,11 +257,13 @@ pub async fn sources_of(
 ///
 /// [`StoreError::Db`] on a database failure.
 pub async fn linked_ids(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     patient_id: &str,
 ) -> Result<Vec<String>, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let mut ids = vec![patient_id.to_lowercase()];
-    ids.extend(sources_of(db, patient_id).await?);
+    ids.extend(sources_of(&mut *db, patient_id).await?);
     Ok(ids)
 }
 
@@ -265,23 +272,20 @@ pub async fn linked_ids(
 /// # Errors
 ///
 /// [`StoreError::NotFound`] (no such patient), [`StoreError::Db`].
-pub async fn list(
-    db: &impl ConnectionTrait,
-    patient_id: &str,
-) -> Result<Vec<StoredLink>, StoreError> {
-    let patient = patients_store::current(db, patient_id).await?;
-    let rows = db
-        .query_all_raw(pg(
-            &format!(
-                "SELECT {} FROM patient_link_current
+pub async fn list(db: impl Into<Db<'_>>, patient_id: &str) -> Result<Vec<StoredLink>, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let patient = patients_store::current(&mut *db, patient_id).await?;
+    let rows = sqlx::query(AssertSqlSafe(format!(
+        "SELECT {} FROM patient_link_current
                  WHERE source_patient_id = $1::uuid OR target_patient_id = $1::uuid
                  ORDER BY recorded_at DESC, link_id",
-                columns()
-            ),
-            vec![patient.id.into()],
-        ))
-        .await
-        .map_err(db_err)?;
+        columns()
+    )))
+    .bind(patient.id)
+    .fetch_all(&mut *db)
+    .await
+    .map_err(db_err)?;
     rows.iter().map(row_to_link).collect()
 }
 
@@ -290,14 +294,15 @@ pub async fn list(
 /// # Errors
 ///
 /// [`StoreError::Db`] when the lock cannot be taken.
-async fn lock(db: &impl ConnectionTrait) -> Result<(), StoreError> {
-    db.execute_raw(pg(
-        "SELECT pg_advisory_xact_lock($1)",
-        vec![MERGE_LOCK.into()],
-    ))
-    .await
-    .map(|_| ())
-    .map_err(db_err)
+async fn lock(db: impl Into<Db<'_>>) -> Result<(), StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    sqlx::query("SELECT pg_advisory_xact_lock($1)")
+        .bind(MERGE_LOCK)
+        .execute(&mut *db)
+        .await
+        .map(|_| ())
+        .map_err(db_err)
 }
 
 const REASON_TO_MERGE: &str = "a reason is required to merge records";
@@ -338,61 +343,59 @@ pub fn refusal(message: &str) -> Option<(&'static str, Option<String>)> {
 /// [`StoreError::NotFound`] (either record), [`StoreError::BadQuery`] (the reason is blank, the
 /// records are the same, one is already merged away, or the matcher refuses the pair).
 pub async fn merge(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     target_id: &str,
     source_id: &str,
     author: &str,
     reason: &str,
 ) -> Result<StoredLink, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     if reason.trim().is_empty() {
         return Err(StoreError::BadQuery(REASON_TO_MERGE.into()));
     }
-    lock(db).await?;
-    let target = patients_store::current(db, target_id).await?;
-    let source = patients_store::current(db, source_id).await?;
+    lock(&mut *db).await?;
+    let target = patients_store::current(&mut *db, target_id).await?;
+    let source = patients_store::current(&mut *db, source_id).await?;
     if target.id == source.id {
         return Err(StoreError::BadQuery(MERGE_INTO_ITSELF.into()));
     }
     if target.drill != source.drill {
         return Err(StoreError::BadQuery(DRILL_AND_REAL.into()));
     }
-    if let Some(into) = merged_into(db, &source.id).await? {
+    if let Some(into) = merged_into(&mut *db, &source.id).await? {
         return Err(StoreError::BadQuery(format!(
             "{SOURCE_ALREADY_MERGED}{into}"
         )));
     }
-    if let Some(into) = merged_into(db, &target.id).await? {
+    if let Some(into) = merged_into(&mut *db, &target.id).await? {
         return Err(StoreError::BadQuery(format!(
             "{TARGET_ALREADY_MERGED}{into}{TARGET_ALREADY_MERGED_END}"
         )));
     }
     let (score, decision) = judge(
-        &crate::death_store::for_matching(db, &source.id, &source.patient).await?,
-        &crate::death_store::for_matching(db, &target.id, &target.patient).await?,
+        &crate::death_store::for_matching(&mut *db, &source.id, &source.patient).await?,
+        &crate::death_store::for_matching(&mut *db, &target.id, &target.patient).await?,
     )
     .map_err(StoreError::from)?;
-    let row = db
-        .query_one_raw(pg(
-            &format!(
-                "INSERT INTO patient_link_versions
+    let row = sqlx::query(AssertSqlSafe(format!(
+        "INSERT INTO patient_link_versions
                    (link_id, version, author, reason, source_patient_id, target_patient_id, status,
                     match_score, match_decision)
                  VALUES (gen_random_uuid(), 1, $1, $2, $3::uuid, $4::uuid, 'active', $5, $6)
                  RETURNING {}",
-                columns()
-            ),
-            vec![
-                author.into(),
-                reason.trim().into(),
-                source.id.into(),
-                target.id.into(),
-                score.into(),
-                decision.into(),
-            ],
-        ))
-        .await
-        .map_err(db_err)?
-        .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
+        columns()
+    )))
+    .bind(author)
+    .bind(reason.trim())
+    .bind(source.id)
+    .bind(target.id)
+    .bind(score)
+    .bind(decision)
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(db_err)?
+    .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
     row_to_link(&row)
 }
 
@@ -404,56 +407,53 @@ pub async fn merge(
 /// [`StoreError::NotFound`], [`StoreError::BadQuery`] (blank reason, or no active merge of that
 /// record into this one).
 pub async fn unmerge(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     target_id: &str,
     source_id: &str,
     author: &str,
     reason: &str,
 ) -> Result<StoredLink, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     if reason.trim().is_empty() {
         return Err(StoreError::BadQuery(REASON_TO_UNMERGE.into()));
     }
-    lock(db).await?;
-    let target = patients_store::current(db, target_id).await?;
-    let source = patients_store::current(db, source_id).await?;
-    let row = db
-        .query_one_raw(pg(
-            &format!(
-                "SELECT {} FROM patient_link_current
+    lock(&mut *db).await?;
+    let target = patients_store::current(&mut *db, target_id).await?;
+    let source = patients_store::current(&mut *db, source_id).await?;
+    let row = sqlx::query(AssertSqlSafe(format!(
+        "SELECT {} FROM patient_link_current
                  WHERE source_patient_id = $1::uuid AND target_patient_id = $2::uuid
                    AND status = 'active'",
-                columns()
-            ),
-            vec![source.id.clone().into(), target.id.clone().into()],
-        ))
-        .await
-        .map_err(db_err)?
-        .ok_or_else(|| StoreError::BadQuery(NOT_MERGED.into()))?;
+        columns()
+    )))
+    .bind(source.id.clone())
+    .bind(target.id.clone())
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(db_err)?
+    .ok_or_else(|| StoreError::BadQuery(NOT_MERGED.into()))?;
     let now = row_to_link(&row)?;
-    let row = db
-        .query_one_raw(pg(
-            &format!(
-                "INSERT INTO patient_link_versions
+    let row = sqlx::query(AssertSqlSafe(format!(
+        "INSERT INTO patient_link_versions
                    (link_id, version, author, reason, source_patient_id, target_patient_id, status,
                     match_score, match_decision)
                  VALUES ($1::uuid, $2, $3, $4, $5::uuid, $6::uuid, 'reversed', $7, $8)
                  RETURNING {}",
-                columns()
-            ),
-            vec![
-                now.id.clone().into(),
-                (now.version + 1).into(),
-                author.into(),
-                reason.trim().into(),
-                source.id.into(),
-                target.id.into(),
-                now.match_score.into(),
-                now.match_decision.clone().into(),
-            ],
-        ))
-        .await
-        .map_err(db_err)?
-        .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
+        columns()
+    )))
+    .bind(now.id.clone())
+    .bind(now.version + 1)
+    .bind(author)
+    .bind(reason.trim())
+    .bind(source.id)
+    .bind(target.id)
+    .bind(now.match_score)
+    .bind(now.match_decision.clone())
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(db_err)?
+    .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
     row_to_link(&row)
 }
 

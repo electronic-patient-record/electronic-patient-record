@@ -18,6 +18,7 @@ use crate::audit::Action;
 use crate::auth::Agent;
 use crate::patients_store::StoreError;
 use crate::policy::{self, Resource, Subject};
+use crate::pool::Pool;
 use crate::referral_unmatched::{self as queue, Clearance, Filed, Inbound};
 use axa::prelude::*;
 use axum::{
@@ -83,7 +84,7 @@ async fn guard(
 ) -> Result<crate::policy::Purpose, ApiError> {
     let purpose = purpose_of(headers)?;
     authorize(
-        &ctx.db,
+        &ctx.pool(),
         agent,
         subject,
         Resource::ReferralQueue,
@@ -113,12 +114,12 @@ async fn receive(
     if request.message.trim().is_empty() {
         return ApiError::invalid(vec!["the message must not be blank".into()]).into_response();
     }
-    let tx = match begin(&ctx.db).await {
+    let mut tx = match begin(&ctx.pool()).await {
         Ok(t) => t,
         Err(r) => return r.into_response(),
     };
     let filed = queue::file(
-        &tx,
+        &mut *tx,
         Inbound {
             agent: &agent.0,
             referral_ref: request.referral_ref.as_deref(),
@@ -152,7 +153,7 @@ async fn receive(
                 ),
             };
             if let Err(r) = audit_resource(
-                &tx,
+                &mut *tx,
                 &agent,
                 Access {
                     action: Action::Create,
@@ -174,11 +175,11 @@ async fn receive(
             Json(body).into_response()
         }
         Err(e) => {
-            let _ = sea_orm::TransactionSession::rollback(tx).await;
+            let _ = tx.rollback().await;
             // A racing step: the sender may send again. Audited like any refused write.
             if matches!(e, StoreError::Conflict { .. })
                 && let Err(r) = audit_resource(
-                    &ctx.db,
+                    &ctx.pool(),
                     &agent,
                     Access {
                         action: Action::Create,
@@ -210,12 +211,12 @@ async fn list(
         Ok(p) => p,
         Err(r) => return r.into_response(),
     };
-    let open = match queue::list_open(&ctx.db).await {
+    let open = match queue::list_open(&ctx.pool()).await {
         Ok(o) => o,
         Err(e) => return failure(e),
     };
     if let Err(r) = audit_resource(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         Access {
             action: Action::Read,
@@ -247,12 +248,12 @@ async fn count(
         Ok(p) => p,
         Err(r) => return r.into_response(),
     };
-    let open = match queue::count_open(&ctx.db).await {
+    let open = match queue::count_open(&ctx.pool()).await {
         Ok(n) => n,
         Err(e) => return failure(e),
     };
     if let Err(r) = audit_resource(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         Access {
             action: Action::Read,
@@ -282,13 +283,13 @@ async fn read(
         Ok(p) => p,
         Err(r) => return r.into_response(),
     };
-    let entry = match queue::get(&ctx.db, &id).await {
+    let entry = match queue::get(&ctx.pool(), &id).await {
         Ok(e) => e,
         Err(e) => return failure(e),
     };
     // Audit before the message text leaves.
     if let Err(r) = audit_resource(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         Access {
             action: Action::Read,
@@ -334,15 +335,15 @@ async fn clear(
             return ApiError::invalid(vec!["how is matched or dismissed".into()]).into_response();
         }
     };
-    let tx = match begin(&ctx.db).await {
+    let mut tx = match begin(&ctx.pool()).await {
         Ok(t) => t,
         Err(r) => return r.into_response(),
     };
-    match queue::clear(&tx, &id, &agent.0, how, &request.reason).await {
+    match queue::clear(&mut *tx, &id, &agent.0, how, &request.reason).await {
         Ok(entry) => {
             let cleared = entry.cleared.clone();
             if let Err(r) = audit_resource(
-                &tx,
+                &mut *tx,
                 &agent,
                 Access {
                     action: Action::Update,
@@ -372,7 +373,7 @@ async fn clear(
             Json(entry).into_response()
         }
         Err(e) => {
-            let _ = sea_orm::TransactionSession::rollback(tx).await;
+            let _ = tx.rollback().await;
             failure(e)
         }
     }

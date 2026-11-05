@@ -14,18 +14,21 @@ use electronic_patient_record::consents_store as store;
 use electronic_patient_record::patients_store::{self, StoreError};
 use electronic_patient_record::policy::{self, Purpose, Resource, Role};
 use electronic_patient_record_matcher::{HumanName, Patient};
-use electronic_patient_record_migration::{Migrator, MigratorTrait};
-use sea_orm::{ConnectionTrait, Database, DatabaseConnection};
+use sqlx::Row;
+use sqlx::{AssertSqlSafe, PgPool};
 use std::collections::BTreeSet;
 
-async fn db() -> DatabaseConnection {
+async fn db() -> PgPool {
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
-    let db = Database::connect(url).await.expect("connect");
-    Migrator::up(&db, None).await.expect("migrate");
+    let db = PgPool::connect(&url).await.expect("connect");
+    electronic_patient_record::MIGRATOR
+        .run(&db)
+        .await
+        .expect("migrate");
     db
 }
 
-async fn patient(db: &DatabaseConnection) -> String {
+async fn patient(db: &PgPool) -> String {
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
@@ -123,17 +126,14 @@ async fn withdrawing_appends_a_version_and_keeps_the_old_one() {
     assert_eq!((v2.version, v2.author.as_str()), (2, "admin2"));
 
     // Both versions are in the table; the list and the decision see only the current one.
-    let rows = db
-        .query_all_raw(sea_orm::Statement::from_sql_and_values(
-            sea_orm::DbBackend::Postgres,
-            "SELECT version, status, reason FROM consent_versions WHERE consent_id = $1::uuid ORDER BY version",
-            [v1.id.clone().into()],
-        ))
+    let rows = sqlx::query("SELECT version, status, reason FROM consent_versions WHERE consent_id = $1::uuid ORDER BY version")
+.bind(v1.id.clone())
+.fetch_all(&db)
         .await
         .unwrap();
     assert_eq!(rows.len(), 2);
-    assert_eq!(rows[0].try_get::<String>("", "status").unwrap(), "active");
-    assert_eq!(rows[1].try_get::<String>("", "status").unwrap(), "inactive");
+    assert_eq!(rows[0].try_get::<String, _>("status").unwrap(), "active");
+    assert_eq!(rows[1].try_get::<String, _>("status").unwrap(), "inactive");
     let listed = store::list(&db, &pid).await.unwrap();
     assert_eq!(listed.len(), 1);
     assert_eq!(listed[0].version, 2);
@@ -190,16 +190,20 @@ async fn versions_cannot_be_changed_or_removed() {
         format!("DELETE FROM consent_versions WHERE consent_id = '{}'", c.id),
         "TRUNCATE consent_versions".to_string(),
     ] {
-        let e = db.execute_unprepared(&sql).await.unwrap_err().to_string();
+        let e = sqlx::raw_sql(AssertSqlSafe(sql.to_string()))
+            .execute(&db)
+            .await
+            .unwrap_err()
+            .to_string();
         assert!(e.contains("append-only"), "{sql}: {e}");
     }
     // The status column only takes the three states.
-    let bad = db
-        .execute_unprepared(&format!(
-            "INSERT INTO consent_versions (consent_id, version, patient_id, author, status, body)
+    let bad = sqlx::raw_sql(AssertSqlSafe(format!(
+        "INSERT INTO consent_versions (consent_id, version, patient_id, author, status, body)
              VALUES (gen_random_uuid(), 1, '{pid}', 'x', 'maybe', '{{}}')"
-        ))
-        .await;
+    )))
+    .execute(&db)
+    .await;
     assert!(bad.is_err());
 }
 
@@ -252,7 +256,7 @@ async fn the_stored_consents_drive_the_decision_and_other_patients_are_untouched
 
 /// A person the matcher will agree may be merged with another made with the same family name. The
 /// birth date comes from the name, so these people do not crowd other tests' candidate searches.
-async fn alike(db: &DatabaseConnection, family: &str) -> String {
+async fn alike(db: &PgPool, family: &str) -> String {
     let n = family
         .bytes()
         .fold(0u32, |h, b| h.wrapping_mul(31).wrapping_add(u32::from(b)));
@@ -272,10 +276,9 @@ async fn alike(db: &DatabaseConnection, family: &str) -> String {
     patients_store::create(db, "t", None, &p).await.unwrap().id
 }
 
-async fn merge(db: &DatabaseConnection, target: &str, source: &str) {
-    use sea_orm::TransactionTrait;
-    let tx = db.begin().await.unwrap();
-    electronic_patient_record::links::merge(&tx, target, source, "admin", "same person")
+async fn merge(db: &PgPool, target: &str, source: &str) {
+    let mut tx = db.begin().await.unwrap();
+    electronic_patient_record::links::merge(&mut *tx, target, source, "admin", "same person")
         .await
         .unwrap();
     tx.commit().await.unwrap();
@@ -283,7 +286,7 @@ async fn merge(db: &DatabaseConnection, target: &str, source: &str) {
 
 /// The way the duplicate check and search read consent before CQ-10: one patient at a time.
 async fn one_at_a_time(
-    db: &DatabaseConnection,
+    db: &PgPool,
     ids: &[String],
 ) -> std::collections::BTreeMap<String, Vec<String>> {
     let ids: Vec<String> = ids.iter().map(|i| i.to_lowercase()).collect();
@@ -377,14 +380,13 @@ async fn consents_for_many_patients_match_one_at_a_time() {
 #[tokio::test]
 #[ignore = "needs Postgres: set DATABASE_URL"]
 async fn a_lost_race_for_a_consent_version_is_a_conflict() {
-    use sea_orm::TransactionTrait;
     let db = db().await;
     let pid = patient(&db).await;
     let c = store::create(&db, &pid, "t", None, &deny_research())
         .await
         .unwrap();
-    let first = db.begin().await.unwrap();
-    store::update(&first, &pid, &c.id, 1, "first", None, &deny_research())
+    let mut first = db.begin().await.unwrap();
+    store::update(&mut *first, &pid, &c.id, 1, "first", None, &deny_research())
         .await
         .unwrap();
     let second = {

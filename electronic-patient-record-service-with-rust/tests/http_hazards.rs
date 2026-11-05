@@ -13,8 +13,9 @@ use authentication_verifier::test_idp::{AUDIENCE, REALM, TestIdp};
 use axa::testing::prelude::request;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use electronic_patient_record::app::App;
-use sea_orm::{ConnectionTrait, Statement};
+use electronic_patient_record::pool::Pool;
 use serde_json::{Value, json};
+use sqlx::Row;
 
 fn bearer(token: &str) -> (HeaderName, HeaderValue) {
     (
@@ -236,16 +237,12 @@ async fn only_the_clinical_safety_officer_retires_a_hazard_and_only_with_evidenc
         assert_eq!(reopened.json::<Value>()["hazard"]["state"], "open");
 
         // The audit trail holds the evidence hash, never the free text.
-        let rows = ctx
-            .db
-            .query_all_raw(Statement::from_string(
-                sea_orm::DbBackend::Postgres,
-                "SELECT detail::text AS d FROM audit_events WHERE resource_ref = 'Hazard'"
-                    .to_string(),
-            ))
-            .await
-            .unwrap();
-        let all: Vec<String> = rows.iter().map(|r| r.try_get("", "d").unwrap()).collect();
+        let rows =
+            sqlx::query("SELECT detail::text AS d FROM audit_events WHERE resource_ref = 'Hazard'")
+                .fetch_all(&ctx.pool())
+                .await
+                .unwrap();
+        let all: Vec<String> = rows.iter().map(|r| r.try_get("d").unwrap()).collect();
         assert!(all.len() >= 6, "{all:?}");
         assert!(all.iter().any(|d| d.contains(HASH)), "{all:?}");
         for d in &all {

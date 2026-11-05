@@ -23,6 +23,8 @@ use crate::audit::Action;
 use crate::auth::Agent;
 use crate::patients_store::StoreError;
 use crate::policy::{self, Purpose, Resource, Subject};
+use crate::pool::Db;
+use crate::pool::Pool;
 use crate::referral::{Actor, Event};
 use crate::referrals_store::{self as store, Referral, Step, StoredReferral};
 use axa::prelude::*;
@@ -91,7 +93,7 @@ async fn refused(
         return None;
     }
     audit_resource(
-        &ctx.db,
+        &ctx.pool(),
         agent,
         Access {
             action,
@@ -123,7 +125,7 @@ pub(super) async fn list(
         Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::Referral,
@@ -135,13 +137,13 @@ pub(super) async fn list(
     {
         return r.into_response();
     }
-    let referrals = match store::for_patient(&ctx.db, &patient).await {
+    let referrals = match store::for_patient(&ctx.pool(), &patient).await {
         Ok(r) => r,
         Err(e) => return failure(e).into_response(),
     };
     // Audit before the clinical content leaves.
     if let Err(r) = audit_resource(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         Access {
             action: Action::Read,
@@ -174,7 +176,7 @@ pub(super) async fn history(
         Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::Referral,
@@ -186,7 +188,7 @@ pub(super) async fn history(
     {
         return r.into_response();
     }
-    let versions = match store::history(&ctx.db, &referral_id).await {
+    let versions = match store::history(&ctx.pool(), &referral_id).await {
         // A referral id from another patient's record is a miss, never a disclosure.
         Ok(v) if v.first().is_some_and(|f| f.patient_id == patient) => v,
         Ok(_) => return failure(StoreError::NotFound).into_response(),
@@ -198,7 +200,7 @@ pub(super) async fn history(
         }
     };
     if let Err(r) = audit_resource(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         Access {
             action: Action::Read,
@@ -233,7 +235,7 @@ pub(super) async fn create(
         Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::Referral,
@@ -245,12 +247,12 @@ pub(super) async fn create(
     {
         return r.into_response();
     }
-    let tx = match begin(&ctx.db).await {
+    let mut tx = match begin(&ctx.pool()).await {
         Ok(t) => t,
         Err(r) => return r.into_response(),
     };
     match store::request(
-        &tx,
+        &mut *tx,
         &agent.0,
         &patient,
         &request.referral,
@@ -260,7 +262,7 @@ pub(super) async fn create(
     {
         Ok(stored) => {
             if let Err(r) = audit_resource(
-                &tx,
+                &mut *tx,
                 &agent,
                 Access {
                     action: Action::Create,
@@ -286,7 +288,7 @@ pub(super) async fn create(
             (StatusCode::CREATED, Json(stored)).into_response()
         }
         Err(e) => {
-            let _ = sea_orm::TransactionSession::rollback(tx).await;
+            let _ = tx.rollback().await;
             if let Some(r) = refused(&ctx, &agent, purpose, Action::Create, &e).await {
                 return r.into_response();
             }
@@ -313,7 +315,7 @@ pub(super) async fn advance(
         Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::Referral,
@@ -329,14 +331,14 @@ pub(super) async fn advance(
         return ApiError::invalid(vec![format!("unknown event {:?}", request.event)])
             .into_response();
     };
-    let tx = match begin(&ctx.db).await {
+    let mut tx = match begin(&ctx.pool()).await {
         Ok(t) => t,
         Err(r) => return r.into_response(),
     };
-    match step(&tx, &patient, &referral_id, &agent.0, event, &request).await {
+    match step(&mut *tx, &patient, &referral_id, &agent.0, event, &request).await {
         Ok((stored, actor)) => {
             if let Err(r) = audit_resource(
-                &tx,
+                &mut *tx,
                 &agent,
                 Access {
                     action: Action::Update,
@@ -363,7 +365,7 @@ pub(super) async fn advance(
             Json(stored).into_response()
         }
         Err(e) => {
-            let _ = sea_orm::TransactionSession::rollback(tx).await;
+            let _ = tx.rollback().await;
             if let Some(r) = refused(&ctx, &agent, purpose, Action::Update, &e).await {
                 return r.into_response();
             }
@@ -374,14 +376,20 @@ pub(super) async fn advance(
 
 /// Work out who is acting from the history, then take the step.
 async fn step(
-    tx: &sea_orm::DatabaseTransaction,
+    tx: impl Into<Db<'_>>,
     patient: &str,
     referral_id: &str,
     by: &str,
     event: Event,
     request: &EventRequest,
 ) -> Result<(StoredReferral, Actor), StoreError> {
-    let versions = store::history(tx, referral_id).await?;
+    let mut conn = tx
+        .into()
+        .acquire()
+        .await
+        .map_err(|e| StoreError::Db(e.to_string()))?;
+    let tx = &mut *conn;
+    let versions = store::history(&mut *tx, referral_id).await?;
     let first = versions.first().ok_or(StoreError::NotFound)?;
     // A referral id taken from another patient's record is a miss.
     if first.patient_id != patient {
@@ -393,7 +401,7 @@ async fn step(
         Actor::Recipient
     };
     let stored = store::advance(
-        tx,
+        &mut *tx,
         referral_id,
         request.expected_version,
         Step {

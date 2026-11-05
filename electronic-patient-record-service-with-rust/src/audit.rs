@@ -10,10 +10,11 @@
 //! The table itself refuses `UPDATE`, `DELETE` and `TRUNCATE` (see the
 //! migration), so the chain is a second line of defence.
 
-use crate::store::pg;
+use crate::pool::Db;
 use integrity_mac::{KeyConfig, KeySet};
-use sea_orm::{ConnectionTrait, DatabaseConnection, TransactionSession, TransactionTrait};
 use sha2::{Digest, Sha256};
+use sqlx::postgres::PgRow;
+use sqlx::{AssertSqlSafe, PgPool, Row};
 use std::fmt::Write as _;
 use std::sync::OnceLock;
 
@@ -411,11 +412,16 @@ fn with_request_id(event: &Event) -> Event {
 /// When the database refuses. Callers must treat that as a failure of the whole
 /// request: an access that cannot be audited does not happen.
 pub async fn append(
-    db: &(impl ConnectionTrait + TransactionTrait),
+    db: impl Into<Db<'_>>,
     chain: &Chain,
     event: &Event,
 ) -> Result<i64, AuditError> {
-    let result = append_row(db, chain, event).await;
+    // Inside the count: an audit row that cannot be written because no connection could be had is the
+    // failure this metric exists to show.
+    let result = match db.into().acquire().await {
+        Ok(mut conn) => append_row(&mut *conn, chain, event).await,
+        Err(e) => Err(err(e)),
+    };
     if result.is_err() {
         crate::metrics::AUDIT_APPEND_FAILURES.inc();
     }
@@ -431,89 +437,84 @@ pub async fn append(
 ///
 /// [`AuditError`] for any database failure. The caller then refuses the request.
 async fn append_row(
-    db: &(impl ConnectionTrait + TransactionTrait),
+    db: impl Into<Db<'_>>,
     chain: &Chain,
     event: &Event,
 ) -> Result<i64, AuditError> {
+    let mut conn = db.into().acquire().await.map_err(err)?;
+    let db = &mut *conn;
     let event = &with_glass(&with_request_id(&with_actor(event)));
-    let tx = db.begin().await.map_err(err)?;
-    tx.execute_raw(pg(
-        "SELECT pg_advisory_xact_lock($1)",
-        vec![LOCK_KEY.into()],
-    ))
-    .await
-    .map_err(err)?;
-    let prev = tx
-        .query_one_raw(pg(
-            "SELECT digest FROM audit_events ORDER BY id DESC LIMIT 1",
-            vec![],
-        ))
+    let mut tx = sqlx::Connection::begin(&mut *db).await.map_err(err)?;
+    sqlx::query("SELECT pg_advisory_xact_lock($1)")
+        .bind(LOCK_KEY)
+        .execute(&mut *tx)
+        .await
+        .map_err(err)?;
+    let prev = sqlx::query("SELECT digest FROM audit_events ORDER BY id DESC LIMIT 1")
+        .fetch_optional(&mut *tx)
         .await
         .map_err(err)?
-        .map(|r| r.try_get::<String>("", "digest"))
+        .map(|r| r.try_get::<String, _>("digest"))
         .transpose()
         .map_err(err)?;
     // With every partition archived the table is empty, and the chain continues from the newest anchor.
     let prev = match prev {
         Some(p) => Some(p),
-        None => newest_anchor(&tx).await?.map(|(_, digest)| digest),
+        None => newest_anchor(&mut *tx).await?.map(|(_, digest)| digest),
     };
-    let at: String = tx
-        .query_one_raw(pg(
-            &format!("SELECT to_char(clock_timestamp() AT TIME ZONE 'UTC', '{TS_FORMAT}') AS ts"),
-            vec![],
-        ))
-        .await
-        .map_err(err)?
-        .ok_or_else(|| AuditError("no timestamp".into()))?
-        .try_get("", "ts")
-        .map_err(err)?;
+    let at: String = sqlx::query(AssertSqlSafe(format!(
+        "SELECT to_char(clock_timestamp() AT TIME ZONE 'UTC', '{TS_FORMAT}') AS ts"
+    )))
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(err)?
+    .ok_or_else(|| AuditError("no timestamp".into()))?
+    .try_get("ts")
+    .map_err(err)?;
     let digest = chain.digest(prev.as_deref(), &at, event);
-    let row = tx
-        .query_one_raw(pg(
-            &format!(
-                "INSERT INTO audit_events
+    let row = sqlx::query(AssertSqlSafe(format!(
+        "INSERT INTO audit_events
                    (recorded_at, action, outcome, agent, patient_ref, resource_ref, purpose_of_use,
                     break_glass, network_address, detail, prev_digest, digest)
                  VALUES (to_timestamp($1, '{TS_FORMAT}') AT TIME ZONE 'UTC' AT TIME ZONE 'UTC',
                          $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                  RETURNING id"
-            ),
-            vec![
-                at.into(),
-                event.action.code().into(),
-                event.outcome.into(),
-                event.agent.clone().into(),
-                event.patient_ref.clone().into(),
-                event.resource_ref.clone().into(),
-                event.purpose_of_use.clone().into(),
-                event.break_glass.into(),
-                event.network_address.clone().into(),
-                event.detail.clone().into(),
-                prev.into(),
-                digest.into(),
-            ],
-        ))
-        .await
-        .map_err(err)?
-        .ok_or_else(|| AuditError("insert returned no row".into()))?;
-    let id: i64 = row.try_get("", "id").map_err(err)?;
+    )))
+    .bind(at)
+    .bind(event.action.code())
+    .bind(event.outcome)
+    .bind(event.agent.clone())
+    .bind(event.patient_ref.clone())
+    .bind(event.resource_ref.clone())
+    .bind(event.purpose_of_use.clone())
+    .bind(event.break_glass)
+    .bind(event.network_address.clone())
+    .bind(event.detail.clone())
+    .bind(prev)
+    .bind(digest)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(err)?
+    .ok_or_else(|| AuditError("insert returned no row".into()))?;
+    let id: i64 = row.try_get("id").map_err(err)?;
     tx.commit().await.map_err(err)?;
     Ok(id)
 }
 
 /// The id and digest of the newest archived row (the newest anchor), or `None` when nothing is archived.
-async fn newest_anchor(db: &impl ConnectionTrait) -> Result<Option<(i64, String)>, AuditError> {
-    db.query_one_raw(pg(
+async fn newest_anchor(db: impl Into<Db<'_>>) -> Result<Option<(i64, String)>, AuditError> {
+    let mut conn = db.into().acquire().await.map_err(err)?;
+    let db = &mut *conn;
+    sqlx::query(
         "SELECT last_id, last_digest FROM audit_archive_anchors ORDER BY last_id DESC LIMIT 1",
-        vec![],
-    ))
+    )
+    .fetch_optional(&mut *db)
     .await
     .map_err(err)?
     .map(|r| {
         Ok((
-            r.try_get::<i64>("", "last_id").map_err(err)?,
-            r.try_get::<String>("", "last_digest").map_err(err)?,
+            r.try_get::<i64, _>("last_id").map_err(err)?,
+            r.try_get::<String, _>("last_digest").map_err(err)?,
         ))
     })
     .transpose()
@@ -614,7 +615,7 @@ pub struct PatientLogFilter {
 /// [`SearchError::BadQuery`] when `from` or `to` is not a date or an instant; otherwise when the
 /// rows cannot be read.
 pub async fn patient_log(
-    db: &DatabaseConnection,
+    db: &PgPool,
     patient_id: &str,
     caller: &str,
     filter: &PatientLogFilter,
@@ -629,9 +630,7 @@ pub async fn patient_log(
             )));
         }
     }
-    let rows = db
-        .query_all_raw(pg(
-            &format!(
+    let rows = sqlx::query(AssertSqlSafe(format!(
                 "SELECT id, to_char(recorded_at AT TIME ZONE 'UTC', '{TS_FORMAT}') AS ts,
                         action::text AS action, outcome, agent, resource_ref, purpose_of_use, break_glass,
                         detail->'actor' AS actor
@@ -643,34 +642,32 @@ pub async fn patient_log(
                    AND ($8::bool IS NULL OR (outcome <> 0) = $8)
                    AND ($9::text IS NULL OR purpose_of_use = $9)
                  ORDER BY id DESC LIMIT $3"
-            ),
-            vec![
-                format!("Patient/{}", patient_id.to_lowercase()).into(),
-                filter.before.into(),
-                limit.into(),
-                filter.from.clone().into(),
-                filter.to.clone().into(),
-                filter.by_caller.into(),
-                caller.to_string().into(),
-                filter.refused.into(),
-                filter.purpose.clone().into(),
-            ],
-        ))
+            )))
+.bind(format!("Patient/{}", patient_id.to_lowercase()))
+.bind(filter.before)
+.bind(limit)
+.bind(filter.from.clone())
+.bind(filter.to.clone())
+.bind(filter.by_caller)
+.bind(caller.to_string())
+.bind(filter.refused)
+.bind(filter.purpose.clone())
+.fetch_all(db)
         .await
         .map_err(|e| SearchError::Audit(err(e)))?;
     rows.iter()
         .map(|r| {
-            let actor: Option<serde_json::Value> = r.try_get("", "actor").map_err(err)?;
+            let actor: Option<serde_json::Value> = r.try_get("actor").map_err(err)?;
             let actor = actor.unwrap_or_default();
             Ok(PatientLogRow {
-                id: r.try_get("", "id").map_err(err)?,
-                at: r.try_get("", "ts").map_err(err)?,
-                action: r.try_get("", "action").map_err(err)?,
-                outcome: r.try_get("", "outcome").map_err(err)?,
-                agent: r.try_get("", "agent").map_err(err)?,
-                resource: r.try_get("", "resource_ref").map_err(err)?,
-                purpose: r.try_get("", "purpose_of_use").map_err(err)?,
-                break_glass: r.try_get("", "break_glass").map_err(err)?,
+                id: r.try_get("id").map_err(err)?,
+                at: r.try_get("ts").map_err(err)?,
+                action: r.try_get("action").map_err(err)?,
+                outcome: r.try_get("outcome").map_err(err)?,
+                agent: r.try_get("agent").map_err(err)?,
+                resource: r.try_get("resource_ref").map_err(err)?,
+                purpose: r.try_get("purpose_of_use").map_err(err)?,
+                break_glass: r.try_get("break_glass").map_err(err)?,
                 roles: strings(&actor, "roles"),
                 organisations: strings(&actor, "organisations"),
             })
@@ -824,7 +821,7 @@ pub struct AuditRow {
 }
 
 /// Whether `v` is `YYYY-MM-DD` or `YYYY-MM-DDTHH:MM:SSZ` and a real time to the database.
-async fn valid_instant(db: &DatabaseConnection, v: &str) -> bool {
+async fn valid_instant(db: &PgPool, v: &str) -> bool {
     let shaped = v.len() >= 10
         && v.is_char_boundary(10)
         && v[..10].bytes().enumerate().all(|(i, b)| {
@@ -836,11 +833,9 @@ async fn valid_instant(db: &DatabaseConnection, v: &str) -> bool {
         })
         && (v.len() == 10 || (v.as_bytes()[10] == b'T' && v.ends_with('Z')));
     shaped
-        && db
-            .query_one_raw(pg(
-                "SELECT $1::timestamptz AS t",
-                vec![v.to_string().into()],
-            ))
+        && sqlx::query("SELECT $1::timestamptz AS t")
+            .bind(v.to_string())
+            .fetch_optional(db)
             .await
             .is_ok()
 }
@@ -873,7 +868,7 @@ pub const SEARCH_LIMIT: i64 = 50;
 ///
 /// [`SearchError::BadQuery`] for an unknown action, outcome or date; [`SearchError::Audit`] when
 /// the rows cannot be read.
-pub async fn search(db: &DatabaseConnection, q: &AuditQuery) -> Result<Vec<AuditRow>, SearchError> {
+pub async fn search(db: &PgPool, q: &AuditQuery) -> Result<Vec<AuditRow>, SearchError> {
     search_with(db, q, SEARCH_LIMIT + 1, false).await
 }
 
@@ -885,7 +880,7 @@ pub const EXPORT_LIMIT: i64 = 10_000;
 /// # Errors
 ///
 /// As [`search`].
-pub async fn export(db: &DatabaseConnection, q: &AuditQuery) -> Result<Vec<AuditRow>, SearchError> {
+pub async fn export(db: &PgPool, q: &AuditQuery) -> Result<Vec<AuditRow>, SearchError> {
     search_with(db, q, EXPORT_LIMIT + 1, true).await
 }
 
@@ -893,7 +888,7 @@ pub async fn export(db: &DatabaseConnection, q: &AuditQuery) -> Result<Vec<Audit
 /// [`SearchError::BadQuery`]), then read at most `limit` rows newest first. `digests` adds each row's digest and previous
 /// digest, which an export needs and a search leaves out.
 async fn search_with(
-    db: &DatabaseConnection,
+    db: &PgPool,
     q: &AuditQuery,
     limit: i64,
     digests: bool,
@@ -927,10 +922,8 @@ async fn search_with(
             )));
         }
     }
-    let rows = db
-        .query_all_raw(pg(
-            &format!(
-                "SELECT id, to_char(recorded_at AT TIME ZONE 'UTC', '{TS_FORMAT}') AS ts,
+    let rows = sqlx::query(AssertSqlSafe(format!(
+        "SELECT id, to_char(recorded_at AT TIME ZONE 'UTC', '{TS_FORMAT}') AS ts,
                         action::text AS action, outcome, agent, patient_ref, resource_ref,
                         purpose_of_use, break_glass, network_address, detail,
                         digest, prev_digest
@@ -947,51 +940,49 @@ async fn search_with(
                    AND ($10::text IS NULL OR recorded_at >= $10::timestamptz + $11::interval)
                    AND ($12::text IS NULL OR recorded_at < $12::timestamptz + $13::interval)
                  ORDER BY id DESC LIMIT $14"
-            ),
-            vec![
-                q.agent.clone().into(),
-                q.patient.clone().into(),
-                q.action.clone().into(),
-                q.outcome.into(),
-                q.purpose.clone().into(),
-                q.break_glass.into(),
-                q.from.clone().into(),
-                q.to.clone().into(),
-                q.before.into(),
-                // gt: after the end of a bare day, or after an instant (the microsecond is the
-                // column's resolution, so "after 12:00:00" starts at 12:00:00.000001).
-                q.after.clone().into(),
-                end_offset(q.after.as_deref(), "1 day", "1 microsecond").into(),
-                // le: before the start of the next day, or before an instant plus one microsecond.
-                q.through.clone().into(),
-                end_offset(q.through.as_deref(), "1 day", "1 microsecond").into(),
-                limit.into(),
-            ],
-        ))
-        .await
-        .map_err(|e| SearchError::Audit(err(e)))?;
+    )))
+    .bind(q.agent.clone())
+    .bind(q.patient.clone())
+    .bind(q.action.clone())
+    .bind(q.outcome)
+    .bind(q.purpose.clone())
+    .bind(q.break_glass)
+    .bind(q.from.clone())
+    .bind(q.to.clone())
+    .bind(q.before)
+    // gt: after the end of a bare day, or after an instant (the microsecond is the column's resolution,
+    // so "after 12:00:00" starts at 12:00:00.000001).
+    .bind(q.after.clone())
+    .bind(end_offset(q.after.as_deref(), "1 day", "1 microsecond"))
+    // le: before the start of the next day, or before an instant plus one microsecond.
+    .bind(q.through.clone())
+    .bind(end_offset(q.through.as_deref(), "1 day", "1 microsecond"))
+    .bind(limit)
+    .fetch_all(db)
+    .await
+    .map_err(|e| SearchError::Audit(err(e)))?;
     rows.iter()
         .map(|r| {
             let e = |x| SearchError::Audit(err(x));
             Ok(AuditRow {
-                id: r.try_get("", "id").map_err(e)?,
-                at: r.try_get("", "ts").map_err(e)?,
-                action: r.try_get("", "action").map_err(e)?,
-                outcome: r.try_get("", "outcome").map_err(e)?,
-                agent: r.try_get("", "agent").map_err(e)?,
-                patient: r.try_get("", "patient_ref").map_err(e)?,
-                resource: r.try_get("", "resource_ref").map_err(e)?,
-                purpose: r.try_get("", "purpose_of_use").map_err(e)?,
-                break_glass: r.try_get("", "break_glass").map_err(e)?,
-                network_address: r.try_get("", "network_address").map_err(e)?,
-                detail: r.try_get("", "detail").map_err(e)?,
+                id: r.try_get("id").map_err(e)?,
+                at: r.try_get("ts").map_err(e)?,
+                action: r.try_get("action").map_err(e)?,
+                outcome: r.try_get("outcome").map_err(e)?,
+                agent: r.try_get("agent").map_err(e)?,
+                patient: r.try_get("patient_ref").map_err(e)?,
+                resource: r.try_get("resource_ref").map_err(e)?,
+                purpose: r.try_get("purpose_of_use").map_err(e)?,
+                break_glass: r.try_get("break_glass").map_err(e)?,
+                network_address: r.try_get("network_address").map_err(e)?,
+                detail: r.try_get("detail").map_err(e)?,
                 digest: if digests {
-                    Some(r.try_get("", "digest").map_err(e)?)
+                    Some(r.try_get("digest").map_err(e)?)
                 } else {
                     None
                 },
                 prev_digest: if digests {
-                    r.try_get("", "prev_digest").map_err(e)?
+                    r.try_get("prev_digest").map_err(e)?
                 } else {
                     None
                 },
@@ -1023,7 +1014,7 @@ pub const VERIFY_BATCH: i64 = 1000;
 /// # Errors
 ///
 /// When the rows cannot be read.
-pub async fn verify(db: &DatabaseConnection, chain: &Chain) -> Result<Verdict, AuditError> {
+pub async fn verify(db: &PgPool, chain: &Chain) -> Result<Verdict, AuditError> {
     verify_in_batches(db, chain, VERIFY_BATCH).await
 }
 
@@ -1033,7 +1024,7 @@ pub async fn verify(db: &DatabaseConnection, chain: &Chain) -> Result<Verdict, A
 ///
 /// When the rows cannot be read.
 pub async fn verify_in_batches(
-    db: &DatabaseConnection,
+    db: &PgPool,
     chain: &Chain,
     batch: i64,
 ) -> Result<Verdict, AuditError> {
@@ -1052,7 +1043,7 @@ pub async fn verify_in_batches(
 ///
 /// When the rows cannot be read.
 pub async fn verify_against(
-    db: &DatabaseConnection,
+    db: &PgPool,
     chain: &Chain,
     batch: i64,
     checkpoint: Option<&Head>,
@@ -1075,16 +1066,15 @@ pub async fn verify_against(
     };
     let mut checked: usize = 0;
     loop {
-        let rows = db
-            .query_all_raw(pg(
-                &format!(
+        let rows = sqlx::query(AssertSqlSafe(format!(
                     "SELECT id, to_char(recorded_at AT TIME ZONE 'UTC', '{TS_FORMAT}') AS ts, action::text AS action,
                             outcome, agent, patient_ref, resource_ref, purpose_of_use, break_glass,
                             network_address, detail, prev_digest, digest
                      FROM audit_events WHERE id > $1 ORDER BY id LIMIT $2"
-                ),
-                vec![last_id.into(), batch.into()],
-            ))
+                )))
+.bind(last_id)
+.bind(batch)
+.fetch_all(db)
             .await
             .map_err(err)?;
         if rows.is_empty() {
@@ -1106,7 +1096,7 @@ pub async fn verify_against(
         }
         for r in &rows {
             checked += 1;
-            let id: i64 = r.try_get("", "id").map_err(err)?;
+            let id: i64 = r.try_get("id").map_err(err)?;
             last_id = id;
             if let Some(c) = checkpoint
                 && id > c.id
@@ -1114,8 +1104,8 @@ pub async fn verify_against(
             {
                 return Ok((missing(c), head));
             }
-            let stored_prev: Option<String> = r.try_get("", "prev_digest").map_err(err)?;
-            let digest: String = r.try_get("", "digest").map_err(err)?;
+            let stored_prev: Option<String> = r.try_get("prev_digest").map_err(err)?;
+            let digest: String = r.try_get("digest").map_err(err)?;
             if stored_prev != previous {
                 return Ok((
                     Verdict::Broken {
@@ -1126,7 +1116,7 @@ pub async fn verify_against(
                 ));
             }
             let event = event_from_row(r)?;
-            let ts: String = r.try_get("", "ts").map_err(err)?;
+            let ts: String = r.try_get("ts").map_err(err)?;
             match chain.check(&digest, previous.as_deref(), &ts, &event) {
                 RowCheck::Valid => {}
                 RowCheck::Mismatch => {
@@ -1173,8 +1163,8 @@ pub async fn verify_against(
 }
 
 /// The event a stored row records, for recomputing its digest.
-fn event_from_row(r: &sea_orm::QueryResult) -> Result<Event, AuditError> {
-    let action = match r.try_get::<String>("", "action").map_err(err)?.as_str() {
+fn event_from_row(r: &PgRow) -> Result<Event, AuditError> {
+    let action = match r.try_get::<String, _>("action").map_err(err)?.as_str() {
         "C" => Action::Create,
         "R" => Action::Read,
         "U" => Action::Update,
@@ -1183,14 +1173,14 @@ fn event_from_row(r: &sea_orm::QueryResult) -> Result<Event, AuditError> {
     };
     Ok(Event {
         action,
-        outcome: r.try_get("", "outcome").map_err(err)?,
-        agent: r.try_get("", "agent").map_err(err)?,
-        patient_ref: r.try_get("", "patient_ref").map_err(err)?,
-        resource_ref: r.try_get("", "resource_ref").map_err(err)?,
-        purpose_of_use: r.try_get("", "purpose_of_use").map_err(err)?,
-        break_glass: r.try_get("", "break_glass").map_err(err)?,
-        network_address: r.try_get("", "network_address").map_err(err)?,
-        detail: r.try_get("", "detail").map_err(err)?,
+        outcome: r.try_get("outcome").map_err(err)?,
+        agent: r.try_get("agent").map_err(err)?,
+        patient_ref: r.try_get("patient_ref").map_err(err)?,
+        resource_ref: r.try_get("resource_ref").map_err(err)?,
+        purpose_of_use: r.try_get("purpose_of_use").map_err(err)?,
+        break_glass: r.try_get("break_glass").map_err(err)?,
+        network_address: r.try_get("network_address").map_err(err)?,
+        detail: r.try_get("detail").map_err(err)?,
     })
 }
 
@@ -1203,31 +1193,26 @@ fn event_from_row(r: &sea_orm::QueryResult) -> Result<Event, AuditError> {
 /// # Errors
 ///
 /// When the anchors or the archive cannot be read.
-pub async fn verify_archive(
-    db: &DatabaseConnection,
-    chain: &Chain,
-    batch: i64,
-) -> Result<Verdict, AuditError> {
-    let anchors = db
-        .query_all_raw(pg(
-            "SELECT partition, first_id, last_id, row_count, first_prev_digest, last_digest
+pub async fn verify_archive(db: &PgPool, chain: &Chain, batch: i64) -> Result<Verdict, AuditError> {
+    let anchors = sqlx::query(
+        "SELECT partition, first_id, last_id, row_count, first_prev_digest, last_digest
              FROM audit_archive_anchors ORDER BY first_id",
-            vec![],
-        ))
-        .await
-        .map_err(err)?;
+    )
+    .fetch_all(db)
+    .await
+    .map_err(err)?;
     let mut checked: usize = 0;
     let mut unchecked: usize = 0;
     let mut first_unchecked: Option<i64> = None;
     let mut causes = std::collections::BTreeSet::new();
     let mut linked_to: Option<String> = None;
     for a in &anchors {
-        let partition: String = a.try_get("", "partition").map_err(err)?;
-        let first_id: i64 = a.try_get("", "first_id").map_err(err)?;
-        let last_id: i64 = a.try_get("", "last_id").map_err(err)?;
-        let row_count: i64 = a.try_get("", "row_count").map_err(err)?;
-        let first_prev: Option<String> = a.try_get("", "first_prev_digest").map_err(err)?;
-        let last_digest: String = a.try_get("", "last_digest").map_err(err)?;
+        let partition: String = a.try_get("partition").map_err(err)?;
+        let first_id: i64 = a.try_get("first_id").map_err(err)?;
+        let last_id: i64 = a.try_get("last_id").map_err(err)?;
+        let row_count: i64 = a.try_get("row_count").map_err(err)?;
+        let first_prev: Option<String> = a.try_get("first_prev_digest").map_err(err)?;
+        let last_digest: String = a.try_get("last_digest").map_err(err)?;
         let broken = |reason: String| Verdict::Broken {
             id: first_id,
             reason: format!("archived partition {partition}: {reason}"),
@@ -1250,16 +1235,15 @@ pub async fn verify_archive(
         let mut count: i64 = 0;
         let mut newest: Option<(i64, String)> = None;
         loop {
-            let rows = db
-                .query_all_raw(pg(
-                    &format!(
+            let rows = sqlx::query(AssertSqlSafe(format!(
                         "SELECT id, to_char(recorded_at AT TIME ZONE 'UTC', '{TS_FORMAT}') AS ts,
                                 action::text AS action, outcome, agent, patient_ref, resource_ref,
                                 purpose_of_use, break_glass, network_address, detail, prev_digest, digest
                          FROM audit_archive.{partition} WHERE id > $1 ORDER BY id LIMIT $2"
-                    ),
-                    vec![after.into(), batch.into()],
-                ))
+                    )))
+.bind(after)
+.bind(batch)
+.fetch_all(db)
                 .await;
             let Ok(rows) = rows else {
                 return Ok(broken("the table is missing or cannot be read".into()));
@@ -1269,10 +1253,10 @@ pub async fn verify_archive(
             }
             for r in &rows {
                 count += 1;
-                let id: i64 = r.try_get("", "id").map_err(err)?;
+                let id: i64 = r.try_get("id").map_err(err)?;
                 after = id;
-                let stored_prev: Option<String> = r.try_get("", "prev_digest").map_err(err)?;
-                let digest: String = r.try_get("", "digest").map_err(err)?;
+                let stored_prev: Option<String> = r.try_get("prev_digest").map_err(err)?;
+                let digest: String = r.try_get("digest").map_err(err)?;
                 if stored_prev != previous {
                     return Ok(Verdict::Broken {
                         id,
@@ -1281,7 +1265,7 @@ pub async fn verify_archive(
                         ),
                     });
                 }
-                let ts: String = r.try_get("", "ts").map_err(err)?;
+                let ts: String = r.try_get("ts").map_err(err)?;
                 match chain.check(&digest, previous.as_deref(), &ts, &event_from_row(r)?) {
                     RowCheck::Valid => {}
                     RowCheck::Mismatch => {

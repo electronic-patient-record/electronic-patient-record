@@ -9,7 +9,6 @@ use axum::routing::get;
 use electronic_patient_record::audit::{self, Action, Event};
 use electronic_patient_record::feed_queue::{self, Kind, New};
 use electronic_patient_record::{auth, metrics};
-use sea_orm::DatabaseConnection;
 use tower::ServiceExt;
 
 async fn body(res: axum::response::Response) -> String {
@@ -51,7 +50,10 @@ async fn metrics_is_404_when_off_and_lists_every_counter_when_on() {
 #[tokio::test]
 async fn a_failed_audit_append_is_counted() {
     let before = metrics::AUDIT_APPEND_FAILURES.get();
-    let db = DatabaseConnection::default();
+    let db = sqlx::postgres::PgPoolOptions::new()
+        .acquire_timeout(std::time::Duration::from_millis(100))
+        .connect_lazy("postgres://nobody@127.0.0.1:1/none")
+        .unwrap();
     let event = Event::new(Action::Read, "tester");
     assert!(audit::append(&db, audit::chain(), &event).await.is_err());
     assert!(metrics::AUDIT_APPEND_FAILURES.get() > before);
@@ -60,7 +62,10 @@ async fn a_failed_audit_append_is_counted() {
 #[tokio::test]
 async fn a_refused_feed_message_is_counted_even_when_it_cannot_be_stored() {
     let before = metrics::FEED_REFUSALS.get();
-    let db = DatabaseConnection::default();
+    let db = sqlx::postgres::PgPoolOptions::new()
+        .acquire_timeout(std::time::Duration::from_millis(100))
+        .connect_lazy("postgres://nobody@127.0.0.1:1/none")
+        .unwrap();
     let reasons = vec!["no PID segment".to_string()];
     let stored = feed_queue::record(
         &db,

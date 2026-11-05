@@ -10,12 +10,14 @@ use crate::consents_store;
 use crate::links;
 use crate::patients_store::StoreError;
 use crate::policy::{self, Consent, Purpose, Relationship, Resource, Subject};
+use crate::pool::Db;
 use crate::proxy::Scope;
 use crate::relationships;
 use axum::{
     http::HeaderMap,
     response::{IntoResponse, Response},
 };
+use sqlx::{PgPool, Postgres};
 
 /// The purpose of use the caller declared, `operations` by default. An unknown code is a 400.
 pub(super) fn purpose_of(headers: &HeaderMap) -> Result<Purpose, ApiError> {
@@ -41,19 +43,21 @@ pub(super) fn audit_failed(e: &AuditError) -> ApiError {
 /// subject and nothing is looked up. A failed lookup fails the request: an unchecked disclosure is
 /// how a refusal gets ignored.
 pub(super) async fn consent_verdicts(
-    db: &impl sea_orm::ConnectionTrait,
+    db: impl Into<Db<'_>>,
     subject: &Subject,
     purpose: Purpose,
     resource: Resource,
     patient_ids: &[String],
 ) -> Result<std::collections::HashMap<String, consent::Verdict>, ApiError> {
+    let mut conn = db.into().acquire().await.map_err(acquire_failed)?;
+    let db = &mut *conn;
     let mut verdicts = std::collections::HashMap::new();
     if !auth::authentication_enforced() || patient_ids.is_empty() {
         return Ok(verdicts);
     }
     // A refusal on a record that was merged into this one stands for this one too: the person's
     // choice does not lapse because two records were joined. Two queries for any number of ids.
-    let active = consents_store::active_with_merged(db, patient_ids)
+    let active = consents_store::active_with_merged(&mut *db, patient_ids)
         .await
         .map_err(|e| ApiError::from(&e))?;
     let ctx = consent::Context {
@@ -74,7 +78,7 @@ pub(super) async fn consent_verdicts(
 /// and nothing to decide. For a read of one patient's identity the patient's consent is looked up
 /// and applied. On a refusal the refusal is audited and the 403 is returned.
 pub(super) async fn authorize(
-    db: &sea_orm::DatabaseConnection,
+    db: &PgPool,
     agent: &Agent,
     subject: &Subject,
     resource: Resource,
@@ -103,7 +107,7 @@ fn scope_of(resource: Resource) -> Option<Scope> {
 /// and the access log are identity data to the policy, and their own scope to a proxy).
 #[allow(clippy::too_many_arguments)]
 pub(super) async fn authorize_scoped(
-    db: &sea_orm::DatabaseConnection,
+    db: &PgPool,
     agent: &Agent,
     subject: &Subject,
     resource: Resource,
@@ -226,19 +230,23 @@ pub(super) async fn authorize_scoped(
     Err(refusal)
 }
 
+/// A connection that could not be had, as the same 500 as any database failure.
+pub(super) fn acquire_failed(e: sqlx::Error) -> ApiError {
+    tracing::error!(error = %e, "could not get a database connection");
+    ApiError::internal()
+}
+
 /// Start the transaction a write and its audit row share (see [`audit::append`]).
-pub(super) async fn begin(
-    db: &sea_orm::DatabaseConnection,
-) -> Result<sea_orm::DatabaseTransaction, ApiError> {
-    sea_orm::TransactionTrait::begin(db).await.map_err(|e| {
+pub(super) async fn begin(db: &PgPool) -> Result<sqlx::Transaction<'static, Postgres>, ApiError> {
+    db.begin().await.map_err(|e| {
         tracing::error!(error = %e, "could not start a transaction");
         ApiError::internal()
     })
 }
 
 /// Commit it. A failure means the write did not happen, so the request fails.
-pub(super) async fn commit(tx: sea_orm::DatabaseTransaction) -> Result<(), ApiError> {
-    sea_orm::TransactionSession::commit(tx).await.map_err(|e| {
+pub(super) async fn commit(tx: sqlx::Transaction<'static, Postgres>) -> Result<(), ApiError> {
+    tx.commit().await.map_err(|e| {
         tracing::error!(error = %e, "could not commit a write and its audit row");
         ApiError::internal()
     })
@@ -263,18 +271,20 @@ pub(super) struct Access<'a> {
 
 /// Write the audit row for an access. Never put demographics or consent content in `detail`.
 pub(super) async fn audit_resource(
-    db: &(impl sea_orm::ConnectionTrait + sea_orm::TransactionTrait),
+    db: impl Into<Db<'_>>,
     agent: &Agent,
     access: Access<'_>,
     detail: serde_json::Value,
 ) -> Result<(), ApiError> {
+    let mut conn = db.into().acquire().await.map_err(acquire_failed)?;
+    let db = &mut *conn;
     let mut event = Event::new(access.action, agent.0.clone());
     event.outcome = access.outcome;
     event.patient_ref = access.patient_id.map(|id| format!("Patient/{id}"));
     event.resource_ref = Some(access.resource.to_string());
     event.purpose_of_use = Some(access.purpose.code().to_string());
     event.detail = Some(detail);
-    audit::append(db, audit::chain(), &event)
+    audit::append(&mut *db, audit::chain(), &event)
         .await
         .map(|_| ())
         .map_err(|e| audit_failed(&e))

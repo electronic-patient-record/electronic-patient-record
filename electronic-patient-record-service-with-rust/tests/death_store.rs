@@ -13,13 +13,16 @@ use electronic_patient_record::death_store as store;
 use electronic_patient_record::links;
 use electronic_patient_record::patients_store::{self, StoreError};
 use electronic_patient_record_matcher::{HumanName, Patient};
-use electronic_patient_record_migration::{Migrator, MigratorTrait};
-use sea_orm::{ConnectionTrait, Database, DatabaseConnection, Statement};
+use sqlx::Row;
+use sqlx::{AssertSqlSafe, PgPool};
 
-async fn db() -> DatabaseConnection {
+async fn db() -> PgPool {
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
-    let db = Database::connect(url).await.expect("connect");
-    Migrator::up(&db, None).await.expect("migrate");
+    let db = PgPool::connect(&url).await.expect("connect");
+    electronic_patient_record::MIGRATOR
+        .run(&db)
+        .await
+        .expect("migrate");
     db
 }
 
@@ -38,7 +41,7 @@ fn someone() -> Patient {
     }
 }
 
-async fn person(db: &DatabaseConnection) -> String {
+async fn person(db: &PgPool) -> String {
     patients_store::create(db, "t", None, &someone())
         .await
         .unwrap()
@@ -104,16 +107,15 @@ async fn a_report_holds_contact_until_a_person_withdraws_it_and_the_history_stay
     );
     // The list still shows it, and both versions are kept.
     assert_eq!(store::list(&db, &id).await.unwrap().len(), 1);
-    let row = db
-        .query_one_raw(Statement::from_sql_and_values(
-            db.get_database_backend(),
-            "SELECT count(*) AS n FROM death_assertion_versions WHERE assertion_id = $1::uuid",
-            [made.id.clone().into()],
-        ))
-        .await
-        .unwrap()
-        .unwrap();
-    assert_eq!(row.try_get::<i64>("", "n").unwrap(), 2);
+    let row = sqlx::query(
+        "SELECT count(*) AS n FROM death_assertion_versions WHERE assertion_id = $1::uuid",
+    )
+    .bind(made.id.clone())
+    .fetch_optional(&db)
+    .await
+    .unwrap()
+    .unwrap();
+    assert_eq!(row.try_get::<i64, _>("n").unwrap(), 2);
     // A withdrawal is final.
     assert!(matches!(
         store::advance(&db, &id, &made.id, 2, &nurse(Status::Verified)).await,
@@ -132,7 +134,11 @@ async fn the_table_is_append_only() {
         "DELETE FROM death_assertion_versions",
         "TRUNCATE death_assertion_versions",
     ] {
-        let refused = db.execute_unprepared(sql).await.unwrap_err().to_string();
+        let refused = sqlx::raw_sql(AssertSqlSafe(sql.to_string()))
+            .execute(&db)
+            .await
+            .unwrap_err()
+            .to_string();
         assert!(refused.contains("append-only"), "{sql}: {refused}");
     }
 }

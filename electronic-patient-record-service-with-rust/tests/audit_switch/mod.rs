@@ -4,7 +4,8 @@
 #![allow(dead_code)]
 
 use axum::http::StatusCode;
-use sea_orm::{ConnectionTrait, DatabaseConnection, Statement};
+use sqlx::Row;
+use sqlx::{AssertSqlSafe, PgPool};
 use std::future::Future;
 
 /// The write routes driven with login off (`http_audit_refusal.rs`), spelled as in `routes::TABLE`.
@@ -73,28 +74,28 @@ pub const STORES: [&str; 18] = [
     "referral_unmatched_clearances",
 ];
 
-pub async fn sql(db: &DatabaseConnection, text: &str) {
-    db.execute_unprepared(text).await.unwrap();
+pub async fn sql(db: &PgPool, text: &str) {
+    sqlx::raw_sql(AssertSqlSafe(text.to_string()))
+        .execute(db)
+        .await
+        .unwrap();
 }
 
-pub async fn counts(db: &DatabaseConnection) -> Vec<i64> {
+pub async fn counts(db: &PgPool) -> Vec<i64> {
     let mut out = Vec::new();
     for table in STORES.iter().chain(["audit_events"].iter()) {
-        let row = db
-            .query_one_raw(Statement::from_string(
-                db.get_database_backend(),
-                format!("SELECT count(*) AS n FROM {table}"),
-            ))
+        let row = sqlx::query(AssertSqlSafe(format!("SELECT count(*) AS n FROM {table}")))
+            .fetch_optional(db)
             .await
             .unwrap()
             .unwrap();
-        out.push(row.try_get::<i64>("", "n").unwrap());
+        out.push(row.try_get::<i64, _>("n").unwrap());
     }
     out
 }
 
 /// Install the switch and its trigger. The switch starts off.
-pub async fn install(db: &DatabaseConnection) {
+pub async fn install(db: &PgPool) {
     sql(
         db,
         "DROP TRIGGER IF EXISTS epr_test_audit_refuse ON audit_events",
@@ -126,7 +127,7 @@ pub async fn install(db: &DatabaseConnection) {
     .await;
 }
 
-pub async fn uninstall(db: &DatabaseConnection) {
+pub async fn uninstall(db: &PgPool) {
     sql(
         db,
         "DROP TRIGGER IF EXISTS epr_test_audit_refuse ON audit_events",
@@ -138,7 +139,7 @@ pub async fn uninstall(db: &DatabaseConnection) {
 
 /// Send the request with the audit insert failing, check it was refused and changed nothing, then
 /// send it again with audit working and check it is accepted.
-pub async fn refused_then_accepted<F, Fut>(db: &DatabaseConnection, route: &str, send: F)
+pub async fn refused_then_accepted<F, Fut>(db: &PgPool, route: &str, send: F)
 where
     F: Fn() -> Fut,
     Fut: Future<Output = (StatusCode, String)>,

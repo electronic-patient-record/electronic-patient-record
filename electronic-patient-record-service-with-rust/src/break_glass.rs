@@ -13,9 +13,10 @@
 
 use crate::ids;
 use crate::patients_store::{self, StoreError};
-use crate::store::pg;
-use sea_orm::ConnectionTrait;
+use crate::pool::Db;
 use serde::{Deserialize, Serialize};
+use sqlx::postgres::PgRow;
+use sqlx::{AssertSqlSafe, Row};
 
 crate::store_errors!("break-glass");
 
@@ -130,9 +131,9 @@ fn select() -> String {
 /// # Errors
 ///
 /// [`StoreError::Db`] when a column is missing.
-fn to_grant(row: &sea_orm::QueryResult) -> Result<Grant, StoreError> {
-    let get = |c: &str| row.try_get::<String>("", c).map_err(db_err);
-    let reviewed_by: Option<String> = row.try_get("", "reviewed_by").map_err(db_err)?;
+fn to_grant(row: &PgRow) -> Result<Grant, StoreError> {
+    let get = |c: &str| row.try_get::<String, _>(c).map_err(db_err);
+    let reviewed_by: Option<String> = row.try_get("reviewed_by").map_err(db_err)?;
     let review = match reviewed_by {
         Some(reviewed_by) => Some(Review {
             reviewed_by,
@@ -149,9 +150,9 @@ fn to_grant(row: &sea_orm::QueryResult) -> Result<Grant, StoreError> {
         reason: get("reason")?,
         granted_at: get("granted_at")?,
         expires_at: get("expires_at")?,
-        expires_unix: row.try_get("", "expires_unix").map_err(db_err)?,
+        expires_unix: row.try_get("expires_unix").map_err(db_err)?,
         review,
-        overdue: row.try_get("", "overdue").map_err(db_err)?,
+        overdue: row.try_get("overdue").map_err(db_err)?,
     })
 }
 
@@ -161,24 +162,25 @@ fn to_grant(row: &sea_orm::QueryResult) -> Result<Grant, StoreError> {
 ///
 /// [`StoreError::Db`].
 pub async fn active(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     patient_id: &str,
     subject: &str,
 ) -> Result<Option<Grant>, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let Some(patient_id) = ids::uuid(patient_id) else {
         return Ok(None);
     };
-    let row = db
-        .query_one_raw(pg(
-            &format!(
-                "{} WHERE g.patient_id = $1::uuid AND g.subject = $2 AND g.expires_at > now()
+    let row = sqlx::query(AssertSqlSafe(format!(
+        "{} WHERE g.patient_id = $1::uuid AND g.subject = $2 AND g.expires_at > now()
                  ORDER BY g.expires_at DESC LIMIT 1",
-                select()
-            ),
-            vec![patient_id.into(), subject.into()],
-        ))
-        .await
-        .map_err(db_err)?;
+        select()
+    )))
+    .bind(patient_id)
+    .bind(subject)
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(db_err)?;
     row.as_ref().map(to_grant).transpose()
 }
 
@@ -190,38 +192,38 @@ pub async fn active(
 /// [`StoreError::NotFound`] (no such patient), [`StoreError::BadQuery`] (blank or over-long reason),
 /// [`StoreError::Db`].
 pub async fn open(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     patient_id: &str,
     subject: &str,
     reason: &str,
 ) -> Result<(Grant, bool), StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let reason = reason.trim();
     if reason.is_empty() || reason.chars().count() > 500 || reason.chars().any(char::is_control) {
         return Err(StoreError::BadQuery(
             "a reason of 1 to 500 characters is required".into(),
         ));
     }
-    let patient = patients_store::current(db, patient_id).await?;
-    if let Some(existing) = active(db, &patient.id, subject).await? {
+    let patient = patients_store::current(&mut *db, patient_id).await?;
+    if let Some(existing) = active(&mut *db, &patient.id, subject).await? {
         return Ok((existing, false));
     }
-    let row = db
-        .query_one_raw(pg(
-            "INSERT INTO break_glass_grants (patient_id, subject, reason, expires_at)
+    let row = sqlx::query(
+        "INSERT INTO break_glass_grants (patient_id, subject, reason, expires_at)
              VALUES ($1::uuid, $2, $3, now() + make_interval(hours => $4::int))
              RETURNING grant_id::text AS id",
-            vec![
-                patient.id.clone().into(),
-                subject.into(),
-                reason.into(),
-                i32::try_from(GRANT_HOURS).unwrap_or(4).into(),
-            ],
-        ))
-        .await
-        .map_err(db_err)?
-        .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
-    let id: String = row.try_get("", "id").map_err(db_err)?;
-    Ok((get(db, &id).await?, true))
+    )
+    .bind(patient.id.clone())
+    .bind(subject)
+    .bind(reason)
+    .bind(i32::try_from(GRANT_HOURS).unwrap_or(4))
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(db_err)?
+    .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
+    let id: String = row.try_get("id").map_err(db_err)?;
+    Ok((get(&mut *db, &id).await?, true))
 }
 
 /// One grant, reviewed or not.
@@ -229,16 +231,19 @@ pub async fn open(
 /// # Errors
 ///
 /// [`StoreError::NotFound`] (also for an id that is not a UUID).
-pub async fn get(db: &impl ConnectionTrait, id: &str) -> Result<Grant, StoreError> {
+pub async fn get(db: impl Into<Db<'_>>, id: &str) -> Result<Grant, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let id = ids::uuid(id).ok_or(StoreError::NotFound)?;
-    let row = db
-        .query_one_raw(pg(
-            &format!("{} WHERE g.grant_id = $1::uuid", select()),
-            vec![id.into()],
-        ))
-        .await
-        .map_err(db_err)?
-        .ok_or(StoreError::NotFound)?;
+    let row = sqlx::query(AssertSqlSafe(format!(
+        "{} WHERE g.grant_id = $1::uuid",
+        select()
+    )))
+    .bind(id)
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(db_err)?
+    .ok_or(StoreError::NotFound)?;
     to_grant(&row)
 }
 
@@ -247,18 +252,17 @@ pub async fn get(db: &impl ConnectionTrait, id: &str) -> Result<Grant, StoreErro
 /// # Errors
 ///
 /// [`StoreError::Db`].
-pub async fn unreviewed(db: &impl ConnectionTrait) -> Result<crate::page::Page<Grant>, StoreError> {
-    let rows = db
-        .query_all_raw(pg(
-            &format!(
-                "{} WHERE r.grant_id IS NULL ORDER BY g.granted_at, g.grant_id LIMIT {}",
-                select(),
-                LIST_LIMIT + 1
-            ),
-            vec![],
-        ))
-        .await
-        .map_err(db_err)?;
+pub async fn unreviewed(db: impl Into<Db<'_>>) -> Result<crate::page::Page<Grant>, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let rows = sqlx::query(AssertSqlSafe(format!(
+        "{} WHERE r.grant_id IS NULL ORDER BY g.granted_at, g.grant_id LIMIT {}",
+        select(),
+        LIST_LIMIT + 1
+    )))
+    .fetch_all(&mut *db)
+    .await
+    .map_err(db_err)?;
     let fetched = rows.iter().map(to_grant).collect::<Result<Vec<_>, _>>()?;
     Ok(crate::page::Page::cut(fetched, LIST_LIMIT))
 }
@@ -268,17 +272,18 @@ pub async fn unreviewed(db: &impl ConnectionTrait) -> Result<crate::page::Page<G
 /// # Errors
 ///
 /// [`StoreError::Db`].
-pub async fn count_unreviewed(db: &impl ConnectionTrait) -> Result<i64, StoreError> {
-    let row = db
-        .query_one_raw(pg(
-            "SELECT count(*) AS n FROM break_glass_grants g
+pub async fn count_unreviewed(db: impl Into<Db<'_>>) -> Result<i64, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let row = sqlx::query(
+        "SELECT count(*) AS n FROM break_glass_grants g
              LEFT JOIN break_glass_reviews r USING (grant_id) WHERE r.grant_id IS NULL",
-            vec![],
-        ))
-        .await
-        .map_err(db_err)?
-        .ok_or_else(|| StoreError::Db("count returned no row".into()))?;
-    row.try_get("", "n").map_err(db_err)
+    )
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(db_err)?
+    .ok_or_else(|| StoreError::Db("count returned no row".into()))?;
+    row.try_get("n").map_err(db_err)
 }
 
 /// How many unreviewed grants are overdue (EC-11).
@@ -286,21 +291,20 @@ pub async fn count_unreviewed(db: &impl ConnectionTrait) -> Result<i64, StoreErr
 /// # Errors
 ///
 /// [`StoreError::Db`].
-pub async fn count_overdue(db: &impl ConnectionTrait) -> Result<i64, StoreError> {
-    let row = db
-        .query_one_raw(pg(
-            &format!(
+pub async fn count_overdue(db: impl Into<Db<'_>>) -> Result<i64, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let row = sqlx::query(AssertSqlSafe(format!(
                 "SELECT count(*) AS n FROM break_glass_grants g
                  LEFT JOIN break_glass_reviews r USING (grant_id)
                  WHERE r.grant_id IS NULL AND g.granted_at < now() - make_interval(hours => {}::int)",
                 review_due_hours()
-            ),
-            vec![],
-        ))
+            )))
+.fetch_optional(&mut *db)
         .await
         .map_err(db_err)?
         .ok_or_else(|| StoreError::Db("count returned no row".into()))?;
-    row.try_get("", "n").map_err(db_err)
+    row.try_get("n").map_err(db_err)
 }
 
 /// Review a grant. A note is required. A grant is reviewed once, and not by the person who opened it.
@@ -310,19 +314,21 @@ pub async fn count_overdue(db: &impl ConnectionTrait) -> Result<i64, StoreError>
 /// [`StoreError::NotFound`]; [`StoreError::BadQuery`] (blank note, or the reviewer opened the grant);
 /// [`StoreError::Conflict`] (current 1) when it was already reviewed.
 pub async fn review(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     id: &str,
     by: &str,
     outcome: Outcome,
     note: &str,
 ) -> Result<Grant, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let note = note.trim();
     if note.is_empty() || note.chars().count() > 500 {
         return Err(StoreError::BadQuery(
             "a note of 1 to 500 characters is required".into(),
         ));
     }
-    let grant = get(db, id).await?;
+    let grant = get(&mut *db, id).await?;
     if grant.subject == by {
         return Err(StoreError::BadQuery(
             "a grant is reviewed by someone other than the person who opened it".into(),
@@ -331,23 +337,21 @@ pub async fn review(
     if grant.review.is_some() {
         return Err(StoreError::Conflict { current: 1 });
     }
-    let inserted = db
-        .execute_raw(pg(
-            "INSERT INTO break_glass_reviews (grant_id, reviewed_by, outcome, note)
+    let inserted = sqlx::query(
+        "INSERT INTO break_glass_reviews (grant_id, reviewed_by, outcome, note)
              VALUES ($1::uuid, $2, $3, $4) ON CONFLICT (grant_id) DO NOTHING",
-            vec![
-                grant.id.clone().into(),
-                by.into(),
-                outcome.as_str().into(),
-                note.into(),
-            ],
-        ))
-        .await
-        .map_err(db_err)?;
+    )
+    .bind(grant.id.clone())
+    .bind(by)
+    .bind(outcome.as_str())
+    .bind(note)
+    .execute(&mut *db)
+    .await
+    .map_err(db_err)?;
     if inserted.rows_affected() == 0 {
         return Err(StoreError::Conflict { current: 1 });
     }
-    get(db, id).await
+    get(&mut *db, id).await
 }
 
 #[cfg(test)]

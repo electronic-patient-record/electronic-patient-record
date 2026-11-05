@@ -16,6 +16,7 @@ use crate::audit::{self, Action, PatientLogRow};
 use crate::auth::Agent;
 use crate::patients_store as patients;
 use crate::policy::{self, Purpose, Relationship, Resource, Subject};
+use crate::pool::Pool;
 use crate::proxy::Scope;
 use crate::relationships;
 use axa::prelude::*;
@@ -33,7 +34,7 @@ async fn patients_of_caller(
     Extension(subject): Extension<Subject>,
 ) -> Response {
     let purpose = Purpose::PatientAccess;
-    let linked = match relationships::own_patients(&ctx.db, &agent.0, time_now()).await {
+    let linked = match relationships::own_patients(&ctx.pool(), &agent.0, time_now()).await {
         Ok(l) => l,
         Err(e) => return store_failure(&e),
     };
@@ -41,7 +42,7 @@ async fn patients_of_caller(
     for (id, kind) in &linked {
         // A refusal here is audited by `authorize`; the patient is simply left out.
         if authorize(
-            &ctx.db,
+            &ctx.pool(),
             &agent,
             &subject,
             Resource::PatientIdentity,
@@ -54,12 +55,13 @@ async fn patients_of_caller(
         {
             continue;
         }
-        match patients::current(&ctx.db, id).await {
+        match patients::current(&ctx.pool(), id).await {
             Ok(stored) => {
-                let photo_version = match crate::photos_store::current(&ctx.db, &stored.id).await {
-                    Ok(p) => p.filter(|p| p.bytes.is_some()).map(|p| p.version),
-                    Err(e) => return store_failure(&e),
-                };
+                let photo_version =
+                    match crate::photos_store::current(&ctx.pool(), &stored.id).await {
+                        Ok(p) => p.filter(|p| p.bytes.is_some()).map(|p| p.version),
+                        Err(e) => return store_failure(&e),
+                    };
                 records.push(serde_json::json!({
                     "relationship": kind.as_str(),
                     "patient": stored,
@@ -70,7 +72,7 @@ async fn patients_of_caller(
         }
     }
     if let Err(r) = audit_resource(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         Access {
             action: Action::Read,
@@ -212,7 +214,7 @@ async fn access_log(
 ) -> Response {
     let purpose = Purpose::PatientAccess;
     if let Err(r) = authorize_scoped(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::PatientIdentity,
@@ -227,11 +229,19 @@ async fn access_log(
     }
     // `authorize` allows a treating relationship to read the identity record; the log is for the
     // patient and proxy only.
-    match relationships::lookup(&ctx.db, &id, &agent.0, time_now(), Some(Scope::AccessLog)).await {
+    match relationships::lookup(
+        &ctx.pool(),
+        &id,
+        &agent.0,
+        time_now(),
+        Some(Scope::AccessLog),
+    )
+    .await
+    {
         Ok(Relationship::SelfPatient | Relationship::Proxy) => {}
         Ok(_) => {
             let _ = audit_resource(
-                &ctx.db,
+                &ctx.pool(),
                 &agent,
                 Access {
                     action: Action::Execute,
@@ -274,7 +284,7 @@ async fn access_log(
     };
     let page = if csv { LOG_EXPORT } else { LOG_PAGE };
     // One more than a page, to know whether there is another.
-    let mut rows = match audit::patient_log(&ctx.db, &id, &agent.0, &filter, page + 1).await {
+    let mut rows = match audit::patient_log(&ctx.pool(), &id, &agent.0, &filter, page + 1).await {
         Ok(r) => r,
         Err(audit::SearchError::BadQuery(m)) => return log_bad_request(&m),
         Err(audit::SearchError::Audit(e)) => return audit_failed(&e).into_response(),
@@ -288,7 +298,7 @@ async fn access_log(
         None
     };
     if let Err(r) = audit_resource(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         Access {
             action: Action::Read,

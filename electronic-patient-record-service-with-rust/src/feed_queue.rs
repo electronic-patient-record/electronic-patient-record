@@ -13,9 +13,10 @@
 
 use crate::ids;
 use crate::patients_store::StoreError;
-use crate::store::pg;
-use sea_orm::ConnectionTrait;
+use crate::pool::Db;
 use serde::{Deserialize, Serialize};
+use sqlx::postgres::PgRow;
+use sqlx::{AssertSqlSafe, Row};
 
 crate::store_errors!("feed queue");
 
@@ -130,10 +131,10 @@ fn select(with_message: bool) -> String {
 /// # Errors
 ///
 /// [`StoreError::Db`] when a column is missing or the stored reasons are not a JSON array of strings.
-fn to_entry(row: &sea_orm::QueryResult) -> Result<Entry, StoreError> {
-    let get = |c: &str| row.try_get::<String>("", c).map_err(db_err);
+fn to_entry(row: &PgRow) -> Result<Entry, StoreError> {
+    let get = |c: &str| row.try_get::<String, _>(c).map_err(db_err);
     let reasons: Vec<String> = serde_json::from_str(&get("reasons")?).map_err(db_err)?;
-    let resolved_by: Option<String> = row.try_get("", "resolved_by").map_err(db_err)?;
+    let resolved_by: Option<String> = row.try_get("resolved_by").map_err(db_err)?;
     let resolution = match resolved_by {
         Some(resolved_by) => Some(Resolution {
             resolved_by,
@@ -147,12 +148,12 @@ fn to_entry(row: &sea_orm::QueryResult) -> Result<Entry, StoreError> {
         id: get("id")?,
         received_at: get("received_at")?,
         agent: get("agent")?,
-        peer: row.try_get("", "peer").map_err(db_err)?,
+        peer: row.try_get("peer").map_err(db_err)?,
         event: get("event")?,
         control_id: get("control_id")?,
         kind: get("kind")?,
         reasons,
-        message: row.try_get("", "message").map_err(db_err)?,
+        message: row.try_get("message").map_err(db_err)?,
         resolution,
     })
 }
@@ -181,8 +182,11 @@ pub struct New<'a> {
 /// # Errors
 ///
 /// [`StoreError::Db`] when the insert fails.
-pub async fn record(db: &impl ConnectionTrait, new: New<'_>) -> Result<String, StoreError> {
+pub async fn record(db: impl Into<Db<'_>>, new: New<'_>) -> Result<String, StoreError> {
+    // Counted first, so a refusal shows even when it cannot be stored.
     crate::metrics::FEED_REFUSALS.inc();
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let message = new.message;
     let mut text = message;
     if text.len() > MAX_MESSAGE {
@@ -192,24 +196,22 @@ pub async fn record(db: &impl ConnectionTrait, new: New<'_>) -> Result<String, S
         }
         text = &text[..end];
     }
-    let row = db
-        .query_one_raw(pg(
-            "INSERT INTO feed_refusals (agent, peer, event, control_id, kind, reasons, message)
+    let row = sqlx::query(
+        "INSERT INTO feed_refusals (agent, peer, event, control_id, kind, reasons, message)
              VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7) RETURNING refusal_id::text AS id",
-            vec![
-                new.agent.into(),
-                new.peer.map(str::to_string).into(),
-                new.event.into(),
-                new.control_id.into(),
-                new.kind.as_str().into(),
-                serde_json::to_string(new.reasons).map_err(db_err)?.into(),
-                text.into(),
-            ],
-        ))
-        .await
-        .map_err(db_err)?
-        .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
-    row.try_get("", "id").map_err(db_err)
+    )
+    .bind(new.agent)
+    .bind(new.peer.map(str::to_string))
+    .bind(new.event)
+    .bind(new.control_id)
+    .bind(new.kind.as_str())
+    .bind(serde_json::to_string(new.reasons).map_err(db_err)?)
+    .bind(text)
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(db_err)?
+    .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
+    row.try_get("id").map_err(db_err)
 }
 
 /// The refusals nobody has closed, oldest first, without their message text.
@@ -217,18 +219,17 @@ pub async fn record(db: &impl ConnectionTrait, new: New<'_>) -> Result<String, S
 /// # Errors
 ///
 /// [`StoreError::Db`].
-pub async fn list_open(db: &impl ConnectionTrait) -> Result<crate::page::Page<Entry>, StoreError> {
-    let rows = db
-        .query_all_raw(pg(
-            &format!(
-                "{} WHERE r.refusal_id IS NULL ORDER BY f.received_at, f.refusal_id LIMIT {}",
-                select(false),
-                LIST_LIMIT + 1
-            ),
-            vec![],
-        ))
-        .await
-        .map_err(db_err)?;
+pub async fn list_open(db: impl Into<Db<'_>>) -> Result<crate::page::Page<Entry>, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let rows = sqlx::query(AssertSqlSafe(format!(
+        "{} WHERE r.refusal_id IS NULL ORDER BY f.received_at, f.refusal_id LIMIT {}",
+        select(false),
+        LIST_LIMIT + 1
+    )))
+    .fetch_all(&mut *db)
+    .await
+    .map_err(db_err)?;
     let fetched = rows.iter().map(to_entry).collect::<Result<Vec<_>, _>>()?;
     Ok(crate::page::Page::cut(fetched, LIST_LIMIT))
 }
@@ -238,18 +239,19 @@ pub async fn list_open(db: &impl ConnectionTrait) -> Result<crate::page::Page<En
 /// # Errors
 ///
 /// [`StoreError::Db`].
-pub async fn count_open(db: &impl ConnectionTrait) -> Result<i64, StoreError> {
-    let row = db
-        .query_one_raw(pg(
-            "SELECT count(*) AS n FROM feed_refusals f
+pub async fn count_open(db: impl Into<Db<'_>>) -> Result<i64, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let row = sqlx::query(
+        "SELECT count(*) AS n FROM feed_refusals f
              LEFT JOIN feed_refusal_resolutions r USING (refusal_id)
              WHERE r.refusal_id IS NULL",
-            vec![],
-        ))
-        .await
-        .map_err(db_err)?
-        .ok_or_else(|| StoreError::Db("count returned no row".into()))?;
-    row.try_get("", "n").map_err(db_err)
+    )
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(db_err)?
+    .ok_or_else(|| StoreError::Db("count returned no row".into()))?;
+    row.try_get("n").map_err(db_err)
 }
 
 /// One refusal with its message text, open or closed.
@@ -257,16 +259,19 @@ pub async fn count_open(db: &impl ConnectionTrait) -> Result<i64, StoreError> {
 /// # Errors
 ///
 /// [`StoreError::NotFound`] when there is no such refusal (or the id is not a UUID).
-pub async fn get(db: &impl ConnectionTrait, id: &str) -> Result<Entry, StoreError> {
+pub async fn get(db: impl Into<Db<'_>>, id: &str) -> Result<Entry, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let id = ids::uuid(id).ok_or(StoreError::NotFound)?;
-    let row = db
-        .query_one_raw(pg(
-            &format!("{} WHERE f.refusal_id = $1::uuid", select(true)),
-            vec![id.into()],
-        ))
-        .await
-        .map_err(db_err)?
-        .ok_or(StoreError::NotFound)?;
+    let row = sqlx::query(AssertSqlSafe(format!(
+        "{} WHERE f.refusal_id = $1::uuid",
+        select(true)
+    )))
+    .bind(id)
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(db_err)?
+    .ok_or(StoreError::NotFound)?;
     to_entry(&row)
 }
 
@@ -277,38 +282,38 @@ pub async fn get(db: &impl ConnectionTrait, id: &str) -> Result<Entry, StoreErro
 /// [`StoreError::NotFound`]; [`StoreError::BadQuery`] for a blank reason or one over 500
 /// characters; [`StoreError::Conflict`] (current 1) when it was already closed.
 pub async fn resolve(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     id: &str,
     by: &str,
     outcome: Outcome,
     reason: &str,
 ) -> Result<Entry, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let reason = reason.trim();
     if reason.is_empty() || reason.chars().count() > 500 {
         return Err(StoreError::BadQuery(
             "a reason of 1 to 500 characters is required".into(),
         ));
     }
-    let existing = get(db, id).await?;
+    let existing = get(&mut *db, id).await?;
     if existing.resolution.is_some() {
         return Err(StoreError::Conflict { current: 1 });
     }
     // The primary key on the refusal settles a race between two people.
-    let inserted = db
-        .execute_raw(pg(
-            "INSERT INTO feed_refusal_resolutions (refusal_id, resolved_by, outcome, reason)
+    let inserted = sqlx::query(
+        "INSERT INTO feed_refusal_resolutions (refusal_id, resolved_by, outcome, reason)
              VALUES ($1::uuid, $2, $3, $4) ON CONFLICT (refusal_id) DO NOTHING",
-            vec![
-                existing.id.clone().into(),
-                by.into(),
-                outcome.as_str().into(),
-                reason.into(),
-            ],
-        ))
-        .await
-        .map_err(db_err)?;
+    )
+    .bind(existing.id.clone())
+    .bind(by)
+    .bind(outcome.as_str())
+    .bind(reason)
+    .execute(&mut *db)
+    .await
+    .map_err(db_err)?;
     if inserted.rows_affected() == 0 {
         return Err(StoreError::Conflict { current: 1 });
     }
-    get(db, id).await
+    get(&mut *db, id).await
 }

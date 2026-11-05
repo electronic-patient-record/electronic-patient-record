@@ -11,8 +11,7 @@ use electronic_patient_record::death::{Actor, Answer, Occurred, Status, Step};
 use electronic_patient_record::death_store;
 use electronic_patient_record::mllp::{self, CR, Config, FS, VT};
 use electronic_patient_record::patients_store::{self, Search};
-use electronic_patient_record_migration::{Migrator, MigratorTrait};
-use sea_orm::{ConnectionTrait, Database, DatabaseConnection};
+use sqlx::{AssertSqlSafe, PgPool, Row};
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
@@ -20,16 +19,20 @@ use tokio::net::{TcpListener, TcpStream};
 /// The agent every listener here runs as.
 const FEED_AGENT: &str = "mllp:test-feed";
 
-async fn db() -> DatabaseConnection {
+async fn db() -> PgPool {
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
     // A pool of ONE connection, like the development default: code that holds a transaction and
     // then asks the pool for another connection hangs here instead of passing by luck.
-    let mut options = sea_orm::ConnectOptions::new(url);
-    options
+    let db = sqlx::postgres::PgPoolOptions::new()
         .max_connections(1)
-        .acquire_timeout(Duration::from_secs(10));
-    let db = Database::connect(options).await.expect("connect");
-    Migrator::up(&db, None).await.expect("migrate");
+        .acquire_timeout(Duration::from_secs(10))
+        .connect(&url)
+        .await
+        .expect("connect");
+    electronic_patient_record::MIGRATOR
+        .run(&db)
+        .await
+        .expect("migrate");
     db
 }
 
@@ -79,7 +82,7 @@ fn iso(d: &str) -> String {
     format!("{}-{}-{}", &d[..4], &d[4..6], &d[6..])
 }
 
-async fn start(db: &DatabaseConnection, tweak: impl FnOnce(&mut Config)) -> std::net::SocketAddr {
+async fn start(db: &PgPool, tweak: impl FnOnce(&mut Config)) -> std::net::SocketAddr {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
     let mut config = Config::local(addr);
@@ -142,7 +145,7 @@ fn code(ack: &str) -> &str {
         .unwrap_or("?")
 }
 
-async fn by_mrn(db: &DatabaseConnection, mrn: &str) -> Vec<patients_store::Stored> {
+async fn by_mrn(db: &PgPool, mrn: &str) -> Vec<patients_store::Stored> {
     patients_store::search(
         db,
         &Search {
@@ -196,23 +199,22 @@ async fn a_new_patient_is_created_a_repeat_changes_nothing_and_a_correction_is_a
     assert_eq!(now[0].patient.birth_date.as_deref(), Some(iso(&d).as_str()));
 
     // The audit trail: who (the configured agent), from where, what happened; no message content.
-    let rows = db
-        .query_all_raw(sea_orm::Statement::from_sql_and_values(
-            sea_orm::DbBackend::Postgres,
-            "SELECT action::text AS a, outcome, agent, network_address, detail::text AS d
+    let rows = sqlx::query(
+        "SELECT action::text AS a, outcome, agent, network_address, detail::text AS d
              FROM audit_events WHERE lower(patient_ref) = $1 ORDER BY id",
-            [format!("patient/{}", made[0].id).into()],
-        ))
-        .await
-        .unwrap();
+    )
+    .bind(format!("patient/{}", made[0].id))
+    .fetch_all(&db)
+    .await
+    .unwrap();
     assert_eq!(rows.len(), 3);
     for r in &rows {
-        assert_eq!(r.try_get::<String>("", "agent").unwrap(), "mllp:test-feed");
+        assert_eq!(r.try_get::<String, _>("agent").unwrap(), "mllp:test-feed");
         assert_eq!(
-            r.try_get::<String>("", "network_address").unwrap(),
+            r.try_get::<String, _>("network_address").unwrap(),
             "127.0.0.1"
         );
-        let d: String = r.try_get("", "d").unwrap();
+        let d: String = r.try_get("d").unwrap();
         assert!(
             !d.contains(&family) && !d.contains("960001") && !d.contains(&iso(&d)),
             "{d}"
@@ -220,7 +222,7 @@ async fn a_new_patient_is_created_a_repeat_changes_nothing_and_a_correction_is_a
     }
     let results: Vec<String> = rows
         .iter()
-        .map(|r| r.try_get::<String>("", "d").unwrap())
+        .map(|r| r.try_get::<String, _>("d").unwrap())
         .collect();
     assert!(
         results[0].contains("created")
@@ -376,17 +378,14 @@ async fn conflicts_duplicates_unsupported_and_invalid_messages_are_refused_and_c
     assert_eq!(code(&send(&mut s, &bad_nhs).await.unwrap()), "AE");
 
     // Every refusal is in the trail with outcome 4 and no content.
-    let refused = db
-        .query_one_raw(sea_orm::Statement::from_sql_and_values(
-            sea_orm::DbBackend::Postgres,
-            "SELECT count(*) AS n FROM audit_events
-             WHERE agent = 'mllp:test-feed' AND outcome = 4 AND detail->>'control_id' = ANY($1::text[])",
-            [vec!["C2".to_string(), "C3".to_string(), "C4".to_string(), "C5".to_string(), "C6".to_string()].into()],
-        ))
+    let refused = sqlx::query("SELECT count(*) AS n FROM audit_events
+             WHERE agent = 'mllp:test-feed' AND outcome = 4 AND detail->>'control_id' = ANY($1::text[])")
+.bind(vec!["C2".to_string(), "C3".to_string(), "C4".to_string(), "C5".to_string(), "C6".to_string()])
+.fetch_optional(&db)
         .await
         .unwrap()
         .unwrap();
-    assert!(refused.try_get::<i64>("", "n").unwrap() >= 5);
+    assert!(refused.try_get::<i64, _>("n").unwrap() >= 5);
 }
 
 #[tokio::test]
@@ -510,14 +509,12 @@ async fn a_refused_message_waits_in_the_queue_until_a_person_closes_it_once() {
     let id_of = |control: String| {
         let db = db.clone();
         async move {
-            db.query_one_raw(sea_orm::Statement::from_sql_and_values(
-                sea_orm::DbBackend::Postgres,
-                "SELECT refusal_id::text AS id FROM feed_refusals WHERE control_id = $1",
-                [control.into()],
-            ))
-            .await
-            .unwrap()
-            .map(|r| r.try_get::<String>("", "id").unwrap())
+            sqlx::query("SELECT refusal_id::text AS id FROM feed_refusals WHERE control_id = $1")
+                .bind(control)
+                .fetch_optional(&db)
+                .await
+                .unwrap()
+                .map(|r| r.try_get::<String, _>("id").unwrap())
         }
     };
     // An accepted message is not queued.
@@ -576,18 +573,17 @@ async fn a_refused_message_waits_in_the_queue_until_a_person_closes_it_once() {
         Err(StoreError::Conflict { .. })
     ));
     assert_eq!(queue::count_open(&db).await.unwrap(), waiting + 1);
-    let still_open = db
-        .query_one_raw(sea_orm::Statement::from_sql_and_values(
-            sea_orm::DbBackend::Postgres,
-            "SELECT count(*) AS n FROM feed_refusals f
+    let still_open = sqlx::query(
+        "SELECT count(*) AS n FROM feed_refusals f
              LEFT JOIN feed_refusal_resolutions r USING (refusal_id)
              WHERE r.refusal_id IS NULL AND f.refusal_id::text = $1",
-            [entry.id.clone().into()],
-        ))
-        .await
-        .unwrap()
-        .unwrap();
-    assert_eq!(still_open.try_get::<i64>("", "n").unwrap(), 0);
+    )
+    .bind(entry.id.clone())
+    .fetch_optional(&db)
+    .await
+    .unwrap()
+    .unwrap();
+    assert_eq!(still_open.try_get::<i64, _>("n").unwrap(), 0);
     // The closed one is still readable, with who closed it.
     assert_eq!(
         queue::get(&db, &entry.id)
@@ -615,7 +611,11 @@ async fn a_refused_message_waits_in_the_queue_until_a_person_closes_it_once() {
         ),
         "TRUNCATE feed_refusals CASCADE".to_string(),
     ] {
-        let e = db.execute_unprepared(&sql).await.unwrap_err().to_string();
+        let e = sqlx::raw_sql(AssertSqlSafe(sql.to_string()))
+            .execute(&db)
+            .await
+            .unwrap_err()
+            .to_string();
         assert!(e.contains("append-only"), "{sql}: {e}");
     }
 }
@@ -626,13 +626,12 @@ async fn a_refusal_list_longer_than_the_list_limit_says_it_was_cut_short() {
     // PR-1 (hazard H-044): oldest first and capped, so the newest refusal is the one hidden. Done in a
     // transaction that is rolled back, so the shared test database stays as it was.
     use electronic_patient_record::feed_queue::{self as queue, Kind, New};
-    use sea_orm::TransactionTrait;
     let db = db().await;
-    let txn = db.begin().await.unwrap();
-    let mut open = queue::count_open(&txn).await.unwrap();
+    let mut txn = db.begin().await.unwrap();
+    let mut open = queue::count_open(&mut *txn).await.unwrap();
     while open < i64::try_from(queue::LIST_LIMIT).unwrap() + 1 {
         queue::record(
-            &txn,
+            &mut *txn,
             New {
                 agent: "clinic-feed",
                 peer: None,
@@ -647,7 +646,7 @@ async fn a_refusal_list_longer_than_the_list_limit_says_it_was_cut_short() {
         .unwrap();
         open += 1;
     }
-    let page = queue::list_open(&txn).await.unwrap();
+    let page = queue::list_open(&mut *txn).await.unwrap();
     assert_eq!(page.len() as u64, queue::LIST_LIMIT);
     assert!(
         page.more,

@@ -19,8 +19,9 @@ use authentication_verifier::test_idp::{AUDIENCE, REALM, TestIdp};
 use axa::testing::prelude::request;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use electronic_patient_record::app::App;
-use sea_orm::{ConnectionTrait, Statement};
+use electronic_patient_record::pool::Pool;
 use serde_json::{Value, json};
+use sqlx::Row;
 
 fn nanos() -> u128 {
     std::time::SystemTime::now()
@@ -269,21 +270,18 @@ async fn who_may_take_which_step() {
         assert_ne!(wrong_step.status_code(), StatusCode::OK);
 
         // The audit rows name ids, states and roles, never the substance.
-        let rows = ctx
-            .db
-            .query_all_raw(Statement::from_string(
-                ctx.db.get_database_backend(),
-                "SELECT detail::text AS d FROM audit_events_all WHERE resource_ref = 'Referral'"
-                    .to_string(),
-            ))
-            .await
-            .unwrap();
+        let rows = sqlx::query(
+            "SELECT detail::text AS d FROM audit_events_all WHERE resource_ref = 'Referral'",
+        )
+        .fetch_all(&ctx.pool())
+        .await
+        .unwrap();
         assert!(
             rows.len() >= 8,
             "every send, step, refusal and read is audited"
         );
         for row in rows {
-            let d: String = row.try_get("", "d").unwrap();
+            let d: String = row.try_get("d").unwrap();
             for secret in [REASON, QUESTION, NOTE] {
                 assert!(
                     !d.contains(secret),

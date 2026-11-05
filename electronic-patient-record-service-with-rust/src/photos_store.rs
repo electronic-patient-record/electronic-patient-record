@@ -11,9 +11,10 @@
 //! in backups), which is the same promise the rest of the record makes.
 
 use crate::patients_store::{self, StoreError};
-use crate::store::pg;
-use sea_orm::{ConnectionTrait, TransactionTrait};
+use crate::pool::Db;
 use sha2::{Digest, Sha256};
+use sqlx::postgres::PgRow;
+use sqlx::{AssertSqlSafe, Row};
 
 crate::store_errors!("photos");
 
@@ -67,13 +68,13 @@ pub fn validate(bytes: &[u8]) -> Result<&'static str, String> {
 /// # Errors
 ///
 /// [`StoreError::Db`] when a column is missing.
-fn row_to_photo(row: &sea_orm::QueryResult) -> Result<StoredPhoto, StoreError> {
+fn row_to_photo(row: &PgRow) -> Result<StoredPhoto, StoreError> {
     Ok(StoredPhoto {
-        patient_id: row.try_get("", "patient_id").map_err(db_err)?,
-        version: row.try_get("", "version").map_err(db_err)?,
-        author: row.try_get("", "author").map_err(db_err)?,
-        content_type: row.try_get("", "content_type").map_err(db_err)?,
-        bytes: row.try_get("", "bytes").map_err(db_err)?,
+        patient_id: row.try_get("patient_id").map_err(db_err)?,
+        version: row.try_get("version").map_err(db_err)?,
+        author: row.try_get("author").map_err(db_err)?,
+        content_type: row.try_get("content_type").map_err(db_err)?,
+        bytes: row.try_get("bytes").map_err(db_err)?,
     })
 }
 
@@ -86,17 +87,19 @@ const COLUMNS: &str = "patient_id::text AS patient_id, version, author, content_
 ///
 /// [`StoreError::NotFound`] when the patient does not exist.
 pub async fn current(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     patient_id: &str,
 ) -> Result<Option<StoredPhoto>, StoreError> {
-    let patient = patients_store::current(db, patient_id).await?;
-    let row = db
-        .query_one_raw(pg(
-            &format!("SELECT {COLUMNS} FROM patient_photo_current WHERE patient_id = $1::uuid"),
-            vec![patient.id.into()],
-        ))
-        .await
-        .map_err(db_err)?;
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let patient = patients_store::current(&mut *db, patient_id).await?;
+    let row = sqlx::query(AssertSqlSafe(format!(
+        "SELECT {COLUMNS} FROM patient_photo_current WHERE patient_id = $1::uuid"
+    )))
+    .bind(patient.id)
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(db_err)?;
     row.as_ref().map(row_to_photo).transpose()
 }
 
@@ -108,18 +111,20 @@ pub async fn current(
 /// [`StoreError::NotFound`] (no such patient), [`StoreError::BadQuery`] (the file is refused),
 /// [`StoreError::Conflict`] (stale or racing version).
 pub async fn put(
-    db: &(impl ConnectionTrait + TransactionTrait),
+    db: impl Into<Db<'_>>,
     patient_id: &str,
     expected_version: i32,
     author: &str,
     reason: Option<&str>,
     bytes: Option<&[u8]>,
 ) -> Result<StoredPhoto, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let kind = match bytes {
         Some(b) => Some(validate(b).map_err(StoreError::BadQuery)?),
         None => None,
     };
-    let now = current(db, patient_id).await?;
+    let now = current(&mut *db, patient_id).await?;
     let have = now.as_ref().map_or(0, |p| p.version);
     if have != expected_version {
         return Err(StoreError::Conflict { current: have });
@@ -127,7 +132,7 @@ pub async fn put(
     if bytes.is_none() && now.as_ref().is_none_or(|p| p.bytes.is_none()) {
         return Err(StoreError::BadQuery("there is no photo to withdraw".into()));
     }
-    let id = patients_store::current(db, patient_id).await?.id;
+    let id = patients_store::current(&mut *db, patient_id).await?.id;
     let sha = bytes.map(|b| {
         Sha256::digest(b).iter().fold(String::new(), |mut s, x| {
             use std::fmt::Write as _;
@@ -137,30 +142,28 @@ pub async fn put(
     });
     // A concurrent writer took this version: the primary key refuses the second (CQ-12).
     let row = match crate::store::append_version(
-        db,
+        &mut *db,
         STORE,
-        pg(
-            &format!(
-                "INSERT INTO patient_photos
+        sqlx::query(AssertSqlSafe(format!(
+            "INSERT INTO patient_photos
                    (patient_id, version, author, reason, content_type, bytes, sha256)
                  VALUES ($1::uuid, $2, $3, $4, $5, $6, $7) RETURNING {COLUMNS}"
-            ),
-            vec![
-                id.into(),
-                (expected_version + 1).into(),
-                author.into(),
-                reason.map(str::to_string).into(),
-                kind.map(str::to_string).into(),
-                bytes.map(<[u8]>::to_vec).into(),
-                sha.into(),
-            ],
-        ),
+        )))
+        .bind(id)
+        .bind(expected_version + 1)
+        .bind(author)
+        .bind(reason.map(str::to_string))
+        .bind(kind.map(str::to_string))
+        .bind(bytes.map(<[u8]>::to_vec))
+        .bind(sha),
     )
     .await?
     {
         crate::store::Appended::Row(row) => row,
         crate::store::Appended::Taken => {
-            let current = current(db, patient_id).await?.map_or(0, |p| p.version);
+            let current = current(&mut *db, patient_id)
+                .await?
+                .map_or(0, |p| p.version);
             return Err(StoreError::Conflict { current });
         }
     };

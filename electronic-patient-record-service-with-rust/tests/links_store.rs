@@ -12,14 +12,17 @@ use electronic_patient_record::allergies::{self, AllergyRecord, Status, Summary}
 use electronic_patient_record::links;
 use electronic_patient_record::patients_store::{self, Search, StoreError};
 use electronic_patient_record_matcher::{HumanName, Patient};
-use electronic_patient_record_migration::{Migrator, MigratorTrait};
-use sea_orm::{ConnectionTrait, Database, DatabaseConnection, TransactionTrait};
+use sqlx::Row;
+use sqlx::{AssertSqlSafe, PgPool};
 use std::collections::{BTreeSet, HashMap};
 
-async fn db() -> DatabaseConnection {
+async fn db() -> PgPool {
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
-    let db = Database::connect(url).await.expect("connect");
-    Migrator::up(&db, None).await.expect("migrate");
+    let db = PgPool::connect(&url).await.expect("connect");
+    electronic_patient_record::MIGRATOR
+        .run(&db)
+        .await
+        .expect("migrate");
     db
 }
 
@@ -33,7 +36,7 @@ fn tag(label: &str) -> String {
 
 /// The same person every time (so the matcher agrees to merge), under a family name unique to the
 /// test so searches see only this test's rows.
-async fn person(db: &DatabaseConnection, family: &str) -> String {
+async fn person(db: &PgPool, family: &str) -> String {
     let p = Patient {
         names: vec![HumanName {
             family: Some(family.into()),
@@ -57,33 +60,25 @@ fn allergy(substance: &str) -> AllergyRecord {
     }
 }
 
-async fn merge(
-    db: &DatabaseConnection,
-    target: &str,
-    source: &str,
-) -> Result<links::StoredLink, StoreError> {
-    let tx = db.begin().await.unwrap();
-    let r = links::merge(&tx, target, source, "admin", "same person").await;
+async fn merge(db: &PgPool, target: &str, source: &str) -> Result<links::StoredLink, StoreError> {
+    let mut tx = db.begin().await.unwrap();
+    let r = links::merge(&mut *tx, target, source, "admin", "same person").await;
     if r.is_ok() {
         tx.commit().await.unwrap();
     }
     r
 }
 
-async fn unmerge(
-    db: &DatabaseConnection,
-    target: &str,
-    source: &str,
-) -> Result<links::StoredLink, StoreError> {
-    let tx = db.begin().await.unwrap();
-    let r = links::unmerge(&tx, target, source, "admin", "mistake").await;
+async fn unmerge(db: &PgPool, target: &str, source: &str) -> Result<links::StoredLink, StoreError> {
+    let mut tx = db.begin().await.unwrap();
+    let r = links::unmerge(&mut *tx, target, source, "admin", "mistake").await;
     if r.is_ok() {
         tx.commit().await.unwrap();
     }
     r
 }
 
-async fn ids_of(db: &DatabaseConnection, patient: &str) -> BTreeSet<String> {
+async fn ids_of(db: &PgPool, patient: &str) -> BTreeSet<String> {
     allergies::list(db, patient)
         .await
         .unwrap()
@@ -158,16 +153,13 @@ async fn a_merge_hides_the_old_record_from_search_and_an_unmerge_brings_it_back(
         2
     );
     // Both versions of the link remain, with authors and reasons.
-    let rows = db
-        .query_all_raw(sea_orm::Statement::from_sql_and_values(
-            sea_orm::DbBackend::Postgres,
-            "SELECT version, status, reason FROM patient_link_versions WHERE link_id = $1::uuid ORDER BY version",
-            [link.id.clone().into()],
-        ))
+    let rows = sqlx::query("SELECT version, status, reason FROM patient_link_versions WHERE link_id = $1::uuid ORDER BY version")
+.bind(link.id.clone())
+.fetch_all(&db)
         .await
         .unwrap();
     assert_eq!(rows.len(), 2);
-    assert_eq!(rows[1].try_get::<String>("", "reason").unwrap(), "mistake");
+    assert_eq!(rows[1].try_get::<String, _>("reason").unwrap(), "mistake");
     // Merging again after an unmerge is a new link.
     let again = merge(&db, &target, &source).await.unwrap();
     assert_ne!(again.id, link.id);
@@ -189,9 +181,9 @@ async fn bad_merges_are_refused_with_a_reason() {
     };
     assert!(msg(merge(&db, &a, &a).await).contains("itself"));
     // A blank reason.
-    let tx = db.begin().await.unwrap();
+    let mut tx = db.begin().await.unwrap();
     assert!(matches!(
-        links::merge(&tx, &a, &b, "x", "   ").await,
+        links::merge(&mut *tx, &a, &b, "x", "   ").await,
         Err(StoreError::BadQuery(_))
     ));
     drop(tx);
@@ -563,7 +555,11 @@ async fn link_versions_cannot_be_changed_or_removed() {
         ),
         "TRUNCATE patient_link_versions".to_string(),
     ] {
-        let e = db.execute_unprepared(&sql).await.unwrap_err().to_string();
+        let e = sqlx::raw_sql(AssertSqlSafe(sql.to_string()))
+            .execute(&db)
+            .await
+            .unwrap_err()
+            .to_string();
         assert!(e.contains("append-only"), "{sql}: {e}");
     }
 }

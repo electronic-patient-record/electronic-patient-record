@@ -17,11 +17,11 @@
 use crate::ids;
 use crate::page::Page;
 use crate::patients_store::StoreError;
+use crate::pool::Db;
 use crate::referral::State;
 use crate::referral_timeouts::Timeouts;
-use crate::store::pg;
-use sea_orm::ConnectionTrait;
 use serde::Serialize;
+use sqlx::{AssertSqlSafe, Row};
 
 crate::store_errors!("referral worklist");
 
@@ -139,8 +139,10 @@ fn waiting(timeouts: &Timeouts) -> String {
 /// # Errors
 ///
 /// [`StoreError::Db`].
-pub async fn list(db: &impl ConnectionTrait, by: &str) -> Result<Page<Item>, StoreError> {
-    list_with(db, by, &crate::referral_timeouts::current()).await
+pub async fn list(db: impl Into<Db<'_>>, by: &str) -> Result<Page<Item>, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    list_with(&mut *db, by, &crate::referral_timeouts::current()).await
 }
 
 /// [`list`] against given periods.
@@ -149,11 +151,13 @@ pub async fn list(db: &impl ConnectionTrait, by: &str) -> Result<Page<Item>, Sto
 ///
 /// [`StoreError::Db`].
 pub async fn list_with(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     by: &str,
     timeouts: &Timeouts,
 ) -> Result<Page<Item>, StoreError> {
-    list_at(db, by, timeouts, chrono::Utc::now()).await
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    list_at(&mut *db, by, timeouts, chrono::Utc::now()).await
 }
 
 /// [`list_with`] judging how long a referral has waited by `at`, the time a [`crate::clock::Clock`] shows.
@@ -162,32 +166,33 @@ pub async fn list_with(
 ///
 /// [`StoreError::Db`].
 pub async fn list_at(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     by: &str,
     timeouts: &Timeouts,
     at: chrono::DateTime<chrono::Utc>,
 ) -> Result<Page<Item>, StoreError> {
-    let rows = db
-        .query_all_raw(pg(
-            &format!(
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let rows = sqlx::query(AssertSqlSafe(format!(
                 "SELECT c.referral_id::text AS id, c.patient_id::text AS patient_id, c.version, c.state, c.why,
                         to_char(c.recorded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS at
                  {} ORDER BY c.recorded_at, c.referral_id LIMIT {}",
                 waiting(timeouts),
                 LIST_LIMIT + 1
-            ),
-            vec![by.into(), at.into()],
-        ))
+            )))
+.bind(by)
+.bind(at)
+.fetch_all(&mut *db)
         .await
         .map_err(db_err)?;
     let mut items = Vec::with_capacity(rows.len());
     for row in &rows {
-        let word: String = row.try_get("", "state").map_err(db_err)?;
+        let word: String = row.try_get("state").map_err(db_err)?;
         let state = State::ALL
             .into_iter()
             .find(|s| s.as_str() == word)
             .ok_or_else(|| db_err(format!("unexpected state {word}")))?;
-        let why: String = row.try_get("", "why").map_err(db_err)?;
+        let why: String = row.try_get("why").map_err(db_err)?;
         let why = match why.as_str() {
             "reply" => Why::Reply,
             "no-response" => Why::NoResponse,
@@ -195,12 +200,12 @@ pub async fn list_at(
             other => return Err(db_err(format!("unexpected reason {other}"))),
         };
         items.push(Item {
-            referral_id: row.try_get("", "id").map_err(db_err)?,
-            patient_id: row.try_get("", "patient_id").map_err(db_err)?,
-            version: row.try_get("", "version").map_err(db_err)?,
+            referral_id: row.try_get("id").map_err(db_err)?,
+            patient_id: row.try_get("patient_id").map_err(db_err)?,
+            version: row.try_get("version").map_err(db_err)?,
             state,
             why,
-            recorded_at: row.try_get("", "at").map_err(db_err)?,
+            recorded_at: row.try_get("at").map_err(db_err)?,
         });
     }
     Ok(Page::cut(items, LIST_LIMIT))
@@ -211,8 +216,10 @@ pub async fn list_at(
 /// # Errors
 ///
 /// [`StoreError::Db`].
-pub async fn count(db: &impl ConnectionTrait, by: &str) -> Result<i64, StoreError> {
-    count_with(db, by, &crate::referral_timeouts::current()).await
+pub async fn count(db: impl Into<Db<'_>>, by: &str) -> Result<i64, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    count_with(&mut *db, by, &crate::referral_timeouts::current()).await
 }
 
 /// [`count`] against given periods.
@@ -221,11 +228,13 @@ pub async fn count(db: &impl ConnectionTrait, by: &str) -> Result<i64, StoreErro
 ///
 /// [`StoreError::Db`].
 pub async fn count_with(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     by: &str,
     timeouts: &Timeouts,
 ) -> Result<i64, StoreError> {
-    count_at(db, by, timeouts, chrono::Utc::now()).await
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    count_at(&mut *db, by, timeouts, chrono::Utc::now()).await
 }
 
 /// [`count_with`] judging by `at`.
@@ -234,20 +243,24 @@ pub async fn count_with(
 ///
 /// [`StoreError::Db`].
 pub async fn count_at(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     by: &str,
     timeouts: &Timeouts,
     at: chrono::DateTime<chrono::Utc>,
 ) -> Result<i64, StoreError> {
-    let row = db
-        .query_one_raw(pg(
-            &format!("SELECT count(*) AS n {}", waiting(timeouts)),
-            vec![by.into(), at.into()],
-        ))
-        .await
-        .map_err(db_err)?
-        .ok_or_else(|| db_err("count returned no row"))?;
-    row.try_get("", "n").map_err(db_err)
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let row = sqlx::query(AssertSqlSafe(format!(
+        "SELECT count(*) AS n {}",
+        waiting(timeouts)
+    )))
+    .bind(by)
+    .bind(at)
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(db_err)?
+    .ok_or_else(|| db_err("count returned no row"))?;
+    row.try_get("n").map_err(db_err)
 }
 
 /// `by` says they have seen `version` of a referral they sent. Once only.
@@ -258,45 +271,49 @@ pub async fn count_at(
 /// purpose); [`StoreError::Conflict`] when `version` is no longer the current one, or was already acknowledged;
 /// [`StoreError::BadQuery`] when the current state is not one that waits for the referrer.
 pub async fn acknowledge(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     referral_id: &str,
     version: i32,
     by: &str,
 ) -> Result<(), StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let id = ids::uuid(referral_id).ok_or(StoreError::NotFound)?;
-    let row = db
-        .query_one_raw(pg(
-            "SELECT c.version, c.state, first.author
+    let row = sqlx::query(
+        "SELECT c.version, c.state, first.author
              FROM referral_current c
              JOIN referral_versions first ON first.referral_id = c.referral_id AND first.version = 1
              WHERE c.referral_id = $1::uuid",
-            vec![id.clone().into()],
-        ))
-        .await
-        .map_err(db_err)?
-        .ok_or(StoreError::NotFound)?;
-    let author: String = row.try_get("", "author").map_err(db_err)?;
+    )
+    .bind(id.clone())
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(db_err)?
+    .ok_or(StoreError::NotFound)?;
+    let author: String = row.try_get("author").map_err(db_err)?;
     if author != by {
         return Err(StoreError::NotFound);
     }
-    let current: i32 = row.try_get("", "version").map_err(db_err)?;
+    let current: i32 = row.try_get("version").map_err(db_err)?;
     if current != version {
         return Err(StoreError::Conflict { current });
     }
-    let state: String = row.try_get("", "state").map_err(db_err)?;
+    let state: String = row.try_get("state").map_err(db_err)?;
     if !ATTENTION.iter().any(|s| s.as_str() == state) {
         return Err(StoreError::BadQuery(
             "nothing in this referral waits for the referrer".into(),
         ));
     }
-    let done = db
-        .execute_raw(pg(
-            "INSERT INTO referral_acknowledgements (referral_id, version, acknowledged_by)
+    let done = sqlx::query(
+        "INSERT INTO referral_acknowledgements (referral_id, version, acknowledged_by)
              VALUES ($1::uuid, $2, $3) ON CONFLICT DO NOTHING",
-            vec![id.into(), version.into(), by.into()],
-        ))
-        .await
-        .map_err(db_err)?;
+    )
+    .bind(id)
+    .bind(version)
+    .bind(by)
+    .execute(&mut *db)
+    .await
+    .map_err(db_err)?;
     if done.rows_affected() == 0 {
         return Err(StoreError::Conflict { current });
     }

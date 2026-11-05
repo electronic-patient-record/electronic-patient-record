@@ -16,13 +16,13 @@ use crate::routes;
 use axum::extract::{Request, State};
 use axum::middleware::Next;
 use axum::response::Response;
-use sea_orm::DatabaseConnection;
+use sqlx::PgPool;
 
 /// The state the middleware needs to audit a refusal.
 #[derive(Clone)]
 pub struct Authz {
     /// Where audit rows go.
-    pub db: DatabaseConnection,
+    pub db: PgPool,
 }
 
 /// The reasons a request is refused at the gate.
@@ -192,7 +192,7 @@ async fn authorize_inner(authz: Authz, req: Request, next: Next) -> Response {
 /// Record the refusal. If the row cannot be written the refusal still stands (nothing was
 /// disclosed), and the failure is logged.
 async fn audit_refusal(
-    db: &DatabaseConnection,
+    db: &PgPool,
     agent: &str,
     method: &axum::http::Method,
     template: Option<&'static str>,

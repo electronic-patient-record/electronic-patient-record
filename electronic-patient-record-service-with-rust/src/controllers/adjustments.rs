@@ -20,6 +20,7 @@ use crate::audit::Action;
 use crate::auth::Agent;
 use crate::patients_store::StoreError;
 use crate::policy::{self, Purpose, Resource, Subject};
+use crate::pool::Pool;
 use axa::prelude::*;
 use axum::{
     Extension,
@@ -97,7 +98,7 @@ async fn refused(
         return None;
     }
     audit_resource(
-        &ctx.db,
+        &ctx.pool(),
         agent,
         Access {
             action,
@@ -122,7 +123,7 @@ pub(super) async fn list_service(
 ) -> Result<AdjustmentList, ApiError> {
     let purpose = purpose_of(headers)?;
     authorize(
-        &ctx.db,
+        &ctx.pool(),
         agent,
         subject,
         Resource::Adjustment,
@@ -132,7 +133,7 @@ pub(super) async fn list_service(
     )
     .await?;
     let today = Utc::now().date_naive();
-    let adjustments = match store::list(&ctx.db, patient, today).await {
+    let adjustments = match store::list(&ctx.pool(), patient, today).await {
         Ok(a) => a,
         Err(e) => {
             if let Some(r) = refused(ctx, agent, purpose, Action::Read, &e).await {
@@ -142,7 +143,7 @@ pub(super) async fn list_service(
         }
     };
     audit_resource(
-        &ctx.db,
+        &ctx.pool(),
         agent,
         Access {
             action: Action::Read,
@@ -185,7 +186,7 @@ pub(super) async fn create(
         Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::Adjustment,
@@ -206,18 +207,18 @@ pub(super) async fn create(
         today,
     )
     .map_err(store::refused);
-    let tx = match begin(&ctx.db).await {
+    let mut tx = match begin(&ctx.pool()).await {
         Ok(t) => t,
         Err(r) => return r.into_response(),
     };
     let written = match made {
-        Ok(adjustment) => store::record(&tx, &patient, &agent.0, &adjustment, today).await,
+        Ok(adjustment) => store::record(&mut *tx, &patient, &agent.0, &adjustment, today).await,
         Err(e) => Err(e),
     };
     match written {
         Ok(stored) => {
             if let Err(r) = audit_resource(
-                &tx,
+                &mut *tx,
                 &agent,
                 Access {
                     action: Action::Create,
@@ -242,7 +243,7 @@ pub(super) async fn create(
             (StatusCode::CREATED, Json(stored)).into_response()
         }
         Err(e) => {
-            let _ = sea_orm::TransactionSession::rollback(tx).await;
+            let _ = tx.rollback().await;
             if let Some(r) = refused(&ctx, &agent, purpose, Action::Create, &e).await {
                 return r.into_response();
             }
@@ -266,7 +267,7 @@ pub(super) async fn update(
         Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::Adjustment,
@@ -285,12 +286,12 @@ pub(super) async fn update(
         ChangeAction::End => Change::End,
     };
     let today = Utc::now().date_naive();
-    let tx = match begin(&ctx.db).await {
+    let mut tx = match begin(&ctx.pool()).await {
         Ok(t) => t,
         Err(r) => return r.into_response(),
     };
     match store::change(
-        &tx,
+        &mut *tx,
         &patient,
         &adjustment_id,
         request.expected_version,
@@ -303,7 +304,7 @@ pub(super) async fn update(
     {
         Ok(stored) => {
             if let Err(r) = audit_resource(
-                &tx,
+                &mut *tx,
                 &agent,
                 Access {
                     action: Action::Update,
@@ -328,7 +329,7 @@ pub(super) async fn update(
             Json(stored).into_response()
         }
         Err(e) => {
-            let _ = sea_orm::TransactionSession::rollback(tx).await;
+            let _ = tx.rollback().await;
             if let Some(r) = refused(&ctx, &agent, purpose, Action::Update, &e).await {
                 return r.into_response();
             }

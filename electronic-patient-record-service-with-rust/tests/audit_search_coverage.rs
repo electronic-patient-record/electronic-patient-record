@@ -19,8 +19,9 @@ use axa::testing::prelude::request;
 use axum::http::StatusCode;
 use electronic_patient_record::app::App;
 use electronic_patient_record::policy::Action;
+use electronic_patient_record::pool::Pool;
 use electronic_patient_record::routes;
-use sea_orm::{ConnectionTrait, DatabaseConnection, Statement};
+use sqlx::{PgPool, Row};
 
 /// Search routes this test does not call, with the reason.
 const EXEMPT: &[(&str, &str)] = &[(
@@ -54,16 +55,13 @@ fn call(template: &str, patient: &str) -> Option<String> {
     })
 }
 
-async fn audit_rows(db: &DatabaseConnection) -> i64 {
-    let row = db
-        .query_one_raw(Statement::from_string(
-            db.get_database_backend(),
-            "SELECT count(*)::bigint AS n FROM audit_events_all".to_string(),
-        ))
+async fn audit_rows(db: &PgPool) -> i64 {
+    let row = sqlx::query("SELECT count(*)::bigint AS n FROM audit_events_all")
+        .fetch_optional(db)
         .await
         .expect("count")
         .expect("one row");
-    row.try_get("", "n").expect("n")
+    row.try_get("n").expect("n")
 }
 
 #[tokio::test]
@@ -98,9 +96,9 @@ async fn a_successful_search_or_list_leaves_an_audit_row() {
                 unlisted.push(*template);
                 continue;
             };
-            let before = audit_rows(&ctx.db).await;
+            let before = audit_rows(&ctx.pool()).await;
             let response = server.get(&path).await;
-            let after = audit_rows(&ctx.db).await;
+            let after = audit_rows(&ctx.pool()).await;
             assert_eq!(
                 response.status_code(),
                 StatusCode::OK,

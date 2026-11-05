@@ -21,17 +21,17 @@ use electronic_patient_record::outbox::{self, Event, MAX_FAILURES, NewEvent, Sin
 use electronic_patient_record::patients_store;
 use electronic_patient_record::policy::{Purpose, Resource, Role};
 use electronic_patient_record_matcher::{HumanName, Patient};
-use electronic_patient_record_migration::{Migrator, MigratorTrait};
-use sea_orm::{
-    ConnectionTrait, Database, DatabaseConnection, DbBackend, Statement, TransactionTrait,
-};
+use sqlx::{AssertSqlSafe, PgPool, Row};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 
-async fn db() -> DatabaseConnection {
+async fn db() -> PgPool {
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
-    let db = Database::connect(url).await.expect("connect");
-    Migrator::up(&db, None).await.expect("migrate");
+    let db = PgPool::connect(&url).await.expect("connect");
+    electronic_patient_record::MIGRATOR
+        .run(&db)
+        .await
+        .expect("migrate");
     db
 }
 
@@ -73,7 +73,7 @@ fn sinks(name: &str, fail: bool) -> (Sinks, Arc<AtomicU32>) {
     (all, calls)
 }
 
-async fn patient(db: &DatabaseConnection) -> String {
+async fn patient(db: &PgPool) -> String {
     let p = Patient {
         names: vec![HumanName {
             family: Some(format!("Zz{}", nanos())),
@@ -84,29 +84,28 @@ async fn patient(db: &DatabaseConnection) -> String {
     patients_store::create(db, "t", None, &p).await.unwrap().id
 }
 
-async fn count(db: &DatabaseConnection, sql: &str, arg: &str) -> i64 {
-    db.query_one_raw(Statement::from_sql_and_values(
-        DbBackend::Postgres,
-        sql,
-        vec![arg.into()],
-    ))
-    .await
-    .unwrap()
-    .unwrap()
-    .try_get("", "n")
-    .unwrap()
+async fn count(db: &PgPool, sql: &str, arg: &str) -> i64 {
+    sqlx::query(AssertSqlSafe(sql.to_string()))
+        .bind(arg)
+        .fetch_optional(db)
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("n")
+        .unwrap()
 }
 
-async fn attempts(db: &DatabaseConnection, id: &str, outcome: &str) -> i64 {
-    db.query_one_raw(Statement::from_sql_and_values(
-        DbBackend::Postgres,
+async fn attempts(db: &PgPool, id: &str, outcome: &str) -> i64 {
+    sqlx::query(
         "SELECT count(*) AS n FROM outbox_attempts WHERE event_id = $1::uuid AND outcome = $2",
-        vec![id.into(), outcome.into()],
-    ))
+    )
+    .bind(id)
+    .bind(outcome)
+    .fetch_optional(db)
     .await
     .unwrap()
     .unwrap()
-    .try_get("", "n")
+    .try_get("n")
     .unwrap()
 }
 
@@ -134,14 +133,14 @@ async fn a_rolled_back_event_is_never_delivered_and_a_committed_one_is_delivered
     let recipient = format!("sink-{}", nanos());
     let payload = serde_json::json!({"n": 1});
 
-    let tx = db.begin().await.unwrap();
-    let lost = outbox::enqueue(&tx, event(&recipient, None, &payload))
+    let mut tx = db.begin().await.unwrap();
+    let lost = outbox::enqueue(&mut *tx, event(&recipient, None, &payload))
         .await
         .unwrap();
     tx.rollback().await.unwrap();
 
-    let tx = db.begin().await.unwrap();
-    let kept = outbox::enqueue(&tx, event(&recipient, None, &payload))
+    let mut tx = db.begin().await.unwrap();
+    let kept = outbox::enqueue(&mut *tx, event(&recipient, None, &payload))
         .await
         .unwrap();
     tx.commit().await.unwrap();
@@ -237,11 +236,11 @@ async fn a_report_of_death_holds_an_event_until_it_is_withdrawn() {
     let id = patient(&db).await;
     let other = patient(&db).await;
     let payload = serde_json::json!({"n": 1});
-    let tx = db.begin().await.unwrap();
-    let held = outbox::enqueue(&tx, event(&recipient, Some(&id), &payload))
+    let mut tx = db.begin().await.unwrap();
+    let held = outbox::enqueue(&mut *tx, event(&recipient, Some(&id), &payload))
         .await
         .unwrap();
-    let free = outbox::enqueue(&tx, event(&recipient, Some(&other), &payload))
+    let free = outbox::enqueue(&mut *tx, event(&recipient, Some(&other), &payload))
         .await
         .unwrap();
     tx.commit().await.unwrap();
@@ -312,13 +311,13 @@ async fn held_events_do_not_use_up_a_run() {
     )
     .unwrap();
     death_store::report(&db, &id, &made).await.unwrap();
-    let tx = db.begin().await.unwrap();
+    let mut tx = db.begin().await.unwrap();
     for _ in 0..3 {
-        outbox::enqueue(&tx, event(&recipient, Some(&id), &payload))
+        outbox::enqueue(&mut *tx, event(&recipient, Some(&id), &payload))
             .await
             .unwrap();
     }
-    outbox::enqueue(&tx, event(&recipient, Some(&other), &payload))
+    outbox::enqueue(&mut *tx, event(&recipient, Some(&other), &payload))
         .await
         .unwrap();
     tx.commit().await.unwrap();
@@ -416,7 +415,10 @@ async fn events_and_attempts_cannot_be_edited_deleted_or_truncated() {
         "TRUNCATE outbox_attempts".to_string(),
         "TRUNCATE outbox_events CASCADE".to_string(),
     ] {
-        let e = db.execute_unprepared(&sql).await.unwrap_err();
+        let e = sqlx::raw_sql(AssertSqlSafe(sql.to_string()))
+            .execute(&db)
+            .await
+            .unwrap_err();
         assert!(e.to_string().contains("append-only"), "{sql}: {e}");
     }
 }
@@ -478,14 +480,13 @@ async fn a_failed_event_waits_before_its_retry() {
 
 /// Add `n` failed attempts to an event, each stamped `age_secs` ago (the table is append-only, so the
 /// clock is set on insert).
-async fn fail_in_the_past(db: &DatabaseConnection, id: &str, n: u32, age_secs: i64) {
+async fn fail_in_the_past(db: &PgPool, id: &str, n: u32, age_secs: i64) {
     for _ in 0..n {
-        db.execute_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "INSERT INTO outbox_attempts (event_id, attempted_at, outcome, reason)
-             VALUES ($1::uuid, now() - make_interval(secs => $2::double precision), 'failed', 'earlier')",
-            vec![id.into(), age_secs.into()],
-        ))
+        sqlx::query("INSERT INTO outbox_attempts (event_id, attempted_at, outcome, reason)
+             VALUES ($1::uuid, now() - make_interval(secs => $2::double precision), 'failed', 'earlier')")
+.bind(id)
+.bind(age_secs)
+.execute(db)
         .await
         .unwrap();
     }
@@ -543,13 +544,11 @@ async fn depth_counts_pending_and_stuck_events_and_not_finished_ones() {
     }
     // 0: untouched (pending). 1: failed MAX_FAILURES times (stuck). 2: delivered (neither).
     fail_in_the_past(&db, &ids[1], u32::try_from(MAX_FAILURES).unwrap(), 5).await;
-    db.execute_raw(Statement::from_sql_and_values(
-        DbBackend::Postgres,
-        "INSERT INTO outbox_attempts (event_id, outcome) VALUES ($1::uuid, 'delivered')",
-        vec![ids[2].clone().into()],
-    ))
-    .await
-    .unwrap();
+    sqlx::query("INSERT INTO outbox_attempts (event_id, outcome) VALUES ($1::uuid, 'delivered')")
+        .bind(ids[2].clone())
+        .execute(&db)
+        .await
+        .unwrap();
     let (p1, s1) = outbox::depth(&db).await.unwrap();
     assert_eq!((p1 - p0, s1 - s0), (1, 1));
 }

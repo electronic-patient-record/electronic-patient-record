@@ -13,17 +13,19 @@ use electronic_patient_record::amendments_store as store;
 use electronic_patient_record::observations_store::{self as obs, ObservationRecord, Status};
 use electronic_patient_record::patients_store::{self, StoreError};
 use electronic_patient_record_matcher::{HumanName, Patient};
-use electronic_patient_record_migration::{Migrator, MigratorTrait};
-use sea_orm::{ConnectionTrait, Database, DatabaseConnection, Statement};
+use sqlx::{AssertSqlSafe, PgPool, Row};
 
-async fn db() -> DatabaseConnection {
+async fn db() -> PgPool {
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
-    let db = Database::connect(url).await.expect("connect");
-    Migrator::up(&db, None).await.expect("migrate");
+    let db = PgPool::connect(&url).await.expect("connect");
+    electronic_patient_record::MIGRATOR
+        .run(&db)
+        .await
+        .expect("migrate");
     db
 }
 
-async fn person(db: &DatabaseConnection) -> String {
+async fn person(db: &PgPool) -> String {
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
@@ -148,19 +150,16 @@ async fn a_request_runs_its_course_through_the_store_and_every_step_is_kept() {
     assert_eq!(store::list(&db, &p).await.unwrap().len(), 1);
 
     // Every step is kept, with the event that made it.
-    let n: i64 = db
-        .query_one_raw(Statement::from_string(
-            sea_orm::DbBackend::Postgres,
-            format!(
-                "SELECT count(*) AS n FROM amendment_versions WHERE amendment_id = '{}'::uuid",
-                a.id
-            ),
-        ))
-        .await
-        .unwrap()
-        .unwrap()
-        .try_get("", "n")
-        .unwrap();
+    let n: i64 = sqlx::query(AssertSqlSafe(format!(
+        "SELECT count(*) AS n FROM amendment_versions WHERE amendment_id = '{}'::uuid",
+        a.id
+    )))
+    .fetch_optional(&db)
+    .await
+    .unwrap()
+    .unwrap()
+    .try_get("n")
+    .unwrap();
     assert_eq!(n, 3);
 }
 
@@ -237,7 +236,10 @@ async fn a_refusal_keeps_the_patients_statement_with_the_record_and_nothing_can_
         ),
         "TRUNCATE amendment_versions".to_string(),
     ] {
-        let e = db.execute_unprepared(&sql).await.unwrap_err();
+        let e = sqlx::raw_sql(AssertSqlSafe(sql.to_string()))
+            .execute(&db)
+            .await
+            .unwrap_err();
         assert!(e.to_string().contains("append-only"), "{sql}: {e}");
     }
 }

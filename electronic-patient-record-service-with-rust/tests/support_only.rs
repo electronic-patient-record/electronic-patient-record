@@ -33,11 +33,11 @@ fn watched(word: &str) -> bool {
 }
 
 fn migration_words() -> Vec<String> {
-    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("migration/src");
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("migrations");
     let mut out = Vec::new();
     for entry in std::fs::read_dir(dir).unwrap() {
         let path = entry.unwrap().path();
-        if path.extension().is_some_and(|e| e == "rs") {
+        if path.extension().is_some_and(|e| e == "sql") {
             out.extend(words(&std::fs::read_to_string(&path).unwrap()));
         }
     }

@@ -29,6 +29,7 @@ use crate::observations_store::StoredObservation;
 use crate::patients_store::{Search, Stored};
 use crate::policy::Subject;
 use crate::policy::{self, Purpose, Resource};
+use crate::pool::Pool;
 use axa::prelude::*;
 use axum::{
     Extension,
@@ -161,7 +162,7 @@ async fn death_of(ctx: &AppContext, subject: &Subject, id: &str) -> Result<Optio
     if !may_see {
         return Ok(None);
     }
-    death_store::answer(&ctx.db, id)
+    death_store::answer(&ctx.pool(), id)
         .await
         .map(Some)
         .map_err(|e| e.to_string())
@@ -540,7 +541,7 @@ async fn search_audit_events(
         Err(m) => return outcome(StatusCode::BAD_REQUEST, "not-supported", &m),
     };
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::AuditLog,
@@ -552,7 +553,7 @@ async fn search_audit_events(
     {
         return refusal(&r, false);
     }
-    match search_audited(&ctx.db, &agent, &query).await {
+    match search_audited(&ctx.pool(), &agent, &query).await {
         Ok((rows, next)) => {
             let entries: Result<Vec<_>, String> = rows
                 .iter()

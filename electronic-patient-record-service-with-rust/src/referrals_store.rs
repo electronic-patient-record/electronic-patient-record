@@ -11,11 +11,12 @@
 
 use crate::ids;
 use crate::patients_store::StoreError;
+use crate::pool::Db;
 use crate::referral::{self, Actor, Event, State};
-use crate::store::pg;
 use chrono::{DateTime, SecondsFormat, Utc};
-use sea_orm::{ConnectionTrait, TransactionTrait};
 use serde::{Deserialize, Serialize};
+use sqlx::postgres::PgRow;
+use sqlx::{AssertSqlSafe, Row};
 
 crate::store_errors!("referrals");
 
@@ -132,21 +133,21 @@ fn columns() -> String {
 /// # Errors
 ///
 /// [`StoreError::Db`] when a column is missing or a stored word is not a known state.
-fn row_to_referral(row: &sea_orm::QueryResult) -> Result<StoredReferral, StoreError> {
-    let body: serde_json::Value = row.try_get("", "body").map_err(db_err)?;
-    let state: String = row.try_get("", "state").map_err(db_err)?;
+fn row_to_referral(row: &PgRow) -> Result<StoredReferral, StoreError> {
+    let body: serde_json::Value = row.try_get("body").map_err(db_err)?;
+    let state: String = row.try_get("state").map_err(db_err)?;
     let state_value: State =
         serde_json::from_value(serde_json::Value::String(state)).map_err(db_err)?;
     Ok(StoredReferral {
-        id: row.try_get("", "id").map_err(db_err)?,
-        version: row.try_get("", "version").map_err(db_err)?,
-        author: row.try_get("", "author").map_err(db_err)?,
-        recorded_at: row.try_get("", "at").map_err(db_err)?,
-        patient_id: row.try_get("", "patient_id").map_err(db_err)?,
+        id: row.try_get("id").map_err(db_err)?,
+        version: row.try_get("version").map_err(db_err)?,
+        author: row.try_get("author").map_err(db_err)?,
+        recorded_at: row.try_get("at").map_err(db_err)?,
+        patient_id: row.try_get("patient_id").map_err(db_err)?,
         state: state_value,
         next: allowed_events(state_value),
         referral: serde_json::from_value(body).map_err(db_err)?,
-        last_event: row.try_get("", "event").map_err(db_err)?,
+        last_event: row.try_get("event").map_err(db_err)?,
     })
 }
 
@@ -203,37 +204,35 @@ fn check(referral: &Referral) -> Result<(), StoreError> {
 /// [`StoreError::NotFound`] when the patient does not exist; [`StoreError::BadQuery`] when the request is
 /// blank, too long or has too many identifiers.
 pub async fn request(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     author: &str,
     patient_id: &str,
     referral: &Referral,
     now: DateTime<Utc>,
 ) -> Result<StoredReferral, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     check(referral)?;
     let patient = ids::uuid(patient_id).ok_or(StoreError::NotFound)?;
-    crate::patients_store::current(db, &patient).await?;
-    let row = db
-        .query_one_raw(pg(
-            &format!(
+    crate::patients_store::current(&mut *db, &patient).await?;
+    let row = sqlx::query(AssertSqlSafe(format!(
                 "INSERT INTO referral_versions (referral_id, version, patient_id, author, state, event, body)
                  VALUES (gen_random_uuid(), 1, $1::uuid, $2, $3, $4, $5)
                  RETURNING {}",
                 columns()
-            ),
-            vec![
-                patient.into(),
-                author.into(),
-                State::Requested.as_str().into(),
-                serde_json::json!({
+            )))
+.bind(patient)
+.bind(author)
+.bind(State::Requested.as_str())
+.bind(serde_json::json!({
                     "event": "request",
                     "by": author,
                     "role": "referrer",
                     "at": now.to_rfc3339_opts(SecondsFormat::Micros, true),
                 })
-                .into(),
-                serde_json::to_value(referral).map_err(db_err)?.into(),
-            ],
-        ))
+                )
+.bind(serde_json::to_value(referral).map_err(db_err)?)
+.fetch_optional(&mut *db)
         .await
         .map_err(db_err)?
         .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
@@ -246,21 +245,21 @@ pub async fn request(
 ///
 /// [`StoreError::NotFound`] when there is no such referral.
 pub async fn current(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     referral_id: &str,
 ) -> Result<StoredReferral, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let id = ids::uuid(referral_id).ok_or(StoreError::NotFound)?;
-    let row = db
-        .query_one_raw(pg(
-            &format!(
-                "SELECT {} FROM referral_current WHERE referral_id = $1::uuid",
-                columns()
-            ),
-            vec![id.into()],
-        ))
-        .await
-        .map_err(db_err)?
-        .ok_or(StoreError::NotFound)?;
+    let row = sqlx::query(AssertSqlSafe(format!(
+        "SELECT {} FROM referral_current WHERE referral_id = $1::uuid",
+        columns()
+    )))
+    .bind(id)
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(db_err)?
+    .ok_or(StoreError::NotFound)?;
     row_to_referral(&row)
 }
 
@@ -270,23 +269,23 @@ pub async fn current(
 ///
 /// [`StoreError::Db`] when the read fails.
 pub async fn for_patient(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     patient_id: &str,
 ) -> Result<Vec<StoredReferral>, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let Some(id) = ids::uuid(patient_id) else {
         return Ok(Vec::new());
     };
-    let rows = db
-        .query_all_raw(pg(
-            &format!(
-                "SELECT {} FROM referral_current WHERE patient_id = $1::uuid
+    let rows = sqlx::query(AssertSqlSafe(format!(
+        "SELECT {} FROM referral_current WHERE patient_id = $1::uuid
                  ORDER BY recorded_at DESC, referral_id",
-                columns()
-            ),
-            vec![id.into()],
-        ))
-        .await
-        .map_err(db_err)?;
+        columns()
+    )))
+    .bind(id)
+    .fetch_all(&mut *db)
+    .await
+    .map_err(db_err)?;
     rows.iter().map(row_to_referral).collect()
 }
 
@@ -296,20 +295,20 @@ pub async fn for_patient(
 ///
 /// [`StoreError::NotFound`] when there is no such referral.
 pub async fn history(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     referral_id: &str,
 ) -> Result<Vec<StoredReferral>, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let id = ids::uuid(referral_id).ok_or(StoreError::NotFound)?;
-    let rows = db
-        .query_all_raw(pg(
-            &format!(
-                "SELECT {} FROM referral_versions WHERE referral_id = $1::uuid ORDER BY version",
-                columns()
-            ),
-            vec![id.into()],
-        ))
-        .await
-        .map_err(db_err)?;
+    let rows = sqlx::query(AssertSqlSafe(format!(
+        "SELECT {} FROM referral_versions WHERE referral_id = $1::uuid ORDER BY version",
+        columns()
+    )))
+    .bind(id)
+    .fetch_all(&mut *db)
+    .await
+    .map_err(db_err)?;
     if rows.is_empty() {
         return Err(StoreError::NotFound);
     }
@@ -337,19 +336,21 @@ pub struct Step<'a> {
 /// [`StoreError::BadQuery`] (the actor is not the one this event expects, the state table does not allow
 /// it, or a needed note is missing or too long).
 pub async fn advance(
-    db: &(impl ConnectionTrait + TransactionTrait),
+    db: impl Into<Db<'_>>,
     referral_id: &str,
     expected_version: i32,
     step: Step<'_>,
     now: DateTime<Utc>,
 ) -> Result<StoredReferral, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let Step {
         actor,
         by,
         event,
         note,
     } = step;
-    let was = current(db, referral_id).await?;
+    let was = current(&mut *db, referral_id).await?;
     if was.version != expected_version {
         return Err(StoreError::Conflict {
             current: was.version,
@@ -382,31 +383,27 @@ pub async fn advance(
         "note": note.map(str::trim).filter(|n| !n.is_empty()),
     });
     let appended = crate::store::append_version(
-        db,
+        &mut *db,
         STORE,
-        pg(
-            &format!(
+        sqlx::query(AssertSqlSafe(format!(
                 "INSERT INTO referral_versions (referral_id, version, patient_id, author, state, event, body)
                  VALUES ($1::uuid, $2, $3::uuid, $4, $5, $6, $7)
                  RETURNING {}",
                 columns()
-            ),
-            vec![
-                was.id.clone().into(),
-                (expected_version + 1).into(),
-                was.patient_id.clone().into(),
-                by.into(),
-                state.as_str().into(),
-                logged.into(),
-                serde_json::to_value(&was.referral).map_err(db_err)?.into(),
-            ],
-        ),
+            )))
+.bind(was.id.clone())
+.bind(expected_version + 1)
+.bind(was.patient_id.clone())
+.bind(by)
+.bind(state.as_str())
+.bind(logged)
+.bind(serde_json::to_value(&was.referral).map_err(db_err)?),
     )
     .await?;
     match appended {
         crate::store::Appended::Row(row) => row_to_referral(&row),
         crate::store::Appended::Taken => {
-            let current = current(db, referral_id).await?.version;
+            let current = current(&mut *db, referral_id).await?.version;
             Err(StoreError::Conflict { current })
         }
     }

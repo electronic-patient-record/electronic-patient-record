@@ -21,9 +21,9 @@ use crate::death_store;
 use crate::ids;
 use crate::patients_store::StoreError;
 use crate::policy::{self, Consent, Decision, Purpose, Relationship, Resource, Role, Subject};
-use crate::store::pg;
+use crate::pool::Db;
 use async_trait::async_trait;
-use sea_orm::{ConnectionTrait, DatabaseConnection, TransactionTrait};
+use sqlx::{AssertSqlSafe, PgPool, Row};
 use std::collections::{BTreeSet, HashMap};
 
 crate::store_errors!("outbox");
@@ -103,32 +103,32 @@ pub struct Report {
 /// # Errors
 ///
 /// [`StoreError::BadQuery`] for a patient id that is not a UUID; [`StoreError::Db`] otherwise.
-pub async fn enqueue(db: &impl ConnectionTrait, new: NewEvent<'_>) -> Result<String, StoreError> {
+pub async fn enqueue(db: impl Into<Db<'_>>, new: NewEvent<'_>) -> Result<String, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let patient = match new.patient_id {
         Some(p) => Some(ids::uuid(p).ok_or_else(|| StoreError::BadQuery("patient id".into()))?),
         None => None,
     };
     let roles: Vec<String> = new.roles.iter().map(|r| r.as_str().to_string()).collect();
-    let row = db
-        .query_one_raw(pg(
-            "INSERT INTO outbox_events
+    let row = sqlx::query(
+        "INSERT INTO outbox_events
                (id, kind, recipient, recipient_roles, purpose, resource, patient_id, payload)
              VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6::uuid, $7::jsonb)
              RETURNING id::text AS id",
-            vec![
-                new.kind.into(),
-                new.recipient.into(),
-                roles.into(),
-                new.purpose.code().into(),
-                new.resource.name().into(),
-                patient.into(),
-                new.payload.to_string().into(),
-            ],
-        ))
-        .await
-        .map_err(db_err)?
-        .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
-    row.try_get("", "id").map_err(db_err)
+    )
+    .bind(new.kind)
+    .bind(new.recipient)
+    .bind(roles)
+    .bind(new.purpose.code())
+    .bind(new.resource.name())
+    .bind(patient)
+    .bind(new.payload.to_string())
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(db_err)?
+    .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
+    row.try_get("id").map_err(db_err)
 }
 
 /// The record decision for one event's recipient. `Ok` means the read path would allow it. `Err` is a
@@ -225,12 +225,7 @@ pub fn parse_interval(raw: Option<&str>) -> Result<Option<std::time::Duration>, 
 
 /// Run [`run_once`] every `every`, for ever. A database failure is logged and the loop carries on, so a
 /// restart of the database does not end delivery; a panic in a sink ends only that run's task.
-pub async fn run_loop(
-    db: DatabaseConnection,
-    chain: &'static Chain,
-    sinks: Sinks,
-    every: std::time::Duration,
-) {
+pub async fn run_loop(db: PgPool, chain: &'static Chain, sinks: Sinks, every: std::time::Duration) {
     let mut tick = tokio::time::interval(every);
     tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     loop {
@@ -262,11 +257,9 @@ pub async fn run_loop(
 /// # Errors
 ///
 /// [`StoreError::Db`] when the database fails.
-pub async fn depth(db: &DatabaseConnection) -> Result<(i64, i64), StoreError> {
-    let row = db
-        .query_one_raw(pg(
-            &format!(
-                "SELECT count(*) FILTER (WHERE f < {MAX_FAILURES}) AS pending,
+pub async fn depth(db: &PgPool) -> Result<(i64, i64), StoreError> {
+    let row = sqlx::query(AssertSqlSafe(format!(
+        "SELECT count(*) FILTER (WHERE f < {MAX_FAILURES}) AS pending,
                         count(*) FILTER (WHERE f >= {MAX_FAILURES}) AS stuck
                  FROM (SELECT (SELECT count(*) FROM outbox_attempts a
                                WHERE a.event_id = e.id AND a.outcome = 'failed') AS f
@@ -274,15 +267,14 @@ pub async fn depth(db: &DatabaseConnection) -> Result<(i64, i64), StoreError> {
                        WHERE NOT EXISTS (SELECT 1 FROM outbox_attempts a
                                          WHERE a.event_id = e.id
                                            AND a.outcome IN ('delivered', 'refused'))) t"
-            ),
-            vec![],
-        ))
-        .await
-        .map_err(db_err)?
-        .ok_or_else(|| StoreError::Db("no depth row".into()))?;
+    )))
+    .fetch_optional(db)
+    .await
+    .map_err(db_err)?
+    .ok_or_else(|| StoreError::Db("no depth row".into()))?;
     Ok((
-        row.try_get("", "pending").map_err(db_err)?,
-        row.try_get("", "stuck").map_err(db_err)?,
+        row.try_get("pending").map_err(db_err)?,
+        row.try_get("stuck").map_err(db_err)?,
     ))
 }
 
@@ -305,7 +297,7 @@ pub const BACKOFF_BASE_SECS: i64 = 30;
 ///
 /// [`StoreError::Db`] when the database fails; the event being processed stays pending.
 pub async fn run_once(
-    db: &DatabaseConnection,
+    db: &PgPool,
     chain: &Chain,
     sinks: &Sinks,
     limit: u32,
@@ -319,7 +311,7 @@ pub async fn run_once(
 ///
 /// [`StoreError::Db`] when the database fails; the event being processed stays pending.
 pub async fn run_once_with(
-    db: &DatabaseConnection,
+    db: &PgPool,
     chain: &Chain,
     sinks: &Sinks,
     limit: u32,
@@ -330,24 +322,21 @@ pub async fn run_once_with(
     let mut held: Vec<String> = Vec::new();
     // An event gets at most one attempt per run, so a failure waits for the next run instead of
     // using up every retry at once.
-    let mark: i64 = db
-        .query_one_raw(pg(
-            "SELECT coalesce(max(id), 0) AS m FROM outbox_attempts",
-            vec![],
-        ))
+    let mark: i64 = sqlx::query("SELECT coalesce(max(id), 0) AS m FROM outbox_attempts")
+        .fetch_optional(db)
         .await
         .map_err(db_err)?
         .ok_or_else(|| StoreError::Db("no row".into()))?
-        .try_get("", "m")
+        .try_get("m")
         .map_err(db_err)?;
     let mut taken = 0;
     while taken < limit {
-        let tx = db.begin().await.map_err(db_err)?;
-        let Some(event) = claim(&tx, mark, backoff_secs, &held).await? else {
+        let mut tx = db.begin().await.map_err(db_err)?;
+        let Some(event) = claim(&mut *tx, mark, backoff_secs, &held).await? else {
             tx.rollback().await.map_err(db_err)?;
             break;
         };
-        let (outcome, reason) = process(&tx, &event, sinks).await;
+        let (outcome, reason) = process(&mut *tx, &event, sinks).await;
         if outcome == HELD {
             tx.rollback().await.map_err(db_err)?;
             report.held += 1;
@@ -355,14 +344,13 @@ pub async fn run_once_with(
             continue;
         }
         taken += 1;
-        tx.execute_raw(pg(
+        sqlx::query(
             "INSERT INTO outbox_attempts (event_id, outcome, reason) VALUES ($1::uuid, $2, $3)",
-            vec![
-                event.id.clone().into(),
-                outcome.into(),
-                reason.clone().into(),
-            ],
-        ))
+        )
+        .bind(event.id.clone())
+        .bind(outcome)
+        .bind(reason.clone())
+        .execute(&mut *tx)
         .await
         .map_err(db_err)?;
         match outcome {
@@ -380,7 +368,7 @@ pub async fn run_once_with(
             row.detail = Some(serde_json::json!({
                 "outbox": outcome, "kind": event.kind, "reason": reason,
             }));
-            audit::append(&tx, chain, &row)
+            audit::append(&mut *tx, chain, &row)
                 .await
                 .map_err(|e| db_err(e.to_string()))?;
         }
@@ -398,14 +386,14 @@ pub async fn run_once_with(
 /// The oldest pending event not attempted since `mark` (the newest attempt when the run began), locked so
 /// no other runner takes it.
 async fn claim(
-    tx: &impl ConnectionTrait,
+    tx: impl Into<Db<'_>>,
     mark: i64,
     backoff_secs: i64,
     held: &[String],
 ) -> Result<Option<Event>, StoreError> {
-    let row = tx
-        .query_one_raw(pg(
-            &format!(
+    let mut conn = tx.into().acquire().await.map_err(db_err)?;
+    let tx = &mut *conn;
+    let row = sqlx::query(AssertSqlSafe(format!(
                 "SELECT e.id::text AS id, e.kind, e.recipient, e.recipient_roles, e.purpose, e.resource,
                         e.patient_id::text AS patient_id, e.payload
                  FROM outbox_events e
@@ -424,21 +412,23 @@ async fn claim(
                  ORDER BY e.created_at, e.id
                  LIMIT 1
                  FOR UPDATE OF e SKIP LOCKED"
-            ),
-            vec![mark.into(), backoff_secs.into(), ids::uuids(held).into()],
-        ))
+            )))
+.bind(mark)
+.bind(backoff_secs)
+.bind(ids::uuids(held))
+.fetch_optional(&mut *tx)
         .await
         .map_err(db_err)?;
     row.map(|r| {
         Ok(Event {
-            id: r.try_get("", "id").map_err(db_err)?,
-            kind: r.try_get("", "kind").map_err(db_err)?,
-            recipient: r.try_get("", "recipient").map_err(db_err)?,
-            roles: r.try_get("", "recipient_roles").map_err(db_err)?,
-            purpose: r.try_get("", "purpose").map_err(db_err)?,
-            resource: r.try_get("", "resource").map_err(db_err)?,
-            patient_id: r.try_get("", "patient_id").map_err(db_err)?,
-            payload: r.try_get("", "payload").map_err(db_err)?,
+            id: r.try_get("id").map_err(db_err)?,
+            kind: r.try_get("kind").map_err(db_err)?,
+            recipient: r.try_get("recipient").map_err(db_err)?,
+            roles: r.try_get("recipient_roles").map_err(db_err)?,
+            purpose: r.try_get("purpose").map_err(db_err)?,
+            resource: r.try_get("resource").map_err(db_err)?,
+            patient_id: r.try_get("patient_id").map_err(db_err)?,
+            payload: r.try_get("payload").map_err(db_err)?,
         })
     })
     .transpose()
@@ -449,14 +439,19 @@ const HELD: &str = "held";
 
 /// Decide and deliver one event: the outcome and its reason.
 async fn process(
-    tx: &impl ConnectionTrait,
+    tx: impl Into<Db<'_>>,
     event: &Event,
     sinks: &Sinks,
 ) -> (&'static str, Option<String>) {
     let failed = |why: &str| ("failed", Some(why.to_string()));
+    let mut conn = match tx.into().acquire().await {
+        Ok(conn) => conn,
+        Err(_) => return failed("no database connection"),
+    };
+    let tx = &mut *conn;
     // First, so that nothing about a held event is decided or sent.
     if let Some(patient) = &event.patient_id {
-        match death_store::answer(tx, patient).await {
+        match death_store::answer(&mut *tx, patient).await {
             Ok(answer) if answer.holds_contact() => return (HELD, None),
             Ok(_) => {}
             Err(_) => return failed("death-lookup"),
@@ -465,7 +460,7 @@ async fn process(
     let Some(sink) = sinks.get(&event.recipient) else {
         return failed("no-sink");
     };
-    let verdict = match consent_for(tx, event).await {
+    let verdict = match consent_for(&mut *tx, event).await {
         Ok(v) => v,
         // An unchecked disclosure is how a refusal gets ignored: no consent answer, no delivery.
         Err(_) => return failed("consent-lookup"),
@@ -486,7 +481,9 @@ async fn process(
 }
 
 /// The patient's consent for this recipient reading this kind of record.
-async fn consent_for(tx: &impl ConnectionTrait, event: &Event) -> Result<Consent, StoreError> {
+async fn consent_for(tx: impl Into<Db<'_>>, event: &Event) -> Result<Consent, StoreError> {
+    let mut conn = tx.into().acquire().await.map_err(db_err)?;
+    let tx = &mut *conn;
     let Some(patient) = &event.patient_id else {
         return Ok(Consent::NotRecorded);
     };
@@ -497,7 +494,8 @@ async fn consent_for(tx: &impl ConnectionTrait, event: &Event) -> Result<Consent
         // `decide` refuses these; there is nothing to look up.
         return Ok(Consent::NotRecorded);
     };
-    let active = consents_store::active_with_merged(tx, std::slice::from_ref(patient)).await?;
+    let active =
+        consents_store::active_with_merged(&mut *tx, std::slice::from_ref(patient)).await?;
     let ctx = consent::Context {
         roles: event.roles.iter().filter_map(|r| Role::parse(r)).collect(),
         purpose,

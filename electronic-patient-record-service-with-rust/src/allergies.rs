@@ -17,9 +17,10 @@
 use crate::ids;
 use crate::links;
 use crate::patients_store::{self, StoreError};
-use crate::store::pg;
-use sea_orm::{ConnectionTrait, TransactionTrait};
+use crate::pool::Db;
 use serde::{Deserialize, Serialize};
+use sqlx::postgres::PgRow;
+use sqlx::{AssertSqlSafe, Row};
 
 crate::store_errors!("allergies");
 
@@ -297,18 +298,18 @@ fn columns() -> String {
 /// # Errors
 ///
 /// [`StoreError::Db`] when a column is missing or the stored body or status is unreadable.
-fn row_to_allergy(row: &sea_orm::QueryResult) -> Result<StoredAllergy, StoreError> {
-    let body: serde_json::Value = row.try_get("", "body").map_err(db_err)?;
-    let status: String = row.try_get("", "status").map_err(db_err)?;
+fn row_to_allergy(row: &PgRow) -> Result<StoredAllergy, StoreError> {
+    let body: serde_json::Value = row.try_get("body").map_err(db_err)?;
+    let status: String = row.try_get("status").map_err(db_err)?;
     let mut allergy: AllergyRecord = serde_json::from_value(body).map_err(db_err)?;
     // The column is the source of truth for the status.
     allergy.status = Status::parse(&status).ok_or_else(|| db_err("unknown stored status"))?;
     Ok(StoredAllergy {
-        id: row.try_get("", "id").map_err(db_err)?,
-        patient_id: row.try_get("", "patient_id").map_err(db_err)?,
-        version: row.try_get("", "version").map_err(db_err)?,
-        author: row.try_get("", "author").map_err(db_err)?,
-        recorded_at: row.try_get("", "at").map_err(db_err)?,
+        id: row.try_get("id").map_err(db_err)?,
+        patient_id: row.try_get("patient_id").map_err(db_err)?,
+        version: row.try_get("version").map_err(db_err)?,
+        author: row.try_get("author").map_err(db_err)?,
+        recorded_at: row.try_get("at").map_err(db_err)?,
         allergy,
     })
 }
@@ -319,12 +320,14 @@ fn row_to_allergy(row: &sea_orm::QueryResult) -> Result<StoredAllergy, StoreErro
 ///
 /// [`StoreError::NotFound`] (no such patient), [`StoreError::BadQuery`] (the record is refused).
 pub async fn create(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     patient_id: &str,
     author: &str,
     reason: Option<&str>,
     record: &AllergyRecord,
 ) -> Result<StoredAllergy, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let problems = validate(record);
     if !problems.is_empty() {
         return Err(StoreError::BadQuery(problems.join("; ")));
@@ -334,22 +337,18 @@ pub async fn create(
             "a new allergy cannot start as entered in error".into(),
         ));
     }
-    let patient = patients_store::current(db, patient_id).await?;
-    let row = db
-        .query_one_raw(pg(
-            &format!(
+    let patient = patients_store::current(&mut *db, patient_id).await?;
+    let row = sqlx::query(AssertSqlSafe(format!(
                 "INSERT INTO allergy_versions (allergy_id, version, patient_id, author, reason, status, body)
                  VALUES (gen_random_uuid(), 1, $1::uuid, $2, $3, $4, $5) RETURNING {}",
                 columns()
-            ),
-            vec![
-                patient.id.into(),
-                author.into(),
-                reason.map(str::to_string).into(),
-                record.status.as_str().into(),
-                serde_json::to_value(record).map_err(db_err)?.into(),
-            ],
-        ))
+            )))
+.bind(patient.id)
+.bind(author)
+.bind(reason.map(str::to_string))
+.bind(record.status.as_str())
+.bind(serde_json::to_value(record).map_err(db_err)?)
+.fetch_optional(&mut *db)
         .await
         .map_err(db_err)?
         .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
@@ -365,22 +364,22 @@ pub async fn create(
 ///
 /// [`StoreError::NotFound`] (no such patient).
 pub async fn list(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     patient_id: &str,
 ) -> Result<Vec<StoredAllergy>, StoreError> {
-    let patient = patients_store::current(db, patient_id).await?;
-    let linked = ids::uuids(&links::linked_ids(db, &patient.id).await?);
-    let rows = db
-        .query_all_raw(pg(
-            &format!(
-                "SELECT {} FROM allergy_current WHERE patient_id = ANY($1::uuid[])
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let patient = patients_store::current(&mut *db, patient_id).await?;
+    let linked = ids::uuids(&links::linked_ids(&mut *db, &patient.id).await?);
+    let rows = sqlx::query(AssertSqlSafe(format!(
+        "SELECT {} FROM allergy_current WHERE patient_id = ANY($1::uuid[])
                  ORDER BY recorded_at, allergy_id",
-                columns()
-            ),
-            vec![linked.into()],
-        ))
-        .await
-        .map_err(db_err)?;
+        columns()
+    )))
+    .bind(linked)
+    .fetch_all(&mut *db)
+    .await
+    .map_err(db_err)?;
     rows.iter().map(row_to_allergy).collect()
 }
 
@@ -390,24 +389,25 @@ pub async fn list(
 ///
 /// [`StoreError::NotFound`] when there is no such allergy for that patient.
 pub async fn current(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     patient_id: &str,
     allergy_id: &str,
 ) -> Result<StoredAllergy, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let allergy_id = ids::uuid(allergy_id).ok_or(StoreError::NotFound)?;
-    let linked = ids::uuids(&links::linked_ids(db, patient_id).await?);
-    let row = db
-        .query_one_raw(pg(
-            &format!(
-                "SELECT {} FROM allergy_current
+    let linked = ids::uuids(&links::linked_ids(&mut *db, patient_id).await?);
+    let row = sqlx::query(AssertSqlSafe(format!(
+        "SELECT {} FROM allergy_current
                  WHERE allergy_id = $1::uuid AND patient_id = ANY($2::uuid[])",
-                columns()
-            ),
-            vec![allergy_id.into(), linked.into()],
-        ))
-        .await
-        .map_err(db_err)?
-        .ok_or(StoreError::NotFound)?;
+        columns()
+    )))
+    .bind(allergy_id)
+    .bind(linked)
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(db_err)?
+    .ok_or(StoreError::NotFound)?;
     row_to_allergy(&row)
 }
 
@@ -419,7 +419,7 @@ pub async fn current(
 /// [`StoreError::NotFound`], [`StoreError::Conflict`] (stale or racing version),
 /// [`StoreError::BadQuery`] (refused record, or reopening an entered-in-error allergy).
 pub async fn update(
-    db: &(impl ConnectionTrait + TransactionTrait),
+    db: impl Into<Db<'_>>,
     patient_id: &str,
     allergy_id: &str,
     expected_version: i32,
@@ -427,11 +427,13 @@ pub async fn update(
     reason: Option<&str>,
     record: &AllergyRecord,
 ) -> Result<StoredAllergy, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let problems = validate(record);
     if !problems.is_empty() {
         return Err(StoreError::BadQuery(problems.join("; ")));
     }
-    let now = current(db, patient_id, allergy_id).await?;
+    let now = current(&mut *db, patient_id, allergy_id).await?;
     if now.version != expected_version {
         return Err(StoreError::Conflict {
             current: now.version,
@@ -443,25 +445,21 @@ pub async fn update(
         ));
     }
     // A concurrent writer took this version: the primary key refuses the second (CQ-12).
-    let row = match crate::store::append_version(db, STORE, pg(
-            &format!(
+    let row = match crate::store::append_version(&mut *db, STORE, sqlx::query(AssertSqlSafe(format!(
                 "INSERT INTO allergy_versions (allergy_id, version, patient_id, author, reason, status, body)
                  VALUES ($1::uuid, $2, $3::uuid, $4, $5, $6, $7) RETURNING {}",
                 columns()
-            ),
-            vec![
-                now.id.clone().into(),
-                (expected_version + 1).into(),
-                now.patient_id.clone().into(),
-                author.into(),
-                reason.map(str::to_string).into(),
-                record.status.as_str().into(),
-                serde_json::to_value(record).map_err(db_err)?.into(),
-            ],
-        )).await? {
+            )))
+.bind(now.id.clone())
+.bind(expected_version + 1)
+.bind(now.patient_id.clone())
+.bind(author)
+.bind(reason.map(str::to_string))
+.bind(record.status.as_str())
+.bind(serde_json::to_value(record).map_err(db_err)?)).await? {
         crate::store::Appended::Row(row) => row,
         crate::store::Appended::Taken => {
-            let current = current(db, patient_id, allergy_id).await?.version;
+            let current = current(&mut *db, patient_id, allergy_id).await?.version;
             return Err(StoreError::Conflict { current });
         }
     };
@@ -474,26 +472,26 @@ pub async fn update(
 ///
 /// [`StoreError::NotFound`] (no such patient).
 pub async fn statement(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     patient_id: &str,
 ) -> Result<Option<Assertion>, StoreError> {
-    let patient = patients_store::current(db, patient_id).await?;
-    let row = db
-        .query_one_raw(pg(
-            &format!(
-                "SELECT version, author, {TS} AS at, kind FROM allergy_assertion_current
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let patient = patients_store::current(&mut *db, patient_id).await?;
+    let row = sqlx::query(AssertSqlSafe(format!(
+        "SELECT version, author, {TS} AS at, kind FROM allergy_assertion_current
                  WHERE patient_id = $1::uuid"
-            ),
-            vec![patient.id.into()],
-        ))
-        .await
-        .map_err(db_err)?;
+    )))
+    .bind(patient.id)
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(db_err)?;
     row.map(|r| {
         Ok(Assertion {
-            version: r.try_get("", "version").map_err(db_err)?,
-            author: r.try_get("", "author").map_err(db_err)?,
-            recorded_at: r.try_get("", "at").map_err(db_err)?,
-            no_known_allergies: r.try_get::<String>("", "kind").map_err(db_err)?
+            version: r.try_get("version").map_err(db_err)?,
+            author: r.try_get("author").map_err(db_err)?,
+            recorded_at: r.try_get("at").map_err(db_err)?,
+            no_known_allergies: r.try_get::<String, _>("kind").map_err(db_err)?
                 == "no-known-allergies",
         })
     })
@@ -508,14 +506,16 @@ pub async fn statement(
 ///
 /// [`StoreError::NotFound`], [`StoreError::Conflict`], [`StoreError::BadQuery`].
 pub async fn assert_none_known(
-    db: &(impl ConnectionTrait + TransactionTrait),
+    db: impl Into<Db<'_>>,
     patient_id: &str,
     expected_version: i32,
     author: &str,
     reason: Option<&str>,
     none_known: bool,
 ) -> Result<Assertion, StoreError> {
-    let have = statement(db, patient_id).await?;
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let have = statement(&mut *db, patient_id).await?;
     let current_version = have.as_ref().map_or(0, |a| a.version);
     if current_version != expected_version {
         return Err(StoreError::Conflict {
@@ -523,7 +523,7 @@ pub async fn assert_none_known(
         });
     }
     if none_known {
-        let active = list(db, patient_id)
+        let active = list(&mut *db, patient_id)
             .await?
             .iter()
             .filter(|a| a.allergy.status == Status::Active)
@@ -538,42 +538,39 @@ pub async fn assert_none_known(
             "there is no statement to withdraw".into(),
         ));
     }
-    let id = patients_store::current(db, patient_id).await?.id;
+    let id = patients_store::current(&mut *db, patient_id).await?.id;
     // A concurrent writer took this version: the primary key refuses the second (CQ-12).
     let r = match crate::store::append_version(
-        db,
+        &mut *db,
         STORE,
-        pg(
-            &format!(
-                "INSERT INTO allergy_assertion_versions (patient_id, version, author, reason, kind)
+        sqlx::query(AssertSqlSafe(format!(
+            "INSERT INTO allergy_assertion_versions (patient_id, version, author, reason, kind)
                  VALUES ($1::uuid, $2, $3, $4, $5) RETURNING version, author, {TS} AS at, kind"
-            ),
-            vec![
-                id.into(),
-                (expected_version + 1).into(),
-                author.into(),
-                reason.map(str::to_string).into(),
-                (if none_known {
-                    "no-known-allergies"
-                } else {
-                    "withdrawn"
-                })
-                .into(),
-            ],
-        ),
+        )))
+        .bind(id)
+        .bind(expected_version + 1)
+        .bind(author)
+        .bind(reason.map(str::to_string))
+        .bind(if none_known {
+            "no-known-allergies"
+        } else {
+            "withdrawn"
+        }),
     )
     .await?
     {
         crate::store::Appended::Row(row) => row,
         crate::store::Appended::Taken => {
-            let current = statement(db, patient_id).await?.map_or(0, |a| a.version);
+            let current = statement(&mut *db, patient_id)
+                .await?
+                .map_or(0, |a| a.version);
             return Err(StoreError::Conflict { current });
         }
     };
     Ok(Assertion {
-        version: r.try_get("", "version").map_err(db_err)?,
-        author: r.try_get("", "author").map_err(db_err)?,
-        recorded_at: r.try_get("", "at").map_err(db_err)?,
+        version: r.try_get("version").map_err(db_err)?,
+        author: r.try_get("author").map_err(db_err)?,
+        recorded_at: r.try_get("at").map_err(db_err)?,
         no_known_allergies: none_known,
     })
 }
@@ -583,9 +580,11 @@ pub async fn assert_none_known(
 /// # Errors
 ///
 /// [`StoreError::NotFound`] (no such patient).
-pub async fn summary(db: &impl ConnectionTrait, patient_id: &str) -> Result<Summary, StoreError> {
-    let all = list(db, patient_id).await?;
-    let statement = statement(db, patient_id).await?;
+pub async fn summary(db: impl Into<Db<'_>>, patient_id: &str) -> Result<Summary, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let all = list(&mut *db, patient_id).await?;
+    let statement = statement(&mut *db, patient_id).await?;
     Ok(summarise(&all, statement.as_ref()))
 }
 

@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - From SeaORM to sqlx
+
+- **Clinical risk:** **yes, in every read and write of the record.** Nothing was meant to change in behaviour. The 26 migrations and all store code moved. Rollback is now impossible rather than guarded: there are no down files, and `db down` refuses.
+- **Built:** `sqlx` 0.9 and `axa-sqlx` in place of SeaORM and `sea-orm-migration`; `migrations/*.sql`, embedded as `MIGRATOR`; the `electronic-patient-record-migration` crate removed. Store code is plain SQL on a `&mut PgConnection`. `pool::Db` lets one store function take a pool or a caller's transaction: `impl sqlx::Acquire` was tried first, and its futures are not `Send`, which every handler needs. `axa` 0.1 has no sqlx pool in `AppContext`, so the pool is in its shared store, read through `pool::Pool`, and the service has its own `/_readiness`, because `axa`'s checks nothing without its `sea-orm` feature.
+- **Checked:** the migrations' SQL was captured from Postgres as the old code ran them, not retyped, and `pg_dump --schema-only` of a database built each way differs by 0 lines of 3,896. Every gate in `scripts/ci-local.sh --full`, with 163 database tests and 472 others. The real binary wrote, read and audited a patient, verified the audit chain, refused `db down` and `db reset`, answered `/_readiness` 503 with Postgres stopped and `/_health` 200, and exited on SIGTERM. Dependencies fell from 509 to 433 (651 before `axa`).
+- **Caught on the way:** the mechanical rewrite took a connection before the failure counters in `audit::append` and `feed_queue::record`, so with the database gone, the audit-failure alarm would have stayed silent. `tests/metrics.rs` caught it, and both are fixed. `tests/support_only.rs` was still looking for `.rs` migration files, so it had stopped checking anything; it now reads the `.sql` files.
+- **Not done / not verified:** queries are still checked at run time: `sqlx::query!` was not used, so a wrong column is found by a test, not the compiler. **An existing database must be recreated**: sqlx keeps its history in `_sqlx_migrations`, and nothing moves the old `seaql_migrations`. Nothing is in clinical use. Performance under load was not compared. Statement caching differs from SeaORM's, which was not measured. `db reset` in development now drops the schemas itself.
+
 ## 2026-11-05 - `db reset` is refused outside development and test
 
 - **Clinical risk:** **yes: a defect in the previous entry, now fixed.** That commit mapped `db reset` to `Migrator::fresh`, which drops every table and does not go through the `down` guard, so one command could have destroyed clinical tables in production. It was on `main` for under an hour and was never deployed: nothing is.

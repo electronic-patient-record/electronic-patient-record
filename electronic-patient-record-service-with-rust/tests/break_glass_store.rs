@@ -11,13 +11,15 @@
 use electronic_patient_record::break_glass::{self as glass, GRANT_HOURS, Outcome};
 use electronic_patient_record::patients_store::{self, StoreError};
 use electronic_patient_record_matcher::{HumanName, Patient};
-use electronic_patient_record_migration::{Migrator, MigratorTrait};
-use sea_orm::{ConnectionTrait, Database, DatabaseConnection, Statement};
+use sqlx::{AssertSqlSafe, PgPool, Row};
 
-async fn db() -> DatabaseConnection {
+async fn db() -> PgPool {
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
-    let db = Database::connect(url).await.expect("connect");
-    Migrator::up(&db, None).await.expect("migrate");
+    let db = PgPool::connect(&url).await.expect("connect");
+    electronic_patient_record::MIGRATOR
+        .run(&db)
+        .await
+        .expect("migrate");
     db
 }
 
@@ -29,7 +31,7 @@ fn unique(label: &str) -> String {
     format!("{label}-{nanos}")
 }
 
-async fn patient(db: &DatabaseConnection) -> String {
+async fn patient(db: &PgPool) -> String {
     patients_store::create(
         db,
         "tester",
@@ -108,12 +110,13 @@ async fn a_grant_lasts_four_hours_and_asking_again_does_not_extend_it() {
 async fn an_expired_grant_is_not_active_and_a_new_one_can_be_opened() {
     let db = db().await;
     let (p, who) = (patient(&db).await, unique("dr"));
-    db.execute_raw(Statement::from_sql_and_values(
-        sea_orm::DbBackend::Postgres,
+    sqlx::query(
         "INSERT INTO break_glass_grants (patient_id, subject, reason, granted_at, expires_at)
          VALUES ($1::uuid, $2, 'old', now() - interval '5 hours', now() - interval '1 hour')",
-        [p.clone().into(), who.clone().into()],
-    ))
+    )
+    .bind(p.clone())
+    .bind(who.clone())
+    .execute(&db)
     .await
     .unwrap();
     assert!(glass::active(&db, &p, &who).await.unwrap().is_none());
@@ -226,31 +229,34 @@ async fn grants_and_reviews_cannot_be_changed_or_removed() {
         "TRUNCATE break_glass_reviews".to_string(),
         "TRUNCATE break_glass_grants CASCADE".to_string(),
     ] {
-        let e = db.execute_unprepared(&sql).await.unwrap_err().to_string();
+        let e = sqlx::raw_sql(AssertSqlSafe(sql.to_string()))
+            .execute(&db)
+            .await
+            .unwrap_err()
+            .to_string();
         assert!(e.contains("append-only"), "{sql}: {e}");
     }
 }
 
 async fn old_grant(
-    db: &impl ConnectionTrait,
+    db: impl Into<electronic_patient_record::pool::Db<'_>>,
     patient: &str,
     subject: &str,
     hours_ago: i64,
 ) -> String {
-    let row = db
-        .query_one_raw(Statement::from_string(
-            db.get_database_backend(),
-            format!(
+    let mut conn = db.into().acquire().await.unwrap();
+    let db = &mut *conn;
+    let row = sqlx::query(AssertSqlSafe(format!(
                 "INSERT INTO break_glass_grants (patient_id, subject, reason, granted_at, expires_at)
                  VALUES ('{patient}'::uuid, '{subject}', 'old emergency',
                          now() - interval '{hours_ago} hours', now() - interval '{hours_ago} hours' + interval '4 hours')
                  RETURNING grant_id::text AS id"
-            ),
-        ))
+            )))
+.fetch_optional(&mut *db)
         .await
         .unwrap()
         .unwrap();
-    row.try_get("", "id").unwrap()
+    row.try_get("id").unwrap()
 }
 
 #[tokio::test]
@@ -300,16 +306,15 @@ async fn a_grant_unreviewed_for_longer_than_the_limit_is_overdue_until_it_is_rev
 async fn a_review_list_longer_than_the_list_limit_says_it_was_cut_short() {
     // PR-1 (hazard H-044): oldest first and capped, so the newest unreviewed access is the one hidden.
     // Done in a transaction that is rolled back, so other tests' counts of unreviewed grants are untouched.
-    use sea_orm::TransactionTrait;
     let db = db().await;
     let p = patient(&db).await;
-    let txn = db.begin().await.unwrap();
-    let mut open = glass::count_unreviewed(&txn).await.unwrap();
+    let mut txn = db.begin().await.unwrap();
+    let mut open = glass::count_unreviewed(&mut *txn).await.unwrap();
     while open < i64::try_from(glass::LIST_LIMIT).unwrap() + 1 {
-        old_grant(&txn, &p, &unique("dr"), 1).await;
+        old_grant(&mut *txn, &p, &unique("dr"), 1).await;
         open += 1;
     }
-    let page = glass::unreviewed(&txn).await.unwrap();
+    let page = glass::unreviewed(&mut *txn).await.unwrap();
     assert_eq!(page.len() as u64, glass::LIST_LIMIT);
     assert!(
         page.more,

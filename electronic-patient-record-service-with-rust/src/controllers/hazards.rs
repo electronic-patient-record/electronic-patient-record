@@ -21,6 +21,7 @@ use crate::hazard::{Actor, Event};
 use crate::hazard_store::{self as store, StoredHazard};
 use crate::patients_store::StoreError;
 use crate::policy::{self, Purpose, Resource, Role, Subject};
+use crate::pool::Pool;
 use axa::prelude::*;
 use axum::{
     Extension,
@@ -77,7 +78,7 @@ async fn refused(
     why: &str,
 ) -> Option<ApiError> {
     audit_resource(
-        &ctx.db,
+        &ctx.pool(),
         agent,
         Access {
             action,
@@ -120,7 +121,7 @@ pub(super) async fn list(
         Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::Hazard,
@@ -132,13 +133,13 @@ pub(super) async fn list(
     {
         return r.into_response();
     }
-    let hazards = match store::list(&ctx.db).await {
+    let hazards = match store::list(&ctx.pool()).await {
         Ok(h) => h,
         Err(e) => return failure(e).into_response(),
     };
     // Audit before the content leaves.
     if let Err(r) = audit_resource(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         Access {
             action: Action::Read,
@@ -169,7 +170,7 @@ pub(super) async fn create(
         Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::Hazard,
@@ -181,12 +182,12 @@ pub(super) async fn create(
     {
         return r.into_response();
     }
-    let tx = match begin(&ctx.db).await {
+    let mut tx = match begin(&ctx.pool()).await {
         Ok(t) => t,
         Err(r) => return r.into_response(),
     };
     match store::raise(
-        &tx,
+        &mut *tx,
         &agent.0,
         &request.title,
         request.severity,
@@ -197,7 +198,7 @@ pub(super) async fn create(
     {
         Ok(stored) => {
             if let Err(r) = audit_resource(
-                &tx,
+                &mut *tx,
                 &agent,
                 Access {
                     action: Action::Create,
@@ -218,7 +219,7 @@ pub(super) async fn create(
             (StatusCode::CREATED, Json(stored)).into_response()
         }
         Err(e) => {
-            let _ = sea_orm::TransactionSession::rollback(tx).await;
+            let _ = tx.rollback().await;
             if let Some(r) = refused(&ctx, &agent, purpose, Action::Create, &e.to_string()).await {
                 return r.into_response();
             }
@@ -243,7 +244,7 @@ pub(super) async fn update(
         Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::Hazard,
@@ -276,12 +277,12 @@ pub(super) async fn update(
         is_cso,
     };
     let details = step_details(&request.event);
-    let tx = match begin(&ctx.db).await {
+    let mut tx = match begin(&ctx.pool()).await {
         Ok(t) => t,
         Err(r) => return r.into_response(),
     };
     match store::advance(
-        &tx,
+        &mut *tx,
         &hazard_id,
         request.expected_version,
         &actor,
@@ -296,7 +297,7 @@ pub(super) async fn update(
             audit["version"] = stored.version.into();
             audit["state"] = stored.hazard.state.word().into();
             if let Err(r) = audit_resource(
-                &tx,
+                &mut *tx,
                 &agent,
                 Access {
                     action: Action::Update,
@@ -317,7 +318,7 @@ pub(super) async fn update(
             Json(stored).into_response()
         }
         Err(e) => {
-            let _ = sea_orm::TransactionSession::rollback(tx).await;
+            let _ = tx.rollback().await;
             if matches!(
                 e,
                 StoreError::NotFound | StoreError::Conflict { .. } | StoreError::BadQuery(_)

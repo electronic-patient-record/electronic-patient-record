@@ -16,14 +16,13 @@ use axum::routing::{get, post};
 use electronic_patient_record::auth::Agent;
 use electronic_patient_record::metrics;
 use electronic_patient_record::rate_limit::{Gate, Limiter, Limits, rate_limit_mw};
-use electronic_patient_record_migration::MigratorTrait;
-use sea_orm::{ConnectionTrait, Database, DatabaseConnection, DbBackend, Statement};
+use sqlx::{PgPool, Row};
 use std::sync::Arc;
 use tower::ServiceExt;
 
 /// A router whose caller is the subject named in `X-Test-Subject` (none when absent), as the
 /// authentication middleware would have set it.
-fn app(db: DatabaseConnection, general: u32, compare: u32) -> Router {
+fn app(db: PgPool, general: u32, compare: u32) -> Router {
     let gate = Gate {
         limiter: Arc::new(Limiter::new(Limits { general, compare })),
         db,
@@ -57,7 +56,14 @@ fn request(method: Method, path: &str, subject: Option<&str>) -> Request<Body> {
 
 #[tokio::test]
 async fn a_subject_past_its_limit_gets_429_with_retry_after() {
-    let app = app(DatabaseConnection::default(), 2, 2);
+    let app = app(
+        sqlx::postgres::PgPoolOptions::new()
+            .acquire_timeout(std::time::Duration::from_millis(100))
+            .connect_lazy("postgres://nobody@127.0.0.1:1/none")
+            .unwrap(),
+        2,
+        2,
+    );
     let before = metrics::RATE_LIMITED.get();
     for _ in 0..2 {
         let res = app
@@ -95,7 +101,14 @@ async fn a_subject_past_its_limit_gets_429_with_retry_after() {
 
 #[tokio::test]
 async fn a_request_with_no_subject_is_not_counted() {
-    let app = app(DatabaseConnection::default(), 1, 1);
+    let app = app(
+        sqlx::postgres::PgPoolOptions::new()
+            .acquire_timeout(std::time::Duration::from_millis(100))
+            .connect_lazy("postgres://nobody@127.0.0.1:1/none")
+            .unwrap(),
+        1,
+        1,
+    );
     for _ in 0..5 {
         let res = app
             .clone()
@@ -108,7 +121,14 @@ async fn a_request_with_no_subject_is_not_counted() {
 
 #[tokio::test]
 async fn compare_has_its_own_limit_and_counts_apart_from_the_rest() {
-    let app = app(DatabaseConnection::default(), 100, 1);
+    let app = app(
+        sqlx::postgres::PgPoolOptions::new()
+            .acquire_timeout(std::time::Duration::from_millis(100))
+            .connect_lazy("postgres://nobody@127.0.0.1:1/none")
+            .unwrap(),
+        100,
+        1,
+    );
     let first = app
         .clone()
         .oneshot(request(
@@ -141,8 +161,9 @@ async fn compare_has_its_own_limit_and_counts_apart_from_the_rest() {
 #[ignore = "needs Postgres: set DATABASE_URL"]
 async fn the_first_refusal_in_a_window_is_one_audit_row() {
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
-    let db = Database::connect(url).await.expect("connect");
-    electronic_patient_record_migration::Migrator::up(&db, None)
+    let db = PgPool::connect(&url).await.expect("connect");
+    electronic_patient_record::MIGRATOR
+        .run(&db)
         .await
         .expect("migrate");
     let subject = format!(
@@ -159,17 +180,16 @@ async fn the_first_refusal_in_a_window_is_one_audit_row() {
             .await
             .unwrap();
     }
-    let rows: i64 = db
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT count(*) AS n FROM audit_events
+    let rows: i64 = sqlx::query(
+        "SELECT count(*) AS n FROM audit_events
              WHERE agent = $1 AND resource_ref = 'rate-limit' AND outcome = 4",
-            vec![subject.into()],
-        ))
-        .await
-        .unwrap()
-        .unwrap()
-        .try_get("", "n")
-        .unwrap();
+    )
+    .bind(subject)
+    .fetch_optional(&db)
+    .await
+    .unwrap()
+    .unwrap()
+    .try_get("n")
+    .unwrap();
     assert_eq!(rows, 1, "three refusals, one audit row");
 }

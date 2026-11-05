@@ -14,9 +14,10 @@ use authentication_verifier::test_idp::{AUDIENCE, REALM, TestIdp};
 use axa::testing::prelude::request;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use electronic_patient_record::app::App;
+use electronic_patient_record::pool::Pool;
 use electronic_patient_record_matcher::{HumanName, Patient};
-use sea_orm::{ConnectionTrait, Statement};
 use serde_json::{Value, json};
+use sqlx::{AssertSqlSafe, Row};
 
 fn nanos() -> u128 {
     std::time::SystemTime::now()
@@ -385,19 +386,15 @@ async fn who_may_record_read_and_retract_an_observation() {
         );
 
         // The audit trail names the records and never a measured value, a unit or a range.
-        let rows = ctx
-            .db
-            .query_all_raw(Statement::from_string(
-                sea_orm::DbBackend::Postgres,
-                format!(
+        let rows = sqlx::query(AssertSqlSafe(format!(
                     "SELECT detail::text AS d FROM audit_events WHERE resource_ref = 'Observation' AND patient_ref = 'Patient/{pid}'"
-                ),
-            ))
+                )))
+.fetch_all(&ctx.pool())
             .await
             .unwrap();
         assert!(rows.len() >= 5, "creates, a read and updates are audited: {}", rows.len());
         for row in rows {
-            let d: String = row.try_get("", "d").unwrap();
+            let d: String = row.try_get("d").unwrap();
             for secret in ["71.37", "/min", "\"low\"", "98.6", "degF"] {
                 assert!(!d.contains(secret), "{secret} leaked into the audit row: {d}");
             }

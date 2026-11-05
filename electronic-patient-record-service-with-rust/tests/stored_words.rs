@@ -10,34 +10,36 @@
 //! enum with no list), observation statuses, queue kinds and clearances (private lists), and a
 //! variant left out of its `ALL` array (the compiler cannot see that).
 
+use sqlx::{PgPool, Row};
 use std::collections::BTreeSet;
 
 use electronic_patient_record::{adjustments, allergies, consent, death, referral};
-use electronic_patient_record_migration::{Migrator, MigratorTrait};
-use sea_orm::{ConnectionTrait, Database, DatabaseConnection, Statement};
 
-async fn db() -> DatabaseConnection {
+async fn db() -> PgPool {
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
-    let db = Database::connect(url).await.expect("connect");
-    Migrator::up(&db, None).await.expect("migrate");
+    let db = PgPool::connect(&url).await.expect("connect");
+    electronic_patient_record::MIGRATOR
+        .run(&db)
+        .await
+        .expect("migrate");
     db
 }
 
 /// The words in the `IN (...)` check on `table.column`, read from the catalogue.
-async fn allowed(db: &DatabaseConnection, table: &str, column: &str) -> BTreeSet<String> {
-    let rows = db
-        .query_all_raw(Statement::from_sql_and_values(
-            db.get_database_backend(),
-            "SELECT pg_get_constraintdef(c.oid) AS def FROM pg_constraint c
+async fn allowed(db: &PgPool, table: &str, column: &str) -> BTreeSet<String> {
+    let rows = sqlx::query(
+        "SELECT pg_get_constraintdef(c.oid) AS def FROM pg_constraint c
              JOIN pg_class t ON t.oid = c.conrelid
              WHERE c.contype = 'c' AND t.relname = $1 AND pg_get_constraintdef(c.oid) LIKE $2",
-            [table.into(), format!("%{column} = ANY%").into()],
-        ))
-        .await
-        .expect("catalogue");
+    )
+    .bind(table)
+    .bind(format!("%{column} = ANY%"))
+    .fetch_all(db)
+    .await
+    .expect("catalogue");
     let mut words = BTreeSet::new();
     for r in rows {
-        let def: String = r.try_get("", "def").expect("def");
+        let def: String = r.try_get("def").expect("def");
         // CHECK ((state = ANY (ARRAY['requested'::text, ...])))
         let mut parts = def.split('\'');
         parts.next();
@@ -48,7 +50,7 @@ async fn allowed(db: &DatabaseConnection, table: &str, column: &str) -> BTreeSet
     words
 }
 
-async fn same(db: &DatabaseConnection, table: &str, column: &str, code: Vec<&str>) {
+async fn same(db: &PgPool, table: &str, column: &str, code: Vec<&str>) {
     let db_words = allowed(db, table, column).await;
     let code_words: BTreeSet<String> = code.into_iter().map(String::from).collect();
     assert!(

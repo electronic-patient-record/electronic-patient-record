@@ -33,7 +33,7 @@ NOTES = [
 ]
 STACK = {
     "matcher": "Rust library (pure, deterministic, explainable identity matching), published as electronic-patient-record-matcher",
-    "service": "Rust, Axum, axa and SeaORM, PostgreSQL 18, REST and FHIR R4",
+    "service": "Rust, Axum, axa and sqlx, PostgreSQL 18, REST and FHIR R4",
     "ui": "SvelteKit 3, Svelte 5 runes, backend-for-frontend proxy",
 }
 

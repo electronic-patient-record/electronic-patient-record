@@ -1,5 +1,6 @@
 //! Application wiring: the configuration, the command line, the routes and the middleware stack.
 
+use axa::sqlx::{PoolConfig, connect, migrate, status};
 use axa::{
     AppContext, Environment, Error, Result,
     boot::{BootResult, TestApp},
@@ -9,9 +10,8 @@ use axa::{
     server,
 };
 use axum::Router as AxumRouter;
-use electronic_patient_record_migration::{Migrator, MigratorTrait};
 
-use crate::{auth, authz, controllers, mllp};
+use crate::{MIGRATOR, auth, authz, controllers, mllp, pool::Pool};
 
 /// The application.
 pub struct App;
@@ -48,8 +48,8 @@ fn default_require_auth(environment: &Environment) -> Option<bool> {
     .then_some(false)
 }
 
-/// Whether `db reset` may run. `fresh` drops every table without going through a migration's `down`, so it
-/// gets the same rule as `down`: never in any environment but these two, and only when asked for by name.
+/// Whether `db reset` may run. It drops every table: never in any environment but these two, and only when
+/// asked for by name.
 fn reset_allowed(environment: &Environment, flag: Option<&str>) -> bool {
     matches!(environment, Environment::Development | Environment::Test) && flag == Some("true")
 }
@@ -60,7 +60,7 @@ impl TestApp for App {
         let environment = Environment::Test;
         let config = Config::from_env(&environment, &defaults())?;
         let ctx = Self::context(environment, config).await?;
-        Migrator::up(&ctx.db, None).await?;
+        Self::migrate(&ctx).await?;
         let router = Self::router(&ctx).await?;
         Ok(BootResult {
             app_context: ctx,
@@ -76,8 +76,18 @@ impl App {
     ///
     /// When the database cannot be reached.
     pub async fn context(environment: Environment, config: Config) -> Result<AppContext> {
-        let db = axa::db::connect(&config.database).await?;
-        Ok(AppContext::new(environment, db, config))
+        let pool = connect(&PoolConfig {
+            uri: config.database.uri.clone(),
+            min_connections: config.database.min_connections,
+            max_connections: config.database.max_connections,
+            connect_timeout_ms: config.database.connect_timeout,
+            idle_timeout_ms: config.database.idle_timeout,
+        })
+        .await
+        .map_err(|e| Error::string(&format!("cannot reach the database: {e}")))?;
+        let ctx = AppContext::new(environment, (), config);
+        ctx.shared_store.insert(pool);
+        Ok(ctx)
     }
 
     /// The routes in the standard middleware, wrapped in the service's own.
@@ -90,11 +100,23 @@ impl App {
         Self::after_routes(router, ctx).await
     }
 
-    /// Run a database command. `down` and `reset` meet the migrations' refusal to drop clinical tables.
+    /// Apply pending migrations.
+    async fn migrate(ctx: &AppContext) -> Result<()> {
+        migrate(&ctx.pool(), &MIGRATOR)
+            .await
+            .map_err(|e| Error::string(&format!("migration failed: {e}")))
+    }
+
+    /// Run a database command. There is no `down`: migrations have no down files, so the clinical record
+    /// cannot be rolled back through them.
     async fn db(ctx: &AppContext, command: DbCommand) -> Result<()> {
         match command {
-            DbCommand::Migrate => Migrator::up(&ctx.db, None).await?,
-            DbCommand::Down { steps } => Migrator::down(&ctx.db, Some(steps)).await?,
+            DbCommand::Migrate => Self::migrate(ctx).await?,
+            DbCommand::Down { .. } => {
+                return Err(Error::string(
+                    "migrations have no down files: the clinical record is not rolled back",
+                ));
+            }
             DbCommand::Reset => {
                 let flag = std::env::var("EPR_ALLOW_DESTRUCTIVE_DOWN").ok();
                 if !reset_allowed(&ctx.environment, flag.as_deref()) {
@@ -103,9 +125,28 @@ impl App {
                          and needs EPR_ALLOW_DESTRUCTIVE_DOWN=true there",
                     ));
                 }
-                Migrator::fresh(&ctx.db).await?;
+                sqlx::raw_sql(
+                    "DROP SCHEMA public CASCADE; DROP SCHEMA IF EXISTS audit_archive CASCADE; \
+                     CREATE SCHEMA public;",
+                )
+                .execute(&ctx.pool())
+                .await
+                .map_err(|e| Error::string(&format!("reset failed: {e}")))?;
+                Self::migrate(ctx).await?;
             }
-            DbCommand::Status => Migrator::status(&ctx.db).await?,
+            DbCommand::Status => {
+                let all = status(&ctx.pool(), &MIGRATOR)
+                    .await
+                    .map_err(|e| Error::string(&format!("status failed: {e}")))?;
+                for migration in all {
+                    let state = if migration.applied {
+                        "applied"
+                    } else {
+                        "pending"
+                    };
+                    println!("{state}\t{}\t{}", migration.version, migration.description);
+                }
+            }
             // The clinical record is append-only, so the service has no truncate.
             DbCommand::Truncate => {
                 return Err(Error::string("this service has no truncate"));
@@ -136,7 +177,7 @@ impl App {
         let ctx = Self::context(environment, config).await?;
         axa::logger::init(env!("CARGO_CRATE_NAME"), &ctx.config.logger);
         if ctx.config.database.auto_migrate && !matches!(cli.command, Command::Db { .. }) {
-            Migrator::up(&ctx.db, None).await?;
+            Self::migrate(&ctx).await?;
         }
         match cli.command {
             Command::Start { .. } => {
@@ -189,7 +230,7 @@ impl App {
                 agent = %config.agent,
                 "MLLP listener is ON: it has no authentication or encryption"
             );
-            tokio::spawn(mllp::serve(listener, ctx.db.clone(), config));
+            tokio::spawn(mllp::serve(listener, ctx.pool(), config));
         }
         // The outbox loop is off unless `EPR_OUTBOX_INTERVAL_SECS` is set (OS-3). Its only sink is the
         // log sink, which sends nothing; a real sink arrives with IO-6.
@@ -201,7 +242,7 @@ impl App {
                 "outbox loop is ON (log sink only)"
             );
             tokio::spawn(crate::outbox::run_loop(
-                ctx.db.clone(),
+                ctx.pool(),
                 crate::audit::chain(),
                 sinks,
                 every,
@@ -211,23 +252,20 @@ impl App {
         // moved to the archive schema (OS-13). A bad setting stops the service starting.
         let archive_after =
             crate::audit_retention::archive_months_from_env().map_err(Error::Message)?;
-        tokio::spawn(crate::audit_retention::run_loop(
-            ctx.db.clone(),
-            archive_after,
-        ));
+        tokio::spawn(crate::audit_retention::run_loop(ctx.pool(), archive_after));
         // Country packs the deployment enables (OS-10). A pack that does not load stops the service.
         crate::packs::init().map_err(Error::Message)?;
         // Request limits per token subject (OS-2). A bad setting stops the service starting.
         let limits = crate::rate_limit::Limits::from_env().map_err(Error::Message)?;
         let limiter = crate::rate_limit::Gate {
             limiter: std::sync::Arc::new(crate::rate_limit::Limiter::new(limits)),
-            db: ctx.db.clone(),
+            db: ctx.pool(),
         };
         // Expired idempotency keys hold answers that can name a patient: remove them (OF-1).
-        tokio::spawn(crate::idempotency::run_loop(ctx.db.clone()));
-        let keys = crate::idempotency::Gate { db: ctx.db.clone() };
+        tokio::spawn(crate::idempotency::run_loop(ctx.pool()));
+        let keys = crate::idempotency::Gate { db: ctx.pool() };
         // The last layer added runs first: authenticate, count, authorize, then the idempotency key.
-        let gate = authz::Authz { db: ctx.db.clone() };
+        let gate = authz::Authz { db: ctx.pool() };
         Ok(router
             .layer(axum::middleware::from_fn_with_state(
                 keys,

@@ -18,6 +18,7 @@ use crate::audit::Action;
 use crate::auth::Agent;
 use crate::patients_store::StoreError;
 use crate::policy::{self, Purpose, Resource, Subject};
+use crate::pool::Pool;
 use crate::referral_worklist as worklist;
 use axa::prelude::*;
 use axum::{
@@ -60,7 +61,7 @@ async fn guard(
 ) -> Result<Purpose, ApiError> {
     let purpose = purpose_of(headers)?;
     authorize(
-        &ctx.db,
+        &ctx.pool(),
         agent,
         subject,
         Resource::ReferralWorklist,
@@ -84,12 +85,12 @@ async fn list(
         Err(r) => return r.into_response(),
     };
     let timeouts = crate::referral_timeouts::current();
-    let page = match worklist::list_with(&ctx.db, &agent.0, &timeouts).await {
+    let page = match worklist::list_with(&ctx.pool(), &agent.0, &timeouts).await {
         Ok(p) => p,
         Err(e) => return failure(e),
     };
     if let Err(r) = audit_resource(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         Access {
             action: Action::Read,
@@ -123,12 +124,12 @@ async fn count(
         Ok(p) => p,
         Err(r) => return r.into_response(),
     };
-    let waiting = match worklist::count(&ctx.db, &agent.0).await {
+    let waiting = match worklist::count(&ctx.pool(), &agent.0).await {
         Ok(n) => n,
         Err(e) => return failure(e),
     };
     if let Err(r) = audit_resource(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         Access {
             action: Action::Read,
@@ -160,14 +161,14 @@ async fn acknowledge(
         Ok(p) => p,
         Err(r) => return r.into_response(),
     };
-    let tx = match begin(&ctx.db).await {
+    let mut tx = match begin(&ctx.pool()).await {
         Ok(t) => t,
         Err(r) => return r.into_response(),
     };
-    match worklist::acknowledge(&tx, &referral_id, request.version, &agent.0).await {
+    match worklist::acknowledge(&mut *tx, &referral_id, request.version, &agent.0).await {
         Ok(()) => {
             if let Err(r) = audit_resource(
-                &tx,
+                &mut *tx,
                 &agent,
                 Access {
                     action: Action::Update,
@@ -189,12 +190,12 @@ async fn acknowledge(
                 .into_response()
         }
         Err(e) => {
-            let _ = sea_orm::TransactionSession::rollback(tx).await;
+            let _ = tx.rollback().await;
             if matches!(
                 e,
                 StoreError::NotFound | StoreError::Conflict { .. } | StoreError::BadQuery(_)
             ) && let Err(r) = audit_resource(
-                &ctx.db,
+                &ctx.pool(),
                 &agent,
                 Access {
                     action: Action::Update,

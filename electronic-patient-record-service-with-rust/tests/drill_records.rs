@@ -11,13 +11,15 @@
 use electronic_patient_record::links;
 use electronic_patient_record::patients_store::{self as store, Search, StoreError};
 use electronic_patient_record_matcher::{HumanName, Patient};
-use electronic_patient_record_migration::{Migrator, MigratorTrait};
-use sea_orm::{Database, DatabaseConnection, TransactionTrait};
+use sqlx::PgPool;
 
-async fn db() -> DatabaseConnection {
+async fn db() -> PgPool {
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
-    let db = Database::connect(url).await.expect("connect");
-    Migrator::up(&db, None).await.expect("migrate");
+    let db = PgPool::connect(&url).await.expect("connect");
+    electronic_patient_record::MIGRATOR
+        .run(&db)
+        .await
+        .expect("migrate");
     db
 }
 
@@ -145,13 +147,9 @@ async fn every_version_of_a_drill_record_stays_a_drill_record() {
     assert!(!r2.drill);
 }
 
-async fn merge(
-    db: &DatabaseConnection,
-    target: &str,
-    source: &str,
-) -> Result<links::StoredLink, StoreError> {
-    let tx = db.begin().await.unwrap();
-    let r = links::merge(&tx, target, source, "admin", "same person").await;
+async fn merge(db: &PgPool, target: &str, source: &str) -> Result<links::StoredLink, StoreError> {
+    let mut tx = db.begin().await.unwrap();
+    let r = links::merge(&mut *tx, target, source, "admin", "same person").await;
     if r.is_ok() {
         tx.commit().await.unwrap();
     }

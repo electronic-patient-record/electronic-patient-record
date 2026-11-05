@@ -14,6 +14,7 @@ use crate::auth::Agent;
 use crate::patients_store::StoreError;
 use crate::photos_store::{self as store, StoredPhoto};
 use crate::policy::{self, Resource, Subject};
+use crate::pool::Pool;
 use crate::proxy::Scope;
 use axa::prelude::*;
 use axum::{
@@ -81,7 +82,7 @@ pub(super) async fn read(
         Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize_scoped(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::PatientIdentity,
@@ -94,7 +95,7 @@ pub(super) async fn read(
     {
         return r.into_response();
     }
-    let found = match store::current(&ctx.db, &id).await {
+    let found = match store::current(&ctx.pool(), &id).await {
         Ok(p) => p,
         Err(e) => return store_failure(&e),
     };
@@ -102,7 +103,7 @@ pub(super) async fn read(
     let photo = found.filter(|p| p.bytes.is_some());
     // Audit before the image leaves; a miss is an access too.
     if let Err(r) = audit_resource(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         Access {
             action: Action::Read,
@@ -140,7 +141,7 @@ async fn write(
         Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize_scoped(
-        &ctx.db,
+        &ctx.pool(),
         agent,
         subject,
         Resource::PatientIdentity,
@@ -160,14 +161,23 @@ async fn write(
         )
         .into_response();
     };
-    let tx = match begin(&ctx.db).await {
+    let mut tx = match begin(&ctx.pool()).await {
         Ok(t) => t,
         Err(r) => return r.into_response(),
     };
-    match store::put(&tx, id, expected, &agent.0, query.reason.as_deref(), bytes).await {
+    match store::put(
+        &mut *tx,
+        id,
+        expected,
+        &agent.0,
+        query.reason.as_deref(),
+        bytes,
+    )
+    .await
+    {
         Ok(photo) => {
             if let Err(r) = audit_resource(
-                &tx,
+                &mut *tx,
                 agent,
                 Access {
                     action: Action::Update,
@@ -197,14 +207,14 @@ async fn write(
             .into_response()
         }
         Err(e) => {
-            let _ = sea_orm::TransactionSession::rollback(tx).await;
+            let _ = tx.rollback().await;
             let refused = matches!(
                 e,
                 StoreError::NotFound | StoreError::Conflict { .. } | StoreError::BadQuery(_)
             );
             if refused
                 && let Err(r) = audit_resource(
-                    &ctx.db,
+                    &ctx.pool(),
                     agent,
                     Access {
                         action: Action::Update,

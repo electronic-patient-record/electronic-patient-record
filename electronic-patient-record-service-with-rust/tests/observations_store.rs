@@ -14,13 +14,16 @@ use electronic_patient_record::observations::{AbsentReason, Flag, Range};
 use electronic_patient_record::observations_store::{self as store, ObservationRecord, Status};
 use electronic_patient_record::patients_store::{self, StoreError};
 use electronic_patient_record_matcher::{HumanName, Patient};
-use electronic_patient_record_migration::{Migrator, MigratorTrait};
-use sea_orm::{ConnectionTrait, Database, DatabaseConnection, Statement, TransactionTrait};
+use sqlx::Row;
+use sqlx::{AssertSqlSafe, PgPool};
 
-async fn db() -> DatabaseConnection {
+async fn db() -> PgPool {
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
-    let db = Database::connect(url).await.expect("connect");
-    Migrator::up(&db, None).await.expect("migrate");
+    let db = PgPool::connect(&url).await.expect("connect");
+    electronic_patient_record::MIGRATOR
+        .run(&db)
+        .await
+        .expect("migrate");
     db
 }
 
@@ -32,7 +35,7 @@ fn tag(label: &str) -> String {
     format!("Zz{label}{nanos}")
 }
 
-async fn person(db: &DatabaseConnection, family: &str) -> String {
+async fn person(db: &PgPool, family: &str) -> String {
     let p = Patient {
         names: vec![HumanName {
             family: Some(family.into()),
@@ -61,17 +64,15 @@ fn heart(value: f64, at: &str) -> ObservationRecord {
     }
 }
 
-async fn count_rows(db: &DatabaseConnection, patient: &str) -> i64 {
-    db.query_one_raw(Statement::from_string(
-        sea_orm::DbBackend::Postgres,
-        format!(
-            "SELECT count(*) AS n FROM observation_versions WHERE patient_id = '{patient}'::uuid"
-        ),
-    ))
+async fn count_rows(db: &PgPool, patient: &str) -> i64 {
+    sqlx::query(AssertSqlSafe(format!(
+        "SELECT count(*) AS n FROM observation_versions WHERE patient_id = '{patient}'::uuid"
+    )))
+    .fetch_optional(db)
     .await
     .unwrap()
     .unwrap()
-    .try_get::<i64>("", "n")
+    .try_get::<i64, _>("n")
     .unwrap()
 }
 
@@ -262,16 +263,16 @@ async fn the_flag_is_computed_when_read_and_never_stored() {
     );
 
     // The stored body has no flag, so a corrected rule cannot leave an old one behind.
-    let stored = db
-        .query_one_raw(Statement::from_string(
-            sea_orm::DbBackend::Postgres,
-            format!("SELECT body::text AS b FROM observation_versions WHERE observation_id = '{}'::uuid", high.id),
-        ))
-        .await
-        .unwrap()
-        .unwrap()
-        .try_get::<String>("", "b")
-        .unwrap();
+    let stored = sqlx::query(AssertSqlSafe(format!(
+        "SELECT body::text AS b FROM observation_versions WHERE observation_id = '{}'::uuid",
+        high.id
+    )))
+    .fetch_optional(&db)
+    .await
+    .unwrap()
+    .unwrap()
+    .try_get::<String, _>("b")
+    .unwrap();
     assert!(!stored.contains("flag"), "{stored}");
 
     // No range: not assessed, never normal. No value: not assessed too, and the reason is kept.
@@ -419,7 +420,11 @@ async fn observation_tables_cannot_be_changed_or_removed() {
         ),
         "TRUNCATE observation_versions".to_string(),
     ] {
-        let e = db.execute_unprepared(&sql).await.unwrap_err().to_string();
+        let e = sqlx::raw_sql(AssertSqlSafe(sql.to_string()))
+            .execute(&db)
+            .await
+            .unwrap_err()
+            .to_string();
         assert!(e.contains("append-only"), "{sql}: {e}");
     }
 }
@@ -453,8 +458,8 @@ async fn observations_follow_a_merge_by_provenance_and_return_on_unmerge() {
     .await
     .unwrap();
 
-    let tx = db.begin().await.unwrap();
-    links::merge(&tx, &t, &s, "admin", "same person")
+    let mut tx = db.begin().await.unwrap();
+    links::merge(&mut *tx, &t, &s, "admin", "same person")
         .await
         .unwrap();
     tx.commit().await.unwrap();
@@ -487,8 +492,8 @@ async fn observations_follow_a_merge_by_provenance_and_return_on_unmerge() {
     .unwrap();
     assert_eq!((v2.version, v2.patient_id.as_str()), (2, s.as_str()));
 
-    let tx = db.begin().await.unwrap();
-    links::unmerge(&tx, &t, &s, "admin", "mistake")
+    let mut tx = db.begin().await.unwrap();
+    links::unmerge(&mut *tx, &t, &s, "admin", "mistake")
         .await
         .unwrap();
     tx.commit().await.unwrap();

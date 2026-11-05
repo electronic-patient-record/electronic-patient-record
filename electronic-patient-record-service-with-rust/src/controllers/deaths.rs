@@ -20,6 +20,7 @@ use crate::death::{self, Actor, Occurred, Source, Status, Step};
 use crate::death_store::{self as store, StoredAssertion};
 use crate::patients_store::StoreError;
 use crate::policy::{self, Purpose, Resource, Role, Subject};
+use crate::pool::Pool;
 use axa::prelude::*;
 use axum::{
     Extension,
@@ -83,7 +84,7 @@ async fn refused(
         return None;
     }
     audit_resource(
-        &ctx.db,
+        &ctx.pool(),
         agent,
         Access {
             action,
@@ -128,7 +129,7 @@ pub(super) async fn answer(
         Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::DeathAssertion,
@@ -140,7 +141,7 @@ pub(super) async fn answer(
     {
         return r.into_response();
     }
-    let told = match store::answer(&ctx.db, &patient).await {
+    let told = match store::answer(&ctx.pool(), &patient).await {
         Ok(a) => a,
         Err(e) => {
             if let Some(r) = refused(&ctx, &agent, purpose, Action::Read, &e).await {
@@ -150,7 +151,7 @@ pub(super) async fn answer(
         }
     };
     if let Err(r) = audit_resource(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         Access {
             action: Action::Read,
@@ -183,7 +184,7 @@ pub(super) async fn list(
         Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::DeathAssertion,
@@ -195,7 +196,7 @@ pub(super) async fn list(
     {
         return r.into_response();
     }
-    let assertions = match store::list(&ctx.db, &patient).await {
+    let assertions = match store::list(&ctx.pool(), &patient).await {
         Ok(a) => a,
         Err(e) => {
             if let Some(r) = refused(&ctx, &agent, purpose, Action::Read, &e).await {
@@ -205,7 +206,7 @@ pub(super) async fn list(
         }
     };
     if let Err(r) = audit_resource(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         Access {
             action: Action::Read,
@@ -237,7 +238,7 @@ pub(super) async fn create(
         Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::DeathAssertion,
@@ -257,18 +258,18 @@ pub(super) async fn create(
         Utc::now(),
     )
     .map_err(store::refused);
-    let tx = match begin(&ctx.db).await {
+    let mut tx = match begin(&ctx.pool()).await {
         Ok(t) => t,
         Err(r) => return r.into_response(),
     };
     let written = match made {
-        Ok(assertion) => store::report(&tx, &patient, &assertion).await,
+        Ok(assertion) => store::report(&mut *tx, &patient, &assertion).await,
         Err(e) => Err(e),
     };
     match written {
         Ok(stored) => {
             if let Err(r) = audit_resource(
-                &tx,
+                &mut *tx,
                 &agent,
                 Access {
                     action: Action::Create,
@@ -293,7 +294,7 @@ pub(super) async fn create(
             (StatusCode::CREATED, Json(stored)).into_response()
         }
         Err(e) => {
-            let _ = sea_orm::TransactionSession::rollback(tx).await;
+            let _ = tx.rollback().await;
             if let Some(r) = refused(&ctx, &agent, purpose, Action::Create, &e).await {
                 return r.into_response();
             }
@@ -316,7 +317,7 @@ pub(super) async fn update(
         Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::DeathAssertion,
@@ -336,12 +337,12 @@ pub(super) async fn update(
         by: Actor::Person(agent.0.clone()),
         reason: request.reason,
     };
-    let tx = match begin(&ctx.db).await {
+    let mut tx = match begin(&ctx.pool()).await {
         Ok(t) => t,
         Err(r) => return r.into_response(),
     };
     match store::advance(
-        &tx,
+        &mut *tx,
         &patient,
         &assertion_id,
         request.expected_version,
@@ -351,7 +352,7 @@ pub(super) async fn update(
     {
         Ok(stored) => {
             if let Err(r) = audit_resource(
-                &tx,
+                &mut *tx,
                 &agent,
                 Access {
                     action: Action::Update,
@@ -376,7 +377,7 @@ pub(super) async fn update(
             Json(stored).into_response()
         }
         Err(e) => {
-            let _ = sea_orm::TransactionSession::rollback(tx).await;
+            let _ = tx.rollback().await;
             if let Some(r) = refused(&ctx, &agent, purpose, Action::Update, &e).await {
                 return r.into_response();
             }

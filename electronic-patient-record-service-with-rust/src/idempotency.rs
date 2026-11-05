@@ -18,7 +18,7 @@ use crate::api_error::ApiError;
 use crate::audit::{self, Action, Event};
 use crate::auth::Agent;
 use crate::clock::{Clock, SystemClock};
-use crate::store::pg;
+use crate::pool::Db;
 use axum::{
     body::{Body, to_bytes},
     extract::{Request, State},
@@ -26,8 +26,8 @@ use axum::{
     middleware::Next,
     response::{IntoResponse, Response},
 };
-use sea_orm::{ConnectionTrait, DatabaseConnection, DbErr};
 use sha2::{Digest, Sha256};
+use sqlx::{PgPool, Row};
 
 /// The request header.
 pub const HEADER: &str = "idempotency-key";
@@ -42,7 +42,7 @@ const MAX_RESPONSE: usize = 4 << 20;
 #[derive(Clone)]
 pub struct Gate {
     /// Where the keys live.
-    pub db: DatabaseConnection,
+    pub db: PgPool,
 }
 
 /// Whether `key` is 1 to 128 letters, digits or `. _ : -`.
@@ -95,14 +95,16 @@ fn digest_of(bytes: &[u8]) -> String {
 ///
 /// A database failure.
 pub async fn reserve(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     subject: &str,
     key: &str,
     method: &str,
     path: &str,
     digest: &str,
-) -> Result<Reservation, DbErr> {
-    reserve_at(db, &SystemClock, subject, key, method, path, digest).await
+) -> Result<Reservation, sqlx::Error> {
+    let mut conn = db.into().acquire().await?;
+    let db = &mut *conn;
+    reserve_at(&mut *db, &SystemClock, subject, key, method, path, digest).await
 }
 
 /// [`reserve`] with the time taken from `clock`: the key is stamped, and judged expired, by that time.
@@ -111,68 +113,66 @@ pub async fn reserve(
 ///
 /// A database failure.
 pub async fn reserve_at(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     clock: &dyn Clock,
     subject: &str,
     key: &str,
     method: &str,
     path: &str,
     digest: &str,
-) -> Result<Reservation, DbErr> {
+) -> Result<Reservation, sqlx::Error> {
+    let mut conn = db.into().acquire().await?;
+    let db = &mut *conn;
     let now = clock.now();
-    db.execute_raw(pg(
+    sqlx::query(
         "DELETE FROM idempotency_keys WHERE subject = $1 AND key = $2
          AND created_at < $4::timestamptz - make_interval(secs => $3)",
-        vec![
-            subject.into(),
-            key.into(),
-            (TTL_SECS as f64).into(),
-            now.into(),
-        ],
-    ))
+    )
+    .bind(subject)
+    .bind(key)
+    .bind(TTL_SECS as f64)
+    .bind(now)
+    .execute(&mut *db)
     .await?;
-    let inserted = db
-        .execute_raw(pg(
-            "INSERT INTO idempotency_keys (subject, key, method, path, body_digest, state, created_at)
-             VALUES ($1, $2, $3, $4, $5, 'pending', $6::timestamptz) ON CONFLICT (subject, key) DO NOTHING",
-            vec![
-                subject.into(),
-                key.into(),
-                method.into(),
-                path.into(),
-                digest.into(),
-                now.into(),
-            ],
-        ))
+    let inserted = sqlx::query("INSERT INTO idempotency_keys (subject, key, method, path, body_digest, state, created_at)
+             VALUES ($1, $2, $3, $4, $5, 'pending', $6::timestamptz) ON CONFLICT (subject, key) DO NOTHING")
+.bind(subject)
+.bind(key)
+.bind(method)
+.bind(path)
+.bind(digest)
+.bind(now)
+.execute(&mut *db)
         .await?;
     if inserted.rows_affected() == 1 {
         return Ok(Reservation::Fresh);
     }
-    let Some(row) = db
-        .query_one_raw(pg(
-            "SELECT method, path, body_digest, state, status::int AS status, content_type, response
+    let Some(row) = sqlx::query(
+        "SELECT method, path, body_digest, state, status::int AS status, content_type, response
              FROM idempotency_keys WHERE subject = $1 AND key = $2",
-            vec![subject.into(), key.into()],
-        ))
-        .await?
+    )
+    .bind(subject)
+    .bind(key)
+    .fetch_optional(&mut *db)
+    .await?
     else {
         // Removed between the insert and the read (expired and purged): treat as busy, not as new.
         return Ok(Reservation::Busy);
     };
-    let same = row.try_get::<String>("", "method")? == method
-        && row.try_get::<String>("", "path")? == path
-        && row.try_get::<String>("", "body_digest")? == digest;
+    let same = row.try_get::<String, _>("method")? == method
+        && row.try_get::<String, _>("path")? == path
+        && row.try_get::<String, _>("body_digest")? == digest;
     if !same {
         return Ok(Reservation::Mismatch);
     }
-    if row.try_get::<String>("", "state")? != "done" {
+    if row.try_get::<String, _>("state")? != "done" {
         return Ok(Reservation::Busy);
     }
-    let status: i32 = row.try_get("", "status")?;
+    let status: i32 = row.try_get("status")?;
     Ok(Reservation::Replay(Stored {
         status: u16::try_from(status).unwrap_or(500),
-        content_type: row.try_get("", "content_type")?,
-        body: row.try_get("", "response")?,
+        content_type: row.try_get("content_type")?,
+        body: row.try_get("response")?,
     }))
 }
 
@@ -182,22 +182,23 @@ pub async fn reserve_at(
 ///
 /// A database failure.
 pub async fn complete(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     subject: &str,
     key: &str,
     stored: &Stored,
-) -> Result<(), DbErr> {
-    db.execute_raw(pg(
+) -> Result<(), sqlx::Error> {
+    let mut conn = db.into().acquire().await?;
+    let db = &mut *conn;
+    sqlx::query(
         "UPDATE idempotency_keys SET state = 'done', status = $3, content_type = $4, response = $5
          WHERE subject = $1 AND key = $2 AND state = 'pending'",
-        vec![
-            subject.into(),
-            key.into(),
-            i16::try_from(stored.status).unwrap_or(500).into(),
-            stored.content_type.clone().into(),
-            stored.body.clone().into(),
-        ],
-    ))
+    )
+    .bind(subject)
+    .bind(key)
+    .bind(i16::try_from(stored.status).unwrap_or(500))
+    .bind(stored.content_type.clone())
+    .bind(stored.body.clone())
+    .execute(&mut *db)
     .await?;
     Ok(())
 }
@@ -207,11 +208,15 @@ pub async fn complete(
 /// # Errors
 ///
 /// A database failure.
-pub async fn release(db: &impl ConnectionTrait, subject: &str, key: &str) -> Result<(), DbErr> {
-    db.execute_raw(pg(
+pub async fn release(db: impl Into<Db<'_>>, subject: &str, key: &str) -> Result<(), sqlx::Error> {
+    let mut conn = db.into().acquire().await?;
+    let db = &mut *conn;
+    sqlx::query(
         "DELETE FROM idempotency_keys WHERE subject = $1 AND key = $2 AND state = 'pending'",
-        vec![subject.into(), key.into()],
-    ))
+    )
+    .bind(subject)
+    .bind(key)
+    .execute(&mut *db)
     .await?;
     Ok(())
 }
@@ -221,8 +226,10 @@ pub async fn release(db: &impl ConnectionTrait, subject: &str, key: &str) -> Res
 /// # Errors
 ///
 /// A database failure.
-pub async fn purge_expired(db: &impl ConnectionTrait) -> Result<u64, DbErr> {
-    purge_expired_at(db, &SystemClock).await
+pub async fn purge_expired(db: impl Into<Db<'_>>) -> Result<u64, sqlx::Error> {
+    let mut conn = db.into().acquire().await?;
+    let db = &mut *conn;
+    purge_expired_at(&mut *db, &SystemClock).await
 }
 
 /// [`purge_expired`] with the time taken from `clock`.
@@ -230,18 +237,22 @@ pub async fn purge_expired(db: &impl ConnectionTrait) -> Result<u64, DbErr> {
 /// # Errors
 ///
 /// A database failure.
-pub async fn purge_expired_at(db: &impl ConnectionTrait, clock: &dyn Clock) -> Result<u64, DbErr> {
-    Ok(db
-        .execute_raw(pg(
-            "DELETE FROM idempotency_keys WHERE created_at < $2::timestamptz - make_interval(secs => $1)",
-            vec![(TTL_SECS as f64).into(), clock.now().into()],
-        ))
+pub async fn purge_expired_at(
+    db: impl Into<Db<'_>>,
+    clock: &dyn Clock,
+) -> Result<u64, sqlx::Error> {
+    let mut conn = db.into().acquire().await?;
+    let db = &mut *conn;
+    Ok(sqlx::query("DELETE FROM idempotency_keys WHERE created_at < $2::timestamptz - make_interval(secs => $1)")
+.bind(TTL_SECS as f64)
+.bind(clock.now())
+.execute(&mut *db)
         .await?
         .rows_affected())
 }
 
 /// Purge expired keys every hour, for the life of the process.
-pub async fn run_loop(db: DatabaseConnection) {
+pub async fn run_loop(db: PgPool) {
     let mut tick = tokio::time::interval(std::time::Duration::from_secs(3600));
     tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     loop {

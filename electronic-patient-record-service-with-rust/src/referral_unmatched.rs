@@ -11,12 +11,13 @@
 
 use crate::ids;
 use crate::patients_store::StoreError;
+use crate::pool::Db;
 use crate::referral::{Actor, Event};
 use crate::referrals_store::{self, Step, StoredReferral};
-use crate::store::pg;
 use chrono::{DateTime, Utc};
-use sea_orm::{ConnectionTrait, TransactionTrait};
 use serde::Serialize;
+use sqlx::postgres::PgRow;
+use sqlx::{AssertSqlSafe, Row};
 
 crate::store_errors!("referral unmatched");
 
@@ -157,9 +158,9 @@ fn select(with_text: bool) -> String {
 /// # Errors
 ///
 /// [`StoreError::Db`] when a column is missing or the stored reasons are not a JSON array of strings.
-fn to_entry(row: &sea_orm::QueryResult) -> Result<Entry, StoreError> {
-    let get = |c: &str| row.try_get::<String>("", c).map_err(db_err);
-    let opt = |c: &str| row.try_get::<Option<String>>("", c).map_err(db_err);
+fn to_entry(row: &PgRow) -> Result<Entry, StoreError> {
+    let get = |c: &str| row.try_get::<String, _>(c).map_err(db_err);
+    let opt = |c: &str| row.try_get::<Option<String>, _>(c).map_err(db_err);
     let cleared = match opt("cleared_by")? {
         Some(cleared_by) => Some(Cleared {
             cleared_by,
@@ -203,30 +204,30 @@ fn cut(text: &str, max: usize) -> &str {
 ///
 /// [`StoreError::Db`] when the insert or the read-back fails.
 async fn queue(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     inbound: &Inbound<'_>,
     kind: Kind,
     reason: String,
 ) -> Result<Filed, StoreError> {
-    let row = db
-        .query_one_raw(pg(
-            "INSERT INTO referral_unmatched (agent, kind, referral_ref, event, reasons, note, message)
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let row = sqlx::query(
+        "INSERT INTO referral_unmatched (agent, kind, referral_ref, event, reasons, note, message)
              VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7) RETURNING unmatched_id::text AS id",
-            vec![
-                inbound.agent.into(),
-                kind.as_str().into(),
-                inbound.referral_ref.map(|r| cut(r, 200).to_string()).into(),
-                inbound.event.map(|e| cut(e, 100).to_string()).into(),
-                serde_json::to_string(&[reason]).map_err(db_err)?.into(),
-                inbound.note.map(|n| cut(n, MAX_NOTE).to_string()).into(),
-                cut(inbound.message, MAX_MESSAGE).into(),
-            ],
-        ))
-        .await
-        .map_err(db_err)?
-        .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
-    let id: String = row.try_get("", "id").map_err(db_err)?;
-    let entry = get(db, &id).await?;
+    )
+    .bind(inbound.agent)
+    .bind(kind.as_str())
+    .bind(inbound.referral_ref.map(|r| cut(r, 200).to_string()))
+    .bind(inbound.event.map(|e| cut(e, 100).to_string()))
+    .bind(serde_json::to_string(&[reason]).map_err(db_err)?)
+    .bind(inbound.note.map(|n| cut(n, MAX_NOTE).to_string()))
+    .bind(cut(inbound.message, MAX_MESSAGE))
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(db_err)?
+    .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
+    let id: String = row.try_get("id").map_err(db_err)?;
+    let entry = get(&mut *db, &id).await?;
     Ok(Filed::Queued {
         entry: Box::new(Entry {
             note: None,
@@ -242,28 +243,30 @@ async fn queue(
 ///
 /// [`StoreError::Conflict`] when another step raced this one (the sender may send again); [`StoreError::Db`].
 pub async fn file(
-    db: &(impl ConnectionTrait + TransactionTrait),
+    db: impl Into<Db<'_>>,
     inbound: Inbound<'_>,
     now: DateTime<Utc>,
 ) -> Result<Filed, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let Some(reference) = inbound
         .referral_ref
         .map(str::trim)
         .filter(|r| !r.is_empty())
     else {
         return queue(
-            db,
+            &mut *db,
             &inbound,
             Kind::NoId,
             "the message carries no referral id".into(),
         )
         .await;
     };
-    let was = match referrals_store::current(db, reference).await {
+    let was = match referrals_store::current(&mut *db, reference).await {
         Ok(r) => r,
         Err(StoreError::NotFound) => {
             return queue(
-                db,
+                &mut *db,
                 &inbound,
                 Kind::UnknownId,
                 "the referral id is not a referral on record".into(),
@@ -274,7 +277,7 @@ pub async fn file(
     };
     let Some(event) = inbound.event.and_then(Event::parse) else {
         return queue(
-            db,
+            &mut *db,
             &inbound,
             Kind::RefusedByTable,
             "the message names no known event".into(),
@@ -283,7 +286,7 @@ pub async fn file(
     };
     if event.actor() != Actor::Recipient {
         return queue(
-            db,
+            &mut *db,
             &inbound,
             Kind::RefusedByTable,
             format!(
@@ -294,7 +297,7 @@ pub async fn file(
         .await;
     }
     match referrals_store::advance(
-        db,
+        &mut *db,
         &was.id,
         was.version,
         Step {
@@ -312,7 +315,7 @@ pub async fn file(
         }),
         // The state table, a missing note or a note that is too long: kept for a person, with the reason.
         Err(StoreError::BadQuery(reason)) => {
-            queue(db, &inbound, Kind::RefusedByTable, reason).await
+            queue(&mut *db, &inbound, Kind::RefusedByTable, reason).await
         }
         Err(e) => Err(e),
     }
@@ -323,18 +326,17 @@ pub async fn file(
 /// # Errors
 ///
 /// [`StoreError::Db`].
-pub async fn list_open(db: &impl ConnectionTrait) -> Result<crate::page::Page<Entry>, StoreError> {
-    let rows = db
-        .query_all_raw(pg(
-            &format!(
-                "{} WHERE c.unmatched_id IS NULL ORDER BY u.received_at, u.unmatched_id LIMIT {}",
-                select(false),
-                LIST_LIMIT + 1
-            ),
-            vec![],
-        ))
-        .await
-        .map_err(db_err)?;
+pub async fn list_open(db: impl Into<Db<'_>>) -> Result<crate::page::Page<Entry>, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let rows = sqlx::query(AssertSqlSafe(format!(
+        "{} WHERE c.unmatched_id IS NULL ORDER BY u.received_at, u.unmatched_id LIMIT {}",
+        select(false),
+        LIST_LIMIT + 1
+    )))
+    .fetch_all(&mut *db)
+    .await
+    .map_err(db_err)?;
     let fetched = rows.iter().map(to_entry).collect::<Result<Vec<_>, _>>()?;
     Ok(crate::page::Page::cut(fetched, LIST_LIMIT))
 }
@@ -344,18 +346,19 @@ pub async fn list_open(db: &impl ConnectionTrait) -> Result<crate::page::Page<En
 /// # Errors
 ///
 /// [`StoreError::Db`].
-pub async fn count_open(db: &impl ConnectionTrait) -> Result<i64, StoreError> {
-    let row = db
-        .query_one_raw(pg(
-            "SELECT count(*) AS n FROM referral_unmatched u
+pub async fn count_open(db: impl Into<Db<'_>>) -> Result<i64, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let row = sqlx::query(
+        "SELECT count(*) AS n FROM referral_unmatched u
              LEFT JOIN referral_unmatched_clearances c USING (unmatched_id)
              WHERE c.unmatched_id IS NULL",
-            vec![],
-        ))
-        .await
-        .map_err(db_err)?
-        .ok_or_else(|| StoreError::Db("count returned no row".into()))?;
-    row.try_get("", "n").map_err(db_err)
+    )
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(db_err)?
+    .ok_or_else(|| StoreError::Db("count returned no row".into()))?;
+    row.try_get("n").map_err(db_err)
 }
 
 /// One entry with its note and message, open or cleared.
@@ -363,16 +366,19 @@ pub async fn count_open(db: &impl ConnectionTrait) -> Result<i64, StoreError> {
 /// # Errors
 ///
 /// [`StoreError::NotFound`] when there is no such entry (or the id is not a UUID).
-pub async fn get(db: &impl ConnectionTrait, id: &str) -> Result<Entry, StoreError> {
+pub async fn get(db: impl Into<Db<'_>>, id: &str) -> Result<Entry, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let id = ids::uuid(id).ok_or(StoreError::NotFound)?;
-    let row = db
-        .query_one_raw(pg(
-            &format!("{} WHERE u.unmatched_id = $1::uuid", select(true)),
-            vec![id.into()],
-        ))
-        .await
-        .map_err(db_err)?
-        .ok_or(StoreError::NotFound)?;
+    let row = sqlx::query(AssertSqlSafe(format!(
+        "{} WHERE u.unmatched_id = $1::uuid",
+        select(true)
+    )))
+    .bind(id)
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(db_err)?
+    .ok_or(StoreError::NotFound)?;
     to_entry(&row)
 }
 
@@ -383,47 +389,45 @@ pub async fn get(db: &impl ConnectionTrait, id: &str) -> Result<Entry, StoreErro
 /// [`StoreError::NotFound`] (the entry, or the referral a hand match names); [`StoreError::BadQuery`] for a
 /// blank reason or one over 500 characters; [`StoreError::Conflict`] (current 1) when it was already cleared.
 pub async fn clear(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     id: &str,
     by: &str,
     how: Clearance<'_>,
     reason: &str,
 ) -> Result<Entry, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let reason = reason.trim();
     if reason.is_empty() || reason.chars().count() > 500 {
         return Err(StoreError::BadQuery(
             "a reason of 1 to 500 characters is required".into(),
         ));
     }
-    let existing = get(db, id).await?;
+    let existing = get(&mut *db, id).await?;
     if existing.cleared.is_some() {
         return Err(StoreError::Conflict { current: 1 });
     }
     let (word, referral_id) = match how {
         Clearance::Matched(referral) => {
             // A hand match names a referral that exists; it records the link and changes nothing else.
-            let found = referrals_store::current(db, referral).await?;
+            let found = referrals_store::current(&mut *db, referral).await?;
             ("matched", Some(found.id))
         }
         Clearance::Dismissed => ("dismissed", None),
     };
     // The primary key on the entry settles a race between two people.
-    let inserted = db
-        .execute_raw(pg(
-            "INSERT INTO referral_unmatched_clearances (unmatched_id, cleared_by, how, referral_id, reason)
-             VALUES ($1::uuid, $2, $3, $4::uuid, $5) ON CONFLICT (unmatched_id) DO NOTHING",
-            vec![
-                existing.id.clone().into(),
-                by.into(),
-                word.into(),
-                referral_id.into(),
-                reason.into(),
-            ],
-        ))
+    let inserted = sqlx::query("INSERT INTO referral_unmatched_clearances (unmatched_id, cleared_by, how, referral_id, reason)
+             VALUES ($1::uuid, $2, $3, $4::uuid, $5) ON CONFLICT (unmatched_id) DO NOTHING")
+.bind(existing.id.clone())
+.bind(by)
+.bind(word)
+.bind(referral_id)
+.bind(reason)
+.execute(&mut *db)
         .await
         .map_err(db_err)?;
     if inserted.rows_affected() == 0 {
         return Err(StoreError::Conflict { current: 1 });
     }
-    get(db, id).await
+    get(&mut *db, id).await
 }

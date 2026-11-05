@@ -13,6 +13,7 @@ use crate::auth::Agent;
 use crate::links as store;
 use crate::patients_store::StoreError;
 use crate::policy::{self, Resource, Subject};
+use crate::pool::Pool;
 use axa::prelude::*;
 use axum::{
     Extension,
@@ -71,7 +72,7 @@ async fn change(
         (policy::Action::Update, Action::Update)
     };
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         agent,
         subject,
         Resource::PatientLink,
@@ -83,19 +84,19 @@ async fn change(
     {
         return r.into_response();
     }
-    let tx = match begin(&ctx.db).await {
+    let mut tx = match begin(&ctx.pool()).await {
         Ok(t) => t,
         Err(r) => return r.into_response(),
     };
     let done = if merging {
-        store::merge(&tx, target, &request.source, &agent.0, &request.reason).await
+        store::merge(&mut *tx, target, &request.source, &agent.0, &request.reason).await
     } else {
-        store::unmerge(&tx, target, &request.source, &agent.0, &request.reason).await
+        store::unmerge(&mut *tx, target, &request.source, &agent.0, &request.reason).await
     };
     match done {
         Ok(link) => {
             if let Err(r) = audit_resource(
-                &tx,
+                &mut *tx,
                 agent,
                 Access {
                     action,
@@ -133,13 +134,13 @@ async fn change(
                 .into_response()
         }
         Err(e) => {
-            let _ = sea_orm::TransactionSession::rollback(tx).await;
+            let _ = tx.rollback().await;
             // A refused merge is an access worth recording: who tried to join which records.
             if matches!(
                 e,
                 StoreError::NotFound | StoreError::BadQuery(_) | StoreError::NotSamePerson { .. }
             ) && let Err(r) = audit_resource(
-                &ctx.db,
+                &ctx.pool(),
                 agent,
                 Access {
                     action,
@@ -196,7 +197,7 @@ pub(super) async fn list(
         Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::PatientLink,
@@ -208,10 +209,10 @@ pub(super) async fn list(
     {
         return r.into_response();
     }
-    match store::list(&ctx.db, &patient).await {
+    match store::list(&ctx.pool(), &patient).await {
         Ok(links) => {
             if let Err(r) = audit_resource(
-                &ctx.db,
+                &ctx.pool(),
                 &agent,
                 Access {
                     action: Action::Read,

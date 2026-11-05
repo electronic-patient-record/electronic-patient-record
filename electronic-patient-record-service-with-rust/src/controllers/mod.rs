@@ -12,6 +12,7 @@ pub mod feed;
 pub mod fhir;
 pub mod fhir_r5;
 pub mod hazards;
+pub mod health;
 pub mod links;
 pub mod me;
 pub mod metrics;
@@ -30,7 +31,7 @@ use axa::routes::AppRoutes;
 #[must_use]
 pub fn route_groups() -> Vec<axa::routes::Routes> {
     vec![
-        axa::health::routes(),
+        health::routes(),
         patients::routes(),
         audit::routes(),
         me::routes(),

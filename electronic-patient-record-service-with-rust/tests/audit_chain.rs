@@ -12,9 +12,8 @@ use electronic_patient_record::audit::{self, Action, Chain, Event, Verdict};
 use electronic_patient_record::auth::Agent;
 use electronic_patient_record::controllers::patients::{CompareRequest, compare_audited};
 use electronic_patient_record_matcher::{HumanName, Patient};
-use electronic_patient_record_migration::{Migrator, MigratorTrait};
 use integrity_mac::{KeyConfig, KeySet};
-use sea_orm::{ConnectionTrait, Database, DatabaseConnection};
+use sqlx::{AssertSqlSafe, PgPool, Row};
 
 const KEY: &str = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
 const OTHER_KEY: &str = "1f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
@@ -25,8 +24,8 @@ fn keyed(key: &str) -> Chain {
 
 /// A migrated scratch database, dropped when the test ends (best effort).
 struct Scratch {
-    db: DatabaseConnection,
-    admin: DatabaseConnection,
+    db: PgPool,
+    admin: PgPool,
     name: String,
 }
 
@@ -40,27 +39,33 @@ impl Scratch {
             .unwrap()
             .as_nanos();
         let name = format!("epr_scratch_{}_{}", std::process::id(), nanos);
-        let admin = Database::connect(url.clone()).await.expect("connect admin");
-        admin
-            .execute_unprepared(&format!("CREATE DATABASE {name}"))
+        let admin = PgPool::connect(&url.clone()).await.expect("connect admin");
+        sqlx::raw_sql(AssertSqlSafe(format!("CREATE DATABASE {name}")))
+            .execute(&admin)
             .await
             .expect("create scratch db");
-        let db = Database::connect(format!("{base}/{name}"))
+        let db = PgPool::connect(&format!("{base}/{name}"))
             .await
             .expect("connect scratch");
-        Migrator::up(&db, None).await.expect("migrate");
+        electronic_patient_record::MIGRATOR
+            .run(&db)
+            .await
+            .expect("migrate");
         Self { db, admin, name }
     }
 
     /// Turn the immutability triggers off, to simulate someone with database ownership.
     async fn tamper(&self, sql: &str) {
-        self.db
-            .execute_unprepared("ALTER TABLE audit_events DISABLE TRIGGER USER")
+        sqlx::raw_sql("ALTER TABLE audit_events DISABLE TRIGGER USER")
+            .execute(&self.db)
             .await
             .unwrap();
-        self.db.execute_unprepared(sql).await.unwrap();
-        self.db
-            .execute_unprepared("ALTER TABLE audit_events ENABLE TRIGGER USER")
+        sqlx::raw_sql(AssertSqlSafe(sql.to_string()))
+            .execute(&self.db)
+            .await
+            .unwrap();
+        sqlx::raw_sql("ALTER TABLE audit_events ENABLE TRIGGER USER")
+            .execute(&self.db)
             .await
             .unwrap();
     }
@@ -68,9 +73,11 @@ impl Scratch {
     async fn finish(self) {
         let Scratch { db, admin, name } = self;
         drop(db);
-        let _ = admin
-            .execute_unprepared(&format!("DROP DATABASE IF EXISTS {name} WITH (FORCE)"))
-            .await;
+        let _ = sqlx::raw_sql(AssertSqlSafe(format!(
+            "DROP DATABASE IF EXISTS {name} WITH (FORCE)"
+        )))
+        .execute(&admin)
+        .await;
     }
 }
 
@@ -224,22 +231,18 @@ async fn comparing_patients_writes_an_audit_row_without_the_demographics() {
         .unwrap();
     assert_eq!(serde_json::to_value(result.decision).unwrap(), "auto_link");
 
-    let row = s
-        .db
-        .query_one_raw(sea_orm::Statement::from_string(
-            sea_orm::DbBackend::Postgres,
-            "SELECT action::text AS action, agent, resource_ref, detail::text AS detail FROM audit_events",
-        ))
+    let row = sqlx::query("SELECT action::text AS action, agent, resource_ref, detail::text AS detail FROM audit_events")
+.fetch_optional(&s.db)
         .await
         .unwrap()
         .expect("one audit row");
-    assert_eq!(row.try_get::<String>("", "action").unwrap(), "E");
-    assert_eq!(row.try_get::<String>("", "agent").unwrap(), "user-42");
+    assert_eq!(row.try_get::<String, _>("action").unwrap(), "E");
+    assert_eq!(row.try_get::<String, _>("agent").unwrap(), "user-42");
     assert_eq!(
-        row.try_get::<String>("", "resource_ref").unwrap(),
+        row.try_get::<String, _>("resource_ref").unwrap(),
         "Patient/$compare"
     );
-    let detail = row.try_get::<String>("", "detail").unwrap();
+    let detail = row.try_get::<String, _>("detail").unwrap();
     for secret in ["Quimby", "Zebediah", "1971"] {
         assert!(
             !detail.contains(secret),
@@ -320,24 +323,20 @@ async fn the_verify_endpoint_logic_reports_intact_then_409_and_audits_each_check
     assert_eq!(body["first_broken_id"], ids[1]);
 
     // Each check wrote one row naming the auditor, with the outcome and no row contents.
-    let rows = s
-        .db
-        .query_all_raw(sea_orm::Statement::from_sql_and_values(
-            sea_orm::DbBackend::Postgres,
-            "SELECT resource_ref, purpose_of_use, detail::text AS detail FROM audit_events WHERE agent = $1 ORDER BY id",
-            ["auditor-1".into()],
-        ))
+    let rows = sqlx::query("SELECT resource_ref, purpose_of_use, detail::text AS detail FROM audit_events WHERE agent = $1 ORDER BY id")
+.bind("auditor-1")
+.fetch_all(&s.db)
         .await
         .unwrap();
     assert_eq!(rows.len(), 2);
     for r in &rows {
         assert_eq!(
-            r.try_get::<String>("", "resource_ref").unwrap(),
+            r.try_get::<String, _>("resource_ref").unwrap(),
             "AuditLog/$verify"
         );
-        assert_eq!(r.try_get::<String>("", "purpose_of_use").unwrap(), "audit");
+        assert_eq!(r.try_get::<String, _>("purpose_of_use").unwrap(), "audit");
     }
-    let second: String = rows[1].try_get("", "detail").unwrap();
+    let second: String = rows[1].try_get("detail").unwrap();
     assert!(second.contains("\"intact\": false") && second.contains(&ids[1].to_string()));
     assert!(!second.contains("mallory"));
 
@@ -805,7 +804,6 @@ async fn the_audit_search_filters_pages_newest_first_and_refuses_bad_criteria() 
 async fn a_write_and_its_audit_row_commit_or_roll_back_together() {
     use electronic_patient_record::patients_store::{self as patients, StoreError};
     use electronic_patient_record_matcher::{HumanName, Patient};
-    use sea_orm::{ConnectionTrait, TransactionTrait};
 
     let person = |family: &str| Patient {
         names: vec![HumanName {
@@ -819,11 +817,11 @@ async fn a_write_and_its_audit_row_commit_or_roll_back_together() {
     let s = Scratch::new().await;
 
     // Both land when the transaction commits.
-    let tx = s.db.begin().await.unwrap();
-    let made = patients::create(&tx, "a", None, &person("Both"))
+    let mut tx = s.db.begin().await.unwrap();
+    let made = patients::create(&mut *tx, "a", None, &person("Both"))
         .await
         .unwrap();
-    audit::append(&tx, &chain, &event(0)).await.unwrap();
+    audit::append(&mut *tx, &chain, &event(0)).await.unwrap();
     tx.commit().await.unwrap();
     assert_eq!(patients::current(&s.db, &made.id).await.unwrap().version, 1);
     assert_eq!(
@@ -832,26 +830,26 @@ async fn a_write_and_its_audit_row_commit_or_roll_back_together() {
     );
 
     // If the audit row cannot be written, the patient is not created.
-    s.db.execute_unprepared(
-        "CREATE FUNCTION refuse_test_agent() RETURNS trigger AS $$
+    sqlx::raw_sql("CREATE FUNCTION refuse_test_agent() RETURNS trigger AS $$
          BEGIN IF NEW.agent = 'cannot-be-audited' THEN RAISE EXCEPTION 'audit refused'; END IF; RETURN NEW; END
-         $$ LANGUAGE plpgsql",
-    )
+         $$ LANGUAGE plpgsql",)
+.execute(&s.db)
     .await
     .unwrap();
-    s.db.execute_unprepared(
+    sqlx::raw_sql(
         "CREATE TRIGGER refuse_test_agent BEFORE INSERT ON audit_events
          FOR EACH ROW EXECUTE FUNCTION refuse_test_agent()",
     )
+    .execute(&s.db)
     .await
     .unwrap();
-    let tx = s.db.begin().await.unwrap();
-    let doomed = patients::create(&tx, "a", None, &person("Doomed"))
+    let mut tx = s.db.begin().await.unwrap();
+    let doomed = patients::create(&mut *tx, "a", None, &person("Doomed"))
         .await
         .unwrap();
     let mut bad = event(1);
     bad.agent = "cannot-be-audited".into();
-    assert!(audit::append(&tx, &chain, &bad).await.is_err());
+    assert!(audit::append(&mut *tx, &chain, &bad).await.is_err());
     drop(tx); // the handler returns 500 and the transaction ends without a commit
     assert_eq!(
         patients::current(&s.db, &doomed.id).await,
@@ -864,16 +862,16 @@ async fn a_write_and_its_audit_row_commit_or_roll_back_together() {
     );
 
     // A stale update inside a transaction does not poison it: the audit row can still be written.
-    let tx = s.db.begin().await.unwrap();
-    let v2 = patients::update(&tx, &made.id, 1, "a", None, &person("Both"))
+    let mut tx = s.db.begin().await.unwrap();
+    let v2 = patients::update(&mut *tx, &made.id, 1, "a", None, &person("Both"))
         .await
         .unwrap();
     assert_eq!(v2.version, 2);
     assert_eq!(
-        patients::update(&tx, &made.id, 1, "b", None, &person("Both")).await,
+        patients::update(&mut *tx, &made.id, 1, "b", None, &person("Both")).await,
         Err(StoreError::Conflict { current: 2 })
     );
-    audit::append(&tx, &chain, &event(2)).await.unwrap();
+    audit::append(&mut *tx, &chain, &event(2)).await.unwrap();
     tx.commit().await.unwrap();
     assert_eq!(patients::current(&s.db, &made.id).await.unwrap().version, 2);
     assert_eq!(
@@ -882,11 +880,11 @@ async fn a_write_and_its_audit_row_commit_or_roll_back_together() {
     );
 
     // A write that is rolled back leaves no audit row and no version.
-    let tx = s.db.begin().await.unwrap();
-    patients::update(&tx, &made.id, 2, "a", None, &person("Rolled"))
+    let mut tx = s.db.begin().await.unwrap();
+    patients::update(&mut *tx, &made.id, 2, "a", None, &person("Rolled"))
         .await
         .unwrap();
-    audit::append(&tx, &chain, &event(3)).await.unwrap();
+    audit::append(&mut *tx, &chain, &event(3)).await.unwrap();
     tx.rollback().await.unwrap();
     assert_eq!(patients::current(&s.db, &made.id).await.unwrap().version, 2);
     assert_eq!(
@@ -931,15 +929,12 @@ async fn after_and_through_are_exact_for_instants_and_cover_whole_days_for_dates
     // `after` yesterday everything, `through` yesterday nothing.
     let today = t[..10].to_string();
     let day_before = {
-        let rows =
-            s.db.query_one_raw(sea_orm::Statement::from_string(
-                sea_orm::DbBackend::Postgres,
-                "SELECT to_char(current_date - 1, 'YYYY-MM-DD') AS d".to_string(),
-            ))
+        let rows = sqlx::query("SELECT to_char(current_date - 1, 'YYYY-MM-DD') AS d")
+            .fetch_optional(&s.db)
             .await
             .unwrap()
             .unwrap();
-        rows.try_get::<String>("", "d").unwrap()
+        rows.try_get::<String, _>("d").unwrap()
     };
     assert_eq!(
         search(&s.db, &q(&|q| q.through = Some(today.clone())))

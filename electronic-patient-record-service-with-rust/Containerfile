@@ -24,7 +24,7 @@ RUN want="$(sed -n 's/^channel *= *"\(.*\)"/\1/p' /tmp/rust-toolchain.toml)" \
 
 WORKDIR /app
 COPY electronic-patient-record-service-with-rust/Cargo.toml electronic-patient-record-service-with-rust/Cargo.lock electronic-patient-record-service-with-rust/
-COPY electronic-patient-record-service-with-rust/migration electronic-patient-record-service-with-rust/migration
+COPY electronic-patient-record-service-with-rust/migrations electronic-patient-record-service-with-rust/migrations
 COPY electronic-patient-record-service-with-rust/src electronic-patient-record-service-with-rust/src
 
 WORKDIR /app/electronic-patient-record-service-with-rust

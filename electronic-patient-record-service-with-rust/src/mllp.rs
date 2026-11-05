@@ -16,7 +16,7 @@
 //! `<VT>` inside a frame and text that is not UTF-8 each close the connection: nothing is guessed.
 
 use crate::adt_feed::{self, FeedIdentity};
-use sea_orm::DatabaseConnection;
+use sqlx::PgPool;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -240,7 +240,7 @@ fn now() -> i64 {
 }
 
 /// Serve connections until the task is dropped. Each connection runs in its own task.
-pub async fn serve(listener: TcpListener, db: DatabaseConnection, config: Config) {
+pub async fn serve(listener: TcpListener, db: PgPool, config: Config) {
     let slots = Arc::new(Semaphore::new(config.max_connections));
     let config = Arc::new(config);
     loop {
@@ -268,12 +268,7 @@ pub async fn serve(listener: TcpListener, db: DatabaseConnection, config: Config
 /// Serve one connection: read bytes, answer every complete frame in the buffer with [`adt_feed::process`] (an `AA`, `AE` or
 /// `AR` acknowledgement, framed), and close on a stream that is not valid MLLP, a message that is not UTF-8 or a frame
 /// that is not an HL7 message. Each message is given an acknowledgement id from a process-wide counter.
-async fn connection(
-    mut stream: TcpStream,
-    peer: SocketAddr,
-    db: &DatabaseConnection,
-    config: &Config,
-) {
+async fn connection(mut stream: TcpStream, peer: SocketAddr, db: &PgPool, config: &Config) {
     let who = FeedIdentity {
         agent: config.agent.clone(),
         peer: Some(peer.ip().to_string()),

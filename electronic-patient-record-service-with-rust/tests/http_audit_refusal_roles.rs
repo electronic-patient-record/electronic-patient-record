@@ -14,8 +14,8 @@ use authentication_verifier::test_idp::{AUDIENCE, REALM, TestIdp};
 use axa::testing::prelude::request;
 use axum::http::{HeaderName, HeaderValue};
 use electronic_patient_record::app::App;
+use electronic_patient_record::pool::Pool;
 use electronic_patient_record_matcher::{HumanName, Patient};
-use sea_orm::ConnectionTrait;
 use serde_json::{Value, json};
 
 mod audit_switch;
@@ -84,7 +84,7 @@ async fn break_glass_and_the_feed_queue_refuse_when_their_audit_row_cannot_be_wr
     let auditor = token("auditor", "0c4f1e2a-0000-4000-8000-0000000000d1");
 
     request::<App, _, _>(|server, ctx| async move {
-        let db = &ctx.db;
+        let db = &ctx.pool();
         let (ah, av) = bearer(&admin);
         let (ch, cv) = bearer(&clinician);
         let (uh, uv) = bearer(&auditor);
@@ -108,10 +108,9 @@ async fn break_glass_and_the_feed_queue_refuse_when_their_audit_row_cannot_be_wr
         let pid = made.json::<Value>()["id"].as_str().unwrap().to_string();
 
         // A refused feed message waiting for the administrator.
-        db.execute_unprepared(
-            "INSERT INTO feed_refusals (agent, event, control_id, kind, message)
-             VALUES ('test', 'ADT^A01', 'audit-refusal-test', 'unsupported', 'MSH|test')",
-        )
+        sqlx::raw_sql("INSERT INTO feed_refusals (agent, event, control_id, kind, message)
+             VALUES ('test', 'ADT^A01', 'audit-refusal-test', 'unsupported', 'MSH|test')",)
+.execute(db)
         .await
         .unwrap();
         let waiting = server

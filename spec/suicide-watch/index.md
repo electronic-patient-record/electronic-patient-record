@@ -242,7 +242,7 @@ Open:
 
 | Need | Today | Gap | Verified against |
 |---|---|---|---|
-| Append-only store with true write time | Built for vitals: `observation_versions`, triggers refuse change, `recorded_at` set by the database, `effective_at` by the writer | Only vital signs; nothing for a therapeutic observation | `migration/src/m20261026_000014_observations.rs`, `observations.rs` (`SUPPORTED`) |
+| Append-only store with true write time | Built for vitals: `observation_versions`, triggers refuse change, `recorded_at` set by the database, `effective_at` by the writer | Only vital signs; nothing for a therapeutic observation | `migrations/20261026000014_observations.sql`, `observations.rs` (`SUPPORTED`) |
 | A late entry shown as late | `recorded_at` stored and sent as FHIR `issued`. The vital signs list, trend, history and summary show both clocks, and a first entry written more than 60 minutes after its measured time says "late entry" (SW-2; the 60 is a guess) | A reading more than 7 days old needs a reason, and one before the patient's birth date is refused. Late says when it was written and cannot show that a false entry made on time is false | `observations_store.rs` (`parse_effective`), `interop/fhir_observation.rs`, UI `vitals.ts` (`writtenText`) |
 | Absent evidence | `AbsentReason`: not done, declined, failed, unknown | No "no observer", no reason text, no expected slot | `observations.rs` |
 | Observation order, holder, handover | None | All of it | grep of `src` and `migration` found no such term |
@@ -396,4 +396,4 @@ Read 2026-11-04. Marks: **(fetched)** the page was opened and summarised by the 
 - [ADRT] BJPsych Open 2019: https://www.cambridge.org/core/product/3365ABDAD49526E22073A5B8F801CD6F/core-reader (search summary)
 - [SAR] ICO, health information: https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/individual-rights/right-of-access/health-information/ (search summary)
 - [STIG] AMA Journal of Ethics: https://journalofethics.ama-assn.org/article/when-and-how-should-clinicians-share-details-health-record-patients-mental-illness/2017-03 ; notes study: https://pmc.ncbi.nlm.nih.gov/articles/PMC13005122/ ; copying forward: https://link.springer.com/article/10.1186/s12913-026-15358-5 (search summary)
-- This repository: `electronic-patient-record-service-with-rust/src/policy.rs`, `observations.rs`, `observations_store.rs`, `break_glass.rs`, `proxy.rs`, `consent.rs`, `audit_retention.rs`, `referral_timeouts.rs`, `outbox.rs`, `migration/src/m20261026_000014_observations.rs`; [service spec](../../electronic-patient-record-service-with-rust/spec/index.md).
+- This repository: `electronic-patient-record-service-with-rust/src/policy.rs`, `observations.rs`, `observations_store.rs`, `break_glass.rs`, `proxy.rs`, `consent.rs`, `audit_retention.rs`, `referral_timeouts.rs`, `outbox.rs`, `migrations/20261026000014_observations.sql`; [service spec](../../electronic-patient-record-service-with-rust/spec/index.md).

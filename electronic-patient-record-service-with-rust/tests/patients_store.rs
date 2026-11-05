@@ -9,13 +9,16 @@
 
 use electronic_patient_record::patients_store::{self as store, Search, StoreError};
 use electronic_patient_record_matcher::{HumanName, Identifier, Patient};
-use electronic_patient_record_migration::{Migrator, MigratorTrait};
-use sea_orm::{ConnectionTrait, Database, DatabaseConnection};
+use sqlx::Row;
+use sqlx::{AssertSqlSafe, PgPool};
 
-async fn db() -> DatabaseConnection {
+async fn db() -> PgPool {
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
-    let db = Database::connect(url).await.expect("connect");
-    Migrator::up(&db, None).await.expect("migrate");
+    let db = PgPool::connect(&url).await.expect("connect");
+    electronic_patient_record::MIGRATOR
+        .run(&db)
+        .await
+        .expect("migrate");
     db
 }
 
@@ -81,19 +84,16 @@ async fn an_update_appends_a_version_and_keeps_the_old_one() {
     assert_eq!(v2.patient.birth_date.as_deref(), Some("1980-03-15"));
     // The current view shows v2; both versions are still in the table with their authors.
     assert_eq!(store::current(&db, &v1.id).await.unwrap().version, 2);
-    let rows = db
-        .query_all_raw(sea_orm::Statement::from_sql_and_values(
-            sea_orm::DbBackend::Postgres,
-            "SELECT version, author, reason FROM patient_versions WHERE patient_id = $1::uuid ORDER BY version",
-            [v1.id.clone().into()],
-        ))
+    let rows = sqlx::query("SELECT version, author, reason FROM patient_versions WHERE patient_id = $1::uuid ORDER BY version")
+.bind(v1.id.clone())
+.fetch_all(&db)
         .await
         .unwrap();
     assert_eq!(rows.len(), 2);
-    assert_eq!(rows[0].try_get::<String>("", "author").unwrap(), "alice");
+    assert_eq!(rows[0].try_get::<String, _>("author").unwrap(), "alice");
     assert_eq!(
         rows[1]
-            .try_get::<Option<String>>("", "reason")
+            .try_get::<Option<String>, _>("reason")
             .unwrap()
             .as_deref(),
         Some("corrected birth date")
@@ -172,7 +172,11 @@ async fn versions_cannot_be_changed_or_removed() {
         format!("DELETE FROM patient_versions WHERE patient_id = '{}'", s.id),
         "TRUNCATE patient_versions".to_string(),
     ] {
-        let e = db.execute_unprepared(&sql).await.unwrap_err().to_string();
+        let e = sqlx::raw_sql(AssertSqlSafe(sql.to_string()))
+            .execute(&db)
+            .await
+            .unwrap_err()
+            .to_string();
         assert!(e.contains("append-only"), "{sql}: {e}");
     }
 }
@@ -306,7 +310,6 @@ async fn candidates_share_an_identifier_a_birth_date_or_a_family_name() {
 #[tokio::test]
 #[ignore = "needs Postgres: set DATABASE_URL"]
 async fn concurrent_registrations_of_one_person_create_one_record() {
-    use sea_orm::TransactionTrait;
     let db = db().await;
     let family = tag("race");
     let person = patient(&family, "1980-03-14");
@@ -316,14 +319,14 @@ async fn concurrent_registrations_of_one_person_create_one_record() {
             .filter(|r| r.patient.names[0].family.as_deref() == Some(family))
             .count()
     };
-    let attempt = |db: DatabaseConnection, p: Patient, family: String| async move {
-        let tx = db.begin().await.unwrap();
-        store::lock_registration(&tx).await.unwrap();
-        let found = ours(store::candidates(&tx, &p).await.unwrap(), &family);
+    let attempt = |db: PgPool, p: Patient, family: String| async move {
+        let mut tx = db.begin().await.unwrap();
+        store::lock_registration(&mut *tx).await.unwrap();
+        let found = ours(store::candidates(&mut *tx, &p).await.unwrap(), &family);
         // Widen the window: without the lock the other attempt searches now and sees nothing.
         tokio::time::sleep(std::time::Duration::from_millis(200)).await;
         let created = if found == 0 {
-            store::create(&tx, "tester", Some("race"), &p)
+            store::create(&mut *tx, "tester", Some("race"), &p)
                 .await
                 .unwrap();
             true
@@ -362,22 +365,20 @@ async fn ids_are_found_in_any_case_and_looked_up_by_index() {
     }
     // The shape every id lookup now has: the plan must seek on the id, not filter a whole scan. A
     // small test table would be scanned anyway, so sequential scans are off for this transaction.
-    use sea_orm::TransactionTrait;
-    let tx = db.begin().await.unwrap();
-    tx.execute_unprepared("SET LOCAL enable_seqscan = off")
+    let mut tx = db.begin().await.unwrap();
+    sqlx::raw_sql("SET LOCAL enable_seqscan = off")
+        .execute(&mut *tx)
         .await
         .unwrap();
-    let plan: Vec<String> = tx
-        .query_all_raw(sea_orm::Statement::from_sql_and_values(
-            sea_orm::DbBackend::Postgres,
-            "EXPLAIN SELECT * FROM patient_current WHERE patient_id = $1::uuid",
-            [s.id.clone().into()],
-        ))
-        .await
-        .unwrap()
-        .iter()
-        .map(|r| r.try_get_by_index::<String>(0).unwrap())
-        .collect();
+    let plan: Vec<String> =
+        sqlx::query("EXPLAIN SELECT * FROM patient_current WHERE patient_id = $1::uuid")
+            .bind(s.id.clone())
+            .fetch_all(&mut *tx)
+            .await
+            .unwrap()
+            .iter()
+            .map(|r| r.try_get::<String, _>(0).unwrap())
+            .collect();
     assert!(
         plan.iter().any(|l| l.contains("Index Cond: (patient_id =")),
         "{plan:#?}"
@@ -479,13 +480,12 @@ async fn the_strongest_candidates_survive_a_crowded_birth_date() {
 #[tokio::test]
 #[ignore = "needs Postgres: set DATABASE_URL"]
 async fn a_lost_race_for_a_version_is_a_conflict() {
-    use sea_orm::TransactionTrait;
     let db = db().await;
     let p = patient(&tag("race2"), "1980-03-14");
     let s = store::create(&db, "t", None, &p).await.unwrap();
     // The first writer has version 2 written but not committed.
-    let first = db.begin().await.unwrap();
-    store::update(&first, &s.id, 1, "first", None, &p)
+    let mut first = db.begin().await.unwrap();
+    store::update(&mut *first, &s.id, 1, "first", None, &p)
         .await
         .unwrap();
     // The second still sees version 1, and its insert of version 2 waits on the first.

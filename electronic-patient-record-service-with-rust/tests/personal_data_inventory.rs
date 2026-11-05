@@ -8,8 +8,8 @@
 //!   cargo test --test personal_data_inventory -- --ignored --test-threads=1
 //! ```
 
-use electronic_patient_record_migration::{Migrator, MigratorTrait};
-use sea_orm::{ConnectionTrait, Database, DbBackend, Statement};
+use sqlx::PgPool;
+use sqlx::Row;
 use std::collections::BTreeSet;
 use std::path::Path;
 
@@ -73,24 +73,25 @@ fn inventory_rows_are_well_formed_and_unique() {
 #[ignore = "needs Postgres: set DATABASE_URL"]
 async fn every_database_column_is_classified_and_no_stale_row_remains() {
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
-    let db = Database::connect(url).await.expect("connect");
-    Migrator::up(&db, None).await.expect("migrate");
-    let rows = db
-        .query_all_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT table_name, column_name FROM information_schema.columns \
-             WHERE table_schema = 'public' AND table_name NOT LIKE 'seaql%' \
-               AND table_name NOT IN (SELECT relname::text FROM pg_class WHERE relispartition)"
-                .to_string(),
-        ))
+    let db = PgPool::connect(&url).await.expect("connect");
+    electronic_patient_record::MIGRATOR
+        .run(&db)
         .await
-        .unwrap();
+        .expect("migrate");
+    let rows = sqlx::query(
+        "SELECT table_name, column_name FROM information_schema.columns \
+             WHERE table_schema = 'public' AND table_name NOT LIKE '\\_sqlx%' \
+               AND table_name NOT IN (SELECT relname::text FROM pg_class WHERE relispartition)",
+    )
+    .fetch_all(&db)
+    .await
+    .unwrap();
     let actual: BTreeSet<(String, String)> = rows
         .iter()
         .map(|r| {
             (
-                r.try_get("", "table_name").unwrap(),
-                r.try_get("", "column_name").unwrap(),
+                r.try_get("table_name").unwrap(),
+                r.try_get("column_name").unwrap(),
             )
         })
         .collect();

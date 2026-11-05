@@ -3,15 +3,9 @@
 //! calls [`store_errors!`](crate::store_errors) once for its local `db_err`.
 
 use crate::patients_store::StoreError;
-use sea_orm::{
-    ConnectionTrait, DbBackend, DbErr, QueryResult, SqlErr, Statement, TransactionSession,
-    TransactionTrait, Value,
-};
-
-/// A Postgres statement with bound values.
-pub(crate) fn pg(sql: &str, values: Vec<Value>) -> Statement {
-    Statement::from_sql_and_values(DbBackend::Postgres, sql, values)
-}
+use sqlx::Postgres;
+use sqlx::postgres::{PgArguments, PgRow};
+use sqlx::query::Query;
 
 /// A database failure in `store`, kept as text with the store's name so the log says where.
 pub(crate) fn db_err(store: &str, e: impl std::fmt::Display) -> StoreError {
@@ -32,17 +26,10 @@ macro_rules! store_errors {
     };
 }
 
-/// Whether the statement was refused by a unique constraint. The version tables have no unique
-/// constraint but their primary key, so for them this means the version was already taken. Read from
-/// the driver's error kind, not from the message.
-pub(crate) fn is_unique_violation(e: &DbErr) -> bool {
-    matches!(e.sql_err(), Some(SqlErr::UniqueConstraintViolation(_)))
-}
-
 /// What appending a version did.
 pub(crate) enum Appended {
     /// The new row, as `RETURNING` gave it.
-    Row(QueryResult),
+    Row(PgRow),
     /// Another writer took this version first.
     Taken,
 }
@@ -50,18 +37,23 @@ pub(crate) enum Appended {
 /// Run `insert` (an `INSERT … RETURNING` of the next version) in a savepoint. A failed statement
 /// aborts a Postgres transaction, so only the savepoint is rolled back and the caller's transaction,
 /// if any, can still read the version that won. The caller turns [`Appended::Taken`] into its own
-/// `Conflict` with that version.
+/// `Conflict` with that version. The primary key is the version tables' only unique constraint, so a
+/// unique violation means the version was already taken; that is read from the driver's error kind,
+/// not from the message.
 ///
 /// # Errors
 ///
 /// [`StoreError::Db`], naming `store`, for any other failure.
 pub(crate) async fn append_version(
-    db: &(impl ConnectionTrait + TransactionTrait),
+    db: impl Into<crate::pool::Db<'_>>,
     store: &str,
-    insert: Statement,
+    insert: Query<'_, Postgres, PgArguments>,
 ) -> Result<Appended, StoreError> {
-    let sp = db.begin().await.map_err(|e| db_err(store, e))?;
-    match sp.query_one_raw(insert).await {
+    let mut conn = db.into().acquire().await.map_err(|e| db_err(store, e))?;
+    let mut sp = sqlx::Connection::begin(&mut *conn)
+        .await
+        .map_err(|e| db_err(store, e))?;
+    match insert.fetch_optional(&mut *sp).await {
         Ok(Some(row)) => {
             sp.commit().await.map_err(|e| db_err(store, e))?;
             Ok(Appended::Row(row))
@@ -72,7 +64,7 @@ pub(crate) async fn append_version(
         }
         Err(e) => {
             let _ = sp.rollback().await;
-            if is_unique_violation(&e) {
+            if axa::sqlx::is_unique_violation(&e) {
                 Ok(Appended::Taken)
             } else {
                 Err(db_err(store, e))

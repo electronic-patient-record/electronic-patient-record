@@ -15,6 +15,7 @@ use crate::auth::Agent;
 use crate::feed_queue::{self as queue, Outcome};
 use crate::patients_store::StoreError;
 use crate::policy::{self, Resource, Subject};
+use crate::pool::Pool;
 use axa::prelude::*;
 use axum::{
     Extension,
@@ -59,7 +60,7 @@ async fn list(
         Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::FeedQueue,
@@ -71,12 +72,12 @@ async fn list(
     {
         return r.into_response();
     }
-    let open = match queue::list_open(&ctx.db).await {
+    let open = match queue::list_open(&ctx.pool()).await {
         Ok(o) => o,
         Err(e) => return failure(e),
     };
     if let Err(r) = audit_resource(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         Access {
             action: Action::Read,
@@ -107,7 +108,7 @@ async fn count(
         Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::FeedQueue,
@@ -119,12 +120,12 @@ async fn count(
     {
         return r.into_response();
     }
-    let open = match queue::count_open(&ctx.db).await {
+    let open = match queue::count_open(&ctx.pool()).await {
         Ok(n) => n,
         Err(e) => return failure(e),
     };
     if let Err(r) = audit_resource(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         Access {
             action: Action::Read,
@@ -156,7 +157,7 @@ async fn read(
         Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::FeedQueue,
@@ -168,13 +169,13 @@ async fn read(
     {
         return r.into_response();
     }
-    let entry = match queue::get(&ctx.db, &id).await {
+    let entry = match queue::get(&ctx.pool(), &id).await {
         Ok(e) => e,
         Err(e) => return failure(e),
     };
     // Audit before the message text leaves.
     if let Err(r) = audit_resource(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         Access {
             action: Action::Read,
@@ -207,7 +208,7 @@ async fn resolve(
         Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::FeedQueue,
@@ -219,14 +220,14 @@ async fn resolve(
     {
         return r.into_response();
     }
-    let tx = match begin(&ctx.db).await {
+    let mut tx = match begin(&ctx.pool()).await {
         Ok(t) => t,
         Err(r) => return r.into_response(),
     };
-    match queue::resolve(&tx, &id, &agent.0, request.outcome, &request.reason).await {
+    match queue::resolve(&mut *tx, &id, &agent.0, request.outcome, &request.reason).await {
         Ok(entry) => {
             if let Err(r) = audit_resource(
-                &tx,
+                &mut *tx,
                 &agent,
                 Access {
                     action: Action::Update,
@@ -251,7 +252,7 @@ async fn resolve(
             Json(entry).into_response()
         }
         Err(e) => {
-            let _ = sea_orm::TransactionSession::rollback(tx).await;
+            let _ = tx.rollback().await;
             failure(e)
         }
     }

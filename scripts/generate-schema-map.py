@@ -14,7 +14,7 @@ import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-MIGRATIONS = ROOT / "electronic-patient-record-service-with-rust" / "migration" / "src"
+MIGRATIONS = ROOT / "electronic-patient-record-service-with-rust" / "migrations"
 OUT = ROOT / "spec" / "schema-map.md"
 
 SKIP = ("PRIMARY", "UNIQUE", "CHECK", "CONSTRAINT", "FOREIGN", "LIKE", "EXCLUDE")
@@ -59,7 +59,7 @@ def purpose(text):
 
 def generate():
     tables, views = {}, {}
-    for path in sorted(MIGRATIONS.glob("m2*.rs")):
+    for path in sorted(MIGRATIONS.glob("*.sql")):
         text = path.read_text()
         migration = path.stem
         for m in re.finditer(r"CREATE TABLE ([a-z_][a-z0-9_]*) \(", text):
@@ -83,7 +83,7 @@ def generate():
         "",
         "Every table and view the service's migrations create. **Generated** by "
         "[`scripts/generate-schema-map.py`](../scripts/generate-schema-map.py) from the `CREATE TABLE` and `CREATE VIEW` "
-        "statements in `electronic-patient-record-service-with-rust/migration/src/`; the docs job fails when this page is out of "
+        "statements in `electronic-patient-record-service-with-rust/migrations/`; the docs job fails when this page is out of "
         "date (task OF-6). Do not edit it by hand.",
         "",
         "Not listed: tables made by a statement built at run time (the monthly `audit_events` partitions), and what a column "

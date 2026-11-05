@@ -4,11 +4,12 @@
 //! change the same version collide on the primary key and the loser gets [`StoreError::Conflict`].
 
 use crate::ids;
-use crate::store::pg;
+use crate::pool::Db;
 use electronic_patient_record_matcher::{
     NHS_NUMBER_SYSTEM, Patient, is_placeholder_nhs_number, is_valid_nhs_number,
 };
-use sea_orm::{ConnectionTrait, DatabaseConnection, TransactionTrait};
+use sqlx::postgres::PgRow;
+use sqlx::{AssertSqlSafe, PgPool, Row};
 
 crate::store_errors!("patients");
 
@@ -190,17 +191,17 @@ pub(crate) fn valid_birth_date(d: &str) -> bool {
 /// # Errors
 ///
 /// [`StoreError::Db`] when a column is missing or the stored body is unreadable.
-fn row_to_stored(row: &sea_orm::QueryResult) -> Result<Stored, StoreError> {
-    let id: String = row.try_get("", "id").map_err(db_err)?;
-    let body: serde_json::Value = row.try_get("", "body").map_err(db_err)?;
+fn row_to_stored(row: &PgRow) -> Result<Stored, StoreError> {
+    let id: String = row.try_get("id").map_err(db_err)?;
+    let body: serde_json::Value = row.try_get("body").map_err(db_err)?;
     let mut patient: Patient = serde_json::from_value(body).map_err(db_err)?;
     patient.id = Some(id.clone());
     Ok(Stored {
         id,
-        version: row.try_get("", "version").map_err(db_err)?,
-        author: row.try_get("", "author").map_err(db_err)?,
+        version: row.try_get("version").map_err(db_err)?,
+        author: row.try_get("author").map_err(db_err)?,
         patient,
-        drill: row.try_get("", "drill").map_err(db_err)?,
+        drill: row.try_get("drill").map_err(db_err)?,
     })
 }
 
@@ -218,12 +219,14 @@ const COLUMNS: &str = "patient_id::text AS id, version, author, body, drill";
 ///
 /// [`StoreError::Db`] when the insert fails.
 pub async fn create(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     author: &str,
     reason: Option<&str>,
     patient: &Patient,
 ) -> Result<Stored, StoreError> {
-    create_as(db, author, reason, patient, false).await
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    create_as(&mut *db, author, reason, patient, false).await
 }
 
 /// [`create`], as a drill or test record when `drill` is true (EC-10).
@@ -232,30 +235,28 @@ pub async fn create(
 ///
 /// [`StoreError::Db`] when the insert fails.
 pub async fn create_as(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     author: &str,
     reason: Option<&str>,
     patient: &Patient,
     drill: bool,
 ) -> Result<Stored, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let mut body = patient.clone();
     body.id = None;
-    let row = db
-        .query_one_raw(pg(
-            &format!(
-                "INSERT INTO patient_versions (patient_id, version, author, reason, body, drill)
+    let row = sqlx::query(AssertSqlSafe(format!(
+        "INSERT INTO patient_versions (patient_id, version, author, reason, body, drill)
                  VALUES (gen_random_uuid(), 1, $1, $2, $3, $4) RETURNING {COLUMNS}"
-            ),
-            vec![
-                author.into(),
-                reason.map(str::to_string).into(),
-                serde_json::to_value(&body).map_err(db_err)?.into(),
-                drill.into(),
-            ],
-        ))
-        .await
-        .map_err(db_err)?
-        .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
+    )))
+    .bind(author)
+    .bind(reason.map(str::to_string))
+    .bind(serde_json::to_value(&body).map_err(db_err)?)
+    .bind(drill)
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(db_err)?
+    .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
     row_to_stored(&row)
 }
 
@@ -270,14 +271,15 @@ const REGISTRATION_LOCK: i64 = 0x4550_5252;
 /// # Errors
 ///
 /// [`StoreError::Db`] when the lock cannot be taken.
-pub async fn lock_registration(db: &impl ConnectionTrait) -> Result<(), StoreError> {
-    db.execute_raw(pg(
-        "SELECT pg_advisory_xact_lock($1)",
-        vec![REGISTRATION_LOCK.into()],
-    ))
-    .await
-    .map(|_| ())
-    .map_err(db_err)
+pub async fn lock_registration(db: impl Into<Db<'_>>) -> Result<(), StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    sqlx::query("SELECT pg_advisory_xact_lock($1)")
+        .bind(REGISTRATION_LOCK)
+        .execute(&mut *db)
+        .await
+        .map(|_| ())
+        .map_err(db_err)
 }
 
 /// The current version of a patient.
@@ -285,16 +287,18 @@ pub async fn lock_registration(db: &impl ConnectionTrait) -> Result<(), StoreErr
 /// # Errors
 ///
 /// [`StoreError::NotFound`] for an unknown or malformed id.
-pub async fn current(db: &impl ConnectionTrait, id: &str) -> Result<Stored, StoreError> {
+pub async fn current(db: impl Into<Db<'_>>, id: &str) -> Result<Stored, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let id = ids::uuid(id).ok_or(StoreError::NotFound)?;
-    let row = db
-        .query_one_raw(pg(
-            &format!("SELECT {COLUMNS} FROM patient_current WHERE patient_id = $1::uuid"),
-            vec![id.into()],
-        ))
-        .await
-        .map_err(db_err)?
-        .ok_or(StoreError::NotFound)?;
+    let row = sqlx::query(AssertSqlSafe(format!(
+        "SELECT {COLUMNS} FROM patient_current WHERE patient_id = $1::uuid"
+    )))
+    .bind(id)
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(db_err)?
+    .ok_or(StoreError::NotFound)?;
     row_to_stored(&row)
 }
 
@@ -307,14 +311,16 @@ pub async fn current(db: &impl ConnectionTrait, id: &str) -> Result<Stored, Stor
 /// [`StoreError::TemporaryIdentityCleared`] when the record stops being a temporary identity and
 /// no reason says why.
 pub async fn update(
-    db: &(impl ConnectionTrait + TransactionTrait),
+    db: impl Into<Db<'_>>,
     id: &str,
     expected_version: i32,
     author: &str,
     reason: Option<&str>,
     patient: &Patient,
 ) -> Result<Stored, StoreError> {
-    let now = current(db, id).await?;
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let now = current(&mut *db, id).await?;
     if now.version != expected_version {
         return Err(StoreError::Conflict {
             current: now.version,
@@ -330,28 +336,24 @@ pub async fn update(
     body.id = None;
     // A concurrent writer took this version: the primary key refuses the second (CQ-12).
     let row = match crate::store::append_version(
-        db,
+        &mut *db,
         STORE,
-        pg(
-            &format!(
-                "INSERT INTO patient_versions (patient_id, version, author, reason, body, drill)
+        sqlx::query(AssertSqlSafe(format!(
+            "INSERT INTO patient_versions (patient_id, version, author, reason, body, drill)
                  VALUES ($1::uuid, $2, $3, $4, $5, $6) RETURNING {COLUMNS}"
-            ),
-            vec![
-                now.id.clone().into(),
-                (expected_version + 1).into(),
-                author.into(),
-                reason.map(str::to_string).into(),
-                serde_json::to_value(&body).map_err(db_err)?.into(),
-                now.drill.into(),
-            ],
-        ),
+        )))
+        .bind(now.id.clone())
+        .bind(expected_version + 1)
+        .bind(author)
+        .bind(reason.map(str::to_string))
+        .bind(serde_json::to_value(&body).map_err(db_err)?)
+        .bind(now.drill),
     )
     .await?
     {
         crate::store::Appended::Row(row) => row,
         crate::store::Appended::Taken => {
-            let current = current(db, id).await?.version;
+            let current = current(&mut *db, id).await?.version;
             return Err(StoreError::Conflict { current });
         }
     };
@@ -370,10 +372,12 @@ pub const CANDIDATE_LIMIT: i64 = 200;
 ///
 /// [`StoreError::Db`] on a database failure.
 pub async fn candidates(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     patient: &Patient,
 ) -> Result<Vec<Stored>, StoreError> {
-    Ok(candidates_ranked(db, patient).await?.0)
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    Ok(candidates_ranked(&mut *db, patient).await?.0)
 }
 
 /// [`candidates`], and whether more matched than [`CANDIDATE_LIMIT`] (CQ-36). When the list is cut,
@@ -384,10 +388,12 @@ pub async fn candidates(
 ///
 /// [`StoreError::Db`] on a database failure.
 pub async fn candidates_ranked(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     patient: &Patient,
 ) -> Result<(Vec<Stored>, bool), StoreError> {
-    candidates_in(db, patient, false).await
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    candidates_in(&mut *db, patient, false).await
 }
 
 /// [`candidates_ranked`] within one kind of record: a drill registration is compared only with drill
@@ -397,10 +403,12 @@ pub async fn candidates_ranked(
 ///
 /// [`StoreError::Db`] on a database failure.
 pub async fn candidates_in(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     patient: &Patient,
     drill: bool,
 ) -> Result<(Vec<Stored>, bool), StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let identifiers: Vec<serde_json::Value> = patient
         .identifiers
         .iter()
@@ -421,27 +429,23 @@ pub async fn candidates_in(
     let by_birth = "($2::text IS NOT NULL AND body->>'birth_date' = $2)";
     let by_family = "EXISTS (SELECT 1 FROM jsonb_array_elements(body->'names') n
                              WHERE lower(trim(n->>'family')) = ANY($3::text[]))";
-    let rows = db
-        .query_all_raw(pg(
-            &format!(
-                "SELECT {COLUMNS} FROM patient_current
+    let rows = sqlx::query(AssertSqlSafe(format!(
+        "SELECT {COLUMNS} FROM patient_current
                  WHERE ({by_identifier} OR {by_birth} OR {by_family})
                    AND drill = $4
                    AND {NOT_MERGED_AWAY}
                  ORDER BY {by_identifier} DESC, ({by_birth} AND {by_family}) DESC,
                           {by_birth} DESC, {by_family} DESC, patient_id
                  LIMIT {}",
-                CANDIDATE_LIMIT + 1
-            ),
-            vec![
-                serde_json::Value::Array(identifiers).into(),
-                patient.birth_date.clone().into(),
-                families.into(),
-                drill.into(),
-            ],
-        ))
-        .await
-        .map_err(db_err)?;
+        CANDIDATE_LIMIT + 1
+    )))
+    .bind(serde_json::Value::Array(identifiers))
+    .bind(patient.birth_date.clone())
+    .bind(families)
+    .bind(drill)
+    .fetch_all(&mut *db)
+    .await
+    .map_err(db_err)?;
     let mut found = rows
         .iter()
         .map(row_to_stored)
@@ -496,7 +500,7 @@ fn like_prefix(s: &str) -> String {
 /// # Errors
 ///
 /// [`StoreError::Db`] on a database failure, or when `identifier` is not `system|value`.
-pub async fn search(db: &DatabaseConnection, q: &Search) -> Result<Vec<Stored>, StoreError> {
+pub async fn search(db: &PgPool, q: &Search) -> Result<Vec<Stored>, StoreError> {
     let family = q.family.as_deref().map(str::trim).filter(|s| !s.is_empty());
     let birth = q
         .birth_date
@@ -518,10 +522,8 @@ pub async fn search(db: &DatabaseConnection, q: &Search) -> Result<Vec<Stored>, 
             Some(serde_json::json!([{ "system": system, "value": value }]))
         }
     };
-    let rows = db
-        .query_all_raw(pg(
-            &format!(
-                "SELECT {COLUMNS} FROM patient_current
+    let rows = sqlx::query(AssertSqlSafe(format!(
+        "SELECT {COLUMNS} FROM patient_current
                  WHERE ($1::text IS NULL OR EXISTS (
                          SELECT 1 FROM jsonb_array_elements(body->'names') n
                          WHERE lower(n->>'family') LIKE lower($1) ESCAPE '\\'))
@@ -531,16 +533,14 @@ pub async fn search(db: &DatabaseConnection, q: &Search) -> Result<Vec<Stored>, 
                    AND {NOT_MERGED_AWAY}
                  ORDER BY lower(body->'names'->0->>'family'), patient_id
                  LIMIT {SEARCH_LIMIT}"
-            ),
-            vec![
-                family.map(like_prefix).into(),
-                birth.map(str::to_string).into(),
-                identifier.into(),
-                q.drill.into(),
-            ],
-        ))
-        .await
-        .map_err(db_err)?;
+    )))
+    .bind(family.map(like_prefix))
+    .bind(birth.map(str::to_string))
+    .bind(identifier)
+    .bind(q.drill)
+    .fetch_all(db)
+    .await
+    .map_err(db_err)?;
     rows.iter().map(row_to_stored).collect()
 }
 

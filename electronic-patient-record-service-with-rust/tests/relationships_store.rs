@@ -12,19 +12,21 @@ use electronic_patient_record::policy::Relationship;
 use electronic_patient_record::proxy::{Basis, Scope, Terms};
 use electronic_patient_record::relationships::{self as store, Kind, RelationshipRecord, Status};
 use electronic_patient_record_matcher::{HumanName, Patient};
-use electronic_patient_record_migration::{Migrator, MigratorTrait};
-use sea_orm::{ConnectionTrait, Database, DatabaseConnection};
+use sqlx::{AssertSqlSafe, PgPool};
 
 const NOW: i64 = 1_790_000_000;
 
-async fn db() -> DatabaseConnection {
+async fn db() -> PgPool {
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
-    let db = Database::connect(url).await.expect("connect");
-    Migrator::up(&db, None).await.expect("migrate");
+    let db = PgPool::connect(&url).await.expect("connect");
+    electronic_patient_record::MIGRATOR
+        .run(&db)
+        .await
+        .expect("migrate");
     db
 }
 
-async fn patient(db: &DatabaseConnection) -> String {
+async fn patient(db: &PgPool) -> String {
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
@@ -193,14 +195,12 @@ async fn ending_a_relationship_withdraws_access_and_keeps_the_history() {
         Relationship::None
     );
     assert_eq!(store::list(&db, &p).await.unwrap().len(), 1);
-    let rows = db
-        .query_all_raw(sea_orm::Statement::from_sql_and_values(
-            sea_orm::DbBackend::Postgres,
-            "SELECT version FROM relationship_versions WHERE relationship_id = $1::uuid",
-            [v1.id.clone().into()],
-        ))
-        .await
-        .unwrap();
+    let rows =
+        sqlx::query("SELECT version FROM relationship_versions WHERE relationship_id = $1::uuid")
+            .bind(v1.id.clone())
+            .fetch_all(&db)
+            .await
+            .unwrap();
     assert_eq!(rows.len(), 2);
     assert_eq!(
         store::update(
@@ -247,7 +247,11 @@ async fn needs_a_patient_and_cannot_be_edited_or_removed() {
         ),
         "TRUNCATE relationship_versions".to_string(),
     ] {
-        let e = db.execute_unprepared(&sql).await.unwrap_err().to_string();
+        let e = sqlx::raw_sql(AssertSqlSafe(sql.to_string()))
+            .execute(&db)
+            .await
+            .unwrap_err()
+            .to_string();
         assert!(e.contains("append-only"), "{sql}: {e}");
     }
 }

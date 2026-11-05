@@ -21,6 +21,7 @@ use crate::auth::Agent;
 use crate::observations_store::{self as store, ObservationRecord, Status};
 use crate::patients_store::StoreError;
 use crate::policy::{self, Purpose, Resource, Subject};
+use crate::pool::Pool;
 use axa::prelude::*;
 use axum::{
     Extension,
@@ -96,7 +97,7 @@ async fn refused(
         return None;
     }
     audit_resource(
-        &ctx.db,
+        &ctx.pool(),
         agent,
         Access {
             action,
@@ -123,7 +124,7 @@ pub(super) async fn list_service(
 ) -> Result<ObservationList, ApiError> {
     let purpose = purpose_of(headers)?;
     authorize(
-        &ctx.db,
+        &ctx.pool(),
         agent,
         subject,
         Resource::Observation,
@@ -132,7 +133,7 @@ pub(super) async fn list_service(
         Some(patient),
     )
     .await?;
-    let all = match store::list(&ctx.db, patient).await {
+    let all = match store::list(&ctx.pool(), patient).await {
         Ok(a) => a,
         Err(e) => {
             if let Some(r) = refused(ctx, agent, purpose, Action::Read, &e).await {
@@ -144,7 +145,7 @@ pub(super) async fn list_service(
     // Audit before the clinical content leaves.
     let patient_id = all.first().map(|o| o.patient_id.clone());
     audit_resource(
-        &ctx.db,
+        &ctx.pool(),
         agent,
         Access {
             action: Action::Read,
@@ -157,7 +158,7 @@ pub(super) async fn list_service(
     )
     .await?;
     let amendment_notices =
-        crate::amendments_store::notices_by_target(&ctx.db, patient, "Observation")
+        crate::amendments_store::notices_by_target(&ctx.pool(), patient, "Observation")
             .await
             .map_err(failure)?;
     Ok(ObservationList {
@@ -196,7 +197,7 @@ pub(super) async fn versions(
         Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::Observation,
@@ -208,7 +209,7 @@ pub(super) async fn versions(
     {
         return r.into_response();
     }
-    let all = match store::history(&ctx.db, &patient, &observation_id).await {
+    let all = match store::history(&ctx.pool(), &patient, &observation_id).await {
         Ok(a) => a,
         Err(e) => {
             if let Some(r) = refused(&ctx, &agent, purpose, Action::Read, &e).await {
@@ -219,7 +220,7 @@ pub(super) async fn versions(
     };
     let patient_id = all.first().map(|v| v.stored.patient_id.clone());
     if let Err(r) = audit_resource(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         Access {
             action: Action::Read,
@@ -252,7 +253,7 @@ pub(super) async fn create(
         Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::Observation,
@@ -275,7 +276,7 @@ pub(super) async fn create(
     }
     // The measured time against this patient: never before birth, and a reason if it is old.
     match store::timing_refusal(
-        &ctx.db,
+        &ctx.pool(),
         &patient,
         &request.observation,
         request.reason.as_deref(),
@@ -293,12 +294,12 @@ pub(super) async fn create(
         }
         Err(e) => return failure(e).into_response(),
     }
-    let tx = match begin(&ctx.db).await {
+    let mut tx = match begin(&ctx.pool()).await {
         Ok(t) => t,
         Err(r) => return r.into_response(),
     };
     match store::create(
-        &tx,
+        &mut *tx,
         &patient,
         &agent.0,
         request.reason.as_deref(),
@@ -310,7 +311,7 @@ pub(super) async fn create(
     {
         Ok(stored) => {
             if let Err(r) = audit_resource(
-                &tx,
+                &mut *tx,
                 &agent,
                 Access {
                     action: Action::Create,
@@ -335,7 +336,7 @@ pub(super) async fn create(
             (StatusCode::CREATED, Json(stored)).into_response()
         }
         Err(e) => {
-            let _ = sea_orm::TransactionSession::rollback(tx).await;
+            let _ = tx.rollback().await;
             if let Some(r) = refused(&ctx, &agent, purpose, Action::Create, &e).await {
                 return r.into_response();
             }
@@ -365,7 +366,7 @@ pub(super) async fn update(
         policy::Action::Update
     };
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::Observation,
@@ -386,7 +387,7 @@ pub(super) async fn update(
         return invalid.into_response();
     }
     match store::timing_refusal(
-        &ctx.db,
+        &ctx.pool(),
         &patient,
         &request.observation,
         request.reason.as_deref(),
@@ -404,12 +405,12 @@ pub(super) async fn update(
         }
         Err(e) => return failure(e).into_response(),
     }
-    let tx = match begin(&ctx.db).await {
+    let mut tx = match begin(&ctx.pool()).await {
         Ok(t) => t,
         Err(r) => return r.into_response(),
     };
     match store::update(
-        &tx,
+        &mut *tx,
         &patient,
         &observation_id,
         request.expected_version,
@@ -423,7 +424,7 @@ pub(super) async fn update(
     {
         Ok(stored) => {
             if let Err(r) = audit_resource(
-                &tx,
+                &mut *tx,
                 &agent,
                 Access {
                     action: Action::Update,
@@ -448,7 +449,7 @@ pub(super) async fn update(
             Json(stored).into_response()
         }
         Err(e) => {
-            let _ = sea_orm::TransactionSession::rollback(tx).await;
+            let _ = tx.rollback().await;
             if let Some(r) = refused(&ctx, &agent, purpose, Action::Update, &e).await {
                 return r.into_response();
             }

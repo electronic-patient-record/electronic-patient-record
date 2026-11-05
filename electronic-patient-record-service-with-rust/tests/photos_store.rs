@@ -10,20 +10,23 @@
 use electronic_patient_record::patients_store::{self, StoreError};
 use electronic_patient_record::photos_store::{self as photos, MAX_BYTES};
 use electronic_patient_record_matcher::{HumanName, Patient};
-use electronic_patient_record_migration::{Migrator, MigratorTrait};
-use sea_orm::{ConnectionTrait, Database, DatabaseConnection};
+use sqlx::Row;
+use sqlx::{AssertSqlSafe, PgPool};
 
 const PNG: &[u8] = &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3];
 const JPG: &[u8] = &[0xFF, 0xD8, 0xFF, 0xE0, 9, 9, 9];
 
-async fn db() -> DatabaseConnection {
+async fn db() -> PgPool {
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
-    let db = Database::connect(url).await.expect("connect");
-    Migrator::up(&db, None).await.expect("migrate");
+    let db = PgPool::connect(&url).await.expect("connect");
+    electronic_patient_record::MIGRATOR
+        .run(&db)
+        .await
+        .expect("migrate");
     db
 }
 
-async fn patient(db: &DatabaseConnection) -> String {
+async fn patient(db: &PgPool) -> String {
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
@@ -89,16 +92,13 @@ async fn a_photo_is_versioned_replaced_and_withdrawn_without_losing_history() {
         Err(StoreError::BadQuery(_))
     ));
     // All three versions are still there, with their authors.
-    let rows = db
-        .query_all_raw(sea_orm::Statement::from_sql_and_values(
-            sea_orm::DbBackend::Postgres,
-            "SELECT version, author, content_type FROM patient_photos WHERE patient_id = $1::uuid ORDER BY version",
-            [id.clone().into()],
-        ))
+    let rows = sqlx::query("SELECT version, author, content_type FROM patient_photos WHERE patient_id = $1::uuid ORDER BY version")
+.bind(id.clone())
+.fetch_all(&db)
         .await
         .unwrap();
     assert_eq!(rows.len(), 3);
-    assert_eq!(rows[0].try_get::<String>("", "author").unwrap(), "alice");
+    assert_eq!(rows[0].try_get::<String, _>("author").unwrap(), "alice");
 }
 
 #[tokio::test]
@@ -182,7 +182,11 @@ async fn photo_versions_cannot_be_changed_or_removed() {
         format!("DELETE FROM patient_photos WHERE patient_id = '{id}'"),
         "TRUNCATE patient_photos".to_string(),
     ] {
-        let e = db.execute_unprepared(&sql).await.unwrap_err().to_string();
+        let e = sqlx::raw_sql(AssertSqlSafe(sql.to_string()))
+            .execute(&db)
+            .await
+            .unwrap_err()
+            .to_string();
         assert!(e.contains("append-only"), "{sql}: {e}");
     }
 }

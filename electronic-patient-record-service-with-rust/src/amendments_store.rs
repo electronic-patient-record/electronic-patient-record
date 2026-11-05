@@ -9,10 +9,11 @@ use crate::amendment::{Event, Notice, Refusal, Request, Target};
 use crate::ids;
 use crate::links;
 use crate::patients_store::{self, StoreError};
-use crate::store::pg;
+use crate::pool::Db;
 use chrono::{DateTime, SecondsFormat, Utc};
-use sea_orm::{ConnectionTrait, TransactionTrait};
 use serde::Serialize;
+use sqlx::postgres::PgRow;
+use sqlx::{AssertSqlSafe, Row};
 
 crate::store_errors!("amendments");
 
@@ -50,14 +51,14 @@ fn columns() -> String {
 /// # Errors
 ///
 /// [`StoreError::Db`] when a column is missing or the stored body is unreadable.
-fn row_to_amendment(row: &sea_orm::QueryResult) -> Result<StoredAmendment, StoreError> {
-    let body: serde_json::Value = row.try_get("", "body").map_err(db_err)?;
+fn row_to_amendment(row: &PgRow) -> Result<StoredAmendment, StoreError> {
+    let body: serde_json::Value = row.try_get("body").map_err(db_err)?;
     Ok(StoredAmendment {
-        id: row.try_get("", "id").map_err(db_err)?,
-        patient_id: row.try_get("", "patient_id").map_err(db_err)?,
-        version: row.try_get("", "version").map_err(db_err)?,
-        author: row.try_get("", "author").map_err(db_err)?,
-        recorded_at: row.try_get("", "at").map_err(db_err)?,
+        id: row.try_get("id").map_err(db_err)?,
+        patient_id: row.try_get("patient_id").map_err(db_err)?,
+        version: row.try_get("version").map_err(db_err)?,
+        author: row.try_get("author").map_err(db_err)?,
+        recorded_at: row.try_get("at").map_err(db_err)?,
         request: serde_json::from_value(body).map_err(db_err)?,
     })
 }
@@ -80,16 +81,20 @@ fn refused(r: Refusal) -> StoreError {
 
 /// The current version number of the record a request is about, or `NotFound`.
 async fn target_version(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     patient_id: &str,
     kind: &str,
     id: &str,
 ) -> Result<i32, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     match kind {
-        "Observation" => Ok(crate::observations_store::current(db, patient_id, id)
+        "Observation" => Ok(crate::observations_store::current(&mut *db, patient_id, id)
             .await?
             .version),
-        "AllergyIntolerance" => Ok(crate::allergies::current(db, patient_id, id).await?.version),
+        "AllergyIntolerance" => Ok(crate::allergies::current(&mut *db, patient_id, id)
+            .await?
+            .version),
         other => Err(StoreError::BadQuery(format!(
             "an amendment cannot be requested for {other}"
         ))),
@@ -104,7 +109,7 @@ async fn target_version(
 /// be amended, a version the record does not have, a blank text).
 #[allow(clippy::too_many_arguments)]
 pub async fn open(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     patient_id: &str,
     requester: &str,
     kind: &str,
@@ -113,8 +118,10 @@ pub async fn open(
     text: &str,
     now: DateTime<Utc>,
 ) -> Result<StoredAmendment, StoreError> {
-    let patient = patients_store::current(db, patient_id).await?;
-    let current = target_version(db, &patient.id, kind, target_id).await?;
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let patient = patients_store::current(&mut *db, patient_id).await?;
+    let current = target_version(&mut *db, &patient.id, kind, target_id).await?;
     if version < 1 || version > current {
         return Err(StoreError::BadQuery(format!(
             "the record has no version {version}"
@@ -131,25 +138,21 @@ pub async fn open(
         now,
     )
     .map_err(refused)?;
-    let row = db
-        .query_one_raw(pg(
-            &format!(
+    let row = sqlx::query(AssertSqlSafe(format!(
                 "INSERT INTO amendment_versions
                    (amendment_id, version, patient_id, author, state, target_kind, target_id, event, body)
                  VALUES (gen_random_uuid(), 1, $1::uuid, $2, $3, $4, $5::uuid, $6, $7)
                  RETURNING {}",
                 columns()
-            ),
-            vec![
-                patient.id.into(),
-                requester.into(),
-                request.state.word().into(),
-                kind.into(),
-                target_id.into(),
-                serde_json::json!({ "event": "open", "at": now.to_rfc3339_opts(SecondsFormat::Micros, true) }).into(),
-                serde_json::to_value(&request).map_err(db_err)?.into(),
-            ],
-        ))
+            )))
+.bind(patient.id)
+.bind(requester)
+.bind(request.state.word())
+.bind(kind)
+.bind(target_id)
+.bind(serde_json::json!({ "event": "open", "at": now.to_rfc3339_opts(SecondsFormat::Micros, true) }))
+.bind(serde_json::to_value(&request).map_err(db_err)?)
+.fetch_optional(&mut *db)
         .await
         .map_err(db_err)?
         .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
@@ -162,22 +165,22 @@ pub async fn open(
 ///
 /// [`StoreError::NotFound`] (no such patient).
 pub async fn list(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     patient_id: &str,
 ) -> Result<Vec<StoredAmendment>, StoreError> {
-    let patient = patients_store::current(db, patient_id).await?;
-    let linked = ids::uuids(&links::linked_ids(db, &patient.id).await?);
-    let rows = db
-        .query_all_raw(pg(
-            &format!(
-                "SELECT {} FROM amendment_current WHERE patient_id = ANY($1::uuid[])
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let patient = patients_store::current(&mut *db, patient_id).await?;
+    let linked = ids::uuids(&links::linked_ids(&mut *db, &patient.id).await?);
+    let rows = sqlx::query(AssertSqlSafe(format!(
+        "SELECT {} FROM amendment_current WHERE patient_id = ANY($1::uuid[])
                  ORDER BY recorded_at DESC, amendment_id",
-                columns()
-            ),
-            vec![linked.into()],
-        ))
-        .await
-        .map_err(db_err)?;
+        columns()
+    )))
+    .bind(linked)
+    .fetch_all(&mut *db)
+    .await
+    .map_err(db_err)?;
     rows.iter().map(row_to_amendment).collect()
 }
 
@@ -187,24 +190,25 @@ pub async fn list(
 ///
 /// [`StoreError::NotFound`] when there is no such request for that patient.
 pub async fn current(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     patient_id: &str,
     amendment_id: &str,
 ) -> Result<StoredAmendment, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let amendment_id = ids::uuid(amendment_id).ok_or(StoreError::NotFound)?;
-    let linked = ids::uuids(&links::linked_ids(db, patient_id).await?);
-    let row = db
-        .query_one_raw(pg(
-            &format!(
-                "SELECT {} FROM amendment_current
+    let linked = ids::uuids(&links::linked_ids(&mut *db, patient_id).await?);
+    let row = sqlx::query(AssertSqlSafe(format!(
+        "SELECT {} FROM amendment_current
                  WHERE amendment_id = $1::uuid AND patient_id = ANY($2::uuid[])",
-                columns()
-            ),
-            vec![amendment_id.into(), linked.into()],
-        ))
-        .await
-        .map_err(db_err)?
-        .ok_or(StoreError::NotFound)?;
+        columns()
+    )))
+    .bind(amendment_id)
+    .bind(linked)
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(db_err)?
+    .ok_or(StoreError::NotFound)?;
     row_to_amendment(&row)
 }
 
@@ -215,12 +219,14 @@ pub async fn current(
 ///
 /// [`StoreError::NotFound`] (no such patient).
 pub async fn notices(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     patient_id: &str,
     kind: &str,
     target_id: &str,
 ) -> Result<Vec<Notice>, StoreError> {
-    Ok(list(db, patient_id)
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    Ok(list(&mut *db, patient_id)
         .await?
         .into_iter()
         .filter(|a| a.request.target.kind == kind && a.request.target.id == target_id)
@@ -236,12 +242,14 @@ pub async fn notices(
 ///
 /// [`StoreError::NotFound`] (no such patient).
 pub async fn notices_by_target(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     patient_id: &str,
     kind: &str,
 ) -> Result<std::collections::BTreeMap<String, Vec<Notice>>, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let mut out = std::collections::BTreeMap::<String, Vec<Notice>>::new();
-    for a in list(db, patient_id).await? {
+    for a in list(&mut *db, patient_id).await? {
         if a.request.target.kind == kind
             && let Some(n) = a.request.notice()
         {
@@ -259,7 +267,7 @@ pub async fn notices_by_target(
 /// [`StoreError::BadQuery`] (the rule refused it, or an applied version the record does not have).
 #[allow(clippy::too_many_arguments)]
 pub async fn advance(
-    db: &(impl ConnectionTrait + TransactionTrait),
+    db: impl Into<Db<'_>>,
     patient_id: &str,
     amendment_id: &str,
     expected_version: i32,
@@ -267,7 +275,9 @@ pub async fn advance(
     event: Event,
     now: DateTime<Utc>,
 ) -> Result<StoredAmendment, StoreError> {
-    let was = current(db, patient_id, amendment_id).await?;
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let was = current(&mut *db, patient_id, amendment_id).await?;
     if was.version != expected_version {
         return Err(StoreError::Conflict {
             current: was.version,
@@ -275,7 +285,7 @@ pub async fn advance(
     }
     if let Event::Apply { version } = &event {
         let have = target_version(
-            db,
+            &mut *db,
             &was.patient_id,
             &was.request.target.kind,
             &was.request.target.id,
@@ -292,34 +302,30 @@ pub async fn advance(
     logged["by"] = author.into();
     logged["at"] = now.to_rfc3339_opts(SecondsFormat::Micros, true).into();
     let appended = crate::store::append_version(
-        db,
+        &mut *db,
         STORE,
-        pg(
-            &format!(
+        sqlx::query(AssertSqlSafe(format!(
                 "INSERT INTO amendment_versions
                    (amendment_id, version, patient_id, author, state, target_kind, target_id, event, body)
                  VALUES ($1::uuid, $2, $3::uuid, $4, $5, $6, $7::uuid, $8, $9)
                  RETURNING {}",
                 columns()
-            ),
-            vec![
-                was.id.clone().into(),
-                (expected_version + 1).into(),
-                was.patient_id.clone().into(),
-                author.into(),
-                next.state.word().into(),
-                next.target.kind.clone().into(),
-                next.target.id.clone().into(),
-                logged.into(),
-                serde_json::to_value(&next).map_err(db_err)?.into(),
-            ],
-        ),
+            )))
+.bind(was.id.clone())
+.bind(expected_version + 1)
+.bind(was.patient_id.clone())
+.bind(author)
+.bind(next.state.word())
+.bind(next.target.kind.clone())
+.bind(next.target.id.clone())
+.bind(logged)
+.bind(serde_json::to_value(&next).map_err(db_err)?),
     )
     .await?;
     match appended {
         crate::store::Appended::Row(row) => row_to_amendment(&row),
         crate::store::Appended::Taken => {
-            let current = current(db, patient_id, amendment_id).await?.version;
+            let current = current(&mut *db, patient_id, amendment_id).await?.version;
             Err(StoreError::Conflict { current })
         }
     }

@@ -7,9 +7,10 @@
 use crate::consent::ConsentRecord;
 use crate::ids;
 use crate::patients_store::{self, StoreError};
-use crate::store::pg;
-use sea_orm::{ConnectionTrait, DatabaseConnection, TransactionTrait};
+use crate::pool::Db;
 use serde::Serialize;
+use sqlx::postgres::PgRow;
+use sqlx::{AssertSqlSafe, PgPool, Row};
 use std::collections::HashMap;
 
 crate::store_errors!("consents");
@@ -37,13 +38,13 @@ const COLUMNS: &str =
 /// # Errors
 ///
 /// [`StoreError::Db`] when a column is missing or the stored body is unreadable.
-fn row_to_stored(row: &sea_orm::QueryResult) -> Result<StoredConsent, StoreError> {
-    let body: serde_json::Value = row.try_get("", "body").map_err(db_err)?;
+fn row_to_stored(row: &PgRow) -> Result<StoredConsent, StoreError> {
+    let body: serde_json::Value = row.try_get("body").map_err(db_err)?;
     Ok(StoredConsent {
-        id: row.try_get("", "id").map_err(db_err)?,
-        patient_id: row.try_get("", "patient_id").map_err(db_err)?,
-        version: row.try_get("", "version").map_err(db_err)?,
-        author: row.try_get("", "author").map_err(db_err)?,
+        id: row.try_get("id").map_err(db_err)?,
+        patient_id: row.try_get("patient_id").map_err(db_err)?,
+        version: row.try_get("version").map_err(db_err)?,
+        author: row.try_get("author").map_err(db_err)?,
         consent: serde_json::from_value(body).map_err(db_err)?,
     })
 }
@@ -55,30 +56,26 @@ fn row_to_stored(row: &sea_orm::QueryResult) -> Result<StoredConsent, StoreError
 /// [`StoreError::NotFound`] when the patient does not exist; [`StoreError::Db`] when the insert
 /// fails.
 pub async fn create(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     patient_id: &str,
     author: &str,
     reason: Option<&str>,
     record: &ConsentRecord,
 ) -> Result<StoredConsent, StoreError> {
-    let patient = patients_store::current(db, patient_id).await?;
-    let row = sea_orm::ConnectionTrait::query_one_raw(
-        db,
-        pg(
-            &format!(
-                "INSERT INTO consent_versions
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let patient = patients_store::current(&mut *db, patient_id).await?;
+    let row = sqlx::query(AssertSqlSafe(format!(
+        "INSERT INTO consent_versions
                    (consent_id, version, patient_id, author, reason, status, body)
                  VALUES (gen_random_uuid(), 1, $1::uuid, $2, $3, $4, $5) RETURNING {COLUMNS}"
-            ),
-            vec![
-                patient.id.into(),
-                author.into(),
-                reason.map(str::to_string).into(),
-                record.status.as_str().into(),
-                serde_json::to_value(record).map_err(db_err)?.into(),
-            ],
-        ),
-    )
+    )))
+    .bind(patient.id)
+    .bind(author)
+    .bind(reason.map(str::to_string))
+    .bind(record.status.as_str())
+    .bind(serde_json::to_value(record).map_err(db_err)?)
+    .fetch_optional(&mut *db)
     .await
     .map_err(db_err)?
     .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
@@ -90,23 +87,16 @@ pub async fn create(
 /// # Errors
 ///
 /// [`StoreError::Db`] on a database failure.
-pub async fn list(
-    db: &DatabaseConnection,
-    patient_id: &str,
-) -> Result<Vec<StoredConsent>, StoreError> {
+pub async fn list(db: &PgPool, patient_id: &str) -> Result<Vec<StoredConsent>, StoreError> {
     let Some(patient_id) = ids::uuid(patient_id) else {
         return Ok(Vec::new());
     };
-    let rows = sea_orm::ConnectionTrait::query_all_raw(
-        db,
-        pg(
-            &format!(
-                "SELECT {COLUMNS} FROM consent_current
+    let rows = sqlx::query(AssertSqlSafe(format!(
+        "SELECT {COLUMNS} FROM consent_current
                  WHERE patient_id = $1::uuid ORDER BY recorded_at, consent_id"
-            ),
-            vec![patient_id.into()],
-        ),
-    )
+    )))
+    .bind(patient_id)
+    .fetch_all(db)
     .await
     .map_err(db_err)?;
     rows.iter().map(row_to_stored).collect()
@@ -119,25 +109,23 @@ pub async fn list(
 ///
 /// [`StoreError::Db`] on a database failure.
 pub async fn active_for(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     patient_ids: &[String],
 ) -> Result<HashMap<String, Vec<StoredConsent>>, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let mut by_patient: HashMap<String, Vec<StoredConsent>> = HashMap::new();
     let patient_ids = ids::uuids(patient_ids);
     if patient_ids.is_empty() {
         return Ok(by_patient);
     }
-    let rows = sea_orm::ConnectionTrait::query_all_raw(
-        db,
-        pg(
-            &format!(
-                "SELECT {COLUMNS} FROM consent_current
+    let rows = sqlx::query(AssertSqlSafe(format!(
+        "SELECT {COLUMNS} FROM consent_current
                  WHERE status = 'active' AND patient_id = ANY($1::uuid[])
                  ORDER BY consent_id"
-            ),
-            vec![patient_ids.into()],
-        ),
-    )
+    )))
+    .bind(patient_ids)
+    .fetch_all(&mut *db)
     .await
     .map_err(db_err)?;
     for row in &rows {
@@ -159,16 +147,18 @@ pub async fn active_for(
 ///
 /// [`StoreError::Db`] on a database failure.
 pub async fn active_with_merged(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     patient_ids: &[String],
 ) -> Result<HashMap<String, Vec<StoredConsent>>, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let ids = ids::uuids(patient_ids);
-    let sources = crate::links::sources_of_many(db, &ids).await?;
+    let sources = crate::links::sources_of_many(&mut *db, &ids).await?;
     let mut all = ids.clone();
     all.extend(sources.values().flatten().cloned());
     all.sort();
     all.dedup();
-    let consents = active_for(db, &all).await?;
+    let consents = active_for(&mut *db, &all).await?;
     let mut out = HashMap::new();
     for id in &ids {
         let own = consents.get(id).cloned();
@@ -191,24 +181,23 @@ pub async fn active_with_merged(
 ///
 /// [`StoreError::NotFound`] when there is no such consent for that patient.
 pub async fn current(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     patient_id: &str,
     consent_id: &str,
 ) -> Result<StoredConsent, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let (Some(patient_id), Some(consent_id)) = (ids::uuid(patient_id), ids::uuid(consent_id))
     else {
         return Err(StoreError::NotFound);
     };
-    let row = sea_orm::ConnectionTrait::query_one_raw(
-        db,
-        pg(
-            &format!(
-                "SELECT {COLUMNS} FROM consent_current
+    let row = sqlx::query(AssertSqlSafe(format!(
+        "SELECT {COLUMNS} FROM consent_current
                  WHERE consent_id = $1::uuid AND patient_id = $2::uuid"
-            ),
-            vec![consent_id.into(), patient_id.into()],
-        ),
-    )
+    )))
+    .bind(consent_id)
+    .bind(patient_id)
+    .fetch_optional(&mut *db)
     .await
     .map_err(db_err)?
     .ok_or(StoreError::NotFound)?;
@@ -224,7 +213,7 @@ pub async fn current(
 /// [`StoreError::Conflict`] when `expected_version` is not the current version, including when a
 /// concurrent writer got there first.
 pub async fn update(
-    db: &(impl ConnectionTrait + TransactionTrait),
+    db: impl Into<Db<'_>>,
     patient_id: &str,
     consent_id: &str,
     expected_version: i32,
@@ -232,7 +221,9 @@ pub async fn update(
     reason: Option<&str>,
     record: &ConsentRecord,
 ) -> Result<StoredConsent, StoreError> {
-    let now = current(db, patient_id, consent_id).await?;
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let now = current(&mut *db, patient_id, consent_id).await?;
     if now.version != expected_version {
         return Err(StoreError::Conflict {
             current: now.version,
@@ -240,30 +231,26 @@ pub async fn update(
     }
     // A concurrent writer took this version: the primary key refuses the second (CQ-12).
     let row = match crate::store::append_version(
-        db,
+        &mut *db,
         STORE,
-        pg(
-            &format!(
-                "INSERT INTO consent_versions
+        sqlx::query(AssertSqlSafe(format!(
+            "INSERT INTO consent_versions
                    (consent_id, version, patient_id, author, reason, status, body)
                  VALUES ($1::uuid, $2, $3::uuid, $4, $5, $6, $7) RETURNING {COLUMNS}"
-            ),
-            vec![
-                now.id.clone().into(),
-                (expected_version + 1).into(),
-                now.patient_id.clone().into(),
-                author.into(),
-                reason.map(str::to_string).into(),
-                record.status.as_str().into(),
-                serde_json::to_value(record).map_err(db_err)?.into(),
-            ],
-        ),
+        )))
+        .bind(now.id.clone())
+        .bind(expected_version + 1)
+        .bind(now.patient_id.clone())
+        .bind(author)
+        .bind(reason.map(str::to_string))
+        .bind(record.status.as_str())
+        .bind(serde_json::to_value(record).map_err(db_err)?),
     )
     .await?
     {
         crate::store::Appended::Row(row) => row,
         crate::store::Appended::Taken => {
-            let current = current(db, patient_id, consent_id).await?.version;
+            let current = current(&mut *db, patient_id, consent_id).await?.version;
             return Err(StoreError::Conflict { current });
         }
     };

@@ -17,8 +17,9 @@
 use axa::testing::prelude::request;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use electronic_patient_record::app::App;
-use sea_orm::{ConnectionTrait, DatabaseConnection, Statement};
+use electronic_patient_record::pool::Pool;
 use serde_json::{Value, json};
+use sqlx::{AssertSqlSafe, PgPool, Row};
 
 fn letters(label: &str) -> String {
     let mut n = std::time::SystemTime::now()
@@ -33,16 +34,14 @@ fn letters(label: &str) -> String {
     format!("{label}{s}")
 }
 
-async fn count(db: &DatabaseConnection, sql: &str) -> i64 {
-    db.query_one_raw(Statement::from_string(
-        db.get_database_backend(),
-        sql.to_string(),
-    ))
-    .await
-    .expect("count")
-    .expect("a row")
-    .try_get("", "n")
-    .expect("n")
+async fn count(db: &PgPool, sql: &str) -> i64 {
+    sqlx::query(AssertSqlSafe(sql.to_string().to_string()))
+        .fetch_optional(db)
+        .await
+        .expect("count")
+        .expect("a row")
+        .try_get("n")
+        .expect("n")
 }
 
 fn observation(value: f64) -> Value {
@@ -61,10 +60,17 @@ async fn a_create_with_an_idempotency_key_runs_once() {
         let family = letters("idem");
         let created = server
             .post("/api/patients")
-            .json(&json!({ "patient": { "names": [{ "family": family, "given": [family] }],
-                "birth_date": "1933-04-05" }, "override_reason": "idempotency test" }))
+            .json(
+                &json!({ "patient": { "names": [{ "family": family, "given": [family] }],
+                "birth_date": "1933-04-05" }, "override_reason": "idempotency test" }),
+            )
             .await;
-        assert_eq!(created.status_code(), StatusCode::CREATED, "{}", created.text());
+        assert_eq!(
+            created.status_code(),
+            StatusCode::CREATED,
+            "{}",
+            created.text()
+        );
         let id = created.json::<Value>()["id"].as_str().unwrap().to_string();
         let url = format!("/api/patients/{id}/observations");
         let key = HeaderName::from_static("idempotency-key");
@@ -87,7 +93,11 @@ async fn a_create_with_an_idempotency_key_runs_once() {
         assert_eq!(listed().await, 1);
 
         // An identical retry: the same answer, nothing written, an audit row.
-        let audits = count(&ctx.db, "SELECT count(*)::bigint AS n FROM audit_events_all").await;
+        let audits = count(
+            &ctx.pool(),
+            "SELECT count(*)::bigint AS n FROM audit_events_all",
+        )
+        .await;
         let again = server
             .post(&url)
             .add_header(key.clone(), HeaderValue::from_str(&k).unwrap())
@@ -98,7 +108,12 @@ async fn a_create_with_an_idempotency_key_runs_once() {
         assert_eq!(again.header(&replayed), "true");
         assert_eq!(listed().await, 1, "a replay writes nothing");
         assert!(
-            count(&ctx.db, "SELECT count(*)::bigint AS n FROM audit_events_all").await > audits,
+            count(
+                &ctx.pool(),
+                "SELECT count(*)::bigint AS n FROM audit_events_all"
+            )
+            .await
+                > audits,
             "a replay is audited"
         );
 
@@ -108,7 +123,12 @@ async fn a_create_with_an_idempotency_key_runs_once() {
             .add_header(key.clone(), HeaderValue::from_str(&k).unwrap())
             .json(&observation(80.0))
             .await;
-        assert_eq!(other.status_code(), StatusCode::UNPROCESSABLE_ENTITY, "{}", other.text());
+        assert_eq!(
+            other.status_code(),
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "{}",
+            other.text()
+        );
         assert_eq!(listed().await, 1);
 
         // A malformed key.
@@ -136,12 +156,12 @@ async fn a_create_with_an_idempotency_key_runs_once() {
         assert_eq!(listed().await, 2);
 
         // A key still pending (the first request has not finished) is a conflict, never a second write.
-        ctx.db
-            .execute_unprepared(&format!(
-                "UPDATE idempotency_keys SET state = 'pending' WHERE key = '{k}'"
-            ))
-            .await
-            .unwrap();
+        sqlx::raw_sql(AssertSqlSafe(format!(
+            "UPDATE idempotency_keys SET state = 'pending' WHERE key = '{k}'"
+        )))
+        .execute(&ctx.pool())
+        .await
+        .unwrap();
         let busy = server
             .post(&url)
             .add_header(key.clone(), HeaderValue::from_str(&k).unwrap())
@@ -151,12 +171,12 @@ async fn a_create_with_an_idempotency_key_runs_once() {
         assert_eq!(listed().await, 2);
 
         // An expired key is removed and the request runs again.
-        ctx.db
-            .execute_unprepared(&format!(
-                "UPDATE idempotency_keys SET created_at = now() - interval '2 days' WHERE key = '{k}'"
-            ))
-            .await
-            .unwrap();
+        sqlx::raw_sql(AssertSqlSafe(format!(
+            "UPDATE idempotency_keys SET created_at = now() - interval '2 days' WHERE key = '{k}'"
+        )))
+        .execute(&ctx.pool())
+        .await
+        .unwrap();
         let after = server
             .post(&url)
             .add_header(key.clone(), HeaderValue::from_str(&k).unwrap())

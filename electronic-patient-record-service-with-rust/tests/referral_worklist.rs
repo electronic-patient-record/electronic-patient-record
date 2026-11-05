@@ -22,22 +22,24 @@ use electronic_patient_record::referral_timeouts::Timeouts;
 use electronic_patient_record::referral_worklist::{self as wl, Why};
 use electronic_patient_record::referrals_store::{self as store, Priority, Referral, Step};
 use electronic_patient_record_matcher::{HumanName, Patient};
-use electronic_patient_record_migration::{Migrator, MigratorTrait};
-use sea_orm::{ConnectionTrait, Database, DatabaseConnection};
+use sqlx::{AssertSqlSafe, PgPool};
 
-async fn db() -> DatabaseConnection {
+async fn db() -> PgPool {
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
-    let db = Database::connect(url).await.expect("connect");
-    Migrator::up(&db, None).await.expect("migrate");
+    let db = PgPool::connect(&url).await.expect("connect");
+    electronic_patient_record::MIGRATOR
+        .run(&db)
+        .await
+        .expect("migrate");
     db
 }
 
-async fn referral(db: &DatabaseConnection) -> store::StoredReferral {
+async fn referral(db: &PgPool) -> store::StoredReferral {
     referral_by(db, "dr-1").await
 }
 
 /// A referral sent by `author`.
-async fn referral_by(db: &DatabaseConnection, author: &str) -> store::StoredReferral {
+async fn referral_by(db: &PgPool, author: &str) -> store::StoredReferral {
     let family = format!(
         "wl{}",
         std::time::SystemTime::now()
@@ -78,7 +80,7 @@ async fn referral_by(db: &DatabaseConnection, author: &str) -> store::StoredRefe
 }
 
 async fn step(
-    db: &DatabaseConnection,
+    db: &PgPool,
     id: &str,
     version: i32,
     actor: Actor,
@@ -273,7 +275,10 @@ async fn the_database_refuses_to_edit_delete_or_truncate_an_acknowledgement() {
         ),
         "TRUNCATE referral_acknowledgements".to_string(),
     ] {
-        let e = db.execute_unprepared(&sql).await.unwrap_err();
+        let e = sqlx::raw_sql(AssertSqlSafe(sql.to_string()))
+            .execute(&db)
+            .await
+            .unwrap_err();
         assert!(e.to_string().contains("append-only"), "{sql}: {e}");
     }
 }

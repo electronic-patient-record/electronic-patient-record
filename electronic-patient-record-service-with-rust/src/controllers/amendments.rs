@@ -21,6 +21,7 @@ use crate::audit::Action;
 use crate::auth::{self, Agent};
 use crate::patients_store::StoreError;
 use crate::policy::{self, Purpose, Resource, Role, Subject};
+use crate::pool::Pool;
 use axa::prelude::*;
 use axum::{
     Extension,
@@ -158,7 +159,7 @@ async fn refused(
         return None;
     }
     audit_resource(
-        &ctx.db,
+        &ctx.pool(),
         agent,
         Access {
             action,
@@ -187,7 +188,7 @@ pub(super) async fn list(
         Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::Amendment,
@@ -199,7 +200,7 @@ pub(super) async fn list(
     {
         return r.into_response();
     }
-    let all = match store::list(&ctx.db, &patient).await {
+    let all = match store::list(&ctx.pool(), &patient).await {
         Ok(a) => a,
         Err(e) => {
             if let Some(r) = refused(&ctx, &agent, purpose, Action::Read, &e).await {
@@ -211,7 +212,7 @@ pub(super) async fn list(
     // Audit before the content leaves.
     let patient_id = all.first().map(|a| a.patient_id.clone());
     if let Err(r) = audit_resource(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         Access {
             action: Action::Read,
@@ -248,7 +249,7 @@ pub(super) async fn create(
         Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::Amendment,
@@ -261,12 +262,12 @@ pub(super) async fn create(
         return r.into_response();
     }
     let now = Utc::now();
-    let tx = match begin(&ctx.db).await {
+    let mut tx = match begin(&ctx.pool()).await {
         Ok(t) => t,
         Err(r) => return r.into_response(),
     };
     match store::open(
-        &tx,
+        &mut *tx,
         &patient,
         &agent.0,
         &request.kind,
@@ -279,7 +280,7 @@ pub(super) async fn create(
     {
         Ok(stored) => {
             if let Err(r) = audit_resource(
-                &tx,
+                &mut *tx,
                 &agent,
                 Access {
                     action: Action::Create,
@@ -305,7 +306,7 @@ pub(super) async fn create(
             (StatusCode::CREATED, Json(view(&stored, now))).into_response()
         }
         Err(e) => {
-            let _ = sea_orm::TransactionSession::rollback(tx).await;
+            let _ = tx.rollback().await;
             if let Some(r) = refused(&ctx, &agent, purpose, Action::Create, &e).await {
                 return r.into_response();
             }
@@ -329,7 +330,7 @@ pub(super) async fn update(
         Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::Amendment,
@@ -347,12 +348,12 @@ pub(super) async fn update(
     }
     let now = Utc::now();
     let event = request.step.event(&agent.0);
-    let tx = match begin(&ctx.db).await {
+    let mut tx = match begin(&ctx.pool()).await {
         Ok(t) => t,
         Err(r) => return r.into_response(),
     };
     match store::advance(
-        &tx,
+        &mut *tx,
         &patient,
         &amendment_id,
         request.expected_version,
@@ -364,7 +365,7 @@ pub(super) async fn update(
     {
         Ok(stored) => {
             if let Err(r) = audit_resource(
-                &tx,
+                &mut *tx,
                 &agent,
                 Access {
                     action: Action::Update,
@@ -389,7 +390,7 @@ pub(super) async fn update(
             Json(view(&stored, now)).into_response()
         }
         Err(e) => {
-            let _ = sea_orm::TransactionSession::rollback(tx).await;
+            let _ = tx.rollback().await;
             if let Some(r) = refused(&ctx, &agent, purpose, Action::Update, &e).await {
                 return r.into_response();
             }

@@ -18,9 +18,10 @@
 use axa::testing::prelude::request;
 use axum::http::StatusCode;
 use electronic_patient_record::app::App;
+use electronic_patient_record::pool::Pool;
 use electronic_patient_record::routes;
 use electronic_patient_record_matcher::{HumanName, Patient};
-use sea_orm::{ConnectionTrait, DatabaseConnection, Statement};
+use sqlx::{PgPool, Row};
 
 /// Patient-scoped GETs this test does not call, with the reason.
 const SKIPPED: &[(&str, &str)] = &[];
@@ -40,16 +41,13 @@ fn letters(label: &str) -> String {
     format!("{label}{s}")
 }
 
-async fn audit_rows(db: &DatabaseConnection) -> i64 {
-    let row = db
-        .query_one_raw(Statement::from_string(
-            db.get_database_backend(),
-            "SELECT count(*)::bigint AS n FROM audit_events_all".to_string(),
-        ))
+async fn audit_rows(db: &PgPool) -> i64 {
+    let row = sqlx::query("SELECT count(*)::bigint AS n FROM audit_events_all")
+        .fetch_optional(db)
         .await
         .expect("count")
         .expect("one row");
-    row.try_get("", "n").expect("n")
+    row.try_get("n").expect("n")
 }
 
 fn patient_scoped(template: &str) -> bool {
@@ -149,9 +147,9 @@ async fn a_successful_read_of_a_patient_record_leaves_an_audit_row() {
                 !path.contains('{'),
                 "{template}: a parameter this test cannot fill; fill it or list it in SKIPPED"
             );
-            let before = audit_rows(&ctx.db).await;
+            let before = audit_rows(&ctx.pool()).await;
             let response = server.get(&path).await;
-            let after = audit_rows(&ctx.db).await;
+            let after = audit_rows(&ctx.pool()).await;
             if !response.status_code().is_success() {
                 panic!(
                     "{template}: expected success, got {}",

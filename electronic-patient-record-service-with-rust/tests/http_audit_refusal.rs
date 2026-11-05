@@ -16,6 +16,7 @@
 use axa::testing::prelude::request;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use electronic_patient_record::app::App;
+use electronic_patient_record::pool::Pool;
 use electronic_patient_record_matcher::{HumanName, Patient};
 use serde_json::{Value, json};
 
@@ -73,7 +74,7 @@ fn login_off() {
 async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_route() {
     login_off();
     request::<App, _, _>(|server, ctx| async move {
-        let db = &ctx.db;
+        let db = &ctx.pool();
         install(db).await;
 
         // Two real patients to work on, created with audit working.

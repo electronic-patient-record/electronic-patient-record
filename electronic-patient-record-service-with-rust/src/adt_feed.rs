@@ -35,7 +35,7 @@ use crate::interop::hl7_adt::{self, Inbound, Rejection};
 use crate::patients_store::{self as store, StoreError};
 use crate::policy::{self, Consent, Purpose, Relationship, Resource, Role, Subject};
 use electronic_patient_record_matcher::{Identifier, NHS_NUMBER_SYSTEM, Patient};
-use sea_orm::{DatabaseConnection, TransactionTrait};
+use sqlx::PgPool;
 
 /// Who the feed is, for the audit trail and the policy check. The sender's own claim (MSH-3, MSH-4)
 /// is never used for either.
@@ -189,10 +189,7 @@ fn temporary(e: &StoreError) -> Refusal {
 }
 
 /// Find the one patient a message is about, by the identifiers it carries.
-async fn find(
-    db: &DatabaseConnection,
-    patient: &Patient,
-) -> Result<Option<store::Stored>, Refusal> {
+async fn find(db: &PgPool, patient: &Patient) -> Result<Option<store::Stored>, Refusal> {
     // The sender's own numbers first, then a national number.
     let locals = patient.identifiers.iter().filter(|i| is_local(i));
     let nhs = patient
@@ -253,7 +250,7 @@ fn same_date(a: &Occurred, b: &Occurred) -> bool {
 ///
 /// A [`Refusal`] when a person withdrew this same report as an error, or the store failed.
 async fn death_report(
-    db: &DatabaseConnection,
+    db: &PgPool,
     patient_id: &str,
     occurred: &Occurred,
     reason: &str,
@@ -301,11 +298,7 @@ async fn death_report(
 /// # Errors
 ///
 /// A [`Refusal`]; nothing was written (a refusal is audited separately by the caller).
-pub async fn apply(
-    db: &DatabaseConnection,
-    inbound: &Inbound,
-    who: &FeedIdentity,
-) -> Result<Applied, Refusal> {
+pub async fn apply(db: &PgPool, inbound: &Inbound, who: &FeedIdentity) -> Result<Applied, Refusal> {
     let mut result = apply_message(db, inbound, who).await;
     if inbound.death.is_some()
         && let Err(Refusal::Conflict(reasons)) = &mut result
@@ -318,7 +311,7 @@ pub async fn apply(
 /// Apply a read message: create, update or leave alone, and store a report of death if it holds a
 /// new one. Everything and its audit rows commit together.
 async fn apply_message(
-    db: &DatabaseConnection,
+    db: &PgPool,
     inbound: &Inbound,
     who: &FeedIdentity,
 ) -> Result<Applied, Refusal> {
@@ -370,7 +363,7 @@ async fn apply_message(
             death_report(db, id, occurred, &reason, who).await?
         }
     };
-    let tx = db
+    let mut tx = db
         .begin()
         .await
         .map_err(|e| temporary(&StoreError::Db(e.to_string())))?;
@@ -379,7 +372,7 @@ async fn apply_message(
     let (applied, audit_action) = match plan {
         Plan::Nothing { id } => (Applied::Unchanged { id }, Action::Read),
         Plan::Update { id, version, next } => {
-            match store::update(&tx, &id, version, &who.agent, Some(&reason), &next).await {
+            match store::update(&mut *tx, &id, version, &who.agent, Some(&reason), &next).await {
                 Ok(s) => (
                     Applied::Updated {
                         id: s.id,
@@ -398,10 +391,10 @@ async fn apply_message(
         Plan::Create => {
             // Under the registration lock (CQ-7), so another registration of this person, by a
             // person or a second feed connection, cannot pass the same check at the same time.
-            store::lock_registration(&tx)
+            store::lock_registration(&mut *tx)
                 .await
                 .map_err(|e| temporary(&e))?;
-            let (pool, cut) = store::candidates_ranked(&tx, &inbound.patient)
+            let (pool, cut) = store::candidates_ranked(&mut *tx, &inbound.patient)
                 .await
                 .map_err(|e| temporary(&e))?;
             candidates_cut = cut;
@@ -412,7 +405,7 @@ async fn apply_message(
                     likely.len()
                 )]));
             }
-            match store::create(&tx, &who.agent, Some(&reason), &inbound.patient).await {
+            match store::create(&mut *tx, &who.agent, Some(&reason), &inbound.patient).await {
                 Ok(s) => (Applied::Created { id: s.id }, Action::Create),
                 Err(e) => return Err(temporary(&e)),
             }
@@ -424,7 +417,7 @@ async fn apply_message(
         }
     };
     if let Some(assertion) = &death {
-        let stored = death_store::report(&tx, &id, assertion)
+        let stored = death_store::report(&mut *tx, &id, assertion)
             .await
             .map_err(|e| temporary(&e))?;
         let mut row = Event::new(Action::Create, who.agent.clone());
@@ -438,7 +431,7 @@ async fn apply_message(
             "status": stored.assertion.status.word(),
             "control_id": inbound.control_id,
         }));
-        audit::append(&tx, audit::chain(), &row)
+        audit::append(&mut *tx, audit::chain(), &row)
             .await
             .map_err(|e| temporary(&StoreError::Db(e.to_string())))?;
     }
@@ -458,7 +451,7 @@ async fn apply_message(
         "warnings": inbound.warnings.len(),
         "candidates_cut": candidates_cut,
     }));
-    audit::append(&tx, audit::chain(), &event)
+    audit::append(&mut *tx, audit::chain(), &event)
         .await
         .map_err(|e| temporary(&StoreError::Db(e.to_string())))?;
     tx.commit()
@@ -491,7 +484,7 @@ fn message_ids(text: &str) -> (String, String) {
 
 /// Write the audit row for a message that was refused (nothing else was written). Failure is logged.
 async fn audit_refusal(
-    db: &DatabaseConnection,
+    db: &PgPool,
     who: &FeedIdentity,
     event: &str,
     control_id: &str,
@@ -545,7 +538,7 @@ async fn audit_refusal(
 /// `None` when the text is not HL7 at all (nothing to answer). `ack_id` and `timestamp` are the
 /// acknowledgement's own control id and `YYYYMMDDHHMMSS` time.
 pub async fn process(
-    db: &DatabaseConnection,
+    db: &PgPool,
     text: &str,
     who: &FeedIdentity,
     ack_id: &str,

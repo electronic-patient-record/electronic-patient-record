@@ -1,27 +1,11 @@
-//! Migration: `audit_events_all`, the live audit table and every archived partition as one view (OS-13).
-//!
-//! A patient's access log and the audit search read this view, so a row that moved to `audit_archive`
-//! is still listed. `audit_refresh_all_view()` rebuilds it from the tables in `audit_archive`;
-//! `audit_archive_before` (replaced here) calls it in the same transaction as the move. The chain check
-//! and the next append read `audit_events` and the anchors, never this view.
+-- Migration: `audit_events_all`, the live audit table and every archived partition as one view (OS-13).
+-- 
+-- A patient's access log and the audit search read this view, so a row that moved to `audit_archive`
+-- is still listed. `audit_refresh_all_view()` rebuilds it from the tables in `audit_archive`;
+-- `audit_archive_before` (replaced here) calls it in the same transaction as the move. The chain check
+-- and the next append read `audit_events` and the anchors, never this view.
 
-use sea_orm_migration::prelude::*;
-
-/// The archive-view migration.
-#[derive(DeriveMigrationName)]
-pub struct Migration;
-
-#[async_trait::async_trait]
-impl MigrationTrait for Migration {
-    /// Create the view function, the view, and the archive function that refreshes it.
-    ///
-    /// # Errors
-    ///
-    /// When any statement fails.
-    async fn up(&self, m: &SchemaManager) -> Result<(), DbErr> {
-        let db = m.get_connection();
-        for sql in [
-            "CREATE FUNCTION audit_refresh_all_view() RETURNS void AS $$
+CREATE FUNCTION audit_refresh_all_view() RETURNS void AS $$
              DECLARE
                q text := 'SELECT id, recorded_at, action, outcome, agent, patient_ref, resource_ref, purpose_of_use, break_glass, network_address, detail, prev_digest, digest FROM audit_events';
                r record;
@@ -35,8 +19,9 @@ impl MigrationTrait for Migration {
                END LOOP;
                EXECUTE 'CREATE OR REPLACE VIEW audit_events_all AS ' || q;
              END;
-             $$ LANGUAGE plpgsql",
-            "CREATE OR REPLACE FUNCTION audit_archive_before(cutoff timestamptz) RETURNS text[] AS $$
+             $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION audit_archive_before(cutoff timestamptz) RETURNS text[] AS $$
              DECLARE
                r record;
                moved text[] := '{}';
@@ -44,7 +29,7 @@ impl MigrationTrait for Migration {
              BEGIN
                FOR r IN
                  SELECT c.relname::text AS name,
-                        substring(pg_get_expr(c.relpartbound, c.oid) from 'TO \\(''([^'']+)''\\)')::timestamptz AS upper_bound
+                        substring(pg_get_expr(c.relpartbound, c.oid) from 'TO \(''([^'']+)''\)')::timestamptz AS upper_bound
                  FROM pg_inherits i JOIN pg_class c ON c.oid = i.inhrelid
                  WHERE i.inhparent = 'audit_events'::regclass
                  ORDER BY 2
@@ -69,25 +54,6 @@ impl MigrationTrait for Migration {
                PERFORM audit_refresh_all_view();
                RETURN moved;
              END;
-             $$ LANGUAGE plpgsql",
-            "SELECT audit_refresh_all_view()",
-        ] {
-            db.execute_unprepared(sql).await?;
-        }
-        Ok(())
-    }
+             $$ LANGUAGE plpgsql;
 
-    /// Drop the view and the view function. The archive function keeps calling the dropped one, so this
-    /// is a development convenience; production never rolls back.
-    ///
-    /// # Errors
-    ///
-    /// When any statement fails.
-    async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
-        crate::refuse_clinical_down("audit_archive_view")?;
-        let db = m.get_connection();
-        db.execute_unprepared("DROP VIEW IF EXISTS audit_events_all")
-            .await?;
-        Ok(())
-    }
-}
+SELECT audit_refresh_all_view();

@@ -13,6 +13,7 @@ use crate::consent::{self, ConsentRecord};
 use crate::consents_store as store;
 use crate::patients_store::{self, StoreError};
 use crate::policy::{self, Resource, Subject};
+use crate::pool::Pool;
 use axa::prelude::*;
 use axum::{
     Extension,
@@ -64,7 +65,7 @@ pub(super) async fn create(
         Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::Consent,
@@ -80,12 +81,12 @@ pub(super) async fn create(
     if !problems.is_empty() {
         return invalid(&problems);
     }
-    let tx = match begin(&ctx.db).await {
+    let mut tx = match begin(&ctx.pool()).await {
         Ok(t) => t,
         Err(r) => return r.into_response(),
     };
     match store::create(
-        &tx,
+        &mut *tx,
         &patient,
         &agent.0,
         request.reason.as_deref(),
@@ -95,7 +96,7 @@ pub(super) async fn create(
     {
         Ok(stored) => {
             if let Err(r) = audit_resource(
-                &tx,
+                &mut *tx,
                 &agent,
                 Access {
                     action: Action::Create,
@@ -121,7 +122,7 @@ pub(super) async fn create(
         }
         Err(e) => {
             // Nothing was written; end the transaction before the refusal is audited.
-            let _ = sea_orm::TransactionSession::rollback(tx).await;
+            let _ = tx.rollback().await;
             refused(&ctx, &agent, purpose, Action::Create, &e).await
         }
     }
@@ -140,7 +141,7 @@ pub(super) async fn list(
         Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::Consent,
@@ -153,14 +154,14 @@ pub(super) async fn list(
         return r.into_response();
     }
     // A patient that does not exist is a 404, not an empty list.
-    let known = match patients_store::current(&ctx.db, &patient).await {
+    let known = match patients_store::current(&ctx.pool(), &patient).await {
         Ok(p) => p,
         Err(e) => return refused(&ctx, &agent, purpose, Action::Read, &e).await,
     };
-    match store::list(&ctx.db, &known.id).await {
+    match store::list(&ctx.pool(), &known.id).await {
         Ok(consents) => {
             if let Err(r) = audit_resource(
-                &ctx.db,
+                &ctx.pool(),
                 &agent,
                 Access {
                     action: Action::Read,
@@ -196,7 +197,7 @@ pub(super) async fn update(
         Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::Consent,
@@ -212,12 +213,12 @@ pub(super) async fn update(
     if !problems.is_empty() {
         return invalid(&problems);
     }
-    let tx = match begin(&ctx.db).await {
+    let mut tx = match begin(&ctx.pool()).await {
         Ok(t) => t,
         Err(r) => return r.into_response(),
     };
     match store::update(
-        &tx,
+        &mut *tx,
         &patient,
         &consent_id,
         request.expected_version,
@@ -229,7 +230,7 @@ pub(super) async fn update(
     {
         Ok(stored) => {
             if let Err(r) = audit_resource(
-                &tx,
+                &mut *tx,
                 &agent,
                 Access {
                     action: Action::Update,
@@ -255,7 +256,7 @@ pub(super) async fn update(
         }
         Err(e) => {
             // Nothing was written; end the transaction before the refusal is audited.
-            let _ = sea_orm::TransactionSession::rollback(tx).await;
+            let _ = tx.rollback().await;
             refused(&ctx, &agent, purpose, Action::Update, &e).await
         }
     }
@@ -271,7 +272,7 @@ async fn refused(
 ) -> Response {
     if matches!(e, StoreError::NotFound | StoreError::Conflict { .. })
         && let Err(r) = audit_resource(
-            &ctx.db,
+            &ctx.pool(),
             agent,
             Access {
                 action,

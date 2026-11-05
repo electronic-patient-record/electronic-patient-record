@@ -16,7 +16,7 @@ use axum::{
     middleware::Next,
     response::Response,
 };
-use sea_orm::DatabaseConnection;
+use sqlx::PgPool;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -197,7 +197,7 @@ pub struct Gate {
     /// The counters.
     pub limiter: Arc<Limiter>,
     /// For the audit row.
-    pub db: DatabaseConnection,
+    pub db: PgPool,
 }
 
 /// The current time in whole seconds since the Unix epoch; a clock before 1970 reads as 0.

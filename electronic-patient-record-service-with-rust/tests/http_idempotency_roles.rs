@@ -17,8 +17,10 @@ use authentication_verifier::test_idp::{AUDIENCE, REALM, TestIdp};
 use axa::testing::prelude::request;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use electronic_patient_record::app::App;
-use sea_orm::{ConnectionTrait, Statement};
+use electronic_patient_record::pool::Pool;
 use serde_json::{Value, json};
+use sqlx::AssertSqlSafe;
+use sqlx::Row;
 
 fn bearer(token: &str) -> (HeaderName, HeaderValue) {
     (
@@ -129,34 +131,30 @@ async fn a_key_belongs_to_the_subject_that_sent_it() {
         assert_eq!(again_a.header(&replayed), "true");
         assert_eq!(again_a.text(), first_a.text());
         assert_eq!(titled().await, 2, "a replay writes nothing");
-        let row = ctx
-            .db
-            .query_one_raw(Statement::from_string(
-                ctx.db.get_database_backend(),
-                "SELECT agent FROM audit_events_all WHERE resource_ref = 'IdempotentReplay' \
-                 ORDER BY id DESC LIMIT 1"
-                    .to_string(),
-            ))
-            .await
-            .unwrap()
-            .expect("a replay row");
-        assert_eq!(row.try_get::<String>("", "agent").unwrap(), sub_a);
+        let row = sqlx::query(
+            "SELECT agent FROM audit_events_all WHERE resource_ref = 'IdempotentReplay' \
+                 ORDER BY id DESC LIMIT 1",
+        )
+        .fetch_optional(&ctx.pool())
+        .await
+        .unwrap()
+        .expect("a replay row");
+        assert_eq!(row.try_get::<String, _>("agent").unwrap(), sub_a);
 
         // And B's retry replays B's.
         let again_b = send(bh.clone(), bv.clone()).await;
         assert_eq!(again_b.header(&replayed), "true");
         assert_eq!(again_b.text(), first_b.text());
         assert_eq!(
-            ctx.db
-                .query_one_raw(Statement::from_string(
-                    ctx.db.get_database_backend(),
-                    format!("SELECT count(*)::bigint AS n FROM idempotency_keys WHERE key = '{k}'"),
-                ))
-                .await
-                .unwrap()
-                .unwrap()
-                .try_get::<i64>("", "n")
-                .unwrap(),
+            sqlx::query(AssertSqlSafe(format!(
+                "SELECT count(*)::bigint AS n FROM idempotency_keys WHERE key = '{k}'"
+            )))
+            .fetch_optional(&ctx.pool())
+            .await
+            .unwrap()
+            .unwrap()
+            .try_get::<i64, _>("n")
+            .unwrap(),
             2,
             "one row per subject and key"
         );

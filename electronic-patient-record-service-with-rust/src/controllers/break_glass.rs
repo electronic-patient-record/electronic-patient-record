@@ -18,6 +18,7 @@ use crate::auth::Agent;
 use crate::break_glass::{self as store, Outcome};
 use crate::patients_store::StoreError;
 use crate::policy::{self, Resource, Subject};
+use crate::pool::Pool;
 use axa::prelude::*;
 use axum::{
     Extension,
@@ -71,7 +72,7 @@ async fn open(
         Err(r) => return r.into_response(),
     };
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::BreakGlass,
@@ -83,16 +84,16 @@ async fn open(
     {
         return r.into_response();
     }
-    let tx = match begin(&ctx.db).await {
+    let mut tx = match begin(&ctx.pool()).await {
         Ok(t) => t,
         Err(r) => return r.into_response(),
     };
-    match store::open(&tx, &patient, &agent.0, &request.reason).await {
+    match store::open(&mut *tx, &patient, &agent.0, &request.reason).await {
         Ok((grant, created)) => {
             // The opening of a grant is itself break-glass access: flag its row.
             audit::note_break_glass(&grant.id);
             if let Err(r) = audit_resource(
-                &tx,
+                &mut *tx,
                 &agent,
                 Access {
                     action: Action::Create,
@@ -122,7 +123,7 @@ async fn open(
                 .into_response()
         }
         Err(e) => {
-            let _ = sea_orm::TransactionSession::rollback(tx).await;
+            let _ = tx.rollback().await;
             failure(e)
         }
     }
@@ -142,7 +143,7 @@ async fn guard(
 ) -> Result<policy::Purpose, ApiError> {
     let purpose = purpose_of(headers)?;
     authorize(
-        &ctx.db,
+        &ctx.pool(),
         agent,
         subject,
         Resource::BreakGlass,
@@ -166,12 +167,12 @@ async fn list(
         Ok(p) => p,
         Err(r) => return r.into_response(),
     };
-    let grants = match store::unreviewed(&ctx.db).await {
+    let grants = match store::unreviewed(&ctx.pool()).await {
         Ok(g) => g,
         Err(e) => return failure(e),
     };
     if let Err(r) = audit_resource(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         Access {
             action: Action::Read,
@@ -200,16 +201,16 @@ async fn count(
         Ok(p) => p,
         Err(r) => return r.into_response(),
     };
-    let n = match store::count_unreviewed(&ctx.db).await {
+    let n = match store::count_unreviewed(&ctx.pool()).await {
         Ok(n) => n,
         Err(e) => return failure(e),
     };
-    let overdue = match store::count_overdue(&ctx.db).await {
+    let overdue = match store::count_overdue(&ctx.pool()).await {
         Ok(n) => n,
         Err(e) => return failure(e),
     };
     if let Err(r) = audit_resource(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         Access {
             action: Action::Read,
@@ -241,14 +242,14 @@ async fn review(
         Ok(p) => p,
         Err(r) => return r.into_response(),
     };
-    let tx = match begin(&ctx.db).await {
+    let mut tx = match begin(&ctx.pool()).await {
         Ok(t) => t,
         Err(r) => return r.into_response(),
     };
-    match store::review(&tx, &id, &agent.0, request.outcome, &request.note).await {
+    match store::review(&mut *tx, &id, &agent.0, request.outcome, &request.note).await {
         Ok(grant) => {
             if let Err(r) = audit_resource(
-                &tx,
+                &mut *tx,
                 &agent,
                 Access {
                     action: Action::Update,
@@ -269,7 +270,7 @@ async fn review(
             Json(grant).into_response()
         }
         Err(e) => {
-            let _ = sea_orm::TransactionSession::rollback(tx).await;
+            let _ = tx.rollback().await;
             failure(e)
         }
     }

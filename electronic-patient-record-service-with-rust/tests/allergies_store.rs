@@ -12,17 +12,19 @@ use electronic_patient_record::allergies::{
 };
 use electronic_patient_record::patients_store::{self, StoreError};
 use electronic_patient_record_matcher::{HumanName, Patient};
-use electronic_patient_record_migration::{Migrator, MigratorTrait};
-use sea_orm::{ConnectionTrait, Database, DatabaseConnection};
+use sqlx::{AssertSqlSafe, PgPool, Row};
 
-async fn db() -> DatabaseConnection {
+async fn db() -> PgPool {
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
-    let db = Database::connect(url).await.expect("connect");
-    Migrator::up(&db, None).await.expect("migrate");
+    let db = PgPool::connect(&url).await.expect("connect");
+    electronic_patient_record::MIGRATOR
+        .run(&db)
+        .await
+        .expect("migrate");
     db
 }
 
-async fn patient(db: &DatabaseConnection) -> String {
+async fn patient(db: &PgPool) -> String {
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
@@ -140,18 +142,14 @@ async fn an_allergy_is_versioned_ended_and_can_be_retracted_but_never_reopened()
     );
 
     // Three versions remain, with their authors.
-    let rows = db
-        .query_all_raw(sea_orm::Statement::from_sql_and_values(
-            sea_orm::DbBackend::Postgres,
-            "SELECT author FROM allergy_versions WHERE allergy_id = $1::uuid ORDER BY version",
-            [v1.id.clone().into()],
-        ))
-        .await
-        .unwrap();
-    let authors: Vec<String> = rows
-        .iter()
-        .map(|r| r.try_get("", "author").unwrap())
-        .collect();
+    let rows = sqlx::query(
+        "SELECT author FROM allergy_versions WHERE allergy_id = $1::uuid ORDER BY version",
+    )
+    .bind(v1.id.clone())
+    .fetch_all(&db)
+    .await
+    .unwrap();
+    let authors: Vec<String> = rows.iter().map(|r| r.try_get("author").unwrap()).collect();
     assert_eq!(authors, ["nurse-1", "dr-1", "dr-1"]);
 }
 
@@ -326,7 +324,11 @@ async fn allergy_tables_cannot_be_changed_or_removed() {
         "DELETE FROM allergy_assertion_versions".to_string(),
         "TRUNCATE allergy_assertion_versions".to_string(),
     ] {
-        let e = db.execute_unprepared(&sql).await.unwrap_err().to_string();
+        let e = sqlx::raw_sql(AssertSqlSafe(sql.to_string()))
+            .execute(&db)
+            .await
+            .unwrap_err()
+            .to_string();
         assert!(e.contains("append-only"), "{sql}: {e}");
     }
 }

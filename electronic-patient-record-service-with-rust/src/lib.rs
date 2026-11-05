@@ -7,6 +7,10 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
+/// The database migrations, embedded in the binary: `migrations/*.sql`. They have no down files, so the
+/// clinical record cannot be rolled back through them.
+pub static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
+
 pub mod adjustments;
 pub mod adjustments_store;
 pub mod adt_feed;
@@ -46,6 +50,7 @@ pub mod page;
 pub mod patients_store;
 pub mod photos_store;
 pub mod policy;
+pub mod pool;
 pub mod privacy;
 pub mod proxy;
 pub mod rate_limit;

@@ -60,7 +60,7 @@ fn no_field_in_the_core_is_shaped_like_a_risk_score() {
     let mut files = Vec::new();
     for dir in [
         service.join("src"),
-        service.join("migration/src"),
+        service.join("migrations"),
         root.join("electronic-patient-record-matcher-with-rust/src"),
         root.join("electronic-patient-record-ui-with-svelte/src"),
     ] {

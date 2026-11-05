@@ -9,13 +9,13 @@
 
 use electronic_patient_record::audit::{self, Action, Chain, Event, Verdict};
 use electronic_patient_record::audit_retention;
-use electronic_patient_record_migration::{Migrator, MigratorTrait};
-use sea_orm::{ConnectionTrait, Database, DatabaseConnection, Statement};
+use sqlx::Row;
+use sqlx::{AssertSqlSafe, PgPool};
 
 /// A scratch database, migrated to `upto` migrations (all when `None`), dropped when the test ends.
 struct Scratch {
-    db: DatabaseConnection,
-    admin: DatabaseConnection,
+    db: PgPool,
+    admin: PgPool,
     name: String,
 }
 
@@ -29,49 +29,57 @@ impl Scratch {
             .unwrap()
             .as_nanos();
         let name = format!("epr_scratch_{}_{}", std::process::id(), nanos);
-        let admin = Database::connect(url.clone()).await.expect("connect admin");
-        admin
-            .execute_unprepared(&format!("CREATE DATABASE {name}"))
+        let admin = PgPool::connect(&url.clone()).await.expect("connect admin");
+        sqlx::raw_sql(AssertSqlSafe(format!("CREATE DATABASE {name}")))
+            .execute(&admin)
             .await
             .expect("create scratch db");
-        let db = Database::connect(format!("{base}/{name}"))
+        let db = PgPool::connect(&format!("{base}/{name}"))
             .await
             .expect("connect scratch");
-        Migrator::up(&db, upto).await.expect("migrate");
+        let count = upto.map_or(usize::MAX, |n| n as usize);
+        let first = sqlx::migrate::Migrator {
+            migrations: std::borrow::Cow::Owned(
+                electronic_patient_record::MIGRATOR
+                    .iter()
+                    .take(count)
+                    .cloned()
+                    .collect(),
+            ),
+            ..sqlx::migrate::Migrator::DEFAULT
+        };
+        first.run(&db).await.expect("migrate");
         Self { db, admin, name }
     }
 
     async fn n(&self, sql: &str) -> i64 {
-        self.db
-            .query_one_raw(Statement::from_string(
-                sea_orm::DbBackend::Postgres,
-                sql.to_string(),
-            ))
+        sqlx::query(AssertSqlSafe(sql.to_string().to_string()))
+            .fetch_optional(&self.db)
             .await
             .unwrap()
             .unwrap()
-            .try_get_by_index(0)
+            .try_get(0)
             .unwrap()
     }
 
     async fn text(&self, sql: &str) -> Option<String> {
-        self.db
-            .query_one_raw(Statement::from_string(
-                sea_orm::DbBackend::Postgres,
-                sql.to_string(),
-            ))
+        sqlx::query(AssertSqlSafe(sql.to_string().to_string()))
+            .fetch_optional(&self.db)
             .await
             .unwrap()
-            .and_then(|r| r.try_get_by_index(0).ok())
+            .and_then(|r| r.try_get(0).ok())
     }
 
     async fn exec(&self, sql: &str) {
-        self.db.execute_unprepared(sql).await.unwrap();
+        sqlx::raw_sql(AssertSqlSafe(sql.to_string()))
+            .execute(&self.db)
+            .await
+            .unwrap();
     }
 
     async fn refused(&self, sql: &str) -> bool {
-        self.db
-            .execute_unprepared(sql)
+        sqlx::raw_sql(AssertSqlSafe(sql.to_string()))
+            .execute(&self.db)
             .await
             .is_err_and(|e| e.to_string().contains("append-only"))
     }
@@ -79,9 +87,11 @@ impl Scratch {
     async fn finish(self) {
         let Scratch { db, admin, name } = self;
         drop(db);
-        let _ = admin
-            .execute_unprepared(&format!("DROP DATABASE IF EXISTS {name} WITH (FORCE)"))
-            .await;
+        let _ = sqlx::raw_sql(AssertSqlSafe(format!(
+            "DROP DATABASE IF EXISTS {name} WITH (FORCE)"
+        )))
+        .execute(&admin)
+        .await;
     }
 }
 
@@ -193,7 +203,10 @@ async fn rows_written_before_the_migration_keep_their_ids_and_the_chain() {
     let ids_before = s
         .text("SELECT string_agg(id::text, ',' ORDER BY id) FROM audit_events")
         .await;
-    Migrator::up(&s.db, None).await.unwrap();
+    electronic_patient_record::MIGRATOR
+        .run(&s.db)
+        .await
+        .unwrap();
     assert_eq!(
         s.text("SELECT string_agg(id::text, ',' ORDER BY id) FROM audit_events_p0")
             .await,
@@ -233,13 +246,16 @@ async fn the_chain_holds_across_a_partition_boundary_and_a_break_is_found_on_the
         audit::verify(&s.db, &chain).await.unwrap(),
         Verdict::Intact { rows: 4 }
     );
-    s.db.execute_unprepared("ALTER TABLE audit_events DISABLE TRIGGER USER")
+    sqlx::raw_sql("ALTER TABLE audit_events DISABLE TRIGGER USER")
+        .execute(&s.db)
         .await
         .unwrap();
-    s.db.execute_unprepared("UPDATE audit_events SET agent = 'forged' WHERE agent = 'user-11'")
+    sqlx::raw_sql("UPDATE audit_events SET agent = 'forged' WHERE agent = 'user-11'")
+        .execute(&s.db)
         .await
         .unwrap();
-    s.db.execute_unprepared("ALTER TABLE audit_events ENABLE TRIGGER USER")
+    sqlx::raw_sql("ALTER TABLE audit_events ENABLE TRIGGER USER")
+        .execute(&s.db)
         .await
         .unwrap();
     assert!(matches!(
@@ -467,17 +483,16 @@ async fn partitions(s: &Scratch) -> i64 {
 #[tokio::test]
 #[ignore = "needs DATABASE_URL"]
 async fn a_run_while_another_replica_holds_the_lock_is_skipped() {
-    use sea_orm::TransactionTrait;
     let s = Scratch::new(None).await;
     let before = partitions(&s).await;
-    let other = s.db.begin().await.unwrap();
-    other
-        .execute_unprepared(&format!(
-            "SELECT pg_advisory_xact_lock({})",
-            audit_retention::LOCK_KEY
-        ))
-        .await
-        .unwrap();
+    let mut other = s.db.begin().await.unwrap();
+    sqlx::raw_sql(AssertSqlSafe(format!(
+        "SELECT pg_advisory_xact_lock({})",
+        audit_retention::LOCK_KEY
+    )))
+    .execute(&mut *other)
+    .await
+    .unwrap();
     let skipped = audit_retention::run_once(&s.db, before as i32 + 6, None).await;
     assert_eq!(skipped, Ok(audit_retention::Ran::Skipped));
     assert_eq!(

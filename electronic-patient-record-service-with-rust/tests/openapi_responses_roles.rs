@@ -16,6 +16,7 @@ use authentication_verifier::test_idp::{AUDIENCE, REALM, TestIdp};
 use axa::testing::prelude::request;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use electronic_patient_record::app::App;
+use electronic_patient_record::pool::Pool;
 use serde_json::{Value, json};
 
 mod openapi_support;
@@ -609,7 +610,7 @@ async fn real_responses_of_the_role_gated_routes_validate_against_the_served_sch
         let reasons = vec!["no PID segment".to_string()];
         let control = unique_name();
         let stored = electronic_patient_record::feed_queue::record(
-            &ctx.db,
+            &ctx.pool(),
             electronic_patient_record::feed_queue::New {
                 agent: "feed",
                 peer: Some("127.0.0.1"),

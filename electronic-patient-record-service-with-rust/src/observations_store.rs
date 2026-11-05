@@ -11,10 +11,11 @@ use crate::ids;
 use crate::links;
 use crate::observations::{self, Flag, Observation};
 use crate::patients_store::{self, StoreError};
-use crate::store::pg;
+use crate::pool::Db;
 use chrono::{DateTime, Datelike, Duration, SecondsFormat, Utc};
-use sea_orm::{ConnectionTrait, TransactionTrait};
 use serde::{Deserialize, Serialize};
+use sqlx::postgres::PgRow;
+use sqlx::{AssertSqlSafe, Row};
 
 crate::store_errors!("observations");
 
@@ -229,13 +230,15 @@ pub fn timing_problems(
 ///
 /// [`StoreError::Db`] on a database failure.
 pub async fn timing_refusal(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     patient_id: &str,
     record: &ObservationRecord,
     reason: Option<&str>,
     now: DateTime<Utc>,
 ) -> Result<Option<crate::api_error::ApiError>, StoreError> {
-    let birth_date = match patients_store::current(db, patient_id).await {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let birth_date = match patients_store::current(&mut *db, patient_id).await {
         Ok(p) => p.patient.birth_date,
         Err(StoreError::NotFound) => return Ok(None),
         Err(e) => return Err(e),
@@ -296,21 +299,21 @@ fn columns() -> String {
 /// # Errors
 ///
 /// [`StoreError::Db`] when a column is missing or the stored body or status is unreadable.
-fn row_to_observation(row: &sea_orm::QueryResult) -> Result<StoredObservation, StoreError> {
-    let body: serde_json::Value = row.try_get("", "body").map_err(db_err)?;
-    let status: String = row.try_get("", "status").map_err(db_err)?;
+fn row_to_observation(row: &PgRow) -> Result<StoredObservation, StoreError> {
+    let body: serde_json::Value = row.try_get("body").map_err(db_err)?;
+    let status: String = row.try_get("status").map_err(db_err)?;
     let mut record: ObservationRecord = serde_json::from_value(body).map_err(db_err)?;
     // The columns are the source of truth for the status and the time.
     record.status = Status::parse(&status).ok_or_else(|| db_err("unknown stored status"))?;
-    record.effective_at = row.try_get("", "effective").map_err(db_err)?;
+    record.effective_at = row.try_get("effective").map_err(db_err)?;
     let flag = observations::flag(&record.observation());
     Ok(StoredObservation {
-        id: row.try_get("", "id").map_err(db_err)?,
-        patient_id: row.try_get("", "patient_id").map_err(db_err)?,
-        version: row.try_get("", "version").map_err(db_err)?,
-        author: row.try_get("", "author").map_err(db_err)?,
-        recorded_at: row.try_get("", "at").map_err(db_err)?,
-        site_zone: row.try_get("", "site_zone").map_err(db_err)?,
+        id: row.try_get("id").map_err(db_err)?,
+        patient_id: row.try_get("patient_id").map_err(db_err)?,
+        version: row.try_get("version").map_err(db_err)?,
+        author: row.try_get("author").map_err(db_err)?,
+        recorded_at: row.try_get("at").map_err(db_err)?,
+        site_zone: row.try_get("site_zone").map_err(db_err)?,
         record,
         flag,
     })
@@ -348,7 +351,7 @@ fn utc_text(record: &ObservationRecord, now: DateTime<Utc>) -> Result<String, St
 /// [`StoreError::NotFound`] (no such patient), [`StoreError::BadQuery`] (the record is refused, or
 /// starts as entered in error).
 pub async fn create(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     patient_id: &str,
     author: &str,
     reason: Option<&str>,
@@ -356,6 +359,8 @@ pub async fn create(
     site_zone: &str,
     now: DateTime<Utc>,
 ) -> Result<StoredObservation, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     if let Some(e) = bad(record, now) {
         return Err(e);
     }
@@ -365,26 +370,22 @@ pub async fn create(
         ));
     }
     let effective = utc_text(record, now)?;
-    let patient = patients_store::current(db, patient_id).await?;
-    let row = db
-        .query_one_raw(pg(
-            &format!(
+    let patient = patients_store::current(&mut *db, patient_id).await?;
+    let row = sqlx::query(AssertSqlSafe(format!(
                 "INSERT INTO observation_versions
                    (observation_id, version, patient_id, author, reason, status, effective_at, site_zone, body)
                  VALUES (gen_random_uuid(), 1, $1::uuid, $2, $3, $4, $5::timestamptz, $6, $7)
                  RETURNING {}",
                 columns()
-            ),
-            vec![
-                patient.id.into(),
-                author.into(),
-                reason.map(str::to_string).into(),
-                record.status.as_str().into(),
-                effective.into(),
-                site_zone.into(),
-                serde_json::to_value(record).map_err(db_err)?.into(),
-            ],
-        ))
+            )))
+.bind(patient.id)
+.bind(author)
+.bind(reason.map(str::to_string))
+.bind(record.status.as_str())
+.bind(effective)
+.bind(site_zone)
+.bind(serde_json::to_value(record).map_err(db_err)?)
+.fetch_optional(&mut *db)
         .await
         .map_err(db_err)?
         .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
@@ -399,22 +400,22 @@ pub async fn create(
 ///
 /// [`StoreError::NotFound`] (no such patient).
 pub async fn list(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     patient_id: &str,
 ) -> Result<Vec<StoredObservation>, StoreError> {
-    let patient = patients_store::current(db, patient_id).await?;
-    let linked = ids::uuids(&links::linked_ids(db, &patient.id).await?);
-    let rows = db
-        .query_all_raw(pg(
-            &format!(
-                "SELECT {} FROM observation_current WHERE patient_id = ANY($1::uuid[])
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let patient = patients_store::current(&mut *db, patient_id).await?;
+    let linked = ids::uuids(&links::linked_ids(&mut *db, &patient.id).await?);
+    let rows = sqlx::query(AssertSqlSafe(format!(
+        "SELECT {} FROM observation_current WHERE patient_id = ANY($1::uuid[])
                  ORDER BY effective_at DESC, observation_id",
-                columns()
-            ),
-            vec![linked.into()],
-        ))
-        .await
-        .map_err(db_err)?;
+        columns()
+    )))
+    .bind(linked)
+    .fetch_all(&mut *db)
+    .await
+    .map_err(db_err)?;
     rows.iter().map(row_to_observation).collect()
 }
 
@@ -424,24 +425,25 @@ pub async fn list(
 ///
 /// [`StoreError::NotFound`] when there is no such observation for that patient.
 pub async fn current(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     patient_id: &str,
     observation_id: &str,
 ) -> Result<StoredObservation, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let observation_id = ids::uuid(observation_id).ok_or(StoreError::NotFound)?;
-    let linked = ids::uuids(&links::linked_ids(db, patient_id).await?);
-    let row = db
-        .query_one_raw(pg(
-            &format!(
-                "SELECT {} FROM observation_current
+    let linked = ids::uuids(&links::linked_ids(&mut *db, patient_id).await?);
+    let row = sqlx::query(AssertSqlSafe(format!(
+        "SELECT {} FROM observation_current
                  WHERE observation_id = $1::uuid AND patient_id = ANY($2::uuid[])",
-                columns()
-            ),
-            vec![observation_id.into(), linked.into()],
-        ))
-        .await
-        .map_err(db_err)?
-        .ok_or(StoreError::NotFound)?;
+        columns()
+    )))
+    .bind(observation_id)
+    .bind(linked)
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(db_err)?
+    .ok_or(StoreError::NotFound)?;
     row_to_observation(&row)
 }
 
@@ -462,31 +464,32 @@ pub struct ObservationVersion {
 ///
 /// [`StoreError::NotFound`] when there is no such observation for that patient.
 pub async fn history(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     patient_id: &str,
     observation_id: &str,
 ) -> Result<Vec<ObservationVersion>, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let observation_id = ids::uuid(observation_id).ok_or(StoreError::NotFound)?;
-    let linked = ids::uuids(&links::linked_ids(db, patient_id).await?);
-    let rows = db
-        .query_all_raw(pg(
-            &format!(
-                "SELECT {}, reason FROM observation_versions
+    let linked = ids::uuids(&links::linked_ids(&mut *db, patient_id).await?);
+    let rows = sqlx::query(AssertSqlSafe(format!(
+        "SELECT {}, reason FROM observation_versions
                  WHERE observation_id = $1::uuid AND patient_id = ANY($2::uuid[])
                  ORDER BY version",
-                columns()
-            ),
-            vec![observation_id.into(), linked.into()],
-        ))
-        .await
-        .map_err(db_err)?;
+        columns()
+    )))
+    .bind(observation_id)
+    .bind(linked)
+    .fetch_all(&mut *db)
+    .await
+    .map_err(db_err)?;
     if rows.is_empty() {
         return Err(StoreError::NotFound);
     }
     rows.iter()
         .map(|row| {
             Ok(ObservationVersion {
-                reason: row.try_get("", "reason").map_err(db_err)?,
+                reason: row.try_get("reason").map_err(db_err)?,
                 stored: row_to_observation(row)?,
             })
         })
@@ -502,7 +505,7 @@ pub async fn history(
 /// [`StoreError::BadQuery`] (refused record, or reopening an entered-in-error observation).
 #[allow(clippy::too_many_arguments)]
 pub async fn update(
-    db: &(impl ConnectionTrait + TransactionTrait),
+    db: impl Into<Db<'_>>,
     patient_id: &str,
     observation_id: &str,
     expected_version: i32,
@@ -512,11 +515,13 @@ pub async fn update(
     site_zone: &str,
     now: DateTime<Utc>,
 ) -> Result<StoredObservation, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     if let Some(e) = bad(record, now) {
         return Err(e);
     }
     let effective = utc_text(record, now)?;
-    let was = current(db, patient_id, observation_id).await?;
+    let was = current(&mut *db, patient_id, observation_id).await?;
     if was.version != expected_version {
         return Err(StoreError::Conflict {
             current: was.version,
@@ -529,34 +534,30 @@ pub async fn update(
     }
     // A concurrent writer took this version: the primary key refuses the second (CQ-12).
     let appended = crate::store::append_version(
-        db,
+        &mut *db,
         STORE,
-        pg(
-            &format!(
+        sqlx::query(AssertSqlSafe(format!(
                 "INSERT INTO observation_versions
                    (observation_id, version, patient_id, author, reason, status, effective_at, site_zone, body)
                  VALUES ($1::uuid, $2, $3::uuid, $4, $5, $6, $7::timestamptz, $8, $9)
                  RETURNING {}",
                 columns()
-            ),
-            vec![
-                was.id.clone().into(),
-                (expected_version + 1).into(),
-                was.patient_id.clone().into(),
-                author.into(),
-                reason.map(str::to_string).into(),
-                record.status.as_str().into(),
-                effective.into(),
-                site_zone.into(),
-                serde_json::to_value(record).map_err(db_err)?.into(),
-            ],
-        ),
+            )))
+.bind(was.id.clone())
+.bind(expected_version + 1)
+.bind(was.patient_id.clone())
+.bind(author)
+.bind(reason.map(str::to_string))
+.bind(record.status.as_str())
+.bind(effective)
+.bind(site_zone)
+.bind(serde_json::to_value(record).map_err(db_err)?),
     )
     .await?;
     match appended {
         crate::store::Appended::Row(row) => row_to_observation(&row),
         crate::store::Appended::Taken => {
-            let current = current(db, patient_id, observation_id).await?.version;
+            let current = current(&mut *db, patient_id, observation_id).await?.version;
             Err(StoreError::Conflict { current })
         }
     }

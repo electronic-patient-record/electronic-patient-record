@@ -13,9 +13,10 @@ use authentication_verifier::test_idp::{AUDIENCE, REALM, TestIdp};
 use axa::testing::prelude::request;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use electronic_patient_record::app::App;
+use electronic_patient_record::pool::Pool;
 use electronic_patient_record_matcher::{HumanName, Patient};
-use sea_orm::{ConnectionTrait, Statement};
 use serde_json::{Value, json};
+use sqlx::{AssertSqlSafe, Row};
 
 fn nanos() -> u128 {
     std::time::SystemTime::now()
@@ -286,19 +287,15 @@ async fn who_may_ask_decide_and_withdraw() {
         }
 
         // The audit trail names the request and its state, never the words in it.
-        let rows = ctx
-            .db
-            .query_all_raw(Statement::from_string(
-                sea_orm::DbBackend::Postgres,
-                format!(
+        let rows = sqlx::query(AssertSqlSafe(format!(
                     "SELECT detail::text AS d FROM audit_events WHERE resource_ref = 'Amendment' AND patient_ref = 'Patient/{pid}'"
-                ),
-            ))
+                )))
+.fetch_all(&ctx.pool())
             .await
             .unwrap();
         assert!(rows.len() >= 4, "create, two reads and a step are audited: {}", rows.len());
         for row in rows {
-            let d: String = row.try_get("", "d").unwrap();
+            let d: String = row.try_get("d").unwrap();
             for secret in ["pulse", "never that fast", "chart shows", "someone-else", "penicillin"] {
                 assert!(!d.contains(secret), "{secret} leaked into the audit row: {d}");
             }

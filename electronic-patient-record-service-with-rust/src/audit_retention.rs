@@ -4,8 +4,8 @@
 //! off unless `EPR_AUDIT_ARCHIVE_AFTER_MONTHS` is set: archived rows leave `audit_events`, and a patient's
 //! access log and the audit search still list them through the `audit_events_all` view (hazard H-042).
 
-use crate::store::pg;
-use sea_orm::{ConnectionTrait, DatabaseConnection, TransactionTrait};
+use crate::pool::Db;
+use sqlx::{PgPool, Row};
 
 /// Months of partitions made ahead.
 pub const MONTHS_AHEAD: i32 = 24;
@@ -26,19 +26,17 @@ fn err(e: impl std::fmt::Display) -> String {
 /// # Errors
 ///
 /// The database's message.
-pub async fn ensure_partitions(
-    db: &impl ConnectionTrait,
-    months_ahead: i32,
-) -> Result<i32, String> {
-    db.query_one_raw(pg(
-        "SELECT audit_ensure_partitions($1) AS made",
-        vec![months_ahead.into()],
-    ))
-    .await
-    .map_err(err)?
-    .ok_or_else(|| "no answer".to_string())?
-    .try_get("", "made")
-    .map_err(err)
+pub async fn ensure_partitions(db: impl Into<Db<'_>>, months_ahead: i32) -> Result<i32, String> {
+    let mut conn = db.into().acquire().await.map_err(err)?;
+    let db = &mut *conn;
+    sqlx::query("SELECT audit_ensure_partitions($1) AS made")
+        .bind(months_ahead)
+        .fetch_optional(&mut *db)
+        .await
+        .map_err(err)?
+        .ok_or_else(|| "no answer".to_string())?
+        .try_get("made")
+        .map_err(err)
 }
 
 /// Move the partitions that end at or before `months` whole months ago into `audit_archive`, oldest
@@ -47,22 +45,21 @@ pub async fn ensure_partitions(
 /// # Errors
 ///
 /// The database's message; nothing is moved then (the function is one statement).
-pub async fn archive_older_than(
-    db: &impl ConnectionTrait,
-    months: u32,
-) -> Result<Vec<String>, String> {
+pub async fn archive_older_than(db: impl Into<Db<'_>>, months: u32) -> Result<Vec<String>, String> {
+    let mut conn = db.into().acquire().await.map_err(err)?;
+    let db = &mut *conn;
     let months = i32::try_from(months).map_err(err)?;
-    let row = db
-        .query_one_raw(pg(
-            "SELECT audit_archive_before(
+    let row = sqlx::query(
+        "SELECT audit_archive_before(
                  ((date_trunc('month', now() AT TIME ZONE 'UTC') - make_interval(months => $1))
                    AT TIME ZONE 'UTC')) AS moved",
-            vec![months.into()],
-        ))
-        .await
-        .map_err(err)?
-        .ok_or_else(|| "no answer".to_string())?;
-    row.try_get("", "moved").map_err(err)
+    )
+    .bind(months)
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(err)?
+    .ok_or_else(|| "no answer".to_string())?;
+    row.try_get("moved").map_err(err)
 }
 
 /// `EPR_AUDIT_ARCHIVE_AFTER_MONTHS`: unset means never archive; otherwise 1 to 1200.
@@ -120,27 +117,25 @@ pub enum Ran {
 ///
 /// The database's message; the transaction is rolled back then.
 pub async fn run_once(
-    db: &DatabaseConnection,
+    db: &PgPool,
     months_ahead: i32,
     archive_after_months: Option<u32>,
 ) -> Result<Ran, String> {
-    let tx = db.begin().await.map_err(err)?;
-    let got: bool = tx
-        .query_one_raw(pg(
-            "SELECT pg_try_advisory_xact_lock($1) AS got",
-            vec![LOCK_KEY.into()],
-        ))
+    let mut tx = db.begin().await.map_err(err)?;
+    let got: bool = sqlx::query("SELECT pg_try_advisory_xact_lock($1) AS got")
+        .bind(LOCK_KEY)
+        .fetch_optional(&mut *tx)
         .await
         .map_err(err)?
         .ok_or_else(|| "no answer".to_string())?
-        .try_get("", "got")
+        .try_get("got")
         .map_err(err)?;
     if !got {
         return Ok(Ran::Skipped);
     }
-    let made = ensure_partitions(&tx, months_ahead).await?;
+    let made = ensure_partitions(&mut *tx, months_ahead).await?;
     let moved = match archive_after_months {
-        Some(months) => archive_older_than(&tx, months).await?,
+        Some(months) => archive_older_than(&mut *tx, months).await?,
         None => Vec::new(),
     };
     tx.commit().await.map_err(err)?;
@@ -149,7 +144,7 @@ pub async fn run_once(
 
 /// Make the partitions, and archive when asked, now and every few hours. A failure is logged and the loop
 /// carries on. Only one replica runs each round ([`run_once`]).
-pub async fn run_loop(db: DatabaseConnection, archive_after_months: Option<u32>) {
+pub async fn run_loop(db: PgPool, archive_after_months: Option<u32>) {
     let mut tick = tokio::time::interval(EVERY);
     tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     loop {

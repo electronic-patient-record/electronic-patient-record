@@ -21,19 +21,21 @@ use electronic_patient_record::referral::{Actor, Event, State};
 use electronic_patient_record::referral_unmatched::{self as queue, Clearance, Filed, Inbound};
 use electronic_patient_record::referrals_store::{self as store, Priority, Referral, Step};
 use electronic_patient_record_matcher::{HumanName, Patient};
-use electronic_patient_record_migration::{Migrator, MigratorTrait};
-use sea_orm::{ConnectionTrait, Database, DatabaseConnection};
+use sqlx::{AssertSqlSafe, PgPool};
 
 const SECRET: &str = "Secret-body-quokka";
 
-async fn db() -> DatabaseConnection {
+async fn db() -> PgPool {
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
-    let db = Database::connect(url).await.expect("connect");
-    Migrator::up(&db, None).await.expect("migrate");
+    let db = PgPool::connect(&url).await.expect("connect");
+    electronic_patient_record::MIGRATOR
+        .run(&db)
+        .await
+        .expect("migrate");
     db
 }
 
-async fn referral(db: &DatabaseConnection) -> store::StoredReferral {
+async fn referral(db: &PgPool) -> store::StoredReferral {
     let family = format!(
         "unm{}",
         std::time::SystemTime::now()
@@ -370,7 +372,10 @@ async fn the_database_refuses_to_edit_delete_or_truncate_the_queue() {
         ),
         "TRUNCATE referral_unmatched_clearances".to_string(),
     ] {
-        let e = db.execute_unprepared(&sql).await.unwrap_err();
+        let e = sqlx::raw_sql(AssertSqlSafe(sql.to_string()))
+            .execute(&db)
+            .await
+            .unwrap_err();
         assert!(e.to_string().contains("append-only"), "{sql}: {e}");
     }
     assert!(queue::get(&db, &entry.id).await.unwrap().cleared.is_some());
@@ -381,22 +386,21 @@ async fn the_database_refuses_to_edit_delete_or_truncate_the_queue() {
 async fn a_queue_longer_than_the_list_limit_says_it_was_cut_short() {
     // PR-1 (hazard H-044): the list is oldest first and capped, so the newest entry is the one it hides.
     // Everything happens in a transaction that is rolled back, so the shared test database stays as it was.
-    use sea_orm::TransactionTrait;
     let db = db().await;
-    let txn = db.begin().await.unwrap();
-    let mut open = queue::count_open(&txn).await.unwrap();
+    let mut txn = db.begin().await.unwrap();
+    let mut open = queue::count_open(&mut *txn).await.unwrap();
     while open < i64::try_from(queue::LIST_LIMIT).unwrap() + 1 {
-        queue::file(&txn, inbound(None, None, None), Utc::now())
+        queue::file(&mut *txn, inbound(None, None, None), Utc::now())
             .await
             .unwrap();
         open += 1;
     }
-    let page = queue::list_open(&txn).await.unwrap();
+    let page = queue::list_open(&mut *txn).await.unwrap();
     assert_eq!(page.len() as u64, queue::LIST_LIMIT);
     assert!(
         page.more,
         "{open} are open but the list does not say it is cut"
     );
-    assert_eq!(queue::count_open(&txn).await.unwrap(), open);
+    assert_eq!(queue::count_open(&mut *txn).await.unwrap(), open);
     txn.rollback().await.unwrap();
 }

@@ -17,17 +17,19 @@ use electronic_patient_record::patients_store::{self, StoreError};
 use electronic_patient_record::referral::{Actor, Event, State};
 use electronic_patient_record::referrals_store::{self as store, Priority, Referral, Step};
 use electronic_patient_record_matcher::{HumanName, Patient};
-use electronic_patient_record_migration::{Migrator, MigratorTrait};
-use sea_orm::{ConnectionTrait, Database, DatabaseConnection};
+use sqlx::{AssertSqlSafe, PgPool};
 
-async fn db() -> DatabaseConnection {
+async fn db() -> PgPool {
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
-    let db = Database::connect(url).await.expect("connect");
-    Migrator::up(&db, None).await.expect("migrate");
+    let db = PgPool::connect(&url).await.expect("connect");
+    electronic_patient_record::MIGRATOR
+        .run(&db)
+        .await
+        .expect("migrate");
     db
 }
 
-async fn patient(db: &DatabaseConnection) -> String {
+async fn patient(db: &PgPool) -> String {
     let family = format!(
         "ref{}",
         std::time::SystemTime::now()
@@ -376,7 +378,10 @@ async fn the_database_refuses_to_edit_delete_or_truncate_a_referral_version() {
         // CASCADE: acknowledgements reference the versions, and a bare TRUNCATE would be refused for that reason first.
         "TRUNCATE referral_versions CASCADE".to_string(),
     ] {
-        let e = db.execute_unprepared(&sql).await.unwrap_err();
+        let e = sqlx::raw_sql(AssertSqlSafe(sql.to_string()))
+            .execute(&db)
+            .await
+            .unwrap_err();
         assert!(e.to_string().contains("append-only"), "{sql}: {e}");
     }
     assert_eq!(store::current(&db, &r.id).await.unwrap().version, 1);

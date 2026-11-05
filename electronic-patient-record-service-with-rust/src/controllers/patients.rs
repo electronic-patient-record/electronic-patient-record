@@ -10,6 +10,8 @@ use crate::auth::Agent;
 use crate::links;
 use crate::patients_store::{self as store, Search, StoreError};
 use crate::policy::{self, Consent, Purpose, Resource, Subject};
+use crate::pool::Db;
+use crate::pool::Pool;
 use axa::prelude::*;
 use axum::{
     Extension,
@@ -18,8 +20,8 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use electronic_patient_record_matcher::{MatchResult, Patient};
-use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 
 /// Two patients to compare.
 #[derive(Debug, Serialize, Deserialize)]
@@ -45,7 +47,7 @@ pub fn compare_patients(request: &CompareRequest) -> MatchResult {
 ///
 /// When the audit row cannot be appended.
 pub async fn compare_audited(
-    db: &DatabaseConnection,
+    db: &PgPool,
     chain: &Chain,
     agent: &Agent,
     request: &CompareRequest,
@@ -75,7 +77,7 @@ async fn compare(
         ])
         .into_response());
     }
-    match compare_audited(&ctx.db, audit::chain(), &agent, &request).await {
+    match compare_audited(&ctx.pool(), audit::chain(), &agent, &request).await {
         Ok(result) => format::json(result),
         Err(e) => {
             tracing::error!(error = %e, "refusing to answer: the access could not be audited");
@@ -152,7 +154,7 @@ pub fn likely_duplicates(new: &Patient, existing: Vec<store::Stored>) -> Vec<Can
 
 /// Write the audit row for a completed access to a patient. Never put demographics in `detail`.
 async fn audit_access(
-    db: &(impl sea_orm::ConnectionTrait + sea_orm::TransactionTrait),
+    db: impl Into<Db<'_>>,
     agent: &Agent,
     action: Action,
     outcome: i16,
@@ -160,6 +162,12 @@ async fn audit_access(
     patient_id: Option<&str>,
     detail: serde_json::Value,
 ) -> Result<(), ApiError> {
+    let mut conn = db
+        .into()
+        .acquire()
+        .await
+        .map_err(super::common::acquire_failed)?;
+    let db = &mut *conn;
     let access = Access {
         action,
         outcome,
@@ -167,7 +175,7 @@ async fn audit_access(
         resource: "Patient",
         patient_id,
     };
-    audit_resource(db, agent, access, detail).await
+    audit_resource(&mut *db, agent, access, detail).await
 }
 
 /// A patient as read: the stored version, whether there is a photo to fetch, and merge status
@@ -200,7 +208,7 @@ pub(super) async fn create_service(
         Err(r) => return Err(r),
     };
     authorize(
-        &ctx.db,
+        &ctx.pool(),
         agent,
         subject,
         Resource::PatientIdentity,
@@ -220,16 +228,16 @@ pub(super) async fn create_service(
     // The duplicate check, the new version and its audit row are one transaction under the
     // registration lock (CQ-7): two registrations of one person can never both pass the check, and
     // if the audit row cannot be written the patient is not created.
-    let tx = match begin(&ctx.db).await {
+    let mut tx = match begin(&ctx.pool()).await {
         Ok(t) => t,
         Err(r) => return Err(r),
     };
-    if let Err(e) = store::lock_registration(&tx).await {
+    if let Err(e) = store::lock_registration(&mut *tx).await {
         return Err(ApiError::from(&e));
     }
     // More matches than the limit: only the strongest were compared, and the answer says so (CQ-36).
     let (duplicates, candidates_cut) =
-        match store::candidates_in(&tx, &request.patient, request.drill).await {
+        match store::candidates_in(&mut *tx, &request.patient, request.drill).await {
             Ok((pool, cut)) => (likely_duplicates(&request.patient, pool), cut),
             // An unchecked registration is how duplicates happen: fail rather than skip the check.
             Err(e) => return Err(ApiError::from(&e)),
@@ -241,7 +249,7 @@ pub(super) async fn create_service(
     let existing_ids: Vec<String> = duplicates.iter().map(|c| c.existing.id.clone()).collect();
     // On the transaction: it holds a connection, and the development pool has only one.
     let verdicts = match consent_verdicts(
-        &tx,
+        &mut *tx,
         subject,
         purpose,
         Resource::PatientIdentity,
@@ -271,7 +279,7 @@ pub(super) async fn create_service(
         // Showing the candidates discloses them, so this is an audited access. The row is written on
         // the transaction (nothing else has been written to it) and committed before the refusal.
         audit_access(
-            &tx,
+            &mut *tx,
             agent,
             Action::Create,
             4,
@@ -297,7 +305,7 @@ pub(super) async fn create_service(
         (None, r) => r.map(str::to_string),
     };
     let stored = match store::create_as(
-        &tx,
+        &mut *tx,
         &agent.0,
         kept_reason.as_deref(),
         &request.patient,
@@ -309,7 +317,7 @@ pub(super) async fn create_service(
         Err(e) => return Err(ApiError::from(&e)),
     };
     audit_access(
-        &tx,
+        &mut *tx,
         agent,
         Action::Create,
         0,
@@ -363,7 +371,7 @@ pub(super) async fn read_service(
         Err(r) => return Err(r),
     };
     authorize(
-        &ctx.db,
+        &ctx.pool(),
         agent,
         subject,
         Resource::PatientIdentity,
@@ -372,11 +380,11 @@ pub(super) async fn read_service(
         Some(id),
     )
     .await?;
-    match store::current(&ctx.db, id).await {
+    match store::current(&ctx.pool(), id).await {
         Ok(stored) => {
             // Audit before the data leaves.
             audit_access(
-                &ctx.db,
+                &ctx.pool(),
                 agent,
                 Action::Read,
                 0,
@@ -387,17 +395,17 @@ pub(super) async fn read_service(
             .await?;
             // Whether there is a photo to fetch, so the banner does not ask for one that is not
             // there. A failed lookup fails the read: a banner must not quietly lose its photo.
-            let photo_version = match crate::photos_store::current(&ctx.db, &stored.id).await {
+            let photo_version = match crate::photos_store::current(&ctx.pool(), &stored.id).await {
                 Ok(p) => p.filter(|p| p.bytes.is_some()).map(|p| p.version),
                 Err(e) => return Err(ApiError::from(&e)),
             };
             // Merge status (ID-5): a record merged away says where it went; a surviving record
             // says what was merged into it. A failed lookup fails the read.
-            let replaced_by = match links::merged_into(&ctx.db, &stored.id).await {
+            let replaced_by = match links::merged_into(&ctx.pool(), &stored.id).await {
                 Ok(r) => r,
                 Err(e) => return Err(ApiError::from(&e)),
             };
-            let replaces = match links::sources_of(&ctx.db, &stored.id).await {
+            let replaces = match links::sources_of(&ctx.pool(), &stored.id).await {
                 Ok(r) => r,
                 Err(e) => return Err(ApiError::from(&e)),
             };
@@ -412,7 +420,7 @@ pub(super) async fn read_service(
         Err(StoreError::NotFound) => {
             // A miss is an access too. Only a well-formed id is recorded as the patient reference.
             audit_access(
-                &ctx.db,
+                &ctx.pool(),
                 agent,
                 Action::Read,
                 4,
@@ -460,7 +468,7 @@ pub(super) async fn update_service(
         Err(r) => return Err(r),
     };
     authorize(
-        &ctx.db,
+        &ctx.pool(),
         agent,
         subject,
         Resource::PatientIdentity,
@@ -472,12 +480,12 @@ pub(super) async fn update_service(
     if let Some(refused) = store::refusal(&request.patient) {
         return Err(refused);
     }
-    let tx = match begin(&ctx.db).await {
+    let mut tx = match begin(&ctx.pool()).await {
         Ok(t) => t,
         Err(r) => return Err(r),
     };
     match store::update(
-        &tx,
+        &mut *tx,
         id,
         request.expected_version,
         &agent.0,
@@ -488,7 +496,7 @@ pub(super) async fn update_service(
     {
         Ok(stored) => {
             audit_access(
-                &tx,
+                &mut *tx,
                 agent,
                 Action::Update,
                 0,
@@ -502,9 +510,9 @@ pub(super) async fn update_service(
         }
         Err(e @ (StoreError::Conflict { .. } | StoreError::NotFound)) => {
             // Nothing was written; end the transaction before the refusal is audited.
-            let _ = sea_orm::TransactionSession::rollback(tx).await;
+            let _ = tx.rollback().await;
             audit_access(
-                &ctx.db,
+                &ctx.pool(),
                 agent,
                 Action::Update,
                 4,
@@ -554,7 +562,7 @@ pub(super) async fn search_service(
         Err(r) => return Err(r),
     };
     authorize(
-        &ctx.db,
+        &ctx.pool(),
         agent,
         subject,
         Resource::PatientIdentity,
@@ -569,18 +577,23 @@ pub(super) async fn search_service(
             "give at least one of family, birth_date, identifier",
         ));
     }
-    match store::search(&ctx.db, query).await {
+    match store::search(&ctx.pool(), query).await {
         Ok(mut found) => {
             // Drop what the patient's consent refuses this subject. A hidden result is not
             // counted in the response; the audit row says how many there were.
             let ids: Vec<String> = found.iter().map(|s| s.id.clone()).collect();
-            let verdicts =
-                match consent_verdicts(&ctx.db, subject, purpose, Resource::PatientIdentity, &ids)
-                    .await
-                {
-                    Ok(v) => v,
-                    Err(r) => return Err(r),
-                };
+            let verdicts = match consent_verdicts(
+                &ctx.pool(),
+                subject,
+                purpose,
+                Resource::PatientIdentity,
+                &ids,
+            )
+            .await
+            {
+                Ok(v) => v,
+                Err(r) => return Err(r),
+            };
             let before = found.len();
             found.retain(|s| {
                 verdicts
@@ -599,7 +612,7 @@ pub(super) async fn search_service(
             .map(|(k, _)| k)
             .collect();
             audit_access(
-                &ctx.db,
+                &ctx.pool(),
                 agent,
                 Action::Read,
                 0,

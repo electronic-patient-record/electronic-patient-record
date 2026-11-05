@@ -15,9 +15,10 @@ use authentication_verifier::test_idp::{AUDIENCE, REALM, TestIdp};
 use axa::testing::prelude::request;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use electronic_patient_record::app::App;
+use electronic_patient_record::pool::Pool;
 use electronic_patient_record_matcher::{HumanName, Patient};
-use sea_orm::{ConnectionTrait, Statement};
 use serde_json::{Value, json};
+use sqlx::{AssertSqlSafe, Row};
 
 fn nanos() -> u128 {
     std::time::SystemTime::now()
@@ -249,19 +250,14 @@ async fn who_may_record_review_and_end_an_adjustment() {
 
         // A review date that has passed shows as overdue. The route refuses to write one, so the test
         // puts it in the table, as time would.
-        ctx.db
-            .execute_raw(Statement::from_sql_and_values(
-                sea_orm::DatabaseBackend::Postgres,
-                "INSERT INTO adjustment_versions
+        sqlx::query("INSERT INTO adjustment_versions
                    (adjustment_id, version, patient_id, author, status, body)
-                 VALUES (gen_random_uuid(), 1, $1::uuid, 'test', 'active', $2)",
-                vec![
-                    id.clone().into(),
-                    json!({ "code": "braille", "note": null, "status": "active",
+                 VALUES (gen_random_uuid(), 1, $1::uuid, 'test', 'active', $2)")
+.bind(id.clone())
+.bind(json!({ "code": "braille", "note": null, "status": "active",
                         "review_by": "2020-01-01", "reason": "set long ago" })
-                    .into(),
-                ],
-            ))
+                    )
+.execute(&ctx.pool())
             .await
             .unwrap();
         let listed: Value = get(nurse.clone()).await.json();
@@ -368,30 +364,25 @@ async fn who_may_record_review_and_end_an_adjustment() {
         assert_eq!(refused.status_code(), StatusCode::FORBIDDEN, "{}", refused.text());
 
         // The audit trail says something happened, and nothing of what the person needs.
-        let audited = ctx
-            .db
-            .query_all_raw(Statement::from_sql_and_values(
-                sea_orm::DatabaseBackend::Postgres,
-                "SELECT detail::text AS detail FROM audit_events_all
-                 WHERE resource_ref = 'Adjustment' AND patient_ref = $1",
-                vec![format!("Patient/{id}").into()],
-            ))
+        let audited = sqlx::query("SELECT detail::text AS detail FROM audit_events_all
+                 WHERE resource_ref = 'Adjustment' AND patient_ref = $1")
+.bind(format!("Patient/{id}"))
+.fetch_all(&ctx.pool())
             .await
             .unwrap();
         assert!(audited.len() >= 5, "only {} audit rows", audited.len());
         for row in audited {
-            let detail: String = row.try_get("", "detail").unwrap();
+            let detail: String = row.try_get("detail").unwrap();
             for secret in ["Polish", "interpreter", "daughter", "no longer needed"] {
                 assert!(!detail.contains(secret), "{secret} in {detail}");
             }
         }
 
         // The table refuses change.
-        let change = ctx
-            .db
-            .execute_unprepared(&format!(
+        let change = sqlx::raw_sql(AssertSqlSafe(format!(
                 "UPDATE adjustment_versions SET author = 'x' WHERE patient_id = '{id}'"
-            ))
+            )))
+.execute(&ctx.pool())
             .await;
         assert!(change.is_err(), "an adjustment was edited");
     })

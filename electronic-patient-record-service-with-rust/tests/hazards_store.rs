@@ -11,13 +11,15 @@ use chrono::Utc;
 use electronic_patient_record::hazard::{Actor, Event, Evidence, EvidenceKind, State};
 use electronic_patient_record::hazard_store as store;
 use electronic_patient_record::patients_store::StoreError;
-use electronic_patient_record_migration::{Migrator, MigratorTrait};
-use sea_orm::{ConnectionTrait, Database, DatabaseConnection, Statement};
+use sqlx::{AssertSqlSafe, PgPool, Row};
 
-async fn db() -> DatabaseConnection {
+async fn db() -> PgPool {
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
-    let db = Database::connect(url).await.expect("connect");
-    Migrator::up(&db, None).await.expect("migrate");
+    let db = PgPool::connect(&url).await.expect("connect");
+    electronic_patient_record::MIGRATOR
+        .run(&db)
+        .await
+        .expect("migrate");
     db
 }
 
@@ -111,18 +113,14 @@ async fn a_hazard_is_retired_only_by_the_cso_with_evidence_and_keeps_its_history
     .unwrap();
     assert_eq!((back.version, back.hazard.state), (4, State::Open));
     assert_eq!(back.hazard.reopened, 1);
-    let kept = db
-        .query_all_raw(Statement::from_sql_and_values(
-            sea_orm::DbBackend::Postgres,
-            "SELECT state FROM hazard_versions WHERE hazard_id = $1::uuid ORDER BY version",
-            [h.id.clone().into()],
-        ))
-        .await
-        .unwrap();
-    let states: Vec<String> = kept
-        .iter()
-        .map(|r| r.try_get("", "state").unwrap())
-        .collect();
+    let kept = sqlx::query(
+        "SELECT state FROM hazard_versions WHERE hazard_id = $1::uuid ORDER BY version",
+    )
+    .bind(h.id.clone())
+    .fetch_all(&db)
+    .await
+    .unwrap();
+    let states: Vec<String> = kept.iter().map(|r| r.try_get("state").unwrap()).collect();
     assert_eq!(states, ["open", "open", "retired", "open"]);
 }
 
@@ -141,7 +139,11 @@ async fn the_database_refuses_to_edit_delete_or_truncate_a_version() {
         format!("DELETE FROM hazard_versions WHERE hazard_id = '{}'", h.id),
         "TRUNCATE hazard_versions".to_string(),
     ] {
-        let err = db.execute_unprepared(&sql).await.unwrap_err().to_string();
+        let err = sqlx::raw_sql(AssertSqlSafe(sql.to_string()))
+            .execute(&db)
+            .await
+            .unwrap_err()
+            .to_string();
         assert!(err.contains("append-only"), "{sql}: {err}");
     }
     assert_eq!(

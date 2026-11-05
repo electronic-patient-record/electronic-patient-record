@@ -36,10 +36,10 @@ task_count() { # <prefix> <x| >
 cargo_version() { sed -n 's/^version *= *"\([^"]*\)".*/\1/p' "$1" | sed -n 1p; }
 
 generate() {
-  migrations=$(find "$API/migration/src" -name 'm2*.rs' | wc -l | tr -d ' ')
+  migrations=$(find "$API/migrations" -name '*.sql' | wc -l | tr -d ' ')
   routes=$(find "$API/src/controllers" -name '*.rs' -print0 | xargs -0 cat | grep -cE '\.add\(' || true)
-  svc_tests=$(count_rs '^[[:space:]]*#\[(tokio::)?test' "$API/src" "$API/tests" "$API/migration/src")
-  svc_ignored=$(count_rs '^[[:space:]]*#\[ignore' "$API/src" "$API/tests" "$API/migration/src")
+  svc_tests=$(count_rs '^[[:space:]]*#\[(tokio::)?test' "$API/src" "$API/tests")
+  svc_ignored=$(count_rs '^[[:space:]]*#\[ignore' "$API/src" "$API/tests")
   mat_tests=$(count_rs '^[[:space:]]*#\[(tokio::)?test' "$MATCHER/src" "$MATCHER/tests")
   mat_ignored=$(count_rs '^[[:space:]]*#\[ignore' "$MATCHER/src" "$MATCHER/tests")
   vitest=$(count_ts '^[[:space:]]*(it|test)(\.each)?[(`]' "$UI/tests/unit")
@@ -58,7 +58,7 @@ generate() {
   echo "| Service version | $(cargo_version "$API/Cargo.toml") | \`version\` in the service \`Cargo.toml\` |"
   echo "| Matcher version | $(cargo_version "$MATCHER/Cargo.toml") | \`version\` in the matcher \`Cargo.toml\` |"
   echo "| Front-end version | $ui_version | \`version\` in the front-end \`package.json\` |"
-  echo "| Migrations | $migrations | files named \`m2*.rs\` in \`migration/src\` |"
+  echo "| Migrations | $migrations | files named \`*.sql\` in \`migrations\` |"
   echo "| Route registrations | $routes | \`.add(\` calls in \`src/controllers/*.rs\` |"
   echo "| Service tests | $svc_tests, plus $svc_ignored \`#[ignore]\`d (database gated) | \`#[test]\` and \`#[tokio::test]\` lines; \`#[ignore]\` lines |"
   echo "| Matcher tests | $mat_tests, plus $mat_ignored \`#[ignore]\`d | the same patterns in the matcher |"

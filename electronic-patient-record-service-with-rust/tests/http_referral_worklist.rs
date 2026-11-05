@@ -19,8 +19,9 @@ use authentication_verifier::test_idp::{AUDIENCE, REALM, TestIdp};
 use axa::testing::prelude::request;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use electronic_patient_record::app::App;
-use sea_orm::{ConnectionTrait, Statement};
+use electronic_patient_record::pool::Pool;
 use serde_json::{Value, json};
+use sqlx::Row;
 
 fn nanos() -> u128 {
     std::time::SystemTime::now()
@@ -227,19 +228,16 @@ async fn the_sender_sees_what_came_back_and_nobody_else_does() {
         assert_eq!(count(sh.clone(), sv.clone()).await, before);
 
         // The audit rows name ids and states, never the text.
-        let rows = ctx
-            .db
-            .query_all_raw(Statement::from_string(
-                ctx.db.get_database_backend(),
-                "SELECT detail::text AS d FROM audit_events_all
-                 WHERE resource_ref IN ('ReferralWorklist', 'ReferralMessage')"
-                    .to_string(),
-            ))
-            .await
-            .unwrap();
+        let rows = sqlx::query(
+            "SELECT detail::text AS d FROM audit_events_all
+                 WHERE resource_ref IN ('ReferralWorklist', 'ReferralMessage')",
+        )
+        .fetch_all(&ctx.pool())
+        .await
+        .unwrap();
         assert!(rows.len() >= 8, "every view and acknowledgement is audited");
         for row in rows {
-            let d: String = row.try_get("", "d").unwrap();
+            let d: String = row.try_get("d").unwrap();
             for secret in [SECRET_NOTE, SECRET_MESSAGE] {
                 assert!(!d.contains(secret), "an audit row carried text: {d}");
             }

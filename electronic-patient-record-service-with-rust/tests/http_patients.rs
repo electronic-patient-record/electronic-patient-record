@@ -12,8 +12,8 @@
 use axa::testing::prelude::request;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use electronic_patient_record::app::App;
+use electronic_patient_record::pool::Pool;
 use electronic_patient_record_matcher::{HumanName, Patient};
-use sea_orm::{ConnectionTrait, Statement};
 
 /// A family name no earlier run shares: letters only, from the clock, so the matcher's name
 /// similarity stays low against patients left in the database by other runs.
@@ -237,13 +237,9 @@ async fn the_request_id_is_echoed_and_written_into_the_audit_row() {
             .await;
         assert_eq!(response.status_code(), StatusCode::CREATED);
         assert_eq!(response.header("x-request-id"), supplied.as_str());
-        let rows = ctx
-            .db
-            .query_all_raw(Statement::from_sql_and_values(
-                ctx.db.get_database_backend(),
-                "SELECT detail->>'request_id' AS rid FROM audit_events WHERE detail->>'request_id' = $1",
-                [supplied.clone().into()],
-            ))
+        let rows = sqlx::query("SELECT detail->>'request_id' AS rid FROM audit_events WHERE detail->>'request_id' = $1")
+.bind(supplied.clone())
+.fetch_all(&ctx.pool())
             .await
             .unwrap();
         assert_eq!(rows.len(), 1, "the registration's audit row carries the id");
@@ -254,13 +250,9 @@ async fn the_request_id_is_echoed_and_written_into_the_audit_row() {
         })).await;
         let id = made.header("x-request-id").to_str().unwrap().to_string();
         assert!(!id.is_empty());
-        let rows = ctx
-            .db
-            .query_all_raw(Statement::from_sql_and_values(
-                ctx.db.get_database_backend(),
-                "SELECT 1 FROM audit_events WHERE detail->>'request_id' = $1",
-                [id.into()],
-            ))
+        let rows = sqlx::query("SELECT 1 FROM audit_events WHERE detail->>'request_id' = $1")
+.bind(id)
+.fetch_all(&ctx.pool())
             .await
             .unwrap();
         assert_eq!(rows.len(), 1);

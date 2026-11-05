@@ -20,8 +20,8 @@ name = "electronic-patient-record"
 path = "src/bin/main.rs"
 
 [workspace.dependencies]
-# The shared service plumbing. `sea-orm` is transitional, until the store moves to sqlx.
-axa = { version = "0.1.0", features = ["sea-orm"] }
+# The shared service plumbing.
+axa = { version = "0.1.0", features = ["sqlx"] }
 
 [dependencies]
 axa = { workspace = true }
@@ -30,18 +30,17 @@ serde = { version = "1", features = ["derive"] }
 serde_urlencoded = "0.7"
 uuid = { version = "1", features = ["v4"] }
 serde_json = { version = "1", features = ["float_roundtrip", "arbitrary_precision"] }
-chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }
 chrono-tz = "0.10"
 tokio = { version = "1.54", default-features = false, features = ["rt-multi-thread", "sync", "time", "net", "io-util"] }
 async-trait = { version = "0.1" }
 axum = { version = "0.8" }
 tracing = { version = "0.1" }
-sea-orm = { version = "2.0", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-rustls", "macros"] }
+sqlx = { version = "0.9", default-features = false, features = ["postgres", "runtime-tokio", "tls-rustls-ring-webpki", "json", "chrono", "macros", "migrate"] }
 # Keyed integrity MACs for the audit hash chain; SHA-256 for the unkeyed fallback.
 integrity-mac = "0.2.0"
 sha2 = "0.11"
 toml = "1"
-electronic-patient-record-migration = { version = "0.1.0", path = "migration" }
 # The matcher's `Patient` is the API identity DTO, with no adapter layer. Published crate.
 electronic-patient-record-matcher = "0.7.0"
 # Offline PASETO v4.public verification against the authentication service's Ed25519 keys, and

@@ -12,10 +12,11 @@ use crate::consent::{Period, in_period};
 use crate::ids;
 use crate::patients_store::{self, StoreError};
 use crate::policy::Relationship;
+use crate::pool::Db;
 use crate::proxy::{self, Scope, Terms};
-use crate::store::pg;
-use sea_orm::{ConnectionTrait, DatabaseConnection, TransactionTrait};
 use serde::{Deserialize, Serialize};
+use sqlx::postgres::PgRow;
+use sqlx::{AssertSqlSafe, PgPool, Row};
 
 crate::store_errors!("relationships");
 
@@ -201,13 +202,13 @@ const COLUMNS: &str =
 /// # Errors
 ///
 /// [`StoreError::Db`] when a column is missing or the stored body is unreadable.
-fn row_to_stored(row: &sea_orm::QueryResult) -> Result<StoredRelationship, StoreError> {
-    let body: serde_json::Value = row.try_get("", "body").map_err(db_err)?;
+fn row_to_stored(row: &PgRow) -> Result<StoredRelationship, StoreError> {
+    let body: serde_json::Value = row.try_get("body").map_err(db_err)?;
     Ok(StoredRelationship {
-        id: row.try_get("", "id").map_err(db_err)?,
-        patient_id: row.try_get("", "patient_id").map_err(db_err)?,
-        version: row.try_get("", "version").map_err(db_err)?,
-        author: row.try_get("", "author").map_err(db_err)?,
+        id: row.try_get("id").map_err(db_err)?,
+        patient_id: row.try_get("patient_id").map_err(db_err)?,
+        version: row.try_get("version").map_err(db_err)?,
+        author: row.try_get("author").map_err(db_err)?,
         relationship: serde_json::from_value(body).map_err(db_err)?,
     })
 }
@@ -218,32 +219,28 @@ fn row_to_stored(row: &sea_orm::QueryResult) -> Result<StoredRelationship, Store
 ///
 /// [`StoreError::NotFound`] when the patient does not exist.
 pub async fn create(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     patient_id: &str,
     author: &str,
     reason: Option<&str>,
     record: &RelationshipRecord,
 ) -> Result<StoredRelationship, StoreError> {
-    let patient = patients_store::current(db, patient_id).await?;
-    let row = sea_orm::ConnectionTrait::query_one_raw(
-        db,
-        pg(
-            &format!(
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let patient = patients_store::current(&mut *db, patient_id).await?;
+    let row = sqlx::query(AssertSqlSafe(format!(
                 "INSERT INTO relationship_versions
                    (relationship_id, version, patient_id, subject, kind, status, author, reason, body)
                  VALUES (gen_random_uuid(), 1, $1::uuid, $2, $3, $4, $5, $6, $7) RETURNING {COLUMNS}"
-            ),
-            vec![
-                patient.id.into(),
-                record.subject.clone().into(),
-                record.kind.as_str().into(),
-                record.status.as_str().into(),
-                author.into(),
-                reason.map(str::to_string).into(),
-                serde_json::to_value(record).map_err(db_err)?.into(),
-            ],
-        ),
-    )
+            )))
+.bind(patient.id)
+.bind(record.subject.clone())
+.bind(record.kind.as_str())
+.bind(record.status.as_str())
+.bind(author)
+.bind(reason.map(str::to_string))
+.bind(serde_json::to_value(record).map_err(db_err)?)
+.fetch_optional(&mut *db)
     .await
     .map_err(db_err)?
     .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
@@ -255,23 +252,16 @@ pub async fn create(
 /// # Errors
 ///
 /// [`StoreError::Db`] on a database failure.
-pub async fn list(
-    db: &DatabaseConnection,
-    patient_id: &str,
-) -> Result<Vec<StoredRelationship>, StoreError> {
+pub async fn list(db: &PgPool, patient_id: &str) -> Result<Vec<StoredRelationship>, StoreError> {
     let Some(patient_id) = ids::uuid(patient_id) else {
         return Ok(Vec::new());
     };
-    let rows = sea_orm::ConnectionTrait::query_all_raw(
-        db,
-        pg(
-            &format!(
-                "SELECT {COLUMNS} FROM relationship_current
+    let rows = sqlx::query(AssertSqlSafe(format!(
+        "SELECT {COLUMNS} FROM relationship_current
                  WHERE patient_id = $1::uuid ORDER BY recorded_at, relationship_id"
-            ),
-            vec![patient_id.into()],
-        ),
-    )
+    )))
+    .bind(patient_id)
+    .fetch_all(db)
     .await
     .map_err(db_err)?;
     rows.iter().map(row_to_stored).collect()
@@ -283,23 +273,22 @@ pub async fn list(
 ///
 /// [`StoreError::NotFound`] when there is none.
 pub async fn current(
-    db: &impl ConnectionTrait,
+    db: impl Into<Db<'_>>,
     patient_id: &str,
     id: &str,
 ) -> Result<StoredRelationship, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
     let (Some(patient_id), Some(id)) = (ids::uuid(patient_id), ids::uuid(id)) else {
         return Err(StoreError::NotFound);
     };
-    let row = sea_orm::ConnectionTrait::query_one_raw(
-        db,
-        pg(
-            &format!(
-                "SELECT {COLUMNS} FROM relationship_current
+    let row = sqlx::query(AssertSqlSafe(format!(
+        "SELECT {COLUMNS} FROM relationship_current
                  WHERE relationship_id = $1::uuid AND patient_id = $2::uuid"
-            ),
-            vec![id.into(), patient_id.into()],
-        ),
-    )
+    )))
+    .bind(id)
+    .bind(patient_id)
+    .fetch_optional(&mut *db)
     .await
     .map_err(db_err)?
     .ok_or(StoreError::NotFound)?;
@@ -314,7 +303,7 @@ pub async fn current(
 /// [`StoreError::NotFound`], [`StoreError::Conflict`] (stale or racing version), or
 /// [`StoreError::BadQuery`] when the subject or kind differs from the stored one.
 pub async fn update(
-    db: &(impl ConnectionTrait + TransactionTrait),
+    db: impl Into<Db<'_>>,
     patient_id: &str,
     id: &str,
     expected_version: i32,
@@ -322,7 +311,9 @@ pub async fn update(
     reason: Option<&str>,
     record: &RelationshipRecord,
 ) -> Result<StoredRelationship, StoreError> {
-    let now = current(db, patient_id, id).await?;
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let now = current(&mut *db, patient_id, id).await?;
     if now.version != expected_version {
         return Err(StoreError::Conflict {
             current: now.version,
@@ -334,27 +325,23 @@ pub async fn update(
         ));
     }
     // A concurrent writer took this version: the primary key refuses the second (CQ-12).
-    let row = match crate::store::append_version(db, STORE, pg(
-            &format!(
+    let row = match crate::store::append_version(&mut *db, STORE, sqlx::query(AssertSqlSafe(format!(
                 "INSERT INTO relationship_versions
                    (relationship_id, version, patient_id, subject, kind, status, author, reason, body)
                  VALUES ($1::uuid, $2, $3::uuid, $4, $5, $6, $7, $8, $9) RETURNING {COLUMNS}"
-            ),
-            vec![
-                now.id.clone().into(),
-                (expected_version + 1).into(),
-                now.patient_id.clone().into(),
-                record.subject.clone().into(),
-                record.kind.as_str().into(),
-                record.status.as_str().into(),
-                author.into(),
-                reason.map(str::to_string).into(),
-                serde_json::to_value(record).map_err(db_err)?.into(),
-            ],
-        )).await? {
+            )))
+.bind(now.id.clone())
+.bind(expected_version + 1)
+.bind(now.patient_id.clone())
+.bind(record.subject.clone())
+.bind(record.kind.as_str())
+.bind(record.status.as_str())
+.bind(author)
+.bind(reason.map(str::to_string))
+.bind(serde_json::to_value(record).map_err(db_err)?)).await? {
         crate::store::Appended::Row(row) => row,
         crate::store::Appended::Taken => {
-            let current = current(db, patient_id, id).await?.version;
+            let current = current(&mut *db, patient_id, id).await?.version;
             return Err(StoreError::Conflict { current });
         }
     };
@@ -369,7 +356,7 @@ pub async fn update(
 ///
 /// [`StoreError::Db`] on a database failure; the caller must fail the request, not assume none.
 pub async fn lookup(
-    db: &DatabaseConnection,
+    db: &PgPool,
     patient_id: &str,
     subject: &str,
     now: i64,
@@ -378,20 +365,19 @@ pub async fn lookup(
     let Some(patient_id) = ids::uuid(patient_id) else {
         return Ok(resolve(&[], now, scope));
     };
-    let rows = sea_orm::ConnectionTrait::query_all_raw(
-        db,
-        pg(
-            "SELECT body FROM relationship_current
+    let rows = sqlx::query(
+        "SELECT body FROM relationship_current
              WHERE patient_id = $1::uuid AND subject = $2 AND status = 'active'",
-            vec![patient_id.clone().into(), subject.into()],
-        ),
     )
+    .bind(patient_id.clone())
+    .bind(subject)
+    .fetch_all(db)
     .await
     .map_err(db_err)?;
     let records = rows
         .iter()
         .map(|r| {
-            let body: serde_json::Value = r.try_get("", "body").map_err(db_err)?;
+            let body: serde_json::Value = r.try_get("body").map_err(db_err)?;
             serde_json::from_value::<RelationshipRecord>(body).map_err(db_err)
         })
         .collect::<Result<Vec<_>, _>>()?;
@@ -419,25 +405,23 @@ pub async fn lookup(
 ///
 /// [`StoreError::Db`] on a database failure.
 pub async fn own_patients(
-    db: &DatabaseConnection,
+    db: &PgPool,
     subject: &str,
     now: i64,
 ) -> Result<Vec<(String, Kind)>, StoreError> {
-    let rows = sea_orm::ConnectionTrait::query_all_raw(
-        db,
-        pg(
-            "SELECT patient_id::text AS patient_id, body FROM relationship_current
+    let rows = sqlx::query(
+        "SELECT patient_id::text AS patient_id, body FROM relationship_current
              WHERE subject = $1 AND status = 'active' AND kind IN ('self', 'proxy')
              ORDER BY patient_id",
-            vec![subject.into()],
-        ),
     )
+    .bind(subject)
+    .fetch_all(db)
     .await
     .map_err(db_err)?;
     let mut out: Vec<(String, Kind)> = Vec::new();
     for r in &rows {
-        let id: String = r.try_get("", "patient_id").map_err(db_err)?;
-        let body: serde_json::Value = r.try_get("", "body").map_err(db_err)?;
+        let id: String = r.try_get("patient_id").map_err(db_err)?;
+        let body: serde_json::Value = r.try_get("body").map_err(db_err)?;
         let rec: RelationshipRecord = serde_json::from_value(body).map_err(db_err)?;
         if in_period(rec.period.as_ref(), now) != Some(true) {
             continue;

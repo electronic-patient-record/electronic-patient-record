@@ -13,6 +13,7 @@ use crate::api_error::ApiError;
 use crate::audit::{self, Action, Chain, Event, Head, Verdict};
 use crate::auth::Agent;
 use crate::policy::{self, Purpose, Resource, Subject};
+use crate::pool::Pool;
 use axa::prelude::*;
 use axum::{
     Extension,
@@ -20,7 +21,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use sea_orm::DatabaseConnection;
+use sqlx::PgPool;
 
 /// What the chain can and cannot show, by whether it is keyed and whether a checkpoint was given.
 fn assurance(keyed: bool, checkpointed: bool) -> String {
@@ -71,7 +72,7 @@ impl CheckpointQuery {
 ///
 /// When the rows cannot be read or the audit row cannot be written.
 pub async fn verify_audited(
-    db: &DatabaseConnection,
+    db: &PgPool,
     chain: &Chain,
     agent: &Agent,
     checkpoint: Option<&Head>,
@@ -161,7 +162,7 @@ pub async fn verify_audited(
 /// Search the audit trail and audit the search. Shared by the JSON and FHIR endpoints, which only
 /// differ in how the rows are shown.
 pub(super) async fn search_audited(
-    db: &DatabaseConnection,
+    db: &PgPool,
     agent: &Agent,
     query: &audit::AuditQuery,
 ) -> Result<(Vec<audit::AuditRow>, Option<i64>), Result<String, audit::AuditError>> {
@@ -207,7 +208,7 @@ async fn search(
         }
     };
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::AuditLog,
@@ -219,7 +220,7 @@ async fn search(
     {
         return r.into_response();
     }
-    match search_audited(&ctx.db, &agent, &query).await {
+    match search_audited(&ctx.pool(), &agent, &query).await {
         Ok((rows, next)) => {
             axum::Json(serde_json::json!({ "events": rows, "next": next })).into_response()
         }
@@ -309,7 +310,7 @@ async fn export(
     Query(pairs): Query<Vec<(String, String)>>,
 ) -> Response {
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::AuditLog,
@@ -335,7 +336,7 @@ async fn export(
         return ApiError::new(StatusCode::BAD_REQUEST, "format must be csv or ndjson")
             .into_response();
     }
-    let mut rows = match audit::export(&ctx.db, &criteria).await {
+    let mut rows = match audit::export(&ctx.pool(), &criteria).await {
         Ok(r) => r,
         Err(audit::SearchError::BadQuery(m)) => {
             return ApiError::new(StatusCode::BAD_REQUEST, m.to_string()).into_response();
@@ -372,7 +373,7 @@ async fn export(
     event.detail = Some(serde_json::json!({
         "export": criteria.used(), "format": format, "rows": rows.len(), "truncated": more,
     }));
-    if let Err(e) = audit::append(&ctx.db, audit::chain(), &event).await {
+    if let Err(e) = audit::append(&ctx.pool(), audit::chain(), &event).await {
         tracing::error!(error = %e, "audit export could not be audited");
         return ApiError::internal().into_response();
     }
@@ -422,7 +423,7 @@ async fn verify(
     };
     // Verifying the audit trail is, by its nature, for the purpose `audit`.
     if let Err(r) = authorize(
-        &ctx.db,
+        &ctx.pool(),
         &agent,
         &subject,
         Resource::AuditLog,
@@ -434,7 +435,7 @@ async fn verify(
     {
         return r.into_response();
     }
-    match verify_audited(&ctx.db, audit::chain(), &agent, checkpoint.as_ref()).await {
+    match verify_audited(&ctx.pool(), audit::chain(), &agent, checkpoint.as_ref()).await {
         Ok((status, body)) => (status, axum::Json(body)).into_response(),
         Err(e) => {
             tracing::error!(error = %e, "audit verification failed");
