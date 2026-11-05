@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - Say that audit events are modelled on BALP, not conforming (PX-4, in part)
+
+- **Clinical risk:** none in behaviour: words only.
+- **Built:** the spec and two code comments corrected, and a table of the gaps. The spec said "IHE BALP shape", which overstated it. No event ever claimed the profile in its data.
+- **Not done / not verified:** conformance itself. The gaps are from the constraints the patient administration system lists, not from the profiles or the validator with the BALP package, so the table may be incomplete.
+
 ## 2026-11-05 - Patients see and correct their own needs (PX-1; H-048)
 
 - **Clinical risk:** **yes.** A patient can now add, check and end a need on "my record", at once, with no approval by staff. A patient could end a need staff believe still applies; the history shows both. H-048 records this. H-001's text is corrected: the service now uses the date of death.

@@ -1,4 +1,5 @@
-//! FHIR R4 `AuditEvent` for an audit row (task AU-2), shaped after IHE BALP.
+//! FHIR R4 `AuditEvent` for an audit row (task AU-2), modelled on IHE BALP. It does not conform and claims
+//! no BALP profile: see `spec/audit/index.md`.
 //!
 //! One row becomes one `AuditEvent`: `type` is the REST operation; `action`, `recorded` and
 //! `outcome` are the row's; the agent is the token `sub` as an identifier (not a name); the patient,
