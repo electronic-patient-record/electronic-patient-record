@@ -33,6 +33,10 @@ const SHAPES: &[&str] = &[
     "deathdatereminder",
 ];
 
+/// A helpline or a service's name in core code, spaces removed and in lower case. A directory is a pack
+/// with an owner and a review date (SG-4): a number in code goes out of date with nobody looking.
+const DIRECTORY_SHAPES: &[&str] = &["116123", "0808", "0800", "samaritans", "cruse"];
+
 /// Files that may call `outbox::enqueue`. A new one is a new reason to contact someone: list it here
 /// only after looking at what starts it.
 const ENQUEUERS: &[&str] = &[];
@@ -64,6 +68,18 @@ fn fold(text: &str) -> String {
 fn refused_shape(line: &str) -> Option<&'static str> {
     let folded = fold(line);
     SHAPES.iter().copied().find(|s| folded.contains(s))
+}
+
+fn directory_shape(line: &str) -> Option<&'static str> {
+    let folded: String = line
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect::<String>()
+        .to_lowercase();
+    DIRECTORY_SHAPES
+        .iter()
+        .copied()
+        .find(|s| folded.contains(s))
 }
 
 fn date_word(text: &str) -> Option<&'static str> {
@@ -135,6 +151,30 @@ fn nothing_in_the_core_is_shaped_like_something_we_refuse_to_build() {
     assert!(
         found.is_empty(),
         "refused in spec/survivor-grief/index.md (SG-2):\n{}",
+        found.join("\n")
+    );
+}
+
+#[test]
+fn no_support_service_or_helpline_is_written_into_core_code() {
+    let root = service().parent().unwrap().to_path_buf();
+    let mut files = Vec::new();
+    sources(&service().join("src"), &mut files);
+    sources(
+        &root.join("electronic-patient-record-ui-with-svelte/src"),
+        &mut files,
+    );
+    let mut found = Vec::new();
+    for (path, text) in &files {
+        for (n, line) in text.lines().enumerate() {
+            if let Some(shape) = directory_shape(line) {
+                found.push(format!("{}:{}: {shape}", path.display(), n + 1));
+            }
+        }
+    }
+    assert!(
+        found.is_empty(),
+        "a directory is a pack with an owner and a review date (SG-4):\n{}",
         found.join("\n")
     );
 }
@@ -226,6 +266,9 @@ fn the_census_finds_what_is_planted_and_leaves_ordinary_words_alone() {
     ] {
         assert_eq!(refused_shape(fine), None, "wrongly flagged {fine}");
     }
+    assert!(directory_shape("call 116 123 at any time").is_some());
+    assert!(directory_shape("\"Cruse\": \"self-referral\"").is_some());
+    assert_eq!(directory_shape("const LIMIT: u32 = 800;"), None);
     assert_eq!(date_word("let at = patient.birth_date;"), Some("birthdate"));
     assert_eq!(date_word("let at = referral.due_date;"), Some("duedate"));
     assert_eq!(date_word("outbox::enqueue(db, new)"), None);

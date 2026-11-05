@@ -269,6 +269,37 @@ A rule of this project (SG-2), decided before anyone asked for these. The reason
 
 `electronic-patient-record-service-with-rust/tests/grief_census.rs` holds this. It fails on a name shaped like one of these in the service, migrations, matcher or UI; on a route about a family, a household or grief; on any new caller of `outbox::enqueue` until someone has looked at what starts it, and at once if that file works from one of those dates; if the outbox hold or the proxy stop reads the date; and if a death and a referral meet in code. It reads source text, so it finds names and calls, not intent. Something built under another name passes.
 
+## Design: a directory pack (SG-4)
+
+A first draft. Nothing is built. **A directory is content, so it is a [pack](../../packs/README.md): data with an owner, never code.** This project publishes no directory and no phone number, here or in code: a wrong number in a moment of grief is a harm, and we could not keep one right. A deployment brings its own.
+
+One entry:
+
+| Field | Holds | If absent |
+|---|---|---|
+| `name` | The service | Refused |
+| `owner` | The named person or team at the deployment who keeps this entry | Refused |
+| `area` | Where it serves, as the service itself says | Refused: funding often limits a service to its own area |
+| `offers` | What it does, in its own words, and who for | Refused |
+| `languages` | Languages, including BSL | Shown as "not stated", never assumed to be English only |
+| `access` | `self-referral`, `referral` or `both` | Refused |
+| `contact` | How to reach it, with what hours and how soon it answers | Refused |
+| `not_for` | What it is not, such as crisis care | Shown as "not stated" |
+| `last_checked` | The date someone confirmed this with the service | Refused |
+| `check_within_days` | How long until it counts as stale | Refused: the pack chooses, with no default from us |
+
+Rules:
+
+1. **A stale entry shows as stale.** Past its date it stays on the screen with the words "last checked on {date}; this may be out of date". It is not hidden, because a stale service may still be the only one, and it is not shown as current.
+2. **`access` decides the step.** A `self-referral` service can only be [signposted to](../pathway-design.md#three-step-types-for-a-contact-outside-the-record-sg-1). The referred step does not offer it.
+3. **Nothing is ranked or recommended.** Entries are listed by area and in a fixed order, and no entry is chosen for a person by their record.
+4. **A directory is not crisis cover.** Every list carries the deployment's own crisis route, which the pack must supply, and a pack without one does not load.
+5. **A pack with a past `last_checked` still loads**, unlike a pack that fails its checks: the fault is that it is old, and rule 1 says so.
+
+`tests/grief_census.rs` fails on a helpline number or a named service in the service or UI code. It knows only the shapes it lists.
+
+Open: who at a deployment owns this; whether "last checked" can be trusted when nobody is paid to check it; a service that closes (a removed entry leaves old signposting steps naming it, and those must stay as written); and how a person reports a wrong entry.
+
 ## Design: a consent for contact (SG-3)
 
 A first draft of the record the section on [consent for proactive contact](#consent-for-proactive-contact-after-a-death) asks for. Nothing is built, and no bereaved person, counsellor or lawyer has reviewed it.

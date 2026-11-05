@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - A design for a directory pack (SG-4)
+
+- **Clinical risk:** none today: a design and a test, with no change in behaviour.
+- **Built:** the design in `spec/survivor-grief/index.md`; a seventh test in `tests/grief_census.rs` that fails on a helpline number or a service's name in the service or UI code.
+- **Not done / not verified:** the pack loader knows nothing of this, and no pack holds a directory. The test knows only five shapes, so another service's number passes. No bereavement service, deployer or bereaved person has reviewed the design, and whether anyone would keep `last_checked` true is unknown. This project publishes no directory.
+
 ## 2026-11-05 - A design for consent to contact (SG-3)
 
 - **Clinical risk:** none today: a design in `spec/survivor-grief/index.md`, with no code.
