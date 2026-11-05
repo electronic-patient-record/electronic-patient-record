@@ -13,6 +13,7 @@
 //! Not here: a network listener (MLLP, OR-3), storing the patient, matching it to an existing one,
 //! or any segment other than `MSH`, `EVN` and `PID`.
 
+use crate::death::Occurred;
 use crate::patients_store;
 use electronic_patient_record_matcher::{
     Address, AdministrativeSex, HumanName, Identifier, NHS_NUMBER_SYSTEM, Patient, Telecom,
@@ -30,6 +31,8 @@ pub struct Inbound {
     pub control_id: String,
     /// The identity record.
     pub patient: Patient,
+    /// The message reports a death (PID-29, PID-30), and when. This is a report, never a fact.
+    pub death: Option<Occurred>,
     /// Things worth knowing that did not stop the message: dictionary findings, identifiers that
     /// were skipped.
     pub warnings: Vec<String>,
@@ -75,14 +78,34 @@ fn birth_date(ts: &str) -> Option<String> {
     }
 }
 
-/// Why a message that reports a death is refused. Date-free: it reaches the audit log.
-pub const DEATH_NOT_APPLIED: &str = "this message reports a death, which this service cannot record yet: nothing was applied, and a person must act on it";
+/// Why a message that reports a death could not be recorded. Date-free: it reaches the audit log.
+pub const DEATH_NOT_APPLIED: &str = "this message reports a death, which was not recorded: nothing was applied, and a person must act on it";
+
+/// Why a report from a feed has no date, when the date it gave could not be used.
+pub const UNREADABLE_DEATH_DATE: &str = "the message gave a date that could not be read";
 
 /// Whether PID-29 (date of death) or PID-30 (death indicator) reports a death. Any date counts, even
 /// beside an indicator of `N`, as any report does (OQ-BV1). `""` is HL7's explicit null, not a report.
 fn reports_a_death(date: &str, indicator: &str) -> bool {
     let given = |s: &str| !s.trim().is_empty() && s.trim() != "\"\"";
     given(date) || indicator.trim().eq_ignore_ascii_case("Y")
+}
+
+/// When the death happened, as far as PID-29 says. A date that cannot be read is not a reason to lose
+/// the report, so it becomes a date not known. A date that cannot be stored is left to the caller.
+fn death_occurred(date: &str) -> Occurred {
+    let date = date.trim();
+    if date.is_empty() || date == "\"\"" {
+        return Occurred::NotKnown {
+            reason: "the message gave no date".into(),
+        };
+    }
+    match birth_date(date) {
+        Some(at) => Occurred::Known { at },
+        None => Occurred::NotKnown {
+            reason: UNREADABLE_DEATH_DATE.into(),
+        },
+    }
 }
 
 /// Every repetition of a field, as long as at least one of `probe` components is present.
@@ -120,10 +143,15 @@ pub fn patient_from_adt(text: &str) -> Result<Inbound, Rejection> {
     let msg_type = get(&message, "MSH-9.1");
     let event = get(&message, "MSH-9.2");
     if msg_type != "ADT" || !HANDLED_EVENTS.contains(&event.as_str()) {
-        return Err(Rejection::Unsupported(format!(
+        let mut why = format!(
             "message type {msg_type}^{event} is not handled (ADT^{})",
             HANDLED_EVENTS.join(", ")
-        )));
+        );
+        // An A03 discharge for a death lands here: the death is not left unsaid (H-046).
+        if reports_a_death(&get(&message, "PID-29"), &get(&message, "PID-30")) {
+            why = format!("{why}; {DEATH_NOT_APPLIED}");
+        }
+        return Err(Rejection::Unsupported(why));
     }
     let mut warnings = Vec::new();
     // The dictionary check is advice here: parse again through the HL7 layer and keep its findings.
@@ -219,16 +247,19 @@ pub fn patient_from_adt(text: &str) -> Result<Inbound, Rejection> {
         ));
     }
     let mut problems = patients_store::validate(&patient);
-    if reports_a_death(&get(&message, "PID-29"), &get(&message, "PID-30")) {
-        problems.push(DEATH_NOT_APPLIED.to_string());
-    }
+    let death = reports_a_death(&get(&message, "PID-29"), &get(&message, "PID-30"))
+        .then(|| death_occurred(&get(&message, "PID-29")));
     if !problems.is_empty() {
+        if death.is_some() {
+            problems.push(DEATH_NOT_APPLIED.to_string());
+        }
         return Err(Rejection::Invalid(problems));
     }
     Ok(Inbound {
         event,
         control_id: get(&message, "MSH-10"),
         patient,
+        death,
         warnings,
     })
 }
@@ -438,32 +469,49 @@ mod tests {
     }
 
     #[test]
-    fn a_death_in_pid_29_or_30_is_refused_and_says_why() {
+    fn a_death_in_pid_29_or_30_is_read_as_a_report() {
         let message = |tail: &str| {
             format!(
                 "MSH|^~\\&|REG|CLINIC|EPR|HOSP|20261021090000||ADT^A08^ADT_A01|C1|P|2.5\rEVN|A08|20261021090000\rPID|1||M1^^^LOCAL||Smith^Ann||19800314|F{tail}\r"
             )
         };
         let pipes = "|".repeat(21);
-        for tail in [
-            format!("{pipes}20261104"),
-            format!("{pipes}20261104|Y"),
-            format!("{pipes}20261104|N"),
-            format!("{pipes}|Y"),
+        let on = |at: &str| Occurred::Known { at: at.into() };
+        let none = |reason: &str| Occurred::NotKnown {
+            reason: reason.into(),
+        };
+        for (tail, death) in [
+            (format!("{pipes}20261104"), on("2026-11-04")),
+            (format!("{pipes}20261104|Y"), on("2026-11-04")),
+            (format!("{pipes}20261104|N"), on("2026-11-04")),
+            (format!("{pipes}202611"), on("2026-11")),
+            (format!("{pipes}202611040930"), on("2026-11-04")),
+            (format!("{pipes}|Y"), none("the message gave no date")),
+            (format!("{pipes}soon|Y"), none(UNREADABLE_DEATH_DATE)),
         ] {
-            match patient_from_adt(&message(&tail)) {
-                Err(Rejection::Invalid(why)) => {
-                    assert!(why.contains(&DEATH_NOT_APPLIED.to_string()))
-                }
-                other => panic!("{tail}: {other:?}"),
-            }
+            assert_eq!(
+                patient_from_adt(&message(&tail)).unwrap().death,
+                Some(death)
+            );
         }
         for tail in [
             String::new(),
             format!("{pipes}|N"),
             format!("{pipes}\"\"|\"\""),
         ] {
-            assert!(patient_from_adt(&message(&tail)).is_ok(), "{tail}");
+            assert_eq!(patient_from_adt(&message(&tail)).unwrap().death, None);
+        }
+        // A message that cannot be applied still says that it reported a death.
+        let nameless = message(&format!("{pipes}20261104")).replace("Smith^Ann", "");
+        match patient_from_adt(&nameless) {
+            Err(Rejection::Invalid(why)) => assert!(why.contains(&DEATH_NOT_APPLIED.to_string())),
+            other => panic!("{other:?}"),
+        }
+        // An event that is not handled, such as a discharge, says so too.
+        let discharge = message(&format!("{pipes}20261104")).replace("ADT^A08", "ADT^A03");
+        match patient_from_adt(&discharge) {
+            Err(Rejection::Unsupported(why)) => assert!(why.contains(DEATH_NOT_APPLIED)),
+            other => panic!("{other:?}"),
         }
     }
 }

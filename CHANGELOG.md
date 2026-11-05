@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - A death from the feed is stored as a report (BV-2, in part; H-046 stays open)
+
+- **Clinical risk:** **yes.** A feed can now put a report of death in the banner of a patient who is alive, until a clinician withdraws it. That is the rule decided as OQ-BV1. The other way round, a real death on a message is no longer left in a queue. A message with a death is answered `AA` again, and its other details are applied again. H-046 stays `open`.
+- **Built:** `adt_feed.rs` stores the report with the message, in one transaction, with its own audit row. Repeats add nothing. A date that cannot be stored becomes no date. A repeat of a withdrawn report waits in the queue. A death about nobody on record waits in the queue. A refusal says the death was not recorded, an `A03` included.
+- **My decisions, for review:** that a repeat of a withdrawn report is refused, which means the rest of the message is not applied either and a source that keeps sending it fills the queue; that a report's other demographics are still applied; and that a feed cannot retract, so a later `N` changes nothing.
+- **Not done / not verified:** tried only with test messages, never a real source. Nothing tells a person that a report has arrived. An `A03` still records nothing. Two connections sending the same report at once could store it twice, which holds contact the same and shows two rows; not tested. Every database test ran on local Postgres 18, as the Podman VM would not start: 161 passed. The 4 FHIR validator tests need Java and are left to CI.
+
 ## 2026-11-05 - A report of death in the banner (BV-1, in part; H-046 stays open)
 
 - **Clinical risk:** **yes.** The banner now tells staff that a patient has been reported as having died, or that a death is confirmed, and that contact is held. Staff can report, step and withdraw from the patient page. Nothing in the service holds contact yet, because it sends nothing: the words "contact is held" are the rule, for the staff member to follow. H-046 stays `open`.

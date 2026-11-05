@@ -7,6 +7,8 @@
 //!   cargo test --test mllp_feed -- --ignored --test-threads=1
 //! ```
 
+use electronic_patient_record::death::{Actor, Answer, Occurred, Status, Step};
+use electronic_patient_record::death_store;
 use electronic_patient_record::mllp::{self, CR, Config, FS, VT};
 use electronic_patient_record::patients_store::{self, Search};
 use electronic_patient_record_migration::{Migrator, MigratorTrait};
@@ -14,6 +16,9 @@ use sea_orm::{ConnectionTrait, Database, DatabaseConnection};
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
+
+/// The agent every listener here runs as.
+const FEED_AGENT: &str = "mllp:test-feed";
 
 async fn db() -> DatabaseConnection {
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
@@ -258,14 +263,107 @@ async fn conflicts_duplicates_unsupported_and_invalid_messages_are_refused_and_c
     assert!(ack.contains("may be the same person"), "{ack}");
     assert!(by_mrn(&db, &other).await.is_empty());
 
-    // A death is not answered as if all was well, and the record does not change (BV-2, H-046).
+    // A death is stored as a report, holds contact and leaves the identity record alone (BV-2, H-046).
     let death = format!("{}20261104", "|".repeat(21));
+    let patient_id = by_mrn(&db, &mrn).await[0].id.clone();
     let ack = send(&mut s, &adt("A08", "C7", &mrn, &family, &d, &death))
         .await
         .unwrap();
+    assert_eq!(code(&ack), "AA", "{ack}");
+    assert_eq!(by_mrn(&db, &mrn).await[0].version, 1);
+    let told = death_store::answer(&db, &patient_id).await.unwrap();
+    assert!(told.holds_contact());
+    assert!(matches!(
+        told,
+        Answer::Asserted {
+            confirmed: false,
+            ..
+        }
+    ));
+    let reports = death_store::list(&db, &patient_id).await.unwrap();
+    assert_eq!(reports.len(), 1);
+    assert_eq!(
+        reports[0].assertion.reported_by,
+        Actor::Feed(FEED_AGENT.into())
+    );
+    assert_eq!(reports[0].author, FEED_AGENT);
+
+    // A source repeats PID-29 on every later message: that adds nothing.
+    let ack = send(&mut s, &adt("A08", "C8", &mrn, &family, &d, &death))
+        .await
+        .unwrap();
+    assert_eq!(code(&ack), "AA", "{ack}");
+    assert_eq!(death_store::list(&db, &patient_id).await.unwrap().len(), 1);
+
+    // A date that cannot be stored still reports a death, with no date.
+    let future = format!("{}29991231", "|".repeat(21));
+    let ack = send(&mut s, &adt("A08", "C9", &mrn, &family, &d, &future))
+        .await
+        .unwrap();
+    assert_eq!(code(&ack), "AA", "{ack}");
+    let reports = death_store::list(&db, &patient_id).await.unwrap();
+    assert_eq!(reports.len(), 2);
+    assert!(matches!(
+        reports[0].assertion.occurred,
+        Occurred::NotKnown { .. }
+    ));
+
+    // Once a person withdraws a report, the same report waits for a person rather than coming back.
+    let by = Actor::Person("clinician-1".into());
+    for r in &reports {
+        let step = Step {
+            to: Status::WithdrawnInError,
+            by: by.clone(),
+            reason: "the wrong record".into(),
+        };
+        death_store::advance(&db, &patient_id, &r.id, r.version, &step)
+            .await
+            .unwrap();
+    }
+    assert!(
+        !death_store::answer(&db, &patient_id)
+            .await
+            .unwrap()
+            .holds_contact()
+    );
+    let ack = send(&mut s, &adt("A08", "C10", &mrn, &family, &d, &death))
+        .await
+        .unwrap();
+    assert_eq!(code(&ack), "AE");
+    assert!(ack.contains("withdrew as an error"), "{ack}");
+    assert!(ack.contains("reports a death"), "{ack}");
+    assert!(
+        !death_store::answer(&db, &patient_id)
+            .await
+            .unwrap()
+            .holds_contact()
+    );
+
+    // A later, different date from the same feed is a new report.
+    let other_date = format!("{}20261105", "|".repeat(21));
+    let ack = send(&mut s, &adt("A08", "C11", &mrn, &family, &d, &other_date))
+        .await
+        .unwrap();
+    assert_eq!(code(&ack), "AA", "{ack}");
+    assert!(
+        death_store::answer(&db, &patient_id)
+            .await
+            .unwrap()
+            .holds_contact()
+    );
+
+    // A death for nobody on record waits for a person: it does not register them.
+    let unknown = tag("mrn");
+    let unknown_family = tag("Nobody");
+    let ack = send(
+        &mut s,
+        &adt("A28", "C12", &unknown, &unknown_family, &dob(), &death),
+    )
+    .await
+    .unwrap();
     assert_eq!(code(&ack), "AE");
     assert!(ack.contains("reports a death"), "{ack}");
-    assert_eq!(by_mrn(&db, &mrn).await[0].version, 1);
+    assert!(by_mrn(&db, &unknown).await.is_empty());
 
     // A message type this adapter does not handle is rejected, and one with no usable patient is an error.
     let oru =

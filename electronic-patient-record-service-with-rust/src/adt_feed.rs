@@ -14,6 +14,12 @@
 //!   made by a machine at 3 a.m. is worse than a message that waits.
 //! - An update never blanks a field the message does not carry, and it never changes a birth date or
 //!   an NHS number: those corrections are made by a person, in the UI, with a reason.
+//! - A death on a message (BV-2) is a report: it is stored as an assertion from this feed, it holds
+//!   contact at once, and the message is answered `AA`. It never touches the identity record, and only
+//!   a person can confirm or withdraw it. A repeat of what the feed already said adds nothing, because
+//!   a source that sets PID-29 sends it on every later message. A repeat of a report a person withdrew
+//!   as an error is refused, so that neither the error nor a real death passes unseen. A message about
+//!   nobody on record is refused rather than creating a patient in order to report them dead.
 //! - The change and its audit row are one transaction; the audit row holds the event, the control id
 //!   and what happened, never the message.
 //!
@@ -22,6 +28,8 @@
 
 use crate::audit::{self, Action, Event};
 use crate::controllers::patients::likely_duplicates;
+use crate::death::{self, Actor, Assertion, Occurred, Source, Status};
+use crate::death_store;
 use crate::feed_queue;
 use crate::interop::hl7_adt::{self, Inbound, Rejection};
 use crate::patients_store::{self as store, StoreError};
@@ -158,11 +166,11 @@ fn feed_subject() -> Subject {
     }
 }
 
-/// Whether the policy engine lets the feed's role do `action` to identity data.
-fn permitted(action: policy::Action) -> bool {
+/// Whether the policy engine lets the feed's role do `action` to `resource`.
+fn permitted(resource: Resource, action: policy::Action) -> bool {
     policy::evaluate(&policy::Request {
         subject: feed_subject(),
-        resource: Resource::PatientIdentity,
+        resource,
         action,
         labels: std::collections::BTreeSet::new(),
         relationship: Relationship::None,
@@ -228,12 +236,88 @@ enum Plan {
     Create,
 }
 
-/// Apply a read message: create, update or leave alone. The change and its audit row commit together.
+/// Both give a date, the same one, or neither does.
+fn same_date(a: &Occurred, b: &Occurred) -> bool {
+    match (a, b) {
+        (Occurred::Known { at: x }, Occurred::Known { at: y }) => x == y,
+        (Occurred::NotKnown { .. }, Occurred::NotKnown { .. }) => true,
+        _ => false,
+    }
+}
+
+/// The report a message's death should store: `None` when this feed has already said the same thing
+/// and it stands. A date that cannot be stored becomes a date not known, because the report still holds
+/// contact.
+///
+/// # Errors
+///
+/// A [`Refusal`] when a person withdrew this same report as an error, or the store failed.
+async fn death_report(
+    db: &DatabaseConnection,
+    patient_id: &str,
+    occurred: &Occurred,
+    reason: &str,
+    who: &FeedIdentity,
+) -> Result<Option<Assertion>, Refusal> {
+    if !permitted(Resource::DeathAssertion, policy::Action::Create) {
+        return Err(Refusal::Conflict(vec![
+            "the feed's role may not do this".into(),
+        ]));
+    }
+    let feed = Actor::Feed(who.agent.clone());
+    let now = chrono::Utc::now();
+    let report = |occurred: Occurred| {
+        death::report(Source::OtherSystem, feed.clone(), occurred, reason, now)
+    };
+    let assertion = report(occurred.clone())
+        .or_else(|_| {
+            report(Occurred::NotKnown {
+                reason: hl7_adt::UNREADABLE_DEATH_DATE.into(),
+            })
+        })
+        .map_err(|_| Refusal::Temporary("temporary failure, please retry".into()))?;
+    let earlier: Vec<_> = death_store::list(db, patient_id)
+        .await
+        .map_err(|e| temporary(&e))?
+        .into_iter()
+        .map(|s| s.assertion)
+        .filter(|a| a.reported_by == feed && same_date(&a.occurred, &assertion.occurred))
+        .collect();
+    if earlier.iter().any(|a| a.status != Status::WithdrawnInError) {
+        return Ok(None);
+    }
+    if earlier.is_empty() {
+        Ok(Some(assertion))
+    } else {
+        Err(Refusal::Conflict(vec![
+            "this message repeats a report of death that a person withdrew as an error: a person must look at it".into(),
+        ]))
+    }
+}
+
+/// Apply a read message and record any death it reports. A message that cannot be applied says that
+/// its death was not recorded, so that a person reading the queue knows.
 ///
 /// # Errors
 ///
 /// A [`Refusal`]; nothing was written (a refusal is audited separately by the caller).
 pub async fn apply(
+    db: &DatabaseConnection,
+    inbound: &Inbound,
+    who: &FeedIdentity,
+) -> Result<Applied, Refusal> {
+    let mut result = apply_message(db, inbound, who).await;
+    if inbound.death.is_some()
+        && let Err(Refusal::Conflict(reasons)) = &mut result
+    {
+        reasons.push(hl7_adt::DEATH_NOT_APPLIED.to_string());
+    }
+    result
+}
+
+/// Apply a read message: create, update or leave alone, and store a report of death if it holds a
+/// new one. Everything and its audit rows commit together.
+async fn apply_message(
     db: &DatabaseConnection,
     inbound: &Inbound,
     who: &FeedIdentity,
@@ -244,7 +328,7 @@ pub async fn apply(
     } else {
         policy::Action::Create
     };
-    if !permitted(action) {
+    if !permitted(Resource::PatientIdentity, action) {
         return Err(Refusal::Conflict(vec![
             "the feed's role may not do this".into(),
         ]));
@@ -274,6 +358,18 @@ pub async fn apply(
         None => Plan::Create,
     };
     let reason = format!("HL7 ADT {} {}", inbound.event, inbound.control_id);
+    // A death is a report about somebody on record: a message about nobody waits for a person.
+    let death = match (&inbound.death, &plan) {
+        (None, _) => None,
+        (Some(_), Plan::Create) => {
+            return Err(Refusal::Conflict(vec![
+                "no patient on record matches this message".into(),
+            ]));
+        }
+        (Some(occurred), Plan::Nothing { id } | Plan::Update { id, .. }) => {
+            death_report(db, id, occurred, &reason, who).await?
+        }
+    };
     let tx = db
         .begin()
         .await
@@ -327,6 +423,25 @@ pub async fn apply(
             id.clone()
         }
     };
+    if let Some(assertion) = &death {
+        let stored = death_store::report(&tx, &id, assertion)
+            .await
+            .map_err(|e| temporary(&e))?;
+        let mut row = Event::new(Action::Create, who.agent.clone());
+        row.patient_ref = Some(format!("Patient/{id}"));
+        row.resource_ref = Some("DeathAssertion".into());
+        row.purpose_of_use = Some(Purpose::Operations.code().into());
+        row.network_address.clone_from(&who.peer);
+        row.detail = Some(serde_json::json!({
+            "assertion": stored.id,
+            "version": stored.version,
+            "status": stored.assertion.status.word(),
+            "control_id": inbound.control_id,
+        }));
+        audit::append(&tx, audit::chain(), &row)
+            .await
+            .map_err(|e| temporary(&StoreError::Db(e.to_string())))?;
+    }
     let mut event = Event::new(audit_action, who.agent.clone());
     event.patient_ref = Some(format!("Patient/{id}"));
     event.resource_ref = Some("Patient/hl7".into());
@@ -632,10 +747,21 @@ mod tests {
 
     #[test]
     fn the_feeds_role_may_create_and_update_identity_but_nothing_else_is_asked_of_it() {
-        assert!(permitted(policy::Action::Create));
-        assert!(permitted(policy::Action::Update));
-        assert!(!permitted(policy::Action::Read));
-        assert!(!permitted(policy::Action::Export));
+        let identity = Resource::PatientIdentity;
+        assert!(permitted(identity, policy::Action::Create));
+        assert!(permitted(identity, policy::Action::Update));
+        assert!(!permitted(identity, policy::Action::Read));
+        assert!(!permitted(identity, policy::Action::Export));
+        // A feed can report a death and do nothing else with one.
+        let death = Resource::DeathAssertion;
+        assert!(permitted(death, policy::Action::Create));
+        for action in [
+            policy::Action::Read,
+            policy::Action::Search,
+            policy::Action::Update,
+        ] {
+            assert!(!permitted(death, action));
+        }
     }
 
     #[test]

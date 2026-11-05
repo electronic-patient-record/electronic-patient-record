@@ -2,7 +2,7 @@
 
 The rules for recording that a person has died (BV-1). A first draft for clinical and legal review: no clinician, medical examiner or bereaved person has reviewed it. The reasons and sources are on [bereavement](index.md).
 
-**Built:** the rules and the read model in `electronic-patient-record-service-with-rust/src/death.rs`, and the append-only store in `death_store.rs` (table `death_assertion_versions`, view `death_assertion_current`, migration 25). The routes are in `controllers/deaths.rs`. The banner on the patient and summary pages says so, and `DeathSection.svelte` reports and takes steps. **Not built:** a feed that writes a report, or anything that a hold acts on. Until a feed can record a death, a report that arrives is refused rather than dropped: an HL7 message with PID-29 or PID-30 is answered `AE`, changes nothing and waits in the feed queue for a person, and a FHIR write with `deceased[x]` gets a 422. The service has no outbound contact yet, so nothing is held today.
+**Built:** the rules and the read model in `electronic-patient-record-service-with-rust/src/death.rs`, and the append-only store in `death_store.rs` (table `death_assertion_versions`, view `death_assertion_current`, migration 25). The routes are in `controllers/deaths.rs`. The banner on the patient and summary pages says so, and `DeathSection.svelte` reports and takes steps. An HL7 message with PID-29 or PID-30 stores a report, as below. **Not built:** FHIR `deceased[x]`, or anything that a hold acts on. A FHIR write with `deceased[x]` gets a 422. The service has no outbound contact yet, so nothing is held today.
 
 ## The model
 
@@ -49,6 +49,22 @@ The decision names verifying and withdrawing. `certified` and `registered` are r
 | `PUT /api/patients/{id}/death/assertions/{assertion_id}` | One step: `{expected_version, to, reason}` |
 
 A stale `expected_version` is a 409 and a refused step a 422. Every read and write is audited; the audit row holds ids, versions and statuses, never a reason or a date.
+
+## Reports from a feed
+
+An HL7 ADT message with PID-29, or PID-30 of `Y`, stores a report from that feed and is answered `AA`. It never changes the identity record. HL7's `""` null is not a report, and a date beside an indicator of `N` is, under rule 1.
+
+| Case | What happens |
+|---|---|
+| A patient matches and this is new | A report is stored, with the rest of the message, in one transaction |
+| The date cannot be read, or is in the future | A report with no date, saying why, because a report still holds contact |
+| This feed already said this, and it stands | Nothing new: a source sends PID-29 on every later message |
+| A person withdrew this same report as an error | `AE`, and it waits in the feed queue. It does not come back by itself, and it is not dropped either |
+| The same feed gives a different date | A new report |
+| No patient matches | `AE`, and it waits in the queue: a death does not register a patient |
+| The message cannot be applied for another reason, or its event is not handled, such as `A03` | Refused as before, and the refusal says the death was not recorded |
+
+A feed cannot retract a report: a later message with an indicator of `N` changes nothing. A report waits for a person to verify it; nothing tells anyone that one has arrived, except the banner when the record is opened.
 
 ## The one answer
 
