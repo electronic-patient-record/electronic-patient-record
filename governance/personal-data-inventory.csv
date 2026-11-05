@@ -87,6 +87,20 @@ consent_versions,author,staff-identifier,Who wrote the version,record
 consent_versions,reason,free-text,Why the version was written as typed,record
 consent_versions,status,none,State of the record,record
 consent_versions,body,preference,The consent decision,record
+death_assertion_current,assertion_id,none,Random record id,record
+death_assertion_current,version,none,Version counter,record
+death_assertion_current,patient_id,identifier,Links a record to the patient,record
+death_assertion_current,recorded_at,none,When the version was written,record
+death_assertion_current,author,staff-identifier,Who or what wrote the version,record
+death_assertion_current,status,health,Whether a death is reported or confirmed,record
+death_assertion_current,body,health,The report of a death ; its source and date and reason,record
+death_assertion_versions,assertion_id,none,Random record id,record
+death_assertion_versions,version,none,Version counter,record
+death_assertion_versions,patient_id,identifier,Links a record to the patient,record
+death_assertion_versions,recorded_at,none,When the version was written,record
+death_assertion_versions,author,staff-identifier,Who or what wrote the version,record
+death_assertion_versions,status,health,Whether a death is reported or confirmed,record
+death_assertion_versions,body,health,The report of a death ; its source and date and reason,record
 feed_refusal_resolutions,refusal_id,none,Random record id,feed
 feed_refusal_resolutions,resolved_at,none,When the refusal was resolved,feed
 feed_refusal_resolutions,resolved_by,staff-identifier,Who resolved the refusal,feed
