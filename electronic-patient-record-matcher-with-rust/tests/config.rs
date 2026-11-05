@@ -27,6 +27,7 @@ fn all_weights_zero_is_refused() {
             sex: 0.0,
             postal_code: 0.0,
             telecom: 0.0,
+            death_date: 0.0,
         },
         ..Default::default()
     };

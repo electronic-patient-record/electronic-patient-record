@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - A date of death in the matcher, as weak evidence (BV-1, in part; OQ-BV3)
+
+- **Clinical risk:** **not yet in effect.** The service uses the published matcher, so nothing changes until a release. Once it does, a shared date of death adds a little to a match score, which can move a pair across a threshold; H-001 records this. H-046 stays `open`.
+- **Built:** `Patient.death_date` and `Weights.death_date` (0.05), compared like a birth date, and counted only when both records have one. I chose the weight, the smallest in use, so that it is weak; that it has no guard, so it cannot link two records by itself; and that it is kept for a temporary identity.
+- **Not done / not verified:** the release, and the service filling the field. Two people who die on one day gain score, and no real data has been tried. A date may come from a report that is wrong. **Correction to earlier entries:** `--config 'build.rustc-wrapper=""'` did not bypass the build cache, because the shell sets `RUSTC_WRAPPER`, so my local runs this session used the cache. CI does not, and it is the check on those commits.
+
 ## 2026-11-05 - FHIR says when a person has died (BV-2; H-046 stays open)
 
 - **Clinical risk:** **yes.** A FHIR reader now sees `deceased[x]` for a confirmed death and the tag `death-reported` for one that is not confirmed. A wrong report therefore reaches any system that reads this tag, though not as `deceased[x]`. H-046 stays `open`.

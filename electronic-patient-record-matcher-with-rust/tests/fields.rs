@@ -236,6 +236,7 @@ fn the_evidence_floor_blocks_an_auto_link_below_it_and_not_at_it() {
             sex: absent,
             postal_code: absent,
             telecom: absent,
+            ..Weights::default()
         },
         ..Default::default()
     };
@@ -322,4 +323,71 @@ fn a_family_name_exactly_at_the_minimum_still_counts_as_agreeing_when_the_given_
     let b = with_nhs(full("Smith", "Zed", "1980-03-14"));
     let m = MatchingEngine::new(config).compare(&a, &b);
     assert_eq!(m.decision, Decision::AutoLink, "{m:?}");
+}
+
+/// A date of death is weak evidence (OQ-BV3): it counts only when both records have one, it moves the
+/// score a little either way, and it cannot make a link by itself.
+#[test]
+fn a_date_of_death_is_weak_evidence_and_never_enough_alone() {
+    let engine = MatchingEngine::default();
+    let person = |date: Option<&str>| Patient {
+        names: vec![HumanName {
+            family: Some("Smith".into()),
+            given: vec!["Ann".into()],
+        }],
+        birth_date: Some("1980-03-14".into()),
+        death_date: date.map(str::to_string),
+        ..Patient::default()
+    };
+    let field = |r: &MatchResult| {
+        r.fields
+            .iter()
+            .find(|f| f.field == "death_date")
+            .unwrap()
+            .similarity
+    };
+    let none = engine.compare(&person(None), &person(None));
+    let one = engine.compare(&person(Some("2026-11-01")), &person(None));
+    assert_eq!(field(&none), None);
+    assert_eq!(field(&one), None);
+    // One record having a date is the same as neither having one: not a disagreement, and not thin evidence.
+    assert_eq!(none.score, one.score);
+    assert_eq!(none.decision, one.decision);
+    assert_eq!(none.conflicts, one.conflicts);
+
+    let same = engine.compare(&person(Some("2026-11-01")), &person(Some("2026-11-01")));
+    assert_eq!(field(&same), Some(1.0));
+    let far = engine.compare(&person(Some("2026-11-01")), &person(Some("1999-02-03")));
+    assert_eq!(field(&far), Some(0.0));
+    assert!(far.score < same.score);
+    // A disagreement alone blocks nothing, and is a small fall.
+    assert!(far.conflicts.is_empty(), "{:?}", far.conflicts);
+    assert!(none.score - far.score < 0.1);
+
+    // Nothing else in common: a shared date of death is not a match.
+    let bare = |family: &str| Patient {
+        names: vec![HumanName {
+            family: Some(family.into()),
+            given: vec![],
+        }],
+        death_date: Some("2026-11-01".into()),
+        ..Patient::default()
+    };
+    let r = engine.compare(&bare("Smith"), &bare("Okafor"));
+    assert_eq!(r.decision, Decision::NonMatch);
+
+    // It survives a temporary identity, and nothing else does.
+    let temporary = Patient {
+        temporary_identity: true,
+        ..person(Some("2026-11-01"))
+    };
+    let r = engine.compare(&temporary, &person(Some("2026-11-01")));
+    assert_eq!(field(&r), Some(1.0));
+    assert_ne!(r.decision, Decision::AutoLink);
+
+    // Empty or invalid is absent, and the JSON is unchanged when there is none.
+    let bad = engine.compare(&person(Some("2026-02-31")), &person(Some("2026-11-01")));
+    assert_eq!(field(&bad), None);
+    let text = serde_json::to_string(&person(None)).unwrap();
+    assert!(!text.contains("death_date"), "{text}");
 }

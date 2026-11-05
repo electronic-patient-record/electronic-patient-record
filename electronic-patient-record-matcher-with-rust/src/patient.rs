@@ -83,4 +83,9 @@ pub struct Patient {
     /// treats them as absent, because a safe temporary name looks like a real one.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub temporary_identity: bool,
+    /// The date of death from a report the owner of this record holds, as `YYYY`, `YYYY-MM` or
+    /// `YYYY-MM-DD`. Weak evidence of who the person is, and only that: it says nothing about whether
+    /// the report is true, and the report itself lives apart from identity.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub death_date: Option<String>,
 }

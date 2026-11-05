@@ -26,6 +26,8 @@ pub struct Weights {
     pub postal_code: f64,
     /// Weight of the phone and email comparison.
     pub telecom: f64,
+    /// Weight of the date-of-death comparison: weak, and counted only when both records carry one.
+    pub death_date: f64,
 }
 
 impl Default for Weights {
@@ -37,6 +39,7 @@ impl Default for Weights {
             sex: 0.05,
             postal_code: 0.10,
             telecom: 0.10,
+            death_date: 0.05,
         }
     }
 }
@@ -118,6 +121,7 @@ impl MatchConfig {
             w.sex,
             w.postal_code,
             w.telecom,
+            w.death_date,
         ];
         if weights.iter().any(|x| !x.is_finite() || *x < 0.0) {
             return Err(ConfigError::InvalidWeight);
@@ -359,6 +363,7 @@ impl MatchingEngine {
             given = Some(s * SWAP_PENALTY);
         }
         let dob = birth_date_similarity(a, b);
+        let death = date_similarity(a.death_date.as_deref(), b.death_date.as_deref());
         let sex = sex_similarity(a, b);
         let postal = postal_similarity(a, b);
         let (telecom, telecom_individual) =
@@ -407,9 +412,21 @@ impl MatchingEngine {
                 telecom_weight,
                 "no phone or email on one or both records",
             ),
+            field(
+                "death_date",
+                death,
+                w.death_date,
+                "no date of death on one or both records",
+            ),
         ];
 
-        let total: f64 = fields.iter().map(|f| f.weight).sum();
+        // Nearly every record has no date of death, so its absence is not missing evidence: it would
+        // otherwise lower the share of evidence present for every pair.
+        let total: f64 = fields
+            .iter()
+            .filter(|f| f.field != "death_date" || f.similarity.is_some())
+            .map(|f| f.weight)
+            .sum();
         let present: f64 = fields
             .iter()
             .filter(|f| f.similarity.is_some())
@@ -803,8 +820,14 @@ fn full_date(p: &Patient) -> Option<PartialDate> {
 }
 
 fn birth_date_similarity(a: &Patient, b: &Patient) -> Option<f64> {
-    let x = a.birth_date.as_deref().and_then(parse_date)?;
-    let y = b.birth_date.as_deref().and_then(parse_date)?;
+    date_similarity(a.birth_date.as_deref(), b.birth_date.as_deref())
+}
+
+/// How alike two ISO 8601 dates are, allowing for keying slips and partial dates. A date the calendar
+/// does not have, or one that is missing, is absent.
+fn date_similarity(a: Option<&str>, b: Option<&str>) -> Option<f64> {
+    let x = a.and_then(parse_date)?;
+    let y = b.and_then(parse_date)?;
     if x == y {
         return Some(if x.day.is_some() {
             1.0

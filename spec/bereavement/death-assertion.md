@@ -92,6 +92,6 @@ All of a patient's assertions, each at its current version, give one answer:
 
 ## Not settled
 
-- **A date of death in the matcher (OQ-BV3, decided, not built).** The matcher's `Patient` will carry a date of death as weak match evidence. The assertion stays apart from identity.
+- **A date of death in the matcher (OQ-BV3, decided, not in the service).** The matcher's `Patient` has `death_date` as weak match evidence, in the unreleased crate. To use it the service needs that release, must fill the field only from a standing assertion, and must never accept it from a client. The assertion stays apart from identity.
 - **How soon a held contact is reviewed, and who owns that.** OQ-BV1 says a person confirms; it does not say by when.
 - **Other fields on [the proposal](index.md#what-this-project-would-need).** `found_at`, `place`, `verified_at` and `coroner_referred` are not in this slice. They can be added to the stored body without a migration, once someone has said which are required.
