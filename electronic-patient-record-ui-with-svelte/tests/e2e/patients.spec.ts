@@ -3524,6 +3524,8 @@ test("the summary shows the allergies, the latest reading of each vital with its
           value: 130,
           range: { low: 60, high: 100 },
           flag: "high",
+          effective_at: "2026-10-26T13:30:00.000000Z",
+          recorded_at: "2026-10-26T16:30:00.000000Z",
         }),
         OBS({
           id: "oops",
@@ -3539,6 +3541,10 @@ test("the summary shows the allergies, the latest reading of each vital with its
   const vitals = page.getByRole("region", { name: "Latest vital signs" });
   await expect(vitals.getByRole("listitem")).toHaveCount(1);
   await expect(vitals).toContainText("130 /min");
+  await expect(vitals).toContainText("(13:30 UTC)");
+  await expect(vitals).toContainText("late entry: written");
+  await expect(vitals).toContainText("(16:30 UTC)");
+  await expect(vitals).toContainText("3 hours after the measured time");
   await expect(vitals).toContainText(
     "The patient has asked for this record to be corrected",
   );

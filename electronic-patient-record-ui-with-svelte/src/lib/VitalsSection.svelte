@@ -23,6 +23,7 @@
     type AbsentReason,
     type StoredObservation,
     type VitalKey,
+    writtenText,
   } from "./vitals.js";
   import { siteWhenText } from "./access-log.js";
   import { STRINGS } from "./strings.js";
@@ -247,7 +248,11 @@
             {#if rangeText(v.range)}· {STRINGS.vitalRange}
               {rangeText(v.range)}{/if}
             {#if v.status === "entered-in-error"}· {STRINGS.vitalHistoryInError}{/if}
-            · {siteWhenText(v.recorded_at, siteZone)}
+            · {STRINGS.vitalMeasured.replace(
+              "{when}",
+              siteWhenText(v.effective_at, siteZone),
+            )}
+            · {writtenText(v, siteZone)}
             · {STRINGS.vitalBy} <code>{v.author}</code>
             · {STRINGS.vitalHistoryReason}
             {v.reason || STRINGS.vitalHistoryNoReason}
@@ -282,6 +287,7 @@
             <time datetime={o.effective_at}
               >{siteWhenText(o.effective_at, siteZone)}</time
             >
+            · {writtenText(o, siteZone)}
             · {STRINGS.vitalBy} <code>{o.author}</code>
             {#if o.version > 1}· {STRINGS.vitalVersion.replace(
                 "{n}",
@@ -351,6 +357,7 @@
             <thead>
               <tr>
                 <th scope="col">{STRINGS.vitalTrendTime}</th>
+                <th scope="col">{STRINGS.vitalTrendWritten}</th>
                 <th scope="col">{STRINGS.vitalTrendValue}</th>
                 <th scope="col">{STRINGS.vitalTrendWhere}</th>
               </tr>
@@ -363,6 +370,7 @@
                       >{siteWhenText(o.effective_at, siteZone)}</time
                     ></td
                   >
+                  <td>{writtenText(o, siteZone)}</td>
                   <td>{valueText(o)}</td>
                   <td>{assessmentText(o)}</td>
                 </tr>
@@ -388,6 +396,7 @@
               <time datetime={o.effective_at}
                 >{siteWhenText(o.effective_at, siteZone)}</time
               >
+              · {writtenText(o, siteZone)}
               <button
                 type="button"
                 aria-expanded={!!histories[o.id]}

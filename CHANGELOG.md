@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - Vital signs show both clocks, and say when an entry is late (SW-2, in part; H-034 stays open)
+
+- **Clinical risk:** **yes.** A clinician now sees when a reading was written beside when it was measured, and a first entry written more than 60 minutes after its measured time says "late entry". H-034 records this and stays `open`.
+- **Built:** `writtenText` and `lateByMinutes` in `vitals.ts`; both clocks in the vital signs list, the trend table (a new column), the history, the entered-in-error list and the summary page. `vitalLine` carries them too, so a patient choosing a record to amend sees them. Unit tests and a browser test of the summary page.
+- **Not done / not verified:** **the bound on `effective_at`:** any past time from 1900 is still accepted, because a limit is a clinical choice and I have none to set, so the task stays open. The 60 minutes is my guess, and no one has said whether it suits a ward. No reason is asked for a late entry. A correction says which version and is not called late, so a late first entry that was then corrected shows as late only in its history. A device reading or an import will often look late; neither exists yet. It does not detect a false entry made on time, and the label must not be read as if it did. No clinician has seen the wording. Only vital signs have this: there are no other observations. The words are English only (SF-4).
+
 ## 2026-11-05 - Three step types for a contact outside the record (SG-1)
 
 - **Clinical risk:** none today: this is a design in `spec/pathway-design.md`, with no code. If built, the words on a step shape what a clinician believes has happened to a person.

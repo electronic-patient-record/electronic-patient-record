@@ -21,6 +21,7 @@
     valueText,
     vitalName,
     type VitalsLoad,
+    writtenText,
   } from "#lib/vitals.js";
 
   const locale = $derived(page.data.locale ?? DEFAULT_LOCALE);
@@ -144,6 +145,7 @@
             <time datetime={o.effective_at}
               >{siteWhenText(o.effective_at, siteZone)}</time
             >
+            · {writtenText(o, siteZone)}
             {#each vitals.notices[o.id] ?? [] as n, i (i)}
               <p role="note">{noticeText(n)}</p>
             {/each}

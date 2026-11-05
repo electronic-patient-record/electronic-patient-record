@@ -143,13 +143,48 @@ export function rangeText(r: Range | null | undefined): string | null {
     : `${STRINGS.vitalRangeUpTo} ${high}`;
 }
 
-/** One line: name, value, the words on where it sits, and when, on the site's clock. */
+/** A first entry written more than this long after the measurement says so (SW-2). A guess, for review. */
+export const LATE_AFTER_MINUTES = 60;
+
+/** How long after the measurement a first entry was written, in minutes, or null when it is not late. */
+export function lateByMinutes(o: StoredObservation): number | null {
+  if (o.version !== 1) return null;
+  const gap = (Date.parse(o.recorded_at) - Date.parse(o.effective_at)) / 60_000;
+  return gap > LATE_AFTER_MINUTES ? gap : null;
+}
+
+function gapText(minutes: number): string {
+  const whole = Math.floor(minutes);
+  if (whole < 120) return STRINGS.vitalGapMinutes.replace("{n}", String(whole));
+  const hours = Math.floor(whole / 60);
+  if (hours < 48) return STRINGS.vitalGapHours.replace("{n}", String(hours));
+  return STRINGS.vitalGapDays.replace("{n}", String(Math.floor(hours / 24)));
+}
+
+/**
+ * When this version was written, by the database's clock, beside the measured time the writer gave.
+ * A correction is written later by its nature, so it says which version and is not called late. Late
+ * says only when it was written: it cannot show whether what was written is true.
+ */
+export function writtenText(o: StoredObservation, siteZone?: string): string {
+  const when = siteWhenText(o.recorded_at, siteZone);
+  if (o.version !== 1)
+    return STRINGS.vitalVersionWritten.replace("{when}", when);
+  const late = lateByMinutes(o);
+  if (late === null) return STRINGS.vitalWritten.replace("{when}", when);
+  return STRINGS.vitalWrittenLate
+    .replace("{when}", when)
+    .replace("{gap}", gapText(late));
+}
+
+/** One line: name, value, the words on where it sits, when it was measured on the site's clock, and when it was written. */
 export function vitalLine(o: StoredObservation, siteZone?: string): string {
   return [
     vitalName(o.code),
     valueText(o),
     assessmentText(o),
     siteWhenText(o.effective_at, siteZone),
+    writtenText(o, siteZone),
   ].join(" · ");
 }
 

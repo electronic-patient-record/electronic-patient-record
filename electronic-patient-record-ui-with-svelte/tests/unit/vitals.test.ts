@@ -12,6 +12,9 @@ import {
   unitLabel,
   valueText,
   vitalLine,
+  writtenText,
+  lateByMinutes,
+  LATE_AFTER_MINUTES,
   vitalName,
   wallTimeToUtc,
   type Notice,
@@ -159,10 +162,10 @@ describe("where a value sits (H-034: never normal unless the API computed it fro
   });
   it("one line holds the name, value, assessment and the site's time with UTC beside it", () => {
     expect(vitalLine({ ...base, flag: "high" }, "America/New_York")).toMatch(
-      /^Heart rate · 72 \/min · High · 2026-10-26 09:30 (EDT|GMT-4) \(13:30 UTC\)$/,
+      /^Heart rate · 72 \/min · High · 2026-10-26 09:30 (EDT|GMT-4) \(13:30 UTC\) · written /,
     );
     expect(vitalLine(base)).toBe(
-      "Heart rate · 72 /min · Not assessed (no range given) · 2026-10-26 13:30 UTC",
+      "Heart rate · 72 /min · Not assessed (no range given) · 2026-10-26 13:30 UTC · written 2026-10-26 10:00 UTC",
     );
   });
 });
@@ -401,5 +404,49 @@ describe("the notice beside a disputed record (RC-4, H-035)", () => {
     expect(
       noticeText({ notice: "something-new" } as unknown as Notice),
     ).toContain("There is a request to correct this record.");
+  });
+});
+
+describe("both clocks (SW-2, H-034)", () => {
+  const at = (minutes: number): StoredObservation => ({
+    ...base,
+    effective_at: "2026-10-26T13:00:00.000000Z",
+    recorded_at: new Date(
+      Date.parse("2026-10-26T13:00:00Z") + minutes * 60_000,
+    ).toISOString(),
+  });
+
+  it("says when an entry was written, and does not call a prompt one late", () => {
+    expect(writtenText(at(5))).toBe("written 2026-10-26 13:05 UTC");
+    expect(lateByMinutes(at(LATE_AFTER_MINUTES))).toBeNull();
+  });
+
+  it("says a late entry is late, with how late", () => {
+    expect(lateByMinutes(at(LATE_AFTER_MINUTES + 1))).toBe(
+      LATE_AFTER_MINUTES + 1,
+    );
+    expect(writtenText(at(90))).toBe(
+      "late entry: written 2026-10-26 14:30 UTC, 90 minutes after the measured time",
+    );
+    expect(writtenText(at(180))).toContain("3 hours after");
+    expect(writtenText(at(3 * 24 * 60))).toContain("3 days after");
+  });
+
+  it("does not call a correction late, and says it is a later version", () => {
+    const corrected = { ...at(3 * 24 * 60), version: 2 };
+    expect(lateByMinutes(corrected)).toBeNull();
+    expect(writtenText(corrected)).toBe(
+      "this version written 2026-10-29 13:00 UTC",
+    );
+  });
+
+  it("does not call an entry late when the clocks run the other way, or a time cannot be read", () => {
+    expect(lateByMinutes(at(-3))).toBeNull();
+    expect(lateByMinutes({ ...base, recorded_at: "not a time" })).toBeNull();
+  });
+
+  it("shows the written time in the site's zone, in the one line too", () => {
+    expect(writtenText(at(5), "America/New_York")).toContain("EDT");
+    expect(vitalLine(at(5))).toContain("written 2026-10-26 13:05 UTC");
   });
 });
