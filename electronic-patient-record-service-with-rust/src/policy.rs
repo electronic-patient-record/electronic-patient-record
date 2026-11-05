@@ -551,8 +551,11 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         // step belongs to which role is checked by the route.
         (Role::Clinician, Amendment) => &[Read, Search, Update],
         (Role::Patient, Amendment) => &[Read, Search, Create, Update],
-        // Reasonable adjustments (PA-6, unreviewed): anyone who meets patients reads and records them.
-        // A patient and a proxy have no route yet.
+        // Reasonable adjustments (PA-6, PX-1, unreviewed): anyone who meets patients reads and records
+        // them. A patient reads and corrects their own, because the first step is to ask them; a proxy
+        // with the scope reads. Both act only through their own relationship.
+        (Role::Patient, Adjust) => &[Read, Search, Create, Update],
+        (Role::Proxy, Adjust) => &[Read, Search],
         (
             Role::Clinician
             | Role::Nurse

@@ -439,7 +439,7 @@ fn relationship_schemas() -> Value {
                 "period": {"type": ["object", "null"], "properties": {"start": {"type": ["string", "null"]}, "end": {"type": ["string", "null"]}}, "description": "YYYY-MM-DD (UTC), both ends optional and inclusive."},
                 "proxy": {"type": ["object", "null"], "required": ["basis", "scopes", "expires_at"], "properties": {
                     "basis": {"enum": ["parental-responsibility", "power-of-attorney", "deputyship", "patient-request"]},
-                    "scopes": {"type": "array", "items": {"enum": ["identity", "allergies", "photo", "access-log"]}},
+                    "scopes": {"type": "array", "items": {"enum": ["identity", "allergies", "photo", "access-log", "adjustments"]}},
                     "expires_at": {"type": "integer", "description": "Unix seconds."}}}
             }
         },
@@ -2628,7 +2628,8 @@ mod tests {
                 Scope::Identity,
                 Scope::Allergies,
                 Scope::Photo,
-                Scope::AccessLog
+                Scope::AccessLog,
+                Scope::Adjustments
             ])
         );
         let stored = serde_json::to_value(StoredRelationship {

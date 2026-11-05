@@ -364,6 +364,75 @@ test("my record asks for patient-access and shows the linked record read-only", 
   await axe(page);
 });
 
+test("a patient corrects their own needs on my record, and a proxy only reads", async ({
+  page,
+}) => {
+  let relationship = "self";
+  await page.route("**/api/proxy/api/me/patients", (route) =>
+    json(route, 200, { records: [{ relationship, patient: ANN }] }),
+  );
+  const need = {
+    id: "n-1",
+    patient_id: ANN.id,
+    version: 1,
+    author: "desk",
+    recorded_at: "2026-11-02T09:00:00Z",
+    category: "communication",
+    display: "Large print",
+    overdue: false,
+    adjustment: {
+      code: "large-print",
+      note: null,
+      status: "active",
+      review_by: null,
+      reason: "the desk asked",
+    },
+  };
+  const sent: { purpose: string | undefined; body: unknown }[] = [];
+  await page.route(`**/api/proxy/api/patients/${ANN.id}/adjustments`, (route) =>
+    json(route, 200, { adjustments: [need] }),
+  );
+  await page.route(
+    `**/api/proxy/api/patients/${ANN.id}/adjustments/n-1`,
+    (route) => {
+      sent.push({
+        purpose: route.request().headers()["x-purpose-of-use"],
+        body: route.request().postDataJSON(),
+      });
+      return json(route, 200, need);
+    },
+  );
+  await page.goto("/en-001/my-record");
+  const section = page.getByRole("region", {
+    name: "Needs and reasonable adjustments",
+  });
+  await expect(section).toContainText("Large print");
+  await expect(section).toContainText("you can correct it");
+  await section.getByRole("button", { name: "End this need" }).click();
+  await section
+    .getByLabel("Reason (kept in the history)")
+    .fill("I no longer need this");
+  await section.getByRole("button", { name: "Confirm the ending" }).click();
+  await expect(section.getByText("Saved.")).toBeVisible();
+  expect(sent).toEqual([
+    {
+      purpose: "patient-access",
+      body: {
+        expected_version: 1,
+        action: "end",
+        review_by: null,
+        reason: "I no longer need this",
+      },
+    },
+  ]);
+  await axe(page);
+
+  relationship = "proxy";
+  await page.reload();
+  await expect(section).toContainText("Large print");
+  await expect(section.getByRole("button")).toHaveCount(0);
+});
+
 test("my record says plainly when nothing is linked, or the reader may not use it", async ({
   page,
 }) => {

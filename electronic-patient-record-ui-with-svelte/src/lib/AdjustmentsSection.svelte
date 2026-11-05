@@ -24,12 +24,21 @@
     siteZone = "UTC",
     load,
     onchange,
+    purpose,
+    own = false,
+    readOnly = false,
   }: {
     patientId: string;
     siteZone?: string;
     // What the page's adjustment call returned; the banner reads the same answer.
     load: AdjustmentLoad | null;
     onchange: () => void | Promise<void>;
+    // The purpose of use, for a page that fixes it, such as "my record".
+    purpose?: string;
+    // The reader is the patient, so the words are to them.
+    own?: boolean;
+    // The reader may look and not change (a proxy).
+    readOnly?: boolean;
   } = $props();
 
   const rows = $derived(load?.adjustments ?? []);
@@ -74,6 +83,7 @@
         "POST",
         `/api/patients/${patientId}/adjustments`,
         built.body,
+        purpose,
       );
       if (res.status === 201) {
         message = STRINGS.adjustmentSaved;
@@ -99,6 +109,7 @@
         "PUT",
         `/api/patients/${patientId}/adjustments/${a.id}`,
         built.body,
+        purpose,
       );
       if (res.status === 200) {
         message = STRINGS.adjustmentSaved;
@@ -118,7 +129,7 @@
 
 <section aria-labelledby="adjustments-h">
   <h2 id="adjustments-h">{STRINGS.adjustmentTitle}</h2>
-  <p>{STRINGS.adjustmentHelp}</p>
+  <p>{own ? STRINGS.adjustmentHelpOwn : STRINGS.adjustmentHelp}</p>
   {#if load === null}
     <p>{STRINGS.loading}</p>
   {:else if load.status === 403}
@@ -134,7 +145,9 @@
           <strong>{adjustmentName(a)}</strong>
           <p>{adjustmentDetail(a, siteZone)}</p>
           <p>{STRINGS.adjustmentReasonOf} {a.adjustment.reason}</p>
-          {#if open?.id === a.id}
+          {#if readOnly}
+            <!-- A proxy reads; a change is the patient's or a member of staff's. -->
+          {:else if open?.id === a.id}
             <form onsubmit={(e) => change(e, a)}>
               {#if open.action === "review"}
                 <label for="adjustment-next-{a.id}"
@@ -197,7 +210,7 @@
     </details>
   {/if}
 
-  {#if load?.status === 200}
+  {#if load?.status === 200 && !readOnly}
     {#if recording}
       <form onsubmit={record}>
         <label for="adjustment-code">{STRINGS.adjustmentNeed}</label>

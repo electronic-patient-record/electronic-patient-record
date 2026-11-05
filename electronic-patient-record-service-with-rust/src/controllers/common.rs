@@ -94,6 +94,7 @@ fn scope_of(resource: Resource) -> Option<Scope> {
     match resource {
         Resource::PatientIdentity => Some(Scope::Identity),
         Resource::AllergyIntolerance => Some(Scope::Allergies),
+        Resource::Adjustment => Some(Scope::Adjustments),
         _ => None,
     }
 }

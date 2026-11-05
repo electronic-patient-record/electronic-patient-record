@@ -1,6 +1,8 @@
 <script lang="ts">
   import { call, commonProblem, fetchBlob } from "#lib/api.js";
   import { loadAllergies, type AllergyLoad } from "#lib/allergies.js";
+  import { loadAdjustments, type AdjustmentLoad } from "#lib/adjustments.js";
+  import AdjustmentsSection from "#lib/AdjustmentsSection.svelte";
   import PatientAmendments from "#lib/PatientAmendments.svelte";
   import PatientBanner from "#lib/PatientBanner.svelte";
   import {
@@ -32,6 +34,11 @@
   let message = $state<string | null>(null);
   let loading = $state(true);
   let allergyById = $state<Record<string, AllergyLoad>>({});
+  let needsById = $state<Record<string, AdjustmentLoad>>({});
+
+  async function loadNeeds(id: string) {
+    needsById[id] = await loadAdjustments(id, { purpose: "patient-access" });
+  }
 
   // EC-12: the page shows when the record was last read and says so when a later look failed. It
   // looks again once a minute while open, and keeps the records on screen if that fails.
@@ -62,6 +69,7 @@
       lastRead = new Date();
       lookFailed = false;
       records = res.body.records;
+      for (const e of res.body.records) void loadNeeds(e.patient.id);
       // One allergy call per record, under the patient-access purpose.
       for (const r of res.body.records) {
         void loadAllergies(r.patient.id, "patient-access").then((l) => {
@@ -238,6 +246,15 @@
         allergies={allergyById[entry.patient.id] ?? null}
       />
       {#if entry.relationship === "proxy"}<p>{STRINGS.myRecordProxy}</p>{/if}
+      <AdjustmentsSection
+        patientId={entry.patient.id}
+        siteZone={entry.patient.site_time_zone}
+        load={needsById[entry.patient.id] ?? null}
+        purpose="patient-access"
+        own={entry.relationship === "self"}
+        readOnly={entry.relationship === "proxy"}
+        onchange={() => loadNeeds(entry.patient.id)}
+      />
       <dl>
         {#each fields(entry.patient) as [label, value] (label)}
           <dt>{label}</dt>

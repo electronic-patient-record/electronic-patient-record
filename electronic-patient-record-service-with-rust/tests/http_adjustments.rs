@@ -1,7 +1,8 @@
 //! DB-gated, through the real router with login **on** (PA-6): anyone who meets patients may read and
 //! record an adjustment, a patient, a proxy and an auditor have none of it, the author is the token, a
 //! stale version is 409, ending is final and stays in the history, an overdue review shows, the audit
-//! trail holds no code, note or reason, and the table refuses change. One test, because the token guard
+//! trail holds no code, note or reason, and the table refuses change. A patient reads and corrects their
+//! own needs and nobody else's, and a proxy reads only with the scope (PX-1). One test, because the token guard
 //! is configured once per process.
 //!
 //! ```text
@@ -46,7 +47,14 @@ fn bearer(token: &str) -> (HeaderName, HeaderValue) {
 #[ignore = "needs Postgres: set DATABASE_URL"]
 async fn who_may_record_review_and_end_an_adjustment() {
     let idp = TestIdp::start().await;
-    let roles = ["nurse", "receptionist", "patient", "auditor", "proxy"];
+    let roles = [
+        "nurse",
+        "receptionist",
+        "patient",
+        "auditor",
+        "proxy",
+        "clinical-admin",
+    ];
     let map: Value = roles
         .iter()
         .map(|r| ((*r).to_string(), json!({ "role": [r] })))
@@ -68,9 +76,12 @@ async fn who_may_record_review_and_end_an_adjustment() {
     let nurse = token("nurse", "0c4f1e2a-0000-4000-8000-0000000000e1");
     const RECEPTION: &str = "0c4f1e2a-0000-4000-8000-0000000000e2";
     let reception = token("receptionist", RECEPTION);
-    let patient = token("patient", "0c4f1e2a-0000-4000-8000-0000000000e3");
+    const OWN: &str = "0c4f1e2a-0000-4000-8000-0000000000e3";
+    let patient = token("patient", OWN);
+    let admin = token("clinical-admin", "0c4f1e2a-0000-4000-8000-0000000000e6");
     let auditor = token("auditor", "0c4f1e2a-0000-4000-8000-0000000000e4");
-    let proxy = token("proxy", "0c4f1e2a-0000-4000-8000-0000000000e5");
+    const PROXY: &str = "0c4f1e2a-0000-4000-8000-0000000000e5";
+    let proxy = token("proxy", PROXY);
 
     request::<App, _, _>(|server, ctx| async move {
         let purpose = HeaderName::from_static("x-purpose-of-use");
@@ -286,6 +297,75 @@ async fn who_may_record_review_and_end_an_adjustment() {
                 refused.text()
             );
         }
+
+        // A patient: refused with no relationship to this record, so never another person's needs.
+        let portal = HeaderValue::from_static("patient-access");
+        let own_get = |t: String, url: String| {
+            let (h, v) = bearer(&t);
+            server.get(&url).add_header(h, v).add_header(purpose.clone(), portal.clone())
+        };
+        let own_post = |t: String, body: Value| {
+            let (h, v) = bearer(&t);
+            server
+                .post(&path)
+                .add_header(h, v)
+                .add_header(purpose.clone(), portal.clone())
+                .json(&body)
+        };
+        assert_eq!(
+            own_get(patient.clone(), path.clone()).await.status_code(),
+            StatusCode::FORBIDDEN
+        );
+        let refused = own_post(patient.clone(), json!({ "code": "audio", "reason": "x" })).await;
+        assert_eq!(refused.status_code(), StatusCode::FORBIDDEN, "{}", refused.text());
+
+        // With the relationship, the patient reads and corrects their own, as themselves.
+        let relate = |body: Value| {
+            let (h, v) = bearer(&admin);
+            server
+                .post(&format!("/api/patients/{id}/relationships"))
+                .add_header(h, v)
+                .add_header(purpose.clone(), ops.clone())
+                .json(&body)
+        };
+        let own = relate(json!({ "relationship": { "subject": OWN, "kind": "self", "status": "active" },
+            "reason": "seen" }))
+        .await;
+        assert_eq!(own.status_code(), StatusCode::CREATED, "{}", own.text());
+        let read = own_get(patient.clone(), path.clone()).await;
+        assert_eq!(read.status_code(), StatusCode::OK, "{}", read.text());
+        let mine = own_post(patient.clone(), json!({ "code": "audio", "reason": "I asked" })).await;
+        assert_eq!(mine.status_code(), StatusCode::CREATED, "{}", mine.text());
+        let mine: Value = mine.json();
+        assert_eq!(mine["author"], OWN);
+        let (h, v) = bearer(&patient);
+        let corrected = server
+            .put(&format!("{path}/{}", mine["id"].as_str().unwrap()))
+            .add_header(h, v)
+            .add_header(purpose.clone(), portal.clone())
+            .json(&json!({ "expected_version": 1, "action": "end", "reason": "I no longer need this" }))
+            .await;
+        assert_eq!(corrected.status_code(), StatusCode::OK, "{}", corrected.text());
+
+        // A proxy with no such scope is refused; with it, they read and cannot write.
+        let expires = i64::try_from(nanos() / 1_000_000_000).unwrap() + 3600;
+        let scoped = |scopes: Value| {
+            relate(json!({ "relationship": { "subject": PROXY, "kind": "proxy", "status": "active",
+                "proxy": { "basis": "parental-responsibility", "scopes": scopes, "expires_at": expires } },
+                "reason": "seen" }))
+        };
+        let related = scoped(json!(["identity"])).await;
+        assert_eq!(related.status_code(), StatusCode::CREATED, "{}", related.text());
+        assert_eq!(
+            own_get(proxy.clone(), path.clone()).await.status_code(),
+            StatusCode::FORBIDDEN
+        );
+        let related = scoped(json!(["adjustments"])).await;
+        assert_eq!(related.status_code(), StatusCode::CREATED, "{}", related.text());
+        let read = own_get(proxy.clone(), path.clone()).await;
+        assert_eq!(read.status_code(), StatusCode::OK, "{}", read.text());
+        let refused = own_post(proxy.clone(), json!({ "code": "braille", "reason": "x" })).await;
+        assert_eq!(refused.status_code(), StatusCode::FORBIDDEN, "{}", refused.text());
 
         // The audit trail says something happened, and nothing of what the person needs.
         let audited = ctx

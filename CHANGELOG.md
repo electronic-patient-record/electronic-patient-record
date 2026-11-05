@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - Patients see and correct their own needs (PX-1; H-048)
+
+- **Clinical risk:** **yes.** A patient can now add, check and end a need on "my record", at once, with no approval by staff. A patient could end a need staff believe still applies; the history shows both. H-048 records this. H-001's text is corrected: the service now uses the date of death.
+- **Built:** the policy for the patient and a read-only proxy, a new proxy scope `adjustments`, the section on "my record", and tests that a patient cannot reach another person's needs, that a proxy needs the scope, and that a proxy cannot write.
+- **My decision, for review:** a patient's change takes effect at once, because the person is the authority on what they need.
+- **Not done / not verified:** nothing tells staff that a patient changed something. The words on "my record" are English only, and no patient has seen them. A proxy without the scope sees that needs are not shown. No clinician has reviewed this.
+
 ## 2026-11-05 - A date of death reaches the matcher, from an assertion only (BV-1; H-001)
 
 - **Clinical risk:** **yes.** On a merge, a shared date of death from standing assertions now adds a little to the score, which can move a pair across a threshold. H-001 stays open.

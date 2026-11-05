@@ -501,6 +501,7 @@ export const STRINGS = {
     allergies: "Allergies",
     photo: "Photo",
     "access-log": "Who has accessed the record",
+    adjustments: "Needs and reasonable adjustments",
   },
   proxyLastDay: "Last day (YYYY-MM-DD, required for a proxy)",
   proxyUntil: "until the end of",
@@ -564,6 +565,8 @@ export const STRINGS = {
   adjustmentTitle: "Needs and reasonable adjustments",
   adjustmentHelp:
     "What this person needs in order to use care. Check it with them. It informs staff and changes nothing by itself.",
+  adjustmentHelpOwn:
+    "What you need in order to use care. Staff can see this. If anything here is wrong, you can correct it.",
   adjustmentAdd: "Record a need",
   adjustmentSave: "Save the need",
   adjustmentSaved: "Saved.",

@@ -17,12 +17,14 @@ export interface Period {
   end?: string | null;
 }
 
-export type ProxyScope = "identity" | "allergies" | "photo" | "access-log";
+export type ProxyScope =
+  "identity" | "allergies" | "photo" | "access-log" | "adjustments";
 export const PROXY_SCOPES: readonly ProxyScope[] = [
   "identity",
   "allergies",
   "photo",
   "access-log",
+  "adjustments",
 ];
 export type ProxyBasis =
   | "parental-responsibility"

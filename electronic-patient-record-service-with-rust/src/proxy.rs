@@ -34,6 +34,8 @@ pub enum Scope {
     Photo,
     /// Who has accessed the record.
     AccessLog,
+    /// Needs and reasonable adjustments, to read.
+    Adjustments,
 }
 
 /// What the administrator relied on to record the authority.

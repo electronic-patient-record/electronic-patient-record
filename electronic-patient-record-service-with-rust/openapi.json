@@ -2759,7 +2759,8 @@
                     "identity",
                     "allergies",
                     "photo",
-                    "access-log"
+                    "access-log",
+                    "adjustments"
                   ]
                 },
                 "type": "array"

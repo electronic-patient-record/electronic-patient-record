@@ -7,7 +7,8 @@
 //!   `{expected_version, action, review_by?, reason}`.
 //!
 //! Any member of staff who meets patients may read and write these, with no care relationship, because
-//! reception needs to know before the person arrives. A patient and a proxy have no route yet. **Who is
+//! reception needs to know before the person arrives. A patient reads and corrects their own, and a
+//! proxy with the `adjustments` scope reads, each only through their own relationship. **Who is
 //! acting is the token, never the body.** A write and its audit row are one transaction; the audit row
 //! holds ids, versions and statuses, never a code, a note or a reason.
 

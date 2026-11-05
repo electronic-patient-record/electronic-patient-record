@@ -1436,7 +1436,7 @@ Ranked in plan.md §32. Most of this is not built. None was to be built before c
 
 Ranked in plan.md §33. PA-6 was built from this pass. These were each checked against this repository as the plan says; none is built.
 
-- [ ] **PX-1 (M, clinical) — A patient's own needs.** See and correct them on "my record", and a proxy scope for them. **Acceptance:** a patient reads and asks to change their own; a proxy sees them only with the scope; a test of each.
+- [x] **PX-1 (M, clinical) — A patient's own needs.** See and correct them on "my record", and a proxy scope for them. **Acceptance:** a patient reads and asks to change their own; a proxy sees them only with the scope; a test of each.
 - [ ] **PX-2 (S, clinical) — Reviews that are overdue.** Across patients, oldest first, and a list that is cut says so (PR-1). **Acceptance:** a route and a screen; a test with one overdue and one in time; who owns the list is decided.
 - [x] **PX-3 (S) — An adjustment as a FHIR `Flag`.** R4 and R5, with this project's code system, and no national code until its licence is checked. **Acceptance:** the FHIR validator passes on an active and an ended one.
 - [ ] **PX-4 (M) — An `AuditEvent` claims BALP only when it meets it.** A check per event, and a row that cannot meet the profile is still exported, without the claim. **Acceptance:** a test per constraint.

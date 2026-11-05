@@ -4,7 +4,7 @@ What a person needs in order to use care: an interpreter, large print, step-free
 
 **Built:** the rules in `electronic-patient-record-service-with-rust/src/adjustments.rs`, the append-only store in `adjustments_store.rs` (table `adjustment_versions`, view `adjustment_current`, migration 26) and the routes in `controllers/adjustments.rs`. The patient and summary banners show what stands and whether a check is overdue, and `AdjustmentsSection.svelte` on the patient page records, checks and ends a need. A failed look says so, and an empty list says "none recorded", which does not mean there are none.
 
-**Not built:** the patient's own view, a proxy scope, a list across patients of reviews that are overdue, booking an interpreter, and anything beside an appointment, because the record holds no appointments.
+**Not built:** a list across patients of reviews that are overdue, booking an interpreter, and anything beside an appointment, because the record holds no appointments.
 
 ## Why this is in the record
 
@@ -37,9 +37,13 @@ The codes are this project's own. **No national code list is used**, because the
 | Role | Read | Record, review, end |
 |---|---|---|
 | Clinician, nurse, pharmacist, allied health, receptionist, clinical administrator | Yes | Yes |
-| Patient, proxy, auditor, integration, Clinical Safety Officer | No | No |
+| Patient, for their own record | Yes | Yes |
+| Proxy, with the `adjustments` scope | Yes | No |
+| Auditor, integration, Clinical Safety Officer | No | No |
 
-No care relationship is needed, because reception must know before the person arrives. A refused consent stops a read, as it stops any read by staff; this needs review, because not knowing a person needs an interpreter is its own harm. This table is a first draft.
+Decided by the maintainer on 2026-11-05: patients see and correct their own needs, on "my record" (PX-1). They may add, check and end one, and each change is written as a new version under their own name, so staff can see who changed it. Nothing waits for a member of staff to approve it, because the person is the authority on what they need: that reading is for review. A patient or proxy acts only through their own relationship, so neither can reach anyone else's needs. A proxy reads only, because a need recorded on someone's behalf is a different thing from their saying so.
+
+No care relationship is needed for staff, because reception must know before the person arrives. A refused consent stops a read, as it stops any read by staff; this needs review, because not knowing a person needs an interpreter is its own harm. This table is a first draft.
 
 ## Routes
 
@@ -67,7 +71,7 @@ The shape follows the [HL7 `Flag` resource](https://hl7.org/fhir/R4/flag.html). 
 
 ## Not settled
 
-- **Whether a patient records their own needs.** The standard's first step is to ask them. Today only staff write here, on what the person said.
+- **A need the patient ended that staff believe still applies.** The history shows both, and nothing resolves it.
 - **Who a need is shared with.** Sending one to another organisation needs the person's agreement, and no sender exists.
 - **Interpreters.** The sister project raises a request when an appointment is booked. This record has no appointments, so it holds the need and leaves the request to whatever books.
 - **A note is free text**, so it could hold clinical detail. Staff who may read it include reception.
