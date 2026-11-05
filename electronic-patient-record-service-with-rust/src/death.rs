@@ -57,6 +57,29 @@ pub enum Status {
     WithdrawnInError,
 }
 
+impl Status {
+    /// Every status, for the census that holds these words to the database's list.
+    pub const ALL: [Status; 5] = [
+        Status::Reported,
+        Status::Verified,
+        Status::Certified,
+        Status::Registered,
+        Status::WithdrawnInError,
+    ];
+
+    /// The stored word.
+    #[must_use]
+    pub fn word(self) -> &'static str {
+        match self {
+            Status::Reported => "reported",
+            Status::Verified => "verified",
+            Status::Certified => "certified",
+            Status::Registered => "registered",
+            Status::WithdrawnInError => "withdrawn-in-error",
+        }
+    }
+}
+
 /// When the person died, or why that is not known. Absent is a reason, never a guess.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "kebab-case")]
@@ -290,7 +313,7 @@ mod tests {
     use Status::{Certified, Registered, Reported, Verified, WithdrawnInError as Withdrawn};
     use chrono::TimeZone;
 
-    const ALL: [Status; 5] = [Reported, Verified, Certified, Registered, Withdrawn];
+    const ALL: [Status; 5] = Status::ALL;
 
     fn now() -> DateTime<Utc> {
         Utc.with_ymd_and_hms(2026, 11, 5, 12, 0, 0).unwrap()
@@ -315,6 +338,14 @@ mod tests {
             occurred,
             status,
             reason: "r".into(),
+        }
+    }
+
+    #[test]
+    fn the_stored_word_is_the_serialised_word() {
+        for status in Status::ALL {
+            let json = serde_json::to_value(status).unwrap();
+            assert_eq!(json, status.word());
         }
     }
 

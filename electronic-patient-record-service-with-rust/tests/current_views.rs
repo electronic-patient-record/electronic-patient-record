@@ -17,7 +17,7 @@ async fn db() -> DatabaseConnection {
 }
 
 /// (view, versions table, record key, the patient column a page filters on)
-const VIEWS: [(&str, &str, &str, &str); 6] = [
+const VIEWS: [(&str, &str, &str, &str); 7] = [
     (
         "consent_current",
         "consent_versions",
@@ -40,6 +40,12 @@ const VIEWS: [(&str, &str, &str, &str); 6] = [
         "amendment_current",
         "amendment_versions",
         "amendment_id",
+        "patient_id",
+    ),
+    (
+        "death_assertion_current",
+        "death_assertion_versions",
+        "assertion_id",
         "patient_id",
     ),
     (

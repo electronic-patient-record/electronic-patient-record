@@ -6,13 +6,13 @@
 //!   cargo test --test stored_words -- --ignored --test-threads=1
 //! ```
 //!
-//! Covered: referral states, allergy and consent statuses. Not covered: amendment states (a tagged
+//! Covered: referral states, allergy, consent and death assertion statuses. Not covered: amendment states (a tagged
 //! enum with no list), observation statuses, queue kinds and clearances (private lists), and a
 //! variant left out of its `ALL` array (the compiler cannot see that).
 
 use std::collections::BTreeSet;
 
-use electronic_patient_record::{allergies, consent, referral};
+use electronic_patient_record::{allergies, consent, death, referral};
 use electronic_patient_record_migration::{Migrator, MigratorTrait};
 use sea_orm::{ConnectionTrait, Database, DatabaseConnection, Statement};
 
@@ -86,6 +86,13 @@ async fn stored_words_match_the_database_checks() {
         "consent_versions",
         "status",
         consent::Status::ALL.iter().map(|s| s.as_str()).collect(),
+    )
+    .await;
+    same(
+        &db,
+        "death_assertion_versions",
+        "status",
+        death::Status::ALL.iter().map(|s| s.word()).collect(),
     )
     .await;
 }

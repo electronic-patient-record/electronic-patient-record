@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - An append-only store for death assertions (BV-1, in part; H-046 stays open)
+
+- **Clinical risk:** none in effect: nothing writes to the store or reads it, so nothing changes for a clinician. The migration adds a table that will hold personal data. H-046 stays `open`.
+- **Built:** migration 25 with `death_assertion_versions` and `death_assertion_current`, append-only by trigger; `death_store.rs`; a report on a record merged away counts for the surviving record; `Status::word`; the current-view and stored-word censuses extended.
+- **Not done / not verified:** no route or banner, because who may take each step is undecided (OQ-BV2), and the HL7 and FHIR refusals do not write here yet. A read of a merged-away record does not see a report on the surviving record; a merged-away record is not meant to be written to, and that was not checked against every route. No audit row is written, since nothing calls the store. Local database tests ran `death_store`, `stored_words`, `current_views` and `migration_down` only, on local Postgres 18, as the Podman VM would not start; CI runs the rest.
+
 ## 2026-11-05 - A reported death is refused, not dropped (BV-2, in part; H-046 stays open)
 
 - **Clinical risk:** **yes, for the feed.** An HL7 message with a date of death or a `Y` death indicator used to be applied and answered `AA`, with the death ignored. It is now answered `AE`, changes nothing, and waits in the feed queue. So other details on that message are no longer applied either. A FHIR write with `deceased[x]` was already refused and now has a test. H-046 stays `open`, as its status is the Clinical Safety Officer's.

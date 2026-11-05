@@ -4,7 +4,7 @@ Every table and view the service's migrations create. **Generated** by [`scripts
 
 Not listed: tables made by a statement built at run time (the monthly `audit_events` partitions), and what a column means (the migrations carry few comments, so only the name and SQL type are shown). The clinical tables are append-only: a change is a new row, and triggers refuse `UPDATE`, `DELETE` and `TRUNCATE`.
 
-23 tables, 12 views.
+24 tables, 13 views.
 
 ## Tables
 
@@ -18,6 +18,7 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `break_glass_grants` | `m20261021_000010_break_glass` | `grant_id` UUID, `patient_id` UUID, `subject` TEXT, `reason` TEXT, `granted_at` TIMESTAMPTZ, `expires_at` TIMESTAMPTZ |
 | `break_glass_reviews` | `m20261021_000010_break_glass` | `grant_id` UUID, `reviewed_at` TIMESTAMPTZ, `reviewed_by` TEXT, `outcome` TEXT, `note` TEXT |
 | `consent_versions` | `m20261021_000003_consent_versions` | `consent_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `status` TEXT, `body` JSONB |
+| `death_assertion_versions` | `m20261105_000025_death_assertions` | `assertion_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `status` TEXT, `body` JSONB |
 | `feed_refusal_resolutions` | `m20261021_000009_feed_refusals` | `refusal_id` UUID, `resolved_at` TIMESTAMPTZ, `resolved_by` TEXT, `outcome` TEXT, `reason` TEXT |
 | `feed_refusals` | `m20261021_000009_feed_refusals` | `refusal_id` UUID, `received_at` TIMESTAMPTZ, `agent` TEXT, `peer` TEXT, `event` TEXT, `control_id` TEXT, `kind` TEXT, `reasons` JSONB, `message` TEXT |
 | `hazard_versions` | `m20261028_000016_hazard_events` | `hazard_id` UUID, `version` INTEGER, `recorded_at` TIMESTAMPTZ, `author` TEXT, `state` TEXT, `event` JSONB, `body` JSONB |
@@ -43,6 +44,7 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `amendment_current` | `m20261027_000015_amendments` |
 | `audit_events_all` | `m20261031_000019_audit_archive_view` |
 | `consent_current` | `m20261021_000003_consent_versions` |
+| `death_assertion_current` | `m20261105_000025_death_assertions` |
 | `hazard_current` | `m20261028_000016_hazard_events` |
 | `observation_current` | `m20261026_000014_observations` |
 | `patient_current` | `m20261021_000002_patient_versions`, `m20261021_000012_patient_search_indexes`, `m20261024_000013_patient_drill` |

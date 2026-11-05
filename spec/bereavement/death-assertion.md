@@ -2,7 +2,7 @@
 
 The rules for recording that a person has died (BV-1). A first draft for clinical and legal review: no clinician, medical examiner or bereaved person has reviewed it. The reasons and sources are on [bereavement](index.md).
 
-**Built:** the rules and the read model, pure, in `electronic-patient-record-service-with-rust/src/death.rs`. **Not built:** storage, a route, a screen, or anything that a hold acts on. Until a death can be recorded, a report that arrives is refused rather than dropped: an HL7 message with PID-29 or PID-30 is answered `AE`, changes nothing and waits in the feed queue for a person, and a FHIR write with `deceased[x]` gets a 422. The service has no outbound contact yet, so nothing is held today.
+**Built:** the rules and the read model in `electronic-patient-record-service-with-rust/src/death.rs`, and the append-only store in `death_store.rs` (table `death_assertion_versions`, view `death_assertion_current`, migration 25). **Not built:** a route, a screen, a writer, or anything that a hold acts on, so the store is empty in use. Until a death can be recorded, a report that arrives is refused rather than dropped: an HL7 message with PID-29 or PID-30 is answered `AE`, changes nothing and waits in the feed queue for a person, and a FHIR write with `deceased[x]` gets a 422. The service has no outbound contact yet, so nothing is held today.
 
 ## The model
 
@@ -34,11 +34,11 @@ All of a patient's assertions, each at its current version, give one answer:
 | None | `not-known-to-have-died` | No |
 | One or more | `asserted`, with the furthest status, whether it is confirmed, the date from the furthest assertion that has one, and `dates_differ` if those that stand disagree | Yes |
 
-`not-known-to-have-died` never means the person is known to be living, so no screen shows the word "alive". A withdrawal releases the hold only when no other assertion stands.
+`not-known-to-have-died` never means the person is known to be living, so no screen shows the word "alive". A withdrawal releases the hold only when no other assertion stands. A report on a record merged away counts for the surviving record.
 
 ## Not settled
 
 - **Who may take each step (OQ-BV2).** The rules name a person, not a role. The draft for review: any member of staff may report, a clinician or nurse may verify, and only a clinician may withdraw.
 - **Does the matcher's `Patient` carry a date of death (OQ-BV3).** Recommendation: no. The assertion lives apart from identity, as this page describes, and a date of death is not used as match evidence. Not yet decided.
 - **How soon a held contact is reviewed, and who owns that.** OQ-BV1 says a person confirms; it does not say by when.
-- **Other fields on [the proposal](index.md#what-this-project-would-need).** `found_at`, `place`, `verified_at` and `coroner_referred` are not in this slice. They belong with the store.
+- **Other fields on [the proposal](index.md#what-this-project-would-need).** `found_at`, `place`, `verified_at` and `coroner_referred` are not in this slice. They can be added to the stored body without a migration, once someone has said which are required.
