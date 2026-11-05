@@ -240,7 +240,7 @@ test("editing sends the expected version and keeps what the form does not show",
   await expect(page.getByText("Version: 2")).toBeVisible();
   await axe(page);
   await page.getByLabel("Birth date").fill("1980-03-15");
-  await page.getByLabel("Reason").fill("corrected");
+  await page.getByRole("textbox", { name: "Reason" }).fill("corrected");
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(
     page.getByRole("status").filter({ hasText: "Saved." }),
@@ -1118,6 +1118,117 @@ test("a drill record says so at the top of its banner, and a real one does not",
     await expect(banner).toContainText("SMITH, Ann");
     await expect(banner).not.toContainText("DRILL");
   }
+});
+
+test("a need shows in the banner, an overdue check says so, and a spoken interpreter needs a language", async ({
+  page,
+}) => {
+  await page.route("**/api/proxy/api/patients/p-1", (route) =>
+    json(route, 200, {
+      id: "p-1",
+      version: 1,
+      author: "a",
+      recorded_at: "2026-11-01T00:00:00Z",
+      patient: {
+        names: [{ family: "Smith", given: ["Ann"] }],
+        identifiers: [],
+      },
+    }),
+  );
+  const row = (over: Record<string, unknown>) => ({
+    id: "n-1",
+    patient_id: "p-1",
+    version: 1,
+    author: "desk",
+    recorded_at: "2026-11-02T09:00:00Z",
+    category: "interpreting",
+    display: "Spoken language interpreter",
+    overdue: true,
+    adjustment: {
+      code: "interpreter-spoken",
+      note: "Polish",
+      status: "active",
+      review_by: "2020-01-01",
+      reason: "<b>the daughter rang</b>",
+    },
+    ...over,
+  });
+  let rows: unknown[] = [];
+  const sent: unknown[] = [];
+  await page.route(
+    "**/api/proxy/api/patients/p-1/adjustments",
+    async (route) => {
+      if (route.request().method() === "POST") {
+        sent.push(route.request().postDataJSON());
+        rows = [row({})];
+        return json(route, 201, rows[0]);
+      }
+      return json(route, 200, { adjustments: rows });
+    },
+  );
+  await page.goto("/en-001/patients/p-1");
+  await expect(
+    page
+      .getByText("Needs: none recorded. This does not mean there are none.")
+      .first(),
+  ).toBeVisible();
+
+  const section = page.getByRole("region", {
+    name: "Needs and reasonable adjustments",
+  });
+  await section.getByRole("button", { name: "Record a need" }).click();
+  await section
+    .getByLabel("Need", { exact: true })
+    .selectOption("interpreter-spoken");
+  await section.getByLabel("Reason (kept in the history)").fill("she asked");
+  await section.getByRole("button", { name: "Save the need" }).click();
+  await expect(
+    section.getByText("Say which language the interpreter is for."),
+  ).toBeVisible();
+  expect(sent).toEqual([]);
+
+  await section
+    .getByLabel("Note (for a spoken interpreter, the language)")
+    .fill("Polish");
+  await section.getByRole("button", { name: "Save the need" }).click();
+  await expect(
+    page.getByText("Needs: Spoken language interpreter (Polish)."),
+  ).toBeVisible();
+  await expect(page.getByText("Reviews overdue: 1.")).toBeVisible();
+  expect(sent).toEqual([
+    {
+      code: "interpreter-spoken",
+      note: "Polish",
+      review_by: null,
+      reason: "she asked",
+    },
+  ]);
+  // Text from a person is shown as text, never as markup.
+  await expect(section.getByText("<b>the daughter rang</b>")).toBeVisible();
+  await axe(page);
+});
+
+test("a failed look at needs is said, not read as none", async ({ page }) => {
+  await page.route("**/api/proxy/api/patients/p-1", (route) =>
+    json(route, 200, {
+      id: "p-1",
+      version: 1,
+      author: "a",
+      recorded_at: "2026-11-01T00:00:00Z",
+      patient: {
+        names: [{ family: "Smith", given: ["Ann"] }],
+        identifiers: [],
+      },
+    }),
+  );
+  await page.route("**/api/proxy/api/patients/p-1/adjustments", (route) =>
+    json(route, 500, { error: "no" }),
+  );
+  await page.goto("/en-001/patients/p-1");
+  await expect(
+    page.getByText("Needs could not be loaded. There may be some.").first(),
+  ).toBeVisible();
+  await expect(page.getByText("Needs: none recorded")).toHaveCount(0);
 });
 
 test("a report of death shows in the banner, holds contact, and a step needs a reason", async ({

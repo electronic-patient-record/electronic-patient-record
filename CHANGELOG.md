@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - Needs on the banner and the patient page (PA-6, in part; H-048)
+
+- **Clinical risk:** **yes.** The patient and summary banners now say what a person needs, and whether a check is overdue. Staff read this before they speak to someone. A failed look says so, and an empty list says "none recorded" and that this does not mean there are none.
+- **Built:** `adjustments.ts`, `AdjustmentsSection.svelte`, the banner line, 23 translatable codes in `strings.ts`, a test that the UI's catalogue is the service's, and browser tests including accessibility.
+- **Not done / not verified:** the words are English only, though the app has ten locales. No one who needs an adjustment has seen this. The banner gets longer with each need, and a long list was not tried at phone width. PN-4 is not built, and nothing shows beside an appointment, because the record holds none. Nothing tells anyone that a check is overdue unless the record is opened. The summary page has no section of its own, only the banner.
+
 ## 2026-11-05 - Reasonable adjustments and communication needs, in the service (PA-6, in part; H-048)
 
 - **Clinical risk:** **yes.** A new record of what a person needs in order to use care. Hazard H-048 is added, `open`. An adjustment informs staff and changes nothing by itself. Nothing shows it yet: the screens are the next commit.

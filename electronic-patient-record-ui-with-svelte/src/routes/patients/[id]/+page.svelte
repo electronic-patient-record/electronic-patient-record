@@ -10,6 +10,8 @@
   import { loadAllergies, type AllergyLoad } from "#lib/allergies.js";
   import { loadDeath, type DeathLoad } from "#lib/death.js";
   import DeathSection from "#lib/DeathSection.svelte";
+  import { loadAdjustments, type AdjustmentLoad } from "#lib/adjustments.js";
+  import AdjustmentsSection from "#lib/AdjustmentsSection.svelte";
   import { patientProblemList } from "#lib/conflicts.js";
   import MergeSection from "#lib/MergeSection.svelte";
   import AmendmentsSection from "#lib/AmendmentsSection.svelte";
@@ -43,6 +45,9 @@
   // What the banner says about a death, read for the patient on screen.
   let death = $state<DeathLoad | null>(null);
   let deathTicket = 0;
+  // What this person needs, read once for the banner and the section.
+  let adjustments = $state<AdjustmentLoad | null>(null);
+  let adjustmentsTicket = 0;
   // When emergency access opened on this page ends, kept after the form has gone.
   let glassUntil = $state<string | null>(null);
 
@@ -67,14 +72,23 @@
     if (current(forId) && ticket === deathTicket) death = res;
   }
 
+  async function reloadAdjustments() {
+    const forId = id;
+    const ticket = ++adjustmentsTicket;
+    const res = await loadAdjustments(forId ?? "");
+    if (current(forId) && ticket === adjustmentsTicket) adjustments = res;
+  }
+
   async function load() {
     const forId = id;
     const ticket = ++loadTicket;
     void reloadDeath();
+    void reloadAdjustments();
     if (stored?.id !== forId) {
       stored = null;
       allergies = null;
       death = null;
+      adjustments = null;
       form = emptyForm();
       reason = "";
       glassUntil = null;
@@ -324,7 +338,7 @@
 {/if}
 
 {#if stored}
-  <PatientBanner stored={latest ?? stored} {allergies} {death} />
+  <PatientBanner stored={latest ?? stored} {allergies} {death} {adjustments} />
   {#if age}
     {#if age.stale}
       <p role="alert">{STRINGS.dataMayBeOld.replace("{time}", age.readAt)}</p>
@@ -355,6 +369,12 @@
   </p>
   <!-- A record merged into another is read-only: its changes go to the surviving record. -->
   {#if !stored.replaced_by}
+    <AdjustmentsSection
+      patientId={stored.id}
+      siteZone={stored.site_time_zone}
+      load={adjustments}
+      onchange={reloadAdjustments}
+    />
     <DeathSection
       patientId={stored.id}
       siteZone={stored.site_time_zone ?? "UTC"}

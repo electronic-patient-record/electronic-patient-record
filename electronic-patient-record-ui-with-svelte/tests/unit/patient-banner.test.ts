@@ -76,6 +76,46 @@ describe("PatientBanner (CQ-35, ID-7)", () => {
     expect(container.textContent).not.toMatch(/alive|living/i);
   });
 
+  it("shows what a person needs, and that a review is overdue (H-048)", () => {
+    const { container } = show({
+      adjustments: {
+        status: 200,
+        adjustments: [
+          {
+            id: "a1",
+            patient_id: "p1",
+            version: 1,
+            author: "n",
+            recorded_at: "2026-11-05T10:00:00Z",
+            adjustment: {
+              code: "interpreter-spoken",
+              note: "Polish",
+              status: "active",
+              review_by: "2020-01-01",
+              reason: "r",
+            },
+            category: "interpreting",
+            display: "Spoken language interpreter",
+            overdue: true,
+          },
+        ],
+      },
+    });
+    expect(container.textContent).toContain(
+      "Spoken language interpreter (Polish)",
+    );
+    expect(container.textContent).toContain(
+      STRINGS.bannerNeedsOverdue.replace("{n}", "1"),
+    );
+  });
+
+  it("does not read a failed look for needs as none", () => {
+    const { container } = show({
+      adjustments: { status: 500, adjustments: null },
+    });
+    expect(container.textContent).toContain(STRINGS.bannerNeedsFailed);
+  });
+
   it("marks a drill record and a merged record", () => {
     render(PatientBanner, {
       stored: stored({ drill: true, replaced_by: "p2" } as Partial<Stored>),

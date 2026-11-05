@@ -2,7 +2,7 @@
 
 What a person needs in order to use care: an interpreter, large print, step-free access, a quiet place to wait (PA-6). A first draft: no clinician, disabled person, interpreter or lawyer has reviewed it. Read from the sister project's [patient administration system](../../plan.md) (its `adjustments`, `interpreter` and `needs_review` modules, read 2026-11-05 at commit `15e6389`), and reworked to fit this record.
 
-**Built:** the rules in `electronic-patient-record-service-with-rust/src/adjustments.rs`, the append-only store in `adjustments_store.rs` (table `adjustment_versions`, view `adjustment_current`, migration 26) and the routes in `controllers/adjustments.rs`.
+**Built:** the rules in `electronic-patient-record-service-with-rust/src/adjustments.rs`, the append-only store in `adjustments_store.rs` (table `adjustment_versions`, view `adjustment_current`, migration 26) and the routes in `controllers/adjustments.rs`. The patient and summary banners show what stands and whether a check is overdue, and `AdjustmentsSection.svelte` on the patient page records, checks and ends a need. A failed look says so, and an empty list says "none recorded", which does not mean there are none.
 
 **Not built:** the patient's own view, a proxy scope, a FHIR `Flag`, a list across patients of reviews that are overdue, booking an interpreter, and anything beside an appointment, because the record holds no appointments.
 

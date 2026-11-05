@@ -12,6 +12,7 @@
   import { bannerAllergies, type AllergyLoad } from "./allergies.js";
   import { fetchBlob } from "./api.js";
   import { bannerDeath, type DeathLoad } from "./death.js";
+  import { bannerAdjustments, type AdjustmentLoad } from "./adjustments.js";
   import { STRINGS } from "./strings.js";
 
   // `purpose` is the purpose of use the photo is fetched under: "my record" passes
@@ -22,6 +23,7 @@
     purpose,
     allergies = null,
     death = null,
+    adjustments = null,
   }: {
     stored: Stored;
     today?: Date;
@@ -31,8 +33,11 @@
     allergies?: AllergyLoad | null;
     // What the death call returned. Staff pages pass it; a patient's own view does not ask.
     death?: DeathLoad | null;
+    // What the adjustment call returned. Staff pages pass it; a patient's own view does not ask.
+    adjustments?: AdjustmentLoad | null;
   } = $props();
   const deathLine = $derived(bannerDeath(death));
+  const needsLine = $derived(bannerAdjustments(adjustments));
   const allergyLine = $derived(
     bannerAllergies(allergies, stored.site_time_zone),
   );
@@ -109,6 +114,12 @@
     · {STRINGS.bannerAge}: {age}
     {#if p.sex}· {STRINGS.sexes[p.sex]}{/if}
   </p>
+  {#if needsLine.kind === "needs"}
+    <p><strong>{needsLine.text}</strong></p>
+    {#if needsLine.overdue}<p>{needsLine.overdue}</p>{/if}
+  {:else if needsLine.kind === "status"}
+    <p>{needsLine.text}</p>
+  {/if}
   <p>{STRINGS.bannerNhs}: {nhs ? nhsDisplay(nhs) : STRINGS.bannerNone}</p>
   <p>
     {STRINGS.bannerOtherId}: {other

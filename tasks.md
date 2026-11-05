@@ -953,7 +953,7 @@ what a clinician or a carer sees.
   recorder, an expiry, and revocation, as the model for CA-5 proxy access and adolescent confidentiality.
   **Acceptance:** a proxy cannot read outside its scopes, an expired or revoked proxy is refused (fake clock), and every
   use is in the patient's access log.
-- [ ] **PA-6 (M) — Reasonable adjustments and communication needs.** **Service landed 2026-11-05** (rules, append-only store, routes, H-048; see `spec/reasonable-adjustments/index.md`). **Open:** the banner and the page, and PN-4; nothing beside an appointment, because the record holds none. **Clinical.** A coded record with a review date
+- [ ] **PA-6 (M) — Reasonable adjustments and communication needs.** **Service and screens landed 2026-11-05** (rules, append-only store, routes, the banner, a section on the patient page, an overdue check shown, H-048; see `spec/reasonable-adjustments/index.md`). **Open:** PN-4 reading it, translated words, and nothing beside an appointment, because the record holds none. **Clinical.** A coded record with a review date
   (interpreter need, BSL, easy read, pictorial pain scale preferred), shown in the patient banner and read by PN-4. The
   code list's licence is **[uncertain]**.
   **Acceptance:** an overdue review shows, an adjustment is visible beside the appointment and the banner, and an
