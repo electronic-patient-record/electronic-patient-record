@@ -154,6 +154,17 @@ async fn who_may_report_confirm_and_withdraw() {
             .await;
         assert_eq!(future.status_code(), StatusCode::UNPROCESSABLE_ENTITY, "{}", future.text());
 
+        // In FHIR an unconfirmed report is a tag, never `deceased[x]`.
+        let (h, v) = auth(&reception);
+        let read: Value = server
+            .get(&format!("/fhir/R4/Patient/{id}"))
+            .add_header(h, v)
+            .add_header(purpose.clone(), ops.clone())
+            .await
+            .json();
+        assert_eq!(read["meta"]["tag"][0]["code"], "death-reported");
+        assert!(read.get("deceasedDateTime").is_none(), "{read}");
+
         // Reception can neither read the reasons nor take a step.
         let (h, v) = auth(&reception);
         let denied = server.get(&assertions).add_header(h, v).add_header(purpose.clone(), ops.clone()).await;
@@ -185,6 +196,43 @@ async fn who_may_report_confirm_and_withdraw() {
             .await;
         assert_eq!(stale.status_code(), StatusCode::CONFLICT, "{}", stale.text());
 
+        // FHIR: confirmed, so it is `deceased[x]`, and a read sent back as an update changes nothing
+        // about the death. A write cannot change or report one.
+        let fhir = format!("/fhir/R4/Patient/{id}");
+        let fhir_type = (
+            HeaderName::from_static("content-type"),
+            HeaderValue::from_static("application/fhir+json"),
+        );
+        let (h, v) = auth(&reception);
+        let read = server.get(&fhir).add_header(h, v).add_header(purpose.clone(), ops.clone()).await;
+        assert_eq!(read.status_code(), StatusCode::OK, "{}", read.text());
+        let body: Value = read.json();
+        assert_eq!(body["deceasedDateTime"], "2026-11-01");
+        let if_match = HeaderName::from_static("if-match");
+        let (h, v) = auth(&reception);
+        let back = server
+            .put(&fhir)
+            .add_header(h, v)
+            .add_header(purpose.clone(), ops.clone())
+            .add_header(if_match.clone(), HeaderValue::from_static("W/\"1\""))
+            .add_header(fhir_type.0.clone(), fhir_type.1.clone())
+            .text(body.to_string())
+            .await;
+        assert_eq!(back.status_code(), StatusCode::OK, "{}", back.text());
+        let mut changed = body.clone();
+        changed["deceasedDateTime"] = json!("2026-10-01");
+        let (h, v) = auth(&reception);
+        let refused = server
+            .put(&fhir)
+            .add_header(h, v)
+            .add_header(purpose.clone(), ops.clone())
+            .add_header(if_match.clone(), HeaderValue::from_static("W/\"1\""))
+            .add_header(fhir_type.0.clone(), fhir_type.1.clone())
+            .text(changed.to_string())
+            .await;
+        assert_eq!(refused.status_code(), StatusCode::UNPROCESSABLE_ENTITY, "{}", refused.text());
+        assert!(refused.text().contains("death/assertions"), "{}", refused.text());
+
         // A nurse may not withdraw; a clinician may, and the assertion stays in the list.
         let (h, v) = auth(&nurse);
         let denied = server
@@ -205,6 +253,14 @@ async fn who_may_report_confirm_and_withdraw() {
         let (h, v) = auth(&clinician);
         let all: Value = server.get(&assertions).add_header(h, v).add_header(purpose.clone(), ops.clone()).await.json();
         assert_eq!(all["assertions"][0]["assertion"]["status"], "withdrawn-in-error");
+        let (h, v) = auth(&reception);
+        let gone: Value = server
+            .get(&format!("/fhir/R4/Patient/{id}"))
+            .add_header(h, v)
+            .add_header(purpose.clone(), ops.clone())
+            .await
+            .json();
+        assert!(gone.get("deceasedDateTime").is_none(), "{gone}");
         let (h, v) = auth(&reception);
         let released: Value = server.get(&answer).add_header(h, v).add_header(purpose.clone(), ops.clone()).await.json();
         assert_eq!(released["holds_contact"], false);

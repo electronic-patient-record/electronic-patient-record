@@ -11,15 +11,19 @@
 //! create, `_include`, paging, and any search prefix other than exact dates. A Patient carrying an
 //! element the identity record cannot hold is **refused** (422), not stored with the element
 //! silently dropped. A possible duplicate is refused (409) without the candidates: override it
-//! through `/api/patients`, where the reason is recorded.
+//! through `/api/patients`, where the reason is recorded. A Patient read or search says what the
+//! caller may be told about a death (`fhir_patient::with_death`); a write cannot report one, because a
+//! report has an author and a reason (`spec/bereavement/death-assertion.md`).
 
 use super::audit::search_audited;
 use super::common::authorize;
 use super::patients::{self, CreateRequest, UpdateRequest};
 use crate::allergies::{StoredAllergy, Summary};
 use crate::api_error::ApiError;
-use crate::auth::Agent;
-use crate::interop::fhir_patient::{from_fhir_json, to_fhir};
+use crate::auth::{self, Agent};
+use crate::death::Answer;
+use crate::death_store;
+use crate::interop::fhir_patient::{deceased_element, from_fhir_json, to_fhir, with_death};
 use crate::interop::{fhir_allergy, fhir_audit, fhir_observation};
 use crate::observations_store::StoredObservation;
 use crate::patients_store::{Search, Stored};
@@ -149,13 +153,30 @@ fn with_links(
     Ok(json)
 }
 
+/// A patient's death answer, if this subject may be told it. A patient and a proxy may not (OQ-BV2). A
+/// failed look is an error, never an absent answer: that would read as nothing reported.
+async fn death_of(ctx: &AppContext, subject: &Subject, id: &str) -> Result<Option<Answer>, String> {
+    let may_see = !auth::authentication_enforced()
+        || policy::gate(subject, Resource::DeathAssertion, policy::Action::Read);
+    if !may_see {
+        return Ok(None);
+    }
+    death_store::answer(&ctx.db, id)
+        .await
+        .map(Some)
+        .map_err(|e| e.to_string())
+}
+
 /// A refusal from the service as an `OperationOutcome`.
 fn refusal(e: &ApiError, update: bool) -> Response {
     error_outcome(e.status(), &e.body(), update)
 }
 
-/// A stored patient, and where it was merged to or what was merged into it, as FHIR.
-fn one(
+/// A stored patient, and where it was merged to or what was merged into it, as FHIR, with what
+/// this subject may be told about a death.
+async fn one(
+    ctx: &AppContext,
+    subject: &Subject,
     result: Result<(Stored, Option<String>, Vec<String>), ApiError>,
     success: StatusCode,
     update: bool,
@@ -164,7 +185,14 @@ fn one(
         Ok(v) => v,
         Err(e) => return refusal(&e, update),
     };
-    match patient_json(&stored).and_then(|j| with_links(j, replaced_by.as_deref(), &replaces)) {
+    let death = match death_of(ctx, subject, &stored.id).await {
+        Ok(d) => d,
+        Err(e) => return internal(&e),
+    };
+    let json = patient_json(&stored)
+        .and_then(|j| with_links(j, replaced_by.as_deref(), &replaces))
+        .and_then(|j| death.iter().try_fold(j, with_death));
+    match json {
         Ok(json) => {
             let mut response = fhir(success, &json, Some(stored.version));
             if success == StatusCode::CREATED
@@ -219,13 +247,21 @@ fn search_from(params: &HashMap<String, String>) -> Result<Search, String> {
 }
 
 /// A `searchset` bundle of the patients.
-fn bundle(found: &[Stored], limit: i64) -> Result<serde_json::Value, String> {
+fn bundle(
+    found: &[Stored],
+    limit: i64,
+    deaths: &HashMap<String, Answer>,
+) -> Result<serde_json::Value, String> {
     let entries = found
         .iter()
         .map(|s| {
+            let resource = deaths
+                .get(&s.id)
+                .into_iter()
+                .try_fold(patient_json(s)?, with_death)?;
             Ok(serde_json::json!({
                 "fullUrl": format!("{BASE}/Patient/{}", s.id),
-                "resource": patient_json(s)?,
+                "resource": resource,
                 "search": { "mode": "match" },
             }))
         })
@@ -268,6 +304,7 @@ fn if_match_version(headers: &HeaderMap) -> Result<i32, Box<Response>> {
 fn patient_from(
     body: &str,
     path_id: Option<&str>,
+    deceased: Option<&(&str, serde_json::Value)>,
 ) -> Result<electronic_patient_record_matcher::Patient, Box<Response>> {
     if let (Some(path_id), Ok(raw)) = (path_id, serde_json::from_str::<serde_json::Value>(body))
         && let Some(id) = raw.get("id").and_then(|v| v.as_str())
@@ -286,12 +323,28 @@ fn patient_from(
             &u.0.join("; "),
         ))
     })?;
+    // A death is a report, with an author and a reason, not an element of a demographic update. What
+    // this server itself sent on read comes back on an update and changes nothing; anything else is
+    // refused, and a retraction by leaving it out is not possible.
+    let raw = serde_json::from_str::<serde_json::Value>(body).unwrap_or_default();
+    let sent_back = |k: &str| deceased.is_some_and(|(e, v)| *e == k && raw.get(k) == Some(v));
+    if read
+        .dropped
+        .iter()
+        .any(|k| k.starts_with("deceased") && !sent_back(k))
+    {
+        return Err(Box::new(outcome(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "not-supported",
+            "a death is not recorded by a Patient write: report it at POST /api/patients/{id}/death/assertions",
+        )));
+    }
     // `text` is generated narrative: it can be rebuilt from the data, so it is not data lost.
     let dropped: Vec<&str> = read
         .dropped
         .iter()
         .map(String::as_str)
-        .filter(|k| *k != "text")
+        .filter(|k| *k != "text" && !k.starts_with("deceased"))
         .collect();
     if !dropped.is_empty() {
         return Err(Box::new(outcome(
@@ -318,7 +371,7 @@ pub(super) async fn read_patient(
     let r = patients::read_service(&ctx, &agent, &subject, &headers, &id)
         .await
         .map(|v| (v.stored, v.replaced_by, v.replaces));
-    one(r, StatusCode::OK, false)
+    one(&ctx, &subject, r, StatusCode::OK, false).await
 }
 
 /// `GET /fhir/R4/Patient`: a search by `family`, `birthdate` or `identifier` through [`patients::search_service`], as a
@@ -338,7 +391,17 @@ pub(super) async fn search_patients(
         Ok(found) => found,
         Err(e) => return refusal(&e, false),
     };
-    match bundle(&found, crate::patients_store::SEARCH_LIMIT) {
+    let mut deaths = HashMap::new();
+    for s in &found {
+        match death_of(&ctx, &subject, &s.id).await {
+            Ok(Some(answer)) => {
+                deaths.insert(s.id.clone(), answer);
+            }
+            Ok(None) => {}
+            Err(e) => return internal(&e),
+        }
+    }
+    match bundle(&found, crate::patients_store::SEARCH_LIMIT, &deaths) {
         Ok(b) => fhir(StatusCode::OK, &b, None),
         Err(e) => internal(&e),
     }
@@ -354,7 +417,7 @@ async fn create_patient(
     headers: HeaderMap,
     body: String,
 ) -> Response {
-    let patient = match patient_from(&body, None) {
+    let patient = match patient_from(&body, None, None) {
         Ok(p) => p,
         Err(r) => return *r,
     };
@@ -367,7 +430,7 @@ async fn create_patient(
     let r = patients::create_service(&ctx, &agent, &subject, &headers, &request)
         .await
         .map(|s| (s, None, Vec::new()));
-    one(r, StatusCode::CREATED, false)
+    one(&ctx, &subject, r, StatusCode::CREATED, false).await
 }
 
 /// `PUT /fhir/R4/Patient/{id}`: update a patient from a FHIR resource. `If-Match` (a weak version such as `W/"1"`) is
@@ -384,7 +447,13 @@ async fn update_patient(
         Ok(v) => v,
         Err(r) => return *r,
     };
-    let patient = match patient_from(&body, Some(&id)) {
+    // Only what this subject could read back is let through. A failed look refuses it, which is safe.
+    let deceased = death_of(&ctx, &subject, &id)
+        .await
+        .ok()
+        .flatten()
+        .and_then(|a| deceased_element(&a));
+    let patient = match patient_from(&body, Some(&id), deceased.as_ref()) {
         Ok(p) => p,
         Err(r) => return *r,
     };
@@ -396,7 +465,7 @@ async fn update_patient(
     let r = patients::update_service(&ctx, &agent, &subject, &headers, &id, &request)
         .await
         .map(|s| (s, None, Vec::new()));
-    one(r, StatusCode::OK, true)
+    one(&ctx, &subject, r, StatusCode::OK, true).await
 }
 
 /// AuditEvent search parameters as audit criteria. `date` may repeat with the `ge`, `gt`, `le` and
@@ -1106,7 +1175,7 @@ mod tests {
     #[tokio::test]
     async fn a_bundle_counts_only_when_it_may_be_complete() {
         let found = vec![stored("11111111-1111-4111-8111-111111111111", "Smith")];
-        let b = bundle(&found, 50).unwrap();
+        let b = bundle(&found, 50, &HashMap::new()).unwrap();
         assert_eq!(b["type"], "searchset");
         assert_eq!(b["total"], 1);
         assert_eq!(b["entry"][0]["resource"]["resourceType"], "Patient");
@@ -1115,7 +1184,10 @@ mod tests {
             "/fhir/R4/Patient/11111111-1111-4111-8111-111111111111"
         );
         assert!(
-            bundle(&found, 1).unwrap().get("total").is_none(),
+            bundle(&found, 1, &HashMap::new())
+                .unwrap()
+                .get("total")
+                .is_none(),
             "at the limit there may be more"
         );
     }
@@ -1192,29 +1264,39 @@ mod tests {
     #[test]
     fn a_patient_body_with_an_unstorable_element_or_a_different_id_is_refused() {
         let ok = r#"{"resourceType":"Patient","text":{"status":"generated","div":"<div/>"},"name":[{"family":"Smith","given":["Ann"]}],"birthDate":"1980-03-14"}"#;
-        assert!(patient_from(ok, None).is_ok(), "narrative text is not data");
+        assert!(
+            patient_from(ok, None, None).is_ok(),
+            "narrative text is not data"
+        );
         let extra = r#"{"resourceType":"Patient","maritalStatus":{"text":"M"},"name":[{"family":"Smith"}]}"#;
-        let r = patient_from(extra, None).err().unwrap();
+        let r = patient_from(extra, None, None).err().unwrap();
         assert_eq!(r.status(), StatusCode::UNPROCESSABLE_ENTITY);
-        // A death cannot be recorded yet, so a FHIR write that reports one is refused too (BV-2).
+        // A write cannot report a death: that has an author and a reason (BV-2). It can only send back
+        // what this server sent, and only if that is still what the record says.
+        let back = ("deceasedBoolean", serde_json::json!(true));
+        let sent =
+            r#"{"resourceType":"Patient","deceasedBoolean":true,"name":[{"family":"Smith"}]}"#;
+        assert!(patient_from(sent, None, Some(&back)).is_ok());
+        let later = ("deceasedDateTime", serde_json::json!("2026-11-04"));
+        assert!(patient_from(sent, None, Some(&later)).is_err());
         for death in [
             r#""deceasedBoolean":true"#,
             r#""deceasedDateTime":"2026-11-04""#,
         ] {
             let body =
                 format!(r#"{{"resourceType":"Patient",{death},"name":[{{"family":"Smith"}}]}}"#);
-            let r = patient_from(&body, None).err().unwrap();
+            let r = patient_from(&body, None, None).err().unwrap();
             assert_eq!(r.status(), StatusCode::UNPROCESSABLE_ENTITY);
         }
         let other = r#"{"resourceType":"Patient","id":"22222222-2222-4222-8222-222222222222","name":[{"family":"Smith"}]}"#;
         assert_eq!(
-            patient_from(other, Some("11111111-1111-4111-8111-111111111111"))
+            patient_from(other, Some("11111111-1111-4111-8111-111111111111"), None)
                 .err()
                 .map(|r| r.status()),
             Some(StatusCode::BAD_REQUEST)
         );
-        assert!(patient_from(other, Some("22222222-2222-4222-8222-222222222222")).is_ok());
-        assert!(patient_from("not json", None).is_err());
+        assert!(patient_from(other, Some("22222222-2222-4222-8222-222222222222"), None).is_ok());
+        assert!(patient_from("not json", None, None).is_err());
     }
 
     #[test]

@@ -2,7 +2,7 @@
 
 The rules for recording that a person has died (BV-1). A first draft for clinical and legal review: no clinician, medical examiner or bereaved person has reviewed it. The reasons and sources are on [bereavement](index.md).
 
-**Built:** the rules and the read model in `electronic-patient-record-service-with-rust/src/death.rs`, and the append-only store in `death_store.rs` (table `death_assertion_versions`, view `death_assertion_current`, migration 25). The routes are in `controllers/deaths.rs`. The banner on the patient and summary pages says so, and `DeathSection.svelte` reports and takes steps. An HL7 message with PID-29 or PID-30 stores a report, as below. **Not built:** FHIR `deceased[x]`, or anything that a hold acts on. A FHIR write with `deceased[x]` gets a 422. The service has no outbound contact yet, so nothing is held today.
+**Built:** the rules and the read model in `electronic-patient-record-service-with-rust/src/death.rs`, and the append-only store in `death_store.rs` (table `death_assertion_versions`, view `death_assertion_current`, migration 25). The routes are in `controllers/deaths.rs`. The banner on the patient and summary pages says so, and `DeathSection.svelte` reports and takes steps. An HL7 message with PID-29 or PID-30 stores a report, as below. FHIR is below. **Not built:** anything that a hold acts on. The service has no outbound contact yet, so nothing is held today.
 
 ## The model
 
@@ -65,6 +65,19 @@ An HL7 ADT message with PID-29, or PID-30 of `Y`, stores a report from that feed
 | The message cannot be applied for another reason, or its event is not handled, such as `A03` | Refused as before, and the refusal says the death was not recorded |
 
 A feed cannot retract a report: a later message with an indicator of `N` changes nothing. A report waits for a person to verify it; nothing tells anyone that one has arrived, except the banner when the record is opened.
+
+## FHIR
+
+| The one answer | R4 and R5 `Patient` on read and search |
+|---|---|
+| No assertion stands | Nothing, which says nothing either way |
+| Reported, not confirmed | The `meta.tag` `death-reported` in `urn:epr:record-kind`, and no `deceased[x]` |
+| Confirmed, with one date | `deceasedDateTime`, as precise as it was given |
+| Confirmed, with no date or dates that disagree | `deceasedBoolean: true` |
+
+An unconfirmed report is not `deceased[x]` because any other system takes that as a fact, and a wrong report would spread to it. A patient and a proxy are not told, on any route. A failed look answers 500 rather than leaving the element out, which would read as nothing reported.
+
+A `Patient` write cannot report, change or retract a death, because a report has an author and a reason. A write with `deceased[x]` gets a 422 that names the report route. The exception is an update that sends back exactly what a read gave, which changes nothing about the death, so that a client that reads, edits and writes keeps working. Leaving the element out of an update changes nothing either.
 
 ## The one answer
 

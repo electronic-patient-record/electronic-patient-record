@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-05 - FHIR says when a person has died (BV-2; H-046 stays open)
+
+- **Clinical risk:** **yes.** A FHIR reader now sees `deceased[x]` for a confirmed death and the tag `death-reported` for one that is not confirmed. A wrong report therefore reaches any system that reads this tag, though not as `deceased[x]`. H-046 stays `open`.
+- **Built:** `deceased_element` and `with_death` in `fhir_patient.rs`, on read, search, create and update; R5 gets the same through its conversion. A failed look is a 500. An update that sends back what a read gave is accepted.
+- **A change from what I said I would do:** a FHIR write with a new `deceased[x]` is still refused, now with the route to use, instead of becoming a report. A report needs an author and a reason, a `Patient` write has neither, and the two writes could not share one transaction without changing `create_service` and `update_service`. So nothing is lost silently, but an integrator must call the report route.
+- **Not done / not verified:** BV-2 is ticked, with an `A03` still recording nothing. Telling a FHIR reader about a death writes no separate audit row, only the Patient read's. A search looks up each patient's answer in turn, up to the search limit, and that cost was not measured. The R5 output and the FHIR validator were not run locally: R5 has no death test, and the validator needs Java, so it is left to CI. Every other database test ran on local Postgres 18: 161 passed.
+
 ## 2026-11-05 - A death from the feed is stored as a report (BV-2, in part; H-046 stays open)
 
 - **Clinical risk:** **yes.** A feed can now put a report of death in the banner of a patient who is alive, until a clinician withdraws it. That is the rule decided as OQ-BV1. The other way round, a real death on a message is no longer left in a queue. A message with a death is answered `AA` again, and its other details are applied again. H-046 stays `open`.

@@ -6,6 +6,7 @@
 //! status, photo, extensions, a full address line...). [`FromFhir::dropped`] names every top-level
 //! element that was dropped, so a caller can refuse or log instead of silently discarding.
 
+use crate::death::Answer;
 use crate::patients_store::Stored;
 use electronic_patient_record_matcher::{
     Address, AdministrativeSex, HumanName, Identifier, Patient, Telecom,
@@ -46,6 +47,53 @@ pub const DRILL_TAG_SYSTEM: &str = "urn:epr:record-kind";
 /// The `meta.tag` code, in [`DRILL_TAG_SYSTEM`], that marks a temporary identity (TT-1). Read as well
 /// as written, so a read, change and write through FHIR keeps it.
 pub const TEMPORARY_IDENTITY_TAG: &str = "temporary-identity";
+/// The tag on a patient with a report of death that no person has confirmed.
+pub const DEATH_REPORTED_TAG: &str = "death-reported";
+
+/// What `Patient.deceased[x]` holds for an answer: `(element, value)`, or `None`. Only a death a person
+/// has confirmed is sent here, because any other system takes `deceased[x]` as a fact. A date goes in
+/// `deceasedDateTime`; with no date, or dates that disagree, `deceasedBoolean` says only that the person
+/// has died (never both, as FHIR requires). An unconfirmed report is a tag: see [`with_death`].
+#[must_use]
+pub fn deceased_element(answer: &Answer) -> Option<(&'static str, Value)> {
+    match answer {
+        Answer::Asserted {
+            confirmed: true,
+            occurred: Some(at),
+            dates_differ: false,
+            ..
+        } => Some(("deceasedDateTime", json!(at))),
+        Answer::Asserted {
+            confirmed: true, ..
+        } => Some(("deceasedBoolean", json!(true))),
+        _ => None,
+    }
+}
+
+/// Add a patient's death answer to their FHIR JSON: `deceased[x]` for a confirmed death, a `meta.tag`
+/// for a report that holds contact and is not confirmed, and nothing when no assertion stands, as an
+/// absent `deceased[x]` says nothing either way. The result is checked against the typed R4 model.
+///
+/// # Errors
+///
+/// A message when the typed model refuses the result.
+pub fn with_death(mut patient: Value, answer: &Answer) -> Result<Value, String> {
+    if let Some((element, value)) = deceased_element(answer) {
+        patient[element] = value;
+    } else if answer.holds_contact() {
+        let tag = json!({
+            "system": DRILL_TAG_SYSTEM,
+            "code": DEATH_REPORTED_TAG,
+            "display": "DEATH REPORTED - NOT CONFIRMED - HOLD CONTACT",
+        });
+        match patient["meta"]["tag"].as_array_mut() {
+            Some(tags) => tags.push(tag),
+            None => patient["meta"]["tag"] = json!([tag]),
+        }
+    }
+    serde_json::from_value::<Resource>(patient.clone()).map_err(|e| e.to_string())?;
+    Ok(patient)
+}
 
 /// The stored record as a FHIR R4 `Patient` (a `Resource::Patient`, so it serializes with its
 /// `resourceType`), with `meta.versionId` set to the record version. The
@@ -454,6 +502,48 @@ mod tests {
                     .any(|m| m.to_lowercase().contains(&expect.to_lowercase())),
                 "{text}: {err:?}"
             );
+        }
+    }
+
+    fn asserted(confirmed: bool, occurred: Option<&str>, dates_differ: bool) -> Answer {
+        use crate::death::Status;
+        Answer::Asserted {
+            status: if confirmed {
+                Status::Verified
+            } else {
+                Status::Reported
+            },
+            confirmed,
+            occurred: occurred.map(str::to_string),
+            dates_differ,
+        }
+    }
+
+    #[test]
+    fn only_a_confirmed_death_is_sent_as_deceased() {
+        let patient = || serde_json::to_value(to_fhir(&stored()).unwrap()).unwrap();
+        // Nothing stands: nothing is said, either way.
+        let none = with_death(patient(), &Answer::NotKnownToHaveDied).unwrap();
+        assert_eq!(none, patient());
+        // A report holds contact, but no other system may read it as a fact.
+        let reported = with_death(patient(), &asserted(false, Some("2026-11-01"), false)).unwrap();
+        assert!(reported.get("deceasedDateTime").is_none());
+        assert!(reported.get("deceasedBoolean").is_none());
+        assert_eq!(reported["meta"]["tag"][0]["code"], DEATH_REPORTED_TAG);
+        // Confirmed, with a date as given, partial dates included.
+        for at in ["2026", "2026-11", "2026-11-01", "2026-11-01T09:00:00Z"] {
+            let dated = with_death(patient(), &asserted(true, Some(at), false)).unwrap();
+            assert_eq!(dated["deceasedDateTime"], at);
+            assert!(dated.get("deceasedBoolean").is_none());
+        }
+        // Confirmed with no date, or dates that disagree: that the person has died, and no date.
+        for answer in [
+            asserted(true, None, false),
+            asserted(true, Some("2026-11-01"), true),
+        ] {
+            let bare = with_death(patient(), &answer).unwrap();
+            assert_eq!(bare["deceasedBoolean"], true);
+            assert!(bare.get("deceasedDateTime").is_none());
         }
     }
 }
