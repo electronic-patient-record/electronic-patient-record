@@ -59,11 +59,23 @@ pub enum Role {
     /// (OQ-BV4). Held alongside `clinician` for a shift; on its own it gives only the death work, so
     /// that the person accountable can always act. Nothing here knows the rota.
     OnDutyClinician,
+    /// The Medical Devices Safety Officer: reads the hazard register and raises a hazard. Sees no clinical content, and cannot
+    /// record a control or retire a hazard.
+    MedicalDevicesSafetyOfficer,
+    /// The Medication Safety Officer: reads the hazard register and raises a hazard. Sees no clinical content, and cannot
+    /// record a control or retire a hazard.
+    MedicationSafetyOfficer,
+    /// The Patient Safety Officer: reads the hazard register and raises a hazard. Sees no clinical content, and cannot
+    /// record a control or retire a hazard.
+    PatientSafetyOfficer,
+    /// The Medical Incident Officer: reads the hazard register and raises a hazard. Sees no clinical content, and cannot
+    /// record a control or retire a hazard.
+    MedicalIncidentOfficer,
 }
 
 impl Role {
     /// Every role, in a fixed order.
-    pub const ALL: [Role; 12] = [
+    pub const ALL: [Role; 16] = [
         Role::Clinician,
         Role::Nurse,
         Role::Pharmacist,
@@ -76,6 +88,10 @@ impl Role {
         Role::Integrator,
         Role::ClinicalSafetyOfficer,
         Role::OnDutyClinician,
+        Role::MedicalDevicesSafetyOfficer,
+        Role::MedicationSafetyOfficer,
+        Role::PatientSafetyOfficer,
+        Role::MedicalIncidentOfficer,
     ];
 
     /// The token value for this role (`role=clinician`).
@@ -94,6 +110,10 @@ impl Role {
             Role::Integrator => "integrator",
             Role::ClinicalSafetyOfficer => "clinical-safety-officer",
             Role::OnDutyClinician => "on-duty-clinician",
+            Role::MedicalDevicesSafetyOfficer => "medical-devices-safety-officer",
+            Role::MedicationSafetyOfficer => "medication-safety-officer",
+            Role::PatientSafetyOfficer => "patient-safety-officer",
+            Role::MedicalIncidentOfficer => "medical-incident-officer",
         }
     }
 
@@ -101,6 +121,18 @@ impl Role {
     #[must_use]
     pub fn parse(value: &str) -> Option<Role> {
         Role::ALL.into_iter().find(|r| r.as_str() == value)
+    }
+
+    /// Whether the role is one of the safety officers beside the Clinical Safety Officer (first draft, unreviewed).
+    #[must_use]
+    pub fn safety_officer(self) -> bool {
+        matches!(
+            self,
+            Role::MedicalDevicesSafetyOfficer
+                | Role::MedicationSafetyOfficer
+                | Role::PatientSafetyOfficer
+                | Role::MedicalIncidentOfficer
+        )
     }
 
     /// Whether the role treats patients (and so may use break-the-glass).
@@ -658,6 +690,9 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         // route: only the Clinical Safety Officer retires a hazard (`hazard.rs`).
         (Role::ClinicalSafetyOfficer, Hazard) => &[Read, Search, Create, Update],
         (Role::Clinician, Hazard) => &[Read, Search, Create, Update],
+        // The other safety officers (a first draft, not reviewed): they read the register and raise a
+        // hazard. A control or a reopening stays with a clinician, and no clinical content reaches them.
+        (r, Hazard) if r.safety_officer() => &[Read, Search, Create],
         (Role::Auditor, Hazard) => &[Read, Search],
         // The auditor: the audit trail only.
         (Role::Auditor, AuditLog) => &[Read, Search, Export],
@@ -685,7 +720,11 @@ fn purpose_fits(role: Role, purpose: Purpose) -> bool {
         }
         Role::Patient | Role::Proxy => purpose == PatientAccess,
         Role::Auditor => purpose == Audit,
-        Role::ClinicalSafetyOfficer => purpose == Operations,
+        Role::ClinicalSafetyOfficer
+        | Role::MedicalDevicesSafetyOfficer
+        | Role::MedicationSafetyOfficer
+        | Role::PatientSafetyOfficer
+        | Role::MedicalIncidentOfficer => purpose == Operations,
     }
 }
 
@@ -847,6 +886,29 @@ fn evaluate_role(role: Role, r: &Request) -> Decision {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_safety_officer_reads_and_raises_hazards_and_reaches_nothing_else() {
+        let officers: Vec<Role> = Role::ALL
+            .into_iter()
+            .filter(|r| r.safety_officer())
+            .collect();
+        assert_eq!(officers.len(), 4);
+        for role in officers {
+            assert_eq!(Role::parse(role.as_str()), Some(role));
+            for resource in Resource::ALL {
+                let actions = permitted(role, resource);
+                if resource == Resource::Hazard {
+                    assert_eq!(actions, &[Action::Read, Action::Search, Action::Create]);
+                } else {
+                    assert!(actions.is_empty(), "{role:?} on {resource:?}");
+                }
+            }
+            assert!(!role.treats());
+            assert!(purpose_fits(role, Purpose::Operations));
+            assert!(!purpose_fits(role, Purpose::Treatment));
+        }
+    }
 
     fn subject(roles: &[Role]) -> Subject {
         Subject {
@@ -1270,6 +1332,10 @@ mod tests {
                                                 | Role::Auditor
                                                 | Role::Integrator
                                                 | Role::ClinicalSafetyOfficer
+                                                | Role::MedicalDevicesSafetyOfficer
+                                                | Role::MedicationSafetyOfficer
+                                                | Role::PatientSafetyOfficer
+                                                | Role::MedicalIncidentOfficer
                                         ) {
                                             assert!(!resource.clinical(), "{at}");
                                         }
@@ -1281,8 +1347,8 @@ mod tests {
                 }
             }
         }
-        // 12 roles × 21 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
-        assert_eq!(cells, 12 * 21 * 6 * 8 * 5 * 3 * 7 * 2);
+        // 16 roles × 21 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
+        assert_eq!(cells, 16 * 21 * 6 * 8 * 5 * 3 * 7 * 2);
         assert!(allows > 0);
     }
 

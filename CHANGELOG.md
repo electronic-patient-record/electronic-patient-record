@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-06 - Four safety officer roles (SE-30)
+
+- **Clinical risk:** no change to what a clinician sees, decides or signs. The four roles see no clinical content. They can add to the hazard register, so a wrong or duplicate hazard is possible, as it is from a clinician.
+- **Built:** `medical-devices-safety-officer`, `medication-safety-officer`, `patient-safety-officer` and `medical-incident-officer` in the policy table and Keycloak. Each reads the register and raises a hazard, for the purpose of operations.
+- **Checked:** a unit test that each reaches the register and nothing else, cannot treat, and that the matrix test covers them. Not run through the routes with a token of each role.
+- **Not done / not verified:** the permissions are a first draft by an engineer, and nobody who holds such a post reviewed them. No incident, device or medication error reporting exists, so these roles have little to do yet. No formal NHS definition was found for a Patient Safety Officer or a Medical Incident Officer, and sources were read through search results only.
+
 ## 2026-11-06 - Staff are told a report of a death has arrived (BV-9; H-046 stays open)
 
 - **Clinical risk:** **yes.** Decided by the maintainer as OQ-BV4: clinicians, nurses and administrators are alerted, and the role of on-duty clinician is accountable. Before this, a report waited until someone happened to open the record, and a proxy could read the record meanwhile. Administrators now see that a report exists for a patient, which they could already see in the banner. A refused consent does not hide a report from this list; that is a judgement for review.

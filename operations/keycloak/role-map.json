@@ -59,6 +59,26 @@
       "on-duty-clinician"
     ]
   },
+  "medical-devices-safety-officer": {
+    "role": [
+      "medical-devices-safety-officer"
+    ]
+  },
+  "medication-safety-officer": {
+    "role": [
+      "medication-safety-officer"
+    ]
+  },
+  "patient-safety-officer": {
+    "role": [
+      "patient-safety-officer"
+    ]
+  },
+  "medical-incident-officer": {
+    "role": [
+      "medical-incident-officer"
+    ]
+  },
   "org-riverside": {
     "organisation": [
       "riverside"

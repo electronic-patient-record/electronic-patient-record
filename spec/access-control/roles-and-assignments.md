@@ -61,15 +61,34 @@ Typical permissions are illustrative; each needs clinical governance. "Rel" mean
 | integrator | ADT feed, lab interface, referral gateway | create/search identity only |
 | clinical-safety-officer | CSO | hazard register |
 | on-duty-clinician | the clinician on duty, for a shift, alongside `clinician` | accountable for reports of a death that wait; the death work and nothing else on its own (OQ-BV4). Given and taken away by hand: no rota is built |
+| medical-devices-safety-officer | MDSO | hazard register: read, raise |
+| medication-safety-officer | MSO | hazard register: read, raise |
+| patient-safety-officer | PSO | hazard register: read, raise |
+| medical-incident-officer | MIO | hazard register: read, raise |
 | (missing) | medical student, nursing student, agency or locum | time-boxed, supervised |
 | (missing) | privacy officer, data protection officer, Caldicott Guardian-style role | decides on labels and complaints; may be the person who lifts a protected label |
 | (missing) | break-glass reviewer, label steward, system administrator | see operations above |
+
+## Safety officers
+
+Four roles beside the Clinical Safety Officer, added on 2026-11-06 at the maintainer's request. **What each may do is a first draft by an engineer**, and nobody who holds such a post has reviewed it.
+
+| Role | What the post is, as far as was found |
+|---|---|
+| Medical Devices Safety Officer (MDSO) | An NHS post from the 2014 NHS England and MHRA alert on device incidents: responds to requests about device incident reports and sits on the safety committee ([handbook](https://www.pslhub.org/learn/professionalising-patient-safety/medical-device-safety-officer-handbook-the-first-stop-for-professional-medical-device-advice-r4563/)) |
+| Medication Safety Officer (MSO) | The matching post for medication errors, usually a senior pharmacy professional, and it may be the same person as the MDSO ([CQC](https://cqc.org.uk/node/3888)) |
+| Patient Safety Officer (PSO) | No formal NHS definition was found. Job adverts describe oversight of a patient safety programme and of incident investigation |
+| Medical Incident Officer (MIO) | No single national definition was found. It appears in hospital and ambulance major incident plans as the senior doctor at or for an incident ([EMJ](https://emj.bmj.com/content/16/5/336)) |
+
+Each reads the hazard register and may raise a hazard, for the purpose of operations only. None sees clinical content, records a control, reopens or retires a hazard, or uses break-the-glass, and only the Clinical Safety Officer retires one. Nothing else is open to them: **an incident system, a device list and a medication error report do not exist here**, so these roles have little to do yet, and an MSO cannot see a prescription. A Medical Incident Officer in a major incident gets no emergency access from this role, because a person treating patients holds a clinical role for that.
+
+These sources were read through search results, not in full, and the 2014 alerts themselves were not read. One person may hold several of these roles.
 
 ## Compared with this project
 
 | Need | This project today | Gap |
 | --- | --- | --- |
-| Roles | 12 roles in `policy.rs`; unknown roles grant nothing | No sub-roles (consultant, midwife, ward clerk, student), no secretary, coder, privacy officer or administrator role |
+| Roles | 16 roles in `policy.rs`; unknown roles grant nothing | No sub-roles (consultant, midwife, ward clerk, student), no secretary, coder, privacy officer or administrator role |
 | Role grant | Role comes from the token (PASETO attrs or Keycloak realm roles via `role-map.json`) | No assignment record in this service: no sponsor, no start or end date, no reason |
 | Patient assignment | Care relationships (care team, active encounter, self, proxy) created by `clinical-admin`; the subject cannot grant themselves | No team model, no cover or delegation, no automatic end at discharge or move, no relationship by ward or service |
 | Permissions | Route gate table role x resource x action; record decision with labels, purpose, consent, break-glass | Table unreviewed clinically; no field-level or minimum-necessary views |

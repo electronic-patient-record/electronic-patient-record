@@ -62,6 +62,22 @@
       {
         "name": "on-duty-clinician",
         "description": "EPR policy role (OQ-BV4). Mapped to the token attribute role=on-duty-clinician by role-map.json; accountable for reports of a death that wait for a person. Give it to the clinician on duty, alongside clinician, and take it away at handover: the API does not know the rota."
+      },
+      {
+        "name": "medical-devices-safety-officer",
+        "description": "EPR policy role. Mapped to the token attribute role=medical-devices-safety-officer by role-map.json; reads the hazard register and raises a hazard, and sees no clinical content. Give it to a named person, never to a service account."
+      },
+      {
+        "name": "medication-safety-officer",
+        "description": "EPR policy role. Mapped to the token attribute role=medication-safety-officer by role-map.json; reads the hazard register and raises a hazard, and sees no clinical content. Give it to a named person, never to a service account."
+      },
+      {
+        "name": "patient-safety-officer",
+        "description": "EPR policy role. Mapped to the token attribute role=patient-safety-officer by role-map.json; reads the hazard register and raises a hazard, and sees no clinical content. Give it to a named person, never to a service account."
+      },
+      {
+        "name": "medical-incident-officer",
+        "description": "EPR policy role. Mapped to the token attribute role=medical-incident-officer by role-map.json; reads the hazard register and raises a hazard, and sees no clinical content. Give it to a named person, never to a service account."
       }
     ]
   },
