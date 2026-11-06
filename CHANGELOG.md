@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-06 - Overdue checks of a need, for the on-duty clinician (PX-2)
+
+- **Clinical risk:** **yes, updated in H-048.** This changes which needs a person is prompted to check. A check that nobody opens the list for stays overdue, as it did before. The list marks a person with a report of death standing, so that nobody rings a family to check a need.
+- **Decided by the maintainer (OQ-PX2):** the role of on-duty clinician owns the list.
+- **Built:** `GET /api/overdue-reviews` and its count, a `/overdue-reviews` page and a navigation link. The role on its own now reads, reviews and ends a need, which is new. Ids, the version and the date only. A look is audited with the count.
+- **Checked:** see `tests/http_overdue_reviews.rs`, a policy test and two browser tests.
+- **Not done / not verified:** no count in the navigation, because it would make an audited refusal per page load for every other role, so the owner has to open the page. No push and no record of who took a check on. Not tested: a need on a record merged away, or a list cut short against a real database. A need is ordered by date alone, not by how serious it is. "Overdue" uses the UTC day, which can differ from the site's near midnight. The words are English only. No clinician, disabled person or interpreter has reviewed the list, and consent not hiding an item is my choice and needs review.
+
 ## 2026-11-06 - The rota belongs to workforce planning
 
 - **Clinical risk:** **yes, recorded in H-046.** A shift with no `on-duty-clinician` has nobody accountable for a report of a death, and the service cannot see that. Keeping a holder on every shift now sits with workforce planning management.

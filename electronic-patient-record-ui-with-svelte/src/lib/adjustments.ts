@@ -6,6 +6,15 @@ import { siteWhenText } from "./access-log.js";
 import { call } from "./api.js";
 import { STRINGS } from "./strings.js";
 
+/** One need whose check is overdue (`GET /api/overdue-reviews`): a pointer, with no code, note or reason. */
+export interface OverdueReview {
+  adjustment_id: string;
+  patient_id: string;
+  version: number;
+  review_by: string;
+  contact_held: boolean;
+}
+
 /** The catalogue, by category. `tests/unit/adjustments.test.ts` fails if it differs from the service's. */
 export const CATALOGUE = {
   interpreting: [

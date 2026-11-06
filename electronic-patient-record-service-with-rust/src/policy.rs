@@ -169,6 +169,8 @@ pub enum Resource {
     /// The list of reports of a death that wait for a person (OQ-BV4). Ids and times only: the reasons
     /// stay with [`Resource::DeathAssertion`].
     DeathReports,
+    /// The list across patients of needs whose date to check has passed (PX-2): pointers, no clinical fact.
+    OverdueReviews,
     /// FHIR `AllergyIntolerance`.
     AllergyIntolerance,
     /// FHIR `DocumentReference` / `Composition` (notes).
@@ -203,7 +205,7 @@ pub enum Resource {
 
 impl Resource {
     /// Every resource kind, in a fixed order.
-    pub const ALL: [Resource; 21] = [
+    pub const ALL: [Resource; 22] = [
         Resource::PatientIdentity,
         Resource::Encounter,
         Resource::Condition,
@@ -213,6 +215,7 @@ impl Resource {
         Resource::Adjustment,
         Resource::DeathAssertion,
         Resource::DeathReports,
+        Resource::OverdueReviews,
         Resource::AllergyIntolerance,
         Resource::Document,
         Resource::Consent,
@@ -240,6 +243,7 @@ impl Resource {
             Resource::Adjustment => "Adjustment",
             Resource::DeathAssertion => "DeathAssertion",
             Resource::DeathReports => "DeathReports",
+            Resource::OverdueReviews => "OverdueReviews",
             Resource::AllergyIntolerance => "AllergyIntolerance",
             Resource::Document => "Document",
             Resource::Consent => "Consent",
@@ -270,6 +274,7 @@ impl Resource {
                 | Resource::Adjustment
                 | Resource::DeathAssertion
                 | Resource::DeathReports
+                | Resource::OverdueReviews
                 | Resource::Consent
                 | Resource::AuditLog
                 | Resource::CareRelationship
@@ -581,8 +586,9 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         Adjustment as Adjust, AllergyIntolerance as Allergy, Amendment, AuditLog,
         BreakGlass as Glass, CareRelationship as Rel, Condition, Consent as Cons,
         DeathAssertion as Death, DeathReports as Deaths, Document, Encounter, FeedQueue as Queue,
-        Hazard, MedicationRequest as Meds, Observation, PatientIdentity as Identity,
-        PatientLink as Link, Referral, ReferralQueue as RefQueue, ReferralWorklist as Worklist,
+        Hazard, MedicationRequest as Meds, Observation, OverdueReviews as Overdue,
+        PatientIdentity as Identity, PatientLink as Link, Referral, ReferralQueue as RefQueue,
+        ReferralWorklist as Worklist,
     };
     match (role, resource) {
         // Clinicians: full clinical work, and register or correct identity.
@@ -606,9 +612,13 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
             | Role::Pharmacist
             | Role::AlliedHealth
             | Role::Receptionist
-            | Role::ClinicalAdmin,
+            | Role::ClinicalAdmin
+            | Role::OnDutyClinician,
             Adjust,
         ) => &[Read, Search, Create, Update],
+        // Overdue checks across patients (PX-2, decided by the maintainer, not yet reviewed): the on-duty
+        // clinician owns the list, and nobody else reads it.
+        (Role::OnDutyClinician, Overdue) => &[Search],
         // Death assertions (OQ-BV2, decided by the maintainer, not yet reviewed): any member of staff
         // may report and read the one answer; a clinician or nurse reads the assertions and takes a
         // step; the route keeps withdrawal to a clinician. An integration can only report.
@@ -886,6 +896,22 @@ fn evaluate_role(role: Role, r: &Request) -> Decision {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_the_on_duty_clinician_reads_overdue_checks_and_can_act_on_them() {
+        for role in Role::ALL {
+            let on_duty = role == Role::OnDutyClinician;
+            assert_eq!(
+                gate(&subject(&[role]), Resource::OverdueReviews, Action::Search),
+                on_duty,
+                "{role:?}"
+            );
+        }
+        let duty = subject(&[Role::OnDutyClinician]);
+        for action in [Action::Read, Action::Search, Action::Update] {
+            assert!(gate(&duty, Resource::Adjustment, action));
+        }
+    }
 
     #[test]
     fn a_safety_officer_reads_and_raises_hazards_and_reaches_nothing_else() {
@@ -1347,8 +1373,8 @@ mod tests {
                 }
             }
         }
-        // 16 roles × 21 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
-        assert_eq!(cells, 16 * 21 * 6 * 8 * 5 * 3 * 7 * 2);
+        // 16 roles × 22 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
+        assert_eq!(cells, 16 * 22 * 6 * 8 * 5 * 3 * 7 * 2);
         assert!(allows > 0);
     }
 

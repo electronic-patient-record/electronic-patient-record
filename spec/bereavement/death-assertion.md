@@ -43,7 +43,7 @@ The decision names verifying and withdrawing. `certified` and `registered` are r
 
 Decided by the maintainer on 2026-11-06 as OQ-BV4, not yet reviewed by a Clinical Safety Officer: clinicians, nurses and administrators are alerted to a new report, and **the accountable person is the role of on-duty clinician**.
 
-- **The role is `on-duty-clinician`.** A person holds it for a shift, alongside `clinician`. On its own it gives the death work and nothing else in the record, so that the person accountable can always verify or withdraw.
+- **The role is `on-duty-clinician`.** A person holds it for a shift, alongside `clinician`. On its own it gives the death work, and the overdue checks of a need (OQ-PX2), and nothing else in the record, so that the person accountable can always verify or withdraw.
 - **The alert is a list and a count.** Every report still at `reported`, oldest first, up to 50, and a list that is cut says so. The count shows in the navigation on the home page, the patient list and a patient's record. It stays until a person verifies or withdraws the report, so it cannot be dismissed.
 - **It is a pointer.** Ids and the time of the report, with no reason, source, reporter or date, because an administrator reads it and may not read the reasons. A report on a record merged away points to the surviving record.
 - **A refused consent does not hide a report here,** since the list names no clinical fact and these are the people who must act. Opening the record is still subject to consent, which needs review.

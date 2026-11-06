@@ -143,6 +143,18 @@ pub const TABLE: &[(&str, &str, Resource, Action)] = &[
     ),
     (
         "GET",
+        "/api/overdue-reviews",
+        Resource::OverdueReviews,
+        Action::Search,
+    ),
+    (
+        "GET",
+        "/api/overdue-reviews/count",
+        Resource::OverdueReviews,
+        Action::Search,
+    ),
+    (
+        "GET",
         "/api/referrals/worklist",
         Resource::ReferralWorklist,
         Action::Search,

@@ -4,7 +4,7 @@ What a person needs in order to use care: an interpreter, large print, step-free
 
 **Built:** the rules in `electronic-patient-record-service-with-rust/src/adjustments.rs`, the append-only store in `adjustments_store.rs` (table `adjustment_versions`, view `adjustment_current`, migration 26) and the routes in `controllers/adjustments.rs`. The patient and summary banners show what stands and whether a check is overdue, and `AdjustmentsSection.svelte` on the patient page records, checks and ends a need. A failed look says so, and an empty list says "none recorded", which does not mean there are none.
 
-**Not built:** a list across patients of reviews that are overdue, booking an interpreter, and anything beside an appointment, because the record holds no appointments.
+**Not built:** booking an interpreter, and anything beside an appointment, because the record holds no appointments.
 
 ## Why this is in the record
 
@@ -36,7 +36,7 @@ The codes are this project's own. **No national code list is used**, because the
 
 | Role | Read | Record, review, end |
 |---|---|---|
-| Clinician, nurse, pharmacist, allied health, receptionist, clinical administrator | Yes | Yes |
+| Clinician, nurse, pharmacist, allied health, receptionist, clinical administrator, on-duty clinician | Yes | Yes |
 | Patient, for their own record | Yes | Yes |
 | Proxy, with the `adjustments` scope | Yes | No |
 | Auditor, integration, Clinical Safety Officer | No | No |
@@ -45,12 +45,24 @@ Decided by the maintainer on 2026-11-05: patients see and correct their own need
 
 No care relationship is needed for staff, because reception must know before the person arrives. A refused consent stops a read, as it stops any read by staff; this needs review, because not knowing a person needs an interpreter is its own harm. This table is a first draft.
 
+## Overdue checks across patients
+
+Decided by the maintainer on 2026-11-06, not yet reviewed by a Clinical Safety Officer: **the role of on-duty clinician owns the list of checks that are overdue** (PX-2), and nobody else reads it. The role reads, reviews and ends a need, so that it can do the work it owns. The rota belongs to workforce planning management, so the service cannot say who holds the role, and a shift with no holder leaves the list unowned and nothing says so ([who is accountable](../bereavement/death-assertion.md#who-is-told-and-who-is-accountable)).
+
+- **What is on it.** Every active need with a date that has passed, by rule 5, oldest date first, up to 50, and a list that is cut says so.
+- **It is a pointer.** Ids, the version and the date, with no code, note or reason, because a code can say something about a person's health. A need on a record merged away points to the surviving record.
+- **A report of a death.** An item is marked when a report of the person's death stands, confirmed or not, so that nobody rings a family to check a need. It stays on the list, and a person ends it.
+- **A refused consent does not hide an item here,** since it names no need. Opening the record is still subject to consent, which needs review.
+- **Nothing is sent.** Someone with the role has to open the page: the navigation shows no count, because a count on every page would make one audited refusal per load for everyone else. Nothing records who took a check on, and a check overdue for a year looks like one overdue for a day apart from its date.
+
 ## Routes
 
 | Route | Does |
 |---|---|
 | `GET /api/patients/{id}/adjustments` | Every adjustment, newest first, ended ones included, each with `overdue` |
 | `POST /api/patients/{id}/adjustments` | Record one: `{code, note?, review_by?, reason}` |
+| `GET /api/overdue-reviews` | `{items: [{adjustment_id, patient_id, version, review_by, contact_held}], limit, more, accountable_role}`, oldest date first |
+| `GET /api/overdue-reviews/count` | `{open}` |
 | `PUT /api/patients/{id}/adjustments/{adjustment_id}` | `{expected_version, action, review_by?, reason}`, where `action` is `review` or `end` |
 
 A stale `expected_version` is a 409 and a refused change a 422. Every read and write is audited; the audit row holds ids, versions and statuses, never a code, a note or a reason, because a code can say something about a person's health.

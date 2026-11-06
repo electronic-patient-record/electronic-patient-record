@@ -44,6 +44,7 @@ pub fn route_groups() -> Vec<axa::routes::Routes> {
         referral_queue::routes(),
         referral_worklist::routes(),
         deaths::routes(),
+        adjustments::routes(),
     ]
 }
 

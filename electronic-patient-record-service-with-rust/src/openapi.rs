@@ -851,6 +851,27 @@ fn referral_queue_schemas() -> Value {
                 "site_time_zone": {"type": "string"}
             }
         },
+        "OverdueReviewItem": {
+            "type": "object", "required": ["adjustment_id", "patient_id", "version", "review_by", "contact_held"],
+            "description": "A need whose date to check it with the person has passed. A pointer: no code, note or reason; open the patient for those.",
+            "properties": {
+                "adjustment_id": {"type": "string"},
+                "patient_id": {"type": "string", "description": "The record to open: the surviving record, if the need was recorded on one merged away."},
+                "version": {"type": "integer"},
+                "review_by": {"type": "string", "description": "`YYYY-MM-DD`, the day that has passed."},
+                "contact_held": {"type": "boolean", "description": "A report of this person's death stands, confirmed or not, so nobody should contact them to check."}
+            }
+        },
+        "OverdueReviewList": {
+            "type": "object", "required": ["items", "limit", "more", "accountable_role"],
+            "description": "Every active need whose date has passed, oldest date first, up to `limit`. The day is worked out in UTC.",
+            "properties": {
+                "items": {"type": "array", "items": {"$ref": "#/components/schemas/OverdueReviewItem"}},
+                "limit": {"type": "integer"},
+                "more": {"type": "boolean", "description": "True when more are overdue than `limit` allowed: the list is cut short and the most recent dates are not shown."},
+                "accountable_role": {"enum": ["on-duty-clinician"], "description": "The role that owns this list. It names no person: the rota belongs to workforce planning."}
+            }
+        },
         "ReferralWorklistItem": {
             "type": "object", "required": ["referral_id", "patient_id", "version", "state", "why", "recorded_at"],
             "description": "One referral the caller sent that waits for them. A pointer: no recipient, reason, question or note; open the referral through the patient's route.",
@@ -1423,6 +1444,13 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
     ("GET", "/api/referral-queue/{id}", "ReferralQueueEntry", &[]),
     ("GET", "/api/death-reports", "DeathReportList", &[]),
     ("GET", "/api/death-reports/count", "ReferralQueueCount", &[]),
+    ("GET", "/api/overdue-reviews", "OverdueReviewList", &[]),
+    (
+        "GET",
+        "/api/overdue-reviews/count",
+        "ReferralQueueCount",
+        &[],
+    ),
     (
         "GET",
         "/api/referrals/worklist",

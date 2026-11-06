@@ -7,6 +7,20 @@ export const STRINGS = {
   navPatients: "Patients",
   navReplies: "Referral replies",
   navDeathReports: "Reports of death",
+  navOverdueReviews: "Overdue checks",
+  orTitle: "Needs that are overdue a check",
+  orIntro:
+    "The date to check each of these needs with the person has passed. Open the patient to see the need, check it with them, then set the next date or end it.",
+  orAccountable:
+    "The on-duty clinician owns this list, and nobody else can see it.",
+  orNone: "No checks are overdue.",
+  orCount: "{n} overdue",
+  orMore:
+    "Showing the oldest {n}. More are overdue, and the most recent dates are not shown.",
+  orDue: "Check was due by {day}",
+  orHeld:
+    "A report of this person's death stands. Do not contact them or their family to check this: read the record first.",
+  orOpen: "Open the patient",
   drTitle: "Reports of death that wait for a person",
   drIntro:
     "Each report here holds contact and has not been confirmed. Open the patient: a clinician or nurse verifies it, and only a clinician withdraws it. A report that has not been confirmed may be wrong, so do not tell a family from this list.",

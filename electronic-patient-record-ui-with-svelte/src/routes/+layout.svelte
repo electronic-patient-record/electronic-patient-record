@@ -124,6 +124,9 @@
           )})</span
         >{/if}</a
     >
+    <a href={localizePath("/overdue-reviews", locale)}
+      >{STRINGS.navOverdueReviews}</a
+    >
     <a href={localizePath("/referrals", locale)}
       >{STRINGS.navReplies}{#if worklistPage && worklistCount.open}
         <span class="count"

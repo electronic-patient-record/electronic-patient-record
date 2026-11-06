@@ -4098,6 +4098,48 @@ test("the reply list says when it was cut short, and a role without one is told 
   );
 });
 
+test("overdue checks list oldest first, name the owner, warn of a report of death and say when they are cut", async ({
+  page,
+}) => {
+  const item = {
+    adjustment_id: "22222222-2222-4222-8222-222222222222",
+    patient_id: ANN.id,
+    version: 1,
+    review_by: "2026-10-21",
+    contact_held: true,
+  };
+  await page.route("**/api/proxy/api/overdue-reviews", (route) =>
+    json(route, 200, {
+      items: [item],
+      limit: 50,
+      more: true,
+      accountable_role: "on-duty-clinician",
+    }),
+  );
+  await page.goto("/en-001/overdue-reviews");
+  await expect(page.getByText("Check was due by 2026-10-21")).toBeVisible();
+  await expect(
+    page.getByText("The on-duty clinician owns this list"),
+  ).toBeVisible();
+  await expect(page.getByText("Showing the oldest 50")).toBeVisible();
+  await expect(page.getByText("A report of this person's death")).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Open the patient" }),
+  ).toHaveAttribute("href", new RegExp(`/patients/${ANN.id}#adjustments-h$`));
+  await axe(page);
+});
+
+test("a role refused the overdue checks is told so, and it does not read as none overdue", async ({
+  page,
+}) => {
+  await page.route("**/api/proxy/api/overdue-reviews", (route) =>
+    json(route, 403, {}),
+  );
+  await page.goto("/en-001/overdue-reviews");
+  await expect(page.getByRole("status")).toBeVisible();
+  await expect(page.getByText("No checks are overdue.")).toHaveCount(0);
+});
+
 test("reports of a death list oldest first, name who is accountable and say when they are cut", async ({
   page,
 }) => {

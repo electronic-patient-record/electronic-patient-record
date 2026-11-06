@@ -5,8 +5,11 @@
 //! record. The routes are in `controllers/adjustments.rs`.
 
 use crate::adjustments::{self, Adjustment, Change, Refusal};
+use crate::death::Answer;
+use crate::death_store;
 use crate::ids;
 use crate::links;
+use crate::page::Page;
 use crate::patients_store::{self, StoreError};
 use crate::pool::Db;
 use chrono::NaiveDate;
@@ -108,6 +111,88 @@ pub async fn list(
     .await
     .map_err(db_err)?;
     rows.iter().map(|r| row_to_stored(r, today)).collect()
+}
+
+/// The most overdue checks a listing returns.
+pub const OVERDUE_LIMIT: u64 = 50;
+
+/// A need whose date to check it has passed, across patients (PX-2). A pointer: no code, note or reason,
+/// because a code can say something about a person's health and opening the record is subject to consent.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct OverdueReview {
+    /// The adjustment.
+    pub adjustment_id: String,
+    /// The record to open: the surviving record, if the need was recorded on one merged away.
+    pub patient_id: String,
+    /// The version a review would be made on.
+    pub version: i32,
+    /// The day that has passed, `YYYY-MM-DD`.
+    pub review_by: String,
+    /// A report of this person's death stands, confirmed or not, so nobody should ring to check.
+    pub contact_held: bool,
+}
+
+/// What makes a current adjustment overdue, as SQL with the day as `$1`: the same rule as
+/// [`adjustments::overdue`]. The dates are written `YYYY-MM-DD`, so comparing them as text is by day, and
+/// one unreadable stored date cannot stop the whole list.
+const OVERDUE: &str = "status = 'active' AND body->>'review_by' < $1";
+
+/// Every overdue check, oldest date first, up to [`OVERDUE_LIMIT`].
+///
+/// # Errors
+///
+/// [`StoreError::Db`] on a database failure.
+pub async fn overdue(
+    db: impl Into<Db<'_>>,
+    today: NaiveDate,
+) -> Result<Page<OverdueReview>, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let rows = sqlx::query(AssertSqlSafe(format!(
+        "SELECT adjustment_id::text AS id, patient_id::text AS patient_id, version,
+                body->>'review_by' AS review_by
+         FROM adjustment_current WHERE {OVERDUE}
+         ORDER BY body->>'review_by', adjustment_id LIMIT $2"
+    )))
+    .bind(today.to_string())
+    .bind(i64::try_from(OVERDUE_LIMIT + 1).map_err(db_err)?)
+    .fetch_all(&mut *db)
+    .await
+    .map_err(db_err)?;
+    let mut items = Vec::with_capacity(rows.len());
+    for row in rows {
+        let patient_id: String = row.try_get("patient_id").map_err(db_err)?;
+        let live = links::merged_into(&mut *db, &patient_id)
+            .await?
+            .unwrap_or(patient_id);
+        let answer = death_store::answer(&mut *db, &live).await?;
+        items.push(OverdueReview {
+            adjustment_id: row.try_get("id").map_err(db_err)?,
+            patient_id: live,
+            version: row.try_get("version").map_err(db_err)?,
+            review_by: row.try_get("review_by").map_err(db_err)?,
+            contact_held: matches!(answer, Answer::Asserted { .. }),
+        });
+    }
+    Ok(Page::cut(items, OVERDUE_LIMIT))
+}
+
+/// How many checks are overdue.
+///
+/// # Errors
+///
+/// [`StoreError::Db`] on a database failure.
+pub async fn overdue_count(db: impl Into<Db<'_>>, today: NaiveDate) -> Result<i64, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let row = sqlx::query(AssertSqlSafe(format!(
+        "SELECT count(*)::bigint AS n FROM adjustment_current WHERE {OVERDUE}"
+    )))
+    .bind(today.to_string())
+    .fetch_one(&mut *db)
+    .await
+    .map_err(db_err)?;
+    row.try_get("n").map_err(db_err)
 }
 
 /// Store a new adjustment at version 1. The same need twice while the first stands is refused. Two

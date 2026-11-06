@@ -47,6 +47,8 @@ fn call(template: &str, patient: &str) -> Option<String> {
         | "/api/feed/refusals/count"
         | "/api/death-reports"
         | "/api/death-reports/count"
+        | "/api/overdue-reviews"
+        | "/api/overdue-reviews/count"
         | "/api/referrals/worklist"
         | "/api/referrals/worklist/count"
         | "/api/referral-queue"

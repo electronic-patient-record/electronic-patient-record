@@ -5,6 +5,8 @@
 //! - `POST /api/patients/{id}/adjustments`: record one, `{code, note?, review_by?, reason}`.
 //! - `PUT  /api/patients/{id}/adjustments/{adjustment_id}`: review or end one,
 //!   `{expected_version, action, review_by?, reason}`.
+//! - `GET  /api/overdue-reviews`: every check that has passed its date, across patients, oldest first.
+//! - `GET  /api/overdue-reviews/count`: how many.
 //!
 //! Any member of staff who meets patients may read and write these, with no care relationship, because
 //! reception needs to know before the person arrives. A patient reads and corrects their own, and a
@@ -19,7 +21,7 @@ use crate::api_error::ApiError;
 use crate::audit::Action;
 use crate::auth::Agent;
 use crate::patients_store::StoreError;
-use crate::policy::{self, Purpose, Resource, Subject};
+use crate::policy::{self, Purpose, Resource, Role, Subject};
 use crate::pool::Pool;
 use axa::prelude::*;
 use axum::{
@@ -27,6 +29,7 @@ use axum::{
     extract::{Json, Path},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
+    routing::get,
 };
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
@@ -336,4 +339,106 @@ pub(super) async fn update(
             failure(e).into_response()
         }
     }
+}
+
+/// The role that owns the list of overdue checks (PX-2).
+const ACCOUNTABLE: Role = Role::OnDutyClinician;
+
+/// Read the purpose and authorise the list, with no patient named: it holds pointers, so a refused consent
+/// does not hide a check from the person who owns the list. Opening the record is still subject to consent.
+async fn overdue_guard(
+    ctx: &AppContext,
+    agent: &Agent,
+    subject: &Subject,
+    headers: &HeaderMap,
+) -> Result<Purpose, ApiError> {
+    let purpose = purpose_of(headers)?;
+    authorize(
+        &ctx.pool(),
+        agent,
+        subject,
+        Resource::OverdueReviews,
+        policy::Action::Search,
+        purpose,
+        None,
+    )
+    .await?;
+    Ok(purpose)
+}
+
+/// Audit a look at the list, with the count and never an id of a patient.
+async fn audit_overdue(
+    ctx: &AppContext,
+    agent: &Agent,
+    purpose: Purpose,
+    overdue: i64,
+) -> Result<(), ApiError> {
+    audit_resource(
+        &ctx.pool(),
+        agent,
+        Access {
+            action: Action::Read,
+            outcome: 0,
+            purpose,
+            resource: "OverdueReviews",
+            patient_id: None,
+        },
+        serde_json::json!({ "overdue": overdue }),
+    )
+    .await
+}
+
+/// `GET /api/overdue-reviews`: the checks that have passed their date, oldest first. Audited with the count.
+pub(super) async fn overdue(
+    State(ctx): State<AppContext>,
+    Extension(agent): Extension<Agent>,
+    Extension(subject): Extension<Subject>,
+    headers: HeaderMap,
+) -> Response {
+    let purpose = match overdue_guard(&ctx, &agent, &subject, &headers).await {
+        Ok(p) => p,
+        Err(r) => return r.into_response(),
+    };
+    let page = match store::overdue(&ctx.pool(), Utc::now().date_naive()).await {
+        Ok(p) => p,
+        Err(e) => return failure(e).into_response(),
+    };
+    let seen = i64::try_from(page.len()).unwrap_or(i64::MAX);
+    if let Err(r) = audit_overdue(&ctx, &agent, purpose, seen).await {
+        return r.into_response();
+    }
+    Json(serde_json::json!({
+        "items": page.rows, "limit": store::OVERDUE_LIMIT, "more": page.more,
+        "accountable_role": ACCOUNTABLE.as_str()
+    }))
+    .into_response()
+}
+
+/// `GET /api/overdue-reviews/count`: how many. Audited like the list.
+pub(super) async fn overdue_count(
+    State(ctx): State<AppContext>,
+    Extension(agent): Extension<Agent>,
+    Extension(subject): Extension<Subject>,
+    headers: HeaderMap,
+) -> Response {
+    let purpose = match overdue_guard(&ctx, &agent, &subject, &headers).await {
+        Ok(p) => p,
+        Err(r) => return r.into_response(),
+    };
+    let open = match store::overdue_count(&ctx.pool(), Utc::now().date_naive()).await {
+        Ok(n) => n,
+        Err(e) => return failure(e).into_response(),
+    };
+    if let Err(r) = audit_overdue(&ctx, &agent, purpose, open).await {
+        return r.into_response();
+    }
+    Json(serde_json::json!({ "open": open })).into_response()
+}
+
+/// The routes that name no patient. The rest are mounted with the patient's routes.
+#[must_use]
+pub fn routes() -> Routes {
+    Routes::new()
+        .add("/api/overdue-reviews", get(overdue))
+        .add("/api/overdue-reviews/count", get(overdue_count))
 }

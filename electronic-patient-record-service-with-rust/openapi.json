@@ -1972,6 +1972,68 @@
         ],
         "type": "object"
       },
+      "OverdueReviewItem": {
+        "description": "A need whose date to check it with the person has passed. A pointer: no code, note or reason; open the patient for those.",
+        "properties": {
+          "adjustment_id": {
+            "type": "string"
+          },
+          "contact_held": {
+            "description": "A report of this person's death stands, confirmed or not, so nobody should contact them to check.",
+            "type": "boolean"
+          },
+          "patient_id": {
+            "description": "The record to open: the surviving record, if the need was recorded on one merged away.",
+            "type": "string"
+          },
+          "review_by": {
+            "description": "`YYYY-MM-DD`, the day that has passed.",
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "adjustment_id",
+          "patient_id",
+          "version",
+          "review_by",
+          "contact_held"
+        ],
+        "type": "object"
+      },
+      "OverdueReviewList": {
+        "description": "Every active need whose date has passed, oldest date first, up to `limit`. The day is worked out in UTC.",
+        "properties": {
+          "accountable_role": {
+            "description": "The role that owns this list. It names no person: the rota belongs to workforce planning.",
+            "enum": [
+              "on-duty-clinician"
+            ]
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/OverdueReviewItem"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "more": {
+            "description": "True when more are overdue than `limit` allowed: the list is cut short and the most recent dates are not shown.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "items",
+          "limit",
+          "more",
+          "accountable_role"
+        ],
+        "type": "object"
+      },
       "OwnRecord": {
         "description": "One record the caller is, or is a proxy for.",
         "properties": {
@@ -4998,6 +5060,108 @@
         ],
         "x-epr-action": "Read",
         "x-epr-resource": "PatientIdentity"
+      }
+    },
+    "/api/overdue-reviews": {
+      "get": {
+        "operationId": "getApiOverdue-reviews",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OverdueReviewList"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/overdue-reviews",
+        "tags": [
+          "overdue-reviews"
+        ],
+        "x-epr-action": "Search",
+        "x-epr-resource": "OverdueReviews"
+      }
+    },
+    "/api/overdue-reviews/count": {
+      "get": {
+        "operationId": "getApiOverdue-reviewsCount",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralQueueCount"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/overdue-reviews/count",
+        "tags": [
+          "overdue-reviews"
+        ],
+        "x-epr-action": "Search",
+        "x-epr-resource": "OverdueReviews"
       }
     },
     "/api/patients": {
