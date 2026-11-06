@@ -28,6 +28,10 @@ x-api-environment: &api-environment
   APP_ENV: production
   PORT: "5150"
   DATABASE_URL: postgres://epr:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD (any value for local use)}@postgres:5432/electronic_patient_record
+  # Postgres here has no TLS, and production refuses a plain connection to another host. This stack is for one
+  # machine, on a private network with made-up data, so it says so by name. A real deployment must not copy this:
+  # it sets `sslmode=verify-full` in DATABASE_URL (governance/production-readiness.md).
+  DB_ALLOW_INSECURE: "true"
   EPR_REDIS_URL: redis://:${EPR_REDIS_PASSWORD:-${POSTGRES_PASSWORD}}@redis:6379/0
   EPR_PASETO_KEYS_URL: ${EPR_PASETO_KEYS_URL:-}
   EPR_PASETO_KEYS: ${EPR_PASETO_KEYS:-}
