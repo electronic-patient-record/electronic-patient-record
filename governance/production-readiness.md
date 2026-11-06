@@ -14,6 +14,7 @@
 | Audit | Chain verified on a schedule; archive anchors checked | A run of the verify route on the live data | Verify route and tests exist; no schedule |
 | Operations | Metrics scraped, alerts set, logs kept | A dashboard and an alert test | `/metrics` exists (off by default); no alerts |
 | Operations | One replica runs each background job | `audit_retention::run_once` lock | Built (PR-4); not tried with two real processes |
+| Workforce | Workforce planning holds the rota and keeps an `on-duty-clinician` on every shift, and the role changes in the identity provider at each handover | The workforce system's own record; the identity provider | No link built; the role is given by hand, and the service cannot see a gap |
 | Referrals | Timeout periods set per priority; an owner for the unmatched queue | `EPR_REFERRAL_TIMEOUTS`; a rota | Off by default; no owner named |
 | Interop | Each feed and message type tested with the real partner | A partner test log | Only the synthetic and unit cases |
 | Accessibility | Screen-reader and keyboard pass on the real screens | A written audit | Automated checks only |

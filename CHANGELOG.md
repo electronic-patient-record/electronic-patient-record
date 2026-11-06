@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-06 - The rota belongs to workforce planning
+
+- **Clinical risk:** **yes, recorded in H-046.** A shift with no `on-duty-clinician` has nobody accountable for a report of a death, and the service cannot see that. Keeping a holder on every shift now sits with workforce planning management.
+- **Decided by the maintainer:** the rota belongs to workforce planning management, and the service will not hold or read one. The spec, OQ-BV4, the role table, H-046, the production-readiness list and the care-home idea now say so, and "a rota" is off the list of things to build.
+- **Not done / not verified:** spec only: no code changed. No link from a workforce system exists, so the role is still given by hand in the identity provider, and which system would do it is not named. No alert for a shift with no holder exists here or anywhere. Not reviewed by a Clinical Safety Officer.
+
 ## 2026-11-06 - `axa` 0.1 to 0.3
 
 - **Clinical risk:** **yes, in how the service starts and stops.** No clinical rule changed. A release build with no `APP_ENV` now runs as production, which closes a risk and is stricter. A setting that makes no sense stops a production boot. Requests still running 25 seconds after shutdown begins are cut off (`SHUTDOWN_TIMEOUT_SECONDS`), so a write in flight then rolls back and its caller sees a failure.

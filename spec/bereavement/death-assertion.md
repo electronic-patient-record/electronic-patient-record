@@ -48,7 +48,9 @@ Decided by the maintainer on 2026-11-06 as OQ-BV4, not yet reviewed by a Clinica
 - **It is a pointer.** Ids and the time of the report, with no reason, source, reporter or date, because an administrator reads it and may not read the reasons. A report on a record merged away points to the surviving record.
 - **A refused consent does not hide a report here,** since the list names no clinical fact and these are the people who must act. Opening the record is still subject to consent, which needs review.
 
-**Not built, and it matters:** the service has no rota. It cannot say who holds the role now, or whether anyone does, so a shift with no holder has no accountable person and nothing says so. Nothing records that the on-duty clinician took a report on, and no person's name is on the list. There is no push: someone has to open a page to see the count. No time limit for a report to wait has been set. Out of hours, the list depends on someone holding the role.
+**The rota is not this service's.** Decided by the maintainer on 2026-11-06: the rota belongs to workforce planning management, and the service will not hold or read one. The service knows only the roles on a person's token. Whoever runs the rota gives `on-duty-clinician` in the identity provider at the start of a shift and takes it away at the end. That is by hand today: no link from a workforce system exists.
+
+**What follows, and it matters:** the service cannot say who holds the role now, or whether anyone does. Keeping a holder on every shift is the job of workforce planning, and a gap in it shows nowhere here: a shift with no holder has no accountable person and nothing says so. A role given or taken away reaches the service only with the person's next token. Nothing records that the on-duty clinician took a report on, and no person's name is on the list. There is no push: someone has to open a page to see the count. No time limit for a report to wait has been set. Out of hours, the list depends on someone holding the role.
 
 ## Routes
 

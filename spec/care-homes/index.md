@@ -92,7 +92,7 @@ For the Clinical Safety Officer to review. None is accepted or closed; ids are w
 
 Proposals only.
 
-1. **An organisation as the holder of a care relationship.** The home is a care-relationship holder; individual staff inherit access by rota and purpose, not by the home being a person. Test the existing `CareRelationship` resource for what it lacks.
+1. **An organisation as the holder of a care relationship.** The home is a care-relationship holder; individual staff inherit access by rota and purpose, not by the home being a person. The rota stays with workforce planning management, not this service (decided 2026-11-06), so it would reach here as roles on a token. Test the existing `CareRelationship` resource for what it lacks.
 2. **Care-home roles as pack data, not core roles.** Add a "care-home staff" family (care assistant, senior carer, nurse in charge, registered manager) as a setting pack under the [equity rule](../02-scope.md); registration status (nurse, none) is a fact on the person, not inferred from the role.
 3. **A "resident" label in a home profile.** Setting profile ([care settings](../care-settings.md)): the term changes, the type does not.
 4. **A discharge-to-care-home handover.** A document or FHIR bundle that carries medicines (changed, stopped, new, with reasons), allergies, capacity and attorney, ReSPECT, mobility and diet, and a named owner for follow-up. Depends on medications being built.

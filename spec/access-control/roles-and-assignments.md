@@ -60,7 +60,7 @@ Typical permissions are illustrative; each needs clinical governance. "Rel" mean
 | auditor | privacy officer, information governance analyst | audit trail; no clinical content |
 | integrator | ADT feed, lab interface, referral gateway | create/search identity only |
 | clinical-safety-officer | CSO | hazard register |
-| on-duty-clinician | the clinician on duty, for a shift, alongside `clinician` | accountable for reports of a death that wait; the death work and nothing else on its own (OQ-BV4). Given and taken away by hand: no rota is built |
+| on-duty-clinician | the clinician on duty, for a shift, alongside `clinician` | accountable for reports of a death that wait; the death work and nothing else on its own (OQ-BV4). Given and taken away in the identity provider, by hand until a workforce system does it: the rota belongs to workforce planning management and this service will not hold one |
 | medical-devices-safety-officer | MDSO | hazard register: read, raise |
 | medication-safety-officer | MSO | hazard register: read, raise |
 | patient-safety-officer | PSO | hazard register: read, raise |
