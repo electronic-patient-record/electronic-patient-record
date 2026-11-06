@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-06 - `axa` 0.3 to 0.4
+
+- **Clinical risk:** **yes, in how the service starts.** No clinical rule changed. In production a `DATABASE_URL` to another machine with no `sslmode` of `require`, `verify-ca` or `verify-full` now stops the boot, unless `DB_ALLOW_INSECURE=true`. A deployment that worked before can refuse to start, which is safer than sending records in the clear but is still an outage if nobody expects it.
+- **Built:** the pool is on `AppContext::db`, opened by `axa::db::connect`, so `ctx.pool()` can no longer panic and the shared store no longer holds it. `pool::Db` and `pool::Conn` are `axa`'s. `axa` asks the database for `/_readiness`, so our named check is gone. `Environment::may_destroy_data` replaces `reset_allowed`, and the test of who may reset stays here. `axa::cli::parse` gives `--help` and `--version` the service's own name, and the direct `clap` dependency is gone.
+- **Changes on purpose:** `DB_CONNECT_TIMEOUT` is 5 seconds and `DB_IDLE_TIMEOUT` 10 minutes, up from 500 ms each. A client that does not finish its headers in 30 seconds is dropped. A server fault no longer logs a database error's `Debug` text, which could quote a row.
+- **Checked:** every gate in `scripts/ci-local.sh --full`, and the real binary: `--help` and `--version`; `check` refusing a remote `DATABASE_URL` with no `sslmode` and accepting one with `verify-full`; `db reset` refused in production with the flag and in development without it; migrate, a write, a read, a need, the overdue list and the death count; 503 with Postgres stopped, `/_ping` still 200, a clean stop on SIGTERM and no patient id in the logs.
+- **Not done / not verified:** no real TLS connection to Postgres was made: `sslmode` was checked as a setting only. The repository holds no production deployment, so whether one sets `sslmode` is not known; the production-readiness list now asks. The binary was tried in `container-dev`, not with production login. `axa`'s newer guard in `cli::parse` is unreleased, so `db reset` still uses `EPR_ALLOW_DESTRUCTIVE_DOWN`. `axa-tracing`, `axa-opentelemetry` and `axa-keycloak` are not used. The 30-second header limit was not tried against a real client.
+
 ## 2026-11-06 - Overdue checks of a need, for the on-duty clinician (PX-2)
 
 - **Clinical risk:** **yes, updated in H-048.** This changes which needs a person is prompted to check. A check that nobody opens the list for stays overdue, as it did before. The list marks a person with a report of death standing, so that nobody rings a family to check a need.

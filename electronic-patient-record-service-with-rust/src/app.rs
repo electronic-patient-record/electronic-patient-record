@@ -1,17 +1,15 @@
 //! Application wiring: the configuration, the command line, the routes and the middleware stack.
 
-use axa::sqlx::{PoolConfig, connect, migrate, status};
+use axa::sqlx::{migrate, status};
 use axa::{
     AppContext, Environment, Error, Result,
     boot::{BootResult, TestApp},
     cli::{Cli, Command, DbCommand},
     config::{Config, Defaults, MB},
-    health::Checks,
     routes::AppRoutes,
     server,
 };
 use axum::Router as AxumRouter;
-use sqlx::PgPool;
 
 use crate::{MIGRATOR, auth, authz, controllers, mllp, pool::Pool};
 
@@ -26,6 +24,7 @@ fn defaults() -> Defaults {
         production_port: None,
         body_limit: 2 * MB,
         max_connections: 1,
+        ..Defaults::default()
     }
 }
 
@@ -50,22 +49,6 @@ fn default_require_auth(environment: &Environment) -> Option<bool> {
     .then_some(false)
 }
 
-/// Whether `db reset` may run. It drops every table: never in any environment but these two, and only when
-/// asked for by name.
-fn reset_allowed(environment: &Environment, flag: Option<&str>) -> bool {
-    matches!(environment, Environment::Development | Environment::Test) && flag == Some("true")
-}
-
-/// What `/_readiness` asks: `axa` holds no pool here, so the database is a named check. A load balancer must
-/// not send traffic to a service that cannot reach its database.
-#[must_use]
-pub fn readiness_checks(pool: PgPool) -> Checks {
-    Checks::new().add("database", move || {
-        let pool = pool.clone();
-        async move { axa::sqlx::ping(&pool).await }
-    })
-}
-
 impl TestApp for App {
     /// Boot under the `test` environment, migrating the shared test database forward and keeping its rows.
     async fn boot_test() -> Result<BootResult> {
@@ -88,19 +71,10 @@ impl App {
     ///
     /// When the database cannot be reached.
     pub async fn context(environment: Environment, config: Config) -> Result<AppContext> {
-        let pool = connect(&PoolConfig {
-            uri: config.database.uri.clone(),
-            min_connections: config.database.min_connections,
-            max_connections: config.database.max_connections,
-            connect_timeout_ms: config.database.connect_timeout,
-            idle_timeout_ms: config.database.idle_timeout,
-        })
-        .await
-        .map_err(|e| Error::string(&format!("cannot reach the database: {e}")))?;
-        let mut ctx = AppContext::new(environment, (), config);
-        ctx.health_checks = readiness_checks(pool.clone());
-        ctx.shared_store.insert(pool);
-        Ok(ctx)
+        let pool = axa::db::connect(&config.database)
+            .await
+            .map_err(|e| Error::string(&format!("cannot reach the database: {e}")))?;
+        Ok(AppContext::new(environment, pool, config))
     }
 
     /// The routes in the standard middleware, wrapped in the service's own.
@@ -132,7 +106,7 @@ impl App {
             }
             DbCommand::Reset => {
                 let flag = std::env::var("EPR_ALLOW_DESTRUCTIVE_DOWN").ok();
-                if !reset_allowed(&ctx.environment, flag.as_deref()) {
+                if !ctx.environment.may_destroy_data(flag.as_deref()) {
                     return Err(Error::string(
                         "db reset drops every table, so it is refused outside development and test, \
                          and needs EPR_ALLOW_DESTRUCTIVE_DOWN=true there",
@@ -327,13 +301,13 @@ mod tests {
 
     #[test]
     fn db_reset_is_refused_unless_it_is_development_or_test_and_asked_for_by_name() {
-        assert!(reset_allowed(&Environment::Development, Some("true")));
-        assert!(reset_allowed(&Environment::Test, Some("true")));
-        assert!(!reset_allowed(&Environment::Development, None));
-        assert!(!reset_allowed(&Environment::Test, Some("yes")));
-        assert!(!reset_allowed(&Environment::Production, Some("true")));
-        assert!(!reset_allowed(&other(CONTAINER_DEV), Some("true")));
-        assert!(!reset_allowed(&other("staging"), Some("true")));
+        assert!(Environment::Development.may_destroy_data(Some("true")));
+        assert!(Environment::Test.may_destroy_data(Some("true")));
+        assert!(!Environment::Development.may_destroy_data(None));
+        assert!(!Environment::Test.may_destroy_data(Some("yes")));
+        assert!(!Environment::Production.may_destroy_data(Some("true")));
+        assert!(!other(CONTAINER_DEV).may_destroy_data(Some("true")));
+        assert!(!other("staging").may_destroy_data(Some("true")));
     }
 
     #[test]

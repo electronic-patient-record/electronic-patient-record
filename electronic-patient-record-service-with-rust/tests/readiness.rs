@@ -1,4 +1,4 @@
-//! `/_readiness` answers for the database (it is `axa`'s route, with our named check).
+//! `/_readiness` answers for the database: it is `axa`'s route, and `axa` asks the pool on the context.
 //!
 //! Covered: 503 naming `database`, with no error text, when the pool cannot connect; 200 when it can.
 //! Not covered: how long a failing answer is reused, which `axa` tests.
@@ -13,7 +13,7 @@ use axa::testing::prelude::request;
 use axa::{AppContext, Environment, routes::AppRoutes};
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
-use electronic_patient_record::app::{App, readiness_checks};
+use electronic_patient_record::app::App;
 use sqlx::postgres::PgPoolOptions;
 use std::time::Duration;
 use tower::ServiceExt;
@@ -30,8 +30,7 @@ async fn a_database_that_does_not_answer_is_a_503_that_names_it_and_nothing_else
         ..Defaults::default()
     };
     let config = Config::from_lookup(&Environment::Test, &defaults, |_| None).unwrap();
-    let mut ctx = AppContext::new(Environment::Test, (), config);
-    ctx.health_checks = readiness_checks(pool);
+    let ctx = AppContext::new(Environment::Test, pool, config);
     let router = AppRoutes::empty()
         .add_route(axa::health::routes())
         .into_router(ctx);
