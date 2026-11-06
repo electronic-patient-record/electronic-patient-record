@@ -55,11 +55,15 @@ pub enum Role {
     /// The Clinical Safety Officer: keeps the hazard register and is the only role that can retire a hazard
     /// (`hazard.rs`). Sees no clinical content.
     ClinicalSafetyOfficer,
+    /// The clinician on duty, who is accountable for each report of a death that waits for a person
+    /// (OQ-BV4). Held alongside `clinician` for a shift; on its own it gives only the death work, so
+    /// that the person accountable can always act. Nothing here knows the rota.
+    OnDutyClinician,
 }
 
 impl Role {
     /// Every role, in a fixed order.
-    pub const ALL: [Role; 11] = [
+    pub const ALL: [Role; 12] = [
         Role::Clinician,
         Role::Nurse,
         Role::Pharmacist,
@@ -71,6 +75,7 @@ impl Role {
         Role::Auditor,
         Role::Integrator,
         Role::ClinicalSafetyOfficer,
+        Role::OnDutyClinician,
     ];
 
     /// The token value for this role (`role=clinician`).
@@ -88,6 +93,7 @@ impl Role {
             Role::Auditor => "auditor",
             Role::Integrator => "integrator",
             Role::ClinicalSafetyOfficer => "clinical-safety-officer",
+            Role::OnDutyClinician => "on-duty-clinician",
         }
     }
 
@@ -128,6 +134,9 @@ pub enum Resource {
     /// A report that a patient has died, and the steps on it (`death_store.rs`). Not clinical in the
     /// sense below: reception must see it before ringing a family, and no care relationship applies.
     DeathAssertion,
+    /// The list of reports of a death that wait for a person (OQ-BV4). Ids and times only: the reasons
+    /// stay with [`Resource::DeathAssertion`].
+    DeathReports,
     /// FHIR `AllergyIntolerance`.
     AllergyIntolerance,
     /// FHIR `DocumentReference` / `Composition` (notes).
@@ -162,7 +171,7 @@ pub enum Resource {
 
 impl Resource {
     /// Every resource kind, in a fixed order.
-    pub const ALL: [Resource; 20] = [
+    pub const ALL: [Resource; 21] = [
         Resource::PatientIdentity,
         Resource::Encounter,
         Resource::Condition,
@@ -171,6 +180,7 @@ impl Resource {
         Resource::Amendment,
         Resource::Adjustment,
         Resource::DeathAssertion,
+        Resource::DeathReports,
         Resource::AllergyIntolerance,
         Resource::Document,
         Resource::Consent,
@@ -197,6 +207,7 @@ impl Resource {
             Resource::Amendment => "Amendment",
             Resource::Adjustment => "Adjustment",
             Resource::DeathAssertion => "DeathAssertion",
+            Resource::DeathReports => "DeathReports",
             Resource::AllergyIntolerance => "AllergyIntolerance",
             Resource::Document => "Document",
             Resource::Consent => "Consent",
@@ -226,6 +237,7 @@ impl Resource {
             Resource::PatientIdentity
                 | Resource::Adjustment
                 | Resource::DeathAssertion
+                | Resource::DeathReports
                 | Resource::Consent
                 | Resource::AuditLog
                 | Resource::CareRelationship
@@ -536,9 +548,9 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
     use Resource::{
         Adjustment as Adjust, AllergyIntolerance as Allergy, Amendment, AuditLog,
         BreakGlass as Glass, CareRelationship as Rel, Condition, Consent as Cons,
-        DeathAssertion as Death, Document, Encounter, FeedQueue as Queue, Hazard,
-        MedicationRequest as Meds, Observation, PatientIdentity as Identity, PatientLink as Link,
-        Referral, ReferralQueue as RefQueue, ReferralWorklist as Worklist,
+        DeathAssertion as Death, DeathReports as Deaths, Document, Encounter, FeedQueue as Queue,
+        Hazard, MedicationRequest as Meds, Observation, PatientIdentity as Identity,
+        PatientLink as Link, Referral, ReferralQueue as RefQueue, ReferralWorklist as Worklist,
     };
     match (role, resource) {
         // Clinicians: full clinical work, and register or correct identity.
@@ -568,12 +580,19 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         // Death assertions (OQ-BV2, decided by the maintainer, not yet reviewed): any member of staff
         // may report and read the one answer; a clinician or nurse reads the assertions and takes a
         // step; the route keeps withdrawal to a clinician. An integration can only report.
-        (Role::Clinician | Role::Nurse, Death) => &[Read, Search, Create, Update],
+        (Role::Clinician | Role::Nurse | Role::OnDutyClinician, Death) => {
+            &[Read, Search, Create, Update]
+        }
         (
             Role::Pharmacist | Role::AlliedHealth | Role::Receptionist | Role::ClinicalAdmin,
             Death,
         ) => &[Read, Create],
         (Role::Integrator, Death) => &[Create],
+        // The list of reports that wait (OQ-BV4, decided by the maintainer, not yet reviewed): clinicians,
+        // nurses and administrators are alerted; the on-duty clinician is accountable.
+        (Role::Clinician | Role::Nurse | Role::ClinicalAdmin | Role::OnDutyClinician, Deaths) => {
+            &[Search]
+        }
         // Referrals: a treating role sends and answers them (which step belongs to the sender and
         // which to the recipient is checked by the route, OQ-PC2); the patient and a proxy only read.
         (Role::Clinician | Role::Nurse | Role::AlliedHealth, Referral) => {
@@ -654,7 +673,11 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
 fn purpose_fits(role: Role, purpose: Purpose) -> bool {
     use Purpose::{Audit, Emergency, Operations, PatientAccess, Treatment};
     match role {
-        Role::Clinician | Role::Nurse | Role::Pharmacist | Role::AlliedHealth => {
+        Role::Clinician
+        | Role::Nurse
+        | Role::Pharmacist
+        | Role::AlliedHealth
+        | Role::OnDutyClinician => {
             matches!(purpose, Treatment | Emergency | Operations)
         }
         Role::Receptionist | Role::ClinicalAdmin | Role::Integrator => {
@@ -1258,8 +1281,8 @@ mod tests {
                 }
             }
         }
-        // 11 roles × 20 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
-        assert_eq!(cells, 11 * 20 * 6 * 8 * 5 * 3 * 7 * 2);
+        // 12 roles × 21 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
+        assert_eq!(cells, 12 * 21 * 6 * 8 * 5 * 3 * 7 * 2);
         assert!(allows > 0);
     }
 

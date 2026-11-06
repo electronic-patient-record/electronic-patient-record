@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-06 - Staff are told a report of a death has arrived (BV-9; H-046 stays open)
+
+- **Clinical risk:** **yes.** Decided by the maintainer as OQ-BV4: clinicians, nurses and administrators are alerted, and the role of on-duty clinician is accountable. Before this, a report waited until someone happened to open the record, and a proxy could read the record meanwhile. Administrators now see that a report exists for a patient, which they could already see in the banner. A refused consent does not hide a report from this list; that is a judgement for review.
+- **Built:** the role `on-duty-clinician`, which on its own gives the death work and nothing else; the resource `DeathReports`; `GET /api/death-reports` and `/count`, ids and times only, oldest first, and a cut list says so; the `/death-reports` page; the count in the navigation; the Keycloak role.
+- **Checked:** `tests/http_death_reports.rs` through the real router with login on: who sees the list and who is refused, no reason in the list or the audit, a verified and a withdrawn report leaving it, the on-duty role alone verifying and withdrawing, a nurse still unable to withdraw. A browser test of the page.
+- **Not done / not verified:** **the service has no rota.** It cannot say who holds the role or whether anyone does, so a shift with no holder has nobody accountable and nothing says so. Nothing records that a person took a report on. There is no push, and no time limit for a report to wait. A report on a record merged away and a list cut at 50 are not tested through the route. No clinician, Clinical Safety Officer or bereaved person has reviewed this. The new words are in English only. The owner of overdue need checks (PX-2) is still undecided.
+
 ## 2026-11-05 - From SeaORM to sqlx
 
 - **Clinical risk:** **yes, in every read and write of the record.** Nothing was meant to change in behaviour. The 26 migrations and all store code moved. Rollback is now impossible rather than guarded: there are no down files, and `db down` refuses.

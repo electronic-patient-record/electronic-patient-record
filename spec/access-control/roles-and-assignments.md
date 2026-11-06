@@ -60,6 +60,7 @@ Typical permissions are illustrative; each needs clinical governance. "Rel" mean
 | auditor | privacy officer, information governance analyst | audit trail; no clinical content |
 | integrator | ADT feed, lab interface, referral gateway | create/search identity only |
 | clinical-safety-officer | CSO | hazard register |
+| on-duty-clinician | the clinician on duty, for a shift, alongside `clinician` | accountable for reports of a death that wait; the death work and nothing else on its own (OQ-BV4). Given and taken away by hand: no rota is built |
 | (missing) | medical student, nursing student, agency or locum | time-boxed, supervised |
 | (missing) | privacy officer, data protection officer, Caldicott Guardian-style role | decides on labels and complaints; may be the person who lifts a protected label |
 | (missing) | break-glass reviewer, label steward, system administrator | see operations above |
@@ -68,7 +69,7 @@ Typical permissions are illustrative; each needs clinical governance. "Rel" mean
 
 | Need | This project today | Gap |
 | --- | --- | --- |
-| Roles | 11 roles in `policy.rs`; unknown roles grant nothing | No sub-roles (consultant, midwife, ward clerk, student), no secretary, coder, privacy officer or administrator role |
+| Roles | 12 roles in `policy.rs`; unknown roles grant nothing | No sub-roles (consultant, midwife, ward clerk, student), no secretary, coder, privacy officer or administrator role |
 | Role grant | Role comes from the token (PASETO attrs or Keycloak realm roles via `role-map.json`) | No assignment record in this service: no sponsor, no start or end date, no reason |
 | Patient assignment | Care relationships (care team, active encounter, self, proxy) created by `clinical-admin`; the subject cannot grant themselves | No team model, no cover or delegation, no automatic end at discharge or move, no relationship by ward or service |
 | Permissions | Route gate table role x resource x action; record decision with labels, purpose, consent, break-glass | Table unreviewed clinically; no field-level or minimum-necessary views |

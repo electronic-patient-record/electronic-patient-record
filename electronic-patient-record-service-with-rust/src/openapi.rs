@@ -830,6 +830,27 @@ fn referral_queue_schemas() -> Value {
             "type": "object", "required": ["open"],
             "properties": {"open": {"type": "integer"}}
         },
+        "DeathReportItem": {
+            "type": "object", "required": ["assertion_id", "patient_id", "version", "reported_at"],
+            "description": "A report of a death that waits for a person. A pointer: no reason, source, reporter or date; a clinician or nurse reads those through the patient's route.",
+            "properties": {
+                "assertion_id": {"type": "string"},
+                "patient_id": {"type": "string", "description": "The record to open: the surviving record, if the report was made on one merged away."},
+                "version": {"type": "integer"},
+                "reported_at": {"type": "string", "description": "UTC."}
+            }
+        },
+        "DeathReportList": {
+            "type": "object", "required": ["items", "limit", "more", "accountable_role", "site_time_zone"],
+            "description": "Every report still at `reported`, oldest first, up to `limit`. The same for everyone who may read it.",
+            "properties": {
+                "items": {"type": "array", "items": {"$ref": "#/components/schemas/DeathReportItem"}},
+                "limit": {"type": "integer"},
+                "more": {"type": "boolean", "description": "True when more are waiting than `limit` allowed: the list is cut short and the newest are not shown."},
+                "accountable_role": {"enum": ["on-duty-clinician"], "description": "The role accountable for what waits here. It names no person: the service does not know who holds it now."},
+                "site_time_zone": {"type": "string"}
+            }
+        },
         "ReferralWorklistItem": {
             "type": "object", "required": ["referral_id", "patient_id", "version", "state", "why", "recorded_at"],
             "description": "One referral the caller sent that waits for them. A pointer: no recipient, reason, question or note; open the referral through the patient's route.",
@@ -1400,6 +1421,8 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
         &[],
     ),
     ("GET", "/api/referral-queue/{id}", "ReferralQueueEntry", &[]),
+    ("GET", "/api/death-reports", "DeathReportList", &[]),
+    ("GET", "/api/death-reports/count", "ReferralQueueCount", &[]),
     (
         "GET",
         "/api/referrals/worklist",

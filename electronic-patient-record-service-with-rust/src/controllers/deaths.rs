@@ -5,6 +5,8 @@
 //! - `GET  /api/patients/{id}/death/assertions`: every assertion, withdrawn ones included.
 //! - `POST /api/patients/{id}/death/assertions`: report a death.
 //! - `PUT  /api/patients/{id}/death/assertions/{assertion_id}`: one step, `{expected_version, to, reason}`.
+//! - `GET  /api/death-reports`: every report that waits for a person, oldest first, ids and times only.
+//! - `GET  /api/death-reports/count`: how many.
 //!
 //! Who may do what was decided as OQ-BV2, unreviewed: any member of staff may report and read the
 //! answer; a clinician or nurse may read the assertions and take a step; only a clinician may withdraw.
@@ -109,11 +111,108 @@ fn reporter(agent: &Agent, subject: &Subject) -> Actor {
     }
 }
 
-/// Whether this subject may take a step to `to`. Withdrawal is a clinician's (OQ-BV2).
+/// Whether this subject may take a step to `to`. Withdrawal is a clinician's (OQ-BV2), and the on-duty
+/// clinician is one.
 fn may_step(subject: &Subject, to: Status) -> bool {
     !auth::authentication_enforced()
         || to != Status::WithdrawnInError
         || subject.roles.contains(&Role::Clinician)
+        || subject.roles.contains(&Role::OnDutyClinician)
+}
+
+/// The role accountable for every report on the list (OQ-BV4).
+const ACCOUNTABLE: Role = Role::OnDutyClinician;
+
+/// Read the purpose and authorise the list, with no patient named: the list is the same for all who may
+/// see it, and a refused consent does not hide a report from the people who must act on it.
+async fn reports_guard(
+    ctx: &AppContext,
+    agent: &Agent,
+    subject: &Subject,
+    headers: &HeaderMap,
+) -> Result<Purpose, ApiError> {
+    let purpose = purpose_of(headers)?;
+    authorize(
+        &ctx.pool(),
+        agent,
+        subject,
+        Resource::DeathReports,
+        policy::Action::Search,
+        purpose,
+        None,
+    )
+    .await?;
+    Ok(purpose)
+}
+
+/// Audit a look at the list, with the count and never an id of a patient.
+async fn audit_reports(
+    ctx: &AppContext,
+    agent: &Agent,
+    purpose: Purpose,
+    waiting: i64,
+) -> Result<(), ApiError> {
+    audit_resource(
+        &ctx.pool(),
+        agent,
+        Access {
+            action: Action::Read,
+            outcome: 0,
+            purpose,
+            resource: "DeathReports",
+            patient_id: None,
+        },
+        serde_json::json!({ "waiting": waiting }),
+    )
+    .await
+}
+
+/// `GET /api/death-reports`: the reports that wait for a person, oldest first. Audited with the count.
+pub(super) async fn reports(
+    State(ctx): State<AppContext>,
+    Extension(agent): Extension<Agent>,
+    Extension(subject): Extension<Subject>,
+    headers: HeaderMap,
+) -> Response {
+    let purpose = match reports_guard(&ctx, &agent, &subject, &headers).await {
+        Ok(p) => p,
+        Err(r) => return r.into_response(),
+    };
+    let page = match store::waiting(&ctx.pool()).await {
+        Ok(p) => p,
+        Err(e) => return failure(e).into_response(),
+    };
+    let seen = i64::try_from(page.len()).unwrap_or(i64::MAX);
+    if let Err(r) = audit_reports(&ctx, &agent, purpose, seen).await {
+        return r.into_response();
+    }
+    Json(serde_json::json!({
+        "items": page.rows, "limit": store::WAITING_LIMIT, "more": page.more,
+        "accountable_role": ACCOUNTABLE.as_str(),
+        "site_time_zone": crate::site::time_zone()
+    }))
+    .into_response()
+}
+
+/// `GET /api/death-reports/count`: how many wait. Audited like the list.
+pub(super) async fn reports_count(
+    State(ctx): State<AppContext>,
+    Extension(agent): Extension<Agent>,
+    Extension(subject): Extension<Subject>,
+    headers: HeaderMap,
+) -> Response {
+    let purpose = match reports_guard(&ctx, &agent, &subject, &headers).await {
+        Ok(p) => p,
+        Err(r) => return r.into_response(),
+    };
+    let open = match store::waiting_count(&ctx.pool()).await {
+        Ok(n) => n,
+        Err(e) => return failure(e).into_response(),
+    };
+    if let Err(r) = audit_reports(&ctx, &agent, purpose, open).await {
+        return r.into_response();
+    }
+    Json(serde_json::json!({ "open": open })).into_response()
 }
 
 /// `GET /api/patients/{id}/death`: the one answer. Audited.
@@ -384,4 +483,12 @@ pub(super) async fn update(
             failure(e).into_response()
         }
     }
+}
+
+/// The routes that name no patient. The rest are mounted with the patient's routes.
+#[must_use]
+pub fn routes() -> Routes {
+    Routes::new()
+        .add("/api/death-reports", get(reports))
+        .add("/api/death-reports/count", get(reports_count))
 }

@@ -45,6 +45,8 @@ fn call(template: &str, patient: &str) -> Option<String> {
         | "/fhir/R4/AuditEvent"
         | "/api/feed/refusals"
         | "/api/feed/refusals/count"
+        | "/api/death-reports"
+        | "/api/death-reports/count"
         | "/api/referrals/worklist"
         | "/api/referrals/worklist/count"
         | "/api/referral-queue"

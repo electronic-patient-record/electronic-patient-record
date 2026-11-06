@@ -9,6 +9,7 @@
 use crate::death::{self, Actor, Answer, Assertion, Refusal, Step};
 use crate::ids;
 use crate::links;
+use crate::page::Page;
 use crate::patients_store::{self, StoreError};
 use crate::pool::Db;
 use serde::Serialize;
@@ -191,6 +192,72 @@ pub async fn current(
     .map_err(db_err)?
     .ok_or(StoreError::NotFound)?;
     row_to_assertion(&row)
+}
+
+/// The most reports a listing returns.
+pub const WAITING_LIMIT: u64 = 50;
+
+/// A report that waits for a person (OQ-BV4). A pointer: no reason, source, reporter or date of death,
+/// because an administrator reads this list and those stay with the assertion.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Waiting {
+    /// The assertion.
+    pub assertion_id: String,
+    /// The record to open: the surviving record, if the report was made on one merged away.
+    pub patient_id: String,
+    /// The version a step would be made on.
+    pub version: i32,
+    /// When the report was stored (UTC).
+    pub reported_at: String,
+}
+
+/// Every report still at `reported`, oldest first, up to [`WAITING_LIMIT`].
+///
+/// # Errors
+///
+/// [`StoreError::Db`] on a database failure.
+pub async fn waiting(db: impl Into<Db<'_>>) -> Result<Page<Waiting>, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let rows = sqlx::query(
+        "SELECT assertion_id::text AS id, patient_id::text AS patient_id, version,
+                to_char(recorded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS at
+         FROM death_assertion_current WHERE status = 'reported'
+         ORDER BY recorded_at, assertion_id LIMIT $1",
+    )
+    .bind(i64::try_from(WAITING_LIMIT + 1).map_err(db_err)?)
+    .fetch_all(&mut *db)
+    .await
+    .map_err(db_err)?;
+    let mut items = Vec::with_capacity(rows.len());
+    for row in rows {
+        let patient_id: String = row.try_get("patient_id").map_err(db_err)?;
+        let live = links::merged_into(&mut *db, &patient_id).await?;
+        items.push(Waiting {
+            assertion_id: row.try_get("id").map_err(db_err)?,
+            patient_id: live.unwrap_or(patient_id),
+            version: row.try_get("version").map_err(db_err)?,
+            reported_at: row.try_get("at").map_err(db_err)?,
+        });
+    }
+    Ok(Page::cut(items, WAITING_LIMIT))
+}
+
+/// How many reports are still at `reported`.
+///
+/// # Errors
+///
+/// [`StoreError::Db`] on a database failure.
+pub async fn waiting_count(db: impl Into<Db<'_>>) -> Result<i64, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let row = sqlx::query(
+        "SELECT count(*)::bigint AS n FROM death_assertion_current WHERE status = 'reported'",
+    )
+    .fetch_one(&mut *db)
+    .await
+    .map_err(db_err)?;
+    row.try_get("n").map_err(db_err)
 }
 
 /// Append the next version of an assertion.

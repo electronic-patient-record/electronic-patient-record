@@ -6,6 +6,18 @@ export const STRINGS = {
   navHome: "Home",
   navPatients: "Patients",
   navReplies: "Referral replies",
+  navDeathReports: "Reports of death",
+  drTitle: "Reports of death that wait for a person",
+  drIntro:
+    "Each report here holds contact and has not been confirmed. Open the patient: a clinician or nurse verifies it, and only a clinician withdraws it. A report that has not been confirmed may be wrong, so do not tell a family from this list.",
+  drAccountable:
+    "The on-duty clinician is accountable for every report here. Clinicians, nurses and administrators can all see this list.",
+  drNone: "No reports of death are waiting.",
+  drCount: "{n} waiting",
+  drMore:
+    "Showing the oldest {n}. More are waiting, and the newest are not shown.",
+  drReported: "Reported {when}",
+  drOpen: "Open the patient",
   wlTitle: "Replies to referrals you sent",
   wlIntro:
     "A referral you sent that was declined, redirected, deferred, asked about, reported on, completed or missed by the patient stays here until you say you have seen it. Open the patient to read the reply, act on it, then mark it seen. Marking it seen records that you saw it, not that anything was done.",
@@ -757,6 +769,7 @@ export const STRINGS = {
     proxy: "proxy",
     auditor: "auditor",
     integrator: "integrator",
+    "on-duty-clinician": "on-duty clinician",
   },
   accessLogYou: "You",
   accessLogStaff: "A member of staff",

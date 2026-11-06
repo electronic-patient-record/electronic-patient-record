@@ -57,6 +57,14 @@ export type Answer =
       holds_contact: true;
     };
 
+/** One report that waits for a person (`GET /api/death-reports`): a pointer, with no reason. */
+export interface WaitingReport {
+  assertion_id: string;
+  patient_id: string;
+  version: number;
+  reported_at: string;
+}
+
 export interface DeathLoad {
   status: number;
   answer: Answer | null;

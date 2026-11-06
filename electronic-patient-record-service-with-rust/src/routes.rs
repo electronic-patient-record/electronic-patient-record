@@ -170,6 +170,18 @@ pub const TABLE: &[(&str, &str, Resource, Action)] = &[
     ),
     (
         "GET",
+        "/api/death-reports",
+        Resource::DeathReports,
+        Action::Search,
+    ),
+    (
+        "GET",
+        "/api/death-reports/count",
+        Resource::DeathReports,
+        Action::Search,
+    ),
+    (
+        "GET",
         "/api/referrals/worklist",
         Resource::ReferralWorklist,
         Action::Search,

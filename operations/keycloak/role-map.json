@@ -54,6 +54,11 @@
       "clinical-safety-officer"
     ]
   },
+  "on-duty-clinician": {
+    "role": [
+      "on-duty-clinician"
+    ]
+  },
   "org-riverside": {
     "organisation": [
       "riverside"

@@ -58,6 +58,10 @@
       {
         "name": "clinical-safety-officer",
         "description": "EPR policy role (AS-17). Mapped to the token attribute role=clinical-safety-officer by role-map.json; the only role that can retire a hazard, and only with evidence. Give it to a named person, never to a service account."
+      },
+      {
+        "name": "on-duty-clinician",
+        "description": "EPR policy role (OQ-BV4). Mapped to the token attribute role=on-duty-clinician by role-map.json; accountable for reports of a death that wait for a person. Give it to the clinician on duty, alongside clinician, and take it away at handover: the API does not know the rota."
       }
     ]
   },

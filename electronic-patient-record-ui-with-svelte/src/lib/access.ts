@@ -99,6 +99,7 @@ export const ROLES = [
   "proxy",
   "auditor",
   "integrator",
+  "on-duty-clinician",
 ] as const;
 export const PURPOSES = [
   "treatment",

@@ -1354,6 +1354,67 @@
         ],
         "type": "object"
       },
+      "DeathReportItem": {
+        "description": "A report of a death that waits for a person. A pointer: no reason, source, reporter or date; a clinician or nurse reads those through the patient's route.",
+        "properties": {
+          "assertion_id": {
+            "type": "string"
+          },
+          "patient_id": {
+            "description": "The record to open: the surviving record, if the report was made on one merged away.",
+            "type": "string"
+          },
+          "reported_at": {
+            "description": "UTC.",
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "assertion_id",
+          "patient_id",
+          "version",
+          "reported_at"
+        ],
+        "type": "object"
+      },
+      "DeathReportList": {
+        "description": "Every report still at `reported`, oldest first, up to `limit`. The same for everyone who may read it.",
+        "properties": {
+          "accountable_role": {
+            "description": "The role accountable for what waits here. It names no person: the service does not know who holds it now.",
+            "enum": [
+              "on-duty-clinician"
+            ]
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DeathReportItem"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "more": {
+            "description": "True when more are waiting than `limit` allowed: the list is cut short and the newest are not shown.",
+            "type": "boolean"
+          },
+          "site_time_zone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "limit",
+          "more",
+          "accountable_role",
+          "site_time_zone"
+        ],
+        "type": "object"
+      },
       "DuplicateConflict": {
         "description": "409 on create: likely duplicates. A candidate the caller may not see is {\"restricted\": true}.",
         "properties": {
@@ -4113,6 +4174,108 @@
         ],
         "x-epr-action": "Update",
         "x-epr-resource": "BreakGlass"
+      }
+    },
+    "/api/death-reports": {
+      "get": {
+        "operationId": "getApiDeath-reports",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeathReportList"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/death-reports",
+        "tags": [
+          "death-reports"
+        ],
+        "x-epr-action": "Search",
+        "x-epr-resource": "DeathReports"
+      }
+    },
+    "/api/death-reports/count": {
+      "get": {
+        "operationId": "getApiDeath-reportsCount",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralQueueCount"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/death-reports/count",
+        "tags": [
+          "death-reports"
+        ],
+        "x-epr-action": "Search",
+        "x-epr-resource": "DeathReports"
       }
     },
     "/api/feed/refusals": {

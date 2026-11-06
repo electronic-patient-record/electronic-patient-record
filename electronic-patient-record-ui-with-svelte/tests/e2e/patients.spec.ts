@@ -4097,3 +4097,55 @@ test("the reply list says when it was cut short, and a role without one is told 
     0,
   );
 });
+
+test("reports of a death list oldest first, name who is accountable and say when they are cut", async ({
+  page,
+}) => {
+  const item = {
+    assertion_id: "11111111-1111-4111-8111-111111111111",
+    patient_id: ANN.id,
+    version: 1,
+    reported_at: "2026-10-21T09:00:00.000000Z",
+  };
+  await page.route("**/api/proxy/api/death-reports/count", (route) =>
+    json(route, 200, { open: 51 }),
+  );
+  await page.route("**/api/proxy/api/death-reports", (route) =>
+    json(route, 200, {
+      items: [item],
+      limit: 50,
+      more: true,
+      accountable_role: "on-duty-clinician",
+      site_time_zone: "UTC",
+    }),
+  );
+  await page.goto("/en-001/death-reports");
+  await expect(page.getByText("Reported 2026-10-21 09:00 UTC")).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /Reports of death/ }),
+  ).toContainText("(51 waiting)");
+  await expect(
+    page.getByText("The on-duty clinician is accountable"),
+  ).toBeVisible();
+  await expect(page.getByText("Showing the oldest 50")).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Open the patient" }),
+  ).toHaveAttribute("href", new RegExp(`/patients/${ANN.id}$`));
+  await axe(page);
+});
+
+test("a role refused the list of reports is told so, and it does not read as none waiting", async ({
+  page,
+}) => {
+  await page.route("**/api/proxy/api/death-reports/count", (route) =>
+    json(route, 403, {}),
+  );
+  await page.route("**/api/proxy/api/death-reports", (route) =>
+    json(route, 403, {}),
+  );
+  await page.goto("/en-001/death-reports");
+  await expect(page.getByRole("status")).toBeVisible();
+  await expect(page.getByText("No reports of death are waiting.")).toHaveCount(
+    0,
+  );
+});

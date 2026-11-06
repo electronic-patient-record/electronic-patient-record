@@ -19,6 +19,9 @@
     worklistCount,
     refreshWorklistCount,
     isWorklistPage,
+    deathReportsCount,
+    refreshDeathReportsCount,
+    isDeathReportsPage,
     isAdminPage,
     refreshFeedCount,
   } from "#lib/feed-count.svelte.js";
@@ -57,6 +60,11 @@
     }
   });
   // The count of replies waiting for this person is fetched on the reply list and a patient's record only.
+  const deathReportsPage = $derived(isDeathReportsPage(page.url.pathname));
+  $effect(() => {
+    if (deathReportsPage) void refreshDeathReportsCount();
+    else deathReportsCount.open = null;
+  });
   const worklistPage = $derived(isWorklistPage(page.url.pathname));
   $effect(() => {
     if (worklistPage) void refreshWorklistCount();
@@ -107,6 +115,15 @@
     <a href={localizePath("/", locale)}>{STRINGS.navHome}</a>
     <a href={localizePath("/patients", locale)}>{STRINGS.navPatients}</a>
     <a href={localizePath("/patients/new", locale)}>{STRINGS.registerLink}</a>
+    <a href={localizePath("/death-reports", locale)}
+      >{STRINGS.navDeathReports}{#if deathReportsPage && deathReportsCount.open}
+        <span class="count"
+          >({STRINGS.drCount.replace(
+            "{n}",
+            String(deathReportsCount.open),
+          )})</span
+        >{/if}</a
+    >
     <a href={localizePath("/referrals", locale)}
       >{STRINGS.navReplies}{#if worklistPage && worklistCount.open}
         <span class="count"

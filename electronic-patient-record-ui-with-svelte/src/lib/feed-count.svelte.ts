@@ -49,6 +49,30 @@ export function isWorklistPage(pathname: string): boolean {
   );
 }
 
+/** Whether the count of death reports is fetched on this path: wherever staff start and where they work. A role
+ *  that may not see the list makes one audited refusal per load there. */
+export function isDeathReportsPage(pathname: string): boolean {
+  return (
+    /\/death-reports\/?$/.test(pathname) ||
+    /\/patients\/?$/.test(pathname) ||
+    /^(\/[a-z]{2,3}(-[A-Za-z0-9]+)*)?\/?$/.test(pathname) ||
+    /\/patients\/(?!new\/?$|compare\/?$)[^/]+\/?$/.test(pathname)
+  );
+}
+
+// How many reports of a death wait for a person (H-046, OQ-BV4). Any status but 200 shows nothing.
+export const deathReportsCount = $state<{ open: number | null }>({
+  open: null,
+});
+
+export async function refreshDeathReportsCount(): Promise<void> {
+  const res = await call<{ open: number }>("GET", "/api/death-reports/count");
+  deathReportsCount.open =
+    res.status === 200 && Number.isInteger(res.body?.open)
+      ? res.body.open
+      : null;
+}
+
 // How many of this person's referrals have an answer they have not seen (H-044). Any status but 200 shows nothing.
 export const worklistCount = $state<{ open: number | null }>({ open: null });
 
