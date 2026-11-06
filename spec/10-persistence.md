@@ -26,6 +26,6 @@ two writers pass the version check at once, the primary key refuses the second. 
 driver's error kind (a unique violation; the version tables have no other unique constraint), never from the
 message text, and is answered as a version conflict naming the version now current.
 
-**No rollback.** Migrations are `.sql` files in the service's `migrations/`, embedded in the binary, and none has a down file, so the clinical record cannot be rolled back through them. `db down` refuses. `db reset` drops everything and is refused unless the environment is `development` or `test` **and** `EPR_ALLOW_DESTRUCTIVE_DOWN=true`.
+**No rollback.** Migrations are `.sql` files in the service's `migrations/`, embedded in the binary, and none has a down file, so the clinical record cannot be rolled back through them. `db down` refuses. `db reset` drops everything and is refused unless the environment is `development` or `test` **and** `AXA_DESTROY_DATA=true`. `axa` refuses it, and `db down` and `db truncate`, before the service runs, on the process's own environment, so `--environment` cannot lift it; the service then checks again before it drops anything, and has no `down` or `truncate` to run.
 
 Migrations run with `db migrate`; production does not migrate at start, and runs the `migrate` compose service.

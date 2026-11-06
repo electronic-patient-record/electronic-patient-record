@@ -4,7 +4,7 @@ use axa::sqlx::{migrate, status};
 use axa::{
     AppContext, Environment, Error, Result,
     boot::{BootResult, TestApp},
-    cli::{Cli, Command, DbCommand},
+    cli::{Cli, Command, DESTROY_DATA_VAR, DbCommand},
     config::{Config, Defaults, MB},
     routes::AppRoutes,
     server,
@@ -105,12 +105,12 @@ impl App {
                 ));
             }
             DbCommand::Reset => {
-                let flag = std::env::var("EPR_ALLOW_DESTRUCTIVE_DOWN").ok();
+                let flag = std::env::var(DESTROY_DATA_VAR).ok();
                 if !ctx.environment.may_destroy_data(flag.as_deref()) {
-                    return Err(Error::string(
-                        "db reset drops every table, so it is refused outside development and test, \
-                         and needs EPR_ALLOW_DESTRUCTIVE_DOWN=true there",
-                    ));
+                    return Err(Error::string(&format!(
+                        "db reset drops every table, so it is refused outside development and \
+                         test, and needs {DESTROY_DATA_VAR}=true there"
+                    )));
                 }
                 sqlx::raw_sql(
                     "DROP SCHEMA public CASCADE; DROP SCHEMA IF EXISTS audit_archive CASCADE; \

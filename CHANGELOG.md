@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-06 - `axa` 0.4 to 0.5
+
+- **Clinical risk:** **yes, in how the service starts and is reset.** No clinical rule changed. Running out of connections now makes a new client wait: the server holds 10,000 at most (`MAX_CONNECTIONS`). A proxy can no longer offer HTTP/2 through to the service: it speaks HTTP/1 only, which is all it was built for. No hazard row is added: a clinician sees no difference while the service is up.
+- **Built:** `db reset` is confirmed by `AXA_DESTROY_DATA=true`, in place of `EPR_ALLOW_DESTRUCTIVE_DOWN`, which is gone. `axa` now refuses `db reset`, `db down` and `db truncate` in `main`, before a setting is read, and `--environment` cannot lift it. The service still checks before it drops anything, and still has no `down` or `truncate`. `tests/destroy_refused.rs` runs the real binary, because no unit test reaches `main`.
+- **Corrects the 0.4 entry:** that entry said a client that does not finish its headers in 30 seconds is dropped. On 0.4.0 that was not true of a client that sent nothing, or an HTTP/2 preface: those stayed open for ever. A `DATABASE_URL` of `localhost` with `hostaddr` set to another machine also passed as loopback. `axa` 0.4.1 closed both, and this move takes them.
+- **Checked:** every gate in `scripts/ci-local.sh --full`, and the real binary, with `HEADER_READ_TIMEOUT_SECONDS=2`: a silent client and a partial request closed at 2 seconds, and an HTTP/2 preface at once; `check` refusing `localhost?hostaddr=10.0.0.5` in production, and `MAX_CONNECTIONS=0` and `TRUSTED_PROXIES=junk`; `db reset` working when confirmed in development, leaving 65 tables; `db down` and `db truncate` reaching the service's own refusals. `h2` and `fnv` left the build.
+- **Not done / not verified:** the 10,000 connection limit was not tried with 10,000 connections. `TRUSTED_PROXIES` is not set, and nothing reads `ClientAddr`, so a row in the audit trail from the API still has no network address. `axa`'s `auth_refused` line does not apply, because the service keeps its own authentication; its own refusals are audited. No real TLS connection to Postgres was made, as before, and no real deployment exists.
+
 ## 2026-11-06 - `axa` 0.3 to 0.4
 
 - **Clinical risk:** **yes, in how the service starts.** No clinical rule changed. In production a `DATABASE_URL` to another machine with no `sslmode` of `require`, `verify-ca` or `verify-full` now stops the boot, unless `DB_ALLOW_INSECURE=true`. A deployment that worked before can refuse to start, which is safer than sending records in the clear but is still an outage if nobody expects it.
