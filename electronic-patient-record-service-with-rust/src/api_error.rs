@@ -1,29 +1,33 @@
-//! Every error body the service sends, defined once (CQ-11). The REST API answers
-//! `{"error": message, …}` or, for a refused record, `{"errors": [problem, …]}` with 422; the FHIR
-//! facade answers an `OperationOutcome`. Handlers and middleware build an [`ApiError`] and never a
-//! body by hand (`tests/error_census.rs`); [`ApiError::for_path`] picks the shape for the route.
+//! Every error body the service sends, defined once (CQ-11). The REST API answers an RFC 9457
+//! `application/problem+json` body: `detail` holds the message, and a field a client acts on sits beside
+//! it as an extension, as `errors` does on a refused record (422). The FHIR facade answers an
+//! `OperationOutcome`. Handlers and middleware build an [`ApiError`] and never a body by hand
+//! (`tests/error_census.rs`); [`ApiError::for_path`] picks the shape for the route.
 
 use crate::patients_store::StoreError;
+use axa::problem::Problem;
 use axum::{
-    Json,
     http::{StatusCode, header},
     response::{IntoResponse, Response},
 };
 use serde_json::{Map, Value};
 
+/// The `detail` of a refused record: the reasons themselves are in `errors`.
+const REFUSED: &str = "the record was refused";
+
 /// A refused or failed request.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ApiError {
-    /// `{"error": message}` plus any `extra` fields, with `status`.
+    /// A problem with `status`, `message` as its `detail`, and any `extra` fields.
     Error {
         /// The HTTP status.
         status: StatusCode,
-        /// The `error` text: fixed wording, never a database message or patient data.
+        /// The `detail` text: fixed wording, never a database message or patient data.
         message: String,
-        /// Fields beside `error`, such as `current_version` or `break_glass_offer`.
+        /// Fields beside `detail`, such as `current_version` or `break_glass_offer`.
         extra: Map<String, Value>,
     },
-    /// 422 `{"errors": [...]}`: the record was refused, for each of these reasons.
+    /// 422 with an `errors` list: the record was refused, for each of these reasons.
     Invalid {
         /// The problems, one line each.
         problems: Vec<String>,
@@ -33,7 +37,7 @@ pub enum ApiError {
 }
 
 impl ApiError {
-    /// `{"error": message}` with `status`.
+    /// A problem with `status` and `message` as its `detail`.
     pub fn new(status: StatusCode, message: impl Into<String>) -> Self {
         Self::Error {
             status,
@@ -42,7 +46,8 @@ impl ApiError {
         }
     }
 
-    /// Add a field beside `error` (ignored for [`ApiError::Invalid`]).
+    /// Add a field beside `detail`. A name RFC 9457 reserves (`type`, `title`, `status`, `detail`,
+    /// `instance`) is dropped by [`Problem::with_extension`], so never use one.
     #[must_use]
     pub fn with(mut self, key: &str, value: impl Into<Value>) -> Self {
         let (Self::Error { extra, .. } | Self::Invalid { extra, .. }) = &mut self;
@@ -101,23 +106,21 @@ impl ApiError {
         }
     }
 
-    /// The REST body.
+    /// The REST answer. `type` stays `about:blank`, so `title` is the status's standard reason, and
+    /// the service's own wording is in `detail`.
     #[must_use]
-    pub fn body(&self) -> Value {
-        match self {
-            Self::Error { message, extra, .. } => {
-                let mut body = Map::new();
-                body.insert("error".into(), Value::String(message.clone()));
-                body.extend(extra.clone());
-                Value::Object(body)
-            }
-            Self::Invalid { problems, extra } => {
-                let mut body = Map::new();
-                body.insert("errors".into(), serde_json::json!(problems));
-                body.extend(extra.clone());
-                Value::Object(body)
-            }
+    pub fn problem(&self) -> Problem {
+        let (detail, extra) = match self {
+            Self::Error { message, extra, .. } => (message.as_str(), extra),
+            Self::Invalid { extra, .. } => (REFUSED, extra),
+        };
+        let mut problem = Problem::new(self.status()).with_detail(detail);
+        if let Self::Invalid { problems, .. } = self {
+            problem = problem.with_extension("errors", serde_json::json!(problems));
         }
+        extra.iter().fold(problem, |problem, (key, value)| {
+            problem.with_extension(key, value.clone())
+        })
     }
 
     /// The same refusal as a FHIR `OperationOutcome` with one issue.
@@ -166,7 +169,7 @@ impl ApiError {
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
-        (self.status(), Json(self.body())).into_response()
+        self.problem().into_response()
     }
 }
 
@@ -207,6 +210,10 @@ impl From<&StoreError> for ApiError {
 mod tests {
     use super::*;
 
+    fn body(e: &ApiError) -> Value {
+        serde_json::to_value(e.problem()).unwrap()
+    }
+
     #[test]
     fn a_refused_merge_carries_its_reasons_as_codes_beside_the_errors() {
         let e = ApiError::from(&StoreError::NotSamePerson {
@@ -215,8 +222,12 @@ mod tests {
         });
         assert_eq!(e.status(), StatusCode::UNPROCESSABLE_ENTITY);
         assert_eq!(
-            e.body(),
+            body(&e),
             serde_json::json!({
+                "type": "about:blank",
+                "title": "Unprocessable Entity",
+                "status": 422,
+                "detail": "the record was refused",
                 "errors": ["these do not look like the same person"],
                 "conflict_codes": [{ "code": "different_nhs_numbers" }],
             })
@@ -225,26 +236,35 @@ mod tests {
 
     #[test]
     fn rest_bodies_have_the_shapes_the_ui_reads() {
+        let forbidden = ApiError::forbidden().with("break_glass_offer", true);
         assert_eq!(
-            ApiError::forbidden().with("break_glass_offer", true).body(),
-            serde_json::json!({"error": "forbidden", "break_glass_offer": true})
+            body(&forbidden),
+            serde_json::json!({
+                "type": "about:blank",
+                "title": "Forbidden",
+                "status": 403,
+                "detail": "forbidden",
+                "break_glass_offer": true,
+            })
         );
         assert_eq!(
-            ApiError::invalid(vec!["a".into()]).body(),
-            serde_json::json!({"errors": ["a"]})
+            body(&ApiError::invalid(vec!["a".into()]))["errors"],
+            serde_json::json!(["a"])
         );
         assert_eq!(
             ApiError::invalid(vec![]).status(),
             StatusCode::UNPROCESSABLE_ENTITY
         );
-        assert_eq!(
-            ApiError::from(&StoreError::Conflict { current: 3 }).body(),
-            serde_json::json!({"error": "version conflict", "current_version": 3})
-        );
-        assert_eq!(
-            ApiError::from(&StoreError::Db("secret detail".into())).body(),
-            serde_json::json!({"error": "internal error"})
-        );
+        let stale = body(&ApiError::from(&StoreError::Conflict { current: 3 }));
+        assert_eq!(stale["detail"], "version conflict");
+        assert_eq!(stale["current_version"], 3);
+    }
+
+    #[test]
+    fn a_database_failure_says_nothing_of_its_cause() {
+        let failed = body(&ApiError::from(&StoreError::Db("secret detail".into())));
+        assert_eq!(failed["detail"], "internal error");
+        assert!(!failed.to_string().contains("secret"));
     }
 
     #[tokio::test]
@@ -258,6 +278,9 @@ mod tests {
         assert_eq!(v["issue"][0]["code"], "forbidden");
 
         let r = ApiError::forbidden().for_path("/api/patients");
-        assert_eq!(r.headers()[header::CONTENT_TYPE], "application/json");
+        assert_eq!(
+            r.headers()[header::CONTENT_TYPE],
+            "application/problem+json"
+        );
     }
 }

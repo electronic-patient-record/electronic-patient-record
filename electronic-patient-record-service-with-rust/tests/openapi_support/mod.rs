@@ -83,7 +83,11 @@ pub fn check(doc: &Value, schema: &Value, value: &Value, at: &str, out: &mut Vec
 
 /// The schema a document gives for `method path` at `status`.
 pub fn response_schema<'a>(doc: &'a Value, path: &str, method: &str, status: &str) -> &'a Value {
-    let content = &doc["paths"][path][method]["responses"][status]["content"]["application/json"];
+    let media = &doc["paths"][path][method]["responses"][status]["content"];
+    let content = match &media["application/json"] {
+        Value::Null => &media["application/problem+json"],
+        json => json,
+    };
     assert!(
         !content.is_null(),
         "{method} {path} has no {status} body in the document"

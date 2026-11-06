@@ -116,7 +116,7 @@ async fn roles_consent_and_break_glass_through_the_router() {
             .json(&body)
             .await;
         assert_eq!(refused.status_code(), StatusCode::FORBIDDEN);
-        assert_eq!(refused.json::<Value>()["error"], "forbidden");
+        assert_eq!(refused.json::<Value>()["detail"], "forbidden");
         let fhir = server
             .post("/fhir/R4/Patient")
             .add_header(ah.clone(), av.clone())

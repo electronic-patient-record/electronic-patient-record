@@ -54,13 +54,13 @@ key cannot be checked the request is refused, not run unguarded. A request witho
 
 Every refusal and failure is built by `api_error::ApiError`, never by hand (`tests/error_census.rs`):
 
-- On `/api`: JSON `{"error": message}`, with extra fields where a client acts on them (`current_version`,
-  `replaced_by`, `break_glass_offer`, `candidates`, `candidates_cut`).
-- A refused record is 422 `{"errors": [reason, …]}`. A refused patient (create or update) also carries `error_codes`, one stable code per reason in the same order (`family_name_required`, `birth_date_invalid`, `nhs_number_placeholder`, `nhs_number_check_digit`, `identifier_incomplete`, and on update `temporary_identity_reason_required`), so a client can say it in the reader's language; `errors` stays the English text.
+- On `/api`: an [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem, served as `application/problem+json` and built with `axa::problem::Problem`: `{"type": "about:blank", "title": reason, "status": code, "detail": message}`. `title` is the status's standard reason; the service's own wording is in `detail`. A field a client acts on sits beside them as an extension (`current_version`, `replaced_by`, `break_glass_offer`, `candidates`, `candidates_cut`, `retry_after_seconds`). An extension may not be named `type`, `title`, `status`, `detail` or `instance`: `Problem` drops it. `instance` is not sent.
+- A refused record is a 422 problem with `detail` `the record was refused` and the extension `errors`: `[reason, …]`. A refused patient (create or update) also carries `error_codes`, one stable code per reason in the same order (`family_name_required`, `birth_date_invalid`, `nhs_number_placeholder`, `nhs_number_check_digit`, `identifier_incomplete`, and on update `temporary_identity_reason_required`), so a client can say it in the reader's language; `errors` stays the English text.
+- `GET /api/audit/verify` is not an error answer: its 424 is a report whose `error` member is `key-not-held`, and it stays `application/json`.
 - On `/fhir/`: an `OperationOutcome` with one issue, served as `application/fhir+json`. The issue codes are `login`,
   `forbidden`, `not-found`, `conflict`, `invalid` and `exception`.
 - The authentication (401) and route-gate (403) middleware answer the same way, by path, and never as plain text.
-- A criterion of the wrong type on the audit routes (`outcome=x`, `checkpoint_id=x`) is the same JSON 400 as a bad date, not the framework's plain text.
+- A criterion of the wrong type on the audit routes (`outcome=x`, `checkpoint_id=x`) is the same problem 400 as a bad date, not the framework's plain text.
 - A 500 says `internal error`. The cause is logged and never sent.
 
 ### API versioning

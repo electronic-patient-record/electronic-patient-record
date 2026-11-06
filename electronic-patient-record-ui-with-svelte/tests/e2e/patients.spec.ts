@@ -106,7 +106,7 @@ test("a search with no match says so; a refusal is announced", async ({
 
   await page.unroute("**/api/proxy/api/patients?**");
   await page.route("**/api/proxy/api/patients?**", (route) =>
-    json(route, 403, { error: "forbidden" }),
+    json(route, 403, { detail: "forbidden" }),
   );
   await page.getByRole("button", { name: "Search" }).click();
   await expect(page.getByRole("alert")).toHaveText(
@@ -168,7 +168,7 @@ test("a possible duplicate is shown side by side and needs a reason to override"
         version: 1,
       });
     return json(route, 409, {
-      error: "possible duplicate",
+      detail: "possible duplicate",
       candidates: [CANDIDATE],
     });
   });
@@ -260,7 +260,7 @@ test("a stale edit says the record changed and offers a reload", async ({
   await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) => {
     if (route.request().method() === "PUT")
       return json(route, 409, {
-        error: "version conflict",
+        detail: "version conflict",
         current_version: 3,
       });
     gets += 1;
@@ -279,7 +279,7 @@ test("a missing patient and a signed-out reader get a message, not a form", asyn
   page,
 }) => {
   await page.route("**/api/proxy/api/patients/*", (route) =>
-    json(route, 404, { error: "not found" }),
+    json(route, 404, { detail: "not found" }),
   );
   await page.goto("/en-001/patients/33333333-3333-4333-8333-333333333333");
   await expect(page.getByRole("alert")).toHaveText("No such patient.");
@@ -289,7 +289,7 @@ test("a missing patient and a signed-out reader get a message, not a form", asyn
 
   await page.unroute("**/api/proxy/api/patients/*");
   await page.route("**/api/proxy/api/patients/*", (route) =>
-    json(route, 401, { error: "sign in required" }),
+    json(route, 401, { detail: "sign in required" }),
   );
   await page.reload();
   await expect(page.getByRole("alert")).toHaveText("Sign in to continue.");
@@ -300,7 +300,7 @@ test("a restricted candidate blocks registration without showing the record", as
 }) => {
   await page.route("**/api/proxy/api/patients", (route) =>
     json(route, 409, {
-      error: "possible duplicate",
+      detail: "possible duplicate",
       candidates: [{ restricted: true }],
     }),
   );
@@ -447,7 +447,7 @@ test("my record says plainly when nothing is linked, or the reader may not use i
 
   await page.unroute("**/api/proxy/api/me/patients");
   await page.route("**/api/proxy/api/me/patients", (route) =>
-    json(route, 403, { error: "forbidden" }),
+    json(route, 403, { detail: "forbidden" }),
   );
   await page.reload();
   await expect(page.getByRole("alert")).toHaveText(
@@ -630,7 +630,7 @@ test("the page says when the record was read, and says so loudly when it could n
   let up = true;
   await stubAllergies(page);
   await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
-    up ? json(route, 200, ANN) : json(route, 503, { error: "unavailable" }),
+    up ? json(route, 200, ANN) : json(route, 503, { detail: "unavailable" }),
   );
   const show = () =>
     page.evaluate(() => {
@@ -875,13 +875,13 @@ test("the banner's allergy line says exactly what is known, and never reads as n
     ],
     [
       403,
-      { error: "forbidden" },
+      { detail: "forbidden" },
       /Not shown to you for this patient\. This does not mean/,
       false,
     ],
     [
       500,
-      { error: "internal error" },
+      { detail: "internal error" },
       /Could not be loaded\. This does not mean/,
       false,
     ],
@@ -1024,7 +1024,7 @@ test("a clinician records, ends and retracts an allergy and states none known; t
 test("a role that may not read allergies sees no allergy section and a banner that says so", async ({
   page,
 }) => {
-  await stubAllergies(page, { error: "forbidden" }, 403);
+  await stubAllergies(page, { detail: "forbidden" }, 403);
   await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
     json(route, 200, ANN),
   );
@@ -1148,10 +1148,10 @@ test("a role that may not manage access is told so instead of seeing forms", asy
   page,
 }) => {
   await page.route("**/api/proxy/api/patients/*/relationships", (r) =>
-    json(r, 403, { error: "forbidden" }),
+    json(r, 403, { detail: "forbidden" }),
   );
   await page.route("**/api/proxy/api/patients/*/consents", (r) =>
-    json(r, 403, { error: "forbidden" }),
+    json(r, 403, { detail: "forbidden" }),
   );
   await page.goto(`/en-001/patients/${ANN.id}/access`);
   await expect(page.getByRole("status")).toHaveCount(2);
@@ -1291,7 +1291,7 @@ test("a failed look at needs is said, not read as none", async ({ page }) => {
     }),
   );
   await page.route("**/api/proxy/api/patients/p-1/adjustments", (route) =>
-    json(route, 500, { error: "no" }),
+    json(route, 500, { detail: "no" }),
   );
   await page.goto("/en-001/patients/p-1");
   await expect(
@@ -2039,7 +2039,7 @@ test("the vital signs say so when there are none, when the role may not see them
   await expect(section()).toContainText(
     "No vital signs recorded in this system. This does not mean none were taken.",
   );
-  state = [403, { error: "forbidden" }];
+  state = [403, { detail: "forbidden" }];
   await page.reload();
   await expect(section()).toContainText(
     "Vital signs are not shown to your role. This does not mean none are recorded.",
@@ -2047,7 +2047,7 @@ test("the vital signs say so when there are none, when the role may not see them
   await expect(
     section().getByRole("button", { name: "Record vital sign" }),
   ).toHaveCount(0);
-  state = [500, { error: "internal error" }];
+  state = [500, { detail: "internal error" }];
   await page.reload();
   await expect(section()).toContainText(
     "Vital signs could not be loaded. This does not mean none are recorded.",
@@ -2143,7 +2143,7 @@ test("recording a vital sends its own unit and the site's time as UTC, never an 
   await expect(
     section.getByText('the unit "x" does not fit this code'),
   ).toBeVisible();
-  answer = [409, { error: "version conflict" }];
+  answer = [409, { detail: "version conflict" }];
   await section.getByRole("button", { name: "Record vital sign" }).click();
   await expect(section.getByText(/changed or was merged/)).toBeVisible();
 });
@@ -2311,7 +2311,7 @@ test("a role that may not read the queue is told so, and an entry closed by some
   page,
 }) => {
   await page.route("**/api/proxy/api/feed/refusals", (route) =>
-    json(route, 403, { error: "forbidden" }),
+    json(route, 403, { detail: "forbidden" }),
   );
   await page.goto("/en-001/admin/feed");
   await expect(page.getByText("Your role does not allow this.")).toBeVisible();
@@ -2330,7 +2330,7 @@ test("a role that may not read the queue is told so, and an entry closed by some
   );
   await page.route("**/api/proxy/api/feed/refusals/*/resolve", (route) => {
     open = [];
-    return json(route, 409, { error: "already resolved" });
+    return json(route, 409, { detail: "already resolved" });
   });
   await page.reload();
   await page.getByRole("button", { name: "Show the message" }).click();
@@ -2353,7 +2353,7 @@ test("the count of refused messages shows on the admin pages only, and not for a
     asked += 1;
     return status === 200
       ? json(route, 200, { open: 3 })
-      : json(route, 403, { error: "forbidden" });
+      : json(route, 403, { detail: "forbidden" });
   });
   await page.route("**/api/proxy/api/feed/refusals", (route) =>
     json(route, 200, { refusals: [REFUSAL()], limit: 50 }),
@@ -2401,7 +2401,7 @@ test("emergency access is offered only when the API offers it, needs a reason an
             items: [{ substance: "Penicillin", criticality: "high" }],
           },
         })
-      : json(route, 403, { error: "forbidden", break_glass_offer: true }),
+      : json(route, 403, { detail: "forbidden", break_glass_offer: true }),
   );
   const sent: Json[] = [];
   await page.route("**/api/proxy/api/patients/*/break-glass", (route) => {
@@ -2443,7 +2443,7 @@ test("a refusal that break-the-glass cannot lift shows no emergency form", async
   await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
     json(route, 200, ANN),
   );
-  await stubAllergies(page, { error: "forbidden" }, 403);
+  await stubAllergies(page, { detail: "forbidden" }, 403);
   await page.goto(`/en-001/patients/${ANN.id}`);
   await expect(
     page.getByText(/Not shown to you for this patient/).first(),
@@ -2606,7 +2606,7 @@ test("a cut candidate list says that only the closest records were compared", as
   let cut = true;
   await page.route("**/api/proxy/api/patients", (route) =>
     json(route, 409, {
-      error: "possible duplicate",
+      detail: "possible duplicate",
       candidates: [CANDIDATE],
       candidates_cut: cut,
     }),
@@ -2640,7 +2640,7 @@ test("my record shows when it was read and warns when a later look fails", async
   await page.route("**/api/proxy/api/me/patients", (route) =>
     up
       ? json(route, 200, { records: [{ relationship: "self", patient: ANN }] })
-      : json(route, 503, { error: "unavailable" }),
+      : json(route, 503, { detail: "unavailable" }),
   );
   const show = () =>
     page.evaluate(() => {
@@ -2891,7 +2891,7 @@ test("two clicks at once on open emergency access, and on record the review, sen
   );
   await stubAllergies(
     page,
-    { error: "forbidden", break_glass_offer: true },
+    { detail: "forbidden", break_glass_offer: true },
     403,
   );
   await page.route("**/api/proxy/api/patients/*/break-glass", async (route) => {
@@ -3584,7 +3584,7 @@ test("a vital's history lists every version with its reason, keeps a retracted v
   );
   await page.route(
     "**/api/proxy/api/patients/*/observations/o-8/versions",
-    (route) => json(route, historyStatus, { error: "x" }),
+    (route) => json(route, historyStatus, { detail: "x" }),
   );
   await page.goto(`/en-001/patients/${ANN.id}`);
   const section = page.getByRole("region", { name: "Vital signs" });
@@ -3984,7 +3984,7 @@ test("the unmatched referral queue says when it is cut short, and a refused role
 
   await page.unroute("**/api/proxy/api/referral-queue");
   await page.route("**/api/proxy/api/referral-queue", (route) =>
-    json(route, 403, { error: "forbidden" }),
+    json(route, 403, { detail: "forbidden" }),
   );
   await page.reload();
   await expect(page.getByText("Your role does not allow this.")).toBeVisible();
@@ -4078,7 +4078,7 @@ test("the reply list says when it was cut short, and a role without one is told 
   page,
 }) => {
   await page.route("**/api/proxy/api/referrals/worklist/count", (route) =>
-    json(route, 403, { error: "forbidden" }),
+    json(route, 403, { detail: "forbidden" }),
   );
   await page.route("**/api/proxy/api/referrals/worklist", (route) =>
     json(route, 200, { items: [WORK()], limit: 50, more: true }),
@@ -4089,7 +4089,7 @@ test("the reply list says when it was cut short, and a role without one is told 
   ).toBeVisible();
   await page.unroute("**/api/proxy/api/referrals/worklist");
   await page.route("**/api/proxy/api/referrals/worklist", (route) =>
-    json(route, 403, { error: "forbidden" }),
+    json(route, 403, { detail: "forbidden" }),
   );
   await page.reload();
   await expect(page.getByText("Your role does not allow this.")).toBeVisible();

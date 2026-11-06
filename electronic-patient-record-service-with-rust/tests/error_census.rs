@@ -1,6 +1,7 @@
 //! CQ-11: error bodies are built in one place, `src/api_error.rs`. A controller or middleware that
-//! writes `{"error": …}` or `{"errors": …}` itself, or answers a refusal as plain text, drifts from
-//! the shape the UI and the FHIR facade expect. Database-free: it reads the source.
+//! writes `{"error": …}` or `{"errors": …}` itself, builds a `Problem` of its own, reads the old
+//! `error` member back, or answers a refusal as plain text, drifts from the shape the UI and the
+//! FHIR facade expect. Database-free: it reads the source.
 
 use std::path::Path;
 
@@ -34,7 +35,12 @@ fn no_error_body_is_built_outside_api_error() {
             if l.contains("\"error\":\"key-not-held\"") {
                 continue;
             }
-            if l.contains("\"error\":") || l.contains("\"errors\":") || l.contains("json_error(") {
+            if l.contains("\"error\":")
+                || l.contains("\"errors\":")
+                || l.contains("json_error(")
+                || l.contains("Problem::new(")
+                || l.contains(".get(\"error\")")
+            {
                 found.push(format!("{}:{}: {}", path.display(), n + 1, line.trim()));
             }
             if l.contains("(StatusCode::FORBIDDEN,\"") || l.contains("(status,msg).into_response()")

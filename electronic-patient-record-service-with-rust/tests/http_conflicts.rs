@@ -1,5 +1,5 @@
 //! DB-gated, through the real router with login off: the shapes of version conflicts (409
-//! `{"error": "version conflict", "current_version": n}`) on patients, allergies, the allergy
+//! a problem with `detail` `version conflict` and `current_version`) on patients, allergies, the allergy
 //! statement and photos, and of the refusals that merge and unmerge answer instead (422 with the
 //! reason). A merge race that ends in 409 is tested at the store (`tests/links_store.rs`), not
 //! here: it cannot be made to happen in sequence (CQ-16).
@@ -63,7 +63,13 @@ fn login_off() {
 fn conflict(body: &Value, current: i64) {
     assert_eq!(
         body,
-        &json!({ "error": "version conflict", "current_version": current })
+        &json!({
+            "type": "about:blank",
+            "title": "Conflict",
+            "status": 409,
+            "detail": "version conflict",
+            "current_version": current,
+        })
     );
 }
 

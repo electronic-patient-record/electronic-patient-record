@@ -18,6 +18,7 @@
 
 use crate::{auth, policy::Resource, routes};
 use axa::prelude::*;
+use axa::problem::PROBLEM_JSON;
 use axum::{Json, response::Response};
 use serde_json::{Map, Value, json};
 
@@ -82,11 +83,42 @@ fn error_ref(path: &str) -> (&'static str, Value) {
             json!({"$ref": "#/components/schemas/OperationOutcome"}),
         )
     } else {
-        (
-            "application/json",
-            json!({"$ref": "#/components/schemas/Error"}),
-        )
+        (PROBLEM_JSON, json!({"$ref": "#/components/schemas/Error"}))
     }
+}
+
+/// A named body schema under its media type: `application/problem+json` for a problem, the error
+/// bodies `api_error.rs` builds, and `application/json` for anything else.
+fn body_ref(description: &str, name: &str) -> Value {
+    let media = if matches!(
+        name,
+        "Error" | "ErrorList" | "DuplicateConflict" | "VersionConflict"
+    ) {
+        PROBLEM_JSON
+    } else {
+        "application/json"
+    };
+    json!({"description": description, "content": {media: {
+        "schema": {"$ref": format!("#/components/schemas/{name}")}}}})
+}
+
+/// An RFC 9457 body: the members `ApiError::problem` always sends, then this schema's own.
+fn problem_schema(description: &str, required: &[&str], properties: &Value) -> Value {
+    let mut all = json!({
+        "type": {"type": "string"},
+        "title": {"type": "string"},
+        "status": {"type": "integer"},
+        "detail": {"type": "string"}
+    });
+    all.as_object_mut()
+        .expect("an object")
+        .extend(properties.as_object().expect("an object").clone());
+    let mut names = vec!["type", "title", "status", "detail"];
+    names.extend_from_slice(required);
+    json!({
+        "type": "object", "required": names, "properties": all,
+        "additionalProperties": true, "description": description
+    })
 }
 
 /// The patient identity schemas, matching the matcher's `Patient`, `patients_store::Stored` and the
@@ -162,25 +194,24 @@ fn identity_schemas() -> Value {
                 "limit": {"type": "integer", "description": "The most results returned."}
             }
         },
-        "DuplicateConflict": {
-            "type": "object", "required": ["error", "candidates", "candidates_cut"],
-            "description": "409 on create: likely duplicates. A candidate the caller may not see is {\"restricted\": true}.",
-            "properties": {
-                "error": {"type": "string"},
+        "DuplicateConflict": problem_schema(
+            "409 on create: likely duplicates. A candidate the caller may not see is {\"restricted\": true}.",
+            &["candidates", "candidates_cut"],
+            &json!({
                 "candidates": {"type": "array", "items": {"type": "object"}},
                 "candidates_cut": {"type": "boolean"}
-            }
-        },
+            }),
+        ),
         "PhotoVersion": {
             "type": "object", "required": ["version", "withdrawn"],
             "description": "What a photo write answers: the new version, and whether it withdrew the photo.",
             "properties": {"version": {"type": "integer"}, "withdrawn": {"type": "boolean"}}
         },
-        "VersionConflict": {
-            "type": "object", "required": ["error", "current_version"],
-            "description": "409 on update: expected_version is not the current one.",
-            "properties": {"error": {"type": "string"}, "current_version": {"type": "integer"}}
-        }
+        "VersionConflict": problem_schema(
+            "409 on update: expected_version is not the current one.",
+            &["current_version"],
+            &json!({"current_version": {"type": "integer"}}),
+        )
     })
 }
 
@@ -1517,18 +1548,16 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
 /// The error schemas, matching `api_error.rs`.
 fn error_schemas() -> Value {
     json!({
-        "Error": {
-            "type": "object", "required": ["error"],
-            "properties": {"error": {"type": "string"}},
-            "additionalProperties": true,
-            "description": "api_error.rs: fixed wording; extra fields such as current_version or break_glass_offer may follow."
-        },
-        "ErrorList": {
-            "type": "object", "required": ["errors"],
-            "properties": {"errors": {"type": "array", "items": {"type": "string"}}},
-            "additionalProperties": true,
-            "description": "422: the record was refused, one line per reason."
-        },
+        "Error": problem_schema(
+            "api_error.rs: RFC 9457; `detail` is fixed wording, and extra fields such as current_version or break_glass_offer may follow.",
+            &[],
+            &json!({}),
+        ),
+        "ErrorList": problem_schema(
+            "422: the record was refused, one line per reason in `errors`.",
+            &["errors"],
+            &json!({"errors": {"type": "array", "items": {"type": "string"}}}),
+        ),
         "OperationOutcome": {
             "type": "object", "required": ["resourceType", "issue"],
             "properties": {
@@ -1557,16 +1586,11 @@ fn audit_operation(
     op: &mut Map<String, Value>,
     responses: &mut Map<String, Value>,
 ) {
-    let json_body = |d: &str, name: &str| {
-        json!({"description": d, "content": {"application/json": {
-            "schema": {"$ref": format!("#/components/schemas/{name}")}}}})
-    };
     match (method, path) {
         ("GET", "/api/audit") => {
             responses.insert(
                 "400".into(),
-                json!({"description": "A criterion that is refused: a date or instant that does not parse, or a value of the wrong type (outcome or before not a number, break_glass not true or false). Always the JSON `Error`.",
-                       "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}),
+                body_ref("A criterion that is refused: a date or instant that does not parse, or a value of the wrong type (outcome or before not a number, break_glass not true or false). Always the JSON `Error`.", "Error"),
             );
         }
         ("GET", "/api/audit/export") => {
@@ -1593,7 +1617,7 @@ fn audit_operation(
             );
             responses.insert(
                 "400".into(),
-                json_body(
+                body_ref(
                     "A criterion that does not parse, or a format that is neither.",
                     "Error",
                 ),
@@ -1610,19 +1634,19 @@ fn audit_operation(
             );
             responses.insert(
                 "200".into(),
-                json_body("The chain is intact.", "AuditVerified"),
+                body_ref("The chain is intact.", "AuditVerified"),
             );
             responses.insert(
                 "400".into(),
-                json_body("Only one of the two checkpoint parts was given.", "Error"),
+                body_ref("Only one of the two checkpoint parts was given.", "Error"),
             );
             responses.insert(
                 "409".into(),
-                json_body("A row was found altered.", "AuditBroken"),
+                body_ref("A row was found altered.", "AuditBroken"),
             );
             responses.insert(
                 "424".into(),
-                json_body(
+                body_ref(
                     "Not fully checked: a key is missing. Not evidence of tampering.",
                     "AuditUnchecked",
                 ),
@@ -1643,10 +1667,6 @@ fn photo_operation(
     if path != "/api/patients/{id}/photo" && path != "/api/patients/{id}/photo/withdraw" {
         return;
     }
-    let error = |d: &str, name: &str| {
-        json!({"description": d, "content": {"application/json": {
-            "schema": {"$ref": format!("#/components/schemas/{name}")}}}})
-    };
     if method == "GET" {
         let image = json!({"schema": {"type": "string", "format": "binary"}});
         responses.insert(
@@ -1656,7 +1676,7 @@ fn photo_operation(
         );
         responses.insert(
             "404".into(),
-            error(
+            body_ref(
                 "No such patient, or no photo (none stored, or withdrawn).",
                 "Error",
             ),
@@ -1684,17 +1704,17 @@ fn photo_operation(
     }
     responses.insert(
         "200".into(),
-        error("The new photo version.", "PhotoVersion"),
+        body_ref("The new photo version.", "PhotoVersion"),
     );
     responses.insert(
         "400".into(),
-        error("expected_version was not given.", "Error"),
+        body_ref("expected_version was not given.", "Error"),
     );
     responses.insert(
         "409".into(),
-        error("A stale expected_version.", "VersionConflict"),
+        body_ref("A stale expected_version.", "VersionConflict"),
     );
-    responses.insert("422".into(), error("The file was refused (not a PNG or JPEG, or too large), or there was no photo to withdraw.", "ErrorList"));
+    responses.insert("422".into(), body_ref("The file was refused (not a PNG or JPEG, or too large), or there was no photo to withdraw.", "ErrorList"));
 }
 
 /// The document for the given routes. Pure, so a test can plant a route and see it appear.
@@ -1748,14 +1768,12 @@ pub fn document_for(served: &[(String, String)]) -> Value {
             if !conflict.is_empty() {
                 responses.insert(
                     "409".into(),
-                    json!({"description": "A likely duplicate or a stale expected_version.",
-                           "content": {"application/json": {"schema": {"$ref": format!("#/components/schemas/{conflict}")}}}}),
+                    body_ref("A likely duplicate or a stale expected_version.", conflict),
                 );
             }
             responses.insert(
                 "422".into(),
-                json!({"description": "The record was refused, one line per reason.",
-                       "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorList"}}}}),
+                body_ref("The record was refused, one line per reason.", "ErrorList"),
             );
             responses.insert(
                 (*status).into(),
@@ -1793,8 +1811,7 @@ pub fn document_for(served: &[(String, String)]) -> Value {
         if method == "GET" && path == "/api/me/patients/{id}/access-log" {
             responses.insert(
                 "400".into(),
-                json!({"description": "A filter the log does not understand: by is not you or staff, purpose is not a purpose-of-use code, format is not csv, or a date does not parse.",
-                       "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}),
+                body_ref("A filter the log does not understand: by is not you or staff, purpose is not a purpose-of-use code, format is not csv, or a date does not parse.", "Error"),
             );
             if let Some(ok) = responses.get_mut("200").and_then(Value::as_object_mut)
                 && let Some(content) = ok.get_mut("content").and_then(Value::as_object_mut)
@@ -1904,13 +1921,17 @@ mod tests {
             .collect()
     }
 
+    fn serialised(e: &ApiError) -> Value {
+        serde_json::to_value(e.problem()).unwrap()
+    }
+
     #[test]
     fn real_error_bodies_carry_the_keys_the_schemas_require() {
-        let plain = ApiError::forbidden().with("break_glass_offer", true).body();
+        let plain = serialised(&ApiError::forbidden().with("break_glass_offer", true));
         for key in required("Error") {
             assert!(plain.get(&key).is_some(), "Error body lacks {key}");
         }
-        let list = ApiError::invalid(vec!["x".into()]).body();
+        let list = serialised(&ApiError::invalid(vec!["x".into()]));
         for key in required("ErrorList") {
             assert!(list.get(&key).is_some(), "ErrorList body lacks {key}");
         }
@@ -2065,16 +2086,18 @@ mod tests {
 
     #[test]
     fn the_conflict_schemas_match_what_the_service_sends() {
-        let version =
-            ApiError::from(&crate::patients_store::StoreError::Conflict { current: 3 }).body();
+        let version = serialised(&ApiError::from(
+            &crate::patients_store::StoreError::Conflict { current: 3 },
+        ));
         let schema = patient_schemas();
         for key in schema["VersionConflict"]["required"].as_array().unwrap() {
             assert!(version.get(key.as_str().unwrap()).is_some(), "lacks {key}");
         }
-        let duplicate = ApiError::conflict("possible duplicate")
-            .with("candidates", serde_json::json!([]))
-            .with("candidates_cut", false)
-            .body();
+        let duplicate = serialised(
+            &ApiError::conflict("possible duplicate")
+                .with("candidates", serde_json::json!([]))
+                .with("candidates_cut", false),
+        );
         for key in schema["DuplicateConflict"]["required"].as_array().unwrap() {
             assert!(
                 duplicate.get(key.as_str().unwrap()).is_some(),

@@ -31,6 +31,7 @@ use crate::policy::Subject;
 use crate::policy::{self, Purpose, Resource};
 use crate::pool::Pool;
 use axa::prelude::*;
+use axa::problem::Problem;
 use axum::{
     Extension,
     extract::{Path, Query, RawQuery},
@@ -75,16 +76,18 @@ pub(super) fn outcome(status: StatusCode, code: &str, diagnostics: &str) -> Resp
 /// A refused or failed JSON answer as an `OperationOutcome`. Candidates and other bodies are not
 /// copied: only the status and a fixed or error-string diagnostic, so nothing the JSON API
 /// withheld can leak through here.
-fn error_outcome(status: StatusCode, body: &serde_json::Value, update: bool) -> Response {
-    let text = body.get("error").and_then(|e| e.as_str());
+fn error_outcome(problem: &Problem, update: bool) -> Response {
+    let status = problem.status_code();
+    let text = problem.detail.as_deref();
     match status {
-        StatusCode::CONFLICT if body.get("candidates").is_some() => outcome(
+        StatusCode::CONFLICT if problem.extensions.contains_key("candidates") => outcome(
             status,
             "duplicate",
             "possible duplicate; register through /api/patients with an override reason",
         ),
         StatusCode::CONFLICT if update => {
-            let current = body
+            let current = problem
+                .extensions
                 .get("current_version")
                 .and_then(serde_json::Value::as_i64);
             outcome(
@@ -100,7 +103,8 @@ fn error_outcome(status: StatusCode, body: &serde_json::Value, update: bool) -> 
         StatusCode::FORBIDDEN => outcome(status, "forbidden", "forbidden"),
         StatusCode::NOT_FOUND => outcome(status, "not-found", "not found"),
         StatusCode::UNPROCESSABLE_ENTITY => {
-            let problems: Vec<&str> = body
+            let problems: Vec<&str> = problem
+                .extensions
                 .get("errors")
                 .and_then(|e| e.as_array())
                 .map(|a| a.iter().filter_map(|v| v.as_str()).collect())
@@ -170,7 +174,7 @@ async fn death_of(ctx: &AppContext, subject: &Subject, id: &str) -> Result<Optio
 
 /// A refusal from the service as an `OperationOutcome`.
 fn refusal(e: &ApiError, update: bool) -> Response {
-    error_outcome(e.status(), &e.body(), update)
+    error_outcome(&e.problem(), update)
 }
 
 /// A stored patient, and where it was merged to or what was merged into it, as FHIR, with what
@@ -1285,16 +1289,19 @@ mod tests {
 
     #[tokio::test]
     async fn errors_become_operation_outcomes_and_never_carry_the_candidates() {
-        let dup = serde_json::json!({"error": "possible duplicate", "candidates": [{"existing": {"patient": {"names": [{"family": "Secret"}]}}}]});
-        let r = error_outcome(StatusCode::CONFLICT, &dup, false);
+        let dup = ApiError::conflict("possible duplicate").with(
+            "candidates",
+            serde_json::json!([{"existing": {"patient": {"names": [{"family": "Secret"}]}}}]),
+        );
+        let r = error_outcome(&dup.problem(), false);
         assert_eq!(r.status(), StatusCode::CONFLICT);
         let b = body_of(r).await;
         assert_eq!(b["resourceType"], "OperationOutcome");
         assert_eq!(b["issue"][0]["code"], "duplicate");
         assert!(!b.to_string().contains("Secret"));
 
-        let stale = serde_json::json!({"error": "version conflict", "current_version": 4});
-        let r = error_outcome(StatusCode::CONFLICT, &stale, true);
+        let stale = ApiError::conflict("version conflict").with("current_version", 4);
+        let r = error_outcome(&stale.problem(), true);
         assert_eq!(r.status(), StatusCode::PRECONDITION_FAILED);
         assert!(
             body_of(r).await["issue"][0]["diagnostics"]
@@ -1303,9 +1310,11 @@ mod tests {
                 .contains('4')
         );
 
-        let bad =
-            serde_json::json!({"errors": ["family name is required", "birth date is not a date"]});
-        let b = body_of(error_outcome(StatusCode::UNPROCESSABLE_ENTITY, &bad, false)).await;
+        let bad = ApiError::invalid(vec![
+            "family name is required".into(),
+            "birth date is not a date".into(),
+        ]);
+        let b = body_of(error_outcome(&bad.problem(), false)).await;
         assert!(
             b["issue"][0]["diagnostics"]
                 .as_str()
@@ -1313,21 +1322,14 @@ mod tests {
                 .contains("family name is required; birth date")
         );
 
-        assert_eq!(
-            error_outcome(
-                StatusCode::FORBIDDEN,
-                &serde_json::json!({"error": "forbidden"}),
-                false
-            )
-            .status(),
-            StatusCode::FORBIDDEN
-        );
-        let b = body_of(error_outcome(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            &serde_json::json!({"error": "db password is hunter2"}),
-            false,
-        ))
-        .await;
+        let wording = ApiError::bad_request("the date cannot be read");
+        let b = body_of(error_outcome(&wording.problem(), false)).await;
+        assert_eq!(b["issue"][0]["diagnostics"], "the date cannot be read");
+
+        let forbidden = error_outcome(&ApiError::forbidden().problem(), false);
+        assert_eq!(forbidden.status(), StatusCode::FORBIDDEN);
+        let failed = ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "db password is hunter2");
+        let b = body_of(error_outcome(&failed.problem(), false)).await;
         assert_eq!(b["issue"][0]["diagnostics"], "internal error");
     }
 

@@ -154,7 +154,7 @@ test("registering shows a possible duplicate's reasons in French", async ({
     route.fulfill({
       status: 409,
       json: {
-        error: "possible duplicate",
+        detail: "possible duplicate",
         candidates: [
           {
             existing: { id: patient.id, version: 1, author: "x", patient },

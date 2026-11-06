@@ -641,7 +641,7 @@ mod tests {
         let mut r = record("nope");
         r.value = None;
         r.unit = None;
-        let body = refusal(&r, now()).unwrap().body();
+        let body = serde_json::to_value(refusal(&r, now()).unwrap().problem()).unwrap();
         assert_eq!(
             body["error_codes"],
             serde_json::json!(["value_missing", "effective_at_invalid"])

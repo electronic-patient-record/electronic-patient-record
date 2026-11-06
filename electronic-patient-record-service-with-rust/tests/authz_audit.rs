@@ -194,7 +194,7 @@ async fn a_row_written_while_handling_a_request_records_the_callers_roles_and_or
 }
 
 /// CQ-11: the gate's refusal has the shape of the route: an `OperationOutcome` on `/fhir`, JSON
-/// `{"error": "forbidden"}` on `/api`, never plain text.
+/// a problem with `detail` `forbidden` on `/api`, never plain text.
 #[tokio::test]
 #[ignore = "needs Postgres: set DATABASE_URL"]
 async fn a_refusal_has_the_shape_of_the_route() {
@@ -254,8 +254,16 @@ async fn a_refusal_has_the_shape_of_the_route() {
             assert_eq!(body["resourceType"], "OperationOutcome");
             assert_eq!(body["issue"][0]["code"], "forbidden");
         } else {
-            assert_eq!(kind, "application/json");
-            assert_eq!(body, serde_json::json!({"error": "forbidden"}));
+            assert_eq!(kind, "application/problem+json");
+            assert_eq!(
+                body,
+                serde_json::json!({
+                    "type": "about:blank",
+                    "title": "Forbidden",
+                    "status": 403,
+                    "detail": "forbidden",
+                })
+            );
         }
     }
 }
