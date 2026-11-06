@@ -891,7 +891,7 @@ fn mounted_interactions() -> std::collections::BTreeMap<String, Vec<String>> {
         if kind == "metadata" {
             continue;
         }
-        for method in crate::routes::methods_of(&handler.method) {
+        for method in handler.methods() {
             let code = match (method.as_str(), rest) {
                 ("GET", []) => "search-type".to_string(),
                 ("POST", []) => "create".to_string(),
@@ -1405,11 +1405,7 @@ mod tests {
         let mounted: BTreeSet<String> = routes()
             .handlers
             .iter()
-            .flat_map(|h| {
-                crate::routes::methods_of(&h.method)
-                    .into_iter()
-                    .map(|m| format!("{m} {}", h.uri))
-            })
+            .flat_map(|h| h.methods().into_iter().map(|m| format!("{m} {}", h.uri)))
             .collect();
         let mut stated: BTreeSet<String> = BTreeSet::from(["GET /metadata".to_string()]);
         let cap = capability();

@@ -6,10 +6,12 @@ use axa::{
     boot::{BootResult, TestApp},
     cli::{Cli, Command, DbCommand},
     config::{Config, Defaults, MB},
+    health::Checks,
     routes::AppRoutes,
     server,
 };
 use axum::Router as AxumRouter;
+use sqlx::PgPool;
 
 use crate::{MIGRATOR, auth, authz, controllers, mllp, pool::Pool};
 
@@ -54,6 +56,16 @@ fn reset_allowed(environment: &Environment, flag: Option<&str>) -> bool {
     matches!(environment, Environment::Development | Environment::Test) && flag == Some("true")
 }
 
+/// What `/_readiness` asks: `axa` holds no pool here, so the database is a named check. A load balancer must
+/// not send traffic to a service that cannot reach its database.
+#[must_use]
+pub fn readiness_checks(pool: PgPool) -> Checks {
+    Checks::new().add("database", move || {
+        let pool = pool.clone();
+        async move { axa::sqlx::ping(&pool).await }
+    })
+}
+
 impl TestApp for App {
     /// Boot under the `test` environment, migrating the shared test database forward and keeping its rows.
     async fn boot_test() -> Result<BootResult> {
@@ -85,7 +97,8 @@ impl App {
         })
         .await
         .map_err(|e| Error::string(&format!("cannot reach the database: {e}")))?;
-        let ctx = AppContext::new(environment, (), config);
+        let mut ctx = AppContext::new(environment, (), config);
+        ctx.health_checks = readiness_checks(pool.clone());
         ctx.shared_store.insert(pool);
         Ok(ctx)
     }
@@ -165,6 +178,10 @@ impl App {
             .environment
             .as_deref()
             .map_or_else(Environment::from_env, Environment::parse);
+        // Before anything connects: this checks settings, and must work with the database down.
+        if matches!(cli.command, Command::Check) {
+            return axa::cli::check(&environment, &defaults());
+        }
         let mut config = Config::from_env(&environment, &defaults())?;
         if let Command::Start { binding, port, .. } = &cli.command {
             if let Some(binding) = binding {
@@ -186,6 +203,8 @@ impl App {
             }
             Command::Db { command } => Self::db(&ctx, command).await,
             Command::Task { .. } => Err(Error::string("this service registers no tasks")),
+            // Answered above, before anything connects.
+            Command::Check => Ok(()),
         }
     }
 

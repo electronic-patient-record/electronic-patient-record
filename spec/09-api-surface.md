@@ -2,7 +2,7 @@
 
 | Path | Method | Status |
 |---|---|---|
-| `/_health`, `/_ping`, `/_readiness` | GET | `axa` built-ins; public |
+| `/_health`, `/_ping`, `/_readiness` | GET | `axa` built-ins; public. `/_readiness` asks the database as a named check, reuses an answer for a few seconds, and on failure answers 503 with `{"ok": false, "failed": ["database"]}` |
 | `/api/patients/compare` | POST | built; body `{a, b}` of `Patient`; returns `MatchResult` |
 | `/api/patients`, `/api/patients/{id}` | CRUD | planned (ID-3) |
 | `/api/audit` | GET | planned (AU-2) |

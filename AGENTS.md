@@ -45,7 +45,7 @@ python3 scripts/check-links.py . && sh scripts/generate-status.sh --check && pyt
 - API versioning is the `Accepts-version` request header on the unversioned `/api` path. Never add `/api/v1`, `/api/v2` or any
   version segment to a route ([`spec/09-api-surface.md`](spec/09-api-surface.md)).
 - The crate and binary are `electronic-patient-record`; migrations are `.sql` files in the service's `migrations/`, with no down files;
-  the directories keep their `-with-rust` / `-with-svelte` names. The service's `src/bin/main.rs` needs the explicit
+  the directories keep their `-with-rust` / `-with-svelte` names. Run `electronic-patient-record check` to validate `axa`'s settings with no database; the service's own `EPR_*` settings are checked at boot. The service's `src/bin/main.rs` needs the explicit
   `[[bin]]` entry in `Cargo.toml`.
 - `localhost` can resolve to IPv6 `::1` where another project is listening. When curling a local service, use
   `127.0.0.1`.

@@ -252,6 +252,10 @@ pub(super) fn csv_cell(value: &str) -> String {
     }
 }
 
+/// How long an export may run, in place of the service's request limit. **A guess:** no export of a real size
+/// has been timed. An export is capped in rows and carries on from `x-next-before`, so this is one file.
+const EXPORT_LIMIT: std::time::Duration = std::time::Duration::from_mins(10);
+
 const CSV_HEADER: &str = "id,at,action,outcome,agent,patient,resource,purpose,break_glass,network_address,detail,digest,prev_digest\n";
 
 /// The rows as CSV, header first.
@@ -450,7 +454,7 @@ pub fn routes() -> Routes {
     Routes::new()
         .prefix("api/audit")
         .add("/", get(search))
-        .add("/export", get(export))
+        .add_with_timeout("/export", get(export), EXPORT_LIMIT)
         .add("/verify", get(verify))
 }
 

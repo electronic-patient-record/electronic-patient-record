@@ -199,11 +199,12 @@ dependencies = [
 
 [[package]]
 name = "axa"
-version = "0.1.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18a3402379ae5f5244349d020b7e8f4a35612d59a2f47c14d4a4891fdbb6d9dc"
+checksum = "7425b01597a5ebfb783f775bf986135d94280ac4b4189efe4635bc71bf9df81c"
 dependencies = [
  "async-trait",
+ "axa-environment",
  "axa-sqlx",
  "axum",
  "axum-test",
@@ -217,6 +218,12 @@ dependencies = [
  "tracing-subscriber",
  "uuid",
 ]
+
+[[package]]
+name = "axa-environment"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ecba0a400ba7c460c1bc29da02bf61cfc707520b0b4e4361db7e4ac863c50840"
 
 [[package]]
 name = "axa-sqlx"

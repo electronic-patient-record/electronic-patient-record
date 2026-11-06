@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-06 - `axa` 0.1 to 0.3
+
+- **Clinical risk:** **yes, in how the service starts and stops.** No clinical rule changed. A release build with no `APP_ENV` now runs as production, which closes a risk and is stricter. A setting that makes no sense stops a production boot. Requests still running 25 seconds after shutdown begins are cut off (`SHUTDOWN_TIMEOUT_SECONDS`), so a write in flight then rolls back and its caller sees a failure.
+- **Built:** `axa` 0.3; `Routes::mounted` and `Handler::methods` in place of `routes::methods_of`, which is gone; `axa`'s `/_readiness` with a named `database` check in place of our own route, which is gone; the `check` command, which needs no database; a 10-minute limit on `/api/audit/export`.
+- **Changes on purpose:** production answers with a strict `content-security-policy`, which suits a JSON API. `/_readiness` keeps one answer for a few seconds, so a load balancer sees a failure slightly later, and a failing answer now names `database`. Logs carry the route template, not the real path, so patient ids leave them. Only a server fault logs as an error.
+- **Checked:** every gate in `scripts/ci-local.sh --full`, `tests/readiness.rs`, and the real binary: `check` with no database, a write and a read, 503 with Postgres stopped, and a clean stop on SIGTERM.
+- **Not done / not verified:** the 10-minute export limit is a guess: no export of a real size was timed, and `/api/audit/verify` keeps the 60-second limit, also untimed. `check` covers `axa`'s settings and not the service's `EPR_*` ones. Whether 25 seconds suits the feed listener under load was not tested. `pool::Db` and the pool in `shared_store` stay until an `axa` release has them. Test databases still use the user name `loco`.
+
 ## 2026-11-06 - Four safety officer roles (SE-30)
 
 - **Clinical risk:** no change to what a clinician sees, decides or signs. The four roles see no clinical content. They can add to the hazard register, so a wrong or duplicate hazard is possible, as it is from a clinician.
