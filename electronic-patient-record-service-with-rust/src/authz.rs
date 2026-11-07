@@ -13,10 +13,11 @@ use crate::audit::{self, Action as AuditAction, Event};
 use crate::auth::{self, Agent};
 use crate::policy::{Subject, gate};
 use crate::routes;
-use axum::extract::{Request, State};
+use axum::extract::{ConnectInfo, Request, State};
 use axum::middleware::Next;
 use axum::response::Response;
 use sqlx::PgPool;
+use std::net::SocketAddr;
 
 /// The state the middleware needs to audit a refusal.
 #[derive(Clone)]
@@ -128,6 +129,26 @@ pub async fn no_nul_mw(req: Request, next: Next) -> Response {
     next.run(req).await
 }
 
+/// Put the client's address on the request, through `TRUSTED_PROXIES`, for [`authorize_mw`] to read.
+/// `axa` does the same inside its own stack, but the layers added in `after_routes` sit outside that
+/// stack and run first, so its answer comes too late for them. Without a connection (a test that calls
+/// the router directly) there is no address to put.
+pub async fn client_address_mw(
+    State(trusted): State<std::sync::Arc<Vec<axa::client::ProxyNet>>>,
+    mut req: Request,
+    next: Next,
+) -> Response {
+    let peer = req
+        .extensions()
+        .get::<ConnectInfo<SocketAddr>>()
+        .map(|info| info.0.ip());
+    if let Some(peer) = peer {
+        let client = axa::client::resolve(peer, req.headers(), &trusted);
+        req.extensions_mut().insert(client);
+    }
+    next.run(req).await
+}
+
 /// Axum middleware over the route table and the engine.
 pub async fn authorize_mw(State(authz): State<Authz>, req: Request, next: Next) -> Response {
     let actor = req
@@ -144,12 +165,23 @@ pub async fn authorize_mw(State(authz): State<Authz>, req: Request, next: Next) 
         .and_then(|v| v.to_str().ok())
         .unwrap_or_default()
         .to_string();
+    let origin = audit::Origin {
+        address: req
+            .extensions()
+            .get::<std::net::IpAddr>()
+            .map(ToString::to_string),
+        interaction: routes::lookup(req.method(), req.uri().path())
+            .and_then(|(_, need)| routes::interaction(req.method(), need.action)),
+    };
     audit::REQUEST_ID
         .scope(
             request_id,
             audit::GLASS.scope(
                 std::sync::Mutex::new(None),
-                audit::ACTOR.scope(actor, authorize_inner(authz, req, next)),
+                audit::ACTOR.scope(
+                    actor,
+                    audit::ORIGIN.scope(origin, authorize_inner(authz, req, next)),
+                ),
             ),
         )
         .await

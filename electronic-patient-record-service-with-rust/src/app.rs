@@ -207,6 +207,7 @@ impl App {
         .map_err(Error::Message)?;
         // The site's time zone, for the age on a banner: a name that is not an IANA zone stops the service.
         crate::site::init().map_err(Error::Message)?;
+        crate::audit::init_server().map_err(Error::Message)?;
         // The referral timeouts (PC-3): a setting that is wrong stops the service rather than switching one off.
         crate::referral_timeouts::init().map_err(Error::Message)?;
         // The MLLP listener for HL7 v2 ADT feeds is off unless `EPR_MLLP_BIND` is set. A bad
@@ -274,6 +275,11 @@ impl App {
             ))
             .layer(axum::middleware::from_fn(auth::require_auth_mw))
             .layer(axum::middleware::from_fn(authz::no_nul_mw))
+            // Before the audit trail, which records it.
+            .layer(axum::middleware::from_fn_with_state(
+                std::sync::Arc::new(ctx.config.http.trusted_proxies.clone()),
+                authz::client_address_mw,
+            ))
             // The request id is settled before authentication or the audit trail.
             .layer(axum::middleware::from_fn(authz::request_id_mw))
             // Outermost: time every request, refusals included, labelled by route template (OS-6).

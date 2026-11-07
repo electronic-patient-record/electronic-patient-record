@@ -8,7 +8,8 @@
 //!
 //! Run with `-tx n/a`: no terminology server is contacted, so structure, cardinality, types, required
 //! bindings the jar carries, and invariants are checked, but a code is not looked up. UK Core and US Core
-//! profile validation is a separate task (RC-2, tasks.md), as is the search-parameter oracle.
+//! profile validation is a separate task (RC-2, tasks.md), as is the search-parameter oracle. An `AuditEvent`
+//! that claims a BALP profile is also checked against that profile (PX-4).
 
 use electronic_patient_record::allergies::{
     AllergyRecord, Category, Coding, Criticality, Status, StoredAllergy,
@@ -270,6 +271,95 @@ fn validate_as(jar: &Path, version: &str, with_profile: bool, files: &[PathBuf])
         String::from_utf8_lossy(&out.stderr)
     );
     (out.status.success(), text)
+}
+
+/// The IHE BALP package the claims are checked against. Bump it with `spec/audit/index.md`.
+const BALP_PACKAGE: &str = "ihe.iti.balp#1.1.4";
+
+/// The validator on `files`, with the BALP package loaded so that `meta.profile` is enforced.
+fn validate_balp(jar: &Path, files: &[PathBuf]) -> (bool, String) {
+    let _turn = ONE_AT_A_TIME
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let out = Command::new("java")
+        .arg("-jar")
+        .arg(jar)
+        .args(["-version", "4.0.1", "-tx", "n/a", "-ig", BALP_PACKAGE])
+        .args(files)
+        .output()
+        .expect("java must be on the PATH");
+    let text = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    (out.status.success(), text)
+}
+
+/// An audit row for `action` and `interaction` that meets its BALP profile.
+fn claiming_row(action: &str, interaction: &str) -> AuditRow {
+    let mut row = audit_row();
+    row.action = action.into();
+    row.network_address = Some("192.0.2.7".into());
+    row.detail =
+        Some(json!({ "interaction": interaction, "server": "https://epr.example.org/fhir" }));
+    row
+}
+
+fn write_resource(name: &str, resource: &Value) -> PathBuf {
+    let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("fhir-validator-balp");
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join(format!("{name}.json"));
+    std::fs::write(&path, serde_json::to_vec_pretty(resource).unwrap()).unwrap();
+    path
+}
+
+#[test]
+#[ignore = "needs Java and the validator jar: set FHIR_VALIDATOR_JAR"]
+fn fhir_validator_accepts_every_event_that_claims_a_balp_profile() {
+    let jar = jar();
+    let files: Vec<PathBuf> = [
+        ("R", "read"),
+        ("C", "create"),
+        ("U", "update"),
+        ("U", "patch"),
+    ]
+    .iter()
+    .map(|(action, interaction)| {
+        let row = claiming_row(action, interaction);
+        assert!(fhir_audit::violations(&row).is_empty());
+        let event = value(&fhir_audit::to_fhir(&row).unwrap());
+        assert!(event["meta"]["profile"][0].is_string(), "{interaction}");
+        write_resource(&format!("claims-{interaction}"), &event)
+    })
+    .collect();
+    let (ok, text) = validate_balp(&jar, &files);
+    assert!(ok, "the validator refused a claim:\n{text}");
+    assert!(
+        !text.contains("Error @"),
+        "the validator reported errors:\n{text}"
+    );
+    assert!(
+        text.contains("IHE.BasicAudit.Patient"),
+        "the validator did not check the profile:\n{text}"
+    );
+}
+
+/// The check above is worth nothing if the validator would pass anything: an event that claims the
+/// profile and has lost its server agent must fail.
+#[test]
+#[ignore = "needs Java and the validator jar: set FHIR_VALIDATOR_JAR"]
+fn fhir_validator_refuses_a_claim_the_event_does_not_meet() {
+    let jar = jar();
+    let mut event = value(&fhir_audit::to_fhir(&claiming_row("R", "read")).unwrap());
+    event["agent"].as_array_mut().unwrap().remove(1);
+    let file = write_resource("claims-without-server", &event);
+    let (ok, text) = validate_balp(&jar, &[file]);
+    assert!(!ok, "a broken claim passed:\n{text}");
+    assert!(
+        text.contains("agent:server"),
+        "refused for another reason:\n{text}"
+    );
 }
 
 #[test]

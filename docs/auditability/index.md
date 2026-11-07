@@ -25,7 +25,7 @@ Auditability here is the property that someone independent can later answer: who
 - Partitioning (OS-13, migration 18): monthly partitions, a chain anchor per partition, an archive step that moves old partitions to `audit_archive` and never deletes (off unless `EPR_AUDIT_ARCHIVE_AFTER_MONTHS` is set; H-042; the period is assumed, OQ-OS7). `audit_events_all` lets searches see archived rows.
 - Break-glass (SE-3): 4-hour grant with reason; each access row flags the grant; each grant awaits auditor review (`break_glass_reviews`); an overdue flag exists (EC-11 partly); no real-time notification.
 - Cost: one global advisory lock serialises audited requests (CQ-18; 166 to 194 audited writes a second in `BENCHMARKS.md` at 1, 8 and 32 clients, a first number).
-- Not built or open: FHIR `AuditEvent` on IHE BALP in full (AU-3, unticked); a scheduled verify run (production-readiness: "no schedule"); external anchoring of the chain head; correlation of request id to audit row (a CQ task); hazard statuses none accepted. Audit rows for observation and amendment hold no values by design (a minimisation choice, which limits what an audit can reconstruct).
+- Not built or open: FHIR `AuditEvent` on IHE BALP in full (AU-3, unticked; only a read, registration or update of the patient record claims a profile, PX-4); a scheduled verify run (production-readiness: "no schedule"); external anchoring of the chain head; correlation of request id to audit row (a CQ task); hazard statuses none accepted. Audit rows for observation and amendment hold no values by design (a minimisation choice, which limits what an audit can reconstruct).
 - The keyed MAC proves tamper evidence only to someone holding `EPR_INTEGRITY_MAC_KEY`; whoever holds it and database write rights could re-forge the chain (my reading; see Gaps).
 
 ## Measures
@@ -65,7 +65,7 @@ Auditability here is the property that someone independent can later answer: who
 1. Schedule `GET /api/audit/verify` daily and alert on 409 or 424, with the result itself recorded (OS-6 follow-up).
 2. Add a tamper drill test: restore, alter, verify (AS-7).
 3. Publish the chain head periodically to an external witness (a signed file in object storage, or a transparency-log style entry); decide with the maintainer, since it adds an operational dependency.
-4. Finish AU-3 with BALP-conformant profiles and test against the IHE profile's examples.
+4. Finish AU-3: extend the BALP claims of PX-4 beyond the patient record, and decide whether a search may hold its query.
 5. Decide CQ-18: chain per partition with anchors versus global lock, with measured numbers.
 6. Add a break-glass notification to the patient's privacy contact (EC-11), with a hazard row.
 7. Add a request-id to audit-row correlation (the CQ task naming it).

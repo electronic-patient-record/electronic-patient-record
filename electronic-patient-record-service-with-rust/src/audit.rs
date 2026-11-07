@@ -325,6 +325,55 @@ tokio::task_local! {
     pub static GLASS: std::sync::Mutex<Option<String>>;
 }
 
+/// Where a request came from and what it asked for, which only the middleware can know.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Origin {
+    /// The client's address, as `axa` resolved it through `TRUSTED_PROXIES`.
+    pub address: Option<String>,
+    /// The FHIR RESTful interaction, when the route is one ([`crate::routes::interaction`]).
+    pub interaction: Option<&'static str>,
+}
+
+tokio::task_local! {
+    /// Set by the authorization middleware, so every audit row written while handling a request
+    /// carries its address and interaction without each call site passing them. Rows written outside
+    /// a request (tests, jobs, the HL7 feed) carry neither, and claim no BALP profile.
+    pub static ORIGIN: Origin;
+}
+
+static SERVER: OnceLock<Option<String>> = OnceLock::new();
+
+/// The server address named by `value`: an `http` or `https` URL with a host and no credentials.
+/// Blank or absent is `None`.
+///
+/// # Errors
+///
+/// A message naming the setting when `value` is anything else.
+pub fn server_from(value: Option<&str>) -> Result<Option<String>, String> {
+    let Some(raw) = value.map(str::trim).filter(|v| !v.is_empty()) else {
+        return Ok(None);
+    };
+    let refused = || format!("EPR_AUDIT_SERVER_ADDRESS `{raw}` is not an http or https URL");
+    let url = url::Url::parse(raw).map_err(|_| refused())?;
+    let plain = url.username().is_empty() && url.password().is_none();
+    if matches!(url.scheme(), "http" | "https") && url.host().is_some() && plain {
+        Ok(Some(raw.to_string()))
+    } else {
+        Err(refused())
+    }
+}
+
+/// Read and check `EPR_AUDIT_SERVER_ADDRESS` once, at start-up.
+///
+/// # Errors
+///
+/// As [`server_from`].
+pub fn init_server() -> Result<(), String> {
+    let server = server_from(std::env::var("EPR_AUDIT_SERVER_ADDRESS").ok().as_deref())?;
+    let _ = SERVER.set(server);
+    Ok(())
+}
+
 /// Record that the current request is served under break-the-glass grant `grant_id`. Outside a
 /// request (tests, jobs) this does nothing.
 pub fn note_break_glass(grant_id: &str) {
@@ -397,6 +446,41 @@ fn with_request_id(event: &Event) -> Event {
     event
 }
 
+/// `event` with the current request's [`Origin`]: the address in `network_address`, and the interaction
+/// and this server's address (`EPR_AUDIT_SERVER_ADDRESS`) under `detail`, so the row itself holds them and
+/// the digest covers them. As with the actor, these come from the middleware, not from a handler.
+fn with_origin(event: &Event) -> Event {
+    let server = SERVER.get().cloned().flatten();
+    with_origin_and_server(event, server)
+}
+
+/// [`with_origin`], given the server address.
+fn with_origin_and_server(event: &Event, server: Option<String>) -> Event {
+    let mut event = event.clone();
+    let Ok(origin) = ORIGIN.try_with(Clone::clone) else {
+        return event;
+    };
+    if origin.address.is_some() {
+        event.network_address = origin.address;
+    }
+    let held = [
+        ("interaction", origin.interaction.map(str::to_string)),
+        ("server", server),
+    ];
+    for (name, value) in held {
+        let Some(value) = value else { continue };
+        match event.detail.take() {
+            None => event.detail = Some(serde_json::json!({ name: value })),
+            Some(serde_json::Value::Object(mut m)) => {
+                m.insert(name.into(), value.into());
+                event.detail = Some(serde_json::Value::Object(m));
+            }
+            other => event.detail = other,
+        }
+    }
+    event
+}
+
 /// Append `event` to the chain, in its own transaction, and return the new row's id.
 ///
 /// Given a transaction instead of a connection, the append joins it (as a savepoint): the audit
@@ -431,7 +515,7 @@ pub async fn append(
 /// Write one audit row in its own transaction. Takes the chain's advisory lock so two writers cannot fork the chain, reads
 /// the previous digest (or the newest archive anchor when every partition has been archived), stamps the row from the
 /// database clock, computes the digest over the previous digest, the time and the event, and inserts it. The event is
-/// first given the request's actor, request id and break-glass flag.
+/// first given the request's actor, request id, origin and break-glass flag.
 ///
 /// # Errors
 ///
@@ -443,7 +527,7 @@ async fn append_row(
 ) -> Result<i64, AuditError> {
     let mut conn = db.into().acquire().await.map_err(err)?;
     let db = &mut *conn;
-    let event = &with_glass(&with_request_id(&with_actor(event)));
+    let event = &with_glass(&with_origin(&with_request_id(&with_actor(event))));
     let mut tx = sqlx::Connection::begin(&mut *db).await.map_err(err)?;
     sqlx::query("SELECT pg_advisory_xact_lock($1)")
         .bind(LOCK_KEY)
@@ -1440,6 +1524,54 @@ mod tests {
     fn outside_a_request_the_event_is_unchanged() {
         let e = ev();
         assert_eq!(with_actor(&e), e);
+    }
+
+    #[test]
+    fn a_row_holds_the_origin_of_its_request_and_the_server() {
+        let origin = Origin {
+            address: Some("192.0.2.7".into()),
+            interaction: Some("read"),
+        };
+        let mut e = Event::new(Action::Read, "a");
+        e.detail = Some(serde_json::json!({ "interaction": "forged", "n": 1 }));
+        let out = ORIGIN.sync_scope(origin, || {
+            with_origin_and_server(&e, Some("https://e.example".into()))
+        });
+        assert_eq!(out.network_address.as_deref(), Some("192.0.2.7"));
+        let d = out.detail.unwrap();
+        assert_eq!(d["interaction"], "read", "a handler cannot write it");
+        assert_eq!(d["server"], "https://e.example");
+        assert_eq!(d["n"], 1);
+    }
+
+    #[test]
+    fn outside_a_request_a_row_holds_no_origin() {
+        let e = Event::new(Action::Read, "a");
+        assert_eq!(
+            with_origin_and_server(&e, Some("https://e.example".into())),
+            e
+        );
+    }
+
+    #[test]
+    fn the_server_address_is_blank_or_a_plain_http_url() {
+        assert_eq!(server_from(None), Ok(None));
+        assert_eq!(server_from(Some("  ")), Ok(None));
+        assert_eq!(
+            server_from(Some("https://epr.example.org/fhir")),
+            Ok(Some("https://epr.example.org/fhir".into()))
+        );
+        for bad in [
+            "epr.example.org",
+            "ftp://e.example",
+            "https://u:p@e.example",
+        ] {
+            let e = server_from(Some(bad)).unwrap_err();
+            assert!(
+                e.contains("EPR_AUDIT_SERVER_ADDRESS") && e.contains(bad),
+                "{e}"
+            );
+        }
     }
 
     /// A chain whose only key has the id `id`.

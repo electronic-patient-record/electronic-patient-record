@@ -535,6 +535,21 @@ pub fn lookup(method: &Method, path: &str) -> Option<(&'static str, Requirement)
         })
 }
 
+/// The FHIR RESTful interaction a route performs, or `None` when it is not one (a `POST` that computes,
+/// an export). Both the method and the table must agree, so an operation posted to a route is not
+/// taken for a create.
+#[must_use]
+pub fn interaction(method: &Method, action: Action) -> Option<&'static str> {
+    match (method.as_str(), action) {
+        ("GET", Action::Read) => Some("read"),
+        ("GET", Action::Search) => Some("search-type"),
+        ("POST", Action::Create) => Some("create"),
+        ("PUT", Action::Update) => Some("update"),
+        ("PATCH", Action::Update) => Some("patch"),
+        _ => None,
+    }
+}
+
 /// Normalise a framework route (`/api/patients/:id` or `{id}`) to the table's `{id}` style.
 #[must_use]
 pub fn normalise(uri: &str) -> String {
@@ -589,6 +604,21 @@ mod tests {
         assert!(lookup(&Method::POST, "/api/unknown").is_none());
         // Traversal-ish paths do not match a table entry by accident.
         assert!(lookup(&Method::POST, "/api/patients/compare/../x").is_none());
+    }
+
+    #[test]
+    fn an_interaction_needs_the_method_and_the_table_to_agree() {
+        assert_eq!(interaction(&Method::GET, Action::Read), Some("read"));
+        assert_eq!(
+            interaction(&Method::GET, Action::Search),
+            Some("search-type")
+        );
+        assert_eq!(interaction(&Method::POST, Action::Create), Some("create"));
+        assert_eq!(interaction(&Method::PUT, Action::Update), Some("update"));
+        assert_eq!(interaction(&Method::PATCH, Action::Update), Some("patch"));
+        assert_eq!(interaction(&Method::POST, Action::Search), None);
+        assert_eq!(interaction(&Method::POST, Action::Update), None);
+        assert_eq!(interaction(&Method::GET, Action::Export), None);
     }
 
     #[test]
