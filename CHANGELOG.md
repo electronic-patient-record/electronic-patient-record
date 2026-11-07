@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-07 - `axa` 0.5 to 0.6.1
+
+- **Clinical risk:** **no change expected in what a clinician sees.** Every request now passes through the layers in a new order, which is where a mistake would show: who may see what, and what the audit trail records. The service's own refusals are unchanged, because they were already RFC 9457 problems (2026-11-06).
+- **Built:** `axa`'s standard stack is now applied last, outside the service's own layers, as 0.6 requires (`App::router`). It used to be applied first, which put the service's layers outside it. So a refusal from authentication, the rate limit or the route gate now gets the request id, the security headers and CORS, and the client's address is resolved before the audit trail records it. `authz::client_address_mw`, added this morning for PX-4 to work round the old order, is gone. A failing `/_readiness`, an unmatched path, a wrong method and a rejected extractor are now problems as well, from `axa`; the readiness one keeps `ok` and `failed`.
+- **Checked:** clippy, every database-free test, and every database test (167). `tests/http_patients.rs` now checks that a 404 and a 405 through the real router are problems that quote nothing the caller sent, and carry the stack's headers. I also ran the real binary over TCP: `_ping` and a 404 carry `nosniff` and a request id, a search's audit row holds `127.0.0.1`, the interaction and the server while a forged `X-Forwarded-For` is ignored, and `SIGTERM` stops it cleanly. `break_glass_store` failed once: the Podman VM's clock jumped forward during the run (chrony logged it). Three reruns passed.
+- **Not done / not verified:** the UI was not re-run against the real service; it reads `detail` already, and its tests mock the API. The container image was not built locally, because the VM runs out of memory compiling `fhir-r5`. Not taken up from 0.6: `axa::extract`'s problem-answering `Json`, `Path` and `Query`, `axa-ratelimit` in place of the service's own limiter, and `KEEP_ALIVE_TIMEOUT_SECONDS`, left at 75 seconds, which a load balancer keeping idle connections longer would need raised. The `problem` feature is still named, and now adds nothing.
+
 ## 2026-11-07 - An `AuditEvent` claims BALP only when it meets it (PX-4)
 
 - **Clinical risk:** **no.** Nothing a clinician sees, decides or signs reads these fields. The patient's access log is unchanged and does not show the new address. No hazard row was changed; that is my judgement, not the Clinical Safety Officer's.

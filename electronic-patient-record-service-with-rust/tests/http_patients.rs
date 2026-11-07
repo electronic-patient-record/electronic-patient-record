@@ -404,3 +404,42 @@ async fn a_drill_registration_is_kept_apart_from_real_patients() {
     })
     .await;
 }
+
+/// `axa` 0.6, with its standard stack applied outside the service's own layers: an unmatched path and a
+/// wrong method are problems that quote nothing the caller sent, and an answer from inside the service's layers carries the
+/// stack's security headers and the request id.
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn a_refusal_from_the_framework_is_a_problem_with_the_stacks_headers() {
+    login_off();
+    request::<App, _, _>(|server, _ctx| async move {
+        for (response, status) in [
+            (
+                server.get("/api/no-such-thing").await,
+                StatusCode::NOT_FOUND,
+            ),
+            (
+                server
+                    .method(axum::http::Method::DELETE, "/api/patients")
+                    .await,
+                StatusCode::METHOD_NOT_ALLOWED,
+            ),
+        ] {
+            assert_eq!(response.status_code(), status);
+            assert_eq!(response.header("content-type"), "application/problem+json");
+            let body: serde_json::Value = response.json();
+            assert_eq!(body["status"], status.as_u16());
+            // A fixed sentence for a 404, nothing for a 405, and never the caller's path.
+            let detail = (status == StatusCode::NOT_FOUND)
+                .then(|| serde_json::json!("Resource was not found"));
+            assert_eq!(body.get("detail").cloned(), detail, "{body}");
+            assert!(!body.to_string().contains("no-such-thing"), "{body}");
+            assert_eq!(response.header("x-content-type-options"), "nosniff");
+            assert!(!response.header("x-request-id").is_empty());
+        }
+        let answered = server.get("/api/patients?family=Nobody").await;
+        assert_eq!(answered.header("x-content-type-options"), "nosniff");
+        assert_eq!(answered.header("x-frame-options"), "DENY");
+    })
+    .await;
+}

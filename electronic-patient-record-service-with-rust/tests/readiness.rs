@@ -48,8 +48,20 @@ async fn a_database_that_does_not_answer_is_a_503_that_names_it_and_nothing_else
     let body = axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
         .unwrap();
-    let text = String::from_utf8(body.to_vec()).unwrap();
-    assert_eq!(text, r#"{"ok":false,"failed":["database"]}"#);
+    // Since `axa` 0.6 the refusal is an RFC 9457 problem that still carries `ok` and `failed`, and names
+    // nothing but the check: no address, no driver message.
+    let body: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(
+        body,
+        serde_json::json!({
+            "type": "about:blank",
+            "title": "Service Unavailable",
+            "status": 503,
+            "code": "not_ready",
+            "ok": false,
+            "failed": ["database"],
+        })
+    );
 }
 
 /// The other half of the same outage: `/_dependencies` says the same thing with a 200, because it

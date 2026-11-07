@@ -13,11 +13,10 @@ use crate::audit::{self, Action as AuditAction, Event};
 use crate::auth::{self, Agent};
 use crate::policy::{Subject, gate};
 use crate::routes;
-use axum::extract::{ConnectInfo, Request, State};
+use axum::extract::{Request, State};
 use axum::middleware::Next;
 use axum::response::Response;
 use sqlx::PgPool;
-use std::net::SocketAddr;
 
 /// The state the middleware needs to audit a refusal.
 #[derive(Clone)]
@@ -125,26 +124,6 @@ pub async fn no_nul_mw(req: Request, next: Next) -> Response {
     if target_has_nul(&target) {
         return crate::api_error::ApiError::bad_request("the request contains a NUL byte")
             .for_path(req.uri().path());
-    }
-    next.run(req).await
-}
-
-/// Put the client's address on the request, through `TRUSTED_PROXIES`, for [`authorize_mw`] to read.
-/// `axa` does the same inside its own stack, but the layers added in `after_routes` sit outside that
-/// stack and run first, so its answer comes too late for them. Without a connection (a test that calls
-/// the router directly) there is no address to put.
-pub async fn client_address_mw(
-    State(trusted): State<std::sync::Arc<Vec<axa::client::ProxyNet>>>,
-    mut req: Request,
-    next: Next,
-) -> Response {
-    let peer = req
-        .extensions()
-        .get::<ConnectInfo<SocketAddr>>()
-        .map(|info| info.0.ip());
-    if let Some(peer) = peer {
-        let client = axa::client::resolve(peer, req.headers(), &trusted);
-        req.extensions_mut().insert(client);
     }
     next.run(req).await
 }

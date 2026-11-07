@@ -77,14 +77,18 @@ impl App {
         Ok(AppContext::new(environment, pool, config))
     }
 
-    /// The routes in the standard middleware, wrapped in the service's own.
+    /// The routes in the service's own middleware, inside `axa`'s standard stack. The stack goes on
+    /// last, as `axa` 0.6 requires, so a refusal from the service's layers still gets the request id, the
+    /// security headers and a problem body, and the client's address is resolved before the audit trail
+    /// records it.
     ///
     /// # Errors
     ///
     /// When a setting is wrong, or a port cannot be opened.
     pub async fn router(ctx: &AppContext) -> Result<AxumRouter> {
-        let router = Self::routes(ctx).into_app(ctx.clone())?;
-        Self::after_routes(router, ctx).await
+        let router = Self::routes(ctx).into_router(ctx.clone());
+        let router = Self::after_routes(router, ctx).await?;
+        axa::middleware::apply(router, &ctx.config.http)
     }
 
     /// Apply pending migrations.
@@ -275,14 +279,10 @@ impl App {
             ))
             .layer(axum::middleware::from_fn(auth::require_auth_mw))
             .layer(axum::middleware::from_fn(authz::no_nul_mw))
-            // Before the audit trail, which records it.
-            .layer(axum::middleware::from_fn_with_state(
-                std::sync::Arc::new(ctx.config.http.trusted_proxies.clone()),
-                authz::client_address_mw,
-            ))
             // The request id is settled before authentication or the audit trail.
             .layer(axum::middleware::from_fn(authz::request_id_mw))
-            // Outermost: time every request, refusals included, labelled by route template (OS-6).
+            // Outermost of the service's own: time every request, refusals included, labelled by route template
+            // (OS-6). `axa`'s standard stack is outside it (`router`).
             .layer(axum::middleware::from_fn(crate::metrics::duration_mw)))
     }
 }
