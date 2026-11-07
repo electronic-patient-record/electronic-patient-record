@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-07 - `escape_like` from `axa-cursor-pagination`, not `axa-offset-pagination`
+
+- **Clinical risk:** **no.** A search sends the same pattern as before; the function is the same code. `patients_store::tests::like_wildcards_in_a_search_are_escaped` pins it, unchanged.
+- **Built:** the `axa` feature `offset-pagination` is replaced by `cursor-pagination`, and `like_prefix` calls `axa::cursor_pagination::escape_like`. `axa-offset-pagination`, which `axa` calls insecure, is out of the build. `cargo deny` passes; the new crate's `hmac`, `sha2` and `base64` were already in the tree.
+- **Not done, and why:** no list moved to `CursorPage`. Its cursor is signed, but what it holds is an offset, and the crate says a row added or removed between two fetches can make a later page skip or repeat a row. The audit lists here (`/api/me/access-log`, FHIR `AuditEvent`) page by row id (`before`, `_before`), which skips nothing as rows are added. The work queues (referrals, the feed, deaths, break-glass reviews) are not paged at all: they are capped and say `more` (PR-1). On a queue a row leaves as it is worked, so an offset page could skip one, and a skipped referral is one nobody works. Moving would also change every list's body to a bare array with a `Link` header, which the UI does not read. A keyset cursor in `axa-cursor-pagination` would be the one to adopt.
+
 ## 2026-11-07 - `axa` 0.6.1 to 0.7.0
 
 - **Clinical risk:** **no change expected in what a clinician sees.** One answer changes: a FHIR read whose `If-None-Match` holds the patient's current `ETag` is now `304` with no body, so a client shows the copy it already holds, which is that version. The handler, its checks and its audit row still run first. The UI sends no `If-None-Match`, so it is unaffected. No hazard row was changed; that is my judgement, not the Clinical Safety Officer's.

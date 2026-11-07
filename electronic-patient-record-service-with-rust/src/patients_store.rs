@@ -485,7 +485,7 @@ impl Search {
 /// `s` as a `LIKE` prefix pattern: trimmed, with `%`, `_` and `\` escaped by `axa`'s `escape_like` so the
 /// text is matched literally. The query says `ESCAPE '\'`, which is the escape `escape_like` writes.
 fn like_prefix(s: &str) -> String {
-    format!("{}%", axa::offset_pagination::escape_like(s.trim()))
+    format!("{}%", axa::cursor_pagination::escape_like(s.trim()))
 }
 
 /// Search current versions, at most [`SEARCH_LIMIT`], ordered by family name then id.
