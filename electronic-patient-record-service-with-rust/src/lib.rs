@@ -30,6 +30,7 @@ pub mod consents_store;
 pub mod controllers;
 pub mod death;
 pub mod death_store;
+pub mod dependencies;
 pub mod feed_queue;
 pub mod gate;
 pub mod hazard;

@@ -1415,6 +1415,32 @@
         ],
         "type": "object"
       },
+      "DependencyReport": {
+        "description": "What was asked and what did not answer, as labels: database, keycloak, paseto-keys.",
+        "properties": {
+          "checked": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "degraded": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "ok": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok",
+          "checked",
+          "degraded"
+        ],
+        "type": "object"
+      },
       "DuplicateConflict": {
         "additionalProperties": true,
         "description": "409 on create: likely duplicates. A candidate the caller may not see is {\"restricted\": true}.",
@@ -3613,6 +3639,32 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/_dependencies": {
+      "get": {
+        "operationId": "get_dependencies",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DependencyReport"
+                }
+              }
+            },
+            "description": "Always 200: it reports and refuses nothing, so a stopped key service never takes the API out of service. One answer is reused for 5 seconds. `checked` is what this deployment configures; a key service is asked by opening a connection, so it shows that it is listening and no more."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [],
+        "summary": "GET /_dependencies",
+        "tags": [
+          "dependencies"
+        ],
+        "x-epr-public": true
+      }
+    },
     "/_health": {
       "get": {
         "operationId": "get_health",

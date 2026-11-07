@@ -202,6 +202,15 @@ fn identity_schemas() -> Value {
                 "candidates_cut": {"type": "boolean"}
             }),
         ),
+        "DependencyReport": {
+            "type": "object", "required": ["ok", "checked", "degraded"],
+            "description": "What was asked and what did not answer, as labels: database, keycloak, paseto-keys.",
+            "properties": {
+                "ok": {"type": "boolean"},
+                "checked": {"type": "array", "items": {"type": "string"}},
+                "degraded": {"type": "array", "items": {"type": "string"}}
+            }
+        },
         "PhotoVersion": {
             "type": "object", "required": ["version", "withdrawn"],
             "description": "What a photo write answers: the new version, and whether it withdrew the photo.",
@@ -1823,6 +1832,12 @@ pub fn document_for(served: &[(String, String)]) -> Value {
                     json!({"x-next-before": {"schema": {"type": "integer"}}}),
                 );
             }
+        }
+        if method == "GET" && path == "/_dependencies" {
+            responses.insert(
+                "200".into(),
+                body_ref("Always 200: it reports and refuses nothing, so a stopped key service never takes the API out of service. One answer is reused for 5 seconds. `checked` is what this deployment configures; a key service is asked by opening a connection, so it shows that it is listening and no more.", "DependencyReport"),
+            );
         }
         if method == "GET" && path == "/metrics" {
             responses.insert(

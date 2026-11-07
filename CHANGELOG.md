@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-07 - `/_dependencies` says what is down (PX-5)
+
+- **Clinical risk:** **no.** Nothing a clinician sees or does reads this route, and it changes no answer of `/_health` or `/_readiness`.
+- **Built:** `GET /_dependencies` answers 200 with `ok`, `checked` and `degraded`, for the database and each key service this deployment configures (`keycloak`, `paseto-keys`). One answer is reused for 5 seconds, passed or failed, and one round runs at a time. `src/dependencies.rs` has its own small cache, because `axa`'s named checks answer only through `/_readiness`, as ok or 503. `url` becomes a direct dependency; it was already in the build. Spec: `spec/09-api-surface.md`.
+- **The public paths grow by one, on purpose:** the census in `tests/route_census.rs` now allows `/_dependencies`. The route tells an unauthenticated caller which key service is configured and whether it is up, as a label and no address.
+- **Not done / not verified:** the plan said `/_health`, and it was not used, because the container restarts on that route. A key service is asked by opening a TCP connection, so one that listens and answers badly shows as up, and a connection through a proxy shows the proxy. Whether a running service keeps accepting tokens from keys in memory while its key service is down was not checked. Nothing watches the route, no alert uses it, and it was not tried against a real Keycloak. The UI's dependencies, such as its Redis, are not the service's and are not here. The service's `/_readiness` still asks only the database. The local `container-api` gate did not finish: the release build compiled, then the Podman VM ran out of disk saving the image, so the image was built only by CI's `container` job.
+
 ## 2026-11-06 - Error bodies are RFC 9457 problems (`axa-problem`)
 
 - **Clinical risk:** **no change expected in what a clinician sees, and this is a change to how every refusal travels.** The page shows a refusal from `errors`, `error_codes`, `conflict_codes`, `refusal` and `break_glass_offer`, and from the status; those are unchanged, and no page read the old `error` member. A FHIR client gets the same `OperationOutcome`. No hazard row is added, for that reason; this is the agent's judgement, not the Clinical Safety Officer's.

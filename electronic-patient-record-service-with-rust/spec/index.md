@@ -11,7 +11,7 @@ the cross-subproject contract.
 | Login enforcement | On unless the defaults in `src/app.rs` turn it off (only in `development`, `test` and `container-dev`) or `EPR_REQUIRE_AUTH=false`; an explicit env value wins over config | `auth::tests::auth_is_on_by_default` |
 | Startup gate | Refuses to start in `production` with login off; or with login on, no keys and no `EPR_PASETO_KEYS_URL` | `auth::tests::startup_gate`; run by hand |
 | Keycloak | With `EPR_KEYCLOAK_URL` set, a bearer token that does not start `v4.` is verified against the realm (signature, issuer `{url}/realms/{realm}`, audience, expiry, verified email); the caller is the token `sub`. Half-configured Keycloak, a remote `http://` URL, no audience, or a bad role map: refuses to start | `tests/keycloak_guard.rs` (8, DB-free, local OIDC stand-in); run by hand against Keycloak 26.3.0 under Podman |
-| Public paths | `/_health`, `/_ping`, `/_readiness` and `/metrics` only | `auth::tests`, `tests/metrics.rs` |
+| Public paths | `/_health`, `/_ping`, `/_readiness`, `/_dependencies` and `/metrics` only | `auth::tests`, `tests/metrics.rs` |
 | Fail closed | Before the guard is initialised every non-public request gets 503 | by construction |
 | Compare | `POST /api/patients/compare` takes `{a, b}` (matcher `Patient`) and returns a matcher `MatchResult` | `controllers::patients::tests` |
 | Audit table | `audit_events`, append-only; action in C/R/U/D/E; outcome in 0/4/8/12; triggers refuse UPDATE, DELETE, TRUNCATE | `tests/audit_immutable.rs` (Postgres) |

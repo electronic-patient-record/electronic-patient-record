@@ -31,6 +31,7 @@ use axa::routes::AppRoutes;
 pub fn route_groups() -> Vec<axa::routes::Routes> {
     vec![
         axa::health::routes(),
+        crate::dependencies::routes(),
         patients::routes(),
         audit::routes(),
         me::routes(),

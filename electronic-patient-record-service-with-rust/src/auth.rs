@@ -40,11 +40,15 @@ static VERIFIER: OnceLock<Verifier> = OnceLock::new();
 static KEYCLOAK: OnceLock<KeycloakVerifier> = OnceLock::new();
 static REQUIRE_AUTH: OnceLock<bool> = OnceLock::new();
 
-/// Paths that never need a token: health probes, and `/metrics`, which answers 404 unless the
+/// Paths that never need a token: health probes, `/_dependencies` (labels only, see
+/// [`crate::dependencies`]), and `/metrics`, which answers 404 unless the
 /// deployer turned it on (`EPR_METRICS`, see [`crate::metrics`]).
 #[must_use]
 pub fn is_public_path(path: &str) -> bool {
-    matches!(path, "/_health" | "/_ping" | "/_readiness" | "/metrics")
+    matches!(
+        path,
+        "/_health" | "/_ping" | "/_readiness" | "/_dependencies" | "/metrics"
+    )
 }
 
 /// The value of an environment variable, or `default` when it is unset or blank.
