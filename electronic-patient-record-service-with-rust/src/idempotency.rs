@@ -1,381 +1,117 @@
-//! Idempotent creates (task OF-1).
+//! Idempotent creates (task OF-1), run by `axa-idempotency`.
 //!
 //! A `POST` under `/api` that carries an `Idempotency-Key` header is run once. A retry (a double
-//! click, a client that timed out) with the same key and the same request gets the stored answer,
-//! with `Idempotent-Replayed: true`, and writes nothing. The same key with a different method, path
-//! or body is a 422; a key whose first request is still running, or ended without an answer being
-//! kept, is a 409. A request without the header behaves as before.
+//! click, a client that timed out) with the same key and the same request gets the kept answer,
+//! with `Idempotent-Replayed: true`, and writes nothing. The same key with a different method, path,
+//! query or body is a 422; a key whose first request is still running, or ended without its answer
+//! being kept, is a 409. A request without the header behaves as before.
 //!
-//! Only a successful answer is kept. A refusal or failure releases the key, so the client can fix the
-//! request and send it again with the same key. Keys are per token subject and expire after a day; the
-//! stored answer can hold patient data, so [`run_loop`] removes expired rows. A replay is audited (it
+//! Only a `2xx` or `3xx` answer is kept. A refusal or failure releases the key, so the client can fix
+//! the request and send it again with the same key. Keys are per token subject and expire after a day;
+//! the kept answer can hold patient data, so [`run_loop`] sweeps expired rows. A replay is audited (it
 //! discloses the answer again), and if that row cannot be written the replay is refused.
 //!
-//! Not covered: `/fhir/` creates, and a request whose first run wrote the record and then failed with
-//! a non-success answer (the key is released, so a retry can write again).
+//! **The lease is the key's whole life** ([`LEASE`]). `axa-idempotency` lets the same request take over a
+//! key whose run stopped reporting in, so that a crash does not block a retry. Its default of a minute
+//! would also let a retry write a second record when the first run wrote the record and then could not
+//! keep its answer, or crashed after its commit. Here that retry is a 409 until the key expires, as it
+//! was before (H-043).
+//!
+//! Not covered: `/fhir/` creates, other methods, and a request whose first run wrote the record and then
+//! failed with a non-success answer (the key is released, so a retry can write again).
 
 use crate::api_error::ApiError;
 use crate::audit::{self, Action, Event};
 use crate::auth::Agent;
-use crate::clock::{Clock, SystemClock};
-use crate::pool::Db;
+use axa::idempotency::{Idempotency, REPLAYED, idempotent};
 use axum::{
-    body::{Body, to_bytes},
+    Router,
     extract::{Request, State},
-    http::{HeaderName, HeaderValue, Method, StatusCode, header},
-    middleware::Next,
+    http::Method,
+    middleware::{Next, from_fn_with_state},
     response::{IntoResponse, Response},
 };
-use sha2::{Digest, Sha256};
-use sqlx::{PgPool, Row};
+use sqlx::PgPool;
+use std::time::Duration;
 
 /// The request header.
 pub const HEADER: &str = "idempotency-key";
-/// Seconds a key is kept: one day.
-pub const TTL_SECS: i64 = 86_400;
+/// How long a key and its answer are kept: one day.
+pub const TTL: Duration = Duration::from_hours(24);
+/// How long a run may go without reporting in before the same request may take its key over: as long
+/// as the key lives, so that a run that may have written is never run again under its key.
+pub const LEASE: Duration = TTL;
 /// The most request body bytes read for a keyed request.
 const MAX_REQUEST: usize = 1 << 20;
 /// The most response body bytes kept for a replay.
 const MAX_RESPONSE: usize = 4 << 20;
 
-/// The state the middleware needs.
-#[derive(Clone)]
-pub struct Gate {
-    /// Where the keys live.
-    pub db: PgPool,
+/// Whether a request is one this layer runs once: a `POST` under `/api/`.
+fn covered(method: &Method, path: &str) -> bool {
+    method == Method::POST && path.starts_with("/api/")
 }
 
-/// Whether `key` is 1 to 128 letters, digits or `. _ : -`.
+/// The keys, in `db`, per token subject.
 #[must_use]
-pub fn valid_key(key: &str) -> bool {
-    (1..=128).contains(&key.len())
-        && key
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b"._:-".contains(&b))
+pub fn keys(db: PgPool) -> Idempotency {
+    Idempotency::new(db, |req: &Request| {
+        req.extensions().get::<Agent>().map(|a| a.0.clone())
+    })
+    .only(covered)
+    .ttl(TTL)
+    .lease(LEASE)
+    .max_request_bytes(MAX_REQUEST)
+    .max_response_bytes(MAX_RESPONSE)
 }
 
-/// An answer kept for replay.
-#[derive(Debug, PartialEq, Eq)]
-pub struct Stored {
-    /// The HTTP status.
-    pub status: u16,
-    /// The `Content-Type`, if there was one.
-    pub content_type: Option<String>,
-    /// The body.
-    pub body: Vec<u8>,
+/// The audit layer's state.
+#[derive(Clone)]
+struct Gate {
+    /// For the audit row.
+    db: PgPool,
 }
 
-/// What reserving a key found.
-#[derive(Debug, PartialEq, Eq)]
-pub enum Reservation {
-    /// A new key: run the request.
-    Fresh,
-    /// The same request was answered before.
-    Replay(Stored),
-    /// The first request has not finished, or finished without an answer being kept.
-    Busy,
-    /// The key was used for a different request.
-    Mismatch,
+/// Run each keyed `POST` on `router` once. Add it inside authorization, so a refused request never
+/// takes a key and a replay reaches only a caller the gate let through.
+pub fn layer(router: Router, keys: Idempotency, db: PgPool) -> Router {
+    router
+        .layer(from_fn_with_state(keys, idempotent))
+        .layer(from_fn_with_state(Gate { db }, audit_replay_mw))
 }
 
-/// A SHA-256 digest as `sha256:` and 64 lower-case hexadecimal digits, for comparing request bodies.
-fn digest_of(bytes: &[u8]) -> String {
-    Sha256::digest(bytes)
-        .iter()
-        .fold(String::from("sha256:"), |mut s, b| {
-            s.push_str(&format!("{b:02x}"));
-            s
-        })
-}
-
-/// Reserve `(subject, key)` for this request, or say what is already there. An expired key is
-/// removed first, so it can be used again.
-///
-/// # Errors
-///
-/// A database failure.
-pub async fn reserve(
-    db: impl Into<Db<'_>>,
-    subject: &str,
-    key: &str,
-    method: &str,
-    path: &str,
-    digest: &str,
-) -> Result<Reservation, sqlx::Error> {
-    let mut conn = db.into().acquire().await?;
-    let db = &mut *conn;
-    reserve_at(&mut *db, &SystemClock, subject, key, method, path, digest).await
-}
-
-/// [`reserve`] with the time taken from `clock`: the key is stamped, and judged expired, by that time.
-///
-/// # Errors
-///
-/// A database failure.
-pub async fn reserve_at(
-    db: impl Into<Db<'_>>,
-    clock: &dyn Clock,
-    subject: &str,
-    key: &str,
-    method: &str,
-    path: &str,
-    digest: &str,
-) -> Result<Reservation, sqlx::Error> {
-    let mut conn = db.into().acquire().await?;
-    let db = &mut *conn;
-    let now = clock.now();
-    sqlx::query(
-        "DELETE FROM idempotency_keys WHERE subject = $1 AND key = $2
-         AND created_at < $4::timestamptz - make_interval(secs => $3)",
-    )
-    .bind(subject)
-    .bind(key)
-    .bind(TTL_SECS as f64)
-    .bind(now)
-    .execute(&mut *db)
-    .await?;
-    let inserted = sqlx::query("INSERT INTO idempotency_keys (subject, key, method, path, body_digest, state, created_at)
-             VALUES ($1, $2, $3, $4, $5, 'pending', $6::timestamptz) ON CONFLICT (subject, key) DO NOTHING")
-.bind(subject)
-.bind(key)
-.bind(method)
-.bind(path)
-.bind(digest)
-.bind(now)
-.execute(&mut *db)
-        .await?;
-    if inserted.rows_affected() == 1 {
-        return Ok(Reservation::Fresh);
+/// Outside the keys: a replay discloses its answer again, so it is an audit row, and a replay that
+/// cannot be audited is refused.
+async fn audit_replay_mw(State(gate): State<Gate>, req: Request, next: Next) -> Response {
+    if !covered(req.method(), req.uri().path()) || !req.headers().contains_key(HEADER) {
+        return next.run(req).await;
     }
-    let Some(row) = sqlx::query(
-        "SELECT method, path, body_digest, state, status::int AS status, content_type, response
-             FROM idempotency_keys WHERE subject = $1 AND key = $2",
-    )
-    .bind(subject)
-    .bind(key)
-    .fetch_optional(&mut *db)
-    .await?
-    else {
-        // Removed between the insert and the read (expired and purged): treat as busy, not as new.
-        return Ok(Reservation::Busy);
+    let method = req.method().as_str().to_owned();
+    let path = req.uri().path().to_owned();
+    let agent = req.extensions().get::<Agent>().map(|a| a.0.clone());
+    let res = next.run(req).await;
+    let (true, Some(agent)) = (res.headers().contains_key(REPLAYED), agent) else {
+        return res;
     };
-    let same = row.try_get::<String, _>("method")? == method
-        && row.try_get::<String, _>("path")? == path
-        && row.try_get::<String, _>("body_digest")? == digest;
-    if !same {
-        return Ok(Reservation::Mismatch);
+    let mut event = Event::new(Action::Read, agent);
+    event.resource_ref = Some("IdempotentReplay".to_string());
+    event.detail = Some(serde_json::json!({ "method": method, "path": path }));
+    if let Err(e) = audit::append(&gate.db, audit::chain(), &event).await {
+        tracing::error!(error = %e, "refusing to replay: it could not be audited");
+        return ApiError::internal().into_response();
     }
-    if row.try_get::<String, _>("state")? != "done" {
-        return Ok(Reservation::Busy);
-    }
-    let status: i32 = row.try_get("status")?;
-    Ok(Reservation::Replay(Stored {
-        status: u16::try_from(status).unwrap_or(500),
-        content_type: row.try_get("content_type")?,
-        body: row.try_get("response")?,
-    }))
+    res
 }
 
-/// Keep the answer for `(subject, key)`.
-///
-/// # Errors
-///
-/// A database failure.
-pub async fn complete(
-    db: impl Into<Db<'_>>,
-    subject: &str,
-    key: &str,
-    stored: &Stored,
-) -> Result<(), sqlx::Error> {
-    let mut conn = db.into().acquire().await?;
-    let db = &mut *conn;
-    sqlx::query(
-        "UPDATE idempotency_keys SET state = 'done', status = $3, content_type = $4, response = $5
-         WHERE subject = $1 AND key = $2 AND state = 'pending'",
-    )
-    .bind(subject)
-    .bind(key)
-    .bind(i16::try_from(stored.status).unwrap_or(500))
-    .bind(stored.content_type.clone())
-    .bind(stored.body.clone())
-    .execute(&mut *db)
-    .await?;
-    Ok(())
-}
-
-/// Let go of a key whose request did not succeed, so it can be sent again.
-///
-/// # Errors
-///
-/// A database failure.
-pub async fn release(db: impl Into<Db<'_>>, subject: &str, key: &str) -> Result<(), sqlx::Error> {
-    let mut conn = db.into().acquire().await?;
-    let db = &mut *conn;
-    sqlx::query(
-        "DELETE FROM idempotency_keys WHERE subject = $1 AND key = $2 AND state = 'pending'",
-    )
-    .bind(subject)
-    .bind(key)
-    .execute(&mut *db)
-    .await?;
-    Ok(())
-}
-
-/// Remove keys older than [`TTL_SECS`]; returns how many.
-///
-/// # Errors
-///
-/// A database failure.
-pub async fn purge_expired(db: impl Into<Db<'_>>) -> Result<u64, sqlx::Error> {
-    let mut conn = db.into().acquire().await?;
-    let db = &mut *conn;
-    purge_expired_at(&mut *db, &SystemClock).await
-}
-
-/// [`purge_expired`] with the time taken from `clock`.
-///
-/// # Errors
-///
-/// A database failure.
-pub async fn purge_expired_at(
-    db: impl Into<Db<'_>>,
-    clock: &dyn Clock,
-) -> Result<u64, sqlx::Error> {
-    let mut conn = db.into().acquire().await?;
-    let db = &mut *conn;
-    Ok(sqlx::query("DELETE FROM idempotency_keys WHERE created_at < $2::timestamptz - make_interval(secs => $1)")
-.bind(TTL_SECS as f64)
-.bind(clock.now())
-.execute(&mut *db)
-        .await?
-        .rows_affected())
-}
-
-/// Purge expired keys every hour, for the life of the process.
-pub async fn run_loop(db: PgPool) {
-    let mut tick = tokio::time::interval(std::time::Duration::from_secs(3600));
+/// Sweep expired keys every hour, for the life of the process.
+pub async fn run_loop(keys: Idempotency) {
+    let mut tick = tokio::time::interval(Duration::from_secs(3600));
     tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     loop {
         tick.tick().await;
-        match purge_expired(&db).await {
+        match keys.sweep().await {
             Ok(0) => {}
             Ok(n) => tracing::info!(removed = n, "idempotency keys expired"),
-            Err(e) => tracing::error!(error = %e, "idempotency keys could not be purged"),
-        }
-    }
-}
-
-/// The stored answer as a response: its status (200 if the stored one is not a valid status), its body, its content type if
-/// it has a valid one, and `Idempotent-Replayed: true`.
-fn replayed(stored: Stored) -> Response {
-    let mut response = (
-        StatusCode::from_u16(stored.status).unwrap_or(StatusCode::OK),
-        stored.body,
-    )
-        .into_response();
-    let h = response.headers_mut();
-    if let Some(ct) = stored
-        .content_type
-        .and_then(|c| HeaderValue::from_str(&c).ok())
-    {
-        h.insert(header::CONTENT_TYPE, ct);
-    }
-    h.insert(
-        HeaderName::from_static("idempotent-replayed"),
-        HeaderValue::from_static("true"),
-    );
-    response
-}
-
-/// Run a keyed `POST` once. Mounted inside authorization, so a refused request never reserves a key.
-pub async fn idempotency_mw(State(gate): State<Gate>, req: Request, next: Next) -> Response {
-    let path = req.uri().path().to_string();
-    let Some(raw) = req.headers().get(HEADER).cloned() else {
-        return next.run(req).await;
-    };
-    if req.method() != Method::POST || !path.starts_with("/api/") {
-        return next.run(req).await;
-    }
-    let Some(agent) = req.extensions().get::<Agent>().map(|a| a.0.clone()) else {
-        return next.run(req).await;
-    };
-    let key = match raw.to_str() {
-        Ok(k) if valid_key(k) => k.to_string(),
-        _ => {
-            return ApiError::bad_request(
-                "Idempotency-Key must be 1 to 128 letters, digits or . _ : -",
-            )
-            .into_response();
-        }
-    };
-    let (parts, body) = req.into_parts();
-    let Ok(bytes) = to_bytes(body, MAX_REQUEST).await else {
-        return ApiError::bad_request(
-            "the request body is too large to send with an Idempotency-Key",
-        )
-        .into_response();
-    };
-    let digest = digest_of(&bytes);
-    let method = parts.method.as_str().to_string();
-    match reserve(&gate.db, &agent, &key, &method, &path, &digest).await {
-        Err(e) => {
-            // Without the guard the request could write twice, so it is not run.
-            tracing::error!(error = %e, "the Idempotency-Key could not be checked");
-            ApiError::internal().into_response()
-        }
-        Ok(Reservation::Mismatch) => ApiError::invalid(vec![
-            "this Idempotency-Key was used for a different request".to_string(),
-        ])
-        .into_response(),
-        Ok(Reservation::Busy) => ApiError::conflict(
-            "a request with this Idempotency-Key is still running, or ended without an answer being kept; use a new key",
-        )
-        .into_response(),
-        Ok(Reservation::Replay(stored)) => {
-            let mut event = Event::new(Action::Read, agent);
-            event.resource_ref = Some("IdempotentReplay".to_string());
-            event.detail = Some(serde_json::json!({ "method": method, "path": path }));
-            if let Err(e) = audit::append(&gate.db, audit::chain(), &event).await {
-                tracing::error!(error = %e, "refusing to replay: it could not be audited");
-                return ApiError::internal().into_response();
-            }
-            replayed(stored)
-        }
-        Ok(Reservation::Fresh) => {
-            let response = next
-                .run(Request::from_parts(parts, Body::from(bytes)))
-                .await;
-            let (head, body) = response.into_parts();
-            let kept = if head.status.is_success() {
-                to_bytes(body, MAX_RESPONSE).await.ok()
-            } else {
-                None
-            };
-            let Some(kept) = kept else {
-                if let Err(e) = release(&gate.db, &agent, &key).await {
-                    tracing::error!(error = %e, "an Idempotency-Key could not be released");
-                }
-                // The body of a refusal is small; of a success we could not keep, say so.
-                return if head.status.is_success() {
-                    ApiError::internal().into_response()
-                } else {
-                    Response::from_parts(head, Body::empty())
-                };
-            };
-            let stored = Stored {
-                status: head.status.as_u16(),
-                content_type: head
-                    .headers
-                    .get(header::CONTENT_TYPE)
-                    .and_then(|v| v.to_str().ok())
-                    .map(str::to_string),
-                body: kept.to_vec(),
-            };
-            if let Err(e) = complete(&gate.db, &agent, &key, &stored).await {
-                // The record is written; a retry is told the key is busy, never allowed to write again.
-                tracing::error!(error = %e, "an answer could not be kept for its Idempotency-Key");
-            }
-            Response::from_parts(head, Body::from(kept))
+            Err(e) => tracing::error!(error = %e, "idempotency keys could not be swept"),
         }
     }
 }
@@ -385,28 +121,33 @@ mod tests {
     use super::*;
 
     #[test]
-    fn a_key_is_one_to_128_safe_characters() {
-        for good in ["a", "Abc-123_x.y:z", &"k".repeat(128)] {
-            assert!(valid_key(good), "{good}");
-        }
-        for bad in [
-            "",
-            " ",
-            "a b",
-            "a/b",
-            "ключ",
-            &"k".repeat(129),
-            "a\nb",
-            "a;b",
+    fn only_a_post_under_api_is_covered() {
+        assert!(covered(&Method::POST, "/api/patients"));
+        for (m, p) in [
+            (Method::POST, "/fhir/R4/Patient"),
+            (Method::PUT, "/api/patients/x"),
+            (Method::PATCH, "/api/patients/x"),
+            (Method::GET, "/api/patients"),
         ] {
-            assert!(!valid_key(bad), "{bad:?}");
+            assert!(!covered(&m, p), "{m} {p}");
         }
     }
 
     #[test]
-    fn the_digest_names_its_algorithm_and_differs_by_body() {
-        assert!(digest_of(b"x").starts_with("sha256:"));
-        assert_ne!(digest_of(b"x"), digest_of(b"y"));
-        assert_eq!(digest_of(b"x"), digest_of(b"x"));
+    fn the_migration_makes_the_table_axa_idempotency_expects() {
+        let sql = include_str!("../migrations/20261107000027_axa_idempotency.sql");
+        let squash = |s: &str| s.split_whitespace().collect::<Vec<_>>().join(" ");
+        let migration = squash(sql);
+        for statement in axa::idempotency::SETUP_STATEMENTS {
+            assert!(
+                migration.contains(&squash(statement)),
+                "the migration has drifted from axa-idempotency: {statement}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_run_that_may_have_written_is_never_taken_over_while_its_key_lives() {
+        assert!(LEASE >= TTL);
     }
 }

@@ -62,7 +62,7 @@ def generate():
     for path in sorted(MIGRATIONS.glob("*.sql")):
         text = path.read_text()
         migration = path.stem
-        for m in re.finditer(r"CREATE TABLE ([a-z_][a-z0-9_]*) \(", text):
+        for m in re.finditer(r"CREATE TABLE (?:IF NOT EXISTS )?([a-z_][a-z0-9_]*) \(", text):
             name = m.group(1)
             cols = []
             body = re.sub(r"--[^\n]*", "", body_after(text, m.end() - 1))
@@ -74,6 +74,9 @@ def generate():
             entry = tables.setdefault(name, {"migrations": [], "columns": cols, "purpose": purpose(text)})
             if migration not in entry["migrations"]:
                 entry["migrations"].append(migration)
+        # A table a later migration drops is no longer in the schema.
+        for m in re.finditer(r"DROP TABLE (?:IF EXISTS )?([a-z_][a-z0-9_]*)", re.sub(r"--[^\n]*", "", text)):
+            tables.pop(m.group(1), None)
         for m in re.finditer(r"CREATE (?:OR REPLACE )?VIEW ([a-z_][a-z0-9_]*)", text):
             views.setdefault(m.group(1), [])
             if migration not in views[m.group(1)]:

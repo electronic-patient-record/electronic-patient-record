@@ -60,6 +60,17 @@ audit_events,network_address,staff-trace,Address the request came from,audit
 audit_events,detail,free-text,Structured detail of the audit row; it holds no values by design but is classified cautiously,audit
 audit_events,prev_digest,none,Hash chain,audit
 audit_events,digest,none,Hash chain,audit
+axa_idempotency,caller,staff-identifier,Whose key it is; keys are per token subject,transient
+axa_idempotency,key,none,The client's random retry key,transient
+axa_idempotency,fingerprint,health,A SHA-256 of the request's method; path; query and body so a changed request under the key is refused; derived from patient data,transient
+axa_idempotency,claim,none,Which run holds the key,transient
+axa_idempotency,state,none,Running; done; or ran with its answer not kept,transient
+axa_idempotency,status,none,The HTTP status of the kept answer,transient
+axa_idempotency,headers,none,The kept answer's content type and location headers,transient
+axa_idempotency,body,health,The answer as first sent; patient data for a create,transient
+axa_idempotency,lease_until,none,Until when a running request holds the key; the key's whole life here,transient
+axa_idempotency,expires_at,none,When the key and its answer stop being replayed; 24 hours after use,transient
+axa_idempotency,created_at,none,When the key was first used,transient
 break_glass_grants,grant_id,none,Random record id,audit
 break_glass_grants,patient_id,identifier,Links a record to the patient,audit
 break_glass_grants,subject,staff-identifier,The clinician given emergency access,audit
@@ -267,16 +278,6 @@ audit_events_all,network_address,staff-trace,Address the request came from,audit
 audit_events_all,detail,free-text,Structured detail of the audit row; it holds no values by design but is classified cautiously,audit
 audit_events_all,prev_digest,none,Hash chain,audit
 audit_events_all,digest,none,Hash chain,audit
-idempotency_keys,subject,staff-identifier,Whose key it is; keys are per token subject,transient
-idempotency_keys,key,none,The client's random retry key,transient
-idempotency_keys,method,none,The request method the key was first used with,transient
-idempotency_keys,path,identifier,The request path; it names the patient for a patient-scoped create,transient
-idempotency_keys,body_digest,health,A SHA-256 of the request body so a changed request under the key is refused; derived from patient data,transient
-idempotency_keys,state,none,Pending or done,transient
-idempotency_keys,status,none,The HTTP status of the kept answer,transient
-idempotency_keys,content_type,none,The content type of the kept answer,transient
-idempotency_keys,response,health,The answer as first sent; patient data for a create,transient
-idempotency_keys,created_at,none,When the key was first used; it expires 24 hours later,transient
 referral_versions,referral_id,none,Random referral id; carried by every later message so an outcome can be matched,record
 referral_versions,version,none,1 for the request; each step is the next version,record
 referral_versions,patient_id,identifier,The patient referred,record

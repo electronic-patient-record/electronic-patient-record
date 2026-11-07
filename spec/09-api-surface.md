@@ -40,16 +40,21 @@ The feed-refusal list, the break-glass review list and the referral queue list r
 
 ### Idempotent creates (OF-1)
 
-A `POST` under `/api` may carry `Idempotency-Key: <1 to 128 of letters, digits, . _ : ->`. The request runs once per
-(token subject, key). A retry with the same method, path and body returns the first answer, status and body, with
-`Idempotent-Replayed: true`, and writes nothing; the replay is audited (resource `IdempotentReplay`) and is refused
-(500) if that row cannot be written. The same key with a different method, path or body is 422; a key whose first
-request is unfinished, or ended without an answer being kept, is 409. A key that is not well formed is 400. Only a
-success is kept: a refusal or failure releases the key so the corrected request can use it. Keys are per subject and
-expire after 24 hours (`idempotency_keys`, purged hourly); the stored answer can hold patient data, so it is the one
-place a copy of a record is kept outside the append-only tables, and it is the only table here that deletes. If the
-key cannot be checked the request is refused, not run unguarded. A request without the header behaves as before.
-`/fhir/` creates are not covered. Hazard H-043.
+A `POST` under `/api` may carry `Idempotency-Key: <1 to 255 visible ASCII characters>`, run by `axa-idempotency`
+(since 2026-11-07). The request runs once per (token subject, key). A retry with the same method, path, query and body
+returns the first answer, its status, body and content headers, with `Idempotent-Replayed: true`, and writes nothing;
+the replay is audited (resource `IdempotentReplay`) and is refused (500) if that row cannot be written. The same key
+with a different method, path, query or body is 422 `idempotency_key_reused`. A key whose first request is still
+running is 409 `idempotency_in_progress`, and one whose first request ran but whose answer could not be kept is 409
+`idempotency_answer_not_kept`. A run holds its key for the key's whole life, so a request that may have written and
+then crashed, or could not keep its answer, is a 409 on retry, never a second write. A key that is not well formed is
+400 `idempotency_key_invalid`; a body over 1 MiB with a key is 413. Only a `2xx` or `3xx` is kept: a refusal or
+failure releases the key so the corrected request can use it. Keys are per subject and expire after 24 hours
+(`axa_idempotency`, swept hourly); the kept answer can hold patient data, so it is the one place a copy of a record is
+kept outside the append-only tables, and it is the only table here that deletes. If the key cannot be checked the
+request is refused (503 `idempotency_unavailable`), not run unguarded, and the service does not start without the
+table. A request without the header behaves as before. `/fhir/` creates and other methods are not covered. Hazard
+H-043.
 
 ### Error bodies
 

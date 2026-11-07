@@ -155,9 +155,10 @@ async fn a_create_with_an_idempotency_key_runs_once() {
         assert_eq!(fixed.status_code(), StatusCode::CREATED, "{}", fixed.text());
         assert_eq!(listed().await, 2);
 
-        // A key still pending (the first request has not finished) is a conflict, never a second write.
+        // A key still running (the first request has not finished, or wrote and could not keep its answer) is a
+        // conflict, never a second write, for as long as its lease, which is the key's life (H-043).
         sqlx::raw_sql(AssertSqlSafe(format!(
-            "UPDATE idempotency_keys SET state = 'pending' WHERE key = '{k}'"
+            "UPDATE axa_idempotency SET state = 'running', lease_until = now() + interval '23 hours' WHERE key = '{k}'"
         )))
         .execute(&ctx.pool())
         .await
@@ -172,7 +173,7 @@ async fn a_create_with_an_idempotency_key_runs_once() {
 
         // An expired key is removed and the request runs again.
         sqlx::raw_sql(AssertSqlSafe(format!(
-            "UPDATE idempotency_keys SET created_at = now() - interval '2 days' WHERE key = '{k}'"
+            "UPDATE axa_idempotency SET lease_until = now() - interval '1 second', expires_at = now() - interval '1 second' WHERE key = '{k}'"
         )))
         .execute(&ctx.pool())
         .await

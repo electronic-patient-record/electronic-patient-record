@@ -16,6 +16,7 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `amendment_versions` | `20261027000015_amendments` | `amendment_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `state` TEXT, `target_kind` TEXT, `target_id` UUID, `event` JSONB, `body` JSONB |
 | `audit_archive_anchors` | `20261031000018_audit_partitions` | `partition` TEXT, `first_id` BIGINT, `last_id` BIGINT, `row_count` BIGINT, `first_prev_digest` TEXT, `last_digest` TEXT, `archived_at` TIMESTAMPTZ |
 | `audit_events` | `20261020000001_audit_events`, `20261031000018_audit_partitions` | `id` BIGSERIAL, `recorded_at` TIMESTAMPTZ, `action` CHAR(1), `outcome` SMALLINT, `agent` TEXT, `patient_ref` TEXT, `resource_ref` TEXT, `purpose_of_use` TEXT, `break_glass` BOOLEAN, `network_address` TEXT, `detail` JSONB, `prev_digest` TEXT, `digest` TEXT |
+| `axa_idempotency` | `20261107000027_axa_idempotency` | `caller` TEXT, `key` TEXT, `fingerprint` TEXT, `claim` UUID, `state` TEXT, `status` INTEGER, `headers` JSONB, `body` BYTEA, `lease_until` TIMESTAMPTZ, `expires_at` TIMESTAMPTZ, `created_at` TIMESTAMPTZ |
 | `break_glass_grants` | `20261021000010_break_glass` | `grant_id` UUID, `patient_id` UUID, `subject` TEXT, `reason` TEXT, `granted_at` TIMESTAMPTZ, `expires_at` TIMESTAMPTZ |
 | `break_glass_reviews` | `20261021000010_break_glass` | `grant_id` UUID, `reviewed_at` TIMESTAMPTZ, `reviewed_by` TEXT, `outcome` TEXT, `note` TEXT |
 | `consent_versions` | `20261021000003_consent_versions` | `consent_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `status` TEXT, `body` JSONB |
@@ -23,7 +24,6 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `feed_refusal_resolutions` | `20261021000009_feed_refusals` | `refusal_id` UUID, `resolved_at` TIMESTAMPTZ, `resolved_by` TEXT, `outcome` TEXT, `reason` TEXT |
 | `feed_refusals` | `20261021000009_feed_refusals` | `refusal_id` UUID, `received_at` TIMESTAMPTZ, `agent` TEXT, `peer` TEXT, `event` TEXT, `control_id` TEXT, `kind` TEXT, `reasons` JSONB, `message` TEXT |
 | `hazard_versions` | `20261028000016_hazard_events` | `hazard_id` UUID, `version` INTEGER, `recorded_at` TIMESTAMPTZ, `author` TEXT, `state` TEXT, `event` JSONB, `body` JSONB |
-| `idempotency_keys` | `20261102000021_idempotency_keys` | `subject` TEXT, `key` TEXT, `method` TEXT, `path` TEXT, `body_digest` TEXT, `state` TEXT, `status` SMALLINT, `content_type` TEXT, `response` BYTEA, `created_at` TIMESTAMPTZ |
 | `observation_versions` | `20261026000014_observations` | `observation_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `status` TEXT, `effective_at` TIMESTAMPTZ, `site_zone` TEXT, `body` JSONB |
 | `outbox_attempts` | `20261030000017_outbox` | `id` BIGSERIAL, `event_id` UUID, `attempted_at` TIMESTAMPTZ, `outcome` TEXT, `reason` TEXT |
 | `outbox_events` | `20261030000017_outbox` | `id` UUID, `created_at` TIMESTAMPTZ, `kind` TEXT, `recipient` TEXT, `recipient_roles` TEXT[], `purpose` TEXT, `resource` TEXT, `patient_id` UUID, `payload` JSONB |

@@ -257,19 +257,17 @@ impl App {
         let limits = crate::rate_limit::Limits::from_env().map_err(Error::Message)?;
         let limiters = crate::rate_limit::Limiters::new(limits);
         // Expired idempotency keys hold answers that can name a patient: remove them (OF-1).
-        tokio::spawn(crate::idempotency::run_loop(ctx.pool()));
-        let keys = crate::idempotency::Gate { db: ctx.pool() };
+        // A missing or out-of-date table stops the service here, not at its first keyed create.
+        let keys = crate::idempotency::keys(ctx.pool());
+        keys.check()
+            .await
+            .map_err(|e| Error::Message(format!("idempotency keys: {e}")))?;
+        tokio::spawn(crate::idempotency::run_loop(keys.clone()));
         // The last layer added runs first: authenticate, count, authorize, then the idempotency key.
         let gate = authz::Authz { db: ctx.pool() };
-        let router = router
-            .layer(axum::middleware::from_fn_with_state(
-                keys,
-                crate::idempotency::idempotency_mw,
-            ))
-            .layer(axum::middleware::from_fn_with_state(
-                gate,
-                authz::authorize_mw,
-            ));
+        let router = crate::idempotency::layer(router, keys, ctx.pool()).layer(
+            axum::middleware::from_fn_with_state(gate, authz::authorize_mw),
+        );
         Ok(crate::rate_limit::layer(router, limiters, ctx.pool())
             .layer(axum::middleware::from_fn(auth::require_auth_mw))
             .layer(axum::middleware::from_fn(authz::no_nul_mw))

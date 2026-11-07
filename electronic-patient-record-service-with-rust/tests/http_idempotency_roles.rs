@@ -147,7 +147,7 @@ async fn a_key_belongs_to_the_subject_that_sent_it() {
         assert_eq!(again_b.text(), first_b.text());
         assert_eq!(
             sqlx::query(AssertSqlSafe(format!(
-                "SELECT count(*)::bigint AS n FROM idempotency_keys WHERE key = '{k}'"
+                "SELECT count(*)::bigint AS n FROM axa_idempotency WHERE key = '{k}'"
             )))
             .fetch_optional(&ctx.pool())
             .await
