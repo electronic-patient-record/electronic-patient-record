@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-07 - `/api` reads bodies with `axa::extract`
+
+- **Clinical risk:** **no change expected in what a clinician sees.** The status of each bad request is the same. The body now has a `detail`, which the screen shows where it shows one.
+- **Built:** the 17 `/api` controllers take `Json`, `Path` and `Query` from `axa::extract` in place of Axum's. A body that is not JSON, one not sent as JSON, or one of the wrong shape is now a problem that says what was wrong (400 `bad_request`, 415 `unsupported_media_type`, 422 `unprocessable_entity`). Since 0.6 it had been a problem with no `detail`, and before that Axum's plain text.
+- **Checked:** every database-free test, every database test, and a new one in `tests/http_patients.rs` that sends each of the three through the real router and finds no part of the body quoted.
+- **Not done / not verified:** the FHIR routes keep Axum's extractors, because a FHIR refusal must be an `OperationOutcome`, and neither Axum's rejection nor `axa`'s is one; whether a bad FHIR path or query answers an `OperationOutcome` was not checked here. The audit routes keep their own handling of a bad query, which names the parameters. Two database tests failed once on a 409 "possible duplicate": patients my first `tests/balp_claim.rs` left in the shared test database, with the same fixed birth date as `tests/http_death_reports.rs`. The test database was restarted (it is `tmpfs`), and that test still uses a fixed birth date.
+
 ## 2026-11-07 - `axa` 0.5 to 0.6.1
 
 - **Clinical risk:** **no change expected in what a clinician sees.** Every request now passes through the layers in a new order, which is where a mistake would show: who may see what, and what the audit trail records. The service's own refusals are unchanged, because they were already RFC 9457 problems (2026-11-06).

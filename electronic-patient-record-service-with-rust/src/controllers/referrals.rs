@@ -27,10 +27,10 @@ use crate::pool::Db;
 use crate::pool::Pool;
 use crate::referral::{Actor, Event};
 use crate::referrals_store::{self as store, Referral, Step, StoredReferral};
+use axa::extract::{Json, Path};
 use axa::prelude::*;
 use axum::{
     Extension,
-    extract::{Json, Path},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };

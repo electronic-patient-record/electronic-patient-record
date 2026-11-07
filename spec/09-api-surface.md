@@ -62,6 +62,7 @@ Every refusal and failure is built by `api_error::ApiError`, never by hand (`tes
   `forbidden`, `not-found`, `conflict`, `invalid` and `exception`.
 - The authentication (401) and route-gate (403) middleware answer the same way, by path, and never as plain text.
 - A criterion of the wrong type on the audit routes (`outcome=x`, `checkpoint_id=x`) is the same problem 400 as a bad date, not the framework's plain text.
+- A body or path value the handler cannot read on `/api` is answered by `axa::extract`: 400 `bad_request` for a body that is not JSON, 415 `unsupported_media_type` for one not sent as JSON, 422 `unprocessable_entity` for one of the wrong shape, each with a `detail` saying what was wrong and quoting nothing the caller sent (`tests/http_patients.rs`). The FHIR routes do not use these: a FHIR refusal is an `OperationOutcome`.
 - A 500 says `internal error`. The cause is logged and never sent.
 
 ### API versioning

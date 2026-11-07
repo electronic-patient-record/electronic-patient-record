@@ -19,10 +19,10 @@ use crate::policy::{self, Purpose, Relationship, Resource, Subject};
 use crate::pool::Pool;
 use crate::proxy::Scope;
 use crate::relationships;
+use axa::extract::{Path, Query};
 use axa::prelude::*;
 use axum::{
     Extension,
-    extract::{Path, Query},
     response::{IntoResponse, Response},
 };
 

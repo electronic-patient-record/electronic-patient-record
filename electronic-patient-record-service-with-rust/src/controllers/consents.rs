@@ -14,10 +14,10 @@ use crate::consents_store as store;
 use crate::patients_store::{self, StoreError};
 use crate::policy::{self, Resource, Subject};
 use crate::pool::Pool;
+use axa::extract::{Json, Path};
 use axa::prelude::*;
 use axum::{
     Extension,
-    extract::{Json, Path},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };

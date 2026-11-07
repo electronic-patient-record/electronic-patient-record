@@ -12,10 +12,10 @@ use crate::patients_store::{self as store, Search, StoreError};
 use crate::policy::{self, Consent, Purpose, Resource, Subject};
 use crate::pool::Db;
 use crate::pool::Pool;
+use axa::extract::{Json, Path, Query};
 use axa::prelude::*;
 use axum::{
     Extension,
-    extract::{Json, Path, Query},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };

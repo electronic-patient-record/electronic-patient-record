@@ -23,10 +23,10 @@ use crate::auth::Agent;
 use crate::patients_store::StoreError;
 use crate::policy::{self, Purpose, Resource, Role, Subject};
 use crate::pool::Pool;
+use axa::extract::{Json, Path};
 use axa::prelude::*;
 use axum::{
     Extension,
-    extract::{Json, Path},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     routing::get,

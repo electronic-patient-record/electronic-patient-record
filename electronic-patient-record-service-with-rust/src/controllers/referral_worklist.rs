@@ -20,10 +20,10 @@ use crate::patients_store::StoreError;
 use crate::policy::{self, Purpose, Resource, Subject};
 use crate::pool::Pool;
 use crate::referral_worklist as worklist;
+use axa::extract::{Json, Path};
 use axa::prelude::*;
 use axum::{
     Extension,
-    extract::{Json, Path},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };

@@ -16,10 +16,10 @@ use crate::feed_queue::{self as queue, Outcome};
 use crate::patients_store::StoreError;
 use crate::policy::{self, Resource, Subject};
 use crate::pool::Pool;
+use axa::extract::{Json, Path};
 use axa::prelude::*;
 use axum::{
     Extension,
-    extract::{Json, Path},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };

@@ -16,11 +16,11 @@ use crate::photos_store::{self as store, StoredPhoto};
 use crate::policy::{self, Resource, Subject};
 use crate::pool::Pool;
 use crate::proxy::Scope;
+use axa::extract::{Path, Query};
 use axa::prelude::*;
 use axum::{
     Extension,
     body::Bytes,
-    extract::{Path, Query},
     http::{HeaderMap, HeaderName, HeaderValue, StatusCode, header},
     response::{IntoResponse, Response},
 };

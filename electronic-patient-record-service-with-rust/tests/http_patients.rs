@@ -443,3 +443,53 @@ async fn a_refusal_from_the_framework_is_a_problem_with_the_stacks_headers() {
     })
     .await;
 }
+
+/// `axa::extract` in place of Axum's: a body that is not JSON, one sent as something else, and one of the
+/// wrong shape are each a problem with its own status and `code`, saying what was wrong without quoting
+/// what the caller sent.
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn a_bad_body_is_a_problem_that_says_what_was_wrong_and_quotes_nothing() {
+    login_off();
+    request::<App, _, _>(|server, _ctx| async move {
+        let secret = "SecretFamilyName";
+        let json = HeaderValue::from_static("application/json");
+        let cases = [
+            (
+                "{\"patient\": SecretFamilyName",
+                json.clone(),
+                StatusCode::BAD_REQUEST,
+                "bad_request",
+            ),
+            (
+                "{\"patient\": {}}",
+                HeaderValue::from_static("text/plain"),
+                StatusCode::UNSUPPORTED_MEDIA_TYPE,
+                "unsupported_media_type",
+            ),
+            (
+                "{\"patient\": \"SecretFamilyName\"}",
+                json,
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "unprocessable_entity",
+            ),
+        ];
+        for (body, content_type, status, code) in cases {
+            let response = server
+                .post("/api/patients")
+                .content_type(content_type.to_str().unwrap())
+                .bytes(body.as_bytes().to_vec().into())
+                .await;
+            assert_eq!(response.status_code(), status, "{body}");
+            assert_eq!(response.header("content-type"), "application/problem+json");
+            let problem: serde_json::Value = response.json();
+            assert_eq!(problem["code"], code, "{problem}");
+            assert!(
+                problem["detail"].is_string(),
+                "says what was wrong: {problem}"
+            );
+            assert!(!problem.to_string().contains(secret), "{problem}");
+        }
+    })
+    .await;
+}
