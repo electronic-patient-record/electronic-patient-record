@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-07 - Patient search escapes `LIKE` with `axa`'s `escape_like`
+
+- **Clinical risk:** **no.** The pattern a search sends is byte for byte what it was: `%`, `_` and `\` are escaped, and a family name such as `50%_\` matches only itself. `patients_store::tests::like_wildcards_in_a_search_are_escaped` pins it, unchanged.
+- **Built:** `like_prefix` calls `axa::pagination::escape_like` in place of its own loop, behind `axa`'s `pagination` feature, which adds `axa-pagination` 0.1.1. `cargo deny` passes with it.
+- **Not adopted, and why:** the rest of `axa-pagination`. `Page::bounds` and `Page::respond` page by offset, report a total in headers and answer a bare array. Every list here pages by a cursor (`_before`, `next`) with a fixed limit and a `more` flag in the body. Moving would change every list's answer, and an offset on the append-only audit trail would shift as rows are added. `Task::development_only` is not used either: the service registers no task, so there is nothing that loads fixtures to mark.
+
 ## 2026-11-07 - `/api` reads bodies with `axa::extract`
 
 - **Clinical risk:** **no change expected in what a clinician sees.** The status of each bad request is the same. The body now has a `detail`, which the screen shows where it shows one.
