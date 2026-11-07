@@ -255,16 +255,13 @@ impl App {
         crate::packs::init().map_err(Error::Message)?;
         // Request limits per token subject (OS-2). A bad setting stops the service starting.
         let limits = crate::rate_limit::Limits::from_env().map_err(Error::Message)?;
-        let limiter = crate::rate_limit::Gate {
-            limiter: std::sync::Arc::new(crate::rate_limit::Limiter::new(limits)),
-            db: ctx.pool(),
-        };
+        let limiters = crate::rate_limit::Limiters::new(limits);
         // Expired idempotency keys hold answers that can name a patient: remove them (OF-1).
         tokio::spawn(crate::idempotency::run_loop(ctx.pool()));
         let keys = crate::idempotency::Gate { db: ctx.pool() };
         // The last layer added runs first: authenticate, count, authorize, then the idempotency key.
         let gate = authz::Authz { db: ctx.pool() };
-        Ok(router
+        let router = router
             .layer(axum::middleware::from_fn_with_state(
                 keys,
                 crate::idempotency::idempotency_mw,
@@ -272,11 +269,8 @@ impl App {
             .layer(axum::middleware::from_fn_with_state(
                 gate,
                 authz::authorize_mw,
-            ))
-            .layer(axum::middleware::from_fn_with_state(
-                limiter,
-                crate::rate_limit::rate_limit_mw,
-            ))
+            ));
+        Ok(crate::rate_limit::layer(router, limiters, ctx.pool())
             .layer(axum::middleware::from_fn(auth::require_auth_mw))
             .layer(axum::middleware::from_fn(authz::no_nul_mw))
             // The request id is settled before authentication or the audit trail.

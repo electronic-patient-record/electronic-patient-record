@@ -22,7 +22,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | Front-end version | 0.1.0 | `version` in the front-end `package.json` |
 | Migrations | 26 | files named `*.sql` in `migrations` |
 | Route registrations | 82 | `.add(` calls in `src/controllers/*.rs` |
-| Service tests | 681, plus 175 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
+| Service tests | 679, plus 175 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
 | Matcher tests | 110, plus 0 `#[ignore]`d | the same patterns in the matcher |
 | Front-end unit tests (vitest) | 300 | `it(` / `test(` lines in `tests/unit` |
 | Front-end end-to-end tests (Playwright) | 99 | `test(` lines in `tests/e2e` |

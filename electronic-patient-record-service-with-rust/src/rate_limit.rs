@@ -1,47 +1,59 @@
-//! Request limits per token subject (task OS-2, first slice; `spec/07` NFR-6).
+//! Request limits per token subject (task OS-2, first slice; `spec/07` NFR-6), counted by `axa-ratelimit`.
 //!
 //! A fixed one-minute window per `(subject, class)` held in the process. The classes are `general`
-//! and `compare` (`POST /api/patients/compare`). A request past its limit is answered 429 with
-//! `Retry-After`; the first refusal of a subject in a window is an audit row and every refusal is
-//! counted. A limit is a refusal a clinician could meet, so the defaults sit far above clinical use
-//! and the limiter fails open: if its table is full of live entries a new subject is let through.
-//! Requests without a token subject (login off, public paths) are not limited here.
+//! and `compare` (`POST /api/patients/compare`), each its own [`axa::ratelimit::Limiter`] counting by
+//! the verified token subject, so a compare call counts only against the compare limit. A request
+//! without a token subject (login off, public paths) is not counted. A request past its limit is
+//! answered 429 with `Retry-After` and the `RateLimit-*` headers; the first refusal of a subject in a
+//! window is an audit row and every refusal is counted. A limit is a refusal a clinician could meet
+//! (H-039), so the defaults sit far above clinical use and both limiters fail open
+//! ([`WhenFull::Allow`]): a new subject that finds the table full is let through uncounted, and counted
+//! in `epr_rate_limit_overflowed_total`. The limiter holds a subject only as a keyed hash.
 
 use crate::api_error::ApiError;
 use crate::audit::{self, Action, Event};
 use crate::auth::{ANONYMOUS, Agent};
+use axa::ratelimit::{Keyed, Limiter, Verdict, WhenFull, by_key};
 use axum::{
+    Router,
     extract::{Request, State},
-    http::{HeaderValue, header},
-    middleware::Next,
+    http::{Method, StatusCode, header},
+    middleware::{Next, from_fn_with_state},
     response::Response,
 };
 use sqlx::PgPool;
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::num::NonZeroU32;
 
 /// Seconds in a window.
-pub const WINDOW_SECS: u64 = 60;
-/// Default requests a subject may make per window, all routes.
-pub const DEFAULT_GENERAL: u32 = 1200;
+pub const WINDOW_SECS: u32 = 60;
+/// Default requests a subject may make per window, all routes but compare.
+pub const DEFAULT_GENERAL: NonZeroU32 = NonZeroU32::new(1200).unwrap();
 /// Default compare calls a subject may make per window.
-pub const DEFAULT_COMPARE: u32 = 120;
-/// The most `(subject, class)` entries kept. Past this, expired entries are dropped, and if none expired a
-/// new subject is not limited.
-pub const MAX_ENTRIES: usize = 100_000;
+pub const DEFAULT_COMPARE: NonZeroU32 = NonZeroU32::new(120).unwrap();
 /// The path of the compare call.
 const COMPARE_PATH: &str = "/api/patients/compare";
+/// The largest limit a setting may give.
+const MAX_SETTING: u32 = 1_000_000;
 
 /// What a request is counted against.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Class {
-    /// Every route.
+    /// Every route but compare.
     General,
     /// `POST /api/patients/compare`.
     Compare,
 }
 
 impl Class {
+    /// The class of `req`.
+    fn of(req: &Request) -> Class {
+        if req.method() == Method::POST && req.uri().path() == COMPARE_PATH {
+            Class::Compare
+        } else {
+            Class::General
+        }
+    }
+
     /// The name recorded in the audit row.
     #[must_use]
     pub fn name(self) -> &'static str {
@@ -55,10 +67,10 @@ impl Class {
 /// The limits per window.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Limits {
-    /// All routes.
-    pub general: u32,
+    /// All routes but compare.
+    pub general: NonZeroU32,
     /// The compare call.
-    pub compare: u32,
+    pub compare: NonZeroU32,
 }
 
 impl Default for Limits {
@@ -77,16 +89,21 @@ impl Default for Limits {
 /// # Errors
 ///
 /// The text of the bad setting.
-pub fn parse_limit(name: &str, raw: Option<&str>, default: u32) -> Result<u32, String> {
+pub fn parse_limit(
+    name: &str,
+    raw: Option<&str>,
+    default: NonZeroU32,
+) -> Result<NonZeroU32, String> {
     let Some(raw) = raw else {
         return Ok(default);
     };
-    match raw.trim().parse::<u32>() {
-        Ok(n) if (1..=1_000_000).contains(&n) => Ok(n),
-        _ => Err(format!(
-            "{name} must be a whole number from 1 to 1000000, not {raw:?}"
-        )),
-    }
+    raw.trim()
+        .parse::<NonZeroU32>()
+        .ok()
+        .filter(|n| n.get() <= MAX_SETTING)
+        .ok_or_else(|| {
+            format!("{name} must be a whole number from 1 to {MAX_SETTING}, not {raw:?}")
+        })
 }
 
 impl Limits {
@@ -110,257 +127,173 @@ impl Limits {
             )?,
         })
     }
-
-    /// The limit for a request class.
-    fn of(self, class: Class) -> u32 {
-        match class {
-            Class::General => self.general,
-            Class::Compare => self.compare,
-        }
-    }
 }
 
-/// What the limiter says about one request.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Verdict {
-    /// Within the limit.
-    Allow,
-    /// Past it.
-    Refuse {
-        /// Seconds until the window ends.
-        retry_after: u64,
-        /// The first refusal in this window, the one that is audited.
-        first: bool,
-    },
+/// The verified token subject of `req`, if it has one.
+fn subject(req: &Request) -> Option<String> {
+    req.extensions()
+        .get::<Agent>()
+        .map(|a| a.0.clone())
+        .filter(|a| a != ANONYMOUS)
 }
 
-struct Slot {
-    start: u64,
-    count: u32,
-    refused: bool,
+/// The two limiters. Clones share their counts.
+#[derive(Debug, Clone)]
+pub struct Limiters {
+    /// Every route but compare, by subject.
+    pub general: Keyed<String>,
+    /// The compare call, by subject.
+    pub compare: Keyed<String>,
 }
 
-/// The counters. Time is passed in, so tests need no clock.
-pub struct Limiter {
-    limits: Limits,
-    slots: Mutex<HashMap<(String, Class), Slot>>,
-}
-
-impl Limiter {
-    /// A limiter with `limits`.
+impl Limiters {
+    /// Limiters at `limits`, failing open when their table is full.
     #[must_use]
     pub fn new(limits: Limits) -> Self {
-        Limiter {
-            limits,
-            slots: Mutex::new(HashMap::new()),
-        }
-    }
-
-    /// Count one request by `subject` in `class` at `now` (unix seconds).
-    pub fn check(&self, subject: &str, class: Class, now: u64) -> Verdict {
-        let mut slots = self.slots.lock().unwrap_or_else(|e| e.into_inner());
-        let key = (subject.to_string(), class);
-        if !slots.contains_key(&key) && slots.len() >= MAX_ENTRIES {
-            slots.retain(|_, s| s.start + WINDOW_SECS > now);
-            if slots.len() >= MAX_ENTRIES {
-                return Verdict::Allow;
-            }
-        }
-        let slot = slots.entry(key).or_insert(Slot {
-            start: now,
-            count: 0,
-            refused: false,
-        });
-        if slot.start + WINDOW_SECS <= now {
-            *slot = Slot {
-                start: now,
-                count: 0,
-                refused: false,
-            };
-        }
-        slot.count = slot.count.saturating_add(1);
-        if slot.count <= self.limits.of(class) {
-            return Verdict::Allow;
-        }
-        let first = !slot.refused;
-        slot.refused = true;
-        Verdict::Refuse {
-            retry_after: (slot.start + WINDOW_SECS - now).max(1),
-            first,
+        let window = NonZeroU32::new(WINDOW_SECS).unwrap_or(NonZeroU32::MIN);
+        let limiter = |limit| Limiter::new(limit, window).when_full(WhenFull::Allow);
+        Limiters {
+            general: limiter(limits.general).key(|req: &Request| {
+                (Class::of(req) == Class::General)
+                    .then(|| subject(req))
+                    .flatten()
+            }),
+            compare: limiter(limits.compare).key(|req: &Request| {
+                (Class::of(req) == Class::Compare)
+                    .then(|| subject(req))
+                    .flatten()
+            }),
         }
     }
 }
 
-/// The middleware's state.
+/// The answering layer's state.
 #[derive(Clone)]
-pub struct Gate {
-    /// The counters.
-    pub limiter: Arc<Limiter>,
+struct Gate {
     /// For the audit row.
-    pub db: PgPool,
+    db: PgPool,
 }
 
-/// The current time in whole seconds since the Unix epoch; a clock before 1970 reads as 0.
-fn now() -> u64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |d| d.as_secs())
+/// Count every authenticated request on `router` and refuse one past its limit. Add it after
+/// authentication, so that it runs after it and the subject is the verified token's.
+pub fn layer(router: Router, limiters: Limiters, db: PgPool) -> Router {
+    router
+        .layer(from_fn_with_state(limiters.general, by_key::<String>))
+        .layer(from_fn_with_state(limiters.compare, by_key::<String>))
+        .layer(from_fn_with_state(Gate { db }, answer_mw))
 }
 
-/// Count every authenticated request and refuse one past its limit. Mounted after authentication, so
-/// the subject is the verified token's.
-pub async fn rate_limit_mw(State(gate): State<Gate>, req: Request, next: Next) -> Response {
-    let Some(agent) = req.extensions().get::<Agent>().map(|a| a.0.clone()) else {
-        return next.run(req).await;
+/// Outside the limiters: count an overflow, and for a refusal count it, audit the first in the window,
+/// and answer in the route's own shape (an `OperationOutcome` under `/fhir/`) with the limiter's headers.
+async fn answer_mw(State(gate): State<Gate>, req: Request, next: Next) -> Response {
+    let class = Class::of(&req);
+    let method = req.method().clone();
+    let path = req.uri().path().to_owned();
+    let agent = subject(&req);
+    let res = next.run(req).await;
+    let Some(verdict) = res.extensions().get::<Verdict>().copied() else {
+        return res;
     };
-    if agent == ANONYMOUS {
-        return next.run(req).await;
+    if verdict.overflowed {
+        crate::metrics::RATE_LIMIT_OVERFLOWED.inc();
     }
-    let class = if req.method() == axum::http::Method::POST && req.uri().path() == COMPARE_PATH {
-        Class::Compare
-    } else {
-        Class::General
-    };
-    match gate.limiter.check(&agent, class, now()) {
-        Verdict::Allow => next.run(req).await,
-        Verdict::Refuse { retry_after, first } => {
-            crate::metrics::RATE_LIMITED.inc();
-            if first {
-                let mut event = Event::new(Action::Execute, agent);
-                event.outcome = 4;
-                event.resource_ref = Some("rate-limit".to_string());
-                event.detail = Some(serde_json::json!({
-                    "denied": "rate-limit",
-                    "class": class.name(),
-                    "method": req.method().as_str(),
-                }));
-                if let Err(e) = audit::append(&gate.db, audit::chain(), &event).await {
-                    crate::metrics::UNAUDITED_REFUSALS.inc();
-                    tracing::error!(error = %e, "a rate-limit refusal could not be audited");
-                }
-            }
-            let mut res = ApiError::new(
-                axum::http::StatusCode::TOO_MANY_REQUESTS,
-                "too many requests; slow down",
-            )
-            .with("retry_after_seconds", retry_after)
-            .for_path(req.uri().path());
-            if let Ok(v) = HeaderValue::from_str(&retry_after.to_string()) {
-                res.headers_mut().insert(header::RETRY_AFTER, v);
-            }
-            res
+    if verdict.allowed {
+        return res;
+    }
+    crate::metrics::RATE_LIMITED.inc();
+    if verdict.first_refusal
+        && let Some(agent) = agent
+    {
+        let mut event = Event::new(Action::Execute, agent);
+        event.outcome = 4;
+        event.resource_ref = Some("rate-limit".to_string());
+        event.detail = Some(serde_json::json!({
+            "denied": "rate-limit",
+            "class": class.name(),
+            "method": method.as_str(),
+        }));
+        if let Err(e) = audit::append(&gate.db, audit::chain(), &event).await {
+            crate::metrics::UNAUDITED_REFUSALS.inc();
+            tracing::error!(error = %e, "a rate-limit refusal could not be audited");
         }
     }
+    let mut answer = ApiError::new(
+        StatusCode::TOO_MANY_REQUESTS,
+        "too many requests; slow down",
+    )
+    .with("retry_after_seconds", verdict.reset_seconds)
+    .for_path(&path);
+    verdict.stamp(&mut answer);
+    if let Some(wait) = res.headers().get(header::RETRY_AFTER) {
+        answer
+            .headers_mut()
+            .insert(header::RETRY_AFTER, wait.clone());
+    }
+    answer
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn limiter(general: u32, compare: u32) -> Limiter {
-        Limiter::new(Limits { general, compare })
-    }
-
-    #[test]
-    fn the_limit_trips_and_the_first_refusal_is_flagged_once() {
-        let l = limiter(3, 3);
-        for _ in 0..3 {
-            assert_eq!(l.check("a", Class::General, 100), Verdict::Allow);
-        }
-        assert_eq!(
-            l.check("a", Class::General, 110),
-            Verdict::Refuse {
-                retry_after: 50,
-                first: true
-            }
-        );
-        assert_eq!(
-            l.check("a", Class::General, 111),
-            Verdict::Refuse {
-                retry_after: 49,
-                first: false
-            }
-        );
-    }
-
-    #[test]
-    fn a_new_window_starts_clean_and_subjects_and_classes_are_separate() {
-        let l = limiter(1, 1);
-        assert_eq!(l.check("a", Class::General, 0), Verdict::Allow);
-        assert!(matches!(
-            l.check("a", Class::General, 1),
-            Verdict::Refuse { .. }
-        ));
-        assert_eq!(l.check("b", Class::General, 1), Verdict::Allow);
-        assert_eq!(l.check("a", Class::Compare, 1), Verdict::Allow);
-        assert_eq!(l.check("a", Class::General, WINDOW_SECS), Verdict::Allow);
-        // The refusal flag is per window too.
-        assert!(matches!(
-            l.check("a", Class::General, WINDOW_SECS + 1),
-            Verdict::Refuse { first: true, .. }
-        ));
-    }
-
-    #[test]
-    fn retry_after_is_never_zero() {
-        let l = limiter(1, 1);
-        l.check("a", Class::General, 0);
-        assert_eq!(
-            l.check("a", Class::General, WINDOW_SECS - 1),
-            Verdict::Refuse {
-                retry_after: 1,
-                first: true
-            }
-        );
+    fn nz(n: u32) -> NonZeroU32 {
+        NonZeroU32::new(n).unwrap()
     }
 
     #[test]
     fn a_clinician_at_the_default_limits_never_trips() {
-        let l = Limiter::new(Limits::default());
-        // Five requests a second for ten minutes, a compare every two seconds.
-        for t in 0..600u64 {
-            for _ in 0..5 {
-                assert_eq!(l.check("dr", Class::General, t), Verdict::Allow, "t={t}");
-            }
-            if t % 2 == 0 {
-                assert_eq!(l.check("dr", Class::Compare, t), Verdict::Allow, "t={t}");
-            }
+        let l = Limiters::new(Limits::default());
+        // One window of five requests a second and a compare every two seconds. The window is fixed, so
+        // every minute of a longer shift is counted the same way.
+        for _ in 0..300 {
+            assert!(l.general.limiter().check("dr".to_string()).allowed);
         }
+        for _ in 0..30 {
+            assert!(l.compare.limiter().check("dr".to_string()).allowed);
+        }
+        // The default itself is the edge.
+        let fresh = Limiters::new(Limits::default());
+        for _ in 0..DEFAULT_GENERAL.get() {
+            assert!(fresh.general.limiter().check("dr".to_string()).allowed);
+        }
+        let past = fresh.general.limiter().check("dr".to_string());
+        assert!(!past.allowed);
+        assert!(past.first_refusal);
+        assert!(
+            !fresh
+                .general
+                .limiter()
+                .check("dr".to_string())
+                .first_refusal
+        );
     }
 
     #[test]
-    fn a_full_table_lets_a_new_subject_through() {
-        let l = limiter(1, 1);
-        {
-            let mut slots = l.slots.lock().unwrap();
-            for i in 0..MAX_ENTRIES {
-                slots.insert(
-                    (format!("s{i}"), Class::General),
-                    Slot {
-                        start: 1000,
-                        count: 1,
-                        refused: false,
-                    },
-                );
-            }
+    fn a_full_table_lets_a_new_subject_through_and_says_so() {
+        let l = Limiters::new(Limits {
+            general: nz(1),
+            compare: nz(1),
+        });
+        let general = l.general.limiter();
+        for i in 0..axa::ratelimit::MAX_KEYS {
+            general.check(format!("s{i}"));
         }
-        // Nothing has expired, so the new subject is not counted.
-        assert_eq!(l.check("new", Class::General, 1001), Verdict::Allow);
-        assert_eq!(l.check("new", Class::General, 1001), Verdict::Allow);
-        // Once the entries have expired the table is cleared and counting resumes.
-        assert_eq!(l.check("new", Class::General, 5000), Verdict::Allow);
-        assert!(matches!(
-            l.check("new", Class::General, 5000),
-            Verdict::Refuse { .. }
-        ));
+        for _ in 0..3 {
+            let v = general.check("new".to_string());
+            assert!(v.allowed, "a new subject is let through, not refused");
+            assert!(v.overflowed);
+        }
+        // A subject already held is still counted.
+        assert!(!general.check("s0".to_string()).allowed);
     }
 
     #[test]
     fn a_setting_is_a_whole_number_in_range_or_the_service_does_not_start() {
-        assert_eq!(parse_limit("X", None, 7), Ok(7));
-        assert_eq!(parse_limit("X", Some(" 50 "), 7), Ok(50));
+        assert_eq!(parse_limit("X", None, nz(7)), Ok(nz(7)));
+        assert_eq!(parse_limit("X", Some(" 50 "), nz(7)), Ok(nz(50)));
+        assert_eq!(parse_limit("X", Some("1000000"), nz(7)), Ok(nz(1_000_000)));
         for bad in ["0", "1000001", "-1", "many", "", "1.5"] {
-            assert!(parse_limit("X", Some(bad), 7).is_err(), "{bad:?}");
+            assert!(parse_limit("X", Some(bad), nz(7)).is_err(), "{bad:?}");
         }
     }
 }

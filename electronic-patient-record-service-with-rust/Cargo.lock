@@ -207,6 +207,7 @@ dependencies = [
  "axa-cursor-pagination",
  "axa-environment",
  "axa-problem",
+ "axa-ratelimit",
  "axa-sqlx",
  "axum",
  "axum-test",
@@ -252,6 +253,18 @@ dependencies = [
  "axum",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "axa-ratelimit"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "491a6eb3b9e613d12da6df0eea115ded93cdddf42f16157e272663a75bfbfab6"
+dependencies = [
+ "axa-problem",
+ "axum",
+ "serde_json",
+ "tracing",
 ]
 
 [[package]]

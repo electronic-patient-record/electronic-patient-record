@@ -15,35 +15,35 @@ use axum::middleware::{self, Next};
 use axum::routing::{get, post};
 use electronic_patient_record::auth::Agent;
 use electronic_patient_record::metrics;
-use electronic_patient_record::rate_limit::{Gate, Limiter, Limits, rate_limit_mw};
+use electronic_patient_record::rate_limit::{self, Limiters, Limits};
 use sqlx::{PgPool, Row};
-use std::sync::Arc;
+use std::num::NonZeroU32;
 use tower::ServiceExt;
 
 /// A router whose caller is the subject named in `X-Test-Subject` (none when absent), as the
 /// authentication middleware would have set it.
 fn app(db: PgPool, general: u32, compare: u32) -> Router {
-    let gate = Gate {
-        limiter: Arc::new(Limiter::new(Limits { general, compare })),
-        db,
-    };
-    Router::new()
+    let limiters = Limiters::new(Limits {
+        general: NonZeroU32::new(general).unwrap(),
+        compare: NonZeroU32::new(compare).unwrap(),
+    });
+    let routes = Router::new()
         .route("/api/things", get(|| async { "ok" }))
-        .route("/api/patients/compare", post(|| async { "ok" }))
-        .layer(middleware::from_fn_with_state(gate, rate_limit_mw))
-        .layer(middleware::from_fn(
-            |mut req: Request<Body>, next: Next| async move {
-                if let Some(s) = req
-                    .headers()
-                    .get("x-test-subject")
-                    .and_then(|v| v.to_str().ok())
-                {
-                    let agent = Agent(s.to_string());
-                    req.extensions_mut().insert(agent);
-                }
-                next.run(req).await
-            },
-        ))
+        .route("/fhir/R4/Patient", get(|| async { "ok" }))
+        .route("/api/patients/compare", post(|| async { "ok" }));
+    rate_limit::layer(routes, limiters, db).layer(middleware::from_fn(
+        |mut req: Request<Body>, next: Next| async move {
+            if let Some(s) = req
+                .headers()
+                .get("x-test-subject")
+                .and_then(|v| v.to_str().ok())
+            {
+                let agent = Agent(s.to_string());
+                req.extensions_mut().insert(agent);
+            }
+            next.run(req).await
+        },
+    ))
 }
 
 fn request(method: Method, path: &str, subject: Option<&str>) -> Request<Body> {
@@ -85,11 +85,15 @@ async fn a_subject_past_its_limit_gets_429_with_retry_after() {
         .parse()
         .unwrap();
     assert!((1..=60).contains(&wait), "{wait}");
+    assert_eq!(res.headers()["ratelimit-limit"], "2");
+    assert_eq!(res.headers()["ratelimit-remaining"], "0");
+    assert_eq!(res.headers()["content-type"], "application/problem+json");
     let body = axum::body::to_bytes(res.into_body(), 1 << 16)
         .await
         .unwrap();
     let text = String::from_utf8(body.to_vec()).unwrap();
     assert!(text.contains("too many requests"), "{text}");
+    assert!(text.contains("retry_after_seconds"), "{text}");
     assert!(metrics::RATE_LIMITED.get() > before);
     // Another subject is not affected.
     let other = app
@@ -192,4 +196,43 @@ async fn the_first_refusal_in_a_window_is_one_audit_row() {
     .try_get("n")
     .unwrap();
     assert_eq!(rows, 1, "three refusals, one audit row");
+}
+
+#[tokio::test]
+async fn a_counted_answer_says_what_is_left_and_a_fhir_refusal_is_an_operation_outcome() {
+    let app = app(
+        sqlx::postgres::PgPoolOptions::new()
+            .acquire_timeout(std::time::Duration::from_millis(100))
+            .connect_lazy("postgres://nobody@127.0.0.1:1/none")
+            .unwrap(),
+        1,
+        1,
+    );
+    let first = app
+        .clone()
+        .oneshot(request(Method::GET, "/fhir/R4/Patient", Some("dr-fhir")))
+        .await
+        .unwrap();
+    assert_eq!(first.status(), StatusCode::OK);
+    assert_eq!(first.headers()["ratelimit-limit"], "1");
+    assert_eq!(first.headers()["ratelimit-remaining"], "0");
+    let refused = app
+        .clone()
+        .oneshot(request(Method::GET, "/fhir/R4/Patient", Some("dr-fhir")))
+        .await
+        .unwrap();
+    assert_eq!(refused.status(), StatusCode::TOO_MANY_REQUESTS);
+    assert!(refused.headers().contains_key(header::RETRY_AFTER));
+    assert_eq!(refused.headers()["content-type"], "application/fhir+json");
+    let body = axum::body::to_bytes(refused.into_body(), 1 << 16)
+        .await
+        .unwrap();
+    let outcome: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(outcome["resourceType"], "OperationOutcome");
+    // An uncounted request gets no headers.
+    let anonymous = app
+        .oneshot(request(Method::GET, "/api/things", None))
+        .await
+        .unwrap();
+    assert!(!anonymous.headers().contains_key("ratelimit-limit"));
 }

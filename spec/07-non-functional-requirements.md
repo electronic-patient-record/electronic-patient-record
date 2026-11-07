@@ -17,15 +17,19 @@ Targets, not measurements. Nothing here has been measured yet. Where the field s
   fixed one-minute window held in the process: `EPR_RATE_LIMIT_PER_MINUTE` (default 1200, about 20 a second) for
   everything, and `EPR_RATE_LIMIT_COMPARE_PER_MINUTE` (default 120) for `POST /api/patients/compare`, the call
   that scores a candidate against the register. A value outside 1 to 1,000,000 stops the service starting. Past a
-  limit the answer is 429 with `Retry-After` (seconds to the end of the window). The first refusal of a subject in
+  limit the answer is 429 with `Retry-After` (seconds to the end of the window), as a problem under `/api` and an
+  `OperationOutcome` under `/fhir`. Every counted answer carries `RateLimit-Limit`, `RateLimit-Remaining` and
+  `RateLimit-Reset`. The counting is `axa-ratelimit` (since 2026-11-07), one limiter per class keyed by the token
+  subject, which it holds only as a keyed hash. When its table of 100,000 subjects is full, a new subject is let
+  through uncounted, never refused, and counted in `epr_rate_limit_overflowed_total`. The first refusal of a subject in
   a window is an audit row (`Execute`, outcome 4, `denied: rate-limit`, no body); the others are only counted in
   `epr_rate_limited_total`, so a flood cannot become a flood of audit writes. A limit is a refusal a clinician could
-  meet, so the defaults sit far above clinical use (a test replays a clinician at five requests a second for ten
-  minutes and the compare route at one call every two seconds, and neither trips) and the hazard is H-039.
+  meet, so the defaults sit far above clinical use (a test counts a minute of five requests a second and a compare
+  every two seconds, and neither trips; the window is fixed, so every minute counts alike) and the hazard is H-039.
   **Not built:** a limit keyed by client address (the service sits behind the UI's server, so the address is
   one caller for everybody); a sign-in lockout (sign-in is the identity provider's, not this service's); a store
   shared between replicas (each replica counts alone, so N replicas allow N times the limit); per-route limits other
-  than compare; a way to lift a limit for one subject without a restart.
+  than compare; a way to lift a limit for one subject without a restart (the limiter can, but nothing calls it).
 - **NFR-7 Auditability.** Append-only audit, tamper-evident; reads included. **When a write's audit row cannot be written, the write is refused** ([audit](audit/index.md)).
 - **NFR-8 Observability.** `tracing` JSON logs, Prometheus metrics, OTLP.
 - **NFR-9 Determinism.** Matching is pure and total; every score has a breakdown.
