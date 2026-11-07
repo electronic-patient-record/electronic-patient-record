@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-07 - `axa` 0.6.1 to 0.7.0
+
+- **Clinical risk:** **no change expected in what a clinician sees.** One answer changes: a FHIR read whose `If-None-Match` holds the patient's current `ETag` is now `304` with no body, so a client shows the copy it already holds, which is that version. The handler, its checks and its audit row still run first. The UI sends no `If-None-Match`, so it is unaffected. No hazard row was changed; that is my judgement, not the Clinical Safety Officer's.
+- **Built:** `axa` 0.7.0. The `pagination` feature is now `offset-pagination`, and `escape_like` is called as `axa::offset_pagination::escape_like`; `axa-pagination` 0.1.1 is replaced by `axa-offset-pagination` 0.1.0, the same code. Also new since 0.6.1 and in force with no change here: a write breaking a check or not-null constraint answers `422`, not `500` (0.6.2), and a client that stops reading a response is dropped after `SEND_STALL_TIMEOUT_SECONDS`, 60 by default.
+- **Checked:** clippy, every database-free test, and every database test, the HL7 validator ones included. `tests/http_patients.rs` now checks the `304` and that a stale tag still gets a full `200`.
+- **Not done / not verified:** whether any write here can break a check or not-null constraint, and so now gets a `422`, was not searched for. Not taken up: `axa-ratelimit` 0.2.0, which now has what H-039 needs (a key per subject, `WhenFull::Allow`, `first_refusal`, a per-key limit), `axa-cursor-pagination`, `axa-idempotency`, `axa-outbox`, the queue's schedules, and `conditional::if_match` in place of the FHIR update's own `If-Match` check. The UI and the container image were not run against it.
+
 ## 2026-11-07 - Patient search escapes `LIKE` with `axa`'s `escape_like`
 
 - **Clinical risk:** **no.** The pattern a search sends is byte for byte what it was: `%`, `_` and `\` are escaped, and a family name such as `50%_\` matches only itself. `patients_store::tests::like_wildcards_in_a_search_are_escaped` pins it, unchanged.

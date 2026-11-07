@@ -135,6 +135,20 @@ async fn fhir_refusals_are_operation_outcomes_and_never_carry_candidates() {
         assert_eq!(read.status_code(), StatusCode::OK);
         assert_eq!(read.header("etag"), "W/\"1\"");
         let resource: serde_json::Value = read.json();
+
+        // A read holding the current tag is 304 with no body, from `axa`'s stack (0.7); a stale tag is a full 200.
+        let fresh = server
+            .get(&format!("/fhir/R4/Patient/{id}"))
+            .add_header("if-none-match", "W/\"1\"")
+            .await;
+        assert_eq!(fresh.status_code(), StatusCode::NOT_MODIFIED);
+        assert_eq!(fresh.header("etag"), "W/\"1\"");
+        assert!(fresh.text().is_empty());
+        let older = server
+            .get(&format!("/fhir/R4/Patient/{id}"))
+            .add_header("if-none-match", "W/\"0\"")
+            .await;
+        assert_eq!(older.status_code(), StatusCode::OK);
         let put = server
             .put(&format!("/fhir/R4/Patient/{id}"))
             .json(&resource)
