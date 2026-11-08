@@ -199,9 +199,9 @@ dependencies = [
 
 [[package]]
 name = "axa"
-version = "0.7.0"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7f321d0968f2ca45ddc6d0a6f2d48f2682f9d680ba2a50c3b7a69f28444a41f"
+checksum = "5ced1838dc01c704bf4f02a1f41e7c40fa52fce4c1204adea7a1aab154a41d72"
 dependencies = [
  "async-trait",
  "axa-cursor-pagination",
@@ -228,12 +228,12 @@ dependencies = [
 
 [[package]]
 name = "axa-cursor-pagination"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "254bae98d29dc977a0a3d4ba4e4d776fe94931923b70f476b7020aea15e60d98"
+checksum = "b8e27de6945fe8ee4ca8e537b92b35ca79d731f12d4a5a59c4c3deef0e601c15"
 dependencies = [
  "axum",
- "base64 0.22.1",
+ "base64 0.23.1",
  "hmac",
  "serde",
  "sha2 0.11.1",
@@ -247,9 +247,9 @@ checksum = "aeb36293430bafb06d1e29f5e213623d127444cdd234003b413a46207c03bbd3"
 
 [[package]]
 name = "axa-idempotency"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be22a42e059963b0d513a968a0ffeef5dd9cd17a7b34026c69ebef9601a46cbf"
+checksum = "dbbbe3dcd74e4ba17fe26ed96f135d7835cc2c2b88d2e3d1af66f83b76a418b5"
 dependencies = [
  "axa-problem",
  "axum",

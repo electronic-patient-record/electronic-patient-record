@@ -11,11 +11,11 @@
 //! the kept answer can hold patient data, so [`run_loop`] sweeps expired rows. A replay is audited (it
 //! discloses the answer again), and if that row cannot be written the replay is refused.
 //!
-//! **The lease is the key's whole life** ([`LEASE`]). `axa-idempotency` lets the same request take over a
-//! key whose run stopped reporting in, so that a crash does not block a retry. Its default of a minute
-//! would also let a retry write a second record when the first run wrote the record and then could not
-//! keep its answer, or crashed after its commit. Here that retry is a 409 until the key expires, as it
-//! was before (H-043).
+//! **A run holds its key for the key's whole life.** A run lost to a crash, or one that wrote the record
+//! and then could not keep its answer, may have written; a retry under its key is a 409 until the key
+//! expires, never a second write (H-043). That is `axa-idempotency`'s default from 0.2.0, and this
+//! service never calls `rerun_abandoned_after`, which would let a retry run the write again after a
+//! shorter lease; a unit test pins that.
 //!
 //! Not covered: `/fhir/` creates, other methods, and a request whose first run wrote the record and then
 //! failed with a non-success answer (the key is released, so a retry can write again).
@@ -38,9 +38,6 @@ use std::time::Duration;
 pub const HEADER: &str = "idempotency-key";
 /// How long a key and its answer are kept: one day.
 pub const TTL: Duration = Duration::from_hours(24);
-/// How long a run may go without reporting in before the same request may take its key over: as long
-/// as the key lives, so that a run that may have written is never run again under its key.
-pub const LEASE: Duration = TTL;
 /// The most request body bytes read for a keyed request.
 const MAX_REQUEST: usize = 1 << 20;
 /// The most response body bytes kept for a replay.
@@ -59,7 +56,6 @@ pub fn keys(db: PgPool) -> Idempotency {
     })
     .only(covered)
     .ttl(TTL)
-    .lease(LEASE)
     .max_request_bytes(MAX_REQUEST)
     .max_response_bytes(MAX_RESPONSE)
 }
@@ -146,8 +142,15 @@ mod tests {
         }
     }
 
-    #[test]
-    fn a_run_that_may_have_written_is_never_taken_over_while_its_key_lives() {
-        assert!(LEASE >= TTL);
+    #[tokio::test]
+    async fn a_run_that_may_have_written_is_never_taken_over_while_its_key_lives() {
+        // `axa-idempotency` holds a run's key for its whole `ttl` unless `rerun_abandoned_after` is set.
+        let db = PgPool::connect_lazy("postgres://localhost/unused").unwrap();
+        let settings = format!("{:?}", keys(db));
+        assert!(
+            settings.contains("rerun_abandoned_after: None"),
+            "a retry must never run a write again: {settings}"
+        );
+        assert!(settings.contains(&format!("ttl: {TTL:?}")), "{settings}");
     }
 }

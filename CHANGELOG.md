@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-08 - `axa` 0.7.0 to 0.9.0
+
+- **Clinical risk:** **yes, treated as clinical (H-043, a retried create written twice), though nothing a clinician sees should change.** `axa-idempotency` 0.2.0 now holds a run's key for its whole life by default, which is what this service set by hand. The `.lease` setting is gone, so the service no longer sets it, and a unit test now pins that `rerun_abandoned_after` is never set. A retry of a lost run is still a 409 until the key expires. H-043's controls and residual are reworded to say this; its status is unchanged, and the wording is my judgement, not the Clinical Safety Officer's.
+- **Built:** `axa` 0.9.0, with `axa-idempotency` 0.2.0 and `axa-cursor-pagination` 0.1.1. `src/idempotency.rs` drops `LEASE` and `.lease(LEASE)`. The table is unchanged and needs no migration. A running request reports in every third of its lease, every 8 hours. 0.8.0 changed only `axa-outbox`, which this service does not use yet, and 0.9.0 removed `axa-offset-pagination` and `axa-worker`'s pool calls, which it does not use either.
+- **Checked:** fmt, clippy, every database-free test, and every database test (`tests/http_idempotency.rs` included).
+- **Not done / not verified:** the UI and the container image were not run against it. A real crash during a keyed create was not exercised, as before. `axa-outbox` 0.2.0 is not adopted yet; that is the next entry.
+
 ## 2026-11-07 - `Idempotency-Key` run by `axa-idempotency` (OF-1, H-043)
 
 - **Clinical risk:** **yes, treated as clinical (H-043, a retried create written twice).** A keyed create still runs once per subject and key, a replay is still audited and refused if it cannot be, and a refusal still releases its key. Three things change. A key may now be 1 to 255 visible ASCII characters (it was 1 to 128 of letters, digits and `. _ : -`), and the UI sends a UUID either way. The query string is now part of what makes a request the same one. A key store that cannot be reached is now 503, not 500. `axa-idempotency` would by default let the same request take over a key after a minute without a heartbeat, which could write a record twice after a crash or a lost answer. **The lease is set to the key's whole life (24 hours)**, so that retry stays a 409, as before, and a unit test pins it. H-043's controls and residual are reworded to say so; its status is unchanged, and the wording is my judgement, not the Clinical Safety Officer's.
