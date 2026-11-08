@@ -45,8 +45,9 @@ A `POST` under `/api` may carry `Idempotency-Key: <1 to 255 visible ASCII charac
 returns the first answer, its status, body and content headers, with `Idempotent-Replayed: true`, and writes nothing;
 the replay is audited (resource `IdempotentReplay`) and is refused (500) if that row cannot be written. The same key
 with a different method, path, query or body is 422 `idempotency_key_reused`. A key whose first request is still
-running is 409 `idempotency_in_progress`, and one whose first request ran but whose answer could not be kept is 409
-`idempotency_answer_not_kept`. A run holds its key for the key's whole life, so a request that may have written and
+running is 409 `idempotency_in_progress`, with `Retry-After` set to how long the first has run so far, in whole
+seconds rounded up (at least 1, at most the time left on its hold; since `axa-idempotency` 0.2.1), and one whose first
+request ran but whose answer could not be kept is 409 `idempotency_answer_not_kept`. A run holds its key for the key's whole life, so a request that may have written and
 then crashed, or could not keep its answer, is a 409 on retry, never a second write. A key that is not well formed is
 400 `idempotency_key_invalid`; a body over 1 MiB with a key is 413. Only a `2xx` or `3xx` is kept: a refusal or
 failure releases the key so the corrected request can use it. Keys are per subject and expire after 24 hours

@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-08 - `axa` 0.9.0 to 0.9.1
+
+- **Clinical risk:** **no.** No clinical rule, screen or record changed. A client sending the same `Idempotency-Key` while the first request still runs is now told to wait as long as the first has run (1 second at least), not always 1 second; it is still refused and nothing is written twice.
+- **Built:** `axa` 0.9.1 and `axa-idempotency` 0.2.1 (`cargo update`). Spec `09` states the new `Retry-After` on 409 `idempotency_in_progress`.
+- **Checked:** fmt, clippy, every database-free test, and the idempotency database tests. I read the rule in `axa-idempotency` 0.2.1's source.
+- **Not done / not verified:** no test here makes a request that is still running, so the new `Retry-After` is tested in `axa-idempotency`, not in this service. The UI proxy was not checked for passing a 409's `Retry-After` through.
+
 ## 2026-11-08 - The outbox relay stops when the service stops (OS-3, H-038)
 
 - **Clinical risk:** **yes, treated as clinical (H-038).** Nothing enqueues and the only sink logs, so no event leaves the service, before or after. A relay that would have been cut off by a shutdown mid-publish, and sent that event again later, now finishes it and records it. A crash still sends again. H-038's controls gain this clause; its status is unchanged.
