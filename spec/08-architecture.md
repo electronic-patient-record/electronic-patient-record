@@ -53,6 +53,11 @@ Delivery is at least once: a crash after the sink answers and before the attempt
 receives the event id and must treat a repeat as a repeat. Claiming uses `FOR UPDATE SKIP LOCKED`, and a claim names its
 relay, so two relays never hold the same event and a relay given up on cannot write over the one that took over.
 
+On `SIGTERM` or Ctrl-C the service stops serving first, then tells the relay to stop and waits for it: a publish in
+progress finishes, within `axa-outbox`'s publish timeout (30 seconds), and the rest of the batch is handed back unsent
+and with no attempt charged. A relay that has not stopped 35 seconds after it was told is abandoned, is logged as an
+error, and its claim is recovered by the next relay after five minutes, as after a crash.
+
 The tables of migration 17, `outbox_events` and `outbox_attempts`, are kept with their rows and triggers, and refuse new
 rows: they are a record of what was disclosed and refused, and nothing removes one. Nothing enqueued before migration 28,
 so they are expected to be empty; a row in them stays where it is and is not moved.

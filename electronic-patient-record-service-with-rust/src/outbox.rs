@@ -398,6 +398,79 @@ pub async fn run(outbox: Outbox, sinks: Sinks, shutdown: watch::Receiver<bool>) 
         .await;
 }
 
+/// How long [`Running::stop`] waits: `axa-outbox`'s publish timeout, which a publish in progress is given
+/// to finish, and five seconds to hand the rest of the batch back.
+pub const STOP_WAIT: Duration = Duration::from_secs(35);
+
+/// A relay and its depth gauges, running until [`Running::stop`].
+pub struct Running {
+    stop: watch::Sender<bool>,
+    relay: tokio::task::JoinHandle<()>,
+    depth: tokio::task::JoinHandle<()>,
+}
+
+impl Running {
+    /// Start [`run`] and [`watch_depth`] (every `every`) on `outbox`.
+    #[must_use]
+    pub fn start(outbox: Outbox, sinks: Sinks, every: Duration) -> Self {
+        let (stop, stopped) = watch::channel(false);
+        let depth = tokio::spawn(watch_depth(outbox.clone(), every));
+        let relay = tokio::spawn(run(outbox, sinks, stopped));
+        Self { stop, relay, depth }
+    }
+
+    /// Tell the relay to stop and wait up to `wait` for it: a publish in progress finishes and the rest
+    /// of the batch goes back. Answers whether it stopped; one that did not is aborted and logged, and its
+    /// claim is recovered by the next relay as after a crash.
+    pub async fn stop(self, wait: Duration) -> bool {
+        self.depth.abort();
+        // A relay that has already ended has dropped its receiver; there is nothing to tell.
+        let _ = self.stop.send(true);
+        let abort = self.relay.abort_handle();
+        match tokio::time::timeout(wait, self.relay).await {
+            Ok(Ok(())) => true,
+            Ok(Err(e)) => {
+                tracing::error!(error = %e, "outbox relay ended in a panic");
+                false
+            }
+            Err(_) => {
+                abort.abort();
+                tracing::error!(
+                    seconds = wait.as_secs(),
+                    "outbox relay did not stop in time; its claim is recovered as after a crash"
+                );
+                false
+            }
+        }
+    }
+}
+
+/// The relay the service started, kept for [`stop_kept`].
+static KEPT: std::sync::Mutex<Option<Running>> = std::sync::Mutex::new(None);
+
+/// Keep `running` until [`stop_kept`]; one kept before is stopped first, so none is left unowned.
+pub async fn keep(running: Running) {
+    let before = KEPT
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .replace(running);
+    if let Some(before) = before {
+        before.stop(STOP_WAIT).await;
+    }
+}
+
+/// Stop the kept relay, if any, waiting up to [`STOP_WAIT`]. Answers whether there was none or it stopped.
+pub async fn stop_kept() -> bool {
+    let kept = KEPT
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .take();
+    match kept {
+        Some(running) => running.stop(STOP_WAIT).await,
+        None => true,
+    }
+}
+
 /// Events still owed (waiting, claimed or held) and events left `failed` for a person, as
 /// `(pending, stuck)`.
 ///

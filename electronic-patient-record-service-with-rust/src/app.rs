@@ -177,7 +177,10 @@ impl App {
         match cli.command {
             Command::Start { .. } => {
                 let router = Self::router(&ctx).await?;
-                server::serve(router, &ctx.config.server).await
+                let served = server::serve(router, &ctx.config.server).await;
+                // Requests have finished; now let the outbox relay finish its publish (OS-3).
+                crate::outbox::stop_kept().await;
+                served
             }
             Command::Db { command } => Self::db(&ctx, command).await,
             Command::Task { .. } => Err(Error::string("this service registers no tasks")),
@@ -246,12 +249,9 @@ impl App {
                 seconds = every.as_secs(),
                 "outbox relay is ON (log sink only)"
             );
-            // The relay runs for the life of the process; a stop mid-delivery is a repeat, which every
-            // sink must treat as one.
-            let (stop, stopped) = tokio::sync::watch::channel(false);
-            std::mem::forget(stop);
-            tokio::spawn(crate::outbox::watch_depth(outbox.clone(), every));
-            tokio::spawn(crate::outbox::run(outbox, sinks, stopped));
+            // Stopped by `run` once the server has stopped: a publish in progress finishes and the rest
+            // of the batch goes back.
+            crate::outbox::keep(crate::outbox::Running::start(outbox, sinks, every)).await;
         }
         // Audit partitions are made ahead and, when `EPR_AUDIT_ARCHIVE_AFTER_MONTHS` is set, old ones are
         // moved to the archive schema (OS-13). A bad setting stops the service starting.

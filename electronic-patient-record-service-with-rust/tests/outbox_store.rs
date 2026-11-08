@@ -553,3 +553,114 @@ async fn depth_counts_owed_and_stuck_events() {
         "a failed event is stuck until a person releases it"
     );
 }
+
+/// A sink that says when a publish has begun, then waits to be let go (or for ever).
+struct Gated {
+    entered: Arc<tokio::sync::Notify>,
+    go: Arc<tokio::sync::Notify>,
+    calls: Arc<AtomicU32>,
+}
+
+#[async_trait]
+impl Sink for Gated {
+    async fn deliver(&self, _event: &Delivery) -> Result<(), Failure> {
+        self.calls.fetch_add(1, Ordering::SeqCst);
+        self.entered.notify_one();
+        self.go.notified().await;
+        Ok(())
+    }
+}
+
+fn gated(
+    name: &str,
+) -> (
+    Sinks,
+    Arc<tokio::sync::Notify>,
+    Arc<tokio::sync::Notify>,
+    Arc<AtomicU32>,
+) {
+    let entered = Arc::new(tokio::sync::Notify::new());
+    let go = Arc::new(tokio::sync::Notify::new());
+    let calls = Arc::new(AtomicU32::new(0));
+    let mut all = Sinks::new();
+    all.insert(
+        name.to_string(),
+        Box::new(Gated {
+            entered: entered.clone(),
+            go: go.clone(),
+            calls: calls.clone(),
+        }),
+    );
+    (all, entered, go, calls)
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn a_stop_lets_the_publish_in_progress_finish_and_sends_nothing_more() {
+    let db = db().await;
+    let recipient = format!("gated-{}", nanos());
+    let payload = serde_json::json!({"n": 10});
+    let first = enqueue(&db, event(&recipient, None, &payload)).await;
+    let second = enqueue(&db, event(&recipient, None, &payload)).await;
+    let (all, entered, go, calls) = gated(&recipient);
+    let outbox = Outbox::connect_existing(&url(), quick()).await.unwrap();
+    let running = outbox::Running::start(outbox, all, Duration::from_secs(60));
+
+    tokio::time::timeout(Duration::from_secs(10), entered.notified())
+        .await
+        .expect("a publish begins");
+    let stopping = tokio::spawn(running.stop(outbox::STOP_WAIT));
+    settle().await;
+    assert!(!stopping.is_finished(), "the stop waits for the publish");
+    go.notify_one();
+    assert!(stopping.await.unwrap(), "the relay stopped in time");
+
+    assert_eq!(
+        calls.load(Ordering::SeqCst),
+        1,
+        "nothing is sent after the stop"
+    );
+    let delivered =
+        attempts(&db, &first, "delivered").await + attempts(&db, &second, "delivered").await;
+    assert_eq!(delivered, 1, "the publish in progress is recorded");
+    let charged = attempts(&db, &first, "rejected").await
+        + attempts(&db, &second, "rejected").await
+        + attempts(&db, &first, "failed").await
+        + attempts(&db, &second, "failed").await;
+    assert_eq!(charged, 0, "the stop charges nothing");
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn a_relay_that_does_not_stop_in_time_is_abandoned_and_says_so() {
+    let db = db().await;
+    let recipient = format!("stuck-{}", nanos());
+    let payload = serde_json::json!({"n": 11});
+    let id = enqueue(&db, event(&recipient, None, &payload)).await;
+    let (all, entered, _go, _calls) = gated(&recipient);
+    let outbox = Outbox::connect_existing(&url(), quick()).await.unwrap();
+    let running = outbox::Running::start(outbox, all, Duration::from_secs(60));
+
+    tokio::time::timeout(Duration::from_secs(10), entered.notified())
+        .await
+        .expect("a publish begins");
+    let waited = std::time::Instant::now();
+    assert!(
+        !running.stop(Duration::from_millis(300)).await,
+        "not stopped"
+    );
+    assert!(
+        waited.elapsed() < Duration::from_secs(5),
+        "the wait is bounded"
+    );
+    assert_eq!(
+        attempts(&db, &id, "delivered").await,
+        0,
+        "nothing is recorded as sent"
+    );
+}
+
+#[tokio::test]
+async fn with_no_relay_kept_a_stop_is_immediate() {
+    assert!(outbox::stop_kept().await);
+}
