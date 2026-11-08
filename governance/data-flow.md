@@ -20,7 +20,7 @@
 | The audit trail | `audit_events`, a hash chain, append-only | Who did what to which record, with the outcome and the client's IP address, a personal datum (shown to an auditor, never in the patient's access log) | A write whose audit row cannot be written is refused (`tests/http_audit_refusal.rs`) |
 | A scraper | `/metrics`, only when `EPR_METRICS` is `1` or `true` | Counters; needs no token | Off by default; **when on it is public to anyone who can reach the port** |
 | A probe | `/_health`, `/_ping`, `/_readiness`, `/_dependencies` | Liveness, and which dependency is down, as labels | Public |
-| Other systems | The transactional outbox (`outbox_events`) | Nothing yet: `outbox::enqueue` has no caller outside its own module, and the only sink is a log line | Delivery to a real recipient is not built |
+| Other systems | The transactional outbox (`axa_outbox_events`, `axa_outbox_payloads`) | Nothing yet: `outbox::enqueue` has no caller outside its own module, and the only sink is a log line | Delivery to a real recipient is not built |
 | The log | `tracing` | Request outcomes and job results | What the log may contain is not audited here |
 
 ## Where the data rests

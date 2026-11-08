@@ -21,7 +21,7 @@ path = "src/bin/main.rs"
 
 [workspace.dependencies]
 # The shared service plumbing.
-axa = { version = "0.9", features = ["cursor-pagination", "idempotency", "problem", "ratelimit", "sqlx"] }
+axa = { version = "0.9", features = ["cursor-pagination", "idempotency", "outbox", "problem", "ratelimit", "sqlx"] }
 
 [dependencies]
 axa = { workspace = true }

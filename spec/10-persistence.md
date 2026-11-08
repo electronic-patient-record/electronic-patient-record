@@ -3,7 +3,7 @@
 PostgreSQL 18. **Built**: `audit_events` (append-only; triggers refuse UPDATE/DELETE/TRUNCATE; action in C/R/U/D/E;
 outcome in 0/4/8/12; `prev_digest`/`digest` reserved for the hash chain).
 
-**Built (OS-3, migration 17):** the append-only `outbox_events` and `outbox_attempts` ([08](08-architecture.md), "Outbox").
+**Built (OS-3, migration 28):** the outbox record of `axa-outbox` 0.2, `axa_outbox_events`, `axa_outbox_payloads` and `axa_outbox_attempts`, insert-only under triggers, with the working tables `axa_outbox_owed` and `axa_outbox_leases`; migration 17's `outbox_events` and `outbox_attempts` are kept and closed to new rows ([08](08-architecture.md), "Outbox").
 
 **Planned**: `resource_version` (type, id, version_id, tenant_id, patient_id, recorded_at, author_ref, provenance_id,
 status, `data` JSONB, security labels) and `resource_current`; typed search index tables (token, string, date,

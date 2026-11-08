@@ -52,7 +52,7 @@ Principles that follow, and that fit an append-only record:
 | Legacy migration | None | No import run entity, no reconciliation report, no rollback design |
 | Identity on import | Matcher with explainable scores; merge and unmerge audited | No batch mode, no review queue for imports (the feed review queue is for HL7 refusals) |
 | Audit of import and export | Audit rule: the audit row is part of the write; reads audited | No row shape for a bulk run |
-| Outbox | Append-only `outbox_events` and `outbox_attempts`; delivery loop off unless set | Nothing is enqueued yet |
+| Outbox | `axa-outbox` 0.2: insert-only events, payloads and attempts; relay off unless set | Nothing is enqueued yet |
 | Patient right of access | Patients can see who accessed their record (planned) | No patient copy export, no timer for the 30-day or one-month deadline |
 | Encrypted export | Per-tenant keys planned | No export encryption design |
 | National standards as packs | Pack mechanism designed, not built | No pack exists |

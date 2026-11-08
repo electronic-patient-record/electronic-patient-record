@@ -85,15 +85,17 @@ pub static OUTBOX_DELIVERED: Counter = Counter::new();
 /// Outbox events refused by the policy or the patient's consent. Each is also an audit row.
 pub static OUTBOX_REFUSED: Counter = Counter::new();
 
-/// Outbox delivery attempts that failed. A count that keeps rising while `delivered` does not is a
-/// sink that is down or an event that cannot be sent.
+/// Outbox attempts that failed: a sink's refusal, an event out of attempts or changed, or a lost relay.
+/// A count that keeps rising while `delivered` does not is a sink that is down or an event that cannot
+/// be sent.
 pub static OUTBOX_FAILED: Counter = Counter::new();
 
-/// Outbox events still to be tried, as of the last run of the loop (OS-3). Zero when the loop is off.
+/// Outbox events still owed (waiting, claimed or held), as last read by the relay's depth watch (OS-3).
+/// Zero when the relay is off.
 pub static OUTBOX_PENDING: Gauge = Gauge::new();
 
-/// Outbox events that failed `MAX_FAILURES` times and are left: nothing retries them, so a value above
-/// zero needs a person.
+/// Outbox events left `failed` (out of attempts, or changed): nothing retries them until a person
+/// releases one, so a value above zero needs a person.
 pub static OUTBOX_STUCK: Gauge = Gauge::new();
 
 /// Requests refused because their subject was past a request limit (OS-2).

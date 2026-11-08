@@ -1,7 +1,12 @@
-//! DB-gated (OS-3): an event enqueued in a transaction that rolls back is never delivered; one that
-//! commits is delivered once; a delivery the policy or the patient's consent refuses is not made,
-//! is audited and is not retried; a failing sink is retried a fixed number of times; and the database
-//! refuses to edit or delete an event or an attempt.
+//! DB-gated (OS-3), through `axa-outbox`'s relay: an event enqueued in a transaction that rolls back is
+//! never delivered; one that commits is delivered once and audited; a delivery the policy or the
+//! patient's consent refuses is not made, is audited and is final; a report of death holds an event
+//! until it is withdrawn, and holds back no other patient's; a failing sink is tried a fixed number of
+//! times and then left for a person, who can release it; a changed event is never published; an
+//! oversized payload is refused; and the database refuses to edit or delete the record, and refuses new
+//! rows in the closed tables of migration 17.
+//!
+//! The waits before a retry, a lost relay and the order per key are `axa-outbox`'s and are tested there.
 //!
 //! ```text
 //! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
@@ -9,7 +14,7 @@
 //! ```
 
 use async_trait::async_trait;
-use electronic_patient_record::audit::Chain;
+use axa::outbox::{Failure, Outbox, OutboxOptions};
 use electronic_patient_record::consent::{ConsentRecord, Effect, Kind, Provision, Status};
 use electronic_patient_record::consents_store;
 use electronic_patient_record::death::{
@@ -17,17 +22,22 @@ use electronic_patient_record::death::{
 };
 use electronic_patient_record::death_store;
 use electronic_patient_record::metrics;
-use electronic_patient_record::outbox::{self, Event, MAX_FAILURES, NewEvent, Sink, Sinks};
+use electronic_patient_record::outbox::{self, Delivery, MAX_ATTEMPTS, NewEvent, Sink, Sinks};
 use electronic_patient_record::patients_store;
 use electronic_patient_record::policy::{Purpose, Resource, Role};
 use electronic_patient_record_matcher::{HumanName, Patient};
 use sqlx::{AssertSqlSafe, PgPool, Row};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::time::Duration;
+use tokio::sync::watch;
+
+fn url() -> String {
+    std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests")
+}
 
 async fn db() -> PgPool {
-    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
-    let db = PgPool::connect(&url).await.expect("connect");
+    let db = PgPool::connect(&url()).await.expect("connect");
     electronic_patient_record::MIGRATOR
         .run(&db)
         .await
@@ -50,10 +60,10 @@ struct Counting {
 
 #[async_trait]
 impl Sink for Counting {
-    async fn deliver(&self, _event: &Event) -> Result<(), String> {
+    async fn deliver(&self, _event: &Delivery) -> Result<(), Failure> {
         self.calls.fetch_add(1, Ordering::SeqCst);
         if self.fail {
-            Err("sink down".into())
+            Err(Failure::rejected("sink-down"))
         } else {
             Ok(())
         }
@@ -71,6 +81,57 @@ fn sinks(name: &str, fail: bool) -> (Sinks, Arc<AtomicU32>) {
         }),
     );
     (all, calls)
+}
+
+/// The service's settings, with waits short enough for a test.
+fn quick() -> OutboxOptions {
+    OutboxOptions {
+        poll_interval: Duration::from_millis(20),
+        retry_backoff: Duration::from_millis(10),
+        hold_interval: Duration::from_millis(50),
+        ..outbox::options(Duration::from_millis(20))
+    }
+}
+
+/// A relay over `sinks`, running until it is stopped.
+struct Relay {
+    stop: watch::Sender<bool>,
+    task: tokio::task::JoinHandle<()>,
+}
+
+impl Relay {
+    async fn start(sinks: Sinks) -> Relay {
+        let outbox = Outbox::connect_existing(&url(), quick())
+            .await
+            .expect("the outbox tables, indexes and triggers are there");
+        let (stop, stopped) = watch::channel(false);
+        let task = tokio::spawn(outbox::run(outbox, sinks, stopped));
+        Relay { stop, task }
+    }
+
+    async fn stop(self) {
+        self.stop.send(true).unwrap();
+        tokio::time::timeout(Duration::from_secs(10), self.task)
+            .await
+            .expect("the relay stops")
+            .unwrap();
+    }
+}
+
+/// Wait up to ten seconds for `n` attempts of `outcome` on `id`, and say how many there are.
+async fn wait_for(db: &PgPool, id: &str, outcome: &str, n: i64) -> i64 {
+    for _ in 0..200 {
+        if attempts(db, id, outcome).await >= n {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    attempts(db, id, outcome).await
+}
+
+/// Let a relay run a while longer, for what it should not do.
+async fn settle() {
+    tokio::time::sleep(Duration::from_millis(400)).await;
 }
 
 async fn patient(db: &PgPool) -> String {
@@ -97,7 +158,7 @@ async fn count(db: &PgPool, sql: &str, arg: &str) -> i64 {
 
 async fn attempts(db: &PgPool, id: &str, outcome: &str) -> i64 {
     sqlx::query(
-        "SELECT count(*) AS n FROM outbox_attempts WHERE event_id = $1::uuid AND outcome = $2",
+        "SELECT count(*) AS n FROM axa_outbox_attempts WHERE event_id = $1::uuid AND outcome = $2",
     )
     .bind(id)
     .bind(outcome)
@@ -107,6 +168,18 @@ async fn attempts(db: &PgPool, id: &str, outcome: &str) -> i64 {
     .unwrap()
     .try_get("n")
     .unwrap()
+}
+
+async fn audited(db: &PgPool, id: &str, outcome: i16) -> i64 {
+    sqlx::query("SELECT count(*) AS n FROM audit_events WHERE resource_ref = $1 AND outcome = $2")
+        .bind(format!("outbox/{id}"))
+        .bind(outcome)
+        .fetch_optional(db)
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("n")
+        .unwrap()
 }
 
 /// An event a receptionist-role recipient may receive: identity data, for operations.
@@ -126,6 +199,13 @@ fn event<'a>(
     }
 }
 
+async fn enqueue(db: &PgPool, new: NewEvent<'_>) -> String {
+    let mut tx = db.begin().await.unwrap();
+    let id = outbox::enqueue(&mut tx, new).await.unwrap();
+    tx.commit().await.unwrap();
+    id
+}
+
 #[tokio::test]
 #[ignore = "needs Postgres: set DATABASE_URL"]
 async fn a_rolled_back_event_is_never_delivered_and_a_committed_one_is_delivered_once() {
@@ -134,43 +214,32 @@ async fn a_rolled_back_event_is_never_delivered_and_a_committed_one_is_delivered
     let payload = serde_json::json!({"n": 1});
 
     let mut tx = db.begin().await.unwrap();
-    let lost = outbox::enqueue(&mut *tx, event(&recipient, None, &payload))
+    let lost = outbox::enqueue(&mut tx, event(&recipient, None, &payload))
         .await
         .unwrap();
     tx.rollback().await.unwrap();
-
-    let mut tx = db.begin().await.unwrap();
-    let kept = outbox::enqueue(&mut *tx, event(&recipient, None, &payload))
-        .await
-        .unwrap();
-    tx.commit().await.unwrap();
+    let kept = enqueue(&db, event(&recipient, None, &payload)).await;
 
     let (all, calls) = sinks(&recipient, false);
-    let chain = Chain::unkeyed();
     let before = metrics::OUTBOX_DELIVERED.get();
-    outbox::run_once(&db, &chain, &all, 100).await.unwrap();
-    outbox::run_once(&db, &chain, &all, 100).await.unwrap();
+    let relay = Relay::start(all).await;
+    assert_eq!(wait_for(&db, &kept, "delivered", 1).await, 1);
+    settle().await;
+    relay.stop().await;
 
     assert_eq!(calls.load(Ordering::SeqCst), 1, "delivered exactly once");
     assert!(metrics::OUTBOX_DELIVERED.get() > before, "counted");
-    assert_eq!(attempts(&db, &kept, "delivered").await, 1);
     assert_eq!(
         count(
             &db,
-            "SELECT count(*) AS n FROM outbox_events WHERE id = $1::uuid",
+            "SELECT count(*) AS n FROM axa_outbox_events WHERE event_id = $1::uuid",
             &lost
         )
         .await,
         0,
         "the rolled back event does not exist"
     );
-    let audited = count(
-        &db,
-        "SELECT count(*) AS n FROM audit_events WHERE resource_ref = $1",
-        &format!("outbox/{kept}"),
-    )
-    .await;
-    assert_eq!(audited, 1, "the delivery is audited");
+    assert_eq!(audited(&db, &kept, 0).await, 1, "the delivery is audited");
 }
 
 #[tokio::test]
@@ -201,33 +270,26 @@ async fn a_patients_refusal_stops_the_delivery_and_is_audited_once() {
     .await
     .unwrap();
     let payload = serde_json::json!({"n": 2});
-    let id = outbox::enqueue(&db, event(&recipient, Some(&p), &payload))
-        .await
-        .unwrap();
+    let id = enqueue(&db, event(&recipient, Some(&p), &payload)).await;
 
     let (all, calls) = sinks(&recipient, false);
-    let chain = Chain::unkeyed();
-    outbox::run_once(&db, &chain, &all, 100).await.unwrap();
-    outbox::run_once(&db, &chain, &all, 100).await.unwrap();
+    let relay = Relay::start(all).await;
+    assert_eq!(wait_for(&db, &id, "refused", 1).await, 1);
+    settle().await;
+    relay.stop().await;
 
     assert_eq!(calls.load(Ordering::SeqCst), 0, "the sink was never called");
     assert_eq!(
         attempts(&db, &id, "refused").await,
         1,
-        "refused once, not retried"
+        "refused once, final"
     );
     assert_eq!(attempts(&db, &id, "delivered").await, 0);
-    let audited = count(
-        &db,
-        "SELECT count(*) AS n FROM audit_events WHERE resource_ref = $1 AND outcome = 4",
-        &format!("outbox/{id}"),
-    )
-    .await;
-    assert_eq!(audited, 1, "the refusal is audited");
+    assert_eq!(audited(&db, &id, 4).await, 1, "the refusal is audited");
 }
 
 /// BV-3: any report holds an event, whoever made it; a person confirming it keeps the hold; a
-/// withdrawal releases it, and the event is then delivered once.
+/// withdrawal releases it, and the event is then delivered once. Another patient's event goes.
 #[tokio::test]
 #[ignore = "needs Postgres: set DATABASE_URL"]
 async fn a_report_of_death_holds_an_event_until_it_is_withdrawn() {
@@ -236,14 +298,6 @@ async fn a_report_of_death_holds_an_event_until_it_is_withdrawn() {
     let id = patient(&db).await;
     let other = patient(&db).await;
     let payload = serde_json::json!({"n": 1});
-    let mut tx = db.begin().await.unwrap();
-    let held = outbox::enqueue(&mut *tx, event(&recipient, Some(&id), &payload))
-        .await
-        .unwrap();
-    let free = outbox::enqueue(&mut *tx, event(&recipient, Some(&other), &payload))
-        .await
-        .unwrap();
-    tx.commit().await.unwrap();
 
     let made = death::report(
         Source::OtherSystem,
@@ -256,15 +310,24 @@ async fn a_report_of_death_holds_an_event_until_it_is_withdrawn() {
     )
     .unwrap();
     let stored = death_store::report(&db, &id, &made).await.unwrap();
+    let held = enqueue(&db, event(&recipient, Some(&id), &payload)).await;
+    let free = enqueue(&db, event(&recipient, Some(&other), &payload)).await;
 
     let (all, calls) = sinks(&recipient, false);
-    let chain = Chain::unkeyed();
-    let run = outbox::run_once(&db, &chain, &all, 100).await.unwrap();
-    assert!(run.held >= 1, "{run:?}");
+    let relay = Relay::start(all).await;
+    assert_eq!(
+        wait_for(&db, &free, "delivered", 1).await,
+        1,
+        "the other patient's goes"
+    );
+    settle().await;
     assert_eq!(calls.load(Ordering::SeqCst), 1, "only the other patient's");
-    assert_eq!(attempts(&db, &free, "delivered").await, 1);
-    let attempted = "SELECT count(*) AS n FROM outbox_attempts WHERE event_id = $1::uuid";
-    assert_eq!(count(&db, attempted, &held).await, 0, "held, not refused");
+    let any = "SELECT count(*) AS n FROM axa_outbox_attempts WHERE event_id = $1::uuid";
+    assert_eq!(
+        count(&db, any, &held).await,
+        0,
+        "held: no attempt, not refused"
+    );
 
     // Confirmed, it is still held.
     let by = Actor::Person("nurse-1".into());
@@ -273,64 +336,28 @@ async fn a_report_of_death_holds_an_event_until_it_is_withdrawn() {
         by: by.clone(),
         reason: reason.into(),
     };
-    let verified = step(DeathStatus::Verified, "seen");
-    death_store::advance(&db, &id, &stored.id, 1, &verified)
-        .await
-        .unwrap();
-    outbox::run_once(&db, &chain, &all, 100).await.unwrap();
+    death_store::advance(
+        &db,
+        &id,
+        &stored.id,
+        1,
+        &step(DeathStatus::Verified, "seen"),
+    )
+    .await
+    .unwrap();
+    settle().await;
     assert_eq!(calls.load(Ordering::SeqCst), 1);
+    assert_eq!(count(&db, any, &held).await, 0);
 
     // Withdrawn, it goes, once.
     let wrong = step(DeathStatus::WithdrawnInError, "the wrong record");
     death_store::advance(&db, &id, &stored.id, 2, &wrong)
         .await
         .unwrap();
-    outbox::run_once(&db, &chain, &all, 100).await.unwrap();
-    outbox::run_once(&db, &chain, &all, 100).await.unwrap();
+    assert_eq!(wait_for(&db, &held, "delivered", 1).await, 1);
+    settle().await;
+    relay.stop().await;
     assert_eq!(calls.load(Ordering::SeqCst), 2);
-    assert_eq!(attempts(&db, &held, "delivered").await, 1);
-}
-
-/// BV-3: held events do not use up a run, so they cannot starve one that may go.
-#[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
-async fn held_events_do_not_use_up_a_run() {
-    let db = db().await;
-    let recipient = format!("sink-{}", nanos());
-    let id = patient(&db).await;
-    let other = patient(&db).await;
-    let payload = serde_json::json!({"n": 1});
-    let made = death::report(
-        Source::Hospital,
-        Actor::Person("nurse-1".into()),
-        Occurred::NotKnown {
-            reason: "not told".into(),
-        },
-        "the ward rang",
-        chrono::Utc::now(),
-    )
-    .unwrap();
-    death_store::report(&db, &id, &made).await.unwrap();
-    let mut tx = db.begin().await.unwrap();
-    for _ in 0..3 {
-        outbox::enqueue(&mut *tx, event(&recipient, Some(&id), &payload))
-            .await
-            .unwrap();
-    }
-    outbox::enqueue(&mut *tx, event(&recipient, Some(&other), &payload))
-        .await
-        .unwrap();
-    tx.commit().await.unwrap();
-    let (all, calls) = sinks(&recipient, false);
-    let chain = Chain::unkeyed();
-    // Runs of one: a held event must not count as the one.
-    for _ in 0..50 {
-        outbox::run_once(&db, &chain, &all, 1).await.unwrap();
-        if calls.load(Ordering::SeqCst) == 1 {
-            return;
-        }
-    }
-    panic!("the deliverable event never went");
 }
 
 #[tokio::test]
@@ -342,213 +369,187 @@ async fn a_recipient_the_policy_does_not_allow_gets_nothing() {
     let mut e = event(&recipient, None, &payload);
     e.roles = &[Role::Integrator];
     e.resource = Resource::Observation;
-    let id = outbox::enqueue(&db, e).await.unwrap();
+    let id = enqueue(&db, e).await;
 
     let (all, calls) = sinks(&recipient, false);
-    outbox::run_once(&db, &Chain::unkeyed(), &all, 100)
-        .await
-        .unwrap();
-
+    let relay = Relay::start(all).await;
+    assert_eq!(wait_for(&db, &id, "refused", 1).await, 1);
+    relay.stop().await;
     assert_eq!(calls.load(Ordering::SeqCst), 0);
-    assert_eq!(attempts(&db, &id, "refused").await, 1);
 }
 
 #[tokio::test]
 #[ignore = "needs Postgres: set DATABASE_URL"]
-async fn a_failing_sink_is_retried_a_fixed_number_of_times_then_left() {
+async fn a_failing_sink_is_tried_a_fixed_number_of_times_then_left_for_a_person() {
     let db = db().await;
     let recipient = format!("sink-{}", nanos());
     let payload = serde_json::json!({"n": 4});
-    let id = outbox::enqueue(&db, event(&recipient, None, &payload))
-        .await
-        .unwrap();
+    let id = enqueue(&db, event(&recipient, None, &payload)).await;
 
     let (all, calls) = sinks(&recipient, true);
-    for _ in 0..(MAX_FAILURES + 3) {
-        outbox::run_once_with(&db, &Chain::unkeyed(), &all, 100, 0)
-            .await
-            .unwrap();
-    }
+    let relay = Relay::start(all).await;
+    assert_eq!(wait_for(&db, &id, "failed", 1).await, 1);
+    settle().await;
+    relay.stop().await;
 
-    assert_eq!(i64::from(calls.load(Ordering::SeqCst)), MAX_FAILURES);
-    assert_eq!(attempts(&db, &id, "failed").await, MAX_FAILURES);
+    assert_eq!(calls.load(Ordering::SeqCst), MAX_ATTEMPTS.unsigned_abs());
+    assert_eq!(
+        attempts(&db, &id, "rejected").await,
+        i64::from(MAX_ATTEMPTS - 1)
+    );
     assert_eq!(attempts(&db, &id, "delivered").await, 0);
 }
 
+/// Not lost: an event for a sink that does not exist yet fails, and a person can put it back once it
+/// does, with who and why on record.
 #[tokio::test]
 #[ignore = "needs Postgres: set DATABASE_URL"]
 async fn an_event_for_a_recipient_with_no_sink_is_not_lost() {
     let db = db().await;
     let recipient = format!("nobody-{}", nanos());
     let payload = serde_json::json!({"n": 5});
-    let id = outbox::enqueue(&db, event(&recipient, None, &payload))
-        .await
-        .unwrap();
+    let id = enqueue(&db, event(&recipient, None, &payload)).await;
 
-    outbox::run_once(&db, &Chain::unkeyed(), &Sinks::new(), 100)
-        .await
-        .unwrap();
-
-    assert_eq!(attempts(&db, &id, "failed").await, 1);
+    let relay = Relay::start(Sinks::new()).await;
+    assert_eq!(wait_for(&db, &id, "failed", 1).await, 1);
+    relay.stop().await;
     assert_eq!(attempts(&db, &id, "delivered").await, 0);
+
+    let mut tx = db.begin().await.unwrap();
+    let event_id = uuid::Uuid::parse_str(&id).unwrap();
+    assert!(
+        axa::outbox::release(&mut tx, event_id, "admin-1", "sink-added")
+            .await
+            .unwrap()
+    );
+    tx.commit().await.unwrap();
+    let (all, calls) = sinks(&recipient, false);
+    let relay = Relay::start(all).await;
+    assert_eq!(wait_for(&db, &id, "delivered", 1).await, 1);
+    relay.stop().await;
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+    let by: String = sqlx::query_scalar(
+        "SELECT by FROM axa_outbox_attempts WHERE event_id = $1 AND outcome = 'released'",
+    )
+    .bind(event_id)
+    .fetch_one(&db)
+    .await
+    .unwrap();
+    assert_eq!(by, "admin-1");
+}
+
+/// An event whose stored payload was changed, by someone who turned the guard off to do it, is failed
+/// as `tampered`, is never published, and is an audit row.
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn a_changed_event_is_never_published() {
+    let db = db().await;
+    let recipient = format!("sink-{}", nanos());
+    let payload = serde_json::json!({"n": 8});
+    let id = enqueue(&db, event(&recipient, None, &payload)).await;
+    // Wider roles, written behind the guard's back.
+    sqlx::raw_sql(AssertSqlSafe(format!(
+        "BEGIN;
+         ALTER TABLE axa_outbox_payloads DISABLE TRIGGER axa_outbox_payloads_guard;
+         UPDATE axa_outbox_payloads SET payload = jsonb_set(payload, '{{route,roles}}', '[\"admin\"]')
+           WHERE event_id = '{id}';
+         ALTER TABLE axa_outbox_payloads ENABLE ALWAYS TRIGGER axa_outbox_payloads_guard;
+         COMMIT;"
+    )))
+    .execute(&db)
+    .await
+    .unwrap();
+
+    let (all, calls) = sinks(&recipient, false);
+    let relay = Relay::start(all).await;
+    assert_eq!(wait_for(&db, &id, "failed", 1).await, 1);
+    settle().await;
+    relay.stop().await;
+    assert_eq!(calls.load(Ordering::SeqCst), 0, "never published");
+    let reason: String = sqlx::query_scalar(
+        "SELECT reason FROM axa_outbox_attempts WHERE event_id = $1::uuid AND outcome = 'failed'",
+    )
+    .bind(&id)
+    .fetch_one(&db)
+    .await
+    .unwrap();
+    assert_eq!(reason, "tampered");
+    assert_eq!(
+        audited(&db, &id, 8).await,
+        1,
+        "the changed event is audited"
+    );
 }
 
 #[tokio::test]
 #[ignore = "needs Postgres: set DATABASE_URL"]
-async fn events_and_attempts_cannot_be_edited_deleted_or_truncated() {
+async fn an_oversized_payload_is_refused_with_its_transaction() {
+    let db = db().await;
+    let payload = serde_json::json!({ "text": "x".repeat(70 * 1024) });
+    let mut tx = db.begin().await.unwrap();
+    let refused = outbox::enqueue(&mut tx, event("sink", None, &payload)).await;
+    assert!(refused.is_err(), "{refused:?}");
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn the_record_cannot_be_edited_deleted_or_truncated_and_the_old_tables_are_closed() {
     let db = db().await;
     let recipient = format!("sink-{}", nanos());
     let payload = serde_json::json!({"n": 6});
-    let id = outbox::enqueue(&db, event(&recipient, None, &payload))
-        .await
-        .unwrap();
+    let id = enqueue(&db, event(&recipient, None, &payload)).await;
     let (all, _) = sinks(&recipient, false);
-    outbox::run_once(&db, &Chain::unkeyed(), &all, 100)
-        .await
-        .unwrap();
+    let relay = Relay::start(all).await;
+    assert_eq!(wait_for(&db, &id, "delivered", 1).await, 1);
+    relay.stop().await;
 
     for sql in [
-        format!("UPDATE outbox_events SET kind = 'x' WHERE id = '{id}'"),
-        format!("DELETE FROM outbox_events WHERE id = '{id}'"),
-        format!("UPDATE outbox_attempts SET outcome = 'failed' WHERE event_id = '{id}'"),
-        format!("DELETE FROM outbox_attempts WHERE event_id = '{id}'"),
-        "TRUNCATE outbox_attempts".to_string(),
-        "TRUNCATE outbox_events CASCADE".to_string(),
+        format!("UPDATE axa_outbox_events SET kind = 'x' WHERE event_id = '{id}'"),
+        format!("DELETE FROM axa_outbox_events WHERE event_id = '{id}'"),
+        format!("UPDATE axa_outbox_attempts SET outcome = 'failed' WHERE event_id = '{id}'"),
+        format!("DELETE FROM axa_outbox_attempts WHERE event_id = '{id}'"),
+        format!("UPDATE axa_outbox_payloads SET payload = '{{}}' WHERE event_id = '{id}'"),
+        format!("DELETE FROM axa_outbox_payloads WHERE event_id = '{id}'"),
+        "TRUNCATE axa_outbox_attempts".to_string(),
+        "TRUNCATE axa_outbox_events CASCADE".to_string(),
+        "TRUNCATE axa_outbox_payloads".to_string(),
+    ] {
+        let e = sqlx::raw_sql(AssertSqlSafe(sql.clone()))
+            .execute(&db)
+            .await
+            .unwrap_err();
+        assert!(e.to_string().contains("refused"), "{sql}: {e}");
+    }
+    for sql in [
+        "INSERT INTO outbox_events (id, kind, recipient, recipient_roles, purpose, resource, payload)
+           VALUES (gen_random_uuid(), 'k', 'r', '{}', 'operations', 'PatientIdentity', '{}')",
     ] {
         let e = sqlx::raw_sql(AssertSqlSafe(sql.to_string()))
             .execute(&db)
             .await
             .unwrap_err();
-        assert!(e.to_string().contains("append-only"), "{sql}: {e}");
+        assert!(e.to_string().contains("closed"), "{sql}: {e}");
     }
 }
 
 #[tokio::test]
 #[ignore = "needs Postgres: set DATABASE_URL"]
-async fn the_loop_delivers_without_being_asked_again() {
+async fn depth_counts_owed_and_stuck_events() {
     let db = db().await;
-    let recipient = format!("sink-{}", nanos());
-    let payload = serde_json::json!({"n": 7});
-    let id = outbox::enqueue(&db, event(&recipient, None, &payload))
-        .await
-        .unwrap();
-    let (all, calls) = sinks(&recipient, false);
-    let chain: &'static Chain = Box::leak(Box::new(Chain::unkeyed()));
-    let task = tokio::spawn(outbox::run_loop(
-        db.clone(),
-        chain,
-        all,
-        std::time::Duration::from_millis(50),
-    ));
-    for _ in 0..100 {
-        if attempts(&db, &id, "delivered").await == 1 {
-            break;
-        }
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-    }
-    task.abort();
-    assert_eq!(
-        calls.load(Ordering::SeqCst),
-        1,
-        "delivered once by the loop"
+    let recipient = format!("nobody-{}", nanos());
+    let payload = serde_json::json!({"n": 9});
+    let outbox = Outbox::connect_existing(&url(), quick()).await.unwrap();
+    let (pending_before, _) = outbox::depth(&outbox).await.unwrap();
+    let id = enqueue(&db, event(&recipient, None, &payload)).await;
+    let (pending, _) = outbox::depth(&outbox).await.unwrap();
+    assert!(pending > pending_before, "a new event is owed");
+
+    let relay = Relay::start(Sinks::new()).await;
+    assert_eq!(wait_for(&db, &id, "failed", 1).await, 1);
+    relay.stop().await;
+    let (_, stuck) = outbox::depth(&outbox).await.unwrap();
+    assert!(
+        stuck >= 1,
+        "a failed event is stuck until a person releases it"
     );
-}
-
-#[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
-async fn a_failed_event_waits_before_its_retry() {
-    let db = db().await;
-    let recipient = format!("sink-{}", nanos());
-    let payload = serde_json::json!({"n": 8});
-    let id = outbox::enqueue(&db, event(&recipient, None, &payload))
-        .await
-        .unwrap();
-    let (all, calls) = sinks(&recipient, true);
-    let chain = Chain::unkeyed();
-    for _ in 0..3 {
-        outbox::run_once_with(&db, &chain, &all, 100, 3600)
-            .await
-            .unwrap();
-    }
-    assert_eq!(
-        calls.load(Ordering::SeqCst),
-        1,
-        "the retry is not due for an hour"
-    );
-    assert_eq!(attempts(&db, &id, "failed").await, 1);
-}
-
-/// Add `n` failed attempts to an event, each stamped `age_secs` ago (the table is append-only, so the
-/// clock is set on insert).
-async fn fail_in_the_past(db: &PgPool, id: &str, n: u32, age_secs: i64) {
-    for _ in 0..n {
-        sqlx::query("INSERT INTO outbox_attempts (event_id, attempted_at, outcome, reason)
-             VALUES ($1::uuid, now() - make_interval(secs => $2::double precision), 'failed', 'earlier')")
-.bind(id)
-.bind(age_secs)
-.execute(db)
-        .await
-        .unwrap();
-    }
-}
-
-#[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
-async fn the_wait_after_a_failure_doubles_with_each_failure() {
-    let db = db().await;
-    let chain = Chain::unkeyed();
-    // With a 30 second base the wait is 30, 60, 120, 240 seconds after the 1st to 4th failure.
-    // Each case: (failures so far, age of the last in seconds, due).
-    for (failures, age, due) in [
-        (1, 20, false),
-        (1, 40, true),
-        (2, 50, false),
-        (2, 70, true),
-        (3, 110, false),
-        (3, 130, true),
-        (4, 230, false),
-        (4, 250, true),
-    ] {
-        let recipient = format!("sink-{}", nanos());
-        let payload = serde_json::json!({"n": 9});
-        let id = outbox::enqueue(&db, event(&recipient, None, &payload))
-            .await
-            .unwrap();
-        fail_in_the_past(&db, &id, failures, age).await;
-        let (all, calls) = sinks(&recipient, false);
-        outbox::run_once_with(&db, &chain, &all, 100, 30)
-            .await
-            .unwrap();
-        assert_eq!(
-            calls.load(Ordering::SeqCst),
-            u32::from(due),
-            "{failures} failures, last {age}s ago"
-        );
-    }
-}
-
-#[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
-async fn depth_counts_pending_and_stuck_events_and_not_finished_ones() {
-    let db = db().await;
-    let (p0, s0) = outbox::depth(&db).await.unwrap();
-    let payload = serde_json::json!({"n": 10});
-    let mut ids = vec![];
-    for _ in 0..3 {
-        let r = format!("sink-{}", nanos());
-        ids.push(
-            outbox::enqueue(&db, event(&r, None, &payload))
-                .await
-                .unwrap(),
-        );
-    }
-    // 0: untouched (pending). 1: failed MAX_FAILURES times (stuck). 2: delivered (neither).
-    fail_in_the_past(&db, &ids[1], u32::try_from(MAX_FAILURES).unwrap(), 5).await;
-    sqlx::query("INSERT INTO outbox_attempts (event_id, outcome) VALUES ($1::uuid, 'delivered')")
-        .bind(ids[2].clone())
-        .execute(&db)
-        .await
-        .unwrap();
-    let (p1, s1) = outbox::depth(&db).await.unwrap();
-    assert_eq!((p1 - p0, s1 - s0), (1, 1));
 }

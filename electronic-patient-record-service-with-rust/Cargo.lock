@@ -207,9 +207,11 @@ dependencies = [
  "axa-cursor-pagination",
  "axa-environment",
  "axa-idempotency",
+ "axa-outbox",
  "axa-problem",
  "axa-ratelimit",
  "axa-sqlx",
+ "axa-worker",
  "axum",
  "axum-test",
  "clap",
@@ -262,6 +264,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "axa-outbox"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ebe7457515444e509c0a1df79f5c6a79c28c54cd794adc8ed3eda8a2af3422cf"
+dependencies = [
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "axa-problem"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -291,6 +306,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9cd2ea55e649597a7b8ad96ba4801500887a9eca630fd32b4d36c820a54c3028"
 dependencies = [
  "sqlx",
+]
+
+[[package]]
+name = "axa-worker"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5cc0632f7f7ef8158fc817aef410be52936e63097f737585485aaa06c606646f"
+dependencies = [
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]

@@ -4,7 +4,7 @@ Every table and view the service's migrations create. **Generated** by [`scripts
 
 Not listed: tables made by a statement built at run time (the monthly `audit_events` partitions), and what a column means (the migrations carry few comments, so only the name and SQL type are shown). The clinical tables are append-only: a change is a new row, and triggers refuse `UPDATE`, `DELETE` and `TRUNCATE`.
 
-25 tables, 14 views.
+30 tables, 14 views.
 
 ## Tables
 
@@ -17,6 +17,11 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `audit_archive_anchors` | `20261031000018_audit_partitions` | `partition` TEXT, `first_id` BIGINT, `last_id` BIGINT, `row_count` BIGINT, `first_prev_digest` TEXT, `last_digest` TEXT, `archived_at` TIMESTAMPTZ |
 | `audit_events` | `20261020000001_audit_events`, `20261031000018_audit_partitions` | `id` BIGSERIAL, `recorded_at` TIMESTAMPTZ, `action` CHAR(1), `outcome` SMALLINT, `agent` TEXT, `patient_ref` TEXT, `resource_ref` TEXT, `purpose_of_use` TEXT, `break_glass` BOOLEAN, `network_address` TEXT, `detail` JSONB, `prev_digest` TEXT, `digest` TEXT |
 | `axa_idempotency` | `20261107000027_axa_idempotency` | `caller` TEXT, `key` TEXT, `fingerprint` TEXT, `claim` UUID, `state` TEXT, `status` INTEGER, `headers` JSONB, `body` BYTEA, `lease_until` TIMESTAMPTZ, `expires_at` TIMESTAMPTZ, `created_at` TIMESTAMPTZ |
+| `axa_outbox_attempts` | `20261108100028_axa_outbox` | `id` BIGINT, `event_id` UUID, `outcome` TEXT, `relay` UUID, `claim` UUID, `reason` TEXT, `by` TEXT, `retry_at` TIMESTAMPTZ, `at` TIMESTAMPTZ |
+| `axa_outbox_events` | `20261108100028_axa_outbox` | `id` BIGINT, `event_id` UUID, `topic` TEXT, `kind` TEXT, `key` TEXT, `fingerprint` TEXT, `created_at` TIMESTAMPTZ |
+| `axa_outbox_leases` | `20261108100028_axa_outbox` | `claim` UUID, `relay` UUID, `heard_at` TIMESTAMPTZ |
+| `axa_outbox_owed` | `20261108100028_axa_outbox` | `event_id` UUID, `id` BIGINT, `topic` TEXT, `key` TEXT, `state` TEXT, `claim` UUID, `charges` INTEGER, `reason` TEXT, `retry_at` TIMESTAMPTZ, `held_since` TIMESTAMPTZ, `recheck_at` TIMESTAMPTZ |
+| `axa_outbox_payloads` | `20261108100028_axa_outbox` | `event_id` UUID, `payload` JSONB, `sealed` BYTEA |
 | `break_glass_grants` | `20261021000010_break_glass` | `grant_id` UUID, `patient_id` UUID, `subject` TEXT, `reason` TEXT, `granted_at` TIMESTAMPTZ, `expires_at` TIMESTAMPTZ |
 | `break_glass_reviews` | `20261021000010_break_glass` | `grant_id` UUID, `reviewed_at` TIMESTAMPTZ, `reviewed_by` TEXT, `outcome` TEXT, `note` TEXT |
 | `consent_versions` | `20261021000003_consent_versions` | `consent_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `status` TEXT, `body` JSONB |

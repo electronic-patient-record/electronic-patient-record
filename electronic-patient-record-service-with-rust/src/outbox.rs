@@ -1,35 +1,52 @@
-//! The transactional outbox and its delivery runner (task OS-3, first slice; `spec/08` "Outbox").
+//! The transactional outbox (task OS-3; `spec/08` "Outbox"), kept and relayed by `axa-outbox` 0.2.
 //!
-//! [`enqueue`] writes an event to `outbox_events` using the caller's transaction, so a rollback removes
-//! the event and a commit keeps it. [`run_once`] later claims pending events one at a time, makes the
-//! read path's own decision for the *recipient* ([`decide`]: `policy::evaluate` with the recipient's
-//! roles and purpose, no relationship, and the patient's consent), and only on an allow calls the
-//! recipient's [`Sink`]. Every outcome is an append-only `outbox_attempts` row, and a delivery or a
-//! refusal is also an audit row naming the event, never its content.
+//! [`enqueue`] writes an event in the caller's transaction, so a rollback removes it and a commit keeps
+//! it. [`run`] relays: for each event it makes the read path's own decision for the *recipient*
+//! ([`decide`]: `policy::evaluate` with the recipient's roles and purpose, no relationship, and the
+//! patient's consent), and only a delivery reaches the recipient's [`Sink`]. Everything that happens
+//! to an event is an attempt in `axa_outbox_attempts`, and a delivery, a refusal or a changed event is
+//! also an audit row naming the event, never its content, written in the outcome's own transaction
+//! ([`record`]), so the two commit together or not at all.
+//!
+//! What the decision needs (the recipient's roles, the purpose, the kind of record and the patient) is
+//! kept in the payload beside what is sent, so the fingerprint `axa-outbox` stores covers it: an event
+//! whose decision inputs were changed is never published.
 //!
 //! Any standing report that the patient has died holds an event about them (BV-3, OQ-BV1): it is not
-//! delivered, writes no attempt and stays pending, because a refusal is final and a withdrawn report
-//! must release it. A failed look at the death store is a failed attempt, never a delivery.
+//! delivered, writes no attempt and stays owed, because a refusal is final and a withdrawn report must
+//! release it. A lookup that fails (the death store, the consents) decides nothing: the event waits and
+//! is decided again, and is never delivered unchecked.
 //!
-//! Delivery is at least once. A refusal is final; a failure is retried up to [`MAX_FAILURES`] times.
-//! Nothing calls [`enqueue`] yet and no sink exists (IO-6): this module is the mechanism, not a feature.
+//! Delivery is at least once. A refusal is final. A sink's failure is tried [`MAX_ATTEMPTS`] times in
+//! all, and is then `failed` until a person releases it. Nothing calls [`enqueue`] yet and no sink
+//! exists but [`LogSink`] (IO-6): this module is the mechanism, not a feature.
 
-use crate::audit::{self, Action as AuditAction, Chain};
+use crate::audit::{self, Action as AuditAction};
 use crate::consent;
 use crate::consents_store;
 use crate::death_store;
 use crate::ids;
 use crate::patients_store::StoreError;
-use crate::policy::{self, Consent, Decision, Purpose, Relationship, Resource, Role, Subject};
-use crate::pool::Db;
+use crate::policy::{
+    self, Consent, Decision as PolicyDecision, Purpose, Relationship, Resource, Role, Subject,
+};
 use async_trait::async_trait;
-use sqlx::{AssertSqlSafe, PgPool, Row};
+use axa::outbox::{Attempt, Claimed, Decision, Failure, Outbox, OutboxOptions, Outcome};
+use serde::{Deserialize, Serialize};
+use sqlx::{PgConnection, Postgres, Row, Transaction};
 use std::collections::{BTreeSet, HashMap};
+use std::sync::Arc;
+use std::time::Duration;
+use tokio::sync::watch;
+use uuid::Uuid;
 
 crate::store_errors!("outbox");
 
-/// How many `failed` attempts an event gets before it is left alone.
-pub const MAX_FAILURES: i64 = 5;
+/// Tries an event gets, the first included, before it is `failed` and left for a person.
+pub const MAX_ATTEMPTS: i32 = 5;
+
+/// The wait before the first retry of an event; `axa-outbox` doubles it after each.
+pub const RETRY_BACKOFF: Duration = Duration::from_secs(30);
 
 /// An event to write.
 #[derive(Debug, Clone)]
@@ -50,85 +67,98 @@ pub struct NewEvent<'a> {
     pub payload: &'a serde_json::Value,
 }
 
-/// A stored event, as a [`Sink`] receives it.
+/// What the decision reads, stored in the payload beside what is sent.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct Route {
+    /// The role names the recipient acts under.
+    roles: Vec<String>,
+    /// The purpose code.
+    purpose: String,
+    /// The resource name.
+    resource: String,
+    /// The patient concerned, if any.
+    patient_id: Option<String>,
+}
+
+/// The stored payload: the route, and what is sent.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct Envelope {
+    /// What the decision reads.
+    route: Route,
+    /// What is sent.
+    body: serde_json::Value,
+}
+
+/// An event as a [`Sink`] receives it.
 #[derive(Debug, Clone)]
-pub struct Event {
+pub struct Delivery {
     /// Its id: a sink uses it to recognise a repeat.
-    pub id: String,
+    pub id: Uuid,
     /// What happened.
     pub kind: String,
     /// The sink named.
     pub recipient: String,
-    /// The role names stored with it.
-    pub roles: Vec<String>,
-    /// The purpose code stored with it.
-    pub purpose: String,
-    /// The resource name stored with it.
-    pub resource: String,
     /// The patient concerned, if any.
     pub patient_id: Option<String>,
     /// What is sent.
-    pub payload: serde_json::Value,
+    pub body: serde_json::Value,
 }
 
-/// Where an event goes. A failure is a retry; the text must name no clinical content.
+/// Where an event goes.
 #[async_trait]
 pub trait Sink: Send + Sync {
     /// Deliver `event`. A repeat of an event already delivered must be harmless.
     ///
     /// # Errors
     ///
-    /// A reason the delivery failed.
-    async fn deliver(&self, event: &Event) -> Result<(), String>;
+    /// Why it failed, as a short code that names no clinical content: [`Failure::unavailable`] when the
+    /// recipient can take nothing now, [`Failure::rejected`] when it refused this event.
+    async fn deliver(&self, event: &Delivery) -> Result<(), Failure>;
 }
 
 /// The sinks by name.
 pub type Sinks = HashMap<String, Box<dyn Sink>>;
 
-/// What one [`run_once`] did.
-#[derive(Debug, Default, PartialEq, Eq)]
-pub struct Report {
-    /// Events delivered.
-    pub delivered: u32,
-    /// Events refused by policy or consent.
-    pub refused: u32,
-    /// Attempts that failed.
-    pub failed: u32,
-    /// Events held by a report that the patient has died. They stay pending.
-    pub held: u32,
-}
-
-/// Write an event, in the caller's transaction, and return its id.
+/// Write an event, in the caller's transaction, and return its id. A payload over 64 KiB is refused,
+/// and the caller's transaction should then not commit.
 ///
 /// # Errors
 ///
 /// [`StoreError::BadQuery`] for a patient id that is not a UUID; [`StoreError::Db`] otherwise.
-pub async fn enqueue(db: impl Into<Db<'_>>, new: NewEvent<'_>) -> Result<String, StoreError> {
-    let mut conn = db.into().acquire().await.map_err(db_err)?;
-    let db = &mut *conn;
+pub async fn enqueue(
+    tx: &mut Transaction<'_, Postgres>,
+    new: NewEvent<'_>,
+) -> Result<String, StoreError> {
     let patient = match new.patient_id {
-        Some(p) => Some(ids::uuid(p).ok_or_else(|| StoreError::BadQuery("patient id".into()))?),
+        Some(p) => Some(
+            ids::uuid(p)
+                .ok_or_else(|| StoreError::BadQuery("patient id".into()))?
+                .to_string(),
+        ),
         None => None,
     };
-    let roles: Vec<String> = new.roles.iter().map(|r| r.as_str().to_string()).collect();
-    let row = sqlx::query(
-        "INSERT INTO outbox_events
-               (id, kind, recipient, recipient_roles, purpose, resource, patient_id, payload)
-             VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6::uuid, $7::jsonb)
-             RETURNING id::text AS id",
-    )
-    .bind(new.kind)
-    .bind(new.recipient)
-    .bind(roles)
-    .bind(new.purpose.code())
-    .bind(new.resource.name())
-    .bind(patient)
-    .bind(new.payload.to_string())
-    .fetch_optional(&mut *db)
-    .await
-    .map_err(db_err)?
-    .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
-    row.try_get("id").map_err(db_err)
+    let envelope = Envelope {
+        route: Route {
+            roles: new.roles.iter().map(|r| r.as_str().to_string()).collect(),
+            purpose: new.purpose.code().to_string(),
+            resource: new.resource.name().to_string(),
+            patient_id: patient.clone(),
+        },
+        body: new.payload.clone(),
+    };
+    let payload = serde_json::to_value(&envelope).map_err(db_err)?;
+    let event_id = Uuid::new_v4();
+    // The key keeps one patient's events in order, so a hold on a patient holds back only theirs.
+    let key = patient.unwrap_or_else(|| event_id.to_string());
+    let event = axa::outbox::Event {
+        event_id,
+        topic: new.recipient.to_string(),
+        kind: new.kind.to_string(),
+        key,
+        payload,
+    };
+    axa::outbox::write(tx, &event).await.map_err(db_err)?;
+    Ok(event_id.to_string())
 }
 
 /// The record decision for one event's recipient. `Ok` means the read path would allow it. `Err` is a
@@ -139,7 +169,7 @@ pub async fn enqueue(db: impl Into<Db<'_>>, new: NewEvent<'_>) -> Result<String,
 /// # Errors
 ///
 /// The reason the disclosure is refused.
-pub fn decide(
+pub fn permits(
     roles: &[String],
     resource: &str,
     purpose: &str,
@@ -164,7 +194,7 @@ pub fn decide(
         now,
     };
     match policy::evaluate(&request) {
-        Decision::Allow(obligations) => {
+        PolicyDecision::Allow(obligations) => {
             if obligations
                 .iter()
                 .all(|o| matches!(o, policy::Obligation::Audit))
@@ -174,13 +204,130 @@ pub fn decide(
                 Err("obligation-unsupported")
             }
         }
-        Decision::Deny { reason, .. } => Err(match reason {
+        PolicyDecision::Deny { reason, .. } => Err(match reason {
             policy::DenyReason::NotPermitted => "not-permitted",
             policy::DenyReason::PurposeNotAllowed => "purpose-not-allowed",
             policy::DenyReason::NoRelationship => "no-relationship",
             policy::DenyReason::ConsentDenied => "consent-denied",
         }),
     }
+}
+
+/// A lookup the decision needs failed: the event is decided again later, never delivered unchecked.
+fn lookup_failed(what: &str) -> sqlx::Error {
+    sqlx::Error::Protocol(format!("{what} lookup failed"))
+}
+
+/// Whether one claimed event may go, in the claim's transaction: held while any report of the
+/// patient's death stands, refused for good unless the read path would allow it, and otherwise
+/// delivered.
+///
+/// # Errors
+///
+/// A failed lookup, which leaves the event as it was, to be decided again.
+pub async fn decide(event: &Claimed, conn: &mut PgConnection) -> Result<Decision, sqlx::Error> {
+    let Ok(envelope) = serde_json::from_value::<Envelope>(event.payload.clone()) else {
+        // Not written by `enqueue`, so nothing says who may have it.
+        return Ok(Decision::refuse("not-an-epr-event"));
+    };
+    let route = envelope.route;
+    // First, so that nothing about a held event is decided or sent.
+    if let Some(patient) = &route.patient_id {
+        let answer = death_store::answer(&mut *conn, patient)
+            .await
+            .map_err(|_| lookup_failed("death"))?;
+        if answer.holds_contact() {
+            return Ok(Decision::Hold);
+        }
+    }
+    // An unchecked disclosure is how a refusal gets ignored: no consent answer, no decision.
+    let verdict = consent_for(&mut *conn, &route)
+        .await
+        .map_err(|_| lookup_failed("consent"))?;
+    Ok(
+        match permits(
+            &route.roles,
+            &route.resource,
+            &route.purpose,
+            verdict,
+            now(),
+        ) {
+            Ok(()) => Decision::Deliver,
+            Err(reason) => Decision::refuse(reason),
+        },
+    )
+}
+
+/// Send one event that [`decide`] let go to its recipient's sink.
+async fn publish(sinks: &Sinks, event: Claimed) -> Result<(), Failure> {
+    let Some(sink) = sinks.get(&event.topic) else {
+        // Not lost: tried again, then failed until a person releases it once the sink exists.
+        return Err(Failure::rejected("no-sink"));
+    };
+    let Ok(envelope) = serde_json::from_value::<Envelope>(event.payload) else {
+        return Err(Failure::rejected("not-an-epr-event"));
+    };
+    let delivery = Delivery {
+        id: event.event_id,
+        kind: event.kind,
+        recipient: event.topic,
+        patient_id: envelope.route.patient_id,
+        body: envelope.body,
+    };
+    sink.deliver(&delivery).await
+}
+
+/// Count each outcome, and audit a delivery, a refusal or a changed event on the process's audit chain,
+/// in the outcome's own transaction. A count is made before that transaction commits, so an outcome that then fails to
+/// commit is still counted.
+///
+/// # Errors
+///
+/// The audit row could not be written, so the outcome is not written either.
+pub async fn record(attempt: &Attempt, conn: &mut PgConnection) -> Result<(), sqlx::Error> {
+    match attempt.outcome {
+        Outcome::Delivered => crate::metrics::OUTBOX_DELIVERED.inc(),
+        Outcome::Refused => crate::metrics::OUTBOX_REFUSED.inc(),
+        Outcome::Rejected | Outcome::Failed | Outcome::Lost | Outcome::Abandoned => {
+            crate::metrics::OUTBOX_FAILED.inc();
+        }
+    }
+    let tampered =
+        attempt.outcome == Outcome::Failed && attempt.reason.as_deref() == Some("tampered");
+    if !matches!(attempt.outcome, Outcome::Delivered | Outcome::Refused) && !tampered {
+        return Ok(());
+    }
+    // The route, for the patient and the purpose. A changed payload may not have one.
+    let route: Option<Route> = sqlx::query(
+        "SELECT payload -> 'route' AS route FROM axa_outbox_payloads WHERE event_id = $1",
+    )
+    .bind(attempt.event_id)
+    .fetch_optional(&mut *conn)
+    .await?
+    .and_then(|r| {
+        r.try_get::<Option<serde_json::Value>, _>("route")
+            .ok()
+            .flatten()
+    })
+    .and_then(|v| serde_json::from_value(v).ok());
+    let mut row = audit::Event::new(AuditAction::Read, attempt.topic.clone());
+    row.outcome = match attempt.outcome {
+        Outcome::Delivered => 0,
+        Outcome::Refused => 4,
+        _ => 8,
+    };
+    row.resource_ref = Some(format!("outbox/{}", attempt.event_id));
+    if let Some(route) = route.filter(|_| !tampered) {
+        row.patient_ref = route.patient_id;
+        row.purpose_of_use = Some(route.purpose);
+    }
+    row.detail = Some(serde_json::json!({
+        "outbox": attempt.outcome.as_str(), "kind": attempt.kind, "reason": attempt.reason,
+    }));
+    audit::append(&mut *conn, audit::chain(), &row)
+        .await
+        .map_err(|e| sqlx::Error::Protocol(format!("outbox audit row: {e}")))?;
+    Ok(())
 }
 
 /// A sink that logs the event's id, kind and recipient and nothing else: no payload and no patient. It
@@ -190,19 +337,19 @@ pub struct LogSink;
 #[async_trait]
 impl Sink for LogSink {
     /// Delivers by writing a log line and nothing else; no message leaves the service.
-    async fn deliver(&self, event: &Event) -> Result<(), String> {
+    async fn deliver(&self, event: &Delivery) -> Result<(), Failure> {
         tracing::info!(id = %event.id, kind = %event.kind, recipient = %event.recipient, "outbox event delivered to the log");
         Ok(())
     }
 }
 
-/// How often the loop runs when `EPR_OUTBOX_INTERVAL_SECS` is set, in seconds. Unset means the loop is
-/// off. A value that is not a whole number from 1 to 3600 stops the service starting.
+/// How often the relay looks for work when `EPR_OUTBOX_INTERVAL_SECS` is set, in seconds. Unset means
+/// the relay is off. A value that is not a whole number from 1 to 3600 stops the service starting.
 ///
 /// # Errors
 ///
 /// The text of the bad setting.
-pub fn interval_from_env() -> Result<Option<std::time::Duration>, String> {
+pub fn interval_from_env() -> Result<Option<Duration>, String> {
     parse_interval(std::env::var("EPR_OUTBOX_INTERVAL_SECS").ok().as_deref())
 }
 
@@ -211,38 +358,64 @@ pub fn interval_from_env() -> Result<Option<std::time::Duration>, String> {
 /// # Errors
 ///
 /// The text of the bad setting.
-pub fn parse_interval(raw: Option<&str>) -> Result<Option<std::time::Duration>, String> {
+pub fn parse_interval(raw: Option<&str>) -> Result<Option<Duration>, String> {
     let Some(raw) = raw else {
         return Ok(None);
     };
     match raw.trim().parse::<u64>() {
-        Ok(n) if (1..=3600).contains(&n) => Ok(Some(std::time::Duration::from_secs(n))),
+        Ok(n) if (1..=3600).contains(&n) => Ok(Some(Duration::from_secs(n))),
         _ => Err(format!(
             "EPR_OUTBOX_INTERVAL_SECS must be a whole number of seconds from 1 to 3600, not {raw:?}"
         )),
     }
 }
 
-/// Run [`run_once`] every `every`, for ever. A database failure is logged and the loop carries on, so a
-/// restart of the database does not end delivery; a panic in a sink ends only that run's task.
-pub async fn run_loop(db: PgPool, chain: &'static Chain, sinks: Sinks, every: std::time::Duration) {
+/// The relay's settings: look for work every `poll`, try an event [`MAX_ATTEMPTS`] times, waiting
+/// [`RETRY_BACKOFF`] and then twice as long each time.
+#[must_use]
+pub fn options(poll: Duration) -> OutboxOptions {
+    OutboxOptions {
+        poll_interval: poll,
+        max_attempts: MAX_ATTEMPTS,
+        retry_backoff: RETRY_BACKOFF,
+        ..OutboxOptions::default()
+    }
+}
+
+/// Relay events until `shutdown` turns true: decide, publish and record each, as above.
+pub async fn run(outbox: Outbox, sinks: Sinks, shutdown: watch::Receiver<bool>) {
+    let sinks = Arc::new(sinks);
+    outbox
+        .run(
+            decide,
+            move |event: Claimed| {
+                let sinks = Arc::clone(&sinks);
+                async move { publish(&sinks, event).await }
+            },
+            record,
+            shutdown,
+        )
+        .await;
+}
+
+/// Events still owed (waiting, claimed or held) and events left `failed` for a person, as
+/// `(pending, stuck)`.
+///
+/// # Errors
+///
+/// [`StoreError::Db`] when the database fails.
+pub async fn depth(outbox: &Outbox) -> Result<(i64, i64), StoreError> {
+    let stats = outbox.stats().await.map_err(db_err)?;
+    Ok((stats.pending + stats.claimed + stats.held, stats.failed))
+}
+
+/// Set the depth gauges every `every`, for ever.
+pub async fn watch_depth(outbox: Outbox, every: Duration) {
     let mut tick = tokio::time::interval(every);
     tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     loop {
         tick.tick().await;
-        match run_once(&db, chain, &sinks, BATCH).await {
-            Ok(r) if r != Report::default() => {
-                tracing::info!(
-                    delivered = r.delivered,
-                    refused = r.refused,
-                    failed = r.failed,
-                    "outbox run"
-                );
-            }
-            Ok(_) => {}
-            Err(e) => tracing::error!(error = %e, "outbox run failed"),
-        }
-        match depth(&db).await {
+        match depth(&outbox).await {
             Ok((pending, stuck)) => {
                 crate::metrics::OUTBOX_PENDING.set(u64::try_from(pending).unwrap_or(0));
                 crate::metrics::OUTBOX_STUCK.set(u64::try_from(stuck).unwrap_or(0));
@@ -252,35 +425,6 @@ pub async fn run_loop(db: PgPool, chain: &'static Chain, sinks: Sinks, every: st
     }
 }
 
-/// Events still to be tried and events left after `MAX_FAILURES` failures, as `(pending, stuck)`.
-///
-/// # Errors
-///
-/// [`StoreError::Db`] when the database fails.
-pub async fn depth(db: &PgPool) -> Result<(i64, i64), StoreError> {
-    let row = sqlx::query(AssertSqlSafe(format!(
-        "SELECT count(*) FILTER (WHERE f < {MAX_FAILURES}) AS pending,
-                        count(*) FILTER (WHERE f >= {MAX_FAILURES}) AS stuck
-                 FROM (SELECT (SELECT count(*) FROM outbox_attempts a
-                               WHERE a.event_id = e.id AND a.outcome = 'failed') AS f
-                       FROM outbox_events e
-                       WHERE NOT EXISTS (SELECT 1 FROM outbox_attempts a
-                                         WHERE a.event_id = e.id
-                                           AND a.outcome IN ('delivered', 'refused'))) t"
-    )))
-    .fetch_optional(db)
-    .await
-    .map_err(db_err)?
-    .ok_or_else(|| StoreError::Db("no depth row".into()))?;
-    Ok((
-        row.try_get("pending").map_err(db_err)?,
-        row.try_get("stuck").map_err(db_err)?,
-    ))
-}
-
-/// Events one run of the loop may take.
-const BATCH: u32 = 100;
-
 /// The current time in whole seconds since the Unix epoch; a clock before 1970 reads as 0 and one beyond range saturates.
 fn now() -> i64 {
     std::time::SystemTime::now()
@@ -288,216 +432,22 @@ fn now() -> i64 {
         .map_or(0, |d| i64::try_from(d.as_secs()).unwrap_or(i64::MAX))
 }
 
-/// Seconds a first failure waits before its retry; each further failure doubles it (capped at 2^10 times).
-pub const BACKOFF_BASE_SECS: i64 = 30;
-
-/// Claim and process up to `limit` pending events, each in its own transaction, and say what happened.
-///
-/// # Errors
-///
-/// [`StoreError::Db`] when the database fails; the event being processed stays pending.
-pub async fn run_once(
-    db: &PgPool,
-    chain: &Chain,
-    sinks: &Sinks,
-    limit: u32,
-) -> Result<Report, StoreError> {
-    run_once_with(db, chain, sinks, limit, BACKOFF_BASE_SECS).await
-}
-
-/// [`run_once`] with the first retry's wait in seconds; 0 retries at the next run (for tests).
-///
-/// # Errors
-///
-/// [`StoreError::Db`] when the database fails; the event being processed stays pending.
-pub async fn run_once_with(
-    db: &PgPool,
-    chain: &Chain,
-    sinks: &Sinks,
-    limit: u32,
-    backoff_secs: i64,
-) -> Result<Report, StoreError> {
-    let mut report = Report::default();
-    // Events held in this run: they have no attempt row, so `claim` is told to pass over them.
-    let mut held: Vec<String> = Vec::new();
-    // An event gets at most one attempt per run, so a failure waits for the next run instead of
-    // using up every retry at once.
-    let mark: i64 = sqlx::query("SELECT coalesce(max(id), 0) AS m FROM outbox_attempts")
-        .fetch_optional(db)
-        .await
-        .map_err(db_err)?
-        .ok_or_else(|| StoreError::Db("no row".into()))?
-        .try_get("m")
-        .map_err(db_err)?;
-    let mut taken = 0;
-    while taken < limit {
-        let mut tx = db.begin().await.map_err(db_err)?;
-        let Some(event) = claim(&mut *tx, mark, backoff_secs, &held).await? else {
-            tx.rollback().await.map_err(db_err)?;
-            break;
-        };
-        let (outcome, reason) = process(&mut *tx, &event, sinks).await;
-        if outcome == HELD {
-            tx.rollback().await.map_err(db_err)?;
-            report.held += 1;
-            held.push(event.id);
-            continue;
-        }
-        taken += 1;
-        sqlx::query(
-            "INSERT INTO outbox_attempts (event_id, outcome, reason) VALUES ($1::uuid, $2, $3)",
-        )
-        .bind(event.id.clone())
-        .bind(outcome)
-        .bind(reason.clone())
-        .execute(&mut *tx)
-        .await
-        .map_err(db_err)?;
-        match outcome {
-            "delivered" => report.delivered += 1,
-            "refused" => report.refused += 1,
-            _ => report.failed += 1,
-        }
-        if outcome != "failed" {
-            // The audit row goes last: it holds the chain's lock until the commit.
-            let mut row = audit::Event::new(AuditAction::Read, event.recipient.clone());
-            row.outcome = if outcome == "delivered" { 0 } else { 4 };
-            row.patient_ref.clone_from(&event.patient_id);
-            row.resource_ref = Some(format!("outbox/{}", event.id));
-            row.purpose_of_use = Some(event.purpose.clone());
-            row.detail = Some(serde_json::json!({
-                "outbox": outcome, "kind": event.kind, "reason": reason,
-            }));
-            audit::append(&mut *tx, chain, &row)
-                .await
-                .map_err(|e| db_err(e.to_string()))?;
-        }
-        tx.commit().await.map_err(db_err)?;
-        // Counted once the attempt is on record, so a rolled back run is not counted.
-        match outcome {
-            "delivered" => crate::metrics::OUTBOX_DELIVERED.inc(),
-            "refused" => crate::metrics::OUTBOX_REFUSED.inc(),
-            _ => crate::metrics::OUTBOX_FAILED.inc(),
-        }
-    }
-    Ok(report)
-}
-
-/// The oldest pending event not attempted since `mark` (the newest attempt when the run began), locked so
-/// no other runner takes it.
-async fn claim(
-    tx: impl Into<Db<'_>>,
-    mark: i64,
-    backoff_secs: i64,
-    held: &[String],
-) -> Result<Option<Event>, StoreError> {
-    let mut conn = tx.into().acquire().await.map_err(db_err)?;
-    let tx = &mut *conn;
-    let row = sqlx::query(AssertSqlSafe(format!(
-                "SELECT e.id::text AS id, e.kind, e.recipient, e.recipient_roles, e.purpose, e.resource,
-                        e.patient_id::text AS patient_id, e.payload
-                 FROM outbox_events e
-                 WHERE NOT EXISTS (SELECT 1 FROM outbox_attempts a
-                                   WHERE a.event_id = e.id AND a.outcome IN ('delivered', 'refused'))
-                   AND e.id <> ALL($3::uuid[])
-                   AND NOT EXISTS (SELECT 1 FROM outbox_attempts a WHERE a.event_id = e.id AND a.id > $1)
-                   AND (SELECT count(*) FROM outbox_attempts a
-                        WHERE a.event_id = e.id AND a.outcome = 'failed') < {MAX_FAILURES}
-                   AND NOT EXISTS (
-                       SELECT 1 FROM outbox_attempts a
-                       WHERE a.event_id = e.id AND a.outcome = 'failed'
-                       HAVING max(a.attempted_at)
-                              + make_interval(secs => $2::double precision
-                                  * power(2, least(count(*) - 1, 10))) > now())
-                 ORDER BY e.created_at, e.id
-                 LIMIT 1
-                 FOR UPDATE OF e SKIP LOCKED"
-            )))
-.bind(mark)
-.bind(backoff_secs)
-.bind(ids::uuids(held))
-.fetch_optional(&mut *tx)
-        .await
-        .map_err(db_err)?;
-    row.map(|r| {
-        Ok(Event {
-            id: r.try_get("id").map_err(db_err)?,
-            kind: r.try_get("kind").map_err(db_err)?,
-            recipient: r.try_get("recipient").map_err(db_err)?,
-            roles: r.try_get("recipient_roles").map_err(db_err)?,
-            purpose: r.try_get("purpose").map_err(db_err)?,
-            resource: r.try_get("resource").map_err(db_err)?,
-            patient_id: r.try_get("patient_id").map_err(db_err)?,
-            payload: r.try_get("payload").map_err(db_err)?,
-        })
-    })
-    .transpose()
-}
-
-/// The outcome of an event held by a report of death. Never stored.
-const HELD: &str = "held";
-
-/// Decide and deliver one event: the outcome and its reason.
-async fn process(
-    tx: impl Into<Db<'_>>,
-    event: &Event,
-    sinks: &Sinks,
-) -> (&'static str, Option<String>) {
-    let failed = |why: &str| ("failed", Some(why.to_string()));
-    let mut conn = match tx.into().acquire().await {
-        Ok(conn) => conn,
-        Err(_) => return failed("no database connection"),
-    };
-    let tx = &mut *conn;
-    // First, so that nothing about a held event is decided or sent.
-    if let Some(patient) = &event.patient_id {
-        match death_store::answer(&mut *tx, patient).await {
-            Ok(answer) if answer.holds_contact() => return (HELD, None),
-            Ok(_) => {}
-            Err(_) => return failed("death-lookup"),
-        }
-    }
-    let Some(sink) = sinks.get(&event.recipient) else {
-        return failed("no-sink");
-    };
-    let verdict = match consent_for(&mut *tx, event).await {
-        Ok(v) => v,
-        // An unchecked disclosure is how a refusal gets ignored: no consent answer, no delivery.
-        Err(_) => return failed("consent-lookup"),
-    };
-    if let Err(reason) = decide(
-        &event.roles,
-        &event.resource,
-        &event.purpose,
-        verdict,
-        now(),
-    ) {
-        return ("refused", Some(reason.to_string()));
-    }
-    match sink.deliver(event).await {
-        Ok(()) => ("delivered", None),
-        Err(e) => ("failed", Some(e)),
-    }
-}
-
 /// The patient's consent for this recipient reading this kind of record.
-async fn consent_for(tx: impl Into<Db<'_>>, event: &Event) -> Result<Consent, StoreError> {
-    let mut conn = tx.into().acquire().await.map_err(db_err)?;
-    let tx = &mut *conn;
-    let Some(patient) = &event.patient_id else {
+async fn consent_for(conn: &mut PgConnection, route: &Route) -> Result<Consent, StoreError> {
+    let Some(patient) = &route.patient_id else {
         return Ok(Consent::NotRecorded);
     };
     let (Some(resource), Some(purpose)) = (
-        Resource::parse(&event.resource),
-        Purpose::parse(&event.purpose),
+        Resource::parse(&route.resource),
+        Purpose::parse(&route.purpose),
     ) else {
-        // `decide` refuses these; there is nothing to look up.
+        // `permits` refuses these; there is nothing to look up.
         return Ok(Consent::NotRecorded);
     };
     let active =
-        consents_store::active_with_merged(&mut *tx, std::slice::from_ref(patient)).await?;
+        consents_store::active_with_merged(&mut *conn, std::slice::from_ref(patient)).await?;
     let ctx = consent::Context {
-        roles: event.roles.iter().filter_map(|r| Role::parse(r)).collect(),
+        roles: route.roles.iter().filter_map(|r| Role::parse(r)).collect(),
         purpose,
         resource,
         labels: BTreeSet::new(),
@@ -519,6 +469,27 @@ mod tests {
     }
 
     #[test]
+    fn the_migration_makes_the_tables_axa_outbox_expects() {
+        let sql = include_str!("../migrations/20261108100028_axa_outbox.sql");
+        let squash = |s: &str| s.split_whitespace().collect::<Vec<_>>().join(" ");
+        let migration = squash(sql);
+        for statement in axa::outbox::SETUP_STATEMENTS {
+            assert!(
+                migration.contains(&squash(statement)),
+                "the migration has drifted from axa-outbox: {statement}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_relay_settings_are_ones_axa_outbox_accepts() {
+        let o = options(Duration::from_secs(5));
+        assert_eq!(o.max_attempts, MAX_ATTEMPTS);
+        assert_eq!(o.retry_backoff, RETRY_BACKOFF);
+        assert_eq!(o.poll_interval, Duration::from_secs(5));
+    }
+
+    #[test]
     fn the_loop_interval_is_off_unless_set_and_refuses_nonsense() {
         assert_eq!(parse_interval(None), Ok(None));
         for bad in ["0", "3601", "-1", "soon", ""] {
@@ -526,14 +497,14 @@ mod tests {
         }
         assert_eq!(
             parse_interval(Some(" 30 ")),
-            Ok(Some(std::time::Duration::from_secs(30)))
+            Ok(Some(Duration::from_secs(30)))
         );
     }
 
     #[test]
     fn an_unknown_resource_or_purpose_is_refused() {
         assert_eq!(
-            decide(
+            permits(
                 &roles(&["clinician"]),
                 "nope",
                 "treatment",
@@ -543,7 +514,7 @@ mod tests {
             Err("unknown-resource")
         );
         assert_eq!(
-            decide(
+            permits(
                 &roles(&["clinician"]),
                 "Observation",
                 "nope",
@@ -557,10 +528,10 @@ mod tests {
     #[test]
     fn no_roles_means_no_disclosure() {
         let r = Resource::PatientIdentity.name();
-        assert!(decide(&[], r, "operations", Consent::NotRecorded, 0).is_err());
+        assert!(permits(&[], r, "operations", Consent::NotRecorded, 0).is_err());
         // A role the engine does not know grants nothing.
         assert!(
-            decide(
+            permits(
                 &roles(&["wizard"]),
                 r,
                 "operations",
@@ -575,7 +546,7 @@ mod tests {
     fn a_clinician_recipient_without_a_relationship_is_refused() {
         let r = Resource::Observation.name();
         assert_eq!(
-            decide(
+            permits(
                 &roles(&["clinician"]),
                 r,
                 "treatment",
@@ -590,7 +561,7 @@ mod tests {
     fn an_integrator_never_reads_clinical_content() {
         let r = Resource::Observation.name();
         assert_eq!(
-            decide(
+            permits(
                 &roles(&["integrator"]),
                 r,
                 "operations",

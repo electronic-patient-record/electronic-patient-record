@@ -194,7 +194,7 @@ impl App {
     /// Wire everything that is not a route, then wrap the routes in the middleware stack.
     ///
     /// In order: the authentication settings (`default_require_auth`, always on in production); the
-    /// site time zone; the MLLP listener, only when `EPR_MLLP_BIND` is set; the outbox loop, only when
+    /// site time zone; the MLLP listener, only when `EPR_MLLP_BIND` is set; the outbox relay, only when
     /// `EPR_OUTBOX_INTERVAL_SECS` is set; the audit-partition loop (archiving only when
     /// `EPR_AUDIT_ARCHIVE_AFTER_MONTHS` is set); the country packs; the per-subject request limits; and the
     /// idempotency-key purge loop. A setting that is present but wrong stops the service starting: a feature that
@@ -230,21 +230,28 @@ impl App {
             );
             tokio::spawn(mllp::serve(listener, ctx.pool(), config));
         }
-        // The outbox loop is off unless `EPR_OUTBOX_INTERVAL_SECS` is set (OS-3). Its only sink is the
-        // log sink, which sends nothing; a real sink arrives with IO-6.
+        // The outbox relay is off unless `EPR_OUTBOX_INTERVAL_SECS` is set (OS-3). Its only sink is the
+        // log sink, which sends nothing; a real sink arrives with IO-6. A missing table, index or
+        // trigger stops the service: there is no way to relay without the record's guards.
         if let Some(every) = crate::outbox::interval_from_env().map_err(Error::Message)? {
+            let outbox = axa::outbox::Outbox::connect_existing(
+                &ctx.config.database.uri,
+                crate::outbox::options(every),
+            )
+            .await
+            .map_err(|e| Error::Message(format!("outbox: {e}")))?;
             let mut sinks = crate::outbox::Sinks::new();
             sinks.insert("log".to_string(), Box::new(crate::outbox::LogSink));
             tracing::warn!(
                 seconds = every.as_secs(),
-                "outbox loop is ON (log sink only)"
+                "outbox relay is ON (log sink only)"
             );
-            tokio::spawn(crate::outbox::run_loop(
-                ctx.pool(),
-                crate::audit::chain(),
-                sinks,
-                every,
-            ));
+            // The relay runs for the life of the process; a stop mid-delivery is a repeat, which every
+            // sink must treat as one.
+            let (stop, stopped) = tokio::sync::watch::channel(false);
+            std::mem::forget(stop);
+            tokio::spawn(crate::outbox::watch_depth(outbox.clone(), every));
+            tokio::spawn(crate::outbox::run(outbox, sinks, stopped));
         }
         // Audit partitions are made ahead and, when `EPR_AUDIT_ARCHIVE_AFTER_MONTHS` is set, old ones are
         // moved to the archive schema (OS-13). A bad setting stops the service starting.
