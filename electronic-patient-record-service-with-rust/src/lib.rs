@@ -50,6 +50,7 @@ pub mod outbox;
 pub mod packs;
 pub mod page;
 pub mod patients_store;
+pub mod permission;
 pub mod photos_store;
 pub mod policy;
 pub mod pool;

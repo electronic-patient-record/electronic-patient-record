@@ -275,6 +275,10 @@ impl App {
                 "lockout by client address is ON: behind a proxy not listed in TRUSTED_PROXIES, every user is one client"
             );
         }
+        // Permission at the point of care (WL-4): off unless set; a bad setting stops the service starting.
+        if crate::permission::init().map_err(Error::Message)? {
+            tracing::info!("a permission basis is required for staff reads of clinical content");
+        }
         // Expired idempotency keys hold answers that can name a patient: remove them (OF-1).
         // A missing or out-of-date table stops the service here, not at its first keyed create.
         let keys = crate::idempotency::keys(ctx.pool());

@@ -144,7 +144,19 @@ pub async fn authorize_mw(State(authz): State<Authz>, req: Request, next: Next) 
         .and_then(|v| v.to_str().ok())
         .unwrap_or_default()
         .to_string();
+    // The permission basis (WL-4): exactly one of the words, or a 400, so nothing typed reaches the trail.
+    let permission = match req.headers().get(crate::permission::HEADER) {
+        None => None,
+        Some(v) => match v.to_str().ok().and_then(crate::permission::Basis::parse) {
+            Some(b) => Some(b.word()),
+            None => {
+                return crate::api_error::ApiError::bad_request("unknown X-Permission-Basis")
+                    .for_path(req.uri().path());
+            }
+        },
+    };
     let origin = audit::Origin {
+        permission,
         address: req
             .extensions()
             .get::<std::net::IpAddr>()

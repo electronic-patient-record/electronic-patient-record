@@ -332,6 +332,9 @@ pub struct Origin {
     pub address: Option<String>,
     /// The FHIR RESTful interaction, when the route is one ([`crate::routes::interaction`]).
     pub interaction: Option<&'static str>,
+    /// The permission basis the caller gave (`X-Permission-Basis`, WL-4), as its word. Absent says
+    /// nothing about permission.
+    pub permission: Option<String>,
 }
 
 tokio::task_local! {
@@ -466,6 +469,7 @@ fn with_origin_and_server(event: &Event, server: Option<String>) -> Event {
     let held = [
         ("interaction", origin.interaction.map(str::to_string)),
         ("server", server),
+        ("permission_basis", origin.permission),
     ];
     for (name, value) in held {
         let Some(value) = value else { continue };
@@ -1531,6 +1535,7 @@ mod tests {
         let origin = Origin {
             address: Some("192.0.2.7".into()),
             interaction: Some("read"),
+            permission: Some("could-not-ask:unconscious".into()),
         };
         let mut e = Event::new(Action::Read, "a");
         e.detail = Some(serde_json::json!({ "interaction": "forged", "n": 1 }));
@@ -1541,6 +1546,7 @@ mod tests {
         let d = out.detail.unwrap();
         assert_eq!(d["interaction"], "read", "a handler cannot write it");
         assert_eq!(d["server"], "https://e.example");
+        assert_eq!(d["permission_basis"], "could-not-ask:unconscious");
         assert_eq!(d["n"], 1);
     }
 

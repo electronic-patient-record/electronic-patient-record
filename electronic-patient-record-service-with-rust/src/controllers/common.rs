@@ -131,6 +131,34 @@ pub(super) async fn authorize_scoped(
     if !auth::authentication_enforced() {
         return Ok(());
     }
+    // Permission at the point of care (WL-4): where the setting requires it, a staff read of one patient's
+    // clinical content needs a basis. The patient and a proxy act on their own behalf and need none.
+    let on_their_own_behalf = !subject.roles.is_empty()
+        && subject
+            .roles
+            .iter()
+            .all(|r| matches!(r, policy::Role::Patient | policy::Role::Proxy));
+    if crate::permission::required()
+        && action.reads()
+        && resource.clinical()
+        && patient_id.is_some()
+        && !on_their_own_behalf
+        && audit::ORIGIN
+            .try_with(|o| o.permission.is_none())
+            .unwrap_or(true)
+    {
+        let mut event = Event::new(Action::Execute, agent.0.clone());
+        event.outcome = 4;
+        event.patient_ref = patient_id.map(|id| format!("Patient/{id}"));
+        event.resource_ref = Some(format!("{}/{}", resource.name(), action.name()));
+        event.purpose_of_use = Some(purpose.code().to_string());
+        event.detail = Some(serde_json::json!({ "denied": "permission_basis_required" }));
+        if let Err(e) = audit::append(db, audit::chain(), &event).await {
+            crate::metrics::UNAUDITED_REFUSALS.inc();
+            tracing::error!(error = %e, "a refusal could not be audited");
+        }
+        return Err(ApiError::forbidden().with("permission_basis_required", true));
+    }
     let mut verdict = consent::Verdict {
         consent: Consent::NotRecorded,
         decided_by: Vec::new(),

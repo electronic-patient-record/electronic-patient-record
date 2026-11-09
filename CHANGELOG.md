@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-09 - Permission at the point of care (WL-4, H-008)
+
+- **Clinical risk:** **yes, treated as clinical (H-008).** It is off by default, and then nothing is refused: a basis sent with a request is simply kept. With `EPR_REQUIRE_PERMISSION_BASIS` on, a member of staff's read of a patient's clinical content without a basis is refused. `could-not-ask:emergency` and `could-not-ask:unconscious` are always accepted as a basis, so the requirement never waits on a patient who cannot answer. H-008's controls and residual say so; its status is unchanged.
+- **Built:** `src/permission.rs`. The `X-Permission-Basis` header carries `asked-agreed` or `could-not-ask:<reason>`, the reason coded as `unconscious`, `lacks-capacity`, `too-unwell` or `emergency`. Anything else is a 400, so typed words never reach the audit. The authorization middleware keeps the basis in the request's origin, and every audit row of the request carries it as `permission_basis`. A bad value for the setting stops the service starting. The service spec has a row.
+- **Checked:** fmt, clippy, every database-free test (519), 2 unit tests, an extended audit unit test, and `tests/http_permission_basis.rs` with login on and the setting on. That test covers: a clinician's allergy read with no basis is 403 `permission_basis_required` and audited; a typed reason is 400; each of `asked-agreed` and `could-not-ask:unconscious` is answered and its rows carry the basis; an identity read needs none; and no typed word reaches the trail.
+- **Not done / not verified:** the UI neither asks for a basis nor sends one, so turning the setting on refuses every clinical read through the UI. The patient's access log does not show the basis. The reasons are my list, not a Welsh or clinical source's. Searches across patients and writes are not covered. No clinician or Clinical Safety Officer has reviewed it, and the Welsh Control Standard was not read.
+
 ## 2026-11-09 - The UI in Welsh, machine-written and unreviewed (WL-8, H-051)
 
 - **Clinical risk:** **yes (new hazard H-051: unreviewed Welsh wording misleads a clinician).** At `cy-001` every page is now in Welsh, including the banner, vital signs, allergies, death reports and consent. No Welsh speaker has read any of it. Every page in that locale says so in Welsh and in English, with a link to the same page in English. H-051 is new and open.
