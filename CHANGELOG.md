@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-09 - Rust dependencies updated (`authentication-verifier` 0.9.2, `axum-keycloak-auth` 0.8.4)
+
+- **Clinical risk:** **no, by my judgement, not the Clinical Safety Officer's.** No screen, rule or record changed. A Keycloak token is now refused if it names no configured audience, or if it is an ID or refresh token, or if its `nbf` or `iat` is in the future. Before, the verifier accepted these, though `operations/keycloak/README.md` already said `aud` must name `EPR_KEYCLOAK_AUDIENCES`. The realm in `operations/keycloak/epr-realm.json` adds `epr-api` through an audience mapper, so its access tokens still pass. A realm with no mapper would now see every clinician refused at sign-in.
+- **Built:** `cargo update` in the matcher (`itoa`, `syn`) and the service (24 packages, among them `authentication-verifier` 0.9.2 with the engine's strict validation policy and `axum-keycloak-auth` 0.8.4, whose failures are a generic `401 invalid_token` and which no longer logs decoded claims). Six packages fell out of the tree. Both stay on Rust 1.97 (N-2 of stable 1.99.1).
+- **Checked:** fmt, clippy, the matcher's tests (110), the service's database-free tests (513) and every database test (175). I read both crates' changelogs.
+- **Not done / not verified:** no token from the real Keycloak realm was sent to the updated service, so the audience mapper passing is read from the realm file, not observed. The AGENTS.md note that clock drift shows as `InvalidSignature` was not rechecked against the new verifier.
+
 ## 2026-11-09 - CI's coverage upload uses `actions/upload-artifact` v7
 
 - **Clinical risk:** **no.** CI only.
