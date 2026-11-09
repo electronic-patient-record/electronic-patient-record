@@ -4,7 +4,7 @@
 referral: what condition the referrer suspects, from when, on what grounds, and what became of it. The EPR records the
 clinical suspicion; the PAS carries it on the referral and the waiting list and runs any clock it starts. A design and a
 requirement on the PAS boundary ([scope](../02-scope.md)). Built: the pathway catalogue below (RS-6) and the stored
-suspicion (RS-1 to RS-4, below); RS-5 is not built.
+suspicion (RS-1 to RS-4, below); RS-5 is a proposed mapping to the PAS, not agreed or built.
 
 ## Why suspicion, not diagnosis
 
@@ -142,6 +142,35 @@ not built.
 **Not done (RS-6):** no screen shows the plan; outcomes do not stop a
 target (RS-3); due days are UTC days, not the deployment's local days; clock pauses (a patient's choice to wait) are not
 modelled; no clinician has approved any pathway.
+
+## The PAS side (RS-5): a proposed mapping
+
+The PAS in `~/git/patient-administration-system` already tracks suspicion (its spec 20, read 2026-11-09):
+`POST /api/referrals/{id}/suspicions` with `condition`, `subtype`, `unique_pathway_identifier`, `suspected_on` (a date),
+`suspected_by` and `recorded_by`; `POST /api/suspicions/{id}/stop` once, for `treatment_started`, `downgraded`, `died`
+or `entered_in_error`; conditions, subtypes, targets, a held cancel and a booking priority as a profile (`generic`,
+`wales`). Its clock always starts at the point of suspicion and never pauses. This is a proposal, sent to the PAS's
+maintainers and not agreed; nothing is built.
+
+| EPR | PAS | Gap |
+|---|---|---|
+| `pathway` `suspected-cancer-wales`, `suspected-cancer-england` | `condition` `cancer` | — |
+| `type-1-diabetes-child` | `diabetes`, `subtype` type 1 | — |
+| `heart-failure` | `cardiovascular_disease` | The PAS condition is broader |
+| `parkinsons`, `dementia`, `obstructive-sleep-apnoea` | `parkinsons_disease`, `dementia`, `obstructive_sleep_apnoea` | — |
+| (none) | `subtype`, required for cancer under `wales` (primary cancer site) | **The EPR has no subtype field**; one is needed before a Welsh cancer suspicion can be sent |
+| `point_of_suspicion` (a time) | `suspected_on` (a date) | Which day: UTC or the deployment's own (the EPR counts UTC days today) |
+| `by` | `suspected_by` | — |
+| the version's author | `recorded_by` | — |
+| the referral's `external_ids` | `unique_pathway_identifier` | Which external id system carries it is unnamed |
+| the EPR referral id | the PAS referral id | **Nothing links the two referrals yet** |
+| an amendment moving the point of suspicion, with a reason | none: a PAS suspicion is stopped `entered_in_error` and recorded again | Whether the PAS should correct in place |
+| outcome `ruled-out` | stop `downgraded` | — |
+| outcome `confirmed` (at diagnosis) | stop `treatment_started` (later) | **Different events**: a confirmed suspicion keeps the PAS clock running until treatment starts |
+| outcome `withdrawn` | none (`entered_in_error` is for mistakes) | **No PAS equivalent** |
+| none (BV-1 holds death assertions) | stop `died` | The EPR does not end a suspicion on death |
+| England's `clock_from` `referral-sent` | the clock is fixed at the point of suspicion | **A different measure**: the PAS spec says such a standard must say so |
+| Wales targets 28 days (diagnosis) and 62 | 62 only | The 28-day target is the EPR's alone |
 
 ## Who owns what
 

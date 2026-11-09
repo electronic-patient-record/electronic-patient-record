@@ -2,6 +2,20 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-09 - The PAS side of a suspicion, proposed (RS-5, spec only)
+
+- **Clinical risk:** none yet. This is spec only, and nothing is sent to the PAS.
+- **Built:** I read the PAS repository's spec 20 and its suspicion API, and `spec/referral-suspicion/index.md` now maps each EPR field to its PAS field. The mapping names five gaps:
+  - the EPR has no subtype, and the PAS requires a primary cancer site under its `wales` profile;
+  - nothing links an EPR referral to a PAS referral;
+  - EPR `confirmed` comes at diagnosis, but the PAS clock stops at `treatment_started`;
+  - EPR `withdrawn` has no PAS stop;
+  - England's referral-sent clock is a different measure from the PAS's fixed point-of-suspicion clock.
+
+  The questions went to the PAS session. RS-5 stays open.
+- **Checked:** links, the status block, `llms.txt`.
+- **Not done / not verified:** nothing is agreed, there is no contract test, and no code changed. The PAS spec was read on 2026-11-09 and may have moved since.
+
 ## 2026-11-09 - Messages do not name an untold suspicion (RS-4, H-054)
 
 - **Clinical risk:** **yes (H-054, updated).** A patient must not learn of a suspected condition from a letter or message before anyone has told them.
