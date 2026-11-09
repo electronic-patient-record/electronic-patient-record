@@ -172,6 +172,31 @@ maintainers and not agreed; nothing is built.
 | England's `clock_from` `referral-sent` | the clock is fixed at the point of suspicion | **A different measure**: the PAS spec says such a standard must say so |
 | Wales targets 28 days (diagnosis) and 62 | 62 only | The 28-day target is the EPR's alone |
 
+**The PAS's answers (2026-11-09, its session's recommendations; not yet agreed by the PAS's maintainer).**
+
+1. **Referral identity:** the EPR referral id travels as the PAS referral's `external_ref`. A PAS referral is unique
+   on (`source`, `external_ref`) and receiving is idempotent, so a retried send is safe. The PAS would add an `epr`
+   source, because `internal` would mix EPR referrals with ones raised in the PAS. `unique_pathway_identifier` is not
+   the join (optional, Welsh cancer data sets only, not unique).
+2. **Subtype:** agreed as an optional `{scheme, code}` on the EPR suspicion, checked against the PAS's
+   `GET /api/suspicion-profile`. The PAS would add an optional `subtype_scheme` to its request, refused unless it is
+   the active profile's list for that condition, so a code from another list is never relabelled.
+3. **Confirmed:** agreed. The EPR sends nothing on `confirmed`, and the PAS clock runs on to first definitive
+   treatment, a downgrade or death.
+4. **Withdrawn:** not `downgraded` (it would skew the ruled-out figures) and not `entered_in_error` (the suspicion was
+   real). The PAS would add a `withdrawn` stop; whether it counts against the 62-day share is for the PAS's cancer
+   services sign-off (its WPAS-1a).
+5. **Corrections:** for now an amendment of the point of suspicion stops the PAS suspicion `entered_in_error` and
+   records it again, each step audited. An amend route (If-Match, a reason, open suspicions only) follows if
+   amendments prove common. England's referral-sent clock stays an EPR-side displayed target and is never sent as a
+   PAS clock.
+
+Also from the PAS: it takes neither the grounds nor whether the patient was told, which are clinical. `suspected_by`
+and `recorded_by` must be named people (the clinician who raised it, the EPR user who recorded it), never a system.
+`suspected_on` is a date in the PAS's own time zone (`PAS_TIMEZONE`). Its writes need `If-Match`, so the EPR reads
+before it stops. The four PAS changes (an `epr` source, `subtype_scheme`, a `withdrawn` stop, perhaps an amend route)
+wait on the PAS maintainer.
+
 ## Who owns what
 
 | Part | EPR | PAS |

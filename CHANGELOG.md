@@ -12,7 +12,7 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
   - EPR `withdrawn` has no PAS stop;
   - England's referral-sent clock is a different measure from the PAS's fixed point-of-suspicion clock.
 
-  The questions went to the PAS session. RS-5 stays open.
+  The questions went to the PAS session. Its answers are recorded in the same section: an `epr` source with the EPR id as `external_ref`; a `subtype_scheme` on the PAS request; a `withdrawn` stop; nothing sent on `confirmed`; and corrections as `entered_in_error` then re-record for now. They wait on the PAS maintainer's agreement. RS-5 stays open.
 - **Checked:** links, the status block, `llms.txt`.
 - **Not done / not verified:** nothing is agreed, there is no contract test, and no code changed. The PAS spec was read on 2026-11-09 and may have moved since.
 
