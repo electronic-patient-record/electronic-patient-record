@@ -199,12 +199,13 @@ impl App {
     /// In order: the authentication settings (`default_require_auth`, always on in production); the
     /// site time zone; the MLLP listener, only when `EPR_MLLP_BIND` is set; the outbox relay, only when
     /// `EPR_OUTBOX_INTERVAL_SECS` is set; the audit-partition loop (archiving only when
-    /// `EPR_AUDIT_ARCHIVE_AFTER_MONTHS` is set); the country packs; the per-subject request limits; and the
+    /// `EPR_AUDIT_ARCHIVE_AFTER_MONTHS` is set); the country packs; the per-subject request limits; the
+    /// lockout by client address, only when `LOCKOUT_CLIENT_ADDRESS_AFTER_COUNT` is set; and the
     /// idempotency-key purge loop. A setting that is present but wrong stops the service starting: a feature that
     /// was asked for and is silently absent is worse than no service.
     ///
     /// The layers, outermost (first to run) to innermost: request timing, request id, NUL-byte refusal,
-    /// authentication, rate limit, authorization, idempotency key.
+    /// lockout by client address (only when set), authentication, rate limit, authorization, idempotency key.
     async fn after_routes(router: AxumRouter, ctx: &AppContext) -> Result<AxumRouter> {
         auth::init(
             production_login(&ctx.environment),
@@ -263,6 +264,17 @@ impl App {
         // Request limits per token subject (OS-2). A bad setting stops the service starting.
         let limits = crate::rate_limit::Limits::from_env().map_err(Error::Message)?;
         let limiters = crate::rate_limit::Limiters::new(limits);
+        // Lockout by client address after too many `401`s, off unless `LOCKOUT_CLIENT_ADDRESS_AFTER_COUNT`
+        // is set (OS-2, H-049). A bad setting stops the service starting.
+        let lockout_after = crate::lockout::count_from_env().map_err(Error::Message)?;
+        let lockout = lockout_after.map(crate::lockout::limiter);
+        if let Some(after) = lockout_after {
+            tracing::warn!(
+                after = after.get(),
+                window_seconds = crate::lockout::WINDOW_SECS,
+                "lockout by client address is ON: behind a proxy that does not forward the address, every user is one client"
+            );
+        }
         // Expired idempotency keys hold answers that can name a patient: remove them (OF-1).
         // A missing or out-of-date table stops the service here, not at its first keyed create.
         let keys = crate::idempotency::keys(ctx.pool());
@@ -275,8 +287,10 @@ impl App {
         let router = crate::idempotency::layer(router, keys, ctx.pool()).layer(
             axum::middleware::from_fn_with_state(gate, authz::authorize_mw),
         );
-        Ok(crate::rate_limit::layer(router, limiters, ctx.pool())
-            .layer(axum::middleware::from_fn(auth::require_auth_mw))
+        let router = crate::rate_limit::layer(router, limiters, ctx.pool())
+            .layer(axum::middleware::from_fn(auth::require_auth_mw));
+        // Outside authentication, so it counts authentication's `401`s and refuses before a token is checked.
+        Ok(crate::lockout::layer(router, lockout, ctx.pool())
             .layer(axum::middleware::from_fn(authz::no_nul_mw))
             // The request id is settled before authentication or the audit trail.
             .layer(axum::middleware::from_fn(authz::request_id_mw))

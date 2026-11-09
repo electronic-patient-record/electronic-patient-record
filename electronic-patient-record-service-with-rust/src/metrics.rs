@@ -101,6 +101,9 @@ pub static OUTBOX_STUCK: Gauge = Gauge::new();
 /// Requests refused because their subject was past a request limit (OS-2).
 pub static RATE_LIMITED: Counter = Counter::new();
 
+/// Requests refused because their client address was locked out after too many `401`s (OS-2, H-049).
+pub static LOCKOUTS: Counter = Counter::new();
+
 /// Requests let through uncounted because the limiter's table was full (OS-2, H-039). The limiter fails
 /// open so that no clinician is refused for it, so a rising count is either a burst of new subjects or
 /// an attack that has made the limit useless, and needs a person.
@@ -212,7 +215,7 @@ fn render_histograms(series: &Series) -> String {
 }
 
 /// `(name, help, counter)` for everything served.
-fn all() -> [(&'static str, &'static str, &'static Counter); 8] {
+fn all() -> [(&'static str, &'static str, &'static Counter); 9] {
     [
         (
             "epr_audit_append_failures_total",
@@ -233,6 +236,11 @@ fn all() -> [(&'static str, &'static str, &'static Counter); 8] {
             "epr_rate_limited_total",
             "Requests refused for being past a request limit.",
             &RATE_LIMITED,
+        ),
+        (
+            "epr_lockouts_total",
+            "Requests refused because their client address was locked out.",
+            &LOCKOUTS,
         ),
         (
             "epr_rate_limit_overflowed_total",

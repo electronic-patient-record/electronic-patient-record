@@ -26,8 +26,21 @@ Targets, not measurements. Nothing here has been measured yet. Where the field s
   `epr_rate_limited_total`, so a flood cannot become a flood of audit writes. A limit is a refusal a clinician could
   meet, so the defaults sit far above clinical use (a test counts a minute of five requests a second and a compare
   every two seconds, and neither trips; the window is fixed, so every minute counts alike) and the hazard is H-039.
-  **Not built:** a limit keyed by client address (the service sits behind the UI's server, so the address is
-  one caller for everybody); a sign-in lockout (sign-in is the identity provider's, not this service's); a store
+  **Lockout by client address (OS-2, since 2026-11-09).** Off unless `LOCKOUT_CLIENT_ADDRESS_AFTER_COUNT` is set. When
+  it is, a client address that has been answered that many `401`s in a fixed 15-minute window is refused every
+  request (but `/_ping`, `/_health` and `/_readiness`) until the window ends: 429 with `Retry-After`, as a problem
+  under `/api` and an `OperationOutcome` under `/fhir`, before authentication runs, so a locked-out client's token is
+  not checked. Only a `401` counts, so a client that presents a valid token is never slowed. The address is the one
+  `axa` resolved through `TRUSTED_PROXIES`, an IPv6 address counted by its `/64`; the counting is `axa-ratelimit`'s
+  `lock_out_failures`, which holds an address only as a keyed hash, and a new address that finds its table of
+  100,000 full is let through uncounted and counted in `epr_rate_limit_overflowed_total`. A value outside 1 to
+  1,000,000 stops the service starting. The first refusal of an address in a window is an audit row (`Execute`,
+  outcome 4, `denied: lockout`, the address under the row's origin); every refusal is counted in
+  `epr_lockouts_total`. It is off by default because the UI's server does not forward the browser's address, so
+  behind it every user is one address, and a few expired tokens would lock out every clinician at once (H-049).
+  Turn it on only where the address is a person's, or behind a proxy listed in `TRUSTED_PROXIES` that sets it.
+  **Not built:** a limit on all requests keyed by client address (the service sits behind the UI's server, so the
+  address is one caller for everybody); a sign-in lockout (sign-in is the identity provider's, not this service's); a store
   shared between replicas (each replica counts alone, so N replicas allow N times the limit); per-route limits other
   than compare; a way to lift a limit for one subject without a restart (the limiter can, but nothing calls it).
 - **NFR-7 Auditability.** Append-only audit, tamper-evident; reads included. **When a write's audit row cannot be written, the write is refused** ([audit](audit/index.md)).

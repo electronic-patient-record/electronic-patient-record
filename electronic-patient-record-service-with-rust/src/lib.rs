@@ -40,6 +40,7 @@ pub mod ids;
 pub mod interop;
 pub mod link_token;
 pub mod links;
+pub mod lockout;
 pub mod metrics;
 pub mod mllp;
 pub mod observations;
