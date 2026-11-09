@@ -288,6 +288,36 @@ async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_r
         )
         .await;
 
+        // A watch list entry, then its ending by its owner (WL-6).
+        refused_then_accepted(db, "POST /api/patients/{id}/watch-list", || async {
+            let r = server
+                .post(&format!("/api/patients/{id}/watch-list"))
+                .json(&json!({ "entry": { "reason": "recheck sodium" } }))
+                .await;
+            (r.status_code(), r.text())
+        })
+        .await;
+        let entries = server
+            .get(&format!("/api/patients/{id}/watch-list"))
+            .await
+            .json::<Value>();
+        let entry_id = entries["entries"][0]["id"]
+            .as_str()
+            .expect("an entry id")
+            .to_string();
+        refused_then_accepted(
+            db,
+            "PUT /api/patients/{id}/watch-list/{entry_id}",
+            || async {
+                let r = server
+                    .put(&format!("/api/patients/{id}/watch-list/{entry_id}"))
+                    .json(&json!({ "expected_version": 1, "end_reason": "sodium normal" }))
+                    .await;
+                (r.status_code(), r.text())
+            },
+        )
+        .await;
+
         // A decline puts a second referral on the worklist; acknowledging it is a write that must be audited.
         let second = server
             .post(&format!("/api/patients/{id}/referrals"))

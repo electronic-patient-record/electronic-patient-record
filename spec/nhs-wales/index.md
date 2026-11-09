@@ -115,7 +115,7 @@ read from the raw HTML.
 Ranked in plan.md §34.2; tasks WL-1 to WL-12.
 
 1. A result is signed off against the version it was shown (WCP) — extends OR-4.
-2. A watch list needs a reason (WCP).
+2. A watch list needs a reason (WCP). **Built as WL-6** (2026-11-09): see the service spec.
 3. Permission asked at the point of care, or a recorded reason it could not be (WGPR) — beside SE-2 and break-the-glass.
 4. A patient's choice follows the person, not the site (WGPR's opt-out does not) — SE-2 and the matcher's merges.
 5. A narrower view by role (WGPR's vaccinator view, snippet) — PI and RA.

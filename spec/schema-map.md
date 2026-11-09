@@ -4,7 +4,7 @@ Every table and view the service's migrations create. **Generated** by [`scripts
 
 Not listed: tables made by a statement built at run time (the monthly `audit_events` partitions), and what a column means (the migrations carry few comments, so only the name and SQL type are shown). The clinical tables are append-only: a change is a new row, and triggers refuse `UPDATE`, `DELETE` and `TRUNCATE`.
 
-35 tables, 17 views.
+36 tables, 18 views.
 
 ## Tables
 
@@ -45,6 +45,7 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `relationship_versions` | `20261021000004_relationship_versions` | `relationship_id` UUID, `version` INTEGER, `patient_id` UUID, `subject` TEXT, `kind` TEXT, `status` TEXT, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `body` JSONB |
 | `result_signoffs` | `20261109000029_results` | `signoff_id` UUID, `result_id` UUID, `result_version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `signed_by` TEXT |
 | `result_versions` | `20261109000029_results` | `result_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `status` TEXT, `reason` TEXT, `body` JSONB |
+| `watch_entry_versions` | `20261109000034_watch_lists` | `entry_id` UUID, `version` INTEGER, `owner` TEXT, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `status` TEXT, `body` JSONB |
 
 ## Views
 
@@ -67,3 +68,4 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `referral_suspicion_current` | `20261109000031_referral_suspicions`, `20261109000032_suspicion_carried_from` |
 | `relationship_current` | `20261021000004_relationship_versions`, `20261021000011_current_views_seek` |
 | `result_current` | `20261109000029_results` |
+| `watch_entry_current` | `20261109000034_watch_lists` |

@@ -2,6 +2,21 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-09 - Watch lists with a reason (WL-6, H-055)
+
+- **Clinical risk:** **yes (new hazard H-055: a patient drops off a watch list unseen, or is watched for no reason anyone can read).** This is the first watch list. H-055 is new and open.
+- **Built:** migration `20261109000034_watch_lists.sql` adds the append-only `watch_entry_versions` (version 1 is `active`, version 2 `ended`) and the view `watch_entry_current`. `src/watch_list.rs` holds the rules: a reason is required, and a last day, if given, must be today or later. An entry lapses the day after its last day, and that state is worked out when read. `watch_list_store.rs` keeps one active entry per clinician and patient, follows merges and lets only the owner end an entry, with a reason. `controllers/watch_list.rs` adds the patient's view with reasons and states, an add, an end, and `GET /api/watch-list`, the caller's own active entries as pointers with no reason. There are two new policy resources: `WatchList` (clinical) and `OwnWatchList` (pointers, no relationship). `openapi.json`, the specs, the inventory, the schema map and the stored-words, label, search-audit and refusal-audit censuses follow.
+- **Checked:** fmt, clippy, the doc build and every database-free test. `watch_list::tests` has 2 tests. `tests/http_watch_list.rs` runs with login on and covers these cases:
+  - a blank reason and a past last day are 422, and a second add is 409;
+  - a clinician without a care relationship, and reception, are 403;
+  - the owner's list holds the entry with no reason;
+  - a colleague ending it is 404; the owner ending it without a reason is 422, from a stale version 409, then 200, then 422;
+  - ended and lapsed entries leave the owners' lists and stay on the patient's record with their reasons;
+  - no reason reaches the audit.
+
+  On a fresh database every database test passed (176) except the six FHIR validator tests, which need Java. All 537 database-free tests pass.
+- **Not done / not verified:** nothing tells the owner when an entry lapses. There is no team list, no hand-over and no reassignment when a clinician leaves. Last days are UTC days. No screen shows the lists. No clinician reviewed who may add or read an entry.
+
 ## 2026-11-09 - The PAS side of a suspicion, proposed (RS-5, spec only)
 
 - **Clinical risk:** none yet. This is spec only, and nothing is sent to the PAS.

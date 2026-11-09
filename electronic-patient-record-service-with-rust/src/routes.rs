@@ -196,6 +196,30 @@ pub const TABLE: &[(&str, &str, Resource, Action)] = &[
         Action::Update,
     ),
     (
+        "GET",
+        "/api/watch-list",
+        Resource::OwnWatchList,
+        Action::Search,
+    ),
+    (
+        "GET",
+        "/api/patients/{id}/watch-list",
+        Resource::WatchList,
+        Action::Search,
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/watch-list",
+        Resource::WatchList,
+        Action::Create,
+    ),
+    (
+        "PUT",
+        "/api/patients/{id}/watch-list/{entry_id}",
+        Resource::WatchList,
+        Action::Update,
+    ),
+    (
         "POST",
         "/api/referral-messages",
         Resource::ReferralQueue,

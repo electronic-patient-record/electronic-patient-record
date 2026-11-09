@@ -75,3 +75,5 @@ pub mod store;
 pub mod suspicion;
 pub mod suspicions_store;
 pub mod terminology;
+pub mod watch_list;
+pub mod watch_list_store;

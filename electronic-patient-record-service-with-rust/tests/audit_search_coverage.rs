@@ -35,6 +35,7 @@ fn call(template: &str, patient: &str) -> Option<String> {
         "/api/patients/{id}/adjustments" => format!("/api/patients/{patient}/adjustments"),
         "/api/patients/{id}/results" => format!("/api/patients/{patient}/results"),
         "/api/patients/{id}/assessments" => format!("/api/patients/{patient}/assessments"),
+        "/api/patients/{id}/watch-list" => format!("/api/patients/{patient}/watch-list"),
         "/fhir/R4/Flag" => format!("/fhir/R4/Flag?patient={patient}"),
         "/fhir/R5/Flag" => format!("/fhir/R5/Flag?patient={patient}"),
         "/api/patients/{id}/death/assertions" => {
@@ -53,6 +54,7 @@ fn call(template: &str, patient: &str) -> Option<String> {
         | "/api/overdue-reviews/count"
         | "/api/referrals/worklist"
         | "/api/referrals/worklist/count"
+        | "/api/watch-list"
         | "/api/referral-queue"
         | "/api/referral-queue/count"
         | "/api/break-glass/reviews"

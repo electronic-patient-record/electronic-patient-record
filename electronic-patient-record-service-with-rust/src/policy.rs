@@ -218,11 +218,17 @@ pub enum Resource {
     /// and only referrals the caller sent, so no care relationship applies; the referral itself opens through
     /// [`Resource::Referral`].
     ReferralWorklist,
+    /// A clinician's watch list entries on one patient, with their reasons (WL-6,
+    /// `watch_list_store.rs`). Clinical: the reason is why a clinician is concerned.
+    WatchList,
+    /// One's own watch list across patients (WL-6): pointers only (patient, since, until), no reason,
+    /// like the referral worklist. Each entry is read through the patient's route.
+    OwnWatchList,
 }
 
 impl Resource {
     /// Every resource kind, in a fixed order.
-    pub const ALL: [Resource; 24] = [
+    pub const ALL: [Resource; 26] = [
         Resource::PatientIdentity,
         Resource::Encounter,
         Resource::Condition,
@@ -247,6 +253,8 @@ impl Resource {
         Resource::Referral,
         Resource::ReferralQueue,
         Resource::ReferralWorklist,
+        Resource::WatchList,
+        Resource::OwnWatchList,
     ];
 
     /// A stable name for audit rows and route tables.
@@ -277,6 +285,8 @@ impl Resource {
             Resource::Referral => "Referral",
             Resource::ReferralQueue => "ReferralQueue",
             Resource::ReferralWorklist => "ReferralWorklist",
+            Resource::WatchList => "WatchList",
+            Resource::OwnWatchList => "OwnWatchList",
         }
     }
 
@@ -305,6 +315,7 @@ impl Resource {
                 | Resource::Hazard
                 | Resource::ReferralQueue
                 | Resource::ReferralWorklist
+                | Resource::OwnWatchList
         )
     }
 }
@@ -608,9 +619,9 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         BreakGlass as Glass, CareRelationship as Rel, Condition, Consent as Cons,
         DeathAssertion as Death, DeathReports as Deaths, DiagnosticReport as Results, Document,
         Encounter, FeedQueue as Queue, Hazard, MedicationRequest as Meds, Observation,
-        OverdueReviews as Overdue, PatientIdentity as Identity, PatientLink as Link,
-        QuestionnaireResponse as Assess, Referral, ReferralQueue as RefQueue,
-        ReferralWorklist as Worklist,
+        OverdueReviews as Overdue, OwnWatchList as OwnWatch, PatientIdentity as Identity,
+        PatientLink as Link, QuestionnaireResponse as Assess, Referral, ReferralQueue as RefQueue,
+        ReferralWorklist as Worklist, WatchList as Watch,
     };
     match (role, resource) {
         // Clinicians: full clinical work, and register or correct identity.
@@ -676,6 +687,13 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         // The referrer's own worklist (assumed, awaiting the maintainer, OQ-PC5): a treating sender lists what
         // came back and says they have seen it. Nobody else has one.
         (Role::Clinician | Role::Nurse | Role::AlliedHealth, Worklist) => &[Search, Update],
+        // Watch lists (WL-6, unreviewed): those who treat add a patient with a reason, read who is
+        // watching a patient and why, and end their own entries (the route keeps ending to the owner);
+        // each lists their own, as pointers.
+        (Role::Clinician | Role::Nurse | Role::AlliedHealth, Watch) => {
+            &[Read, Search, Create, Update]
+        }
+        (Role::Clinician | Role::Nurse | Role::AlliedHealth, OwnWatch) => &[Search],
         // Nurses: record care; cannot withdraw others' entries; read-only on prescriptions.
         (Role::Nurse, Identity) => &[Read, Search],
         (Role::Nurse, Encounter | Condition | Observation | Allergy | Document) => {
@@ -1408,8 +1426,8 @@ mod tests {
                 }
             }
         }
-        // 17 roles × 24 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
-        assert_eq!(cells, 17 * 24 * 6 * 8 * 5 * 3 * 7 * 2);
+        // 17 roles × 26 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
+        assert_eq!(cells, 17 * 26 * 6 * 8 * 5 * 3 * 7 * 2);
         assert!(allows > 0);
     }
 

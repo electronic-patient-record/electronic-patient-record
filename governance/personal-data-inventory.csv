@@ -411,3 +411,19 @@ referral_suspicion_outcomes,recorded_at,none,When the outcome was recorded,recor
 referral_suspicion_outcomes,author,staff-identifier,Who recorded it,record
 referral_suspicion_outcomes,kind,health,Confirmed or ruled out or withdrawn,record
 referral_suspicion_outcomes,body,health,The diagnosis or who ruled it out and on what or why it was withdrawn,record
+watch_entry_versions,entry_id,none,Random record id,record
+watch_entry_versions,version,none,Version counter,record
+watch_entry_versions,owner,staff-identifier,Whose watch list the entry is on,record
+watch_entry_versions,patient_id,identifier,Links a record to the patient,record
+watch_entry_versions,recorded_at,none,When the version was recorded,record
+watch_entry_versions,author,staff-identifier,Who wrote it,record
+watch_entry_versions,status,none,Active or ended,record
+watch_entry_versions,body,health,Why the patient is on the list and its last day and why it was ended,record
+watch_entry_current,entry_id,none,Random record id,record
+watch_entry_current,version,none,Version counter,record
+watch_entry_current,owner,staff-identifier,Whose watch list the entry is on,record
+watch_entry_current,patient_id,identifier,Links a record to the patient,record
+watch_entry_current,recorded_at,none,When the version was recorded,record
+watch_entry_current,author,staff-identifier,Who wrote it,record
+watch_entry_current,status,none,Active or ended,record
+watch_entry_current,body,health,Why the patient is on the list and its last day and why it was ended,record

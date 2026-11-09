@@ -109,6 +109,18 @@
         ],
         "type": "object"
       },
+      "AddWatchEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "entry": {
+            "$ref": "#/components/schemas/NewWatchEntry"
+          }
+        },
+        "required": [
+          "entry"
+        ],
+        "type": "object"
+      },
       "Adjustment": {
         "properties": {
           "adjustment": {
@@ -1660,6 +1672,23 @@
         ],
         "type": "object"
       },
+      "EndWatchEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "end_reason": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "expected_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_version",
+          "end_reason"
+        ],
+        "type": "object"
+      },
       "Error": {
         "additionalProperties": true,
         "description": "api_error.rs: RFC 9457; `detail` is fixed wording, and extra fields such as current_version or break_glass_offer may follow.",
@@ -1985,6 +2014,24 @@
         },
         "required": [
           "source",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "NewWatchEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "description": "Why the patient is on the list. Required.",
+            "maxLength": 500,
+            "type": "string"
+          },
+          "until": {
+            "description": "The last day the entry holds, YYYY-MM-DD, today or later.",
+            "type": "string"
+          }
+        },
+        "required": [
           "reason"
         ],
         "type": "object"
@@ -2323,6 +2370,56 @@
         },
         "required": [
           "records"
+        ],
+        "type": "object"
+      },
+      "OwnWatchList": {
+        "description": "The caller's own active entries, as pointers: no reason.",
+        "properties": {
+          "items": {
+            "items": {
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "patient_id": {
+                  "type": "string"
+                },
+                "since": {
+                  "type": "string"
+                },
+                "until": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "version": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "version",
+                "patient_id",
+                "since",
+                "until"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "more": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "items",
+          "limit",
+          "more"
         ],
         "type": "object"
       },
@@ -4516,6 +4613,79 @@
           "status",
           "detail",
           "current_version"
+        ],
+        "type": "object"
+      },
+      "WatchEntry": {
+        "properties": {
+          "end_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "owner": {
+            "description": "Whose list it is on.",
+            "type": "string"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "recorded_at": {
+            "type": "string"
+          },
+          "since": {
+            "type": "string"
+          },
+          "state": {
+            "description": "lapsed: the last day has passed; worked out when read.",
+            "enum": [
+              "active",
+              "ended",
+              "lapsed"
+            ]
+          },
+          "until": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "owner",
+          "patient_id",
+          "since",
+          "recorded_at",
+          "state",
+          "reason",
+          "until",
+          "end_reason"
+        ],
+        "type": "object"
+      },
+      "WatchEntryList": {
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/WatchEntry"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "entries"
         ],
         "type": "object"
       }
@@ -10433,6 +10603,267 @@
         "x-epr-resource": "PatientLink"
       }
     },
+    "/api/patients/{id}/watch-list": {
+      "get": {
+        "operationId": "getApiPatientsIdWatch-list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatchEntryList"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/patients/{id}/watch-list",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Search",
+        "x-epr-resource": "WatchList"
+      },
+      "post": {
+        "operationId": "postApiPatientsIdWatch-list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "1 to 128 letters, digits or . _ : -. A retry with the same key and the same request returns the first answer (header `Idempotent-Replayed: true`) and writes nothing; the same key for a different request is a 422; a key whose first request is unfinished is a 409. Only a success is kept; keys expire after 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddWatchEntry"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatchEntry"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionConflict"
+                }
+              }
+            },
+            "description": "A likely duplicate or a stale expected_version."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/patients/{id}/watch-list",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Create",
+        "x-epr-resource": "WatchList"
+      }
+    },
+    "/api/patients/{id}/watch-list/{entry_id}": {
+      "put": {
+        "operationId": "putApiPatientsIdWatch-listEntry_id",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EndWatchEntry"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatchEntry"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionConflict"
+                }
+              }
+            },
+            "description": "A likely duplicate or a stale expected_version."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "PUT /api/patients/{id}/watch-list/{entry_id}",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Update",
+        "x-epr-resource": "WatchList"
+      }
+    },
     "/api/referral-messages": {
       "post": {
         "operationId": "postApiReferral-messages",
@@ -10997,6 +11428,57 @@
         ],
         "x-epr-action": "Update",
         "x-epr-resource": "ReferralWorklist"
+      }
+    },
+    "/api/watch-list": {
+      "get": {
+        "operationId": "getApiWatch-list",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnWatchList"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/watch-list",
+        "tags": [
+          "watch-list"
+        ],
+        "x-epr-action": "Search",
+        "x-epr-resource": "OwnWatchList"
       }
     },
     "/fhir/R4/AllergyIntolerance": {

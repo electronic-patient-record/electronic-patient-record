@@ -529,6 +529,57 @@ fn suspicion_schemas() -> Value {
     })
 }
 
+/// The schemas for watch lists (WL-6).
+fn watch_list_schemas() -> Value {
+    json!({
+        "NewWatchEntry": {
+            "type": "object", "additionalProperties": false, "required": ["reason"],
+            "properties": {
+                "reason": {"type": "string", "maxLength": 500, "description": "Why the patient is on the list. Required."},
+                "until": {"type": "string", "description": "The last day the entry holds, YYYY-MM-DD, today or later."}
+            }
+        },
+        "AddWatchEntry": {
+            "type": "object", "additionalProperties": false, "required": ["entry"],
+            "properties": {"entry": {"$ref": "#/components/schemas/NewWatchEntry"}}
+        },
+        "EndWatchEntry": {
+            "type": "object", "additionalProperties": false, "required": ["expected_version", "end_reason"],
+            "properties": {
+                "expected_version": {"type": "integer"},
+                "end_reason": {"type": "string", "maxLength": 500}
+            }
+        },
+        "WatchEntry": {
+            "type": "object",
+            "required": ["id", "version", "owner", "patient_id", "since", "recorded_at", "state", "reason", "until", "end_reason"],
+            "properties": {
+                "id": {"type": "string"}, "version": {"type": "integer"},
+                "owner": {"type": "string", "description": "Whose list it is on."},
+                "patient_id": {"type": "string"}, "since": {"type": "string"}, "recorded_at": {"type": "string"},
+                "state": {"enum": ["active", "ended", "lapsed"], "description": "lapsed: the last day has passed; worked out when read."},
+                "reason": {"type": "string"},
+                "until": {"type": ["string", "null"]},
+                "end_reason": {"type": ["string", "null"]}
+            }
+        },
+        "WatchEntryList": {
+            "type": "object", "required": ["entries"],
+            "properties": {"entries": {"type": "array", "items": {"$ref": "#/components/schemas/WatchEntry"}}}
+        },
+        "OwnWatchList": {
+            "type": "object", "required": ["items", "limit", "more"],
+            "description": "The caller's own active entries, as pointers: no reason.",
+            "properties": {
+                "items": {"type": "array", "items": {"type": "object", "required": ["id", "version", "patient_id", "since", "until"], "properties": {
+                    "id": {"type": "string"}, "version": {"type": "integer"}, "patient_id": {"type": "string"},
+                    "since": {"type": "string"}, "until": {"type": ["string", "null"]}}}},
+                "limit": {"type": "integer"}, "more": {"type": "boolean"}
+            }
+        }
+    })
+}
+
 /// The schemas for assessments under versioned forms (WL-3).
 fn assessment_schemas() -> Value {
     json!({
@@ -1437,6 +1488,7 @@ fn patient_schemas() -> Value {
         result_schemas(),
         assessment_schemas(),
         suspicion_schemas(),
+        watch_list_schemas(),
         consent_schemas(),
         relationship_schemas(),
     ] {
@@ -1536,6 +1588,22 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
         "EndSuspicion",
         "201",
         "SuspicionHistory",
+        "VersionConflict",
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/watch-list",
+        "AddWatchEntry",
+        "201",
+        "WatchEntry",
+        "VersionConflict",
+    ),
+    (
+        "PUT",
+        "/api/patients/{id}/watch-list/{entry_id}",
+        "EndWatchEntry",
+        "200",
+        "WatchEntry",
         "VersionConflict",
     ),
     (
@@ -1807,6 +1875,13 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
         "GET",
         "/api/referrals/worklist",
         "ReferralWorklistList",
+        &[],
+    ),
+    ("GET", "/api/watch-list", "OwnWatchList", &[]),
+    (
+        "GET",
+        "/api/patients/{id}/watch-list",
+        "WatchEntryList",
         &[],
     ),
     (
