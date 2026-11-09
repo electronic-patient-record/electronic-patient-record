@@ -276,11 +276,55 @@ pub(super) async fn create(
                     "version": stored.version,
                     "state": stored.state.as_str(),
                     "priority": request.referral.priority,
+                    "replaces": stored.referral.replaces,
                 }),
             )
             .await
             {
                 return r.into_response();
+            }
+            // A replacement for a redirected referral takes its suspicion with it (RS-2), in this
+            // transaction, so the new referral never exists without the reason it is urgent.
+            if let Some(old) = stored.referral.replaces.as_deref() {
+                match crate::suspicions_store::carry(
+                    &mut *tx,
+                    &stored.patient_id,
+                    old,
+                    &stored.id,
+                    &agent.0,
+                    chrono::Utc::now(),
+                )
+                .await
+                {
+                    Ok(None) => {}
+                    Ok(Some(carried)) => {
+                        if let Err(r) = audit_resource(
+                            &mut *tx,
+                            &agent,
+                            Access {
+                                action: Action::Create,
+                                outcome: 0,
+                                purpose,
+                                resource: "Condition",
+                                patient_id: Some(&stored.patient_id),
+                            },
+                            serde_json::json!({
+                                "suspicion": true,
+                                "referral": stored.id,
+                                "version": carried.version,
+                                "carried_from": old,
+                            }),
+                        )
+                        .await
+                        {
+                            return r.into_response();
+                        }
+                    }
+                    Err(e) => {
+                        let _ = tx.rollback().await;
+                        return failure(e).into_response();
+                    }
+                }
             }
             if let Err(r) = commit(tx).await {
                 return r.into_response();

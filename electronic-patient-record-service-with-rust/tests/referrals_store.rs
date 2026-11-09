@@ -62,6 +62,7 @@ fn referral() -> Referral {
         question: "Is this angina?".into(),
         priority: Priority::Routine,
         external_ids: vec![],
+        replaces: None,
     }
 }
 

@@ -312,7 +312,8 @@ fn referral_schemas() -> Value {
                 "question": {"type": "string"},
                 "priority": {"enum": ["routine", "urgent", "asap", "stat"]},
                 "external_ids": {"type": "array", "items": {"type": "object", "required": ["system", "value"], "properties": {
-                    "system": {"type": "string"}, "value": {"type": "string"}}}}
+                    "system": {"type": "string"}, "value": {"type": "string"}}}},
+                "replaces": {"type": "string", "description": "A redirected referral of this patient that this one replaces, once (RS-2); its suspicion is carried here."}
             }
         },
         "StoredReferral": {
@@ -466,14 +467,15 @@ fn suspicion_schemas() -> Value {
         },
         "StoredSuspicion": {
             "type": "object",
-            "required": ["referral_id", "version", "patient_id", "author", "recorded_at", "reason", "changed", "suspicion", "plan"],
+            "required": ["referral_id", "version", "patient_id", "author", "recorded_at", "reason", "changed", "suspicion", "plan", "carried_from"],
             "properties": {
                 "referral_id": {"type": "string"}, "version": {"type": "integer"}, "patient_id": {"type": "string"},
                 "author": {"type": "string"}, "recorded_at": {"type": "string"},
                 "reason": {"type": ["string", "null"], "description": "Why it was amended; null on version 1."},
                 "changed": {"type": "array", "items": {"type": "string"}, "description": "The fields this version changed."},
                 "suspicion": {"$ref": "#/components/schemas/Suspicion"},
-                "plan": {"$ref": "#/components/schemas/SuspicionPlan"}
+                "plan": {"$ref": "#/components/schemas/SuspicionPlan"},
+                "carried_from": {"type": ["string", "null"], "description": "The redirected referral this suspicion was carried from, on version 1 of a replacement (RS-2)."}
             }
         },
         "SuspicionHistory": {
@@ -2534,6 +2536,7 @@ mod tests {
                 system: "s".into(),
                 value: "v".into(),
             }],
+            replaces: Some("x".into()),
         };
         let value = serde_json::to_value(&record).unwrap();
         assert_eq!(keys(&value), properties("ReferralRecord"));

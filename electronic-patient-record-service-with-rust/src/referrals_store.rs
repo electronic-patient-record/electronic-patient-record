@@ -64,6 +64,10 @@ pub struct Referral {
     /// Other identifiers for this referral.
     #[serde(default)]
     pub external_ids: Vec<ExternalId>,
+    /// The redirected referral this one replaces (RS-2): a referral of the same patient in state
+    /// `redirected`, replaced at most once. Its suspicion, if any, is carried to this one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub replaces: Option<String>,
 }
 
 /// An event the state table allows from a referral's current state.
@@ -215,6 +219,14 @@ pub async fn request(
     check(referral)?;
     let patient = ids::uuid(patient_id).ok_or(StoreError::NotFound)?;
     crate::patients_store::current(&mut *db, &patient).await?;
+    let mut referral = referral.clone();
+    if let Some(old) = referral.replaces.as_deref() {
+        let old =
+            ids::uuid(old).ok_or_else(|| refuse("the referral replaced is not a referral id"))?;
+        replaceable(&mut *db, &patient, &old).await?;
+        referral.replaces = Some(old);
+    }
+    let referral = &referral;
     let row = sqlx::query(AssertSqlSafe(format!(
                 "INSERT INTO referral_versions (referral_id, version, patient_id, author, state, event, body)
                  VALUES (gen_random_uuid(), 1, $1::uuid, $2, $3, $4, $5)
@@ -237,6 +249,55 @@ pub async fn request(
         .map_err(db_err)?
         .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
     row_to_referral(&row)
+}
+
+/// Refuse to replace a referral that is not this patient's, not redirected, or already replaced. A
+/// lock on the old referral's rows makes two replacements at once wait for each other.
+async fn replaceable(
+    db: &mut sqlx::PgConnection,
+    patient: &str,
+    old: &str,
+) -> Result<(), StoreError> {
+    let row = sqlx::query(
+        "SELECT patient_id::text AS patient_id, state FROM referral_current WHERE referral_id = $1::uuid",
+    )
+    .bind(old)
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(db_err)?;
+    let Some(row) = row else {
+        return Err(refuse(
+            "the referral replaced does not exist on this record",
+        ));
+    };
+    let (owner, state): (String, String) = (
+        row.try_get("patient_id").map_err(db_err)?,
+        row.try_get("state").map_err(db_err)?,
+    );
+    if owner != patient {
+        return Err(refuse(
+            "the referral replaced does not exist on this record",
+        ));
+    }
+    if state != State::Redirected.as_str() {
+        return Err(refuse("only a redirected referral can be replaced"));
+    }
+    sqlx::query("SELECT pg_advisory_xact_lock(hashtext($1))")
+        .bind(format!("referral-replaces:{old}"))
+        .execute(&mut *db)
+        .await
+        .map_err(db_err)?;
+    let taken = sqlx::query(
+        "SELECT 1 FROM referral_versions WHERE version = 1 AND body->>'replaces' = $1 LIMIT 1",
+    )
+    .bind(old)
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(db_err)?;
+    if taken.is_some() {
+        return Err(refuse("that referral has already been replaced"));
+    }
+    Ok(())
 }
 
 /// One referral's current version.
@@ -445,6 +506,7 @@ mod tests {
             question: "Is this angina?".into(),
             priority: Priority::Routine,
             external_ids: vec![],
+            replaces: None,
         }
     }
 

@@ -39,6 +39,8 @@ pub struct StoredSuspicion {
     pub suspicion: Suspicion,
     /// The pathway's priority and target days for it, worked out at the time of reading.
     pub plan: Plan,
+    /// The redirected referral this suspicion was carried from (RS-2), on version 1 of a replacement.
+    pub carried_from: Option<String>,
 }
 
 /// A referral's suspicion: every version, oldest first, and the current one.
@@ -52,6 +54,7 @@ pub struct SuspicionHistory {
 
 const COLUMNS: &str =
     "referral_id::text AS referral_id, version, patient_id::text AS patient_id, author, reason,
+    carried_from::text AS carried_from,
     to_char(recorded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS at, body";
 
 fn refuse(message: impl Into<String>) -> StoreError {
@@ -76,6 +79,42 @@ async fn referral_sent(
         return Err(StoreError::NotFound);
     }
     time(&first.recorded_at)
+}
+
+/// The most redirects followed back to the first referral.
+const MAX_CARRIES: usize = 50;
+
+/// When the first referral in a chain of redirects was sent: a pathway that counts from the referral
+/// counts from the one the suspicion was first raised on, not its replacement.
+async fn first_sent(
+    db: &mut sqlx::PgConnection,
+    referral_id: &str,
+    own: DateTime<Utc>,
+) -> Result<DateTime<Utc>, StoreError> {
+    let (mut id, mut sent) = (referral_id.to_string(), own);
+    for _ in 0..MAX_CARRIES {
+        let row = sqlx::query(
+            "SELECT carried_from::text AS f FROM referral_suspicion_versions
+             WHERE referral_id = $1::uuid AND version = 1",
+        )
+        .bind(id.clone())
+        .fetch_optional(&mut *db)
+        .await
+        .map_err(db_err)?;
+        let from: Option<String> = match row {
+            Some(r) => r.try_get("f").map_err(db_err)?,
+            None => None,
+        };
+        let Some(from) = from else {
+            return Ok(sent);
+        };
+        let versions = referrals_store::history(&mut *db, &from).await?;
+        sent = time(&versions.first().ok_or(StoreError::NotFound)?.recorded_at)?;
+        id = from;
+    }
+    Err(StoreError::Db(
+        "too many redirects in one suspicion's chain".into(),
+    ))
 }
 
 fn plan_for(s: &Suspicion, sent: DateTime<Utc>, now: DateTime<Utc>) -> Result<Plan, StoreError> {
@@ -111,6 +150,7 @@ fn row_to_stored(
         recorded_at: row.try_get("at").map_err(db_err)?,
         reason: row.try_get("reason").map_err(db_err)?,
         changed: previous.map_or_else(Vec::new, |p| suspicion::changed(p, &s)),
+        carried_from: row.try_get("carried_from").map_err(db_err)?,
         plan: plan_for(&s, sent, now)?,
         suspicion: s,
     })
@@ -185,11 +225,13 @@ pub async fn history(
 ) -> Result<SuspicionHistory, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
-    let sent = referral_sent(&mut *db, patient_id, referral_id).await?;
+    let own = referral_sent(&mut *db, patient_id, referral_id).await?;
+    let sent = first_sent(&mut *db, referral_id, own).await?;
     let rows = rows(&mut *db, referral_id).await?;
     build(&rows, sent, now)
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn insert(
     db: &mut sqlx::PgConnection,
     referral_id: &str,
@@ -197,6 +239,7 @@ async fn insert(
     patient_id: &str,
     author: &str,
     reason: Option<&str>,
+    carried_from: Option<&str>,
     s: &Suspicion,
 ) -> Result<crate::store::Appended, StoreError> {
     crate::store::append_version(
@@ -204,8 +247,9 @@ async fn insert(
         STORE,
         sqlx::query(AssertSqlSafe(format!(
             "INSERT INTO referral_suspicion_versions
-                 (referral_id, version, patient_id, author, reason, pathway_id, pathway_version, body)
-             VALUES ($1::uuid, $2, $3::uuid, $4, $5, $6, $7, $8)
+                 (referral_id, version, patient_id, author, reason, pathway_id, pathway_version, body,
+                  carried_from)
+             VALUES ($1::uuid, $2, $3::uuid, $4, $5, $6, $7, $8, $9::uuid)
              RETURNING {COLUMNS}"
         )))
         .bind(referral_id.to_string())
@@ -215,7 +259,8 @@ async fn insert(
         .bind(reason.map(str::trim).map(str::to_string))
         .bind(s.pathway.clone())
         .bind(s.pathway_version)
-        .bind(serde_json::to_value(s).map_err(db_err)?),
+        .bind(serde_json::to_value(s).map_err(db_err)?)
+        .bind(carried_from.map(str::to_string)),
     )
     .await
 }
@@ -244,7 +289,7 @@ pub async fn raise(
         });
     }
     check(&mut *db, patient_id, s, now).await?;
-    match insert(&mut *db, &referral_id, 1, patient_id, author, None, s).await? {
+    match insert(&mut *db, &referral_id, 1, patient_id, author, None, None, s).await? {
         crate::store::Appended::Row(row) => row_to_stored(&row, None, sent, now),
         crate::store::Appended::Taken => Err(StoreError::Conflict { current: 1 }),
     }
@@ -270,8 +315,9 @@ pub async fn amend(
 ) -> Result<StoredSuspicion, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
-    let sent = referral_sent(&mut *db, patient_id, referral_id).await?;
+    let own = referral_sent(&mut *db, patient_id, referral_id).await?;
     let referral_id = ids::uuid(referral_id).ok_or(StoreError::NotFound)?;
+    let sent = first_sent(&mut *db, &referral_id, own).await?;
     let history = build(&rows(&mut *db, &referral_id).await?, sent, now)?;
     let was = history.current.ok_or(StoreError::NotFound)?;
     if was.version != expected_version {
@@ -290,6 +336,7 @@ pub async fn amend(
         patient_id,
         author,
         reason,
+        None,
         s,
     )
     .await?
@@ -303,5 +350,44 @@ pub async fn amend(
                 .map_err(db_err)?;
             Err(StoreError::Conflict { current })
         }
+    }
+}
+
+/// Carry a redirected referral's current suspicion to the referral that replaces it (RS-2): version 1 of
+/// the replacement is the same suspicion, point of suspicion included, naming where it came from. The
+/// caller has checked that `to` replaces `from` (`referrals_store::request`). `None` when the old
+/// referral carried no suspicion.
+///
+/// # Errors
+///
+/// [`StoreError::NotFound`] (either referral is not this patient's), [`StoreError::Conflict`] (the
+/// replacement already carries one).
+pub async fn carry(
+    db: impl Into<Db<'_>>,
+    patient_id: &str,
+    from: &str,
+    to: &str,
+    author: &str,
+    now: DateTime<Utc>,
+) -> Result<Option<StoredSuspicion>, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    referral_sent(&mut *db, patient_id, from).await?;
+    let own = referral_sent(&mut *db, patient_id, to).await?;
+    let (from, to) = (
+        ids::uuid(from).ok_or(StoreError::NotFound)?,
+        ids::uuid(to).ok_or(StoreError::NotFound)?,
+    );
+    let Some(last) = rows(&mut *db, &from).await?.pop() else {
+        return Ok(None);
+    };
+    let body: serde_json::Value = last.try_get("body").map_err(db_err)?;
+    let s: Suspicion = serde_json::from_value(body).map_err(db_err)?;
+    match insert(&mut *db, &to, 1, patient_id, author, None, Some(&from), &s).await? {
+        crate::store::Appended::Row(row) => {
+            let sent = first_sent(&mut *db, &to, own).await?;
+            row_to_stored(&row, None, sent, now).map(Some)
+        }
+        crate::store::Appended::Taken => Err(StoreError::Conflict { current: 1 }),
     }
 }

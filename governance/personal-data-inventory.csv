@@ -402,3 +402,5 @@ referral_suspicion_current,reason,health,Why the suspicion was amended,record
 referral_suspicion_current,pathway_id,health,The pathway it was made under which names the suspected condition,record
 referral_suspicion_current,pathway_version,none,The pathway version,record
 referral_suspicion_current,body,health,The suspected condition and its grounds and point of suspicion and what the patient was told and any factors or agreement,record
+referral_suspicion_versions,carried_from,none,The redirected referral the suspicion was carried from,record
+referral_suspicion_current,carried_from,none,The redirected referral the suspicion was carried from,record

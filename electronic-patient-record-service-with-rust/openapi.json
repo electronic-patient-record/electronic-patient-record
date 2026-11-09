@@ -2942,6 +2942,10 @@
           "recipient": {
             "description": "The service or clinician, as the referrer names it.",
             "type": "string"
+          },
+          "replaces": {
+            "description": "A redirected referral of this patient that this one replaces, once (RS-2); its suspicion is carried here.",
+            "type": "string"
           }
         },
         "required": [
@@ -3884,6 +3888,13 @@
           "author": {
             "type": "string"
           },
+          "carried_from": {
+            "description": "The redirected referral this suspicion was carried from, on version 1 of a replacement (RS-2).",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "changed": {
             "description": "The fields this version changed.",
             "items": {
@@ -3926,7 +3937,8 @@
           "reason",
           "changed",
           "suspicion",
-          "plan"
+          "plan",
+          "carried_from"
         ],
         "type": "object"
       },

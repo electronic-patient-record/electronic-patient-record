@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-09 - A suspicion survives triage, rebooking and redirection (RS-2, H-054)
+
+- **Clinical risk:** **yes (H-054, updated).** When a redirected referral is replaced, the new one now keeps the reason it is urgent and the day its clock started. Before this change the replacement started with no suspicion.
+- **Built:** a referral can name the redirected referral it `replaces`. The old referral must belong to the same patient, be redirected and not already be replaced, and two replacements at once wait on a lock. In the same transaction, the old referral's current suspicion becomes the new one's version 1, with `carried_from` and the point of suspicion unchanged, and that is audited. A pathway counted from `referral-sent` counts from the first referral in the chain. Migration `20261109000032_suspicion_carried_from.sql` adds `carried_from`, which only a version 1 may have. `openapi.json`, the specs, the inventory and the schema map follow.
+- **Checked:** fmt, clippy, the doc build and every database-free test (534). In the full database run, 172 tests passed. The six FHIR validator tests failed because they need Java. `http_death_reports` and `http_overdue_reviews` failed because their clock-made patients matched patients left over from earlier runs (409 possible duplicate). Both passed on a fresh database, as did `http_hazards` and `http_suspicions`. That flake is old and was not fixed. `tests/http_suspicions.rs` now also covers these cases. Accept, book, a no-show and a rebook leave the suspicion at version 1 with its point of suspicion. A redirect then a replacement carries it, with `carried_from`, the earlier point of suspicion and the due day 2026-11-30. Replacing the same referral twice, and replacing one that was not redirected, are 422. `tests/referrals_store.rs` and `tests/http_audit_refusal.rs` still pass.
+- **Not done / not verified:** a replacement that does not name what it replaces starts with no suspicion, and nothing finds such a pair. No screen offers `replaces`. The external referral queue (PC-2) does not carry it. No clinician reviewed it.
+
 ## 2026-11-09 - A suspicion on a referral, under its pathway (RS-1, H-054)
 
 - **Clinical risk:** **yes (new hazard H-054: a suspicion lost, changed unseen, or revealed to a patient not told).** A referral can now carry what the referrer suspects, from when and on what grounds, with the pathway's priority and due days beside it. H-054 is new and open; H-053's residual risk now says no screen shows the plan.

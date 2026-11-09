@@ -63,6 +63,6 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `patient_link_current` | `20261021000008_patient_links`, `20261021000011_current_views_seek` |
 | `patient_photo_current` | `20261021000006_patient_photos` |
 | `referral_current` | `20261102000022_referrals` |
-| `referral_suspicion_current` | `20261109000031_referral_suspicions` |
+| `referral_suspicion_current` | `20261109000031_referral_suspicions`, `20261109000032_suspicion_carried_from` |
 | `relationship_current` | `20261021000004_relationship_versions`, `20261021000011_current_views_seek` |
 | `result_current` | `20261109000029_results` |

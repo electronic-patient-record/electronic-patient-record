@@ -68,6 +68,7 @@ async fn referral(db: &PgPool) -> store::StoredReferral {
             question: "Is this angina?".into(),
             priority: Priority::Routine,
             external_ids: vec![],
+            replaces: None,
         },
         Utc::now(),
     )

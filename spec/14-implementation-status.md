@@ -20,7 +20,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | Service version | 0.1.0 | `version` in the service `Cargo.toml` |
 | Matcher version | 0.7.0 | `version` in the matcher `Cargo.toml` |
 | Front-end version | 0.1.0 | `version` in the front-end `package.json` |
-| Migrations | 31 | files named `*.sql` in `migrations` |
+| Migrations | 32 | files named `*.sql` in `migrations` |
 | Route registrations | 91 | `.add(` calls in `src/controllers/*.rs` |
 | Service tests | 714, plus 180 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
 | Matcher tests | 117, plus 0 `#[ignore]`d | the same patterns in the matcher |
@@ -71,7 +71,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | TT | 1 | 6 |
 | PX | 6 | 0 |
 | WL | 7 | 5 |
-| RS | 2 | 4 |
-| **Total** | **85** | **332** |
+| RS | 3 | 3 |
+| **Total** | **86** | **331** |
 
 <!-- generated:end -->

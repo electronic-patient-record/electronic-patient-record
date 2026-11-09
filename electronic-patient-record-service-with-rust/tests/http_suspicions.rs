@@ -68,14 +68,17 @@ async fn a_suspicion_keeps_its_point_of_suspicion_and_follows_its_pathway() {
         })
     };
     const DOCTOR: &str = "0c4f1e2a-0000-4000-8000-0000000000d1";
+    const RECIPIENT: &str = "0c4f1e2a-0000-4000-8000-0000000000d3";
     let admin = token("clinical-admin", "0c4f1e2a-0000-4000-8000-0000000000d0");
     let doctor = token("clinician", DOCTOR);
     let receptionist = token("receptionist", "0c4f1e2a-0000-4000-8000-0000000000d2");
+    let recipient = token("clinician", RECIPIENT);
 
     request::<App, _, _>(|server, ctx| async move {
         let (ah, av) = bearer(&admin);
         let (dh, dv) = bearer(&doctor);
         let (rh, rv) = bearer(&receptionist);
+        let (th, tv) = bearer(&recipient);
         let patient = |seed: u128| {
             let server = &server;
             let (ah, av) = (ah.clone(), av.clone());
@@ -215,6 +218,70 @@ async fn a_suspicion_keeps_its_point_of_suspicion_and_follows_its_pathway() {
         let r: Value = r.json();
         assert_eq!(r["plan"]["targets"][0]["days"], 14);
         assert_eq!(r["plan"]["targets"][0]["due_on"], "2026-11-23");
+
+        // RS-2. Triage and rebooking change the referral, never the suspicion.
+        let rel = server
+            .post(&format!("/api/patients/{pid}/relationships"))
+            .add_header(ah.clone(), av.clone())
+            .json(&json!({ "relationship": { "subject": RECIPIENT, "kind": "care-team", "status": "active" },
+                           "reason": "test" }))
+            .await;
+        assert_eq!(rel.status_code(), StatusCode::CREATED, "{}", rel.text());
+        let step = |rid: String, event: &'static str, version: i32, note: Option<&'static str>| {
+            let server = &server;
+            let pid = pid.clone();
+            let (th, tv) = (th.clone(), tv.clone());
+            async move {
+                let r = server
+                    .post(&format!("/api/patients/{pid}/referrals/{rid}/events"))
+                    .add_header(th, tv)
+                    .json(&json!({ "event": event, "expected_version": version, "note": note }))
+                    .await;
+                assert_eq!(r.status_code(), StatusCode::OK, "{event}: {}", r.text());
+            }
+        };
+        step(rid2.clone(), "accept", 1, None).await;
+        step(rid2.clone(), "book", 2, None).await;
+        step(rid2.clone(), "record-no-show", 3, None).await;
+        step(rid2.clone(), "book", 4, None).await;
+        let kept: Value = server.get(&url2).add_header(dh.clone(), dv.clone()).await.json();
+        assert_eq!(kept["current"]["version"], 1, "untouched by triage and rebooking: {kept}");
+        assert_eq!(kept["current"]["suspicion"]["point_of_suspicion"], "2026-11-09T09:00:00Z");
+
+        // A redirect ends the referral; its replacement carries the suspicion, point of suspicion and all.
+        step(rid.clone(), "redirect", 1, Some("colorectal team at the other site")).await;
+        let replace = |old: &str| {
+            let server = &server;
+            let pid = pid.clone();
+            let (dh, dv) = (dh.clone(), dv.clone());
+            let body = json!({ "referral": { "recipient": "Colorectal clinic, other site", "reason": "bleeding",
+                               "question": "please assess", "priority": "urgent", "replaces": old } });
+            async move {
+                server
+                    .post(&format!("/api/patients/{pid}/referrals"))
+                    .add_header(dh, dv)
+                    .json(&body)
+                    .await
+            }
+        };
+        let new = replace(&rid).await;
+        assert_eq!(new.status_code(), StatusCode::CREATED, "{}", new.text());
+        let new_id = new.json::<Value>()["id"].as_str().unwrap().to_string();
+        let carried: Value = server
+            .get(&format!("/api/patients/{pid}/referrals/{new_id}/suspicion"))
+            .add_header(dh.clone(), dv.clone())
+            .await
+            .json();
+        let c = &carried["current"];
+        assert_eq!(c["version"], 1);
+        assert_eq!(c["carried_from"], json!(rid));
+        assert_eq!(c["suspicion"]["point_of_suspicion"], "2026-11-02T10:00:00Z");
+        assert_eq!(c["plan"]["targets"][0]["due_on"], "2026-11-30", "the clock did not restart");
+        for old in [rid.as_str(), rid2.as_str()] {
+            let again = replace(old).await;
+            assert_eq!(again.status_code(), StatusCode::UNPROCESSABLE_ENTITY,
+                "replaced twice, or not redirected: {}", again.text());
+        }
 
         // Another patient's path to this referral is a miss; reception and patient access are refused.
         let crossed = server
