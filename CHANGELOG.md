@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-09 - CI's coverage upload uses `actions/upload-artifact` v7
+
+- **Clinical risk:** **no.** CI only.
+- **Built:** `ci.yml`'s coverage job uploads with `actions/upload-artifact@v7`, as Dependabot's PR #5 proposed; `release.yml` already used v7.
+- **Checked:** the next CI run on main (the coverage job uploads `coverage-lcov`).
+- **Not done / not verified:** the uploaded coverage files were not downloaded and compared with a v5 upload.
+
 ## 2026-11-09 - UI dependencies updated
 
 - **Clinical risk:** **no.** No screen, rule or record changed. The runtime changes are patch releases of SvelteKit (3.1.1), adapter-node (6.0.1) and node-redis (6.3.1); the rest are tools and test libraries.

@@ -297,7 +297,7 @@ jobs:
       - name: Service lines (database-free tests only)
         working-directory: electronic-patient-record-service-with-rust
         run: cargo llvm-cov --locked --lib --lcov --output-path lcov.info --fail-under-lines 50
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         with:
           name: coverage-lcov
           path: |
