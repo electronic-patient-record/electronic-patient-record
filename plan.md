@@ -1799,3 +1799,48 @@ PA-6, reasonable adjustments and communication needs, in [`spec/reasonable-adjus
 ### 33.3 Not done, not verified
 
 The catalogue's words were written for a PAS and read by no clinician here. The Accessible Information Standard is cited as the PAS cites it; I did not read it for this pass. No national code list was checked for licence.
+
+## 34. Research pass 2026-11-09: NHS Wales national systems
+
+The request: research the Welsh Clinical Portal, the Welsh GP Record, the Welsh Immunisation System, the Welsh Intensive Care Information System, the Welsh Nursing Care Record and the Welsh Community Care Information System, assess them, and advise. Public sources only, read 2026-11-09; the findings, each with its source, are in [`spec/nhs-wales/index.md`](spec/nhs-wales/index.md). Much of what is known comes from DHCW describing its own work, and that page marks it.
+
+### 34.1 Assessment
+
+Wales built a national portal (WCP) over national repositories (results, documents, the GP summary) rather than one record. What has gone well in public sources is narrow and standardised: WNCR's nursing forms, each a versioned national standard with named sign-off, reached all eligible wards; WIS reached 10 million vaccinations. What has gone badly is broad and shared: WCCIS, one record for 29 organisations, was found by Audit Wales to mean different things by "live", to slow its users, and to lack Welsh, mobile working and NHS interfaces seven years in; it is being replaced by separate products joined by standards. WICIS, a supplier's ICU system, has no confirmed live unit six years after contract. Outages (21 in six months of 2018, a missed chemotherapy) and write-back gaps (flu vaccinations keyed in by hand) are the clinical cost of a record held in more than one place.
+
+For this project the lessons are mostly ones it already follows (append-only, standards first, stating what is not done); the new ones are small and specific, below.
+
+### 34.2 Ideas, ranked
+
+| ID | Idea | From | Checked here | Value | Cost |
+|---|---|---|---|---|---|
+| WL-1 | A result sign-off records the result version it was made on; a corrected result reopens it. | WCP results sign-off | OR-4 specifies acknowledgement and escalation, not the version | High | S |
+| WL-2 | A patient choice follows the person: an objection survives a move and a merge of two records. | WGPR opt-out lost on a change of practice | SE-2 holds consent per patient; merges were not checked against it | High | S |
+| WL-3 | An assessment form is a versioned standard with named clinical sign-off, and each completed one keeps its form version. | WNCR | EM-3 is open; OQ-M2 asks about licences | High | M |
+| WL-4 | Permission at the point of care: "asked and agreed", or "could not ask" with a clinical reason, recorded on the view. | WGPR | Purpose and break-the-glass exist; no "asked" basis | Medium | M |
+| WL-5 | A record kept in two places has one direction of flow, a write-back and a reconciliation report. | WIS write-back gap | RC-5 immunisations are not built; DX has no write-back | Medium | S (spec) |
+| WL-6 | A watch list with a required reason and an end. | WCP | No watch list | Medium | S |
+| WL-7 | A narrower view by role (medicines and allergies only for a vaccinator). | WGPR (snippet) | PI and RA restrict by category, not by role view | Medium | M |
+| WL-8 | Welsh from the start: clinician strings in Welsh, reviewed by a speaker, before any Welsh deployment. | WCCIS lacked it | `cy-001` exists and falls back to English | Medium | M |
+| WL-9 | The Wales FHIR guide as a national pack. | WHC/2023/018 | IO-18 designs packs; no Wales pack | Medium | M |
+| WL-10 | A device reading counts only once a clinician validates it, with device and time of capture kept. | WICIS | EM-11 is post-1.0 | Low now | S (spec) |
+| WL-11 | "Live" is a list of functions in use, per site. | WCCIS ("live meant different things") | The generated status counts what is built, not where it is used | Low now | S |
+| WL-12 | Not adopted, already held: an exit path (DX `$export`), one instance not copies, downtime (CA-7), monitored audit (RA-6), honest reporting. | WCCIS, WNCR, PAC 2018 | Recorded so the question is not asked again | none | none |
+
+### 34.3 Advice
+
+Do WL-1 and WL-2 next: both are small, clinical and close to code that exists (OR-4's design and SE-2). WL-3 should be decided with EM-3, because every risk tool needs a licence answer first (OQ-M2), and the All-Wales forms' licences were not looked for. WL-4 and WL-7 belong with the access-control work (SE-4, PI, RA), not before it. WL-8 and WL-9 matter only if Wales is a target deployment (OQ-WL1); until then they are recorded, not started. Do not copy WCCIS's shape: one shared record for many organisations failed where standards between separate systems are now the plan.
+
+### 34.4 Risks
+
+- Most capability claims are DHCW's own; independent sources cover failures more than successes, so the picture leans.
+- The Welsh repository's model (openEHR in 2021, FHIR in 2026) was not settled; nothing here should depend on it.
+- A Welsh deployment would bring Welsh law and standards (the Welsh Control Standard, the Welsh language standards for health bodies) that this pass did not read.
+
+### 34.5 Open questions
+
+OQ-WL1 (is Wales a target deployment?) and OQ-WL2 (the licence of the All-Wales nursing forms) in [`spec/16-open-questions.md`](spec/16-open-questions.md).
+
+### 34.6 Not done, not verified
+
+No system was used. The Welsh GP Record FAQ, the January 2025 WICIS release and the Digital Health articles could not be opened, so what they say rests on search snippets. No clinician read the ideas. The Welsh Control Standard and the Wales FHIR guide were not opened. Sources are listed in the spec page.

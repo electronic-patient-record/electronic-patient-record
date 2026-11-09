@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-09 - Research pass: NHS Wales national systems (plan.md §34, WL-1 to WL-12)
+
+- **Clinical risk:** **no change to the product.** Documents only: no code, route, screen or hazard changed. Five of the new tasks are marked clinical (WL-1, WL-2, WL-3, WL-4, WL-6), and each will need its hazard row when it is built.
+- **Built:** [`spec/nhs-wales/index.md`](spec/nhs-wales/index.md), a sourced comparison of the Welsh Clinical Portal, Welsh GP Record, Welsh Immunisation System, Welsh Intensive Care Information System, Welsh Nursing Care Record and Welsh Community Care Information System (now Connecting Care). plan.md §34 has the assessment, eleven ideas ranked, the advice (WL-1 and WL-2 next), risks and what was not verified. tasks.md has WL-1 to WL-12, with the `WL` prefix registered in `scripts/generate-status.sh`. Spec `16` gains OQ-WL1 (is Wales a target?) and OQ-WL2 (licence of the All-Wales nursing forms). Spec `17`, `index.md` and the module map link the page.
+- **Checked:** links, the status block, llms and the hazard log. Every claim on the page has a source, and each source is marked as DHCW's own account, a supplier's, independent, or a search snippet.
+- **Not done / not verified:** no Welsh system was used. Some pages could not be opened, so what they say rests on search snippets: the Welsh GP Record FAQ bodies, the January 2025 WICIS release (404) and the Digital Health articles (403). Whether the Welsh clinical data repository is openEHR or FHIR was not settled. No source confirms that WNCR uses openEHR, or that any WICIS unit is live. The Welsh Control Standard and the Wales FHIR guide were not opened, and the nursing forms' licences were not looked for. No clinician read the ideas. The research was gathered by two subagents; I checked their findings against this repository, not against every source page.
+
 ## 2026-11-09 - `podman compose build` no longer sends `target/` as build context
 
 - **Clinical risk:** **no.** Build tooling only.

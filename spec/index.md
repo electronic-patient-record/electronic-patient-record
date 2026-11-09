@@ -113,6 +113,7 @@ Topics that span several numbered chapters and are kept whole:
 - [Roles and assignments](access-control/roles-and-assignments.md) and [protected information](access-control/protected-information.md) — who holds access and how it ends; sexual health, HIV, gender history, violence and other especially sensitive information, and every route it can leak by (RA, PI, plan.md §31).
 - [Care homes](care-homes/index.md) — integration, handover and medicines at the boundary (HM).
 - [Virtual ward](virtual-ward/index.md) and [step-down facility](step-down-facility/index.md) — discharge into either, one workflow with a destination (VW).
+- [NHS Wales national systems](nhs-wales/index.md) — the Welsh Clinical Portal, GP Record, Immunisation, Intensive Care, Nursing Care and Community Care systems, and what this project can learn (WL, plan.md §34).
 - [Reasonable adjustments and communication needs](reasonable-adjustments/index.md): what a person needs in order to use care
 - [Bereavement](bereavement/index.md), with its [death assertions](bereavement/death-assertion.md), and [survivor grief](survivor-grief/index.md) — when a patient dies, and support for those left; [suicide watch](suicide-watch/index.md) and [trauma treatment](trauma-treatment/index.md) — enhanced observation without a risk score, and psychological and physical trauma (BV, SG, SW, TT, plan.md §32).
 - [Data flow](../governance/data-flow.md) — who sends what to whom, read from the routes, the feed and the outbox (draft, PR-7)

@@ -41,5 +41,6 @@ so every module in 1.0 or M7 gets hazard rows (EM-16) before its code.
 | Critical care and device feeds | post-1.0 | EM-11 | medical-device territory (OQ-6) |
 | Emergency department board and triage | post-1.0 | EM-12, TR-1 to TR-13 | OQ-T2 |
 | Maternity, paediatrics, mental health, community | post-1.0 | EM-15 | scope note only |
+| Lessons from NHS Wales national systems | WL-1, WL-2 now; the rest with their parent items | WL-1 to WL-12 | OQ-WL1, OQ-WL2; [NHS Wales](nhs-wales/index.md) |
 
 Mapping to DCF and EMRAM is EM-14 and is buyer evidence, not a claim of compliance.
