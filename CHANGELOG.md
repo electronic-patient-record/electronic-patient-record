@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-09 - `podman compose build` no longer sends `target/` as build context
+
+- **Clinical risk:** **no.** Build tooling only.
+- **Built:** `.dockerignore` is a symlink to `.containerignore`. `podman compose` here hands off to `docker-compose`, which reads only `.dockerignore`, so it sent the whole repository, the service's `target/` (217 GB on this machine) included, and ran the Podman VM's disk out. AGENTS.md names the exception to the "Podman file names" rule and says to edit `.containerignore`; `.containerignore` says so too.
+- **Checked:** `podman compose --profile ui build ui` built the UI image (1 min 43 s). `podman compose build api` passed the context step and reached `cargo build`.
+- **Not done / not verified:** the API image still does not build through compose on a 12 GiB Podman VM: rustc is killed for memory compiling `fhir-r4` with cargo's default jobs. It built with `CARGO_BUILD_JOBS=1` via `podman build --env`; nothing in the repository sets that. Not tried on Windows, where git may check a symlink out as a text file. `podman-compose` (the Python one) was not tried.
+
 ## 2026-11-09 - Rust dependencies updated (`authentication-verifier` 0.9.2, `axum-keycloak-auth` 0.8.4)
 
 - **Clinical risk:** **no, by my judgement, not the Clinical Safety Officer's.** No screen, rule or record changed. A Keycloak token is now refused if it names no configured audience, or if it is an ID or refresh token, or if its `nbf` or `iat` is in the future. Before, the verifier accepted these, though `operations/keycloak/README.md` already said `aud` must name `EPR_KEYCLOAK_AUDIENCES`. The realm in `operations/keycloak/epr-realm.json` adds `epr-api` through an audience mapper, so its access tokens still pass. A realm with no mapper would now see every clinician refused at sign-in.

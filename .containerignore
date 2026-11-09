@@ -1,5 +1,6 @@
 # Build context is the repository root (see electronic-patient-record-service-with-rust/Containerfile).
 # Keep the context small and keep local build output and secrets out of images.
+# .dockerignore is a symlink to this file, for docker-compose (which podman compose may run); edit this one.
 .git
 **/target
 **/node_modules
