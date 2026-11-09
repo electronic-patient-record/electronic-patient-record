@@ -1,0 +1,50 @@
+# Assessment forms (WL-3): each form a versioned standard, held as data and read into the build by
+# `src/assessments.rs`, which refuses a file that does not meet the rules there.
+#
+# A form version is never edited once published: a change is a new version, and answers already given
+# keep the version they were given under. `approved_by` and `approved_on` name the clinical approver and
+# the day; empty means not approved, and every reader is told the form is a draft.
+#
+# NOT A CLINICAL TOOL. The one form here was written for this project to exercise versioning. It is not
+# Waterlow, Braden, PURPOSE T, MUST, WAASP or any All-Wales nursing form: those need a licence answer
+# first (OQ-M2, OQ-WL2). Nobody has approved it.
+
+[[form]]
+id = "skin-check"
+version = 1
+title = "Skin check (example, not a clinical tool)"
+approved_by = ""
+approved_on = ""
+
+[[form.question]]
+id = "intact"
+text = "Is the skin over the pressure areas intact?"
+kind = "yes-no"
+
+[[form.question]]
+id = "redness"
+text = "Is there redness that does not fade when pressed?"
+kind = "yes-no"
+
+[[form]]
+id = "skin-check"
+version = 2
+title = "Skin check (example, not a clinical tool)"
+approved_by = ""
+approved_on = ""
+
+[[form.question]]
+id = "intact"
+text = "Is the skin over the pressure areas intact?"
+kind = "yes-no"
+
+[[form.question]]
+id = "redness"
+text = "Is there redness that does not fade when pressed?"
+kind = "yes-no"
+
+[[form.question]]
+id = "where"
+text = "Where is the skin damaged or red?"
+kind = "choice"
+choices = ["none", "sacrum", "heels", "hips", "elbows", "other"]

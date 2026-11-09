@@ -4,7 +4,7 @@ Every table and view the service's migrations create. **Generated** by [`scripts
 
 Not listed: tables made by a statement built at run time (the monthly `audit_events` partitions), and what a column means (the migrations carry few comments, so only the name and SQL type are shown). The clinical tables are append-only: a change is a new row, and triggers refuse `UPDATE`, `DELETE` and `TRUNCATE`.
 
-32 tables, 15 views.
+33 tables, 16 views.
 
 ## Tables
 
@@ -14,6 +14,7 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `allergy_assertion_versions` | `20261021000007_allergies` | `patient_id` UUID, `version` INTEGER, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `kind` TEXT |
 | `allergy_versions` | `20261021000007_allergies` | `allergy_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `status` TEXT, `body` JSONB |
 | `amendment_versions` | `20261027000015_amendments` | `amendment_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `state` TEXT, `target_kind` TEXT, `target_id` UUID, `event` JSONB, `body` JSONB |
+| `assessment_versions` | `20261109000030_assessments` | `assessment_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `form_id` TEXT, `form_version` INTEGER, `body` JSONB |
 | `audit_archive_anchors` | `20261031000018_audit_partitions` | `partition` TEXT, `first_id` BIGINT, `last_id` BIGINT, `row_count` BIGINT, `first_prev_digest` TEXT, `last_digest` TEXT, `archived_at` TIMESTAMPTZ |
 | `audit_events` | `20261020000001_audit_events`, `20261031000018_audit_partitions` | `id` BIGSERIAL, `recorded_at` TIMESTAMPTZ, `action` CHAR(1), `outcome` SMALLINT, `agent` TEXT, `patient_ref` TEXT, `resource_ref` TEXT, `purpose_of_use` TEXT, `break_glass` BOOLEAN, `network_address` TEXT, `detail` JSONB, `prev_digest` TEXT, `digest` TEXT |
 | `axa_idempotency` | `20261107000027_axa_idempotency` | `caller` TEXT, `key` TEXT, `fingerprint` TEXT, `claim` UUID, `state` TEXT, `status` INTEGER, `headers` JSONB, `body` BYTEA, `lease_until` TIMESTAMPTZ, `expires_at` TIMESTAMPTZ, `created_at` TIMESTAMPTZ |
@@ -51,6 +52,7 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `allergy_assertion_current` | `20261021000007_allergies` |
 | `allergy_current` | `20261021000007_allergies`, `20261021000011_current_views_seek` |
 | `amendment_current` | `20261027000015_amendments` |
+| `assessment_current` | `20261109000030_assessments` |
 | `audit_events_all` | `20261031000019_audit_archive_view` |
 | `consent_current` | `20261021000003_consent_versions`, `20261021000011_current_views_seek` |
 | `death_assertion_current` | `20261105000025_death_assertions` |

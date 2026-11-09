@@ -19,6 +19,8 @@ pub mod amendment;
 pub mod amendments_store;
 pub mod api_error;
 pub mod app;
+pub mod assessments;
+pub mod assessments_store;
 pub mod audit;
 pub mod audit_retention;
 pub mod auth;

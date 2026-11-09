@@ -466,6 +466,128 @@
         ],
         "type": "object"
       },
+      "AssessmentForm": {
+        "description": "One version of a form, from `src/assessment_forms.toml`. Empty approver and day mean a draft.",
+        "properties": {
+          "approved_by": {
+            "type": "string"
+          },
+          "approved_on": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "question": {
+            "items": {
+              "properties": {
+                "choices": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "enum": [
+                    "yes-no",
+                    "choice"
+                  ]
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "text",
+                "kind"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "title": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "title",
+          "approved_by",
+          "approved_on",
+          "question"
+        ],
+        "type": "object"
+      },
+      "AssessmentList": {
+        "properties": {
+          "assessments": {
+            "items": {
+              "$ref": "#/components/schemas/StoredAssessment"
+            },
+            "type": "array"
+          },
+          "forms": {
+            "items": {
+              "$ref": "#/components/schemas/AssessmentForm"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "forms",
+          "assessments"
+        ],
+        "type": "object"
+      },
+      "AssessmentRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "answers": {
+            "items": {
+              "additionalProperties": false,
+              "description": "Every question once: a value (a boolean for yes-no, a listed string for a choice), or null with absent_reason.",
+              "properties": {
+                "absent_reason": {
+                  "maxLength": 200,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "question": {
+                  "type": "string"
+                },
+                "value": {}
+              },
+              "required": [
+                "question"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "form": {
+            "type": "string"
+          },
+          "form_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "form",
+          "form_version",
+          "answers"
+        ],
+        "type": "object"
+      },
       "AuditBroken": {
         "description": "409: a row was found altered. A monitor that reads only the status still notices.",
         "properties": {
@@ -1083,6 +1205,18 @@
           "target_id",
           "version",
           "text"
+        ],
+        "type": "object"
+      },
+      "CreateAssessment": {
+        "additionalProperties": false,
+        "properties": {
+          "assessment": {
+            "$ref": "#/components/schemas/AssessmentRecord"
+          }
+        },
+        "required": [
+          "assessment"
         ],
         "type": "object"
       },
@@ -3308,6 +3442,105 @@
           "author",
           "recorded_at",
           "allergy"
+        ],
+        "type": "object"
+      },
+      "StoredAssessment": {
+        "properties": {
+          "answers": {
+            "items": {
+              "properties": {
+                "absent_reason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "question": {
+                  "type": "string"
+                },
+                "text": {
+                  "description": "As that form version asked it.",
+                  "type": "string"
+                },
+                "value": {}
+              },
+              "required": [
+                "question",
+                "text",
+                "value",
+                "absent_reason"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "author": {
+            "type": "string"
+          },
+          "form": {
+            "description": "The form version the answers were given under, and the newest version.",
+            "properties": {
+              "approved": {
+                "type": "boolean"
+              },
+              "approved_by": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "approved_on": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "id": {
+                "type": "string"
+              },
+              "latest_version": {
+                "type": "integer"
+              },
+              "title": {
+                "type": "string"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "version",
+              "title",
+              "approved",
+              "approved_by",
+              "approved_on",
+              "latest_version"
+            ],
+            "type": "object"
+          },
+          "id": {
+            "type": "string"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "recorded_at": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "patient_id",
+          "version",
+          "author",
+          "recorded_at",
+          "form",
+          "answers"
         ],
         "type": "object"
       },
@@ -6726,6 +6959,158 @@
         ],
         "x-epr-action": "Update",
         "x-epr-resource": "Amendment"
+      }
+    },
+    "/api/patients/{id}/assessments": {
+      "get": {
+        "operationId": "getApiPatientsIdAssessments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssessmentList"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/patients/{id}/assessments",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Search",
+        "x-epr-resource": "QuestionnaireResponse"
+      },
+      "post": {
+        "operationId": "postApiPatientsIdAssessments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "1 to 128 letters, digits or . _ : -. A retry with the same key and the same request returns the first answer (header `Idempotent-Replayed: true`) and writes nothing; the same key for a different request is a 422; a key whose first request is unfinished is a 409. Only a success is kept; keys expire after 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAssessment"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredAssessment"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/patients/{id}/assessments",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Create",
+        "x-epr-resource": "QuestionnaireResponse"
       }
     },
     "/api/patients/{id}/break-glass": {

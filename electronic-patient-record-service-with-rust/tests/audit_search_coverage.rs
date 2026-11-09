@@ -34,6 +34,7 @@ fn call(template: &str, patient: &str) -> Option<String> {
     Some(match template {
         "/api/patients/{id}/adjustments" => format!("/api/patients/{patient}/adjustments"),
         "/api/patients/{id}/results" => format!("/api/patients/{patient}/results"),
+        "/api/patients/{id}/assessments" => format!("/api/patients/{patient}/assessments"),
         "/fhir/R4/Flag" => format!("/fhir/R4/Flag?patient={patient}"),
         "/fhir/R5/Flag" => format!("/fhir/R5/Flag?patient={patient}"),
         "/api/patients/{id}/death/assertions" => {

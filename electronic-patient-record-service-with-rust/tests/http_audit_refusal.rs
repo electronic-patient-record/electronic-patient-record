@@ -396,6 +396,19 @@ async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_r
         )
         .await;
 
+        // An assessment under a versioned form (WL-3).
+        refused_then_accepted(db, "POST /api/patients/{id}/assessments", || async {
+            let r = server
+                .post(&format!("/api/patients/{id}/assessments"))
+                .json(&json!({ "assessment": { "form": "skin-check", "form_version": 1, "answers": [
+                    { "question": "intact", "value": true },
+                    { "question": "redness", "value": false }
+                ] } }))
+                .await;
+            (r.status_code(), r.text())
+        })
+        .await;
+
         // A result, a correction and a sign-off of the corrected version (WL-1).
         let result = json!({ "test": "Serum sodium", "value": "131", "unit": "mmol/L",
             "status": "final", "issued": "2026-11-09T09:00:00Z" });

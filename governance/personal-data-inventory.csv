@@ -368,3 +368,19 @@ result_signoffs,result_version,none,The version that was signed off,record
 result_signoffs,patient_id,identifier,Links a sign-off to the patient,record
 result_signoffs,recorded_at,none,When it was signed off,record
 result_signoffs,signed_by,staff-identifier,Who signed it off,record
+assessment_versions,assessment_id,none,Random record id,record
+assessment_versions,version,none,Version counter,record
+assessment_versions,patient_id,identifier,Links a record to the patient,record
+assessment_versions,recorded_at,none,When the assessment was recorded,record
+assessment_versions,author,staff-identifier,Who recorded it,record
+assessment_versions,form_id,none,The form it was made under,record
+assessment_versions,form_version,none,The form version it was made under,record
+assessment_versions,body,health,The answers and any reasons for no answer,record
+assessment_current,assessment_id,none,Random record id,record
+assessment_current,version,none,Version counter,record
+assessment_current,patient_id,identifier,Links a record to the patient,record
+assessment_current,recorded_at,none,When the assessment was recorded,record
+assessment_current,author,staff-identifier,Who recorded it,record
+assessment_current,form_id,none,The form it was made under,record
+assessment_current,form_version,none,The form version it was made under,record
+assessment_current,body,health,The answers and any reasons for no answer,record

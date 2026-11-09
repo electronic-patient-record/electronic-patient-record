@@ -687,6 +687,8 @@ pub fn routes() -> Routes {
             "/{id}/observations/{observation_id}",
             put(super::observations::update),
         )
+        .add("/{id}/assessments", get(super::assessments::list))
+        .add("/{id}/assessments", post(super::assessments::create))
         .add("/{id}/results", get(super::results::list))
         .add("/{id}/results", post(super::results::create))
         .add("/{id}/results/{result_id}", put(super::results::update))

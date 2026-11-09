@@ -419,6 +419,80 @@ fn observation_schemas() -> Value {
     })
 }
 
+/// The schemas for assessments under versioned forms (WL-3).
+fn assessment_schemas() -> Value {
+    json!({
+        "AssessmentForm": {
+            "type": "object", "required": ["id", "version", "title", "approved_by", "approved_on", "question"],
+            "description": "One version of a form, from `src/assessment_forms.toml`. Empty approver and day mean a draft.",
+            "properties": {
+                "id": {"type": "string"}, "version": {"type": "integer"}, "title": {"type": "string"},
+                "approved_by": {"type": "string"}, "approved_on": {"type": "string"},
+                "question": {"type": "array", "items": {
+                    "type": "object", "required": ["id", "text", "kind"],
+                    "properties": {
+                        "id": {"type": "string"}, "text": {"type": "string"},
+                        "kind": {"enum": ["yes-no", "choice"]},
+                        "choices": {"type": "array", "items": {"type": "string"}}
+                    }
+                }}
+            }
+        },
+        "AssessmentRecord": {
+            "type": "object", "required": ["form", "form_version", "answers"], "additionalProperties": false,
+            "properties": {
+                "form": {"type": "string"}, "form_version": {"type": "integer"},
+                "answers": {"type": "array", "items": {
+                    "type": "object", "required": ["question"], "additionalProperties": false,
+                    "description": "Every question once: a value (a boolean for yes-no, a listed string for a choice), or null with absent_reason.",
+                    "properties": {
+                        "question": {"type": "string"},
+                        "value": {},
+                        "absent_reason": {"type": ["string", "null"], "maxLength": 200}
+                    }
+                }}
+            }
+        },
+        "CreateAssessment": {
+            "type": "object", "required": ["assessment"], "additionalProperties": false,
+            "properties": {"assessment": {"$ref": "#/components/schemas/AssessmentRecord"}}
+        },
+        "StoredAssessment": {
+            "type": "object", "required": ["id", "patient_id", "version", "author", "recorded_at", "form", "answers"],
+            "properties": {
+                "id": {"type": "string"}, "patient_id": {"type": "string"},
+                "version": {"type": "integer"}, "author": {"type": "string"}, "recorded_at": {"type": "string"},
+                "form": {
+                    "type": "object",
+                    "required": ["id", "version", "title", "approved", "approved_by", "approved_on", "latest_version"],
+                    "description": "The form version the answers were given under, and the newest version.",
+                    "properties": {
+                        "id": {"type": "string"}, "version": {"type": "integer"}, "title": {"type": "string"},
+                        "approved": {"type": "boolean"},
+                        "approved_by": {"type": ["string", "null"]}, "approved_on": {"type": ["string", "null"]},
+                        "latest_version": {"type": "integer"}
+                    }
+                },
+                "answers": {"type": "array", "items": {
+                    "type": "object", "required": ["question", "text", "value", "absent_reason"],
+                    "properties": {
+                        "question": {"type": "string"},
+                        "text": {"type": "string", "description": "As that form version asked it."},
+                        "value": {}, "absent_reason": {"type": ["string", "null"]}
+                    }
+                }}
+            }
+        },
+        "AssessmentList": {
+            "type": "object", "required": ["forms", "assessments"],
+            "properties": {
+                "forms": {"type": "array", "items": {"$ref": "#/components/schemas/AssessmentForm"}},
+                "assessments": {"type": "array", "items": {"$ref": "#/components/schemas/StoredAssessment"}}
+            }
+        }
+    })
+}
+
 /// The schemas for results and their sign-off (OR-4 first slice, WL-1).
 fn result_schemas() -> Value {
     let record = json!({
@@ -1251,6 +1325,7 @@ fn patient_schemas() -> Value {
         referral_schemas(),
         observation_schemas(),
         result_schemas(),
+        assessment_schemas(),
         consent_schemas(),
         relationship_schemas(),
     ] {
@@ -1343,6 +1418,14 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
         "200",
         "StoredObservation",
         "VersionConflict",
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/assessments",
+        "CreateAssessment",
+        "201",
+        "StoredAssessment",
+        "",
     ),
     (
         "POST",
@@ -1635,6 +1718,12 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
         &[],
     ),
     ("GET", "/api/patients/{id}/results", "ResultList", &[]),
+    (
+        "GET",
+        "/api/patients/{id}/assessments",
+        "AssessmentList",
+        &[],
+    ),
     (
         "GET",
         "/api/patients/{id}/observations/{observation_id}/versions",

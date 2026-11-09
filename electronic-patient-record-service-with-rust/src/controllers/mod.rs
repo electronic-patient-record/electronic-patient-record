@@ -3,6 +3,7 @@
 pub mod adjustments;
 pub mod allergies;
 pub mod amendments;
+pub mod assessments;
 pub mod audit;
 pub mod break_glass;
 mod common;
