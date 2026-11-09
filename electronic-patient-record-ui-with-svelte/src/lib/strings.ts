@@ -1,5 +1,6 @@
-// English-only strings. Translations for the other locales in `LOCALES` are
-// not built yet (tasks SF-4); a missing translation falls back to this table.
+// The UI's words in English: the source, and the key set every locale's table must fill. Pages read
+// them through `TEXT` (`i18n.ts`), which answers in the reader's locale. Welsh (`cy-001`) has a full
+// machine-written, unreviewed table (`strings.cy.ts`, WL-8); every other locale reads this one.
 export const STRINGS = {
   brand: "Electronic Patient Record",
   skip: "Skip to main content",
@@ -56,6 +57,9 @@ export const STRINGS = {
   homeIntro:
     "Scaffold only. No clinical record exists yet; this build can compare two patient identity records and explain the result.",
   notClinical: "Not for clinical use. Do not enter real patient data.",
+  machineTranslated:
+    "These words were translated by machine and no speaker has checked them. Read anything clinical in English.",
+  readInEnglish: "Read this page in English",
   compareTitle: "Compare two patients",
   patientA: "Patient A",
   patientB: "Patient B",

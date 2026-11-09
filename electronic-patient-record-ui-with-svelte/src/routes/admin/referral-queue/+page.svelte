@@ -11,7 +11,7 @@
   import { readable } from "#lib/feed-queue.js";
   import { refreshReferralQueueCount } from "#lib/feed-count.svelte.js";
   import { newIdempotencyKey } from "#lib/idempotency.js";
-  import { STRINGS } from "#lib/strings.js";
+  import { TEXT } from "#lib/i18n.js";
 
   const busy = new Busy();
   let open = $state<QueueEntry[] | null>(null);
@@ -37,14 +37,14 @@
     const problem = commonProblem(res.status);
     if (problem) {
       open = null;
-      message = STRINGS[problem];
+      message = TEXT[problem];
     } else if (res.status === 200) {
       open = res.body.entries;
       limit = res.body.limit;
       more = res.body.more ?? open.length >= limit;
       siteZone = res.body.site_time_zone;
       void refreshReferralQueueCount();
-    } else message = STRINGS.error;
+    } else message = TEXT.error;
   }
   $effect(() => {
     void load();
@@ -61,7 +61,7 @@
     }
     const res = await call<QueueEntry>("GET", `/api/referral-queue/${e.id}`);
     const problem = commonProblem(res.status);
-    if (problem) message = STRINGS[problem];
+    if (problem) message = TEXT[problem];
     else if (res.status === 200) {
       shown = res.body;
       how = "dismissed";
@@ -69,7 +69,7 @@
       reason = "";
       idempotencyKey = newIdempotencyKey();
       message = null;
-    } else message = STRINGS.error;
+    } else message = TEXT.error;
   }
 
   async function clear(event: SubmitEvent) {
@@ -81,7 +81,7 @@
     if (!shown) return;
     const body = clearBody(how, referralId, reason);
     if (!body) {
-      message = STRINGS.rqNeeded;
+      message = TEXT.rqNeeded;
       return;
     }
     const res = await call(
@@ -92,10 +92,10 @@
       { idempotencyKey },
     );
     const problem = commonProblem(res.status);
-    if (problem) message = STRINGS[problem];
-    else if (res.status === 200) message = STRINGS.rqCleared;
-    else if (res.status === 409) message = STRINGS.rqAlready;
-    else message = STRINGS.error;
+    if (problem) message = TEXT[problem];
+    else if (res.status === 200) message = TEXT.rqCleared;
+    else if (res.status === 409) message = TEXT.rqAlready;
+    else message = TEXT.error;
     if (!problem && (res.status === 200 || res.status === 409)) {
       shown = null;
       await load();
@@ -103,25 +103,22 @@
   }
 </script>
 
-<svelte:head><title>{STRINGS.rqTitle}</title></svelte:head>
-<h1>{STRINGS.rqTitle}</h1>
-<p>{STRINGS.rqIntro}</p>
+<svelte:head><title>{TEXT.rqTitle}</title></svelte:head>
+<h1>{TEXT.rqTitle}</h1>
+<p>{TEXT.rqIntro}</p>
 {#if message}<p role="status">{message}</p>{/if}
 {#if open !== null}
   {#if open.length === 0}
-    <p>{STRINGS.rqNone}</p>
+    <p>{TEXT.rqNone}</p>
   {:else}
-    <p>{STRINGS.rqCount.replace("{n}", String(open.length))}</p>
+    <p>{TEXT.rqCount.replace("{n}", String(open.length))}</p>
     {#if more}
-      <p>{STRINGS.rqMore.replace("{n}", String(limit))}</p>
+      <p>{TEXT.rqMore.replace("{n}", String(limit))}</p>
     {/if}
     <ul>
       {#each open as e (e.id)}
         <li>
-          <strong>{STRINGS.rqKinds[e.kind]}</strong> · {queueHeadline(
-            e,
-            siteZone,
-          )}
+          <strong>{TEXT.rqKinds[e.kind]}</strong> · {queueHeadline(e, siteZone)}
           <ul>
             {#each e.reasons as why (why)}<li>{why}</li>{/each}
           </ul>
@@ -130,32 +127,31 @@
             type="button"
             onclick={() => void toggle(e)}
           >
-            {shown?.id === e.id ? STRINGS.rqHide : STRINGS.rqShow}
+            {shown?.id === e.id ? TEXT.rqHide : TEXT.rqShow}
           </button>
           {#if shown?.id === e.id}
             {#if shown.note}
-              <h2 id="rq-note-h">{STRINGS.rqNote}</h2>
+              <h2 id="rq-note-h">{TEXT.rqNote}</h2>
               <p aria-labelledby="rq-note-h">{shown.note}</p>
             {/if}
-            <h2 id="rq-msg-h">{STRINGS.rqMessage}</h2>
+            <h2 id="rq-msg-h">{TEXT.rqMessage}</h2>
             <pre aria-labelledby="rq-msg-h">{readable(
                 shown.message ?? "",
               )}</pre>
             <form onsubmit={clear}>
-              <label for="rq-how">{STRINGS.rqHow}</label>
+              <label for="rq-how">{TEXT.rqHow}</label>
               <select id="rq-how" bind:value={how}>
                 {#each HOWS as h (h)}
-                  <option value={h}>{STRINGS.rqHows[h]}</option>
+                  <option value={h}>{TEXT.rqHows[h]}</option>
                 {/each}
               </select>
               {#if how === "matched"}
-                <label for="rq-ref">{STRINGS.rqReferralId}</label>
+                <label for="rq-ref">{TEXT.rqReferralId}</label>
                 <input id="rq-ref" bind:value={referralId} autocomplete="off" />
               {/if}
-              <label for="rq-reason">{STRINGS.rqReason}</label>
+              <label for="rq-reason">{TEXT.rqReason}</label>
               <input id="rq-reason" bind:value={reason} autocomplete="off" />
-              <button disabled={busy.on} type="submit">{STRINGS.rqClear}</button
-              >
+              <button disabled={busy.on} type="submit">{TEXT.rqClear}</button>
             </form>
           {/if}
         </li>

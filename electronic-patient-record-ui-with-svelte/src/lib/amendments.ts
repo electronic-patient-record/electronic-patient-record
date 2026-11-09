@@ -4,7 +4,7 @@
 // the token: nothing here names a person.
 import { siteWhenText } from "./access-log.js";
 import { call } from "./api.js";
-import { STRINGS } from "./strings.js";
+import { TEXT } from "./i18n.js";
 import { allergyLine, type StoredAllergy } from "./allergies.js";
 import { vitalLine, type Notice, type StoredObservation } from "./vitals.js";
 
@@ -78,7 +78,7 @@ export function stepBody(
   const reason = f.reason.trim();
   if (step === "apply") {
     if (!/^\d+$/.test(f.version.trim()) || Number(f.version) < 1) {
-      return { ok: false, problem: STRINGS.amendVersionInvalid };
+      return { ok: false, problem: TEXT.amendVersionInvalid };
     }
     return {
       ok: true,
@@ -89,9 +89,9 @@ export function stepBody(
       },
     };
   }
-  if (!reason) return { ok: false, problem: STRINGS.amendReasonNeeded };
+  if (!reason) return { ok: false, problem: TEXT.amendReasonNeeded };
   if (step === "deny") {
-    if (!f.ground) return { ok: false, problem: STRINGS.amendGroundNeeded };
+    if (!f.ground) return { ok: false, problem: TEXT.amendGroundNeeded };
     return {
       ok: true,
       body: {
@@ -112,17 +112,17 @@ export function stepBody(
 export function stateText(s: State): string {
   switch (s.state) {
     case "requested":
-      return STRINGS.amendStateRequested;
+      return TEXT.amendStateRequested;
     case "accepted":
-      return STRINGS.amendStateAccepted;
+      return TEXT.amendStateAccepted;
     case "applied":
-      return STRINGS.amendStateApplied.replace("{n}", String(s.version));
+      return TEXT.amendStateApplied.replace("{n}", String(s.version));
     case "denied":
-      return STRINGS.amendStateDenied;
+      return TEXT.amendStateDenied;
     case "withdrawn":
-      return STRINGS.amendStateWithdrawn;
+      return TEXT.amendStateWithdrawn;
     default:
-      return STRINGS.amendStateUnknown;
+      return TEXT.amendStateUnknown;
   }
 }
 
@@ -132,8 +132,8 @@ export function dueText(a: AmendmentView, zone?: string): string {
     a.request.state.state === "requested" ||
     a.request.state.state === "accepted";
   if (!open) return "";
-  const when = STRINGS.amendDue.replace("{when}", siteWhenText(a.due, zone));
-  return a.overdue ? `${when} ${STRINGS.amendOverdue}` : when;
+  const when = TEXT.amendDue.replace("{when}", siteWhenText(a.due, zone));
+  return a.overdue ? `${when} ${TEXT.amendOverdue}` : when;
 }
 
 export type TargetKind = "Observation" | "AllergyIntolerance";
@@ -212,9 +212,9 @@ export function askBody(
   text: string,
 ):
   { ok: true; body: Record<string, unknown> } | { ok: false; problem: string } {
-  if (!target) return { ok: false, problem: STRINGS.askPickReading };
+  if (!target) return { ok: false, problem: TEXT.askPickReading };
   const t = text.trim();
-  if (!t) return { ok: false, problem: STRINGS.askTextNeeded };
+  if (!t) return { ok: false, problem: TEXT.askTextNeeded };
   return {
     ok: true,
     body: {
@@ -232,8 +232,7 @@ export function disagreeBody(
   statement: string,
 ):
   { ok: true; body: Record<string, unknown> } | { ok: false; problem: string } {
-  if (!statement.trim())
-    return { ok: false, problem: STRINGS.askStatementNeeded };
+  if (!statement.trim()) return { ok: false, problem: TEXT.askStatementNeeded };
   return {
     ok: true,
     body: { expected_version: expectedVersion, step: "disagree", statement },

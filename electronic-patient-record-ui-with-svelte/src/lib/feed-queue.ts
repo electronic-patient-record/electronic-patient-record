@@ -1,6 +1,6 @@
 // The work queue for refused HL7 messages (service `feed_queue.rs`): the API's entries as text.
 import { siteWhenText } from "./access-log.js";
-import { STRINGS } from "./strings.js";
+import { TEXT } from "./i18n.js";
 
 export type Resolution = {
   resolved_by: string;
@@ -27,7 +27,7 @@ export type Outcome = (typeof OUTCOMES)[number];
 
 /** "A08 · message M-1 · received 2026-10-21 09:00 UTC": which message, from the sender's own ids. */
 export function headline(r: Refusal, siteZone?: string): string {
-  return `${r.event} · ${STRINGS.feedControl} ${r.control_id} · ${STRINGS.feedReceived} ${siteWhenText(r.received_at, siteZone)}`;
+  return `${r.event} · ${TEXT.feedControl} ${r.control_id} · ${TEXT.feedReceived} ${siteWhenText(r.received_at, siteZone)}`;
 }
 
 /** The message as a person reads it: HL7 separates segments with a carriage return, shown as lines. */

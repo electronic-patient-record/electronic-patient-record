@@ -25,7 +25,7 @@
     type Stored,
   } from "#lib/patient.js";
   import { dataAge } from "#lib/data-age.js";
-  import { STRINGS } from "#lib/strings.js";
+  import { TEXT } from "#lib/i18n.js";
 
   const locale = $derived(page.data.locale ?? DEFAULT_LOCALE);
   const id = $derived(page.params.id);
@@ -110,10 +110,10 @@
     const common = commonProblem(res.status);
     if (common) {
       stored = null;
-      message = STRINGS[common];
+      message = TEXT[common];
     } else if (res.status === 404) {
       stored = null;
-      message = STRINGS.notFound;
+      message = TEXT.notFound;
     } else if (res.status === 200) {
       stored = res.body;
       lastRead = new Date();
@@ -123,7 +123,7 @@
       void reloadAllergies();
     } else {
       stored = null;
-      message = STRINGS.error;
+      message = TEXT.error;
     }
   }
 
@@ -221,15 +221,15 @@
     photoMessage = null;
     if (!withdraw) {
       if (!photoFile) {
-        photoMessage = STRINGS.photoPick;
+        photoMessage = TEXT.photoPick;
         return;
       }
       if (photoFile.size > MAX_PHOTO) {
-        photoMessage = STRINGS.photoTooBig;
+        photoMessage = TEXT.photoTooBig;
         return;
       }
       if (!["image/png", "image/jpeg"].includes(photoFile.type)) {
-        photoMessage = STRINGS.photoWrongType;
+        photoMessage = TEXT.photoWrongType;
         return;
       }
     }
@@ -246,9 +246,9 @@
     );
     if (stored?.id !== forId) return;
     const common = commonProblem(res.status);
-    if (common) photoMessage = STRINGS[common];
+    if (common) photoMessage = TEXT[common];
     else if (res.status === 200) {
-      photoMessage = withdraw ? STRINGS.photoRemoved : STRINGS.photoSaved;
+      photoMessage = withdraw ? TEXT.photoRemoved : TEXT.photoSaved;
       photoFile = null;
       photoReason = "";
       // The photo version moved; read the record again, but keep what is being typed.
@@ -261,7 +261,7 @@
     } else if (res.status === 409) conflict = true;
     else if (res.status === 422 && res.body?.errors)
       photoMessage = res.body.errors.join(" ");
-    else photoMessage = STRINGS.error;
+    else photoMessage = TEXT.error;
   }
 
   async function save(event: SubmitEvent) {
@@ -294,12 +294,12 @@
     if (stored?.id !== forId) return;
     const common = commonProblem(res.status);
     if (common) {
-      message = STRINGS[common];
+      message = TEXT[common];
     } else if (res.status === 200) {
       stored = res.body;
       form = patientToForm(res.body.patient);
       reason = "";
-      saved = STRINGS.saved.replace("{v}", String(res.body.version));
+      saved = TEXT.saved.replace("{v}", String(res.body.version));
     } else if (res.status === 409) {
       conflict = true;
     } else if (res.status === 422 && res.body?.errors) {
@@ -309,28 +309,28 @@
         locale,
       );
     } else {
-      message = STRINGS.error;
+      message = TEXT.error;
     }
   }
 </script>
 
-<svelte:head><title>{STRINGS.patientTitle}</title></svelte:head>
+<svelte:head><title>{TEXT.patientTitle}</title></svelte:head>
 
-<h1>{STRINGS.patientTitle}</h1>
-<p><a href={localizePath("/patients", locale)}>{STRINGS.backToSearch}</a></p>
+<h1>{TEXT.patientTitle}</h1>
+<p><a href={localizePath("/patients", locale)}>{TEXT.backToSearch}</a></p>
 <p>
   <a href={localizePath(`/patients/${id}/summary`, locale)}
-    >{STRINGS.summaryOpen}</a
+    >{TEXT.summaryOpen}</a
   >
 </p>
 <p>
   <a href={localizePath(`/patients/${id}/access`, locale)}
-    >{STRINGS.accessManage}</a
+    >{TEXT.accessManage}</a
   >
 </p>
 
 {#if loading}
-  <p role="status" aria-busy="true">{STRINGS.loading}</p>
+  <p role="status" aria-busy="true">{TEXT.loading}</p>
 {/if}
 
 {#if message}
@@ -341,31 +341,31 @@
   <PatientBanner stored={latest ?? stored} {allergies} {death} {adjustments} />
   {#if age}
     {#if age.stale}
-      <p role="alert">{STRINGS.dataMayBeOld.replace("{time}", age.readAt)}</p>
+      <p role="alert">{TEXT.dataMayBeOld.replace("{time}", age.readAt)}</p>
     {:else}
-      <p class="read-at">{STRINGS.dataReadAt.replace("{time}", age.readAt)}</p>
+      <p class="read-at">{TEXT.dataReadAt.replace("{time}", age.readAt)}</p>
     {/if}
   {/if}
   {#if stored.replaced_by}
     <div role="alert">
-      <p>{STRINGS.mergedNotice}</p>
+      <p>{TEXT.mergedNotice}</p>
       <p>
         <a href={localizePath(`/patients/${stored.replaced_by}`, locale)}>
-          {STRINGS.mergedOpen}
+          {TEXT.mergedOpen}
         </a>
       </p>
     </div>
   {/if}
   {#if latest}
     <div role="alert">
-      <p>{STRINGS.changedElsewhere.replace("{v}", String(latest.version))}</p>
+      <p>{TEXT.changedElsewhere.replace("{v}", String(latest.version))}</p>
       <button type="button" onclick={() => void load()}>
-        {STRINGS.reloadDiscard}
+        {TEXT.reloadDiscard}
       </button>
     </div>
   {/if}
   <p>
-    {STRINGS.version}: {stored.version} · {STRINGS.recordedBy}: {stored.author}
+    {TEXT.version}: {stored.version} · {TEXT.recordedBy}: {stored.author}
   </p>
   <!-- A record merged into another is read-only: its changes go to the surviving record. -->
   {#if !stored.replaced_by}
@@ -391,7 +391,7 @@
     {/if}
     {#if glassUntil}
       <p role="status">
-        {STRINGS.glassOpened.replace(
+        {TEXT.glassOpened.replace(
           "{until}",
           siteWhenText(glassUntil, stored.site_time_zone),
         )}
@@ -428,35 +428,35 @@
       />
     {/if}
     <section aria-labelledby="photo-h">
-      <h2 id="photo-h">{STRINGS.photoTitle}</h2>
-      <label for="photo-file">{STRINGS.photoFile}</label>
+      <h2 id="photo-h">{TEXT.photoTitle}</h2>
+      <label for="photo-file">{TEXT.photoFile}</label>
       <input
         id="photo-file"
         type="file"
         accept="image/png,image/jpeg"
         onchange={(e) => (photoFile = e.currentTarget.files?.[0] ?? null)}
       />
-      <label for="photo-why">{STRINGS.photoWhy}</label>
+      <label for="photo-why">{TEXT.photoWhy}</label>
       <input id="photo-why" bind:value={photoReason} autocomplete="off" />
       <button
         type="button"
         disabled={photoBusy}
-        onclick={() => void sendPhoto(false)}>{STRINGS.photoUpload}</button
+        onclick={() => void sendPhoto(false)}>{TEXT.photoUpload}</button
       >
       {#if stored.photo_version}
         <button
           type="button"
           disabled={photoBusy}
-          onclick={() => void sendPhoto(true)}>{STRINGS.photoWithdraw}</button
+          onclick={() => void sendPhoto(true)}>{TEXT.photoWithdraw}</button
         >
       {/if}
       {#if photoMessage}<p role="status">{photoMessage}</p>{/if}
     </section>
     <form onsubmit={save}>
       <PatientFields bind:form prefix="e" />
-      <label for="e-reason">{STRINGS.reason}</label>
+      <label for="e-reason">{TEXT.reason}</label>
       <input id="e-reason" bind:value={reason} autocomplete="off" />
-      <button type="submit" disabled={saving}>{STRINGS.save}</button>
+      <button type="submit" disabled={saving}>{TEXT.save}</button>
     </form>
   {/if}
 {/if}
@@ -467,14 +467,14 @@
 
 {#if conflict}
   <div role="alert">
-    <p>{STRINGS.conflictChanged}</p>
-    <button type="button" onclick={() => void load()}>{STRINGS.reload}</button>
+    <p>{TEXT.conflictChanged}</p>
+    <button type="button" onclick={() => void load()}>{TEXT.reload}</button>
   </div>
 {/if}
 
 {#if problems.length}
   <div role="alert">
-    <h2>{STRINGS.problems}</h2>
+    <h2>{TEXT.problems}</h2>
     <ul>
       {#each problems as p (p)}<li>{p}</li>{/each}
     </ul>

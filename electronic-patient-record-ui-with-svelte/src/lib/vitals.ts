@@ -6,7 +6,7 @@
 //  - an empty or unreadable number is not a number: it can never be sent as 0.
 import { siteWhenText } from "./access-log.js";
 import { call } from "./api.js";
-import { STRINGS } from "./strings.js";
+import { TEXT } from "./i18n.js";
 
 export type Flag = "critical-low" | "low" | "normal" | "high" | "critical-high";
 export type AbsentReason = "not-done" | "declined" | "failed" | "unknown";
@@ -49,20 +49,20 @@ export type Notice =
 export function noticeText(n: Notice): string {
   switch (n.notice) {
     case "pending":
-      return STRINGS.noticePending;
+      return TEXT.noticePending;
     case "amended":
-      return STRINGS.noticeAmended.replace("{n}", String(n.version));
+      return TEXT.noticeAmended.replace("{n}", String(n.version));
     case "refused": {
       const ground =
-        (STRINGS.noticeGrounds as Record<string, string>)[n.ground] ??
-        STRINGS.noticeGroundUnknown;
+        (TEXT.noticeGrounds as Record<string, string>)[n.ground] ??
+        TEXT.noticeGroundUnknown;
       const said = n.disagreement?.trim()
-        ? ` ${STRINGS.noticeStatement} ${n.disagreement.trim()}`
-        : ` ${STRINGS.noticeNoStatement}`;
-      return `${STRINGS.noticeRefused} ${ground}${said}`;
+        ? ` ${TEXT.noticeStatement} ${n.disagreement.trim()}`
+        : ` ${TEXT.noticeNoStatement}`;
+      return `${TEXT.noticeRefused} ${ground}${said}`;
     }
     default:
-      return STRINGS.noticeUnknown;
+      return TEXT.noticeUnknown;
   }
 }
 
@@ -95,7 +95,7 @@ export const unitLabel = (unit: string): string => UNIT_LABEL[unit] ?? unit;
 /** The vital's name, or the code itself for one this does not know. */
 export function vitalName(code: string): string {
   const v = VITALS.find((x) => x.loinc === code);
-  return v ? STRINGS.vitalNames[v.key] : code;
+  return v ? TEXT.vitalNames[v.key] : code;
 }
 
 /** The number text as a number, or null for anything that is not plainly one (empty is never 0). */
@@ -110,9 +110,9 @@ export function parseNumber(text: string): number | null {
 export function valueText(o: StoredObservation): string {
   if (o.value === null || o.value === undefined) {
     const why = o.absent_reason
-      ? STRINGS.vitalAbsent[o.absent_reason]
-      : STRINGS.vitalAbsentUnstated;
-    return `${STRINGS.vitalNoValue} ${why}`;
+      ? TEXT.vitalAbsent[o.absent_reason]
+      : TEXT.vitalAbsentUnstated;
+    return `${TEXT.vitalNoValue} ${why}`;
   }
   const unit = o.unit ? ` ${unitLabel(o.unit)}` : "";
   return `${new Intl.NumberFormat("en", { maximumFractionDigits: 6 }).format(o.value)}${unit}`;
@@ -124,10 +124,10 @@ export function valueText(o: StoredObservation): string {
  */
 export function assessmentText(o: StoredObservation): string {
   if (o.value === null || o.value === undefined)
-    return STRINGS.vitalNotAssessedNoValue;
+    return TEXT.vitalNotAssessedNoValue;
   if (o.flag === null || o.flag === undefined)
-    return STRINGS.vitalNotAssessedNoRange;
-  return STRINGS.vitalFlags[o.flag];
+    return TEXT.vitalNotAssessedNoRange;
+  return TEXT.vitalFlags[o.flag];
 }
 
 /** The reference range as text ("60 to 100"), or null when none was given. */
@@ -137,10 +137,10 @@ export function rangeText(r: Range | null | undefined): string | null {
   const high = r.high ?? null;
   if (low === null && high === null) return null;
   if (low !== null && high !== null)
-    return `${low} ${STRINGS.vitalRangeTo} ${high}`;
+    return `${low} ${TEXT.vitalRangeTo} ${high}`;
   return low !== null
-    ? `${STRINGS.vitalRangeFrom} ${low}`
-    : `${STRINGS.vitalRangeUpTo} ${high}`;
+    ? `${TEXT.vitalRangeFrom} ${low}`
+    : `${TEXT.vitalRangeUpTo} ${high}`;
 }
 
 /** A first entry written more than this long after the measurement says so (SW-2). A guess, for review. */
@@ -155,10 +155,10 @@ export function lateByMinutes(o: StoredObservation): number | null {
 
 function gapText(minutes: number): string {
   const whole = Math.floor(minutes);
-  if (whole < 120) return STRINGS.vitalGapMinutes.replace("{n}", String(whole));
+  if (whole < 120) return TEXT.vitalGapMinutes.replace("{n}", String(whole));
   const hours = Math.floor(whole / 60);
-  if (hours < 48) return STRINGS.vitalGapHours.replace("{n}", String(hours));
-  return STRINGS.vitalGapDays.replace("{n}", String(Math.floor(hours / 24)));
+  if (hours < 48) return TEXT.vitalGapHours.replace("{n}", String(hours));
+  return TEXT.vitalGapDays.replace("{n}", String(Math.floor(hours / 24)));
 }
 
 /**
@@ -168,11 +168,10 @@ function gapText(minutes: number): string {
  */
 export function writtenText(o: StoredObservation, siteZone?: string): string {
   const when = siteWhenText(o.recorded_at, siteZone);
-  if (o.version !== 1)
-    return STRINGS.vitalVersionWritten.replace("{when}", when);
+  if (o.version !== 1) return TEXT.vitalVersionWritten.replace("{when}", when);
   const late = lateByMinutes(o);
-  if (late === null) return STRINGS.vitalWritten.replace("{when}", when);
-  return STRINGS.vitalWrittenLate
+  if (late === null) return TEXT.vitalWritten.replace("{when}", when);
+  return TEXT.vitalWrittenLate
     .replace("{when}", when)
     .replace("{gap}", gapText(late));
 }
@@ -375,22 +374,20 @@ export function formToRequest(
   | { ok: true; record: Record<string, unknown> }
   | { ok: false; problem: string } {
   const vital = VITALS.find((v) => v.key === f.vital);
-  if (!vital) return { ok: false, problem: STRINGS.vitalPickOne };
+  if (!vital) return { ok: false, problem: TEXT.vitalPickOne };
   const at = wallTimeToUtc(f.measuredAt, f.siteZone);
-  if (at === null) return { ok: false, problem: STRINGS.vitalTimeInvalid };
+  if (at === null) return { ok: false, problem: TEXT.vitalTimeInvalid };
   const record: Record<string, unknown> = {
     code: vital.loinc,
     effective_at: at,
     status: "final",
   };
   if (f.noValue) {
-    if (!f.absentReason)
-      return { ok: false, problem: STRINGS.vitalReasonNeeded };
+    if (!f.absentReason) return { ok: false, problem: TEXT.vitalReasonNeeded };
     record.absent_reason = f.absentReason;
   } else {
     const value = parseNumber(f.value);
-    if (value === null)
-      return { ok: false, problem: STRINGS.vitalValueInvalid };
+    if (value === null) return { ok: false, problem: TEXT.vitalValueInvalid };
     record.value = value;
     record.unit = vital.unit;
   }
@@ -400,7 +397,7 @@ export function formToRequest(
     const low = lowText ? parseNumber(lowText) : null;
     const high = highText ? parseNumber(highText) : null;
     if ((lowText && low === null) || (highText && high === null)) {
-      return { ok: false, problem: STRINGS.vitalRangeInvalid };
+      return { ok: false, problem: TEXT.vitalRangeInvalid };
     }
     record.range = {
       ...(low !== null ? { low } : {}),

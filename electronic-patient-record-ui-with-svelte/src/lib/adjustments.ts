@@ -4,7 +4,7 @@
 // A need informs staff. Nothing here changes what a person is offered.
 import { siteWhenText } from "./access-log.js";
 import { call } from "./api.js";
-import { STRINGS } from "./strings.js";
+import { TEXT } from "./i18n.js";
 
 /** One need whose check is overdue (`GET /api/overdue-reviews`): a pointer, with no code, note or reason. */
 export interface OverdueReview {
@@ -92,7 +92,7 @@ export async function loadAdjustments(
 /** The need in the reader's words, with its note. A code this page does not know keeps the service's words. */
 export function adjustmentName(a: StoredAdjustment): string {
   const words =
-    (STRINGS.adjustmentCodes as Record<string, string>)[a.adjustment.code] ??
+    (TEXT.adjustmentCodes as Record<string, string>)[a.adjustment.code] ??
     a.display;
   return a.adjustment.note ? `${words} (${a.adjustment.note})` : words;
 }
@@ -114,23 +114,21 @@ export function bannerAdjustments(
 ): BannerAdjustments {
   if (!load) return { kind: "none" };
   if (load.status === 403)
-    return { kind: "status", text: STRINGS.bannerNeedsNotShown };
+    return { kind: "status", text: TEXT.bannerNeedsNotShown };
   if (!load.adjustments)
-    return { kind: "status", text: STRINGS.bannerNeedsFailed };
+    return { kind: "status", text: TEXT.bannerNeedsFailed };
   const standing = active(load.adjustments);
   if (standing.length === 0)
-    return { kind: "status", text: STRINGS.bannerNeedsNone };
+    return { kind: "status", text: TEXT.bannerNeedsNone };
   const late = standing.filter((a) => a.overdue).length;
   return {
     kind: "needs",
-    text: STRINGS.bannerNeeds.replace(
+    text: TEXT.bannerNeeds.replace(
       "{needs}",
       standing.map(adjustmentName).join("; "),
     ),
     overdue:
-      late === 0
-        ? null
-        : STRINGS.bannerNeedsOverdue.replace("{n}", String(late)),
+      late === 0 ? null : TEXT.bannerNeedsOverdue.replace("{n}", String(late)),
   };
 }
 
@@ -153,12 +151,12 @@ type Built =
 
 /** The body of a new adjustment, or the sentence saying what to fix. */
 export function recordBody(f: AdjustmentForm): Built {
-  if (!f.code) return { ok: false, problem: STRINGS.adjustmentCodeNeeded };
+  if (!f.code) return { ok: false, problem: TEXT.adjustmentCodeNeeded };
   const note = f.note.trim();
   if (f.code === "interpreter-spoken" && !note)
-    return { ok: false, problem: STRINGS.adjustmentLanguageNeeded };
+    return { ok: false, problem: TEXT.adjustmentLanguageNeeded };
   const reason = f.reason.trim();
-  if (!reason) return { ok: false, problem: STRINGS.adjustmentReasonNeeded };
+  if (!reason) return { ok: false, problem: TEXT.adjustmentReasonNeeded };
   return {
     ok: true,
     body: {
@@ -178,7 +176,7 @@ export function changeBody(
   reason: string,
 ): Built {
   const why = reason.trim();
-  if (!why) return { ok: false, problem: STRINGS.adjustmentReasonNeeded };
+  if (!why) return { ok: false, problem: TEXT.adjustmentReasonNeeded };
   return {
     ok: true,
     body: {
@@ -194,12 +192,12 @@ export function changeBody(
 export function adjustmentDetail(a: StoredAdjustment, zone?: string): string {
   const when = siteWhenText(a.recorded_at, zone);
   if (a.adjustment.status === "ended")
-    return STRINGS.adjustmentEndedOn.replace("{when}", when);
+    return TEXT.adjustmentEndedOn.replace("{when}", when);
   const review = a.adjustment.review_by
     ? (a.overdue
-        ? STRINGS.adjustmentReviewOverdue
-        : STRINGS.adjustmentReviewBy
+        ? TEXT.adjustmentReviewOverdue
+        : TEXT.adjustmentReviewBy
       ).replace("{date}", a.adjustment.review_by)
-    : STRINGS.adjustmentNoReview;
-  return `${STRINGS.adjustmentRecorded.replace("{when}", when)} ${review}`;
+    : TEXT.adjustmentNoReview;
+  return `${TEXT.adjustmentRecorded.replace("{when}", when)} ${review}`;
 }

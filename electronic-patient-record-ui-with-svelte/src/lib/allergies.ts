@@ -5,7 +5,7 @@
 // each of them adds that this does not mean there are none.
 import { siteWhenText } from "./access-log.js";
 import { call } from "./api.js";
-import { STRINGS } from "./strings.js";
+import { TEXT } from "./i18n.js";
 import type { Notice } from "./vitals.js";
 
 export type Criticality = "low" | "high" | "unable-to-assess";
@@ -58,9 +58,9 @@ export function allergyLine(a: StoredAllergy): string {
   return [
     a.allergy.substance,
     a.allergy.criticality
-      ? `(${STRINGS.allergyCriticalities[a.allergy.criticality]})`
+      ? `(${TEXT.allergyCriticalities[a.allergy.criticality]})`
       : "",
-    `· ${STRINGS.allergyStatusLabels[a.allergy.status]}`,
+    `· ${TEXT.allergyStatusLabels[a.allergy.status]}`,
   ]
     .filter(Boolean)
     .join(" ");
@@ -97,11 +97,12 @@ export async function loadAllergies(
   };
 }
 
-const RISK: Record<string, string> = {
-  high: STRINGS.allergyRiskHigh,
-  low: STRINGS.allergyRiskLow,
-  "unable-to-assess": STRINGS.allergyRiskUnassessed,
-};
+// Read at each call, not at module load, so the words follow the reader's locale (`i18n.ts`).
+const riskWords = (): Record<string, string> => ({
+  high: TEXT.allergyRiskHigh,
+  low: TEXT.allergyRiskLow,
+  "unable-to-assess": TEXT.allergyRiskUnassessed,
+});
 
 /** The banner's allergy line, and whether it carries a high-risk allergy (shown more strongly). */
 export function bannerAllergies(
@@ -111,12 +112,12 @@ export function bannerAllergies(
   text: string;
   high: boolean;
 } {
-  if (load === null) return { text: STRINGS.allergyChecking, high: false };
+  if (load === null) return { text: TEXT.allergyChecking, high: false };
   if (load.status === 403) {
-    return { text: STRINGS.allergyNotShown, high: false };
+    return { text: TEXT.allergyNotShown, high: false };
   }
   if (load.status !== 200 || !load.data) {
-    return { text: STRINGS.allergyLoadFailed, high: false };
+    return { text: TEXT.allergyLoadFailed, high: false };
   }
   const s = load.data.summary;
   switch (s.state) {
@@ -124,7 +125,7 @@ export function bannerAllergies(
       return {
         text: s.items
           .map((i) => {
-            const risk = i.criticality ? RISK[i.criticality] : undefined;
+            const risk = i.criticality ? riskWords()[i.criticality] : undefined;
             return risk ? `${i.substance} (${risk})` : i.substance;
           })
           .join(", "),
@@ -132,7 +133,7 @@ export function bannerAllergies(
       };
     case "no-known":
       return {
-        text: STRINGS.allergyNoKnown.replace(
+        text: TEXT.allergyNoKnown.replace(
           "{when}",
           siteWhenText(s.asserted_at, siteZone),
         ),
@@ -140,10 +141,10 @@ export function bannerAllergies(
       };
     case "none-active":
       return {
-        text: STRINGS.allergyNoneActive.replace("{n}", String(s.inactive)),
+        text: TEXT.allergyNoneActive.replace("{n}", String(s.inactive)),
         high: false,
       };
     default:
-      return { text: STRINGS.bannerAllergiesUnknown, high: false };
+      return { text: TEXT.bannerAllergiesUnknown, high: false };
   }
 }

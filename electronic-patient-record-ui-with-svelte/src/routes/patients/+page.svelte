@@ -10,7 +10,7 @@
     searchQuery,
     type Stored,
   } from "#lib/patient.js";
-  import { STRINGS } from "#lib/strings.js";
+  import { TEXT } from "#lib/i18n.js";
 
   const locale = $derived(page.data.locale ?? DEFAULT_LOCALE);
   let form = $state(emptyForm());
@@ -30,7 +30,7 @@
     const query = searchQuery(form);
     if (!query) {
       found = null;
-      message = STRINGS.searchNothing;
+      message = TEXT.searchNothing;
       return;
     }
     const res = await call<{ results: Stored[]; limit: number }>(
@@ -40,28 +40,26 @@
     const problem = commonProblem(res.status);
     if (problem) {
       found = null;
-      message = STRINGS[problem];
+      message = TEXT[problem];
     } else if (res.status === 200) {
       found = res.body.results;
       limit = res.body.limit;
     } else {
       found = null;
-      message = STRINGS.error;
+      message = TEXT.error;
     }
   }
 
   const label = (s: Stored) => {
     const f = patientToForm(s.patient);
-    return (
-      [f.family, f.given].filter(Boolean).join(", ") || STRINGS.notAvailable
-    );
+    return [f.family, f.given].filter(Boolean).join(", ") || TEXT.notAvailable;
   };
 </script>
 
-<svelte:head><title>{STRINGS.searchTitle}</title></svelte:head>
+<svelte:head><title>{TEXT.searchTitle}</title></svelte:head>
 
-<h1>{STRINGS.searchTitle}</h1>
-<p>{STRINGS.searchHint}</p>
+<h1>{TEXT.searchTitle}</h1>
+<p>{TEXT.searchHint}</p>
 
 <form onsubmit={submit}>
   <PatientFields
@@ -69,11 +67,11 @@
     prefix="s"
     only={["family", "birthDate", "nhsNumber"]}
   />
-  <button type="submit" disabled={busy.on}>{STRINGS.search}</button>
+  <button type="submit" disabled={busy.on}>{TEXT.search}</button>
 </form>
 <p>
-  <a href={localizePath("/patients/new", locale)}>{STRINGS.registerLink}</a> ·
-  <a href={localizePath("/patients/compare", locale)}>{STRINGS.compareTitle}</a>
+  <a href={localizePath("/patients/new", locale)}>{TEXT.registerLink}</a> ·
+  <a href={localizePath("/patients/compare", locale)}>{TEXT.compareTitle}</a>
 </p>
 
 {#if message}
@@ -82,16 +80,16 @@
 
 {#if found}
   <section aria-live="polite">
-    <h2>{STRINGS.results}</h2>
+    <h2>{TEXT.results}</h2>
     {#if found.length === 0}
-      <p>{STRINGS.noResults}</p>
+      <p>{TEXT.noResults}</p>
     {:else}
       <table>
         <thead>
           <tr>
-            <th>{STRINGS.family} / {STRINGS.given}</th>
-            <th>{STRINGS.birthDate}</th>
-            <th>{STRINGS.nhsNumber}</th>
+            <th>{TEXT.family} / {TEXT.given}</th>
+            <th>{TEXT.birthDate}</th>
+            <th>{TEXT.nhsNumber}</th>
             <th></th>
           </tr>
         </thead>
@@ -102,14 +100,14 @@
               <td>
                 {label(s)}
                 {#if f.temporaryIdentity}
-                  <strong>({STRINGS.temporaryIdentity})</strong>
+                  <strong>({TEXT.temporaryIdentity})</strong>
                 {/if}
               </td>
-              <td>{f.birthDate || STRINGS.notAvailable}</td>
-              <td>{f.nhsNumber || STRINGS.notAvailable}</td>
+              <td>{f.birthDate || TEXT.notAvailable}</td>
+              <td>{f.nhsNumber || TEXT.notAvailable}</td>
               <td>
                 <a href={localizePath(`/patients/${s.id}`, locale)}
-                  >{STRINGS.open}<span class="sr-only"> {label(s)}</span></a
+                  >{TEXT.open}<span class="sr-only"> {label(s)}</span></a
                 >
               </td>
             </tr>
@@ -117,7 +115,7 @@
         </tbody>
       </table>
       {#if found.length >= limit}
-        <p>{STRINGS.resultsCapped.replace("{n}", String(limit))}</p>
+        <p>{TEXT.resultsCapped.replace("{n}", String(limit))}</p>
       {/if}
     {/if}
   </section>

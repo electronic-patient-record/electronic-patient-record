@@ -10,7 +10,7 @@
     type ConflictCode,
   } from "./conflicts.js";
   import { DEFAULT_LOCALE } from "./locales.js";
-  import { STRINGS } from "./strings.js";
+  import { TEXT } from "./i18n.js";
 
   let {
     patientId,
@@ -35,7 +35,7 @@
     if (busy) return;
     message = null;
     if (!why.trim()) {
-      message = STRINGS.mergeWhy;
+      message = TEXT.mergeWhy;
       return;
     }
     busy = true;
@@ -54,27 +54,27 @@
       busy = false;
     }
     const common = commonProblem(res.status);
-    if (common) message = STRINGS[common];
+    if (common) message = TEXT[common];
     else if (res.status === 200 || res.status === 201) {
       message = done;
       source = why = "";
       await onchange();
-    } else if (res.status === 404) message = STRINGS.notFound;
+    } else if (res.status === 404) message = TEXT.notFound;
     else if (res.status === 422 && res.body?.errors) {
       const locale = page.data.locale ?? DEFAULT_LOCALE;
       message =
         notSamePersonText(res.body.conflict_codes, locale) ??
         refusalText(res.body.refusal, res.body.refusal_into, locale) ??
         res.body.errors.join(" ");
-    } else message = STRINGS.error;
+    } else message = TEXT.error;
   }
 </script>
 
 <section aria-labelledby="merge-h">
-  <h2 id="merge-h">{STRINGS.mergeTitle}</h2>
-  <p>{STRINGS.mergeIntro}</p>
+  <h2 id="merge-h">{TEXT.mergeTitle}</h2>
+  <p>{TEXT.mergeIntro}</p>
   {#if replaces.length > 0}
-    <h3>{STRINGS.mergedIn}</h3>
+    <h3>{TEXT.mergedIn}</h3>
     <ul>
       {#each replaces as r (r)}
         <li>
@@ -82,24 +82,24 @@
           <button
             type="button"
             disabled={busy}
-            onclick={() => void send("unmerge", r, STRINGS.mergeUndone)}
+            onclick={() => void send("unmerge", r, TEXT.mergeUndone)}
           >
-            {STRINGS.mergeUndo}
+            {TEXT.mergeUndo}
           </button>
         </li>
       {/each}
     </ul>
   {/if}
-  <label for="m-source">{STRINGS.mergeSource}</label>
+  <label for="m-source">{TEXT.mergeSource}</label>
   <input id="m-source" bind:value={source} autocomplete="off" />
-  <label for="m-why">{STRINGS.mergeWhy}</label>
+  <label for="m-why">{TEXT.mergeWhy}</label>
   <input id="m-why" bind:value={why} autocomplete="off" />
   <button
     type="button"
     disabled={busy || !source.trim()}
-    onclick={() => void send("merge", source, STRINGS.mergeDone)}
+    onclick={() => void send("merge", source, TEXT.mergeDone)}
   >
-    {STRINGS.mergeDo}
+    {TEXT.mergeDo}
   </button>
   {#if message}<p role="status">{message}</p>{/if}
 </section>

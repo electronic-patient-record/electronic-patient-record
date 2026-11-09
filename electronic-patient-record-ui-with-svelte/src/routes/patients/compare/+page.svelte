@@ -3,7 +3,7 @@
   import { page } from "$app/state";
   import { conflictList, type ConflictCode } from "#lib/conflicts.js";
   import { DEFAULT_LOCALE } from "#lib/locales.js";
-  import { STRINGS } from "#lib/strings.js";
+  import { TEXT } from "#lib/i18n.js";
 
   const locale = $derived(page.data.locale ?? DEFAULT_LOCALE);
 
@@ -15,7 +15,7 @@
   };
   type Result = {
     score: number;
-    decision: keyof typeof STRINGS.decisions;
+    decision: keyof typeof TEXT.decisions;
     fields: Field[];
     deterministic: string | null;
     conflicts: string[];
@@ -70,28 +70,28 @@
   }
 </script>
 
-<svelte:head><title>{STRINGS.compareTitle}</title></svelte:head>
+<svelte:head><title>{TEXT.compareTitle}</title></svelte:head>
 
-<h1>{STRINGS.compareTitle}</h1>
+<h1>{TEXT.compareTitle}</h1>
 
 <form onsubmit={submit}>
   <div class="pair">
-    {#each [{ id: "a", label: STRINGS.patientA, model: a }, { id: "b", label: STRINGS.patientB, model: b }] as p (p.id)}
+    {#each [{ id: "a", label: TEXT.patientA, model: a }, { id: "b", label: TEXT.patientB, model: b }] as p (p.id)}
       <fieldset>
         <legend>{p.label}</legend>
-        <label for="{p.id}-family">{STRINGS.family}</label>
+        <label for="{p.id}-family">{TEXT.family}</label>
         <input
           id="{p.id}-family"
           bind:value={p.model.family}
           autocomplete="off"
         />
-        <label for="{p.id}-given">{STRINGS.given}</label>
+        <label for="{p.id}-given">{TEXT.given}</label>
         <input
           id="{p.id}-given"
           bind:value={p.model.given}
           autocomplete="off"
         />
-        <label for="{p.id}-birth">{STRINGS.birthDate}</label>
+        <label for="{p.id}-birth">{TEXT.birthDate}</label>
         <input
           id="{p.id}-birth"
           bind:value={p.model.birth}
@@ -101,28 +101,28 @@
       </fieldset>
     {/each}
   </div>
-  <button type="submit" disabled={busy.on}>{STRINGS.compare}</button>
+  <button type="submit" disabled={busy.on}>{TEXT.compare}</button>
 </form>
 
 {#if forbidden}
-  <p role="alert">{STRINGS.forbidden}</p>
+  <p role="alert">{TEXT.forbidden}</p>
 {/if}
 
 {#if signInRequired}
-  <p role="alert">{STRINGS.signInRequired}</p>
+  <p role="alert">{TEXT.signInRequired}</p>
 {/if}
 
 {#if failed}
-  <p role="alert">{STRINGS.error}</p>
+  <p role="alert">{TEXT.error}</p>
 {/if}
 
 {#if result}
   <section aria-live="polite">
-    <h2>{STRINGS.decision}: {STRINGS.decisions[result.decision]}</h2>
-    <p>{STRINGS.score}: {result.score.toFixed(2)}</p>
+    <h2>{TEXT.decision}: {TEXT.decisions[result.decision]}</h2>
+    <p>{TEXT.score}: {result.score.toFixed(2)}</p>
     {#if result.deterministic}<p>{result.deterministic}</p>{/if}
     {#if result.conflicts.length}
-      <h3>{STRINGS.conflicts}</h3>
+      <h3>{TEXT.conflicts}</h3>
       <ul>
         {#each conflictList(result.conflicts, result.conflict_codes, locale) as c, i (i)}<li
           >
@@ -132,7 +132,7 @@
     {/if}
     <table>
       <thead>
-        <tr><th>{STRINGS.field}</th><th>{STRINGS.similarity}</th><th></th></tr>
+        <tr><th>{TEXT.field}</th><th>{TEXT.similarity}</th><th></th></tr>
       </thead>
       <tbody>
         {#each result.fields as f (f.field)}
@@ -140,7 +140,7 @@
             <td>{f.field}</td>
             <td
               >{f.similarity === null
-                ? STRINGS.notAvailable
+                ? TEXT.notAvailable
                 : f.similarity.toFixed(2)}</td
             >
             <td>{f.note}</td>

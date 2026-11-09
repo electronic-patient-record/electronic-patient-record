@@ -12,7 +12,7 @@
     Criticality,
     StoredAllergy,
   } from "./allergies.js";
-  import { STRINGS } from "./strings.js";
+  import { TEXT } from "./i18n.js";
   import { noticeText } from "./vitals.js";
 
   const busy = new Busy();
@@ -41,7 +41,7 @@
     [
       a.allergy.substance,
       a.allergy.criticality
-        ? `(${STRINGS.allergyCriticalities[a.allergy.criticality]})`
+        ? `(${TEXT.allergyCriticalities[a.allergy.criticality]})`
         : "",
     ]
       .filter(Boolean)
@@ -50,16 +50,16 @@
   async function done(res: { status: number; body: unknown }) {
     const common = commonProblem(res.status);
     const body = res.body as { errors?: string[] } | null;
-    if (common) message = STRINGS[common];
+    if (common) message = TEXT[common];
     else if (res.status === 200 || res.status === 201) {
-      message = STRINGS.allergySaved;
+      message = TEXT.allergySaved;
       await onchange();
     } else if (res.status === 409) {
-      message = STRINGS.allergyChanged;
+      message = TEXT.allergyChanged;
       await onchange();
     } else if (res.status === 422 && body?.errors)
       message = body.errors.join(" ");
-    else message = STRINGS.error;
+    else message = TEXT.error;
   }
 
   async function add(event: SubmitEvent) {
@@ -129,15 +129,15 @@
 </script>
 
 <section aria-labelledby="allergies-h">
-  <h2 id="allergies-h">{STRINGS.allergiesTitle}</h2>
+  <h2 id="allergies-h">{TEXT.allergiesTitle}</h2>
   {#if data.allergies.length === 0}
-    <p>{STRINGS.allergyNone}</p>
+    <p>{TEXT.allergyNone}</p>
   {:else}
     <ul>
       {#each data.allergies as a (a.id)}
         <li>
           <strong>{label(a)}</strong>
-          · {STRINGS.allergyStatusLabels[a.allergy.status]}
+          · {TEXT.allergyStatusLabels[a.allergy.status]}
           {#if a.allergy.reaction}· {a.allergy.reaction}{/if}
           {#if a.allergy.onset}· {a.allergy.onset}{/if}
           {#each data.amendment_notices?.[a.id] ?? [] as n, i (i)}
@@ -149,7 +149,7 @@
               type="button"
               onclick={() => void change(a, "inactive")}
             >
-              {STRINGS.allergyEnd}
+              {TEXT.allergyEnd}
             </button>
           {/if}
           {#if a.allergy.status !== "entered-in-error"}
@@ -158,7 +158,7 @@
               type="button"
               onclick={() => void change(a, "entered-in-error")}
             >
-              {STRINGS.allergyMistake}
+              {TEXT.allergyMistake}
             </button>
           {/if}
         </li>
@@ -167,7 +167,7 @@
   {/if}
 
   <form onsubmit={add}>
-    <label for="al-substance">{STRINGS.allergySubstance}</label>
+    <label for="al-substance">{TEXT.allergySubstance}</label>
     <input
       id="al-substance"
       bind:value={substance}
@@ -175,32 +175,32 @@
       maxlength="200"
       autocomplete="off"
     />
-    <label for="al-category">{STRINGS.allergyCategory}</label>
+    <label for="al-category">{TEXT.allergyCategory}</label>
     <select id="al-category" bind:value={category}>
       <option value=""></option>
-      {#each Object.entries(STRINGS.allergyCategories) as [k, v] (k)}
+      {#each Object.entries(TEXT.allergyCategories) as [k, v] (k)}
         <option value={k}>{v}</option>
       {/each}
     </select>
-    <label for="al-crit">{STRINGS.allergyCriticality}</label>
+    <label for="al-crit">{TEXT.allergyCriticality}</label>
     <select id="al-crit" bind:value={criticality}>
       <option value=""></option>
-      {#each Object.entries(STRINGS.allergyCriticalities) as [k, v] (k)}
+      {#each Object.entries(TEXT.allergyCriticalities) as [k, v] (k)}
         <option value={k}>{v}</option>
       {/each}
     </select>
-    <label for="al-reaction">{STRINGS.allergyReaction}</label>
+    <label for="al-reaction">{TEXT.allergyReaction}</label>
     <input
       id="al-reaction"
       bind:value={reaction}
       maxlength="500"
       autocomplete="off"
     />
-    <label for="al-onset">{STRINGS.allergyOnset}</label>
+    <label for="al-onset">{TEXT.allergyOnset}</label>
     <input id="al-onset" bind:value={onset} autocomplete="off" />
-    <label for="al-why">{STRINGS.allergyWhy}</label>
+    <label for="al-why">{TEXT.allergyWhy}</label>
     <input id="al-why" bind:value={why} autocomplete="off" />
-    <button disabled={busy.on} type="submit">{STRINGS.allergyAdd}</button>
+    <button disabled={busy.on} type="submit">{TEXT.allergyAdd}</button>
   </form>
 
   <p>
@@ -210,7 +210,7 @@
         type="button"
         onclick={() => void statement(false)}
       >
-        {STRINGS.allergyWithdrawNone}
+        {TEXT.allergyWithdrawNone}
       </button>
     {:else}
       <button
@@ -218,7 +218,7 @@
         type="button"
         onclick={() => void statement(true)}
       >
-        {STRINGS.allergyNoneKnown}
+        {TEXT.allergyNoneKnown}
       </button>
     {/if}
   </p>

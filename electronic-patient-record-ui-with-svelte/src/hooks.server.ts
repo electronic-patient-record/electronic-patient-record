@@ -10,12 +10,22 @@ import {
   localizePath,
   normalizeLocale,
   splitPath,
+  type Locale,
 } from "#lib/locales.js";
+import { setLocaleSource } from "#lib/i18n.js";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { forwardedProto } from "#lib/forwarded-proto.js";
 import { applySecurityHeaders, isHttps } from "#lib/security-headers.js";
 
 /** Remembers the reader's locale, to choose one for a bare, unprefixed URL. */
 export const LOCALE_COOKIE = "locale";
+
+/**
+ * The locale of the request being handled, for `TEXT` (`src/lib/i18n.ts`). Kept per request, so two
+ * pages rendered at once each get their own reader's words.
+ */
+const requestLocale = new AsyncLocalStorage<Locale>();
+setLocaleSource(() => requestLocale.getStore());
 
 // A bad sign-in configuration stops the server at startup rather than at the first request.
 export const init: ServerInit = () => {
@@ -75,10 +85,12 @@ const localeHandle: Handle = async ({ event, resolve }) => {
     }
   }
   const locale = event.locals.locale ?? DEFAULT_LOCALE;
-  return resolve(event, {
-    transformPageChunk: ({ html }) =>
-      html
-        .replace('lang="%lang%"', `lang="${locale}"`)
-        .replace('dir="%dir%"', `dir="${isRtl(locale) ? "rtl" : "ltr"}"`),
-  });
+  return requestLocale.run(locale, () =>
+    resolve(event, {
+      transformPageChunk: ({ html }) =>
+        html
+          .replace('lang="%lang%"', `lang="${locale}"`)
+          .replace('dir="%dir%"', `dir="${isRtl(locale) ? "rtl" : "ltr"}"`),
+    }),
+  );
 };

@@ -1,10 +1,13 @@
 // Translations of the access-log filter form on `/my-record` (SE-6).
 //
 // MACHINE-WRITTEN. No speaker of any language here has reviewed these, and nothing may call them
-// reviewed until one has (AGENTS.md). The rest of the UI is still English only; a locale with no
-// entry, or a missing key, falls back to English through `logFormStrings`.
+// reviewed until one has (AGENTS.md). Welsh (`cy-001`) has a full table of the UI's words
+// (`strings.cy.ts`, see `i18n.ts`); for the other locales the rest of the UI is English. A locale
+// with no entry here falls back to English through `logFormStrings`.
 import { STRINGS } from "./strings.js";
 import type { Locale } from "./locales.js";
+import type { Strings } from "./i18n.js";
+import { CY } from "./strings.cy.js";
 
 export const LOG_FORM_KEYS = [
   "filterTitle",
@@ -32,29 +35,34 @@ export type LogFormStrings = Record<(typeof LOG_FORM_KEYS)[number], string> & {
   purposes: Record<keyof typeof STRINGS.accessLogPurposes, string>;
 };
 
+/** The form's words from a full table of the UI's words (`STRINGS`, or a locale's own). */
+function fromTable(t: Strings): LogFormStrings {
+  return {
+    filterTitle: t.accessLogFilterTitle,
+    zone: t.accessLogZone,
+    from: t.accessLogFrom,
+    to: t.accessLogTo,
+    by: t.accessLogBy,
+    byAny: t.accessLogByAny,
+    byYou: t.accessLogByYou,
+    byStaff: t.accessLogByStaff,
+    outcome: t.accessLogOutcome,
+    outcomeAny: t.accessLogOutcomeAny,
+    refusedOnly: t.accessLogRefusedOnly,
+    okOnly: t.accessLogOkOnly,
+    purposeFilter: t.accessLogPurposeFilter,
+    purposeAny: t.accessLogPurposeAny,
+    apply: t.accessLogApply,
+    clear: t.accessLogClear,
+    download: t.accessLogDownload,
+    downloadCut: t.accessLogDownloadCut,
+    badDay: t.accessLogBadDay,
+    purposes: t.accessLogPurposes,
+  };
+}
+
 /** English, from the one table the rest of the UI reads. */
-const en: LogFormStrings = {
-  filterTitle: STRINGS.accessLogFilterTitle,
-  zone: STRINGS.accessLogZone,
-  from: STRINGS.accessLogFrom,
-  to: STRINGS.accessLogTo,
-  by: STRINGS.accessLogBy,
-  byAny: STRINGS.accessLogByAny,
-  byYou: STRINGS.accessLogByYou,
-  byStaff: STRINGS.accessLogByStaff,
-  outcome: STRINGS.accessLogOutcome,
-  outcomeAny: STRINGS.accessLogOutcomeAny,
-  refusedOnly: STRINGS.accessLogRefusedOnly,
-  okOnly: STRINGS.accessLogOkOnly,
-  purposeFilter: STRINGS.accessLogPurposeFilter,
-  purposeAny: STRINGS.accessLogPurposeAny,
-  apply: STRINGS.accessLogApply,
-  clear: STRINGS.accessLogClear,
-  download: STRINGS.accessLogDownload,
-  downloadCut: STRINGS.accessLogDownloadCut,
-  badDay: STRINGS.accessLogBadDay,
-  purposes: STRINGS.accessLogPurposes,
-};
+const en: LogFormStrings = fromTable(STRINGS);
 
 const de: LogFormStrings = {
   filterTitle: "Protokoll eingrenzen",
@@ -250,37 +258,8 @@ const ar: LogFormStrings = {
   },
 };
 
-const cy: LogFormStrings = {
-  filterTitle: "Cyfyngu'r cofnod",
-  zone: "Mae'r dyddiau a'r amserau yma yn eich parth amser chi: {zone}.",
-  from: "O (diwrnod)",
-  to: "Hyd at a chan gynnwys (diwrnod)",
-  by: "Pwy",
-  byAny: "Unrhyw un",
-  byYou: "Fi yn unig",
-  byStaff: "Eraill yn unig",
-  outcome: "Canlyniad",
-  outcomeAny: "Pob un",
-  refusedOnly: "Ymdrechion a wrthodwyd yn unig",
-  okOnly: "Rhai llwyddiannus yn unig",
-  purposeFilter: "Pwrpas",
-  purposeAny: "Unrhyw bwrpas",
-  apply: "Gosod",
-  clear: "Clirio",
-  download: "Lawrlwytho fel ffeil CSV (hyd at y 1000 cofnod diweddaraf)",
-  downloadCut:
-    "Dim ond y 1000 cofnod diweddaraf sydd yn y ffeil. Cyfyngwch y dyddiau i gael rhai hŷn.",
-  badDay: "Defnyddiwch ddyddiau go iawn wedi'u hysgrifennu fel 2026-10-21.",
-  purposes: {
-    treatment: "Triniaeth",
-    emergency: "Argyfwng",
-    operations: "Rhedeg y gwasanaeth",
-    payment: "Taliad",
-    research: "Ymchwil",
-    "patient-access": "Chi neu'ch dirprwy yn edrych ar y cofnod",
-    audit: "Adolygu'r llwybr archwilio",
-  },
-};
+// Welsh has a full table (`strings.cy.ts`, also machine-written and unreviewed); the form reads it.
+const cy: LogFormStrings = fromTable(CY);
 
 /** Machine-written, not reviewed. `de-de` reads as `de-001`, and `zh-cn` as `zh-001` (simplified). */
 export const LOG_FORM: Partial<Record<Locale, LogFormStrings>> = {
@@ -480,9 +459,9 @@ const conflict_ar: ConflictWords = {
 };
 
 const conflict_cy: ConflictWords = {
-  differentNhsNumbers: "rhifau NHS gwiriedig gwahanol",
-  sameNhsDifferentBirthDates: "yr un rhif NHS ond dyddiadau geni gwahanol",
-  sameNhsDifferentNames: "yr un rhif NHS ond enwau gwahanol",
+  differentNhsNumbers: "rhifau GIG gwiriedig gwahanol",
+  sameNhsDifferentBirthDates: "yr un rhif GIG ond dyddiadau geni gwahanol",
+  sameNhsDifferentNames: "yr un rhif GIG ond enwau gwahanol",
   differentIhis: "IHI wedi'u gwirio gwahanol",
   sameIhiDifferentBirthDates: "yr un IHI ond dyddiadau geni gwahanol",
   sameIhiDifferentNames: "yr un IHI ond enwau gwahanol",

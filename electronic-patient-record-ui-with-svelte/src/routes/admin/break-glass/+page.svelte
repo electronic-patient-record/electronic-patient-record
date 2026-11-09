@@ -2,7 +2,7 @@
   import { Busy } from "#lib/busy.svelte.js";
   import { call, commonProblem } from "#lib/api.js";
   import { siteWhenText } from "#lib/access-log.js";
-  import { STRINGS } from "#lib/strings.js";
+  import { TEXT } from "#lib/i18n.js";
 
   type Grant = {
     id: string;
@@ -36,13 +36,13 @@
     const problem = commonProblem(res.status);
     if (problem) {
       grants = null;
-      message = STRINGS[problem];
+      message = TEXT[problem];
     } else if (res.status === 200) {
       grants = res.body.grants;
       limit = res.body.limit ?? 50;
       more = res.body.more ?? grants.length >= limit;
       siteZone = res.body.site_time_zone;
-    } else message = STRINGS.error;
+    } else message = TEXT.error;
   }
   $effect(() => {
     void load();
@@ -56,7 +56,7 @@
   async function recordNow() {
     if (!open) return;
     if (!note.trim()) {
-      message = STRINGS.glassNoteNeeded;
+      message = TEXT.glassNoteNeeded;
       return;
     }
     const res = await call("POST", `/api/break-glass/reviews/${open}`, {
@@ -65,11 +65,11 @@
     });
     const problem = commonProblem(res.status);
     const body = res.body as { errors?: string[] } | null;
-    if (problem) message = STRINGS[problem];
-    else if (res.status === 200) message = STRINGS.glassReviewed;
-    else if (res.status === 409) message = STRINGS.glassAlready;
-    else if (res.status === 422 && body?.errors) message = STRINGS.glassOwn;
-    else message = STRINGS.error;
+    if (problem) message = TEXT[problem];
+    else if (res.status === 200) message = TEXT.glassReviewed;
+    else if (res.status === 409) message = TEXT.glassAlready;
+    else if (res.status === 422 && body?.errors) message = TEXT.glassOwn;
+    else message = TEXT.error;
     if (res.status === 200 || res.status === 409) {
       open = null;
       note = "";
@@ -78,45 +78,45 @@
   }
 </script>
 
-<svelte:head><title>{STRINGS.glassReviewTitle}</title></svelte:head>
-<h1>{STRINGS.glassReviewTitle}</h1>
-<p>{STRINGS.glassReviewIntro}</p>
+<svelte:head><title>{TEXT.glassReviewTitle}</title></svelte:head>
+<h1>{TEXT.glassReviewTitle}</h1>
+<p>{TEXT.glassReviewIntro}</p>
 {#if message}<p role="status">{message}</p>{/if}
 {#if grants !== null}
   {#if grants.length === 0}
-    <p>{STRINGS.glassReviewNone}</p>
+    <p>{TEXT.glassReviewNone}</p>
   {:else}
     {#if more}<p role="status">
-        {STRINGS.glassReviewMore.replace("{n}", String(limit))}
+        {TEXT.glassReviewMore.replace("{n}", String(limit))}
       </p>{/if}
     <ul>
       {#each grants as g (g.id)}
         <li>
-          {#if g.overdue}<strong class="overdue">{STRINGS.glassOverdue}</strong> ·{/if}
-          {siteWhenText(g.granted_at, siteZone)} · {STRINGS.glassBy}
+          {#if g.overdue}<strong class="overdue">{TEXT.glassOverdue}</strong> ·{/if}
+          {siteWhenText(g.granted_at, siteZone)} · {TEXT.glassBy}
           <code>{g.subject}</code>
-          · {STRINGS.glassFor} <code>{g.patient_id}</code>
-          · {STRINGS.glassUntil}
+          · {TEXT.glassFor} <code>{g.patient_id}</code>
+          · {TEXT.glassUntil}
           {siteWhenText(g.expires_at, siteZone)}
-          <p>{STRINGS.glassWhy}: {g.reason}</p>
+          <p>{TEXT.glassWhy}: {g.reason}</p>
           <button type="button" onclick={() => (open = g.id)}>
-            {STRINGS.glassReview}
+            {TEXT.glassReview}
           </button>
           {#if open === g.id}
             <form onsubmit={record}>
-              <label for="g-outcome">{STRINGS.glassOutcome}</label>
+              <label for="g-outcome">{TEXT.glassOutcome}</label>
               <select id="g-outcome" bind:value={outcome}>
                 <option value="appropriate">
-                  {STRINGS.glassOutcomes.appropriate}
+                  {TEXT.glassOutcomes.appropriate}
                 </option>
                 <option value="inappropriate">
-                  {STRINGS.glassOutcomes.inappropriate}
+                  {TEXT.glassOutcomes.inappropriate}
                 </option>
               </select>
-              <label for="g-note">{STRINGS.glassNote}</label>
+              <label for="g-note">{TEXT.glassNote}</label>
               <input id="g-note" bind:value={note} autocomplete="off" />
               <button disabled={busy.on} type="submit"
-                >{STRINGS.glassRecord}</button
+                >{TEXT.glassRecord}</button
               >
             </form>
           {/if}

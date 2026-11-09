@@ -6,7 +6,7 @@ SvelteKit (kit 3), Svelte 5 runes, TypeScript strict, adapter-node. Read [`spec/
   Keycloak sign-in with server-side sessions (`/auth/*`, off unless `EPR_OIDC_ISSUER` is set), a home page, patient
   search, registration and compare pages, a patient record page (allergies, referrals, vital signs, amendments) with an access-log page, `/my-record`, and admin pages
   for the HL7 feed and break-the-glass review (see `src/routes`). Not built: a shared session store, Lily widgets,
-  the `DataTable` wrapper, translations (English only, except the access-log filter form on `/my-record`, machine-written in `src/lib/translations.ts` and unreviewed; the ten `LOCALES` fall back to English).
+  the `DataTable` wrapper, translations other than Welsh: `cy-001` has a full machine-written, unreviewed table (`src/lib/strings.cy.ts`, WL-8), a few small machine-written tables live in `src/lib/translations.ts`, and the other locales read English. Pages read `TEXT` from `src/lib/i18n.ts`, never `STRINGS` (the English source) directly, and never copy a `TEXT` value into a module-level constant.
 - Environment variables are declared in `src/env.ts` (`defineEnvVars`) and read from `$app/env/private`.
 - The browser never calls the API directly: it calls `/api/proxy/api/...`, and `src/lib/proxy.ts` refuses anything
   outside `/api`. Keep that rule and its tests.

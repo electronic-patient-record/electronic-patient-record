@@ -11,7 +11,7 @@
   import { refreshWorklistCount } from "#lib/feed-count.svelte.js";
   import { page } from "$app/state";
   import { DEFAULT_LOCALE, localizePath } from "#lib/locales.js";
-  import { STRINGS } from "#lib/strings.js";
+  import { TEXT } from "#lib/i18n.js";
 
   const locale = $derived(page.data.locale ?? DEFAULT_LOCALE);
   const busy = new Busy();
@@ -34,7 +34,7 @@
     const problem = commonProblem(res.status);
     if (problem) {
       items = null;
-      message = STRINGS[problem];
+      message = TEXT[problem];
     } else if (res.status === 200) {
       items = res.body.items;
       limit = res.body.limit;
@@ -42,7 +42,7 @@
       untimed = res.body.untimed;
       siteZone = res.body.site_time_zone;
       void refreshWorklistCount();
-    } else message = STRINGS.error;
+    } else message = TEXT.error;
   }
   $effect(() => {
     void load();
@@ -56,42 +56,41 @@
         acknowledgeBody(i),
       );
       const problem = commonProblem(res.status);
-      if (problem) message = STRINGS[problem];
-      else if (res.status === 200) message = STRINGS.wlSeen;
+      if (problem) message = TEXT[problem];
+      else if (res.status === 200) message = TEXT.wlSeen;
       // 409: a newer answer arrived, or it was already seen. Reload to show what is true now.
-      else if (res.status === 409) message = STRINGS.wlChanged;
-      else message = STRINGS.error;
+      else if (res.status === 409) message = TEXT.wlChanged;
+      else message = TEXT.error;
       if (!problem && (res.status === 200 || res.status === 409)) await load();
     });
   }
 </script>
 
-<svelte:head><title>{STRINGS.wlTitle}</title></svelte:head>
-<h1>{STRINGS.wlTitle}</h1>
-<p>{STRINGS.wlIntro}</p>
+<svelte:head><title>{TEXT.wlTitle}</title></svelte:head>
+<h1>{TEXT.wlTitle}</h1>
+<p>{TEXT.wlIntro}</p>
 {#if message}<p role="status">{message}</p>{/if}
 {#if untimedWarning(untimed)}<p role="status">{untimedWarning(untimed)}</p>{/if}
 {#if items !== null}
   {#if items.length === 0}
-    <p>{STRINGS.wlNone}</p>
+    <p>{TEXT.wlNone}</p>
   {:else}
-    <p>{STRINGS.wlCount.replace("{n}", String(items.length))}</p>
+    <p>{TEXT.wlCount.replace("{n}", String(items.length))}</p>
     {#if more}
-      <p>{STRINGS.wlMore.replace("{n}", String(limit))}</p>
+      <p>{TEXT.wlMore.replace("{n}", String(limit))}</p>
     {/if}
     <ul>
       {#each items as i (i.referral_id)}
         <li>
           <strong>{itemHeadline(i, siteZone)}</strong>
           <a href={localizePath(`/patients/${i.patient_id}`, locale)}
-            >{STRINGS.wlOpen}</a
+            >{TEXT.wlOpen}</a
           >
           {#if i.why === "reply"}
             <button
               disabled={busy.on}
               type="button"
-              onclick={() => void acknowledge(i)}
-              >{STRINGS.wlAcknowledge}</button
+              onclick={() => void acknowledge(i)}>{TEXT.wlAcknowledge}</button
             >
           {/if}
         </li>

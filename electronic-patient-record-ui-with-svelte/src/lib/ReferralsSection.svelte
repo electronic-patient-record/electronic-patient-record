@@ -15,7 +15,7 @@
     type Priority,
     type StoredReferral,
   } from "./referrals.js";
-  import { STRINGS } from "./strings.js";
+  import { TEXT } from "./i18n.js";
 
   const busy = new Busy();
   let {
@@ -59,19 +59,19 @@
   async function settle(res: { status: number; body: unknown }, ok: string) {
     const common = commonProblem(res.status);
     const body = res.body as { errors?: string[] } | null;
-    if (common) message = STRINGS[common];
+    if (common) message = TEXT[common];
     else if (res.status === 200 || res.status === 201) {
       message = ok;
       open = null;
       note = "";
       await load();
     } else if (res.status === 409) {
-      message = STRINGS.referralChanged;
+      message = TEXT.referralChanged;
       open = null;
       await load();
     } else if (res.status === 422 && body?.errors)
       message = body.errors.join(" ");
-    else message = STRINGS.error;
+    else message = TEXT.error;
   }
 
   async function send(event: SubmitEvent) {
@@ -97,7 +97,7 @@
         priority = "routine";
         idempotencyKey = newIdempotencyKey();
       }
-      await settle(res, STRINGS.referralSent);
+      await settle(res, TEXT.referralSent);
     });
   }
 
@@ -121,53 +121,50 @@
           note: next.needs_note ? note.trim() : undefined,
         },
       );
-      await settle(res, STRINGS.referralStepDone);
+      await settle(res, TEXT.referralStepDone);
     });
   }
 </script>
 
 <section aria-labelledby="referrals-h">
-  <h2 id="referrals-h">{STRINGS.referralsTitle}</h2>
+  <h2 id="referrals-h">{TEXT.referralsTitle}</h2>
   {#if status === null}
-    <p>{STRINGS.loading}</p>
+    <p>{TEXT.loading}</p>
   {:else if status === 403}
-    <p>{STRINGS.referralsNotShown}</p>
+    <p>{TEXT.referralsNotShown}</p>
   {:else if status !== 200}
-    <p>{STRINGS.referralsCouldNot}</p>
+    <p>{TEXT.referralsCouldNot}</p>
   {:else}
     {#if rows.length === 0}
-      <p>{STRINGS.referralsNone}</p>
+      <p>{TEXT.referralsNone}</p>
     {:else}
       <ul>
         {#each rows as r (r.id)}
           <li>
             <strong
-              >{STRINGS.referralTo.replace(
+              >{TEXT.referralTo.replace(
                 "{recipient}",
                 r.referral.recipient,
               )}</strong
             >
-            · {STRINGS.referralPriorities[r.referral.priority]}
-            · {STRINGS.referralStates[r.state]}
+            · {TEXT.referralPriorities[r.referral.priority]}
+            · {TEXT.referralStates[r.state]}
             · {siteWhenText(r.recorded_at, siteZone)}
             {#if PROVISIONAL.includes(r.state)}
-              <p role="note">{STRINGS.referralProvisional}</p>
+              <p role="note">{TEXT.referralProvisional}</p>
             {/if}
-            <p>{STRINGS.referralReason}: {r.referral.reason}</p>
-            <p>{STRINGS.referralQuestion}: {r.referral.question}</p>
+            <p>{TEXT.referralReason}: {r.referral.reason}</p>
+            <p>{TEXT.referralQuestion}: {r.referral.question}</p>
             {#each r.next as n (n.event)}
               <button
                 disabled={busy.on}
                 type="button"
                 onclick={() => start(r, n)}
               >
-                {STRINGS.referralEvents[
-                  n.event as keyof typeof STRINGS.referralEvents
+                {TEXT.referralEvents[
+                  n.event as keyof typeof TEXT.referralEvents
                 ] ?? n.event}
-                ({STRINGS.referralBy.replace(
-                  "{by}",
-                  STRINGS.referralRoles[n.by],
-                )})
+                ({TEXT.referralBy.replace("{by}", TEXT.referralRoles[n.by])})
               </button>
             {/each}
             {#if open && open.id === r.id}
@@ -177,7 +174,7 @@
                   if (open) void step(r, open.next);
                 }}
               >
-                <label for="ref-note-{r.id}">{STRINGS.referralNote}</label>
+                <label for="ref-note-{r.id}">{TEXT.referralNote}</label>
                 <input
                   id="ref-note-{r.id}"
                   bind:value={note}
@@ -186,8 +183,8 @@
                   autocomplete="off"
                 />
                 <button disabled={busy.on} type="submit">
-                  {STRINGS.referralEvents[
-                    open.next.event as keyof typeof STRINGS.referralEvents
+                  {TEXT.referralEvents[
+                    open.next.event as keyof typeof TEXT.referralEvents
                   ] ?? open.next.event}
                 </button>
               </form>
@@ -198,7 +195,7 @@
     {/if}
 
     <form onsubmit={send}>
-      <label for="ref-recipient">{STRINGS.referralRecipient}</label>
+      <label for="ref-recipient">{TEXT.referralRecipient}</label>
       <input
         id="ref-recipient"
         bind:value={recipient}
@@ -206,7 +203,7 @@
         maxlength="200"
         autocomplete="off"
       />
-      <label for="ref-reason">{STRINGS.referralReason}</label>
+      <label for="ref-reason">{TEXT.referralReason}</label>
       <input
         id="ref-reason"
         bind:value={reason}
@@ -214,7 +211,7 @@
         maxlength="2000"
         autocomplete="off"
       />
-      <label for="ref-question">{STRINGS.referralQuestion}</label>
+      <label for="ref-question">{TEXT.referralQuestion}</label>
       <input
         id="ref-question"
         bind:value={question}
@@ -222,13 +219,13 @@
         maxlength="2000"
         autocomplete="off"
       />
-      <label for="ref-priority">{STRINGS.referralPriority}</label>
+      <label for="ref-priority">{TEXT.referralPriority}</label>
       <select id="ref-priority" bind:value={priority}>
         {#each PRIORITIES as p (p)}
-          <option value={p}>{STRINGS.referralPriorities[p]}</option>
+          <option value={p}>{TEXT.referralPriorities[p]}</option>
         {/each}
       </select>
-      <button disabled={busy.on} type="submit">{STRINGS.referralSend}</button>
+      <button disabled={busy.on} type="submit">{TEXT.referralSend}</button>
     </form>
   {/if}
   {#if message}<p role="status">{message}</p>{/if}

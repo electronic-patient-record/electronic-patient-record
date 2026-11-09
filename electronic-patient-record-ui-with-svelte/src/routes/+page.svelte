@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { STRINGS } from "#lib/strings.js";
+  import { TEXT } from "#lib/i18n.js";
 </script>
 
-<svelte:head><title>{STRINGS.homeTitle}</title></svelte:head>
+<svelte:head><title>{TEXT.homeTitle}</title></svelte:head>
 
-<h1>{STRINGS.homeTitle}</h1>
-<p>{STRINGS.homeIntro}</p>
+<h1>{TEXT.homeTitle}</h1>
+<p>{TEXT.homeIntro}</p>

@@ -1,7 +1,7 @@
 // Who may see a patient's record: care relationships (who is the patient, a proxy, on the care team)
 // and the patient's consent. The pages in `/patients/[id]/access` use these types and helpers; the
 // server decides everything, this only builds and shows requests.
-import { STRINGS } from "./strings.js";
+import { TEXT } from "./i18n.js";
 
 export type RelationshipKind =
   "care-team" | "active-encounter" | "self" | "proxy";
@@ -215,12 +215,12 @@ export function proxyTerms(
 
 /** One line for the list: what the proxy may use, and when it ends. */
 export function describeProxy(t: ProxyTerms | null | undefined): string {
-  if (!t) return STRINGS.proxyNoTerms;
+  if (!t) return TEXT.proxyNoTerms;
   // The authority ends at the start of the day after its last day.
   const end = new Date((t.expires_at - 86_400) * 1000)
     .toISOString()
     .slice(0, 10);
-  return `${t.scopes.map((s) => STRINGS.proxyScopes[s]).join(", ")} · ${STRINGS.proxyUntil} ${end}`;
+  return `${t.scopes.map((s) => TEXT.proxyScopes[s]).join(", ")} · ${TEXT.proxyUntil} ${end}`;
 }
 
 const list = (xs: string[], any: string) => (xs.length ? xs.join(", ") : any);
@@ -232,17 +232,17 @@ export function describeProvision(p: Provision): string {
       ? ` · ${p.period.start ?? "…"} to ${p.period.end ?? "…"}`
       : "";
   return (
-    `${p.effect === "permit" ? STRINGS.consentPermit : STRINGS.consentDeny}: ` +
-    `${list(p.actors, STRINGS.anyRole)} · ${STRINGS.consentFor} ` +
-    `${list(p.purposes, STRINGS.anyPurpose)} · ` +
-    `${list(p.resources, STRINGS.anyRecord)} · ` +
-    `${p.labels.length ? p.labels.join(", ") : STRINGS.anyLabel}${per}`
+    `${p.effect === "permit" ? TEXT.consentPermit : TEXT.consentDeny}: ` +
+    `${list(p.actors, TEXT.anyRole)} · ${TEXT.consentFor} ` +
+    `${list(p.purposes, TEXT.anyPurpose)} · ` +
+    `${list(p.resources, TEXT.anyRecord)} · ` +
+    `${p.labels.length ? p.labels.join(", ") : TEXT.anyLabel}${per}`
   );
 }
 
 export function describeConsent(c: ConsentRecord): string {
   return c.kind === "national-data-opt-out"
-    ? STRINGS.consentOptOut
+    ? TEXT.consentOptOut
     : c.provisions.map(describeProvision).join(" | ") ||
-        STRINGS.consentNoProvisions;
+        TEXT.consentNoProvisions;
 }

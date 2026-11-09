@@ -12,10 +12,10 @@
 // universal `reroute` hook (`src/hooks.ts`) strips the prefix before route matching.
 
 /**
- * Locales for which the UI is translated, sorted alphabetically by code
- * (the LocalePicker shows them in this order). To add one, extend this
- * tuple AND add a matching entry to {@link LOCALE_LABELS} and `STRINGS`
- * (in `i18n.svelte.ts`).
+ * Locales the UI serves, sorted alphabetically by code (the LocalePicker
+ * shows them in this order). To add one, extend this tuple AND add a
+ * matching entry to {@link LOCALE_LABELS}; a full table of words for it goes
+ * in `TABLES` (`i18n.ts`), and without one the locale reads English.
  */
 export const LOCALES = [
   "ar-001",

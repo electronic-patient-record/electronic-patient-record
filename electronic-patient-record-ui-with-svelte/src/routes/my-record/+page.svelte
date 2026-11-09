@@ -19,7 +19,7 @@
   import { Busy } from "#lib/busy.svelte.js";
   import { logFormStrings } from "#lib/translations.js";
   import { patientToForm, type Stored } from "#lib/patient.js";
-  import { STRINGS } from "#lib/strings.js";
+  import { TEXT } from "#lib/i18n.js";
   import { page } from "$app/state";
   import { DEFAULT_LOCALE } from "#lib/locales.js";
   import { dataAge } from "#lib/data-age.js";
@@ -63,7 +63,7 @@
       return;
     }
     const problem = commonProblem(res.status);
-    if (problem) message = STRINGS[problem];
+    if (problem) message = TEXT[problem];
     else if (res.status === 200) {
       message = null;
       lastRead = new Date();
@@ -76,7 +76,7 @@
           allergyById[r.patient.id] = l;
         });
       }
-    } else message = STRINGS.error;
+    } else message = TEXT.error;
   }
 
   $effect(() => {
@@ -143,14 +143,14 @@
     const problem = commonProblem(res.status);
     const prior = before === undefined ? [] : (logs[id]?.entries ?? []);
     if (problem)
-      logs[id] = { entries: prior, next: null, message: STRINGS[problem] };
+      logs[id] = { entries: prior, next: null, message: TEXT[problem] };
     else if (res.status === 200)
       logs[id] = {
         entries: [...prior, ...res.body.entries],
         next: res.body.next,
         message: null,
       };
-    else logs[id] = { entries: prior, next: null, message: STRINGS.error };
+    else logs[id] = { entries: prior, next: null, message: TEXT.error };
   }
 
   // The log as a file, under the filter that is showing (not one still being edited).
@@ -169,7 +169,7 @@
         logs[id] = {
           entries: logs[id]?.entries ?? [],
           next: logs[id]?.next ?? null,
-          message: problem ? STRINGS[problem] : STRINGS.accessLogDownloadFailed,
+          message: problem ? TEXT[problem] : TEXT.accessLogDownloadFailed,
         };
         return;
       }
@@ -189,27 +189,27 @@
     });
   }
 
-  const shown = (v: string) => v || STRINGS.notAvailable;
+  const shown = (v: string) => v || TEXT.notAvailable;
   const fields = (s: Stored) => {
     const f = patientToForm(s.patient);
     return [
-      [STRINGS.family, f.family],
-      [STRINGS.given, f.given],
-      [STRINGS.birthDate, f.birthDate],
-      [STRINGS.sex, f.sex ? STRINGS.sexes[f.sex] : ""],
-      [STRINGS.nhsNumber, f.nhsNumber],
-      [STRINGS.postalCode, f.postalCode],
+      [TEXT.family, f.family],
+      [TEXT.given, f.given],
+      [TEXT.birthDate, f.birthDate],
+      [TEXT.sex, f.sex ? TEXT.sexes[f.sex] : ""],
+      [TEXT.nhsNumber, f.nhsNumber],
+      [TEXT.postalCode, f.postalCode],
     ] as const;
   };
 </script>
 
-<svelte:head><title>{STRINGS.myRecordTitle}</title></svelte:head>
+<svelte:head><title>{TEXT.myRecordTitle}</title></svelte:head>
 
-<h1>{STRINGS.myRecordTitle}</h1>
-<p>{STRINGS.myRecordIntro}</p>
+<h1>{TEXT.myRecordTitle}</h1>
+<p>{TEXT.myRecordIntro}</p>
 
 {#if loading}
-  <p role="status" aria-busy="true">{STRINGS.loading}</p>
+  <p role="status" aria-busy="true">{TEXT.loading}</p>
 {/if}
 
 {#if message}
@@ -218,14 +218,14 @@
 
 {#if age}
   {#if age.stale}
-    <p role="alert">{STRINGS.dataMayBeOld.replace("{time}", age.readAt)}</p>
+    <p role="alert">{TEXT.dataMayBeOld.replace("{time}", age.readAt)}</p>
   {:else}
-    <p class="read-at">{STRINGS.dataReadAt.replace("{time}", age.readAt)}</p>
+    <p class="read-at">{TEXT.dataReadAt.replace("{time}", age.readAt)}</p>
   {/if}
 {/if}
 
 {#if records && records.length === 0}
-  <p role="status">{STRINGS.myRecordNone}</p>
+  <p role="status">{TEXT.myRecordNone}</p>
 {/if}
 
 {#if records}
@@ -245,7 +245,7 @@
         purpose="patient-access"
         allergies={allergyById[entry.patient.id] ?? null}
       />
-      {#if entry.relationship === "proxy"}<p>{STRINGS.myRecordProxy}</p>{/if}
+      {#if entry.relationship === "proxy"}<p>{TEXT.myRecordProxy}</p>{/if}
       <AdjustmentsSection
         patientId={entry.patient.id}
         siteZone={entry.patient.site_time_zone}
@@ -261,19 +261,19 @@
           <dd>{shown(value)}</dd>
         {/each}
       </dl>
-      <p>{STRINGS.version}: {entry.patient.version}</p>
+      <p>{TEXT.version}: {entry.patient.version}</p>
       <PatientAmendments
         patientId={entry.patient.id}
         siteZone={entry.patient.site_time_zone ?? "UTC"}
       />
-      <h3 id="log-{entry.patient.id}">{STRINGS.accessLogTitle}</h3>
+      <h3 id="log-{entry.patient.id}">{TEXT.accessLogTitle}</h3>
       {#if !log}
         <button
           type="button"
           disabled={logBusy.on}
           onclick={() => loadLog(entry.patient.id)}
         >
-          {STRINGS.accessLogShow}
+          {TEXT.accessLogShow}
         </button>
       {:else}
         {@const f = editing[entry.patient.id] ?? { ...NO_FILTER }}
@@ -341,9 +341,9 @@
         <div aria-live="polite">
           {#if log.message}<p role="alert">{log.message}</p>{/if}
           {#if log.entries.length === 0 && !log.message}
-            <p>{STRINGS.accessLogNone}</p>
+            <p>{TEXT.accessLogNone}</p>
           {:else if log.entries.length > 0}
-            <p>{STRINGS.accessLogNote}</p>
+            <p>{TEXT.accessLogNote}</p>
             <ul aria-labelledby="log-{entry.patient.id}">
               {#each log.entries as item (item.id)}
                 <li>
@@ -360,7 +360,7 @@
               disabled={logBusy.on}
               onclick={() => loadLog(entry.patient.id, log.next ?? undefined)}
             >
-              {STRINGS.accessLogMore}
+              {TEXT.accessLogMore}
             </button>
           {/if}
         </div>

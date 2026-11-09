@@ -1,5 +1,5 @@
 // The patient-visible access log (SE-6): the API's entries, turned into a sentence.
-import { STRINGS } from "./strings.js";
+import { TEXT } from "./i18n.js";
 
 export type LogEntry = {
   id: number;
@@ -16,8 +16,9 @@ export type LogEntry = {
 
 export type LogPage = { entries: LogEntry[]; next: number | null };
 
-const DID = STRINGS.accessLogDid as Record<string, string>;
-const WHAT = STRINGS.accessLogWhat as Record<string, string>;
+// Read at each call, not at module load, so the words follow the reader's locale (`i18n.ts`).
+const did = (): Record<string, string> => TEXT.accessLogDid;
+const what = (): Record<string, string> => TEXT.accessLogWhat;
 
 /**
  * "2026-10-21T09:00:00.000000Z" as "2026-10-21 09:00 UTC", or in `zone` with the zone named
@@ -67,36 +68,36 @@ export function readerZone(): string {
   }
 }
 
-const ROLE = STRINGS.roleNames as Record<string, string>;
+const role = (): Record<string, string> => TEXT.roleNames;
 
 /** "A member of staff (clinician, riverside)": the role and organisation the token carried, if recorded. */
 function staff(e: LogEntry): string {
   // A proxy is not staff: the patient must be able to tell who is reading their record for them (PA-5).
-  if ((e.roles ?? []).includes("proxy")) return STRINGS.accessLogProxy;
+  if ((e.roles ?? []).includes("proxy")) return TEXT.accessLogProxy;
   const bits = [
-    ...(e.roles ?? []).map((r) => ROLE[r] ?? r),
+    ...(e.roles ?? []).map((r) => role()[r] ?? r),
     ...(e.organisations ?? []),
   ];
   return bits.length > 0
-    ? `${STRINGS.accessLogStaff} (${bits.join(", ")})`
-    : STRINGS.accessLogStaff;
+    ? `${TEXT.accessLogStaff} (${bits.join(", ")})`
+    : TEXT.accessLogStaff;
 }
 
 /** A purpose code in words for mid-sentence ("running the service"); a code from a newer API is shown as it is. */
 function purposeWords(code: string): string {
-  const label = (STRINGS.accessLogPurposes as Record<string, string>)[code];
+  const label = (TEXT.accessLogPurposes as Record<string, string>)[code];
   return label ? label.charAt(0).toLowerCase() + label.slice(1) : code;
 }
 
 /** One entry as a sentence. Unknown words from a newer API are shown, not hidden. */
 export function describe(e: LogEntry): string {
-  const who = e.by === "you" ? STRINGS.accessLogYou : staff(e);
-  const did = DID[e.did] ?? e.did;
-  const what = WHAT[e.what] ?? e.what;
-  const parts = [`${who} ${did} ${STRINGS.accessLogYour} ${what}.`];
+  const who = e.by === "you" ? TEXT.accessLogYou : staff(e);
+  const verb = did()[e.did] ?? e.did;
+  const thing = what()[e.what] ?? e.what;
+  const parts = [`${who} ${verb} ${TEXT.accessLogYour} ${thing}.`];
   if (e.purpose)
-    parts.push(`${STRINGS.accessLogPurpose}: ${purposeWords(e.purpose)}.`);
-  if (e.break_glass) parts.push(STRINGS.accessLogBreakGlass);
+    parts.push(`${TEXT.accessLogPurpose}: ${purposeWords(e.purpose)}.`);
+  if (e.break_glass) parts.push(TEXT.accessLogBreakGlass);
   return parts.join(" ");
 }
 

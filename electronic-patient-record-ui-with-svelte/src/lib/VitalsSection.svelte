@@ -26,7 +26,7 @@
     writtenText,
   } from "./vitals.js";
   import { siteWhenText } from "./access-log.js";
-  import { STRINGS } from "./strings.js";
+  import { TEXT } from "./i18n.js";
 
   const busy = new Busy();
   let {
@@ -113,7 +113,7 @@
     await busy.run(async () => {
       message = null;
       if (!errorWhy.trim()) {
-        message = STRINGS.vitalMarkErrorReasonNeeded;
+        message = TEXT.vitalMarkErrorReasonNeeded;
         return;
       }
       const res = await call<{ errors?: string[] }>(
@@ -126,23 +126,23 @@
         },
       );
       const common = commonProblem(res.status);
-      if (common) message = STRINGS[common];
+      if (common) message = TEXT[common];
       else if (res.status === 200) {
-        message = STRINGS.vitalMarkedError;
+        message = TEXT.vitalMarkedError;
         erroring = null;
         errorWhy = "";
         await load();
-      } else if (res.status === 409) message = STRINGS.vitalConflict;
+      } else if (res.status === 409) message = TEXT.vitalConflict;
       else if (res.status === 422 && res.body?.errors)
         message = res.body.errors.join(" ");
-      else message = STRINGS.error;
+      else message = TEXT.error;
     });
   }
 
   function startCorrection(o: StoredObservation) {
     const v = VITALS.find((x) => x.loinc === o.code);
     if (!v) {
-      message = STRINGS.vitalCannotCorrect;
+      message = TEXT.vitalCannotCorrect;
       return;
     }
     correcting = o;
@@ -184,7 +184,7 @@
     // The form has no critical range; a correction keeps the one the entry has rather than erasing it.
     if (correcting?.critical) built.record.critical = correcting.critical;
     if (correcting && !why.trim()) {
-      message = STRINGS.vitalCorrectReasonNeeded;
+      message = TEXT.vitalCorrectReasonNeeded;
       return;
     }
     const res = correcting
@@ -206,9 +206,9 @@
           },
         );
     const common = commonProblem(res.status);
-    if (common) message = STRINGS[common];
+    if (common) message = TEXT[common];
     else if (res.status === 201 || (correcting && res.status === 200)) {
-      message = correcting ? STRINGS.vitalCorrected : STRINGS.vitalsSaved;
+      message = correcting ? TEXT.vitalCorrected : TEXT.vitalsSaved;
       correcting = null;
       value = low = high = why = "";
       noValue = false;
@@ -216,10 +216,10 @@
       measuredAt = nowInZone(new Date(), siteZone);
       await load();
     } else if (res.status === 409) {
-      message = STRINGS.vitalConflict;
+      message = TEXT.vitalConflict;
     } else if (res.status === 422 && res.body?.errors)
       message = res.body.errors.join(" ");
-    else message = STRINGS.error;
+    else message = TEXT.error;
   }
 </script>
 
@@ -233,29 +233,29 @@
   {@const h = histories[o.id]}
   {#if h}
     {#if h.status === null}
-      <p>{STRINGS.vitalHistoryLoading}</p>
+      <p>{TEXT.vitalHistoryLoading}</p>
     {:else if h.status === 403}
-      <p>{STRINGS.vitalHistoryNotShown}</p>
+      <p>{TEXT.vitalHistoryNotShown}</p>
     {:else if h.status !== 200}
-      <p>{STRINGS.vitalHistoryCouldNot}</p>
+      <p>{TEXT.vitalHistoryCouldNot}</p>
     {:else}
-      <ol aria-label={STRINGS.vitalHistory}>
+      <ol aria-label={TEXT.vitalHistory}>
         {#each h.versions as v (v.version)}
           <li>
-            {STRINGS.vitalVersion.replace("{n}", String(v.version))}
+            {TEXT.vitalVersion.replace("{n}", String(v.version))}
             · {valueText(v)}
             · {assessmentText(v)}
-            {#if rangeText(v.range)}· {STRINGS.vitalRange}
+            {#if rangeText(v.range)}· {TEXT.vitalRange}
               {rangeText(v.range)}{/if}
-            {#if v.status === "entered-in-error"}· {STRINGS.vitalHistoryInError}{/if}
-            · {STRINGS.vitalMeasured.replace(
+            {#if v.status === "entered-in-error"}· {TEXT.vitalHistoryInError}{/if}
+            · {TEXT.vitalMeasured.replace(
               "{when}",
               siteWhenText(v.effective_at, siteZone),
             )}
             · {writtenText(v, siteZone)}
-            · {STRINGS.vitalBy} <code>{v.author}</code>
-            · {STRINGS.vitalHistoryReason}
-            {v.reason || STRINGS.vitalHistoryNoReason}
+            · {TEXT.vitalBy} <code>{v.author}</code>
+            · {TEXT.vitalHistoryReason}
+            {v.reason || TEXT.vitalHistoryNoReason}
           </li>
         {/each}
       </ol>
@@ -264,16 +264,16 @@
 {/snippet}
 
 <section aria-labelledby="vitals-h">
-  <h2 id="vitals-h">{STRINGS.vitalsTitle}</h2>
+  <h2 id="vitals-h">{TEXT.vitalsTitle}</h2>
   {#if status === null}
-    <p>{STRINGS.loading}</p>
+    <p>{TEXT.loading}</p>
   {:else if status === 403}
-    <p>{STRINGS.vitalsNotShown}</p>
+    <p>{TEXT.vitalsNotShown}</p>
   {:else if status !== 200}
-    <p>{STRINGS.vitalsCouldNot}</p>
+    <p>{TEXT.vitalsCouldNot}</p>
   {:else}
     {#if standing.length === 0}
-      <p>{STRINGS.vitalsNone}</p>
+      <p>{TEXT.vitalsNone}</p>
     {:else}
       <ul>
         {#each standing as o (o.id)}
@@ -281,15 +281,15 @@
             <strong>{vitalName(o.code)}</strong>
             · {valueText(o)}
             · {assessmentText(o)}
-            {#if rangeText(o.range)}· {STRINGS.vitalRange}
+            {#if rangeText(o.range)}· {TEXT.vitalRange}
               {rangeText(o.range)}{/if}
             ·
             <time datetime={o.effective_at}
               >{siteWhenText(o.effective_at, siteZone)}</time
             >
             · {writtenText(o, siteZone)}
-            · {STRINGS.vitalBy} <code>{o.author}</code>
-            {#if o.version > 1}· {STRINGS.vitalVersion.replace(
+            · {TEXT.vitalBy} <code>{o.author}</code>
+            {#if o.version > 1}· {TEXT.vitalVersion.replace(
                 "{n}",
                 String(o.version),
               )}{/if}
@@ -298,19 +298,17 @@
               aria-expanded={!!histories[o.id]}
               onclick={() => toggleHistory(o)}
             >
-              {histories[o.id]
-                ? STRINGS.vitalHistoryHide
-                : STRINGS.vitalHistory}
+              {histories[o.id] ? TEXT.vitalHistoryHide : TEXT.vitalHistory}
             </button>
             {@render noticeList(o)}
             {@render historyList(o)}
             {#if !correcting}
               <button type="button" onclick={() => startCorrection(o)}
-                >{STRINGS.vitalCorrect}</button
+                >{TEXT.vitalCorrect}</button
               >
             {/if}
             {#if erroring === o.id}
-              <label for="vs-err-{o.id}">{STRINGS.vitalMarkErrorWhy}</label>
+              <label for="vs-err-{o.id}">{TEXT.vitalMarkErrorWhy}</label>
               <input
                 id="vs-err-{o.id}"
                 bind:value={errorWhy}
@@ -321,20 +319,20 @@
                 disabled={busy.on}
                 onclick={() => markError(o)}
               >
-                {STRINGS.vitalMarkErrorConfirm}
+                {TEXT.vitalMarkErrorConfirm}
               </button>
               <button
                 type="button"
                 onclick={() => ((erroring = null), (errorWhy = ""))}
               >
-                {STRINGS.vitalMarkErrorCancel}
+                {TEXT.vitalMarkErrorCancel}
               </button>
             {:else}
               <button
                 type="button"
                 onclick={() => ((erroring = o.id), (errorWhy = ""))}
               >
-                {STRINGS.vitalMarkError}
+                {TEXT.vitalMarkError}
               </button>
             {/if}
           </li>
@@ -347,19 +345,19 @@
         aria-expanded={showTrend}
         onclick={() => (showTrend = !showTrend)}
       >
-        {showTrend ? STRINGS.vitalTrendHide : STRINGS.vitalTrendShow}
+        {showTrend ? TEXT.vitalTrendHide : TEXT.vitalTrendShow}
       </button>
       {#if showTrend}
-        <p>{STRINGS.vitalTrendNote}</p>
+        <p>{TEXT.vitalTrendNote}</p>
         {#each trendList as t (t.code)}
           <table>
             <caption>{t.name}</caption>
             <thead>
               <tr>
-                <th scope="col">{STRINGS.vitalTrendTime}</th>
-                <th scope="col">{STRINGS.vitalTrendWritten}</th>
-                <th scope="col">{STRINGS.vitalTrendValue}</th>
-                <th scope="col">{STRINGS.vitalTrendWhere}</th>
+                <th scope="col">{TEXT.vitalTrendTime}</th>
+                <th scope="col">{TEXT.vitalTrendWritten}</th>
+                <th scope="col">{TEXT.vitalTrendValue}</th>
+                <th scope="col">{TEXT.vitalTrendWhere}</th>
               </tr>
             </thead>
             <tbody>
@@ -383,10 +381,7 @@
     {#if mistaken.length}
       <details>
         <summary
-          >{STRINGS.vitalInError.replace(
-            "{n}",
-            String(mistaken.length),
-          )}</summary
+          >{TEXT.vitalInError.replace("{n}", String(mistaken.length))}</summary
         >
         <ul>
           {#each mistaken as o (o.id)}
@@ -402,9 +397,7 @@
                 aria-expanded={!!histories[o.id]}
                 onclick={() => toggleHistory(o)}
               >
-                {histories[o.id]
-                  ? STRINGS.vitalHistoryHide
-                  : STRINGS.vitalHistory}
+                {histories[o.id] ? TEXT.vitalHistoryHide : TEXT.vitalHistory}
               </button>
               {@render noticeList(o)}
               {@render historyList(o)}
@@ -415,21 +408,21 @@
     {/if}
 
     <h3>
-      {correcting ? STRINGS.vitalCorrectTitle : STRINGS.vitalsRecordTitle}
+      {correcting ? TEXT.vitalCorrectTitle : TEXT.vitalsRecordTitle}
     </h3>
     {#if correcting}
       <p>
-        {STRINGS.vitalCorrectNote.replace("{n}", String(correcting.version))}
+        {TEXT.vitalCorrectNote.replace("{n}", String(correcting.version))}
       </p>
     {/if}
     <form onsubmit={record}>
-      <label for="vs-vital">{STRINGS.vitalLabel}</label>
+      <label for="vs-vital">{TEXT.vitalLabel}</label>
       <select id="vs-vital" bind:value={vital} disabled={correcting !== null}>
         {#each VITALS as v (v.key)}
-          <option value={v.key}>{STRINGS.vitalNames[v.key]}</option>
+          <option value={v.key}>{TEXT.vitalNames[v.key]}</option>
         {/each}
       </select>
-      <label for="vs-value">{STRINGS.vitalValueLabel} ({unit})</label>
+      <label for="vs-value">{TEXT.vitalValueLabel} ({unit})</label>
       <input
         id="vs-value"
         bind:value
@@ -440,19 +433,19 @@
       />
       <label>
         <input type="checkbox" bind:checked={noValue} />
-        {STRINGS.vitalNoValueTick}
+        {TEXT.vitalNoValueTick}
       </label>
       {#if noValue}
-        <label for="vs-absent">{STRINGS.vitalReasonLabel}</label>
+        <label for="vs-absent">{TEXT.vitalReasonLabel}</label>
         <select id="vs-absent" bind:value={absentReason} required>
           <option value=""></option>
-          {#each Object.entries(STRINGS.vitalAbsent) as [k, v] (k)}
+          {#each Object.entries(TEXT.vitalAbsent) as [k, v] (k)}
             <option value={k}>{v}</option>
           {/each}
         </select>
       {/if}
       <label for="vs-at"
-        >{STRINGS.vitalMeasuredAt.replace("{zone}", siteZone)}</label
+        >{TEXT.vitalMeasuredAt.replace("{zone}", siteZone)}</label
       >
       <input
         id="vs-at"
@@ -460,28 +453,28 @@
         bind:value={measuredAt}
         required
       />
-      <label for="vs-low">{STRINGS.vitalRangeLow}</label>
+      <label for="vs-low">{TEXT.vitalRangeLow}</label>
       <input
         id="vs-low"
         bind:value={low}
         inputmode="decimal"
         autocomplete="off"
       />
-      <label for="vs-high">{STRINGS.vitalRangeHigh}</label>
+      <label for="vs-high">{TEXT.vitalRangeHigh}</label>
       <input
         id="vs-high"
         bind:value={high}
         inputmode="decimal"
         autocomplete="off"
       />
-      <label for="vs-why">{STRINGS.vitalWhy}</label>
+      <label for="vs-why">{TEXT.vitalWhy}</label>
       <input id="vs-why" bind:value={why} autocomplete="off" />
       <button disabled={busy.on} type="submit">
-        {correcting ? STRINGS.vitalCorrectSubmit : STRINGS.vitalSubmit}
+        {correcting ? TEXT.vitalCorrectSubmit : TEXT.vitalSubmit}
       </button>
       {#if correcting}
         <button type="button" onclick={cancelCorrection}
-          >{STRINGS.vitalMarkErrorCancel}</button
+          >{TEXT.vitalMarkErrorCancel}</button
         >
       {/if}
     </form>

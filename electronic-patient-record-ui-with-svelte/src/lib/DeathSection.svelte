@@ -16,7 +16,7 @@
     type Status,
     type StoredAssertion,
   } from "./death.js";
-  import { STRINGS } from "./strings.js";
+  import { TEXT } from "./i18n.js";
 
   const busy = new Busy();
   let {
@@ -61,11 +61,11 @@
 
   function failed(res: { status: number; body?: { errors?: string[] } }) {
     const common = commonProblem(res.status);
-    if (common) return STRINGS[common];
-    if (res.status === 409) return STRINGS.deathConflict;
+    if (common) return TEXT[common];
+    if (res.status === 409) return TEXT.deathConflict;
     if (res.status === 422 && res.body?.errors)
       return res.body.errors.join(" ");
-    return STRINGS.error;
+    return TEXT.error;
   }
 
   async function report(event: SubmitEvent) {
@@ -83,7 +83,7 @@
         built.body,
       );
       if (res.status === 201) {
-        message = STRINGS.deathReported;
+        message = TEXT.deathReported;
         reporting = false;
         form = emptyReport();
         await Promise.all([load(), onchange()]);
@@ -108,7 +108,7 @@
         built.body,
       );
       if (res.status === 200) {
-        message = STRINGS.deathDone;
+        message = TEXT.deathDone;
         open = null;
         await Promise.all([load(), onchange()]);
       } else message = failed(res);
@@ -117,37 +117,37 @@
 </script>
 
 <section aria-labelledby="death-h">
-  <h2 id="death-h">{STRINGS.deathTitle}</h2>
+  <h2 id="death-h">{TEXT.deathTitle}</h2>
   {#if status === null}
-    <p>{STRINGS.loading}</p>
+    <p>{TEXT.loading}</p>
   {:else if status === 403}
-    <p>{STRINGS.deathNotShown}</p>
+    <p>{TEXT.deathNotShown}</p>
   {:else if status !== 200}
-    <p>{STRINGS.deathCouldNot}</p>
+    <p>{TEXT.deathCouldNot}</p>
   {:else if rows.length === 0}
-    <p>{STRINGS.deathNone}</p>
+    <p>{TEXT.deathNone}</p>
   {:else}
     <ul>
       {#each rows as a (a.id)}
         <li>
           <strong>{assertionLine(a, siteZone)}</strong>
-          <p>{STRINGS.deathReasonOf} {a.assertion.reason}</p>
+          <p>{TEXT.deathReasonOf} {a.assertion.reason}</p>
           {#if open?.id === a.id}
             <form onsubmit={(e) => step(e, a)}>
               <p>
-                {STRINGS.deathStepTo.replace("{status}", statusText(open.to))}
+                {TEXT.deathStepTo.replace("{status}", statusText(open.to))}
               </p>
-              <label for="death-r-{a.id}">{STRINGS.deathReason}</label>
+              <label for="death-r-{a.id}">{TEXT.deathReason}</label>
               <input
                 id="death-r-{a.id}"
                 bind:value={reason}
                 autocomplete="off"
               />
               <button type="submit" disabled={busy.on}
-                >{STRINGS.deathConfirm}</button
+                >{TEXT.deathConfirm}</button
               >
               <button type="button" onclick={() => (open = null)}>
-                {STRINGS.deathCancel}
+                {TEXT.deathCancel}
               </button>
             </form>
           {:else}
@@ -171,32 +171,31 @@
 
   {#if reporting}
     <form onsubmit={report}>
-      <label for="death-source">{STRINGS.deathSource}</label>
+      <label for="death-source">{TEXT.deathSource}</label>
       <select id="death-source" bind:value={form.source}>
         <option value=""></option>
         {#each SOURCES as s (s)}
-          <option value={s}>{STRINGS.deathSources[s]}</option>
+          <option value={s}>{TEXT.deathSources[s]}</option>
         {/each}
       </select>
-      <label for="death-date">{STRINGS.deathDate}</label>
+      <label for="death-date">{TEXT.deathDate}</label>
       <input id="death-date" bind:value={form.date} autocomplete="off" />
-      <label for="death-no-date">{STRINGS.deathNoDate}</label>
+      <label for="death-no-date">{TEXT.deathNoDate}</label>
       <input
         id="death-no-date"
         bind:value={form.noDateReason}
         autocomplete="off"
       />
-      <label for="death-reason">{STRINGS.deathReason}</label>
+      <label for="death-reason">{TEXT.deathReason}</label>
       <input id="death-reason" bind:value={form.reason} autocomplete="off" />
-      <button type="submit" disabled={busy.on}>{STRINGS.deathReportSend}</button
-      >
+      <button type="submit" disabled={busy.on}>{TEXT.deathReportSend}</button>
       <button type="button" onclick={() => (reporting = false)}>
-        {STRINGS.deathCancel}
+        {TEXT.deathCancel}
       </button>
     </form>
   {:else}
     <button type="button" onclick={() => (reporting = true)}>
-      {STRINGS.deathReport}
+      {TEXT.deathReport}
     </button>
   {/if}
   {#if message}<p role="status">{message}</p>{/if}

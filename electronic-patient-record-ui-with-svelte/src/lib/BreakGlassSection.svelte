@@ -4,7 +4,7 @@
   // relationship and said break-the-glass could lift it. A reason and an acknowledgement are
   // required; nothing is sent without both. The grant lasts 4 hours and is reviewed afterwards.
   import { call, commonProblem } from "./api.js";
-  import { STRINGS } from "./strings.js";
+  import { TEXT } from "./i18n.js";
 
   const busy = new Busy();
   let {
@@ -28,7 +28,7 @@
 
   async function openNow() {
     if (!reason.trim() || !acknowledged) {
-      message = STRINGS.glassNeeded;
+      message = TEXT.glassNeeded;
       return;
     }
     const res = await call<{ expires_at: string }>(
@@ -38,28 +38,28 @@
     );
     const problem = commonProblem(res.status);
     const body = res.body as { errors?: string[] } | null;
-    if (problem) message = STRINGS[problem];
+    if (problem) message = TEXT[problem];
     else if (res.status === 200 || res.status === 201) {
       reason = "";
       acknowledged = false;
       await onopened(res.body.expires_at);
     } else if (res.status === 422 && body?.errors)
       message = body.errors.join(" ");
-    else message = STRINGS.error;
+    else message = TEXT.error;
   }
 </script>
 
 <section aria-labelledby="glass-h">
-  <h2 id="glass-h">{STRINGS.glassTitle}</h2>
-  <p>{STRINGS.glassIntro}</p>
+  <h2 id="glass-h">{TEXT.glassTitle}</h2>
+  <p>{TEXT.glassIntro}</p>
   <form onsubmit={open}>
-    <label for="glass-reason">{STRINGS.glassReason}</label>
+    <label for="glass-reason">{TEXT.glassReason}</label>
     <input id="glass-reason" bind:value={reason} autocomplete="off" />
     <label>
       <input type="checkbox" bind:checked={acknowledged} />
-      {STRINGS.glassAck}
+      {TEXT.glassAck}
     </label>
-    <button disabled={busy.on} type="submit">{STRINGS.glassOpen}</button>
+    <button disabled={busy.on} type="submit">{TEXT.glassOpen}</button>
   </form>
   {#if message}<p role="status">{message}</p>{/if}
 </section>

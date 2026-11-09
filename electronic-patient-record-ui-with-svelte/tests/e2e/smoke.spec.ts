@@ -31,6 +31,48 @@ test("a bare URL gains the locale prefix", async ({ page }) => {
   await expect(page.getByRole("note")).toContainText("Not for clinical use");
 });
 
+// WL-8: Welsh has a full table of words (machine-written, not reviewed). The server renders it, and
+// it stays Welsh after a client-side navigation; the axe audit runs on the Welsh page too.
+test("cy-001 is rendered in Welsh, on the server and after navigating", async ({
+  page,
+  request,
+}) => {
+  const html = await (await request.get("/cy-001")).text();
+  expect(html).toContain("Cofnod Electronig y Claf");
+  expect(html).toContain('lang="cy-001"');
+  await page.goto("/cy-001");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Cofnod Electronig y Claf",
+  );
+  await expect(
+    page.getByRole("note").filter({ hasText: "Nid at ddefnydd clinigol" }),
+  ).toBeVisible();
+  // The Welsh is machine-written and unreviewed, and every page says so in English too (H-051).
+  const machine = page.getByTestId("machine-translated");
+  await expect(machine).toContainText("translated by machine");
+  await expect(machine).toContainText("Peiriant a gyfieithodd");
+  await expect(
+    machine.getByRole("link", { name: "Read this page in English" }),
+  ).toHaveAttribute("href", "/en-001");
+  await page
+    .getByRole("navigation", { name: "Main" })
+    .getByRole("link", { name: "Cleifion" })
+    .click();
+  await expect(page).toHaveURL(/\/cy-001\/patients$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Dod o hyd i glaf",
+  );
+  const results = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag22aa"])
+    .analyze();
+  expect(results.violations).toEqual([]);
+});
+
+test("English carries no machine-translation notice", async ({ page }) => {
+  await page.goto("/en-001");
+  await expect(page.getByTestId("machine-translated")).toHaveCount(0);
+});
+
 test("security headers are set", async ({ page }) => {
   const res = await page.goto("/en-001");
   const h = res!.headers();

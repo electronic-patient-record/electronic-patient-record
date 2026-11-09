@@ -1,7 +1,7 @@
 // The referrer's worklist (service `referral_worklist.rs`, hazard H-044): the referrals this person sent that
 // have an answer they have not yet seen. The list carries ids and a state, never the referral's text.
 import { siteWhenText } from "./access-log.js";
-import { STRINGS } from "./strings.js";
+import { TEXT } from "./i18n.js";
 
 export type WorklistState =
   | "requested"
@@ -28,7 +28,7 @@ export type WorkItem = {
 /** "Declined · 2026-10-21 09:00 UTC": what came back, and when. */
 export function itemHeadline(i: WorkItem, siteZone?: string): string {
   const what =
-    i.why === "reply" ? STRINGS.referralStates[i.state] : STRINGS.wlWhy[i.why];
+    i.why === "reply" ? TEXT.referralStates[i.state] : TEXT.wlWhy[i.why];
   return `${what} · ${siteWhenText(i.recorded_at, siteZone)}`;
 }
 
@@ -46,12 +46,10 @@ export function untimedWarning(u: Untimed | undefined): string | null {
   const names = words
     .map(
       (w) =>
-        STRINGS.referralPriorities[
-          w as keyof typeof STRINGS.referralPriorities
-        ] ?? w,
+        TEXT.referralPriorities[w as keyof typeof TEXT.referralPriorities] ?? w,
     )
     .join(", ");
-  return STRINGS.wlUntimed.replace("{list}", names);
+  return TEXT.wlUntimed.replace("{list}", names);
 }
 
 /** The body of an acknowledge request: the version the person saw, so a newer answer is never swallowed. */

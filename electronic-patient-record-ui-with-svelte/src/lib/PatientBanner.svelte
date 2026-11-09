@@ -13,7 +13,7 @@
   import { fetchBlob } from "./api.js";
   import { bannerDeath, type DeathLoad } from "./death.js";
   import { bannerAdjustments, type AdjustmentLoad } from "./adjustments.js";
-  import { STRINGS } from "./strings.js";
+  import { TEXT } from "./i18n.js";
 
   // `purpose` is the purpose of use the photo is fetched under: "my record" passes
   // `patient-access`; staff pages leave it to the picker.
@@ -84,18 +84,18 @@
   );
   const age = $derived.by(() => {
     const a = ageOn(p.birth_date, today, stored.site_time_zone);
-    if (!a) return STRINGS.bannerNoBirthDate;
+    if (!a) return TEXT.bannerNoBirthDate;
     if (a.months !== undefined)
-      return STRINGS.bannerAgeMonths.replace("{n}", String(a.months));
+      return TEXT.bannerAgeMonths.replace("{n}", String(a.months));
     return (
-      a.approximate ? STRINGS.bannerAgeYearsApprox : STRINGS.bannerAgeYears
+      a.approximate ? TEXT.bannerAgeYearsApprox : TEXT.bannerAgeYears
     ).replace("{n}", String(a.years));
   });
 </script>
 
-<section class="banner" aria-label={STRINGS.bannerLabel}>
+<section class="banner" aria-label={TEXT.bannerLabel}>
   {#if stored.drill}
-    <p class="drill" role="alert">{STRINGS.bannerDrill}</p>
+    <p class="drill" role="alert">{TEXT.bannerDrill}</p>
   {/if}
   {#if deathLine.kind === "asserted"}
     <p class="drill" role="alert">{deathLine.text}</p>
@@ -103,16 +103,16 @@
     <p role="status">{deathLine.text}</p>
   {/if}
   {#if p.temporary_identity}
-    <p class="drill" role="alert">{STRINGS.bannerTemporaryIdentity}</p>
+    <p class="drill" role="alert">{TEXT.bannerTemporaryIdentity}</p>
   {/if}
-  <h2>{name || STRINGS.notAvailable}</h2>
+  <h2>{name || TEXT.notAvailable}</h2>
   {#if stored.replaced_by}
-    <p class="merged" role="alert">{STRINGS.bannerMerged}</p>
+    <p class="merged" role="alert">{TEXT.bannerMerged}</p>
   {/if}
   <p>
-    {STRINGS.bannerBorn}: {p.birth_date ?? STRINGS.bannerNoBirthDate}
-    · {STRINGS.bannerAge}: {age}
-    {#if p.sex}· {STRINGS.sexes[p.sex]}{/if}
+    {TEXT.bannerBorn}: {p.birth_date ?? TEXT.bannerNoBirthDate}
+    · {TEXT.bannerAge}: {age}
+    {#if p.sex}· {TEXT.sexes[p.sex]}{/if}
   </p>
   {#if needsLine.kind === "needs"}
     <p><strong>{needsLine.text}</strong></p>
@@ -120,24 +120,24 @@
   {:else if needsLine.kind === "status"}
     <p>{needsLine.text}</p>
   {/if}
-  <p>{STRINGS.bannerNhs}: {nhs ? nhsDisplay(nhs) : STRINGS.bannerNone}</p>
+  <p>{TEXT.bannerNhs}: {nhs ? nhsDisplay(nhs) : TEXT.bannerNone}</p>
   <p>
-    {STRINGS.bannerOtherId}: {other
+    {TEXT.bannerOtherId}: {other
       ? `${other.system} ${other.value}`
-      : STRINGS.bannerNone}
+      : TEXT.bannerNone}
   </p>
   {#if photoUrl}
     <img
       class="photo"
       src={photoUrl}
-      alt={STRINGS.bannerPhotoAlt.replace("{name}", name)}
+      alt={TEXT.bannerPhotoAlt.replace("{name}", name)}
     />
   {:else if photoFailed}
-    <p role="status">{STRINGS.bannerPhotoFailed}</p>
+    <p role="status">{TEXT.bannerPhotoFailed}</p>
   {:else}
-    <p>{STRINGS.bannerPhoto}</p>
+    <p>{TEXT.bannerPhoto}</p>
   {/if}
   <p class="allergies" class:high={allergyLine.high}>
-    {STRINGS.bannerAllergies}: {allergyLine.text}
+    {TEXT.bannerAllergies}: {allergyLine.text}
   </p>
 </section>

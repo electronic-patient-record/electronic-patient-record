@@ -4,7 +4,7 @@
 // token: nothing here names a person. "Not known to have died" never means alive, so no text here says so.
 import { siteWhenText } from "./access-log.js";
 import { call } from "./api.js";
-import { STRINGS } from "./strings.js";
+import { TEXT } from "./i18n.js";
 
 export type Status =
   "reported" | "verified" | "certified" | "registered" | "withdrawn-in-error";
@@ -115,23 +115,23 @@ export type BannerDeath =
 export function bannerDeath(load: DeathLoad | null): BannerDeath {
   if (!load) return { kind: "none" };
   const a = load.answer;
-  if (!a) return { kind: "unknown", text: STRINGS.bannerDeathUnknown };
+  if (!a) return { kind: "unknown", text: TEXT.bannerDeathUnknown };
   if (a.answer !== "asserted") return { kind: "none" };
   const head = a.confirmed
-    ? STRINGS.bannerDeathConfirmed.replace("{status}", statusText(a.status))
-    : STRINGS.bannerDeathReported;
+    ? TEXT.bannerDeathConfirmed.replace("{status}", statusText(a.status))
+    : TEXT.bannerDeathReported;
   const date = a.occurred
-    ? STRINGS.bannerDeathDate.replace("{date}", a.occurred)
-    : STRINGS.bannerDeathNoDate;
-  const differ = a.dates_differ ? ` ${STRINGS.bannerDeathDatesDiffer}` : "";
+    ? TEXT.bannerDeathDate.replace("{date}", a.occurred)
+    : TEXT.bannerDeathNoDate;
+  const differ = a.dates_differ ? ` ${TEXT.bannerDeathDatesDiffer}` : "";
   return {
     kind: "asserted",
-    text: `${head} ${date}${differ} ${STRINGS.bannerDeathHeld}`,
+    text: `${head} ${date}${differ} ${TEXT.bannerDeathHeld}`,
   };
 }
 
 export function statusText(s: Status): string {
-  return STRINGS.deathStatuses[s];
+  return TEXT.deathStatuses[s];
 }
 
 /** The steps offered for an assertion (the service still decides, and keeps withdrawal to a clinician). */
@@ -161,12 +161,12 @@ export function reportBody(
   f: ReportForm,
 ):
   { ok: true; body: Record<string, unknown> } | { ok: false; problem: string } {
-  if (!f.source) return { ok: false, problem: STRINGS.deathSourceNeeded };
+  if (!f.source) return { ok: false, problem: TEXT.deathSourceNeeded };
   const date = f.date.trim();
   const noDate = f.noDateReason.trim();
-  if (!date && !noDate) return { ok: false, problem: STRINGS.deathDateNeeded };
+  if (!date && !noDate) return { ok: false, problem: TEXT.deathDateNeeded };
   const reason = f.reason.trim();
-  if (!reason) return { ok: false, problem: STRINGS.deathReasonNeeded };
+  if (!reason) return { ok: false, problem: TEXT.deathReasonNeeded };
   return {
     ok: true,
     body: {
@@ -187,7 +187,7 @@ export function stepBody(
 ):
   { ok: true; body: Record<string, unknown> } | { ok: false; problem: string } {
   const why = reason.trim();
-  if (!why) return { ok: false, problem: STRINGS.deathReasonNeeded };
+  if (!why) return { ok: false, problem: TEXT.deathReasonNeeded };
   return {
     ok: true,
     body: { expected_version: expectedVersion, to, reason: why },
@@ -199,11 +199,11 @@ export function assertionLine(a: StoredAssertion, zone?: string): string {
   const o = a.assertion.occurred;
   const date =
     o.kind === "known"
-      ? STRINGS.bannerDeathDate.replace("{date}", o.at)
-      : STRINGS.deathNoDateBecause.replace("{reason}", o.reason);
-  return STRINGS.deathLine
+      ? TEXT.bannerDeathDate.replace("{date}", o.at)
+      : TEXT.deathNoDateBecause.replace("{reason}", o.reason);
+  return TEXT.deathLine
     .replace("{status}", statusText(a.assertion.status))
-    .replace("{source}", STRINGS.deathSources[a.assertion.source])
+    .replace("{source}", TEXT.deathSources[a.assertion.source])
     .replace("{date}", date)
     .replace("{when}", siteWhenText(a.recorded_at, zone));
 }

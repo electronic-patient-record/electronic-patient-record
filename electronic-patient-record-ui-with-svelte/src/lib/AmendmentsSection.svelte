@@ -21,7 +21,7 @@
     type Ground,
     type StepName,
   } from "./amendments.js";
-  import { STRINGS } from "./strings.js";
+  import { TEXT } from "./i18n.js";
 
   const busy = new Busy();
   let {
@@ -44,10 +44,10 @@
   let version = $state("");
 
   const label: Record<StepName, string> = {
-    accept: STRINGS.amendAccept,
-    deny: STRINGS.amendDeny,
-    apply: STRINGS.amendApply,
-    extend: STRINGS.amendExtend,
+    accept: TEXT.amendAccept,
+    deny: TEXT.amendDeny,
+    apply: TEXT.amendApply,
+    extend: TEXT.amendExtend,
   };
 
   // A late answer for the patient the page has moved away from is dropped.
@@ -103,35 +103,35 @@
         built.body,
       );
       const common = commonProblem(res.status);
-      if (common) message = STRINGS[common];
+      if (common) message = TEXT[common];
       else if (res.status === 200) {
-        message = STRINGS.amendDone;
+        message = TEXT.amendDone;
         open = null;
         await load();
-      } else if (res.status === 409) message = STRINGS.amendConflict;
+      } else if (res.status === 409) message = TEXT.amendConflict;
       else if (res.status === 422 && res.body?.errors)
         message = res.body.errors.join(" ");
-      else message = STRINGS.error;
+      else message = TEXT.error;
     });
   }
 </script>
 
 <section aria-labelledby="amend-h">
-  <h2 id="amend-h">{STRINGS.amendTitle}</h2>
+  <h2 id="amend-h">{TEXT.amendTitle}</h2>
   {#if status === null}
-    <p>{STRINGS.loading}</p>
+    <p>{TEXT.loading}</p>
   {:else if status === 403}
-    <p>{STRINGS.amendNotShown}</p>
+    <p>{TEXT.amendNotShown}</p>
   {:else if status !== 200}
-    <p>{STRINGS.amendCouldNot}</p>
+    <p>{TEXT.amendCouldNot}</p>
   {:else if rows.length === 0}
-    <p>{STRINGS.amendNone}</p>
+    <p>{TEXT.amendNone}</p>
   {:else}
     {#if counts.open > 0}
       <p role="status">
-        {STRINGS.amendOpenCount.replace("{n}", String(counts.open))}
+        {TEXT.amendOpenCount.replace("{n}", String(counts.open))}
         {#if counts.overdue > 0}<strong
-            >{STRINGS.amendOverdueCount.replace(
+            >{TEXT.amendOverdueCount.replace(
               "{n}",
               String(counts.overdue),
             )}</strong
@@ -143,38 +143,38 @@
         {@const s = a.request.state}
         <li>
           <strong
-            >{STRINGS.amendAbout.replace("{kind}", aboutText(a, lines))}</strong
+            >{TEXT.amendAbout.replace("{kind}", aboutText(a, lines))}</strong
           >
-          · {STRINGS.amendAsked.replace(
+          · {TEXT.amendAsked.replace(
             "{when}",
             siteWhenText(a.request.received_at, siteZone),
           )}
-          <p>{STRINGS.amendText} {a.request.text}</p>
+          <p>{TEXT.amendText} {a.request.text}</p>
           <p>{stateText(s)} {dueText(a, siteZone)}</p>
           {#if s.state === "accepted" || s.state === "denied"}
-            <p>{STRINGS.amendReasonOf} {s.reason}</p>
+            <p>{TEXT.amendReasonOf} {s.reason}</p>
           {/if}
           {#if s.state === "denied" && s.disagreement}
-            <p>{STRINGS.noticeStatement} {s.disagreement}</p>
+            <p>{TEXT.noticeStatement} {s.disagreement}</p>
           {/if}
           {#if a.request.extension}<p>
-              {STRINGS.amendExtended}
+              {TEXT.amendExtended}
               {a.request.extension}
             </p>{/if}
           {#if open?.id === a.id}
             <form onsubmit={(e) => send(e, a)}>
               <p>{label[open.step]}</p>
               {#if open.step === "deny"}
-                <label for="am-g-{a.id}">{STRINGS.amendGround}</label>
+                <label for="am-g-{a.id}">{TEXT.amendGround}</label>
                 <select id="am-g-{a.id}" bind:value={ground}>
                   <option value=""></option>
                   {#each GROUNDS as g (g)}
-                    <option value={g}>{STRINGS.amendGroundLabels[g]}</option>
+                    <option value={g}>{TEXT.amendGroundLabels[g]}</option>
                   {/each}
                 </select>
               {/if}
               {#if open.step === "apply"}
-                <label for="am-v-{a.id}">{STRINGS.amendVersion}</label>
+                <label for="am-v-{a.id}">{TEXT.amendVersion}</label>
                 <input
                   id="am-v-{a.id}"
                   bind:value={version}
@@ -182,7 +182,7 @@
                   autocomplete="off"
                 />
               {:else}
-                <label for="am-r-{a.id}">{STRINGS.amendReason}</label>
+                <label for="am-r-{a.id}">{TEXT.amendReason}</label>
                 <input
                   id="am-r-{a.id}"
                   bind:value={reason}
@@ -190,10 +190,10 @@
                 />
               {/if}
               <button type="submit" disabled={busy.on}
-                >{STRINGS.amendConfirm}</button
+                >{TEXT.amendConfirm}</button
               >
               <button type="button" onclick={() => (open = null)}
-                >{STRINGS.amendCancel}</button
+                >{TEXT.amendCancel}</button
               >
             </form>
           {:else}

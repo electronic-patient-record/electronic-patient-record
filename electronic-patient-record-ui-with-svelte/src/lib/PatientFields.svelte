@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { STRINGS } from "#lib/strings.js";
+  import { TEXT } from "#lib/i18n.js";
   import { SEXES, type PatientForm } from "#lib/patient.js";
 
   // The identity fields shared by search, register and edit. `prefix` keeps the element ids
@@ -17,21 +17,21 @@
 </script>
 
 {#if show("family")}
-  <label for="{prefix}-family">{STRINGS.family}</label>
+  <label for="{prefix}-family">{TEXT.family}</label>
   <input id="{prefix}-family" bind:value={form.family} autocomplete="off" />
 {/if}
 {#if show("given")}
-  <label for="{prefix}-given">{STRINGS.given}</label>
+  <label for="{prefix}-given">{TEXT.given}</label>
   <input
     id="{prefix}-given"
     bind:value={form.given}
     autocomplete="off"
     aria-describedby="{prefix}-given-hint"
   />
-  <small id="{prefix}-given-hint">{STRINGS.givenHint}</small>
+  <small id="{prefix}-given-hint">{TEXT.givenHint}</small>
 {/if}
 {#if show("birthDate")}
-  <label for="{prefix}-birth">{STRINGS.birthDate}</label>
+  <label for="{prefix}-birth">{TEXT.birthDate}</label>
   <input
     id="{prefix}-birth"
     bind:value={form.birthDate}
@@ -40,14 +40,14 @@
   />
 {/if}
 {#if show("sex")}
-  <label for="{prefix}-sex">{STRINGS.sex}</label>
+  <label for="{prefix}-sex">{TEXT.sex}</label>
   <select id="{prefix}-sex" bind:value={form.sex}>
-    <option value="">{STRINGS.sexUnset}</option>
-    {#each SEXES as s (s)}<option value={s}>{STRINGS.sexes[s]}</option>{/each}
+    <option value="">{TEXT.sexUnset}</option>
+    {#each SEXES as s (s)}<option value={s}>{TEXT.sexes[s]}</option>{/each}
   </select>
 {/if}
 {#if show("nhsNumber")}
-  <label for="{prefix}-nhs">{STRINGS.nhsNumber}</label>
+  <label for="{prefix}-nhs">{TEXT.nhsNumber}</label>
   <input
     id="{prefix}-nhs"
     bind:value={form.nhsNumber}
@@ -56,7 +56,7 @@
   />
 {/if}
 {#if show("postalCode")}
-  <label for="{prefix}-postcode">{STRINGS.postalCode}</label>
+  <label for="{prefix}-postcode">{TEXT.postalCode}</label>
   <input
     id="{prefix}-postcode"
     bind:value={form.postalCode}
@@ -71,7 +71,7 @@
       bind:checked={form.temporaryIdentity}
       aria-describedby="{prefix}-temporary-hint"
     />
-    {STRINGS.temporaryIdentity}
+    {TEXT.temporaryIdentity}
   </label>
-  <small id="{prefix}-temporary-hint">{STRINGS.temporaryIdentityHint}</small>
+  <small id="{prefix}-temporary-hint">{TEXT.temporaryIdentityHint}</small>
 {/if}

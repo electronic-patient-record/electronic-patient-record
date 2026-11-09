@@ -23,7 +23,7 @@
     loadAllergies,
     type StoredAllergy,
   } from "./allergies.js";
-  import { STRINGS } from "./strings.js";
+  import { TEXT } from "./i18n.js";
   import {
     loadObservations,
     vitalLine,
@@ -80,12 +80,12 @@
     done: string,
   ) {
     const common = commonProblem(res.status);
-    if (common) message = STRINGS[common];
+    if (common) message = TEXT[common];
     else if (res.status === ok) message = done;
-    else if (res.status === 409) message = STRINGS.amendConflict;
+    else if (res.status === 409) message = TEXT.amendConflict;
     else if (res.status === 422 && res.body?.errors)
       message = res.body.errors.join(" ");
-    else message = STRINGS.error;
+    else message = TEXT.error;
     return res.status === ok;
   }
 
@@ -113,7 +113,7 @@
         built.body,
         PURPOSE,
       );
-      if (report(res, 201, STRINGS.askSent)) {
+      if (report(res, 201, TEXT.askSent)) {
         reading = text = "";
         await load();
       }
@@ -148,28 +148,28 @@
       message = built.problem;
       return;
     }
-    await step(a, built.body, STRINGS.amendDone);
+    await step(a, built.body, TEXT.amendDone);
   }
 </script>
 
-<h3 id="ask-h-{patientId}">{STRINGS.askTitle}</h3>
+<h3 id="ask-h-{patientId}">{TEXT.askTitle}</h3>
 {#if status === null}
-  <p>{STRINGS.loading}</p>
+  <p>{TEXT.loading}</p>
 {:else if status === 403}
-  <p>{STRINGS.askNotAvailable}</p>
+  <p>{TEXT.askNotAvailable}</p>
 {:else if status !== 200}
-  <p>{STRINGS.askCouldNot}</p>
+  <p>{TEXT.askCouldNot}</p>
 {:else}
-  <p>{STRINGS.askIntro}</p>
+  <p>{TEXT.askIntro}</p>
   {#if standing.length + standingAllergies.length === 0}
-    <p>{STRINGS.askNoReadings}</p>
+    <p>{TEXT.askNoReadings}</p>
   {:else}
     <form onsubmit={ask}>
-      <label for="ask-r-{patientId}">{STRINGS.askReading}</label>
+      <label for="ask-r-{patientId}">{TEXT.askReading}</label>
       <select id="ask-r-{patientId}" bind:value={reading}>
         <option value=""></option>
         {#if standing.length}
-          <optgroup label={STRINGS.askReadingGroup}>
+          <optgroup label={TEXT.askReadingGroup}>
             {#each standing as o (o.id)}
               <option value={`Observation:${o.id}`}
                 >{vitalLine(o, siteZone)}</option
@@ -178,7 +178,7 @@
           </optgroup>
         {/if}
         {#if standingAllergies.length}
-          <optgroup label={STRINGS.askAllergyGroup}>
+          <optgroup label={TEXT.askAllergyGroup}>
             {#each standingAllergies as g (g.id)}
               <option value={`AllergyIntolerance:${g.id}`}
                 >{allergyLine(g)}</option
@@ -187,21 +187,21 @@
           </optgroup>
         {/if}
       </select>
-      <label for="ask-t-{patientId}">{STRINGS.askText}</label>
+      <label for="ask-t-{patientId}">{TEXT.askText}</label>
       <textarea id="ask-t-{patientId}" bind:value={text}></textarea>
-      <button type="submit" disabled={busy.on}>{STRINGS.askSubmit}</button>
+      <button type="submit" disabled={busy.on}>{TEXT.askSubmit}</button>
     </form>
   {/if}
-  <h4>{STRINGS.askYours}</h4>
+  <h4>{TEXT.askYours}</h4>
   {#if rows.length === 0}
-    <p>{STRINGS.askNone}</p>
+    <p>{TEXT.askNone}</p>
   {:else}
     <ul>
       {#each rows as a (a.id)}
         {@const s = a.request.state}
         <li>
           <strong
-            >{STRINGS.askAboutReading.replace(
+            >{TEXT.askAboutReading.replace(
               "{reading}",
               aboutText(a, lines),
             )}</strong
@@ -210,9 +210,9 @@
           <p>{a.request.text}</p>
           <p>{stateText(s)} {dueText(a, siteZone)}</p>
           {#if s.state === "denied"}
-            <p>{STRINGS.askReasonGiven} {s.reason}</p>
+            <p>{TEXT.askReasonGiven} {s.reason}</p>
             {#if s.disagreement}<p>
-                {STRINGS.askYourStatement}
+                {TEXT.askYourStatement}
                 {s.disagreement}
               </p>{/if}
           {/if}
@@ -225,20 +225,20 @@
                   step(
                     a,
                     { expected_version: a.version, step: "withdraw" },
-                    STRINGS.askWithdrawn,
+                    TEXT.askWithdrawn,
                   )}
               >
-                {STRINGS.askWithdraw}
+                {TEXT.askWithdraw}
               </button>
             {:else if stating === a.id}
               <form onsubmit={(e) => disagree(e, a)}>
-                <label for="ask-s-{a.id}">{STRINGS.askDisagreeLabel}</label>
+                <label for="ask-s-{a.id}">{TEXT.askDisagreeLabel}</label>
                 <textarea id="ask-s-{a.id}" bind:value={statement}></textarea>
                 <button type="submit" disabled={busy.on}
-                  >{STRINGS.askDisagreeSend}</button
+                  >{TEXT.askDisagreeSend}</button
                 >
                 <button type="button" onclick={() => (stating = null)}
-                  >{STRINGS.amendCancel}</button
+                  >{TEXT.amendCancel}</button
                 >
               </form>
             {:else}
@@ -250,7 +250,7 @@
                   (message = null)
                 )}
               >
-                {STRINGS.askDisagree}
+                {TEXT.askDisagree}
               </button>
             {/if}
           {/each}

@@ -16,7 +16,7 @@
     type AdjustmentLoad,
     type StoredAdjustment,
   } from "./adjustments.js";
-  import { STRINGS } from "./strings.js";
+  import { TEXT } from "./i18n.js";
 
   const busy = new Busy();
   let {
@@ -63,11 +63,11 @@
 
   function failed(res: { status: number; body?: { errors?: string[] } }) {
     const common = commonProblem(res.status);
-    if (common) return STRINGS[common];
-    if (res.status === 409) return STRINGS.adjustmentConflict;
+    if (common) return TEXT[common];
+    if (res.status === 409) return TEXT.adjustmentConflict;
     if (res.status === 422 && res.body?.errors)
       return res.body.errors.join(" ");
-    return STRINGS.error;
+    return TEXT.error;
   }
 
   async function record(event: SubmitEvent) {
@@ -86,7 +86,7 @@
         purpose,
       );
       if (res.status === 201) {
-        message = STRINGS.adjustmentSaved;
+        message = TEXT.adjustmentSaved;
         recording = false;
         form = emptyAdjustment();
         await onchange();
@@ -112,7 +112,7 @@
         purpose,
       );
       if (res.status === 200) {
-        message = STRINGS.adjustmentSaved;
+        message = TEXT.adjustmentSaved;
         open = null;
         await onchange();
       } else message = failed(res);
@@ -128,30 +128,30 @@
 </script>
 
 <section aria-labelledby="adjustments-h">
-  <h2 id="adjustments-h">{STRINGS.adjustmentTitle}</h2>
-  <p>{own ? STRINGS.adjustmentHelpOwn : STRINGS.adjustmentHelp}</p>
+  <h2 id="adjustments-h">{TEXT.adjustmentTitle}</h2>
+  <p>{own ? TEXT.adjustmentHelpOwn : TEXT.adjustmentHelp}</p>
   {#if load === null}
-    <p>{STRINGS.loading}</p>
+    <p>{TEXT.loading}</p>
   {:else if load.status === 403}
-    <p>{STRINGS.bannerNeedsNotShown}</p>
+    <p>{TEXT.bannerNeedsNotShown}</p>
   {:else if load.status !== 200}
-    <p>{STRINGS.bannerNeedsFailed}</p>
+    <p>{TEXT.bannerNeedsFailed}</p>
   {:else if standing.length === 0}
-    <p>{STRINGS.bannerNeedsNone}</p>
+    <p>{TEXT.bannerNeedsNone}</p>
   {:else}
     <ul>
       {#each standing as a (a.id)}
         <li>
           <strong>{adjustmentName(a)}</strong>
           <p>{adjustmentDetail(a, siteZone)}</p>
-          <p>{STRINGS.adjustmentReasonOf} {a.adjustment.reason}</p>
+          <p>{TEXT.adjustmentReasonOf} {a.adjustment.reason}</p>
           {#if readOnly}
             <!-- A proxy reads; a change is the patient's or a member of staff's. -->
           {:else if open?.id === a.id}
             <form onsubmit={(e) => change(e, a)}>
               {#if open.action === "review"}
                 <label for="adjustment-next-{a.id}"
-                  >{STRINGS.adjustmentNextReview}</label
+                  >{TEXT.adjustmentNextReview}</label
                 >
                 <input
                   id="adjustment-next-{a.id}"
@@ -159,9 +159,7 @@
                   bind:value={reviewBy}
                 />
               {/if}
-              <label for="adjustment-why-{a.id}"
-                >{STRINGS.adjustmentReason}</label
-              >
+              <label for="adjustment-why-{a.id}">{TEXT.adjustmentReason}</label>
               <input
                 id="adjustment-why-{a.id}"
                 bind:value={reason}
@@ -169,19 +167,19 @@
               />
               <button type="submit" disabled={busy.on}>
                 {open.action === "review"
-                  ? STRINGS.adjustmentConfirmReview
-                  : STRINGS.adjustmentConfirmEnd}
+                  ? TEXT.adjustmentConfirmReview
+                  : TEXT.adjustmentConfirmEnd}
               </button>
               <button type="button" onclick={() => (open = null)}>
-                {STRINGS.adjustmentCancel}
+                {TEXT.adjustmentCancel}
               </button>
             </form>
           {:else}
             <button type="button" onclick={() => start(a.id, "review")}>
-              {STRINGS.adjustmentReview}
+              {TEXT.adjustmentReview}
             </button>
             <button type="button" onclick={() => start(a.id, "end")}>
-              {STRINGS.adjustmentEnd}
+              {TEXT.adjustmentEnd}
             </button>
           {/if}
         </li>
@@ -192,7 +190,7 @@
   {#if ended.length}
     <details>
       <summary
-        >{STRINGS.adjustmentEndedTitle.replace(
+        >{TEXT.adjustmentEndedTitle.replace(
           "{n}",
           String(ended.length),
         )}</summary
@@ -202,7 +200,7 @@
           <li>
             <s>{adjustmentName(a)}</s>
             · {adjustmentDetail(a, siteZone)}
-            · {STRINGS.adjustmentReasonOf}
+            · {TEXT.adjustmentReasonOf}
             {a.adjustment.reason}
           </li>
         {/each}
@@ -213,42 +211,42 @@
   {#if load?.status === 200 && !readOnly}
     {#if recording}
       <form onsubmit={record}>
-        <label for="adjustment-code">{STRINGS.adjustmentNeed}</label>
+        <label for="adjustment-code">{TEXT.adjustmentNeed}</label>
         <select id="adjustment-code" bind:value={form.code}>
           <option value=""></option>
           {#each CATEGORIES as category (category)}
-            <optgroup label={STRINGS.adjustmentCategories[category]}>
+            <optgroup label={TEXT.adjustmentCategories[category]}>
               {#each CATALOGUE[category] as code (code)}
-                <option value={code}>{STRINGS.adjustmentCodes[code]}</option>
+                <option value={code}>{TEXT.adjustmentCodes[code]}</option>
               {/each}
             </optgroup>
           {/each}
         </select>
-        <label for="adjustment-note">{STRINGS.adjustmentNote}</label>
+        <label for="adjustment-note">{TEXT.adjustmentNote}</label>
         <input
           id="adjustment-note"
           bind:value={form.note}
           maxlength="200"
           autocomplete="off"
         />
-        <label for="adjustment-review">{STRINGS.adjustmentReviewDate}</label>
+        <label for="adjustment-review">{TEXT.adjustmentReviewDate}</label>
         <input id="adjustment-review" type="date" bind:value={form.reviewBy} />
-        <label for="adjustment-reason">{STRINGS.adjustmentReason}</label>
+        <label for="adjustment-reason">{TEXT.adjustmentReason}</label>
         <input
           id="adjustment-reason"
           bind:value={form.reason}
           autocomplete="off"
         />
         <button type="submit" disabled={busy.on}>
-          {STRINGS.adjustmentSave}
+          {TEXT.adjustmentSave}
         </button>
         <button type="button" onclick={() => (recording = false)}>
-          {STRINGS.adjustmentCancel}
+          {TEXT.adjustmentCancel}
         </button>
       </form>
     {:else}
       <button type="button" onclick={() => (recording = true)}>
-        {STRINGS.adjustmentAdd}
+        {TEXT.adjustmentAdd}
       </button>
     {/if}
   {/if}

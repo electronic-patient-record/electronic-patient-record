@@ -14,7 +14,7 @@
   import PatientBanner from "#lib/PatientBanner.svelte";
   import type { Stored } from "#lib/patient.js";
   import { latestReadings } from "#lib/summary.js";
-  import { STRINGS } from "#lib/strings.js";
+  import { TEXT } from "#lib/i18n.js";
   import {
     assessmentText,
     loadObservations,
@@ -54,9 +54,9 @@
     if (mine !== ticket) return;
     loading = false;
     const common = commonProblem(res.status);
-    if (common) message = STRINGS[common];
-    else if (res.status === 404) message = STRINGS.notFound;
-    else if (res.status !== 200) message = STRINGS.error;
+    if (common) message = TEXT[common];
+    else if (res.status === 404) message = TEXT.notFound;
+    else if (res.status !== 200) message = TEXT.error;
     else {
       stored = res.body;
       const [a, v, d, n] = await Promise.all([
@@ -84,15 +84,15 @@
   );
 </script>
 
-<svelte:head><title>{STRINGS.summaryTitle}</title></svelte:head>
+<svelte:head><title>{TEXT.summaryTitle}</title></svelte:head>
 
-<h1>{STRINGS.summaryTitle}</h1>
+<h1>{TEXT.summaryTitle}</h1>
 <p>
-  <a href={localizePath(`/patients/${id}`, locale)}>{STRINGS.summaryBack}</a>
+  <a href={localizePath(`/patients/${id}`, locale)}>{TEXT.summaryBack}</a>
 </p>
 
 {#if loading}
-  <p role="status" aria-busy="true">{STRINGS.loading}</p>
+  <p role="status" aria-busy="true">{TEXT.loading}</p>
 {/if}
 {#if message}
   <p role="alert">{message}</p>
@@ -102,20 +102,20 @@
   <PatientBanner {stored} {allergies} {death} {adjustments} />
 
   <section aria-labelledby="sum-allergies-h">
-    <h2 id="sum-allergies-h">{STRINGS.summaryAllergies}</h2>
+    <h2 id="sum-allergies-h">{TEXT.summaryAllergies}</h2>
     {#if allergies === null}
-      <p role="status">{STRINGS.loading}</p>
+      <p role="status">{TEXT.loading}</p>
     {:else if allergies.status === 403}
-      <p>{STRINGS.allergyNotShown}</p>
+      <p>{TEXT.allergyNotShown}</p>
     {:else if allergies.status !== 200 || !allergies.data}
-      <p role="alert">{STRINGS.allergyLoadFailed}</p>
+      <p role="alert">{TEXT.allergyLoadFailed}</p>
     {:else}
       {@const data = allergies.data}
       {@const standing = data.allergies.filter(
         (a) => a.allergy.status !== "entered-in-error",
       )}
       {#if standing.length === 0}
-        <p>{STRINGS.allergyNone}</p>
+        <p>{TEXT.allergyNone}</p>
       {:else}
         <ul>
           {#each standing as a (a.id)}
@@ -132,17 +132,17 @@
   </section>
 
   <section aria-labelledby="sum-vitals-h">
-    <h2 id="sum-vitals-h">{STRINGS.summaryVitals}</h2>
+    <h2 id="sum-vitals-h">{TEXT.summaryVitals}</h2>
     {#if vitals === null}
-      <p role="status">{STRINGS.loading}</p>
+      <p role="status">{TEXT.loading}</p>
     {:else if vitals.status === 403}
-      <p>{STRINGS.summaryVitalsNotShown}</p>
+      <p>{TEXT.summaryVitalsNotShown}</p>
     {:else if vitals.status !== 200 || !vitals.observations}
-      <p role="alert">{STRINGS.summaryVitalsFailed}</p>
+      <p role="alert">{TEXT.summaryVitalsFailed}</p>
     {:else if latest.length === 0}
-      <p>{STRINGS.summaryVitalsNone}</p>
+      <p>{TEXT.summaryVitalsNone}</p>
     {:else}
-      <p>{STRINGS.summaryVitalsNote}</p>
+      <p>{TEXT.summaryVitalsNote}</p>
       <ul>
         {#each latest as o (o.id)}
           <li>
@@ -161,10 +161,10 @@
   </section>
 
   <section aria-labelledby="sum-todo-h">
-    <h2 id="sum-todo-h">{STRINGS.summaryNotBuilt}</h2>
-    <p>{STRINGS.summaryNotBuiltNote}</p>
+    <h2 id="sum-todo-h">{TEXT.summaryNotBuilt}</h2>
+    <p>{TEXT.summaryNotBuiltNote}</p>
     <ul>
-      {#each Object.values(STRINGS.summaryNotBuiltItems) as name (name)}
+      {#each Object.values(TEXT.summaryNotBuiltItems) as name (name)}
         <li>{name}</li>
       {/each}
     </ul>
