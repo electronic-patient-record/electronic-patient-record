@@ -45,6 +45,7 @@ scheduler behind a **scheduling port** that the PAS can implement.
 | Appointments, slots, schedules | a minimal scheduler (CA-4) used only without a PAS | all of it | the scheduling port; the EPR shows the age of what it displays |
 | Waiting lists, RTT clocks, clinical priority dates | display only (PA-15) | all | read through the port |
 | Referrals | the clinical request and its closed loop (CA-3) | administrative status, triage outcome, redirects | external reference on both sides |
+| Suspicion along a referral (required 2026-11-09) | the suspected condition, point of suspicion, grounds, what the patient was told, and the outcome | **must track it**: carry it through triage, redirection and rebooking, and start and stop any clock from it ([suspicion](referral-suspicion/index.md)) | the suspicion's id on the referral; RS-1 to RS-5 |
 | Reminders, letters delivery, transport | none | all | the outbound choke point (PA-13) applies to the EPR's own messages |
 | Patient portal | clinical content: results, letters, messages, record download, proxy access to the record (CA-5) | booking, rebooking and reply links | the portal reads appointments through the port |
 | ADT and bed occupancy | the clinical admission and a minimal bed board (CA-1) | administrative ADT events where it runs | HL7 ADT inbound (OR-3) |

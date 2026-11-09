@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-09 - The PAS must track suspicion along a referral; Wales is a target
+
+- **Clinical risk:** **no change to the product.** Documents only. The five new tasks (RS-1 to RS-5) are clinical, and each will need its hazard row when it is built.
+- **Built:** [`spec/referral-suspicion/index.md`](spec/referral-suspicion/index.md) sets out the maintainer's requirement that a PAS must track suspicion during referrals. Cancer is the worked example: Wales's Single Cancer Pathway counts from the point of suspicion, and NICE NG12 applies in England. Five rules follow: the point of suspicion is a recorded event; it travels with the referral; it ends only with an outcome; absence never rules it out; and what the patient was told is recorded. Type 1 diabetes in children, heart failure, Parkinson's disease, dementia and obstructive sleep apnoea are shown to have the same shape, each adding one rule. Spec `02`'s PAS boundary gains a row. OQ-WL1 is decided: Wales is a target, so WL-8 and WL-9 are no longer waiting. tasks.md has RS-1 to RS-5, with the `RS` prefix registered.
+- **Checked:** links, the status block, llms and the hazard log.
+- **Not done / not verified:** the NICE intervals were read through search summaries, not on the NICE pages. The Welsh target was not checked against the latest statistics. The PAS repository was not read for whether it already tracks suspicion, and no fields were agreed with it. The FHIR mapping (`Condition` with `provisional`, linked from the `ServiceRequest`) is unchecked. No clinician read the page.
+
 ## 2026-11-09 - Research pass: NHS Wales national systems (plan.md §34, WL-1 to WL-12)
 
 - **Clinical risk:** **no change to the product.** Documents only: no code, route, screen or hazard changed. Five of the new tasks are marked clinical (WL-1, WL-2, WL-3, WL-4, WL-6), and each will need its hazard row when it is built.

@@ -71,6 +71,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | TT | 1 | 6 |
 | PX | 6 | 0 |
 | WL | 1 | 11 |
-| **Total** | **77** | **334** |
+| RS | 0 | 5 |
+| **Total** | **77** | **339** |
 
 <!-- generated:end -->
