@@ -4,7 +4,7 @@
 //! working and must succeed, so the 500 is proved to come from the audit row and not from a bad request.
 //!
 //! Covered here (login off): patients, FHIR create and update, consent, relationship, allergy, the allergy
-//! statement, photo put and withdraw, merge and unmerge. Break-glass and the feed queue need login on, so they
+//! statement, photo put and withdraw, merge and unmerge, results and their sign-off. Break-glass and the feed queue need login on, so they
 //! are in `http_audit_refusal_roles.rs`.
 //!
 //! ```text
@@ -390,6 +390,48 @@ async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_r
                     .put(&format!("/api/patients/{id}/adjustments/{adjustment_id}"))
                     .json(&json!({ "expected_version": 1, "action": "end",
                         "reason": "no longer needed" }))
+                    .await;
+                (r.status_code(), r.text())
+            },
+        )
+        .await;
+
+        // A result, a correction and a sign-off of the corrected version (WL-1).
+        let result = json!({ "test": "Serum sodium", "value": "131", "unit": "mmol/L",
+            "status": "final", "issued": "2026-11-09T09:00:00Z" });
+        refused_then_accepted(db, "POST /api/patients/{id}/results", || async {
+            let r = server
+                .post(&format!("/api/patients/{id}/results"))
+                .json(&json!({ "result": result }))
+                .await;
+            (r.status_code(), r.text())
+        })
+        .await;
+        let listed = server
+            .get(&format!("/api/patients/{id}/results"))
+            .await
+            .json::<Value>();
+        let result_id = listed["results"][0]["current"]["id"]
+            .as_str()
+            .expect("a result id")
+            .to_string();
+        let mut corrected = result.clone();
+        corrected["status"] = json!("corrected");
+        refused_then_accepted(db, "PUT /api/patients/{id}/results/{result_id}", || async {
+            let r = server
+                .put(&format!("/api/patients/{id}/results/{result_id}"))
+                .json(&json!({ "result": corrected, "expected_version": 1, "reason": "recalibrated" }))
+                .await;
+            (r.status_code(), r.text())
+        })
+        .await;
+        refused_then_accepted(
+            db,
+            "POST /api/patients/{id}/results/{result_id}/sign-off",
+            || async {
+                let r = server
+                    .post(&format!("/api/patients/{id}/results/{result_id}/sign-off"))
+                    .json(&json!({ "version": 2 }))
                     .await;
                 (r.status_code(), r.text())
             },

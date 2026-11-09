@@ -1203,6 +1203,18 @@
         ],
         "type": "object"
       },
+      "CreateResult": {
+        "additionalProperties": false,
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/ResultRecord"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      },
       "DeathAnswer": {
         "description": "`not-known-to-have-died` never means the person is known to be living.",
         "properties": {
@@ -3034,6 +3046,153 @@
         ],
         "type": "object"
       },
+      "ResultList": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/ResultView"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "type": "object"
+      },
+      "ResultRecord": {
+        "additionalProperties": false,
+        "description": "One version of a result, as the reporting service sent it. Text fields at most 500 characters.",
+        "properties": {
+          "interpretation": {
+            "description": "Absent means the service said nothing, never normal.",
+            "enum": [
+              "normal",
+              "abnormal",
+              "critical",
+              null
+            ]
+          },
+          "issued": {
+            "description": "RFC 3339.",
+            "type": "string"
+          },
+          "performer": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reference_range": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "enum": [
+              "preliminary",
+              "final",
+              "amended",
+              "corrected",
+              "entered-in-error"
+            ]
+          },
+          "test": {
+            "type": "string"
+          },
+          "unit": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "value": {
+            "description": "As reported, text, so that \"<0.5\" survives.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "test",
+          "status",
+          "issued"
+        ],
+        "type": "object"
+      },
+      "ResultSignOff": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "result_id": {
+            "type": "string"
+          },
+          "signed_at": {
+            "type": "string"
+          },
+          "signed_by": {
+            "type": "string"
+          },
+          "version": {
+            "description": "The version that was signed off.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "result_id",
+          "version",
+          "signed_by",
+          "signed_at"
+        ],
+        "type": "object"
+      },
+      "ResultView": {
+        "properties": {
+          "current": {
+            "$ref": "#/components/schemas/StoredResult"
+          },
+          "last_sign_off": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ResultSignOff"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sign_off": {
+            "enum": [
+              "unsigned",
+              "signed",
+              "changed-since-sign-off",
+              "not-applicable"
+            ]
+          },
+          "signed_version": {
+            "description": "When changed since sign-off: the version that was signed, to show beside the current.",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/StoredResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "current",
+          "sign_off",
+          "last_sign_off",
+          "signed_version"
+        ],
+        "type": "object"
+      },
       "ReviewBreakGlass": {
         "description": "Someone else's verdict on a grant. The note is required. A grant already reviewed is a 409.",
         "properties": {
@@ -3050,6 +3209,19 @@
         "required": [
           "outcome",
           "note"
+        ],
+        "type": "object"
+      },
+      "SignOffResult": {
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "description": "The version the signer read; an older one is a 409.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version"
         ],
         "type": "object"
       },
@@ -3402,6 +3574,45 @@
         ],
         "type": "object"
       },
+      "StoredResult": {
+        "properties": {
+          "author": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "reason": {
+            "description": "Why it changed; null on a first version.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "recorded_at": {
+            "type": "string"
+          },
+          "result": {
+            "$ref": "#/components/schemas/ResultRecord"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "patient_id",
+          "version",
+          "author",
+          "recorded_at",
+          "reason",
+          "result"
+        ],
+        "type": "object"
+      },
       "UpdateAllergy": {
         "properties": {
           "allergy": {
@@ -3588,6 +3799,26 @@
         "required": [
           "relationship",
           "expected_version"
+        ],
+        "type": "object"
+      },
+      "UpdateResult": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "type": "integer"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "result": {
+            "$ref": "#/components/schemas/ResultRecord"
+          }
+        },
+        "required": [
+          "result",
+          "expected_version",
+          "reason"
         ],
         "type": "object"
       },
@@ -8539,6 +8770,368 @@
         ],
         "x-epr-action": "Update",
         "x-epr-resource": "CareRelationship"
+      }
+    },
+    "/api/patients/{id}/results": {
+      "get": {
+        "operationId": "getApiPatientsIdResults",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultList"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/patients/{id}/results",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Search",
+        "x-epr-resource": "DiagnosticReport"
+      },
+      "post": {
+        "operationId": "postApiPatientsIdResults",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "1 to 128 letters, digits or . _ : -. A retry with the same key and the same request returns the first answer (header `Idempotent-Replayed: true`) and writes nothing; the same key for a different request is a 422; a key whose first request is unfinished is a 409. Only a success is kept; keys expire after 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateResult"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredResult"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/patients/{id}/results",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Create",
+        "x-epr-resource": "DiagnosticReport"
+      }
+    },
+    "/api/patients/{id}/results/{result_id}": {
+      "put": {
+        "operationId": "putApiPatientsIdResultsResult_id",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "result_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateResult"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredResult"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionConflict"
+                }
+              }
+            },
+            "description": "A likely duplicate or a stale expected_version."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "PUT /api/patients/{id}/results/{result_id}",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Update",
+        "x-epr-resource": "DiagnosticReport"
+      }
+    },
+    "/api/patients/{id}/results/{result_id}/sign-off": {
+      "post": {
+        "operationId": "postApiPatientsIdResultsResult_idSign-off",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "result_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "1 to 128 letters, digits or . _ : -. A retry with the same key and the same request returns the first answer (header `Idempotent-Replayed: true`) and writes nothing; the same key for a different request is a 422; a key whose first request is unfinished is a 409. Only a success is kept; keys expire after 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignOffResult"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultSignOff"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionConflict"
+                }
+              }
+            },
+            "description": "A likely duplicate or a stale expected_version."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/patients/{id}/results/{result_id}/sign-off",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Update",
+        "x-epr-resource": "DiagnosticReport"
       }
     },
     "/api/patients/{id}/unmerge": {

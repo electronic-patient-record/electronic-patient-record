@@ -419,6 +419,75 @@ fn observation_schemas() -> Value {
     })
 }
 
+/// The schemas for results and their sign-off (OR-4 first slice, WL-1).
+fn result_schemas() -> Value {
+    let record = json!({
+        "type": "object", "required": ["test", "status", "issued"], "additionalProperties": false,
+        "description": "One version of a result, as the reporting service sent it. Text fields at most 500 characters.",
+        "properties": {
+            "test": {"type": "string"},
+            "value": {"type": ["string", "null"], "description": "As reported, text, so that \"<0.5\" survives."},
+            "unit": {"type": ["string", "null"]},
+            "reference_range": {"type": ["string", "null"]},
+            "interpretation": {"enum": ["normal", "abnormal", "critical", null], "description": "Absent means the service said nothing, never normal."},
+            "status": {"enum": ["preliminary", "final", "amended", "corrected", "entered-in-error"]},
+            "issued": {"type": "string", "description": "RFC 3339."},
+            "performer": {"type": ["string", "null"]}
+        }
+    });
+    json!({
+        "ResultRecord": record,
+        "StoredResult": {
+            "type": "object", "required": ["id", "patient_id", "version", "author", "recorded_at", "reason", "result"],
+            "properties": {
+                "id": {"type": "string"}, "patient_id": {"type": "string"},
+                "version": {"type": "integer"}, "author": {"type": "string"},
+                "recorded_at": {"type": "string"},
+                "reason": {"type": ["string", "null"], "description": "Why it changed; null on a first version."},
+                "result": {"$ref": "#/components/schemas/ResultRecord"}
+            }
+        },
+        "ResultSignOff": {
+            "type": "object", "required": ["id", "result_id", "version", "signed_by", "signed_at"],
+            "properties": {
+                "id": {"type": "string"}, "result_id": {"type": "string"},
+                "version": {"type": "integer", "description": "The version that was signed off."},
+                "signed_by": {"type": "string"}, "signed_at": {"type": "string"}
+            }
+        },
+        "ResultView": {
+            "type": "object", "required": ["current", "sign_off", "last_sign_off", "signed_version"],
+            "properties": {
+                "current": {"$ref": "#/components/schemas/StoredResult"},
+                "sign_off": {"enum": ["unsigned", "signed", "changed-since-sign-off", "not-applicable"]},
+                "last_sign_off": {"oneOf": [{"$ref": "#/components/schemas/ResultSignOff"}, {"type": "null"}]},
+                "signed_version": {"oneOf": [{"$ref": "#/components/schemas/StoredResult"}, {"type": "null"}],
+                                    "description": "When changed since sign-off: the version that was signed, to show beside the current."}
+            }
+        },
+        "ResultList": {
+            "type": "object", "required": ["results"],
+            "properties": {"results": {"type": "array", "items": {"$ref": "#/components/schemas/ResultView"}}}
+        },
+        "CreateResult": {
+            "type": "object", "required": ["result"], "additionalProperties": false,
+            "properties": {"result": {"$ref": "#/components/schemas/ResultRecord"}}
+        },
+        "UpdateResult": {
+            "type": "object", "required": ["result", "expected_version", "reason"], "additionalProperties": false,
+            "properties": {
+                "result": {"$ref": "#/components/schemas/ResultRecord"},
+                "expected_version": {"type": "integer"},
+                "reason": {"type": "string"}
+            }
+        },
+        "SignOffResult": {
+            "type": "object", "required": ["version"], "additionalProperties": false,
+            "properties": {"version": {"type": "integer", "description": "The version the signer read; an older one is a 409."}}
+        }
+    })
+}
+
 /// The schemas for consents: the record with its provisions, the stored version, the create and update bodies and the list.
 fn consent_schemas() -> Value {
     json!({
@@ -1181,6 +1250,7 @@ fn patient_schemas() -> Value {
         allergy_schemas(),
         referral_schemas(),
         observation_schemas(),
+        result_schemas(),
         consent_schemas(),
         relationship_schemas(),
     ] {
@@ -1272,6 +1342,30 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
         "UpdateObservation",
         "200",
         "StoredObservation",
+        "VersionConflict",
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/results",
+        "CreateResult",
+        "201",
+        "StoredResult",
+        "",
+    ),
+    (
+        "PUT",
+        "/api/patients/{id}/results/{result_id}",
+        "UpdateResult",
+        "200",
+        "StoredResult",
+        "VersionConflict",
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/results/{result_id}/sign-off",
+        "SignOffResult",
+        "201",
+        "ResultSignOff",
         "VersionConflict",
     ),
     (
@@ -1540,6 +1634,7 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
         "ObservationList",
         &[],
     ),
+    ("GET", "/api/patients/{id}/results", "ResultList", &[]),
     (
         "GET",
         "/api/patients/{id}/observations/{observation_id}/versions",

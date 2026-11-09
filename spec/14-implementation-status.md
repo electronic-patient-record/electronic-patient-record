@@ -20,9 +20,9 @@ no network, database or compilation; counts are source lines, not test runs):
 | Service version | 0.1.0 | `version` in the service `Cargo.toml` |
 | Matcher version | 0.7.0 | `version` in the matcher `Cargo.toml` |
 | Front-end version | 0.1.0 | `version` in the front-end `package.json` |
-| Migrations | 28 | files named `*.sql` in `migrations` |
-| Route registrations | 82 | `.add(` calls in `src/controllers/*.rs` |
-| Service tests | 688, plus 175 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
+| Migrations | 29 | files named `*.sql` in `migrations` |
+| Route registrations | 86 | `.add(` calls in `src/controllers/*.rs` |
+| Service tests | 693, plus 176 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
 | Matcher tests | 110, plus 0 `#[ignore]`d | the same patterns in the matcher |
 | Front-end unit tests (vitest) | 304 | `it(` / `test(` lines in `tests/unit` |
 | Front-end end-to-end tests (Playwright) | 99 | `test(` lines in `tests/e2e` |
@@ -70,8 +70,8 @@ no network, database or compilation; counts are source lines, not test runs):
 | SW | 4 | 3 |
 | TT | 1 | 6 |
 | PX | 6 | 0 |
-| WL | 2 | 10 |
+| WL | 3 | 9 |
 | RS | 0 | 5 |
-| **Total** | **78** | **338** |
+| **Total** | **79** | **337** |
 
 <!-- generated:end -->

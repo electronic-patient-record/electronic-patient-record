@@ -346,3 +346,25 @@ referral_acknowledgements,referral_id,none,Which referral was acknowledged; a ra
 referral_acknowledgements,version,none,Which version of the referral the sender has seen,record
 referral_acknowledgements,acknowledged_at,none,When the sender said they had seen it,record
 referral_acknowledgements,acknowledged_by,staff-identifier,The sender who acknowledged it,record
+result_versions,result_id,none,Random record id,record
+result_versions,version,none,Version counter,record
+result_versions,patient_id,identifier,Links a record to the patient,record
+result_versions,recorded_at,none,When the version was filed,record
+result_versions,author,staff-identifier,Who filed the version,record
+result_versions,status,none,Where the result stands (preliminary to entered in error),record
+result_versions,reason,free-text,Why the result changed as typed,record
+result_versions,body,health,The result as the reporting service sent it,record
+result_current,result_id,none,Random record id,record
+result_current,version,none,Version counter,record
+result_current,patient_id,identifier,Links a record to the patient,record
+result_current,recorded_at,none,When the version was filed,record
+result_current,author,staff-identifier,Who filed the version,record
+result_current,status,none,Where the result stands (preliminary to entered in error),record
+result_current,reason,free-text,Why the result changed as typed,record
+result_current,body,health,The result as the reporting service sent it,record
+result_signoffs,signoff_id,none,Random record id,record
+result_signoffs,result_id,none,The result that was signed off,record
+result_signoffs,result_version,none,The version that was signed off,record
+result_signoffs,patient_id,identifier,Links a sign-off to the patient,record
+result_signoffs,recorded_at,none,When it was signed off,record
+result_signoffs,signed_by,staff-identifier,Who signed it off,record

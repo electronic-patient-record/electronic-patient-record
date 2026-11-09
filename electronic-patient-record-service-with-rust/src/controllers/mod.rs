@@ -22,6 +22,7 @@ pub mod referral_queue;
 pub mod referral_worklist;
 pub mod referrals;
 pub mod relationships;
+pub mod results;
 
 use axa::routes::AppRoutes;
 

@@ -156,6 +156,10 @@ pub enum Resource {
     Condition,
     /// FHIR `Observation`.
     Observation,
+    /// A laboratory or imaging result and its sign-off (`results_store.rs`, OR-4 first slice, WL-1).
+    /// Separate from `Observation` because a patient and a proxy do not read results until release
+    /// rules exist.
+    DiagnosticReport,
     /// FHIR `MedicationRequest`.
     MedicationRequest,
     /// A patient's request to amend a record, and the decision on it (`amendments_store.rs`).
@@ -205,11 +209,12 @@ pub enum Resource {
 
 impl Resource {
     /// Every resource kind, in a fixed order.
-    pub const ALL: [Resource; 22] = [
+    pub const ALL: [Resource; 23] = [
         Resource::PatientIdentity,
         Resource::Encounter,
         Resource::Condition,
         Resource::Observation,
+        Resource::DiagnosticReport,
         Resource::MedicationRequest,
         Resource::Amendment,
         Resource::Adjustment,
@@ -238,6 +243,7 @@ impl Resource {
             Resource::Encounter => "Encounter",
             Resource::Condition => "Condition",
             Resource::Observation => "Observation",
+            Resource::DiagnosticReport => "DiagnosticReport",
             Resource::MedicationRequest => "MedicationRequest",
             Resource::Amendment => "Amendment",
             Resource::Adjustment => "Adjustment",
@@ -585,10 +591,10 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
     use Resource::{
         Adjustment as Adjust, AllergyIntolerance as Allergy, Amendment, AuditLog,
         BreakGlass as Glass, CareRelationship as Rel, Condition, Consent as Cons,
-        DeathAssertion as Death, DeathReports as Deaths, Document, Encounter, FeedQueue as Queue,
-        Hazard, MedicationRequest as Meds, Observation, OverdueReviews as Overdue,
-        PatientIdentity as Identity, PatientLink as Link, Referral, ReferralQueue as RefQueue,
-        ReferralWorklist as Worklist,
+        DeathAssertion as Death, DeathReports as Deaths, DiagnosticReport as Results, Document,
+        Encounter, FeedQueue as Queue, Hazard, MedicationRequest as Meds, Observation,
+        OverdueReviews as Overdue, PatientIdentity as Identity, PatientLink as Link, Referral,
+        ReferralQueue as RefQueue, ReferralWorklist as Worklist,
     };
     match (role, resource) {
         // Clinicians: full clinical work, and register or correct identity.
@@ -597,6 +603,12 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
             &[Read, Search, Create, Update, Eie]
         }
         (Role::Clinician, Cons) => &[Read],
+        // Results (OR-4 first slice, WL-1, unreviewed): a clinician files, corrects and signs off (a
+        // sign-off is an `Update`); a nurse, pharmacist or allied professional reads. No feed files them
+        // yet (an integration has no care relationship), and a patient or proxy reads none until release
+        // rules exist.
+        (Role::Clinician, Results) => &[Read, Search, Create, Update, Eie],
+        (Role::Nurse | Role::Pharmacist | Role::AlliedHealth, Results) => &[Read, Search],
         // Amendments: a clinician reads and decides; the patient asks, withdraws and disagrees. Which
         // step belongs to which role is checked by the route.
         (Role::Clinician, Amendment) => &[Read, Search, Update],
@@ -1373,8 +1385,8 @@ mod tests {
                 }
             }
         }
-        // 16 roles × 22 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
-        assert_eq!(cells, 16 * 22 * 6 * 8 * 5 * 3 * 7 * 2);
+        // 16 roles × 23 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
+        assert_eq!(cells, 16 * 23 * 6 * 8 * 5 * 3 * 7 * 2);
         assert!(allows > 0);
     }
 

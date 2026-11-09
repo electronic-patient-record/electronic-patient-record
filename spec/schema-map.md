@@ -4,7 +4,7 @@ Every table and view the service's migrations create. **Generated** by [`scripts
 
 Not listed: tables made by a statement built at run time (the monthly `audit_events` partitions), and what a column means (the migrations carry few comments, so only the name and SQL type are shown). The clinical tables are append-only: a change is a new row, and triggers refuse `UPDATE`, `DELETE` and `TRUNCATE`.
 
-30 tables, 14 views.
+32 tables, 15 views.
 
 ## Tables
 
@@ -40,6 +40,8 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `referral_unmatched_clearances` | `20261103000023_referral_unmatched` | `unmatched_id` UUID, `cleared_at` TIMESTAMPTZ, `cleared_by` TEXT, `how` TEXT, `referral_id` UUID, `reason` TEXT |
 | `referral_versions` | `20261102000022_referrals` | `referral_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `state` TEXT, `event` JSONB, `body` JSONB |
 | `relationship_versions` | `20261021000004_relationship_versions` | `relationship_id` UUID, `version` INTEGER, `patient_id` UUID, `subject` TEXT, `kind` TEXT, `status` TEXT, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `body` JSONB |
+| `result_signoffs` | `20261109000029_results` | `signoff_id` UUID, `result_id` UUID, `result_version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `signed_by` TEXT |
+| `result_versions` | `20261109000029_results` | `result_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `status` TEXT, `reason` TEXT, `body` JSONB |
 
 ## Views
 
@@ -59,3 +61,4 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `patient_photo_current` | `20261021000006_patient_photos` |
 | `referral_current` | `20261102000022_referrals` |
 | `relationship_current` | `20261021000004_relationship_versions`, `20261021000011_current_views_seek` |
+| `result_current` | `20261109000029_results` |
