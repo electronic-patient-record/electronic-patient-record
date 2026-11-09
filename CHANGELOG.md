@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-09 - `compose.yaml` trusts the UI container's `X-Forwarded-For` (OS-2, H-049)
+
+- **Clinical risk:** **yes, treated as clinical (H-049).** Nothing a clinician sees changes. In the compose stack, the address the API audits, and counts toward the lockout when it is on, becomes each browser's as the UI sees it rather than the UI container's. H-049's residual is reworded; its status is unchanged.
+- **Built:** the compose network has the fixed subnet `10.89.240.0/24`, the `ui` container the fixed address `10.89.240.250`, and the API `TRUSTED_PROXIES=10.89.240.250`: that one address, never the subnet, because a request to the published port `5150` arrives from inside the subnet too. Spec `07` NFR-6, the UI spec, the OS-2 note and H-049 say so.
+- **Checked:** `podman compose config`. I ran the stack with the UI profile, login on and `LOCKOUT_CLIENT_ADDRESS_AFTER_COUNT=2` (an override, not in `compose.yaml`). The UI container got `10.89.240.250`. From inside it, bad tokens naming `203.0.113.7` were answered `401`, `401`, `429`; one naming `203.0.113.8` was `401`; the audit row named `203.0.113.7`. From the host, the header was ignored: every request counted as one address (`10.89.240.9`, the API container's own, which is how rootless Podman's port forward arrives), so changing it did not lift the lockout.
+- **Not done / not verified:** no browser was driven through the UI to the API, so the address the UI sees for a browser on the host (likely one forwarded address for every browser on the machine) was not checked. `podman compose --build` here goes through `docker-compose`, which reads `.dockerignore` and not `.containerignore`, so it sent `target/` as build context and ran the VM's disk out; I built the images with `podman build` instead and did not fix that. The API image build also ran out of memory in a 12 GiB VM unless `CARGO_BUILD_JOBS=1`; that is not set anywhere. Another container given `10.89.240.250` by hand would be trusted. No other deployment sets `TRUSTED_PROXIES`.
+
 ## 2026-11-09 - The UI's server sends the browser's address (OS-2, H-049)
 
 - **Clinical risk:** **yes, treated as clinical (H-049).** Nothing a clinician sees changes. Where the service lists the UI's server in `TRUSTED_PROXIES`, the address it audits and counts toward the lockout becomes each browser's, not the UI server's, so one user's failed tokens no longer lock out everyone behind the UI. Where it does not, nothing changes. H-049's residual is reworded; its status is unchanged.

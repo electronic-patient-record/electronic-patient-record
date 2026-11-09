@@ -21,6 +21,11 @@
 # The UI is the compose profile `ui` (http://localhost:3000):
 #
 #   podman compose --profile ui up -d --build --wait
+#
+# The UI's server sends the API the browser's address as X-Forwarded-For. The API believes it only from the
+# addresses in TRUSTED_PROXIES, so the stack's network has a fixed subnet and the UI container a fixed address
+# (10.89.240.250), and the API trusts that one address and nothing else. Trusting the whole subnet would trust the
+# host too: a request to the published port 5150 arrives from inside it, and could then name any address.
 
 name: electronic-patient-record
 
@@ -46,6 +51,8 @@ x-api-environment: &api-environment
   SMTP_PORT: ${SMTP_PORT:-587}
   SMTP_USER: ${SMTP_USER:-}
   SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  # Believe X-Forwarded-For only from the UI container (see the network at the end).
+  TRUSTED_PROXIES: 10.89.240.250
 
 x-api-build: &api-build
   context: .
@@ -120,6 +127,10 @@ services:
     image: electronic-patient-record-ui:local
     environment:
       EPR_API_URL: http://api:5150
+    networks:
+      default:
+        # The one address the API's TRUSTED_PROXIES lists. Keep the two the same.
+        ipv4_address: 10.89.240.250
     ports:
       - "3000:3000"
     healthcheck:
@@ -167,6 +178,14 @@ services:
       timeout: 5s
       retries: 40
       start_period: 30s
+
+# A fixed subnet, so the UI container's address is fixed and the API can trust exactly it. Other containers
+# take addresses from the low end, so .250 is left for the UI.
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 10.89.240.0/24
 
 volumes:
   postgres-data:

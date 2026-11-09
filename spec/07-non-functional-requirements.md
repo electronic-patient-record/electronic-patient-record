@@ -40,7 +40,9 @@ Targets, not measurements. Nothing here has been measured yet. Where the field s
   behind it is one address, and a few expired tokens would lock out every clinician at once (H-049). Since
   2026-11-09 the UI's server sends the browser's address as the one `X-Forwarded-For` entry and never passes on one
   the browser sent. Turn the lockout on only where the address is a person's: `TRUSTED_PROXIES` lists the UI's
-  server, and nothing a browser can reach the service from.
+  server, and nothing a browser can reach the service from. `compose.yaml` does so: its network has the fixed subnet
+  `10.89.240.0/24`, the UI container the fixed address `10.89.240.250`, and the API `TRUSTED_PROXIES` that one
+  address, never the subnet (a request to the published port `5150` arrives from inside it).
   **Not built:** a limit on all requests keyed by client address (the service sits behind the UI's server, so the
   address is one caller for everybody); a sign-in lockout (sign-in is the identity provider's, not this service's); a store
   shared between replicas (each replica counts alone, so N replicas allow N times the limit); per-route limits other

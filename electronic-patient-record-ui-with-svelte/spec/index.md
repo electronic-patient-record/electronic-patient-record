@@ -33,7 +33,7 @@ cross-subproject contract.
   SvelteKit's `getClientAddress()` gives it (the socket's, or, when adapter-node's `ADDRESS_HEADER` and `XFF_DEPTH` are set
   behind a proxy in front of the UI, that proxy's), and only when it is an IPv4 or IPv6 address. Whatever
   `X-Forwarded-For` the browser sent is never passed on, so the browser cannot choose the address the API sees. The API
-  believes it only from addresses in its `TRUSTED_PROXIES`, which must then list the UI server's address and nothing a
+  believes it only from addresses in its `TRUSTED_PROXIES`, which must then list the UI server's address (in `compose.yaml`, the UI container's fixed `10.89.240.250`) and nothing a
   browser can reach the API from. The address is personal data: the API records it in `audit_events.network_address`
   and may count it toward a lockout.
 - **Pages**: home; `/patients` searches (family-name prefix, birth date, NHS number; an empty search is never sent) and lists up to 50
