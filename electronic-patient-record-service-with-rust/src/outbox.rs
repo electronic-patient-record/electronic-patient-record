@@ -65,6 +65,11 @@ pub struct NewEvent<'a> {
     pub patient_id: Option<&'a str>,
     /// What is sent. Patient data when `patient_id` is set.
     pub payload: &'a serde_json::Value,
+    /// The referral whose suspected condition the payload names, if it names one (RS-4). Set it
+    /// whenever the payload says what is suspected: to a patient or a proxy the event then goes only
+    /// while that referral's suspicion records that the patient was told; otherwise it is refused, and
+    /// the sender sends a message that does not name it ("an urgent appointment").
+    pub names_suspicion_of: Option<&'a str>,
 }
 
 /// What the decision reads, stored in the payload beside what is sent.
@@ -78,6 +83,9 @@ struct Route {
     resource: String,
     /// The patient concerned, if any.
     patient_id: Option<String>,
+    /// The referral whose suspected condition the body names, if any (RS-4).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    names_suspicion_of: Option<String>,
 }
 
 /// The stored payload: the route, and what is sent.
@@ -143,6 +151,14 @@ pub async fn enqueue(
             purpose: new.purpose.code().to_string(),
             resource: new.resource.name().to_string(),
             patient_id: patient.clone(),
+            names_suspicion_of: match new.names_suspicion_of {
+                Some(r) => Some(
+                    ids::uuid(r)
+                        .ok_or_else(|| StoreError::BadQuery("referral id".into()))?
+                        .to_string(),
+                ),
+                None => None,
+            },
         },
         body: new.payload.clone(),
     };
@@ -238,6 +254,24 @@ pub async fn decide(event: &Claimed, conn: &mut PgConnection) -> Result<Decision
             .map_err(|_| lookup_failed("death"))?;
         if answer.holds_contact() {
             return Ok(Decision::Hold);
+        }
+    }
+    // A suspected condition reaches the patient, or someone acting for them, only once the record says
+    // the patient was told (RS-4). No suspicion, another patient's referral, or `not-told`: refused.
+    if let Some(referral) = &route.names_suspicion_of
+        && route
+            .roles
+            .iter()
+            .any(|r| r == Role::Patient.as_str() || r == Role::Proxy.as_str())
+    {
+        let Some(patient) = &route.patient_id else {
+            return Ok(Decision::refuse("suspicion-without-patient"));
+        };
+        let told = crate::suspicions_store::told(&mut *conn, patient, referral)
+            .await
+            .map_err(|_| lookup_failed("suspicion"))?;
+        if told != Some(true) {
+            return Ok(Decision::refuse("suspicion-not-told"));
         }
     }
     // An unchecked disclosure is how a refusal gets ignored: no consent answer, no decision.

@@ -514,3 +514,36 @@ pub async fn end(
     let ended = outcome_of(&mut *db, &referral_id).await?;
     build(&rows_now, sent, now, ended)
 }
+
+/// Whether the record says the patient was told of a referral's suspected condition (RS-4): `None` when
+/// the referral is not this patient's or carries no suspicion. Read by the outbound gate
+/// (`outbox::decide`), so a message naming the condition reaches the patient only once they were told.
+///
+/// # Errors
+///
+/// [`StoreError::Db`].
+pub async fn told(
+    db: impl Into<Db<'_>>,
+    patient_id: &str,
+    referral_id: &str,
+) -> Result<Option<bool>, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let (Some(patient), Some(referral)) = (ids::uuid(patient_id), ids::uuid(referral_id)) else {
+        return Ok(None);
+    };
+    let row = sqlx::query(
+        "SELECT body->>'patient_told' AS told FROM referral_suspicion_current
+         WHERE referral_id = $1::uuid AND patient_id = $2::uuid",
+    )
+    .bind(referral)
+    .bind(patient)
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(db_err)?;
+    let Some(row) = row else {
+        return Ok(None);
+    };
+    let word: Option<String> = row.try_get("told").map_err(db_err)?;
+    Ok(Some(word.as_deref() == Some("told")))
+}

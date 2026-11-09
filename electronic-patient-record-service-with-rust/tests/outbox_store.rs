@@ -3,7 +3,8 @@
 //! patient's consent refuses is not made, is audited and is final; a report of death holds an event
 //! until it is withdrawn, and holds back no other patient's; a failing sink is tried a fixed number of
 //! times and then left for a person, who can release it; a changed event is never published; an
-//! oversized payload is refused; and the database refuses to edit or delete the record, and refuses new
+//! oversized payload is refused; an event to a patient that names a suspected condition is refused
+//! unless the record says the patient was told (RS-4); and the database refuses to edit or delete the record, and refuses new
 //! rows in the closed tables of migration 17.
 //!
 //! The waits before a retry, a lost relay and the order per key are `axa-outbox`'s and are tested there.
@@ -25,6 +26,11 @@ use electronic_patient_record::metrics;
 use electronic_patient_record::outbox::{self, Delivery, MAX_ATTEMPTS, NewEvent, Sink, Sinks};
 use electronic_patient_record::patients_store;
 use electronic_patient_record::policy::{Purpose, Resource, Role};
+use electronic_patient_record::referrals_store::{self, Priority, Referral};
+use electronic_patient_record::suspicion::{
+    Grounds, GroundsKind, PatientTold, Source as Raised, Suspicion,
+};
+use electronic_patient_record::suspicions_store;
 use electronic_patient_record_matcher::{HumanName, Patient};
 use sqlx::{AssertSqlSafe, PgPool, Row};
 use std::sync::Arc;
@@ -196,6 +202,7 @@ fn event<'a>(
         resource: Resource::PatientIdentity,
         patient_id: patient,
         payload,
+        names_suspicion_of: None,
     }
 }
 
@@ -663,4 +670,143 @@ async fn a_relay_that_does_not_stop_in_time_is_abandoned_and_says_so() {
 #[tokio::test]
 async fn with_no_relay_kept_a_stop_is_immediate() {
     assert!(outbox::stop_kept().await);
+}
+
+/// The reasons the relay gave for refusing an event.
+async fn refusal_reasons(db: &PgPool, id: &str) -> Vec<String> {
+    sqlx::query(
+        "SELECT reason FROM axa_outbox_attempts WHERE event_id = $1::uuid AND outcome = 'refused'",
+    )
+    .bind(id)
+    .fetch_all(db)
+    .await
+    .unwrap()
+    .iter()
+    .map(|r| {
+        r.try_get::<Option<String>, _>("reason")
+            .unwrap()
+            .unwrap_or_default()
+    })
+    .collect()
+}
+
+/// RS-4, at the outbound gate: a message to the patient that names the suspected condition is refused
+/// while the suspicion says `not-told`, and for another patient's referral; once the record says the
+/// patient was told it passes this check (and meets the read policy, which today refuses every patient
+/// recipient because the relay holds no relationship).
+#[tokio::test]
+#[ignore = "needs Postgres: set DATABASE_URL"]
+async fn a_message_naming_an_untold_suspicion_never_reaches_the_patient() {
+    let db = db().await;
+    let recipient = format!("sink-{}", nanos());
+    let (p, other) = (patient(&db).await, patient(&db).await);
+    let now = chrono::Utc::now();
+    let referral = referrals_store::request(
+        &db,
+        "t",
+        &p,
+        &Referral {
+            recipient: "Colorectal clinic".into(),
+            reason: "bleeding".into(),
+            question: "please assess".into(),
+            priority: Priority::Urgent,
+            external_ids: vec![],
+            replaces: None,
+        },
+        now,
+    )
+    .await
+    .unwrap();
+    let mut s = Suspicion {
+        condition: "Suspected lower gastrointestinal cancer".into(),
+        code: None,
+        point_of_suspicion: "2026-11-09T09:30:00Z".into(),
+        source: Raised::Clinician,
+        by: "Dr A".into(),
+        grounds: Grounds {
+            kind: GroundsKind::Criterion,
+            detail: "NG12".into(),
+            result_id: None,
+        },
+        instruction: None,
+        patient_told: PatientTold::NotTold,
+        pathway: "suspected-cancer-wales".into(),
+        pathway_version: 1,
+        band: None,
+        factors: vec![],
+        agreed: None,
+    };
+    suspicions_store::raise(&db, &p, &referral.id, "t", &s, now)
+        .await
+        .unwrap();
+    let letter =
+        serde_json::json!({"letter": "You have been referred because cancer is suspected."});
+    let send = |patient: String| {
+        let db = db.clone();
+        let recipient = recipient.clone();
+        let letter = letter.clone();
+        let referral = referral.id.clone();
+        async move {
+            enqueue(
+                &db,
+                NewEvent {
+                    kind: "referral-letter",
+                    recipient: &recipient,
+                    roles: &[Role::Patient],
+                    purpose: Purpose::PatientAccess,
+                    resource: Resource::Referral,
+                    patient_id: Some(&patient),
+                    payload: &letter,
+                    names_suspicion_of: Some(&referral),
+                },
+            )
+            .await
+        }
+    };
+    let untold = send(p.clone()).await;
+    let elsewhere = send(other.clone()).await;
+    let (all, calls) = sinks(&recipient, false);
+    let relay = Relay::start(all).await;
+    for id in [&untold, &elsewhere] {
+        assert_eq!(wait_for(&db, id, "refused", 1).await, 1, "{id}");
+    }
+    settle().await;
+    relay.stop().await;
+    assert_eq!(refusal_reasons(&db, &untold).await, ["suspicion-not-told"]);
+    assert_eq!(
+        refusal_reasons(&db, &elsewhere).await,
+        ["suspicion-not-told"]
+    );
+
+    // The gate reads the record when the event is sent: once it says the patient was told, the
+    // suspicion no longer stops the message.
+    s.patient_told = PatientTold::Told;
+    suspicions_store::amend(
+        &db,
+        &p,
+        &referral.id,
+        "t",
+        1,
+        Some("discussed in clinic"),
+        &s,
+        now,
+    )
+    .await
+    .unwrap();
+    let told = send(p.clone()).await;
+    let (all, more) = sinks(&recipient, false);
+    let relay = Relay::start(all).await;
+    assert_eq!(wait_for(&db, &told, "refused", 1).await, 1);
+    settle().await;
+    relay.stop().await;
+    assert_eq!(
+        calls.load(Ordering::SeqCst) + more.load(Ordering::SeqCst),
+        0
+    );
+    let told_reasons = refusal_reasons(&db, &told).await;
+    assert_eq!(told_reasons.len(), 1);
+    assert_ne!(
+        told_reasons[0], "suspicion-not-told",
+        "told: it passes the suspicion check"
+    );
 }

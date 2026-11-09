@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-09 - Messages do not name an untold suspicion (RS-4, H-054)
+
+- **Clinical risk:** **yes (H-054, updated).** A patient must not learn of a suspected condition from a letter or message before anyone has told them.
+- **Built:** an outbox event (`outbox::NewEvent`) gains `names_suspicion_of`, the referral whose suspected condition its payload names. It is stored in the payload's route, so the outbox fingerprint covers it. `outbox::decide`, the gate every outbound event passes, now refuses such an event to a patient or proxy as `suspicion-not-told` unless that referral's current suspicion says `told`. It is also refused for a referral that is not the patient's. The record is read when the event is sent, not when it was queued. `suspicions_store::told` answers the question.
+- **Checked:** fmt, clippy, every database-free test, the doc build, and `tests/outbox_store.rs` (13). Its new test covers three cases: a letter naming an untold suspicion is refused with `suspicion-not-told`, and so is one naming another patient's referral; after the suspicion is amended to `told`, the next letter passes this check. That letter is then refused by the read policy, which refuses every patient recipient today because the relay holds no relationship. No sink is called. On a fresh database every database test passed (175) except the six FHIR validator tests, which need Java.
+- **Not done / not verified:** the check relies on the sender setting `names_suspicion_of`, and nothing scans a payload for a condition named without it. No letter, portal or text sender exists, and the outbox cannot deliver to a patient at all yet. PA-13's opt-outs, quiet hours and channel rules are not built. No clinician reviewed what counts as naming the condition.
+
 ## 2026-11-09 - A suspicion ends only by an outcome (RS-3, H-054)
 
 - **Clinical risk:** **yes (H-054, updated).** A referral that is declined, completed, cancelled or redirected no longer drops a suspicion silently. It stays on the referrer's worklist until someone records what became of the suspicion.
