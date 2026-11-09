@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-09 - UI dependencies updated
+
+- **Clinical risk:** **no.** No screen, rule or record changed. The runtime changes are patch releases of SvelteKit (3.1.1), adapter-node (6.0.1) and node-redis (6.3.1); the rest are tools and test libraries.
+- **Built:** every UI dependency to its latest, as Dependabot's PR #7 proposed and more: `@lilydesignsystem/svelte-headless` 0.8.0 (0.7.0 renamed `tag-input`, which the UI does not use: it imports nothing from the package), `svelte-picker-bar` 0.5.3, `themes` 0.6.2, `redis` 6.3.1 (still pinned exactly), `@playwright/test` 1.65.0, `vitest` and `@vitest/coverage-v8` 5.1.0, `jsdom` 31.0.0, `eslint` 10.14.0, `eslint-plugin-svelte` 3.24.1, `globals` 17.14.0, `svelte-check` 4.7.8, `vite` 8.3.6, `@types/node` 26.6.6.
+- **Checked:** lint, `check` (0 errors, 0 warnings), `check:tests`, vitest (318) and Playwright (103), with Playwright's Chromium reinstalled for 1.65.
+- **Not done / not verified:** TypeScript stays at 6.0.3, because SvelteKit 3.1 still needs `ts.readConfigFile`, which TypeScript 7 lacks; I did not retry 7.0.2. No screen was compared by eye before and after. The node-redis session store's live test against a real Redis was not run.
+
 ## 2026-11-09 - `compose.yaml` trusts the UI container's `X-Forwarded-For` (OS-2, H-049)
 
 - **Clinical risk:** **yes, treated as clinical (H-049).** Nothing a clinician sees changes. In the compose stack, the address the API audits, and counts toward the lockout when it is on, becomes each browser's as the UI sees it rather than the UI container's. H-049's residual is reworded; its status is unchanged.
