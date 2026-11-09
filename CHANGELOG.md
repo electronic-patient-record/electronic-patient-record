@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-09 - Suspicion pathways as configurable data (RS-6, H-053)
+
+- **Clinical risk:** **yes (new hazard H-053: a wrong target date or priority).** Nothing shows a pathway yet, but these figures will set due days and priorities. Every built-in pathway is a draft. H-053 is new and open.
+- **Built:** the maintainer asked that cancer's suspicion, target dates and appointment priority generalise to configurable conditions. `src/suspicion_pathways.toml` holds seven pathways: suspected cancer in Wales (from the point of suspicion: 28 and 62 days) and in England (from referral, very urgent or urgent bands), type 1 diabetes in a child (same day, stat), heart failure (NT-proBNP bands: 14 or 42 days, the grounds must be a result), Parkinson's (an instruction, no interval and why), dementia (the person's agreement recorded) and sleep apnoea (factors such as driving raise it to urgent). `src/pathways.rs` reads and checks the catalogue and `plan` gives the priority and each target's due day and whether it is overdue. The design is in `spec/referral-suspicion/index.md`.
+- **Checked:** fmt, clippy, the doc build; `pathways::tests` has 7 tests (the catalogue parses and every pathway is a draft; the Wales dates; a same-day target overdue only the next day; bands; factors; agreement; a bad catalogue refused).
+- **Not done / not verified:** the catalogue is not attached to a stored suspicion (RS-1) or shown on any screen or route. Outcomes do not stop a target (RS-3). Due days are UTC days, not local days. Clock pauses are not modelled. The figures came from search summaries, not the NICE or Welsh Government pages. No clinician has approved any pathway.
+
 ## 2026-11-09 - Assessment forms as versioned standards (WL-3, H-052)
 
 - **Clinical risk:** **yes (new hazard H-052: an assessment read under the wrong form, or a draft taken as approved).** This is the first assessment data. Every completed assessment keeps the form version it was made under and is shown with that version's questions. A form nobody approved says so. The one form is a project-written example, not a clinical tool. H-052 is new and open.

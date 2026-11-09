@@ -3,7 +3,8 @@
 **Requirement (2026-11-09, the maintainer).** A Patient Administration System (PAS) must track **suspicion** during a
 referral: what condition the referrer suspects, from when, on what grounds, and what became of it. The EPR records the
 clinical suspicion; the PAS carries it on the referral and the waiting list and runs any clock it starts. A design and a
-requirement on the PAS boundary ([scope](../02-scope.md)); nothing here is built (tasks RS-1 to RS-5).
+requirement on the PAS boundary ([scope](../02-scope.md)). Built: the pathway catalogue below (RS-6); the rest is tasks
+RS-1 to RS-5.
 
 ## Why suspicion, not diagnosis
 
@@ -66,6 +67,40 @@ What the examples add to the cancer rules:
 - **A same-day route is not a waiting list** (diabetes in a child): the PAS shows an open same-day suspicion as overdue
   by the end of that day.
 
+## Pathways as configuration (RS-6)
+
+**Requirement (2026-11-09, the maintainer).** Generalise what cancer needs (the suspicion, the target dates, the
+appointment priority) to configurable conditions, such as sleep apnoea, diabetes and dementia.
+
+Cancer is one **pathway** among several. A pathway version is data, `src/suspicion_pathways.toml` in the service, read
+into the build (`src/pathways.rs`). A stored suspicion will name the pathway and version it was made under (RS-1), so a
+new version never changes the dates of an old suspicion. Each pathway version has:
+
+| Field | Meaning | Example |
+|---|---|---|
+| `id`, `version`, `title` | Versions run 1, 2, 3 and none is removed | `suspected-cancer-wales` v1 |
+| `sources` | Keys in this page's source list | `WNOP`, `GOVWNEW` |
+| `approved_by`, `approved_on` | Both, or neither; neither is a **draft**, shown as one | empty: every built-in pathway is a draft |
+| `clock_from` | `point-of-suspicion` or `referral-sent` | Wales counts from suspicion; England's 28 days from referral |
+| `priority` and `target`s | A referral priority (`routine`, `urgent`, `asap`, `stat`) and targets in days from the clock start (0 is the same day, at most 365) | diagnosis 28 days, first treatment 62 |
+| `band`s, instead | The writer must choose one; each has its own priority and targets, and may need the grounds to be a result | heart failure: NT-proBNP above 2,000 ng/L, 14 days; 400 to 2,000, 42 days |
+| `factor`s | Circumstances that raise the priority to at least their own | sleep apnoea: drives for a living, urgent |
+| `needs_agreement` | The person's agreement must be recorded, yes or no; "declined" is a state | dementia |
+| `instruction` | What the receiving team must see | Parkinson's: refer untreated |
+| `no_target_reason` | Given exactly when there is no target anywhere, so a missing date is never read as "no hurry" | Parkinson's: "refer quickly", no interval |
+
+For one suspicion, the plan is the pathway's (or band's) priority raised by every factor that applies, and each
+target's **due day**: the clock start's UTC day plus the target's days. A target is **overdue** once that day has
+passed, so a same-day target is overdue from the next day. These are the record's view of the dates, for the screen and
+the referrer's list; the PAS owns the reported clock, its pauses and its stops (PA-15).
+
+The built-in pathways are the seven conditions on this page, with the figures from the table above; they are examples
+for development, and a deployment replaces the file with its own approved catalogue.
+
+**Not done (RS-6):** the plan is not yet attached to a stored suspicion (RS-1) or shown anywhere; outcomes do not stop a
+target (RS-3); due days are UTC days, not the deployment's local days; clock pauses (a patient's choice to wait) are not
+modelled; no clinician has approved any pathway.
+
 ## Who owns what
 
 | Part | EPR | PAS |
@@ -88,7 +123,7 @@ What the examples add to the cancer rules:
 
 ## Not done, not verified
 
-Nothing is built. The NICE intervals were read through search summaries, not the NICE pages; each guideline has been
+Only the pathway catalogue (RS-6) is built. The NICE intervals were read through search summaries, not the NICE pages; each guideline has been
 amended since publication. The Welsh target's current figure was not checked against the latest Welsh Government
 statistics. The PAS in `~/git/patient-administration-system` was not read for whether it tracks suspicion. No clinician
 has read this page.

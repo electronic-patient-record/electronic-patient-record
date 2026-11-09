@@ -1,0 +1,180 @@
+# Suspicion pathways (RS-6, `spec/referral-suspicion/index.md`): per suspected condition, when the clock
+# starts, the target dates, the priority, and what else the pathway needs (a band chosen from a result, the
+# person's agreement, circumstances that raise the priority).
+#
+# EVERY PATHWAY HERE IS A DRAFT. The figures were read on 2026-11-09 through search summaries of the
+# sources named, not the guideline pages; no clinician has approved any of them (approved_by and
+# approved_on are empty), and the service shows each as a draft. A deployment replaces this file with its
+# own approved catalogue.
+#
+# Rules the service checks when it reads this file (`src/pathways.rs`):
+# - versions of one pathway run 1, 2, 3 ... and none is removed, because a stored suspicion names its
+#   pathway version;
+# - approved_by and approved_on are both given (a YYYY-MM-DD day) or both empty;
+# - a pathway either has bands (the writer must choose one) or its own priority and targets, not both;
+# - a target is a whole number of days from the clock start, 0 (the same day) to 365;
+# - a pathway with no target anywhere says why in no_target_reason; one with targets leaves it empty;
+# - clock_from is point-of-suspicion or referral-sent;
+# - priorities are a referral's: routine, urgent, asap, stat.
+
+[[pathway]]
+id = "suspected-cancer-wales"
+version = 1
+title = "Suspected cancer (Wales, Single Cancer Pathway)"
+sources = ["WNOP", "GOVWNEW", "WCWT"]
+approved_by = ""
+approved_on = ""
+clock_from = "point-of-suspicion"
+priority = "urgent"
+no_target_reason = ""
+
+[[pathway.target]]
+id = "diagnosis"
+text = "Diagnosed and staged (national optimal pathway)"
+days = 28
+
+[[pathway.target]]
+id = "first-treatment"
+text = "First definitive treatment started"
+days = 62
+
+[[pathway]]
+id = "suspected-cancer-england"
+version = 1
+title = "Suspected cancer (England, NICE NG12 and the Faster Diagnosis Standard)"
+sources = ["NG12"]
+approved_by = ""
+approved_on = ""
+clock_from = "referral-sent"
+no_target_reason = ""
+
+[[pathway.band]]
+id = "very-urgent"
+text = "Very urgent referral"
+priority = "asap"
+needs_result = false
+
+[[pathway.band.target]]
+id = "seen"
+text = "Seen"
+days = 2
+
+[[pathway.band.target]]
+id = "diagnosed-or-ruled-out"
+text = "Cancer diagnosed or ruled out"
+days = 28
+
+[[pathway.band]]
+id = "urgent"
+text = "Urgent suspected cancer referral"
+priority = "urgent"
+needs_result = false
+
+[[pathway.band.target]]
+id = "diagnosed-or-ruled-out"
+text = "Cancer diagnosed or ruled out"
+days = 28
+
+[[pathway]]
+id = "type-1-diabetes-child"
+version = 1
+title = "Suspected type 1 diabetes in a child or young person"
+sources = ["NG18"]
+approved_by = ""
+approved_on = ""
+clock_from = "point-of-suspicion"
+priority = "stat"
+instruction = "Same day to a multidisciplinary paediatric diabetes team; suspected DKA goes straight to hospital"
+no_target_reason = ""
+
+[[pathway.target]]
+id = "seen"
+text = "Seen by the paediatric diabetes team"
+days = 0
+
+[[pathway]]
+id = "heart-failure"
+version = 1
+title = "Suspected heart failure"
+sources = ["NG106"]
+approved_by = ""
+approved_on = ""
+clock_from = "point-of-suspicion"
+no_target_reason = ""
+
+[[pathway.band]]
+id = "nt-probnp-above-2000"
+text = "NT-proBNP above 2,000 ng/L"
+priority = "urgent"
+needs_result = true
+
+[[pathway.band.target]]
+id = "specialist-assessment"
+text = "Specialist assessment and echocardiography"
+days = 14
+
+[[pathway.band]]
+id = "nt-probnp-400-to-2000"
+text = "NT-proBNP 400 to 2,000 ng/L"
+priority = "routine"
+needs_result = true
+
+[[pathway.band.target]]
+id = "specialist-assessment"
+text = "Specialist assessment and echocardiography"
+days = 42
+
+[[pathway]]
+id = "parkinsons"
+version = 1
+title = "Suspected Parkinson's disease"
+sources = ["NG71"]
+approved_by = ""
+approved_on = ""
+clock_from = "point-of-suspicion"
+priority = "urgent"
+instruction = "Refer quickly and untreated to a specialist in its differential diagnosis"
+no_target_reason = "The guideline says refer quickly and names no interval"
+
+[[pathway]]
+id = "dementia"
+version = 1
+title = "Suspected dementia, including Alzheimer's disease"
+sources = ["NG97"]
+approved_by = ""
+approved_on = ""
+clock_from = "point-of-suspicion"
+priority = "routine"
+needs_agreement = true
+no_target_reason = "The guideline names no interval for referral to a memory service"
+
+[[pathway]]
+id = "obstructive-sleep-apnoea"
+version = 1
+title = "Suspected obstructive sleep apnoea"
+sources = ["NG202"]
+approved_by = ""
+approved_on = ""
+clock_from = "point-of-suspicion"
+priority = "routine"
+no_target_reason = "The guideline names no interval; it asks for faster referral in the circumstances listed"
+
+[[pathway.factor]]
+id = "vocational-driver"
+text = "Drives for a living"
+priority = "urgent"
+
+[[pathway.factor]]
+id = "vigilance-critical-work"
+text = "Work where sleepiness is a danger"
+priority = "urgent"
+
+[[pathway.factor]]
+id = "unstable-cardiovascular"
+text = "Unstable cardiovascular disease"
+priority = "urgent"
+
+[[pathway.factor]]
+id = "pregnancy"
+text = "Pregnant"
+priority = "urgent"
