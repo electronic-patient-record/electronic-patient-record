@@ -1,6 +1,7 @@
 // The BFF proxy handler, with its dependencies passed in so it can be unit-tested without a server.
 // The route file `routes/api/proxy/[...path]/+server.ts` wires the real ones.
 import { error, json, type RequestHandler } from "@sveltejs/kit";
+import { isIP } from "node:net";
 import { AuthUnavailableError, type Auth } from "./auth.js";
 import {
   BACKGROUND_HEADER,
@@ -26,9 +27,25 @@ export interface ProxyDeps {
   timeoutMs?: number;
 }
 
+/**
+ * The browser's address to send the API as `X-Forwarded-For`, or null. Only an IPv4 or IPv6 address
+ * passes (an IPv6 zone is dropped), so nothing else can reach the header. An address SvelteKit cannot
+ * give is null, never a guess.
+ */
+export function clientAddress(getClientAddress: () => string): string | null {
+  let address: string;
+  try {
+    address = getClientAddress();
+  } catch {
+    return null;
+  }
+  const bare = address.trim().split("%")[0] ?? "";
+  return isIP(bare) ? bare : null;
+}
+
 export function createProxyHandler(deps: ProxyDeps): RequestHandler {
   const fetchFn = deps.fetchFn ?? fetch;
-  return async ({ params, url, request, cookies }) => {
+  return async ({ params, url, request, cookies, getClientAddress }) => {
     const target = proxyTarget(deps.apiUrl, params.path ?? "", url.search);
     if (!target) error(404, "not found");
 
@@ -43,6 +60,10 @@ export function createProxyHandler(deps: ProxyDeps): RequestHandler {
     // A create sent with a key is run once by the API (OF-1).
     const key = idempotencyKeyHeader(request.headers.get("idempotency-key"));
     if (key) headers["idempotency-key"] = key;
+    // One entry, the browser's address: what the browser sent as X-Forwarded-For is never passed on, so
+    // it cannot choose the address the API records and counts (OS-2, H-049).
+    const address = clientAddress(getClientAddress);
+    if (address) headers["x-forwarded-for"] = address;
     const auth = deps.getAuth();
     if (auth) {
       if (

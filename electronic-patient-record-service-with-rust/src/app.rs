@@ -272,7 +272,7 @@ impl App {
             tracing::warn!(
                 after = after.get(),
                 window_seconds = crate::lockout::WINDOW_SECS,
-                "lockout by client address is ON: behind a proxy that does not forward the address, every user is one client"
+                "lockout by client address is ON: behind a proxy not listed in TRUSTED_PROXIES, every user is one client"
             );
         }
         // Expired idempotency keys hold answers that can name a patient: remove them (OF-1).

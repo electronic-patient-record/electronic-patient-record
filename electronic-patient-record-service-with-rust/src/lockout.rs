@@ -6,8 +6,9 @@
 //! token is never slowed. The first refusal of an address in a window is an audit row naming the
 //! address; every refusal is counted in `epr_lockouts_total`.
 //!
-//! It is off by default because the UI's server does not forward the browser's address: behind it every
-//! user is one address, and a few expired tokens would lock out every clinician at once (H-049).
+//! It is off by default because, unless `TRUSTED_PROXIES` lists the UI's server (which sends the browser's
+//! address as `X-Forwarded-For`), every user behind it is one address, and a few expired tokens would lock
+//! out every clinician at once (H-049).
 
 use crate::api_error::ApiError;
 use crate::audit::{self, Action, Event};

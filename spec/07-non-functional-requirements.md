@@ -36,9 +36,11 @@ Targets, not measurements. Nothing here has been measured yet. Where the field s
   100,000 full is let through uncounted and counted in `epr_rate_limit_overflowed_total`. A value outside 1 to
   1,000,000 stops the service starting. The first refusal of an address in a window is an audit row (`Execute`,
   outcome 4, `denied: lockout`, the address under the row's origin); every refusal is counted in
-  `epr_lockouts_total`. It is off by default because the UI's server does not forward the browser's address, so
-  behind it every user is one address, and a few expired tokens would lock out every clinician at once (H-049).
-  Turn it on only where the address is a person's, or behind a proxy listed in `TRUSTED_PROXIES` that sets it.
+  `epr_lockouts_total`. It is off by default because, unless `TRUSTED_PROXIES` lists the UI's server, every user
+  behind it is one address, and a few expired tokens would lock out every clinician at once (H-049). Since
+  2026-11-09 the UI's server sends the browser's address as the one `X-Forwarded-For` entry and never passes on one
+  the browser sent. Turn the lockout on only where the address is a person's: `TRUSTED_PROXIES` lists the UI's
+  server, and nothing a browser can reach the service from.
   **Not built:** a limit on all requests keyed by client address (the service sits behind the UI's server, so the
   address is one caller for everybody); a sign-in lockout (sign-in is the identity provider's, not this service's); a store
   shared between replicas (each replica counts alone, so N replicas allow N times the limit); per-route limits other

@@ -29,6 +29,13 @@ cross-subproject contract.
   token (letters, digits, dots, hyphens) and never touches the path. `X-Forwarded-Proto` is believed only when
   `EPR_TRUST_FORWARDED_PROTO` is `1` or `true`: **a deployment behind a TLS-terminating proxy must set it**, or cookies are
   not `__Host-` prefixed `Secure` and HSTS is not sent.
+  **Client address (OS-2, H-049).** The proxy sends the API `X-Forwarded-For` with one entry, the browser's address as
+  SvelteKit's `getClientAddress()` gives it (the socket's, or, when adapter-node's `ADDRESS_HEADER` and `XFF_DEPTH` are set
+  behind a proxy in front of the UI, that proxy's), and only when it is an IPv4 or IPv6 address. Whatever
+  `X-Forwarded-For` the browser sent is never passed on, so the browser cannot choose the address the API sees. The API
+  believes it only from addresses in its `TRUSTED_PROXIES`, which must then list the UI server's address and nothing a
+  browser can reach the API from. The address is personal data: the API records it in `audit_events.network_address`
+  and may count it toward a lockout.
 - **Pages**: home; `/patients` searches (family-name prefix, birth date, NHS number; an empty search is never sent) and lists up to 50
   matches; `/patients/new` registers, and on a 409 shows each possible duplicate beside the entered record with the matcher's score and
   reasons, registering anyway only with a typed reason (when the 409 says `candidates_cut`, the page adds that only the closest 200 were compared and to search first); `/patients/[id]` shows and edits a record, sending the version it was read at

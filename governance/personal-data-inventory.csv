@@ -56,7 +56,7 @@ audit_events,patient_ref,identifier,Patient the action was about,audit
 audit_events,resource_ref,none,Resource the action was about,audit
 audit_events,purpose_of_use,none,Purpose of use declared,audit
 audit_events,break_glass,none,Whether emergency access applied,audit
-audit_events,network_address,staff-trace,Address the request came from,audit
+audit_events,network_address,staff-trace,Address the request came from (the browser's when TRUSTED_PROXIES lists the UI's server; else the nearest caller's),audit
 audit_events,detail,free-text,Structured detail of the audit row; it holds no values by design but is classified cautiously,audit
 audit_events,prev_digest,none,Hash chain,audit
 audit_events,digest,none,Hash chain,audit
@@ -307,7 +307,7 @@ audit_events_all,patient_ref,identifier,Patient the action was about,audit
 audit_events_all,resource_ref,none,Resource the action was about,audit
 audit_events_all,purpose_of_use,none,Purpose of use declared,audit
 audit_events_all,break_glass,none,Whether emergency access applied,audit
-audit_events_all,network_address,staff-trace,Address the request came from,audit
+audit_events_all,network_address,staff-trace,Address the request came from (the browser's when TRUSTED_PROXIES lists the UI's server; else the nearest caller's),audit
 audit_events_all,detail,free-text,Structured detail of the audit row; it holds no values by design but is classified cautiously,audit
 audit_events_all,prev_digest,none,Hash chain,audit
 audit_events_all,digest,none,Hash chain,audit

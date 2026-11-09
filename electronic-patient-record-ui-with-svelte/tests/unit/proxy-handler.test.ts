@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { Auth } from "../../src/lib/auth";
 import { AuthUnavailableError } from "../../src/lib/auth";
-import { createProxyHandler } from "../../src/lib/proxy-handler";
+import { clientAddress, createProxyHandler } from "../../src/lib/proxy-handler";
 
 const PUBLIC = "http://127.0.0.1:3000";
 
@@ -10,6 +10,7 @@ function setup(opts: {
   fetchFn?: typeof fetch;
   loginOff?: boolean;
   timeoutMs?: number;
+  address?: () => string;
 }) {
   const seen: { target: string; headers: Record<string, string> }[] = [];
   const deleted: string[] = [];
@@ -50,6 +51,7 @@ function setup(opts: {
         get: () => cookie,
         delete: (name: string) => deleted.push(name),
       },
+      getClientAddress: opts.address,
     } as unknown as Parameters<typeof handler>[0]);
   return { call, seen, deleted };
 }
@@ -197,5 +199,51 @@ describe("proxy handler", () => {
     const res = await t.call("api/patients");
     expect(res.status).toBe(200);
     expect(t.seen[0].headers.authorization).toBeUndefined();
+  });
+});
+
+describe("the browser's address (OS-2, H-049)", () => {
+  it("is sent as the one X-Forwarded-For entry, and the browser's own header is not passed on", async () => {
+    const t = setup({ address: () => "203.0.113.9" });
+    await t.call("api/patients", {
+      headers: { "x-forwarded-for": "10.0.0.1, 192.0.2.1" },
+    });
+    expect(t.seen[0].headers["x-forwarded-for"]).toBe("203.0.113.9");
+  });
+
+  it("is sent with login off too, and for IPv6", async () => {
+    const t = setup({ loginOff: true, address: () => "2001:db8::7" });
+    await t.call("api/patients", {}, undefined);
+    expect(t.seen[0].headers["x-forwarded-for"]).toBe("2001:db8::7");
+  });
+
+  it("is not sent when SvelteKit cannot give one, and nothing the browser sent stands in", async () => {
+    const t = setup({
+      address: () => {
+        throw new Error("no address");
+      },
+    });
+    await t.call("api/patients", {
+      headers: { "x-forwarded-for": "10.0.0.1" },
+    });
+    expect(t.seen[0].headers).not.toHaveProperty("x-forwarded-for");
+  });
+
+  it("passes only an IPv4 or IPv6 address", () => {
+    expect(clientAddress(() => "198.51.100.4")).toBe("198.51.100.4");
+    expect(clientAddress(() => " ::ffff:127.0.0.1 ")).toBe("::ffff:127.0.0.1");
+    expect(clientAddress(() => "fe80::1%eth0")).toBe("fe80::1");
+    for (const bad of [
+      "",
+      "unknown",
+      "1.2.3.4, 5.6.7.8",
+      "1.2.3.4\r\nx-evil: 1",
+      "localhost",
+    ]) {
+      expect(
+        clientAddress(() => bad),
+        bad,
+      ).toBeNull();
+    }
   });
 });
