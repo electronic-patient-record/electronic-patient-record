@@ -70,8 +70,8 @@ no network, database or compilation; counts are source lines, not test runs):
 | SW | 4 | 3 |
 | TT | 1 | 6 |
 | PX | 6 | 0 |
-| WL | 1 | 11 |
+| WL | 2 | 10 |
 | RS | 0 | 5 |
-| **Total** | **77** | **339** |
+| **Total** | **78** | **338** |
 
 <!-- generated:end -->

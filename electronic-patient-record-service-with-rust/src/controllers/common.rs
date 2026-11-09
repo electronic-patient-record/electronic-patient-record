@@ -68,7 +68,19 @@ pub(super) async fn consent_verdicts(
         now: time_now(),
     };
     for (id, records) in &active {
-        let verdict = consent::decide(records.iter().map(|c| (c.id.as_str(), &c.consent)), &ctx);
+        let mut verdict =
+            consent::decide(records.iter().map(|c| (c.id.as_str(), &c.consent)), &ctx);
+        // Which merged-in records the deciding consents belong to, so a refusal names its origin.
+        let mut from_merged: Vec<String> = records
+            .iter()
+            .filter(|c| {
+                verdict.decided_by.contains(&c.id) && !c.patient_id.eq_ignore_ascii_case(id)
+            })
+            .map(|c| c.patient_id.to_lowercase())
+            .collect();
+        from_merged.sort();
+        from_merged.dedup();
+        verdict.from_merged = from_merged;
         verdicts.insert(id.clone(), verdict);
     }
     Ok(verdicts)
@@ -122,6 +134,7 @@ pub(super) async fn authorize_scoped(
     let mut verdict = consent::Verdict {
         consent: Consent::NotRecorded,
         decided_by: Vec::new(),
+        from_merged: Vec::new(),
     };
     // The patient's consent is looked up for every read of one patient's identity or clinical data.
     if let (true, true, Some(id)) = (
@@ -213,10 +226,14 @@ pub(super) async fn authorize_scoped(
     event.patient_ref = patient_id.map(|id| format!("Patient/{id}"));
     event.resource_ref = Some(format!("{}/{}", resource.name(), action.name()));
     event.purpose_of_use = Some(purpose.code().to_string());
-    // Consent ids only: what the consent says is not copied into the audit row.
-    event.detail = Some(
-        serde_json::json!({ "denied": format!("{decision:?}"), "consent": verdict.decided_by }),
-    );
+    // Consent ids only: what the consent says is not copied into the audit row. A refusal that came
+    // from a record merged into this one names that record (WL-2).
+    let mut detail =
+        serde_json::json!({ "denied": format!("{decision:?}"), "consent": verdict.decided_by });
+    if !verdict.from_merged.is_empty() {
+        detail["consent_from_merged"] = serde_json::json!(verdict.from_merged);
+    }
+    event.detail = Some(detail);
     if let Err(e) = audit::append(db, audit::chain(), &event).await {
         crate::metrics::UNAUDITED_REFUSALS.inc();
         tracing::error!(error = %e, "a refusal could not be audited");

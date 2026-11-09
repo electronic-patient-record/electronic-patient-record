@@ -258,6 +258,117 @@ async fn roles_consent_and_break_glass_through_the_router() {
             )
             .await;
         assert!(count.json::<Value>()["unreviewed"].as_i64() >= Some(1));
+
+        // WL-2: a patient's choice follows the person. A refusal recorded on one record stands for the
+        // record it is merged into, and the refusal's audit row says which record it came from.
+        let (h, v) = bearer(&admin);
+        let family = tag("merged");
+        let born = dob(777);
+        let person = json!({ "patient": patient(&family, &born) });
+        let survivor = server
+            .post("/api/patients")
+            .add_header(h.clone(), v.clone())
+            .json(&person)
+            .await;
+        assert_eq!(
+            survivor.status_code(),
+            StatusCode::CREATED,
+            "{}",
+            survivor.text()
+        );
+        let keep = survivor.json::<Value>()["id"].as_str().unwrap().to_string();
+        let mut again = person.clone();
+        again["override_reason"] = json!("registered twice at two sites");
+        let duplicate = server
+            .post("/api/patients")
+            .add_header(h.clone(), v.clone())
+            .json(&again)
+            .await;
+        assert_eq!(
+            duplicate.status_code(),
+            StatusCode::CREATED,
+            "{}",
+            duplicate.text()
+        );
+        let away = duplicate.json::<Value>()["id"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let care = server
+            .post(&format!("/api/patients/{keep}/relationships"))
+            .add_header(h.clone(), v.clone())
+            .json(&json!({ "relationship": {
+                "subject": "0c4f1e2a-0000-4000-8000-0000000000c1",
+                "kind": "care-team", "status": "active" } }))
+            .await;
+        assert_eq!(care.status_code(), StatusCode::CREATED, "{}", care.text());
+        let objection = server
+            .post(&format!("/api/patients/{away}/consents"))
+            .add_header(h.clone(), v.clone())
+            .json(&json!({ "consent": {
+                "kind": "general", "status": "active",
+                "provisions": [{ "effect": "deny", "purposes": ["treatment"] }]
+            }}))
+            .await;
+        assert_eq!(
+            objection.status_code(),
+            StatusCode::CREATED,
+            "{}",
+            objection.text()
+        );
+        let (ch, cv) = bearer(&clinician);
+        let survivor_allergies = format!("/api/patients/{keep}/allergies");
+        let before = server
+            .get(&survivor_allergies)
+            .add_header(ch.clone(), cv.clone())
+            .add_header(
+                HeaderName::from_static("x-purpose-of-use"),
+                HeaderValue::from_static("treatment"),
+            )
+            .await;
+        assert_eq!(
+            before.status_code(),
+            StatusCode::OK,
+            "before the merge: {}",
+            before.text()
+        );
+        let merged = server
+            .post(&format!("/api/patients/{keep}/merge"))
+            .add_header(h.clone(), v.clone())
+            .json(&json!({ "source": away, "reason": "the same person, registered twice" }))
+            .await;
+        assert!(merged.status_code().is_success(), "{}", merged.text());
+        let after = server
+            .get(&survivor_allergies)
+            .add_header(ch.clone(), cv.clone())
+            .add_header(
+                HeaderName::from_static("x-purpose-of-use"),
+                HeaderValue::from_static("treatment"),
+            )
+            .await;
+        assert_eq!(
+            after.status_code(),
+            StatusCode::FORBIDDEN,
+            "the merged-in refusal stands: {}",
+            after.text()
+        );
+        let (ah3, av3) = bearer(&auditor);
+        let trail = server
+            .get(&format!("/api/audit?patient={keep}"))
+            .add_header(ah3, av3)
+            .await;
+        assert_eq!(trail.status_code(), StatusCode::OK, "{}", trail.text());
+        let rows = trail.json::<Value>();
+        let refusal = rows["events"]
+            .as_array()
+            .expect("events")
+            .iter()
+            .find(|e| e["outcome"] == 4 && e["detail"]["consent_from_merged"].is_array())
+            .unwrap_or_else(|| panic!("a refusal naming the merged-in record: {rows}"));
+        assert_eq!(
+            refusal["detail"]["consent_from_merged"],
+            json!([away.to_lowercase()])
+        );
     })
     .await;
 }

@@ -265,6 +265,11 @@ pub struct Verdict {
     /// Ids of the consent records whose provisions produced a deny or a permit. Empty when
     /// nothing was recorded. Ids only: provisions are not copied into audit rows.
     pub decided_by: Vec<String>,
+    /// The other patient records, merged into this one, whose consents are among `decided_by`
+    /// (WL-2): a refusal made on a record that was later merged away still stands, and the audit
+    /// says where it came from. Empty from [`decide`], which does not know the patients; the
+    /// caller that looked the consents up fills it.
+    pub from_merged: Vec<String>,
 }
 
 /// Whether one provision matches the disclosure. `None` when the provision does not parse.
@@ -349,6 +354,7 @@ pub fn decide<'a>(
     Verdict {
         consent,
         decided_by,
+        from_merged: Vec::new(),
     }
 }
 

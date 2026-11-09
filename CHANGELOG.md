@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-09 - A merged-in refusal names its record in the audit (WL-2, H-006)
+
+- **Clinical risk:** **yes, treated as clinical (H-006).** No change to what a clinician is allowed to see. A refusal on a record that was merged into another already stood for the survivor. Now the refusal's audit row also says which record it came from, so a reviewer can see why a read of the survivor was refused. H-006's controls and evidence gain this clause; its status is unchanged.
+- **Built:** `consent::Verdict` gains `from_merged`, the merged-in records whose consents decided it. `consent_verdicts` fills it, and a refusal's audit detail carries it as `consent_from_merged`. The service spec's merge row says so. WL-2 is ticked.
+- **Checked:** fmt, clippy, and `tests/http_roles.rs` through the router with login on. A survivor is readable for treatment by a clinician with a care relationship; a treatment refusal is recorded on the duplicate; the duplicate is merged in; the same read is then 403, and its audit row names the duplicate. The first run failed because my refusal was for `treatment` while a read with no `X-Purpose-Of-Use` is `operations`. The test now sends `treatment`; this was the test's error, not the service's.
+- **Not done / not verified:** there is no registered-site field, so "a change of site" has nothing to lose: consent is held against the patient. No test shows an unmerge returning the refusal to its own record alone through the router (the store's lookup test covers it). The UI does not show why a read was refused.
+
 ## 2026-11-09 - The PAS must track suspicion along a referral; Wales is a target
 
 - **Clinical risk:** **no change to the product.** Documents only. The five new tasks (RS-1 to RS-5) are clinical, and each will need its hazard row when it is built.
