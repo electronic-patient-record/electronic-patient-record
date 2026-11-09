@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-09 - The Wales FHIR package checked, licence unclear (WL-9, blocked; OQ-WL3)
+
+- **Clinical risk:** none. This is a research note.
+- **Built:** `spec/nhs-wales/index.md` records the newest Wales FHIR package: `fhir.r4.wales` 2.7.0, STU2, FHIR 4.0.1, on UK Core STU2 2.0.2, with 236 resources and its tarball's SHA-256. It lists which profiles are active and which are draft. No licence is stated in the package, in its GitHub repository or on the resources, which say only "2026 NHS Wales". The new open question OQ-WL3 asks whether the package may be fetched to validate against in CI without being copied here, or whether NHS Wales must be asked first. WL-9 stays open and blocked.
+- **Checked:** links, the status block, `llms.txt`. The package was downloaded to a scratch directory to read its manifest and count its resources, then not kept.
+- **Not done / not verified:** no validation against the Wales profiles was run. The guide's "Licensing" page was not reached (404 at the path tried). No one at NHS Wales was asked.
+
 ## 2026-11-09 - Write-back and reconciliation (WL-5, spec only)
 
 - **Clinical risk:** none yet. This is spec only, and immunisations are not built. Once built, a record that fails to arrive is a clinical risk.

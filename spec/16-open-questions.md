@@ -80,5 +80,6 @@
 | OQ-TT1 | A therapy note cannot be withdrawn from an append-only record. Is restriction enough, given section 28 of the Victims and Prisoners Act 2024 and its code? See [trauma treatment](trauma-treatment/index.md). Open: needs a lawyer and survivors. | maintainer, legal, survivors |
 | OQ-WL1 | Is NHS Wales a target deployment? **Decided 2026-11-09 by the maintainer: yes.** Welsh-language strings (WL-8) and the Wales FHIR pack (WL-9) move up, and the Welsh Control Standard and the Welsh language standards for health bodies must be read before a Welsh deployment. See [NHS Wales](nhs-wales/index.md). | maintainer |
 | OQ-WL2 | Under what licence may the All-Wales nursing forms (PURPOSE T, WAASP and the rest) be encoded? Joins OQ-M2 (WL-3). Open. | maintainer |
+| OQ-WL3 | The Wales FHIR guide package (`fhir.r4.wales` 2.7.0) states no licence: its `package.json` has none, its GitHub repository has none, and its resources say only "2026 NHS Wales". May it be fetched from the public registry to validate against in CI, without being copied into this repository, or must NHS Wales (data.standards@wales.nhs.uk) be asked first? Blocks WL-9. Open. | maintainer |
 
 No answers recorded yet, except where a row says decided or proposed.

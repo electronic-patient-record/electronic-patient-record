@@ -124,7 +124,16 @@ Ranked in plan.md §34.2; tasks WL-1 to WL-12.
 8. A device reading counts once a clinician validates it, with its source kept (WICIS) — EM-11. **Written as WL-10** in [device readings](../device-readings/index.md) (2026-11-09); not built.
 9. "Live" is the functions in use, per site (WCCIS) — the generated status. **Written as WL-11** in [production readiness](../../governance/production-readiness.md) (2026-11-09).
 10. Welsh from the start, reviewed by a speaker (WCCIS) — **built as WL-8** (2026-11-09): the UI in Welsh at `cy-001`, machine-written and not reviewed by a speaker.
-11. The Wales FHIR guide as a national pack (WHC/2023/018) — IO-18.
+11. The Wales FHIR guide as a national pack (WHC/2023/018) — IO-18. **Checked for WL-9 on 2026-11-09:** the newest
+    package is `fhir.r4.wales` **2.7.0** (STU2, "a mix of active and draft assets"), FHIR 4.0.1, depending on
+    `fhir.r4.ukcore.stu2` 2.0.2 and `hl7.fhir.uv.xver-r5.r4` 0.1.0; 236 resources (69 StructureDefinitions, 50
+    ValueSets, 26 CodeSystems, 85 NamingSystems, 6 ConceptMaps), published by NHS Wales, tarball SHA-256
+    `e99601a8d33517baee3a65ad958edc4d34f29cddcaaac6db41ee16177a6e85bc` [WALESPKG]. **No licence is stated**: none in its
+    `package.json`, none on its GitHub repository [WALESGH], resources carry only "2026 NHS Wales". The guide's
+    "Licensing" page appears to cover third-party content (SNOMED CT and the like) and was not reached. Active profiles
+    include Patient, Encounter, AllergyIntolerance, Observation and its vital signs, MedicationRequest, AuditEvent and
+    Provenance; Condition, DiagnosticReport and Consent are draft. Nothing is fetched or validated until OQ-WL3 is
+    answered.
 12. Already held, recorded so as not to be asked again: an exit path (DX `$export`), one instance rather than copies per site,
     downtime (CA-7), monitored audit (RA-6), honest progress reports (AGENTS.md rule 3).
 
@@ -177,4 +186,6 @@ All read 2026-11-09.
 - [VALE] https://www.valeofglamorgan.gov.uk/Documents/_Committee%20Reports/Scrutiny-New-2025/Scrutiny-Live-Well/2025/25-05-27/Social-Care-Records-System.pdf
 - [NATION] https://nation.cymru/news/councils-move-to-new-social-care-data-system-hits-technical-problems
 - [WHC23] https://www.gov.wales/sites/default/files/publications/2023-06/introduction-of-hl7-fhir-in-all-nhs-wales-bodies_1.pdf
-- [SIMPLIFIER] https://simplifier.net/guide/fhir-standards-wales-implementation-guide (snippet)
+- [SIMPLIFIER] https://simplifier.net/guide/fhir-standards-wales-implementation-guide (snippet; v2.7.0 page read 2026-11-09)
+- [WALESPKG] https://packages.simplifier.net/fhir.r4.wales (registry read 2026-11-09; 2.7.0 tarball downloaded to a scratch directory, not kept)
+- [WALESGH] https://github.com/NHSWalesFHIR/NHSWales-fhir-profiles-R4 (no licence; last push 2024-07-25)
