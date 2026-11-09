@@ -13,7 +13,8 @@
 //!
 //! It is append-only: the first version is the suspicion as raised; every later version is an amendment
 //! with a reason, because a clock may start from the point of suspicion. An amendment that changes
-//! nothing is refused. How a suspicion ends (confirmed, ruled out, withdrawn) is RS-3, not built here.
+//! nothing is refused. It ends only with an [`Outcome`] (RS-3): confirmed with the diagnosis, ruled out
+//! with who and on what, or withdrawn with a reason; never by the referral closing or a missed appointment.
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -236,6 +237,88 @@ pub fn amendment_refusal(was: &Suspicion, now: &Suspicion, reason: Option<&str>)
     None
 }
 
+/// How a suspicion ends (RS-3). Nothing else ends it: not the referral closing, being cancelled or
+/// redirected, and never a missed test or appointment.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum OutcomeKind {
+    /// The suspected condition is confirmed: the diagnosis is required.
+    Confirmed,
+    /// It is ruled out: who ruled it out, and on what, are required.
+    RuledOut,
+    /// A clinician withdrew it: the reason is required.
+    Withdrawn,
+}
+
+impl OutcomeKind {
+    /// Every kind, in a fixed order.
+    pub const ALL: [OutcomeKind; 3] = [
+        OutcomeKind::Confirmed,
+        OutcomeKind::RuledOut,
+        OutcomeKind::Withdrawn,
+    ];
+
+    /// The stored word.
+    #[must_use]
+    pub fn word(self) -> &'static str {
+        match self {
+            OutcomeKind::Confirmed => "confirmed",
+            OutcomeKind::RuledOut => "ruled-out",
+            OutcomeKind::Withdrawn => "withdrawn",
+        }
+    }
+}
+
+/// The outcome of a suspicion, as sent.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Outcome {
+    /// Which outcome.
+    pub kind: OutcomeKind,
+    /// For `confirmed`: the diagnosis, in words.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub diagnosis: Option<String>,
+    /// For `confirmed`: a code for the diagnosis, if given (not looked up).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub code: Option<Code>,
+    /// For `ruled-out`: who ruled it out.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub by: Option<String>,
+    /// What it rests on (a test, an examination, a specialist opinion), or why it was withdrawn.
+    pub detail: String,
+}
+
+/// Every problem with an outcome, as words naming the field and never quoting it.
+#[must_use]
+pub fn outcome_problems(o: &Outcome) -> Vec<String> {
+    let mut out = Vec::new();
+    text(&mut out, "outcome detail", &o.detail, LONG);
+    match o.kind {
+        OutcomeKind::Confirmed => match &o.diagnosis {
+            Some(d) => text(&mut out, "diagnosis", d, SHORT),
+            None => out.push("a confirmed suspicion needs the diagnosis".into()),
+        },
+        OutcomeKind::RuledOut | OutcomeKind::Withdrawn => {
+            if o.diagnosis.is_some() || o.code.is_some() {
+                out.push("only a confirmed suspicion carries a diagnosis".into());
+            }
+        }
+    }
+    match (o.kind, &o.by) {
+        (OutcomeKind::RuledOut, Some(by)) => text(&mut out, "outcome by", by, SHORT),
+        (OutcomeKind::RuledOut, None) => {
+            out.push("a ruled-out suspicion needs who ruled it out".into());
+        }
+        (_, Some(by)) => text(&mut out, "outcome by", by, SHORT),
+        (_, None) => {}
+    }
+    if let Some(c) = &o.code {
+        text(&mut out, "diagnosis code system", &c.system, SHORT);
+        text(&mut out, "diagnosis code", &c.code, SHORT);
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -310,6 +393,51 @@ mod tests {
         s.point_of_suspicion = "2026-11-09T12:04:00Z".into();
         s.grounds.kind = GroundsKind::Result;
         assert!(problems(&s, now()).is_empty(), "within the skew");
+    }
+
+    #[test]
+    fn each_outcome_carries_what_it_needs() {
+        let base = Outcome {
+            kind: OutcomeKind::Confirmed,
+            diagnosis: None,
+            code: None,
+            by: None,
+            detail: "colonoscopy and biopsy".into(),
+        };
+        assert_eq!(
+            outcome_problems(&base),
+            vec!["a confirmed suspicion needs the diagnosis"]
+        );
+        let confirmed = Outcome {
+            diagnosis: Some("Adenocarcinoma of the sigmoid colon".into()),
+            ..base.clone()
+        };
+        assert!(outcome_problems(&confirmed).is_empty());
+        let ruled_out = Outcome {
+            kind: OutcomeKind::RuledOut,
+            ..confirmed.clone()
+        };
+        assert_eq!(
+            outcome_problems(&ruled_out),
+            vec![
+                "only a confirmed suspicion carries a diagnosis",
+                "a ruled-out suspicion needs who ruled it out",
+            ]
+        );
+        let withdrawn = Outcome {
+            kind: OutcomeKind::Withdrawn,
+            detail: " ".into(),
+            ..base
+        };
+        assert_eq!(
+            outcome_problems(&withdrawn),
+            vec!["the outcome detail must not be blank"]
+        );
+        let words: Vec<&str> = OutcomeKind::ALL.iter().map(|k| k.word()).collect();
+        assert_eq!(words, ["confirmed", "ruled-out", "withdrawn"]);
+        for k in OutcomeKind::ALL {
+            assert_eq!(serde_json::to_value(k).unwrap(), k.word());
+        }
     }
 
     #[test]

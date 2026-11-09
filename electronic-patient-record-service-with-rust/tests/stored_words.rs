@@ -6,14 +6,16 @@
 //!   cargo test --test stored_words -- --ignored --test-threads=1
 //! ```
 //!
-//! Covered: referral states, allergy, consent, death assertion, adjustment and result statuses. Not covered: amendment states (a tagged
+//! Covered: referral states, allergy, consent, death assertion, adjustment and result statuses, and suspicion outcome kinds. Not covered: amendment states (a tagged
 //! enum with no list), observation statuses, queue kinds and clearances (private lists), and a
 //! variant left out of its `ALL` array (the compiler cannot see that).
 
 use sqlx::{PgPool, Row};
 use std::collections::BTreeSet;
 
-use electronic_patient_record::{adjustments, allergies, consent, death, referral, results};
+use electronic_patient_record::{
+    adjustments, allergies, consent, death, referral, results, suspicion,
+};
 
 async fn db() -> PgPool {
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
@@ -69,6 +71,16 @@ async fn same(db: &PgPool, table: &str, column: &str, code: Vec<&str>) {
 #[ignore = "needs DATABASE_URL"]
 async fn stored_words_match_the_database_checks() {
     let db = db().await;
+    same(
+        &db,
+        "referral_suspicion_outcomes",
+        "kind",
+        suspicion::OutcomeKind::ALL
+            .iter()
+            .map(|k| k.word())
+            .collect(),
+    )
+    .await;
     same(
         &db,
         "referral_versions",

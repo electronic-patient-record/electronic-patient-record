@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-09 - A suspicion ends only by an outcome (RS-3, H-054)
+
+- **Clinical risk:** **yes (H-054, updated).** A referral that is declined, completed, cancelled or redirected no longer drops a suspicion silently. It stays on the referrer's worklist until someone records what became of the suspicion.
+- **Built:** migration `20261109000033_suspicion_outcomes.sql` adds the append-only `referral_suspicion_outcomes`, one per referral. `suspicion.rs` gains `Outcome`: `confirmed` needs the diagnosis, `ruled-out` needs who ruled it out and on what, `withdrawn` needs a reason, and only `confirmed` carries a diagnosis. `POST /api/patients/{id}/referrals/{referral_id}/suspicion/outcome` records it against the current version, once. After that the suspicion cannot be amended, the history says `open: false` with the outcome, and each target is judged at the outcome (met or missed), not at the time of reading. An ended suspicion is not carried to a replacement. The referrer's worklist gains `open-suspicion` for an ended referral with an open suspicion that was not carried. It cannot be acknowledged. The audit row names the outcome's kind only. `openapi.json`, the specs, the inventory, the schema map and the stored-words census follow.
+- **Checked:** fmt, clippy, the doc build and every database-free test (535). On a fresh database every database test passed (174) except the six FHIR validator tests, which need Java. `suspicion::tests` gains the outcome rules. `tests/http_suspicions.rs` now also covers these cases: a no-show leaves it open; a decline puts the referral on the list as `reply` first; after acknowledging the decline it is listed as `open-suspicion`; the redirected referral whose suspicion was carried is not. An outcome without `by`, from a stale version, then accepted, then a second, are 422, 409, 201 and 422. An amendment after it is 422, the referral leaves the list, and no diagnosis grounds or names reach the audit.
+- **Not done / not verified:** an outcome cannot be corrected or entered in error. The list reaches only the referrer, not the recipient or a team. Nothing tells the PAS (RS-5). There is no screen. No clinician reviewed which states count as ended or who may record an outcome; any treating role with a care relationship may.
+
 ## 2026-11-09 - axa 0.10 and axa-test
 
 - **Clinical risk:** none. This is a dependency update with no change to behaviour. `openapi.json` is unchanged.

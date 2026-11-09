@@ -689,6 +689,10 @@ pub fn routes() -> Routes {
             "/{id}/referrals/{referral_id}/suspicion",
             put(super::suspicions::amend),
         )
+        .add(
+            "/{id}/referrals/{referral_id}/suspicion/outcome",
+            post(super::suspicions::end),
+        )
         .add("/{id}/observations", get(super::observations::list))
         .add("/{id}/observations", post(super::observations::create))
         .add(

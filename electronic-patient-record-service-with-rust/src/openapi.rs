@@ -479,10 +479,39 @@ fn suspicion_schemas() -> Value {
             }
         },
         "SuspicionHistory": {
-            "type": "object", "required": ["current", "versions"],
+            "type": "object", "required": ["current", "versions", "open", "outcome"],
             "properties": {
                 "current": {"oneOf": [{"$ref": "#/components/schemas/StoredSuspicion"}, {"type": "null"}]},
-                "versions": {"type": "array", "items": {"$ref": "#/components/schemas/StoredSuspicion"}}
+                "versions": {"type": "array", "items": {"$ref": "#/components/schemas/StoredSuspicion"}},
+                "open": {"type": "boolean", "description": "A suspicion with no outcome."},
+                "outcome": {"oneOf": [{"$ref": "#/components/schemas/StoredSuspicionOutcome"}, {"type": "null"}],
+                    "description": "How it ended (RS-3). Once ended, each plan's overdue is judged at the outcome, not now."}
+            }
+        },
+        "SuspicionOutcome": {
+            "type": "object", "additionalProperties": false, "required": ["kind", "detail"],
+            "description": "How a suspicion ends. confirmed needs diagnosis; ruled-out needs by; only confirmed carries a diagnosis or code.",
+            "properties": {
+                "kind": {"enum": ["confirmed", "ruled-out", "withdrawn"]},
+                "diagnosis": {"type": "string", "maxLength": 200},
+                "code": {"type": "object", "additionalProperties": false, "required": ["system", "code"], "properties": {
+                    "system": {"type": "string"}, "code": {"type": "string"}, "display": {"type": "string"}}},
+                "by": {"type": "string", "maxLength": 200},
+                "detail": {"type": "string", "maxLength": 500, "description": "What it rests on, or why it was withdrawn."}
+            }
+        },
+        "StoredSuspicionOutcome": {
+            "type": "object", "required": ["suspicion_version", "author", "recorded_at", "outcome"],
+            "properties": {
+                "suspicion_version": {"type": "integer"}, "author": {"type": "string"}, "recorded_at": {"type": "string"},
+                "outcome": {"$ref": "#/components/schemas/SuspicionOutcome"}
+            }
+        },
+        "EndSuspicion": {
+            "type": "object", "additionalProperties": false, "required": ["outcome", "expected_version"],
+            "properties": {
+                "outcome": {"$ref": "#/components/schemas/SuspicionOutcome"},
+                "expected_version": {"type": "integer"}
             }
         },
         "RaiseSuspicion": {
@@ -1143,7 +1172,7 @@ fn referral_queue_schemas() -> Value {
                 "referral_id": {"type": "string"}, "patient_id": {"type": "string"},
                 "version": {"type": "integer", "description": "The version that waits; acknowledge this one."},
                 "state": {"enum": ["requested", "accepted", "declined", "appointment-booked", "no-show", "interim-report", "completed", "information-requested", "deferred", "redirected"]},
-                "why": {"enum": ["reply", "no-response", "no-outcome"], "description": "reply: acknowledge it. no-response and no-outcome are timeouts (PC-3): they cannot be acknowledged and leave when the referral moves."},
+                "why": {"enum": ["reply", "no-response", "no-outcome", "open-suspicion"], "description": "reply: acknowledge it. no-response and no-outcome are timeouts (PC-3): they cannot be acknowledged and leave when the referral moves. open-suspicion: the referral has ended but its suspicion has no outcome (RS-3); it cannot be acknowledged and leaves when an outcome is recorded."},
                 "recorded_at": {"type": "string", "description": "UTC."}
             }
         },
@@ -1499,6 +1528,14 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
         "AmendSuspicion",
         "200",
         "StoredSuspicion",
+        "VersionConflict",
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/referrals/{referral_id}/suspicion/outcome",
+        "EndSuspicion",
+        "201",
+        "SuspicionHistory",
         "VersionConflict",
     ),
     (

@@ -4,7 +4,7 @@
 referral: what condition the referrer suspects, from when, on what grounds, and what became of it. The EPR records the
 clinical suspicion; the PAS carries it on the referral and the waiting list and runs any clock it starts. A design and a
 requirement on the PAS boundary ([scope](../02-scope.md)). Built: the pathway catalogue below (RS-6) and the stored
-suspicion (RS-1 and RS-2, below); the rest is tasks RS-3 to RS-5.
+suspicion (RS-1 to RS-3, below); RS-4 and RS-5 are not built.
 
 ## Why suspicion, not diagnosis
 
@@ -121,6 +121,15 @@ the same transaction its current suspicion becomes the replacement's version 1: 
 unchanged, `carried_from` naming the old referral. A pathway whose clock runs from `referral-sent` counts from the
 first referral in the chain, not the replacement.
 
+**It ends only by an outcome (RS-3).** `POST …/suspicion/outcome {outcome, expected_version}` records `confirmed`
+(with the diagnosis, and a code if given), `ruled-out` (with who ruled it out, and on what) or `withdrawn` (with the
+reason), against the current version, once. After it the suspicion cannot be amended, and each plan's `overdue` is
+judged at the outcome rather than now, so a target reads as met or missed. A missed appointment, a decline, a
+cancellation or a redirect does not end it. A referral that has ended (declined, completed, cancelled, redirected)
+with its suspicion open and not carried to a replacement is on the referrer's worklist as `open-suspicion`, which
+cannot be acknowledged and leaves only when the outcome is recorded. The audit row names the outcome's kind, never
+the diagnosis or its grounds.
+
 **Not done (RS-6):** no screen shows the plan; outcomes do not stop a
 target (RS-3); due days are UTC days, not the deployment's local days; clock pauses (a patient's choice to wait) are not
 modelled; no clinician has approved any pathway.
@@ -147,7 +156,7 @@ modelled; no clinician has approved any pathway.
 
 ## Not done, not verified
 
-Only the pathway catalogue (RS-6) and the stored suspicion (RS-1, RS-2) are built; no screen shows either. The NICE intervals were read through search summaries, not the NICE pages; each guideline has been
+Only the pathway catalogue (RS-6) and the stored suspicion with its outcome (RS-1 to RS-3) are built; no screen shows either. The NICE intervals were read through search summaries, not the NICE pages; each guideline has been
 amended since publication. The Welsh target's current figure was not checked against the latest Welsh Government
 statistics. The PAS in `~/git/patient-administration-system` was not read for whether it tracks suspicion. No clinician
 has read this page.

@@ -404,3 +404,10 @@ referral_suspicion_current,pathway_version,none,The pathway version,record
 referral_suspicion_current,body,health,The suspected condition and its grounds and point of suspicion and what the patient was told and any factors or agreement,record
 referral_suspicion_versions,carried_from,none,The redirected referral the suspicion was carried from,record
 referral_suspicion_current,carried_from,none,The redirected referral the suspicion was carried from,record
+referral_suspicion_outcomes,referral_id,none,The referral whose suspicion ended,record
+referral_suspicion_outcomes,suspicion_version,none,The suspicion version it ended,record
+referral_suspicion_outcomes,patient_id,identifier,Links a record to the patient,record
+referral_suspicion_outcomes,recorded_at,none,When the outcome was recorded,record
+referral_suspicion_outcomes,author,staff-identifier,Who recorded it,record
+referral_suspicion_outcomes,kind,health,Confirmed or ruled out or withdrawn,record
+referral_suspicion_outcomes,body,health,The diagnosis or who ruled it out and on what or why it was withdrawn,record

@@ -271,6 +271,22 @@ async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_r
             },
         )
         .await;
+        refused_then_accepted(
+            db,
+            "POST /api/patients/{id}/referrals/{referral_id}/suspicion/outcome",
+            || async {
+                let r = server
+                    .post(&format!(
+                        "/api/patients/{id}/referrals/{referral_id}/suspicion/outcome"
+                    ))
+                    .json(&json!({ "outcome": { "kind": "ruled-out", "by": "Dr B",
+                                                "detail": "normal colonoscopy" },
+                                   "expected_version": 2 }))
+                    .await;
+                (r.status_code(), r.text())
+            },
+        )
+        .await;
 
         // A decline puts a second referral on the worklist; acknowledging it is a write that must be audited.
         let second = server

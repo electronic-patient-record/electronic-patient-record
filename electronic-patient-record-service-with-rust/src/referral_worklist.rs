@@ -11,6 +11,11 @@
 //! [`Why::NoOutcome`], PC-3, `referral_timeouts.rs`); such an item cannot be acknowledged and leaves the list when
 //! the referral moves (or when the sender asks to cancel it).
 //!
+//! A referral that has ended (declined, completed, cancelled or redirected) while its suspicion is still open is
+//! listed too ([`Why::OpenSuspicion`], RS-3), unless the suspicion was carried to a replacement (RS-2). It cannot
+//! be acknowledged: it leaves only when the suspicion has an outcome, because a closed referral never rules a
+//! suspicion out.
+//!
 //! Not here: a worklist for the recipient, a team or a role (the service has no model of a team), reminders, and
 //! an appointment date that has passed (`Book` carries no date).
 
@@ -85,6 +90,18 @@ pub enum Why {
     NoResponse,
     /// It was accepted but no outcome has come for longer than the configured period (PC-3).
     NoOutcome,
+    /// The referral has ended but its suspicion has no outcome (RS-3). It leaves when one is recorded.
+    OpenSuspicion,
+}
+
+/// The `IN (...)` list of the end states. Constants of this crate, never user input.
+fn ended_sql() -> String {
+    State::ALL
+        .iter()
+        .filter(|s| s.is_end())
+        .map(|s| format!("'{}'", s.as_str()))
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 /// `OR` of one clause per configured priority: the referral's priority and a current version older than that
@@ -119,6 +136,13 @@ fn waiting(timeouts: &Timeouts) -> String {
            SELECT c.referral_id, c.patient_id, c.version, c.state, c.recorded_at,
                   CASE
                     WHEN a.referral_id IS NULL AND c.state IN ({attention}) THEN 'reply'
+                    WHEN c.state IN ({ended})
+                         AND EXISTS (SELECT 1 FROM referral_suspicion_versions s
+                                     WHERE s.referral_id = c.referral_id)
+                         AND NOT EXISTS (SELECT 1 FROM referral_suspicion_outcomes o
+                                         WHERE o.referral_id = c.referral_id)
+                         AND NOT EXISTS (SELECT 1 FROM referral_suspicion_versions r
+                                         WHERE r.carried_from = c.referral_id) THEN 'open-suspicion'
                     WHEN c.state = 'requested' AND ({response}) THEN 'no-response'
                     WHEN c.state IN ({outcome_states}) AND ({outcome}) THEN 'no-outcome'
                   END AS why
@@ -128,6 +152,7 @@ fn waiting(timeouts: &Timeouts) -> String {
            WHERE first.author = $1
          ) c WHERE c.why IS NOT NULL",
         attention = attention_sql(),
+        ended = ended_sql(),
         response = overdue_sql(&timeouts.no_response),
         outcome = overdue_sql(&timeouts.no_outcome),
     )
@@ -197,6 +222,7 @@ pub async fn list_at(
             "reply" => Why::Reply,
             "no-response" => Why::NoResponse,
             "no-outcome" => Why::NoOutcome,
+            "open-suspicion" => Why::OpenSuspicion,
             other => return Err(db_err(format!("unexpected reason {other}"))),
         };
         items.push(Item {

@@ -148,6 +148,12 @@ pub const TABLE: &[(&str, &str, Resource, Action)] = &[
         Action::Update,
     ),
     (
+        "POST",
+        "/api/patients/{id}/referrals/{referral_id}/suspicion/outcome",
+        Resource::Condition,
+        Action::Update,
+    ),
+    (
         "GET",
         "/api/death-reports",
         Resource::DeathReports,

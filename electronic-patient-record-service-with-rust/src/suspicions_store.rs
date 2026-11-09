@@ -10,7 +10,7 @@ use crate::pathways::{self, ClockFrom, Plan};
 use crate::patients_store::StoreError;
 use crate::pool::Db;
 use crate::referrals_store;
-use crate::suspicion::{self, Suspicion};
+use crate::suspicion::{self, Outcome, Suspicion};
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use sqlx::postgres::PgRow;
@@ -50,6 +50,24 @@ pub struct SuspicionHistory {
     pub current: Option<StoredSuspicion>,
     /// Every version, oldest first.
     pub versions: Vec<StoredSuspicion>,
+    /// Whether there is a suspicion with no outcome.
+    pub open: bool,
+    /// How it ended, once it has (RS-3). While it is open each plan's `overdue` is judged at the time
+    /// of reading; once it has ended, at the time of the outcome.
+    pub outcome: Option<StoredOutcome>,
+}
+
+/// How a suspicion ended, as stored (RS-3).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct StoredOutcome {
+    /// The suspicion version it ended.
+    pub suspicion_version: i32,
+    /// Who recorded it.
+    pub author: String,
+    /// When (UTC).
+    pub recorded_at: String,
+    /// The outcome.
+    pub outcome: Outcome,
 }
 
 const COLUMNS: &str =
@@ -195,11 +213,44 @@ async fn rows(db: &mut sqlx::PgConnection, referral_id: &str) -> Result<Vec<PgRo
     .map_err(db_err)
 }
 
+/// The outcome of a referral's suspicion, if it has one.
+async fn outcome_of(
+    db: &mut sqlx::PgConnection,
+    referral_id: &str,
+) -> Result<Option<StoredOutcome>, StoreError> {
+    let id = ids::uuid(referral_id).ok_or(StoreError::NotFound)?;
+    let row = sqlx::query(
+        "SELECT suspicion_version, author, body,
+                to_char(recorded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS at
+         FROM referral_suspicion_outcomes WHERE referral_id = $1::uuid",
+    )
+    .bind(id)
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(db_err)?;
+    let Some(row) = row else {
+        return Ok(None);
+    };
+    let body: serde_json::Value = row.try_get("body").map_err(db_err)?;
+    Ok(Some(StoredOutcome {
+        suspicion_version: row.try_get("suspicion_version").map_err(db_err)?,
+        author: row.try_get("author").map_err(db_err)?,
+        recorded_at: row.try_get("at").map_err(db_err)?,
+        outcome: serde_json::from_value(body).map_err(db_err)?,
+    }))
+}
+
 fn build(
     rows: &[PgRow],
     sent: DateTime<Utc>,
     now: DateTime<Utc>,
+    outcome: Option<StoredOutcome>,
 ) -> Result<SuspicionHistory, StoreError> {
+    // Once it has ended, a target is judged at the outcome: met or missed, never overdue for ever.
+    let now = match &outcome {
+        Some(o) => time(&o.recorded_at)?,
+        None => now,
+    };
     let mut versions: Vec<StoredSuspicion> = Vec::with_capacity(rows.len());
     for row in rows {
         let previous = versions.last().map(|v| &v.suspicion);
@@ -208,7 +259,9 @@ fn build(
     }
     Ok(SuspicionHistory {
         current: versions.last().cloned(),
+        open: !versions.is_empty() && outcome.is_none(),
         versions,
+        outcome,
     })
 }
 
@@ -228,7 +281,8 @@ pub async fn history(
     let own = referral_sent(&mut *db, patient_id, referral_id).await?;
     let sent = first_sent(&mut *db, referral_id, own).await?;
     let rows = rows(&mut *db, referral_id).await?;
-    build(&rows, sent, now)
+    let outcome = outcome_of(&mut *db, referral_id).await?;
+    build(&rows, sent, now, outcome)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -318,7 +372,10 @@ pub async fn amend(
     let own = referral_sent(&mut *db, patient_id, referral_id).await?;
     let referral_id = ids::uuid(referral_id).ok_or(StoreError::NotFound)?;
     let sent = first_sent(&mut *db, &referral_id, own).await?;
-    let history = build(&rows(&mut *db, &referral_id).await?, sent, now)?;
+    if outcome_of(&mut *db, &referral_id).await?.is_some() {
+        return Err(refuse("the suspicion has an outcome and cannot be amended"));
+    }
+    let history = build(&rows(&mut *db, &referral_id).await?, sent, now, None)?;
     let was = history.current.ok_or(StoreError::NotFound)?;
     if was.version != expected_version {
         return Err(StoreError::Conflict {
@@ -378,6 +435,10 @@ pub async fn carry(
         ids::uuid(from).ok_or(StoreError::NotFound)?,
         ids::uuid(to).ok_or(StoreError::NotFound)?,
     );
+    // A suspicion that has ended is not carried: the replacement starts with none.
+    if outcome_of(&mut *db, &from).await?.is_some() {
+        return Ok(None);
+    }
     let Some(last) = rows(&mut *db, &from).await?.pop() else {
         return Ok(None);
     };
@@ -390,4 +451,66 @@ pub async fn carry(
         }
         crate::store::Appended::Taken => Err(StoreError::Conflict { current: 1 }),
     }
+}
+
+/// End a suspicion with its outcome (RS-3), from the version the writer saw.
+///
+/// # Errors
+///
+/// [`StoreError::NotFound`] (no such referral on this patient, or it carries no suspicion),
+/// [`StoreError::Conflict`] (a stale version), [`StoreError::BadQuery`] (the outcome was refused, or the
+/// suspicion has already ended).
+#[allow(clippy::too_many_arguments)]
+pub async fn end(
+    db: impl Into<Db<'_>>,
+    patient_id: &str,
+    referral_id: &str,
+    author: &str,
+    expected_version: i32,
+    outcome: &Outcome,
+    now: DateTime<Utc>,
+) -> Result<SuspicionHistory, StoreError> {
+    let problems = suspicion::outcome_problems(outcome);
+    if !problems.is_empty() {
+        return Err(refuse(problems.join("; ")));
+    }
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let own = referral_sent(&mut *db, patient_id, referral_id).await?;
+    let referral_id = ids::uuid(referral_id).ok_or(StoreError::NotFound)?;
+    let rows_now = rows(&mut *db, &referral_id).await?;
+    let current: i32 = rows_now
+        .last()
+        .ok_or(StoreError::NotFound)?
+        .try_get("version")
+        .map_err(db_err)?;
+    if outcome_of(&mut *db, &referral_id).await?.is_some() {
+        return Err(refuse("the suspicion already has an outcome"));
+    }
+    if current != expected_version {
+        return Err(StoreError::Conflict { current });
+    }
+    let appended = crate::store::append_version(
+        &mut *db,
+        STORE,
+        sqlx::query(
+            "INSERT INTO referral_suspicion_outcomes
+                 (referral_id, suspicion_version, patient_id, author, kind, body)
+             VALUES ($1::uuid, $2, $3::uuid, $4, $5, $6)
+             RETURNING referral_id",
+        )
+        .bind(referral_id.clone())
+        .bind(expected_version)
+        .bind(patient_id.to_string())
+        .bind(author.to_string())
+        .bind(outcome.kind.word())
+        .bind(serde_json::to_value(outcome).map_err(db_err)?),
+    )
+    .await?;
+    if matches!(appended, crate::store::Appended::Taken) {
+        return Err(refuse("the suspicion already has an outcome"));
+    }
+    let sent = first_sent(&mut *db, &referral_id, own).await?;
+    let ended = outcome_of(&mut *db, &referral_id).await?;
+    build(&rows_now, sent, now, ended)
 }

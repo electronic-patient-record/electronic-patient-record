@@ -283,6 +283,77 @@ async fn a_suspicion_keeps_its_point_of_suspicion_and_follows_its_pathway() {
                 "replaced twice, or not redirected: {}", again.text());
         }
 
+        // RS-3. A missed appointment never ends it, and nor does a decline: the closed referral goes on
+        // the referrer's list until the suspicion has an outcome. A redirected one whose suspicion
+        // was carried is not listed.
+        step(rid2.clone(), "record-no-show", 5, None).await;
+        let still: Value = server.get(&url2).add_header(dh.clone(), dv.clone()).await.json();
+        assert_eq!(still["open"], true, "a no-show is not an outcome");
+        step(rid2.clone(), "decline", 6, Some("not suitable for this clinic")).await;
+        let listed = |rid: String| {
+            let server = &server;
+            let (dh, dv) = (dh.clone(), dv.clone());
+            async move {
+                let w: Value = server
+                    .get("/api/referrals/worklist")
+                    .add_header(dh, dv)
+                    .await
+                    .json();
+                w["items"]
+                    .as_array()
+                    .unwrap_or_else(|| panic!("worklist: {w}"))
+                    .iter()
+                    .filter(|i| i["referral_id"] == json!(rid))
+                    .map(|i| i["why"].as_str().unwrap().to_string())
+                    .collect::<Vec<_>>()
+            }
+        };
+        assert_eq!(listed(rid2.clone()).await, ["reply"], "the decline is shown first");
+        let ack = server
+            .post(&format!("/api/referrals/{rid2}/acknowledge"))
+            .add_header(dh.clone(), dv.clone())
+            .json(&json!({ "version": 7 }))
+            .await;
+        assert!(ack.status_code().is_success(), "{}", ack.text());
+        assert_eq!(
+            listed(rid2.clone()).await,
+            ["open-suspicion"],
+            "acknowledging the decline does not end the suspicion"
+        );
+        assert!(
+            !listed(rid.clone()).await.contains(&"open-suspicion".to_string()),
+            "carried to its replacement"
+        );
+
+        // Ended only by an outcome, once, with what it needs; then it is closed to amendment.
+        let end_url = format!("{url2}/outcome");
+        for (body, status) in [
+            (json!({ "outcome": { "kind": "ruled-out", "detail": "normal echocardiogram" },
+                     "expected_version": 1 }), StatusCode::UNPROCESSABLE_ENTITY),
+            (json!({ "outcome": { "kind": "ruled-out", "by": "Dr Owen", "detail": "normal echocardiogram" },
+                     "expected_version": 2 }), StatusCode::CONFLICT),
+            (json!({ "outcome": { "kind": "ruled-out", "by": "Dr Owen", "detail": "normal echocardiogram" },
+                     "expected_version": 1 }), StatusCode::CREATED),
+            (json!({ "outcome": { "kind": "withdrawn", "detail": "again" },
+                     "expected_version": 1 }), StatusCode::UNPROCESSABLE_ENTITY),
+        ] {
+            let r = server.post(&end_url).add_header(dh.clone(), dv.clone()).json(&body).await;
+            assert_eq!(r.status_code(), status, "{body}: {}", r.text());
+        }
+        let ended: Value = server.get(&url2).add_header(dh.clone(), dv.clone()).await.json();
+        assert_eq!(ended["open"], false);
+        assert_eq!(ended["outcome"]["outcome"]["kind"], "ruled-out");
+        assert_eq!(ended["outcome"]["suspicion_version"], 1);
+        let mut late = ended["current"]["suspicion"].clone();
+        late["instruction"] = json!("seen");
+        let r = server
+            .put(&url2)
+            .add_header(dh.clone(), dv.clone())
+            .json(&json!({ "suspicion": late, "expected_version": 1, "reason": "after the end" }))
+            .await;
+        assert_eq!(r.status_code(), StatusCode::UNPROCESSABLE_ENTITY, "{}", r.text());
+        assert!(listed(rid2.clone()).await.is_empty(), "off the list once it has an outcome");
+
         // Another patient's path to this referral is a miss; reception and patient access are refused.
         let crossed = server
             .get(&format!("/api/patients/{other}/referrals/{rid}/suspicion"))
@@ -313,7 +384,7 @@ async fn a_suspicion_keeps_its_point_of_suspicion_and_follows_its_pathway() {
         assert!(rows.len() >= 5, "raises, an amendment and reads: {}", rows.len());
         for row in rows {
             let d: String = row.try_get("d").unwrap();
-            for secret in ["gastrointestinal", "Gwen", "rectal", "week before", "2600", "heart", "cancer"] {
+            for secret in ["gastrointestinal", "Gwen", "rectal", "week before", "2600", "heart", "cancer", "echocardiogram", "Owen", "not suitable"] {
                 assert!(!d.contains(secret), "{secret} leaked into the audit row: {d}");
             }
         }

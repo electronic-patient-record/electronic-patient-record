@@ -4,7 +4,10 @@
 //!   current one, each with its pathway's plan (priority, target due days, overdue).
 //! - `POST …/suspicion` `{suspicion}`: raise it (version 1); 409 if the referral already carries one.
 //! - `PUT  …/suspicion` `{suspicion, expected_version, reason}`: amend it; a reason is required, an
-//!   amendment that changes nothing is refused, a stale version is 409.
+//!   amendment that changes nothing is refused, a stale version is 409; after an outcome, 422.
+//! - `POST …/suspicion/outcome` `{outcome, expected_version}`: end it (RS-3): confirmed with the
+//!   diagnosis, ruled out with who and on what, or withdrawn with a reason. Once only. Nothing else ends a
+//!   suspicion: not its referral closing, a cancellation, a redirect, or a missed test or appointment.
 //!
 //! A suspicion is a provisional diagnosis, so it is authorised as `Condition`: the role, a care
 //! relationship, the purpose and the patient's consent apply. **A patient or proxy reads none** (purpose
@@ -20,7 +23,7 @@ use crate::auth::Agent;
 use crate::patients_store::StoreError;
 use crate::policy::{self, Purpose, Resource, Subject};
 use crate::pool::Pool;
-use crate::suspicion::Suspicion;
+use crate::suspicion::{Outcome, Suspicion};
 use crate::suspicions_store::{self as store, StoredSuspicion};
 use axa::extract::{Json, Path};
 use axa::prelude::*;
@@ -50,6 +53,16 @@ pub struct AmendRequest {
     /// Why it changes.
     #[serde(default)]
     pub reason: Option<String>,
+}
+
+/// End a suspicion.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EndRequest {
+    /// The outcome.
+    pub outcome: Outcome,
+    /// The suspicion version this ends; anything else is a 409.
+    pub expected_version: i32,
 }
 
 const RESOURCE: &str = "Condition";
@@ -328,6 +341,84 @@ async fn finish(
             let _ = tx.rollback().await;
             if let Some(kind) = kind_of(&e)
                 && let Some(r) = refused(ctx, agent, purpose, action, kind).await
+            {
+                return r.into_response();
+            }
+            failure(e).into_response()
+        }
+    }
+}
+
+/// `POST …/referrals/{referral_id}/suspicion/outcome`: 201 with the whole history, now ended. The audit
+/// row names the outcome's kind and the version it ended, never the diagnosis or its grounds.
+pub(super) async fn end(
+    State(ctx): State<AppContext>,
+    Extension(agent): Extension<Agent>,
+    Extension(subject): Extension<Subject>,
+    headers: HeaderMap,
+    Path((patient, referral_id)): Path<(String, String)>,
+    Json(request): Json<EndRequest>,
+) -> Response {
+    let purpose = match gate(
+        &ctx,
+        &agent,
+        &subject,
+        &headers,
+        &patient,
+        policy::Action::Update,
+        Action::Update,
+    )
+    .await
+    {
+        Ok(p) => p,
+        Err(r) => return r.into_response(),
+    };
+    let mut tx = match begin(&ctx.pool()).await {
+        Ok(t) => t,
+        Err(r) => return r.into_response(),
+    };
+    match store::end(
+        &mut *tx,
+        &patient,
+        &referral_id,
+        &agent.0,
+        request.expected_version,
+        &request.outcome,
+        chrono::Utc::now(),
+    )
+    .await
+    {
+        Ok(history) => {
+            if let Err(r) = audit_resource(
+                &mut *tx,
+                &agent,
+                Access {
+                    action: Action::Update,
+                    outcome: 0,
+                    purpose,
+                    resource: RESOURCE,
+                    patient_id: Some(&patient),
+                },
+                serde_json::json!({
+                    "suspicion": true,
+                    "referral": referral_id,
+                    "version": request.expected_version,
+                    "ended": request.outcome.kind.word(),
+                }),
+            )
+            .await
+            {
+                return r.into_response();
+            }
+            if let Err(r) = commit(tx).await {
+                return r.into_response();
+            }
+            (StatusCode::CREATED, Json(history)).into_response()
+        }
+        Err(e) => {
+            let _ = tx.rollback().await;
+            if let Some(kind) = kind_of(&e)
+                && let Some(r) = refused(&ctx, &agent, purpose, Action::Update, kind).await
             {
                 return r.into_response();
             }

@@ -1644,6 +1644,22 @@
         ],
         "type": "object"
       },
+      "EndSuspicion": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "type": "integer"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/SuspicionOutcome"
+          }
+        },
+        "required": [
+          "outcome",
+          "expected_version"
+        ],
+        "type": "object"
+      },
       "Error": {
         "additionalProperties": true,
         "description": "api_error.rs: RFC 9457; `detail` is fixed wording, and extra fields such as current_version or break_glass_offer may follow.",
@@ -2988,11 +3004,12 @@
             "type": "integer"
           },
           "why": {
-            "description": "reply: acknowledge it. no-response and no-outcome are timeouts (PC-3): they cannot be acknowledged and leave when the referral moves.",
+            "description": "reply: acknowledge it. no-response and no-outcome are timeouts (PC-3): they cannot be acknowledged and leave when the referral moves. open-suspicion: the referral has ended but its suspicion has no outcome (RS-3); it cannot be acknowledged and leaves when an outcome is recorded.",
             "enum": [
               "reply",
               "no-response",
-              "no-outcome"
+              "no-outcome",
+              "open-suspicion"
             ]
           }
         },
@@ -3942,6 +3959,29 @@
         ],
         "type": "object"
       },
+      "StoredSuspicionOutcome": {
+        "properties": {
+          "author": {
+            "type": "string"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/SuspicionOutcome"
+          },
+          "recorded_at": {
+            "type": "string"
+          },
+          "suspicion_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "suspicion_version",
+          "author",
+          "recorded_at",
+          "outcome"
+        ],
+        "type": "object"
+      },
       "Suspicion": {
         "additionalProperties": false,
         "description": "What the referrer suspects, under a pathway version from src/suspicion_pathways.toml. The whole suspicion is sent every time.",
@@ -4066,6 +4106,21 @@
               }
             ]
           },
+          "open": {
+            "description": "A suspicion with no outcome.",
+            "type": "boolean"
+          },
+          "outcome": {
+            "description": "How it ended (RS-3). Once ended, each plan's overdue is judged at the outcome, not now.",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/StoredSuspicionOutcome"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "versions": {
             "items": {
               "$ref": "#/components/schemas/StoredSuspicion"
@@ -4075,7 +4130,59 @@
         },
         "required": [
           "current",
-          "versions"
+          "versions",
+          "open",
+          "outcome"
+        ],
+        "type": "object"
+      },
+      "SuspicionOutcome": {
+        "additionalProperties": false,
+        "description": "How a suspicion ends. confirmed needs diagnosis; ruled-out needs by; only confirmed carries a diagnosis or code.",
+        "properties": {
+          "by": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "code": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "display": {
+                "type": "string"
+              },
+              "system": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "system",
+              "code"
+            ],
+            "type": "object"
+          },
+          "detail": {
+            "description": "What it rests on, or why it was withdrawn.",
+            "maxLength": 500,
+            "type": "string"
+          },
+          "diagnosis": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "confirmed",
+              "ruled-out",
+              "withdrawn"
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "detail"
         ],
         "type": "object"
       },
@@ -9502,6 +9609,117 @@
           }
         ],
         "summary": "PUT /api/patients/{id}/referrals/{referral_id}/suspicion",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Update",
+        "x-epr-resource": "Condition"
+      }
+    },
+    "/api/patients/{id}/referrals/{referral_id}/suspicion/outcome": {
+      "post": {
+        "operationId": "postApiPatientsIdReferralsReferral_idSuspicionOutcome",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "referral_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "1 to 128 letters, digits or . _ : -. A retry with the same key and the same request returns the first answer (header `Idempotent-Replayed: true`) and writes nothing; the same key for a different request is a 422; a key whose first request is unfinished is a 409. Only a success is kept; keys expire after 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EndSuspicion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuspicionHistory"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionConflict"
+                }
+              }
+            },
+            "description": "A likely duplicate or a stale expected_version."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/patients/{id}/referrals/{referral_id}/suspicion/outcome",
         "tags": [
           "patients"
         ],
