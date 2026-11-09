@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-09 - "Live", per site (WL-11, spec only)
+
+- **Clinical risk:** none directly. This is a governance section with no code.
+- **Built:** `governance/production-readiness.md` gains a section saying a deployment never reports "live" in one word. Its report holds one row per site and function: state (`not in use`, `trial`, `in use`, `withdrawn`), since when, who, the settings as set, the evidence, and what that site does not use. It lists the functions this repository holds on 2026-11-09. A function with no row at a site is not in use there. The generated `spec/14-implementation-status.md` counts code and is not this report. The source is the Auditor General for Wales on WCCIS ("'Live' meant different things"), as recorded in `spec/nhs-wales/index.md`. The same file's safety row said 44 hazards; it now says 55, with 34 open.
+- **Checked:** links, the status block, `llms.txt`.
+- **Not done / not verified:** no deployment exists, so no report has been written. There is no template file or tool, and nothing checks that a report stays current.
+
 ## 2026-11-09 - Watch lists with a reason (WL-6, H-055)
 
 - **Clinical risk:** **yes (new hazard H-055: a patient drops off a watch list unseen, or is watched for no reason anyone can read).** This is the first watch list. H-055 is new and open.
