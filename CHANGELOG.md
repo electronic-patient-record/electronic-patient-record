@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-09 - Device readings counted only once validated (WL-10, spec only)
+
+- **Clinical risk:** none yet. This is spec only and nothing reads a device. Once built, it is clinical (RC-11, EM-11).
+- **Built:** `spec/device-readings/index.md` starts the EM-11 design, and the module map links it. A device reading keeps its device, its gateway and the capture time the device stamped, never the receipt time. It is shown apart as unvalidated and counts toward no score or alert until a clinician validates it, one reading or a set over a period. A clinician may instead reject it as an artefact, with a reason; it is kept and never counts. The device's value is never edited, and a clinician's own value names the reading it replaces. The page also says what `Observation` lacks for this today: a source, a device, a capture time and a validated state.
+- **Checked:** links, the status block, `llms.txt` (unchanged: its generator does not list the per-topic spec pages).
+- **Not done / not verified:** nothing is built. How long a reading may wait unvalidated, undoing a validation, device protocols and gateways, and the medical-device question (OQ-6) are open. No clinician or device engineer has read it.
+
 ## 2026-11-09 - "Live", per site (WL-11, spec only)
 
 - **Clinical risk:** none directly. This is a governance section with no code.

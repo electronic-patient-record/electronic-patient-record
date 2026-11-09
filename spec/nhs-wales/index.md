@@ -121,7 +121,7 @@ Ranked in plan.md §34.2; tasks WL-1 to WL-12.
 5. A narrower view by role (WGPR's vaccinator view, snippet) — PI and RA.
 6. An assessment form is a versioned standard with named sign-off, and each answer keeps its form version (WNCR) — EM-3.
 7. A record kept in two places has one direction of flow and a reconciliation (WIS write-back) — DX and RC-5.
-8. A device reading counts once a clinician validates it, with its source kept (WICIS) — EM-11.
+8. A device reading counts once a clinician validates it, with its source kept (WICIS) — EM-11. **Written as WL-10** in [device readings](../device-readings/index.md) (2026-11-09); not built.
 9. "Live" is the functions in use, per site (WCCIS) — the generated status.
 10. Welsh from the start, reviewed by a speaker (WCCIS) — `cy-001` exists, English only.
 11. The Wales FHIR guide as a national pack (WHC/2023/018) — IO-18.
