@@ -11,7 +11,7 @@
 //! ```
 
 use authentication_verifier::test_idp::{AUDIENCE, REALM, TestIdp};
-use axa::testing::prelude::request;
+use axa_test::prelude::request;
 use axum::http::{HeaderName, HeaderValue};
 use electronic_patient_record::app::App;
 use electronic_patient_record::pool::Pool;

@@ -19,7 +19,7 @@
 //!   cargo test --test chaos_api -- --ignored --test-threads=1 --nocapture
 //! ```
 
-use axa::testing::prelude::request;
+use axa_test::prelude::request;
 use axum::http::{HeaderName, HeaderValue, Method, StatusCode};
 use electronic_patient_record::{app::App, routes};
 use serde_json::{Value, json};

@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-09 - axa 0.10 and axa-test
+
+- **Clinical risk:** none. This is a dependency update with no change to behaviour. `openapi.json` is unchanged.
+- **Built:** the service moves from `axa` 0.9.1 to 0.10.0. The `testing` feature is gone, so `axa-test` 0.1.0 is a dev-dependency and 30 test files import `axa_test::prelude` in place of `axa::testing::prelude`. axa's crates were renamed (for example `axa-problem` to `axa-problem-details-for-http-apis`). The service reaches them only through `axa`'s features and modules, which kept their names, as did axa's tables, so no migration is needed. `axum-test` is still one copy in `Cargo.lock`.
+- **Checked:** fmt, clippy, the doc build and every database-free test (534). On a fresh database every database test passed (174) except the six FHIR validator tests, which need Java and the validator jar (not on this machine; CI runs them).
+- **Not done / not verified:** the compose stack and the API image were not rebuilt or run on axa 0.10. `cargo deny` and `cargo audit` were not run locally; CI runs them.
+
 ## 2026-11-09 - A suspicion survives triage, rebooking and redirection (RS-2, H-054)
 
 - **Clinical risk:** **yes (H-054, updated).** When a redirected referral is replaced, the new one now keeps the reason it is urgent and the day its clock started. Before this change the replacement started with no suspicion.

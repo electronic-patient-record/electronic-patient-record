@@ -13,7 +13,7 @@
 //!   cargo test --test openapi_responses -- --ignored --test-threads=1
 //! ```
 
-use axa::testing::prelude::request;
+use axa_test::prelude::request;
 use axum::http::StatusCode;
 use electronic_patient_record::app::App;
 use serde_json::{Value, json};

@@ -1,5 +1,5 @@
 //! DB-gated, through the real router (`controllers::all_routes()`, the route gate and the audit
-//! chain, booted by `axa::testing` with login off): the shapes of the duplicate refusal and
+//! chain, booted by `axa-test` with login off): the shapes of the duplicate refusal and
 //! of the FHIR refusals (CQ-16). Not covered here: consent masking of candidates and the
 //! break-glass flag (both are in `http_roles.rs`).
 //!
@@ -9,7 +9,7 @@
 //!   cargo test --test http_patients -- --ignored --test-threads=1
 //! ```
 
-use axa::testing::prelude::request;
+use axa_test::prelude::request;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use electronic_patient_record::app::App;
 use electronic_patient_record::pool::Pool;

@@ -13,7 +13,7 @@
 //!   cargo test --test http_audit_refusal -- --ignored --test-threads=1
 //! ```
 
-use axa::testing::prelude::request;
+use axa_test::prelude::request;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use electronic_patient_record::app::App;
 use electronic_patient_record::pool::Pool;

@@ -10,8 +10,8 @@
 //! ```
 
 use axa::config::{Config, Defaults};
-use axa::testing::prelude::request;
 use axa::{AppContext, Environment, routes::AppRoutes};
+use axa_test::prelude::request;
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use electronic_patient_record::app::App;
