@@ -120,10 +120,10 @@ Ranked in plan.md §34.2; tasks WL-1 to WL-12.
 4. A patient's choice follows the person, not the site (WGPR's opt-out does not) — SE-2 and the matcher's merges.
 5. A narrower view by role (WGPR's vaccinator view, snippet) — PI and RA.
 6. An assessment form is a versioned standard with named sign-off, and each answer keeps its form version (WNCR) — EM-3.
-7. A record kept in two places has one direction of flow and a reconciliation (WIS write-back) — DX and RC-5.
+7. A record kept in two places has one direction of flow and a reconciliation (WIS write-back) — DX and RC-5. **Written as WL-5** in [data exchange](../data-exchange/index.md) (2026-11-09); not built.
 8. A device reading counts once a clinician validates it, with its source kept (WICIS) — EM-11. **Written as WL-10** in [device readings](../device-readings/index.md) (2026-11-09); not built.
-9. "Live" is the functions in use, per site (WCCIS) — the generated status.
-10. Welsh from the start, reviewed by a speaker (WCCIS) — `cy-001` exists, English only.
+9. "Live" is the functions in use, per site (WCCIS) — the generated status. **Written as WL-11** in [production readiness](../../governance/production-readiness.md) (2026-11-09).
+10. Welsh from the start, reviewed by a speaker (WCCIS) — **built as WL-8** (2026-11-09): the UI in Welsh at `cy-001`, machine-written and not reviewed by a speaker.
 11. The Wales FHIR guide as a national pack (WHC/2023/018) — IO-18.
 12. Already held, recorded so as not to be asked again: an exit path (DX `$export`), one instance rather than copies per site,
     downtime (CA-7), monitored audit (RA-6), honest progress reports (AGENTS.md rule 3).

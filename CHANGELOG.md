@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-09 - Write-back and reconciliation (WL-5, spec only)
+
+- **Clinical risk:** none yet. This is spec only, and immunisations are not built. Once built, a record that fails to arrive is a clinical risk.
+- **Built:** `spec/data-exchange/index.md` gains a section. For data held in two places it names six things: the system of record, the direction of flow, what is written back, what counts as arrived (the receiver says it filed it, not that it was delivered), the report of what failed to arrive, and the manual fallback. It adds five rules: one path out through the outbox, sent is not done, a copy keeps its source, unknown is not zero, and the report is kept. Immunisations are the example. The source is Welsh Government's 2024/25 statement that write-back from WIS to GP systems was not possible. The lessons list in `spec/nhs-wales/index.md` now says which lessons are written or built; its Welsh line was stale and is corrected.
+- **Checked:** links, the status block, `llms.txt`.
+- **Not done / not verified:** nothing is built: no immunisations, no acknowledgement of filing (the outbox counts a sink's success as delivered), no report and no sink. Which registers and GP systems accept a write-back was not checked.
+
 ## 2026-11-09 - Device readings counted only once validated (WL-10, spec only)
 
 - **Clinical risk:** none yet. This is spec only and nothing reads a device. Once built, it is clinical (RC-11, EM-11).

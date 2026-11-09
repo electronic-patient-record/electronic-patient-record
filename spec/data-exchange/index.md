@@ -40,6 +40,42 @@ Principles that follow, and that fit an append-only record:
 - An export is a disclosure and a read of many patients: audit it as one, with purpose of use and the requesting agent.
 - A bulk token should be short-lived and scoped; the status URL and files need the same access check as the request.
 
+## Write-back and reconciliation (WL-5)
+
+Some data lives in two places, and one of them is written first. A vaccination is recorded at the point of care in the
+Welsh Immunisation System and belongs in the GP record too. For the 2024/25 flu mop-up, Welsh Government said "timely
+write-back of vaccinations recorded in WIS" to GP systems "will not be possible"; health boards sent weekly summaries
+and practices keyed the codes in by hand ([NHS Wales](../nhs-wales/index.md), [WHC24]). Nothing was lost by design, but
+nothing said what had not arrived. For any data held in two places, this project names the following before it is
+built. Spec only: immunisations are not built (RC-5).
+
+| What is named | For immunisations, as an example |
+|---|---|
+| The system of record: the one place a correction is made | The register where it was given (WIS in Wales); this EPR when it records the vaccination itself |
+| The direction of flow, per kind of record | Register to GP record and to this EPR; this EPR to the register only for what it recorded |
+| What is written back, and what is not | The vaccine, dose, batch, site, date, who gave it and where; never a note the receiver does not hold |
+| What counts as arrived | The receiver's acknowledgement that it **filed** the record, not that the message was delivered |
+| The report of what failed to arrive | Per receiver and period: sent, filed, refused (with the receiver's reason), and unanswered after a stated time |
+| The fallback when write-back is not possible | A list for the receiver to key by hand, recorded as a manual step ([manual steps](../manual-steps/index.md)), and the hand-keyed records counted in the report like any other |
+
+Rules for building it:
+
+1. **One path out.** A write-back is an outbound event through the outbox (`src/outbox.rs`), so the gate, the audit
+   and the retry apply. Today the outbox counts a sink that returns success as delivered; it has no notion of the
+   receiver's filing, so **an acknowledgement of filing is a new thing to build**, matched to the event by its id.
+2. **Sent is not done.** Until the receiver says it filed a record, the record is in the report as unanswered, never
+   as arrived. A refusal is shown with the receiver's reason and goes to a person, as feed refusals do now.
+3. **A received copy keeps its source.** A vaccination this EPR receives keeps the sending system and that system's
+   id, so a repeat is recognised and never filed twice, and a correction at the source is applied as a new version
+   that names it.
+4. **Unknown is not zero.** A receiver that has not answered is "not known", and the report says so; it never counts
+   as nothing missing.
+5. **The report is kept.** Each reconciliation run is stored with its period and counts, so a gap found later can be
+   traced to the run that should have shown it.
+
+**Not done (WL-5):** immunisations, the acknowledgement of filing, the report and its store, and any write-back sink
+are unbuilt; which registers and GP systems accept a write-back, and in what format, was not checked.
+
 ## Compared with this project
 
 | Need | This project today | Gap |
