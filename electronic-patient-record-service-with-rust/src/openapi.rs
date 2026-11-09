@@ -419,6 +419,85 @@ fn observation_schemas() -> Value {
     })
 }
 
+/// The schemas for a suspicion on a referral (RS-1) and its pathway plan (RS-6).
+fn suspicion_schemas() -> Value {
+    json!({
+        "Suspicion": {
+            "type": "object", "additionalProperties": false,
+            "required": ["condition", "point_of_suspicion", "source", "by", "grounds", "patient_told", "pathway", "pathway_version"],
+            "description": "What the referrer suspects, under a pathway version from src/suspicion_pathways.toml. The whole suspicion is sent every time.",
+            "properties": {
+                "condition": {"type": "string", "maxLength": 200, "description": "The referrer's words, always kept."},
+                "code": {"type": "object", "additionalProperties": false, "required": ["system", "code"], "properties": {
+                    "system": {"type": "string"}, "code": {"type": "string"}, "display": {"type": "string"}}},
+                "point_of_suspicion": {"type": "string", "description": "RFC 3339; not in the future (5 minutes' skew)."},
+                "source": {"enum": ["clinician", "screening-programme", "result"]},
+                "by": {"type": "string", "maxLength": 200},
+                "grounds": {"type": "object", "additionalProperties": false, "required": ["kind", "detail"], "properties": {
+                    "kind": {"enum": ["criterion", "result", "judgement"]},
+                    "detail": {"type": "string", "maxLength": 500},
+                    "result_id": {"type": "string", "description": "Required for kind result, and only then: a result on this patient's record."}}},
+                "instruction": {"type": "string", "maxLength": 500},
+                "patient_told": {"enum": ["told", "not-told"]},
+                "pathway": {"type": "string"}, "pathway_version": {"type": "integer"},
+                "band": {"type": "string", "description": "Required by a pathway with bands, refused by one without."},
+                "factors": {"type": "array", "items": {"type": "string"}, "description": "The pathway's factors that apply."},
+                "agreed": {"type": "boolean", "description": "Required by a pathway that needs the person's agreement, refused by one that does not."}
+            }
+        },
+        "SuspicionPlan": {
+            "type": "object",
+            "required": ["pathway", "version", "title", "approved", "latest_version", "clock_from", "clock_start", "priority", "instruction", "targets", "no_target_reason"],
+            "description": "The pathway's priority and target due days for this suspicion, worked out when read. The PAS owns the reported clock.",
+            "properties": {
+                "pathway": {"type": "string"}, "version": {"type": "integer"}, "title": {"type": "string"},
+                "approved": {"type": "boolean", "description": "false: a draft pathway."},
+                "latest_version": {"type": "integer"},
+                "clock_from": {"enum": ["point-of-suspicion", "referral-sent"]},
+                "clock_start": {"type": "string"},
+                "priority": {"enum": ["routine", "urgent", "asap", "stat"]},
+                "instruction": {"type": ["string", "null"]},
+                "targets": {"type": "array", "items": {"type": "object", "required": ["id", "text", "days", "due_on", "overdue"], "properties": {
+                    "id": {"type": "string"}, "text": {"type": "string"}, "days": {"type": "integer"},
+                    "due_on": {"type": "string", "description": "YYYY-MM-DD, a UTC day."},
+                    "overdue": {"type": "boolean"}}}},
+                "no_target_reason": {"type": ["string", "null"]}
+            }
+        },
+        "StoredSuspicion": {
+            "type": "object",
+            "required": ["referral_id", "version", "patient_id", "author", "recorded_at", "reason", "changed", "suspicion", "plan"],
+            "properties": {
+                "referral_id": {"type": "string"}, "version": {"type": "integer"}, "patient_id": {"type": "string"},
+                "author": {"type": "string"}, "recorded_at": {"type": "string"},
+                "reason": {"type": ["string", "null"], "description": "Why it was amended; null on version 1."},
+                "changed": {"type": "array", "items": {"type": "string"}, "description": "The fields this version changed."},
+                "suspicion": {"$ref": "#/components/schemas/Suspicion"},
+                "plan": {"$ref": "#/components/schemas/SuspicionPlan"}
+            }
+        },
+        "SuspicionHistory": {
+            "type": "object", "required": ["current", "versions"],
+            "properties": {
+                "current": {"oneOf": [{"$ref": "#/components/schemas/StoredSuspicion"}, {"type": "null"}]},
+                "versions": {"type": "array", "items": {"$ref": "#/components/schemas/StoredSuspicion"}}
+            }
+        },
+        "RaiseSuspicion": {
+            "type": "object", "required": ["suspicion"], "additionalProperties": false,
+            "properties": {"suspicion": {"$ref": "#/components/schemas/Suspicion"}}
+        },
+        "AmendSuspicion": {
+            "type": "object", "required": ["suspicion", "expected_version", "reason"], "additionalProperties": false,
+            "properties": {
+                "suspicion": {"$ref": "#/components/schemas/Suspicion"},
+                "expected_version": {"type": "integer"},
+                "reason": {"type": "string", "maxLength": 500}
+            }
+        }
+    })
+}
+
 /// The schemas for assessments under versioned forms (WL-3).
 fn assessment_schemas() -> Value {
     json!({
@@ -1326,6 +1405,7 @@ fn patient_schemas() -> Value {
         observation_schemas(),
         result_schemas(),
         assessment_schemas(),
+        suspicion_schemas(),
         consent_schemas(),
         relationship_schemas(),
     ] {
@@ -1401,6 +1481,22 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
         "ReferralEvent",
         "200",
         "StoredReferral",
+        "VersionConflict",
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/referrals/{referral_id}/suspicion",
+        "RaiseSuspicion",
+        "201",
+        "StoredSuspicion",
+        "VersionConflict",
+    ),
+    (
+        "PUT",
+        "/api/patients/{id}/referrals/{referral_id}/suspicion",
+        "AmendSuspicion",
+        "200",
+        "StoredSuspicion",
         "VersionConflict",
     ),
     (
@@ -1715,6 +1811,12 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
         "GET",
         "/api/patients/{id}/observations",
         "ObservationList",
+        &[],
+    ),
+    (
+        "GET",
+        "/api/patients/{id}/referrals/{referral_id}/suspicion",
+        "SuspicionHistory",
         &[],
     ),
     ("GET", "/api/patients/{id}/results", "ResultList", &[]),

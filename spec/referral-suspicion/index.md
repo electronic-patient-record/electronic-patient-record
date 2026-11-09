@@ -3,8 +3,8 @@
 **Requirement (2026-11-09, the maintainer).** A Patient Administration System (PAS) must track **suspicion** during a
 referral: what condition the referrer suspects, from when, on what grounds, and what became of it. The EPR records the
 clinical suspicion; the PAS carries it on the referral and the waiting list and runs any clock it starts. A design and a
-requirement on the PAS boundary ([scope](../02-scope.md)). Built: the pathway catalogue below (RS-6); the rest is tasks
-RS-1 to RS-5.
+requirement on the PAS boundary ([scope](../02-scope.md)). Built: the pathway catalogue below (RS-6) and the stored
+suspicion (RS-1, below); the rest is tasks RS-2 to RS-5.
 
 ## Why suspicion, not diagnosis
 
@@ -97,7 +97,24 @@ the referrer's list; the PAS owns the reported clock, its pauses and its stops (
 The built-in pathways are the seven conditions on this page, with the figures from the table above; they are examples
 for development, and a deployment replaces the file with its own approved catalogue.
 
-**Not done (RS-6):** the plan is not yet attached to a stored suspicion (RS-1) or shown anywhere; outcomes do not stop a
+## The stored suspicion (RS-1)
+
+`/api/patients/{id}/referrals/{referral_id}/suspicion`: `GET` (every version oldest first, and `current`; none is an
+empty history), `POST {suspicion}` (version 1; 409 if the referral has one) and `PUT {suspicion, expected_version,
+reason}`. A suspicion holds the condition in the referrer's words and an optional code (not looked up), the point of
+suspicion (RFC 3339, not in the future), `source` (`clinician`, `screening-programme`, `result`) and `by`, the grounds
+(`criterion`, `result` with a `result_id` on this patient's record, or `judgement`, with words), an optional
+instruction, `patient_told` (`told`, `not-told`), and the pathway, version, band, factors and agreement the pathway
+asks for. Version 1 is as raised; every later version is an amendment with a reason, and one that changes nothing is
+refused. Each version lists the fields it `changed` and carries its own plan, so moving the point of suspicion moves
+the due days and the earlier version keeps its own.
+
+It is authorised as `Condition` (a provisional diagnosis): role, care relationship, purpose and consent. A read with
+the `patient-access` purpose is refused until RS-4 decides what a patient sees. The audit row holds ids, versions and
+the names of the fields changed; never the pathway, whose id names the condition, nor the condition, grounds or
+reason, because the trail feeds the patient's access log.
+
+**Not done (RS-6):** no screen shows the plan; outcomes do not stop a
 target (RS-3); due days are UTC days, not the deployment's local days; clock pauses (a patient's choice to wait) are not
 modelled; no clinician has approved any pathway.
 
@@ -123,7 +140,7 @@ modelled; no clinician has approved any pathway.
 
 ## Not done, not verified
 
-Only the pathway catalogue (RS-6) is built. The NICE intervals were read through search summaries, not the NICE pages; each guideline has been
+Only the pathway catalogue (RS-6) and the stored suspicion (RS-1) are built; no screen shows either. The NICE intervals were read through search summaries, not the NICE pages; each guideline has been
 amended since publication. The Welsh target's current figure was not checked against the latest Welsh Government
 statistics. The PAS in `~/git/patient-administration-system` was not read for whether it tracks suspicion. No clinician
 has read this page.

@@ -9,7 +9,7 @@ use sqlx::{AssertSqlSafe, PgPool};
 use std::future::Future;
 
 /// The write routes driven with login off (`http_audit_refusal.rs`), spelled as in `routes::TABLE`.
-pub const LOGIN_OFF: [&str; 34] = [
+pub const LOGIN_OFF: [&str; 36] = [
     "POST /api/patients",
     "PUT /api/patients/{id}",
     "POST /fhir/R4/Patient",
@@ -19,6 +19,8 @@ pub const LOGIN_OFF: [&str; 34] = [
     "PUT /api/patients/{id}/allergy-statement",
     "POST /api/patients/{id}/referrals",
     "POST /api/patients/{id}/referrals/{referral_id}/events",
+    "POST /api/patients/{id}/referrals/{referral_id}/suspicion",
+    "PUT /api/patients/{id}/referrals/{referral_id}/suspicion",
     "POST /api/referrals/{referral_id}/acknowledge",
     "POST /api/referral-messages",
     "POST /api/referral-queue/{id}/clear",
@@ -57,7 +59,7 @@ pub const LOGIN_ON: [&str; 3] = [
 pub static DRIVEN: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
 
 /// Every table a write route changes.
-pub const STORES: [&str; 21] = [
+pub const STORES: [&str; 22] = [
     "patient_versions",
     "consent_versions",
     "relationship_versions",
@@ -67,6 +69,7 @@ pub const STORES: [&str; 21] = [
     "result_versions",
     "result_signoffs",
     "assessment_versions",
+    "referral_suspicion_versions",
     "amendment_versions",
     "adjustment_versions",
     "death_assertion_versions",

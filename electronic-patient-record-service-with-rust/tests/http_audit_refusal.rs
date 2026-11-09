@@ -231,6 +231,47 @@ async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_r
         )
         .await;
 
+        // A suspicion on that referral, then an amendment with a reason (RS-1).
+        let suspicion = json!({
+            "condition": "Suspected lower gastrointestinal cancer",
+            "point_of_suspicion": "2026-11-09T09:30:00Z",
+            "source": "clinician", "by": "Dr A",
+            "grounds": { "kind": "criterion", "detail": "NG12 criterion met" },
+            "patient_told": "told",
+            "pathway": "suspected-cancer-wales", "pathway_version": 1
+        });
+        refused_then_accepted(
+            db,
+            "POST /api/patients/{id}/referrals/{referral_id}/suspicion",
+            || async {
+                let r = server
+                    .post(&format!(
+                        "/api/patients/{id}/referrals/{referral_id}/suspicion"
+                    ))
+                    .json(&json!({ "suspicion": suspicion }))
+                    .await;
+                (r.status_code(), r.text())
+            },
+        )
+        .await;
+        let mut amended = suspicion.clone();
+        amended["point_of_suspicion"] = json!("2026-11-08T16:00:00Z");
+        refused_then_accepted(
+            db,
+            "PUT /api/patients/{id}/referrals/{referral_id}/suspicion",
+            || async {
+                let r = server
+                    .put(&format!(
+                        "/api/patients/{id}/referrals/{referral_id}/suspicion"
+                    ))
+                    .json(&json!({ "suspicion": amended, "expected_version": 1,
+                                   "reason": "first seen the day before" }))
+                    .await;
+                (r.status_code(), r.text())
+            },
+        )
+        .await;
+
         // A decline puts a second referral on the worklist; acknowledging it is a write that must be audited.
         let second = server
             .post(&format!("/api/patients/{id}/referrals"))

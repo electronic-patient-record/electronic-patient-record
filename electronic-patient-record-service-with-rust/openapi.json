@@ -327,6 +327,27 @@
         ],
         "type": "object"
       },
+      "AmendSuspicion": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "suspicion": {
+            "$ref": "#/components/schemas/Suspicion"
+          }
+        },
+        "required": [
+          "suspicion",
+          "expected_version",
+          "reason"
+        ],
+        "type": "object"
+      },
       "AmendmentList": {
         "properties": {
           "amendments": {
@@ -2553,6 +2574,18 @@
         ],
         "type": "object"
       },
+      "RaiseSuspicion": {
+        "additionalProperties": false,
+        "properties": {
+          "suspicion": {
+            "$ref": "#/components/schemas/Suspicion"
+          }
+        },
+        "required": [
+          "suspicion"
+        ],
+        "type": "object"
+      },
       "RecordAdjustment": {
         "additionalProperties": false,
         "properties": {
@@ -3843,6 +3876,289 @@
           "recorded_at",
           "reason",
           "result"
+        ],
+        "type": "object"
+      },
+      "StoredSuspicion": {
+        "properties": {
+          "author": {
+            "type": "string"
+          },
+          "changed": {
+            "description": "The fields this version changed.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/SuspicionPlan"
+          },
+          "reason": {
+            "description": "Why it was amended; null on version 1.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "recorded_at": {
+            "type": "string"
+          },
+          "referral_id": {
+            "type": "string"
+          },
+          "suspicion": {
+            "$ref": "#/components/schemas/Suspicion"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "referral_id",
+          "version",
+          "patient_id",
+          "author",
+          "recorded_at",
+          "reason",
+          "changed",
+          "suspicion",
+          "plan"
+        ],
+        "type": "object"
+      },
+      "Suspicion": {
+        "additionalProperties": false,
+        "description": "What the referrer suspects, under a pathway version from src/suspicion_pathways.toml. The whole suspicion is sent every time.",
+        "properties": {
+          "agreed": {
+            "description": "Required by a pathway that needs the person's agreement, refused by one that does not.",
+            "type": "boolean"
+          },
+          "band": {
+            "description": "Required by a pathway with bands, refused by one without.",
+            "type": "string"
+          },
+          "by": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "code": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "display": {
+                "type": "string"
+              },
+              "system": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "system",
+              "code"
+            ],
+            "type": "object"
+          },
+          "condition": {
+            "description": "The referrer's words, always kept.",
+            "maxLength": 200,
+            "type": "string"
+          },
+          "factors": {
+            "description": "The pathway's factors that apply.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "grounds": {
+            "additionalProperties": false,
+            "properties": {
+              "detail": {
+                "maxLength": 500,
+                "type": "string"
+              },
+              "kind": {
+                "enum": [
+                  "criterion",
+                  "result",
+                  "judgement"
+                ]
+              },
+              "result_id": {
+                "description": "Required for kind result, and only then: a result on this patient's record.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "detail"
+            ],
+            "type": "object"
+          },
+          "instruction": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "pathway": {
+            "type": "string"
+          },
+          "pathway_version": {
+            "type": "integer"
+          },
+          "patient_told": {
+            "enum": [
+              "told",
+              "not-told"
+            ]
+          },
+          "point_of_suspicion": {
+            "description": "RFC 3339; not in the future (5 minutes' skew).",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "clinician",
+              "screening-programme",
+              "result"
+            ]
+          }
+        },
+        "required": [
+          "condition",
+          "point_of_suspicion",
+          "source",
+          "by",
+          "grounds",
+          "patient_told",
+          "pathway",
+          "pathway_version"
+        ],
+        "type": "object"
+      },
+      "SuspicionHistory": {
+        "properties": {
+          "current": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/StoredSuspicion"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/StoredSuspicion"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "current",
+          "versions"
+        ],
+        "type": "object"
+      },
+      "SuspicionPlan": {
+        "description": "The pathway's priority and target due days for this suspicion, worked out when read. The PAS owns the reported clock.",
+        "properties": {
+          "approved": {
+            "description": "false: a draft pathway.",
+            "type": "boolean"
+          },
+          "clock_from": {
+            "enum": [
+              "point-of-suspicion",
+              "referral-sent"
+            ]
+          },
+          "clock_start": {
+            "type": "string"
+          },
+          "instruction": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "latest_version": {
+            "type": "integer"
+          },
+          "no_target_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pathway": {
+            "type": "string"
+          },
+          "priority": {
+            "enum": [
+              "routine",
+              "urgent",
+              "asap",
+              "stat"
+            ]
+          },
+          "targets": {
+            "items": {
+              "properties": {
+                "days": {
+                  "type": "integer"
+                },
+                "due_on": {
+                  "description": "YYYY-MM-DD, a UTC day.",
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "overdue": {
+                  "type": "boolean"
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "text",
+                "days",
+                "due_on",
+                "overdue"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "title": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pathway",
+          "version",
+          "title",
+          "approved",
+          "latest_version",
+          "clock_from",
+          "clock_start",
+          "priority",
+          "instruction",
+          "targets",
+          "no_target_reason"
         ],
         "type": "object"
       },
@@ -8904,6 +9220,281 @@
         ],
         "x-epr-action": "Update",
         "x-epr-resource": "Referral"
+      }
+    },
+    "/api/patients/{id}/referrals/{referral_id}/suspicion": {
+      "get": {
+        "operationId": "getApiPatientsIdReferralsReferral_idSuspicion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "referral_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuspicionHistory"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/patients/{id}/referrals/{referral_id}/suspicion",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "Condition"
+      },
+      "post": {
+        "operationId": "postApiPatientsIdReferralsReferral_idSuspicion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "referral_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "1 to 128 letters, digits or . _ : -. A retry with the same key and the same request returns the first answer (header `Idempotent-Replayed: true`) and writes nothing; the same key for a different request is a 422; a key whose first request is unfinished is a 409. Only a success is kept; keys expire after 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RaiseSuspicion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredSuspicion"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionConflict"
+                }
+              }
+            },
+            "description": "A likely duplicate or a stale expected_version."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/patients/{id}/referrals/{referral_id}/suspicion",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Create",
+        "x-epr-resource": "Condition"
+      },
+      "put": {
+        "operationId": "putApiPatientsIdReferralsReferral_idSuspicion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "referral_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AmendSuspicion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredSuspicion"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionConflict"
+                }
+              }
+            },
+            "description": "A likely duplicate or a stale expected_version."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "PUT /api/patients/{id}/referrals/{referral_id}/suspicion",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Update",
+        "x-epr-resource": "Condition"
       }
     },
     "/api/patients/{id}/relationships": {

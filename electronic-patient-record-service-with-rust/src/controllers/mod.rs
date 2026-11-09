@@ -24,6 +24,7 @@ pub mod referral_worklist;
 pub mod referrals;
 pub mod relationships;
 pub mod results;
+pub mod suspicions;
 
 use axa::routes::AppRoutes;
 

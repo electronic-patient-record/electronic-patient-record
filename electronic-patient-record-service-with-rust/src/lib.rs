@@ -72,4 +72,6 @@ pub mod role_views;
 pub mod routes;
 pub mod site;
 pub mod store;
+pub mod suspicion;
+pub mod suspicions_store;
 pub mod terminology;
