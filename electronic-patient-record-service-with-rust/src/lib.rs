@@ -65,6 +65,7 @@ pub mod referrals_store;
 pub mod relationships;
 pub mod results;
 pub mod results_store;
+pub mod role_views;
 pub mod routes;
 pub mod site;
 pub mod store;

@@ -71,11 +71,13 @@ pub enum Role {
     /// The Medical Incident Officer: reads the hazard register and raises a hazard. Sees no clinical content, and cannot
     /// record a control or retire a hazard.
     MedicalIncidentOfficer,
+    /// Gives vaccinations (WL-7): reads only the subset its view in `src/role_views.toml` names.
+    Vaccinator,
 }
 
 impl Role {
     /// Every role, in a fixed order.
-    pub const ALL: [Role; 16] = [
+    pub const ALL: [Role; 17] = [
         Role::Clinician,
         Role::Nurse,
         Role::Pharmacist,
@@ -92,6 +94,7 @@ impl Role {
         Role::MedicationSafetyOfficer,
         Role::PatientSafetyOfficer,
         Role::MedicalIncidentOfficer,
+        Role::Vaccinator,
     ];
 
     /// The token value for this role (`role=clinician`).
@@ -114,6 +117,7 @@ impl Role {
             Role::MedicationSafetyOfficer => "medication-safety-officer",
             Role::PatientSafetyOfficer => "patient-safety-officer",
             Role::MedicalIncidentOfficer => "medical-incident-officer",
+            Role::Vaccinator => "vaccinator",
         }
     }
 
@@ -133,6 +137,12 @@ impl Role {
                 | Role::PatientSafetyOfficer
                 | Role::MedicalIncidentOfficer
         )
+    }
+
+    /// Whether the role's permissions come only from a view in `src/role_views.toml` (WL-7).
+    #[must_use]
+    pub fn viewed(self) -> bool {
+        matches!(self, Role::Vaccinator)
     }
 
     /// Whether the role treats patients (and so may use break-the-glass).
@@ -722,6 +732,9 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         // push): create and correct demographics. Never read a record back, never any clinical
         // content, no export until consent (SE-2).
         (Role::Integrator, Identity) => &[Search, Create, Update],
+        // A role with a view reads and searches what its view names, and nothing else (WL-7). The
+        // subset is data: `src/role_views.toml`, read by `role_views.rs`.
+        (r, resource) if r.viewed() && crate::role_views::reads(r, resource) => &[Read, Search],
         _ => &[],
     }
 }
@@ -737,7 +750,7 @@ fn purpose_fits(role: Role, purpose: Purpose) -> bool {
         | Role::OnDutyClinician => {
             matches!(purpose, Treatment | Emergency | Operations)
         }
-        Role::Receptionist | Role::ClinicalAdmin | Role::Integrator => {
+        Role::Receptionist | Role::ClinicalAdmin | Role::Integrator | Role::Vaccinator => {
             matches!(purpose, Operations | Treatment)
         }
         Role::Patient | Role::Proxy => purpose == PatientAccess,
@@ -1385,8 +1398,8 @@ mod tests {
                 }
             }
         }
-        // 16 roles × 23 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
-        assert_eq!(cells, 16 * 23 * 6 * 8 * 5 * 3 * 7 * 2);
+        // 17 roles × 23 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
+        assert_eq!(cells, 17 * 23 * 6 * 8 * 5 * 3 * 7 * 2);
         assert!(allows > 0);
     }
 

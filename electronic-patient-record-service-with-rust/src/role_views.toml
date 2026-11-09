@@ -1,0 +1,15 @@
+# Role views (WL-7): a role that sees a named subset of the record, held as data, not code.
+#
+# Each view names a role whose permissions come only from here, the kinds of record it may read and
+# search (policy `Resource` names), and where the idea came from. A view grants reads only: no create,
+# update or export. Clinical content still needs a care relationship, the purpose, and the patient's
+# consent, as for every role. `src/role_views.rs` reads this file into the build and refuses one that
+# names an unknown role or resource; its tests prove this file parses.
+#
+# NOT REVIEWED. The subset below follows the Welsh GP Record's vaccinator view (search snippet only,
+# spec/nhs-wales/index.md); no clinician, vaccination lead or Clinical Safety Officer has read it.
+
+[[view]]
+role = "vaccinator"
+reads = ["PatientIdentity", "AllergyIntolerance", "MedicationRequest"]
+source = "Welsh GP Record: vaccinators see only medication and allergies or adverse reactions"

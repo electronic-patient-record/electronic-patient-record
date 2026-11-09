@@ -313,6 +313,8 @@ mod tests {
                     | Role::Receptionist
                     | Role::ClinicalAdmin
                     | Role::Integrator
+                    // A vaccinator's view includes identity, so it may search for the person (WL-7).
+                    | Role::Vaccinator
             );
             assert_eq!(r.is_ok(), expected, "{role:?}");
         }
