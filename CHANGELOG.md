@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-10 - Watch lists on the patient page (WL-6, H-055)
+
+- **Clinical risk:** yes. A clinician now sees who keeps the patient on a watch list and why, and can add the patient to their own list or end an entry. Hazard H-055's residual risk is updated.
+- **Built:** a "Watch lists" section on `/patients/[id]` (`WatchListSection.svelte`, `lib/watch-list.ts`). It says a watch list is a reminder that sends no results or messages. It lists every entry with its state in words, since, owner, last day, reason and end reason, as text. It adds the reader to their own list, with a required reason and an optional last day; a second active entry is answered "already on your watch list". It ends an entry with a reason. Ending someone else's entry is refused by the service, and the page says that only the person who added it can end it. A 403 and a failed load each say so.
+- **Checked:** 1 new vitest test and 1 new stubbed Playwright test with axe. All 342 vitest and 110 Playwright tests, lint, `check` and `check:tests` pass.
+- **Not done / not verified:** there is no page for one's own list. The owner is shown as the token subject, not a name. There was no run against the real stack. Lapse notices, team lists and hand-over are still not built. The Welsh is machine-written and unreviewed.
+
 ## 2026-11-10 - The suspicion screens against the real stack (RS-8)
 
 - **Clinical risk:** none added. This is a test.

@@ -5,6 +5,7 @@
   import { DEFAULT_LOCALE, localizePath } from "#lib/locales.js";
   import AllergySection from "#lib/AllergySection.svelte";
   import ReferralsSection from "#lib/ReferralsSection.svelte";
+  import WatchListSection from "#lib/WatchListSection.svelte";
   import BreakGlassSection from "#lib/BreakGlassSection.svelte";
   import { siteWhenText } from "#lib/access-log.js";
   import { loadAllergies, type AllergyLoad } from "#lib/allergies.js";
@@ -411,6 +412,11 @@
       refresh={glassUntil}
     />
     <ReferralsSection
+      patientId={stored.id}
+      siteZone={stored.site_time_zone ?? "UTC"}
+      refresh={glassUntil}
+    />
+    <WatchListSection
       patientId={stored.id}
       siteZone={stored.site_time_zone ?? "UTC"}
       refresh={glassUntil}

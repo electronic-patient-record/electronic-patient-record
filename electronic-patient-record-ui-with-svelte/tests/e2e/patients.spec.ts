@@ -4389,6 +4389,79 @@ test("a clinician corrects a suspicion: the patient has now been told, with a re
   expect(body.suspicion.point_of_suspicion).toBe("2026-11-09T09:00:00Z");
 });
 
+test("a clinician adds a patient to their watch list with a reason; another's entry cannot be ended by them", async ({
+  page,
+}) => {
+  const sent: { method: string; body: Json }[] = [];
+  const other = {
+    id: "f0f0f0f0-f0f0-4f0f-8f0f-f0f0f0f0f0f0",
+    version: 1,
+    owner: "nurse-sub",
+    patient_id: ANN.id,
+    since: "2026-11-01T09:00:00.000000Z",
+    recorded_at: "2026-11-01T09:00:00.000000Z",
+    state: "active",
+    reason: "Falls risk <b>at home</b>",
+    until: "2026-12-01",
+    end_reason: null,
+  };
+  let entries: unknown[] = [other];
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, ANN),
+  );
+  await page.route("**/api/proxy/api/patients/*/watch-list", (route) => {
+    const req = route.request();
+    if (req.method() === "GET") return json(route, 200, { entries });
+    sent.push({ method: "POST", body: req.postDataJSON() });
+    entries = [
+      ...entries,
+      {
+        ...other,
+        id: "a1a1a1a1-a1a1-4a1a-8a1a-a1a1a1a1a1a1",
+        owner: "me",
+        reason: "Raised troponin",
+        until: null,
+      },
+    ];
+    return json(route, 201, {});
+  });
+  await page.route("**/api/proxy/api/patients/*/watch-list/*", (route) => {
+    sent.push({ method: "PUT", body: route.request().postDataJSON() });
+    return json(route, 404, { error: "not found" });
+  });
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  const section = page.getByRole("region", { name: "Watch lists" });
+  await expect(
+    section.getByText("Why: Falls risk <b>at home</b>"),
+  ).toBeVisible();
+  await expect(section.getByText(/until 2026-12-01/)).toBeVisible();
+  await expect(
+    section.getByText(/does not send results or messages/),
+  ).toBeVisible();
+  await section.getByRole("button", { name: "Add to my watch list" }).click();
+  await expect(section.getByText("Not sent. Give the reason.")).toBeVisible();
+  expect(sent).toHaveLength(0);
+  await section.getByLabel("Why (needed)").fill("Raised troponin");
+  await section.getByRole("button", { name: "Add to my watch list" }).click();
+  await expect(section.getByText("Added to your watch list.")).toBeVisible();
+  expect(sent[0]?.body).toEqual({ entry: { reason: "Raised troponin" } });
+  await expect(section.getByText("Why: Raised troponin")).toBeVisible();
+  await axe(page);
+
+  // Ending another clinician's entry: the service refuses it, and the page says why.
+  await section.getByRole("button", { name: "End this entry" }).first().click();
+  await section.getByLabel("Why it ends (needed)").fill("No longer needed");
+  await section.getByRole("button", { name: "End entry" }).click();
+  await expect(
+    section.getByText("Only the person who added an entry can end it."),
+  ).toBeVisible();
+  expect(sent[1]?.body).toEqual({
+    expected_version: 1,
+    end_reason: "No longer needed",
+  });
+});
+
 const QUEUED = (over: Record<string, unknown> = {}) => ({
   id: "55555555-5555-4555-8555-555555555555",
   received_at: "2026-10-21T09:00:12.000000Z",
