@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-10 - The PAS interface agreed (RS-5, spec only)
+
+- **Clinical risk:** none yet. This is spec only, and nothing is sent to the PAS.
+- **Built:** `spec/referral-suspicion/index.md` records that the PAS's maintainer agreed the four PAS changes: an `epr` referral source with the EPR id as `external_ref`, an optional `subtype_scheme`, a `withdrawn` stop, and an amend route with If-Match. It records the shapes the PAS's session sent, and how each EPR event maps to a PAS call. The sender will check a subtype against the PAS's live profile before sending, because copied lists drift. The amend route replaces stop-and-re-record for a moved point of suspicion. `suspected_on` is a day in the profile's `time_zone`.
+- **Checked:** links, the status block, `llms.txt`.
+- **Not done / not verified:** the PAS commit `b64b7e2` was seen in its git log, but its code was not read; the shapes are as its session reported them. The rule that the sender checks a subtype against the PAS's live profile is written down, but nothing enforces it yet. No EPR sender, port or contract test exists. The time-zone conversion is not built.
+
 ## 2026-11-10 - A subtype on a suspicion (RS-5, EPR side; H-053)
 
 - **Clinical risk:** yes. A clinician now sees and records a primary cancer site or a type of dementia on a suspicion. Hazard H-053 gains the control and the cause.

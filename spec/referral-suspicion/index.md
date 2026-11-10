@@ -4,7 +4,7 @@
 referral: what condition the referrer suspects, from when, on what grounds, and what became of it. The EPR records the
 clinical suspicion; the PAS carries it on the referral and the waiting list and runs any clock it starts. A design and a
 requirement on the PAS boundary ([scope](../02-scope.md)). Built: the pathway catalogue below (RS-6) and the stored
-suspicion (RS-1 to RS-4, below); RS-5 is a proposed mapping to the PAS, not agreed or built.
+suspicion (RS-1 to RS-4, below); RS-5 is a mapping to the PAS, agreed on 2026-11-10 and built on the PAS side; the EPR's sender is not built.
 
 ## Why suspicion, not diagnosis
 
@@ -173,7 +173,7 @@ maintainers and not agreed; nothing is built.
 | England's `clock_from` `referral-sent` | the clock is fixed at the point of suspicion | **A different measure**: the PAS spec says such a standard must say so |
 | Wales targets 28 days (diagnosis) and 62 | 62 only | The 28-day target is the EPR's alone |
 
-**The PAS's answers (2026-11-09, its session's recommendations; not yet agreed by the PAS's maintainer).**
+**The PAS's answers (2026-11-09, its session's recommendations; agreed by the PAS's maintainer on 2026-11-10, below).**
 
 1. **Referral identity:** the EPR referral id travels as the PAS referral's `external_ref`. A PAS referral is unique
    on (`source`, `external_ref`) and receiving is idempotent, so a retried send is safe. The PAS would add an `epr`
@@ -196,7 +196,31 @@ Also from the PAS: it takes neither the grounds nor whether the patient was told
 and `recorded_by` must be named people (the clinician who raised it, the EPR user who recorded it), never a system.
 `suspected_on` is a date in the PAS's own time zone (`PAS_TIMEZONE`). Its writes need `If-Match`, so the EPR reads
 before it stops. The four PAS changes (an `epr` source, `subtype_scheme`, a `withdrawn` stop, perhaps an amend route)
-wait on the PAS maintainer.
+were agreed on 2026-11-10.
+
+**Agreed and built on the PAS side (2026-11-10, its WPAS-9).** The PAS's maintainer agreed all four changes, and its
+commit is `b64b7e2` on the PAS's `origin/main` ("Link suspicions from an electronic patient record"), seen here in
+its git log; its code and tests were not read from here. The shapes, as the PAS's session sent them (its `spec/openapi.json` holds the schemas `Suspicion`,
+`NewSuspicion`, `Amendment` and `ActiveProfile`):
+
+| Call | Body and rules |
+|---|---|
+| `POST /api/referrals` | `source` `epr`, and `external_ref` (the EPR referral id) is required for it; the same pair again returns the first referral with `duplicate: true` |
+| `POST /api/referrals/{id}/suspicions` | `condition`, `subtype?`, `subtype_scheme?`, `unique_pathway_identifier?`, `suspected_on` (a date), `suspected_by`, `recorded_by`; a `subtype_scheme` that is not the active profile's list for that condition is 400 |
+| `GET /api/suspicion-profile` | `name`, `title`, `notes`, `conditions[]`, and now `time_zone` (IANA, for example `Europe/London`): the zone `suspected_on` is a day in |
+| `POST /api/suspicions/{id}/stop` | `reason` (`treatment_started`, `downgraded`, `died`, `withdrawn`, `entered_in_error`), `stopped_on`, `stopped_by`, with `If-Match`; `withdrawn` is counted in the report and kept out of the share within target and the median; a second stop is 409 |
+| `POST /api/suspicions/{id}/amend` | `suspected_on?`, `suspected_by?`, `subtype?`, `subtype_scheme?`, `reason`, `amended_by`, with `If-Match`; open suspicions only, at least one field changed, never the condition (stop and record again); emits `SuspicionAmended` |
+| Errors | RFC 9457 problems; no `If-Match` is 428, a stale one 412 |
+
+So an EPR amendment of the point of suspicion or the subtype becomes a PAS amend, not a stop and re-record; an EPR
+`withdrawn` becomes the PAS's `withdrawn` stop; `ruled-out` becomes `downgraded`; `confirmed` sends nothing. The EPR's
+`suspected_on` is the point of suspicion's day in the profile's `time_zone`, read from the PAS, not a UTC day.
+
+**The subtype is checked against the PAS's live profile when sent.** The EPR's lists are copies, copies drift, and
+an operator may run another profile or their own file. So the sender reads `GET /api/suspicion-profile`, checks the
+code against that condition's `subtypes`, and sends `subtype_scheme` with it; a mismatch is held for a person, not
+sent. The PAS's 400 is the backstop only. Of the built-in profiles, both carry the diabetes and dementia types, and
+only `wales` has the cancer site list: `generic` refuses any cancer subtype.
 
 ## Who owns what
 
