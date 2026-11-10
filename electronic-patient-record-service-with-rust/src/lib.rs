@@ -51,6 +51,7 @@ pub mod openapi;
 pub mod outbox;
 pub mod packs;
 pub mod page;
+pub mod pas_suspicion;
 pub mod pathways;
 pub mod patients_store;
 pub mod permission;

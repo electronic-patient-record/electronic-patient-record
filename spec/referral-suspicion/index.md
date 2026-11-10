@@ -222,6 +222,17 @@ code against that condition's `subtypes`, and sends `subtype_scheme` with it; a 
 sent. The PAS's 400 is the backstop only. Of the built-in profiles, both carry the diabetes and dementia types, and
 only `wales` has the cancer site list: `generic` refuses any cancer subtype.
 
+**The mapping, built (2026-11-10).** `src/pas_suspicion.rs` in the service is the mapping as pure code: the PAS
+condition for each pathway (and the subtype a child's type 1 diabetes implies), the `NewSuspicion`, `Amendment` and
+stop bodies, each checked against an `ActiveProfile` as the PAS answers it, or a hold with words naming ids and codes.
+A suspicion raised by a screening programme or a result is held, because the PAS needs the clinician's name. An
+amendment that changes nothing the PAS holds sends nothing; one that removes a subtype, or changes the PAS condition,
+is held for a person. `tests/pas_contract.rs` checks every body against the PAS's request schemas, copied with the
+two built-in profiles from PAS commit `b64b7e2` into `tests/fixtures/pas/`. **Not built:** the sender (an outbox
+sink, the profile read, the `epr` referral with `external_ref`, `If-Match` from a read, the PAS ids kept), and the
+names: `recorded_by`, `amended_by` and `stopped_by` are given by the caller, and the service holds token subjects,
+not names.
+
 ## Who owns what
 
 | Part | EPR | PAS |

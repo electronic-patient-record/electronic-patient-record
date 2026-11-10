@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-10 - The suspicion's PAS mapping and a contract test (RS-5)
+
+- **Clinical risk:** none yet. Nothing calls the mapping and nothing is sent. Once a sender uses it, a wrong mapping is a clinical risk, under H-053 and H-054.
+- **Built:** `src/pas_suspicion.rs`, pure code. It holds the PAS condition for each pathway, and the subtype a child's type 1 diabetes implies. `new_suspicion`, `amendment` and `stop` give the PAS's request bodies, or a hold for a person. Each checks against the PAS's live profile: the condition is tracked, a subtype comes from that condition's list and is sent with its scheme, a required list is met, and days are counted in the profile's time zone. `confirmed` sends nothing; `ruled-out` becomes `downgraded`; `withdrawn` becomes `withdrawn`. A suspicion raised by a programme or a result is held, and so is an amendment that removes a subtype or changes the condition. `tests/pas_contract.rs` checks every body against the PAS's request schemas, copied with its two built-in profiles from PAS commit `b64b7e2` into `tests/fixtures/pas/`, and checks that its checker refuses a bad body.
+- **Checked:** 7 unit tests, the contract test, clippy, rustdoc, and all 547 database-free tests.
+- **Not done / not verified:** no sender, no profile read, no `epr` referral, no `If-Match` and no store for the PAS's ids. People's names are supplied by the caller; the service has token subjects, not names. The schema checker covers only what those schemas use, not all of JSON Schema. Nothing checks that the copied schemas and profiles still match the PAS. The PAS has not run its side against these bodies.
+
 ## 2026-11-10 - The PAS interface agreed (RS-5, spec only)
 
 - **Clinical risk:** none yet. This is spec only, and nothing is sent to the PAS.

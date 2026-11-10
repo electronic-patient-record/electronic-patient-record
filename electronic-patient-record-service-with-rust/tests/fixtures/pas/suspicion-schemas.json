@@ -1,0 +1,137 @@
+{
+  "_provenance": "Copied from the PAS repository (patient-administration-system, spec/openapi.json) at commit b64b7e2, 2026-11-10, for the EPR's contract test (RS-5). The PAS owns these; a copy drifts, so refresh it from the PAS when its interface changes.",
+  "schemas": {
+    "Amendment": {
+      "description": "A correction to an open suspicion (FR-224). Each field left out is kept; at least one must change.",
+      "properties": {
+        "amended_by": {
+          "type": "string"
+        },
+        "reason": {
+          "description": "Why it is being corrected. Kept in the audit.",
+          "type": "string"
+        },
+        "subtype": {
+          "description": "A code from the condition's list in the profile it was recorded under.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "subtype_scheme": {
+          "description": "When given, must be that list's scheme.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "suspected_by": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "suspected_on": {
+          "format": "date",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "reason",
+        "amended_by"
+      ],
+      "type": "object"
+    },
+    "NewSuspicion": {
+      "description": "What a person records: the condition, the point of suspicion and who suspected it.",
+      "properties": {
+        "condition": {
+          "description": "A condition code of the active profile (`GET /api/suspicion-profile`).",
+          "type": "string"
+        },
+        "recorded_by": {
+          "type": "string"
+        },
+        "subtype": {
+          "description": "A code from the condition's subtype list, if it has one; refused if it has none.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "subtype_scheme": {
+          "description": "The list the sender took `subtype` from. When given, it must be the active profile's list for the\ncondition, so a code from another list is refused rather than relabelled (FR-223).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "suspected_by": {
+          "type": "string"
+        },
+        "suspected_on": {
+          "format": "date",
+          "type": "string"
+        },
+        "unique_pathway_identifier": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "condition",
+        "suspected_on",
+        "suspected_by",
+        "recorded_by"
+      ],
+      "type": "object"
+    },
+    "ReferralSource": {
+      "description": "Where a referral came from.",
+      "enum": [
+        "gp",
+        "e-rs",
+        "internal",
+        "epr"
+      ],
+      "type": "string"
+    },
+    "StopReason": {
+      "description": "Why a suspicion's clock stopped. Any one stops it, and only one is recorded.",
+      "enum": [
+        "treatment_started",
+        "downgraded",
+        "died",
+        "withdrawn",
+        "entered_in_error"
+      ],
+      "type": "string"
+    },
+    "handlers_suspicions.StopBody": {
+      "properties": {
+        "reason": {
+          "$ref": "#/components/schemas/StopReason"
+        },
+        "stopped_by": {
+          "type": "string"
+        },
+        "stopped_on": {
+          "description": "The date the clock stopped: the treatment start, the downgrade, or the death.",
+          "format": "date",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason",
+        "stopped_on",
+        "stopped_by"
+      ],
+      "type": "object"
+    }
+  }
+}
