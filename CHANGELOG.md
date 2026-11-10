@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-10 - axa 0.11 recorded, not started (AX-11)
+
+- **Clinical risk:** none. This is a backlog entry.
+- **Built:** `tasks.md` gains AX-11, the axa 0.11 upgrade, from the axa maintainers' release note: the renamed settings (`DATABASE_URL` becomes `DB_URL`, and others), the moved health paths, the code changes, and the silent changes to check with tests.
+- **Not done / not verified:** nothing is upgraded. The axa upgrade guide was not read here, and the list of places to change was counted with a search, not checked one by one.
+
 ## 2026-11-10 - My watch list (WL-6, H-055)
 
 - **Clinical risk:** small. A clinician can now see every patient on their own list in one place. Hazard H-055's residual risk is updated.

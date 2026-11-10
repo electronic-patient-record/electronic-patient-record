@@ -1474,3 +1474,27 @@ The maintainer's requirement: a PAS must track suspicion during referrals, cance
 - [x] **RS-6 (M, clinical) — Pathways as configurable data.** **Done 2026-11-09 (H-053):** `src/suspicion_pathways.toml`, read by `src/pathways.rs`: per condition, versioned, the clock start, priority and target days, or bands (heart failure by NT-proBNP), factors that raise the priority (sleep apnoea), the person's agreement (dementia), an instruction (Parkinson's), and why there is no target where there is none; every built-in pathway is a draft. `plan` gives the priority and each target's due day. Attached to a suspicion by RS-1. **Site days landed 2026-11-10:** due days are counted in `EPR_SITE_TIME_ZONE`'s days, named in the plan. Not built: a screen, clock pauses. The maintainer's requirement: generalise cancer's suspicion, target dates and appointment priority to configurable conditions. **Acceptance:** seven pathways parse; a test per rule (band, factor, agreement, same-day, Wales dates); a bad catalogue is refused.
 - [x] **RS-7 (S, clinical) — An outcome recorded in error.** **Done 2026-11-10 (H-054):** migration `20261110000035_suspicion_outcome_errors.sql` (outcomes numbered by `seq`, an append-only `referral_suspicion_outcome_errors`, view `referral_suspicion_outcome_current`); `POST /api/patients/{id}/referrals/{referral_id}/suspicion/outcome/entered-in-error {seq, reason}` reopens the suspicion, which may be amended and ended anew; the first outcome and the reason stay in the history (`outcomes_in_error`). Not built: a second person's confirmation, a narrower role than any treating clinician, undoing a PAS stop (held for a person). **Acceptance:** marked with a reason, reopened, on the worklist again, amended and ended anew, the first outcome kept (`tests/http_suspicions.rs`).
 - [ ] **RS-8 (M, clinical) — Suspicion screens.** **Read-only slice landed 2026-11-10:** each referral on `/patients/[id]` shows its suspicion (`SuspicionView.svelte`, `lib/suspicions.ts`): the not-told warning, the draft pathway note, subtype by name, priority, point of suspicion, due days in the site's days with overdue, the outcome or that it is open, and outcomes entered in error; 3 vitest, 1 stubbed Playwright test with axe; Welsh machine-written, unreviewed. **Raise form landed 2026-11-10** (`SuspicionRaise.svelte`, `buildSuspicion`; the read now carries the newest pathways; nothing a clinician must decide is preselected). **End and correct forms landed 2026-11-10** (`SuspicionEnd.svelte`, `buildOutcome`). **Correct form landed 2026-11-10** (`SuspicionAmend.svelte`: told, point, instruction, with a reason). **Real-stack run 2026-11-10:** `tests/e2e-keycloak/signin.spec.ts` records, corrects (told), ends (ruled out) and reopens a suspicion through the page against the real API and Keycloak, and reads the history back (passed locally; not in CI). **Not built:** correcting the other fields on a screen; a picker for a band's result; the version history. **Acceptance:** a clinician can raise, amend, end and correct a suspicion on screen, each tested with axe and against the real stack.
+
+## Dependency 2026-11-10 — axa 0.11
+
+The axa maintainers' session reported axa 0.11.0 published (tag v0.11.0, axa main `b45b27c`): breaking, with some
+changes in behaviour and no compile error. Their upgrade guide is `help/upgrading-to-0.11/index.md` in the axa
+repository. Not started: it waits for the maintainer to schedule it.
+
+- [ ] **AX-11 (M) — Upgrade to axa 0.11.** Read the axa upgrade guide first. **Settings renamed (the new binary reads
+  none of the old names):** `DATABASE_URL` to `DB_URL` (production refuses to start without it; 74 files here name the
+  old one), `AXA_TEST_DATABASE_URL` to `AXA_TEST_DB_URL`, `HTTP_CSP` to `HTTP_CONTENT_SECURITY_POLICY`,
+  `BODY_LIMIT_BYTES` to `HTTP_REQUEST_BODY_LIMIT_BYTE_COUNT`, `HEADER_READ_TIMEOUT_SECONDS` to
+  `HTTP_REQUEST_HEADER_READ_TIMEOUT_SECONDS`; `LOCO_ENV` is no longer read (`APP_ENV`). **Health paths:** `/_ping` and
+  `/_health` become `/_health/live`, `/_readiness` becomes `/_health/ready`, and `/_health/startup` is new; the old
+  paths answer 404, so the compose healthchecks, the Containerfile, CI, the UI proxy and the readiness and route
+  census tests move in the same commit. **Code:** `middleware::body_limit(bytes)` becomes `body_limit(route, bytes)`;
+  `axa_seaorm::model` and `validation` move to `axa::model` and `axa::validation`; `axa-problem-details-for-http-apis`
+  is `axa-problem` again; with sqlx and sea-orm both on, `AppContext::db` is a `PgPool`. **Silent changes to check
+  with tests:** a database outage answers 503 with `Retry-After` instead of 500 (the audit fail-closed tests and the
+  UI's `commonProblem`); new cross-origin and permissions-policy headers; responses that set a cookie become
+  `no-store` and are not compressed; a 401 carries `WWW-Authenticate: Bearer`. **Crates:** axa 0.11.0, axa-test 0.2.0,
+  axa-problem 0.2.0, axa-seaorm 0.3.0, axa-paseto-auth 0.6.0, axa-keycloak-auth 0.4.0, axa-request-rate-limit 0.3.0,
+  axa-idempotency-key 0.2.2, axa-accepts-version-negotiation 0.2.1, axa-prometheus-metrics 0.1.1, and the others
+  this service uses. **Acceptance:** every gate green, the OpenAPI document unchanged or its change explained, the
+  deployment docs naming the new settings and paths, and a CHANGELOG entry listing the behaviour changes.
