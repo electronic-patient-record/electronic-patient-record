@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-10 - A referral shows its suspicion, read only (RS-8, H-053, H-054)
+
+- **Clinical risk:** yes. A clinician now sees, under each referral, what is suspected, whether the patient was told, the pathway's due days and whether they have passed, and the outcome. Hazards H-053 and H-054 have their residual risk updated.
+- **Built:** `SuspicionView.svelte` and `lib/suspicions.ts` in the UI, shown under each referral in the patient's "Referrals" section. When the patient has not been told, the screen says in bold not to name the condition to them. It notes a draft pathway or a newer version, and shows the subtype as code and list, the priority, the point of suspicion and what the clock starts from, and any instruction. Each target shows its due day in the site's days, marked overdue while open, or as passed at the outcome once ended. It also shows the outcome or that the suspicion is open, and how many outcomes were entered in error. A 403 and a failed load each say so, never "none". The words are English and machine-written Welsh (unreviewed).
+- **Checked:** 3 new vitest tests and 1 new stubbed Playwright test with axe; all 334 vitest and 106 Playwright tests, lint, `check` and `check:tests`.
+- **Not done / not verified:** no form raises, amends, ends or corrects a suspicion. The subtype's name is not shown; the plan carries only the code. No version history is shown. The screen was not run against the real service or Keycloak. The Welsh is not reviewed by a speaker. Each referral makes its own request, so a long list makes many.
+
 ## 2026-11-10 - An outcome recorded in error (RS-7, H-054)
 
 - **Clinical risk:** yes. A clinician can reopen a suspicion whose outcome was recorded in error, so it returns to the referrer's worklist and its targets count again. Hazard H-054's control and residual risk are updated.

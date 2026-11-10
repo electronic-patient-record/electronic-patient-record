@@ -15,6 +15,8 @@
 //   - death statuses: "Gwiriwyd", "Ardystiwyd", "Cofrestrwyd" (verified, certified, registered)
 //     and "crwner", "cofrestrydd".
 //   - "mynediad brys" for break-the-glass emergency access.
+//   - suspicion on a referral (2026-11-10): "amheuaeth", "pwynt amheuaeth" (point of suspicion), "isdeip"
+//     (subtype), "diystyrwyd" (ruled out), and the warning not to name the condition to the patient.
 //   - "optio allan o ddata cenedlaethol": the national data opt-out is England's; Wales may need a
 //     different name or none.
 //   - proxy bases: "cyfrifoldeb rhiant", "atwrneiaeth", "dirprwy a benodwyd gan y llys".
@@ -272,6 +274,42 @@ export const CY: Strings = {
     redirect: "Ailgyfeirio",
   },
   referralRoles: { referrer: "atgyfeiriwr", recipient: "derbynnydd" },
+  suspicionNotShown:
+    "Nid yw'r amheuaeth ar yr atgyfeiriad hwn yn cael ei dangos i'ch rôl.",
+  suspicionCouldNot:
+    "Nid oedd modd llwytho'r amheuaeth ar yr atgyfeiriad hwn. Nid yw hyn yn golygu nad oes un.",
+  suspicionTitle: "Amheuir: {condition}",
+  suspicionPathway: "Llwybr: {title}, fersiwn {version}",
+  suspicionDraft:
+    "Drafft yw'r llwybr hwn: nid oes clinigwr wedi cymeradwyo ei ddyddiadau na'i flaenoriaeth.",
+  suspicionNewer: "Mae fersiwn mwy newydd ({latest}) o'r llwybr hwn yn bodoli.",
+  suspicionPriority: "Blaenoriaeth o'r llwybr: {priority}",
+  suspicionPoint: "Pwynt amheuaeth: {when}",
+  suspicionClock: "Mae'r cloc yn dechrau: {from}",
+  suspicionClockFrom: {
+    "point-of-suspicion": "ar bwynt yr amheuaeth",
+    "referral-sent": "pan anfonwyd yr atgyfeiriad",
+  },
+  suspicionSubtype: "Isdeip: {code} (rhestr {scheme})",
+  suspicionInstruction: "I'r tîm sy'n derbyn: {instruction}",
+  suspicionToldYes: "Mae'r claf wedi cael gwybod beth a amheuir.",
+  suspicionToldNo:
+    "NID yw'r claf wedi cael gwybod beth a amheuir. Peidiwch ag enwi'r cyflwr wrthynt.",
+  suspicionTargets:
+    "Diwrnodau targed (diwrnodau {zone}; barn y cofnod, nid cloc adroddedig y PAS)",
+  suspicionDue: "{text}: erbyn {day}",
+  suspicionOverdue: "yn hwyr",
+  suspicionPassedAtOutcome:
+    "roedd y diwrnod wedi mynd heibio pan gofnodwyd y canlyniad",
+  suspicionNoTarget: "Dim diwrnod targed: {reason}",
+  suspicionOpen:
+    "Ar agor: nid oes canlyniad wedi'i gofnodi. Mae'n aros ar agor hyd nes bydd un.",
+  suspicionOutcomes: {
+    confirmed: "Cadarnhawyd: {diagnosis}",
+    "ruled-out": "Diystyrwyd gan {by}",
+    withdrawn: "Tynnwyd yn ôl: {detail}",
+  },
+  suspicionInError: "Canlyniadau cynharach a gofnodwyd trwy gamgymeriad: {n}.",
   amendTitle: "Ceisiadau i gywiro cofnod",
   amendOpenCount: "{n} yn aros am benderfyniad.",
   amendOverdueCount: "{n} yn hwyr.",

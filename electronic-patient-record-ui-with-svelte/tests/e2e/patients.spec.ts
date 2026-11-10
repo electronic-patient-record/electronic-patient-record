@@ -3883,6 +3883,114 @@ test("a clinician sends a referral and takes a step; the service's list of next 
   await expect(page.getByRole("button", { name: /^Accept/ })).toHaveCount(0);
 });
 
+test("a referral shows its suspicion: draft pathway, not told, due days, overdue, open until an outcome", async ({
+  page,
+}) => {
+  const RID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, ANN),
+  );
+  await page.route("**/api/proxy/api/patients/*/referrals", (route) =>
+    json(route, 200, {
+      referrals: [
+        {
+          id: RID,
+          version: 1,
+          author: "dr",
+          recorded_at: "2026-11-09T09:00:00.000000Z",
+          patient_id: ANN.id,
+          state: "requested",
+          referral: {
+            recipient: "Colorectal clinic",
+            reason: "Rectal bleeding",
+            question: "Please assess",
+            priority: "urgent",
+          },
+          next: [],
+        },
+      ],
+    }),
+  );
+  await page.route(
+    `**/api/proxy/api/patients/*/referrals/${RID}/suspicion`,
+    (route) =>
+      json(route, 200, {
+        current: {
+          version: 1,
+          suspicion: {
+            condition: "Suspected lower GI <i>cancer</i>",
+            subtype: { scheme: "wales-primary-cancer-site", code: "03" },
+            point_of_suspicion: "2026-11-09T09:30:00Z",
+            patient_told: "not-told",
+          },
+          plan: {
+            pathway: "suspected-cancer-wales",
+            version: 2,
+            title: "Suspected cancer (Wales, Single Cancer Pathway)",
+            approved: false,
+            latest_version: 2,
+            clock_from: "point-of-suspicion",
+            clock_start: "2026-11-09T09:30:00Z",
+            time_zone: "Europe/London",
+            priority: "urgent",
+            instruction: null,
+            targets: [
+              {
+                id: "diagnosis",
+                text: "Diagnosed and staged",
+                days: 28,
+                due_on: "2026-12-07",
+                overdue: true,
+              },
+              {
+                id: "first-treatment",
+                text: "First definitive treatment started",
+                days: 62,
+                due_on: "2027-01-10",
+                overdue: false,
+              },
+            ],
+            no_target_reason: null,
+          },
+        },
+        versions: [],
+        open: true,
+        outcome: null,
+        outcomes_in_error: [],
+      }),
+  );
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  // The record's words are text, not markup.
+  await expect(
+    page.getByText("Suspected: Suspected lower GI <i>cancer</i>"),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/has NOT been told what is suspected/),
+  ).toBeVisible();
+  await expect(page.getByText(/This pathway is a draft/)).toBeVisible();
+  await expect(
+    page.getByText("Subtype: 03 (list wales-primary-cancer-site)"),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/Target days \(Europe\/London days/),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("listitem")
+      .filter({ hasText: "Diagnosed and staged: by 2026-12-07" })
+      .last(),
+  ).toContainText("overdue");
+  await expect(
+    page
+      .getByRole("listitem")
+      .filter({ hasText: "First definitive treatment started: by 2027-01-10" })
+      .last(),
+  ).not.toContainText("overdue");
+  await expect(page.getByText(/^Open: no outcome is recorded/)).toBeVisible();
+  await axe(page);
+});
+
 const QUEUED = (over: Record<string, unknown> = {}) => ({
   id: "55555555-5555-4555-8555-555555555555",
   received_at: "2026-10-21T09:00:12.000000Z",

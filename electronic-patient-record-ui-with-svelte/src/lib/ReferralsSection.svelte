@@ -16,6 +16,7 @@
     type StoredReferral,
   } from "./referrals.js";
   import { TEXT } from "./i18n.js";
+  import SuspicionView from "./SuspicionView.svelte";
 
   const busy = new Busy();
   let {
@@ -155,6 +156,7 @@
             {/if}
             <p>{TEXT.referralReason}: {r.referral.reason}</p>
             <p>{TEXT.referralQuestion}: {r.referral.question}</p>
+            <SuspicionView {patientId} referralId={r.id} {siteZone} />
             {#each r.next as n (n.event)}
               <button
                 disabled={busy.on}

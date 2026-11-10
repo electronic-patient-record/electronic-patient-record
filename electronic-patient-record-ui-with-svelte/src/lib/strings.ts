@@ -240,6 +240,40 @@ export const STRINGS = {
     redirect: "Redirect",
   },
   referralRoles: { referrer: "referrer", recipient: "recipient" },
+  suspicionNotShown:
+    "The suspicion on this referral is not shown to your role.",
+  suspicionCouldNot:
+    "The suspicion on this referral could not be loaded. This does not mean there is none.",
+  suspicionTitle: "Suspected: {condition}",
+  suspicionPathway: "Pathway: {title}, version {version}",
+  suspicionDraft:
+    "This pathway is a draft: no clinician has approved its dates or priority.",
+  suspicionNewer: "A newer version ({latest}) of this pathway exists.",
+  suspicionPriority: "Priority from the pathway: {priority}",
+  suspicionPoint: "Point of suspicion: {when}",
+  suspicionClock: "The clock starts: {from}",
+  suspicionClockFrom: {
+    "point-of-suspicion": "at the point of suspicion",
+    "referral-sent": "when the referral was sent",
+  },
+  suspicionSubtype: "Subtype: {code} (list {scheme})",
+  suspicionInstruction: "For the receiving team: {instruction}",
+  suspicionToldYes: "The patient has been told what is suspected.",
+  suspicionToldNo:
+    "The patient has NOT been told what is suspected. Do not name the condition to them.",
+  suspicionTargets:
+    "Target days ({zone} days; the record's view, not the PAS's reported clock)",
+  suspicionDue: "{text}: by {day}",
+  suspicionOverdue: "overdue",
+  suspicionPassedAtOutcome: "the day had passed when the outcome was recorded",
+  suspicionNoTarget: "No target day: {reason}",
+  suspicionOpen: "Open: no outcome is recorded. It stays open until one is.",
+  suspicionOutcomes: {
+    confirmed: "Confirmed: {diagnosis}",
+    "ruled-out": "Ruled out by {by}",
+    withdrawn: "Withdrawn: {detail}",
+  },
+  suspicionInError: "Earlier outcomes entered in error: {n}.",
   amendTitle: "Requests to correct a record",
   amendOpenCount: "{n} waiting for a decision.",
   amendOverdueCount: "{n} overdue.",
