@@ -71,7 +71,7 @@ safety incident.
 |---|---|
 | Rust | 1.99.1 pinned in `rust-toolchain.toml`, MSRV 1.97, edition 2024 |
 | Service framework | loco-rs 1.2 (Axum 0.8), `default-features = false`, **no `auth` feature** (no JWT / `rsa`) |
-| ORM / DB | SeaORM 2.0, PostgreSQL 18, migrations crate `electronic-patient-record-migration` |
+| Database | PostgreSQL 18 through `sqlx` (`axa`'s `sqlx` feature), no ORM; migrations are `.sql` files in the service's `migrations/`, with no down files |
 | Auth | PASETO v4.public verified offline with `authentication-verifier` (Ed25519 key set URL); OIDC upstream; SMART on FHIR 2.2 authorisation layered on top (see §6.4) |
 | Integrity | `integrity-mac` for keyed MACs (audit hash chain), `sha2` / `sha3` digests |
 | Search | `tantivy` 0.26 embedded index (patient search, typeahead); PostgreSQL for FHIR search parameters |

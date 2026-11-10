@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-10 - No SeaORM
+
+- **Clinical risk:** none. This changes text only.
+- **Built:** the service has no SeaORM dependency: neither crate names one, the lockfile holds no SeaORM crate, and axa runs on its `sqlx` feature alone. `plan.md`'s stack table now says PostgreSQL through `sqlx` with `.sql` migrations and no ORM, instead of SeaORM 2.0 and a migration crate. SF-3's original SeaORM line is struck through as removed. AX-11 no longer lists `axa-seaorm` or the SeaORM upgrade steps, which did not apply.
+- **Kept on purpose:** `tests/chaos_api.rs` still checks that no error response names "SeaORM", like "sqlx", because that is a guard against leaking a driver's name. `plan.md` still says the patient administration system uses SeaORM, because it does. CHANGELOG history is unchanged.
+- **Not done / not verified:** `plan.md`'s stack table still names loco-rs 1.2 as the service framework, which axa replaced; that was not part of this request and is left for its own change.
+
 ## 2026-11-10 - axa 0.11 (AX-11)
 
 - **Clinical risk:** none intended. Behaviour changes are listed below; none changes what a clinician sees, except that a database outage now reads as a 503, which the UI already shows as an error.

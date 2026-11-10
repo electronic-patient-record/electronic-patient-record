@@ -71,7 +71,7 @@ Conventions:
 - [x] **SF-3 (M) — Service crate.** **Landed 2026-10-20.** `cargo test --lib` 6 pass; `tests/audit_immutable.rs` 2 pass against Postgres 18; the release image built and `/_health` returned 200 under compose; with no keys the container exits 1 with "refusing to start"; with a key set, an unauthenticated call gets 401. **Not built:** everything past the guard and the compare endpoint (OpenAPI, rate limiting, CORS allow-list, Prometheus, OTLP). Description:
   `electronic-patient-record-service-with-rust`:
   - loco-rs 1.2 with `default-features = false` and no `auth` feature
-  - SeaORM 2.0, migration crate `electronic-patient-record-migration`
+  - ~~SeaORM 2.0, migration crate `electronic-patient-record-migration`~~ (removed: the service uses `sqlx` and `.sql` migrations, no ORM)
   - `/_health` and `/_ping`
   - `authentication-verifier` PASETO check, login required by default; refuses to start without keys or with login off in `production`
   - `compose.test.yaml` (Postgres 18), `Containerfile` (non-root)
@@ -1489,12 +1489,12 @@ repository. The maintainer scheduled it on 2026-11-10.
   `/_health` become `/_health/live`, `/_readiness` becomes `/_health/ready`, and `/_health/startup` is new; the old
   paths answer 404, so the compose healthchecks, the Containerfile, CI, the UI proxy and the readiness and route
   census tests move in the same commit. **Code:** `middleware::body_limit(bytes)` becomes `body_limit(route, bytes)`;
-  `axa_seaorm::model` and `validation` move to `axa::model` and `axa::validation`; `axa-problem-details-for-http-apis`
-  is `axa-problem` again; with sqlx and sea-orm both on, `AppContext::db` is a `PgPool`. **Silent changes to check
+  `axa-problem-details-for-http-apis` is `axa-problem` again; the SeaORM changes do not apply, as this service uses
+  `sqlx` only. **Silent changes to check
   with tests:** a database outage answers 503 with `Retry-After` instead of 500 (the audit fail-closed tests and the
   UI's `commonProblem`); new cross-origin and permissions-policy headers; responses that set a cookie become
   `no-store` and are not compressed; a 401 carries `WWW-Authenticate: Bearer`. **Crates:** axa 0.11.0, axa-test 0.2.0,
-  axa-problem 0.2.0, axa-seaorm 0.3.0, axa-paseto-auth 0.6.0, axa-keycloak-auth 0.4.0, axa-request-rate-limit 0.3.0,
+  axa-problem 0.2.0, axa-paseto-auth 0.6.0, axa-keycloak-auth 0.4.0, axa-request-rate-limit 0.3.0,
   axa-idempotency-key 0.2.2, axa-accepts-version-negotiation 0.2.1, axa-prometheus-metrics 0.1.1, and the others
   this service uses. **Acceptance:** every gate green, the OpenAPI document unchanged or its change explained, the
   deployment docs naming the new settings and paths, and a CHANGELOG entry listing the behaviour changes.
