@@ -28,7 +28,7 @@
 
 ## Subproject specs
 
-- [electronic-patient-record-service-with-rust/spec](../electronic-patient-record-service-with-rust/spec/index.md) — loco.rs service: clinical record, FHIR R4 facade, audit, consent, access control
+- [electronic-patient-record-service-with-rust/spec](../electronic-patient-record-service-with-rust/spec/index.md) — Axum and `axa` service: clinical record, FHIR R4 facade, audit, consent, access control
 - [electronic-patient-record-matcher-with-rust/spec](../electronic-patient-record-matcher-with-rust/spec/index.md) — pure library: patient identity matching (master patient index), explainable scores
 - [electronic-patient-record-ui-with-svelte/spec](../electronic-patient-record-ui-with-svelte/spec/index.md) — clinician and patient UI: SvelteKit 2, Svelte 5 runes, Lily widgets, BFF
 

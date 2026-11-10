@@ -19,7 +19,7 @@ ignore = [
 
 [licenses]
 version = 2
-# Permissive licenses used across the Rust / Loco stack. A dependency
+# Permissive licenses used across the Rust stack. A dependency
 # whose license is not listed FAILS the check — a deliberate signal to
 # review a new license, not to silently accept it.
 allow = [

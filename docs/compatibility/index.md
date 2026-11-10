@@ -39,7 +39,7 @@ Version compatibility is the second pressure. Hospitals run browsers and operati
 
 ## Trade-offs with other attributes
 
-- **Maintainability and flexibility.** Supporting many versions slows change; pinning (toolchain, loco-rs trio) helps maintainability but narrows compatibility ([maintainability](../maintainability/index.md), [flexibility](../flexibility/index.md)).
+- **Maintainability and flexibility.** Supporting many versions slows change; pinning (toolchain, `axa` and the `axum-test` that follows it) helps maintainability but narrows compatibility ([maintainability](../maintainability/index.md), [flexibility](../flexibility/index.md)).
 - **Security.** Old browsers, TLS versions and libraries are the usual price of wide compatibility; the NFR-6 floor of TLS 1.2 is a choice ([security](../security/index.md)).
 - **Performance.** Derived facades (R5 from R4) add conversion cost per call ([performance efficiency](../performance-efficiency/index.md)).
 - **Interaction capability.** Wide device support, including low-end phones, serves the equity rule and constrains the UI ([interaction capability](../interaction-capability/index.md)).

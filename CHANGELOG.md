@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-10 - The framework named as it is (Axum and axa)
+
+- **Clinical risk:** none. This changes text only.
+- **Built:** the descriptions that still called the service a loco.rs service now say Axum and `axa`: `plan.md`'s repository tree, its stack table (now Axum 0.8 with `axa` 0.11 and its features; tokens are PASETO or Keycloak, with no JWT library) and its architecture sketch; `spec/index.md`; the compatibility and maintainability docs (`axum-test` follows `axa`, not loco-rs, and `jsonwebtoken` is not a dependency); the Containerfile's image description; and two `deny.toml` comments.
+- **Kept on purpose:** the test database's user and password are still `loco`, because they are credentials that CI and local setups use, not a description. Research rows and the CHANGELOG that describe the service as it was are history.
+- **Not done / not verified:** `.gitignore` and `.gitleaksignore` comments still mention loco's scaffold, because they explain why the lines exist. No build or test depends on any of this text.
+
 ## 2026-11-10 - No SeaORM
 
 - **Clinical risk:** none. This changes text only.
