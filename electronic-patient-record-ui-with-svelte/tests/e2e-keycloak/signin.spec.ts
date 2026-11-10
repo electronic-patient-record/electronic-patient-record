@@ -1628,3 +1628,159 @@ test("a clinician corrects a vital sign and then marks it entered in error; the 
     value: 72,
   });
 });
+
+test("a clinician records, corrects, ends and reopens a suspicion through the page; the real API keeps every version and outcome", async ({
+  page,
+}) => {
+  test.skip(!ADMIN, "set EPR_E2E_ADMIN_USERNAME");
+  const subOf = (t: string) =>
+    JSON.parse(Buffer.from(t.split(".")[1]!, "base64url").toString())
+      .sub as string;
+  const [admin, clinician] = await Promise.all([
+    devToken(ADMIN),
+    devToken(USERNAME),
+  ]);
+  const api = async (
+    token: string,
+    method: string,
+    path: string,
+    body?: unknown,
+    purpose = "operations",
+  ) => {
+    const res = await fetch(`${API}${path}`, {
+      method,
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+        "x-purpose-of-use": purpose,
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const text = await res.text();
+    return { status: res.status, body: text ? JSON.parse(text) : null };
+  };
+  const made = await api(admin, "POST", "/api/patients", {
+    patient: {
+      names: [{ family: `Zsuspicion${Date.now()}`, given: ["Cerys"] }],
+      birth_date: `19${40 + Math.floor(Math.random() * 40)}-0${1 + Math.floor(Math.random() * 9)}-${10 + Math.floor(Math.random() * 18)}`,
+    },
+  });
+  expect(made.status).toBe(201);
+  const id = made.body.id as string;
+  expect(
+    (
+      await api(admin, "POST", `/api/patients/${id}/relationships`, {
+        relationship: {
+          subject: subOf(clinician),
+          kind: "care-team",
+          status: "active",
+        },
+        reason: "e2e",
+      })
+    ).status,
+  ).toBe(201);
+  const sent = await api(
+    clinician,
+    "POST",
+    `/api/patients/${id}/referrals`,
+    {
+      referral: {
+        recipient: "Colorectal clinic",
+        reason: "Rectal bleeding",
+        question: "Please assess",
+        priority: "urgent",
+      },
+    },
+    "treatment",
+  );
+  expect(sent.status, JSON.stringify(sent.body)).toBe(201);
+  const rid = sent.body.id as string;
+
+  await signIn(page);
+  await page.goto(`/en-001/patients/${id}`);
+  const section = page.getByRole("region", { name: "Referrals" });
+  await section.getByText("Record a suspicion on this referral").click();
+  await section.getByLabel("Pathway").selectOption("suspected-cancer-wales");
+  await section
+    .getByLabel("Suspected condition, in your words")
+    .fill("Suspected lower GI cancer");
+  const at = new Date(Date.now() - 60 * 60_000);
+  const p = (n: number) => String(n).padStart(2, "0");
+  await section
+    .getByLabel("Point of suspicion (your device's time)")
+    .fill(
+      `${at.getFullYear()}-${p(at.getMonth() + 1)}-${p(at.getDate())}T${p(at.getHours())}:${p(at.getMinutes())}`,
+    );
+  await section.getByLabel("Raised by").selectOption("clinician");
+  await section.getByLabel("Who or what, named").fill("Dr Gwen Hughes");
+  await section
+    .getByLabel("Grounds", { exact: true })
+    .selectOption("criterion");
+  await section
+    .getByLabel("Grounds, in words")
+    .fill("NG12 unexplained rectal bleeding");
+  await section.getByLabel("No, not told").check();
+  await section.getByLabel("Primary cancer site").selectOption("03");
+  await section.getByRole("button", { name: "Record suspicion" }).click();
+  await expect(
+    section.getByText("Suspected: Suspected lower GI cancer"),
+  ).toBeVisible();
+  await expect(section.getByText(/has NOT been told/)).toBeVisible();
+  await expect(
+    section.getByText(/Primary cancer site: Lower GI \(03/),
+  ).toBeVisible();
+  await expect(section.getByText(/This pathway is a draft/)).toBeVisible();
+
+  await section.getByText("Correct this suspicion").click();
+  await section.getByLabel("Yes, told").check();
+  await section
+    .getByLabel("Why it is corrected")
+    .fill("Discussed with the patient");
+  await section.getByRole("button", { name: "Save correction" }).click();
+  await expect(
+    section.getByText("The patient has been told what is suspected."),
+  ).toBeVisible();
+
+  await section.getByText("Record the outcome").click();
+  await section
+    .getByLabel("Outcome", { exact: true })
+    .selectOption("ruled-out");
+  await section.getByLabel("Who ruled it out").fill("Mr Jones");
+  await section
+    .getByLabel("What it rests on, or why it was withdrawn")
+    .fill("Normal colonoscopy");
+  await section.getByRole("button", { name: "Record outcome" }).click();
+  await expect(section.getByText("Ruled out by Mr Jones")).toBeVisible();
+
+  await section.getByText("This outcome was entered in error").click();
+  await section
+    .getByLabel("Why it was entered in error")
+    .fill("Another patient's report");
+  await section.getByRole("button", { name: "Mark entered in error" }).click();
+  await expect(
+    section.getByText("Earlier outcomes entered in error: 1."),
+  ).toBeVisible();
+  await expect(
+    section.getByText(/^Open: no outcome is recorded/),
+  ).toBeVisible();
+
+  const history = await api(
+    clinician,
+    "GET",
+    `/api/patients/${id}/referrals/${rid}/suspicion`,
+    undefined,
+    "treatment",
+  );
+  expect(history.status).toBe(200);
+  expect(history.body.versions).toHaveLength(2);
+  expect(history.body.current.suspicion.patient_told).toBe("told");
+  expect(history.body.current.changed).toEqual(["patient_told"]);
+  expect(history.body.current.suspicion.subtype).toEqual({
+    scheme: "wales-primary-cancer-site",
+    code: "03",
+  });
+  expect(history.body.open).toBe(true);
+  expect(history.body.outcomes_in_error[0].reason).toBe(
+    "Another patient's report",
+  );
+});

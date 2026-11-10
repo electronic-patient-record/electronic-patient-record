@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-10 - The suspicion screens against the real stack (RS-8)
+
+- **Clinical risk:** none added. This is a test.
+- **Built:** a real-Keycloak test in `tests/e2e-keycloak/signin.spec.ts`. An administrator makes a patient and the clinician's care relationship. The clinician sends a referral, then through the page records a suspicion of Welsh cancer with a site and "not told", corrects it to "told" with a reason, records "ruled out" and marks that entered in error. The test then reads the API's history: two versions, `patient_told` changed, the site kept, open again, the reason kept.
+- **Checked:** run locally against the API on the host and Keycloak 26.3.0 under Podman; it passed. In the same run, 11 other real-stack tests passed and 11 skipped for want of their users. One failed: the registration test met a leftover patient with the same NHS number in the reused test database, so its first registration was already a duplicate. That is the environment, not this change.
+- **Not done / not verified:** CI does not run the real-stack tests. The registration test was not rerun on a clean database.
+
 ## 2026-11-10 - The development realm imports again (SE-9)
 
 - **Clinical risk:** none. This is development configuration.
