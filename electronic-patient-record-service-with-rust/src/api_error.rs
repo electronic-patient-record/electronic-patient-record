@@ -148,12 +148,14 @@ impl ApiError {
             "resourceType": "OperationOutcome",
             "issue": [{ "severity": severity, "code": code, "diagnostics": diagnostics }],
         });
-        (
+        let mut response = (
             status,
             [(header::CONTENT_TYPE, "application/fhir+json")],
             body.to_string(),
         )
-            .into_response()
+            .into_response();
+        retry_later(&mut response);
+        response
     }
 
     /// The shape the route expects: an `OperationOutcome` under `/fhir/`, JSON everywhere else.
@@ -167,9 +169,24 @@ impl ApiError {
     }
 }
 
+/// How long a client is told to wait after a 503, as `axa` 0.11 tells it for its own.
+pub const RETRY_AFTER_SECONDS: u64 = 5;
+
+/// A 503 says when to try again; nothing else does.
+fn retry_later(response: &mut Response) {
+    if response.status() == StatusCode::SERVICE_UNAVAILABLE {
+        response.headers_mut().insert(
+            header::RETRY_AFTER,
+            header::HeaderValue::from(RETRY_AFTER_SECONDS),
+        );
+    }
+}
+
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
-        self.problem().into_response()
+        let mut response = self.problem().into_response();
+        retry_later(&mut response);
+        response
     }
 }
 
@@ -201,6 +218,14 @@ impl From<&StoreError> for ApiError {
             StoreError::Db(m) => {
                 tracing::error!(error = %m, "store failed");
                 Self::internal()
+            }
+            StoreError::Unavailable(m) => {
+                tracing::warn!(error = %m, "store unavailable");
+                Self::new(
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    "the record cannot be reached just now; try again shortly",
+                )
+                .with("code", "unavailable")
             }
         }
     }
@@ -265,6 +290,27 @@ mod tests {
         let failed = body(&ApiError::from(&StoreError::Db("secret detail".into())));
         assert_eq!(failed["detail"], "internal error");
         assert!(!failed.to_string().contains("secret"));
+    }
+
+    #[tokio::test]
+    async fn a_database_that_cannot_serve_is_a_503_that_says_when_to_try_again() {
+        let e = ApiError::from(&StoreError::Unavailable(
+            "pool timed out at 10.0.0.5".into(),
+        ));
+        assert_eq!(e.status(), StatusCode::SERVICE_UNAVAILABLE);
+        let b = body(&e);
+        assert_eq!(b["code"], "unavailable");
+        assert!(!b.to_string().contains("10.0.0.5"), "no cause: {b}");
+        for path in ["/api/patients", "/fhir/R4/Patient"] {
+            let r = ApiError::from(&StoreError::Unavailable("x".into())).for_path(path);
+            assert_eq!(r.status(), StatusCode::SERVICE_UNAVAILABLE);
+            assert_eq!(r.headers()[header::RETRY_AFTER], "5", "{path}");
+        }
+        let r = ApiError::from(&StoreError::Db("x".into())).for_path("/api/x");
+        assert!(
+            r.headers().get(header::RETRY_AFTER).is_none(),
+            "a 500 says no such thing"
+        );
     }
 
     #[tokio::test]

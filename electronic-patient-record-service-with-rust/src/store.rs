@@ -8,8 +8,34 @@ use sqlx::postgres::{PgArguments, PgRow};
 use sqlx::query::Query;
 
 /// A database failure in `store`, kept as text with the store's name so the log says where.
-pub(crate) fn db_err(store: &str, e: impl std::fmt::Display) -> StoreError {
-    StoreError::Db(format!("{store}: {e}"))
+pub(crate) fn db_err<E: std::fmt::Display + 'static>(store: &str, e: E) -> StoreError {
+    let unavailable = (&e as &dyn std::any::Any)
+        .downcast_ref::<sqlx::Error>()
+        .is_some_and(unavailable);
+    if unavailable {
+        StoreError::Unavailable(format!("{store}: {e}"))
+    } else {
+        StoreError::Db(format!("{store}: {e}"))
+    }
+}
+
+/// Whether a database error is the database unable to serve for now rather than this request
+/// failing: a pool with no free or a closed connection, a lost connection, or a Postgres code for a
+/// read-only transaction (25006), too many connections (53300), a connection failure (08…) or an
+/// operator intervention such as a shutdown (57P…). The same rule `axa` 0.11 applies to its own
+/// errors, so the service's routes and `axa`'s agree on what a 503 means.
+#[must_use]
+pub fn unavailable(error: &sqlx::Error) -> bool {
+    match error {
+        sqlx::Error::PoolTimedOut
+        | sqlx::Error::PoolClosed
+        | sqlx::Error::Io(_)
+        | sqlx::Error::WorkerCrashed => true,
+        sqlx::Error::Database(e) => e.code().is_some_and(|c| {
+            c == "25006" || c == "53300" || c.starts_with("08") || c.starts_with("57P")
+        }),
+        _ => false,
+    }
 }
 
 /// Defines the module's `db_err`, naming its store in every database error.
@@ -20,7 +46,7 @@ macro_rules! store_errors {
         const STORE: &str = $store;
 
         /// A database failure in this store, as a `StoreError::Db` that names the store.
-        fn db_err(e: impl std::fmt::Display) -> $crate::patients_store::StoreError {
+        fn db_err<E: std::fmt::Display + 'static>(e: E) -> $crate::patients_store::StoreError {
             $crate::store::db_err(STORE, e)
         }
     };
@@ -70,5 +96,32 @@ pub(crate) async fn append_version(
                 Err(db_err(store, e))
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_a_database_that_cannot_serve_is_unavailable() {
+        assert!(unavailable(&sqlx::Error::PoolTimedOut));
+        assert!(unavailable(&sqlx::Error::PoolClosed));
+        assert!(unavailable(&sqlx::Error::Io(std::io::Error::other(
+            "reset"
+        ))));
+        assert!(!unavailable(&sqlx::Error::RowNotFound));
+        assert!(matches!(
+            db_err("patients", sqlx::Error::PoolTimedOut),
+            StoreError::Unavailable(m) if m.starts_with("patients: ")
+        ));
+        assert!(matches!(
+            db_err("patients", sqlx::Error::RowNotFound),
+            StoreError::Db(_)
+        ));
+        assert!(
+            matches!(db_err("patients", "no row"), StoreError::Db(_)),
+            "not a driver error"
+        );
     }
 }

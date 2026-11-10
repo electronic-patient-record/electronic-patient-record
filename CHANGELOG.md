@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-10 - A database that cannot serve is a 503 (AX-11)
+
+- **Clinical risk:** small. During a database outage a clinician's screen now gets a 503 that says to try again shortly, where it got a 500. The UI shows any 5xx as an error either way.
+- **Correction:** the axa 0.11 entry said a database outage now answers 503. That was true only of `axa`'s own routes, such as `/_health/ready`. The service's routes turned every store error into a string and answered 500.
+- **Built:** `StoreError::Unavailable`. The store's error constructor (`store::db_err`, behind every store's `db_err`) sets it when the error is a sqlx error that `store::unavailable` judges to be the database unable to serve for now. That covers a pool timeout or closed pool, a lost connection, and the Postgres codes 25006, 53300, 08… and 57P…, the same rule `axa` 0.11 applies. It is answered 503 with `code: unavailable` and `Retry-After: 5`, never the cause, in the route's own shape (JSON or an OperationOutcome). Any other database error stays a plain 500. Every 503 the service sends now carries `Retry-After`.
+- **Checked:** new unit tests (the classification; the 503 with `Retry-After` on /api and /fhir and none on a 500), all 553 database-free tests, clippy, rustdoc, and the database suite on a fresh database.
+- **Not done / not verified:** no test runs a store route against a database that is actually down. An audit row that cannot be written during an outage is still a 500, because the audit writer's errors are not store errors. The OpenAPI document does not list 503 on each route.
+
 ## 2026-11-10 - A 401 names its scheme, and axa's headers are pinned (AX-11)
 
 - **Clinical risk:** none. Response headers only.
@@ -39,7 +47,7 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 
 ## 2026-11-10 - axa 0.11 (AX-11)
 
-- **Clinical risk:** none intended. Behaviour changes are listed below; none changes what a clinician sees, except that a database outage now reads as a 503, which the UI already shows as an error.
+- **Clinical risk:** none intended. Behaviour changes are listed below; none changes what a clinician sees. (Corrected later the same day: the 503 for a database outage reached only `axa`'s own routes, such as readiness, until "A database that cannot serve is a 503".)
 - **Built:** axa 0.11.0 and axa-test 0.2.0, with the axa crates that come with them (axa-problem 0.2.0 replaces axa-problem-details-for-http-apis; axa-environment 0.2.0, axa-request-rate-limit 0.3.0, axa-idempotency-key 0.2.2, axa-sqlx 0.1.3). The code compiled unchanged.
   - **Settings:** the database setting is `DB_URL`, not `DATABASE_URL`, everywhere outside the history: CI, compose, the Containerfile, the test harness, the scripts, AGENTS.md and the docs. A production binary refuses to start without it.
   - **Probe paths:** `/_health` and `/_ping` are now `/_health/live`, `/_readiness` is `/_health/ready`, and `/_health/startup` is new. The old paths answer 404. The public-path list, the route and OpenAPI censuses, the readiness and lockout tests, the compose and Containerfile healthchecks, CI, the UI proxy's comments and tests, and the specs all move with them. The OpenAPI document changes only those three paths.

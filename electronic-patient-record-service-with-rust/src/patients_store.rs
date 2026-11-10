@@ -55,6 +55,9 @@ pub enum StoreError {
     TemporaryIdentityCleared,
     /// The database failed.
     Db(String),
+    /// The database cannot serve for now (no free connection, a lost connection, a server shutting
+    /// down, read-only or full): the service's trouble, and it passes, so it is a 503 with `Retry-After`.
+    Unavailable(String),
 }
 
 impl std::fmt::Display for StoreError {
@@ -66,6 +69,7 @@ impl std::fmt::Display for StoreError {
             StoreError::NotSamePerson { message, .. } => write!(f, "bad query: {message}"),
             StoreError::TemporaryIdentityCleared => write!(f, "{TEMPORARY_IDENTITY_CLEARED}"),
             StoreError::Db(e) => write!(f, "database error: {e}"),
+            StoreError::Unavailable(e) => write!(f, "database unavailable: {e}"),
         }
     }
 }
