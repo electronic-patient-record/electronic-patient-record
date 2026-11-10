@@ -227,7 +227,11 @@ condition for each pathway (and the subtype a child's type 1 diabetes implies), 
 stop bodies, each checked against an `ActiveProfile` as the PAS answers it, or a hold with words naming ids and codes.
 A suspicion raised by a screening programme or a result is held, because the PAS needs the clinician's name. An
 amendment that changes nothing the PAS holds sends nothing; one that removes a subtype, or changes the PAS condition,
-is held for a person. `tests/pas_contract.rs` checks every body against the PAS's request schemas, copied with the
+is held for a person. A held programme or result suspicion goes to the PAS only once a clinician takes it on:
+that clinician is `suspected_by`, and the day they acted is the point of suspicion sent. The PAS's named-person check
+refuses only a blank name, so the EPR never puts a programme, system or laboratory name there. Whether the PAS should
+instead count from the earlier day the result was reported is for the PAS's cancer services sign-off (its WPAS-1a), not
+sent now; that it was raised by screening stays in the EPR (PAS session, 2026-11-10). `tests/pas_contract.rs` checks every body against the PAS's request schemas, copied with the
 two built-in profiles from PAS commit `b64b7e2` into `tests/fixtures/pas/`. **Not built:** the sender (an outbox
 sink, the profile read, the `epr` referral with `external_ref`, `If-Match` from a read, the PAS ids kept), and the
 names: `recorded_by`, `amended_by` and `stopped_by` are given by the caller, and the service holds token subjects,
