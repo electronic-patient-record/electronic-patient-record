@@ -1,6 +1,6 @@
 // A suspicion on a referral (RS-1 to RS-7), as a clinician reads it. The service owns the pathway, the
 // plan (priority and due days, counted in the site's days) and the outcome; this file only shapes the
-// answer for the screen. Read only: raising, amending and ending a suspicion are not on a screen yet.
+// answer for the screen, and builds the body for raising one. Amending and ending are not on a screen yet.
 import { call } from "./api.js";
 import type { Priority } from "./referrals.js";
 
@@ -61,19 +61,21 @@ export interface SuspicionHistory {
 export interface SuspicionLoad {
   status: number;
   history: SuspicionHistory | null;
+  pathways: Pathway[];
 }
 
 export async function loadSuspicion(
   patientId: string,
   referralId: string,
 ): Promise<SuspicionLoad> {
-  const res = await call<SuspicionHistory>(
+  const res = await call<SuspicionHistory & { pathways?: Pathway[] }>(
     "GET",
     `/api/patients/${patientId}/referrals/${referralId}/suspicion`,
   );
   return {
     status: res.status,
     history: res.status === 200 ? res.body : null,
+    pathways: res.status === 200 ? (res.body.pathways ?? []) : [],
   };
 }
 
@@ -94,4 +96,121 @@ export function outcomeText(
     .replace("{diagnosis}", o.diagnosis ?? "")
     .replace("{by}", o.by ?? "")
     .replace("{detail}", o.detail);
+}
+
+/** One pathway version as the service sends it (the newest of each), for raising a suspicion. */
+export interface Pathway {
+  id: string;
+  version: number;
+  title: string;
+  approved_by: string;
+  priority?: Priority;
+  needs_agreement: boolean;
+  instruction?: string;
+  band: { id: string; text: string; needs_result: boolean }[];
+  factor: { id: string; text: string }[];
+  subtypes?: {
+    scheme: string;
+    title: string;
+    required: boolean;
+    code: { code: string; name: string }[];
+  };
+}
+
+/** What the raise form holds; an empty string is "not chosen". */
+export interface RaiseForm {
+  pathway: string;
+  condition: string;
+  point: string; // a datetime-local value, in the reader's own time
+  source: "" | "clinician" | "screening-programme" | "result";
+  by: string;
+  groundsKind: "" | "criterion" | "result" | "judgement";
+  groundsDetail: string;
+  resultId: string;
+  told: "" | "told" | "not-told";
+  band: string;
+  factors: string[];
+  subtype: string;
+  agreed: "" | "yes" | "no";
+  instruction: string;
+}
+
+export const EMPTY_FORM: RaiseForm = {
+  pathway: "",
+  condition: "",
+  point: "",
+  source: "",
+  by: "",
+  groundsKind: "",
+  groundsDetail: "",
+  resultId: "",
+  told: "",
+  band: "",
+  factors: [],
+  subtype: "",
+  agreed: "",
+  instruction: "",
+};
+
+/** The problem keys the form can name before sending; the service checks everything again. */
+export type RaiseProblem =
+  | "pathway"
+  | "condition"
+  | "point"
+  | "source"
+  | "by"
+  | "grounds"
+  | "result"
+  | "told"
+  | "band"
+  | "subtype"
+  | "agreed";
+
+/**
+ * The body of `POST …/suspicion`, or what is missing. Nothing is defaulted that a clinician must decide:
+ * whether the patient was told, the band, a required subtype, and the person's agreement are chosen or
+ * the form says so. The point of suspicion is read in the reader's own time and sent as UTC.
+ */
+export function buildSuspicion(
+  f: RaiseForm,
+  pathways: Pathway[],
+): { body: unknown; problems: RaiseProblem[] } {
+  const problems: RaiseProblem[] = [];
+  const p = pathways.find((x) => x.id === f.pathway);
+  if (!p) problems.push("pathway");
+  if (!f.condition.trim()) problems.push("condition");
+  const at = f.point ? new Date(f.point) : null;
+  if (!at || Number.isNaN(at.getTime())) problems.push("point");
+  if (!f.source) problems.push("source");
+  if (!f.by.trim()) problems.push("by");
+  if (!f.groundsKind || !f.groundsDetail.trim()) problems.push("grounds");
+  if (f.groundsKind === "result" && !f.resultId.trim()) problems.push("result");
+  if (!f.told) problems.push("told");
+  if (p && p.band.length > 0 && !p.band.some((b) => b.id === f.band))
+    problems.push("band");
+  if (p?.subtypes?.required && !f.subtype) problems.push("subtype");
+  if (p?.needs_agreement && !f.agreed) problems.push("agreed");
+  if (problems.length > 0 || !p || !at) return { body: null, problems };
+  const suspicion: Record<string, unknown> = {
+    condition: f.condition.trim(),
+    point_of_suspicion: at.toISOString(),
+    source: f.source,
+    by: f.by.trim(),
+    grounds: {
+      kind: f.groundsKind,
+      detail: f.groundsDetail.trim(),
+      ...(f.groundsKind === "result" ? { result_id: f.resultId.trim() } : {}),
+    },
+    patient_told: f.told,
+    pathway: p.id,
+    pathway_version: p.version,
+  };
+  if (f.instruction.trim()) suspicion.instruction = f.instruction.trim();
+  if (p.band.length > 0) suspicion.band = f.band;
+  const factors = f.factors.filter((x) => p.factor.some((y) => y.id === x));
+  if (factors.length > 0) suspicion.factors = factors;
+  if (p.subtypes && f.subtype)
+    suspicion.subtype = { scheme: p.subtypes.scheme, code: f.subtype };
+  if (p.needs_agreement) suspicion.agreed = f.agreed === "yes";
+  return { body: { suspicion }, problems };
 }

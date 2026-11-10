@@ -420,6 +420,44 @@ fn observation_schemas() -> Value {
     })
 }
 
+/// The suspicion read with the newest pathway versions (RS-8).
+fn pathway_schemas() -> Value {
+    json!({
+        "SuspicionRead": {
+            "description": "The history, and the newest version of every pathway (no patient data), for a screen that raises one.",
+            "allOf": [{"$ref": "#/components/schemas/SuspicionHistory"}, {"type": "object", "required": ["pathways"], "properties": {
+                "pathways": {"type": "array", "items": {"$ref": "#/components/schemas/SuspicionPathway"}}}}]
+        },
+        "SuspicionPathway": {
+            "type": "object",
+            "required": ["id", "version", "title", "sources", "approved_by", "approved_on", "clock_from", "needs_agreement", "no_target_reason", "target", "band", "factor"],
+            "description": "One pathway version from src/suspicion_pathways.toml, as the file spells it (target, band, factor are lists).",
+            "properties": {
+                "id": {"type": "string"}, "version": {"type": "integer"}, "title": {"type": "string"},
+                "sources": {"type": "array", "items": {"type": "string"}},
+                "approved_by": {"type": "string", "description": "Empty: a draft."}, "approved_on": {"type": "string"},
+                "clock_from": {"enum": ["point-of-suspicion", "referral-sent"]},
+                "priority": {"enum": ["routine", "urgent", "asap", "stat"], "description": "Absent when the pathway has bands."},
+                "needs_agreement": {"type": "boolean"},
+                "instruction": {"type": "string"},
+                "no_target_reason": {"type": "string"},
+                "target": {"type": "array", "items": {"type": "object", "required": ["id", "text", "days"], "properties": {
+                    "id": {"type": "string"}, "text": {"type": "string"}, "days": {"type": "integer"}}}},
+                "band": {"type": "array", "items": {"type": "object", "required": ["id", "text", "priority", "needs_result", "target"], "properties": {
+                    "id": {"type": "string"}, "text": {"type": "string"},
+                    "priority": {"enum": ["routine", "urgent", "asap", "stat"]}, "needs_result": {"type": "boolean"},
+                    "target": {"type": "array", "items": {"type": "object"}}}}},
+                "factor": {"type": "array", "items": {"type": "object", "required": ["id", "text", "priority"], "properties": {
+                    "id": {"type": "string"}, "text": {"type": "string"}, "priority": {"enum": ["routine", "urgent", "asap", "stat"]}}}},
+                "subtypes": {"type": "object", "required": ["scheme", "title", "source", "required", "code"], "properties": {
+                    "scheme": {"type": "string"}, "title": {"type": "string"}, "source": {"type": "string"}, "required": {"type": "boolean"},
+                    "code": {"type": "array", "items": {"type": "object", "required": ["code", "name"], "properties": {
+                        "code": {"type": "string"}, "name": {"type": "string"}}}}}}
+            }
+        }
+    })
+}
+
 /// The schemas for a suspicion on a referral (RS-1) and its pathway plan (RS-6).
 fn suspicion_schemas() -> Value {
     json!({
@@ -1509,6 +1547,7 @@ fn patient_schemas() -> Value {
         result_schemas(),
         assessment_schemas(),
         suspicion_schemas(),
+        pathway_schemas(),
         watch_list_schemas(),
         consent_schemas(),
         relationship_schemas(),
@@ -1959,7 +1998,7 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
     (
         "GET",
         "/api/patients/{id}/referrals/{referral_id}/suspicion",
-        "SuspicionHistory",
+        "SuspicionRead",
         &[],
     ),
     ("GET", "/api/patients/{id}/results", "ResultList", &[]),

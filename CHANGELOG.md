@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-10 - Record a suspicion on screen (RS-8, H-054)
+
+- **Clinical risk:** yes. A clinician can now record a suspicion from the patient page, including whether the patient was told. Hazard H-054's residual risk is updated.
+- **Built:** `GET …/suspicion` also carries `pathways`, the newest version of each pathway, which hold no patient data (OpenAPI `SuspicionRead`). A referral with no suspicion offers "Record a suspicion on this referral" (`SuspicionRaise.svelte`, `buildSuspicion`). It offers only the chosen pathway's band, factors, subtype list and agreement, and marks a draft pathway as draft. Whether the patient was told, a required subtype, a band and the agreement have no preselected answer; sending without them names what is missing and sends nothing. The service's refusals are shown as it words them. The view now clears when the patient or referral changes, so another patient's suspicion is never left on screen while one loads.
+- **Checked:** 2 new vitest tests (nothing defaulted; the body), 1 new stubbed Playwright test with axe; all 336 vitest and 107 Playwright tests, lint, `check`; the service's HTTP suspicion test (only the newest version is offered), the OpenAPI census, clippy, and all 548 database-free tests.
+- **Not done / not verified:** the point of suspicion is typed in the reader's own time (the label says so), not the site's. A band's result id is typed, with no picker. No form amends, ends or corrects a suspicion. There was no run against the real service and Keycloak. The Welsh is machine-written and unreviewed ("Categori" for band among others).
+
 ## 2026-11-10 - The subtype named on screen (RS-8, H-053)
 
 - **Clinical risk:** small. A clinician now reads "Primary cancer site: Lower GI (03, …)" instead of a bare code. The name comes from the same pathway list the code was checked against. H-053's control says so.

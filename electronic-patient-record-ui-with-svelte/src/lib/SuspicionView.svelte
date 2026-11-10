@@ -2,7 +2,7 @@
   // The suspicion on one referral (RS-1 to RS-7), read only. It says plainly when the pathway is a draft,
   // when the patient has not been told (so no one names the condition to them), whether a target day has
   // passed, and that the suspicion is open until an outcome is recorded. Text from the record is shown as
-  // text. A referral with no suspicion shows nothing.
+  // text. A referral with no suspicion offers the form to record one.
   import { siteWhenText } from "./access-log.js";
   import {
     loadSuspicion,
@@ -11,6 +11,7 @@
     type SuspicionLoad,
   } from "./suspicions.js";
   import { TEXT } from "./i18n.js";
+  import SuspicionRaise from "./SuspicionRaise.svelte";
 
   let {
     patientId,
@@ -19,11 +20,16 @@
   }: { patientId: string; referralId: string; siteZone?: string } = $props();
 
   let res = $state<SuspicionLoad | null>(null);
+  let reloads = $state(0);
   let ticket = 0;
+  let shown = "";
   $effect(() => {
+    void reloads;
     const mine = ++ticket;
     const [p, r] = [patientId, referralId];
-    res = null;
+    // Another patient's or referral's suspicion is never left on screen while this one loads.
+    if (shown !== `${p}/${r}`) res = null;
+    shown = `${p}/${r}`;
     void loadSuspicion(p, r).then((loaded) => {
       if (mine === ticket) res = loaded;
     });
@@ -135,4 +141,11 @@
       </p>
     {/if}
   </div>
+{:else if res.pathways.length > 0}
+  <SuspicionRaise
+    {patientId}
+    {referralId}
+    pathways={res.pathways}
+    done={() => reloads++}
+  />
 {/if}

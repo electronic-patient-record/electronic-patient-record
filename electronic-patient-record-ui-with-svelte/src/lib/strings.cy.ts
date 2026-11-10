@@ -16,6 +16,8 @@
 //     and "crwner", "cofrestrydd".
 //   - "mynediad brys" for break-the-glass emergency access.
 //   - suspicion on a referral (2026-11-10): "amheuaeth", "pwynt amheuaeth" (point of suspicion), "diystyrwyd" (ruled out), and the warning not to name the condition to the patient.
+//   - the suspicion form (2026-11-10): "Categori" for a pathway band (for example an NT-proBNP range),
+//     "Rhaglen sgrinio", "Barn glinigol", "Wedi gwrthod" (declined).
 //   - "optio allan o ddata cenedlaethol": the national data opt-out is England's; Wales may need a
 //     different name or none.
 //   - proxy bases: "cyfrifoldeb rhiant", "atwrneiaeth", "dirprwy a benodwyd gan y llys".
@@ -309,6 +311,53 @@ export const CY: Strings = {
     withdrawn: "Tynnwyd yn ôl: {detail}",
   },
   suspicionInError: "Canlyniadau cynharach a gofnodwyd trwy gamgymeriad: {n}.",
+  raiseTitle: "Cofnodi amheuaeth ar yr atgyfeiriad hwn",
+  raisePathway: "Llwybr",
+  raiseChoose: "Dewiswch",
+  raiseDraft: "(drafft)",
+  raiseCondition: "Y cyflwr a amheuir, yn eich geiriau chi",
+  raisePoint: "Pwynt amheuaeth (amser eich dyfais)",
+  raiseSource: "Codwyd gan",
+  raiseSources: {
+    clinician: "Clinigwr",
+    "screening-programme": "Rhaglen sgrinio",
+    result: "Canlyniad prawf",
+  },
+  raiseBy: "Pwy neu beth, wedi'i enwi",
+  raiseGroundsKind: "Sail",
+  raiseGroundsKinds: {
+    criterion: "Maen prawf wedi'i fodloni",
+    result: "Canlyniad",
+    judgement: "Barn glinigol",
+  },
+  raiseGroundsDetail: "Y sail, mewn geiriau",
+  raiseResultId: "Rhif adnabod y canlyniad (ar gofnod y claf hwn)",
+  raiseTold: "A yw'r claf wedi cael gwybod beth a amheuir?",
+  raiseToldYes: "Ydy, wedi cael gwybod",
+  raiseToldNo: "Nac ydy, heb gael gwybod",
+  raiseBand: "Categori",
+  raiseFactors: "Amgylchiadau sy'n berthnasol",
+  raiseSubtypeNone: "Dim",
+  raiseAgreed: "A yw'r person yn cytuno i'r atgyfeiriad?",
+  raiseAgreedYes: "Yn cytuno",
+  raiseAgreedNo: "Wedi gwrthod",
+  raiseInstruction: "Cyfarwyddyd i'r tîm sy'n derbyn (dewisol)",
+  raiseSend: "Cofnodi amheuaeth",
+  raiseDone: "Amheuaeth wedi'i chofnodi.",
+  raiseMissing: "Heb ei anfon. Mae angen o hyd: {fields}.",
+  raiseProblems: {
+    pathway: "y llwybr",
+    condition: "y cyflwr",
+    point: "pwynt yr amheuaeth",
+    source: "pwy a'i cododd",
+    by: "pwy neu beth, wedi'i enwi",
+    grounds: "y sail",
+    result: "rhif adnabod y canlyniad",
+    told: "a gafodd y claf wybod",
+    band: "y band",
+    subtype: "yr isdeip",
+    agreed: "cytundeb y person",
+  },
   amendTitle: "Ceisiadau i gywiro cofnod",
   amendOpenCount: "{n} yn aros am benderfyniad.",
   amendOverdueCount: "{n} yn hwyr.",

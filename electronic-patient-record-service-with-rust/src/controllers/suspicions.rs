@@ -210,7 +210,11 @@ pub(super) async fn history(
     {
         return r.into_response();
     }
-    Json(history).into_response()
+    // The newest pathway versions ride along, as an assessment list carries its forms, so a screen can
+    // offer the bands, factors, subtypes and agreement a new suspicion needs. They hold no patient data.
+    let mut body = serde_json::to_value(&history).unwrap_or_default();
+    body["pathways"] = serde_json::to_value(crate::pathways::newest()).unwrap_or_default();
+    Json(body).into_response()
 }
 
 /// `POST …/referrals/{referral_id}/suspicion`: 201 with version 1 and its plan.

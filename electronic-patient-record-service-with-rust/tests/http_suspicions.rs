@@ -135,6 +135,11 @@ async fn a_suspicion_keeps_its_point_of_suspicion_and_follows_its_pathway() {
         let none = server.get(&url).add_header(dh.clone(), dv.clone()).await;
         assert_eq!(none.status_code(), StatusCode::OK, "{}", none.text());
         assert_eq!(none.json::<Value>()["current"], Value::Null);
+        let pathways = none.json::<Value>()["pathways"].clone();
+        let wales = pathways.as_array().unwrap().iter()
+            .find(|p| p["id"] == "suspected-cancer-wales").unwrap().clone();
+        assert_eq!(wales["version"], 2, "only the newest version is offered");
+        assert_eq!(wales["subtypes"]["required"], true);
 
         let raised = server
             .post(&url)

@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { outcomeText, targetMark, type Due } from "../../src/lib/suspicions";
+import {
+  EMPTY_FORM,
+  buildSuspicion,
+  outcomeText,
+  targetMark,
+  type Due,
+  type Pathway,
+} from "../../src/lib/suspicions";
 import { STRINGS } from "../../src/lib/strings";
 import { CY } from "../../src/lib/strings.cy";
 
@@ -45,5 +52,87 @@ describe("suspicion on a referral", () => {
     expect(Object.keys(CY.suspicionClockFrom).sort()).toEqual(
       Object.keys(STRINGS.suspicionClockFrom).sort(),
     );
+  });
+});
+
+const WALES: Pathway = {
+  id: "suspected-cancer-wales",
+  version: 2,
+  title: "Suspected cancer (Wales)",
+  approved_by: "",
+  priority: "urgent",
+  needs_agreement: false,
+  band: [],
+  factor: [],
+  subtypes: {
+    scheme: "wales-primary-cancer-site",
+    title: "Primary cancer site",
+    required: true,
+    code: [{ code: "03", name: "Lower GI" }],
+  },
+};
+const DEMENTIA: Pathway = {
+  ...WALES,
+  id: "dementia",
+  version: 2,
+  needs_agreement: true,
+  subtypes: {
+    scheme: "generic-dementia-type",
+    title: "Type of dementia",
+    required: false,
+    code: [{ code: "vascular", name: "Vascular dementia" }],
+  },
+};
+
+describe("raising a suspicion", () => {
+  const filled = {
+    ...EMPTY_FORM,
+    pathway: "suspected-cancer-wales",
+    condition: " Suspected lower GI cancer ",
+    point: "2026-11-09T09:30",
+    source: "clinician" as const,
+    by: "Dr Gwen Hughes",
+    groundsKind: "criterion" as const,
+    groundsDetail: "NG12",
+    told: "not-told" as const,
+    subtype: "03",
+  };
+
+  it("defaults nothing a clinician must decide", () => {
+    const { problems } = buildSuspicion({ ...filled, told: "", subtype: "" }, [
+      WALES,
+    ]);
+    expect(problems).toEqual(["told", "subtype"]);
+    expect(buildSuspicion(EMPTY_FORM, [WALES]).problems).toContain("pathway");
+    expect(
+      buildSuspicion({ ...filled, pathway: "dementia", subtype: "" }, [
+        WALES,
+        DEMENTIA,
+      ]).problems,
+    ).toEqual(["agreed"]);
+    expect(
+      buildSuspicion({ ...filled, groundsKind: "result" }, [WALES]).problems,
+    ).toEqual(["result"]);
+  });
+
+  it("sends the pathway's version, the subtype with its list, and the time as UTC", () => {
+    const { body, problems } = buildSuspicion(filled, [WALES]);
+    expect(problems).toEqual([]);
+    const s = (body as { suspicion: Record<string, unknown> }).suspicion;
+    expect(s.pathway_version).toBe(2);
+    expect(s.subtype).toEqual({
+      scheme: "wales-primary-cancer-site",
+      code: "03",
+    });
+    expect(s.condition).toBe("Suspected lower GI cancer");
+    expect(s.patient_told).toBe("not-told");
+    expect(String(s.point_of_suspicion)).toMatch(/Z$/);
+    expect(s.agreed).toBeUndefined();
+    const declined = buildSuspicion(
+      { ...filled, pathway: "dementia", subtype: "", agreed: "no" },
+      [WALES, DEMENTIA],
+    ).body as { suspicion: Record<string, unknown> };
+    expect(declined.suspicion.agreed).toBe(false);
+    expect(declined.suspicion.subtype).toBeUndefined();
   });
 });

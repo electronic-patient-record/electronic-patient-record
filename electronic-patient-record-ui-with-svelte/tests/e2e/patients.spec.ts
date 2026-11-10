@@ -3999,6 +3999,152 @@ test("a referral shows its suspicion: draft pathway, not told, due days, overdue
   await axe(page);
 });
 
+test("a clinician records a suspicion: the pathway's own choices are offered and nothing is defaulted", async ({
+  page,
+}) => {
+  const RID = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+  const sent: Json[] = [];
+  let current: unknown = null;
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, ANN),
+  );
+  await page.route("**/api/proxy/api/patients/*/referrals", (route) =>
+    json(route, 200, {
+      referrals: [
+        {
+          id: RID,
+          version: 1,
+          author: "dr",
+          recorded_at: "2026-11-09T09:00:00.000000Z",
+          patient_id: ANN.id,
+          state: "requested",
+          referral: {
+            recipient: "Colorectal clinic",
+            reason: "Rectal bleeding",
+            question: "Please assess",
+            priority: "urgent",
+          },
+          next: [],
+        },
+      ],
+    }),
+  );
+  const plan = {
+    pathway: "suspected-cancer-wales",
+    version: 2,
+    title: "Suspected cancer (Wales, Single Cancer Pathway)",
+    approved: false,
+    latest_version: 2,
+    clock_from: "point-of-suspicion",
+    clock_start: "2026-11-09T09:30:00Z",
+    time_zone: "UTC",
+    priority: "urgent",
+    instruction: null,
+    targets: [],
+    no_target_reason: null,
+    subtype: null,
+  };
+  await page.route(
+    `**/api/proxy/api/patients/*/referrals/${RID}/suspicion`,
+    (route) => {
+      const req = route.request();
+      if (req.method() === "POST") {
+        sent.push(req.postDataJSON());
+        current = {
+          version: 1,
+          suspicion: (req.postDataJSON() as { suspicion: unknown }).suspicion,
+          plan,
+        };
+        return json(route, 201, current);
+      }
+      return json(route, 200, {
+        current,
+        versions: [],
+        open: current !== null,
+        outcome: null,
+        outcomes_in_error: [],
+        pathways: [
+          {
+            id: "suspected-cancer-wales",
+            version: 2,
+            title: "Suspected cancer (Wales, Single Cancer Pathway)",
+            approved_by: "",
+            priority: "urgent",
+            needs_agreement: false,
+            band: [],
+            factor: [],
+            subtypes: {
+              scheme: "wales-primary-cancer-site",
+              title: "Primary cancer site",
+              required: true,
+              code: [
+                { code: "02", name: "Upper GI" },
+                { code: "03", name: "Lower GI" },
+              ],
+            },
+          },
+          {
+            id: "dementia",
+            version: 2,
+            title: "Suspected dementia",
+            approved_by: "",
+            priority: "routine",
+            needs_agreement: true,
+            band: [],
+            factor: [],
+          },
+        ],
+      });
+    },
+  );
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  await page.getByText("Record a suspicion on this referral").click();
+  await page.getByLabel("Pathway").selectOption("suspected-cancer-wales");
+  await expect(
+    page.getByRole("option", { name: /Suspected cancer.*\(draft\)/ }),
+  ).toHaveCount(1);
+  await expect(page.getByLabel("Primary cancer site")).toBeVisible();
+  await expect(
+    page.getByText("Does the person agree to the referral?"),
+  ).toHaveCount(0);
+  await page
+    .getByLabel("Suspected condition, in your words")
+    .fill("Suspected lower GI cancer");
+  await page
+    .getByLabel("Point of suspicion (your device's time)")
+    .fill("2026-11-09T09:30");
+  await page.getByLabel("Raised by").selectOption("clinician");
+  await page.getByLabel("Who or what, named").fill("Dr Gwen Hughes");
+  await page.getByLabel("Grounds", { exact: true }).selectOption("criterion");
+  await page.getByLabel("Grounds, in words").fill("NG12");
+  await axe(page);
+  // Whether the patient was told is never preselected: sending without it names what is missing.
+  await page.getByRole("button", { name: "Record suspicion" }).click();
+  await expect(
+    page.getByText(
+      /Not sent\. Still needed: whether the patient was told, the subtype\./,
+    ),
+  ).toBeVisible();
+  expect(sent).toHaveLength(0);
+  await page.getByLabel("No, not told").check();
+  await page.getByLabel("Primary cancer site").selectOption("03");
+  await page.getByRole("button", { name: "Record suspicion" }).click();
+  await expect(
+    page.getByText("Suspected: Suspected lower GI cancer"),
+  ).toBeVisible();
+  const body = sent[0] as { suspicion: Record<string, unknown> };
+  expect(body.suspicion.pathway_version).toBe(2);
+  expect(body.suspicion.patient_told).toBe("not-told");
+  expect(body.suspicion.subtype).toEqual({
+    scheme: "wales-primary-cancer-site",
+    code: "03",
+  });
+  await expect(
+    page.getByText(/has NOT been told what is suspected/),
+  ).toBeVisible();
+});
+
 const QUEUED = (over: Record<string, unknown> = {}) => ({
   id: "55555555-5555-4555-8555-555555555555",
   received_at: "2026-10-21T09:00:12.000000Z",

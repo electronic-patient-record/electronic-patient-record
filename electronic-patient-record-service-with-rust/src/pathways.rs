@@ -298,6 +298,15 @@ pub fn catalogue() -> &'static [Pathway] {
     &PATHWAYS
 }
 
+/// The newest version of every pathway, by id: what a new suspicion is raised under.
+#[must_use]
+pub fn newest() -> Vec<&'static Pathway> {
+    PATHWAYS
+        .iter()
+        .filter(|p| latest(&p.id) == Some(p.version))
+        .collect()
+}
+
 /// One pathway version.
 #[must_use]
 pub fn pathway(id: &str, version: i32) -> Option<&'static Pathway> {
@@ -533,6 +542,13 @@ mod tests {
             "nobody has approved them"
         );
         assert_eq!(catalogue().len(), all.len());
+        let newest: Vec<(&str, i32)> = newest()
+            .iter()
+            .map(|p| (p.id.as_str(), p.version))
+            .collect();
+        assert_eq!(newest.len(), ids.len(), "one newest version per pathway");
+        assert!(newest.contains(&("suspected-cancer-wales", 2)));
+        assert!(!newest.contains(&("suspected-cancer-wales", 1)));
     }
 
     #[test]

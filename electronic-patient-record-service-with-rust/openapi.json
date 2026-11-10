@@ -4352,6 +4352,201 @@
         ],
         "type": "object"
       },
+      "SuspicionPathway": {
+        "description": "One pathway version from src/suspicion_pathways.toml, as the file spells it (target, band, factor are lists).",
+        "properties": {
+          "approved_by": {
+            "description": "Empty: a draft.",
+            "type": "string"
+          },
+          "approved_on": {
+            "type": "string"
+          },
+          "band": {
+            "items": {
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "needs_result": {
+                  "type": "boolean"
+                },
+                "priority": {
+                  "enum": [
+                    "routine",
+                    "urgent",
+                    "asap",
+                    "stat"
+                  ]
+                },
+                "target": {
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "text",
+                "priority",
+                "needs_result",
+                "target"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "clock_from": {
+            "enum": [
+              "point-of-suspicion",
+              "referral-sent"
+            ]
+          },
+          "factor": {
+            "items": {
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "priority": {
+                  "enum": [
+                    "routine",
+                    "urgent",
+                    "asap",
+                    "stat"
+                  ]
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "text",
+                "priority"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "instruction": {
+            "type": "string"
+          },
+          "needs_agreement": {
+            "type": "boolean"
+          },
+          "no_target_reason": {
+            "type": "string"
+          },
+          "priority": {
+            "description": "Absent when the pathway has bands.",
+            "enum": [
+              "routine",
+              "urgent",
+              "asap",
+              "stat"
+            ]
+          },
+          "sources": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "subtypes": {
+            "properties": {
+              "code": {
+                "items": {
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "scheme": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "scheme",
+              "title",
+              "source",
+              "required",
+              "code"
+            ],
+            "type": "object"
+          },
+          "target": {
+            "items": {
+              "properties": {
+                "days": {
+                  "type": "integer"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "text",
+                "days"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "title": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "title",
+          "sources",
+          "approved_by",
+          "approved_on",
+          "clock_from",
+          "needs_agreement",
+          "no_target_reason",
+          "target",
+          "band",
+          "factor"
+        ],
+        "type": "object"
+      },
       "SuspicionPlan": {
         "description": "The pathway's priority and target due days for this suspicion, worked out when read. The PAS owns the reported clock.",
         "properties": {
@@ -4483,6 +4678,28 @@
           "subtype"
         ],
         "type": "object"
+      },
+      "SuspicionRead": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/SuspicionHistory"
+          },
+          {
+            "properties": {
+              "pathways": {
+                "items": {
+                  "$ref": "#/components/schemas/SuspicionPathway"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "pathways"
+            ],
+            "type": "object"
+          }
+        ],
+        "description": "The history, and the newest version of every pathway (no patient data), for a screen that raises one."
       },
       "UpdateAllergy": {
         "properties": {
@@ -9643,7 +9860,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SuspicionHistory"
+                  "$ref": "#/components/schemas/SuspicionRead"
                 }
               }
             },
