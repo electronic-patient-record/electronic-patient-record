@@ -4462,6 +4462,36 @@ test("a clinician adds a patient to their watch list with a reason; another's en
   });
 });
 
+test("my watch list shows my own entries, with no reason, each linking to the record", async ({
+  page,
+}) => {
+  await page.route("**/api/proxy/api/watch-list", (route) =>
+    json(route, 200, {
+      items: [
+        {
+          id: "a1a1a1a1-a1a1-4a1a-8a1a-a1a1a1a1a1a1",
+          version: 1,
+          patient_id: ANN.id,
+          since: "2026-11-01T09:00:00.000000Z",
+          until: "2026-12-01",
+        },
+      ],
+      limit: 200,
+      more: false,
+    }),
+  );
+  await page.goto("/en-001/watch-list");
+  await expect(
+    page.getByRole("heading", { name: "My watch list" }),
+  ).toBeVisible();
+  await expect(page.getByText("1 on your list.")).toBeVisible();
+  await expect(page.getByText(/until 2026-12-01/)).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Open the record to see why" }),
+  ).toHaveAttribute("href", `/en-001/patients/${ANN.id}`);
+  await axe(page);
+});
+
 const QUEUED = (over: Record<string, unknown> = {}) => ({
   id: "55555555-5555-4555-8555-555555555555",
   received_at: "2026-10-21T09:00:12.000000Z",

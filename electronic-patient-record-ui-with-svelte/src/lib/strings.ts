@@ -389,6 +389,13 @@ export const STRINGS = {
   watchEnded: "Entry ended. It stays in the history.",
   watchNotOwner: "Only the person who added an entry can end it.",
   watchNeedReason: "Not sent. Give the reason.",
+  myWatchTitle: "My watch list",
+  myWatchNone: "Your watch list is empty.",
+  myWatchCount: "{n} on your list.",
+  myWatchMore: "Only the first {n} are shown.",
+  myWatchSince: "On your list since {since}",
+  myWatchOpen: "Open the record to see why",
+  navWatch: "My watch list",
 
   amendTitle: "Requests to correct a record",
   amendOpenCount: "{n} waiting for a decision.",

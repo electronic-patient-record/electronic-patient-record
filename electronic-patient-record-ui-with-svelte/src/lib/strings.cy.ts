@@ -426,6 +426,13 @@ export const CY: Strings = {
   watchEnded: "Daeth y cofnod i ben. Mae'n aros yn yr hanes.",
   watchNotOwner: "Dim ond y person a ychwanegodd gofnod all ddod ag ef i ben.",
   watchNeedReason: "Heb ei anfon. Rhowch y rheswm.",
+  myWatchTitle: "Fy rhestr wylio",
+  myWatchNone: "Mae eich rhestr wylio yn wag.",
+  myWatchCount: "{n} ar eich rhestr.",
+  myWatchMore: "Dim ond y {n} cyntaf a ddangosir.",
+  myWatchSince: "Ar eich rhestr ers {since}",
+  myWatchOpen: "Agor y cofnod i weld pam",
+  navWatch: "Fy rhestr wylio",
 
   amendTitle: "Ceisiadau i gywiro cofnod",
   amendOpenCount: "{n} yn aros am benderfyniad.",

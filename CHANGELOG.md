@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-10 - My watch list (WL-6, H-055)
+
+- **Clinical risk:** small. A clinician can now see every patient on their own list in one place. Hazard H-055's residual risk is updated.
+- **Built:** `/watch-list`, linked from the header as "My watch list". It shows the reader's own active entries, oldest first: since when, until when, and a link to the record. It shows no reason, because the service's list carries none; the reason is read on the patient's page, where the read is audited against that record. It repeats that a watch list sends no results or messages, and says when the list was cut short.
+- **Checked:** 1 new stubbed Playwright test with axe (the axe route census now covers the page). All 342 vitest and 111 Playwright tests, lint, `check` and `check:tests` pass.
+- **Not done / not verified:** the header link shows for every role, as the other links do; a role without watch lists gets the service's refusal. Dates are shown in UTC, because the list does not carry the site's zone. There was no run against the real stack. The Welsh is machine-written and unreviewed.
+
 ## 2026-11-10 - Watch lists on the patient page (WL-6, H-055)
 
 - **Clinical risk:** yes. A clinician now sees who keeps the patient on a watch list and why, and can add the patient to their own list or end an entry. Hazard H-055's residual risk is updated.

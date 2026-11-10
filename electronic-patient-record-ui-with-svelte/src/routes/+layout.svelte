@@ -144,6 +144,7 @@
           >({TEXT.wlCount.replace("{n}", String(worklistCount.open))})</span
         >{/if}</a
     >
+    <a href={localizePath("/watch-list", locale)}>{TEXT.navWatch}</a>
     <a href={localizePath("/admin/feed", locale)}
       >{TEXT.navFeed}{#if adminPage && feedCount.open}
         <span class="count"
