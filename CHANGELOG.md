@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-10 - axa 0.12 recorded, not started (AX-12)
+
+- **Clinical risk:** none. This is a backlog entry.
+- **Built:** `tasks.md` gains AX-12, the axa 0.12 upgrade, from the axa maintainers' release note. For this service it is renaming only: the `sqlx` feature becomes `postgres-sqlx`, three uses of `axa::sqlx` become `axa::postgres_sqlx`, and `axa-test` moves from 0.2 to 0.3.
+- **Not done / not verified:** nothing is upgraded. The axa upgrade guide was not read here. The three uses were found with a search.
+
 ## 2026-11-10 - A database that cannot serve is a 503 (AX-11)
 
 - **Clinical risk:** small. During a database outage a clinician's screen now gets a 503 that says to try again shortly, where it got a 500. The UI shows any 5xx as an error either way.
