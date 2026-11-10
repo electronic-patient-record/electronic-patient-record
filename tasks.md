@@ -1503,9 +1503,9 @@ repository. The maintainer scheduled it on 2026-11-10.
 
 The axa maintainers' session reported axa 0.12.0 published (tag v0.12.0, axa commit `b84f140`). For a Postgres
 service it is renaming only. Upgrade guide: `help/upgrading-to-0.12/index.md` in the axa repository. Not started:
-it waits for the maintainer to schedule it.
+the maintainer scheduled it on 2026-11-10.
 
-- [ ] **AX-12 (S) — Upgrade to axa 0.12.** The `sqlx` feature becomes `postgres-sqlx` (`Cargo.toml`), the module
+- [x] **AX-12 (S) — Upgrade to axa 0.12.** **Done 2026-11-10:** renamed as below; the OpenAPI document is unchanged; the gates are green locally. The `sqlx` feature becomes `postgres-sqlx` (`Cargo.toml`), the module
   `axa::sqlx` becomes `axa::postgres_sqlx` (three uses: `src/app.rs`, `src/pool.rs`, `src/store.rs`), and `axa-test`
   0.2 becomes 0.3. The crate `axa-sqlx` is now `axa-postgres-sqlx` 0.1.3, pulled in by the feature; the old names
   have final deprecation versions. The SeaORM, Diesel and Toasty renames and the new MySQL features do not apply.

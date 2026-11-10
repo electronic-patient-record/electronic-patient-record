@@ -3,7 +3,7 @@
 use axa::AppContext;
 use sqlx::PgPool;
 
-pub use axa::sqlx::{Conn, Db};
+pub use axa::postgres_sqlx::{Conn, Db};
 
 /// The database pool of a context.
 pub trait Pool {

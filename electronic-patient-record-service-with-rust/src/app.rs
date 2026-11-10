@@ -1,6 +1,6 @@
 //! Application wiring: the configuration, the command line, the routes and the middleware stack.
 
-use axa::sqlx::{migrate, status};
+use axa::postgres_sqlx::{migrate, status};
 use axa::{
     AppContext, Environment, Error, Result,
     boot::{BootResult, TestApp},

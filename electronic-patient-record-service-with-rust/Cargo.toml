@@ -21,7 +21,7 @@ path = "src/bin/main.rs"
 
 [workspace.dependencies]
 # The shared service plumbing.
-axa = { version = "0.11", features = ["cursor-pagination", "idempotency", "outbox", "problem", "ratelimit", "sqlx"] }
+axa = { version = "0.12", features = ["cursor-pagination", "idempotency", "outbox", "postgres-sqlx", "problem", "ratelimit"] }
 
 [dependencies]
 axa = { workspace = true }
@@ -56,5 +56,5 @@ snomed = "0.56.1"
 
 [dev-dependencies]
 authentication-verifier = { version = "0.9.1", default-features = false, features = ["test-idp"] }
-axa-test = "0.2"
+axa-test = "0.3"
 tower = { version = "0.5", features = ["util"] }

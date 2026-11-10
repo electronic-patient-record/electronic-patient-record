@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-10 - axa 0.12 (AX-12)
+
+- **Clinical risk:** none. For a Postgres service this upgrade is renaming only, and nothing the service does changes.
+- **Built:** axa 0.12.0 with the feature `postgres-sqlx` in place of `sqlx`. The module paths `axa::sqlx` become `axa::postgres_sqlx` (in `src/app.rs`, `src/pool.rs` and `src/store.rs`). axa-test moves to 0.3.0. The lockfile now has `axa-postgres-sqlx` 0.1.3 in place of `axa-sqlx`, and `axa-transactional-outbox` 0.3.0. `plan.md`'s stack table names the new version and feature.
+- **Checked:** the build, all 553 database-free tests, the OpenAPI census (the document is unchanged), fmt, clippy, rustdoc, the `check` command, and these database tests: readiness, `http_patients`, `http_suspicions`, `outbox_store` and `audit_immutable`. The axa upgrade guide was read at its tag.
+- **Not done / not verified:** the full database suite was not run locally for this change; CI runs it. The real-stack tests were not rerun.
+
 ## 2026-11-10 - axa 0.12 recorded, not started (AX-12)
 
 - **Clinical risk:** none. This is a backlog entry.

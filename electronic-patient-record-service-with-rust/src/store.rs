@@ -90,7 +90,7 @@ pub(crate) async fn append_version(
         }
         Err(e) => {
             let _ = sp.rollback().await;
-            if axa::sqlx::is_unique_violation(&e) {
+            if axa::postgres_sqlx::is_unique_violation(&e) {
                 Ok(Appended::Taken)
             } else {
                 Err(db_err(store, e))

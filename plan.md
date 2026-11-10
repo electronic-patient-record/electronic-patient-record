@@ -70,8 +70,8 @@ safety incident.
 | Layer | Choice |
 |---|---|
 | Rust | 1.99.1 pinned in `rust-toolchain.toml`, MSRV 1.97, edition 2024 |
-| Service framework | Axum 0.8 with `axa` 0.11 (features `sqlx`, `outbox`, `idempotency`, `problem`, `ratelimit`, `cursor-pagination`); no JWT library: tokens are PASETO or Keycloak, verified by `authentication-verifier` |
-| Database | PostgreSQL 18 through `sqlx` (`axa`'s `sqlx` feature), no ORM; migrations are `.sql` files in the service's `migrations/`, with no down files |
+| Service framework | Axum 0.8 with `axa` 0.12 (features `postgres-sqlx`, `outbox`, `idempotency`, `problem`, `ratelimit`, `cursor-pagination`); no JWT library: tokens are PASETO or Keycloak, verified by `authentication-verifier` |
+| Database | PostgreSQL 18 through `sqlx` (`axa`'s `postgres-sqlx` feature), no ORM; migrations are `.sql` files in the service's `migrations/`, with no down files |
 | Auth | PASETO v4.public verified offline with `authentication-verifier` (Ed25519 key set URL); OIDC upstream; SMART on FHIR 2.2 authorisation layered on top (see §6.4) |
 | Integrity | `integrity-mac` for keyed MACs (audit hash chain), `sha2` / `sha3` digests |
 | Search | `tantivy` 0.26 embedded index (patient search, typeahead); PostgreSQL for FHIR search parameters |
