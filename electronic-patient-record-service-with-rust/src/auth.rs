@@ -285,19 +285,62 @@ pub async fn require_auth_mw(
             req.extensions_mut().insert(subject);
             next.run(req).await
         }
-        // JSON on /api, an OperationOutcome on /fhir (CQ-11).
         Err((status, msg)) => {
             // Nothing is audited before a caller is known: count it so it is not invisible.
             crate::metrics::UNAUDITED_REFUSALS.inc();
-            crate::api_error::ApiError::new(status, msg).for_path(&path)
+            refusal(status, msg, &path)
         }
     }
+}
+
+/// A refusal before any caller is known: JSON on /api, an OperationOutcome on /fhir (CQ-11). A 401
+/// names the scheme it wants (`WWW-Authenticate: Bearer`, RFC 6750 section 3), as `axa`'s own
+/// authentication crates do since 0.11; it says nothing about why, which is in the body.
+#[must_use]
+pub fn refusal(status: StatusCode, message: String, path: &str) -> axum::response::Response {
+    let mut response = crate::api_error::ApiError::new(status, message).for_path(path);
+    if status == StatusCode::UNAUTHORIZED {
+        response.headers_mut().insert(
+            axum::http::header::WWW_AUTHENTICATE,
+            axum::http::HeaderValue::from_static("Bearer"),
+        );
+    }
+    response
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use axum::http::HeaderValue;
+
+    #[test]
+    fn a_401_names_the_bearer_scheme_and_nothing_else_does() {
+        for path in ["/api/patients", "/fhir/R4/Patient"] {
+            let r = refusal(
+                StatusCode::UNAUTHORIZED,
+                "expected bearer token".into(),
+                path,
+            );
+            assert_eq!(r.status(), StatusCode::UNAUTHORIZED);
+            assert_eq!(
+                r.headers()
+                    .get(axum::http::header::WWW_AUTHENTICATE)
+                    .unwrap(),
+                "Bearer",
+                "{path}"
+            );
+        }
+        let r = refusal(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "authentication not initialised".into(),
+            "/api/x",
+        );
+        assert!(
+            r.headers()
+                .get(axum::http::header::WWW_AUTHENTICATE)
+                .is_none()
+        );
+    }
 
     fn empty_verifier() -> Verifier {
         Verifier::from_paseto_keys_value(&serde_json::json!({ "keys": [] }), "i", "a").unwrap()

@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-10 - A 401 names its scheme, and axa's headers are pinned (AX-11)
+
+- **Clinical risk:** none. Response headers only.
+- **Built:** the service's own authentication refusal (`auth::refusal`, used by `require_auth_mw`) now sends `WWW-Authenticate: Bearer` on a 401, as RFC 6750 asks and as axa's own authentication crates do since 0.11. The service's 401 comes from its own guard, not those crates, so it had none. Other refusals (503 before start-up finishes) carry no such header. `tests/axa_defaults.rs` builds the routes inside axa's standard stack, as `App::router` does, and pins what axa 0.11 adds to every response: `cross-origin-opener-policy` and `cross-origin-resource-policy` of `same-origin`, and a `permissions-policy` turning off camera, microphone, location, payment and USB.
+- **Checked:** the new unit test (on /api and /fhir, and none on a 503), the new header test, all 551 database-free tests, the login-on database tests (`http_roles`, `http_watch_list`), clippy and rustdoc.
+- **Not done / not verified:** no test covers the 503 a store route now gives during a database outage; it needs the stores with a failing pool. The UI proxy's handling of the new header was not tried in a browser (the UI maps a 401 to "sign in" either way).
+
 ## 2026-11-10 - Watch-list days are the site's days (WL-6, H-055)
 
 - **Clinical risk:** small. Near midnight, for a site outside UTC, an entry's last day now lapses on the site's calendar rather than the server's UTC one. Hazard H-055's residual risk is updated.

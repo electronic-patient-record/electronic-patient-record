@@ -12,6 +12,7 @@ the cross-subproject contract.
 | Startup gate | Refuses to start in `production` with login off; or with login on, no keys and no `EPR_PASETO_KEYS_URL` | `auth::tests::startup_gate`; run by hand |
 | Keycloak | With `EPR_KEYCLOAK_URL` set, a bearer token that does not start `v4.` is verified against the realm (signature, issuer `{url}/realms/{realm}`, audience, expiry, verified email); the caller is the token `sub`. Half-configured Keycloak, a remote `http://` URL, no audience, or a bad role map: refuses to start | `tests/keycloak_guard.rs` (8, DB-free, local OIDC stand-in); run by hand against Keycloak 26.3.0 under Podman |
 | Public paths | `/_health/live`, `/_health/ready`, `/_health/startup`, `/_dependencies` and `/metrics` only | `auth::tests`, `tests/metrics.rs` |
+| A refusal names its scheme (AX-11) | A 401 from the authentication guard carries `WWW-Authenticate: Bearer` (RFC 6750); no other refusal does. Every response carries `axa` 0.11's `cross-origin-opener-policy` and `cross-origin-resource-policy` of `same-origin` and its `permissions-policy` | `auth::tests`, `tests/axa_defaults.rs` |
 | Fail closed | Before the guard is initialised every non-public request gets 503 | by construction |
 | Compare | `POST /api/patients/compare` takes `{a, b}` (matcher `Patient`) and returns a matcher `MatchResult` | `controllers::patients::tests` |
 | Audit table | `audit_events`, append-only; action in C/R/U/D/E; outcome in 0/4/8/12; triggers refuse UPDATE, DELETE, TRUNCATE | `tests/audit_immutable.rs` (Postgres) |
