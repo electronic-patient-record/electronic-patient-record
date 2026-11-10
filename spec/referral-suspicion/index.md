@@ -88,6 +88,7 @@ new version never changes the dates of an old suspicion. Each pathway version ha
 | `needs_agreement` | The person's agreement must be recorded, yes or no; "declined" is a state | dementia |
 | `instruction` | What the receiving team must see | Parkinson's: refer untreated |
 | `no_target_reason` | Given exactly when there is no target anywhere, so a missing date is never read as "no hurry" | Parkinson's: "refer quickly", no interval |
+| `subtypes` | A list a suspicion may name a subtype from, or with `required` must: a `scheme`, a title, a source and named codes. Without one, no subtype is allowed | Wales cancer v2: the primary cancer site, required; dementia v2: the type, optional |
 
 For one suspicion, the plan is the pathway's (or band's) priority raised by every factor that applies, and each
 target's **due day**: the clock start's UTC day plus the target's days. A target is **overdue** once that day has
@@ -102,7 +103,7 @@ for development, and a deployment replaces the file with its own approved catalo
 `/api/patients/{id}/referrals/{referral_id}/suspicion`: `GET` (every version oldest first, and `current`; none is an
 empty history), `POST {suspicion}` (version 1; 409 if the referral has one) and `PUT {suspicion, expected_version,
 reason}`. A suspicion holds the condition in the referrer's words and an optional code (not looked up), the point of
-suspicion (RFC 3339, not in the future), `source` (`clinician`, `screening-programme`, `result`) and `by`, the grounds
+suspicion (RFC 3339, not in the future), an optional `subtype` `{scheme, code}` from the pathway version's list (RS-5), `source` (`clinician`, `screening-programme`, `result`) and `by`, the grounds
 (`criterion`, `result` with a `result_id` on this patient's record, or `judgement`, with words), an optional
 instruction, `patient_told` (`told`, `not-told`), and the pathway, version, band, factors and agreement the pathway
 asks for. Version 1 is as raised; every later version is an amendment with a reason, and one that changes nothing is
@@ -158,7 +159,7 @@ maintainers and not agreed; nothing is built.
 | `type-1-diabetes-child` | `diabetes`, `subtype` type 1 | — |
 | `heart-failure` | `cardiovascular_disease` | The PAS condition is broader |
 | `parkinsons`, `dementia`, `obstructive-sleep-apnoea` | `parkinsons_disease`, `dementia`, `obstructive_sleep_apnoea` | — |
-| (none) | `subtype`, required for cancer under `wales` (primary cancer site) | **The EPR has no subtype field**; one is needed before a Welsh cancer suspicion can be sent |
+| `subtype` `{scheme, code}` (2026-11-10) | `subtype` and the proposed `subtype_scheme` | Built on the EPR side: `suspected-cancer-wales` v2 requires `wales-primary-cancer-site`, `dementia` v2 takes `generic-dementia-type`, both copied from the PAS's profiles; `type-1-diabetes-child` sends `generic-diabetes-type` `type_1` by mapping, not stored |
 | `point_of_suspicion` (a time) | `suspected_on` (a date) | Which day: UTC or the deployment's own (the EPR counts UTC days today) |
 | `by` | `suspected_by` | — |
 | the version's author | `recorded_by` | — |
@@ -221,7 +222,7 @@ wait on the PAS maintainer.
 
 Only the pathway catalogue (RS-6) and the stored suspicion with its outcome and the outbound check (RS-1 to RS-4) are built; no screen shows either. The NICE intervals were read through search summaries, not the NICE pages; each guideline has been
 amended since publication. The Welsh target's current figure was not checked against the latest Welsh Government
-statistics. The PAS in `~/git/patient-administration-system` was not read for whether it tracks suspicion. No clinician
+statistics. The PAS in `~/git/patient-administration-system` was read (its spec 20 and its two profiles), not run; the subtype lists here are copies of its profiles, and nothing checks that the two stay the same. No clinician
 has read this page.
 
 ## Sources
@@ -230,6 +231,7 @@ Read 2026-11-09 through web search results; pages not opened unless said.
 
 - [GOVWNEW] Welsh Government, *New measure for cancer services: Wales a UK first*: https://www.gov.wales/new-measure-cancer-services-wales-uk-first
 - [WCWT] Welsh Government, *NHS cancer waiting times quality report* (2019): https://www.gov.wales/sites/default/files/statistics-and-research/2019-10/nhs-cancer-waiting-times-quality-report.pdf ; *Suspected cancer pathway quality report* (2023): https://www.gov.wales/sites/default/files/pdf-versions/2023/8/5/1691749814/suspected-cancer-pathway-quality-report.pdf
+- [WDDPCS] NHS Wales Data Dictionary, *Primary Cancer Site Description* (valid from 2021-01-01, last changed by DSCN 2023/45), as copied in the PAS's `wales` profile; not opened here: https://www.datadictionary.wales.nhs.uk/worddocuments/primarycancersitedescription.htm
 - [WNOP] Welsh Government, *National optimal pathways for cancer* (2019): https://www.gov.wales/sites/default/files/publications/2019-10/national-optimal-pathways-for-cancer.pdf
 - [IWA] Institute of Welsh Affairs: https://iwa.wales/?p=49889 (press)
 - [NG12] NICE NG12, *Suspected cancer: recognition and referral*: https://www.nice.org.uk/guidance/ng12 ; NICE feature: https://www.nice.org.uk/news/feature/helping-gps-make-an-early-diagnosis-of-cancer

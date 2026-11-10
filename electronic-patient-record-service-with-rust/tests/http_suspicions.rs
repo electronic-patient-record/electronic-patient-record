@@ -175,6 +175,26 @@ async fn a_suspicion_keeps_its_point_of_suspicion_and_follows_its_pathway() {
         assert_eq!(current["plan"]["targets"][0]["due_on"], "2026-11-30", "the clock moved with it");
         assert_eq!(history["versions"][0]["plan"]["targets"][0]["due_on"], "2026-12-07");
 
+        // Version 2 of the Welsh pathway needs a primary cancer site from its own list, kept with its scheme.
+        let rid_site = referral(pid.clone()).await;
+        let url_site = format!("/api/patients/{pid}/referrals/{rid_site}/suspicion");
+        let mut v2 = cancer.clone();
+        v2["pathway_version"] = json!(2);
+        let mut other_list = v2.clone();
+        other_list["subtype"] = json!({ "scheme": "generic-dementia-type", "code": "03" });
+        for body in [v2.clone(), other_list] {
+            let r = server.post(&url_site).add_header(dh.clone(), dv.clone())
+                .json(&json!({ "suspicion": body })).await;
+            assert_eq!(r.status_code(), StatusCode::UNPROCESSABLE_ENTITY, "{body}: {}", r.text());
+        }
+        v2["subtype"] = json!({ "scheme": "wales-primary-cancer-site", "code": "03" });
+        let r = server.post(&url_site).add_header(dh.clone(), dv.clone())
+            .json(&json!({ "suspicion": v2 })).await;
+        assert_eq!(r.status_code(), StatusCode::CREATED, "{}", r.text());
+        let r: Value = r.json();
+        assert_eq!(r["suspicion"]["subtype"]["code"], "03");
+        assert_eq!(r["plan"]["targets"][1]["due_on"], "2027-01-10", "the site moves no date");
+
         // Heart failure: a band is needed, and the high band follows a result on this record.
         let rid2 = referral(pid.clone()).await;
         let url2 = format!("/api/patients/{pid}/referrals/{rid2}/suspicion");

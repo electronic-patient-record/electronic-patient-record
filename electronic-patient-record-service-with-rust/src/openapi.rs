@@ -431,6 +431,9 @@ fn suspicion_schemas() -> Value {
                 "condition": {"type": "string", "maxLength": 200, "description": "The referrer's words, always kept."},
                 "code": {"type": "object", "additionalProperties": false, "required": ["system", "code"], "properties": {
                     "system": {"type": "string"}, "code": {"type": "string"}, "display": {"type": "string"}}},
+                "subtype": {"type": "object", "additionalProperties": false, "required": ["scheme", "code"],
+                    "description": "From the pathway version's subtype list (a primary cancer site, a type of dementia): required where the list is, refused where there is none.",
+                    "properties": {"scheme": {"type": "string"}, "code": {"type": "string"}}},
                 "point_of_suspicion": {"type": "string", "description": "RFC 3339; not in the future (5 minutes' skew)."},
                 "source": {"enum": ["clinician", "screening-programme", "result"]},
                 "by": {"type": "string", "maxLength": 200},

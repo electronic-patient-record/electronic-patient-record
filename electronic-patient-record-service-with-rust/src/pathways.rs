@@ -77,6 +77,35 @@ pub struct Factor {
     pub priority: Priority,
 }
 
+/// One code in a subtype list.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SubtypeCode {
+    /// The code, as the list's owner writes it.
+    pub code: String,
+    /// Its name.
+    pub name: String,
+}
+
+/// The list a suspicion's subtype comes from (RS-5): a primary cancer site, a type of dementia. The
+/// scheme is named with the code, so a code from one list is never read as one from another; the PAS
+/// checks the same scheme against its own profile.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Subtypes {
+    /// The list's name, stored with each code (for example `wales-primary-cancer-site`).
+    pub scheme: String,
+    /// What a subtype is here (for example "Primary cancer site").
+    pub title: String,
+    /// Where the list comes from.
+    pub source: String,
+    /// Whether every suspicion under this pathway version must name one.
+    pub required: bool,
+    /// The codes.
+    #[serde(rename = "code")]
+    pub codes: Vec<SubtypeCode>,
+}
+
 /// One version of one pathway.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -115,6 +144,9 @@ pub struct Pathway {
     /// The factors that raise the priority.
     #[serde(default, rename = "factor")]
     pub factors: Vec<Factor>,
+    /// The subtype list, if a suspicion may or must name one; none means no subtype is allowed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subtypes: Option<Subtypes>,
 }
 
 impl Pathway {
@@ -200,6 +232,19 @@ fn check(p: &Pathway) -> Result<(), String> {
         }
     }
     unique(&name, "factor", p.factors.iter().map(|f| f.id.as_str()))?;
+    if let Some(l) = &p.subtypes {
+        if l.scheme.trim().is_empty()
+            || l.title.trim().is_empty()
+            || l.source.trim().is_empty()
+            || l.codes.is_empty()
+            || l.codes.iter().any(|c| c.name.trim().is_empty())
+        {
+            return Err(format!(
+                "suspicion pathways: {name} subtypes need a scheme, a title, a source and named codes"
+            ));
+        }
+        unique(&name, "subtype", l.codes.iter().map(|c| c.code.as_str()))?;
+    }
     let any_target = !p.targets.is_empty() || p.bands.iter().any(|b| !b.targets.is_empty());
     if any_target == !p.no_target_reason.trim().is_empty() {
         return Err(format!(
@@ -280,6 +325,8 @@ pub struct Choice<'a> {
     pub grounds_is_result: bool,
     /// The person's agreement, where recorded.
     pub agreed: Option<bool>,
+    /// The subtype named, as its scheme and code.
+    pub subtype: Option<(&'a str, &'a str)>,
 }
 
 /// Every problem with a choice against its pathway, as words naming ids, never patient data.
@@ -312,6 +359,23 @@ pub fn problems(p: &Pathway, c: &Choice<'_>) -> Vec<String> {
             p.id
         )),
         (false, Some(_)) => out.push(format!("pathway {} does not record agreement", p.id)),
+        _ => {}
+    }
+    match (&p.subtypes, c.subtype) {
+        (None, Some(_)) => out.push(format!("pathway {} has no subtype list", p.id)),
+        (Some(l), None) if l.required => {
+            out.push(format!(
+                "pathway {} needs a subtype from {}",
+                p.id, l.scheme
+            ));
+        }
+        (Some(l), Some((scheme, _))) if scheme != l.scheme => out.push(format!(
+            "pathway {} takes subtypes from {}, not {scheme}",
+            p.id, l.scheme
+        )),
+        (Some(l), Some((_, code))) if !l.codes.iter().any(|x| x.code == code) => {
+            out.push(format!("{} has no code {code}", l.scheme));
+        }
         _ => {}
     }
     out
@@ -557,6 +621,58 @@ mod tests {
     }
 
     #[test]
+    fn a_subtype_comes_from_the_pathways_own_list() {
+        let v1 = pathway("suspected-cancer-wales", 1).unwrap();
+        let v2 = pathway("suspected-cancer-wales", 2).unwrap();
+        let lower_gi = Choice {
+            subtype: Some(("wales-primary-cancer-site", "03")),
+            ..Choice::default()
+        };
+        assert_eq!(
+            problems(v1, &lower_gi),
+            vec!["pathway suspected-cancer-wales has no subtype list"],
+            "version 1 stays as it was"
+        );
+        assert!(problems(v2, &lower_gi).is_empty());
+        assert_eq!(
+            problems(v2, &Choice::default()),
+            vec!["pathway suspected-cancer-wales needs a subtype from wales-primary-cancer-site"]
+        );
+        let other_list = Choice {
+            subtype: Some(("generic-dementia-type", "03")),
+            ..Choice::default()
+        };
+        assert_eq!(
+            problems(v2, &other_list),
+            vec![
+                "pathway suspected-cancer-wales takes subtypes from wales-primary-cancer-site, not generic-dementia-type"
+            ]
+        );
+        let unknown = Choice {
+            subtype: Some(("wales-primary-cancer-site", "99")),
+            ..Choice::default()
+        };
+        assert_eq!(
+            problems(v2, &unknown),
+            vec!["wales-primary-cancer-site has no code 99"]
+        );
+        let sites = &v2.subtypes.as_ref().unwrap().codes;
+        assert_eq!(sites.len(), 15, "the NHS Wales list, 01 to 14 and 98");
+        let dementia = pathway("dementia", 2).unwrap();
+        let declined = Choice {
+            agreed: Some(false),
+            ..Choice::default()
+        };
+        assert!(problems(dementia, &declined).is_empty(), "optional there");
+        let start = at("2026-11-09T09:00:00Z");
+        assert_eq!(
+            plan(v2, &lower_gi, start, start).unwrap().targets,
+            plan(v1, &Choice::default(), start, start).unwrap().targets,
+            "the site changes no date"
+        );
+    }
+
+    #[test]
     fn a_bad_catalogue_is_refused() {
         let head = |v: i32, extra: &str| {
             format!(
@@ -584,6 +700,16 @@ mod tests {
                 head(1, "priority = \"urgent\"\nno_target_reason = \"\"\n")
                     + &target.replace("14", "400"),
                 "0 to 365 days",
+            ),
+            (
+                ok.clone()
+                    + "[pathway.subtypes]\nscheme = \"s\"\ntitle = \"T\"\nsource = \"\"\nrequired = false\n[[pathway.subtypes.code]]\ncode = \"a\"\nname = \"A\"\n",
+                "subtypes need",
+            ),
+            (
+                ok.clone()
+                    + "[pathway.subtypes]\nscheme = \"s\"\ntitle = \"T\"\nsource = \"S\"\nrequired = false\n[[pathway.subtypes.code]]\ncode = \"a\"\nname = \"A\"\n[[pathway.subtypes.code]]\ncode = \"a\"\nname = \"B\"\n",
+                "repeated subtype",
             ),
         ] {
             let err = parse(&text).expect_err(&text);

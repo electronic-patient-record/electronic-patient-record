@@ -4177,6 +4177,23 @@
               "screening-programme",
               "result"
             ]
+          },
+          "subtype": {
+            "additionalProperties": false,
+            "description": "From the pathway version's subtype list (a primary cancer site, a type of dementia): required where the list is, refused where there is none.",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "scheme": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "scheme",
+              "code"
+            ],
+            "type": "object"
           }
         },
         "required": [

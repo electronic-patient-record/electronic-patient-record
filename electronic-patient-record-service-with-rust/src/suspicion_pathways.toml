@@ -15,7 +15,10 @@
 # - a target is a whole number of days from the clock start, 0 (the same day) to 365;
 # - a pathway with no target anywhere says why in no_target_reason; one with targets leaves it empty;
 # - clock_from is point-of-suspicion or referral-sent;
-# - priorities are a referral's: routine, urgent, asap, stat.
+# - priorities are a referral's: routine, urgent, asap, stat;
+# - a pathway may have a subtype list (`[pathway.subtypes]`: a scheme, a title, a source, whether it is
+#   required, and named codes, none repeated); without one, a suspicion names no subtype. The scheme is
+#   stored with the code. The lists below copy the PAS's profiles (its spec 20) so the two agree (RS-5).
 
 [[pathway]]
 id = "suspected-cancer-wales"
@@ -178,3 +181,136 @@ priority = "urgent"
 id = "pregnancy"
 text = "Pregnant"
 priority = "urgent"
+
+# Version 2 of the Welsh cancer pathway: the same clock, priority and targets, and a primary cancer site is
+# required, as the PAS's `wales` profile requires one. Version 1 stays, for suspicions made under it.
+[[pathway]]
+id = "suspected-cancer-wales"
+version = 2
+title = "Suspected cancer (Wales, Single Cancer Pathway)"
+sources = ["WNOP", "GOVWNEW", "WCWT", "WDDPCS"]
+approved_by = ""
+approved_on = ""
+clock_from = "point-of-suspicion"
+priority = "urgent"
+no_target_reason = ""
+
+[[pathway.target]]
+id = "diagnosis"
+text = "Diagnosed and staged (national optimal pathway)"
+days = 28
+
+[[pathway.target]]
+id = "first-treatment"
+text = "First definitive treatment started"
+days = 62
+
+[pathway.subtypes]
+scheme = "wales-primary-cancer-site"
+title = "Primary cancer site"
+source = "NHS Wales Data Dictionary, Primary Cancer Site Description, valid from 2021-01-01, last changed by DSCN 2023/45"
+required = true
+
+[[pathway.subtypes.code]]
+code = "01"
+name = "Head and Neck"
+
+[[pathway.subtypes.code]]
+code = "02"
+name = "Upper GI"
+
+[[pathway.subtypes.code]]
+code = "03"
+name = "Lower GI"
+
+[[pathway.subtypes.code]]
+code = "04"
+name = "Lung"
+
+[[pathway.subtypes.code]]
+code = "05"
+name = "Sarcoma"
+
+[[pathway.subtypes.code]]
+code = "06"
+name = "Skin (exc BCC)"
+
+[[pathway.subtypes.code]]
+code = "07"
+name = "Brain/CNS"
+
+[[pathway.subtypes.code]]
+code = "08"
+name = "Breast"
+
+[[pathway.subtypes.code]]
+code = "09"
+name = "Gynaecological"
+
+[[pathway.subtypes.code]]
+code = "10"
+name = "Urological"
+
+[[pathway.subtypes.code]]
+code = "11"
+name = "Haematological (exc Acute Leukaemia)"
+
+[[pathway.subtypes.code]]
+code = "12"
+name = "Acute Leukaemia"
+
+[[pathway.subtypes.code]]
+code = "13"
+name = "Children's"
+
+[[pathway.subtypes.code]]
+code = "14"
+name = "Unknown Primary"
+
+[[pathway.subtypes.code]]
+code = "98"
+name = "Other"
+
+# Version 2 of dementia: the same, with the type of dementia where it is known (optional; "not yet known" is
+# a code). A descriptive list, as in the PAS's `generic` profile, not a national code set.
+[[pathway]]
+id = "dementia"
+version = 2
+title = "Suspected dementia, including Alzheimer's disease"
+sources = ["NG97"]
+approved_by = ""
+approved_on = ""
+clock_from = "point-of-suspicion"
+priority = "routine"
+needs_agreement = true
+no_target_reason = "The guideline names no interval for referral to a memory service"
+
+[pathway.subtypes]
+scheme = "generic-dementia-type"
+title = "Type of dementia"
+source = "A descriptive list, the same as the PAS's generic profile; not a national code set"
+required = false
+
+[[pathway.subtypes.code]]
+code = "alzheimers"
+name = "Alzheimer's disease"
+
+[[pathway.subtypes.code]]
+code = "vascular"
+name = "Vascular dementia"
+
+[[pathway.subtypes.code]]
+code = "lewy_bodies"
+name = "Dementia with Lewy bodies"
+
+[[pathway.subtypes.code]]
+code = "frontotemporal"
+name = "Frontotemporal dementia"
+
+[[pathway.subtypes.code]]
+code = "mixed"
+name = "Mixed"
+
+[[pathway.subtypes.code]]
+code = "not_known"
+name = "Not yet known"

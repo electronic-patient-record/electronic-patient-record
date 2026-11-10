@@ -720,6 +720,7 @@ async fn a_message_naming_an_untold_suspicion_never_reaches_the_patient() {
     let mut s = Suspicion {
         condition: "Suspected lower gastrointestinal cancer".into(),
         code: None,
+        subtype: None,
         point_of_suspicion: "2026-11-09T09:30:00Z".into(),
         source: Raised::Clinician,
         by: "Dr A".into(),

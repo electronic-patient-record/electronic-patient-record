@@ -87,6 +87,17 @@ pub struct Code {
     pub display: Option<String>,
 }
 
+/// A subtype from the pathway's list (RS-5): a primary cancer site, a type of dementia. The scheme is
+/// stored with the code, so a code is never read against another list.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Subtype {
+    /// The list, as the pathway names it.
+    pub scheme: String,
+    /// A code from it.
+    pub code: String,
+}
+
 /// A suspicion as sent: the whole of it, every time.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -96,6 +107,9 @@ pub struct Suspicion {
     /// A code, where one is given.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub code: Option<Code>,
+    /// A subtype from the pathway's list, where it has one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subtype: Option<Subtype>,
     /// The point of suspicion, RFC 3339.
     pub point_of_suspicion: String,
     /// Who or what raised it.
@@ -133,14 +147,19 @@ impl Suspicion {
             factors: &self.factors,
             grounds_is_result: self.grounds.kind == GroundsKind::Result,
             agreed: self.agreed,
+            subtype: self
+                .subtype
+                .as_ref()
+                .map(|t| (t.scheme.as_str(), t.code.as_str())),
         }
     }
 }
 
 /// The fields a writer can change, in the order they are reported.
-pub const FIELDS: [&str; 13] = [
+pub const FIELDS: [&str; 14] = [
     "condition",
     "code",
+    "subtype",
     "point_of_suspicion",
     "source",
     "by",
@@ -333,6 +352,7 @@ mod tests {
         Suspicion {
             condition: "Suspected lower gastrointestinal cancer".into(),
             code: None,
+            subtype: None,
             point_of_suspicion: "2026-11-09T09:30:00Z".into(),
             source: Source::Clinician,
             by: "Dr A, general practice".into(),
@@ -461,6 +481,24 @@ mod tests {
         assert_eq!(
             changed(&was, &now_),
             vec!["point_of_suspicion", "patient_told"]
+        );
+        now_.pathway_version = 2;
+        now_.subtype = Some(Subtype {
+            scheme: "wales-primary-cancer-site".into(),
+            code: "03".into(),
+        });
+        assert_eq!(
+            changed(&was, &now_),
+            vec![
+                "subtype",
+                "point_of_suspicion",
+                "patient_told",
+                "pathway_version"
+            ]
+        );
+        assert!(
+            problems(&now_, now()).is_empty(),
+            "moved to version 2 with a site"
         );
     }
 }

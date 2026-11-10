@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-10 - A subtype on a suspicion (RS-5, EPR side; H-053)
+
+- **Clinical risk:** yes. A clinician now sees and records a primary cancer site or a type of dementia on a suspicion. Hazard H-053 gains the control and the cause.
+- **Built:** a pathway version may hold a subtype list (`[pathway.subtypes]`: a scheme, a title, a source, whether it is required, and named codes, none repeated). A suspicion may carry `subtype` `{scheme, code}`. It is refused under a pathway with no list, refused when the scheme is another list's or the code is not in it, and required where the list is. Two new pathway versions: `suspected-cancer-wales` v2, which requires `wales-primary-cancer-site` (the NHS Wales list, 01 to 14 and 98), and `dementia` v2, which takes `generic-dementia-type` (optional). Version 1 of each is unchanged, so stored suspicions keep their rules. An amendment that adds a site reports `subtype` as changed. The OpenAPI schema is updated.
+- **Checked:** `pathways::tests` and `suspicion::tests`, the HTTP test (a missing site and a site from the wrong list are refused, a right one is kept and moves no date), clippy, the OpenAPI census, and the database suite on a fresh database.
+- **Not done / not verified:** the lists are copied from the PAS's `wales` and `generic` profiles, not read from its `GET /api/suspicion-profile`, and nothing checks that the two stay the same. The NHS Wales Data Dictionary page was not opened here. The plan does not show the subtype's name. No screen exists. Nothing is sent to the PAS yet, and the PAS's `subtype_scheme` is not agreed. `type-1-diabetes-child` holds no stored subtype. No clinician has approved either new version.
+
 ## 2026-11-09 - The Wales FHIR package checked, licence unclear (WL-9, blocked; OQ-WL3)
 
 - **Clinical risk:** none. This is a research note.
