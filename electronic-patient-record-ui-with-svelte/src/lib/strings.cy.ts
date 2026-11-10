@@ -15,8 +15,7 @@
 //   - death statuses: "Gwiriwyd", "Ardystiwyd", "Cofrestrwyd" (verified, certified, registered)
 //     and "crwner", "cofrestrydd".
 //   - "mynediad brys" for break-the-glass emergency access.
-//   - suspicion on a referral (2026-11-10): "amheuaeth", "pwynt amheuaeth" (point of suspicion), "isdeip"
-//     (subtype), "diystyrwyd" (ruled out), and the warning not to name the condition to the patient.
+//   - suspicion on a referral (2026-11-10): "amheuaeth", "pwynt amheuaeth" (point of suspicion), "diystyrwyd" (ruled out), and the warning not to name the condition to the patient.
 //   - "optio allan o ddata cenedlaethol": the national data opt-out is England's; Wales may need a
 //     different name or none.
 //   - proxy bases: "cyfrifoldeb rhiant", "atwrneiaeth", "dirprwy a benodwyd gan y llys".
@@ -290,7 +289,7 @@ export const CY: Strings = {
     "point-of-suspicion": "ar bwynt yr amheuaeth",
     "referral-sent": "pan anfonwyd yr atgyfeiriad",
   },
-  suspicionSubtype: "Isdeip: {code} (rhestr {scheme})",
+  suspicionSubtype: "{title}: {name} ({code}, rhestr {scheme})",
   suspicionInstruction: "I'r tîm sy'n derbyn: {instruction}",
   suspicionToldYes: "Mae'r claf wedi cael gwybod beth a amheuir.",
   suspicionToldNo:

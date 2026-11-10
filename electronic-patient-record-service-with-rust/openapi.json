@@ -4394,6 +4394,37 @@
               "stat"
             ]
           },
+          "subtype": {
+            "description": "The subtype chosen, named from the pathway's list; null when none.",
+            "oneOf": [
+              {
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "scheme": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "scheme",
+                  "title",
+                  "code",
+                  "name"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "targets": {
             "items": {
               "properties": {
@@ -4448,7 +4479,8 @@
           "priority",
           "instruction",
           "targets",
-          "no_target_reason"
+          "no_target_reason",
+          "subtype"
         ],
         "type": "object"
       },

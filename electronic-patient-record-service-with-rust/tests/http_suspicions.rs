@@ -193,6 +193,7 @@ async fn a_suspicion_keeps_its_point_of_suspicion_and_follows_its_pathway() {
         assert_eq!(r.status_code(), StatusCode::CREATED, "{}", r.text());
         let r: Value = r.json();
         assert_eq!(r["suspicion"]["subtype"]["code"], "03");
+        assert_eq!(r["plan"]["subtype"]["name"], "Lower GI", "named from the pathway's list");
         assert_eq!(r["plan"]["targets"][1]["due_on"], "2027-01-10", "the site moves no date");
 
         // Heart failure: a band is needed, and the high band follows a result on this record.

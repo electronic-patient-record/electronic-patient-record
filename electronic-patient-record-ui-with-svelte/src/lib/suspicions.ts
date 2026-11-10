@@ -27,6 +27,7 @@ export interface Plan {
   instruction: string | null;
   targets: Due[];
   no_target_reason: string | null;
+  subtype: { scheme: string; title: string; code: string; name: string } | null;
 }
 
 export interface Suspicion {

@@ -423,6 +423,21 @@ pub struct Plan {
     pub targets: Vec<Due>,
     /// Why there are none, when there are none.
     pub no_target_reason: Option<String>,
+    /// The subtype chosen, named from the pathway's list; `None` when none was chosen.
+    pub subtype: Option<NamedSubtype>,
+}
+
+/// A subtype with its name and list, for the screen.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct NamedSubtype {
+    /// The list.
+    pub scheme: String,
+    /// What a subtype is in that list (for example "Primary cancer site").
+    pub title: String,
+    /// The code.
+    pub code: String,
+    /// Its name in the list.
+    pub name: String,
 }
 
 /// The plan for a choice already checked by [`problems`]: the priority and each target's due day,
@@ -476,6 +491,16 @@ pub fn plan(
         instruction: p.instruction.clone(),
         no_target_reason: Some(p.no_target_reason.trim().to_string()).filter(|r| !r.is_empty()),
         targets,
+        subtype: c.subtype.and_then(|(_, code)| {
+            let l = p.subtypes.as_ref()?;
+            let named = l.codes.iter().find(|x| x.code == code)?;
+            Some(NamedSubtype {
+                scheme: l.scheme.clone(),
+                title: l.title.clone(),
+                code: named.code.clone(),
+                name: named.name.clone(),
+            })
+        }),
     })
 }
 
@@ -703,6 +728,14 @@ mod tests {
         };
         assert!(problems(dementia, &declined).is_empty(), "optional there");
         let start = at("2026-11-09T09:00:00Z");
+        let named = plan(v2, &lower_gi, start, start, UTC)
+            .unwrap()
+            .subtype
+            .unwrap();
+        assert_eq!(
+            (named.title.as_str(), named.name.as_str()),
+            ("Primary cancer site", "Lower GI")
+        );
         assert_eq!(
             plan(v2, &lower_gi, start, start, UTC).unwrap().targets,
             plan(v1, &Choice::default(), start, start, UTC)

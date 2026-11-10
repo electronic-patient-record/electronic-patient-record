@@ -67,11 +67,13 @@
         {TEXT.suspicionNewer.replace("{latest}", String(c.plan.latest_version))}
       </p>
     {/if}
-    {#if c.suspicion.subtype}
+    {#if c.plan.subtype}
       <p>
         {TEXT.suspicionSubtype
-          .replace("{code}", c.suspicion.subtype.code)
-          .replace("{scheme}", c.suspicion.subtype.scheme)}
+          .replace("{title}", c.plan.subtype.title)
+          .replace("{name}", c.plan.subtype.name)
+          .replace("{code}", c.plan.subtype.code)
+          .replace("{scheme}", c.plan.subtype.scheme)}
       </p>
     {/if}
     <p>

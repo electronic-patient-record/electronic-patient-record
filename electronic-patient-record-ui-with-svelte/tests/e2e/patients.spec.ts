@@ -3952,6 +3952,12 @@ test("a referral shows its suspicion: draft pathway, not told, due days, overdue
               },
             ],
             no_target_reason: null,
+            subtype: {
+              scheme: "wales-primary-cancer-site",
+              title: "Primary cancer site",
+              code: "03",
+              name: "Lower GI",
+            },
           },
         },
         versions: [],
@@ -3970,7 +3976,9 @@ test("a referral shows its suspicion: draft pathway, not told, due days, overdue
   ).toBeVisible();
   await expect(page.getByText(/This pathway is a draft/)).toBeVisible();
   await expect(
-    page.getByText("Subtype: 03 (list wales-primary-cancer-site)"),
+    page.getByText(
+      "Primary cancer site: Lower GI (03, list wales-primary-cancer-site)",
+    ),
   ).toBeVisible();
   await expect(
     page.getByText(/Target days \(Europe\/London days/),

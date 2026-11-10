@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-10 - The subtype named on screen (RS-8, H-053)
+
+- **Clinical risk:** small. A clinician now reads "Primary cancer site: Lower GI (03, …)" instead of a bare code. The name comes from the same pathway list the code was checked against. H-053's control says so.
+- **Built:** a pathway plan carries `subtype` (scheme, title, code, name), named from the pathway version's list, or null. The OpenAPI schema is updated. The suspicion view shows the title and name, then the code and list.
+- **Checked:** `pathways::tests`, the HTTP test (the name is "Lower GI"), all 548 database-free tests, clippy, the OpenAPI census, the UI `check`, lint, and the stubbed Playwright test with axe.
+- **Not done / not verified:** the names are the built-in lists' English names. A Welsh screen shows them in English, and nothing translates them. No real-stack run was made.
+
 ## 2026-11-10 - A referral shows its suspicion, read only (RS-8, H-053, H-054)
 
 - **Clinical risk:** yes. A clinician now sees, under each referral, what is suspected, whether the patient was told, the pathway's due days and whether they have passed, and the outcome. Hazards H-053 and H-054 have their residual risk updated.

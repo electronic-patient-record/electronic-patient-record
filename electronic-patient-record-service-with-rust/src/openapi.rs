@@ -451,7 +451,7 @@ fn suspicion_schemas() -> Value {
         },
         "SuspicionPlan": {
             "type": "object",
-            "required": ["pathway", "version", "title", "approved", "latest_version", "clock_from", "clock_start", "time_zone", "priority", "instruction", "targets", "no_target_reason"],
+            "required": ["pathway", "version", "title", "approved", "latest_version", "clock_from", "clock_start", "time_zone", "priority", "instruction", "targets", "no_target_reason", "subtype"],
             "description": "The pathway's priority and target due days for this suspicion, worked out when read. The PAS owns the reported clock.",
             "properties": {
                 "pathway": {"type": "string"}, "version": {"type": "integer"}, "title": {"type": "string"},
@@ -466,7 +466,11 @@ fn suspicion_schemas() -> Value {
                     "id": {"type": "string"}, "text": {"type": "string"}, "days": {"type": "integer"},
                     "due_on": {"type": "string", "description": "YYYY-MM-DD, a day in the plan's time_zone."},
                     "overdue": {"type": "boolean"}}}},
-                "no_target_reason": {"type": ["string", "null"]}
+                "no_target_reason": {"type": ["string", "null"]},
+                "subtype": {"description": "The subtype chosen, named from the pathway's list; null when none.",
+                    "oneOf": [{"type": "object", "required": ["scheme", "title", "code", "name"], "properties": {
+                        "scheme": {"type": "string"}, "title": {"type": "string"}, "code": {"type": "string"}, "name": {"type": "string"}}},
+                        {"type": "null"}]}
             }
         },
         "StoredSuspicion": {

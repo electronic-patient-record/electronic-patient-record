@@ -256,7 +256,7 @@ export const STRINGS = {
     "point-of-suspicion": "at the point of suspicion",
     "referral-sent": "when the referral was sent",
   },
-  suspicionSubtype: "Subtype: {code} (list {scheme})",
+  suspicionSubtype: "{title}: {name} ({code}, list {scheme})",
   suspicionInstruction: "For the receiving team: {instruction}",
   suspicionToldYes: "The patient has been told what is suspected.",
   suspicionToldNo:
