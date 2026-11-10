@@ -1,6 +1,7 @@
 // A suspicion on a referral (RS-1 to RS-7), as a clinician reads it. The service owns the pathway, the
 // plan (priority and due days, counted in the site's days) and the outcome; this file only shapes the
-// answer for the screen, and builds the body for raising one. Amending and ending are not on a screen yet.
+// answer for the screen, and builds the bodies for raising one and recording its outcome. Amending is
+// not on a screen yet.
 import { call } from "./api.js";
 import type { Priority } from "./referrals.js";
 
@@ -213,4 +214,45 @@ export function buildSuspicion(
     suspicion.subtype = { scheme: p.subtypes.scheme, code: f.subtype };
   if (p.needs_agreement) suspicion.agreed = f.agreed === "yes";
   return { body: { suspicion }, problems };
+}
+
+/** What the outcome form holds; an empty string is "not chosen". */
+export interface OutcomeForm {
+  kind: "" | OutcomeKind;
+  diagnosis: string;
+  by: string;
+  detail: string;
+}
+
+export const EMPTY_OUTCOME: OutcomeForm = {
+  kind: "",
+  diagnosis: "",
+  by: "",
+  detail: "",
+};
+
+export type OutcomeProblem = "kind" | "diagnosis" | "by" | "detail";
+
+/**
+ * The body of `POST …/suspicion/outcome` against the version the reader saw, or what is missing:
+ * confirmed needs the diagnosis, ruled out needs who ruled it out, and every outcome needs what it rests
+ * on. Only the fields its kind carries are sent.
+ */
+export function buildOutcome(
+  f: OutcomeForm,
+  version: number,
+): { body: unknown; problems: OutcomeProblem[] } {
+  const problems: OutcomeProblem[] = [];
+  if (!f.kind) problems.push("kind");
+  if (f.kind === "confirmed" && !f.diagnosis.trim()) problems.push("diagnosis");
+  if (f.kind === "ruled-out" && !f.by.trim()) problems.push("by");
+  if (!f.detail.trim()) problems.push("detail");
+  if (problems.length > 0) return { body: null, problems };
+  const outcome: Record<string, unknown> = {
+    kind: f.kind,
+    detail: f.detail.trim(),
+  };
+  if (f.kind === "confirmed") outcome.diagnosis = f.diagnosis.trim();
+  if (f.kind === "ruled-out") outcome.by = f.by.trim();
+  return { body: { outcome, expected_version: version }, problems };
 }

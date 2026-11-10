@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   EMPTY_FORM,
+  EMPTY_OUTCOME,
+  buildOutcome,
   buildSuspicion,
   outcomeText,
   targetMark,
@@ -134,5 +136,32 @@ describe("raising a suspicion", () => {
     ).body as { suspicion: Record<string, unknown> };
     expect(declined.suspicion.agreed).toBe(false);
     expect(declined.suspicion.subtype).toBeUndefined();
+  });
+});
+
+describe("recording an outcome", () => {
+  it("asks each kind for what it carries and sends only that, against the version seen", () => {
+    expect(buildOutcome(EMPTY_OUTCOME, 1).problems).toEqual(["kind", "detail"]);
+    expect(
+      buildOutcome({ ...EMPTY_OUTCOME, kind: "confirmed", detail: "biopsy" }, 1)
+        .problems,
+    ).toEqual(["diagnosis"]);
+    expect(
+      buildOutcome({ ...EMPTY_OUTCOME, kind: "ruled-out", detail: "echo" }, 1)
+        .problems,
+    ).toEqual(["by"]);
+    const { body } = buildOutcome(
+      {
+        kind: "ruled-out",
+        diagnosis: "left over",
+        by: " Dr Owen ",
+        detail: "normal echo",
+      },
+      3,
+    );
+    expect(body).toEqual({
+      outcome: { kind: "ruled-out", by: "Dr Owen", detail: "normal echo" },
+      expected_version: 3,
+    });
   });
 });

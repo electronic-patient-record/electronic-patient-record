@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-10 - End or correct a suspicion on screen (RS-8, H-054)
+
+- **Clinical risk:** yes. A clinician can now end a suspicion, or reopen it, from the patient page. Hazard H-054's residual risk is updated.
+- **Built:** an open suspicion offers "Record the outcome" (`SuspicionEnd.svelte`, `buildOutcome`). No kind is preselected. Confirmed asks for the diagnosis, ruled out asks for who ruled it out, and every outcome asks for what it rests on; only those fields are sent. It is sent against the version on screen, and a 409 reloads. A note says that a missed appointment, a decline or a closed referral is not an outcome. An ended suspicion offers "This outcome was entered in error", which needs a reason, reopens the suspicion, and says that an outcome already sent to the PAS is not undone there.
+- **Checked:** 1 new vitest test (each kind's fields, the version) and 1 new stubbed Playwright test with axe (ruled out without who is refused before sending; recorded; marked in error without a reason is refused; marked; open again with one outcome in error). All 337 vitest and 108 Playwright tests, lint, `check` and `check:tests` pass.
+- **Not done / not verified:** no form amends a suspicion. No version history is shown. A confirmed diagnosis is free text; its code field is not on the form. There was no run against the real service and Keycloak. The Welsh is machine-written and unreviewed ("Y diagnosis" among others).
+
 ## 2026-11-10 - Record a suspicion on screen (RS-8, H-054)
 
 - **Clinical risk:** yes. A clinician can now record a suspicion from the patient page, including whether the patient was told. Hazard H-054's residual risk is updated.

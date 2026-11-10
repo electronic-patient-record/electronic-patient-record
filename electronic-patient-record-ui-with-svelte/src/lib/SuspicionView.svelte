@@ -12,6 +12,7 @@
   } from "./suspicions.js";
   import { TEXT } from "./i18n.js";
   import SuspicionRaise from "./SuspicionRaise.svelte";
+  import SuspicionEnd from "./SuspicionEnd.svelte";
 
   let {
     patientId,
@@ -140,6 +141,13 @@
         )}
       </p>
     {/if}
+    <SuspicionEnd
+      {patientId}
+      {referralId}
+      version={c.version}
+      outcomeSeq={h.outcome?.seq ?? null}
+      done={() => reloads++}
+    />
   </div>
 {:else if res.pathways.length > 0}
   <SuspicionRaise

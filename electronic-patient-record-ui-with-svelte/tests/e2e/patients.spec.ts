@@ -4145,6 +4145,139 @@ test("a clinician records a suspicion: the pathway's own choices are offered and
   ).toBeVisible();
 });
 
+test("a clinician records a suspicion's outcome, then marks it entered in error and it is open again", async ({
+  page,
+}) => {
+  const RID = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+  const sent: { url: string; body: Json }[] = [];
+  let outcome: unknown = null;
+  let inError: unknown[] = [];
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, ANN),
+  );
+  await page.route("**/api/proxy/api/patients/*/referrals", (route) =>
+    json(route, 200, {
+      referrals: [
+        {
+          id: RID,
+          version: 3,
+          author: "dr",
+          recorded_at: "2026-11-09T09:00:00.000000Z",
+          patient_id: ANN.id,
+          state: "declined",
+          referral: {
+            recipient: "Heart failure clinic",
+            reason: "Breathless",
+            question: "Assess",
+            priority: "urgent",
+          },
+          next: [],
+        },
+      ],
+    }),
+  );
+  await page.route(
+    `**/api/proxy/api/patients/*/referrals/${RID}/suspicion`,
+    (route) =>
+      json(route, 200, {
+        current: {
+          version: 2,
+          suspicion: {
+            condition: "Suspected heart failure",
+            point_of_suspicion: "2026-11-09T09:00:00Z",
+            patient_told: "told",
+          },
+          plan: {
+            pathway: "heart-failure",
+            version: 1,
+            title: "Suspected heart failure",
+            approved: false,
+            latest_version: 1,
+            clock_from: "point-of-suspicion",
+            clock_start: "2026-11-09T09:00:00Z",
+            time_zone: "UTC",
+            priority: "urgent",
+            instruction: null,
+            targets: [],
+            no_target_reason: null,
+            subtype: null,
+          },
+        },
+        versions: [],
+        open: outcome === null,
+        outcome,
+        outcomes_in_error: inError,
+        pathways: [],
+      }),
+  );
+  await page.route(
+    `**/api/proxy/api/patients/*/referrals/${RID}/suspicion/outcome`,
+    (route) => {
+      const body = route.request().postDataJSON() as { outcome: unknown };
+      sent.push({ url: "outcome", body: body as Json });
+      outcome = {
+        seq: 1,
+        suspicion_version: 2,
+        author: "dr",
+        recorded_at: "2026-11-20T10:00:00.000000Z",
+        outcome: body.outcome,
+      };
+      return json(route, 201, {});
+    },
+  );
+  await page.route(
+    `**/api/proxy/api/patients/*/referrals/${RID}/suspicion/outcome/entered-in-error`,
+    (route) => {
+      sent.push({ url: "error", body: route.request().postDataJSON() });
+      inError = [
+        {
+          outcome,
+          marked_by: "dr",
+          marked_at: "2026-11-20T11:00:00.000000Z",
+          reason: "wrong echo",
+        },
+      ];
+      outcome = null;
+      return json(route, 200, {});
+    },
+  );
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  await expect(page.getByText(/^Open: no outcome is recorded/)).toBeVisible();
+  await page.getByText("Record the outcome").click();
+  await page.getByLabel("Outcome", { exact: true }).selectOption("ruled-out");
+  await page
+    .getByLabel("What it rests on, or why it was withdrawn")
+    .fill("Normal echocardiogram");
+  await axe(page);
+  await page.getByRole("button", { name: "Record outcome" }).click();
+  await expect(page.getByText(/Still needed: who ruled it out/)).toBeVisible();
+  expect(sent).toHaveLength(0);
+  await page.getByLabel("Who ruled it out").fill("Dr Owen");
+  await page.getByRole("button", { name: "Record outcome" }).click();
+  await expect(page.getByText("Ruled out by Dr Owen")).toBeVisible();
+  expect(sent[0]?.body).toEqual({
+    outcome: {
+      kind: "ruled-out",
+      by: "Dr Owen",
+      detail: "Normal echocardiogram",
+    },
+    expected_version: 2,
+  });
+
+  await page.getByText("This outcome was entered in error").click();
+  await page.getByRole("button", { name: "Mark entered in error" }).click();
+  await expect(page.getByText("Not sent. Give the reason.")).toBeVisible();
+  await page.getByLabel("Why it was entered in error").fill("wrong echo");
+  await page.getByRole("button", { name: "Mark entered in error" }).click();
+  await expect(page.getByText(/^Open: no outcome is recorded/)).toBeVisible();
+  await expect(
+    page.getByText("Earlier outcomes entered in error: 1."),
+  ).toBeVisible();
+  expect(sent[1]?.body).toEqual({ seq: 1, reason: "wrong echo" });
+  await axe(page);
+});
+
 const QUEUED = (over: Record<string, unknown> = {}) => ({
   id: "55555555-5555-4555-8555-555555555555",
   received_at: "2026-10-21T09:00:12.000000Z",
