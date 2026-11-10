@@ -451,7 +451,7 @@ fn suspicion_schemas() -> Value {
         },
         "SuspicionPlan": {
             "type": "object",
-            "required": ["pathway", "version", "title", "approved", "latest_version", "clock_from", "clock_start", "priority", "instruction", "targets", "no_target_reason"],
+            "required": ["pathway", "version", "title", "approved", "latest_version", "clock_from", "clock_start", "time_zone", "priority", "instruction", "targets", "no_target_reason"],
             "description": "The pathway's priority and target due days for this suspicion, worked out when read. The PAS owns the reported clock.",
             "properties": {
                 "pathway": {"type": "string"}, "version": {"type": "integer"}, "title": {"type": "string"},
@@ -459,11 +459,12 @@ fn suspicion_schemas() -> Value {
                 "latest_version": {"type": "integer"},
                 "clock_from": {"enum": ["point-of-suspicion", "referral-sent"]},
                 "clock_start": {"type": "string"},
+                "time_zone": {"type": "string", "description": "The site's IANA zone (EPR_SITE_TIME_ZONE): the due days are its days."},
                 "priority": {"enum": ["routine", "urgent", "asap", "stat"]},
                 "instruction": {"type": ["string", "null"]},
                 "targets": {"type": "array", "items": {"type": "object", "required": ["id", "text", "days", "due_on", "overdue"], "properties": {
                     "id": {"type": "string"}, "text": {"type": "string"}, "days": {"type": "integer"},
-                    "due_on": {"type": "string", "description": "YYYY-MM-DD, a UTC day."},
+                    "due_on": {"type": "string", "description": "YYYY-MM-DD, a day in the plan's time_zone."},
                     "overdue": {"type": "boolean"}}}},
                 "no_target_reason": {"type": ["string", "null"]}
             }

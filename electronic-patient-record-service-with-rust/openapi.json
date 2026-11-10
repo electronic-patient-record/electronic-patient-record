@@ -4349,7 +4349,7 @@
                   "type": "integer"
                 },
                 "due_on": {
-                  "description": "YYYY-MM-DD, a UTC day.",
+                  "description": "YYYY-MM-DD, a day in the plan's time_zone.",
                   "type": "string"
                 },
                 "id": {
@@ -4373,6 +4373,10 @@
             },
             "type": "array"
           },
+          "time_zone": {
+            "description": "The site's IANA zone (EPR_SITE_TIME_ZONE): the due days are its days.",
+            "type": "string"
+          },
           "title": {
             "type": "string"
           },
@@ -4388,6 +4392,7 @@
           "latest_version",
           "clock_from",
           "clock_start",
+          "time_zone",
           "priority",
           "instruction",
           "targets",

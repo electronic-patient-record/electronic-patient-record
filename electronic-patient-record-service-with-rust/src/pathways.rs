@@ -390,7 +390,7 @@ pub struct Due {
     pub text: String,
     /// Days from the clock start.
     pub days: u32,
-    /// The last day it is on time (UTC).
+    /// The last day it is on time, in the plan's time zone.
     pub due_on: String,
     /// Whether that day has passed. An outcome stops nothing yet (RS-3), so this is the day alone.
     pub overdue: bool,
@@ -413,6 +413,8 @@ pub struct Plan {
     pub clock_from: ClockFrom,
     /// The clock start (RFC 3339).
     pub clock_start: String,
+    /// The time zone whose days the due days are (the site's).
+    pub time_zone: String,
     /// The highest of the pathway's (or band's) priority and every factor's.
     pub priority: Priority,
     /// The instruction for the receiving team, if any.
@@ -424,13 +426,15 @@ pub struct Plan {
 }
 
 /// The plan for a choice already checked by [`problems`]: the priority and each target's due day,
-/// counted in whole UTC days from the clock start. `None` when the choice does not fit the pathway.
+/// counted in whole days from the clock start's day in `zone` (the site's, `EPR_SITE_TIME_ZONE`), and
+/// judged overdue on today's day there. `None` when the choice does not fit the pathway.
 #[must_use]
 pub fn plan(
     p: &Pathway,
     c: &Choice<'_>,
     clock_start: DateTime<Utc>,
     now: DateTime<Utc>,
+    zone: chrono_tz::Tz,
 ) -> Option<Plan> {
     if !problems(p, c).is_empty() {
         return None;
@@ -444,8 +448,8 @@ pub fn plan(
         .map(|f| f.priority)
         .fold(base, |a, b| if rank(b) > rank(a) { b } else { a });
     let targets = band.map_or(&p.targets, |b| &b.targets);
-    let start = clock_start.date_naive();
-    let today = now.date_naive();
+    let start = clock_start.with_timezone(&zone).date_naive();
+    let today = now.with_timezone(&zone).date_naive();
     let targets = targets
         .iter()
         .map(|t| {
@@ -467,6 +471,7 @@ pub fn plan(
         latest_version: latest(&p.id).unwrap_or(p.version),
         clock_from: p.clock_from,
         clock_start: clock_start.to_rfc3339_opts(chrono::SecondsFormat::Secs, true),
+        time_zone: zone.name().to_string(),
         priority,
         instruction: p.instruction.clone(),
         no_target_reason: Some(p.no_target_reason.trim().to_string()).filter(|r| !r.is_empty()),
@@ -477,6 +482,7 @@ pub fn plan(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono_tz::{Europe::London, UTC};
 
     fn at(s: &str) -> DateTime<Utc> {
         DateTime::parse_from_rfc3339(s).unwrap().with_timezone(&Utc)
@@ -512,6 +518,7 @@ mod tests {
             &Choice::default(),
             at("2026-11-09T09:30:00Z"),
             at("2026-12-08T10:00:00Z"),
+            UTC,
         )
         .unwrap();
         assert_eq!(plan.clock_from, ClockFrom::PointOfSuspicion);
@@ -532,13 +539,44 @@ mod tests {
     }
 
     #[test]
+    fn due_days_are_the_sites_days() {
+        let p = pathway("suspected-cancer-wales", 1).unwrap();
+        let start = at("2026-06-30T23:30:00Z");
+        let now = at("2026-07-29T22:30:00Z");
+        let utc = plan(p, &Choice::default(), start, now, UTC).unwrap();
+        let local = plan(p, &Choice::default(), start, now, London).unwrap();
+        assert_eq!(utc.targets[0].due_on, "2026-07-28");
+        assert!(utc.targets[0].overdue);
+        assert_eq!(
+            local.targets[0].due_on, "2026-07-29",
+            "23:30 UTC is already 1 July in London"
+        );
+        assert!(!local.targets[0].overdue, "and 29 July there still");
+        assert_eq!(local.time_zone, "Europe/London");
+    }
+
+    #[test]
     fn a_same_day_target_is_overdue_only_the_next_day() {
         let p = pathway("type-1-diabetes-child", 1).unwrap();
         let start = at("2026-11-09T16:00:00Z");
-        let late = plan(p, &Choice::default(), start, at("2026-11-09T23:59:00Z")).unwrap();
+        let late = plan(
+            p,
+            &Choice::default(),
+            start,
+            at("2026-11-09T23:59:00Z"),
+            UTC,
+        )
+        .unwrap();
         assert_eq!(late.priority, Priority::Stat);
         assert!(!late.targets[0].overdue);
-        let next = plan(p, &Choice::default(), start, at("2026-11-10T00:01:00Z")).unwrap();
+        let next = plan(
+            p,
+            &Choice::default(),
+            start,
+            at("2026-11-10T00:01:00Z"),
+            UTC,
+        )
+        .unwrap();
         assert!(next.targets[0].overdue);
     }
 
@@ -568,7 +606,7 @@ mod tests {
                 grounds_is_result: true,
                 ..Choice::default()
             };
-            let plan = plan(p, &c, start, start).unwrap();
+            let plan = plan(p, &c, start, start, UTC).unwrap();
             assert_eq!((plan.targets[0].days, plan.priority), (days, priority));
         }
     }
@@ -577,7 +615,7 @@ mod tests {
     fn a_factor_raises_the_priority_and_an_unknown_one_is_refused() {
         let p = pathway("obstructive-sleep-apnoea", 1).unwrap();
         let start = at("2026-11-09T09:00:00Z");
-        let plain = plan(p, &Choice::default(), start, start).unwrap();
+        let plain = plan(p, &Choice::default(), start, start, UTC).unwrap();
         assert_eq!(plain.priority, Priority::Routine);
         assert!(plain.targets.is_empty());
         assert!(plain.no_target_reason.is_some(), "no interval says why");
@@ -587,7 +625,7 @@ mod tests {
             ..Choice::default()
         };
         assert_eq!(
-            plan(p, &c, start, start).unwrap().priority,
+            plan(p, &c, start, start, UTC).unwrap().priority,
             Priority::Urgent
         );
         let odd = ["pilot".to_string()];
@@ -666,8 +704,10 @@ mod tests {
         assert!(problems(dementia, &declined).is_empty(), "optional there");
         let start = at("2026-11-09T09:00:00Z");
         assert_eq!(
-            plan(v2, &lower_gi, start, start).unwrap().targets,
-            plan(v1, &Choice::default(), start, start).unwrap().targets,
+            plan(v2, &lower_gi, start, start, UTC).unwrap().targets,
+            plan(v1, &Choice::default(), start, start, UTC)
+                .unwrap()
+                .targets,
             "the site changes no date"
         );
     }

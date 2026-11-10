@@ -91,7 +91,7 @@ new version never changes the dates of an old suspicion. Each pathway version ha
 | `subtypes` | A list a suspicion may name a subtype from, or with `required` must: a `scheme`, a title, a source and named codes. Without one, no subtype is allowed | Wales cancer v2: the primary cancer site, required; dementia v2: the type, optional |
 
 For one suspicion, the plan is the pathway's (or band's) priority raised by every factor that applies, and each
-target's **due day**: the clock start's UTC day plus the target's days. A target is **overdue** once that day has
+target's **due day**: the clock start's day in the site's time zone (`EPR_SITE_TIME_ZONE`, UTC when unset; the plan names it as `time_zone`) plus the target's days. A target is **overdue** once that day has
 passed, so a same-day target is overdue from the next day. These are the record's view of the dates, for the screen and
 the referrer's list; the PAS owns the reported clock, its pauses and its stops (PA-15).
 
@@ -141,7 +141,7 @@ condition named without it. No letter, portal or text sender exists yet, and PA-
 not built.
 
 **Not done (RS-6):** no screen shows the plan; outcomes do not stop a
-target (RS-3); due days are UTC days, not the deployment's local days; clock pauses (a patient's choice to wait) are not
+target (RS-3); clock pauses (a patient's choice to wait) are not
 modelled; no clinician has approved any pathway.
 
 ## The PAS side (RS-5): a proposed mapping
@@ -160,7 +160,7 @@ maintainers and not agreed; nothing is built.
 | `heart-failure` | `cardiovascular_disease` | The PAS condition is broader |
 | `parkinsons`, `dementia`, `obstructive-sleep-apnoea` | `parkinsons_disease`, `dementia`, `obstructive_sleep_apnoea` | — |
 | `subtype` `{scheme, code}` (2026-11-10) | `subtype` and the proposed `subtype_scheme` | Built on the EPR side: `suspected-cancer-wales` v2 requires `wales-primary-cancer-site`, `dementia` v2 takes `generic-dementia-type`, both copied from the PAS's profiles; `type-1-diabetes-child` sends `generic-diabetes-type` `type_1` by mapping, not stored |
-| `point_of_suspicion` (a time) | `suspected_on` (a date) | Which day: UTC or the deployment's own (the EPR counts UTC days today) |
+| `point_of_suspicion` (a time) | `suspected_on` (a date) | Settled: the day in the PAS profile's `time_zone` (the EPR's own due days are the site's days) |
 | `by` | `suspected_by` | — |
 | the version's author | `recorded_by` | — |
 | the referral's `external_ids` | `unique_pathway_identifier` | Which external id system carries it is unnamed |

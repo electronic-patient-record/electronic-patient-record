@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-10 - Suspicion due days in the site's days (RS-6, H-053)
+
+- **Clinical risk:** yes. A due day and whether it is overdue can move by one day near midnight, for a site outside UTC. Hazard H-053's cause and control are updated.
+- **Built:** a pathway plan now counts the clock start's day and today in the site's time zone (`EPR_SITE_TIME_ZONE`, the one already used for ages, checked at start-up; UTC when unset). The plan names the zone as `time_zone`. A test shows 23:30 UTC on 30 June is 1 July in London, and the due day follows. The OpenAPI schema is updated.
+- **Checked:** `pathways::tests`, all 548 database-free tests, the suspicion and worklist database tests, clippy, the OpenAPI census.
+- **Not done / not verified:** the database tests run with no zone set, so they count UTC days, as before. No screen shows the plan. Clock pauses are not modelled. A deployment that leaves the zone unset still gets UTC days, and nothing warns it.
+
 ## 2026-11-10 - The suspicion's PAS mapping and a contract test (RS-5)
 
 - **Clinical risk:** none yet. Nothing calls the mapping and nothing is sent. Once a sender uses it, a wrong mapping is a clinical risk, under H-053 and H-054.
