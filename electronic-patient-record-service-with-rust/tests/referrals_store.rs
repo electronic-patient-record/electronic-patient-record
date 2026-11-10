@@ -8,7 +8,7 @@
 //! authorisation, the unmatched-outcome queue (PC-2), timeouts (PC-3), concurrent writers.
 //!
 //! ```text
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test referrals_store -- --ignored --test-threads=1
 //! ```
 
@@ -20,7 +20,7 @@ use electronic_patient_record_matcher::{HumanName, Patient};
 use sqlx::{AssertSqlSafe, PgPool};
 
 async fn db() -> PgPool {
-    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
+    let url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let db = PgPool::connect(&url).await.expect("connect");
     electronic_patient_record::MIGRATOR
         .run(&db)
@@ -79,7 +79,7 @@ fn step(actor: Actor, event: Event, note: Option<&'static str>) -> Step<'static>
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_referral_runs_from_request_to_outcome_and_keeps_every_step() {
     let db = db().await;
     let now = Utc::now();
@@ -145,7 +145,7 @@ async fn a_referral_runs_from_request_to_outcome_and_keeps_every_step() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_cancellation_is_a_request_that_only_the_recipient_confirms() {
     let db = db().await;
     let now = Utc::now();
@@ -229,7 +229,7 @@ async fn a_cancellation_is_a_request_that_only_the_recipient_confirms() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_decline_can_follow_acceptance_and_bad_steps_are_refused() {
     let db = db().await;
     let now = Utc::now();
@@ -325,7 +325,7 @@ async fn a_decline_can_follow_acceptance_and_bad_steps_are_refused() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_request_needs_a_real_patient_and_a_whole_request() {
     let db = db().await;
     let now = Utc::now();
@@ -360,7 +360,7 @@ async fn a_request_needs_a_real_patient_and_a_whole_request() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn the_database_refuses_to_edit_delete_or_truncate_a_referral_version() {
     let db = db().await;
     let pid = patient(&db).await;

@@ -4,7 +4,7 @@
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test drill_records -- --ignored --test-threads=1
 //! ```
 
@@ -14,7 +14,7 @@ use electronic_patient_record_matcher::{HumanName, Patient};
 use sqlx::PgPool;
 
 async fn db() -> PgPool {
-    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
+    let url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let db = PgPool::connect(&url).await.expect("connect");
     electronic_patient_record::MIGRATOR
         .run(&db)
@@ -65,7 +65,7 @@ fn ids(found: Vec<store::Stored>) -> Vec<String> {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_drill_record_is_flagged_and_a_real_one_is_not() {
     let db = db().await;
     let family = tag("flag");
@@ -81,7 +81,7 @@ async fn a_drill_record_is_flagged_and_a_real_one_is_not() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn search_shows_real_records_by_default_and_drill_records_only_when_asked() {
     let db = db().await;
     let family = tag("search");
@@ -100,7 +100,7 @@ async fn search_shows_real_records_by_default_and_drill_records_only_when_asked(
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn the_duplicate_check_never_offers_a_drill_record_for_a_real_one_or_the_reverse() {
     let db = db().await;
     let family = tag("dup");
@@ -123,7 +123,7 @@ async fn the_duplicate_check_never_offers_a_drill_record_for_a_real_one_or_the_r
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn every_version_of_a_drill_record_stays_a_drill_record() {
     let db = db().await;
     let family = tag("versions");
@@ -157,7 +157,7 @@ async fn merge(db: &PgPool, target: &str, source: &str) -> Result<links::StoredL
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_drill_record_can_never_be_merged_with_a_real_record() {
     let db = db().await;
     let family = tag("merge");

@@ -4,7 +4,7 @@
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test observations_store -- --ignored --test-threads=1
 //! ```
 
@@ -18,7 +18,7 @@ use sqlx::Row;
 use sqlx::{AssertSqlSafe, PgPool};
 
 async fn db() -> PgPool {
-    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
+    let url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let db = PgPool::connect(&url).await.expect("connect");
     electronic_patient_record::MIGRATOR
         .run(&db)
@@ -77,7 +77,7 @@ async fn count_rows(db: &PgPool, patient: &str) -> i64 {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn an_observation_is_versioned_corrected_and_a_mistake_is_final() {
     let db = db().await;
     let p = person(&db, &tag("obs")).await;
@@ -191,7 +191,7 @@ async fn an_observation_is_versioned_corrected_and_a_mistake_is_final() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn the_time_is_kept_in_utc_and_the_list_is_newest_measurement_first() {
     let db = db().await;
     let p = person(&db, &tag("time")).await;
@@ -240,7 +240,7 @@ async fn the_time_is_kept_in_utc_and_the_list_is_newest_measurement_first() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn the_flag_is_computed_when_read_and_never_stored() {
     let db = db().await;
     let p = person(&db, &tag("flag")).await;
@@ -300,7 +300,7 @@ async fn the_flag_is_computed_when_read_and_never_stored() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_refused_record_writes_nothing_and_an_unknown_patient_is_not_found() {
     let db = db().await;
     let p = person(&db, &tag("refuse")).await;
@@ -362,7 +362,7 @@ async fn a_refused_record_writes_nothing_and_an_unknown_patient_is_not_found() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn two_writers_of_the_same_version_get_one_winner() {
     let db = db().await;
     let p = person(&db, &tag("race")).await;
@@ -394,7 +394,7 @@ async fn two_writers_of_the_same_version_get_one_winner() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn observation_tables_cannot_be_changed_or_removed() {
     let db = db().await;
     let p = person(&db, &tag("immutable")).await;
@@ -430,7 +430,7 @@ async fn observation_tables_cannot_be_changed_or_removed() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn observations_follow_a_merge_by_provenance_and_return_on_unmerge() {
     let db = db().await;
     let family = tag("merge");

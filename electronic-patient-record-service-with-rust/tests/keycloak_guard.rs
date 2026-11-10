@@ -227,7 +227,7 @@ async fn health_stays_public_and_login_off_is_anonymous() {
     let idp = TestIdp::start().await;
     let kc = keycloak(&idp).await;
     let none = HeaderMap::new();
-    let h = auth::enforce(true, "/_health", &none, &no_paseto_keys(), Some(&kc))
+    let h = auth::enforce(true, "/_health/live", &none, &no_paseto_keys(), Some(&kc))
         .await
         .unwrap();
     assert_eq!(h, Agent(auth::ANONYMOUS.to_string()));

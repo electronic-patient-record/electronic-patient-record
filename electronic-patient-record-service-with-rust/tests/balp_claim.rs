@@ -5,7 +5,7 @@
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test balp_claim -- --ignored --test-threads=1
 //! ```
 
@@ -70,7 +70,7 @@ async fn row(db: &sqlx::PgPool, filter: &str, value: &str) -> AuditRow {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_registration_and_a_read_claim_their_profiles_and_a_search_does_not() {
     // SAFETY: set before the service boots, and this binary's only test reads it.
     unsafe {

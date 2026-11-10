@@ -28,7 +28,7 @@ Targets, not measurements. Nothing here has been measured yet. Where the field s
   every two seconds, and neither trips; the window is fixed, so every minute counts alike) and the hazard is H-039.
   **Lockout by client address (OS-2, since 2026-11-09).** Off unless `LOCKOUT_CLIENT_ADDRESS_AFTER_COUNT` is set. When
   it is, a client address that has been answered that many `401`s in a fixed 15-minute window is refused every
-  request (but `/_ping`, `/_health` and `/_readiness`) until the window ends: 429 with `Retry-After`, as a problem
+  request (but `/_health/live`, `/_health/ready` and `/_health/startup`) until the window ends: 429 with `Retry-After`, as a problem
   under `/api` and an `OperationOutcome` under `/fhir`, before authentication runs, so a locked-out client's token is
   not checked. Only a `401` counts, so a client that presents a valid token is never slowed. The address is the one
   `axa` resolved through `TRUSTED_PROXIES`, an IPv6 address counted by its `/64`; the counting is `axa-ratelimit`'s

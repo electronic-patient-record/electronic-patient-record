@@ -2,6 +2,16 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-10 - axa 0.11 (AX-11)
+
+- **Clinical risk:** none intended. Behaviour changes are listed below; none changes what a clinician sees, except that a database outage now reads as a 503, which the UI already shows as an error.
+- **Built:** axa 0.11.0 and axa-test 0.2.0, with the axa crates that come with them (axa-problem 0.2.0 replaces axa-problem-details-for-http-apis; axa-environment 0.2.0, axa-request-rate-limit 0.3.0, axa-idempotency-key 0.2.2, axa-sqlx 0.1.3). The code compiled unchanged.
+  - **Settings:** the database setting is `DB_URL`, not `DATABASE_URL`, everywhere outside the history: CI, compose, the Containerfile, the test harness, the scripts, AGENTS.md and the docs. A production binary refuses to start without it.
+  - **Probe paths:** `/_health` and `/_ping` are now `/_health/live`, `/_readiness` is `/_health/ready`, and `/_health/startup` is new. The old paths answer 404. The public-path list, the route and OpenAPI censuses, the readiness and lockout tests, the compose and Containerfile healthchecks, CI, the UI proxy's comments and tests, and the specs all move with them. The OpenAPI document changes only those three paths.
+- **Behaviour that changes with no compile error (from axa's upgrade guide):** a database that cannot serve now answers 503 with `Retry-After: 5`, not 500. Readiness answers 503 from the moment shutdown begins. Every response carries `cross-origin-opener-policy` and `cross-origin-resource-policy: same-origin` and a `permissions-policy` turning off camera, microphone, location, payment, USB and sensors. A response that sets a cookie is `no-store` and not compressed. A 401 carries `WWW-Authenticate: Bearer`. Credential headers are marked sensitive in logs. The body limit now binds handlers that read the body themselves.
+- **Checked:** all 548 database-free tests, the database suite on a fresh database (176 passed; the 6 FHIR validator tests need Java, which this machine lacks, and run in CI), clippy, rustdoc, fmt, the `check` command, the touched UI tests, and the docs gates.
+- **Not done / not verified:** no deployment exists, so no probe, load balancer or uptime check outside this repository was moved. `SHUTDOWN_DRAIN_SECONDS` is not set, because there is no Kubernetes deployment. No test asserts the new headers, the 503 on an outage, or `WWW-Authenticate`. The photo route, which a page loads, keeps the same-origin resource policy; that is right while the UI proxies it, and was not tried in a browser. The real-stack tests were not rerun on 0.11.
+
 ## 2026-11-10 - axa 0.11 recorded, not started (AX-11)
 
 - **Clinical risk:** none. This is a backlog entry.

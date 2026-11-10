@@ -1,6 +1,6 @@
 //! `GET /_dependencies` says what is down (PX-5), and only says.
 //!
-//! `/_health` stays a plain "the process is up", because the container restarts on it, and `/_readiness`
+//! `/_health/live` stays a plain "the process is up", because the container restarts on it, and `/_health/ready`
 //! stays the database alone, because a load balancer acts on it: a stopped key service must not take
 //! the API out of service. So this route always answers 200, and a client reads `degraded`. `checked`
 //! lists what was asked, so a dependency that is not configured never reads as one that is up.

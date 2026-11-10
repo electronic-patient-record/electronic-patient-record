@@ -2,7 +2,7 @@
 //! A word added to the code without the migration fails here, and so does the reverse.
 //!
 //! ```text
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test stored_words -- --ignored --test-threads=1
 //! ```
 //!
@@ -18,7 +18,7 @@ use electronic_patient_record::{
 };
 
 async fn db() -> PgPool {
-    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
+    let url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let db = PgPool::connect(&url).await.expect("connect");
     electronic_patient_record::MIGRATOR
         .run(&db)
@@ -68,7 +68,7 @@ async fn same(db: &PgPool, table: &str, column: &str, code: Vec<&str>) {
 }
 
 #[tokio::test]
-#[ignore = "needs DATABASE_URL"]
+#[ignore = "needs DB_URL"]
 async fn stored_words_match_the_database_checks() {
     let db = db().await;
     same(

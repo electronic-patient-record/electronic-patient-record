@@ -47,9 +47,9 @@ fn only_health_probes_and_metrics_are_public() {
         if auth::is_public_path(&uri) {
             assert!(
                 [
-                    "/_health",
-                    "/_ping",
-                    "/_readiness",
+                    "/_health/live",
+                    "/_health/ready",
+                    "/_health/startup",
                     "/_dependencies",
                     "/metrics"
                 ]

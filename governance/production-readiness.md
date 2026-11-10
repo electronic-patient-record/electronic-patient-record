@@ -8,7 +8,7 @@
 | Safety | Does each control name a test that still exists? | `scripts/check-hazard-log.py --report` | Named for H-044 only |
 | Privacy | DPIA signed, retention periods set, data-subject routes tested | [dpia](dpia.md), [retention](retention-schedule.md) | Drafts; the periods are not set |
 | Identity | Second factor required for staff | [mfa-plan](mfa-plan.md) | Not enforced or checked |
-| Transport | TLS everywhere, including in front of MLLP, and `DATABASE_URL` sets `sslmode` to `require`, `verify-ca` or `verify-full` | A scan of the deployed endpoints; `axa` refuses to start in production without `sslmode`, unless the address is on the same machine or `DB_ALLOW_INSECURE=true` | Not built here; MLLP is plaintext |
+| Transport | TLS everywhere, including in front of MLLP, and `DB_URL` sets `sslmode` to `require`, `verify-ca` or `verify-full` | A scan of the deployed endpoints; `axa` refuses to start in production without `sslmode`, unless the address is on the same machine or `DB_ALLOW_INSECURE=true` | Not built here; MLLP is plaintext |
 | Secrets | Keys held outside the image and rotated; `EPR_INTEGRITY_MAC_KEY` set | The deployment's secret store | Variables exist; rotation untested end to end |
 | Data | Backups taken and a restore tried; recovery time known | A restore record | **No backup procedure exists** |
 | Audit | Chain verified on a schedule; archive anchors checked | A run of the verify route on the live data | Verify route and tests exist; no schedule |

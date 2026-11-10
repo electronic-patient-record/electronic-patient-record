@@ -4,7 +4,7 @@
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test audit_chain -- --ignored --test-threads=1
 //! ```
 
@@ -31,8 +31,7 @@ struct Scratch {
 
 impl Scratch {
     async fn new() -> Self {
-        let url =
-            std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
+        let url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
         let (base, _) = url.rsplit_once('/').expect("a database URL");
         let nanos = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -96,7 +95,7 @@ fn event(n: usize) -> Event {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn appended_rows_form_an_intact_chain_keyed_and_unkeyed() {
     for chain in [keyed(KEY), Chain::unkeyed()] {
         let s = Scratch::new().await;
@@ -112,7 +111,7 @@ async fn appended_rows_form_an_intact_chain_keyed_and_unkeyed() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn an_empty_table_is_intact() {
     let s = Scratch::new().await;
     assert_eq!(
@@ -123,7 +122,7 @@ async fn an_empty_table_is_intact() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn editing_a_row_breaks_the_chain_at_that_row() {
     let chain = keyed(KEY);
     let s = Scratch::new().await;
@@ -144,7 +143,7 @@ async fn editing_a_row_breaks_the_chain_at_that_row() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn deleting_a_row_breaks_the_chain_at_the_next_row() {
     let chain = keyed(KEY);
     let s = Scratch::new().await;
@@ -162,7 +161,7 @@ async fn deleting_a_row_breaks_the_chain_at_the_next_row() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn recomputing_digests_without_the_key_is_detected() {
     // Someone with only the database edits a row and recomputes its digest as plain SHA-256.
     let chain = keyed(KEY);
@@ -188,7 +187,7 @@ async fn recomputing_digests_without_the_key_is_detected() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn concurrent_appends_do_not_fork_the_chain() {
     let s = Scratch::new().await;
     let chain = std::sync::Arc::new(keyed(KEY));
@@ -210,7 +209,7 @@ async fn concurrent_appends_do_not_fork_the_chain() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn comparing_patients_writes_an_audit_row_without_the_demographics() {
     let chain = keyed(KEY);
     let s = Scratch::new().await;
@@ -257,7 +256,7 @@ async fn comparing_patients_writes_an_audit_row_without_the_demographics() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn verifying_in_small_batches_gives_the_same_answer_and_finds_a_break_across_a_boundary() {
     let chain = keyed(KEY);
     let s = Scratch::new().await;
@@ -293,7 +292,7 @@ async fn verifying_in_small_batches_gives_the_same_answer_and_finds_a_break_acro
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn the_verify_endpoint_logic_reports_intact_then_409_and_audits_each_check() {
     use axum::http::StatusCode;
     use electronic_patient_record::controllers::audit::verify_audited;
@@ -355,7 +354,7 @@ async fn the_verify_endpoint_logic_reports_intact_then_409_and_audits_each_check
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_published_head_catches_removed_newest_rows_and_a_rewritten_head() {
     use axum::http::StatusCode;
     use electronic_patient_record::audit::{Head, Verdict, verify_against};
@@ -430,7 +429,7 @@ async fn a_published_head_catches_removed_newest_rows_and_a_rewritten_head() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn the_patient_log_narrows_by_day_by_who_and_by_refusal() {
     let chain = Chain::unkeyed();
     let s = Scratch::new().await;
@@ -522,7 +521,7 @@ async fn the_patient_log_narrows_by_day_by_who_and_by_refusal() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn the_patient_log_is_one_patients_rows_newest_first_in_pages_without_detail() {
     let chain = Chain::unkeyed();
     let s = Scratch::new().await;
@@ -593,7 +592,7 @@ async fn the_patient_log_is_one_patients_rows_newest_first_in_pages_without_deta
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn rows_under_a_key_we_do_not_hold_are_unchecked_not_broken_and_a_real_break_still_wins() {
     use electronic_patient_record::audit::verify_against;
     use electronic_patient_record::controllers::audit::verify_audited;
@@ -679,7 +678,7 @@ async fn rows_under_a_key_we_do_not_hold_are_unchecked_not_broken_and_a_real_bre
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn the_audit_search_filters_pages_newest_first_and_refuses_bad_criteria() {
     use electronic_patient_record::audit::{AuditQuery, SearchError, search};
 
@@ -800,7 +799,7 @@ async fn the_audit_search_filters_pages_newest_first_and_refuses_bad_criteria() 
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_write_and_its_audit_row_commit_or_roll_back_together() {
     use electronic_patient_record::patients_store::{self as patients, StoreError};
     use electronic_patient_record_matcher::{HumanName, Patient};
@@ -895,7 +894,7 @@ async fn a_write_and_its_audit_row_commit_or_roll_back_together() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn after_and_through_are_exact_for_instants_and_cover_whole_days_for_dates() {
     use electronic_patient_record::audit::{AuditQuery, export, search};
 

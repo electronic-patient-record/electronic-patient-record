@@ -5,7 +5,7 @@
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test http_patients -- --ignored --test-threads=1
 //! ```
 
@@ -65,7 +65,7 @@ fn login_off() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_likely_duplicate_is_409_with_candidates_and_an_override_needs_a_reason() {
     login_off();
     request::<App, _, _>(|server, _ctx| async move {
@@ -100,7 +100,7 @@ async fn a_likely_duplicate_is_409_with_candidates_and_an_override_needs_a_reaso
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn fhir_refusals_are_operation_outcomes_and_never_carry_candidates() {
     login_off();
     request::<App, _, _>(|server, _ctx| async move {
@@ -211,7 +211,7 @@ async fn fhir_refusals_are_operation_outcomes_and_never_carry_candidates() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_refused_patient_carries_an_error_code_for_each_problem() {
     login_off();
     request::<App, _, _>(|server, _ctx| async move {
@@ -233,7 +233,7 @@ async fn a_refused_patient_carries_an_error_code_for_each_problem() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn the_request_id_is_echoed_and_written_into_the_audit_row() {
     login_off();
     request::<App, _, _>(|server, ctx| async move {
@@ -277,7 +277,7 @@ async fn the_request_id_is_echoed_and_written_into_the_audit_row() {
 /// TT-1: the flag is stored, shown in FHIR, and survives every writer that replaces the whole
 /// record, until a person gives a reason.
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_temporary_identity_stays_until_a_person_gives_a_reason() {
     login_off();
     request::<App, _, _>(|server, _ctx| async move {
@@ -358,7 +358,7 @@ async fn a_temporary_identity_stays_until_a_person_gives_a_reason() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_drill_registration_is_kept_apart_from_real_patients() {
     login_off();
     request::<App, _, _>(|server, _ctx| async move {
@@ -423,7 +423,7 @@ async fn a_drill_registration_is_kept_apart_from_real_patients() {
 /// wrong method are problems that quote nothing the caller sent, and an answer from inside the service's layers carries the
 /// stack's security headers and the request id.
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_refusal_from_the_framework_is_a_problem_with_the_stacks_headers() {
     login_off();
     request::<App, _, _>(|server, _ctx| async move {
@@ -462,7 +462,7 @@ async fn a_refusal_from_the_framework_is_a_problem_with_the_stacks_headers() {
 /// wrong shape are each a problem with its own status and `code`, saying what was wrong without quoting
 /// what the caller sent.
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_bad_body_is_a_problem_that_says_what_was_wrong_and_quotes_nothing() {
     login_off();
     request::<App, _, _>(|server, _ctx| async move {

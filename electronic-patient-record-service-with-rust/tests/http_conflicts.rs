@@ -6,7 +6,7 @@
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test http_conflicts -- --ignored --test-threads=1
 //! ```
 
@@ -74,7 +74,7 @@ fn conflict(body: &Value, current: i64) {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn stale_versions_are_409_with_the_current_version_and_bad_merges_are_422() {
     login_off();
     request::<App, _, _>(|server, _ctx| async move {

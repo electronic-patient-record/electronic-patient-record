@@ -15,7 +15,7 @@
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test chaos_api -- --ignored --test-threads=1 --nocapture
 //! ```
 
@@ -208,7 +208,7 @@ fn leaks(body: &str) -> Option<&'static str> {
 }
 
 fn database_is_throwaway() {
-    let url = std::env::var("DATABASE_URL").unwrap_or_default();
+    let url = std::env::var("DB_URL").unwrap_or_default();
     let name = url.rsplit('/').next().unwrap_or_default();
     assert!(
         name.contains("test") || std::env::var("CI").is_ok(),
@@ -217,7 +217,7 @@ fn database_is_throwaway() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL (a throwaway database)"]
+#[ignore = "needs Postgres: set DB_URL (a throwaway database)"]
 async fn no_route_panics_answers_500_or_leaks_internals_under_hostile_input() {
     database_is_throwaway();
     // SAFETY: set before any thread of this test reads it, and the suite runs single-threaded.

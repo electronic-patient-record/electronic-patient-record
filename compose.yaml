@@ -2,10 +2,10 @@
 #
 #   POSTGRES_PASSWORD=change-me EPR_PASETO_KEYS_URL=https://auth.example.com/.well-known/paseto-keys \
 #     podman compose up -d --build --wait
-#   curl -fsS http://localhost:5150/_health
+#   curl -fsS http://localhost:5150/_health/live
 #   podman compose down -v                     # stop and delete the database volume
 #
-# SAFE BY DEFAULT: login enforcement is ON. Every route except /_health, /_ping and /_readiness
+# SAFE BY DEFAULT: login enforcement is ON. Every route except /_health/live, /_health/ready and /_health/startup
 # demands a valid PASETO v4.public bearer token, so the API needs the public keys of whatever
 # issues your tokens (EPR_PASETO_KEYS_URL, or EPR_PASETO_KEYS inline). With neither set the
 # service REFUSES TO START, which is the safe failure. It also refuses to start in `production`
@@ -32,10 +32,10 @@ name: electronic-patient-record
 x-api-environment: &api-environment
   APP_ENV: production
   PORT: "5150"
-  DATABASE_URL: postgres://epr:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD (any value for local use)}@postgres:5432/electronic_patient_record
+  DB_URL: postgres://epr:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD (any value for local use)}@postgres:5432/electronic_patient_record
   # Postgres here has no TLS, and production refuses a plain connection to another host. This stack is for one
   # machine, on a private network with made-up data, so it says so by name. A real deployment must not copy this:
-  # it sets `sslmode=verify-full` in DATABASE_URL (governance/production-readiness.md).
+  # it sets `sslmode=verify-full` in DB_URL (governance/production-readiness.md).
   DB_ALLOW_INSECURE: "true"
   EPR_REDIS_URL: redis://:${EPR_REDIS_PASSWORD:-${POSTGRES_PASSWORD}}@redis:6379/0
   EPR_PASETO_KEYS_URL: ${EPR_PASETO_KEYS_URL:-}
@@ -113,7 +113,7 @@ services:
       migrate:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD", "curl", "--silent", "--fail", "http://localhost:5150/_health"]
+      test: ["CMD", "curl", "--silent", "--fail", "http://localhost:5150/_health/live"]
       interval: 5s
       timeout: 3s
       retries: 20

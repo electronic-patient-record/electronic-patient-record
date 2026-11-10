@@ -2,7 +2,7 @@
 # Run PostgreSQL 18 under Podman, standalone (no compose).
 #
 #   EPR_PG_PASSWORD=... sh scripts/podman-postgres.sh up      start (creates the volume on first use)
-#   sh scripts/podman-postgres.sh url                         print the DATABASE_URL
+#   sh scripts/podman-postgres.sh url                         print the DB_URL
 #   sh scripts/podman-postgres.sh psql                        open psql in the container
 #   sh scripts/podman-postgres.sh down                        stop and remove the container (keeps the data)
 #   sh scripts/podman-postgres.sh destroy                     also delete the data volume

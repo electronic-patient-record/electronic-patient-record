@@ -33,7 +33,7 @@ cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings &&
 RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --document-private-items
 # service database tests need Postgres 18 (ports 5432/6379 are often taken: override them)
 #   TEST_DB_PORT=5543 TEST_REDIS_PORT=6390 podman compose -f electronic-patient-record-service-with-rust/compose.test.yaml up -d --wait
-#   DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test cargo test --test audit_immutable -- --ignored --test-threads=1
+#   DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test cargo test --test audit_immutable -- --ignored --test-threads=1
 # UI (another project may hold port 4173: use PW_PORT)
 cd electronic-patient-record-ui-with-svelte && pnpm run lint && pnpm run check && pnpm run check:tests && pnpm exec vitest run && PW_PORT=4183 CI=true pnpm exec playwright test
 # docs

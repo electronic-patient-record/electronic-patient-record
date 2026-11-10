@@ -6,7 +6,7 @@
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test http_audit_refusal_roles -- --ignored --test-threads=1
 //! ```
 
@@ -57,7 +57,7 @@ fn bearer(token: &str) -> (HeaderName, HeaderValue) {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn break_glass_and_the_feed_queue_refuse_when_their_audit_row_cannot_be_written() {
     let idp = TestIdp::start().await;
     let roles = ["clinical-admin", "clinician", "auditor"];

@@ -3,7 +3,7 @@
 //! truncate a version, so retiring cannot erase anything.
 //!
 //! ```text
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test hazards_store -- --ignored --test-threads=1
 //! ```
 
@@ -14,7 +14,7 @@ use electronic_patient_record::patients_store::StoreError;
 use sqlx::{AssertSqlSafe, PgPool, Row};
 
 async fn db() -> PgPool {
-    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
+    let url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let db = PgPool::connect(&url).await.expect("connect");
     electronic_patient_record::MIGRATOR
         .run(&db)
@@ -49,7 +49,7 @@ const CLINICIAN: Actor<'static> = Actor {
 };
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_hazard_is_retired_only_by_the_cso_with_evidence_and_keeps_its_history() {
     let db = db().await;
     let now = Utc::now();
@@ -125,7 +125,7 @@ async fn a_hazard_is_retired_only_by_the_cso_with_evidence_and_keeps_its_history
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn the_database_refuses_to_edit_delete_or_truncate_a_version() {
     let db = db().await;
     let h = store::raise(&db, "dr-1", "Append only", 3, 3, Utc::now())

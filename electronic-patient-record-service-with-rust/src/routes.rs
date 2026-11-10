@@ -660,7 +660,7 @@ mod tests {
     fn every_mounted_route_has_a_method() {
         let all = mounted();
         assert!(all.len() > 50, "only {} routes", all.len());
-        assert!(all.contains(&("GET".to_string(), "/_health".to_string())));
+        assert!(all.contains(&("GET".to_string(), "/_health/live".to_string())));
         assert!(all.iter().all(|(m, p)| !m.is_empty() && p.starts_with('/')));
     }
 

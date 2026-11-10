@@ -11,7 +11,7 @@
 # nothing is skipped silently. EPR_CI_ALLOW_SKIP=1 lets skips exit 0, and the table still shows them.
 #
 # It bypasses the kache compiler cache, which has served stale libraries and fails under load. Set
-# EPR_CI_KEEP_CACHE=1 to keep it. The database gate uses DATABASE_URL if set, or starts a throwaway Postgres 18.
+# EPR_CI_KEEP_CACHE=1 to keep it. The database gate uses DB_URL if set, or starts a throwaway Postgres 18.
 #
 # This proves the gates passed on this machine. It is not the CI run, and it does not replace it: cargo deny,
 # CodeQL, the secret scan, the coverage floor and the fresh clone stay on GitHub.
@@ -110,7 +110,7 @@ stop_postgres() {
   pg_data=""
 }
 
-start_postgres() { # sets DATABASE_URL, or sets why
+start_postgres() { # sets DB_URL, or sets why
   for dir in "$(dirname "$(command -v pg_ctl 2>/dev/null || echo /none/pg_ctl)")" \
     "$HOME/.local/share/mise/installs/postgres/18/bin"; do
     if [ -x "$dir/pg_ctl" ] && "$dir/pg_ctl" --version | grep -q ' 18'; then
@@ -133,14 +133,14 @@ start_postgres() { # sets DATABASE_URL, or sets why
     why="Postgres did not start: see target/ci-local/postgres.log"
     return 1
   fi
-  DATABASE_URL="postgres://loco:loco@127.0.0.1:$port/electronic_patient_record_test"
-  export DATABASE_URL
+  DB_URL="postgres://loco:loco@127.0.0.1:$port/electronic_patient_record_test"
+  export DB_URL
 }
 
 if [ "$mode" != "--fast" ]; then
   trap stop_postgres EXIT INT TERM
   ready=yes
-  if [ "$mode" = "--full" ] && [ -z "${DATABASE_URL:-}" ]; then
+  if [ "$mode" = "--full" ] && [ -z "${DB_URL:-}" ]; then
     start_postgres || ready=no
   fi
   if [ "$ready" = yes ]; then

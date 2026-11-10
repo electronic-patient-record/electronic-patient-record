@@ -3,7 +3,7 @@
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test allergies_store -- --ignored --test-threads=1
 //! ```
 
@@ -15,7 +15,7 @@ use electronic_patient_record_matcher::{HumanName, Patient};
 use sqlx::{AssertSqlSafe, PgPool, Row};
 
 async fn db() -> PgPool {
-    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
+    let url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let db = PgPool::connect(&url).await.expect("connect");
     electronic_patient_record::MIGRATOR
         .run(&db)
@@ -53,7 +53,7 @@ fn rec(substance: &str, status: Status, criticality: Option<Criticality>) -> All
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn an_allergy_is_versioned_ended_and_can_be_retracted_but_never_reopened() {
     let db = db().await;
     let p = patient(&db).await;
@@ -154,7 +154,7 @@ async fn an_allergy_is_versioned_ended_and_can_be_retracted_but_never_reopened()
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn no_known_allergies_is_a_statement_that_cannot_contradict_the_record() {
     let db = db().await;
     let p = patient(&db).await;
@@ -243,7 +243,7 @@ async fn no_known_allergies_is_a_statement_that_cannot_contradict_the_record() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn bad_records_unknown_patients_and_races_are_refused() {
     let db = db().await;
     let p = patient(&db).await;
@@ -303,7 +303,7 @@ async fn bad_records_unknown_patients_and_races_are_refused() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn allergy_tables_cannot_be_changed_or_removed() {
     let db = db().await;
     let p = patient(&db).await;

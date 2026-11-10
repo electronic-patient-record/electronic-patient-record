@@ -3,7 +3,7 @@
 //! nothing can be edited or deleted; a reader's notice follows the request.
 //!
 //! ```text
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test amendments_store -- --ignored --test-threads=1
 //! ```
 
@@ -16,7 +16,7 @@ use electronic_patient_record_matcher::{HumanName, Patient};
 use sqlx::{AssertSqlSafe, PgPool, Row};
 
 async fn db() -> PgPool {
-    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
+    let url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let db = PgPool::connect(&url).await.expect("connect");
     electronic_patient_record::MIGRATOR
         .run(&db)
@@ -55,7 +55,7 @@ fn heart(value: f64) -> ObservationRecord {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_request_runs_its_course_through_the_store_and_every_step_is_kept() {
     let db = db().await;
     let p = person(&db).await;
@@ -164,7 +164,7 @@ async fn a_request_runs_its_course_through_the_store_and_every_step_is_kept() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_refusal_keeps_the_patients_statement_with_the_record_and_nothing_can_be_edited() {
     let db = db().await;
     let p = person(&db).await;

@@ -3,7 +3,7 @@
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test death_store -- --ignored --test-threads=1
 //! ```
 
@@ -17,7 +17,7 @@ use sqlx::Row;
 use sqlx::{AssertSqlSafe, PgPool};
 
 async fn db() -> PgPool {
-    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
+    let url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let db = PgPool::connect(&url).await.expect("connect");
     electronic_patient_record::MIGRATOR
         .run(&db)
@@ -70,7 +70,7 @@ fn nurse(to: Status) -> Step {
 }
 
 #[tokio::test]
-#[ignore = "needs DATABASE_URL"]
+#[ignore = "needs DB_URL"]
 async fn a_report_holds_contact_until_a_person_withdraws_it_and_the_history_stays() {
     let db = db().await;
     let id = person(&db).await;
@@ -124,7 +124,7 @@ async fn a_report_holds_contact_until_a_person_withdraws_it_and_the_history_stay
 }
 
 #[tokio::test]
-#[ignore = "needs DATABASE_URL"]
+#[ignore = "needs DB_URL"]
 async fn the_table_is_append_only() {
     let db = db().await;
     let id = person(&db).await;
@@ -144,7 +144,7 @@ async fn the_table_is_append_only() {
 }
 
 #[tokio::test]
-#[ignore = "needs DATABASE_URL"]
+#[ignore = "needs DB_URL"]
 async fn a_report_on_a_merged_away_record_counts_for_the_surviving_one() {
     let db = db().await;
     let shared = someone();
@@ -164,7 +164,7 @@ async fn a_report_on_a_merged_away_record_counts_for_the_surviving_one() {
 }
 
 #[tokio::test]
-#[ignore = "needs DATABASE_URL"]
+#[ignore = "needs DB_URL"]
 async fn no_such_patient_or_assertion_is_a_miss() {
     let db = db().await;
     let none = "00000000-0000-4000-8000-000000000000";

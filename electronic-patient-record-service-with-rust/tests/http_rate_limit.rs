@@ -4,7 +4,7 @@
 //! is counted, not fatal); the audit test is database-gated.
 //!
 //! ```text
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test http_rate_limit -- --ignored --test-threads=1
 //! ```
 
@@ -162,9 +162,9 @@ async fn compare_has_its_own_limit_and_counts_apart_from_the_rest() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn the_first_refusal_in_a_window_is_one_audit_row() {
-    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
+    let url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let db = PgPool::connect(&url).await.expect("connect");
     electronic_patient_record::MIGRATOR
         .run(&db)

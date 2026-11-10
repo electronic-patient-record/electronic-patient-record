@@ -7,11 +7,11 @@ the cross-subproject contract.
 
 | Area | Behaviour | Evidence |
 |---|---|---|
-| Framework | Axum with `axa`, on `sqlx`: store code is plain SQL on a `&mut PgConnection`, and `pool::Db` lets one store function take a pool or a caller's transaction. Migrations are `migrations/*.sql`, embedded as `MIGRATOR`, with no down files, so the clinical record cannot be rolled back through them. Settings are environment variables: `axa`'s (`APP_ENV`, `DATABASE_URL`, `PORT`, `DB_*`, `LOG_*`, `REQUEST_TIMEOUT_SECONDS`) and `EPR_*`. `routes::mounted` reads the served routes from the routers themselves, for the censuses | `routes::tests::methods_are_read_from_what_is_mounted` |
+| Framework | Axum with `axa`, on `sqlx`: store code is plain SQL on a `&mut PgConnection`, and `pool::Db` lets one store function take a pool or a caller's transaction. Migrations are `migrations/*.sql`, embedded as `MIGRATOR`, with no down files, so the clinical record cannot be rolled back through them. Settings are environment variables: `axa`'s (`APP_ENV`, `DB_URL`, `PORT`, `DB_*`, `LOG_*`, `REQUEST_TIMEOUT_SECONDS`) and `EPR_*`. `routes::mounted` reads the served routes from the routers themselves, for the censuses | `routes::tests::methods_are_read_from_what_is_mounted` |
 | Login enforcement | On unless the defaults in `src/app.rs` turn it off (only in `development`, `test` and `container-dev`) or `EPR_REQUIRE_AUTH=false`; an explicit env value wins over config | `auth::tests::auth_is_on_by_default` |
 | Startup gate | Refuses to start in `production` with login off; or with login on, no keys and no `EPR_PASETO_KEYS_URL` | `auth::tests::startup_gate`; run by hand |
 | Keycloak | With `EPR_KEYCLOAK_URL` set, a bearer token that does not start `v4.` is verified against the realm (signature, issuer `{url}/realms/{realm}`, audience, expiry, verified email); the caller is the token `sub`. Half-configured Keycloak, a remote `http://` URL, no audience, or a bad role map: refuses to start | `tests/keycloak_guard.rs` (8, DB-free, local OIDC stand-in); run by hand against Keycloak 26.3.0 under Podman |
-| Public paths | `/_health`, `/_ping`, `/_readiness`, `/_dependencies` and `/metrics` only | `auth::tests`, `tests/metrics.rs` |
+| Public paths | `/_health/live`, `/_health/ready`, `/_health/startup`, `/_dependencies` and `/metrics` only | `auth::tests`, `tests/metrics.rs` |
 | Fail closed | Before the guard is initialised every non-public request gets 503 | by construction |
 | Compare | `POST /api/patients/compare` takes `{a, b}` (matcher `Patient`) and returns a matcher `MatchResult` | `controllers::patients::tests` |
 | Audit table | `audit_events`, append-only; action in C/R/U/D/E; outcome in 0/4/8/12; triggers refuse UPDATE, DELETE, TRUNCATE | `tests/audit_immutable.rs` (Postgres) |
@@ -82,7 +82,7 @@ With login off (development only) there is no subject and the gate stands aside,
 
 `EPR_REQUIRE_AUTH`, `EPR_KEYCLOAK_URL` / `_REALM` / `_AUDIENCES` / `_ROLE_MAP_FILE` (see `operations/keycloak/README.md`), `EPR_PASETO_KEYS` (inline JSON key set; a blank value counts as unset; set but not valid JSON stops startup), `EPR_PASETO_KEYS_URL`, `EPR_INTEGRITY_MAC_KEY` / `EPR_INTEGRITY_MAC_KEY_FILE` (audit chain key), `EPR_TOKEN_ISSUER`
 (default `authentication-service`), `EPR_TOKEN_AUDIENCE` (default `electronic-patient-record`), `EPR_REDIS_URL`
-(production cache), `DATABASE_URL`, `PORT`, `EPR_METRICS` (`1` or `true` serves `/metrics`).
+(production cache), `DB_URL`, `PORT`, `EPR_METRICS` (`1` or `true` serves `/metrics`).
 
 ## 2a. Handler tests (CQ-16)
 

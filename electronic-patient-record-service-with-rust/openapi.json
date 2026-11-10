@@ -5057,50 +5057,50 @@
         "x-epr-public": true
       }
     },
-    "/_health": {
+    "/_health/live": {
       "get": {
-        "operationId": "get_health",
+        "operationId": "get_healthLive",
         "responses": {
           "default": {
             "description": "Bodies are not described in this document; see spec/09-api-surface.md."
           }
         },
         "security": [],
-        "summary": "GET /_health",
+        "summary": "GET /_health/live",
         "tags": [
           "health"
         ],
         "x-epr-public": true
       }
     },
-    "/_ping": {
+    "/_health/ready": {
       "get": {
-        "operationId": "get_ping",
+        "operationId": "get_healthReady",
         "responses": {
           "default": {
             "description": "Bodies are not described in this document; see spec/09-api-surface.md."
           }
         },
         "security": [],
-        "summary": "GET /_ping",
+        "summary": "GET /_health/ready",
         "tags": [
-          "ping"
+          "health"
         ],
         "x-epr-public": true
       }
     },
-    "/_readiness": {
+    "/_health/startup": {
       "get": {
-        "operationId": "get_readiness",
+        "operationId": "get_healthStartup",
         "responses": {
           "default": {
             "description": "Bodies are not described in this document; see spec/09-api-surface.md."
           }
         },
         "security": [],
-        "summary": "GET /_readiness",
+        "summary": "GET /_health/startup",
         "tags": [
-          "readiness"
+          "health"
         ],
         "x-epr-public": true
       }

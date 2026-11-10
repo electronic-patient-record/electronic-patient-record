@@ -10,7 +10,7 @@
 //! worklist for a recipient or a team (not built).
 //!
 //! ```text
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test referral_worklist -- --ignored --test-threads=1
 //! ```
 
@@ -25,7 +25,7 @@ use electronic_patient_record_matcher::{HumanName, Patient};
 use sqlx::{AssertSqlSafe, PgPool};
 
 async fn db() -> PgPool {
-    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
+    let url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let db = PgPool::connect(&url).await.expect("connect");
     electronic_patient_record::MIGRATOR
         .run(&db)
@@ -106,7 +106,7 @@ async fn step(
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_referral_waits_for_its_sender_until_that_version_is_acknowledged() {
     let db = db().await;
     let r = referral(&db).await;
@@ -179,7 +179,7 @@ async fn a_referral_waits_for_its_sender_until_that_version_is_acknowledged() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_later_version_that_waits_comes_back_and_a_state_that_does_not_wait_cannot_be_acknowledged()
  {
     let db = db().await;
@@ -250,7 +250,7 @@ async fn a_later_version_that_waits_comes_back_and_a_state_that_does_not_wait_ca
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn the_database_refuses_to_edit_delete_or_truncate_an_acknowledgement() {
     let db = db().await;
     let r = referral(&db).await;
@@ -285,7 +285,7 @@ async fn the_database_refuses_to_edit_delete_or_truncate_an_acknowledgement() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_referral_that_has_gone_quiet_is_listed_only_for_a_priority_with_a_period() {
     // PC-3, hazard H-044. Priority is `routine` in the helper's referral.
     let db = db().await;

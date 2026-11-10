@@ -51,7 +51,7 @@ Successful runs: wall time **median 13.4 min, p90 15.6, max 38.3**. Job minutes 
 
 It prints a table of gate, result and seconds, keeps each gate's output in `target/ci-local/`, and runs every gate even after a failure, so one run shows everything that is wrong. It exits 0 when all passed, 1 when a gate failed, and 2 when a gate could not run. A gate that cannot run says `SKIP` and why, and that fails the run, so nothing is skipped silently. `EPR_CI_ALLOW_SKIP=1` lets it exit 0; the table still shows the skip.
 
-It bypasses the `kache` compiler cache by default, because kache has served stale libraries and fails under load (`EPR_CI_KEEP_CACHE=1` keeps it). The database gate uses `DATABASE_URL` if set, or starts a throwaway Postgres 18 and removes it afterwards.
+It bypasses the `kache` compiler cache by default, because kache has served stale libraries and fails under load (`EPR_CI_KEEP_CACHE=1` keeps it). The database gate uses `DB_URL` if set, or starts a throwaway Postgres 18 and removes it afterwards.
 
 | CI job | Here |
 |---|---|

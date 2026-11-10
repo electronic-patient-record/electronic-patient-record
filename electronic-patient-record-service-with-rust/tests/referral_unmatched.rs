@@ -11,7 +11,7 @@
 //! writers, a referral id mistyped as another real one (no software can tell).
 //!
 //! ```text
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test referral_unmatched -- --ignored --test-threads=1
 //! ```
 
@@ -26,7 +26,7 @@ use sqlx::{AssertSqlSafe, PgPool};
 const SECRET: &str = "Secret-body-quokka";
 
 async fn db() -> PgPool {
-    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
+    let url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let db = PgPool::connect(&url).await.expect("connect");
     electronic_patient_record::MIGRATOR
         .run(&db)
@@ -98,7 +98,7 @@ fn queued(filed: Filed) -> queue::Entry {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_message_with_a_known_id_moves_the_referral() {
     let db = db().await;
     let r = referral(&db).await;
@@ -141,7 +141,7 @@ async fn a_message_with_a_known_id_moves_the_referral() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_message_that_does_not_match_is_queued_with_a_reason_and_changes_nothing() {
     let db = db().await;
     let r = referral(&db).await;
@@ -264,7 +264,7 @@ async fn a_message_that_does_not_match_is_queued_with_a_reason_and_changes_nothi
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_person_clears_an_entry_once_by_matching_it_or_dismissing_it() {
     let db = db().await;
     let r = referral(&db).await;
@@ -342,7 +342,7 @@ async fn a_person_clears_an_entry_once_by_matching_it_or_dismissing_it() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn the_database_refuses_to_edit_delete_or_truncate_the_queue() {
     let db = db().await;
     let entry = queued(
@@ -383,7 +383,7 @@ async fn the_database_refuses_to_edit_delete_or_truncate_the_queue() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_queue_longer_than_the_list_limit_says_it_was_cut_short() {
     // PR-1 (hazard H-044): the list is oldest first and capped, so the newest entry is the one it hides.
     // Everything happens in a transaction that is rolled back, so the shared test database stays as it was.

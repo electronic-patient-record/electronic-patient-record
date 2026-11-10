@@ -9,7 +9,7 @@
 //! the service does not know.
 //!
 //! ```text
-//! DATABASE_URL=postgres://postgres:postgres@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://postgres:postgres@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test http_overdue_reviews -- --ignored --test-threads=1
 //! ```
 
@@ -38,7 +38,7 @@ fn bearer(token: &str) -> (HeaderName, HeaderValue) {
 const SECRET: &str = "Secret-note-razorbill";
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn the_on_duty_clinician_alone_sees_what_is_overdue() {
     let idp = TestIdp::start().await;
     let roles = [

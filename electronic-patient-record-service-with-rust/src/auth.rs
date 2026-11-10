@@ -47,7 +47,7 @@ static REQUIRE_AUTH: OnceLock<bool> = OnceLock::new();
 pub fn is_public_path(path: &str) -> bool {
     matches!(
         path,
-        "/_health" | "/_ping" | "/_readiness" | "/_dependencies" | "/metrics"
+        "/_health/live" | "/_health/ready" | "/_health/startup" | "/_dependencies" | "/metrics"
     )
 }
 
@@ -350,7 +350,7 @@ mod tests {
         let v = empty_verifier();
         let h = HeaderMap::new();
         assert_eq!(
-            enforce(true, "/_health", &h, &v, None).await.unwrap(),
+            enforce(true, "/_health/live", &h, &v, None).await.unwrap(),
             Agent(ANONYMOUS.into())
         );
         assert_eq!(

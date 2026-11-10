@@ -274,7 +274,7 @@ mod tests {
     #[test]
     fn login_off_or_a_public_path_skips_the_gate() {
         assert!(check(false, &Method::POST, "/api/patients/compare", None).is_ok());
-        assert!(check(true, &Method::GET, "/_health", None).is_ok());
+        assert!(check(true, &Method::GET, "/_health/live", None).is_ok());
     }
 
     #[test]

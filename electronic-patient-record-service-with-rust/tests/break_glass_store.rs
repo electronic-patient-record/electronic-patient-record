@@ -4,7 +4,7 @@
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test break_glass_store -- --ignored --test-threads=1
 //! ```
 
@@ -14,7 +14,7 @@ use electronic_patient_record_matcher::{HumanName, Patient};
 use sqlx::{AssertSqlSafe, PgPool, Row};
 
 async fn db() -> PgPool {
-    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
+    let url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let db = PgPool::connect(&url).await.expect("connect");
     electronic_patient_record::MIGRATOR
         .run(&db)
@@ -51,7 +51,7 @@ async fn patient(db: &PgPool) -> String {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_grant_lasts_four_hours_and_asking_again_does_not_extend_it() {
     let db = db().await;
     let (p, who) = (patient(&db).await, unique("dr"));
@@ -106,7 +106,7 @@ async fn a_grant_lasts_four_hours_and_asking_again_does_not_extend_it() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn an_expired_grant_is_not_active_and_a_new_one_can_be_opened() {
     let db = db().await;
     let (p, who) = (patient(&db).await, unique("dr"));
@@ -125,7 +125,7 @@ async fn an_expired_grant_is_not_active_and_a_new_one_can_be_opened() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_grant_needs_a_reason_and_a_patient() {
     let db = db().await;
     let (p, who) = (patient(&db).await, unique("dr"));
@@ -148,7 +148,7 @@ async fn a_grant_needs_a_reason_and_a_patient() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_grant_waits_for_review_by_someone_else_and_is_reviewed_once() {
     let db = db().await;
     let (p, who, auditor) = (patient(&db).await, unique("dr"), unique("auditor"));
@@ -204,7 +204,7 @@ async fn a_grant_waits_for_review_by_someone_else_and_is_reviewed_once() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn grants_and_reviews_cannot_be_changed_or_removed() {
     let db = db().await;
     let (p, who) = (patient(&db).await, unique("dr"));
@@ -260,7 +260,7 @@ async fn old_grant(
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_grant_unreviewed_for_longer_than_the_limit_is_overdue_until_it_is_reviewed() {
     let db = db().await;
     let p = patient(&db).await;
@@ -302,7 +302,7 @@ async fn a_grant_unreviewed_for_longer_than_the_limit_is_overdue_until_it_is_rev
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_review_list_longer_than_the_list_limit_says_it_was_cut_short() {
     // PR-1 (hazard H-044): oldest first and capped, so the newest unreviewed access is the one hidden.
     // Done in a transaction that is rolled back, so other tests' counts of unreviewed grants are untouched.

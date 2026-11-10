@@ -125,7 +125,7 @@ test("a failed comparison is announced", async ({ page }) => {
 
 test("the proxy refuses paths outside /api", async ({ request }) => {
   expect((await request.get("/api/proxy/fhir/R4/Patient")).status()).toBe(404);
-  expect((await request.get("/api/proxy/_health")).status()).toBe(404);
+  expect((await request.get("/api/proxy/_health/live")).status()).toBe(404);
 });
 
 // CQ-38: the reasons a link cannot be automatic arrive as codes and are shown in the page's language

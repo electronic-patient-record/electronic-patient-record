@@ -120,7 +120,7 @@ jobs:
           --health-interval 5s --health-timeout 5s --health-retries 20
     env:
       CARGO_PROFILE_DEV_DEBUG: line-tables-only
-      DATABASE_URL: postgres://loco:loco@localhost:5432/electronic_patient_record_test
+      DB_URL: postgres://loco:loco@localhost:5432/electronic_patient_record_test
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@1.99.1
@@ -258,8 +258,8 @@ jobs:
         run: |
           set -eu
           podman compose up -d
-          for i in $(seq 1 60); do curl -fsS http://127.0.0.1:5150/_health && break; sleep 2; done
-          curl -fsS http://127.0.0.1:5150/_health
+          for i in $(seq 1 60); do curl -fsS http://127.0.0.1:5150/_health/live && break; sleep 2; done
+          curl -fsS http://127.0.0.1:5150/_health/live
           test "$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:5150/api/patients/compare)" = 401
           podman compose down -v
 

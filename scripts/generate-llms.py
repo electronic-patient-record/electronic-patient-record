@@ -96,7 +96,7 @@ OPTIONAL = [
 COMMANDS = {
     "matcher": "cd electronic-patient-record-matcher-with-rust && cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test",
     "service": "cd electronic-patient-record-service-with-rust && cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test",
-    "service database tests": "TEST_DB_PORT=5543 TEST_REDIS_PORT=6390 podman compose -f compose.test.yaml up -d --wait, then DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test cargo test -- --ignored --test-threads=1",
+    "service database tests": "TEST_DB_PORT=5543 TEST_REDIS_PORT=6390 podman compose -f compose.test.yaml up -d --wait, then DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test cargo test -- --ignored --test-threads=1",
     "ui": "cd electronic-patient-record-ui-with-svelte && pnpm run check && pnpm exec vitest run && PW_PORT=4183 CI=true pnpm exec playwright test",
     "docs": "python3 scripts/check-links.py . && sh scripts/generate-status.sh --check && python3 scripts/generate-llms.py --check && python3 scripts/check-hazard-log.py",
 }

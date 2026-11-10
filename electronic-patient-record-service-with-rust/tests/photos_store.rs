@@ -3,7 +3,7 @@
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test photos_store -- --ignored --test-threads=1
 //! ```
 
@@ -17,7 +17,7 @@ const PNG: &[u8] = &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3];
 const JPG: &[u8] = &[0xFF, 0xD8, 0xFF, 0xE0, 9, 9, 9];
 
 async fn db() -> PgPool {
-    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
+    let url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let db = PgPool::connect(&url).await.expect("connect");
     electronic_patient_record::MIGRATOR
         .run(&db)
@@ -43,7 +43,7 @@ async fn patient(db: &PgPool) -> String {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_photo_is_versioned_replaced_and_withdrawn_without_losing_history() {
     let db = db().await;
     let id = patient(&db).await;
@@ -102,7 +102,7 @@ async fn a_photo_is_versioned_replaced_and_withdrawn_without_losing_history() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn bad_files_stale_writes_and_unknown_patients_are_refused() {
     let db = db().await;
     let id = patient(&db).await;
@@ -153,7 +153,7 @@ async fn bad_files_stale_writes_and_unknown_patients_are_refused() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn two_writers_racing_for_the_same_photo_version_get_one_winner() {
     let db = db().await;
     let id = patient(&db).await;
@@ -170,7 +170,7 @@ async fn two_writers_racing_for_the_same_photo_version_get_one_winner() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn photo_versions_cannot_be_changed_or_removed() {
     let db = db().await;
     let id = patient(&db).await;

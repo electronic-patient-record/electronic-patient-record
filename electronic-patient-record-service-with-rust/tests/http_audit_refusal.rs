@@ -9,7 +9,7 @@
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test http_audit_refusal -- --ignored --test-threads=1
 //! ```
 
@@ -70,7 +70,7 @@ fn login_off() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_route() {
     login_off();
     request::<App, _, _>(|server, ctx| async move {

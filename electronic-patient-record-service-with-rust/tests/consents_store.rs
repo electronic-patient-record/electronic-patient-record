@@ -3,7 +3,7 @@
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test consents_store -- --ignored --test-threads=1
 //! ```
 
@@ -19,7 +19,7 @@ use sqlx::{AssertSqlSafe, PgPool};
 use std::collections::BTreeSet;
 
 async fn db() -> PgPool {
-    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
+    let url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let db = PgPool::connect(&url).await.expect("connect");
     electronic_patient_record::MIGRATOR
         .run(&db)
@@ -70,7 +70,7 @@ fn ctx(purpose: Purpose) -> Context {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_consent_needs_an_existing_patient_and_starts_at_version_one() {
     let db = db().await;
     let missing = store::create(
@@ -103,7 +103,7 @@ async fn a_consent_needs_an_existing_patient_and_starts_at_version_one() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn withdrawing_appends_a_version_and_keeps_the_old_one() {
     let db = db().await;
     let pid = patient(&db).await;
@@ -147,7 +147,7 @@ async fn withdrawing_appends_a_version_and_keeps_the_old_one() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_stale_or_racing_update_is_a_conflict_and_changes_nothing() {
     let db = db().await;
     let pid = patient(&db).await;
@@ -175,7 +175,7 @@ async fn a_stale_or_racing_update_is_a_conflict_and_changes_nothing() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn versions_cannot_be_changed_or_removed() {
     let db = db().await;
     let pid = patient(&db).await;
@@ -208,7 +208,7 @@ async fn versions_cannot_be_changed_or_removed() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn the_stored_consents_drive_the_decision_and_other_patients_are_untouched() {
     let db = db().await;
     let (a, b, none) = (patient(&db).await, patient(&db).await, patient(&db).await);
@@ -322,7 +322,7 @@ fn shape(
 /// CQ-10: consents for many patients, merged-in records included, in a fixed number of queries,
 /// with the same answer as one patient at a time.
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn consents_for_many_patients_match_one_at_a_time() {
     let db = db().await;
     let family = format!(
@@ -378,7 +378,7 @@ async fn consents_for_many_patients_match_one_at_a_time() {
 
 /// CQ-12: as for patients, a lost race for a consent version is a conflict, not a database error.
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_lost_race_for_a_consent_version_is_a_conflict() {
     let db = db().await;
     let pid = patient(&db).await;

@@ -71,7 +71,7 @@ Run the API on the **host** against it (the API refuses a plain-HTTP Keycloak UR
 
 ```sh
 EPR_REQUIRE_AUTH=true EPR_KEYCLOAK_URL=http://127.0.0.1:8081 EPR_KEYCLOAK_REALM=epr EPR_KEYCLOAK_AUDIENCES=epr-api \
-  EPR_KEYCLOAK_ROLE_MAP_FILE=$PWD/operations/keycloak/role-map.json DATABASE_URL=… cargo run -- start --binding 127.0.0.1
+  EPR_KEYCLOAK_ROLE_MAP_FILE=$PWD/operations/keycloak/role-map.json DB_URL=… cargo run -- start --binding 127.0.0.1
 curl -X POST http://127.0.0.1:5150/api/patients/compare -H "authorization: Bearer $(sh scripts/keycloak-dev-token.sh)" \
   -H 'content-type: application/json' -d '{"a":{},"b":{}}'
 ```

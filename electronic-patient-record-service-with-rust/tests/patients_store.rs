@@ -3,7 +3,7 @@
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test patients_store -- --ignored --test-threads=1
 //! ```
 
@@ -13,7 +13,7 @@ use sqlx::Row;
 use sqlx::{AssertSqlSafe, PgPool};
 
 async fn db() -> PgPool {
-    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
+    let url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let db = PgPool::connect(&url).await.expect("connect");
     electronic_patient_record::MIGRATOR
         .run(&db)
@@ -43,7 +43,7 @@ fn patient(family: &str, dob: &str) -> Patient {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn create_assigns_an_id_and_version_one_and_ignores_a_supplied_id() {
     let db = db().await;
     let mut p = patient(&tag("create"), "1980-03-14");
@@ -62,7 +62,7 @@ async fn create_assigns_an_id_and_version_one_and_ignores_a_supplied_id() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn an_update_appends_a_version_and_keeps_the_old_one() {
     let db = db().await;
     let family = tag("update");
@@ -101,7 +101,7 @@ async fn an_update_appends_a_version_and_keeps_the_old_one() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_stale_update_is_a_conflict_and_changes_nothing() {
     let db = db().await;
     let family = tag("stale");
@@ -137,7 +137,7 @@ async fn a_stale_update_is_a_conflict_and_changes_nothing() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn two_writers_racing_for_the_same_version_get_one_winner() {
     let db = db().await;
     let family = tag("race");
@@ -158,7 +158,7 @@ async fn two_writers_racing_for_the_same_version_get_one_winner() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn versions_cannot_be_changed_or_removed() {
     let db = db().await;
     let s = store::create(&db, "a", None, &patient(&tag("immutable"), "1980"))
@@ -182,7 +182,7 @@ async fn versions_cannot_be_changed_or_removed() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn search_finds_current_versions_by_name_prefix_birth_date_and_identifier() {
     let db = db().await;
     let family = tag("search");
@@ -243,7 +243,7 @@ async fn search_finds_current_versions_by_name_prefix_birth_date_and_identifier(
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn wildcards_in_a_search_are_literal_and_results_are_capped() {
     let db = db().await;
     let base = tag("many");
@@ -266,7 +266,7 @@ async fn wildcards_in_a_search_are_literal_and_results_are_capped() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn candidates_share_an_identifier_a_birth_date_or_a_family_name() {
     let db = db().await;
     let family = tag("cand");
@@ -308,7 +308,7 @@ async fn candidates_share_an_identifier_a_birth_date_or_a_family_name() {
 /// candidates on its own transaction and creates only if there are none, as the handler and the HL7
 /// feed do. Without the lock both see nothing and both create.
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn concurrent_registrations_of_one_person_create_one_record() {
     let db = db().await;
     let family = tag("race");
@@ -349,7 +349,7 @@ async fn concurrent_registrations_of_one_person_create_one_record() {
 
 /// CQ-9: an id in upper case is found, a malformed one is not, and the lookup seeks the index.
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn ids_are_found_in_any_case_and_looked_up_by_index() {
     let db = db().await;
     let s = store::create(&db, "tester", None, &patient(&tag("case"), "1980-03-14"))
@@ -420,7 +420,7 @@ fn nhs(seed: u64) -> String {
 /// CQ-36: with more than the candidate limit sharing a birth date, the strongest candidates (a
 /// shared identifier; the same family name and birth date) are still found, and the cut is reported.
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn the_strongest_candidates_survive_a_crowded_birth_date() {
     let db = db().await;
     let nanos = u64::try_from(
@@ -478,7 +478,7 @@ async fn the_strongest_candidates_survive_a_crowded_birth_date() {
 /// CQ-12: two writers pass the version check at once; the primary key refuses the second, which
 /// must come back as a version conflict naming the version now current, not a database error.
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_lost_race_for_a_version_is_a_conflict() {
     let db = db().await;
     let p = patient(&tag("race2"), "1980-03-14");

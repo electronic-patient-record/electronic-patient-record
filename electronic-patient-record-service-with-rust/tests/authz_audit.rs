@@ -4,7 +4,7 @@
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test authz_audit -- --ignored --test-threads=1
 //! ```
 
@@ -19,7 +19,7 @@ use sqlx::{PgPool, Row};
 use tower::ServiceExt;
 
 async fn db() -> PgPool {
-    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
+    let url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let db = PgPool::connect(&url).await.expect("connect");
     electronic_patient_record::MIGRATOR
         .run(&db)
@@ -98,7 +98,7 @@ fn unique(label: &str) -> String {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_role_the_table_does_not_permit_is_refused_and_audited() {
     let db = db().await;
     let agent = unique("auditor");
@@ -126,7 +126,7 @@ async fn a_role_the_table_does_not_permit_is_refused_and_audited() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_route_with_no_policy_entry_is_refused_for_every_role_and_audited() {
     let db = db().await;
     let agent = unique("everyone");
@@ -145,7 +145,7 @@ async fn a_route_with_no_policy_entry_is_refused_for_every_role_and_audited() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_permitted_role_passes_through_and_the_gate_writes_nothing() {
     let db = db().await;
     let agent = unique("clinician");
@@ -162,7 +162,7 @@ async fn a_permitted_role_passes_through_and_the_gate_writes_nothing() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_row_written_while_handling_a_request_records_the_callers_roles_and_organisations() {
     let db = db().await;
     let agent = unique("receptionist");
@@ -196,7 +196,7 @@ async fn a_row_written_while_handling_a_request_records_the_callers_roles_and_or
 /// CQ-11: the gate's refusal has the shape of the route: an `OperationOutcome` on `/fhir`, JSON
 /// a problem with `detail` `forbidden` on `/api`, never plain text.
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_refusal_has_the_shape_of_the_route() {
     let db = db().await;
     let agent = Agent(unique("noroles"));

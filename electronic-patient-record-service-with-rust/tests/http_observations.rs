@@ -6,7 +6,7 @@
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test http_observations -- --ignored --test-threads=1
 //! ```
 
@@ -57,7 +57,7 @@ fn observation(value: f64, unit: &str, status: &str) -> Value {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn who_may_record_read_and_retract_an_observation() {
     let idp = TestIdp::start().await;
     let roles = [

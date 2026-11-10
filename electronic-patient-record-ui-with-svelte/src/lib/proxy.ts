@@ -9,7 +9,7 @@ export function proxyTarget(
   search: string,
 ): string | null {
   const segments = path.split("/");
-  if (segments[0] !== "api") return null; // only the REST namespace, never /fhir or /_health
+  if (segments[0] !== "api") return null; // only the REST namespace, never /fhir or /_health/live
   if (
     segments.some(
       (s) =>

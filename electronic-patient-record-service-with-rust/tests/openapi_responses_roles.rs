@@ -8,7 +8,7 @@
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test openapi_responses_roles -- --ignored --test-threads=1
 //! ```
 
@@ -45,7 +45,7 @@ fn unique_name() -> String {
 const HASH: &str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn real_responses_of_the_role_gated_routes_validate_against_the_served_schemas() {
     let idp = TestIdp::start().await;
     let roles = [

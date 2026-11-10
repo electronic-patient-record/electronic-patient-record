@@ -4,7 +4,7 @@
 //! data cannot arrive by accident. The shape test needs no database.
 //!
 //! ```text
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test personal_data_inventory -- --ignored --test-threads=1
 //! ```
 
@@ -70,9 +70,9 @@ fn inventory_rows_are_well_formed_and_unique() {
 // A partition of `audit_events` holds the parent's columns, which are classified under the parent (OS-13);
 // every column of every other table, and of the parent, must still be listed.
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn every_database_column_is_classified_and_no_stale_row_remains() {
-    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
+    let url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let db = PgPool::connect(&url).await.expect("connect");
     electronic_patient_record::MIGRATOR
         .run(&db)

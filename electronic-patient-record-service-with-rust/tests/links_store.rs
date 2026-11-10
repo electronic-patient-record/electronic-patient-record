@@ -4,7 +4,7 @@
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test links_store -- --ignored --test-threads=1
 //! ```
 
@@ -17,7 +17,7 @@ use sqlx::{AssertSqlSafe, PgPool};
 use std::collections::{BTreeSet, HashMap};
 
 async fn db() -> PgPool {
-    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
+    let url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let db = PgPool::connect(&url).await.expect("connect");
     electronic_patient_record::MIGRATOR
         .run(&db)
@@ -88,7 +88,7 @@ async fn ids_of(db: &PgPool, patient: &str) -> BTreeSet<String> {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_merge_hides_the_old_record_from_search_and_an_unmerge_brings_it_back() {
     let db = db().await;
     let family = tag("merge");
@@ -166,7 +166,7 @@ async fn a_merge_hides_the_old_record_from_search_and_an_unmerge_brings_it_back(
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn bad_merges_are_refused_with_a_reason() {
     let db = db().await;
     let family = tag("refuse");
@@ -251,7 +251,7 @@ async fn bad_merges_are_refused_with_a_reason() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_chain_deeper_than_sixteen_merges_is_an_error_not_a_wrong_answer() {
     let db = db().await;
     let family = tag("deep");
@@ -285,7 +285,7 @@ async fn a_chain_deeper_than_sixteen_merges_is_an_error_not_a_wrong_answer() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn chains_resolve_to_the_top_and_unmerging_a_middle_link_splits_them() {
     let db = db().await;
     let family = tag("chain");
@@ -322,7 +322,7 @@ async fn chains_resolve_to_the_top_and_unmerging_a_middle_link_splits_them() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn allergies_follow_the_merge_by_provenance_and_return_on_unmerge() {
     let db = db().await;
     let family = tag("allergy");
@@ -396,7 +396,7 @@ impl Lcg {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn property_unmerging_everything_restores_every_record_exactly() {
     let db = db().await;
     for seed in 1..=6u64 {
@@ -520,7 +520,7 @@ async fn property_unmerging_everything_restores_every_record_exactly() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn two_merges_of_the_same_record_into_different_targets_get_one_winner() {
     let db = db().await;
     let family = tag("race");
@@ -538,7 +538,7 @@ async fn two_merges_of_the_same_record_into_different_targets_get_one_winner() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn link_versions_cannot_be_changed_or_removed() {
     let db = db().await;
     let family = tag("immutable");

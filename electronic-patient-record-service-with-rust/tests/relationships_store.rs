@@ -3,7 +3,7 @@
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test relationships_store -- --ignored --test-threads=1
 //! ```
 
@@ -17,7 +17,7 @@ use sqlx::{AssertSqlSafe, PgPool};
 const NOW: i64 = 1_790_000_000;
 
 async fn db() -> PgPool {
-    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
+    let url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let db = PgPool::connect(&url).await.expect("connect");
     electronic_patient_record::MIGRATOR
         .run(&db)
@@ -56,7 +56,7 @@ fn rec(subject: &str, kind: Kind, status: Status) -> RelationshipRecord {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn lookup_is_per_subject_and_per_patient_and_takes_the_strongest() {
     let db = db().await;
     let (a, b) = (patient(&db).await, patient(&db).await);
@@ -128,7 +128,7 @@ async fn lookup_is_per_subject_and_per_patient_and_takes_the_strongest() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn ending_a_relationship_withdraws_access_and_keeps_the_history() {
     let db = db().await;
     let p = patient(&db).await;
@@ -218,7 +218,7 @@ async fn ending_a_relationship_withdraws_access_and_keeps_the_history() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn needs_a_patient_and_cannot_be_edited_or_removed() {
     let db = db().await;
     assert_eq!(
@@ -257,7 +257,7 @@ async fn needs_a_patient_and_cannot_be_edited_or_removed() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn own_patients_lists_self_and_proxy_in_force_and_nothing_else() {
     let db = db().await;
     let (mine, theirs, team, ended, both) = (

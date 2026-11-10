@@ -5,7 +5,7 @@
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test http_hazards -- --ignored --test-threads=1
 //! ```
 
@@ -41,7 +41,7 @@ fn retire(hash: &str, version: i64) -> Value {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn only_the_clinical_safety_officer_retires_a_hazard_and_only_with_evidence() {
     let idp = TestIdp::start().await;
     let roles = [

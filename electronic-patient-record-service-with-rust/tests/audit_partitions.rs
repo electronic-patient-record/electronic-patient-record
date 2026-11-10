@@ -3,7 +3,7 @@
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
-//! DATABASE_URL=postgres://loco:loco@127.0.0.1:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@127.0.0.1:5543/electronic_patient_record_test \
 //!   cargo test --test audit_partitions -- --ignored --test-threads=1
 //! ```
 
@@ -21,8 +21,7 @@ struct Scratch {
 
 impl Scratch {
     async fn new(upto: Option<u32>) -> Self {
-        let url =
-            std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
+        let url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
         let (base, _) = url.rsplit_once('/').expect("a database URL");
         let nanos = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -140,7 +139,7 @@ async fn append_next_month(s: &Scratch, chain: &Chain, n: usize) -> i64 {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn the_table_is_partitioned_has_months_ahead_and_stays_append_only() {
     let s = Scratch::new(None).await;
     assert_eq!(
@@ -193,7 +192,7 @@ async fn the_table_is_partitioned_has_months_ahead_and_stays_append_only() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn rows_written_before_the_migration_keep_their_ids_and_the_chain() {
     let s = Scratch::new(Some(17)).await;
     let chain = Chain::unkeyed();
@@ -228,7 +227,7 @@ async fn rows_written_before_the_migration_keep_their_ids_and_the_chain() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn the_chain_holds_across_a_partition_boundary_and_a_break_is_found_on_the_far_side() {
     let s = Scratch::new(None).await;
     let chain = Chain::unkeyed();
@@ -266,7 +265,7 @@ async fn the_chain_holds_across_a_partition_boundary_and_a_break_is_found_on_the
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn archiving_moves_partitions_keeps_an_anchor_and_the_chain_goes_on() {
     let s = Scratch::new(None).await;
     let chain = Chain::unkeyed();
@@ -357,7 +356,7 @@ async fn archiving_moves_partitions_keeps_an_anchor_and_the_chain_goes_on() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn an_empty_live_table_continues_the_chain_from_the_newest_anchor() {
     let s = Scratch::new(None).await;
     let chain = Chain::unkeyed();
@@ -391,7 +390,7 @@ async fn an_empty_live_table_continues_the_chain_from_the_newest_anchor() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn the_archive_check_finds_an_archived_table_that_no_longer_matches_its_anchor() {
     let s = Scratch::new(None).await;
     let chain = Chain::unkeyed();
@@ -434,7 +433,7 @@ async fn the_archive_check_finds_an_archived_table_that_no_longer_matches_its_an
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn the_verify_answer_counts_archived_rows_and_is_a_409_when_the_archive_is_damaged() {
     use axum::http::StatusCode;
     use electronic_patient_record::auth::Agent;
@@ -481,7 +480,7 @@ async fn partitions(s: &Scratch) -> i64 {
 
 /// PR-4: while another replica holds the job's lock, a run does nothing and says so; afterwards it runs.
 #[tokio::test]
-#[ignore = "needs DATABASE_URL"]
+#[ignore = "needs DB_URL"]
 async fn a_run_while_another_replica_holds_the_lock_is_skipped() {
     let s = Scratch::new(None).await;
     let before = partitions(&s).await;
@@ -512,7 +511,7 @@ async fn a_run_while_another_replica_holds_the_lock_is_skipped() {
 
 /// PR-4: two replicas running the job body at the same moment: neither fails, and the work is done once.
 #[tokio::test]
-#[ignore = "needs DATABASE_URL"]
+#[ignore = "needs DB_URL"]
 async fn two_replicas_running_at_once_do_the_work_once_and_neither_fails() {
     let s = Scratch::new(None).await;
     let before = partitions(&s).await;

@@ -2,14 +2,14 @@
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test audit_immutable -- --ignored --test-threads=1
 //! ```
 
 use sqlx::{AssertSqlSafe, PgPool};
 
 async fn connect() -> PgPool {
-    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
+    let url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let db = PgPool::connect(&url).await.expect("connect");
     electronic_patient_record::MIGRATOR
         .run(&db)
@@ -19,7 +19,7 @@ async fn connect() -> PgPool {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn audit_events_are_append_only() {
     let db = connect().await;
     sqlx::raw_sql(
@@ -46,7 +46,7 @@ async fn audit_events_are_append_only() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn audit_action_must_be_a_fhir_audit_action() {
     let db = connect().await;
     let err =

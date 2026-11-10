@@ -3,7 +3,7 @@
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test mllp_feed -- --ignored --test-threads=1
 //! ```
 
@@ -20,7 +20,7 @@ use tokio::net::{TcpListener, TcpStream};
 const FEED_AGENT: &str = "mllp:test-feed";
 
 async fn db() -> PgPool {
-    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
+    let url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     // A pool of ONE connection, like the development default: code that holds a transaction and
     // then asks the pool for another connection hangs here instead of passing by luck.
     let db = sqlx::postgres::PgPoolOptions::new()
@@ -158,7 +158,7 @@ async fn by_mrn(db: &PgPool, mrn: &str) -> Vec<patients_store::Stored> {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_new_patient_is_created_a_repeat_changes_nothing_and_a_correction_is_a_new_version() {
     let db = db().await;
     let addr = start(&db, |_| {}).await;
@@ -232,7 +232,7 @@ async fn a_new_patient_is_created_a_repeat_changes_nothing_and_a_correction_is_a
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn conflicts_duplicates_unsupported_and_invalid_messages_are_refused_and_change_nothing() {
     let db = db().await;
     let addr = start(&db, |_| {}).await;
@@ -389,7 +389,7 @@ async fn conflicts_duplicates_unsupported_and_invalid_messages_are_refused_and_c
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn pipelined_messages_are_answered_in_order_and_bad_streams_are_closed() {
     let db = db().await;
     let addr = start(&db, |_| {}).await;
@@ -438,7 +438,7 @@ async fn pipelined_messages_are_answered_in_order_and_bad_streams_are_closed() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn the_connection_limit_and_the_idle_timeout_hold() {
     let db = db().await;
     let addr = start(&db, |c| {
@@ -482,7 +482,7 @@ async fn the_connection_limit_and_the_idle_timeout_hold() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_refused_message_waits_in_the_queue_until_a_person_closes_it_once() {
     use electronic_patient_record::feed_queue::{self as queue, Outcome};
     use electronic_patient_record::patients_store::StoreError;
@@ -621,7 +621,7 @@ async fn a_refused_message_waits_in_the_queue_until_a_person_closes_it_once() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_refusal_list_longer_than_the_list_limit_says_it_was_cut_short() {
     // PR-1 (hazard H-044): oldest first and capped, so the newest refusal is the one hidden. Done in a
     // transaction that is rolled back, so the shared test database stays as it was.

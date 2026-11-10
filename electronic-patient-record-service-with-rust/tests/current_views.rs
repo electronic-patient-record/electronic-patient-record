@@ -2,7 +2,7 @@
 //! filter on the patient seeks an index instead of building the current version of every record.
 //!
 //! ```text
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test current_views -- --ignored --test-threads=1
 //! ```
 
@@ -10,7 +10,7 @@ use sqlx::Row;
 use sqlx::{AssertSqlSafe, PgPool};
 
 async fn db() -> PgPool {
-    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
+    let url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let db = PgPool::connect(&url).await.expect("connect");
     electronic_patient_record::MIGRATOR
         .run(&db)
@@ -78,7 +78,7 @@ async fn count(db: impl Into<electronic_patient_record::pool::Db<'_>>, sql: &str
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn each_view_is_the_latest_version_of_each_record() {
     let db = db().await;
     let patients = (
@@ -107,7 +107,7 @@ async fn each_view_is_the_latest_version_of_each_record() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_filter_on_the_patient_seeks_an_index() {
     let db = db().await;
     for (view, _, _, column) in VIEWS {
@@ -153,7 +153,7 @@ async fn plan(db: &PgPool, sql: &str) -> Vec<String> {
 
 /// Patient search by an identifier or a birth date reaches an index on the versions table.
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn patient_search_by_identifier_or_birth_date_uses_an_index() {
     let db = db().await;
     for (index, filter) in [

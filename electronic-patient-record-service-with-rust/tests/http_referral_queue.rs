@@ -12,7 +12,7 @@
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test http_referral_queue -- --ignored --test-threads=1
 //! ```
 
@@ -54,7 +54,7 @@ const SECRET_NOTE: &str = "Secret-note-walrus";
 const SECRET_REASON: &str = "Secret-reason-badger";
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn who_may_send_and_who_may_clear() {
     let idp = TestIdp::start().await;
     let roles = ["clinical-admin", "clinician", "integrator", "receptionist"];

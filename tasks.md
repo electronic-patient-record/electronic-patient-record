@@ -1479,9 +1479,9 @@ The maintainer's requirement: a PAS must track suspicion during referrals, cance
 
 The axa maintainers' session reported axa 0.11.0 published (tag v0.11.0, axa main `b45b27c`): breaking, with some
 changes in behaviour and no compile error. Their upgrade guide is `help/upgrading-to-0.11/index.md` in the axa
-repository. Not started: it waits for the maintainer to schedule it.
+repository. The maintainer scheduled it on 2026-11-10.
 
-- [ ] **AX-11 (M) — Upgrade to axa 0.11.** Read the axa upgrade guide first. **Settings renamed (the new binary reads
+- [x] **AX-11 (M) — Upgrade to axa 0.11.** **Done 2026-11-10:** axa 0.11.0 and axa-test 0.2.0; the code compiled unchanged; the probe paths and `DB_URL` are moved everywhere outside the history; the OpenAPI document changes only the three probe paths; all gates green locally. Read the axa upgrade guide first. **Settings renamed (the new binary reads
   none of the old names):** `DATABASE_URL` to `DB_URL` (production refuses to start without it; 74 files here name the
   old one), `AXA_TEST_DATABASE_URL` to `AXA_TEST_DB_URL`, `HTTP_CSP` to `HTTP_CONTENT_SECURITY_POLICY`,
   `BODY_LIMIT_BYTES` to `HTTP_REQUEST_BODY_LIMIT_BYTE_COUNT`, `HEADER_READ_TIMEOUT_SECONDS` to

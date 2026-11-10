@@ -1,11 +1,11 @@
-//! `/_readiness` answers for the database: it is `axa`'s route, and `axa` asks the pool on the context.
+//! `/_health/ready` answers for the database: it is `axa`'s route, and `axa` asks the pool on the context.
 //!
 //! Covered: 503 naming `database`, with no error text, when the pool cannot connect; 200 when it can.
 //! Not covered: how long a failing answer is reused, which `axa` tests.
 //! `/_dependencies` is here too, because it reports the same outage without refusing.
 //!
 //! ```text
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test readiness -- --ignored --test-threads=1
 //! ```
 
@@ -38,7 +38,7 @@ async fn a_database_that_does_not_answer_is_a_503_that_names_it_and_nothing_else
     let response = router
         .oneshot(
             Request::builder()
-                .uri("/_readiness")
+                .uri("/_health/ready")
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -102,10 +102,10 @@ async fn a_database_that_does_not_answer_is_reported_with_a_200() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_database_that_answers_is_ready() {
     request::<App, _, _>(|server, _ctx| async move {
-        let r = server.get("/_readiness").await;
+        let r = server.get("/_health/ready").await;
         assert_eq!(r.status_code(), StatusCode::OK, "{}", r.text());
         // Through the whole middleware stack, with no token.
         let r = server.get("/_dependencies").await;

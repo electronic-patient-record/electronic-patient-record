@@ -6,7 +6,7 @@
 //! audit test is database-gated.
 //!
 //! ```text
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test http_lockout -- --ignored --test-threads=1
 //! ```
 
@@ -36,7 +36,7 @@ fn app(db: PgPool, after: Option<u32>) -> Router {
     let routes = Router::new()
         .route("/api/things", get(guarded))
         .route("/fhir/R4/Patient", get(guarded))
-        .route("/_ping", get(guarded));
+        .route("/_health/live", get(guarded));
     let limiter = after.map(|n| lockout::limiter(NonZeroU32::new(n).unwrap()));
     lockout::layer(routes, limiter, db).layer(middleware::from_fn(
         |mut req: Request<Body>, next: Next| async move {
@@ -114,7 +114,7 @@ async fn an_address_past_its_401s_is_refused_even_with_a_good_token_and_no_other
         "another address is not locked out"
     );
     assert_eq!(
-        status(&app, "/_ping", "203.0.113.7", "good").await,
+        status(&app, "/_health/live", "203.0.113.7", "good").await,
         StatusCode::OK,
         "the probes are never refused"
     );
@@ -166,9 +166,9 @@ async fn an_ipv6_address_is_counted_by_its_64_and_a_fhir_refusal_is_an_operation
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn the_first_refusal_of_an_address_in_a_window_is_one_audit_row() {
-    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests");
+    let url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let db = PgPool::connect(&url).await.expect("connect");
     electronic_patient_record::MIGRATOR
         .run(&db)

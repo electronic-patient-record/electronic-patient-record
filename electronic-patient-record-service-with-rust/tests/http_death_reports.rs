@@ -9,7 +9,7 @@
 //! the service does not know.
 //!
 //! ```text
-//! DATABASE_URL=postgres://postgres:postgres@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://postgres:postgres@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test http_death_reports -- --ignored --test-threads=1
 //! ```
 
@@ -38,7 +38,7 @@ fn bearer(token: &str) -> (HeaderName, HeaderValue) {
 const SECRET: &str = "Secret-reason-kittiwake";
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn every_alerted_role_sees_what_waits_and_nobody_else_does() {
     let idp = TestIdp::start().await;
     let roles = [

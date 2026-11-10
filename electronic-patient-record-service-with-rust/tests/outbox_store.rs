@@ -10,7 +10,7 @@
 //! The waits before a retry, a lost relay and the order per key are `axa-outbox`'s and are tested there.
 //!
 //! ```text
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test outbox_store -- --ignored --test-threads=1
 //! ```
 
@@ -39,7 +39,7 @@ use std::time::Duration;
 use tokio::sync::watch;
 
 fn url() -> String {
-    std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for --ignored tests")
+    std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests")
 }
 
 async fn db() -> PgPool {
@@ -214,7 +214,7 @@ async fn enqueue(db: &PgPool, new: NewEvent<'_>) -> String {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_rolled_back_event_is_never_delivered_and_a_committed_one_is_delivered_once() {
     let db = db().await;
     let recipient = format!("sink-{}", nanos());
@@ -250,7 +250,7 @@ async fn a_rolled_back_event_is_never_delivered_and_a_committed_one_is_delivered
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_patients_refusal_stops_the_delivery_and_is_audited_once() {
     let db = db().await;
     let recipient = format!("sink-{}", nanos());
@@ -298,7 +298,7 @@ async fn a_patients_refusal_stops_the_delivery_and_is_audited_once() {
 /// BV-3: any report holds an event, whoever made it; a person confirming it keeps the hold; a
 /// withdrawal releases it, and the event is then delivered once. Another patient's event goes.
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_report_of_death_holds_an_event_until_it_is_withdrawn() {
     let db = db().await;
     let recipient = format!("sink-{}", nanos());
@@ -368,7 +368,7 @@ async fn a_report_of_death_holds_an_event_until_it_is_withdrawn() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_recipient_the_policy_does_not_allow_gets_nothing() {
     let db = db().await;
     let recipient = format!("sink-{}", nanos());
@@ -386,7 +386,7 @@ async fn a_recipient_the_policy_does_not_allow_gets_nothing() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_failing_sink_is_tried_a_fixed_number_of_times_then_left_for_a_person() {
     let db = db().await;
     let recipient = format!("sink-{}", nanos());
@@ -410,7 +410,7 @@ async fn a_failing_sink_is_tried_a_fixed_number_of_times_then_left_for_a_person(
 /// Not lost: an event for a sink that does not exist yet fails, and a person can put it back once it
 /// does, with who and why on record.
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn an_event_for_a_recipient_with_no_sink_is_not_lost() {
     let db = db().await;
     let recipient = format!("nobody-{}", nanos());
@@ -448,7 +448,7 @@ async fn an_event_for_a_recipient_with_no_sink_is_not_lost() {
 /// An event whose stored payload was changed, by someone who turned the guard off to do it, is failed
 /// as `tampered`, is never published, and is an audit row.
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_changed_event_is_never_published() {
     let db = db().await;
     let recipient = format!("sink-{}", nanos());
@@ -489,7 +489,7 @@ async fn a_changed_event_is_never_published() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn an_oversized_payload_is_refused_with_its_transaction() {
     let db = db().await;
     let payload = serde_json::json!({ "text": "x".repeat(70 * 1024) });
@@ -499,7 +499,7 @@ async fn an_oversized_payload_is_refused_with_its_transaction() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn the_record_cannot_be_edited_deleted_or_truncated_and_the_old_tables_are_closed() {
     let db = db().await;
     let recipient = format!("sink-{}", nanos());
@@ -540,7 +540,7 @@ async fn the_record_cannot_be_edited_deleted_or_truncated_and_the_old_tables_are
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn depth_counts_owed_and_stuck_events() {
     let db = db().await;
     let recipient = format!("nobody-{}", nanos());
@@ -602,7 +602,7 @@ fn gated(
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_stop_lets_the_publish_in_progress_finish_and_sends_nothing_more() {
     let db = db().await;
     let recipient = format!("gated-{}", nanos());
@@ -638,7 +638,7 @@ async fn a_stop_lets_the_publish_in_progress_finish_and_sends_nothing_more() {
 }
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_relay_that_does_not_stop_in_time_is_abandoned_and_says_so() {
     let db = db().await;
     let recipient = format!("stuck-{}", nanos());
@@ -695,7 +695,7 @@ async fn refusal_reasons(db: &PgPool, id: &str) -> Vec<String> {
 /// patient was told it passes this check (and meets the read policy, which today refuses every patient
 /// recipient because the relay holds no relationship).
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_message_naming_an_untold_suspicion_never_reaches_the_patient() {
     let db = db().await;
     let recipient = format!("sink-{}", nanos());

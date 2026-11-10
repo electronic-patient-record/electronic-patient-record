@@ -11,7 +11,7 @@
 //! acknowledgements, a recipient's or a team's worklist (not built).
 //!
 //! ```text
-//! DATABASE_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
+//! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test http_referral_worklist -- --ignored --test-threads=1
 //! ```
 
@@ -52,7 +52,7 @@ const SECRET_NOTE: &str = "Secret-note-lapwing";
 const SECRET_MESSAGE: &str = "Secret-message-curlew";
 
 #[tokio::test]
-#[ignore = "needs Postgres: set DATABASE_URL"]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn the_sender_sees_what_came_back_and_nobody_else_does() {
     let idp = TestIdp::start().await;
     let roles = ["clinical-admin", "clinician", "integrator", "receptionist"];

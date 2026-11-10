@@ -20,7 +20,7 @@ describe("proxyTarget", () => {
   });
   it("refuses traversal and odd segments", () => {
     for (const p of [
-      "api/../_health",
+      "api/../_health/live",
       "api//x",
       "api/./x",
       "api/%2e%2e/x",
