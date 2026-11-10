@@ -4278,6 +4278,117 @@ test("a clinician records a suspicion's outcome, then marks it entered in error 
   await axe(page);
 });
 
+test("a clinician corrects a suspicion: the patient has now been told, with a reason", async ({
+  page,
+}) => {
+  const RID = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+  const sent: Json[] = [];
+  let version = 1;
+  let told = "not-told";
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, ANN),
+  );
+  await page.route("**/api/proxy/api/patients/*/referrals", (route) =>
+    json(route, 200, {
+      referrals: [
+        {
+          id: RID,
+          version: 1,
+          author: "dr",
+          recorded_at: "2026-11-09T09:00:00.000000Z",
+          patient_id: ANN.id,
+          state: "requested",
+          referral: {
+            recipient: "Memory service",
+            reason: "Forgetting",
+            question: "Assess",
+            priority: "routine",
+          },
+          next: [],
+        },
+      ],
+    }),
+  );
+  await page.route(
+    `**/api/proxy/api/patients/*/referrals/${RID}/suspicion`,
+    (route) => {
+      const req = route.request();
+      if (req.method() === "PUT") {
+        sent.push(req.postDataJSON());
+        version = 2;
+        told = "told";
+        return json(route, 200, {});
+      }
+      return json(route, 200, {
+        current: {
+          version,
+          suspicion: {
+            condition: "Suspected dementia",
+            point_of_suspicion: "2026-11-09T09:00:00Z",
+            source: "clinician",
+            by: "Dr Rees",
+            grounds: { kind: "judgement", detail: "memory" },
+            patient_told: told,
+            pathway: "dementia",
+            pathway_version: 2,
+            agreed: true,
+          },
+          plan: {
+            pathway: "dementia",
+            version: 2,
+            title: "Suspected dementia",
+            approved: false,
+            latest_version: 2,
+            clock_from: "point-of-suspicion",
+            clock_start: "2026-11-09T09:00:00Z",
+            time_zone: "UTC",
+            priority: "routine",
+            instruction: null,
+            targets: [],
+            no_target_reason: "No interval",
+            subtype: null,
+          },
+        },
+        versions: [],
+        open: true,
+        outcome: null,
+        outcomes_in_error: [],
+        pathways: [],
+      });
+    },
+  );
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  await expect(
+    page.getByText(/has NOT been told what is suspected/),
+  ).toBeVisible();
+  await page.getByText("Correct this suspicion").click();
+  await page.getByRole("button", { name: "Save correction" }).click();
+  await expect(
+    page.getByText("Not sent. Give the reason. Nothing was changed."),
+  ).toBeVisible();
+  expect(sent).toHaveLength(0);
+  await page.getByLabel("Yes, told").check();
+  await page
+    .getByLabel("Why it is corrected")
+    .fill("Discussed in clinic today");
+  await axe(page);
+  await page.getByRole("button", { name: "Save correction" }).click();
+  await expect(
+    page.getByText("The patient has been told what is suspected."),
+  ).toBeVisible();
+  const body = sent[0] as unknown as {
+    suspicion: Record<string, unknown>;
+    expected_version: number;
+    reason: string;
+  };
+  expect(body.expected_version).toBe(1);
+  expect(body.reason).toBe("Discussed in clinic today");
+  expect(body.suspicion.patient_told).toBe("told");
+  expect(body.suspicion.agreed).toBe(true);
+  expect(body.suspicion.point_of_suspicion).toBe("2026-11-09T09:00:00Z");
+});
+
 const QUEUED = (over: Record<string, unknown> = {}) => ({
   id: "55555555-5555-4555-8555-555555555555",
   received_at: "2026-10-21T09:00:12.000000Z",

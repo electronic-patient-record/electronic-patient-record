@@ -349,6 +349,18 @@ export const STRINGS = {
   errorSend: "Mark entered in error",
   errorDone: "Marked entered in error. The suspicion is open again.",
   errorMissing: "Not sent. Give the reason.",
+  amendSuspicionTitle: "Correct this suspicion",
+  amendSuspicionNote:
+    "Changes whether the patient was told, the point of suspicion or the instruction. The earlier version is kept.",
+  amendSuspicionReason: "Why it is corrected",
+  amendSuspicionSend: "Save correction",
+  amendSuspicionDone: "Corrected. The earlier version is kept.",
+  amendSuspicionMissing: "Not sent. {problems}",
+  amendSuspicionProblems: {
+    reason: "Give the reason.",
+    point: "The point of suspicion is not a time.",
+    unchanged: "Nothing was changed.",
+  },
 
   amendTitle: "Requests to correct a record",
   amendOpenCount: "{n} waiting for a decision.",

@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-10 - Correct a suspicion on screen (RS-8, H-054)
+
+- **Clinical risk:** yes. A clinician can now record on screen that the patient has been told, which lets a message name the condition. They can also move the point of suspicion (which moves the due days) or change the instruction. Hazard H-054's residual risk is updated.
+- **Built:** an open suspicion offers "Correct this suspicion" (`SuspicionAmend.svelte`, `buildAmendment`, `localInput`). It covers whether the patient was told, the point of suspicion and the instruction, starts from what is recorded, and needs a reason. The rest of the suspicion is sent unchanged, under the same pathway version, against the version on screen; a 409 reloads. A point left as shown is not moved. A correction with no change, or with no reason, is refused before sending.
+- **Checked:** 3 new vitest tests (reason and change needed; the body; the shown time round-trips) and 1 new stubbed Playwright test with axe. All 340 vitest and 109 Playwright tests, lint, `check` and `check:tests` pass.
+- **Not done / not verified:** the condition, grounds, band, factors, subtype and pathway cannot be corrected on a screen. No version history is shown. The point is typed in the reader's own time. There was no run against the real service and Keycloak. The Welsh is machine-written and unreviewed.
+
 ## 2026-11-10 - End or correct a suspicion on screen (RS-8, H-054)
 
 - **Clinical risk:** yes. A clinician can now end a suspicion, or reopen it, from the patient page. Hazard H-054's residual risk is updated.

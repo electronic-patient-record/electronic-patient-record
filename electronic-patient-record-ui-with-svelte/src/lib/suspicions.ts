@@ -256,3 +256,59 @@ export function buildOutcome(
   if (f.kind === "ruled-out") outcome.by = f.by.trim();
   return { body: { outcome, expected_version: version }, problems };
 }
+
+/** What the amend form holds: the fields a clinician most often corrects, and the reason. */
+export interface AmendForm {
+  told: "told" | "not-told";
+  point: string; // a datetime-local value, in the reader's own time
+  instruction: string;
+  reason: string;
+}
+
+/** A datetime-local value for an RFC 3339 time, in the reader's own time. */
+export function localInput(at: string): string {
+  const d = new Date(at);
+  if (Number.isNaN(d.getTime())) return "";
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+export type AmendProblem = "reason" | "point" | "unchanged";
+
+/**
+ * The body of `PUT …/suspicion`: the whole current suspicion with the changed fields, the version seen
+ * and the reason. Every other field (pathway, band, factors, subtype, grounds) is sent as it is, so the
+ * amendment stays under the same pathway version. A point of suspicion left as shown is not moved.
+ */
+export function buildAmendment(
+  current: Record<string, unknown>,
+  version: number,
+  f: AmendForm,
+): { body: unknown; problems: AmendProblem[] } {
+  const problems: AmendProblem[] = [];
+  if (!f.reason.trim()) problems.push("reason");
+  const next: Record<string, unknown> = { ...current, patient_told: f.told };
+  const wasPoint = String(current.point_of_suspicion ?? "");
+  if (f.point !== localInput(wasPoint)) {
+    const at = f.point ? new Date(f.point) : null;
+    if (!at || Number.isNaN(at.getTime())) problems.push("point");
+    else next.point_of_suspicion = at.toISOString();
+  }
+  const instruction = f.instruction.trim();
+  if (instruction) next.instruction = instruction;
+  else delete next.instruction;
+  const same =
+    next.patient_told === current.patient_told &&
+    next.point_of_suspicion === current.point_of_suspicion &&
+    (next.instruction ?? null) === (current.instruction ?? null);
+  if (same && !problems.includes("point")) problems.push("unchanged");
+  if (problems.length > 0) return { body: null, problems };
+  return {
+    body: {
+      suspicion: next,
+      expected_version: version,
+      reason: f.reason.trim(),
+    },
+    problems,
+  };
+}

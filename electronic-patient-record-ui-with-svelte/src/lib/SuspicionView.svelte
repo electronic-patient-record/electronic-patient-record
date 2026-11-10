@@ -13,6 +13,7 @@
   import { TEXT } from "./i18n.js";
   import SuspicionRaise from "./SuspicionRaise.svelte";
   import SuspicionEnd from "./SuspicionEnd.svelte";
+  import SuspicionAmend from "./SuspicionAmend.svelte";
 
   let {
     patientId,
@@ -140,6 +141,17 @@
           String(h.outcomes_in_error.length),
         )}
       </p>
+    {/if}
+    {#if !h.outcome}
+      {#key c.version}
+        <SuspicionAmend
+          {patientId}
+          {referralId}
+          version={c.version}
+          current={c.suspicion as unknown as Record<string, unknown>}
+          done={() => reloads++}
+        />
+      {/key}
     {/if}
     <SuspicionEnd
       {patientId}

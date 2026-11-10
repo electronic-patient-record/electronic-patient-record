@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   EMPTY_FORM,
   EMPTY_OUTCOME,
+  buildAmendment,
   buildOutcome,
+  localInput,
   buildSuspicion,
   outcomeText,
   targetMark,
@@ -163,5 +165,56 @@ describe("recording an outcome", () => {
       outcome: { kind: "ruled-out", by: "Dr Owen", detail: "normal echo" },
       expected_version: 3,
     });
+  });
+});
+
+describe("correcting a suspicion", () => {
+  const current = {
+    condition: "Suspected lower GI cancer",
+    point_of_suspicion: "2026-11-09T09:30:00Z",
+    patient_told: "not-told",
+    pathway: "suspected-cancer-wales",
+    pathway_version: 2,
+    subtype: { scheme: "wales-primary-cancer-site", code: "03" },
+  };
+  const unchanged = {
+    told: "not-told" as const,
+    point: localInput(current.point_of_suspicion),
+    instruction: "",
+    reason: "",
+  };
+
+  it("needs a reason and a change", () => {
+    expect(buildAmendment(current, 1, unchanged).problems).toEqual([
+      "reason",
+      "unchanged",
+    ]);
+    expect(
+      buildAmendment(current, 1, {
+        ...unchanged,
+        point: "nonsense",
+        reason: "x",
+      }).problems,
+    ).toEqual(["point"]);
+  });
+
+  it("sends the whole suspicion with only the changed field, the version seen and the reason", () => {
+    const { body, problems } = buildAmendment(current, 2, {
+      ...unchanged,
+      told: "told",
+      reason: "discussed in clinic",
+    });
+    expect(problems).toEqual([]);
+    expect(body).toEqual({
+      suspicion: { ...current, patient_told: "told" },
+      expected_version: 2,
+      reason: "discussed in clinic",
+    });
+  });
+
+  it("round-trips the shown time, so an untouched point is not moved", () => {
+    const shown = localInput("2026-11-09T09:30:00Z");
+    expect(new Date(shown).toISOString()).toBe("2026-11-09T09:30:00.000Z");
+    expect(localInput("not a time")).toBe("");
   });
 });

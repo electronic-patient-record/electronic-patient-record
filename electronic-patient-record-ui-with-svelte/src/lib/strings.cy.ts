@@ -386,6 +386,18 @@ export const CY: Strings = {
   errorSend: "Nodi wedi'i gofnodi trwy gamgymeriad",
   errorDone: "Wedi'i nodi trwy gamgymeriad. Mae'r amheuaeth ar agor eto.",
   errorMissing: "Heb ei anfon. Rhowch y rheswm.",
+  amendSuspicionTitle: "Cywiro'r amheuaeth hon",
+  amendSuspicionNote:
+    "Yn newid a gafodd y claf wybod, pwynt yr amheuaeth neu'r cyfarwyddyd. Cedwir y fersiwn gynharach.",
+  amendSuspicionReason: "Pam y caiff ei chywiro",
+  amendSuspicionSend: "Cadw'r cywiriad",
+  amendSuspicionDone: "Wedi'i chywiro. Cedwir y fersiwn gynharach.",
+  amendSuspicionMissing: "Heb ei anfon. {problems}",
+  amendSuspicionProblems: {
+    reason: "Rhowch y rheswm.",
+    point: "Nid yw pwynt yr amheuaeth yn amser.",
+    unchanged: "Ni newidiwyd dim.",
+  },
 
   amendTitle: "Ceisiadau i gywiro cofnod",
   amendOpenCount: "{n} yn aros am benderfyniad.",
