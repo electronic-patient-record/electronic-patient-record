@@ -2393,7 +2393,7 @@
         "type": "object"
       },
       "OwnWatchList": {
-        "description": "The caller's own active entries, as pointers: no reason.",
+        "description": "The caller's own active entries, as pointers: no reason. `lapsed`: entries whose last day has passed and that the caller has not ended, oldest last day first.",
         "properties": {
           "items": {
             "items": {
@@ -2428,6 +2428,42 @@
             },
             "type": "array"
           },
+          "lapsed": {
+            "items": {
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "patient_id": {
+                  "type": "string"
+                },
+                "since": {
+                  "type": "string"
+                },
+                "until": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "version": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "version",
+                "patient_id",
+                "since",
+                "until"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "lapsed_more": {
+            "type": "boolean"
+          },
           "limit": {
             "type": "integer"
           },
@@ -2438,7 +2474,9 @@
         "required": [
           "items",
           "limit",
-          "more"
+          "more",
+          "lapsed",
+          "lapsed_more"
         ],
         "type": "object"
       },

@@ -433,6 +433,11 @@ export const CY: Strings = {
   myWatchSince: "Ar eich rhestr ers {since}",
   myWatchOpen: "Agor y cofnod i weld pam",
   navWatch: "Fy rhestr wylio",
+  myWatchLapsedTitle: "Wedi darfod, heb eu cau eto",
+  myWatchLapsedNote:
+    "Mae'r cofnodion hyn wedi mynd heibio eu diwrnod olaf ac nid ydynt ar eich rhestr mwyach. Agorwch bob cofnod a dewch â'r cofnod i ben gyda rheswm, neu ychwanegwch y claf eto.",
+  myWatchLapsedOn: "Diwrnod olaf {until}",
+  myWatchLapsedOpen: "Agor y cofnod i'w gau",
 
   amendTitle: "Ceisiadau i gywiro cofnod",
   amendOpenCount: "{n} yn aros am benderfyniad.",

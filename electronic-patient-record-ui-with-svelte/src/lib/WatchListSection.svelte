@@ -126,7 +126,7 @@
             {#if e.end_reason}
               <p>{TEXT.watchEndReason}: {e.end_reason}</p>
             {/if}
-            {#if e.state === "active"}
+            {#if e.state === "active" || e.state === "lapsed"}
               {#if ending === e.id}
                 <form onsubmit={(ev) => end(e, ev)} novalidate>
                   <label for="watch-end-{e.id}">{TEXT.watchEndLabel}</label>

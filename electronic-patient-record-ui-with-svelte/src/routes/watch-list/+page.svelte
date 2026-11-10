@@ -17,6 +17,8 @@
   };
   const locale = $derived(page.data.locale ?? DEFAULT_LOCALE);
   let items = $state<Pointer[] | null>(null);
+  let lapsed = $state<Pointer[]>([]);
+  let lapsedMore = $state(false);
   let more = $state(false);
   let limit = $state(200);
   let message = $state<string | null>(null);
@@ -27,6 +29,8 @@
         items: Pointer[];
         limit: number;
         more: boolean;
+        lapsed?: Pointer[];
+        lapsed_more?: boolean;
       }>("GET", "/api/watch-list");
       const problem = commonProblem(res.status);
       if (problem) message = TEXT[problem];
@@ -34,6 +38,8 @@
         items = res.body.items;
         more = res.body.more;
         limit = res.body.limit;
+        lapsed = res.body.lapsed ?? [];
+        lapsedMore = res.body.lapsed_more ?? false;
       } else message = TEXT.error;
     })();
   });
@@ -43,6 +49,23 @@
 <h1>{TEXT.myWatchTitle}</h1>
 <p>{TEXT.watchNote}</p>
 {#if message}<p role="status">{message}</p>{/if}
+{#if lapsed.length > 0}
+  <section aria-labelledby="lapsed-h">
+    <h2 id="lapsed-h">{TEXT.myWatchLapsedTitle}</h2>
+    <p role="note">{TEXT.myWatchLapsedNote}</p>
+    {#if lapsedMore}<p>{TEXT.myWatchMore.replace("{n}", String(limit))}</p>{/if}
+    <ul>
+      {#each lapsed as i (i.id)}
+        <li>
+          {TEXT.myWatchLapsedOn.replace("{until}", i.until ?? "")}
+          <a href={localizePath(`/patients/${i.patient_id}`, locale)}
+            >{TEXT.myWatchLapsedOpen}</a
+          >
+        </li>
+      {/each}
+    </ul>
+  </section>
+{/if}
 {#if items !== null}
   {#if items.length === 0}
     <p>{TEXT.myWatchNone}</p>

@@ -4478,9 +4478,26 @@ test("my watch list shows my own entries, with no reason, each linking to the re
       ],
       limit: 200,
       more: false,
+      lapsed: [
+        {
+          id: "b2b2b2b2-b2b2-4b2b-8b2b-b2b2b2b2b2b2",
+          version: 1,
+          patient_id: ANN.id,
+          since: "2026-09-01T09:00:00.000000Z",
+          until: "2026-10-01",
+        },
+      ],
+      lapsed_more: false,
     }),
   );
   await page.goto("/en-001/watch-list");
+  await expect(
+    page.getByRole("heading", { name: "Lapsed, not yet closed" }),
+  ).toBeVisible();
+  await expect(page.getByText("Last day 2026-10-01")).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Open the record to close it" }),
+  ).toHaveAttribute("href", `/en-001/patients/${ANN.id}`);
   await expect(
     page.getByRole("heading", { name: "My watch list" }),
   ).toBeVisible();

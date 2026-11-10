@@ -627,13 +627,17 @@ fn watch_list_schemas() -> Value {
             "properties": {"entries": {"type": "array", "items": {"$ref": "#/components/schemas/WatchEntry"}}}
         },
         "OwnWatchList": {
-            "type": "object", "required": ["items", "limit", "more"],
-            "description": "The caller's own active entries, as pointers: no reason.",
+            "type": "object", "required": ["items", "limit", "more", "lapsed", "lapsed_more"],
+            "description": "The caller's own active entries, as pointers: no reason. `lapsed`: entries whose last day has passed and that the caller has not ended, oldest last day first.",
             "properties": {
                 "items": {"type": "array", "items": {"type": "object", "required": ["id", "version", "patient_id", "since", "until"], "properties": {
                     "id": {"type": "string"}, "version": {"type": "integer"}, "patient_id": {"type": "string"},
                     "since": {"type": "string"}, "until": {"type": ["string", "null"]}}}},
-                "limit": {"type": "integer"}, "more": {"type": "boolean"}
+                "limit": {"type": "integer"}, "more": {"type": "boolean"},
+                "lapsed": {"type": "array", "items": {"type": "object", "required": ["id", "version", "patient_id", "since", "until"], "properties": {
+                    "id": {"type": "string"}, "version": {"type": "integer"}, "patient_id": {"type": "string"},
+                    "since": {"type": "string"}, "until": {"type": ["string", "null"]}}}},
+                "lapsed_more": {"type": "boolean"}
             }
         }
     })

@@ -65,6 +65,10 @@ pub struct OwnList {
     pub limit: i64,
     /// Whether any were left out.
     pub more: bool,
+    /// Entries whose last day has passed and that the owner has not ended, oldest last day first.
+    pub lapsed: Vec<Pointer>,
+    /// Whether any lapsed ones were left out.
+    pub lapsed_more: bool,
 }
 
 const RESOURCE: &str = "WatchList";
@@ -345,6 +349,10 @@ pub(super) async fn own(
         Ok(p) => p,
         Err(e) => return failure(e).into_response(),
     };
+    let (lapsed, lapsed_more) = match store::lapsed(&ctx.pool(), &agent.0, today()).await {
+        Ok(p) => p,
+        Err(e) => return failure(e).into_response(),
+    };
     if let Err(r) = audit_resource(
         &ctx.pool(),
         &agent,
@@ -355,7 +363,7 @@ pub(super) async fn own(
             resource: "OwnWatchList",
             patient_id: None,
         },
-        serde_json::json!({ "entries": items.len(), "more": more }),
+        serde_json::json!({ "entries": items.len(), "more": more, "lapsed": lapsed.len() }),
     )
     .await
     {
@@ -365,6 +373,8 @@ pub(super) async fn own(
         items,
         limit: store::OWN_LIMIT,
         more,
+        lapsed,
+        lapsed_more,
     })
     .into_response()
 }

@@ -212,6 +212,31 @@ async fn a_watch_list_entry_has_a_reason_and_an_end_and_stays_in_the_history() {
             .collect();
         assert_eq!(states.len(), 2, "{history}");
         assert!(states.contains(&"ended") && states.contains(&"lapsed"), "{states:?}");
+
+        // The owner learns of a lapse: it is on their own `lapsed` list until they end it with a reason.
+        let gone = history["entries"].as_array().unwrap().iter()
+            .find(|e| e["state"] == "lapsed").unwrap().clone();
+        let theirs = own(ch.clone(), cv.clone()).await;
+        assert!(
+            theirs["lapsed"].as_array().unwrap().iter().any(|i| i["id"] == gone["id"]),
+            "lapsed: on the colleague's lapsed list: {theirs}"
+        );
+        assert!(
+            !own(oh.clone(), ov.clone()).await["lapsed"].as_array().unwrap().iter()
+                .any(|i| i["id"] == gone["id"]),
+            "someone else's lapse is not on mine"
+        );
+        let r = server
+            .put(&format!("{url}/{}", gone["id"].as_str().unwrap()))
+            .add_header(ch.clone(), cv.clone())
+            .json(&json!({ "expected_version": gone["version"], "end_reason": "wound healed" }))
+            .await;
+        assert_eq!(r.status_code(), StatusCode::OK, "a lapsed entry can be ended: {}", r.text());
+        assert!(
+            !own(ch.clone(), cv.clone()).await["lapsed"].as_array().unwrap().iter()
+                .any(|i| i["id"] == gone["id"]),
+            "ended: off the lapsed list"
+        );
         let ended = history["entries"]
             .as_array()
             .unwrap()

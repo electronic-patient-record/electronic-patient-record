@@ -396,6 +396,11 @@ export const STRINGS = {
   myWatchSince: "On your list since {since}",
   myWatchOpen: "Open the record to see why",
   navWatch: "My watch list",
+  myWatchLapsedTitle: "Lapsed, not yet closed",
+  myWatchLapsedNote:
+    "These entries passed their last day and are no longer on your list. Open each record and end the entry with a reason, or add the patient again.",
+  myWatchLapsedOn: "Last day {until}",
+  myWatchLapsedOpen: "Open the record to close it",
 
   amendTitle: "Requests to correct a record",
   amendOpenCount: "{n} waiting for a decision.",

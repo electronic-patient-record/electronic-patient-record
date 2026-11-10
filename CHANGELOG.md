@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-10 - Lapsed watch-list entries are shown to their owner (WL-6, H-055)
+
+- **Clinical risk:** yes. An entry whose last day passed used to leave its owner's list with nothing said. It is now listed on the owner's page until they close it. Hazard H-055's residual risk is updated.
+- **Built:** `GET /api/watch-list` also returns `lapsed`: the caller's entries whose last day has passed and that they have not ended, oldest last day first, up to 200 (`lapsed_more` when cut short). The audit row counts them. `watch_list_store::lapsed` shares one query with the active list. On `/watch-list`, "Lapsed, not yet closed" lists them with their last day and a link to the record. On the patient page, a lapsed entry can be ended with a reason, as an active one can.
+- **Checked:** `tests/http_watch_list.rs` (a lapsed entry is on its owner's lapsed list and not on anyone else's; the owner ends it with a reason and it leaves the list), the OpenAPI census, all 342 vitest and 111 Playwright tests (the own-list test now covers the lapsed section), lint and `check`.
+- **Not done / not verified:** nothing pushes a notice. The owner sees a lapse only by opening the page, and the header link carries no count. Lapsed is judged by the server's UTC day, not the site's. There was no run against the real stack.
+
 ## 2026-11-10 - The framework named as it is (Axum and axa)
 
 - **Clinical risk:** none. This changes text only.

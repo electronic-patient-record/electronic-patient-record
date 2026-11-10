@@ -286,13 +286,51 @@ pub async fn own(
     owner: &str,
     today: NaiveDate,
 ) -> Result<(Vec<Pointer>, bool), StoreError> {
+    pointers(
+        db,
+        owner,
+        today,
+        "(c.body->>'until' IS NULL OR (c.body->>'until')::date >= $2::date)",
+        "f.recorded_at, c.entry_id",
+    )
+    .await
+}
+
+/// `owner`'s lapsed entries (WL-6): their last day has passed and the owner has not ended them, oldest
+/// last day first, up to [`OWN_LIMIT`]. A lapsed entry leaves the active list, so this is how its owner
+/// learns of it; ending it with a reason, or adding the patient again, takes it off.
+///
+/// # Errors
+///
+/// [`StoreError::Db`].
+pub async fn lapsed(
+    db: impl Into<Db<'_>>,
+    owner: &str,
+    today: NaiveDate,
+) -> Result<(Vec<Pointer>, bool), StoreError> {
+    pointers(
+        db,
+        owner,
+        today,
+        "(c.body->>'until')::date < $2::date",
+        "(c.body->>'until')::date, c.entry_id",
+    )
+    .await
+}
+
+async fn pointers(
+    db: impl Into<Db<'_>>,
+    owner: &str,
+    today: NaiveDate,
+    condition: &str,
+    order: &str,
+) -> Result<(Vec<Pointer>, bool), StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
     let rows = sqlx::query(AssertSqlSafe(format!(
         "SELECT {} {FROM}
-         WHERE c.owner = $1 AND c.status = 'active'
-           AND (c.body->>'until' IS NULL OR (c.body->>'until')::date >= $2::date)
-         ORDER BY f.recorded_at, c.entry_id LIMIT {}",
+         WHERE c.owner = $1 AND c.status = 'active' AND {condition}
+         ORDER BY {order} LIMIT {}",
         columns(),
         OWN_LIMIT + 1
     )))
