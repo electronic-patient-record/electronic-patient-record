@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-10 - Watch-list days are the site's days (WL-6, H-055)
+
+- **Clinical risk:** small. Near midnight, for a site outside UTC, an entry's last day now lapses on the site's calendar rather than the server's UTC one. Hazard H-055's residual risk is updated.
+- **Built:** `site::zone`, `site::day_in` and `site::today` hold the site's day (`EPR_SITE_TIME_ZONE`, checked at start-up; UTC when unset). The watch list judges a last day, both when it is added ("today or later") and when it lapses, on that day. The suspicion plans use the same `site::zone` as before.
+- **Checked:** a new unit test (23:30 UTC on 30 June is 1 July in London), all 549 database-free tests, the watch-list and suspicion database tests, and clippy.
+- **Not done / not verified:** the database tests run with no zone set, so they count UTC days. The UI still shows the "until" day as it was entered, with no zone named.
+
 ## 2026-11-10 - Lapsed watch-list entries are shown to their owner (WL-6, H-055)
 
 - **Clinical risk:** yes. An entry whose last day passed used to leave its owner's list with nothing said. It is now listed on the owner's page until they close it. Hazard H-055's residual risk is updated.

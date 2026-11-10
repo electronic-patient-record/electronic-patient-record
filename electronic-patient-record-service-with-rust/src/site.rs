@@ -49,9 +49,40 @@ pub fn time_zone() -> String {
         .unwrap_or_else(|| DEFAULT_ZONE.to_string())
 }
 
+/// The site's zone as a [`Tz`]: the one [`init`] checked, or UTC when it has not run (a test).
+#[must_use]
+pub fn zone() -> Tz {
+    time_zone().parse().unwrap_or(chrono_tz::UTC)
+}
+
+/// The calendar day `now` falls on in `zone`.
+#[must_use]
+pub fn day_in(zone: Tz, now: chrono::DateTime<chrono::Utc>) -> chrono::NaiveDate {
+    now.with_timezone(&zone).date_naive()
+}
+
+/// Today at the site: the day a "last day" or a due day is judged on, the same for every reader there.
+#[must_use]
+pub fn today() -> chrono::NaiveDate {
+    day_in(zone(), chrono::Utc::now())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_sites_day_can_differ_from_the_utc_day() {
+        let late = chrono::DateTime::parse_from_rfc3339("2026-06-30T23:30:00Z")
+            .unwrap()
+            .with_timezone(&chrono::Utc);
+        assert_eq!(day_in(chrono_tz::UTC, late).to_string(), "2026-06-30");
+        assert_eq!(
+            day_in(chrono_tz::Europe::London, late).to_string(),
+            "2026-07-01"
+        );
+        assert_eq!(zone(), chrono_tz::UTC, "unset in a test: UTC");
+    }
 
     #[test]
     fn unset_or_blank_is_utc_and_an_iana_name_is_kept() {

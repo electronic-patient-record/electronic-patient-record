@@ -73,8 +73,9 @@ pub struct OwnList {
 
 const RESOURCE: &str = "WatchList";
 
+/// The site's day (`EPR_SITE_TIME_ZONE`): a last day lapses when it has passed there.
 fn today() -> chrono::NaiveDate {
-    chrono::Utc::now().date_naive()
+    crate::site::today()
 }
 
 fn failure(e: StoreError) -> ApiError {

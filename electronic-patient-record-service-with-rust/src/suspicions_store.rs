@@ -166,7 +166,7 @@ fn plan_for(s: &Suspicion, sent: DateTime<Utc>, now: DateTime<Utc>) -> Result<Pl
         ClockFrom::ReferralSent => sent,
     };
     // The site's zone was checked at start-up (`site::init`); a test that never ran it counts UTC days.
-    let zone = crate::site::time_zone().parse().unwrap_or(chrono_tz::UTC);
+    let zone = crate::site::zone();
     pathways::plan(p, &s.choice(), start, now, zone)
         .ok_or_else(|| StoreError::Db("a stored suspicion no longer fits its pathway".into()))
 }
