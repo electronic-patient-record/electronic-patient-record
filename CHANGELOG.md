@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-10 - The development realm imports again (SE-9)
+
+- **Clinical risk:** none. This is development configuration.
+- **Built:** the `on-duty-clinician` role's description in `operations/keycloak/epr-realm.json` was 272 characters, over Keycloak's 255-character column, so a fresh Keycloak could not import the realm and did not start. Its words are now shorter, with the same meaning. A new vitest test (`tests/unit/keycloak-realm.test.ts`) fails if any description in the realm is over 255 characters; it fails without this fix.
+- **Checked:** the test, with and without the fix. A fresh Keycloak 26.3.0 imported the realm and served it.
+- **Not done / not verified:** an existing development database, imported before the text grew, hid the fault, and nothing in CI starts a Keycloak. Other column limits in the realm (names, redirect URIs) are not checked.
+
 ## 2026-11-10 - Correct a suspicion on screen (RS-8, H-054)
 
 - **Clinical risk:** yes. A clinician can now record on screen that the patient has been told, which lets a message name the condition. They can also move the point of suspicion (which moves the due days) or change the instruction. Hazard H-054's residual risk is updated.
