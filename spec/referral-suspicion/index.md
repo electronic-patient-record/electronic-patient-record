@@ -131,6 +131,14 @@ with its suspicion open and not carried to a replacement is on the referrer's wo
 cannot be acknowledged and leaves only when the outcome is recorded. The audit row names the outcome's kind, never
 the diagnosis or its grounds.
 
+**An outcome recorded in error (RS-7).** `POST …/suspicion/outcome/entered-in-error {seq, reason}` marks the current
+outcome (each outcome has a `seq`, from 1) entered in error, with a reason; a `seq` that is not the current outcome's is
+409. The suspicion is open again: it may be amended, it is back on the referrer's worklist if its referral has ended,
+and it may be given a new outcome (the next `seq`). Nothing is removed: the outcome stays, the error is its own
+append-only row, and the history lists both under `outcomes_in_error`. The audit row names the `seq`, never the
+outcome's kind or the reason. For the PAS, a ruled-out or withdrawn outcome already sent as a stop cannot be undone
+there (a stop is final), so a correction after a stop is held for a person; the mapping does not send one.
+
 **Messages do not name an untold suspicion (RS-4).** Everything the service sends goes through the outbox
 (`src/outbox.rs`), whose gate decides each event before any sink sees it. An event whose payload names a suspected
 condition carries `names_suspicion_of` (the referral). To a patient or a proxy it is refused (`suspicion-not-told`)

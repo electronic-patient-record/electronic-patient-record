@@ -287,6 +287,20 @@ async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_r
             },
         )
         .await;
+        refused_then_accepted(
+            db,
+            "POST /api/patients/{id}/referrals/{referral_id}/suspicion/outcome/entered-in-error",
+            || async {
+                let r = server
+                    .post(&format!(
+                        "/api/patients/{id}/referrals/{referral_id}/suspicion/outcome/entered-in-error"
+                    ))
+                    .json(&json!({ "seq": 1, "reason": "recorded on the wrong referral" }))
+                    .await;
+                (r.status_code(), r.text())
+            },
+        )
+        .await;
 
         // A watch list entry, then its ending by its owner (WL-6).
         refused_then_accepted(db, "POST /api/patients/{id}/watch-list", || async {

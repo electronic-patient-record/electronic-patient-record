@@ -693,6 +693,10 @@ pub fn routes() -> Routes {
             "/{id}/referrals/{referral_id}/suspicion/outcome",
             post(super::suspicions::end),
         )
+        .add(
+            "/{id}/referrals/{referral_id}/suspicion/outcome/entered-in-error",
+            post(super::suspicions::mark_outcome_in_error),
+        )
         .add("/{id}/watch-list", get(super::watch_list::for_patient))
         .add("/{id}/watch-list", post(super::watch_list::add))
         .add("/{id}/watch-list/{entry_id}", put(super::watch_list::end))

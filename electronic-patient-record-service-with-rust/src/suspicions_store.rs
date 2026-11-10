@@ -55,11 +55,28 @@ pub struct SuspicionHistory {
     /// How it ended, once it has (RS-3). While it is open each plan's `overdue` is judged at the time
     /// of reading; once it has ended, at the time of the outcome.
     pub outcome: Option<StoredOutcome>,
+    /// Earlier outcomes marked entered in error (RS-7), oldest first; each is kept, never removed.
+    pub outcomes_in_error: Vec<OutcomeInError>,
+}
+
+/// An outcome marked entered in error (RS-7).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct OutcomeInError {
+    /// The outcome, as it was recorded.
+    pub outcome: StoredOutcome,
+    /// Who marked it.
+    pub marked_by: String,
+    /// When (UTC).
+    pub marked_at: String,
+    /// Why.
+    pub reason: String,
 }
 
 /// How a suspicion ended, as stored (RS-3).
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct StoredOutcome {
+    /// Its number among this suspicion's outcomes, from 1; named to mark it entered in error.
+    pub seq: i32,
     /// The suspicion version it ended.
     pub suspicion_version: i32,
     /// Who recorded it.
@@ -222,24 +239,57 @@ async fn outcome_of(
 ) -> Result<Option<StoredOutcome>, StoreError> {
     let id = ids::uuid(referral_id).ok_or(StoreError::NotFound)?;
     let row = sqlx::query(
-        "SELECT suspicion_version, author, body,
+        "SELECT seq, suspicion_version, author, body,
                 to_char(recorded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS at
-         FROM referral_suspicion_outcomes WHERE referral_id = $1::uuid",
+         FROM referral_suspicion_outcome_current WHERE referral_id = $1::uuid",
     )
     .bind(id)
     .fetch_optional(&mut *db)
     .await
     .map_err(db_err)?;
-    let Some(row) = row else {
-        return Ok(None);
-    };
+    row.as_ref().map(stored_outcome).transpose()
+}
+
+fn stored_outcome(row: &PgRow) -> Result<StoredOutcome, StoreError> {
     let body: serde_json::Value = row.try_get("body").map_err(db_err)?;
-    Ok(Some(StoredOutcome {
+    Ok(StoredOutcome {
+        seq: row.try_get("seq").map_err(db_err)?,
         suspicion_version: row.try_get("suspicion_version").map_err(db_err)?,
         author: row.try_get("author").map_err(db_err)?,
         recorded_at: row.try_get("at").map_err(db_err)?,
         outcome: serde_json::from_value(body).map_err(db_err)?,
-    }))
+    })
+}
+
+/// The outcomes of a referral's suspicion marked entered in error, oldest first (RS-7).
+async fn outcomes_in_error(
+    db: &mut sqlx::PgConnection,
+    referral_id: &str,
+) -> Result<Vec<OutcomeInError>, StoreError> {
+    let id = ids::uuid(referral_id).ok_or(StoreError::NotFound)?;
+    let rows = sqlx::query(
+        "SELECT o.seq, o.suspicion_version, o.author, o.body,
+                to_char(o.recorded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS at,
+                e.author AS marked_by, e.reason,
+                to_char(e.recorded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS marked_at
+         FROM referral_suspicion_outcomes o
+         JOIN referral_suspicion_outcome_errors e ON e.referral_id = o.referral_id AND e.seq = o.seq
+         WHERE o.referral_id = $1::uuid ORDER BY o.seq",
+    )
+    .bind(id)
+    .fetch_all(&mut *db)
+    .await
+    .map_err(db_err)?;
+    rows.iter()
+        .map(|r| {
+            Ok(OutcomeInError {
+                outcome: stored_outcome(r)?,
+                marked_by: r.try_get("marked_by").map_err(db_err)?,
+                marked_at: r.try_get("marked_at").map_err(db_err)?,
+                reason: r.try_get("reason").map_err(db_err)?,
+            })
+        })
+        .collect()
 }
 
 fn build(
@@ -247,6 +297,7 @@ fn build(
     sent: DateTime<Utc>,
     now: DateTime<Utc>,
     outcome: Option<StoredOutcome>,
+    outcomes_in_error: Vec<OutcomeInError>,
 ) -> Result<SuspicionHistory, StoreError> {
     // Once it has ended, a target is judged at the outcome: met or missed, never overdue for ever.
     let now = match &outcome {
@@ -264,6 +315,7 @@ fn build(
         open: !versions.is_empty() && outcome.is_none(),
         versions,
         outcome,
+        outcomes_in_error,
     })
 }
 
@@ -284,7 +336,8 @@ pub async fn history(
     let sent = first_sent(&mut *db, referral_id, own).await?;
     let rows = rows(&mut *db, referral_id).await?;
     let outcome = outcome_of(&mut *db, referral_id).await?;
-    build(&rows, sent, now, outcome)
+    let in_error = outcomes_in_error(&mut *db, referral_id).await?;
+    build(&rows, sent, now, outcome, in_error)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -377,7 +430,13 @@ pub async fn amend(
     if outcome_of(&mut *db, &referral_id).await?.is_some() {
         return Err(refuse("the suspicion has an outcome and cannot be amended"));
     }
-    let history = build(&rows(&mut *db, &referral_id).await?, sent, now, None)?;
+    let history = build(
+        &rows(&mut *db, &referral_id).await?,
+        sent,
+        now,
+        None,
+        Vec::new(),
+    )?;
     let was = history.current.ok_or(StoreError::NotFound)?;
     if was.version != expected_version {
         return Err(StoreError::Conflict {
@@ -497,8 +556,11 @@ pub async fn end(
         STORE,
         sqlx::query(
             "INSERT INTO referral_suspicion_outcomes
-                 (referral_id, suspicion_version, patient_id, author, kind, body)
-             VALUES ($1::uuid, $2, $3::uuid, $4, $5, $6)
+                 (referral_id, seq, suspicion_version, patient_id, author, kind, body)
+             VALUES ($1::uuid,
+                     (SELECT coalesce(max(seq), 0) + 1 FROM referral_suspicion_outcomes
+                      WHERE referral_id = $1::uuid),
+                     $2, $3::uuid, $4, $5, $6)
              RETURNING referral_id",
         )
         .bind(referral_id.clone())
@@ -514,7 +576,70 @@ pub async fn end(
     }
     let sent = first_sent(&mut *db, &referral_id, own).await?;
     let ended = outcome_of(&mut *db, &referral_id).await?;
-    build(&rows_now, sent, now, ended)
+    let in_error = outcomes_in_error(&mut *db, &referral_id).await?;
+    build(&rows_now, sent, now, ended, in_error)
+}
+
+/// Mark a suspicion's current outcome entered in error (RS-7): the suspicion is open again, may be
+/// amended and given a new outcome; the outcome is kept and shown in the history with the reason.
+///
+/// # Errors
+///
+/// [`StoreError::NotFound`] (no such referral on this patient, or no suspicion),
+/// [`StoreError::Conflict`] (`seq` is not the current outcome; `current` is the current one's, 0 for
+/// none), [`StoreError::BadQuery`] (no reason, or one too long).
+#[allow(clippy::too_many_arguments)]
+pub async fn mark_outcome_in_error(
+    db: impl Into<Db<'_>>,
+    patient_id: &str,
+    referral_id: &str,
+    author: &str,
+    seq: i32,
+    reason: &str,
+    now: DateTime<Utc>,
+) -> Result<SuspicionHistory, StoreError> {
+    let reason = reason.trim();
+    if reason.is_empty() {
+        return Err(refuse("marking an outcome entered in error needs a reason"));
+    }
+    if reason.chars().count() > suspicion::LONG {
+        return Err(refuse("the reason is too long"));
+    }
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let own = referral_sent(&mut *db, patient_id, referral_id).await?;
+    let referral_id = ids::uuid(referral_id).ok_or(StoreError::NotFound)?;
+    let rows_now = rows(&mut *db, &referral_id).await?;
+    if rows_now.is_empty() {
+        return Err(StoreError::NotFound);
+    }
+    let current = outcome_of(&mut *db, &referral_id).await?;
+    if current.as_ref().map(|o| o.seq) != Some(seq) {
+        return Err(StoreError::Conflict {
+            current: current.map_or(0, |o| o.seq),
+        });
+    }
+    let appended = crate::store::append_version(
+        &mut *db,
+        STORE,
+        sqlx::query(
+            "INSERT INTO referral_suspicion_outcome_errors (referral_id, seq, patient_id, author, reason)
+             VALUES ($1::uuid, $2, $3::uuid, $4, $5)
+             RETURNING referral_id",
+        )
+        .bind(referral_id.clone())
+        .bind(seq)
+        .bind(patient_id.to_string())
+        .bind(author.to_string())
+        .bind(reason.to_string()),
+    )
+    .await?;
+    if matches!(appended, crate::store::Appended::Taken) {
+        return Err(StoreError::Conflict { current: 0 });
+    }
+    let sent = first_sent(&mut *db, &referral_id, own).await?;
+    let in_error = outcomes_in_error(&mut *db, &referral_id).await?;
+    build(&rows_now, sent, now, None, in_error)
 }
 
 /// Whether the record says the patient was told of a referral's suspected condition (RS-4): `None` when

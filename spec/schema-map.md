@@ -4,7 +4,7 @@ Every table and view the service's migrations create. **Generated** by [`scripts
 
 Not listed: tables made by a statement built at run time (the monthly `audit_events` partitions), and what a column means (the migrations carry few comments, so only the name and SQL type are shown). The clinical tables are append-only: a change is a new row, and triggers refuse `UPDATE`, `DELETE` and `TRUNCATE`.
 
-36 tables, 18 views.
+37 tables, 19 views.
 
 ## Tables
 
@@ -37,6 +37,7 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `patient_photos` | `20261021000006_patient_photos` | `patient_id` UUID, `version` INTEGER, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `content_type` TEXT, `bytes` BYTEA, `sha256` TEXT |
 | `patient_versions` | `20261021000002_patient_versions` | `patient_id` UUID, `version` INTEGER, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `body` JSONB |
 | `referral_acknowledgements` | `20261103000024_referral_acknowledgements` | `referral_id` UUID, `version` INTEGER, `acknowledged_at` TIMESTAMPTZ, `acknowledged_by` TEXT |
+| `referral_suspicion_outcome_errors` | `20261110000035_suspicion_outcome_errors` | `referral_id` UUID, `seq` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT |
 | `referral_suspicion_outcomes` | `20261109000033_suspicion_outcomes` | `referral_id` UUID, `suspicion_version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `kind` TEXT, `body` JSONB |
 | `referral_suspicion_versions` | `20261109000031_referral_suspicions` | `referral_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `pathway_id` TEXT, `pathway_version` INTEGER, `body` JSONB |
 | `referral_unmatched` | `20261103000023_referral_unmatched` | `unmatched_id` UUID, `received_at` TIMESTAMPTZ, `agent` TEXT, `kind` TEXT, `referral_ref` TEXT, `event` TEXT, `reasons` JSONB, `note` TEXT, `message` TEXT |
@@ -66,6 +67,7 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `patient_photo_current` | `20261021000006_patient_photos` |
 | `referral_current` | `20261102000022_referrals` |
 | `referral_suspicion_current` | `20261109000031_referral_suspicions`, `20261109000032_suspicion_carried_from` |
+| `referral_suspicion_outcome_current` | `20261110000035_suspicion_outcome_errors` |
 | `relationship_current` | `20261021000004_relationship_versions`, `20261021000011_current_views_seek` |
 | `result_current` | `20261109000029_results` |
 | `watch_entry_current` | `20261109000034_watch_lists` |

@@ -65,6 +65,16 @@ pub struct EndRequest {
     pub expected_version: i32,
 }
 
+/// Mark a suspicion's outcome entered in error (RS-7).
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MarkInErrorRequest {
+    /// The outcome's `seq`; anything but the current outcome is a 409.
+    pub seq: i32,
+    /// Why it was entered in error.
+    pub reason: String,
+}
+
 const RESOURCE: &str = "Condition";
 
 fn failure(e: StoreError) -> ApiError {
@@ -414,6 +424,84 @@ pub(super) async fn end(
                 return r.into_response();
             }
             (StatusCode::CREATED, Json(history)).into_response()
+        }
+        Err(e) => {
+            let _ = tx.rollback().await;
+            if let Some(kind) = kind_of(&e)
+                && let Some(r) = refused(&ctx, &agent, purpose, Action::Update, kind).await
+            {
+                return r.into_response();
+            }
+            failure(e).into_response()
+        }
+    }
+}
+
+/// `POST …/referrals/{referral_id}/suspicion/outcome/entered-in-error`: 200 with the whole history, the
+/// suspicion open again (RS-7). The audit row names the outcome's number, never its kind, the diagnosis
+/// or the reason.
+pub(super) async fn mark_outcome_in_error(
+    State(ctx): State<AppContext>,
+    Extension(agent): Extension<Agent>,
+    Extension(subject): Extension<Subject>,
+    headers: HeaderMap,
+    Path((patient, referral_id)): Path<(String, String)>,
+    Json(request): Json<MarkInErrorRequest>,
+) -> Response {
+    let purpose = match gate(
+        &ctx,
+        &agent,
+        &subject,
+        &headers,
+        &patient,
+        policy::Action::Update,
+        Action::Update,
+    )
+    .await
+    {
+        Ok(p) => p,
+        Err(r) => return r.into_response(),
+    };
+    let mut tx = match begin(&ctx.pool()).await {
+        Ok(t) => t,
+        Err(r) => return r.into_response(),
+    };
+    match store::mark_outcome_in_error(
+        &mut *tx,
+        &patient,
+        &referral_id,
+        &agent.0,
+        request.seq,
+        &request.reason,
+        chrono::Utc::now(),
+    )
+    .await
+    {
+        Ok(history) => {
+            if let Err(r) = audit_resource(
+                &mut *tx,
+                &agent,
+                Access {
+                    action: Action::Update,
+                    outcome: 0,
+                    purpose,
+                    resource: RESOURCE,
+                    patient_id: Some(&patient),
+                },
+                serde_json::json!({
+                    "suspicion": true,
+                    "referral": referral_id,
+                    "outcome_entered_in_error": request.seq,
+                }),
+            )
+            .await
+            {
+                return r.into_response();
+            }
+            if let Err(r) = commit(tx).await {
+                return r.into_response();
+            }
+            (StatusCode::OK, Json(history)).into_response()
         }
         Err(e) => {
             let _ = tx.rollback().await;

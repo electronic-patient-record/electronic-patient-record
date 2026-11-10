@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-10 - An outcome recorded in error (RS-7, H-054)
+
+- **Clinical risk:** yes. A clinician can reopen a suspicion whose outcome was recorded in error, so it returns to the referrer's worklist and its targets count again. Hazard H-054's control and residual risk are updated.
+- **Built:** migration `20261110000035_suspicion_outcome_errors.sql`. It numbers each outcome by `seq` (the existing rows read as 1), re-keys the table on referral and `seq`, and adds an append-only error table and a view of the current outcome. No row is changed. `POST /api/patients/{id}/referrals/{referral_id}/suspicion/outcome/entered-in-error {seq, reason}` marks the current outcome. The suspicion is then open again: it can be amended, it is back on the worklist if its referral has ended, and it can take a new outcome. The history keeps the first outcome and the reason under `outcomes_in_error`. A stale `seq` is 409. The audit row names the `seq` only. The censuses (audit switch, audit refusal, personal-data inventory, OpenAPI, route table, schema map) are updated.
+- **Checked:** the HTTP test (blank reason refused, wrong `seq` 409, marked, reopened, back on the list, amended, confirmed as `seq` 2, the first outcome kept), the audit refusal drive, all database-free tests, and the database suite on a fresh database.
+- **Not done / not verified:** any treating role may mark an outcome in error, and no second person confirms it. A stop already sent to the PAS cannot be undone there; this is written down but no sender exists. No screen exists. No clinician has reviewed whether reopening should restart anything other than the worklist and the targets.
+
 ## 2026-11-10 - Suspicion due days in the site's days (RS-6, H-053)
 
 - **Clinical risk:** yes. A due day and whether it is overdue can move by one day near midnight, for a site outside UTC. Hazard H-053's cause and control are updated.

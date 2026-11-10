@@ -374,6 +374,43 @@ async fn a_suspicion_keeps_its_point_of_suspicion_and_follows_its_pathway() {
         assert_eq!(r.status_code(), StatusCode::UNPROCESSABLE_ENTITY, "{}", r.text());
         assert!(listed(rid2.clone()).await.is_empty(), "off the list once it has an outcome");
 
+        // RS-7. An outcome recorded in error is marked so, with a reason, naming its seq: the suspicion
+        // is open again, back on the list, may be amended and ended anew; the first outcome is kept.
+        assert_eq!(ended["outcome"]["seq"], 1);
+        let error_url = format!("{end_url}/entered-in-error");
+        for (body, status) in [
+            (json!({ "seq": 1, "reason": " " }), StatusCode::UNPROCESSABLE_ENTITY),
+            (json!({ "seq": 2, "reason": "wrong patient's echo" }), StatusCode::CONFLICT),
+            (json!({ "seq": 1, "reason": "wrong patient's echo" }), StatusCode::OK),
+            (json!({ "seq": 1, "reason": "again" }), StatusCode::CONFLICT),
+        ] {
+            let r = server.post(&error_url).add_header(dh.clone(), dv.clone()).json(&body).await;
+            assert_eq!(r.status_code(), status, "{body}: {}", r.text());
+        }
+        let reopened: Value = server.get(&url2).add_header(dh.clone(), dv.clone()).await.json();
+        assert_eq!(reopened["open"], true);
+        assert_eq!(reopened["outcome"], Value::Null);
+        assert_eq!(reopened["outcomes_in_error"][0]["outcome"]["outcome"]["kind"], "ruled-out");
+        assert_eq!(reopened["outcomes_in_error"][0]["reason"], "wrong patient's echo");
+        assert_eq!(listed(rid2.clone()).await, ["open-suspicion"], "back on the list");
+        let r = server
+            .put(&url2)
+            .add_header(dh.clone(), dv.clone())
+            .json(&json!({ "suspicion": late, "expected_version": 1, "reason": "seen in clinic" }))
+            .await;
+        assert_eq!(r.status_code(), StatusCode::OK, "amendable again: {}", r.text());
+        let r = server
+            .post(&end_url)
+            .add_header(dh.clone(), dv.clone())
+            .json(&json!({ "outcome": { "kind": "confirmed", "diagnosis": "Heart failure with reduced ejection fraction",
+                                        "detail": "echocardiogram" }, "expected_version": 2 }))
+            .await;
+        assert_eq!(r.status_code(), StatusCode::CREATED, "{}", r.text());
+        let r: Value = r.json();
+        assert_eq!((r["outcome"]["seq"].clone(), r["outcome"]["suspicion_version"].clone()), (json!(2), json!(2)));
+        assert_eq!(r["outcomes_in_error"].as_array().unwrap().len(), 1, "the first is kept");
+        assert!(listed(rid2.clone()).await.is_empty());
+
         // Another patient's path to this referral is a miss; reception and patient access are refused.
         let crossed = server
             .get(&format!("/api/patients/{other}/referrals/{rid}/suspicion"))

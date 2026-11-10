@@ -2018,6 +2018,25 @@
         ],
         "type": "object"
       },
+      "MarkSuspicionOutcomeInError": {
+        "additionalProperties": false,
+        "description": "Marks the current outcome entered in error (RS-7): the suspicion is open again and may be amended or given a new outcome.",
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "seq": {
+            "description": "The current outcome's seq; anything else is a 409.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "seq",
+          "reason"
+        ],
+        "type": "object"
+      },
       "NewWatchEntry": {
         "additionalProperties": false,
         "properties": {
@@ -4067,11 +4086,16 @@
           "recorded_at": {
             "type": "string"
           },
+          "seq": {
+            "description": "Its number among the suspicion's outcomes, from 1; named to mark it entered in error.",
+            "type": "integer"
+          },
           "suspicion_version": {
             "type": "integer"
           }
         },
         "required": [
+          "seq",
           "suspicion_version",
           "author",
           "recorded_at",
@@ -4235,6 +4259,33 @@
               }
             ]
           },
+          "outcomes_in_error": {
+            "description": "Earlier outcomes marked entered in error (RS-7), oldest first; kept, never removed.",
+            "items": {
+              "properties": {
+                "marked_at": {
+                  "type": "string"
+                },
+                "marked_by": {
+                  "type": "string"
+                },
+                "outcome": {
+                  "$ref": "#/components/schemas/StoredSuspicionOutcome"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "outcome",
+                "marked_by",
+                "marked_at",
+                "reason"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
           "versions": {
             "items": {
               "$ref": "#/components/schemas/StoredSuspicion"
@@ -4246,7 +4297,8 @@
           "current",
           "versions",
           "open",
-          "outcome"
+          "outcome",
+          "outcomes_in_error"
         ],
         "type": "object"
       },
@@ -9912,6 +9964,117 @@
           }
         ],
         "summary": "POST /api/patients/{id}/referrals/{referral_id}/suspicion/outcome",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Update",
+        "x-epr-resource": "Condition"
+      }
+    },
+    "/api/patients/{id}/referrals/{referral_id}/suspicion/outcome/entered-in-error": {
+      "post": {
+        "operationId": "postApiPatientsIdReferralsReferral_idSuspicionOutcomeEntered-in-error",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "referral_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "1 to 128 letters, digits or . _ : -. A retry with the same key and the same request returns the first answer (header `Idempotent-Replayed: true`) and writes nothing; the same key for a different request is a 422; a key whose first request is unfinished is a 409. Only a success is kept; keys expire after 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkSuspicionOutcomeInError"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuspicionHistory"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionConflict"
+                }
+              }
+            },
+            "description": "A likely duplicate or a stale expected_version."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/patients/{id}/referrals/{referral_id}/suspicion/outcome/entered-in-error",
         "tags": [
           "patients"
         ],

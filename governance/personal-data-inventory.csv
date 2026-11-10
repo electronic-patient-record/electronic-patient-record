@@ -427,3 +427,18 @@ watch_entry_current,recorded_at,none,When the version was recorded,record
 watch_entry_current,author,staff-identifier,Who wrote it,record
 watch_entry_current,status,none,Active or ended,record
 watch_entry_current,body,health,Why the patient is on the list and its last day and why it was ended,record
+referral_suspicion_outcomes,seq,none,The outcome's number among the suspicion's outcomes,record
+referral_suspicion_outcome_errors,referral_id,none,The referral whose suspicion's outcome was entered in error,record
+referral_suspicion_outcome_errors,seq,none,Which outcome,record
+referral_suspicion_outcome_errors,patient_id,identifier,Links a record to the patient,record
+referral_suspicion_outcome_errors,recorded_at,none,When it was marked,record
+referral_suspicion_outcome_errors,author,staff-identifier,Who marked it,record
+referral_suspicion_outcome_errors,reason,health,Why the outcome was entered in error,record
+referral_suspicion_outcome_current,referral_id,none,The referral whose suspicion ended,record
+referral_suspicion_outcome_current,seq,none,The outcome's number,record
+referral_suspicion_outcome_current,suspicion_version,none,The suspicion version it ended,record
+referral_suspicion_outcome_current,patient_id,identifier,Links a record to the patient,record
+referral_suspicion_outcome_current,recorded_at,none,When the outcome was recorded,record
+referral_suspicion_outcome_current,author,staff-identifier,Who recorded it,record
+referral_suspicion_outcome_current,kind,health,Confirmed or ruled out or withdrawn,record
+referral_suspicion_outcome_current,body,health,The diagnosis or who ruled it out and on what or why it was withdrawn,record

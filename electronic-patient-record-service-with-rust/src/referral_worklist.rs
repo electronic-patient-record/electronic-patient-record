@@ -139,7 +139,7 @@ fn waiting(timeouts: &Timeouts) -> String {
                     WHEN c.state IN ({ended})
                          AND EXISTS (SELECT 1 FROM referral_suspicion_versions s
                                      WHERE s.referral_id = c.referral_id)
-                         AND NOT EXISTS (SELECT 1 FROM referral_suspicion_outcomes o
+                         AND NOT EXISTS (SELECT 1 FROM referral_suspicion_outcome_current o
                                          WHERE o.referral_id = c.referral_id)
                          AND NOT EXISTS (SELECT 1 FROM referral_suspicion_versions r
                                          WHERE r.carried_from = c.referral_id) THEN 'open-suspicion'

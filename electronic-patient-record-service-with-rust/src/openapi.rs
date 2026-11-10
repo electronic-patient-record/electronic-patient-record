@@ -483,13 +483,17 @@ fn suspicion_schemas() -> Value {
             }
         },
         "SuspicionHistory": {
-            "type": "object", "required": ["current", "versions", "open", "outcome"],
+            "type": "object", "required": ["current", "versions", "open", "outcome", "outcomes_in_error"],
             "properties": {
                 "current": {"oneOf": [{"$ref": "#/components/schemas/StoredSuspicion"}, {"type": "null"}]},
                 "versions": {"type": "array", "items": {"$ref": "#/components/schemas/StoredSuspicion"}},
                 "open": {"type": "boolean", "description": "A suspicion with no outcome."},
                 "outcome": {"oneOf": [{"$ref": "#/components/schemas/StoredSuspicionOutcome"}, {"type": "null"}],
-                    "description": "How it ended (RS-3). Once ended, each plan's overdue is judged at the outcome, not now."}
+                    "description": "How it ended (RS-3). Once ended, each plan's overdue is judged at the outcome, not now."},
+                "outcomes_in_error": {"type": "array", "description": "Earlier outcomes marked entered in error (RS-7), oldest first; kept, never removed.",
+                    "items": {"type": "object", "required": ["outcome", "marked_by", "marked_at", "reason"], "properties": {
+                        "outcome": {"$ref": "#/components/schemas/StoredSuspicionOutcome"},
+                        "marked_by": {"type": "string"}, "marked_at": {"type": "string"}, "reason": {"type": "string"}}}}
             }
         },
         "SuspicionOutcome": {
@@ -505,10 +509,19 @@ fn suspicion_schemas() -> Value {
             }
         },
         "StoredSuspicionOutcome": {
-            "type": "object", "required": ["suspicion_version", "author", "recorded_at", "outcome"],
+            "type": "object", "required": ["seq", "suspicion_version", "author", "recorded_at", "outcome"],
             "properties": {
+                "seq": {"type": "integer", "description": "Its number among the suspicion's outcomes, from 1; named to mark it entered in error."},
                 "suspicion_version": {"type": "integer"}, "author": {"type": "string"}, "recorded_at": {"type": "string"},
                 "outcome": {"$ref": "#/components/schemas/SuspicionOutcome"}
+            }
+        },
+        "MarkSuspicionOutcomeInError": {
+            "type": "object", "additionalProperties": false, "required": ["seq", "reason"],
+            "description": "Marks the current outcome entered in error (RS-7): the suspicion is open again and may be amended or given a new outcome.",
+            "properties": {
+                "seq": {"type": "integer", "description": "The current outcome's seq; anything else is a 409."},
+                "reason": {"type": "string", "maxLength": 500}
             }
         },
         "EndSuspicion": {
@@ -1591,6 +1604,14 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
         "/api/patients/{id}/referrals/{referral_id}/suspicion/outcome",
         "EndSuspicion",
         "201",
+        "SuspicionHistory",
+        "VersionConflict",
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/referrals/{referral_id}/suspicion/outcome/entered-in-error",
+        "MarkSuspicionOutcomeInError",
+        "200",
         "SuspicionHistory",
         "VersionConflict",
     ),
