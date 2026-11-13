@@ -4,7 +4,7 @@
 //! names the version it was made on. When a result is amended or corrected after sign-off, the new
 //! version is unsigned and the result reads as *changed since sign-off*, with the signed version shown
 //! beside it, so a change is never hidden behind an old tick (the Welsh Clinical Portal's results
-//! sign-off is the source of the idea: `spec/nhs-wales/index.md`).
+//! sign-off is the source of the idea: `spec/wales/index.md`).
 //!
 //! Not built here: routing a result to whoever ordered it, an inbox across patients, escalation of an
 //! unsigned abnormal result, and an HL7 ORU feed (OR-4's remaining slices).

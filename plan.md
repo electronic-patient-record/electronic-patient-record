@@ -24,7 +24,7 @@ Build open-source electronic patient record (EPR) software that:
 3. is **usable**: it targets the documented causes of clinician burnout
    (documentation burden, alert fatigue, inbox load, latency);
 4. is **compliance-ready**, not claimed compliant: it supports a deployer's
-   HIPAA, UK GDPR, NHS DSPT / DTAC, DCB0129 / DCB0160 and ONC (g)(10) work
+   HIPAA, UK GDPR, England's DSPT / DTAC, DCB0129 / DCB0160 and ONC (g)(10) work
    with evidence rather than slogans;
 5. reuses the **project-portfolio-management tech stack and monorepo
    discipline** unchanged wherever it fits.
@@ -134,13 +134,13 @@ adopted project combines a FHIR-native core with a complete, safety-engineered
 and usability-tested clinical UI. That combination, in a memory-safe language
 with a small dependency tree, is the product.
 
-### 3.3 UK NHS context
+### 3.3 UK health service context
 
-- **National services:** PDS (NHS number, FHIR R4), SCR, EPS (FHIR R4),
+- **National services:** PDS (national health number, FHIR R4), SCR, EPS (FHIR R4),
   e-Referral Service, National Record Locator, CIS2 authentication. GP
   Connect is a FHIR (STU3) API set.
 - **Policy:** the 10 Year Health Plan (July 2025) commits to a "Single
-  Patient Record" visible in the NHS App from 2028.
+  Patient Record" visible in England's national patient app from 2028.
 - **Assurance:** DTAC (refreshed March 2026); DCB0129 v4.2 for manufacturers
   and DCB0160 v3.2 for deployers, which require a Clinical Safety Officer,
   CRMP, hazard log and safety case. A review consultation closed in
@@ -161,8 +161,8 @@ with a small dependency tree, is the product.
 | Legacy feeds | **HL7 v2.5.1** inbound ADT / ORU / SIU through an adapter; outbound VXU later | Labs, ADT and devices still use v2. |
 | Documents | IPS document `$summary`; **C-CDA R2.1** export only when a US network requires it | HTI-5 (proposed, not final) would drop C-CDA criteria. Do not invest early. |
 | Terminology | SNOMED CT, LOINC, UCUM, ICD-10 / ICD-11, RxNorm (US), dm+d (UK), CVX. External terminology server (Snowstorm or Ontoserver) behind a `TerminologyService` trait, with an embedded subset for tests | Licensing and size make embedding the full content wrong. SNOMED is free in member countries. CPT needs an AMA licence. |
-| Identity matching | Fellegi-Sunter style weighted matching in the matcher crate, with national identifiers (NHS number via PDS) as deterministic keys; FHIR `Patient/$match`; IHE PDQm | Reuses the project-portfolio-management matcher pattern. |
-| Audit | FHIR **AuditEvent** using IHE **BALP** patterns; ATNA syslog export optional | ONC (d)(2) / (d)(3), NHS, HIPAA. |
+| Identity matching | Fellegi-Sunter style weighted matching in the matcher crate, with national identifiers (national health number via PDS) as deterministic keys; FHIR `Patient/$match`; IHE PDQm | Reuses the project-portfolio-management matcher pattern. |
+| Audit | FHIR **AuditEvent** using IHE **BALP** patterns; ATNA syslog export optional | ONC (d)(2) / (d)(3), UK health service rules, HIPAA. |
 | openEHR | **Not** the persistence model in 1.0; study its versioning (VERSIONED_OBJECT, contribution) and archetypes for form content | One canonical model (FHIR) keeps the team small. Revisit at M6. |
 
 ## 5. Usability and safety evidence (why the UI is designed the way it is)
@@ -241,7 +241,7 @@ in the workspace.
 
 ### 6.4 Authentication
 
-- Staff: OIDC (Entra ID / Keycloak / NHS CIS2). **Keycloak is built** (2026-10-20): the API verifies its access tokens directly (`operations/keycloak/README.md`); the rest goes through the authentication service,
+- Staff: OIDC (Entra ID / Keycloak / England's CIS2 staff login). **Keycloak is built** (2026-10-20): the API verifies its access tokens directly (`operations/keycloak/README.md`); the rest goes through the authentication service,
   which issues PASETO v4.public tokens. The service verifies them offline. MFA
   is required. Passkeys are supported. Fast user switching is a UI concern.
 - SMART on FHIR: an authorisation server maps SMART scopes to the same policy
@@ -296,7 +296,7 @@ in the workspace.
 
 ### 7.2 Out of scope for 1.0 (named so nobody assumes otherwise)
 
-Billing and claims (X12, NHS PbR), a licensed drug knowledge base (we
+Billing and claims (X12, England's PbR), a licensed drug knowledge base (we
 integrate one), e-prescribing network certification (Surescripts, EPS),
 EPCS, PACS (we link via ImagingStudy and DICOMweb), LIS/RIS internals, eMAR
 with barcode scanning (planned for M7), ONC certification itself, eCQM / QRDA
@@ -416,8 +416,8 @@ needs a hazard-log row (AS-1) in the same commit.
 | # | Defect | Evidence |
 |---|---|---|
 | 1 | `compare(a, b)` is not symmetric: with given-name lists of equal length the per-token average runs only from `a`, so `["John","J"]` vs `["John","Smith"]` is AutoLink one way (0.975) and Review the other (0.875). The only symmetry test uses an invalid date. | matcher `src/engine.rs:309`, `tests/matching.rs:60` |
-| 2 | Placeholder NHS numbers (`0000000000`, `1111111111`, `9999999999` …) pass modulus 11 and count as a shared verified identifier, so two people carrying the same dummy number and birth date AutoLink with no name check. | matcher `src/nhs.rs:9` |
-| 3 | A shared NHS number with two different full birth dates AutoLinks unless date similarity is below 0.5; spec §4 says any difference goes to Review. | matcher `src/engine.rs:180` |
+| 2 | Placeholder national health numbers (`0000000000`, `1111111111`, `9999999999` …) pass modulus 11 and count as a shared verified identifier, so two people carrying the same dummy number and birth date AutoLink with no name check. | matcher `src/national_number.rs:9` |
+| 3 | A shared national health number with two different full birth dates AutoLinks unless date similarity is below 0.5; spec §4 says any difference goes to Review. | matcher `src/engine.rs:180` |
 | 4 | Birth-date "typo" credit (0.6) is given for any day, month or year difference (1950 vs 2010), and impossible dates (`2020-02-31`) parse. | matcher `src/engine.rs:350`, `src/normalize.rs:55` |
 | 5 | A given name that folds to nothing scores `Some(0.0)` instead of `None`, breaking "absent is not zero". | matcher `src/engine.rs:302` |
 | 6 | Wrong-patient display: moving from patient A to B leaves A's banner and allergies under B's URL until B loads, and a slow A response can overwrite B (no stale-response guard). `PatientBanner` already guards its photo correctly. | UI `src/routes/patients/[id]/+page.svelte:41` |
@@ -495,20 +495,20 @@ Ranked by value to this project and by how firm the evidence is.
 
 | Rank | Capability | Why | Depends on |
 |---|---|---|---|
-| 1 | Medication reconciliation (admit, transfer, discharge) | In 1.0 scope (§7.1) but no task; NHS DAPB4013 medicine and allergy transfer standard | RC-5, CA-1, RC-3 |
+| 1 | Medication reconciliation (admit, transfer, discharge) | In 1.0 scope (§7.1) but no task; England's DAPB4013 medicine and allergy transfer standard | RC-5, CA-1, RC-3 |
 | 2 | FHIR `AuditEvent` with IHE BALP, and IHE PDQm/PIXm | Decided in §4 but no task; audit stays required in the UK and under HIPAA whatever HTI-5 does | AU-1, AU-2, ID-6 |
 | 3 | Passkeys / phishing-resistant MFA, fast user switching | §6.4 promises passkeys; NIST SP 800-63-4 asks AAL2 to offer a phishing-resistant option **[uncertain wording]** | SE-9, SE-7 |
 | 4 | SDC adaptive forms with `$populate` / `$extract` | SDC STU4 published 2025; makes DO-4 concrete and is a prerequisite for DTR | DO-4 |
-| 5 | Ambient AI scribe governance (capture consent, transcript-beside-draft review, agent Provenance, DCB0160 template) | NHS England guidance on AI ambient scribing; MHRA treats a diagnosis-suggesting scribe as a device **[uncertain: version]** | DO-6, SE-2, AS-1 |
+| 5 | Ambient AI scribe governance (capture consent, transcript-beside-draft review, agent Provenance, DCB0160 template) | England's national health body guidance on AI ambient scribing; MHRA treats a diagnosis-suggesting scribe as a device **[uncertain: version]** | DO-6, SE-2, AS-1 |
 | 6 | AI agent / MCP access boundary (agents as principals, per-tool scopes, audited) | Medplum ships an MCP server; Epic agent roadmap (HIMSS26); ECRI 2026 hazard #1 is AI | SE-1, IO-2, AU-1 |
-| 7 | NHS national APIs: PDS FHIR, GP Connect Access Record Structured (STU3 adapter), NRL, BaRS | Named in §3.3, no tasks | ID-2, ID-6, CA-3 |
+| 7 | England's national health APIs: PDS FHIR, GP Connect Access Record Structured (STU3 adapter), NRL, BaRS | Named in §3.3, no tasks | ID-2, ID-6, CA-3 |
 | 8 | SMART Health Links / Cards for patient-shared summaries at check-in | HL7 SHC&L IG STU1; CMS "kill the clipboard" pledges | IO-5, CA-5, ID-4 |
 | 9 | EHDS / European Patient Summary on IPS 2.0 | Regulation (EU) 2025/327; cross-border summary due 2029 **[uncertain: dates]** | IO-5, IO-3 |
 | 10 | Post-quantum readiness: crypto inventory and algorithm agility for audit MAC, PASETO, TLS | NCSC timeline: plan by 2028, migrate 2028–2031, done by 2035; long-retention records | AU-1, SE-7 |
 | 11 | Patient-generated and device observations, quarantined until reviewed | Home BP and glucose via the portal | RC-6, DO-5, CA-5 |
 | 12 | Accessibility conformance evidence for the portal (screen-reader audit, ACR) | HHS Section 504 rule requires WCAG 2.1 AA **[uncertain: deadline moved to 2027]** | CA-5, AS-4 |
 | 13 | Da Vinci CRD/DTR/PAS (electronic prior authorisation) | HTI-4 final (g)(31)–(g)(33); CMS-0057-F API by 2027 **[uncertain]**. US market only (OQ-4) | OR-5, DO-4 |
-| 14 | Single Patient Record (England) outbound feed | NHS Modernisation Bill (May 2026) **[uncertain: status; no spec yet]**. Watch, then build | IO-4, IO-6 |
+| 14 | Single Patient Record (England) outbound feed | England's health service modernisation bill (May 2026) **[uncertain: status; no spec yet]**. Watch, then build | IO-4, IO-6 |
 | 15 | TEFCA participation via Facilitated FHIR | SOP 2.0 effective March 2026 **[uncertain: final text]**. US only | IO-2, ID-6 |
 | 16 | UK EPS FHIR Prescribing API | EPS split into prescribing and dispensing FHIR APIs; §7.2 excludes it from 1.0, so post-1.0 | OR-1, OR-6 |
 | 17 | Digital quality measures (CQL on QI-Core) outside the clinical database | CMS moving eCQMs to FHIR dQMs **[uncertain: 2030]**; §7.2 excludes eCQM reporting from 1.0 | IO-7, IO-4 |
@@ -548,7 +548,7 @@ those features on its account.
 - Secondary sources only, so treat as **[uncertain]**:
   - corbado.com (NIST 800-63-4 passkeys)
   - accessibilitychecker.org (HHS Section 504 dates)
-  - freevacy.com (NHS Modernisation Bill)
+  - freevacy.com (England's health service modernisation bill)
   - capminds.com (CMS-0057-F)
   - Wikipedia (EHDS)
 
@@ -585,7 +585,7 @@ From search summaries only; the ALSG help-centre page and the ALSG introduction 
   already populated with content.
 - The group gives licensed vendors a detailed map of each flowchart, so discriminator order is preserved. An
   accreditation scheme covers software design, licensing, audit and timely updates.
-- Price signals: a 2025 NHS trust contract with Wiley, £17,500 excl. VAT over five years; an ambulance trust paid
+- Price signals: a 2025 hospital trust contract with Wiley, £17,500 excl. VAT over five years; an ambulance trust paid
   £12,000 for three years (2019 FOI). Prices are per organisation and **[uncertain]** for us.
 - The Royal College of Emergency Medicine reports that the group no longer supports earlier editions, so a
   deployer must run the current version and our packs need an update path.
@@ -757,14 +757,14 @@ Summaries only, so treat details as **[uncertain]**.
 ## 17. Research pass 2026-10-23: typical EPR modules
 
 Evidence base, stated plainly: the module list you pasted (six groups) and three standard web searches, which gave
-search summaries only. Not read: the NHS Digital Capabilities Framework itself (a source says it needs a login), the
+search summaries only. Not read: England's Digital Capabilities Framework itself (a source says it needs a login), the
 HIMSS EMRAM criteria, the PRSB discharge standard (the search returned nothing on it), or any vendor's module. What is
 below is a gap analysis against our own plan and tasks, and facts from the searches are marked **[uncertain]**
 for AS-11 to confirm.
 
 ### 17.1 What the searches added
 
-- NHS England's developer guidance groups EPR modules as records, assessments and plans, ordering and managing
+- England's national health body's developer guidance groups EPR modules as records, assessments and plans, ordering and managing
   medicines, and asset and resource management (staff and beds), and says not every module applies to every care
   setting. The Digital Capabilities Framework (formerly Minimum Digital Foundations) has over 100 core requirements
   and is broadly in line with HIMSS EMRAM stage 5 **[uncertain: secondary source]**.
@@ -772,7 +772,7 @@ for AS-11 to confirm.
   **[uncertain]**. §7.2 already plans eMAR for M7, but no task exists for it.
 - Ombudsman findings (SPSO) show missed admission assessments (MUST, falls, sepsis screen) as a recurring harm, which
   supports building them as required, time-based assessments **[uncertain: one case, a secondary summary]**.
-- No NHS-published FHIR profile was found for fluid balance, VTE risk or sepsis screening. A third-party guide
+- No FHIR profile published by the UK health service was found for fluid balance, VTE risk or sepsis screening. A third-party guide
   (Savannah GHI) has falls and MUST codes. Neither is a source to build on.
 - In 2025 data, 93% of providers had an EPR but only 30% had fully integrated bi-directional data flows
   **[uncertain]**. Integration, not module count, is the weak point, so the module work stays behind the standards
@@ -836,9 +836,9 @@ post-1.0 items wait.
 
 Summaries only, so treat details as **[uncertain]**.
 
-- [NHS England developer guidance: acute, community and mental health care](https://nhsd-proxy.openprescribing.net/developer/guides-and-documentation/building-healthcare-software/acute-community-and-mental-health-care)
-- [HTN: NHS England on digital by default, EPR adoption and optimisation](https://htn.co.uk/2026/04/07/nhs-england-on-digital-by-default-epr-adoption-optimisation-improving-workflows/)
-- [The Access Group: HSC and the NHS DCF](https://www.theaccessgroup.com/en-gb/blog/hsc-nhs-dcf/) (secondary)
+- [England's national health body, developer guidance: acute, community and mental health care](https://nhsd-proxy.openprescribing.net/developer/guides-and-documentation/building-healthcare-software/acute-community-and-mental-health-care)
+- [HTN: England's national health body on digital by default, EPR adoption and optimisation](https://htn.co.uk/2026/04/07/nhs-england-on-digital-by-default-epr-adoption-optimisation-improving-workflows/)
+- [The Access Group: HSC and England's DCF](https://www.theaccessgroup.com/en-gb/blog/hsc-nhs-dcf/) (secondary)
 - [Digital Health: Gloucestershire barcode medication verification](https://digitalhealth.net/2024/09/gloucestershire-hospitals-utilises-barcode-tech-to-verify-medication)
 - [SPSO decision report 201803102](https://www.spso.org.uk/decision-reports/2019/july/decision-report-201803102-201803102)
 - [Savannah GHI FHIR profile guide](https://build.fhir.org/ig/savannahghi/sil_fhir_profile_ig/CodeSystem-clinical-score-codesystem.html) (third party)
@@ -852,7 +852,7 @@ is what its documents claim, not something I checked running. Nothing in that re
 
 ### 18.1 What the PAS is
 
-An NHS Wales **administrative, not clinical** system (Axum, SeaORM, Postgres, a SvelteKit UI, 10 locales). It owns
+A Welsh health service **administrative, not clinical** system (Axum, SeaORM, Postgres, a SvelteKit UI, 10 locales). It owns
 appointments, slots and schedules, waiting lists and RTT clocks, referrals, reminders and replies, letters, transport
 and virtual-visit requests, and the measurement of fairness. It holds only opaque `person_id` and `worker_id`; identity
 and workforce live in two other services (`person-service`, `worker-service`). It has a transactional outbox (HL7 v2 and
@@ -913,7 +913,7 @@ adapter, and PA-1 records the decision.
   must be at-least-once and idempotent, and the EPR must show the age of what it displays.
 - The PAS is administrative on purpose. Importing its rules (looser analytics, no clinical data) into a clinical
   record would be wrong, and importing clinical detail into its messages would break its NFR-13.
-- Its Welsh context (RTT rules, DHCW, NHS Wales App) does not transfer to England, and we should not copy it.
+- Its Welsh context (RTT rules, Wales's national digital health body, the Welsh national patient app) does not transfer to England, and we should not copy it.
 - Two repositories under one author can drift. Pin the contract (an OpenAPI and a FHIR profile) and test against it.
 
 ### 18.6 Open questions (to move to spec/16-open-questions.md)
@@ -968,7 +968,7 @@ Most of its flow is already ours: registration and matching (ID-*), triage (TR-*
 | # | Idea | Where it comes from | Verdict |
 |---|---|---|---|
 | 1 | **Unknown-patient registration** with a placeholder id, "identity verification required", unverified fields and conversion to a verified record | features 01 and 02 | **Take (EC-2).** We have no task for it, and it is a wrong-patient risk both ways: a placeholder merged into the wrong person, or a conscious patient given a new record beside an existing one |
-| 2 | **Placeholder names must not count as evidence** | the `UNK` ids | **Take (EC-2).** The same family of fault as the placeholder NHS numbers fixed in CQ-2 |
+| 2 | **Placeholder names must not count as evidence** | the `UNK` ids | **Take (EC-2).** The same family of fault as the placeholder national health numbers fixed in CQ-2 |
 | 3 | **Corrected and cancelled critical results**: cancel the alert, tell every recipient, remove the red flag, audit the lab error | feature 10 | **Take (EC-3).** OR-4 does not mention corrections |
 | 4 | **Acknowledgement and escalation of a critical result** | feature 10 | **Take with EC-3.** Check OR-4 and OR-5 first |
 | 5 | **Structured justification for an override** (rationale, risk, monitoring plan, alternatives reviewed) | features 11 and 12 | **Take (EC-4)** as acceptance additions to EM-2, OR-5 and RC-5 |
@@ -1046,7 +1046,7 @@ The rule, its evidence table and what is enforced today are in [`spec/hazard/ind
 
 ### 20.3 Risks and what is uncertain
 
-- I read vendor guides, not the NHS England standard text: closure criteria and the retention period are **[uncertain]**
+- I read vendor guides, not the standard text from England's national health body: closure criteria and the retention period are **[uncertain]**
   (AS-11).
 - Item 2 tightens a check that must never be weakened to get green; the existing 35 rows have no closure data, so none is
   closed today and none is affected.
@@ -1320,7 +1320,7 @@ the ideas to `plan.md`, `tasks.md` and `spec/*`. Nothing was built. The draft st
 [`spec/interoperability/closed-loop-referral.md`](spec/interoperability/closed-loop-referral.md).
 
 **Evidence base, stated plainly.** I read seven pages of the guide through a page-to-text fetch that answers a prompt, not the
-raw pages: the home page, closed-loop referral (360X), the order-and-report workflow pattern, the NHS England services
+raw pages: the home page, closed-loop referral (360X), the order-and-report workflow pattern, the services of England's national health body
 assessment, patient flags, virtual wards and dynamic care planning. I did **not** read its other pages (the referral
 forms, outcome reports, EU Health Data API, directory, patient identity, transport and data-model pages, the BaRS and
 diagnostics appendices), its source repository, or the IHE and HL7 specifications it builds on, so everything about 360X, QEDm, MHD
@@ -1330,7 +1330,7 @@ and DCP is the guide's own account. The fetch tool summarises, so a quotation be
 
 An HL7 FHIR R4 Implementation Guide, version 0.1.0, "Draft as of 2026-11-02", built with the FHIR build tools, **copyright
 Kevin Mayfield (one named author)**, **no licence stated**, under an example domain (`fhir.acmeexample.org.uk`). It calls itself
-"a proof of concept", "demonstration only", "not an authoritative source", "not endorsed by NHS England, IHE or HL7", and says
+"a proof of concept", "demonstration only", "not an authoritative source", "not endorsed by [England's national health body], IHE or HL7", and says
 it "must not be used for implementation or clinical purposes". Its subject is the **closed-loop referral**: a clinician
 refers, the recipient accepts or declines, delivers care, and returns a result "so the referrer knows what happened". It adapts
 IHE 360X to England, proposes one **order-out-and-report-back** pattern that also covers lab tests, imaging and prescriptions,
@@ -1348,10 +1348,10 @@ pattern, virtual wards (hospital at home) and dynamic care planning (a shared, v
   it answers. We have no written rule for an outcome that cannot be matched to its request (OR-4 routes results to the ordering clinician; it says nothing about an unmatched one), so PC-2 proposes one: show it to a person, do not file it.
 - **Where we are ahead.** It has no authorisation, consent, break-the-glass or tamper-evident audit design beyond a mention of
   audit events; no timeouts, retries, acknowledgements or escalation ("the source has no section on timeouts"); identifiers
-  that are typed (system and value) only in the sense of NHS Number plus a local MRN, where BaRS leaves a patient with no NHS Number
+  that are typed (system and value) only in the sense of national health number plus a local MRN, where BaRS leaves a patient with no national health number
   an untyped local identifier. We have typed identifiers, `expected_version` on every update, an outbox, and a policy engine.
 - **Where it is England-shaped, and so a pack, not core.** eRS and its UBRN, BaRS, MESH, Kettering XML, GP Connect, IM1, EPS and
-  CP-IS are NHS England services. `spec/02-scope.md`'s equity rule puts them in a pack; the core model carries a neutral
+  CP-IS are services of England's national health body. `spec/02-scope.md`'s equity rule puts them in a pack; the core model carries a neutral
   "referral identifier" and "flag".
 - **Its own doubts are the useful part.** It marks the very states we would want (`information-requested`, `deferred`,
   `redirected`) and who raises a redirected referral as "To confirm", and whether a flag should be checked before a scheduled referral
@@ -1375,7 +1375,7 @@ pattern, virtual wards (hospital at home) and dynamic care planning (a shared, v
 | Rank | Idea | Where the guide has it | Value here | Cost and caveat |
 |---|---|---|---|---|
 | 1 | **An explicit referral state table, refused transitions, one stored status** | 360X page: nine states, three provisional | CA-3 is under-specified; the guide faults BaRS for inferring status from several resources' statuses | ~2 days (PC-1); a pure function with tests first, no database; the three provisional states stay "proposed" |
-| 2 | **One referral id on every message and report; an outcome with no referral goes to an unmatched queue** | "The referral identifier closes the loop"; "most often missing from NHS letters today" | Closes the commonest real gap; reuses the shape of the feed-refusal queue | ~3 days (PC-2); clinical (a lost outcome) |
+| 2 | **One referral id on every message and report; an outcome with no referral goes to an unmatched queue** | "The referral identifier closes the loop"; "most often missing from [health service] letters today" | Closes the commonest real gap; reuses the shape of the feed-refusal queue | ~3 days (PC-2); clinical (a lost outcome) |
 | 3 | **Timeouts and escalation: no response, accepted with no outcome, appointment passed with no outcome** | none: the guide says it has no such rule | CA-3 already asks for "N days"; the guide shows nobody else defined it | ~2 days (PC-3), with a fake clock; clinical; needs OQ-PC3 (the periods) |
 | 4 | **A cancellation is a request, shown as such** | PCC-58: the recipient "may not honour it" | A clinician who believes a referral is cancelled while the service still sees the patient is a real hazard | ~1 day (PC-4); clinical; hazard row first |
 | 5 | **One order-and-report workflow for referral, test, imaging and medicine** | the workflow-pattern page: same steps, same `basedOn` link | OR-4, CA-3 and EM-2 would otherwise be three loops with three bugs | a design decision (PC-5); no code until OR-1 and CA-3 are scheduled |
@@ -1409,7 +1409,7 @@ PC-8 and PC-9 are notes.
 
 All fetched 2026-11-02 from <https://kevinmayfield.github.io/PatientCareCoordination/en/>: [`index.html`](https://kevinmayfield.github.io/PatientCareCoordination/en/index.html),
 [`360X.html`](https://kevinmayfield.github.io/PatientCareCoordination/en/360X.html), [`WorkflowPatterns.html`](https://kevinmayfield.github.io/PatientCareCoordination/en/WorkflowPatterns.html),
-[`NHSEngland.html`](https://kevinmayfield.github.io/PatientCareCoordination/en/NHSEngland.html), [`PatientFlags.html`](https://kevinmayfield.github.io/PatientCareCoordination/en/PatientFlags.html),
+[the England page](https://kevinmayfield.github.io/PatientCareCoordination/en/NHSEngland.html), [`PatientFlags.html`](https://kevinmayfield.github.io/PatientCareCoordination/en/PatientFlags.html),
 [`VirtualWards.html`](https://kevinmayfield.github.io/PatientCareCoordination/en/VirtualWards.html), [`DCP.html`](https://kevinmayfield.github.io/PatientCareCoordination/en/DCP.html).
 Named by the guide and not read: IHE PCC 360X Rev. 1.2 (Trial Implementation), HL7 Europe Hospital Discharge Report 1.0.0 (STU 1), the EU Health Data API, IHE QEDm, MHD and DCP.
 
@@ -1764,7 +1764,7 @@ The request: research and add aspects for bereavement, suicide watch, survivor g
 |---|---|---|
 | Bereavement | **No concept of death**: no `death` or `deceased` in the service or matcher source; PID-29 and PID-30 are dropped (H-046); a FHIR body with `deceased[x]` is refused; a proxy can outlive the patient | **Design this before any letter or portal exists**: it is far cheaper now. A death is an append-only assertion with evidence and status, not a column, because it can be wrong, and each effect must be restorable. Local notice, registration and an inquest run on very different clocks, so waiting for formal status keeps writing to families in the hardest cases (BV-1 to BV-4) |
 | Survivor grief | Closed-loop referral | **Offer, do not auto-refer, and be careful what is not built.** Referral does not fit a charity with no EPR, so a referral would sit unanswered for ever: separate information given, signposted and referred (SG-1). No family view, no list of people bereaved by suicide, no anniversary mailing, no grief score (SG-2) |
-| Suicide watch | Observations with separate recorded and effective times; no support-worker role; alerts do not exist | **The core must hold no risk score.** NICE NG225 bars risk tools and stratification for prediction or for treatment and discharge decisions, and NHS England guidance says to remove stratification from record systems; a US deployment needs a validated screen, so that belongs in a pack (SW-1). Falsified observations recur in coroners' reports. Append-only shows a late entry as late, but cannot show that an on-time entry is false: **do not claim it solves this** (SW-2) |
+| Suicide watch | Observations with separate recorded and effective times; no support-worker role; alerts do not exist | **The core must hold no risk score.** NICE NG225 bars risk tools and stratification for prediction or for treatment and discharge decisions, and England's national health body guidance says to remove stratification from record systems; a US deployment needs a validated screen, so that belongs in a pack (SW-1). Falsified observations recur in coroners' reports. Append-only shows a late entry as late, but cannot show that an on-time entry is false: **do not claim it solves this** (SW-2) |
 | Trauma treatment | Six labels, none on clinical records; a matcher rule for placeholder names | **Both senses need work.** Physical: a temporary identity state, since the safer naming format reads as real to the matcher (H-047, TT-1). Psychological: section 28 of the Victims and Prisoners Act 2024 and its code bear on what a therapist writes, and a note cannot be withdrawn from an append-only record. That is the sharpest conflict with a survivor's interests, and it needs a lawyer and survivors (OQ-TT1) |
 
 ### 32.2 Ideas, ranked
@@ -1800,13 +1800,13 @@ PA-6, reasonable adjustments and communication needs, in [`spec/reasonable-adjus
 
 The catalogue's words were written for a PAS and read by no clinician here. The Accessible Information Standard is cited as the PAS cites it; I did not read it for this pass. No national code list was checked for licence.
 
-## 34. Research pass 2026-11-09: NHS Wales national systems
+## 34. Research pass 2026-11-09: Welsh national health systems
 
-The request: research the Welsh Clinical Portal, the Welsh GP Record, the Welsh Immunisation System, the Welsh Intensive Care Information System, the Welsh Nursing Care Record and the Welsh Community Care Information System, assess them, and advise. Public sources only, read 2026-11-09; the findings, each with its source, are in [`spec/nhs-wales/index.md`](spec/nhs-wales/index.md). Much of what is known comes from DHCW describing its own work, and that page marks it.
+The request: research the Welsh Clinical Portal, the Welsh GP Record, the Welsh Immunisation System, the Welsh Intensive Care Information System, the Welsh Nursing Care Record and the Welsh Community Care Information System, assess them, and advise. Public sources only, read 2026-11-09; the findings, each with its source, are in [`spec/wales/index.md`](spec/wales/index.md). Much of what is known comes from Wales's national digital health body describing its own work, and that page marks it.
 
 ### 34.1 Assessment
 
-Wales built a national portal (WCP) over national repositories (results, documents, the GP summary) rather than one record. What has gone well in public sources is narrow and standardised: WNCR's nursing forms, each a versioned national standard with named sign-off, reached all eligible wards; WIS reached 10 million vaccinations. What has gone badly is broad and shared: WCCIS, one record for 29 organisations, was found by Audit Wales to mean different things by "live", to slow its users, and to lack Welsh, mobile working and NHS interfaces seven years in; it is being replaced by separate products joined by standards. WICIS, a supplier's ICU system, has no confirmed live unit six years after contract. Outages (21 in six months of 2018, a missed chemotherapy) and write-back gaps (flu vaccinations keyed in by hand) are the clinical cost of a record held in more than one place.
+Wales built a national portal (WCP) over national repositories (results, documents, the GP summary) rather than one record. What has gone well in public sources is narrow and standardised: WNCR's nursing forms, each a versioned national standard with named sign-off, reached all eligible wards; WIS reached 10 million vaccinations. What has gone badly is broad and shared: WCCIS, one record for 29 organisations, was found by Audit Wales to mean different things by "live", to slow its users, and to lack Welsh, mobile working and interfaces to other health service systems seven years in; it is being replaced by separate products joined by standards. WICIS, a supplier's ICU system, has no confirmed live unit six years after contract. Outages (21 in six months of 2018, a missed chemotherapy) and write-back gaps (flu vaccinations keyed in by hand) are the clinical cost of a record held in more than one place.
 
 For this project the lessons are mostly ones it already follows (append-only, standards first, stating what is not done); the new ones are small and specific, below.
 
@@ -1833,7 +1833,7 @@ Do WL-1 and WL-2 next: both are small, clinical and close to code that exists (O
 
 ### 34.4 Risks
 
-- Most capability claims are DHCW's own; independent sources cover failures more than successes, so the picture leans.
+- Most capability claims are the Welsh national digital health body's own; independent sources cover failures more than successes, so the picture leans.
 - The Welsh repository's model (openEHR in 2021, FHIR in 2026) was not settled; nothing here should depend on it.
 - A Welsh deployment would bring Welsh law and standards (the Welsh Control Standard, the Welsh language standards for health bodies) that this pass did not read.
 

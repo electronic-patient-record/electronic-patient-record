@@ -15,13 +15,13 @@ The service decides two things today: may this role ever do this to this kind of
 - **ReBAC and the HL7 catalogue.** HL7's Healthcare (Security and Privacy) Access Control Catalog Release 3 (ANSI/HL7 V3 HACC R3-2016, reaffirmed 2021) extends the earlier HL7 RBAC permission catalogue with concepts for ABAC and relationship-based access control; permissions are {operation, object} pairs [HLHACC]. A relationship-based rule ("the clinician is on this patient's team") is the heart of clinical access.
 - **XACML** (the OASIS policy language) was asked about and **not researched** in this pass; see Not verified.
 
-## The UK NHS model, as publicly described
+## The UK public health service model, as publicly described
 
-- **Smartcard RBAC.** Users hold job roles ("R" codes, for example Clinical practitioner R8000) and each role maps to activities ("B" codes, for example amending patient demographics B0825). A national baseline maps roles to activities. A user can hold several roles; staff on several sites need role codes for each [NHSRBAC].
-- **Position-based access control (PBAC).** Access is narrowed further to the data items or functions a position needs, and to the places the card may be used [NHSRBAC]. Trust policies describe access as reflecting organisation, role, area of work and activities (snippet of one trust's SOP) [HUMBER].
-- **Registration Authority (RA).** A local RA verifies identity before issuing a card, manages access, removes organisational access when staff leave or go on extended leave and reinstates it on return [NHSRBAC]. Trust SOPs describe sponsors who authorise new users, changes to access and terminations (snippet) [HUMBER]. The page I read did not mention sponsors itself.
-- **Legitimate relationship.** NHS England's Summary Care Record guidance says a record should be viewed only by someone involved in the patient's care, and calls this a "legitimate relationship"; it also asks staff to ask the patient's permission to view, and says some roles can self-claim the relationship (seen through a mirrored page and a search snippet) [SCR]. So the NHS test is a declared relationship plus a role, with audit, not a pre-built roster.
-- **Audit.** Access is traceable to the card holder [NHSRBAC]. The page did not mention routine log review.
+- **Smartcard RBAC.** Users hold job roles ("R" codes, for example Clinical practitioner R8000) and each role maps to activities ("B" codes, for example amending patient demographics B0825). A national baseline maps roles to activities. A user can hold several roles; staff on several sites need role codes for each [UKRBAC].
+- **Position-based access control (PBAC).** Access is narrowed further to the data items or functions a position needs, and to the places the card may be used [UKRBAC]. Trust policies describe access as reflecting organisation, role, area of work and activities (snippet of one trust's SOP) [HUMBER].
+- **Registration Authority (RA).** A local RA verifies identity before issuing a card, manages access, removes organisational access when staff leave or go on extended leave and reinstates it on return [UKRBAC]. Trust SOPs describe sponsors who authorise new users, changes to access and terminations (snippet) [HUMBER]. The page I read did not mention sponsors itself.
+- **Legitimate relationship.** England's national health body's Summary Care Record guidance says a record should be viewed only by someone involved in the patient's care, and calls this a "legitimate relationship"; it also asks staff to ask the patient's permission to view, and says some roles can self-claim the relationship (seen through a mirrored page and a search snippet) [SCR]. So the UK test is a declared relationship plus a role, with audit, not a pre-built roster.
+- **Audit.** Access is traceable to the card holder [UKRBAC]. The page did not mention routine log review.
 
 ## How commercial systems model it (public descriptions only)
 
@@ -31,10 +31,10 @@ I found no vendor design documents. Public hospital pages show the practical sha
 
 Each item gives what good practice looks like in public sources, then a proposal.
 
-1. **Joiners.** Identity is verified, a sponsor with authority says which role and which organisation, and access is granted to the position, not the person's wishes (NHS RA model [NHSRBAC] [HUMBER]). HIPAA's Security Rule expects procedures to authorise access and to check that a workforce member's access is appropriate (45 CFR 164.308(a)(3) and (4)) [HIPAA].
+1. **Joiners.** Identity is verified, a sponsor with authority says which role and which organisation, and access is granted to the position, not the person's wishes (the UK Registration Authority model [UKRBAC] [HUMBER]). HIPAA's Security Rule expects procedures to authorise access and to check that a workforce member's access is appropriate (45 CFR 164.308(a)(3) and (4)) [HIPAA].
 2. **Movers.** A change of ward, team or employer must remove the old access, not add to it. Role creep is the usual failure. Proposal: a role assignment has an end date and a reason, and a move creates a new assignment and ends the old one.
-3. **Leavers.** Termination procedures are an addressable HIPAA specification [HIPAA]; the NHS RA removes access on leaving [NHSRBAC]. Proposal: leaving ends every assignment the same day and the audit shows no use afterwards.
-4. **Periodic recertification.** A named owner re-confirms each assignment on a schedule (for example every six months for privileged roles). I found no public NHS or HIPAA source naming an interval; any figure is a proposal.
+3. **Leavers.** Termination procedures are an addressable HIPAA specification [HIPAA]; the UK Registration Authority removes access on leaving [UKRBAC]. Proposal: leaving ends every assignment the same day and the audit shows no use afterwards.
+4. **Periodic recertification.** A named owner re-confirms each assignment on a schedule (for example every six months for privileged roles). I found no public UK health service or HIPAA source naming an interval; any figure is a proposal.
 5. **Separation of duties.** From NIST RBAC [NISTRBAC]: the person who grants access should not be the person who gains it (the project already does this for care relationships); the person who opens a break-glass grant must not review it (already built); the auditor should not hold clinical roles; the person who lifts a protected label should not be the person it protects or concerns.
 6. **Delegation and temporary cover.** A clinician going on leave hands a list to a named colleague for a bounded period. Proposal: a "cover" assignment with start, end and the patients or team it covers, shown to the patient in the access log as cover, not as the person's own team.
 7. **Locums, agency staff and students.** No public source read. Proposal: time-limited assignment to one organisation, a supervisor named on every student action (the supervisor co-signs), and the student role has no clinical sign-off.
@@ -42,7 +42,7 @@ Each item gives what good practice looks like in public sources, then a proposal
 9. **Privileged and administrative access.** Administrators of the system, the database and the identity provider can see more than any clinician. Proposal: no standing access to clinical content, access granted per task, MFA on every administrative sign-in ([MFA plan](../../governance/mfa-plan.md)), and every use audited and reviewed by someone else.
 10. **Service accounts.** The `integrator` role. Proposal: one account per integration, no human use, no clinical read, key rotation, an owner, and the same recertification as a person.
 11. **Access to your own record, family and colleagues.** Staff opening their own, a relative's or a colleague's record is the commonest misuse. Proposal: treat "same surname", "same address", "same employer" as automatic flags for a reason prompt; staff records are an "employee" class like the HL7 EMP and CEL sensitivity codes ([Protected information](protected-information.md)).
-12. **Proactive privacy monitoring.** A log nobody reads protects no one. HIPAA makes routine review of audit logs and access reports a required specification (164.308(a)(1)(ii)(D)) and audit controls a required standard (164.312(b)) [HIPAA]. In the UK, unlawful obtaining of personal data is an offence under section 170 of the Data Protection Act 2018; the ICO has prosecuted former NHS staff for looking at records of people they were not treating, usually in magistrates' courts [ICO170] [DACB]. A 2026 news item reports NHS England telling trusts to suspend staff suspected of snooping; I could not verify it independently [LGL]. Proposal: scheduled reports (same-surname access, high-volume access, off-hours, after-leave, break-glass reasons repeated, access to flagged records) and a recorded outcome for each reviewed item.
+12. **Proactive privacy monitoring.** A log nobody reads protects no one. HIPAA makes routine review of audit logs and access reports a required specification (164.308(a)(1)(ii)(D)) and audit controls a required standard (164.312(b)) [HIPAA]. In the UK, unlawful obtaining of personal data is an offence under section 170 of the Data Protection Act 2018; the ICO has prosecuted former health service staff for looking at records of people they were not treating, usually in magistrates' courts [ICO170] [DACB]. A 2026 news item reports England's national health body telling trusts to suspend staff suspected of snooping; I could not verify it independently [LGL]. Proposal: scheduled reports (same-surname access, high-volume access, off-hours, after-leave, break-glass reasons repeated, access to flagged records) and a recorded outcome for each reviewed item.
 
 ## A catalogue of clinical roles and sub-roles (a proposal)
 
@@ -75,9 +75,9 @@ Four roles beside the Clinical Safety Officer, added on 2026-11-06 at the mainta
 
 | Role | What the post is, as far as was found |
 |---|---|
-| Medical Devices Safety Officer (MDSO) | An NHS post from the 2014 NHS England and MHRA alert on device incidents: responds to requests about device incident reports and sits on the safety committee ([handbook](https://www.pslhub.org/learn/professionalising-patient-safety/medical-device-safety-officer-handbook-the-first-stop-for-professional-medical-device-advice-r4563/)) |
+| Medical Devices Safety Officer (MDSO) | A UK health service post from the 2014 alert by England's national health body and the MHRA on device incidents: responds to requests about device incident reports and sits on the safety committee ([handbook](https://www.pslhub.org/learn/professionalising-patient-safety/medical-device-safety-officer-handbook-the-first-stop-for-professional-medical-device-advice-r4563/)) |
 | Medication Safety Officer (MSO) | The matching post for medication errors, usually a senior pharmacy professional, and it may be the same person as the MDSO ([CQC](https://cqc.org.uk/node/3888)) |
-| Patient Safety Officer (PSO) | No formal NHS definition was found. Job adverts describe oversight of a patient safety programme and of incident investigation |
+| Patient Safety Officer (PSO) | No formal UK health service definition was found. Job adverts describe oversight of a patient safety programme and of incident investigation |
 | Medical Incident Officer (MIO) | No single national definition was found. It appears in hospital and ambulance major incident plans as the senior doctor at or for an incident ([EMJ](https://emj.bmj.com/content/16/5/336)) |
 
 Each reads the hazard register and may raise a hazard, for the purpose of operations only. None sees clinical content, records a control, reopens or retires a hazard, or uses break-the-glass, and only the Clinical Safety Officer retires one. Nothing else is open to them: **an incident system, a device list and a medication error report do not exist here**, so these roles have little to do yet, and an MSO cannot see a prescription. A Medical Incident Officer in a major incident gets no emergency access from this role, because a person treating patients holds a clinical role for that.
@@ -131,7 +131,7 @@ For the Clinical Safety Officer; none is accepted or closed by this page.
 
 ## Open questions
 
-1. Who is the sponsor in a deployment without an NHS-style Registration Authority, and where do role assignments live: this service or the identity provider?
+1. Who is the sponsor in a deployment without a UK-style Registration Authority, and where do role assignments live: this service or the identity provider?
 2. Is a team membership a relationship in itself, or only a way of proposing one for an administrator to confirm?
 3. How long may cover last, and may a delegated person see what the absent person could not?
 4. Should staff see that their own access is monitored (a deterrent) and can a patient see the reviewer's outcome?
@@ -140,11 +140,11 @@ For the Clinical Safety Officer; none is accepted or closed by this page.
 
 ## Not verified
 
-- I did not read INCITS 359-2012, NIST SP 800-162 beyond its abstract, XACML, the HL7 catalogue itself or the NHS RBAC database; summaries only.
-- The NHS England smartcard page I read did not describe sponsors or legitimate relationships; those come from trust SOP snippets and a mirrored SCR page. I did not find how legitimate relationships are configured in NHS systems.
+- I did not read INCITS 359-2012, NIST SP 800-162 beyond its abstract, XACML, the HL7 catalogue itself or England's national role-based access control database; summaries only.
+- The smartcard page of England's national health body that I read did not describe sponsors or legitimate relationships; those come from trust SOP snippets and a mirrored SCR page. I did not find how legitimate relationships are configured in UK health service systems.
 - No vendor design documents on Epic, Cerner or others were read; only hospital pages about break-the-glass and monitoring.
 - Locums, agency staff, students, delegation and recertification intervals: no source read; proposals only.
-- The 2026 report of NHS England suspending suspected snoopers is a search result I could not confirm.
+- The 2026 report of England's national health body suspending suspected snoopers is a search result I could not confirm.
 - The regulations on health data in any other country than those cited were not read; HIPAA citations come from a Cornell mirror and a search summary, not the eCFR.
 - Nothing here was tested against the code beyond reading `policy.rs`, `relationships.rs` and `break_glass.rs` docs.
 - Link check 2026-11-04: these cited pages returned 404. They may have moved, but what rests on them is unconfirmed: https://ico.org.uk/about-the-ico/media-centre/news-and-blogs/2023/11/former-nhs-secretary-found-guilty-of-illegally-accessing-medical-records
@@ -154,9 +154,9 @@ For the Clinical Safety Officer; none is accepted or closed by this page.
 - [NISTRBAC] NIST RBAC FAQ (archived): https://webarchive.library.unt.edu/eot2008/20080916003800/http:/csrc.nist.gov/groups/SNS/rbac/faq.html (search result; summary only)
 - [NISTABAC] NIST SP 800-162: https://csrc.nist.gov/pubs/sp/800/162/upd2/final (abstract and date seen)
 - [HLHACC] HL7 Healthcare Access Control Catalog R3, via the Australian Digital Health Agency: https://implementer.digitalhealth.gov.au/standards/hl7-version-3-standard-healthcare-security-and-privacy-access-control-catalog-release-3 and https://standups.hl7.org/2021/08/18/normative-publication-of-hl7-version-3-standard-healthcare-security-and-privacy-access-control-catalog-release-3-reaffirmation-of-ansi-hl7-v3-rbac-r3-2016/ (snippets)
-- [NHSRBAC] NHS England, Smartcards and role-based access control: https://www.england.nhs.uk/long-read/smartcards-and-access-controls/ (read)
+- [UKRBAC] England's national health body, Smartcards and role-based access control: https://www.england.nhs.uk/long-read/smartcards-and-access-controls/ (read)
 - [HUMBER] Humber Registration Authority SOP: https://intranet.humber.nhs.uk/Policies/Corporate%20Policies/Corporate%20SOPs/Registration%20Authority%20SOP19-010.pdf (snippet)
-- [SCR] NHS England SCR viewing guidance (mirror): https://nhsd-proxy.openprescribing.net/services/national-care-records-service/guidance/view-scr (snippet)
+- [SCR] England's national health body, SCR viewing guidance (mirror): https://nhsd-proxy.openprescribing.net/services/national-care-records-service/guidance/view-scr (snippet)
 - [EPICBTG] University of Iowa Epic break glass: https://epicsupport.sites.uiowa.edu/epic-resources/break-glass (snippet)
 - [TCH] Texas Children's: https://texaschildrensnews.org/compliance-and-privacy-spotlight-break-the-glass-epic/ (snippet)
 - [FW] UConn FairWarning FAQ: https://health.uconn.edu/healthcare-compliance-privacy/wp-content/uploads/sites/253/2020/10/FairWarning-FAQ-for-Managers.pdf (snippet)

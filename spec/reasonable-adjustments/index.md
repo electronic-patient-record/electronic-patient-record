@@ -79,7 +79,7 @@ A stale `expected_version` is a 409 and a refused change a 422. Every read and w
 | Note | `code.text` |
 | Reason, review date, overdue | Not sent |
 
-The shape follows the [HL7 `Flag` resource](https://hl7.org/fhir/R4/flag.html). It does not claim the NHS England Reasonable Adjustment Flag or any national profile, because no national code is used. An empty result carries a warning that this does not mean the person has none.
+The shape follows the [HL7 `Flag` resource](https://hl7.org/fhir/R4/flag.html). It does not claim the Reasonable Adjustment Flag of England's national health body or any national profile, because no national code is used. An empty result carries a warning that this does not mean the person has none.
 
 ## Not settled
 

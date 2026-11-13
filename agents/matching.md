@@ -5,8 +5,8 @@ to make a test pass, because a wrong automatic link (an overlay) is a patient sa
 
 1. A missing given name, family name or birth date blocks `AutoLink`.
 2. Twins (same family name, birth date, address; different given names) never `AutoLink`.
-3. Two different valid NHS numbers are `NonMatch`.
-4. A shared NHS number with different full birth dates is `Review`, not `AutoLink`.
+3. Two different valid national health numbers are `NonMatch`.
+4. A shared national health number with different full birth dates is `Review`, not `AutoLink`.
 5. Merge must be reversible (unmerge), with provenance (task ID-5).
 
 Thresholds are unvalidated until the labelled corpus exists (ID-1).

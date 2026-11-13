@@ -16,7 +16,7 @@ Build open-source electronic patient record (EPR) software that is **safe, stand
 - **Auditable**: every read and write is recorded; patients can see who accessed their record.
 - **Usable**: designed against documented causes of clinician burnout (documentation burden, alert fatigue, inbox
   load, latency). See [usability](usability/index.md).
-- **Compliance-ready, not compliant**: it supports a deployer's HIPAA, UK GDPR, NHS DSPT/DTAC, DCB0129/0160 and ONC
+- **Compliance-ready, not compliant**: it supports a deployer's HIPAA, UK GDPR, England's DSPT/DTAC, DCB0129/0160 and ONC
   (g)(10) work with evidence. Compliance belongs to a deployment.
 
 **The gap.** Open source offers complete applications on legacy stacks (OpenEMR, OpenMRS, OSCAR, VistA) or modern

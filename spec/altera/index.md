@@ -8,10 +8,10 @@ The user's spelling "Alteira" is taken to mean Altera Digital Health. It is unre
 
 - **Owner.** Altera Digital Health is a business unit of Harris Healthcare. Harris (N. Harris Computer Corporation) is a wholly owned subsidiary of Constellation Software Inc. (TSX: CSU). Harris announced on 2022-05-06 that it had completed the purchase of Allscripts' "hospitals and large physician practices" segment, which then operated as Altera. The price is not stated in that release. (Vendor/owner release: [Altera newsroom](https://www.alterahealth.com/newsroom/harris-completes-purchase-of-allscripts-hospitals-and-large-physician-practices-business-segment/).)
 - **Origin.** The trade press reported the rebrand of the Allscripts part as Altera in May 2022 ([Digital Health](https://digitalhealth.net/2022/05/allscripts-re-branded-altera-digital-health)). A directory page gives March 2022 as the acquisition date; Harris's own release says May. I use May.
-- **Products named in sources.** Sunrise (hospital EHR, used in NHS trusts), Paragon (including "Paragon Denali", aimed at smaller and community hospitals in the US), and TouchWorks (ambulatory EHR). The Harris release does not list products; Altera's site lists them.
-- **Main markets.** US, UK (NHS acute trusts), Canada and others. I found no sourced figure for total customers or patients.
+- **Products named in sources.** Sunrise (hospital EHR, used in hospital trusts in England), Paragon (including "Paragon Denali", aimed at smaller and community hospitals in the US), and TouchWorks (ambulatory EHR). The Harris release does not list products; Altera's site lists them.
+- **Main markets.** US, UK (acute hospital trusts), Canada and others. I found no sourced figure for total customers or patients.
 - **Care settings.** Mainly acute and ambulatory. See "Fit across care settings".
-- **2026 state.** Altera is still operating under Harris in 2026: press releases of February to March 2026 ([BusinessWire, HIMSS26](https://www.businesswire.com/news/home/20260303986338/en/Altera-Digital-Health-to-Showcase-Human-Centered-AI-and-EHR-Advancements-at-HIMSS26) was not readable by me; only its search snippet). Stockport and Tameside and Glossop NHS foundation trusts awarded ten-year EPR contracts reported on 2026-03-24 ([Healthcare Management](https://www.healthcare-management.uk/tag/tameside-and-glossop-integrated-care-nhs-foundation-trust)). A WARN notice for 133 workers in Melville, New York, effective 2026-12-31, is listed by an aggregator ([WARN Tracker](https://www.warntracker.com/layoff/altera-digital-health-2026-12-31)); no company explanation found.
+- **2026 state.** Altera is still operating under Harris in 2026: press releases of February to March 2026 ([BusinessWire, HIMSS26](https://www.businesswire.com/news/home/20260303986338/en/Altera-Digital-Health-to-Showcase-Human-Centered-AI-and-EHR-Advancements-at-HIMSS26) was not readable by me; only its search snippet). Stockport and Tameside and Glossop foundation trusts awarded ten-year EPR contracts reported on 2026-03-24 ([Healthcare Management](https://www.healthcare-management.uk/tag/tameside-and-glossop-integrated-care-nhs-foundation-trust)). A WARN notice for 133 workers in Melville, New York, effective 2026-12-31, is listed by an aggregator ([WARN Tracker](https://www.warntracker.com/layoff/altera-digital-health-2026-12-31)); no company explanation found.
 
 ## Capabilities worth noting
 
@@ -19,7 +19,7 @@ The user's spelling "Alteira" is taken to mean Altera Digital Health. It is unre
 - **Contract renewals.** Altera says 14 clients renewed Sunrise in February 2026 ([BusinessWire](https://www.businesswire.com/news/home/20260224930858/en); see also [Becker's](https://www.beckershospitalreview.com/healthcare-information-technology/ehrs/14-health-systems-extend-ehr-contracts-with-altera-digital-health/)). Renewals are a vendor-reported signal, not a quality measure.
 - **Cloud-native smaller-hospital EHR.** Paragon Denali is described as built on Azure with containerised services, to reduce downtime; KPC Health planned a rollout at seven Southern California hospitals ([BusinessWire](https://www.businesswire.com/news/home/20250211824072/en/), via search summary). Design claim only.
 - **National exchange.** A partnership to bring Health Gorilla's network into Sunrise was announced in June 2025 ([BusinessWire](https://www.businesswire.com/news/home/20250610262689/en/Altera-Digital-Health-and-Health-Gorilla-Announce-Strategic-Partnership-to-Accelerate-Healthcare-Interoperability)).
-- **NHS spread.** Fordcombe Hospital was reported in 2025 as the 23rd NHS hospital in England on Sunrise ([Digital Health](https://www.digitalhealth.net/2025/02/kent-hospital-goes-live-with-altera-electronic-patient-record/)).
+- **UK spread.** Fordcombe Hospital was reported in 2025 as the 23rd public hospital in England on Sunrise ([Digital Health](https://www.digitalhealth.net/2025/02/kent-hospital-goes-live-with-altera-electronic-patient-record/)).
 
 ## Architecture and standards
 
@@ -29,12 +29,12 @@ The user's spelling "Alteira" is taken to mean Altera Digital Health. It is unre
 
 ## Fit across care settings
 
-- **Acute:** the core of Sunrise in NHS trusts (Worcestershire Acute, Salford Royal, Liverpool Heart and Chest in vendor case studies: [Digital Health](https://digitalhealth.net/2023/03/worcestershire-acute-hospitals-nhs-trust-selects-altera-digital-health), [case studies](https://www.casestudies.com/company/altera-digital-health)).
+- **Acute:** the core of Sunrise in hospital trusts (Worcestershire Acute, Salford Royal, Liverpool Heart and Chest in vendor case studies: [Digital Health](https://digitalhealth.net/2023/03/worcestershire-acute-hospitals-nhs-trust-selects-altera-digital-health), [case studies](https://www.casestudies.com/company/altera-digital-health)).
 - **Emergency department, community, mental health, primary care:** I could not find a sourced statement for any of these in Altera's current product pages. Stockport and Tameside are integrated-care trusts, which suggests some community scope, but the sources I read do not say which services the contract covers. TouchWorks is an ambulatory (outpatient, US-style) product.
 
 ## What independent sources report
 
-- **Positive or neutral.** NHS trust choices and 2026 ten-year awards are public facts (see above). Trust board papers and case studies are largely supplier-authored or supplier-quoted.
+- **Positive or neutral.** Hospital trust choices and 2026 ten-year awards are public facts (see above). Trust board papers and case studies are largely supplier-authored or supplier-quoted.
 - **Problems.** I found no independent inquiry, regulator finding, patient-safety study or KLAS report on Sunrise or Paragon. A KLAS page for Sunrise (over 400 beds) exists ([KLAS](https://klasresearch.com/comments/altera-digital-health-sunrise-large-over-400-beds/344260)), and a user comment mentions a change of ownership, but I could not read it and it is anecdotal. The Melville layoff notice (above) is a fact about headcount, not about product quality.
 - Absence of findings here is a limit of my search, not evidence that none exist.
 
@@ -78,8 +78,8 @@ These are ideas, not decisions.
 - https://businesswire.com/news/home/20251118584360/en/Altera-Digital-Health-Introduces-Sunrise-Thread-AI-an-Ambient-Scribe-and-Note-Generation-Assistant : vendor, Thread AI
 - https://www.beckershospitalreview.com/healthcare-information-technology/ehrs/14-health-systems-extend-ehr-contracts-with-altera-digital-health/ : trade press on renewals
 - https://www.businesswire.com/news/home/20250610262689/en/Altera-Digital-Health-and-Health-Gorilla-Announce-Strategic-Partnership-to-Accelerate-Healthcare-Interoperability : vendor, partnership
-- https://www.digitalhealth.net/2025/02/kent-hospital-goes-live-with-altera-electronic-patient-record/ : NHS go-live
-- https://digitalhealth.net/2023/03/worcestershire-acute-hospitals-nhs-trust-selects-altera-digital-health : NHS selection
+- https://www.digitalhealth.net/2025/02/kent-hospital-goes-live-with-altera-electronic-patient-record/ : English hospital go-live
+- https://digitalhealth.net/2023/03/worcestershire-acute-hospitals-nhs-trust-selects-altera-digital-health : English trust selection
 - https://www.casestudies.com/company/altera-digital-health : vendor-linked case studies
 - https://ehrsource.com/vendors/altera-digital-health/ : third-party review site (FHIR, Azure claims)
 - https://klasresearch.com/comments/altera-digital-health-sunrise-large-over-400-beds/344260 : KLAS page, not read

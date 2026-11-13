@@ -14,7 +14,7 @@ Short reading for an EPR: can the intended clinician recognise that the system f
 - A review of 1.735 million patient safety reports from 2013 to 2016 found 557 events (0.03 percent) whose wording suggested EHR usability contributed, for example an allergy alert that did not fire ([Becker's report of the study](https://www.beckershospitalreview.com/healthcare-information-technology/ehrs/study-links-ehr-usability-issues-to-patient-harm/); secondary, low rates reflect reporting not incidence).
 - NISTIR 7804 defines an EHR usability protocol: expert review plus summative validation with representative users on realistic tasks, aimed at finding critical problems that could cause use errors ([NIST](https://nvlpubs.nist.gov/nistpubs/ir/2012/NIST.IR.7804.pdf); abstract only).
 - Alert design: drug safety alerts are overridden in 49 to 96 percent of cases across studies, and many overrides are justified ([van der Sijs 2006 review](https://pmc.ncbi.nlm.nih.gov/articles/PMC1447540); the range comes from a snippet).
-- UK public bodies must meet WCAG 2.2 AA and publish an accessibility statement ([NHS service manual](https://service-manual.nhs.uk/accessibility/what-all-nhs-services-need-to-do); a legal reading needs the regulations themselves).
+- UK public bodies must meet WCAG 2.2 AA and publish an accessibility statement ([service manual for UK public health services](https://service-manual.nhs.uk/accessibility/what-all-nhs-services-need-to-do); a legal reading needs the regulations themselves).
 
 ## What the project says today
 
@@ -83,4 +83,4 @@ No ISO text read; the ISO 25000 page edition is unknown. Press reports of studie
 - https://www.beckershospitalreview.com/healthcare-information-technology/ehrs/study-links-ehr-usability-issues-to-patient-harm/ - safety-report analysis
 - https://nvlpubs.nist.gov/nistpubs/ir/2012/NIST.IR.7804.pdf - NISTIR 7804
 - https://pmc.ncbi.nlm.nih.gov/articles/PMC1447540 - alert override review
-- https://service-manual.nhs.uk/accessibility/what-all-nhs-services-need-to-do - NHS accessibility
+- https://service-manual.nhs.uk/accessibility/what-all-nhs-services-need-to-do - accessibility rules for UK public health services

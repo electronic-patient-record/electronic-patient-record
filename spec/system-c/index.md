@@ -22,7 +22,7 @@ Public-source research read 2026-11-04. Vendor material is marketing; nothing he
 
 ## Architecture and standards
 
-- Vendor: "FHIR-compliant", fully cloud-hosted, NHS data standards (CDS 6.3, ECDS, SNOMED CT, dm+d, ICD-10, OPCS-4) ([systemc.com](https://www.systemc.com/solutions/epr/start)). A search summary of the same vendor material says HL7 v2 and FHIR are supported side by side and GP Connect is used for GP data; the page I read did not mention them. I found no conformance statement or public API documentation.
+- Vendor: "FHIR-compliant", fully cloud-hosted, the UK health service's data standards (CDS 6.3, ECDS, SNOMED CT, dm+d, ICD-10, OPCS-4) ([systemc.com](https://www.systemc.com/solutions/epr/start)). A search summary of the same vendor material says HL7 v2 and FHIR are supported side by side and GP Connect is used for GP data; the page I read did not mention them. I found no conformance statement or public API documentation.
 - G-Cloud listings exist ([Digital Marketplace](https://www.applytosupply.digitalmarketplace.service.gov.uk/g-cloud-14/services/687125563583525)); not read in full.
 - Source openness: closed commercial software. Certifications listed by the vendor include ISO 27001 and ISO 9001 ([about](https://www.systemc.com/about-us/)).
 
@@ -53,7 +53,7 @@ Public-source research read 2026-11-04. Vendor material is marketing; nothing he
 | Care records across organisations | Graphnet shared care records | Consent and care-relationship access, break-glass | Our access model suits shared records |
 | Identity | Not found | Matcher with explainable scores | Differentiator |
 | Audit | Not found publicly | Hash-chained, retention and archive | Differentiator |
-| Standards | FHIR claimed; NHS data standards | FHIR R4/R5 read facade, HL7 v2 ADT | Publish a conformance statement; vendors do not |
+| Standards | FHIR claimed; UK health service data standards | FHIR R4/R5 read facade, HL7 v2 ADT | Publish a conformance statement; vendors do not |
 | Mobile | Connect app, device-agnostic | Not built | See [spec/mobile-viewability.md](../mobile-viewability.md) |
 | Ownership churn | Four owners since 2011, sale reported | Open, no owner lock-in | Continuity is a real buyer risk |
 

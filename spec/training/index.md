@@ -6,7 +6,7 @@ The question: what kinds of training should a site adopting this EPR expect, wha
 
 ## Kinds of training seen in public sources
 
-- **Role-based classroom.** Training by job role is the norm in the NHS programmes and supplier descriptions seen. Epic describes (through third-party guides) credentialed trainers who deliver a curriculum written by a principal trainer, must pass testing and teach-backs before training others, and specialty trainers for areas such as anaesthesia, oncology and radiology.
+- **Role-based classroom.** Training by job role is the norm in the UK health service programmes and supplier descriptions seen. Epic describes (through third-party guides) credentialed trainers who deliver a curriculum written by a principal trainer, must pass testing and teach-backs before training others, and specialty trainers for areas such as anaesthesia, oncology and radiology.
 - **E-learning.** Used for refreshers and for staff who cannot attend; the sources seen give no evidence of effectiveness.
 - **Simulation and sandbox.** A practice environment that mirrors the live system is widely recommended (trade guidance). A cancer centre reported two mandatory one-hour simulation sessions after classroom teaching (trade article).
 - **Super-users.** Frontline colleagues given extra training, first point of contact on their ward, and a link to the project. One trust placed a super-user in every ward and department over go-live; a large programme reported about 3,000 super-users and several hundred floorwalkers for about 30,000 staff.
@@ -79,7 +79,7 @@ For the Clinical Safety Officer to assess; none is accepted, and none is yet in 
 ## Not verified
 
 - No AMIA or HIMSS training guidance was found by search; nothing is claimed about either.
-- No national NHS England standard for EPR training or super-users was found; the NHS examples are single-trust documents.
+- No national standard from England's national health body for EPR training or super-users was found; the UK examples are single-trust documents.
 - Epic and Oracle practices come from third-party guides, job advertisements and one Oracle services page, not from their training catalogues.
 - The upgrade-training study (133 against 14) and the residency study were seen as search results only; results and URLs-to-claims mapping should be checked.
 - Completion percentages are single-trust reports, not audited.
@@ -91,7 +91,7 @@ For the Clinical Safety Officer to assess; none is accepted, and none is yet in 
 - Epic super-user description (third party): https://epicadventure.womans.org/resources/super-users/
 - Epic credentialed and specialty trainers (third party): https://docs.dualcode.com/epic/credentialed-specialty-trainers-1
 - Oracle Health services page: https://www.oracle.com/lt/health/services
-- NHS trust super-user poster (Milton Keynes): https://digital.mkuh.nhs.uk/wp-content/uploads/2018/03/Super-User-Briefing-Poster.pdf
+- Hospital trust super-user poster (Milton Keynes): https://digital.mkuh.nhs.uk/wp-content/uploads/2018/03/Super-User-Briefing-Poster.pdf
 - Floorwalker case study: https://it-works-health.sites.sourceflow.co.uk/case-studies/floorwalker
 - Queen Victoria Hospital super-users: https://www.techuk.org/insights/guest-insights/the-power-of-super-users-and-how-clinical-champions-enabled-a-safe-epr-go-live-at-queen-victoria-hospital
 - Manchester HIVE webinar slides: https://swdhcresources.blob.core.windows.net/$web/events/231013%20-%20Manchester%20HIVE%20webinar%20-%20Slides.pdf

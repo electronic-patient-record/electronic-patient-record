@@ -23,13 +23,13 @@ Every manual step is a copy, and a copy can lose, change, delay or misattach inf
 
 **Phone, fax and verbal handover.** Structured handover tools such as SBAR (situation, background, assessment, recommendation) are endorsed by the Joint Commission, AHRQ, IHI and WHO, and a narrative review reports fewer adverse events with them [4]. The dates and wording of the Joint Commission requirement conflict between the secondary sources I saw [4]. A verbal handover leaves no record unless someone writes it down, which is another manual step.
 
-**Downtime paper.** When the system is unavailable, care continues on paper and is back-keyed later. The back-keying is a transcription (above) with the extra hazard that the time of the event and the time of keying differ by hours. I did not find a public NHS source on downtime procedure in this pass (the search covered only the SBAR half of the query), so no claim is made about national guidance.
+**Downtime paper.** When the system is unavailable, care continues on paper and is back-keyed later. The back-keying is a transcription (above) with the extra hazard that the time of the event and the time of keying differ by hours. I did not find a public UK health service source on downtime procedure in this pass (the search covered only the SBAR half of the query), so no claim is made about national guidance.
 
 **Scanned documents.** A scan preserves the image and loses the structure. Unless the scan is indexed to a patient, date and type by a person, it is findable only by luck; the index is itself a manual step. Optical scanning of forms had a pooled error rate of 0.74% in the research-data meta-analysis above [3], again a different setting.
 
 **Copy-and-paste and copy-forward.** The systematic review (51 publications, 2010 to January 2015) found that 66% to 90% of clinicians routinely copy and paste, listed bloated notes, internal inconsistency, propagated errors and wrong-patient filing as risks, and concluded that evidence of direct patient harm is sparse and limited [2]. Its four recommendations: make pasted content identifiable, keep its source visible, train staff, and monitor the practice [2].
 
-**Manual merge, override and correction.** A person decides two records are one patient, or overrides a warning, or edits a value to match what they believe is true. The National Back Office for the Personal Demographics Service handles merges of duplicate NHS numbers and "confusions" (two patients linked to one number); NHS sources describe both as patient-safety risks and show a case where seven duplicates arose from one registration error and persisted five months [5].
+**Manual merge, override and correction.** A person decides two records are one patient, or overrides a warning, or edits a value to match what they believe is true. The National Back Office for the Personal Demographics Service handles merges of duplicate national health numbers and "confusions" (two patients linked to one number); health service sources describe both as patient-safety risks and show a case where seven duplicates arose from one registration error and persisted five months [5].
 
 ## What public practice suggests
 
@@ -90,7 +90,7 @@ For the Clinical Safety Officer to triage. None is accepted, and none is yet a r
 - All error rates above are from other settings (research data capture, point-of-care testing) and may not hold for clinical entry in any specific hospital.
 - The meta-analysis [3] was seen as a preprint via a search snippet; I did not read it.
 - The Wilton and Pennisi 10.2% immunisation figure was seen only second-hand in the search summary of [1] and is deliberately not used.
-- No NHS downtime or business-continuity source was read.
+- No UK health service downtime or business-continuity source was read.
 - The Joint Commission requirement wording was not checked at its own site [4].
 - No source here has been reviewed by a clinician; the hazards are my reading, not a hazard analysis.
 
@@ -100,5 +100,5 @@ For the Clinical Safety Officer to triage. None is accepted, and none is yet a r
 2. Tsou, Lehmann, Michel et al., Safe practices for copy and paste in the EHR, Applied Clinical Informatics 2017;8:12-34 (abstract and summaries): https://pubmed.ncbi.nlm.nih.gov/28074211/ and https://psnet.ahrq.gov/issue/safe-practices-copy-and-paste-ehr-systematic-review-recommendations-and-novel-model-health-it
 3. Systematic review and meta-analysis of error rates by data processing method, 2023 preprint (snippet only): https://www.researchsquare.com/article/rs-10878982 ; Wahi et al., paper-form transcription strategies: https://pmc.ncbi.nlm.nih.gov/articles/PMC2409998
 4. SBAR handover, narrative review: https://link.springer.com/article/10.1186/s40886-018-0073-1 ; CASRAI guide (notes the unverified Joint Commission wording): https://casrai.org/guides/sbar-handoff-communication
-5. NHS England and PCSE guidance on duplicates and confusions: https://pcse.england.nhs.uk/services/patient-registrations/duplicates-and-confusions/about-duplicates and https://pcse.england.nhs.uk/services/patient-registrations/duplicates-and-confusions/about-confusions ; NBO case study: https://digital.nhs.uk/services/personal-demographics-service/national-back-office-for-the-personal-demographics-service/data-quality-incidents/duplicate-registration-case-study (seen via a mirror)
+5. Guidance from England's national health body and PCSE on duplicates and confusions: https://pcse.england.nhs.uk/services/patient-registrations/duplicates-and-confusions/about-duplicates and https://pcse.england.nhs.uk/services/patient-registrations/duplicates-and-confusions/about-confusions ; NBO case study: https://digital.nhs.uk/services/personal-demographics-service/national-back-office-for-the-personal-demographics-service/data-quality-incidents/duplicate-registration-case-study (seen via a mirror)
 6. HL7 FHIR Provenance as used in US Core: https://build.fhir.org/ig/HL7/US-Core/basic-provenance.html

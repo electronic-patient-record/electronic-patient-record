@@ -8,14 +8,14 @@ Public-source research read 2026-11-04. Vendor material is marketing; nothing he
 - Product names (per the same page): the Hyperspace client, the Chronicles real-time database, Clarity (relational) and Caboodle (warehouse), Cogito analytics, the MyChart patient portal, and the Cosmos de-identified data set.
 - Epic's own software index lists Patient Experience, Standalone Specialties, Health Systems and Clinics, Post-Acute, Care in the Home, Social Safety Net, Interoperability and Artificial Intelligence ([epic.com/software](https://www.epic.com/software/)). The page did not describe individual modules.
 - Market: KLAS reported (as summarised by trade press) that Epic held 43.7% of US acute care hospitals and 56.9% of beds in its 2026 report, with Oracle Health second and MEDITECH third ([HIT Consultant, 2026-05-14](https://hitconsultant.net/2026/05/14/klas-2026-ehr-market-share-report/)). I read this through a search summary, not the full report.
-- Outside the US, Epic is used by several NHS trusts and by Norway's Helseplattformen (see below).
+- Outside the US, Epic is used by several hospital trusts in England and by Norway's Helseplattformen (see below).
 
 ## Capabilities worth noting
 
 - Patient portal at scale: Wikipedia says MyChart is used by 150 million patients in the US (figure from the article; its own source not checked) ([Wikipedia](https://en.wikipedia.org/wiki/Epic_Systems)).
 - Cross-organisation record sharing through Care Everywhere and Share Everywhere (patient-authorised outside access) ([Wikipedia](https://en.wikipedia.org/wiki/Epic_Systems)). The same page reports press claims that Care Everywhere limited sharing with competitors' software, and that customers paid one-time costs to link each non-Epic system.
 - A de-identified research warehouse, Cosmos, claimed by Epic-sourced figures at 296 million patients ([Wikipedia](https://en.wikipedia.org/wiki/Epic_Systems)).
-- One integrated record across inpatient, ambulatory and community: the Royal Devon and Exeter trust went live in October 2021 and was reported as the first NHS site to use Epic across acute and community ([HSJ](https://www.hsj.co.uk/expert-briefings/the-download-inside-an-epic-implementation/7029845.article), trade press; paywalled, read through a search summary).
+- One integrated record across inpatient, ambulatory and community: the Royal Devon and Exeter trust went live in October 2021 and was reported as the first site in England's public health service to use Epic across acute and community ([HSJ](https://www.hsj.co.uk/expert-briefings/the-download-inside-an-epic-implementation/7029845.article), trade press; paywalled, read through a search summary).
 - Predictive models are sold inside the record (the sepsis model, evaluated below).
 
 ## Architecture and standards
@@ -35,7 +35,7 @@ Public-source research read 2026-11-04. Vendor material is marketing; nothing he
 ## What independent sources report
 
 Positive or neutral:
-- Cambridge University Hospitals, the first big-bang NHS Epic go-live, was later reported by Digital Health as delivered on budget and on time, with staff expecting improvement ([Digital Health, 2017](https://www.digitalhealth.net/2017/08/three-years-on-cambridge-epic)). The earlier article reports staff who understood the case for a single record ([Digital Health, 2016](https://www.digitalhealth.net/2016/02/cambridge-big-bang-reality/)).
+- Cambridge University Hospitals, the first big-bang Epic go-live in England's public health service, was later reported by Digital Health as delivered on budget and on time, with staff expecting improvement ([Digital Health, 2017](https://www.digitalhealth.net/2017/08/three-years-on-cambridge-epic)). The earlier article reports staff who understood the case for a single record ([Digital Health, 2016](https://www.digitalhealth.net/2016/02/cambridge-big-bang-reality/)).
 - Norway: a parliamentary committee majority opposed stopping Helseplattformen, calling that dramatic and harmful, and some municipalities reported benefits ([Altinget](https://www.altinget.no/digital/artikkel/ikke-flertall-for-aa-stanse-videre-innfoering-av-helseplattformen), read through a search summary).
 
 Problems:

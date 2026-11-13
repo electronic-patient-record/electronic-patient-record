@@ -1,6 +1,6 @@
 # Retention schedule (DRAFT)
 
-**The periods are not set.** They are the controller's to set from the NHS Records Management Code of Practice (or the local equivalent) and its own policy. Nothing here is advice, and **no retention period has been reviewed by anyone**. [`personal-data-inventory.csv`](personal-data-inventory.csv) gives every database column a retention class; `tests/personal_data_inventory.rs` fails when a column is missing from it.
+**The periods are not set.** They are the controller's to set from England's health Records Management Code of Practice (or the local equivalent) and its own policy. Nothing here is advice, and **no retention period has been reviewed by anyone**. [`personal-data-inventory.csv`](personal-data-inventory.csv) gives every database column a retention class; `tests/personal_data_inventory.rs` fails when a column is missing from it.
 
 | Class | Covers | Period | Today |
 | --- | --- | --- | --- |

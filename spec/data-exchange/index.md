@@ -18,7 +18,7 @@ Question: how do we get data in and out, such as import and export? This file co
 
 **Patient-facing export.** Three legal drivers, each different:
 - HIPAA right of access (45 CFR 164.524): action within 30 calendar days with one 30-day extension on written notice; form and format requested, including electronic, if readily producible; cost-based fees; psychotherapy notes and litigation material excluded [5]. Seen through secondary sources only; the regulation text was not opened.
-- UK GDPR Article 15 access: one calendar month in NHS trust guidance. Article 20 portability applies only to automated processing on consent (or contract) bases, and NHS guidance says public-task processing is outside it [6]. That is an NHS summary, not the legal text.
+- UK GDPR Article 15 access: one calendar month in hospital trust guidance. Article 20 portability applies only to automated processing on consent (or contract) bases, and health service guidance says public-task processing is outside it [6]. That is a health service summary, not the legal text.
 - US information blocking: ONC says that charging fees to export electronic health information to switch systems or to give patients their data does not qualify for the fees exception [7]. The EU European Health Data Space adds a portability right that does not depend on legal basis [8]; that is EU, not UK, law.
 
 ## Migration and cut-over
@@ -45,7 +45,7 @@ Principles that follow, and that fit an append-only record:
 Some data lives in two places, and one of them is written first. A vaccination is recorded at the point of care in the
 Welsh Immunisation System and belongs in the GP record too. For the 2024/25 flu mop-up, Welsh Government said "timely
 write-back of vaccinations recorded in WIS" to GP systems "will not be possible"; health boards sent weekly summaries
-and practices keyed the codes in by hand ([NHS Wales](../nhs-wales/index.md), [WHC24]). Nothing was lost by design, but
+and practices keyed the codes in by hand ([Wales](../wales/index.md), [WHC24]). Nothing was lost by design, but
 nothing said what had not arrived. For any data held in two places, this project names the following before it is
 built. Spec only: immunisations are not built (RC-5).
 
@@ -146,7 +146,7 @@ For the Clinical Safety Officer, none accepted; none is yet in the hazard log.
 3. Bulk Data patient export and Provenance handling: https://build.fhir.org/ig/HL7/bulk-data/en/OperationDefinition-patient-export.html ; $everything ticket: https://jira.hl7.org/browse/FHIR-33173
 4. IHE Sharing of IPS: https://profiles.ihe.net/ITI/sIPS/volume-1.html
 5. HIPAA right of access (secondary): https://canons.sog.unc.edu/?p=3297 ; rule text: https://www.govinfo.gov/content/pkg/CFR-2010-title45-vol1/pdf/CFR-2010-title45-vol1-sec164-524.pdf (2010 edition, not current)
-6. NHS England information governance, shared care records appendix on rights: https://digital.nhs.uk/data-and-information/information-governance/guidance/information-governance-framework-shared-care-records/appendix-4 (seen via a mirror)
+6. England's national health body, information governance, shared care records appendix on rights: https://digital.nhs.uk/data-and-information/information-governance/guidance/information-governance-framework-shared-care-records/appendix-4 (seen via a mirror)
 7. ONC information blocking FAQ on fees for export: https://healthit.gov/faq/are-contractual-fees-export-electronic-health-information-ehi-using-technology-not-certified-45/
 8. EIPA on EHDS data portability: https://www.eipa.eu/blog/data-portability-in-the-european-health-data-space/
 9. Large EHR migration with validation (PMC): https://pmc.ncbi.nlm.nih.gov/articles/PMC11741007

@@ -16,5 +16,5 @@
 - **Closed loop**: an order or referral tracked until its result or outcome is received and acknowledged.
 - **FHIR**: HL7 Fast Healthcare Interoperability Resources. **SMART**: app launch and OAuth profile for FHIR.
 - **USCDI / US Core / UK Core / IPS**: US data set / US FHIR profiles / UK FHIR profiles / International Patient Summary.
-- **DCB0129 / DCB0160**: NHS clinical risk management standards for manufacturers / deployers.
-- **DTAC / DSPT**: NHS digital technology assessment criteria / data security and protection toolkit.
+- **DCB0129 / DCB0160**: England's health service clinical risk management standards for manufacturers / deployers.
+- **DTAC / DSPT**: England's digital technology assessment criteria / data security and protection toolkit.

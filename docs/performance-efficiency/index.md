@@ -85,5 +85,5 @@ Capacity failures are visible at national scale: in October 2022 an Oracle Cerne
 6. https://KLASresearch.com/archcollaborative/report/ehr-response-time-and-reliability/423 : KLAS EHR response time and reliability (snippet).
 7. https://www.healthcareitnews.com/news/docs-struggle-slow-clinical-information-systems : log-in survey, 99 respondents (snippet).
 8. https://www.theregister.com/2022/10/12/oracle_cerner_outage_uk/ : Oracle Cerner UK outage, October 2022 (snippet).
-9. https://ukauthority.com/articles/nhs-systems-recover-from-global-it-outage : NHS recovery from the 2024 global outage (snippet).
+9. https://ukauthority.com/articles/nhs-systems-recover-from-global-it-outage : health service systems recovering from the 2024 global outage (snippet).
 10. https://www.digitalhealth.net/2025/11/nottingham-hospitals-declares-critical-incident-after-epr-go-live : Nottingham critical incident (snippet).

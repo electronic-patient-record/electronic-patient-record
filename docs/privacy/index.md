@@ -12,8 +12,8 @@ Here privacy means more than secrecy: lawful basis, purpose limitation, data min
 
 - Every record is special-category data; a leak harms dignity, employment and safety, and cannot be undone.
 - Snooping by authorised staff is a recurring finding in regulator actions; patient-visible access logs are a deterrent (this is my reading; no count was collected).
-- The ICO fined Advanced about 3.07 million pounds after a 2022 ransomware attack that exposed personal data of NHS patients ([Computing](https://computing.co.uk/news/2025/security/ico-fines-advanced), snippet only).
-- In England, the national data opt-out lets patients opt out of use of their data for research and planning ([NHS England](https://digital.nhs.uk/services/national-data-opt-out)); the NHS Records Management Code of Practice sets retention periods ([NHS England](https://transform.england.nhs.uk/information-governance/guidance/records-management-code/)).
+- The ICO fined Advanced about 3.07 million pounds after a 2022 ransomware attack that exposed personal data of UK health service patients ([Computing](https://computing.co.uk/news/2025/security/ico-fines-advanced), snippet only).
+- In England, the national data opt-out lets patients opt out of use of their data for research and planning ([England's national health body](https://digital.nhs.uk/services/national-data-opt-out)); the Records Management Code of Practice for health and care sets retention periods ([England's national health body](https://transform.england.nhs.uk/information-governance/guidance/records-management-code/)).
 - Erasure under GDPR Article 17 has an exemption for health care and public health, so a clinical record is normally retained, not erased ([GDPR text](https://gdpr-info.eu/art-17-gdpr/)); how that applies is for the controller.
 - Children, people lacking capacity and proxies need special handling.
 
@@ -60,7 +60,7 @@ Here privacy means more than secrecy: lawful basis, purpose limitation, data min
 
 ## Ideas
 
-1. Set draft retention periods per class from the NHS Records Management Code, labelled unreviewed, so the controller starts from something (AS-2).
+1. Set draft retention periods per class from the Records Management Code for health and care, labelled unreviewed, so the controller starts from something (AS-2).
 2. Decide the erasure policy options in writing: retain under exemption, restrict, redact in a derived view, crypto-shred a per-tenant key (needs SE-5 and per-tenant keys). Record as an open question for the privacy lead.
 3. Build a subject access export (FHIR bundle of the patient's record and access log), audited.
 4. Add a short retention for `feed_refusals` raw messages with a redaction step.
@@ -79,7 +79,7 @@ Here privacy means more than secrecy: lawful basis, purpose limitation, data min
 ## Not verified
 
 - ISO 25010:2023 treatment of privacy is from secondary summaries and my reading.
-- GDPR, HIPAA and NHS pages are cited from memory and were not re-read this session; deadlines and exemptions must be checked by a privacy lawyer.
+- GDPR, HIPAA and UK health service pages are cited from memory and were not re-read this session; deadlines and exemptions must be checked by a privacy lawyer.
 - The one-month response time and the Article 17 health exemption are my recollection.
 - No legal advice is given or implied.
 
@@ -91,6 +91,6 @@ Here privacy means more than secrecy: lawful basis, purpose limitation, data min
 - [GDPR Art 9](https://gdpr-info.eu/art-9-gdpr/), [Art 17](https://gdpr-info.eu/art-17-gdpr/), [Art 25](https://gdpr-info.eu/art-25-gdpr/): special category, erasure, by design.
 - [HHS HIPAA Privacy Rule](https://www.hhs.gov/hipaa/for-professionals/privacy/index.html): US.
 - [eCFR 42 CFR Part 2](https://www.ecfr.gov/current/title-42/chapter-I/subchapter-A/part-2): substance use records.
-- [NHS national data opt-out](https://digital.nhs.uk/services/national-data-opt-out): England opt-out.
-- [NHS Records Management Code](https://transform.england.nhs.uk/information-governance/guidance/records-management-code/): retention.
+- [National data opt-out, England](https://digital.nhs.uk/services/national-data-opt-out): England opt-out.
+- [Records Management Code for health and care](https://transform.england.nhs.uk/information-governance/guidance/records-management-code/): retention.
 - [Computing, ICO fines Advanced](https://computing.co.uk/news/2025/security/ico-fines-advanced): fine after ransomware.

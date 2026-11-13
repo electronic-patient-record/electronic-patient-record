@@ -22,18 +22,18 @@ It was latent: nothing stored a label on a clinical record. Fixed 2026-11-04 (PI
 
 | Category | Why it is protected | Protected by (examples) | HL7 label |
 | --- | --- | --- | --- |
-| Sexual health, STIs | Stigma; people stay away if not assured of confidence | England: the 2000 Directions were **revoked on 12 October 2023**, so no STI-specific law applies; UK GDPR, the DPA 2018, the common-law duty and NHS England guidance do [DIRREV] [NHSHIV] | `STD`, `SEX` |
-| HIV | As above, plus discrimination | As above: guidance says electronic records should restrict access, and dedicated clinics seek explicit consent before sharing outside the service [NHSHIV] | `HIV` |
+| Sexual health, STIs | Stigma; people stay away if not assured of confidence | England: the 2000 Directions were **revoked on 12 October 2023**, so no STI-specific law applies; UK GDPR, the DPA 2018, the common-law duty and guidance from England's national health body do [DIRREV] [UKHIV] | `STD`, `SEX` |
+| HIV | As above, plus discrimination | As above: guidance says electronic records should restrict access, and dedicated clinics seek explicit consent before sharing outside the service [UKHIV] | `HIV` |
 | Gender history | Disclosure can bring violence or discrimination; in some cases it is a criminal offence | UK: Gender Recognition Act 2004 s.22; Equality Act 2010 s.7 protected characteristic [GRA22] [EQA7] | `GENDER` |
 | Violence and assault | The attacker may seek the patient; the patient may be at risk in the ward | Local policy; UK GMC guidance on gunshot and knife wounds [GMCGUN]; hospital "confidential patient" policies [ALIAS] | `VIO` (unrelated person), `SDV` (mainly a related person) |
-| Domestic abuse, sexual assault | The abuser may be the partner, the proxy or the person holding the phone | Safeguarding duties; UK guidance on coercion and online access [NHSCOERCE] | `SDV` |
+| Domestic abuse, sexual assault | The abuser may be the partner, the proxy or the person holding the phone | Safeguarding duties; UK guidance on coercion and online access [UKCOERCE] | `SDV` |
 | Female genital mutilation | Safeguarding of a girl; stigma for an adult | England and Wales: mandatory police notification for known cases in under-18s (FGM Act 2003 s.5B, in force 31 October 2015); it does not cover a disclosure by an adult about childhood [FGM] | |
 | Children and young people | A competent young person is owed confidence, including from a parent | England and Wales: Gillick and Fraser, decision by decision; GMC 0-18 guidance [GMC018] [NSPCC] | `ADOL` |
 | Mental health | Stigma, employment; psychotherapy notes are a particular class | Local law; US psychotherapy-note rules (not read) | `PSY`, `MH`, `BH`, `PSYTHPN` |
 | Substance use | Discrimination, prosecution, loss of work or a child | US 42 CFR Part 2: final rule 16 February 2024, compliance by 16 February 2026 [PART2] | `SUD`, `ETH`, `ETHUD`, `OPIOIDUD` |
 | Reproductive health, abortion | Prosecution or harm where it is restricted; family conflict | US: the 2024 HIPAA reproductive-health rule was **vacated** nationally by *Purl v. HHS* (N.D. Tex., 18 June 2025); one source reports the appeal was dismissed in September 2025 [PURL] | `SEX`, `PREGNANT` (version-dependent) |
 | Genetic information | It speaks about relatives as well as the patient (my reasoning) | Not researched beyond the code | `GDIS` |
-| Immigration status | Fear of enforcement keeps people from care | UK: the 2017 Home Office and NHS Digital memorandum was suspended in May 2018 and withdrawn that November; I found nothing on what replaced it [MOU] | |
+| Immigration status | Fear of enforcement keeps people from care | UK: the 2017 memorandum between the Home Office and England's former national health data body was suspended in May 2018 and withdrawn that November; I found nothing on what replaced it [MOU] | |
 | Location and address | Someone is looking for the patient | England: the PDS "sensitive" flag restricts location information [PDSS] | `LIVARG`, `LOCIS` |
 | Staff, public figures | Curiosity; snooping | See [roles](roles-and-assignments.md), operation 11 | `EMP`, `CEL` |
 | Adoption, witness protection | Identity must not link across the break | **Not researched.** The first is a known English process with the same shape as gender change [PCSEA]; the second I did not look at | |
@@ -45,7 +45,7 @@ All of these fall under UK GDPR special category or are close to it: Article 6 a
 The request names this category and the law is unusually specific, so here it is in more detail.
 
 - **The offence.** Under section 22 of the Gender Recognition Act 2004 it is an offence to disclose "protected information" acquired in an official capacity, which includes employment and professional services. Protected information is that a person has applied for recognition, or about their gender before the acquired gender took effect. The penalty on summary conviction is a fine up to level 5 [GRA22]. There are exceptions: the person cannot be identified, the person agrees, a court orders it, preventing or investigating crime, and others. A further order under s.22(4) to (5) covers some medical disclosures; I did not read it, and a lawyer must. **Do not assume that a clinician needing to know is an exception until someone has read that order.**
-- **The English process.** PCSE describes it for GP practices: adults only (gender-marker changes for under-18s have been stopped); usually a new NHS number and a new record, leaving out information about the previous identity; the practice must not write the new number on the old record; the change is not reversible, and going back gives a third number; it can lose old records, screening invitations and waiting-list places. Alternatively an adult can change the marker and keep the number. NHS England says this process is under review [PCSE]. Several sources say a Gender Recognition Certificate is not required to ask [GENDERREC].
+- **The English process.** PCSE describes it for GP practices: adults only (gender-marker changes for under-18s have been stopped); usually a new national health number and a new record, leaving out information about the previous identity; the practice must not write the new number on the old record; the change is not reversible, and going back gives a third number; it can lose old records, screening invitations and waiting-list places. Alternatively an adult can change the marker and keep the number. England's national health body says this process is under review [PCSE]. Several sources say a Gender Recognition Certificate is not required to ask [GENDERREC].
 - **Why this is hard for this project.** Three of the rules here meet:
   1. *The matcher.* It is designed to find that two records are the same person. Here the English process deliberately makes two records with no link, and matching them may disclose exactly what the law protects. Equally, the old record may hold an allergy.
   2. *The append-only record.* Nothing is deleted, and the old name is in version history, in the audit trail and in signed documents.
@@ -60,17 +60,17 @@ A label only works where something checks it. Each route is a place that must be
 
 | Route | How it leaks | Evidence |
 | --- | --- | --- |
-| Patient portal | A partner, parent or abuser reads the account, or forces the login | Refuge and the BMA urged survivors to ask for record sharing to be switched off [REFUGE]; the RCGP warns of forced credential sharing [NHSCOERCE] |
-| Proxy access | The proxy is the person the patient needs protection from | [NHSCOERCE]; an adult's proxy access needs consent |
-| The redaction itself | Hiding an entry, or abruptly ending proxy access, can reveal by inference that something exists | Training material [NHSCOERCE] |
-| Printing | One GP-systems guide warns that hiding from online view does **not** redact a printout | [NHSCOERCE] |
+| Patient portal | A partner, parent or abuser reads the account, or forces the login | Refuge and the BMA urged survivors to ask for record sharing to be switched off [REFUGE]; the RCGP warns of forced credential sharing [UKCOERCE] |
+| Proxy access | The proxy is the person the patient needs protection from | [UKCOERCE]; an adult's proxy access needs consent |
+| The redaction itself | Hiding an entry, or abruptly ending proxy access, can reveal by inference that something exists | Training material [UKCOERCE] |
+| Printing | One GP-systems guide warns that hiding from online view does **not** redact a printout | [UKCOERCE] |
 | Letters and reminders | Clinic name or specialty on an envelope, a text message on a shared phone, the home address | My reasoning; the sensitive-location flag exists because of this [PDSS] |
 | Results release | An automatic result reaches a portal before the clinician speaks to the patient | HL7 `TBOO` exists for this case [HL7R4] |
 | Billing and insurance | The itemised bill names the service | My reasoning; US-shaped |
 | Referrals, discharge summaries | The problem list travels into a letter to someone with no need | My reasoning |
 | Shared care records | A local restriction is not carried across the boundary | DS4P says a label works only where the recipient honours it [DS4P] |
 | Name search, the banner | Search reveals an alias, a former name or that a patient exists; the banner shows a problem or a flag | Hospital "no information" policies [ALIAS] |
-| The word "restricted" | A mask that says "restricted information exists" tells a proxy that there is something to find | Same inference risk [NHSCOERCE]; this project's mask does exactly that |
+| The word "restricted" | A mask that says "restricted information exists" tells a proxy that there is something to find | Same inference risk [UKCOERCE]; this project's mask does exactly that |
 | The audit trail | A clinic name in a patient-visible access log discloses the service; an auditor sees what they should not | My reasoning; the log here shows roles and organisations |
 | Export and subject access | The bulk export or the patient copy carries restricted or third-party content | [Data exchange](../data-exchange/index.md), DE-H5 |
 | Analytics and the outbox | A derived table, an event or a log line loses the label | My reasoning |
@@ -79,7 +79,7 @@ A label only works where something checks it. Each route is a place that must be
 ## How others handle it
 
 - **Sensitivity labels.** HL7 supplies a confidentiality code (one, always) and optional sensitivity codes. FHIR DS4P 1.0.0 (trial use) maps these into FHIR and allows labels below the whole resource. It is policy-agnostic: it does not say who assigns a label, and labels bind only those who agree to honour them [DS4P]. Codes change by release: `SEX` and `STD` are in the R4 value set and the 3.1.0 set, and `SICKLE` has an apparent definition error [HL7R4] [HL7THO]. **Pin the release.**
-- **Segregated services.** English sexual-health and HIV services often keep records apart and seek explicit consent to share outside [NHSHIV].
+- **Segregated services.** English sexual-health and HIV services often keep records apart and seek explicit consent to share outside [UKHIV].
 - **Alias and confidential patients.** Practice divides. One US policy marks a patient confidential and **bars** an alias; others use a fictitious name in the master index and swap it back after discharge. An AHIMA sample warns that aliases carry safety and data-integrity issues, and a California breach report shows staff reading an alias record anyway [ALIAS]. An alias is not a control on its own.
 - **Lockbox.** Ontario's "lock box" is not a term in PHIPA, but a patient may withhold consent and give express instructions, and a custodian must tell another custodian that information is locked. At one hospital, staff confirm express consent each time they open such a record [ONT].
 - **Patient-held codes.** Australia's My Health Record offers a record access code and a limited document access code, with emergency access to a restricted record [MHR].
@@ -170,15 +170,15 @@ Summarised as OQ-PI1 to OQ-PI6 in [open questions](../16-open-questions.md).
 - [PCSE] PCSE, gender reassignment: https://pcse.england.nhs.uk/help/patient-registrations/gender-reassignment (fetched, summarised)
 - [PCSEA] PCSE, adoption and gender re-assignment processes: https://pcse.england.nhs.uk/help/registrations/adoption-and-gender-re-assignment-processes/ (title only)
 - [GENDERREC] MDDUS, the care of transgender patients by GPs: https://mddus.com/-/media/files/training-and-cpd/advice-library-pdfs-q3-2024/the-care-of-transgender-patients-by-gps.pdf (snippet)
-- [PDSS] NHS England PDS National Back Office (mirror): https://nhsd-proxy.openprescribing.net/services/personal-demographics-service/national-back-office-for-the-personal-demographics-service/management-of-nhs-numbers-and-pds-records (snippet)
+- [PDSS] England's national health body, PDS National Back Office (mirror): https://nhsd-proxy.openprescribing.net/services/personal-demographics-service/national-back-office-for-the-personal-demographics-service/management-of-nhs-numbers-and-pds-records (snippet)
 - [DIRREV] STD Revocation Directions 2023: https://www.gov.uk/government/publications/nhs-trusts-and-primary-care-trusts-sexually-transmitted-diseases-revocation-directions-2023 (fetched, summarised)
-- [NHSHIV] NHS England, HIV and STIs guidance: https://transform.england.nhs.uk/information-governance/guidance/hiv-and-sexually-transmitted-infections-stis (search summary)
+- [UKHIV] England's national health body, HIV and STIs guidance: https://transform.england.nhs.uk/information-governance/guidance/hiv-and-sexually-transmitted-infections-stis (search summary)
 - [GMCGUN] GMC, reporting gunshot and knife wounds: https://www.gmc-uk.org/professional-standards/the-professional-standards/confidentiality---reporting-gunshot-and-knife-wounds (snippet)
 - [GMC018] GMC, 0-18 years: https://www.gmc-uk.org/professional-standards/the-professional-standards/0-18-years (snippet)
 - [NSPCC] NSPCC, Gillick competence and Fraser guidelines: https://learning.nspcc.org.uk/child-protection-system/gillick-competence-fraser-guidelines (snippet)
 - [FGM] Serious Crime Act 2015, explanatory note to s.74: https://legislation.gov.uk/ukpga/2015/9/notes/division/3/5/2/9 (snippet)
-- [NHSCOERCE] NHS England, coercion: https://www.england.nhs.uk/long-read/coercion/ ; RCGP coercion guidance (April 2022): https://elearning.rcgp.org.uk/pluginfile.php/179161/mod_book/chapter/782/Coercion%20v5.0.pdf ; Medical Protection: https://www.medicalprotection.org/uk/advice-centre-articles/ask-the-expert-online-patient-records-nhs-guidelines-record-keeping (snippets)
-- [REFUGE] Refuge, joint letter on survivors' records on the NHS App: https://refuge.org.uk/news/joint-letter-on-concerns-around-survivors-medical-records-on-nhs-app/ (snippet)
+- [UKCOERCE] England's national health body, coercion: https://www.england.nhs.uk/long-read/coercion/ ; RCGP coercion guidance (April 2022): https://elearning.rcgp.org.uk/pluginfile.php/179161/mod_book/chapter/782/Coercion%20v5.0.pdf ; Medical Protection: https://www.medicalprotection.org/uk/advice-centre-articles/ask-the-expert-online-patient-records-nhs-guidelines-record-keeping (snippets)
+- [REFUGE] Refuge, joint letter on survivors' records on England's national patient app: https://refuge.org.uk/news/joint-letter-on-concerns-around-survivors-medical-records-on-nhs-app/ (snippet)
 - [ICO9] ICO, the rules on special category data: https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/lawful-basis/special-category-data/what-are-the-rules-on-special-category-data/ (search summary)
 - [PART2] 89 FR, 16 February 2024: https://www.govinfo.gov/content/pkg/FR-2024-02-16/html/2024-02544.htm (search summary, primary text not read)
 - [PURL] Haynes Boone, rule remains vacated after appeals closed: https://www.haynesboone.com/news/publications/hipaa-reproductive-healthcare-privacy-rule-remains-vacated-after-appeals-closed (snippet)
@@ -186,5 +186,5 @@ Summarised as OQ-PI1 to OQ-PI6 in [open questions](../16-open-questions.md).
 - [ALIAS] University of Toledo policy: https://www.utoledo.edu/policies/utmc/administrative/pdfs/3364-100-01-13.pdf ; AHIMA, using aliases: https://journal.ahima.org/Portals/0/archives/AHIMA%20files/Using%20Aliases%20to%20Protect%20Privacy%20in%20Healthcare.pdf ; Relias, aliases: https://www.reliasmedia.com/articles/48472-hospital-uses-aliases-to-protect-patient-identity ; California breach report: https://www.cdph.ca.gov/Programs/CHCQ/LCP/CDPH%20Document%20Library/Breaches/LnCSantaMonicaUCLAMedCtr_20080404.pdf (snippets)
 - [ONT] IPC Ontario, PHIPA Decision 144: https://decisions.ipc.on.ca/ipc-cipvp/phipa/en/496393/1/document.do ; Ottawa Hospital (snippets)
 - [MHR] OAIC, My Health Record access controls: https://www.oaic.gov.au/privacy/guidance-and-advice/my-health-record/my-health-record-access-controls/ (snippet)
-- [MOU] NHS Digital ends sharing, Digital Health, November 2018: https://www.digitalhealth.net/2018/11/nhs-digital-patient-data-sharing-home-office-end/ (snippet)
+- [MOU] England's former national health data body ends sharing, Digital Health, November 2018: https://www.digitalhealth.net/2018/11/nhs-digital-patient-data-sharing-home-office-end/ (snippet)
 - This repository: `electronic-patient-record-service-with-rust/src/policy.rs`, `consent.rs`; [Access control](index.md); [Audit](../audit/index.md).

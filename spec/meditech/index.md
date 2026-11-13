@@ -28,7 +28,7 @@ Public-source research read 2026-11-04. Vendor material is marketing; nothing he
 
 - Acute and small or rural hospitals: the main footprint. MEDITECH says fifteen rural hospitals chose Expanse in 2025 (vendor, via a search summary).
 - ED, mental health, home care, ambulatory: listed by MEDITECH. Named customers on its page include Silver Hill Hospital (psychiatric) and Willis Knighton (132 clinics) (vendor).
-- Primary care outside hospital-owned clinics, and community services in the NHS sense: unknown from my sources.
+- Primary care outside hospital-owned clinics, and community services in the UK health service's sense: unknown from my sources.
 
 ## What independent sources report
 

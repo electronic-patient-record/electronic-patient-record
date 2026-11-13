@@ -11,7 +11,7 @@ For this project, three terms matter. Availability is whether clinicians can rea
 ## Why it matters for an EPR
 
 - When an EPR is down, clinicians fall back to paper and memory. The NAO found that WannaCry in May 2017 affected at least 81 of 236 trusts in England and that thousands of appointments were cancelled ([NAO](https://www.nao.org.uk/reports/investigation-wannacry-cyber-attack-and-the-nhs/), from memory, page not re-read this session).
-- In August 2022 a ransomware attack on Advanced disrupted NHS 111 and other services for weeks; the ICO fined the processor about 3.07 million pounds in 2025, after provisionally proposing about 6.09 million, and reported that the entry point was a customer account without multi-factor authentication ([Computing](https://computing.co.uk/news/2025/security/ico-fines-advanced), search snippet only).
+- In August 2022 a ransomware attack on Advanced disrupted England's 111 urgent care phone service and other services for weeks; the ICO fined the processor about 3.07 million pounds in 2025, after provisionally proposing about 6.09 million, and reported that the entry point was a customer account without multi-factor authentication ([Computing](https://computing.co.uk/news/2025/security/ico-fines-advanced), search snippet only).
 - Recovery matters as much as prevention: a backup nobody has restored is a hope. The HIPAA Security Rule NPRM of January 2025 proposed restoring critical systems within 72 hours ([Federal Register](https://www.federalregister.gov/documents/2025/01/06/2024-30983/hipaa-security-rule-to-strengthen-the-cyber-security-of-electronic-protected-health-information), from memory; proposed, not final).
 - The NCSC Cyber Assessment Framework has an objective on resilience and recovery planning for essential services ([NCSC CAF](https://www.ncsc.gov.uk/collection/cyber-assessment-framework)).
 
@@ -82,7 +82,7 @@ For this project, three terms matter. Availability is whether clinicians can rea
 - [Sonar guide to ISO/IEC 25010](https://www.sonarsource.com/resources/library/iso-iec-25010-explained/): sub-characteristic lists, secondary.
 - [arc42 quality model summary](https://quality.arc42.org/standards/iso-25010): 2011 versus 2023 changes, secondary.
 - [SEI, Software Architecture in Practice](https://www.sei.cmu.edu/library/software-architecture-in-practice-fourth-edition/): quality attribute scenarios.
-- [NAO on WannaCry and the NHS](https://www.nao.org.uk/reports/investigation-wannacry-cyber-attack-and-the-nhs/): 2017 impact.
+- [NAO on WannaCry and the UK's public health service](https://www.nao.org.uk/reports/investigation-wannacry-cyber-attack-and-the-nhs/): 2017 impact.
 - [Computing on the ICO fine of Advanced](https://computing.co.uk/news/2025/security/ico-fines-advanced): 2022 ransomware, MFA gap.
 - [Federal Register HIPAA Security Rule NPRM](https://www.federalregister.gov/documents/2025/01/06/2024-30983/hipaa-security-rule-to-strengthen-the-cyber-security-of-electronic-protected-health-information): proposed 72-hour restoration.
 - [NCSC Cyber Assessment Framework](https://www.ncsc.gov.uk/collection/cyber-assessment-framework): resilience objective.

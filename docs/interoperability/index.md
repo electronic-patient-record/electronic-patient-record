@@ -12,16 +12,16 @@ Healthcare work usually splits the idea into layers: transport, syntax (HL7 v2, 
 
 HL7 v2 is everywhere and varies by site. The HL7 FHIR comparison page calls variation in implementation one of the biggest challenges of v2 interoperability, and says Z-segments are opaque without a prior explanation from the sender [3]. So an inbound ADT feed needs a tolerant, tested parser and a mapping agreed per sender.
 
-FHIR is the modern route, but a server's claim must be true. FHIR requires a CapabilityStatement stating the interactions and resources a server supports [4], and the US ONC (g)(10) certification is tested by the Inferno test kit, which covers SMART App Launch, US Core and Bulk Data and had a version 8.0.5 listed in the search results I saw [5]. For the UK, UK Core is published by NHS England and can be checked with the HL7 validator with the package loaded, according to community threads from 2020 to 2022 that I saw only as snippets [6]. Bulk Data Access is on version 3.0.0 (STU 3) over R4 according to its home page [7].
+FHIR is the modern route, but a server's claim must be true. FHIR requires a CapabilityStatement stating the interactions and resources a server supports [4], and the US ONC (g)(10) certification is tested by the Inferno test kit, which covers SMART App Launch, US Core and Bulk Data and had a version 8.0.5 listed in the search results I saw [5]. For the UK, UK Core is published by England's national health body and can be checked with the HL7 validator with the package loaded, according to community threads from 2020 to 2022 that I saw only as snippets [6]. Bulk Data Access is on version 3.0.0 (STU 3) over R4 according to its home page [7].
 
-Failures of exchange become safety events when a record cannot be found at the point of care. The NHS and other health systems have lost access to records when central services fell over (October 2022 Oracle Cerner outage, reported by The Register [8]; Welsh GPs unable to reach records because of data-centre faults [9]; both snippets only). I did not find a public source I could read that measures harm from failed integrations specifically, so I make no number claim.
+Failures of exchange become safety events when a record cannot be found at the point of care. The UK's public health service and other health systems have lost access to records when central services fell over (October 2022 Oracle Cerner outage, reported by The Register [8]; Welsh GPs unable to reach records because of data-centre faults [9]; both snippets only). I did not find a public source I could read that measures harm from failed integrations specifically, so I make no number claim.
 
 ## What the project says today
 
 - **Standards plan** (`spec/interoperability/index.md`): FHIR R4 with UK Core and US Core, IPS, SMART App Launch 2.2, CDS Hooks 2.0, Bulk Data 2.0, HL7 v2.5.1 inbound (ADT, ORU, SIU), C-CDA only if a US network requires it. Tasks IO-1 to IO-19, OR-3.
 - **Built:** `/fhir/R4/metadata`, `Patient`, `AllergyIntolerance`, read-only `Observation` search; a census test that the stated interactions equal the mounted routes (IO-1); `interop::fhir_patient` and `fhir_allergy` via the `fhir` crate; a read-only R5 facade, where conversion loss fails the response (IO-16); an HL7 v2 reader for ADT A01, A04, A08, A28 and A31 with `AA`/`AE`/`AR` acknowledgements, and an MLLP listener that is off unless `EPR_MLLP_BIND` is set (OR-3); an OpenAPI 3.1 document derived from the routes (OS-7).
 - **Test oracle:** the HL7 FHIR validator, in `tests/fhir_validator.rs` and the CI job `fhir-validator`, with a control that must fail. This proves only what the validator checks.
-- **Not built:** SMART App Launch (IO-2), conformance via Inferno (after IO-2 and IO-4), Bulk `$export` (IO-4), IPS `$summary` (IO-5), Subscriptions (IO-6), SQL-on-FHIR (IO-7), EHI export (IO-8), NHS national APIs (IO-9), SMART Health Links (IO-10), national profile packs (IO-18, a design only: OS-10 "Pack mechanism", proposed and not confirmed by the maintainer), outbound HL7 or an outbox sink (OS-3, partly landed; no worker).
+- **Not built:** SMART App Launch (IO-2), conformance via Inferno (after IO-2 and IO-4), Bulk `$export` (IO-4), IPS `$summary` (IO-5), Subscriptions (IO-6), SQL-on-FHIR (IO-7), EHI export (IO-8), UK national health APIs (IO-9), SMART Health Links (IO-10), national profile packs (IO-18, a design only: OS-10 "Pack mechanism", proposed and not confirmed by the maintainer), outbound HL7 or an outbox sink (OS-3, partly landed; no worker).
 - **Honesty rules** in the spec: `metadata` lists only profiles that pass validation; the stored record is base FHIR; no pack changes the clinical rules; packs are unreviewed until a person who knows the country reviews them.
 - **Benchmark** (`spec/benchmark.md`): SMART App Launch is a table-stakes gap among active comparators; OpenAPI and the CapabilityStatement census are in place.
 
@@ -80,7 +80,7 @@ Failures of exchange become safety events when a record cannot be found at the p
 
 - ISO/IEC 25010:2023 text.
 - Inferno version numbers (the search results disagreed).
-- UK Core validation guidance (2020 to 2022 community posts, snippets); check NHS England directly.
+- UK Core validation guidance (2020 to 2022 community posts, snippets); check with England's national health body directly.
 - Bulk Data details beyond the version on its home page.
 - The outage reports (snippets only).
 - That the specs' "built" statements match the code; I read the specs, not the code.

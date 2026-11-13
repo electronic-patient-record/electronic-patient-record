@@ -7,7 +7,7 @@
 # names an unknown role or resource; its tests prove this file parses.
 #
 # NOT REVIEWED. The subset below follows the Welsh GP Record's vaccinator view (search snippet only,
-# spec/nhs-wales/index.md); no clinician, vaccination lead or Clinical Safety Officer has read it.
+# spec/wales/index.md); no clinician, vaccination lead or Clinical Safety Officer has read it.
 
 [[view]]
 role = "vaccinator"

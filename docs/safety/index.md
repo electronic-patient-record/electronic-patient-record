@@ -18,7 +18,7 @@ This is product safety in the 25010 sense. Clinical safety as a process (DCB0129
 
 ## Why it matters for an EPR
 
-- In England DCB0129 sets clinical risk management requirements for manufacturers of health IT and DCB0160 for the organisations that deploy and use them; both are published under section 250 of the Health and Social Care Act 2012 and were under review, with a consultation that opened on 29 June 2026 ([NHS England engagement](https://www.engage.england.nhs.uk/patient-safety/national-review-of-clinical-risk-management-standa/); [NHS standards](https://standards.nhs.uk/published-standards/clinical-risk-management-its-application-in-the-deployment-and-use-of-health-it-systems); snippets; current status not confirmed).
+- In England DCB0129 sets clinical risk management requirements for manufacturers of health IT and DCB0160 for the organisations that deploy and use them; both are published under section 250 of the Health and Social Care Act 2012 and were under review, with a consultation that opened on 29 June 2026 ([engagement page of England's national health body](https://www.engage.england.nhs.uk/patient-safety/national-review-of-clinical-risk-management-standa/); [national health standards](https://standards.nhs.uk/published-standards/clinical-risk-management-its-application-in-the-deployment-and-use-of-health-it-systems); snippets; current status not confirmed).
 - ISO 14971 is the risk management standard behind medical device software; IEC 62304 gives software lifecycle processes and IEC 82304-1 product safety for health software ([overview, secondary](https://jamb.readthedocs.io/en/latest/_sources/iec-62304/overview.md.txt); [IEC 82304-1 listing](https://www.evs.ee/en/iec-82304-1-2016)). Whether any module is a device is open (OQ-6, AS-11).
 - SAFER Guides are ONC-supported self-assessment tools for EHR safety, free of charge and disclaimed for legal compliance; the sources I saw date from 2014, and AS-3 in this repository refers to eight 2025 guides, which I did not check ([AJMC](https://www.ajmc.com/view/the-safer-guides-empowering-organizations-to-improve-the-safety-and-effectiveness-of-electronic-health-records); [ECRI](https://www.ecri.org/search-results/member-preview/ccrm/pages/iiccrm013114_onc/)).
 - EHR-related events in reports: 557 of 1.735 million reported events used wording suggesting usability contributed ([Becker's](https://www.beckershospitalreview.com/healthcare-information-technology/ehrs/study-links-ehr-usability-issues-to-patient-harm/); secondary).
@@ -81,7 +81,7 @@ This is product safety in the 25010 sense. Clinical safety as a process (DCB0129
 
 ## Not verified
 
-No standard text was read; ISO 25010 safety names are from one Japanese summary. I did not open the hazard log rows. NHS review status unconfirmed. Nothing here is certified, compliant or reviewed.
+No standard text was read; ISO 25010 safety names are from one Japanese summary. I did not open the hazard log rows. The national review's status is unconfirmed. Nothing here is certified, compliant or reviewed.
 - Link check 2026-11-04: these cited pages returned 404. They may have moved, but what rests on them is unconfirmed: https://www.ecri.org/search-results/member-preview/ccrm/pages/iiccrm013114_onc/
 
 ## Sources

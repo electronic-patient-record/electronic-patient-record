@@ -66,7 +66,7 @@ Version compatibility is the second pressure. Hospitals run browsers and operati
 
 ## Open questions
 
-- Which browsers and OS versions do target deployers manage (NHS trust estates, low-resource clinics)?
+- Which browsers and OS versions do target deployers manage (hospital trust estates, low-resource clinics)?
 - Is the UI expected to run on tablets that are several OS versions behind?
 - How many API versions are supported at once, and who decides when one ends?
 
@@ -83,7 +83,7 @@ Version compatibility is the second pressure. Hospitals run browsers and operati
 2. https://www.iso.org/standard/78176.html : ISO catalogue page (403 on fetch).
 3. https://people.ece.ubc.ca/matei/EECE417/BASS/ch04lev1sec3.html : quality attribute scenarios (Bass et al.).
 4. https://semver.org/ : semantic versioning rule (cited from memory; not fetched in this session).
-5. https://ukauthority.com/articles/nhs-systems-recover-from-global-it-outage : 2024 global outage and NHS recovery (snippet).
+5. https://ukauthority.com/articles/nhs-systems-recover-from-global-it-outage : 2024 global outage and UK health service recovery (snippet).
 6. https://www.theregister.com/2022/10/12/oracle_cerner_outage_uk/ : Oracle Cerner UK outage, October 2022 (snippet).
 7. https://hl7.org/fhir/R4/http.html : `fhirVersion` parameter and CapabilityStatement rules.
 8. https://www.hl7.org/fhir/R4B/comparison-v2.html : HL7 v2 variation and Z-segments (snippet).

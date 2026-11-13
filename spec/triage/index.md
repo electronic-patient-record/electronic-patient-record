@@ -43,11 +43,11 @@ Checked against search summaries only; the UK Core and US Core profile pages wer
 | Supersedes | `Observation.derivedFrom` or `Provenance.entity` | **[uncertain]** which; decide when building TR-5 |
 
 - **Code system.** LOINC has a code for the Emergency Severity Index (75636-1, from a search result **[uncertain]**).
-  I found no LOINC or SNOMED CT code for an MTS category. The Welsh NHS data dictionary has a local triage score
+  I found no LOINC or SNOMED CT code for an MTS category. The Wales data dictionary has a local triage score
   (01 immediate to 05 non-urgent). Until a national code is confirmed, the pack publishes its own `CodeSystem`
   under this project's canonical URL, and a mapping to ESI or a national code is a later `ConceptMap`.
 - UK Core Encounter has emergency care extensions (discharge status, method, outcome of attendance). I found none
-  for triage category, and no published NHS England FHIR profile for the Emergency Care Data Set **[uncertain]**.
+  for triage category, and no published FHIR profile from England's national health body for the Emergency Care Data Set **[uncertain]**.
 - Do not map MTS categories to ESI levels automatically. A published comparison aligns them only roughly.
 
 ## 4. Rules

@@ -2,7 +2,7 @@
 
 **Post-1.0, nothing built.** Bedside devices (monitors, pumps, ventilators) send readings through a gateway, as HL7 v2
 ORU or FHIR. This page holds the design EM-11 will be built from. Its first rule comes from the Welsh Intensive Care
-Information System, which charts device-captured vital signs and calculated scores ([NHS Wales](../nhs-wales/index.md),
+Information System, which charts device-captured vital signs and calculated scores ([Wales](../wales/index.md),
 WL-10). Whether any of it is a medical device under the rules where it is used is OQ-6, and it is not decided here.
 
 ## A device reading counts once a clinician validates it (WL-10)
@@ -28,7 +28,7 @@ unvalidated reading today.
 
 - How long an unvalidated reading may wait before it is flagged as unvalidated on a handover (a unit's policy).
 - Whether a validated set can be unvalidated, and who may do it.
-- Charting intervals, device protocols and which gateway (the WICIS sources found none, see the NHS Wales page).
+- Charting intervals, device protocols and which gateway (the WICIS sources found none, see the Wales page).
 - Whether this is a regulated medical device function (OQ-6).
 
 No clinician, intensive care nurse or device engineer has read this page.

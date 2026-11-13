@@ -18,7 +18,7 @@ messaging such as HL7 v2 variants or national formats, consent and privacy rules
 **same evidence** is asked of every pack (a validator or test passes, a local reviewer, an honest claim), and an unverified
 pack says so; (4) when two jurisdictions conflict, neither wins silently: the deployment's configuration decides and the
 record keeps the rule that applied; (5) a gap is **named**, with the country it affects, never left as an unlisted default.
-Today the repository is weighted to the UK and US (UK Core, US Core, NHS and HIPAA text, SNOMED CT UK, English strings);
+Today the repository is weighted to the UK and US (UK Core, US Core, UK health service and HIPAA text, SNOMED CT UK, English strings);
 that is a known imbalance (task IO-19), not a design choice.
 
  1.0 ships the base FHIR R4 API plus the UK Core and US Core packs, because
@@ -26,7 +26,7 @@ those are the ones this project can test today; every other country, and every o
 its pack validates. Regulatory text that names one country (for example UK MDR 2002 below, DCB0129, HIPAA) is that
 country's rule, not a universal one; a deployer in another country applies their own.
 
-**Out of scope for 1.0**: billing and claims (X12, NHS PbR); a licensed drug knowledge base (we integrate one);
+**Out of scope for 1.0**: billing and claims (X12, England's PbR); a licensed drug knowledge base (we integrate one);
 e-prescribing network certification (Surescripts, EPS) and EPCS; PACS (link via ImagingStudy/DICOMweb); LIS/RIS
 internals; eMAR with barcode scanning (planned M7, EM-2; see the [module map](19-module-map.md)); ONC certification itself; eCQM/QRDA; public-health eCR;
 offline-first data entry; emergency department triage (Manchester Triage System or another), decided post-1.0 on

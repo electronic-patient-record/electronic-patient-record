@@ -18,7 +18,7 @@ and decisions are in [`plan.md`](plan.md); the backlog is [`tasks.md`](tasks.md)
 2. **Market.** UK first (UK Core, PDS, DCB0129 / DTAC) or US first (US Core, ONC)? Both are planned.
 3. **Safety.** Who should be the named Clinical Safety Officer, and what clinical advisory group is needed?
 4. **Identity.** Are the matcher's thresholds and its refusals (never auto-link on a missing given name; never
-   auto-link twins; never link two different verified NHS numbers) the right ones?
+   auto-link twins; never link two different verified national health numbers) the right ones?
 5. **Licence.** Keep the five-way choice, or Apache-2.0 alone like HAPI FHIR, Medplum and EHRbase?
 6. **Offline.** Is offline-first data entry needed, or are read-only downtime snapshots enough?
 

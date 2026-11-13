@@ -28,7 +28,7 @@ The column "What exists today" says what exists, which is not the same as done. 
 
 A deployment never reports that it is "live" in one word. The Auditor General for Wales found that on WCCIS "'Live' meant
 different things" from one organisation to the next, while key functions were delayed and others were deployed
-differently ([spec/nhs-wales](../spec/nhs-wales/index.md), [AGL22]). So the readiness report for a deployment holds one
+differently ([spec/wales](../spec/wales/index.md), [AGL22]). So the readiness report for a deployment holds one
 row per **site and function**, and a function is in use at a site only with the evidence in the row.
 
 | Column | What it holds |

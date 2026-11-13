@@ -23,7 +23,7 @@ NICE NG74 distinguishes four kinds of intermediate care: crisis response, home-b
 
 - **Discharge to assess.** National guidance in England makes "home first" the default (pathways 0 and 1) with alternatives for those who cannot go home, and says that, apart from exceptional circumstances, people should not move straight into a permanent care home without a chance to recover in a temporary placement (search summary; the pathway-by-number definitions, including which is bed-based, were not read).
 - **Intermediate care evidence.** A summary of NICE NG74 says average wait from referral to bed-based care was 3 days and about 76 percent started within 2 days (HFMA summary, snippet). The underlying trials were not read.
-- **Flow and delay.** The NHS action cards for transfer of care hubs describe the discharge process as a hub function (snippet; not read in full). Delayed discharge figures were not gathered.
+- **Flow and delay.** The national action cards for transfer of care hubs describe the discharge process as a hub function (snippet; not read in full). Delayed discharge figures were not gathered.
 - **Limits.** Evidence for bed-based care mixes services of different design; claims of benefit here are not the author's findings. Other countries differ; the pattern (assess in a lower-acuity bed, with named medical cover) is an example not "the" rule ([equity rule](../02-scope.md)).
 
 ## Who is responsible
@@ -113,7 +113,7 @@ For the Clinical Safety Officer; none accepted. For the hazard log (AS-1).
 
 ## Not verified
 
-All NICE, NHS and HFMA statements are from search snippets; the full NG74 text, the gov.uk D2A annexes, the transfer-of-care hub cards and the PRSB standards were not read. The ReSPECT link to transfer standards was not found. The mapping of pathway numbers to bed-based care was not confirmed. No clinician has reviewed the table of what must travel.
+All NICE, health service and HFMA statements are from search snippets; the full NG74 text, the gov.uk D2A annexes, the transfer-of-care hub cards and the PRSB standards were not read. The ReSPECT link to transfer standards was not found. The mapping of pathway numbers to bed-based care was not confirmed. No clinician has reviewed the table of what must travel.
 - Link check 2026-11-04: these cited pages returned 404. They may have moved, but what rests on them is unconfirmed: https://standards.nhs.uk/published-standards/edischarge-summary; https://hfma.org.uk/articles/nice-update-intermediate-care-can-improve-independence-and-cut-costs
 
 ## Sources
@@ -121,9 +121,9 @@ All NICE, NHS and HFMA statements are from search snippets; the full NG74 text, 
 - NICE NG74 intermediate care including reablement: https://www.nice.org.uk/guidance/NG74/chapter/recommendations
 - NICE QS173 statement 2: https://www.nice.org.uk/guidance/qs173/chapter/quality-statement-2-starting-bed-based-intermediate-care
 - HFMA summary of NG74: https://hfma.org.uk/articles/nice-update-intermediate-care-can-improve-independence-and-cut-costs
-- NHS England, Home First principle: https://www.england.nhs.uk/urgent-emergency-care/improving-hospital-discharge/reducing-long-term-stays/home-first/
+- England's national health body, Home First principle: https://www.england.nhs.uk/urgent-emergency-care/improving-hospital-discharge/reducing-long-term-stays/home-first/
 - Gov.uk, hospital discharge and community support guidance: https://www.gov.uk/government/publications/hospital-discharge-and-community-support-guidance/hospital-discharge-and-community-support-guidance
 - Transfer of Care Hub action cards: https://assets.publishing.service.gov.uk/media/630e26a78fa8f5536727f08d/Transfer_of_Care_Hub_-_Hospital_Discharge_Action_Cards_Revised.pdf
 - PRSB transfer of care toolkit: https://theprsb.org/toolkits/transfersofcare/about-this-toolkit/
-- NHS England standards, eDischarge summary: https://standards.nhs.uk/published-standards/edischarge-summary
+- Standards of England's national health body, eDischarge summary: https://standards.nhs.uk/published-standards/edischarge-summary
 - PRSB maintaining standards: https://theprsb.org/projects/maintainingourstandards/

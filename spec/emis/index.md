@@ -20,7 +20,7 @@ Public-source research read 2026-11-04. Vendor material is marketing; nothing he
 ## Architecture and standards
 
 - EMIS Web is a hosted system; EMIS-X is the cloud successor, and EMIS says it will progressively extend EMIS Web (vendor: [EMIS-X](https://www.emishealth.com/emis-web/emis-x)). Whether and when EMIS Web is retired: a search summary said "phased retirement"; I could not confirm it from a primary page.
-- Record access requests use FHIR via GP Connect (consultancy overview above; [EMIS GP Connect](https://www.emishealth.com/products/emis-web/gp-connect)). Third-party access runs through NHS England IM1 pairing ([NHS England](https://digital.nhs.uk/developer/api-catalogue/interface-mechanism-1-standards)).
+- Record access requests use FHIR via GP Connect (consultancy overview above; [EMIS GP Connect](https://www.emishealth.com/products/emis-web/gp-connect)). Third-party access runs through the IM1 pairing of England's national health body ([England's national health body](https://digital.nhs.uk/developer/api-catalogue/interface-mechanism-1-standards)).
 - Closed, proprietary product. Data model and public API detail: not found.
 - Terminology (SNOMED CT or Read codes) in current versions: not verified.
 
@@ -42,7 +42,7 @@ Problems reported:
 - 4 November 2024: an EMIS outage removed appointment booking and record access across England; a GP quoted called it a patient-safety issue ([Digital Health](https://digitalhealth.net/2024/11/gps-face-emis-it-outage-at-busiest-time-of-the-week)).
 - January 2026: a major IT failure in Kent and Medway left many surgeries without records or medication histories; whether EMIS was the cause: not stated in what I read ([Digital Health](https://www.digitalhealth.net/2026/01/major-it-failure-impacts-kent-and-medway-gp-practices/)).
 - April 2026: a Merseyside trust logged a patient-safety incident when discharge information did not reach GP practices via EMIS ([Mersey Care](https://yourspace.merseycare.nhs.uk/clinical/community-news/qpa-emis-outbound-documents)).
-- A 2021 coroner's report concerned an EMIS appointment-list fault ([EMIS response](https://www.judiciary.uk/wp-content/uploads/2021/03/2021-0061-Response-from-EMIS-Redacted.pdf)). EMIS also faced possible payments over GP reporting failures ([Pulse](https://www.pulsetoday.co.uk/news/technology/emis-may-have-to-pay-millions-due-to-gp-reporting-failures/)), where EMIS and NHS Digital said no safety or data risk was found.
+- A 2021 coroner's report concerned an EMIS appointment-list fault ([EMIS response](https://www.judiciary.uk/wp-content/uploads/2021/03/2021-0061-Response-from-EMIS-Redacted.pdf)). EMIS also faced possible payments over GP reporting failures ([Pulse](https://www.pulsetoday.co.uk/news/technology/emis-may-have-to-pay-millions-due-to-gp-reporting-failures/)), where EMIS and England's former national health data body said no safety or data risk was found.
 
 ## Compared with this project
 
@@ -94,4 +94,4 @@ These are ideas, not decisions.
 - https://jamesharleyconsultancy.freshdesk.com/support/solutions/articles/101000477044-emis-interoperability-overview : consultancy overview
 - https://jamesharleyconsultancy.freshdesk.com/support/solutions/articles/101000433916-emis-web-clinical-services-data-sharing-agreements : consultancy on sharing agreements
 - https://jamesharleyconsultancy.freshdesk.com/support/solutions/articles/101000480201-emis-web-for-independent-healthcare-providers : consultancy on variants
-- https://digital.nhs.uk/developer/api-catalogue/interface-mechanism-1-standards : NHS England IM1
+- https://digital.nhs.uk/developer/api-catalogue/interface-mechanism-1-standards : IM1, England's national health body

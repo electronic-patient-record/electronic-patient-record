@@ -2,7 +2,7 @@
 //! with no database.
 //!
 //! The Welsh Nursing Care Record publishes each nursing form as a versioned national data standard with
-//! a named clinical sign-off (`spec/nhs-wales/index.md`). Here a form version is data in
+//! a named clinical sign-off (`spec/wales/index.md`). Here a form version is data in
 //! `src/assessment_forms.toml`, read into the build; a completed assessment keeps the form id and version
 //! it was made under, and is always shown with that version's questions, so a later version never
 //! rewrites what was asked or answered. A form with no approver is a draft, and says so.

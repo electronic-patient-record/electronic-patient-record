@@ -3,7 +3,7 @@
 The software **supports** compliance; it cannot **be** compliant. No certification is claimed.
 
 - **Data classification**: all patient data is special-category (GDPR Art. 9) and PHI (HIPAA).
-- **UK**: UK GDPR and Data (Use and Access) Act 2025; NHS DSPT; DTAC (2026 form); DCB0129 (manufacturer) and DCB0160
+- **UK**: UK GDPR and Data (Use and Access) Act 2025; England's DSPT; DTAC (2026 form); DCB0129 (manufacturer) and DCB0160
   (deployer) with a named Clinical Safety Officer, hazard log and safety case (a review of both standards was open in
   2026: re-check); Records Management Code of Practice 2023; the [MHRA](https://www.gov.uk/government/organisations/medicines-and-healthcare-products-regulatory-agency)
   (Medicines and Healthcare products Regulatory Agency) Software as a Medical Device boundary.

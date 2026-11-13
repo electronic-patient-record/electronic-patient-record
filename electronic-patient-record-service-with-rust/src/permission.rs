@@ -2,7 +2,7 @@
 //! clinical record, said on the request and kept on every audit row of it.
 //!
 //! The Welsh GP Record asks the patient's permission at each consultation, "unless the clinician is
-//! unable to ask you and there is a clinical reason" (`spec/nhs-wales/index.md`). Here the caller says
+//! unable to ask you and there is a clinical reason" (`spec/wales/index.md`). Here the caller says
 //! which in the `X-Permission-Basis` header:
 //!
 //! - `asked-agreed`: the patient was asked and agreed;

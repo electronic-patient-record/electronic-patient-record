@@ -17,9 +17,9 @@ Vendor and regulator text is separated from independent evidence below.
 
 **Regulator and standard text (read as secondary summaries unless stated).**
 
-- **DCB0129** (manufacturer) and **DCB0160** (deployer) are the English clinical risk management standards. NHS England's directory lists DCB0129 as "Clinical Risk Management: its Application in the Manufacture of Health IT Systems", amendment reference 24/2018, published 7 June 2018 [DCB0129]. NHS England's developer guidance (seen as a search snippet only) says the manufacturer must run a clinical risk management system, analyse and assess risk, give evidence it is managed, and present findings to the adopter [NHSDR]. Each side names its own CSO. A national review of both standards exists [NHSREV]; I saw only its title and so do not know what it changes. Check the current issue before relying on any detail here.
+- **DCB0129** (manufacturer) and **DCB0160** (deployer) are the English clinical risk management standards. The directory of England's national health body lists DCB0129 as "Clinical Risk Management: its Application in the Manufacture of Health IT Systems", amendment reference 24/2018, published 7 June 2018 [DCB0129]. The developer guidance of England's national health body (seen as a search snippet only) says the manufacturer must run a clinical risk management system, analyse and assess risk, give evidence it is managed, and present findings to the adopter [UKDR]. Each side names its own CSO. A national review of both standards exists [UKREV]; I saw only its title and so do not know what it changes. Check the current issue before relying on any detail here.
 - **Hazard log and clinical safety case report** are the two artefacts the standards centre on. This repository holds a log of 44 hazards and an unsigned report template. Both are proposals, not a safety case.
-- **ISO 14971** (risk management for medical devices) is the international parent method. NHS guidance compares it with the DCB standards and says the DCB standards add NHS-specific duties such as the CSO [NHSDR]. **IEC 62304** governs the software lifecycle; **IEC 82304-1** covers health software as a product and references 62304 and 14971 [IEC82304]. I saw catalogue and training pages only, not the standards. Whether this product is a medical device in any jurisdiction is not decided here (see Open questions).
+- **ISO 14971** (risk management for medical devices) is the international parent method. Guidance from England's national health body compares it with the DCB standards and says the DCB standards add duties specific to the UK health service such as the CSO [UKDR]. **IEC 62304** governs the software lifecycle; **IEC 82304-1** covers health software as a product and references 62304 and 14971 [IEC82304]. I saw catalogue and training pages only, not the standards. Whether this product is a medical device in any jurisdiction is not decided here (see Open questions).
 - **No post-deployment duty is quoted here.** I did not read the post-market clauses of any of these standards. The surveillance plan below is a design, not a restatement of a requirement.
 
 **Self-assessment and test tools.**
@@ -83,7 +83,7 @@ Proposal only; the risk management plan states that no post-market surveillance 
 
 1. **Inputs.** Incident and near-miss reports (in-product form, email, support), measure breaches, audit and integrity job failures, support tickets mentioning a patient, and any outside notice (a dependency advisory, a terminology change).
 2. **Triage.** Within a stated time, a maintainer classifies each input: no safety link, possible link, or clinical. Possible and clinical go to the CSO. When unsure, treat it as clinical (the repository's existing rule).
-3. **Escalation.** Any of: a wrong-patient link or overlay, a lost referral or result, an access with no audit row, a chain break, harm reported. These go to the CSO at once and to the deployer's CSO; the deployer decides on its own local response (a DCB0160 duty, secondary source [NHSDR]).
+3. **Escalation.** Any of: a wrong-patient link or overlay, a lost referral or result, an access with no audit row, a chain break, harm reported. These go to the CSO at once and to the deployer's CSO; the deployer decides on its own local response (a DCB0160 duty, secondary source [UKDR]).
 4. **Learning.** Each case yields a hazard-log change (new hazard, changed cause or residual), a test, and a measure change; a case with none of these says why.
 5. **Periodic review.** A dated review by the CSO of all measures, breaches and thresholds. Until a CSO exists, the review is not done and the dashboard says so.
 6. **Reporting outward.** Whether and to whom a supplier must report (a regulator, the MHRA in the UK, other authorities) depends on whether the product is regulated as a medical device. I have not read those rules; this is an open question.
@@ -135,8 +135,8 @@ Proposal only; the risk management plan states that no post-market surveillance 
 
 ## Not verified
 
-- I read no standard in full. DCB0129 details come from the NHS England directory snippet and secondary summaries; IEC 82304-1, 62304 and 14971 from catalogue and training pages.
-- I did not read the current DCB0129 or DCB0160 text, their post-market wording, or the national review [NHSREV].
+- I read no standard in full. DCB0129 details come from the directory snippet of England's national health body and secondary summaries; IEC 82304-1, 62304 and 14971 from catalogue and training pages.
+- I did not read the current DCB0129 or DCB0160 text, their post-market wording, or the national review [UKREV].
 - SAFER Guides: I saw a blog and news summaries, not the 2025 revision or any individual guide's text. A claim in one vendor page that CMS requires attestation is unverified and omitted.
 - Leapfrog: the 2010 figures are from search summaries of the Group's own report; I did not open the PDF or look for later results.
 - WP-RAR, override, copy-forward and SAFER TRACKS figures are from search summaries, not the papers. WP-RAR validation is largely the authors' own.
@@ -147,9 +147,9 @@ Proposal only; the risk management plan states that no post-market surveillance 
 
 Regulator, standard and vendor or organisation text:
 
-- [DCB0129] NHS England standards directory, DCB0129: https://standards.nhs.uk/information-standards-notice/clinical-risk-management-its-application-in-the-manufacture-of-health-it-systems
-- [NHSDR] NHS England digital regulations, complying with the clinical risk management standards, and DCB versus ISO 14971 (snippets): https://digitalregulations.innovation.nhs.uk/regulations-and-guidance-for-developers/all-developers-guidance/complying-with-nhs-digital-clinical-risk-management-standards/ and https://digitalregulations.innovation.nhs.uk/blog/dcb-standards-vs-iso-14971-what-healthcare-it-deployers-in-england-need-to-know/
-- [NHSREV] NHS England, national review of DCB0129 and DCB0160 (title seen only): https://england.nhs.uk/long-read/national-review-of-clinical-risk-management-standardsdcb0129-and-dcb0160-supporting-information/
+- [DCB0129] Standards directory of England's national health body, DCB0129: https://standards.nhs.uk/information-standards-notice/clinical-risk-management-its-application-in-the-manufacture-of-health-it-systems
+- [UKDR] England's national health body, digital regulations, complying with the clinical risk management standards, and DCB versus ISO 14971 (snippets): https://digitalregulations.innovation.nhs.uk/regulations-and-guidance-for-developers/all-developers-guidance/complying-with-nhs-digital-clinical-risk-management-standards/ and https://digitalregulations.innovation.nhs.uk/blog/dcb-standards-vs-iso-14971-what-healthcare-it-deployers-in-england-need-to-know/
+- [UKREV] England's national health body, national review of DCB0129 and DCB0160 (title seen only): https://england.nhs.uk/long-read/national-review-of-clinical-risk-management-standardsdcb0129-and-dcb0160-supporting-information/
 - [IEC82304] IEC 82304-1 catalogue entry (secondary): https://standards.iteh.ai/catalog/standards/iec/364734f0-08c7-44ef-a30f-8e3b116a166d/iec-82304-1-2016
 - [SAFER] ONC SAFER Guides: https://www.healthit.gov/topic/safety/safer-guides ; [SAFERBLOG] https://healthit.gov/blog/electronic-health-and-medical-records/safer-guides-optimize-safety/
 - [LEAPFROG] Leapfrog Group, CPOE Evaluation Tool results report: https://archive.leapfroggroup.org/sites/default/files/Files/NewCPOEEvaluationToolResultsReport.pdf ; [LFPRESS] https://www.hcinnovationgroup.com/clinical-it/clinical-documentation/article/13013747/leapfrog-group-releases-new-cpoe-study

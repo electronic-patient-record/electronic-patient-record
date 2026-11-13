@@ -1,4 +1,4 @@
-//! Watch lists (WL-6, `spec/nhs-wales/index.md`): the rules, with no database.
+//! Watch lists (WL-6, `spec/wales/index.md`): the rules, with no database.
 //!
 //! A clinician puts a patient on their watch list to keep them in mind: after a worrying result, a
 //! discharge, a change in circumstances. The Welsh Clinical Portal's watch lists now record why a

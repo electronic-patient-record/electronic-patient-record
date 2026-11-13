@@ -1,23 +1,23 @@
-# NHS Wales national systems: comparison with this project
+# Welsh national health systems: comparison with this project
 
-Public-source research read 2026-11-09 (plan.md §34, tasks WL-1 to WL-12). Six systems run by Digital Health and Care
-Wales (DHCW). DHCW pages describe DHCW's own work and are marked **DHCW**; supplier pages are marked **supplier**;
+Public-source research read 2026-11-09 (plan.md §34, tasks WL-1 to WL-12). Six systems run by Wales's national digital
+health body (below, "the national body"). Its pages describe its own work and are marked **national body**; supplier pages are marked **supplier**;
 search-result snippets that could not be opened are marked **snippet**. Nothing here was verified by using a system, and
 no private documentation was read. Direction only: nothing in this project was built from it.
 
-DHCW has moved its pages: the addresses in the request now redirect to `/product-directory/our-digital-services/…`, and
-the Welsh Immunisation System page under `/coronavirus/` returns 404. DHCW page bodies are drawn by script, so they were
+The national body has moved its pages: the addresses in the request now redirect to `/product-directory/our-digital-services/…`, and
+the Welsh Immunisation System page under `/coronavirus/` returns 404. The national body's page bodies are drawn by script, so they were
 read from the raw HTML.
 
 ## Welsh Clinical Portal (WCP)
 
-- **What it is (DHCW).** One view of a patient's record from many sources, on desktop and an iOS and Android app; "39,000+
+- **What it is (national body).** One view of a patient's record from many sources, on desktop and an iOS and Android app; "39,000+
   users", "500,000+ patient records accessed per month", "1,000+ users of the WCP app", undated [WCP].
-- **Capabilities (DHCW)** [WCP] [AR25M3]:
+- **Capabilities (national body)** [WCP] [AR25M3]:
   - the GP record summary;
   - documents from anywhere in Wales (referrals, discharges, letters, clinical notes, care plans);
   - referral triage: by urgency, on hold pending tests, or a question back to the GP; advice between GP and specialist;
-  - e-requesting of pathology (DHCW: "nearing… 90% electronic") and radiology, with test sets and bulk orders;
+  - e-requesting of pathology (national body: "nearing… 90% electronic") and radiology, with test sets and bulk orders;
   - results from anywhere in Wales, and radiology images;
   - **results notification and electronic sign-off**: the clinician is told of a newly authorised result and signs it off;
   - **watch lists, which now record why a patient is on one**;
@@ -25,21 +25,21 @@ read from the raw HTML.
   - since 2025: single log-on across health boards, palliative care e-forms, integration with ePMA.
 - **Architecture.** Results come from and requests go to the Welsh Results Reports Service (WRRS), one national diagnostic
   repository. A Hywel Dda freedom-of-information disclosure (updated 21 April 2026, independent) lists HL7 ADT and ORU feeds
-  into WCP and a patient-index (MPI) check before results are filed [HDFOI]. In 2021 DHCW chose Better's openEHR platform as
+  into WCP and a patient-index (MPI) check before results are filed [HDFOI]. In 2021 the national body chose Better's openEHR platform as
   its clinical data repository [HTN21]; an HL7 UK post of June 2026 calls the Care Data Repository "a persistent FHIR store"
   [HL7UK]. The two accounts do not agree, and which model is live was not found.
-- **Independent findings.** Audit Wales (January 2018) found weak governance and benefits monitoring across NHS Wales
+- **Independent findings.** Audit Wales (January 2018) found weak governance and benefits monitoring across the health service in Wales
   informatics [AW18] (summary only). The Senedd Public Accounts Committee (November 2018) reported 21 outages in six
   months of 2018, and a patient at Velindre who "did not receive chemotherapy treatment, as blood results were
   unavailable"; it called progress reports "overly positive" [PAC18]. Nothing independent on WCP alone was found.
 
 ## Welsh GP Record (WGPR)
 
-- **What it is (DHCW).** A summary of the GP record for those caring for a patient anywhere in Wales [WGPR]. The patient
+- **What it is (national body).** A summary of the GP record for those caring for a patient anywhere in Wales [WGPR]. The patient
   choice form (18 February 2025, read in full) names: contact details, current diagnoses, medications, allergies, recent
   test results [WGPROPT]. The FAQ (snippet) adds the registered GP, past problems and two years of prescribing.
 - **Who sees it.** Extended in 2016 from emergency settings to hospital doctors and pharmacists for planned care [GOV16].
-  Community pharmacists read it through Choose Pharmacy, accredited and only while serving that patient [CHOOSE] (DHCW).
+  Community pharmacists read it through Choose Pharmacy, accredited and only while serving that patient [CHOOSE] (national body).
   Vaccinators see only medicines and allergies (FAQ, snippet).
 - **Permission.** The clinician asks the patient's permission at each consultation [GOV16]; a practice page says
   "unless the clinician is unable to ask you and there is a clinical reason" (snippet). A full opt-out is a form to the GP
@@ -50,9 +50,9 @@ read from the raw HTML.
 
 ## Welsh Immunisation System (WIS)
 
-- **What it is.** An all-Wales vaccination register built in-house by DHCW during COVID-19; 10 millionth vaccination by
-  2 July 2024 [WIS10M] (DHCW). Health boards plan, schedule and invite; vaccinators record; pharmacy staff record stock.
-- **Capabilities** (HTN, largely DHCW's announcement, 1 October 2025) [HTN25]: ordering and stock, recording at the point
+- **What it is.** An all-Wales vaccination register built in-house by the national body during COVID-19; 10 millionth vaccination by
+  2 July 2024 [WIS10M] (national body). Health boards plan, schedule and invite; vaccinators record; pharmacy staff record stock.
+- **Capabilities** (HTN, largely the national body's announcement, 1 October 2025) [HTN25]: ordering and stock, recording at the point
   of care, **other vaccines due, checked against stock**, invitations and reminders, near real-time reporting with
   denominators, eligibility from live demographics plus GP risk conditions, HL7 and FHIR interfaces.
 - **Independent.** Public Health Wales: 1,059,998 people recorded with a flu vaccine in 2025/26, the first season WIS was
@@ -62,20 +62,20 @@ read from the raw HTML.
 
 ## Welsh Intensive Care Information System (WICIS)
 
-- **What it is (DHCW).** A managed service to replace paper ICU charts, collecting data "automatically from the
+- **What it is (national body).** A managed service to replace paper ICU charts, collecting data "automatically from the
   monitoring devices, pumps and respiratory equipment"; the Grange University Hospital "will be the first of all 13 Welsh
   adult critical care units" [WICIS]. Supplier: Ascom Digistat, £13m over 7 years, announced 14 September 2020, rollout
   "until 2023" [ASCOM] (supplier; it says 14 units).
-- **Capabilities (DHCW, supplier).** Electronic assessments, bedside prescribing and administration, device-captured vital
+- **Capabilities (national body, supplier).** Electronic assessments, bedside prescribing and administration, device-captured vital
   signs, fluid balance, calculated scores, national audit and research data [WICIS] [ASCOM].
-- **Status.** Go-live was planned for summer 2022 [WICISNEWS] (DHCW); in March 2023 Cwm Taf Morgannwg had "no definite go
+- **Status.** Go-live was planned for summer 2022 [WICISNEWS] (national body); in March 2023 Cwm Taf Morgannwg had "no definite go
   live date" [CTMFOI]. A Welsh Government release of January 2025 asks "Is the current WICIS solution delivered to ABUHB
   safe to go live?" and mentions a "retrograde move to the core Digistat product" (snippet; the PDF returned 404)
   [ATISN]. **No source found confirms any unit live in November 2026.**
 
 ## Welsh Nursing Care Record (WNCR)
 
-- **What it is (DHCW).** Standardised nursing documents completed on tablets at the bedside, in a "standardised nursing
+- **What it is (national body).** Standardised nursing documents completed on tablets at the bedside, in a "standardised nursing
   language", led by clinicians from every health board [WNCR]. Launched April 2021 on adult inpatient wards; 89% of wards,
   more than 421,000 patients and almost 20 million notes by 9 December 2024 [WNCRMS]; "live on all eligible inpatient
   wards" in 58 hospitals, undated [MEDIWALES].
@@ -86,7 +86,7 @@ read from the raw HTML.
 - **Governance.** Each standard was developed by a multidisciplinary group, approved by the Chief Nursing Officer and the
   Directors of Nursing, and issued as a Welsh Health Circular; every health board created nursing informatics roles [PRSB].
 - **One national instance.** In November 2023 eight databases, one per organisation, were merged; before, "the fix would
-  have to be applied eight times" [WNCRDB] (DHCW).
+  have to be applied eight times" [WNCRDB] (national body).
 - **Not confirmed:** that WNCR uses openEHR. No source links it to openEHR or Better. Do not claim it.
 
 ## Welsh Community Care Information System (WCCIS), now Connecting Care
@@ -98,7 +98,7 @@ read from the raw HTML.
   standards and benefits reporting unfinished.
 - **Auditor General, July 2022** [AGL22]: "'Live' meant different things"; a June 2021 survey found "a more negative than
   positive impact on most users' ability to do their work"; full outages in an upgrade, October to November 2021;
-  **Welsh-language support, mobile working and NHS interfaces still outstanding**; the choice framed as "single system"
+  **Welsh-language support, mobile working and interfaces to other health service systems still outstanding**; the choice framed as "single system"
   against "interoperable systems using the same standards".
 - **Now.** Renamed Connecting Care on 1 March 2024; commercial products per organisation, an Integrated Care Record for
   sharing, and national data standards [CCNEW] [CC]. CareDirector reaches end of life in January 2026; councils are moving
@@ -106,7 +106,7 @@ read from the raw HTML.
 
 ## Standards in Wales
 
-- Welsh Health Circular WHC/2023/018 (14 June 2023) introduced HL7 FHIR in all NHS Wales bodies [WHC23].
+- Welsh Health Circular WHC/2023/018 (14 June 2023) introduced HL7 FHIR in all Welsh health bodies [WHC23].
 - The FHIR Standards Wales implementation guide is R4 and derived from UK Core; Simplifier shows 2.5.0 (STU2) (snippet),
   HL7 UK says 2.6.0 [SIMPLIFIER] [HL7UK]. Version and licence not checked.
 
@@ -127,9 +127,9 @@ Ranked in plan.md §34.2; tasks WL-1 to WL-12.
 11. The Wales FHIR guide as a national pack (WHC/2023/018) — IO-18. **Checked for WL-9 on 2026-11-09:** the newest
     package is `fhir.r4.wales` **2.7.0** (STU2, "a mix of active and draft assets"), FHIR 4.0.1, depending on
     `fhir.r4.ukcore.stu2` 2.0.2 and `hl7.fhir.uv.xver-r5.r4` 0.1.0; 236 resources (69 StructureDefinitions, 50
-    ValueSets, 26 CodeSystems, 85 NamingSystems, 6 ConceptMaps), published by NHS Wales, tarball SHA-256
+    ValueSets, 26 CodeSystems, 85 NamingSystems, 6 ConceptMaps), published by the health service in Wales, tarball SHA-256
     `e99601a8d33517baee3a65ad958edc4d34f29cddcaaac6db41ee16177a6e85bc` [WALESPKG]. **No licence is stated**: none in its
-    `package.json`, none on its GitHub repository [WALESGH], resources carry only "2026 NHS Wales". The guide's
+    `package.json`, none on its GitHub repository [WALESGH], resources carry only a copyright line naming the health service in Wales and 2026. The guide's
     "Licensing" page appears to cover third-party content (SNOMED CT and the like) and was not reached. Active profiles
     include Patient, Encounter, AllergyIntolerance, Observation and its vital signs, MedicationRequest, AuditEvent and
     Provenance; Condition, DiagnosticReport and Consent are draft. Nothing is fetched or validated until OQ-WL3 is
@@ -139,7 +139,7 @@ Ranked in plan.md §34.2; tasks WL-1 to WL-12.
 
 ## Could not verify
 
-- WCP: dates of DHCW's user figures; single sign-on (NADEX), smartcards, SNOMED CT, any public API; whether the repository
+- WCP: dates of the national body's user figures; single sign-on (NADEX), smartcards, SNOMED CT, any public API; whether the repository
   is openEHR, FHIR or both.
 - WGPR: the FAQ field list and vaccinator view (snippets); whether permission is still asked at every consultation.
 - WIS: offline working; whether write-back to GP systems works now.

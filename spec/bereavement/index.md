@@ -37,7 +37,7 @@ End-of-life records are a lead-in, not the topic of this page.
 
 - **Verification is not certification.** Verification establishes that the person has died. Certification gives the cause. In the UK an experienced, assessed-as-competent registered nurse may verify an expected adult death under Hospice UK guidance [HOSPICEVOD]. So the person who confirmed the death is often not a doctor, and often not the person who certifies.
 - **The US and FHIR.** FHIR `Patient.deceased[x]` is 0..1, a boolean or a dateTime, mapped to HL7 v2 PID-30 and PID-29 [FHIRDEC]. Only one form can be present. A boolean alone is the case of "we know they died, we do not know when". USCDI v3 lists date of death, and an HL7 issue asks for `deceasedDateTime` to be Must Support in US Core [USCORE]. IHE publishes a Vital Records Death Reporting guide for sending a death to vital records [VRDR].
-- **England's two levels.** The Personal Demographics Service (PDS) holds a death notification status: **informal** (1), a notice from a local NHS organisation such as a GP or trust; **formal** (2), from the Registrar of Deaths; and **U**, removed, because a record can be updated in error [PDSCODE] [NEMS].
+- **England's two levels.** The Personal Demographics Service (PDS) holds a death notification status: **informal** (1), a notice from a local health service organisation such as a GP or trust; **formal** (2), from the Registrar of Deaths; and **U**, removed, because a record can be updated in error [PDSCODE] [NEMS].
 - **The duty on speed.** A Data Provision Notice requires GP practices and acute trusts to report deaths to PDS "within one working day of the death occurring", from 10 January 2022 [DPN].
 
 ### What this project would need
@@ -68,7 +68,7 @@ England and Wales, from 9 September 2024:
 - Registrars no longer refer deaths to the coroner: the attending practitioner or medical examiner decides. When the cause is notified to the registrar, the 5-day statutory period to register starts [GOVOVERVIEW].
 - **The MCCD now records the existence of implantable medical devices** [NOTIF]. A record that knows about implants helps here. This project has no implant list.
 - The Access to Health Records Act 1990 was amended on the same date, so that a medical examiner may apply for access to the record [AHRA3].
-- The non-statutory scheme began in 2019 [SI493EM]. NHS England reports over half a million deaths registered under the reforms, and a 10 percent fall in deaths reported to coroners in 2024 against 2023 [MEREPORT]. The fall covers a year in which the reforms ran for only the final third.
+- The non-statutory scheme began in 2019 [SI493EM]. England's national health body reports over half a million deaths registered under the reforms, and a 10 percent fall in deaths reported to coroners in 2024 against 2023 [MEREPORT]. The fall covers a year in which the reforms ran for only the final third.
 
 **Coroner.** The guidance says a death should always be notified where there is reasonable cause to suspect certain causes, among them violence, neglect, self-harm, a medical treatment or procedure, or an employment-related disease; and where the cause or the person's identity is unknown, the death may have been in state detention, or no attending practitioner is available [NOTIF]. The passage of time since the death does not remove the duty [NOTIF]. Family or police may report too, and the doctor should still notify [NOTIF]. The full list is in the guidance and is not reproduced here.
 
@@ -93,7 +93,7 @@ England and Wales, from 9 September 2024:
 
 The fact that three national bodies write this into pathways shows that it is a recognised failure.
 
-**The UK government's Tell Us Once service does not solve it.** It notifies government and councils, and one council says some organisations such as the NHS may not be covered [TELLUS]. I did not confirm this.
+**The UK government's Tell Us Once service does not solve it.** It notifies government and councils, and one council says some organisations such as the health service may not be covered [TELLUS]. I did not confirm this.
 
 **How long it takes.** Three different clocks run (the first figure is a duty, the others are ONS statistics):
 
@@ -105,7 +105,7 @@ The fact that three national bodies write this into pathways shows that it is a 
 | Registration, coroner with inquest | Median 149 days in 2020 | [ONSREG] |
 | Registration, deaths by suicide | About 5 to 6 months on average | [ONSSUI] |
 
-A registered death sets off the PDS update and a deduction from the GP list [PCSEDED]. Spine publishes a death notification event when the status changes, through the National Events Management Service, and a subscriber should treat the latest message by `meta.lastUpdated` as the truth [NEMS]. A supplier suggests rechecking PDS before sending an appointment confirmation [SIXB]; that is vendor guidance, not an NHS rule.
+A registered death sets off the PDS update and a deduction from the GP list [PCSEDED]. Spine publishes a death notification event when the status changes, through the National Events Management Service, and a subscriber should treat the latest message by `meta.lastUpdated` as the truth [NEMS]. A supplier suggests rechecking PDS before sending an appointment confirmation [SIXB]; that is vendor guidance, not a health service rule.
 
 So a system that waits for the formal status can keep writing for months in exactly the hardest cases. A death abroad, or one known only to a family, may never reach a local organisation in a day (my reasoning).
 
@@ -127,7 +127,7 @@ Under [5.2.1](../05-domain-model.md) rule 3 a pathway ends only by a recorded ou
 - **Results pending at death still arrive.** A result nobody owns is the H-044 pattern. It may matter to the medical examiner, the coroner or a relative: for example an infection, or a genetic finding. One summary of GMC-based guidance notes genetic risk can be considered familial information [GMCSUM]. A pending result stays on a worklist until a named person has seen it.
 - **Referrals.** The state table has no event for a death. A cancellation is a request and only the recipient's confirmation reaches `cancelled`, so a dead patient's referral stays open until someone answers, and it appears on the sender's worklist as `no-response`. The other organisation needs telling, and the closed loop should carry that fact.
 - **Medicines, devices and equipment** at home need stopping or collecting. Medicines are not yet in the record. I did not research the rest.
-- **Learning from deaths.** The National Quality Board's 2017 guidance asks trusts for a policy on engaging bereaved families and giving them the chance to raise questions; NHS England published guidance on working with families in 2018; a 2019 CQC review found some trusts struggling with this [NQB] [NHSEFAM] [CQCLFD]. So the record of what happened at the end must stay readable and honest, and the append-only model helps.
+- **Learning from deaths.** The National Quality Board's 2017 guidance asks trusts for a policy on engaging bereaved families and giving them the chance to raise questions; England's national health body published guidance on working with families in 2018; a 2019 CQC review found some trusts struggling with this [NQB] [EFAM] [CQCLFD]. So the record of what happened at the end must stay readable and honest, and the append-only model helps.
 
 ## A death recorded in error
 
@@ -136,7 +136,7 @@ Errors happen in both directions, and undoing them is a design need, not an edge
 **Evidence.**
 - PCSE says a death notification "can be recorded against the wrong patient", which it calls extremely rare [PCSEDED].
 - The National Back Office investigates and resets the death status on PDS, and reports the outcome to the user who raised it [NBO].
-- At Scarborough in 2024 a woman arriving for a scan was told she was dead. The GP said it had received an electronic instruction from PCSE; PCSE said marking patients dead is the GP's responsibility; NHS England spoke of an incorrect civil registration later corrected. Her carer's allowance was briefly stopped, and a later report says she was still listed as dead elsewhere [SCARB].
+- At Scarborough in 2024 a woman arriving for a scan was told she was dead. The GP said it had received an electronic instruction from PCSE; PCSE said marking patients dead is the GP's responsibility; England's national health body spoke of an incorrect civil registration later corrected. Her carer's allowance was briefly stopped, and a later report says she was still listed as dead elsewhere [SCARB].
 - A Portsmouth cancer patient was told he was deceased by his surgery in 2024 [ITVDEAD].
 - A local record can show a patient living while PDS shows them dead [APPT].
 - **United States.** The Social Security Administration posted about 5.6 million deaths in 2025, of which 12,504 (0.22 percent) were later found wrong. An audit found that for 45 percent of corrected records in its sample, staff had not documented why the death was recorded or why it was removed. So the agency cannot identify root causes [SSAOIG]. This is the exact shape of the risk: a small rate, on large numbers, with reasons not kept.
@@ -179,13 +179,13 @@ So access after death differs by country, by who is asking and by what the patie
 
 ### Retention
 
-The [retention schedule](../../governance/retention-schedule.md) sets no periods. Secondary sources say GP records in England are kept 10 years after death under the NHS Code, and that since 1 August 2022 the last registered practice usually handles requests [RETGP] [PCSEACC]. I did not read the Code. A retention rule that counts from death is impossible with no death date, and the conflict between erasure and append-only (already open in the schedule) arrives here first.
+The [retention schedule](../../governance/retention-schedule.md) sets no periods. Secondary sources say GP records in England are kept 10 years after death under the health service records management code, and that since 1 August 2022 the last registered practice usually handles requests [RETGP] [PCSEACC]. I did not read the Code. A retention rule that counts from death is impossible with no death date, and the conflict between erasure and append-only (already open in the schedule) arrives here first.
 
 ### Proxy, portal and the patient's own access
 
 - A Dutch hospital says a proxy loses access at death; a US form lists death among the ends of a proxy's authority; another US system makes the account inactive when told of the death [PROXYEND].
 - One widow found her husband's MyChart disabled a day or so after he died, while trying to sort out a bill. A Toronto hospital network offers an "access to deceased patient's account" option that lasts one year [PORTALDEC].
-- I found nothing on NHS App or GP online access after death.
+- I found nothing on England's national patient app or GP online access after death.
 
 **Today, a proxy survives death.** Terms are `{basis, scopes, expires_at}`, the expiry can be up to five years ahead, and nothing links them to a death. Basis `parental-responsibility` for a child who has died, or `power-of-attorney` (which my reasoning says ends at death; a lawyer must confirm), would carry on working. A `self` relationship has only an optional period, and nothing ends it at death: anyone holding the patient's login keeps reading the record and its access log.
 
@@ -252,8 +252,8 @@ Bereavement support is on the [survivor grief](../survivor-grief/index.md) page.
 
 Staff lose patients too. They may have known a patient for years.
 
-- NHS England, NHS Confederation, NHS Employers and Samaritans published a postvention toolkit for staff affected by suicide; a confidential bereavement line run by Hospice UK has been available to NHS staff [NHSEMP]. I did not confirm it still runs.
-- The Royal College of Psychiatrists publishes guidance on supporting staff after a patient's suicide. Surrey-led research produced "Postvention guidance: supporting NHS staff after the death by suicide of a colleague" (2023). Primary care has less: a 2025 BJGP Life article describes the gap for GPs [RCPSTAFF] [SURREY] [BJGPLIFE].
+- England's national health body, the health service confederation, the health service employers' body and Samaritans published a postvention toolkit for staff affected by suicide; a confidential bereavement line run by Hospice UK has been available to health service staff [EMPLOYERS]. I did not confirm it still runs.
+- The Royal College of Psychiatrists publishes guidance on supporting staff after a patient's suicide. Surrey-led research produced "Postvention guidance: supporting health service staff after the death by suicide of a colleague" (2023). Primary care has less: a 2025 BJGP Life article describes the gap for GPs [RCPSTAFF] [SURREY] [BJGPLIFE].
 - I found nothing on "second victim" support for other deaths, in this pass.
 
 **What this project would need (my reasoning).**
@@ -356,7 +356,7 @@ Proposals only. The order is mine.
 - **Could not open.** NICE pages (403), HHS pages (403; the wording rests on search summaries), Hansard (403), the eCFR, and the National Medical Examiner's guidance itself (only its landing page, which does not mention faith or urgent release). Whether that guidance covers urgent release was seen only in a third-party guide. The PDS FHIR API specification needs JavaScript and was not read; the event guide on `nhsconnect.github.io` was, and may not reflect the current API.
 - **Possibly out of date.** Whether a digital MCCD is live. ONS medians (2020 to 2022) and the reform's effect on them: I did not find figures after 2022. The Records Management Code's retention period, which I saw only second-hand. The NBCP documents are 2022. The Child Death Review guidance is 2018 with later organisational change. The Hospice UK guidance has several editions; I read none. The 45 percent SSA finding is from a press release and concerns its sample.
 - **Weak sources, used because I found nothing better.** News reports for Nottingham, Scotland, Scarborough and Portsmouth; a commercial funeral guide; a US supplier page; forum and news for Australia; a study aid for organ donation exclusions; local forms for proxy endings. The Scotsman piece is about a decade old.
-- **Searched and not found.** Any measure of how often letters reach dead patients. How screening programmes stop. NHS App after death. US state registries for donation. Who should be told first, as a matter of law or guidance. Any EPR vendor's design for undoing a death.
+- **Searched and not found.** Any measure of how often letters reach dead patients. How screening programmes stop. England's national patient app after death. US state registries for donation. Who should be told first, as a matter of law or guidance. Any EPR vendor's design for undoing a death.
 - **Not researched.** Funeral and mortuary systems, medical devices at home, billing and insurance after death, research data after death, deaths abroad, cross-border records, deaths in custody beyond the coroner rule, medicines disposal, advance decisions.
 - **The code** was read and searched, not run, on 2026-11-04. The statement about PID-29 and PID-30 comes from reading the mapper and finding no reference to those fields.
 - Nobody bereaved, no clinician, medical examiner, coroner's officer or lawyer has seen this page. The hazards are my reading, not a hazard analysis.
@@ -368,9 +368,9 @@ All read 2026-11-04. (fetched) means I fetched the page or PDF and read a summar
 
 - [NOTIF] Guidance for registered medical practitioners on the Notification of Deaths Regulations, September 2024: https://assets.publishing.service.gov.uk/media/66d044a059b0ec2e151f847e/Guidance_for_registered_medical_practitioners_on_the_Notification_of_Deaths_Regulations__web_.pdf (fetched, PDF text)
 - [GOVOVERVIEW] GOV.UK, An overview of the death certification reforms: https://www.gov.uk/government/publications/changes-to-the-death-certification-process/an-overview-of-the-death-certification-reforms (fetched)
-- [MEGUIDE] NHS England, National Medical Examiner's guidance, landing page, first published 30 July 2024: https://www.england.nhs.uk/publication/national-medical-examiners-guidance-for-england-and-wales/ (fetched; the guidance itself not read)
+- [MEGUIDE] England's national health body, National Medical Examiner's guidance, landing page, first published 30 July 2024: https://www.england.nhs.uk/publication/national-medical-examiners-guidance-for-england-and-wales/ (fetched; the guidance itself not read)
 - [SI493EM] Explanatory Memorandum to the Medical Examiners (England) Regulations 2024: https://www.legislation.gov.uk/uksi/2024/493/pdfs/uksiem_20240493_en_001.pdf (search summary)
-- [MEREPORT] NHS England, National Medical Examiner report 2024: https://www.england.nhs.uk/long-read/national-medical-examiner-report-2024/ (search summary)
+- [MEREPORT] England's national health body, National Medical Examiner report 2024: https://www.england.nhs.uk/long-read/national-medical-examiner-report-2024/ (search summary)
 - [AHRA3] Access to Health Records Act 1990, s.3: https://www.legislation.gov.uk/ukpga/1990/23/section/3 (fetched)
 - [AHRA4] Access to Health Records Act 1990, s.4: https://www.legislation.gov.uk/ukpga/1990/23/section/4 (fetched)
 - [AHRASEC] Trust and GP guidance on deceased patients: https://www.nbt.nhs.uk/about-us/information-governance/subject-access-requests-sar/rights-deceased ; https://gpnotebook.com/en-GB/pages/general-practice/access-to-health-records-of-deceased-patients ; https://www.lincslmc.co.uk/ahra-for-deceased-patients (search summary)
@@ -381,14 +381,14 @@ All read 2026-11-04. (fetched) means I fetched the page or PDF and read a summar
 - [HHSFAQ] HHS FAQ on disclosing about a decedent: https://www.hhs.gov/hipaa/for-professionals/faq/does-hipaa-permit-a-covered-entity-to-disclose-information-about-a-decedent/index.html (search summary; fetch returned 403)
 - [CFR510] 45 CFR 164.510: https://www.law.cornell.edu/cfr/text/45/164.510 (search summary)
 - [MHRRET] Australia, forum quotation of the Act: https://choice.community/t/myhealth-record-megathread/15714?page=15 ; Pulse+IT on the 2018 amendments: https://www.pulseit.news/australian-digital-health/feds-introduce-privacy-and-record-deletion-amendments-to-my-health-record-act ; Senate committee: https://aph.gov.au/Parliamentary_Business/Committees/Senate/Community_Affairs/MyHealthRecords/Report/c02 (search summary, weak)
-- [RETGP] MDU, updated guidance on records management and retention: https://www.themdu.com/guidance-and-advice/latest-updates-and-advice/updated-guidance-on-medical-records-management-and-retention ; NHS England, keeping GP records: https://www.england.nhs.uk/long-read/keeping-gp-records/ (search summary)
+- [RETGP] MDU, updated guidance on records management and retention: https://www.themdu.com/guidance-and-advice/latest-updates-and-advice/updated-guidance-on-medical-records-management-and-retention ; England's national health body, keeping GP records: https://www.england.nhs.uk/long-read/keeping-gp-records/ (search summary)
 - [PCSEACC] PCSE, access to medical records: https://pcse.england.nhs.uk/help/medical-records/access-medical-records-members-public (search summary)
-- [PDSCODE] HL7 UK, UK Core death notification status value set: https://simplifier.net/hl7fhirukcorer4/valueset-ukcore-deathnotificationstatus/$download?format=xml ; NHS Data Dictionary archive: https://archive.datadictionary.nhs.uk/DD%20Release%20May%202020/data_dictionary/data_field_notes/p/pds/pds_death_notification_status_code_de.asp@shownav=0.html (search summary)
-- [NEMS] NHS Digital, PDS death notification event: https://nhsconnect.github.io/Events-Management/pds_death_notification.html (fetched)
-- [DPN] NHS England Digital, Mandating mortality data updates onto PDS, last edited 4 July 2023: https://digital.nhs.uk/data-and-information/keeping-data-safe-and-benefitting-the-public/how-we-look-after-your-health-and-care-information/directions-and-data-provision-notices/data-provision-notices-dpns/mortality-data-flows/ (fetched)
-- [PDSLONG] NHS England, Personal demographic service: https://www.england.nhs.uk/long-read/personal-demographic-service-pds/ (fetched)
+- [PDSCODE] HL7 UK, UK Core death notification status value set: https://simplifier.net/hl7fhirukcorer4/valueset-ukcore-deathnotificationstatus/$download?format=xml ; England's national data dictionary archive: https://archive.datadictionary.nhs.uk/DD%20Release%20May%202020/data_dictionary/data_field_notes/p/pds/pds_death_notification_status_code_de.asp@shownav=0.html (search summary)
+- [NEMS] England's former national health data body, PDS death notification event: https://nhsconnect.github.io/Events-Management/pds_death_notification.html (fetched)
+- [DPN] the digital arm of England's national health body, Mandating mortality data updates onto PDS, last edited 4 July 2023: https://digital.nhs.uk/data-and-information/keeping-data-safe-and-benefitting-the-public/how-we-look-after-your-health-and-care-information/directions-and-data-provision-notices/data-provision-notices-dpns/mortality-data-flows/ (fetched)
+- [PDSLONG] England's national health body, Personal demographic service: https://www.england.nhs.uk/long-read/personal-demographic-service-pds/ (fetched)
 - [PCSEDED] PCSE, Deductions and amendments: https://pcse.england.nhs.uk/help/patient-registrations/deductions-and-amendments (fetched)
-- [NBO] NHS Digital, National Back Office data quality incidents (mirror): https://nhsd-proxy.openprescribing.net/services/personal-demographics-service/national-back-office-for-the-personal-demographics-service/data-quality-incidents (fetched)
+- [NBO] England's former national health data body, National Back Office data quality incidents (mirror): https://nhsd-proxy.openprescribing.net/services/personal-demographics-service/national-back-office-for-the-personal-demographics-service/data-quality-incidents (fetched)
 - [SIXB] 6B, use cases of the PDS API (supplier): https://6b.health/insight/use-cases-real-world-applications-of-nhs-pds-api-in-digital-health-product-development-referral-patient-portals/ (search summary)
 - [APPT] appt-health, patient alerts (software help): https://help.appt-health.co.uk/tutorial/what-is-patient-alerts (search summary)
 - [SCARB] GB News: https://www.gbnews.com/news/woman-told-dead-hospital-scan-scarborough ; Yahoo: https://au.news.yahoo.com/woman-puzzled-hospital-tells-her-162724476.html (search summary)
@@ -412,7 +412,7 @@ All read 2026-11-04. (fetched) means I fetched the page or PDF and read a summar
 - [HSESYM] HSE Ireland, bereavement symbol pathway: https://pregnancyandinfantloss.ie/wp-content/uploads/2025/04/BEREAVEMENT-SYMBOL-PATHWAY-NOV-2024.pdf (search summary)
 - [CDR] Child Death Review Statutory and Operational Guidance (England): https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/859302/child-death-review-statutory-and-operational-guidance-england.pdf (fetched, PDF text)
 - [NCMD] NCMD, notification guidance: https://www.ncmd.info/?p=7175 ; Manchester CDOP annual report: https://democracy.manchester.gov.uk/documents/s38127/2021-2022%20Manchester%20CDOP%20Annual%20Report.pdf (search summary)
-- [ODENG] NHS Organ Donation, Organ donation law in England: https://www.organdonation.nhs.uk/uk-laws/organ-donation-law-in-england/ (search summary)
+- [ODENG] the UK organ donation service, Organ donation law in England: https://www.organdonation.nhs.uk/uk-laws/organ-donation-law-in-england/ (search summary)
 - [ODACT] Organ Donation (Deemed Consent) Act 2019: https://www.legislation.gov.uk/ukpga/2019/7/enacted (search summary)
 - [ODCAM] Why did England change its law on deceased organ donation in 2019?: https://cambridge.org/core/services/aop-cambridge-core/content/view/622DDD66E330A6EDAF29E9FD31B713A0/S1744133124000112a.pdf/why-did-england-change-its-law-on-deceased-organ-donation-in-2019-the-dynamic-interplay-between-evidence-and-values.pdf (search summary)
 - [JEWISHNEWS] Jewish News: https://www.jewishnews.co.uk/death-certification-changes-made-law/ ; https://www.jewishnews.co.uk/new-death-certificate-reforms-will-aid-jewish-community/ (search summary)
@@ -425,10 +425,10 @@ All read 2026-11-04. (fetched) means I fetched the page or PDF and read a summar
 - [PROXYEND] Spaarne Gasthuis: https://www.spaarnegasthuis.nl/app/uploads/2021/09/dsg-1401-Giving-someone-else-access-to-your-medical-records.pdf ; HaysMed: https://www.haysmed.com/wp-content/uploads/2023/06/portal-adult.pdf ; Phoebe Health: https://WWW.PHOEBEHEALTH.COM/media/file/PaperworkRequirements_Proxy.pdf (search summary)
 - [PORTALDEC] Becker's: https://www.beckershospitalreview.com/healthcare-information-technology/ehrs/what-happens-to-patients-mychart-accounts-when-they-die ; University Health Network: https://uhn.ca/PatientsFamilies/Patient_Services/Documents/myUHN-Portal-Access-Form.pdf (search summary)
 - [NQB] National Quality Board, Learning from deaths: https://www.england.nhs.uk/wp-content/uploads/2017/03/nqb-national-guidance-learning-from-deaths.pdf (search summary)
-- [NHSEFAM] NHS England, guidance on working with bereaved families: https://www.england.nhs.uk/2018/07/nhs-publishes-guidance-to-help-trusts-learn-from-deaths/ (search summary)
+- [EFAM] England's national health body, guidance on working with bereaved families: https://www.england.nhs.uk/2018/07/nhs-publishes-guidance-to-help-trusts-learn-from-deaths/ (search summary)
 - [CQCLFD] MDDUS on the CQC review: https://www.mddus.com/resources/resource-library/news-digest/2019/march/nhs-trusts-struggling-to-engage-with-bereaved-families (search summary)
 - [SOUTHTHAMES] Bereavement care in general practice: a survey in South Thames Health Region: https://core.ac.uk/works/427416 (search summary)
-- [NHSEMP] NHS Employers, Suicide prevention and postvention: https://www.nhsemployers.org/articles/suicide-prevention-and-postvention (search summary)
+- [EMPLOYERS] The health service employers' body, Suicide prevention and postvention: https://www.nhsemployers.org/articles/suicide-prevention-and-postvention (search summary)
 - [RCPSTAFF] RCPsych: https://elearninghub.rcpsych.ac.uk/products/RCPsych_guidance_mental_health_organisations_staff_support_following_patient_suicide (search summary)
 - [SURREY] Postvention guidance: https://keele-repository.worktribe.com/output/718833/postvention-guidance-supporting-nhs-staff-after-the-death-by-suicide-of-a-colleague (search summary)
 - [BJGPLIFE] BJGP Life: https://bjgplife.com/the-need-to-support-colleagues-when-a-patient-dies-by-suicide/ (search summary)

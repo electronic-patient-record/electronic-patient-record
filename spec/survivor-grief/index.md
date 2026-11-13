@@ -17,7 +17,7 @@ Most grieving people never need a health service, and grief is not an illness. S
 Four things make this different from other referrals (my reasoning):
 
 1. **The person who needs help may not be the patient the service knows.** The patient has died. The survivor may be a stranger to this system.
-2. **Much of the help is outside the NHS**, from volunteers and charities, with no EPR and no reply.
+2. **Much of the help is outside the health service**, from volunteers and charities, with no EPR and no reply.
 3. **A record of grief speaks about someone else**: the person who died, and other living relatives.
 4. **Timing and consent are unusually delicate.** A kind contact in one week is an intrusion in another.
 
@@ -77,9 +77,9 @@ Bereavement support is a pathway under [5.2.1](../05-domain-model.md): owned, wi
 "Postvention" means support after a suicide. This section is about the people left behind.
 
 - **Guidance, England.** NICE NG105 (2018) has a section on supporting people bereaved or affected by a suspected suicide, and quality standard QS189 statement 5 says they are "given information and offered tailored support". Those affected can include relatives, friends, classmates, colleagues, first responders and professionals. Partnerships are expected to gather intelligence to identify them, and to offer information as soon as possible and again later. NICE notes people affected are themselves at higher risk [NG105] [QS189].
-- **Strategy.** The Suicide Prevention Strategy for England 2023 to 2028 includes improving support for people bereaved by suicide [STRATEGY]. The NHS Long Term Plan committed to suicide bereavement support in every area by 2023/24, from £57m [ROLLOUT]. I found no confirmation of current coverage or funding.
-- **Support After Suicide Partnership (SASP)** is a UK network of over 112 organisations, hosted by the Royal College of Psychiatrists. It coordinates a hub commissioned by NHS England [SASP]. *Help is at Hand* is the widely used booklet for people bereaved by suicide or other unexplained death [HIAH].
-- **Other services.** Cruse's Support After Suicide, Survivors of Bereavement by Suicide and The Compassionate Friends are named by one integrated care board; Samaritans co-wrote the NHS staff toolkit [HIOW] [NHSEMP].
+- **Strategy.** The Suicide Prevention Strategy for England 2023 to 2028 includes improving support for people bereaved by suicide [STRATEGY]. England's Long Term Plan for the health service committed to suicide bereavement support in every area by 2023/24, from £57m [ROLLOUT]. I found no confirmation of current coverage or funding.
+- **Support After Suicide Partnership (SASP)** is a UK network of over 112 organisations, hosted by the Royal College of Psychiatrists. It coordinates a hub commissioned by England's national health body [SASP]. *Help is at Hand* is the widely used booklet for people bereaved by suicide or other unexplained death [HIAH].
+- **Other services.** Cruse's Support After Suicide, Survivors of Bereavement by Suicide and The Compassionate Friends are named by one integrated care board; Samaritans co-wrote the health service staff toolkit [HIOW] [EMPLOYERS].
 - **Risk.** A study of 3,432 young bereaved adults and a later review found that people bereaved by suicide were more likely to attempt suicide than those bereaved by sudden natural causes [PITMAN]. Risk does not mean most people; the system should state neither "at risk" nor "fine" as a fact about a person.
 - **Delay.** Much data about suicides is available only after an inquest, so support could be late [SAS2016]. Registration of these deaths runs to about 5 to 6 months [ONSSUI].
 - **United States.** *Responding to Grief, Trauma, and Distress After a Suicide* (2015), from the National Action Alliance, is a national blueprint [USGUIDE].
@@ -136,7 +136,7 @@ Sudden, violent or unexplained deaths bring a coroner, sometimes police, sometim
 - A child's bereavement may surface years later. A dated life event is more useful than an alert.
 - Outcome tools may not suit young children, as the Welsh framework says of CORE-10 [WALES].
 
-## Referral to services outside the NHS
+## Referral to services outside the health service
 
 ### What the sources say
 
@@ -158,7 +158,7 @@ Three step types, so the words do not lie (my reasoning, for clinicians to test)
 | **Referred** | A service that accepts referrals received one, with the person's consent | By an answer, as today | Full. A contact details and consent note goes with it |
 
 Further needs:
-- **An organisation that has no system.** The recipient may be a charity with an email address. A referral record needs a recipient that is not a clinician, with secure sending, which NHSmail or a portal may or may not allow. See the same point in [care homes](../care-homes/index.md).
+- **An organisation that has no system.** The recipient may be a charity with an email address. A referral record needs a recipient that is not a clinician, with secure sending, which the health service's secure email or a portal may or may not allow. See the same point in [care homes](../care-homes/index.md).
 - **Outcome by consent.** A counselling service owes confidentiality to the client. A feedback note, if any, is attended, ended, or not taken up, sent only if the person agrees. No clinical content by default.
 - **Ask the person.** The surest closed loop is the person: "Did that help? Would you like anything else?" At a moment that they chose.
 - **A directory is content.** Services change. A directory needs an owner, a review date, an area and a language. A wrong phone number in a moment of grief is a harm. It is a pack, not code. The helpline number in one listing may be out of date, so I give none here.
@@ -170,7 +170,7 @@ Further needs:
 
 - **England.** BACP publishes good practice resources on confidentiality and record keeping (GPiA 065, January 2024) [BACP]. I saw only the title and contents.
 - **United States.** HIPAA psychotherapy notes are notes that document or analyse a session, including a "group, joint, or family counseling session", **and that are separated from the rest of the medical record**. Medication, session times and similar are excluded. HHS commentary says notes routinely shared do not qualify. The rule is 45 CFR 164.501 [PSYNOTES]. It is a US comparison and does not govern UK counsellors.
-- **Who holds them.** A charity, a hospice, an NHS talking therapies service, a private counsellor. Each is its own data controller in UK terms (my reasoning; a data protection officer must confirm). An NHS EPR often holds nothing, and that may be right.
+- **Who holds them.** A charity, a hospice, a health service talking therapies service, a private counsellor. Each is its own data controller in UK terms (my reasoning; a data protection officer must confirm). A health service EPR often holds nothing, and that may be right.
 
 **What this project would need (my reasoning).**
 - Default: **a counsellor's notes are not in the shared record.** The shared record holds that a person is under a named service, with dates and a contact, if they agreed. Some people will not want even that.
@@ -408,7 +408,7 @@ Proposals only.
 
 1. How does a service support someone with no record in this system, such as a hospice family member? A new `Patient`, a lighter contact, or nothing? A registration for grief seems heavy, and the US rule needs something.
 2. Should a bereavement note be seen by reception staff? NBCP's "all staff" points one way, minimum necessary the other.
-3. Does an NHS EPR hold any of a charity's counselling record? Who is the controller, and can a volunteer service use this system at all?
+3. Does a health service EPR hold any of a charity's counselling record? Who is the controller, and can a volunteer service use this system at all?
 4. What does a clinician need to know about a joint session, and how do counsellors really keep those notes?
 5. Is one contact attempt the right default, or is "persistent pro-active contact" [POSTV] better? This is a real disagreement between practice and my caution.
 6. Who may be offered help after a suicide when the family disagree?
@@ -457,11 +457,11 @@ All read 2026-11-04. (fetched) means I fetched the page or PDF and read a summar
 - [NG105] NICE NG105: https://www.nice.org.uk/guidance/NG105 (search summary)
 - [QS189] NICE QS189, statement 5: https://www.nice.org.uk/guidance/qs189/chapter/Quality-statement-5-Supporting-people-bereaved-or-affected-by-a-suspected-suicide (search summary; fetch returned 403)
 - [STRATEGY] DHSC, Suicide prevention in England: 5-year cross-sector strategy: https://www.gov.uk/government/publications/suicide-prevention-strategy-for-england-2023-to-2028 (search summary)
-- [ROLLOUT] West Yorkshire Health and Care Partnership: https://www.wypartnership.co.uk/news-and-blog/news/dedicated-suicide-bereavement-support-rolled-out-across-england ; SASP, NHS England: https://supportaftersuicide.org.uk/funders/nhs-england/ (search summary)
+- [ROLLOUT] West Yorkshire Health and Care Partnership: https://www.wypartnership.co.uk/news-and-blog/news/dedicated-suicide-bereavement-support-rolled-out-across-england ; SASP, England's national health body: https://supportaftersuicide.org.uk/funders/nhs-england/ (search summary)
 - [SASP] Support After Suicide Partnership hub: https://hub.supportaftersuicide.org.uk/ (search summary)
 - [HIAH] Help is at Hand: https://supportaftersuicide.org.uk/resource/help-is-at-hand/ (search summary)
-- [HIOW] NHS Hampshire and Isle of Wight, Suicide Aware Practice Framework: https://www.hantsiow.icb.nhs.uk/suicide-aware/suicide-aware-practice-framework (search summary)
-- [NHSEMP] NHS Employers, Suicide prevention and postvention: https://www.nhsemployers.org/articles/suicide-prevention-and-postvention (search summary)
+- [HIOW] The Hampshire and Isle of Wight integrated care board, Suicide Aware Practice Framework: https://www.hantsiow.icb.nhs.uk/suicide-aware/suicide-aware-practice-framework (search summary)
+- [EMPLOYERS] The health service employers' body, Suicide prevention and postvention: https://www.nhsemployers.org/articles/suicide-prevention-and-postvention (search summary)
 - [PITMAN] Pitman et al., bereavement by suicide as a risk factor: https://discovery-pp.ucl.ac.uk/id/eprint/1476423/1/Bereavement%20by%20suicide%20as%20a%20risk%20factor%20for%20suicide%20attempt%3A%20a%20cross-sectional%20national%20UK-wide%20study%20of%203432%20young%20bereaved%20adults.pdf ; review: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10138333/ (search summary)
 - [SAS2016] Public Health England and NSPA, Support after a suicide: a guide to providing local services, October 2016: https://assets.publishing.service.gov.uk/media/5a7f3db6ed915d74e6229407/support_after_a_suicide.pdf (fetched, PDF text)
 - [ONSSUI] ONS FOI: https://www.ons.gov.uk/aboutus/transparencyandgovernance/freedomofinformationfoi/thenumberofsuicidesintheukin2020andthenumberofsuicidesawaitingacoronersinquest (search summary)

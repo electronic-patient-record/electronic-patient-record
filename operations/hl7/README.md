@@ -20,10 +20,10 @@ address is recorded on every audit row.
 
 ## What a message does
 
-- It is matched on the identifiers it carries: the sender's own number (`urn:hl7v2:<assigning authority>`), then a valid NHS
-  number. One match is an **update**, none is a **new patient**, more than one is refused.
+- It is matched on the identifiers it carries: the sender's own number (`urn:hl7v2:<assigning authority>`), then a valid national
+  health number. One match is an **update**, none is a **new patient**, more than one is refused.
 - A new patient that the matcher thinks may already exist is **refused** (`AE`), not created. A person decides.
-- An update **never blanks** a field the message lacks, and **never changes a birth date or an NHS number**: those are
+- An update **never blanks** a field the message lacks, and **never changes a birth date or an national health number**: those are
   corrected by a person with a reason. The first name is replaced by the message's first name; other names, telecom and
   addresses are added.
 - A repeat of what is held writes nothing (`AA`, "unchanged"). Every message, accepted or refused, writes an audit row with

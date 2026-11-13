@@ -6,7 +6,7 @@ Public-source research read 2026-11-04. Vendor material is marketing; nothing he
 
 - Oracle Health is the former Cerner Corporation. Cerner was founded in 1979 in Kansas City. Oracle announced the purchase on 20 December 2021 for about $28.3 billion; it closed in June 2022 and the company was renamed Oracle Health ([Wikipedia](https://en.wikipedia.org/wiki/Cerner)).
 - Main product: Millennium, launched in 1997 as a unified architecture and the primary EHR platform ([Wikipedia](https://en.wikipedia.org/wiki/Cerner)). In October 2024 Oracle announced a "next-generation EHR" built for Oracle Cloud Infrastructure with an embedded Clinical AI Agent; an early-adopter programme was to start in 2025 and the release carries a timing disclaimer ([Oracle press release](https://www.oracle.com/news/announcement/oracle-unveils-next-generation-ehr-2024-10-29/); [Fierce Healthcare](https://www.fiercehealthcare.com/health-tech/oracle-health-will-offer-new-ehr-2025-embedded-ai-and-analytics-tools)).
-- Markets: US hospitals and the US government (the Department of Veterans Affairs and the Department of Defense), the NHS, Canada, Australia, Sweden and others ([Wikipedia](https://en.wikipedia.org/wiki/Cerner)).
+- Markets: US hospitals and the US government (the Department of Veterans Affairs and the Department of Defense), the UK's public health service, Canada, Australia, Sweden and others ([Wikipedia](https://en.wikipedia.org/wiki/Cerner)).
 - Scale: KLAS (via trade press) put Oracle Health at 21.9% of US acute hospitals and 20.4% of beds in 2026, having lost 56 hospitals in 2025 ([HIT Consultant](https://hitconsultant.net/2026/05/14/klas-2026-ehr-market-share-report/); read through a search summary).
 
 ## Capabilities worth noting
@@ -25,7 +25,7 @@ Public-source research read 2026-11-04. Vendor material is marketing; nothing he
 ## Fit across care settings
 
 - Acute inpatient: the core market (KLAS summary above).
-- UK: Millennium was an early NHS electronic patient record; trusts in recent coverage include Sheffield (go-live date reset) and Croydon ([MediFormatica tag page](https://www.mediformatica.com/tags/cerner-millennium-epr), secondary).
+- UK: Millennium was an early electronic patient record in the UK's public health service; trusts in recent coverage include Sheffield (go-live date reset) and Croydon ([MediFormatica tag page](https://www.mediformatica.com/tags/cerner-millennium-epr), secondary).
 - Maternity: Croydon's planned maternity system will be built outside Millennium, per Digital Health in 2025 as summarised by the tag page above.
 - ED, community, mental health and primary care: I did not find a primary source stating fit. Unknown.
 
@@ -33,14 +33,14 @@ Public-source research read 2026-11-04. Vendor material is marketing; nothing he
 
 Positive or neutral:
 - The Department of Veterans Affairs resumed deployments in 2026 after a pause since 2023: Michigan sites on 11 April 2026, a Ohio/Kentucky batch in June, and VA reported completing its 2026 go-lives in October ([Nextgov, April 2026](https://nextgov.com/modernization/2026/04/va-resumes-ehr-rollouts-four-michigan-medical-sites/412807/); [Nextgov, October 2026](https://www.nextgov.com/modernization/2026/10/va-completes-2026-ehr-system-deployments-final-two-site-go-lives/416823/)). Counts differ between outlets.
-- The October 2022 national NHS outage was traced by NHS Digital and Cerner to a faulty NHS-side server, not Millennium ([Digital Health](https://digitalhealth.net/2022/10/cerner-millennium-epr-resolved-national-outage)).
+- The October 2022 national outage in England was traced by England's former national health data body and Cerner to a faulty server on the health service's side, not Millennium ([Digital Health](https://digitalhealth.net/2022/10/cerner-millennium-epr-resolved-national-outage)).
 
 Problems:
 - VA Office of Inspector General, 2022: from go-live in October 2020 to June 2021 the new record failed to deliver more than 11,000 orders for requested clinical services, held in an "unknown queue" that did not alert the ordering clinician; reviewers assessed 1,286 facility events and classified 149 patient adverse events (2 major, 52 moderate, 95 minor harm). The OIG found no evidence that Oracle Cerner gave VA actionable information about the queue before go-live; Oracle has disputed how the OIG characterised the data (figures seen in Healthcare IT News, MeriTalk and Fierce Healthcare coverage and a search summary; the OIG report itself was not read) ([Healthcare IT News](https://healthcareitnews.com/node/551455); [Fierce Healthcare](https://fiercehealthcare.com/health-tech/va-watchdog-finds-software-flaw-oracle-cerner-ehr-led-patient-harm)). Draft figures were "at least 148"; outlets round differently.
 - September 2024 OIG reports counted 826 outages, degradations and functionality gaps meeting the contract's "major performance incident" definition ([Nextgov](https://nextgov.com/modernization/2024/09/vas-ehr-clocks-more-800-major-performance-incidents-go-live-watchdog-finds/399790)).
 - 2024 reports of pharmacy errors in how prescriptions were logged ([Military Times](https://www.militarytimes.com/veterans/2024/02/15/more-pharmacy-problems-endanger-future-of-vas-health-records-system/)).
 - Wikipedia lists a halted Västra Götaland rollout in Sweden (2024), a long Queensland implementation and a 2014 coroner finding that a missing migrated appointment list contributed to a child's death delay at Bristol; these are summaries, primary sources not read ([Wikipedia](https://en.wikipedia.org/wiki/Cerner)).
-- Older NHS trust reports (2007 to 2013) describe finance and reporting strain at Royal Berkshire and limited benefits elsewhere; they may not reflect today's product ([Digital Health](https://www.digitalhealth.net/2013/02/royal-berks-finances-hit-by-millennium/)).
+- Older hospital trust reports (2007 to 2013) describe finance and reporting strain at Royal Berkshire and limited benefits elsewhere; they may not reflect today's product ([Digital Health](https://www.digitalhealth.net/2013/02/royal-berks-finances-hit-by-millennium/)).
 
 ## Compared with this project
 
@@ -86,6 +86,6 @@ These are ideas, not decisions.
 - https://www.militarytimes.com/veterans/2024/02/15/more-pharmacy-problems-endanger-future-of-vas-health-records-system/ : pharmacy issues
 - https://nextgov.com/modernization/2026/04/va-resumes-ehr-rollouts-four-michigan-medical-sites/412807/ : VA restart
 - https://www.nextgov.com/modernization/2026/10/va-completes-2026-ehr-system-deployments-final-two-site-go-lives/416823/ : VA 2026 completion
-- https://digitalhealth.net/2022/10/cerner-millennium-epr-resolved-national-outage : NHS outage cause
-- https://www.digitalhealth.net/2013/02/royal-berks-finances-hit-by-millennium/ : older NHS trust experience
-- https://www.mediformatica.com/tags/cerner-millennium-epr : recent NHS items, secondary
+- https://digitalhealth.net/2022/10/cerner-millennium-epr-resolved-national-outage : national outage cause
+- https://www.digitalhealth.net/2013/02/royal-berks-finances-hit-by-millennium/ : older hospital trust experience
+- https://www.mediformatica.com/tags/cerner-millennium-epr : recent UK items, secondary

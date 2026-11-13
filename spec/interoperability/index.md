@@ -16,7 +16,7 @@ national and state exchanges, and the US TEFCA). Those too are packs, not specia
 2. **A national profile pack per country.** A pack names: the country's core implementation guide and version (for
    example UK Core, US Core, AU Core, the Canadian Core, the German MII or ISiK profiles, the French and Spanish national
    guides, the IPS-based European guides, and others as they exist), its required terminologies and code systems, its
-   patient and provider identifier systems (NHS number, SSN-style ids, IHI, and so on), its extensions, and its
+   patient and provider identifier systems (national health number, SSN-style ids, IHI, and so on), its extensions, and its
    capability-statement claims.
 3. **Selected by deployment, advertised honestly.** A deployment turns on the packs it needs. `metadata` lists only the
    profiles of enabled packs that pass validation, and claims no other conformance.
@@ -52,7 +52,7 @@ TOML (typed, comments allowed for the reviewer, one strict parser with unknown k
 | File | Holds | Replaces (equity audit row) |
 |---|---|---|
 | `pack.toml` | `id`, `version` (semver), `kind` (`country`, `region`, `federation`), `requires` (core range, other packs), `sources` (URL and date read for each rule), `reviewed` (`none`, or reviewer, role and date) | none |
-| `identifiers.toml` | per identifier: system URI, length and pattern, allowed separators, check rule (algorithm and parameters), placeholder rule, `weight` = `decides` or `supports`, and test vectors (valid, invalid, placeholder) | row 1: the NHS number rule in `matcher/src/nhs.rs` and `engine.rs` |
+| `identifiers.toml` | per identifier: system URI, length and pattern, allowed separators, check rule (algorithm and parameters), placeholder rule, `weight` = `decides` or `supports`, and test vectors (valid, invalid, placeholder) | row 1: the national health number rule in `matcher/src/national_number.rs` and `engine.rs` |
 | `names.toml`, `names/*.csv` | name parts that exist, comparison rule per locale, nickname and phonetic tables; absence is "no claim" | rows 2 and 3 |
 | `phone.toml` | calling code and the trunk-prefix rule (not always `0`; Italy keeps it) | row 4: the constant 44 |
 | `address.toml` | which address parts exist and which carry evidence (a country with no postcode names none) | row 5 |
@@ -98,7 +98,7 @@ claims review it does not have. Packs add evidence kinds and tighten rules; they
 
 **8. Where the code changes.** The matcher stays a pure library: it receives the identifier and phone rules as values in its
 configuration (a matcher change, spec first, with its own version bump), never reads a file. The service loads packs, builds
-the rule set and passes it in. Today's NHS rule becomes the first identifier rule of a `uk` pack with its current vectors,
+the rule set and passes it in. Today's national health number rule becomes the first identifier rule of a `uk` pack with its current vectors,
 and the default configuration reproduces today's behaviour exactly, so the existing tests are the regression guard.
 
 **9. Review and honesty.** `reviewed = none` is printed at startup and exposed to the deployer; a pack built from a
@@ -108,11 +108,11 @@ goes live a dry run that replays a labelled corpus (ID-1) under the old and the 
 decision changed.
 
 **10. First slice, in order.** (a) The phone calling code from a pack (row 4, smallest, a wrong code can fake a match) with
-the service finally setting `default_calling_code`; (b) the NHS number as the first identifier rule, behaviour unchanged;
+the service finally setting `default_calling_code`; (b) the national health number as the first identifier rule, behaviour unchanged;
 (c) a second identifier rule from a sourced guide (Australia's IHI: 16 digits, prefix `800360`, Luhn) to prove the mechanism
-is not NHS-shaped. Each is its own commit with a hazard row.
+is not shaped like the national health number. Each is its own commit with a hazard row.
 
-**Built (c), 2026-10-31:** a pack may carry `identifiers.toml` (`use_ihi`, plus `[[match]]` and `[[differ]]` vectors of two IHIs each, every number a valid IHI); the vectors run through the real matcher (a shared number must `AutoLink`, two different numbers must `NonMatch`), a file with an unknown key, a missing vector kind or an invalid number stops startup, and any enabled pack that sets `use_ihi = true` turns the matcher's `use_ihi` on (no pack can turn it off); the rule-set hash includes it. Pack `au` turns it on; `uk` does not. Matcher 0.5.0, hazard H-041. **Not built:** (b) as a pack-configurable rule list (NHS stays in the matcher); the IHI checked against an official test number or the specification; an override directory; the hash on records.
+**Built (c), 2026-10-31:** a pack may carry `identifiers.toml` (`use_ihi`, plus `[[match]]` and `[[differ]]` vectors of two IHIs each, every number a valid IHI); the vectors run through the real matcher (a shared number must `AutoLink`, two different numbers must `NonMatch`), a file with an unknown key, a missing vector kind or an invalid number stops startup, and any enabled pack that sets `use_ihi = true` turns the matcher's `use_ihi` on (no pack can turn it off); the rule-set hash includes it. Pack `au` turns it on; `uk` does not. Matcher 0.5.0, hazard H-041. **Not built:** (b) as a pack-configurable rule list (the national health number stays in the matcher); the IHI checked against an official test number or the specification; an override directory; the hash on records.
 
 **Built (a), 2026-10-30:** `packs/<id>/pack.toml` and `phone.toml` (calling code, `[[match]]` and `[[differ]]` vectors), `src/packs.rs` (schema that refuses unknown keys, id equals directory, code 1 to 999, vectors run through the real matcher, no vectors no load, a clash needs `EPR_PACK_WINNER_PHONE_CALLING_CODE`, a SHA-256 of the rules logged at start), `EPR_PACKS` (unset means none, and nothing changes), `EPR_PACKS_DIR`, and the service's three matching call sites now take their engine from `packs::engine()`. Packs `uk` (44) and `au` (61) ship, both `reviewed = "none"`. **Not built:** the override directory, the rule-set hash on records (needs a migration), the neutral core (the matcher still defaults to 44, so an empty list is today's UK behaviour, not neutral), any other pack key, a dry run over a labelled corpus (ID-1), the HL7 validator step, steps (b) and (c). H-040.
 

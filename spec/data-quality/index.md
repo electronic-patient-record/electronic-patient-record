@@ -14,9 +14,9 @@ Question: what data quality assurance and governance? Quality is not a feature o
 
 **DAMA-DMBOK.** The body of knowledge describes data quality dimensions and data governance roles. Secondary sources cite 15 dimensions in four groups and three roles: data owner, data steward and data custodian, with the owner settling conflicts and the steward monitoring quality, fixing issues and carrying out improvement plans [4]. These are vendor and wiki summaries; I did not see DMBOK itself.
 
-**NHS England Data Quality Maturity Index (DQMI).** A monthly composite score per provider, from coverage, completeness, validity and use of excessive default values at data-item level across eight national datasets. Meaningless defaults such as "Not Known" are removed from the valid measure; new items are scored experimentally before entering the standard list; it is referenced in the NHS Standard Contract and supports a Data Quality Improvement Plan; the statutory basis cited is section 266 of the Health and Social Care Act 2012 [5]. Seen as a search summary of the methodology pages, not the full methodology.
+**Data Quality Maturity Index (DQMI) of England's national health body.** A monthly composite score per provider, from coverage, completeness, validity and use of excessive default values at data-item level across eight national datasets. Meaningless defaults such as "Not Known" are removed from the valid measure; new items are scored experimentally before entering the standard list; it is referenced in England's standard health service contract and supports a Data Quality Improvement Plan; the statutory basis cited is section 266 of the Health and Social Care Act 2012 [5]. Seen as a search summary of the methodology pages, not the full methodology.
 
-**Duplicates and confusions.** In England the National Back Office for the Personal Demographics Service merges duplicate NHS numbers and resolves "confused" records (two patients on one number); duplicates often start when a registration is created without checking for an existing number, and NHS sources describe the risks as split histories, wrong prescriptions and missed referrals [6].
+**Duplicates and confusions.** In England the National Back Office for the Personal Demographics Service merges duplicate national health numbers and resolves "confused" records (two patients on one number); duplicates often start when a registration is created without checking for an existing number, and health service sources describe the risks as split histories, wrong prescriptions and missed referrals [6].
 
 **FHIR Provenance.** Records the activity, agents and entities behind a version of a resource and points at its target, so it can describe any version, including past ones. A `_revinclude=Provenance:target` search returns resources with their provenance [7].
 
@@ -28,7 +28,7 @@ Question: what data quality assurance and governance? Quality is not a feature o
 
 ## Governance
 
-- **Named roles.** A data owner (an accountable clinical or corporate lead per domain), stewards (day-to-day correction and rule maintenance) and custodians (the technical team) [4]. In the NHS these map to local roles such as information asset owner and Caldicott Guardian; I did not check that mapping in a public source.
+- **Named roles.** A data owner (an accountable clinical or corporate lead per domain), stewards (day-to-day correction and rule maintenance) and custodians (the technical team) [4]. In the UK health service these map to local roles such as information asset owner and Caldicott Guardian; I did not check that mapping in a public source.
 - **A data dictionary** per field: definition, code system, allowed values, owner, source, whether absence is allowed, and the DQ rule that applies. For this project the schema map (`spec/schema-map.md`) and the personal data inventory are the start.
 - **A governance board** that triages issues, approves rule changes and reviews the dashboard, with the Clinical Safety Officer present for anything that could change what a clinician sees.
 - **Issue triage**: severity by clinical consequence, not by count; an owner and a due date; a link to the hazard log where a hazard is plausible.
@@ -94,7 +94,7 @@ For the Clinical Safety Officer, none accepted; none is yet in the hazard log.
 - DQMI, ISO 8000-61 and ISO/IEC 25012 were seen through catalogue pages and search summaries; the standards and the full methodology were not read, and ISO 25012 and 8000 are paid documents.
 - DAMA roles and dimension counts come from wiki and vendor summaries and may not match DMBOK.
 - The Kahn definitions were read from abstract level.
-- The NHS role mapping (information asset owner and so on) is from my knowledge, not a source.
+- The UK health service role mapping (information asset owner and so on) is from my knowledge, not a source.
 - No clinician has reviewed these ideas; severity and scoring choices are for them.
 
 ## Sources
@@ -103,6 +103,6 @@ For the Clinical Safety Officer, none accepted; none is yet in the hazard log.
 2. ISO/IEC 25012 summaries: https://quality.arc42.org/standards/iso-iec-25012 and https://iso25000.com/index.php/en/iso-25000-standards/iso-25012
 3. ISO 8000-61 catalogue entries: https://www.dinmedia.de/en/standard/iso-8000-61/266302693 and https://iteh.es/catalog/standards/iso/0b5737db-6738-48ff-8c0e-0c083adf7194/iso-8000-61-2016
 4. DAMA-based role and dimension summaries (secondary): https://datamanagement.wiki/_export/raw/role/data_steward and https://dqs-website.pages.dev/resources/best-practices/data-governance-framework
-5. NHS England DQMI methodology: https://digital.nhs.uk/data-and-information/data-tools-and-services/data-services/data-quality/data-quality-maturity-index-methodology
+5. England's national health body, DQMI methodology: https://digital.nhs.uk/data-and-information/data-tools-and-services/data-services/data-quality/data-quality-maturity-index-methodology
 6. PCSE and National Back Office on duplicates and confusions: https://pcse.england.nhs.uk/services/patient-registrations/duplicates-and-confusions/about-duplicates and https://pcse.england.nhs.uk/services/patient-registrations/duplicates-and-confusions/about-confusions
 7. US Core Provenance guidance: https://build.fhir.org/ig/HL7/US-Core/basic-provenance.html

@@ -9,12 +9,12 @@ Method: web searches (mostly search snippets, not full documents; "Not verified"
 A virtual ward (England) gives acute-level monitoring and care to a patient at home or in a care home, run like a ward: a named clinical lead, a defined capacity, admission criteria, a daily review and an escalation route. Other names: hospital at home, in Australia "hospital in the home" (HITH), in the US the "Acute Hospital Care at Home" programme. It is a different thing from an ordinary community nursing caseload because the hospital (or a provider on its behalf) stays clinically responsible and the patient is counted as occupying a "bed".
 
 - **Step-up** (avoids an admission, from the GP, ambulance or emergency department) and **step-down** (supports earlier discharge from a ward). This file's subject is step-down from an acute stay; step-up shares the same record needs.
-- **Pathways named by NHS England**: acute respiratory infection (including COPD) and frailty have guidance notes; a national heart-failure note was not found (see Not verified).
+- **Pathways named by England's national health body**: acute respiratory infection (including COPD) and frailty have guidance notes; a national heart-failure note was not found (see Not verified).
 - A virtual ward is not a **step-down facility** (a bed in a building): see the [companion](../step-down-facility/index.md).
 
 ## Models and evidence
 
-- **England.** NHS England published guidance in 2022 asking integrated care systems to introduce or extend virtual wards, with a 2022/23 ambition of 40 to 50 "beds" per 100,000 population; a 2025 report says the per-capita target was shelved, and December 2024 data showed England at 20.1 per 100,000 with one integrated care board in range (secondary sources, snippets). An operational framework (August 2024, secondary report) and monthly capacity/occupancy statistics from a situation report exist. A virtual-wards minimum data set, DAPB4073, is listed as active from 4 February 2026 ([standard](https://standards.nhs.uk/published-standards/virtual-wards)).
+- **England.** England's national health body published guidance in 2022 asking integrated care systems to introduce or extend virtual wards, with a 2022/23 ambition of 40 to 50 "beds" per 100,000 population; a 2025 report says the per-capita target was shelved, and December 2024 data showed England at 20.1 per 100,000 with one integrated care board in range (secondary sources, snippets). An operational framework (August 2024, secondary report) and monthly capacity/occupancy statistics from a situation report exist. A virtual-wards minimum data set, DAPB4073, is listed as active from 4 February 2026 ([standard](https://standards.nhs.uk/published-standards/virtual-wards)).
 - **Clinical leadership.** The acute respiratory infection note says the ward should be led by a named consultant (a nurse or allied health professional consultant counts) or a suitably trained GP, with specialist advice. The ICS leadership guide asks for an accountable clinical service lead reporting to the medical director and chief nurse of the organisation (snippets).
 - **Evidence, admission avoidance.** The 2024 Cochrane update (Edgar et al., CD007491; five trials, 1,502 people) found probably little or no difference in mortality at six months, probably lower cost with variable method, higher satisfaction, and possibly a useful alternative for a selected group of older people (snippet of the review page).
 - **Evidence, early discharge.** A Cochrane review of 2017 (Gonçalves-Bradley et al., CD000356) covers early discharge to hospital at home; only an older secondary summary was seen (satisfaction higher, readmission no clear difference after surgery, cost mixed).
@@ -49,7 +49,7 @@ The one numbered workflow both files share (idea 1 below). Each step names what 
 
 | Item | Why | Source in our record today |
 |---|---|---|
-| Identity, NHS number, contact details, address and access | Find the patient; visit; call back | Patient (matcher DTO); no contact or access detail model |
+| Identity, national health number, contact details, address and access | Find the patient; visit; call back | Patient (matcher DTO); no contact or access detail model |
 | Diagnoses and reason for the ward | Eligibility, thresholds | None (no problem list or notes) |
 | Medicines, changes made, supply given | Safe continuation | None (not built; see RC-5) |
 | Allergies and adverse reactions | Avoid harm | Built |
@@ -113,17 +113,17 @@ For the Clinical Safety Officer; none is accepted or closed. To go to the hazard
 
 ## Not verified
 
-Most NHS England and Cochrane statements come from search snippets or secondary summaries, not full documents. Not seen: the operational framework text, the frailty note, any heart-failure note, the 2017 Cochrane full text, the DAPB4073 specification, the ReSPECT link to transfer standards, the US statute text, Australian national statements. Figures about bed targets are from trade press. No clinician or lawyer has reviewed anything.
+Most statements from England's national health body and Cochrane come from search snippets or secondary summaries, not full documents. Not seen: the operational framework text, the frailty note, any heart-failure note, the 2017 Cochrane full text, the DAPB4073 specification, the ReSPECT link to transfer standards, the US statute text, Australian national statements. Figures about bed targets are from trade press. No clinician or lawyer has reviewed anything.
 - Link check 2026-11-04: these cited pages returned 404. They may have moved, but what rests on them is unconfirmed: https://standards.nhs.uk/future-standards/virtual-wards-minimum-data-set; https://www.nj.gov/health/healthfacilities/certificate-need/guidance/Extension-of-CMS-Acute-Care-Hospital-at; https://hithsociety.wildapricot.org/Definition
 
 ## Sources
 
-- NHS England, ARI virtual ward guidance note: https://england.nhs.uk/long-read/guidance-note-virtual-ward-care-for-people-with-acute-respiratory-infection-including-chronic-obstructive-pulmonary-disease/
-- NHS England, supporting clinical leadership in virtual wards: https://www.england.nhs.uk/long-read/supporting-clinical-leadership-in-virtual-wards-a-guide-for-integrated-care-system-clinical-leaders/
-- NHS England, virtual ward statistics: https://england.nhs.uk/statistics/statistical-work-areas/virtual-ward
+- England's national health body, ARI virtual ward guidance note: https://england.nhs.uk/long-read/guidance-note-virtual-ward-care-for-people-with-acute-respiratory-infection-including-chronic-obstructive-pulmonary-disease/
+- England's national health body, supporting clinical leadership in virtual wards: https://www.england.nhs.uk/long-read/supporting-clinical-leadership-in-virtual-wards-a-guide-for-integrated-care-system-clinical-leaders/
+- England's national health body, virtual ward statistics: https://england.nhs.uk/statistics/statistical-work-areas/virtual-ward
 - Public Technology, per-capita target shelved: https://www.publictechnology.net/2025/05/19/health-and-social-care/nhs-virtual-wards-add-1000-beds-in-the-past-year-as-per-capita-target-shelved/
 - HTN on the 2022 guidance: https://htn.co.uk/2022/05/05/nhse-publishes-guidance-for-icss-to-introduce-virtual-ward-model/
-- NHS England standards, virtual wards minimum data set: https://standards.nhs.uk/published-standards/virtual-wards and https://standards.nhs.uk/future-standards/virtual-wards-minimum-data-set
+- Standards of England's national health body, virtual wards minimum data set: https://standards.nhs.uk/published-standards/virtual-wards and https://standards.nhs.uk/future-standards/virtual-wards-minimum-data-set
 - Cochrane, admission avoidance: https://cochranelibrary.com/cdsr/doi/10.1002/14651858.CD007491.pub3
 - Cochrane, early discharge: https://cochranelibrary.com/cdsr/doi/10.1002/14651858.CD000356.pub3/information
 - Cochrane news on implementation: https://www.cochrane.org/news/cochrane-examines-evidence-base-effectiveness-and-implementation-hospital-home-programmes

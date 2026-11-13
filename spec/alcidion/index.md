@@ -12,7 +12,7 @@ Public-source research read 2026-11-04. Vendor material is marketing; nothing he
 
 ## Capabilities worth noting
 
-- Electronic observations and early-warning scores with alerts (Patientrack, now Miya Observations), including a 1,250-bed NHS Lanarkshire deployment reported in earlier press ([Pulse IT tag page](https://pulseit.news/tag/patientrack)).
+- Electronic observations and early-warning scores with alerts (Patientrack, now Miya Observations), including a 1,250-bed deployment at the Lanarkshire health board reported in earlier press ([Pulse IT tag page](https://pulseit.news/tag/patientrack)).
 - Patient flow: digital journey boards replacing whiteboards, bed management, used in community hospitals in Herefordshire and Worcestershire ([Clinical Services Journal](https://clinicalservicesjournal.com/story/44600/herefordshire-and-worcestershire-health-and-care-nhs-trust-enhances-bed-manageme)).
 - Results tracking and a modular EPR: North Cumbria signed a ten-year EPR contract on Miya Precision in February 2025 ([Digital Health](https://www.digitalhealth.net/2025/02/north-cumbria-signs-10-year-epr-contract-with-alcidion)).
 - A Class 1 medical-device registration for an AI feature in Australia and the UK, reported in a search summary ([Pulse.bot blog](https://www.pulse.bot/healthtech/blogs/alcidion-delivering-software-as-a-medical-device-ai-capabilities-in-both-australia-and-the-uk-1193fafd-5a4b-45db-a4cc-602be6e0bd6a)); this is classification, not clinical evaluation.
@@ -26,13 +26,13 @@ Public-source research read 2026-11-04. Vendor material is marketing; nothing he
 
 - Acute inpatient and ED: flow and observations are the evidenced strengths (Royal Darwin ED-to-ward flow is a vendor case study, [casestudies.com](https://www.casestudies.com/company/alcidion/case-study/redesigning-access-and-discharge-at-royal-darwin-hospital)).
 - Community: community hospital bed management in Herefordshire and Worcestershire (above). Community nursing records: unknown.
-- Mental health: NHS Fife is cited by the vendor for risk assessments; wider mental-health fit unknown. Primary care: not a primary-care system; unknown beyond that.
+- Mental health: the Fife health board is cited by the vendor for risk assessments; wider mental-health fit unknown. Primary care: not a primary-care system; unknown beyond that.
 - Operations centres for integrated care systems and remote patient management are listed by the vendor; no independent evidence found.
 
 ## What independent sources report
 
 - Monash University evaluation of Miya Precision journey boards at Alfred Health (funded by the Digital Health CRC, released May 2024; Alfred Health, Monash and Alcidion collaborated): before deployment 25 to 40% mismatch between EMR data and ward whiteboards; workflow variations reduced from 30 to 9; bed-allocation call duration down 67% (the last two from a podcast summary) ([Hospital + Healthcare](https://hospitalhealth.com.au/content/technology/article/report-shows-benefits-of-electronic-journey-patient-boards-at-alfred-health-1666906116)). I did not reach the full report, and Alcidion was a collaborator, so this is not fully independent.
-- Safety or adoption evaluations of Patientrack or Miya Observations by NHS England, HSSIB or a peer-reviewed journal: none found. The Manchester "reduced cardiac arrests" item is Alcidion-published ([casestudies.com](https://www.casestudies.com/company/alcidion/case-study/reducing-cardiac-arrests-and-critical-care-length-of-stay-at-manchester-university-nhs-foundation-trust)).
+- Safety or adoption evaluations of Patientrack or Miya Observations by England's national health body, HSSIB or a peer-reviewed journal: none found. The Manchester "reduced cardiac arrests" item is Alcidion-published ([casestudies.com](https://www.casestudies.com/company/alcidion/case-study/reducing-cardiac-arrests-and-critical-care-length-of-stay-at-manchester-university-nhs-foundation-trust)).
 - Incidents, go-live problems or regulator findings: none found for Alcidion in this pass. Absence of evidence is not evidence of absence.
 
 ## Compared with this project

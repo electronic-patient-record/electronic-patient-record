@@ -60,7 +60,7 @@ Plan for a dip of months, measure its depth and length for this EPR, and do not 
 
 ## Benefits realisation frameworks
 
-- NHS England's Global Digital Exemplar programme was evaluated independently by the University of Edinburgh as a longitudinal qualitative multi-case study; it stressed a clear vision, signed-off business cases, and tying benefits delivery to funding. It warns that programme impact is hard to separate from other change, and the programme-reported savings figures are not audited.
+- The Global Digital Exemplar programme of England's national health body was evaluated independently by the University of Edinburgh as a longitudinal qualitative multi-case study; it stressed a clear vision, signed-off business cases, and tying benefits delivery to funding. It warns that programme impact is hard to separate from other change, and the programme-reported savings figures are not audited.
 - HIMSS EMRAM is an eight-stage (0 to 7) adoption model created in 2005. It measures what is adopted, not benefit; its own validation differs by stage (a site visit for stage 7). Treat it as a maturity yardstick, not a productivity measure. Current criteria were not checked (see Not verified).
 
 ## Compared with this project
@@ -137,6 +137,6 @@ For the Clinical Safety Officer to assess; none is accepted, and none is yet in 
 - Overt against covert hand-hygiene observation: https://bmcinfectdis.biomedcentral.com/articles/10.1186/s12879-018-3292-5
 - GDE evaluation, Edinburgh: https://www.ed.ac.uk/node/130610
 - GDE evaluation protocol: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7545630/
-- NHS Transformation Directorate, GDE shared learning: https://transform.england.nhs.uk/blogs/the-art-of-the-possible-shared-learning-from-the-gde-programme
+- Transformation Directorate of England's national health body, GDE shared learning: https://transform.england.nhs.uk/blogs/the-art-of-the-possible-shared-learning-from-the-gde-programme
 - EMRAM overview: https://healthexec.com/topics/health-it/medical-records/himss-analytics-emram-could-travel-across-pond and https://healthcareitnews.com/node/434591
 - This repository: [usability](../usability/index.md), [audit](../audit/index.md), [care settings](../care-settings.md), [NFR](../07-non-functional-requirements.md), [clinical safety](../clinical-safety/index.md)

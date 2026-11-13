@@ -7,7 +7,7 @@ Public-source research read 2026-11-04. Vendor material is marketing; nothing he
 - SystmOne is the clinical system of The Phoenix Partnership (TPP), based in Horsforth near Leeds. Source: [Wikipedia, SystmOne](https://en.wikipedia.org/wiki/SystmOne). Who owns TPP now: I could not confirm from the sources read.
 - It is modular: GP practice, community services, child health, palliative care, hospital, A&E, maternity, mental health, prisons and social services modules. Source: [Wikipedia, SystmOne](https://en.wikipedia.org/wiki/SystmOne) (a secondary source, undated in parts).
 - It is centrally hosted: the data sits on remote servers, not in each practice. Source: same.
-- Scale (independent trade press and sponsored sources disagree): about 2,600 GP practices cited in [IT Pro](https://www.itpro.com/it-infrastructure/32155/errors-with-third-party-nhs-it-system-led-to-significant-patient-risk); about 40 per cent of English practices is repeated in vendor-linked pages. I found no NHS England count by supplier. English GP software is described as a duopoly with EMIS ([Wikipedia](https://en.wikipedia.org/wiki/SystmOne)).
+- Scale (independent trade press and sponsored sources disagree): about 2,600 GP practices cited in [IT Pro](https://www.itpro.com/it-infrastructure/32155/errors-with-third-party-nhs-it-system-led-to-significant-patient-risk); about 40 per cent of English practices is repeated in vendor-linked pages. I found no count by supplier from England's national health body. English GP software is described as a duopoly with EMIS ([Wikipedia](https://en.wikipedia.org/wiki/SystmOne)).
 - Markets: England mainly; also all prisons in England (133 prisons and young offender institutions, per Wikipedia).
 
 ## Capabilities worth noting
@@ -21,8 +21,8 @@ Public-source research read 2026-11-04. Vendor material is marketing; nothing he
 ## Architecture and standards
 
 - Single central hosted system; clinical coding historically Read codes ([Wikipedia](https://en.wikipedia.org/wiki/SystmOne)). Current SNOMED CT use: not verified here.
-- Third parties reach the GP module through NHS England's IM1 pairing process and GP Connect; GP Connect is FHIR-based and TPP lists structured medications and allergies at full roll-out ([TPP interoperability status](https://tpp-uk.com/products/system-wide-functionality/interoperability/interoperability-status); [NHS England IM1 standards](https://digital.nhs.uk/developer/api-catalogue/interface-mechanism-1-standards)).
-- TPP's own interface specifications are released after assessment of an application; public pages do not show endpoints (NHS England page above). It is a closed, proprietary product; no source code is public.
+- Third parties reach the GP module through the IM1 pairing process of England's national health body and GP Connect; GP Connect is FHIR-based and TPP lists structured medications and allergies at full roll-out ([TPP interoperability status](https://tpp-uk.com/products/system-wide-functionality/interoperability/interoperability-status); [IM1 standards, England's national health body](https://digital.nhs.uk/developer/api-catalogue/interface-mechanism-1-standards)).
+- TPP's own interface specifications are released after assessment of an application; public pages do not show endpoints (the page of England's national health body above). It is a closed, proprietary product; no source code is public.
 - Does it expose a native FHIR server for clinicians' own use: I could not confirm.
 
 ## Fit across care settings
@@ -68,7 +68,7 @@ These are ideas, not decisions.
 
 ## Not verified
 
-- Current owner of TPP, current practice count, and any official NHS England share figure.
+- Current owner of TPP, current practice count, and any official share figure from England's national health body.
 - Whether MHA features are complete on mobile or offline; whether SNOMED CT is native.
 - TPP mental health page and Wikipedia were read via search summaries or a single fetch; the training PDF was not opened in full.
 - The incidents above are dated (2009 to 2024); no 2025 to 2026 independent evaluation was found.
@@ -89,5 +89,5 @@ These are ideas, not decisions.
 - https://tpp-uk.com/news/cheshire-and-wirral-partnership-nhs-foundation-trust-go-live-with-systmone-mental-health/ : vendor news of a go-live
 - https://tpp-uk.com/products/system-wide-functionality/interoperability/interoperability-status : vendor GP Connect status
 - https://tpp-uk.com/integration-request/ : vendor API request process
-- https://digital.nhs.uk/developer/api-catalogue/interface-mechanism-1-standards : NHS England IM1
+- https://digital.nhs.uk/developer/api-catalogue/interface-mechanism-1-standards : IM1, England's national health body
 - https://www.digitalhealth.net/tag/systmone/page/5/ : trade-press listing, mobile version

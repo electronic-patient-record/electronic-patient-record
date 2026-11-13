@@ -14,7 +14,7 @@ Method: web searches and the project's own specs ([care settings](../care-settin
 
 ## The pathway (antenatal, intrapartum, postnatal, neonatal)
 
-Described from NICE and NHS England pages; the clinical content is for a midwife and an obstetrician to write.
+Described from NICE and England's national health body pages; the clinical content is for a midwife and an obstetrician to write.
 
 **Antenatal.**
 - *Booking.* NICE recommends the first booking appointment with a midwife by 10+0 weeks of pregnancy, and plans 10 routine appointments for a first pregnancy and 7 for later ones (NICE NG201, from a search snippet; the detailed schedule PDF was not opened).
@@ -26,35 +26,35 @@ Described from NICE and NHS England pages; the clinical content is for a midwife
 
 **Postnatal.** The mother and baby are both followed: the mother's recovery and mental health, infant feeding, the baby's checks. Care passes from hospital midwives to community midwives, health visitors and the GP.
 
-**Neonatal and newborn screening.** A baby may need neonatal unit care. Newborn screening (the blood spot test, hearing, a physical examination) depends on the baby having a correct identifier; the NHS publishes failsafe processes for missed or rejected samples (gov.uk pages in Sources, not read in full).
+**Neonatal and newborn screening.** A baby may need neonatal unit care. Newborn screening (the blood spot test, hearing, a physical examination) depends on the baby having a correct identifier; the health service publishes failsafe processes for missed or rejected samples (gov.uk pages in Sources, not read in full).
 
 ## Two patients, one episode: identity
 
-- **Births are notified to the national demographics service.** In England the Personal Demographics Service allocates the baby's NHS number through a birth-notification process, and the service for newborn numbers (NN4B) has been decommissioned into PDS (search snippets; the specification was not read). A maternity system can create the mother's record if she is unmatched.
+- **Births are notified to the national demographics service.** In England the Personal Demographics Service allocates the baby's national health number through a birth-notification process, and the service for newborn numbers (NN4B) has been decommissioned into PDS (search snippets; the specification was not read). A maternity system can create the mother's record if she is unmatched.
 - **Multiple births.** The newborn blood spot label specification prints birth order and number of births in the confinement (snippet), so twins are distinguished by more than name and date of birth. Whether each twin gets a number at once and how a mother's record is linked was not found.
-- **Errors mix babies up.** An NHS England freedom-of-information document on babies switched at birth describes a baby's number and location assigned to the other twin, and twin records entered wrongly through labels, data entry or birth weight (snippet). An NHS case study covers a baby linked to the wrong mother. Newborn screening learning documents describe NHS numbers wrongly written on a card, forcing a repeat test.
+- **Errors mix babies up.** A freedom-of-information document from England's national health body on babies switched at birth describes a baby's number and location assigned to the other twin, and twin records entered wrongly through labels, data entry or birth weight (snippet). A health service case study covers a baby linked to the wrong mother. Newborn screening learning documents describe national health numbers wrongly written on a card, forcing a repeat test.
 - **Name changes.** A baby is often registered with a temporary name ("Baby of ...") and renamed later; a mother's surname may also change. This is a common practice in hospitals, not a sourced fact, and is listed as an open question.
 - **This project.** The matcher never auto-links twins or multiples and requires evidence for a link ([patient identity](../patient-identity/index.md); the matcher spec). A mother and her baby are two `Patient` records joined by a related-person or `Patient.link`-style relationship that is **not** an identity link. A merge of mother and baby must be impossible.
 
 ## Sensitive information and access
 
-- **Domestic abuse.** NICE's public guidance tells women that disclosures are recorded in a special confidential record, not the hand-held notes (NICE CG110 patient page). A Royal College of Midwives opinion piece describes a secret part of the record and a "partner present" mode that clears sensitive details from the woman's phone view. NHS England guidance for GP online access says it should not be obvious that information has been hidden.
+- **Domestic abuse.** NICE's public guidance tells women that disclosures are recorded in a special confidential record, not the hand-held notes (NICE CG110 patient page). A Royal College of Midwives opinion piece describes a secret part of the record and a "partner present" mode that clears sensitive details from the woman's phone view. England's national health body guidance for GP online access says it should not be obvious that information has been hidden.
 - **Why it matters for design.** A partner may coerce a woman to open her record; the paper maternity book is kept at home (forum snippet, weak source).
 - **Safeguarding and teenage parents.** Safeguarding concerns about the unborn baby, or the parents' age or capacity, affect who may see what and who is told. This project's proxy and adolescent confidentiality rules ([access control](../access-control/index.md)) apply, but a teenage mother is both a patient in her own right and, for the baby, a parent with responsibility; no source on the rules was read.
 - **Partner as proxy.** A partner may be a legitimate proxy for the baby and not for the mother. The two records need separate proxy sets.
 
 ## The woman's own record
 
-- England's Better Births programme promised patient-held digital maternity records: 100,000 women offered access by March 2020, all women by 2023/24, with 105,000 offered and 60% accessing by September 2019 (NHS England page, snippet). Wales planned digital access from March 2026 (trade commentary, snippet).
+- England's Better Births programme promised patient-held digital maternity records: 100,000 women offered access by March 2020, all women by 2023/24, with 105,000 offered and 60% accessing by September 2019 (England's national health body page, snippet). Wales planned digital access from March 2026 (trade commentary, snippet).
 - Personalised care and support plans were promised to all women by 2021 (snippet; current status not found).
 - The woman is the person who holds the whole pregnancy across places; a record she can see and add to fits this project's patient access and patient amendments, with the hidden-information limits above.
 - Her record of the baby is a proxy view of a different patient, which the access model must express explicitly.
 
 ## Systems, standards and data sets
 
-- **Maternity Services Data Set (MSDS)**, England. Information standard DCB1513, v2.0 (Amd 10/2018), covering activity from first booking to discharge of mother and baby; systems had to conform from 1 April 2019; trusts submit monthly; secondary use only (NHS England standards pages). It is a reporting extract, not a record design.
+- **Maternity Services Data Set (MSDS)**, England. Information standard DCB1513, v2.0 (Amd 10/2018), covering activity from first booking to discharge of mother and baby; systems had to conform from 1 April 2019; trusts submit monthly; secondary use only (England's national health body standards pages). It is a reporting extract, not a record design.
 - **Specialist systems.** BadgerNet (System C) describes itself as a perinatal record covering maternity, neonatal and paediatric pathways (supplier listing). Euroking (Magentus) was widely used; Digital Health reported a 2009 liquidation risk for the original company and, in 2024, 13 trusts moving away after the alert below. K2 was not researched.
-- **National Patient Safety Alert, 7 December 2023.** NHS England warned of potential serious risks with the Euroking maternity information system: overwritten and incorrectly displayed patient data; "no evidence of actual harm" was reported; users of all other maternity systems were advised to reassess clinical safety with a clinical safety officer (NHS England and trade coverage; the alert's full text was not read).
+- **National Patient Safety Alert, 7 December 2023.** England's national health body warned of potential serious risks with the Euroking maternity information system: overwritten and incorrectly displayed patient data; "no evidence of actual harm" was reported; users of all other maternity systems were advised to reassess clinical safety with a clinical safety officer (England's national health body and trade coverage; the alert's full text was not read).
 - **International.** A Dutch FHIR BirthCare implementation guide (Nictiz) models a pregnancy as a `Condition` on the mother with her care in an `EpisodeOfCare`, linking observations to events. A US HL7 guide for longitudinal maternal and infant health data (research use) exists, and the HL7 Europe Patient Summary maps an EHDS "current pregnancy" item to `Observation` profiles (still being revised). No openEHR pregnancy archetype was found in one search; that is not proof none exists. A pregnancy as `EpisodeOfCare` is the opposite of this project's pathway-first direction; see Ideas.
 
 ## What public reviews say about records and information
@@ -134,7 +134,7 @@ Candidates for the Clinical Safety Officer, in the hazard-log shape ([hazard log
 
 ## Not verified
 
-- Only search snippets were seen for: NICE NG201, MSDS, Ockenden (final and interim), Kirkup (Morecambe Bay and East Kent), PDS birth notification, the Euroking alert, NHS England maternity digital pages, the Dutch, US and EU FHIR guides, and domestic-abuse recording guidance. No full report was read.
+- Only search snippets were seen for: NICE NG201, MSDS, Ockenden (final and interim), Kirkup (Morecambe Bay and East Kent), PDS birth notification, the Euroking alert, England's national health body maternity digital pages, the Dutch, US and EU FHIR guides, and domestic-abuse recording guidance. No full report was read.
 - Not researched: K2, Maternity Digital, openEHR archetypes (one search), CTG capture, partogram content, screening schedules, non-UK systems, legal rules on proxies and teenage parents.
 - The "where general EPRs fall short" section is mostly inference.
 - No clinician reviewed anything.

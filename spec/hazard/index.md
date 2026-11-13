@@ -148,7 +148,7 @@ standard, which is paywalled and **was not read**: every row is **[uncertain]** 
 
 Two differences matter for the removal rule above. ISO 14971 has no "closed" state: a hazard stays until verified and its
 residual risk is judged acceptable, and the file is kept as a **risk management file** for the product's life. And
-DCB0129 (the NHS standard) is a separate duty that sits beside it; meeting one does not meet the other.
+DCB0129 (the UK health service standard) is a separate duty that sits beside it; meeting one does not meet the other.
 
 ## Sources and how far to trust them
 
@@ -156,5 +156,5 @@ DCB0129 vendor guides (not the standard itself) say closed hazards stay in the l
 is approved by the CSO, and that control evidence should trace to a requirement, design decision, test or code change:
 [Presencis hazard-log article](https://presencis.com/regulations/dcb0129/article-hazard-log/),
 [Presencis CSO guide](https://cdn.presencis.com/regulations/dcb0129/guide/clinical-safety-officer). I did **not** read the
-NHS England standard text, so the closure criteria and retention period are **[uncertain]** and go to AS-11 for checking.
+standard text of England's national health body, so the closure criteria and retention period are **[uncertain]** and go to AS-11 for checking.
 This page is a proposal by an AI agent: it is not clinically reviewed and claims no compliance.

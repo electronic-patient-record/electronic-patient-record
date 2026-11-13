@@ -1,4 +1,4 @@
-# Treat a shared Australian IHI as a deterministic identifier, as the NHS number is treated.
+# Treat a shared Australian IHI as a deterministic identifier, as the national health number is treated.
 # Sixteen digits, prefix 800360, Luhn check digit. The numbers below are invented for these vectors.
 use_ihi = true
 

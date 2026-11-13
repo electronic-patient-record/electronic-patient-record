@@ -18,7 +18,7 @@ Compatibility ([compatibility](../compatibility/index.md)) and interoperability 
 - Setting differs. Community and mental-health care need a caseload, home visits and legal-status records, where acute care has beds and wards; trusts have chosen mental-health or community systems partly for mobile access and statutory returns. The evidence is trade press and supplier case studies, not a comparison study (see [care settings](../../spec/care-settings.md) for its sources).
 - Configuration is a quality risk, not only a benefit. A multi-site study found large variation in physicians' performance on common order-entry tasks, and its authors noted that vendor and health-system customisation means a deployed product may differ much from the one tested ([Ratwani et al. 2018, via AMA news](https://ama-assn.org/study-finds-need-performance-standards-ehr-usability-safety); snippet only).
 - Customisation also drives upgrade cost: consultancy and trade sources say heavy local build makes upgrades unpredictable ([CSI](https://www.csicompanies.com/insights/the-hidden-cost-of-custom-builds-an-epic-ehr-optimization-guide-for-health-system-it-leaders); a consultancy with a commercial interest).
-- Deployers are legally distinct from manufacturers in England: DCB0129 binds the manufacturer and DCB0160 the deploying organisation, so configuration choices carry the deployer's clinical risk ([NHS Standards](https://standards.nhs.uk/published-standards/clinical-risk-management-its-application-in-the-deployment-and-use-of-health-it-systems), snippet).
+- Deployers are legally distinct from manufacturers in England: DCB0129 binds the manufacturer and DCB0160 the deploying organisation, so configuration choices carry the deployer's clinical risk ([national health standards](https://standards.nhs.uk/published-standards/clinical-risk-management-its-application-in-the-deployment-and-use-of-health-it-systems), snippet).
 
 ## What the project says today
 
@@ -75,7 +75,7 @@ Compatibility ([compatibility](../compatibility/index.md)) and interoperability 
 
 ## Not verified
 
-No standard text read. No scaling, install or pack run was done by me. The Ratwani, CSI and NHS items are snippets.
+No standard text read. No scaling, install or pack run was done by me. The Ratwani, CSI and UK health service items are snippets.
 
 ## Sources
 

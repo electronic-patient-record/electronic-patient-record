@@ -22,7 +22,7 @@ from it, and when the referral is triaged, redirected or rebooked, the reason fo
   no health board has met 75% since August 2020 [IWA] is press, not official statistics.
 - **England: NICE NG12** organises suspected cancer referral by symptom, with a very urgent (48-hour) route, an urgent
   suspected cancer route and direct-access tests; the Faster Diagnosis Standard expects cancer to be diagnosed or ruled
-  out within 28 days of an urgent referral [NG12] (the 28-day figure from secondary summaries; confirm on NHS England's
+  out within 28 days of an urgent referral [NG12] (the 28-day figure from secondary summaries; confirm on the pages of England's national health body
   page).
 
 What this asks of the record, using cancer:
@@ -277,8 +277,8 @@ has read this page.
 Read 2026-11-09 through web search results; pages not opened unless said.
 
 - [GOVWNEW] Welsh Government, *New measure for cancer services: Wales a UK first*: https://www.gov.wales/new-measure-cancer-services-wales-uk-first
-- [WCWT] Welsh Government, *NHS cancer waiting times quality report* (2019): https://www.gov.wales/sites/default/files/statistics-and-research/2019-10/nhs-cancer-waiting-times-quality-report.pdf ; *Suspected cancer pathway quality report* (2023): https://www.gov.wales/sites/default/files/pdf-versions/2023/8/5/1691749814/suspected-cancer-pathway-quality-report.pdf
-- [WDDPCS] NHS Wales Data Dictionary, *Primary Cancer Site Description* (valid from 2021-01-01, last changed by DSCN 2023/45), as copied in the PAS's `wales` profile; not opened here: https://www.datadictionary.wales.nhs.uk/worddocuments/primarycancersitedescription.htm
+- [WCWT] Welsh Government, *cancer waiting times quality report* for the health service in Wales (2019): https://www.gov.wales/sites/default/files/statistics-and-research/2019-10/nhs-cancer-waiting-times-quality-report.pdf ; *Suspected cancer pathway quality report* (2023): https://www.gov.wales/sites/default/files/pdf-versions/2023/8/5/1691749814/suspected-cancer-pathway-quality-report.pdf
+- [WDDPCS] the Wales data dictionary, *Primary Cancer Site Description* (valid from 2021-01-01, last changed by DSCN 2023/45), as copied in the PAS's `wales` profile; not opened here: https://www.datadictionary.wales.nhs.uk/worddocuments/primarycancersitedescription.htm
 - [WNOP] Welsh Government, *National optimal pathways for cancer* (2019): https://www.gov.wales/sites/default/files/publications/2019-10/national-optimal-pathways-for-cancer.pdf
 - [IWA] Institute of Welsh Affairs: https://iwa.wales/?p=49889 (press)
 - [NG12] NICE NG12, *Suspected cancer: recognition and referral*: https://www.nice.org.uk/guidance/ng12 ; NICE feature: https://www.nice.org.uk/news/feature/helping-gps-make-an-early-diagnosis-of-cancer
