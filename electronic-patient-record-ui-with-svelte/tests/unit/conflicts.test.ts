@@ -11,12 +11,18 @@ import { LOCALES } from "../../src/lib/locales";
 
 // The twelve codes, with the exact English the matcher (0.5.0) writes for each beside them.
 const CODES: [ConflictCode, string][] = [
-  [{ code: "different_nhs_numbers" }, "different verified NHS numbers"],
   [
-    { code: "same_nhs_different_birth_dates" },
-    "same NHS number but different birth dates",
+    { code: "different_national_numbers" },
+    "different verified national health numbers",
   ],
-  [{ code: "same_nhs_different_names" }, "same NHS number but different names"],
+  [
+    { code: "same_national_number_different_birth_dates" },
+    "same national health number but different birth dates",
+  ],
+  [
+    { code: "same_national_number_different_names" },
+    "same national health number but different names",
+  ],
   [{ code: "different_ihis" }, "different verified IHIs"],
   [
     { code: "same_ihi_different_birth_dates" },
@@ -106,12 +112,12 @@ describe("conflict codes in every locale (CQ-38; translations machine-written, u
     ).toBeNull();
     // One known and one unknown: the known is translated, the other keeps its English.
     const mixed = conflictList(
-      ["different verified NHS numbers", "a newer reason"],
-      [{ code: "different_nhs_numbers" }, { code: "brand_new" }],
+      ["different verified national health numbers", "a newer reason"],
+      [{ code: "different_national_numbers" }, { code: "brand_new" }],
       "de-001",
     );
     expect(mixed).toEqual([
-      "unterschiedliche geprüfte NHS-Nummern",
+      "unterschiedliche geprüfte nationale Gesundheitsnummern",
       "a newer reason",
     ]);
   });
@@ -129,11 +135,11 @@ describe("a refused merge in the page's language", () => {
   it("leads with 'these do not look like the same person' and lists each reason, in every locale", () => {
     for (const locale of LOCALES) {
       const t = notSamePersonText(
-        [{ code: "different_nhs_numbers" }, { code: "names_swapped" }],
+        [{ code: "different_national_numbers" }, { code: "names_swapped" }],
         locale,
       );
       expect(t, locale).toContain(
-        conflictText({ code: "different_nhs_numbers" }, locale)!,
+        conflictText({ code: "different_national_numbers" }, locale)!,
       );
       expect(t).toContain("; ");
       if (locale !== "en-001") expect(t).not.toMatch(/^These do not look/);
@@ -198,8 +204,8 @@ describe("a refused patient", () => {
   const CODES = [
     "family_name_required",
     "birth_date_invalid",
-    "nhs_number_placeholder",
-    "nhs_number_check_digit",
+    "national_number_placeholder",
+    "national_number_check_digit",
     "identifier_incomplete",
     "temporary_identity_reason_required",
   ];

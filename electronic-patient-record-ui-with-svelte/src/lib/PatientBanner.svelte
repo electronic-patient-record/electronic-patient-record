@@ -5,8 +5,8 @@
   // allergy line reads as "none".
   import {
     ageOn,
-    NHS_NUMBER_SYSTEM,
-    nhsDisplay,
+    NATIONAL_NUMBER_SYSTEM,
+    nationalNumberDisplay,
     type Stored,
   } from "./patient.js";
   import { bannerAllergies, type AllergyLoad } from "./allergies.js";
@@ -76,11 +76,11 @@
       .filter(Boolean)
       .join(", "),
   );
-  const nhs = $derived(
-    p.identifiers.find((i) => i.system === NHS_NUMBER_SYSTEM)?.value,
+  const national = $derived(
+    p.identifiers.find((i) => i.system === NATIONAL_NUMBER_SYSTEM)?.value,
   );
   const other = $derived(
-    p.identifiers.find((i) => i.system !== NHS_NUMBER_SYSTEM),
+    p.identifiers.find((i) => i.system !== NATIONAL_NUMBER_SYSTEM),
   );
   const age = $derived.by(() => {
     const a = ageOn(p.birth_date, today, stored.site_time_zone);
@@ -120,7 +120,11 @@
   {:else if needsLine.kind === "status"}
     <p>{needsLine.text}</p>
   {/if}
-  <p>{TEXT.bannerNhs}: {nhs ? nhsDisplay(nhs) : TEXT.bannerNone}</p>
+  <p>
+    {TEXT.bannerNationalNumber}: {national
+      ? nationalNumberDisplay(national)
+      : TEXT.bannerNone}
+  </p>
   <p>
     {TEXT.bannerOtherId}: {other
       ? `${other.system} ${other.value}`

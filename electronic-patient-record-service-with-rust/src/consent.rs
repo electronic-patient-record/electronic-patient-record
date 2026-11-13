@@ -78,7 +78,7 @@ pub enum Kind {
     /// for the `research` purpose); a record of this kind carries none of its own.
     ///
     /// This records the choice **held by this service only**. The national data opt-out is a
-    /// national service checked against the NHS number; no such check is built.
+    /// national service checked against the national health number; no such check is built.
     NationalDataOptOut,
 }
 

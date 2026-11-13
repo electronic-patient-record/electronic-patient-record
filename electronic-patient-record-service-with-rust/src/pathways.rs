@@ -736,7 +736,7 @@ mod tests {
             vec!["wales-primary-cancer-site has no code 99"]
         );
         let sites = &v2.subtypes.as_ref().unwrap().codes;
-        assert_eq!(sites.len(), 15, "the NHS Wales list, 01 to 14 and 98");
+        assert_eq!(sites.len(), 15, "the Wales list, 01 to 14 and 98");
         let dementia = pathway("dementia", 2).unwrap();
         let declined = Choice {
             agreed: Some(false),

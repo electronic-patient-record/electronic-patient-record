@@ -134,12 +134,12 @@ test("the proxy refuses paths outside /api", async ({ request }) => {
 const WITH_CODES = {
   ...RESULT,
   conflicts: [
-    "different verified NHS numbers",
+    "different verified national health numbers",
     "birth date not available to confirm the link",
     "a reason from a newer matcher",
   ],
   conflict_codes: [
-    { code: "different_nhs_numbers" },
+    { code: "different_national_numbers" },
     { code: "field_unavailable", field: "birth_date" },
     { code: "brand_new_reason" },
   ],
@@ -148,12 +148,12 @@ const WITH_CODES = {
 for (const [locale, first, second] of [
   [
     "de-001",
-    "unterschiedliche geprüfte NHS-Nummern",
+    "unterschiedliche geprüfte nationale Gesundheitsnummern",
     "Geburtsdatum nicht verfügbar, um die Verknüpfung zu bestätigen",
   ],
   [
     "ar-001",
-    "أرقام NHS الموثّقة مختلفة",
+    "أرقام الصحة الوطنية الموثّقة مختلفة",
     "تاريخ الميلاد غير متوفر لتأكيد الربط",
   ],
 ] as const) {
@@ -171,9 +171,9 @@ for (const [locale, first, second] of [
     await expect(
       page.getByText("a reason from a newer matcher", { exact: true }),
     ).toBeVisible();
-    await expect(page.getByText("different verified NHS numbers")).toHaveCount(
-      0,
-    );
+    await expect(
+      page.getByText("different verified national health numbers"),
+    ).toHaveCount(0);
     const results = await new AxeBuilder({ page })
       .withTags(["wcag2a", "wcag2aa", "wcag22aa"])
       .analyze();

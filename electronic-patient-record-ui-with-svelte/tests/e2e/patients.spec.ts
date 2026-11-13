@@ -2,8 +2,9 @@ import AxeBuilder from "@axe-core/playwright";
 import type { Page, Route } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import type { Json } from "./json";
+import { NATIONAL_NUMBER_SYSTEM } from "../../src/lib/patient";
 
-const NHS = "https://fhir.nhs.uk/Id/nhs-number";
+const NATIONAL = NATIONAL_NUMBER_SYSTEM;
 const ANN = {
   id: "11111111-1111-4111-8111-111111111111",
   version: 2,
@@ -16,7 +17,7 @@ const ANN = {
     ],
     birth_date: "1980-03-14",
     sex: "female",
-    identifiers: [{ system: NHS, value: "9434765919" }],
+    identifiers: [{ system: NATIONAL, value: "9434765919" }],
     addresses: [],
     telecom: [{ system: "email", value: "ann@example.org" }],
   },
@@ -26,7 +27,7 @@ const CANDIDATE = {
   score: 0.97,
   decision: "auto_link",
   fields: [],
-  deterministic: "same NHS number",
+  deterministic: "same national health number",
   conflicts: [],
 };
 
@@ -78,14 +79,14 @@ test("a search lists matches and links to each record", async ({ page }) => {
   });
   await page.goto("/en-001/patients");
   await page.getByLabel("Family name").fill("Smi");
-  await page.getByLabel("NHS number").fill("943 476 5919");
+  await page.getByLabel("National health number").fill("943 476 5919");
   await page.getByRole("button", { name: "Search" }).click();
   await expect(
     page.getByRole("cell", { name: "Smith, Ann", exact: true }),
   ).toBeVisible();
   const q = new URL(url).searchParams;
   expect(q.get("family")).toBe("Smi");
-  expect(q.get("identifier")).toBe(`${NHS}|9434765919`);
+  expect(q.get("identifier")).toBe(`${NATIONAL}|9434765919`);
   await axe(page);
   await expect(page.getByRole("link", { name: /^Open/ })).toHaveAttribute(
     "href",
@@ -116,14 +117,16 @@ test("a search with no match says so; a refusal is announced", async ({
 
 test("registering shows the server's validation problems", async ({ page }) => {
   await page.route("**/api/proxy/api/patients", (route) =>
-    json(route, 422, { errors: ["NHS number fails the modulus 11 check"] }),
+    json(route, 422, {
+      errors: ["National health number fails the modulus 11 check"],
+    }),
   );
   await page.goto("/en-001/patients/new");
   await page.getByLabel("Family name").fill("Smith");
-  await page.getByLabel("NHS number").fill("9434765910");
+  await page.getByLabel("National health number").fill("9434765910");
   await page.getByRole("button", { name: "Register" }).click();
   await expect(
-    page.getByText("NHS number fails the modulus 11 check"),
+    page.getByText("National health number fails the modulus 11 check"),
   ).toBeVisible();
   await axe(page);
 });
@@ -134,23 +137,25 @@ test("registration problems come by code, in the page's language, with the API's
   await page.route("**/api/proxy/api/patients", (route) =>
     json(route, 422, {
       errors: [
-        "NHS number fails the modulus 11 check",
+        "National health number fails the modulus 11 check",
         "something new the UI has no code for",
       ],
-      error_codes: ["nhs_number_check_digit", "brand_new"],
+      error_codes: ["national_number_check_digit", "brand_new"],
     }),
   );
   await page.goto("/de-001/patients/new");
   await page.getByLabel("Family name").fill("Smith");
   await page.locator("form button[type=submit]").click();
   await expect(
-    page.getByText("Die NHS-Nummer besteht die Prüfziffernprüfung nicht."),
+    page.getByText(
+      "Die nationale Gesundheitsnummer besteht die Prüfziffernprüfung nicht.",
+    ),
   ).toBeVisible();
   await expect(
     page.getByText("something new the UI has no code for"),
   ).toBeVisible();
   await expect(
-    page.getByText("NHS number fails the modulus 11 check"),
+    page.getByText("National health number fails the modulus 11 check"),
   ).toHaveCount(0);
 });
 
@@ -185,7 +190,7 @@ test("a possible duplicate is shown side by side and needs a reason to override"
   await page.getByLabel("Family name").fill("Smith");
   await page.getByLabel("Given name").fill("Ann");
   await page.getByLabel("Birth date").fill("1980-03-14");
-  await page.getByLabel("NHS number").fill("943 476 5919");
+  await page.getByLabel("National health number").fill("943 476 5919");
   await page.getByRole("button", { name: "Register", exact: true }).click();
 
   await expect(
@@ -194,7 +199,7 @@ test("a possible duplicate is shown side by side and needs a reason to override"
     }),
   ).toBeVisible();
   await expect(page.getByText("Automatic link")).toBeVisible();
-  await expect(page.getByText("same NHS number")).toBeVisible();
+  await expect(page.getByText("same national health number")).toBeVisible();
   const table = page.getByRole("table");
   await expect(
     table.getByRole("columnheader", { name: "As entered" }),
@@ -354,7 +359,10 @@ test("my record asks for patient-access and shows the linked record read-only", 
     page.getByText("You are viewing this record as a proxy."),
   ).toBeVisible();
   await expect(
-    page.getByRole("term").filter({ hasText: "NHS number" }).first(),
+    page
+      .getByRole("term")
+      .filter({ hasText: "National health number" })
+      .first(),
   ).toBeVisible();
   await expect(page.getByRole("textbox")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Save changes" })).toHaveCount(
@@ -584,7 +592,7 @@ test("the patient banner shows who is on record, says allergies are unknown, and
   ).toBeVisible();
   await expect(banner).toContainText("Born: 1980-03-14");
   await expect(banner).toContainText("Age: ");
-  await expect(banner).toContainText("NHS number: 943 476 5919");
+  await expect(banner).toContainText("National health number: 943 476 5919");
   await expect(banner).toContainText("Other identifier: none recorded");
   await expect(banner).toContainText("No photo held");
   // Not "none": the system holds no allergy data, and the banner says that in words.
@@ -619,7 +627,7 @@ test("a record with little on it still gets a banner that says what is missing",
   await page.goto(`/en-001/patients/${ANN.id}`);
   const banner = page.getByRole("region", { name: "Patient banner" });
   await expect(banner).toContainText("Birth date not recorded");
-  await expect(banner).toContainText("NHS number: none recorded");
+  await expect(banner).toContainText("National health number: none recorded");
   await expect(banner).toContainText("Allergies: Not recorded");
   await axe(page);
 });
@@ -2209,14 +2217,14 @@ test("merging and unmerging send the reason, show the server's refusal, and relo
   expect(sent).toHaveLength(0); // no reason, nothing sent
   await page
     .getByLabel(/^Why are these the same person/)
-    .fill("same NHS number, duplicate registration");
+    .fill("same national health number, duplicate registration");
   await mergeBtn.click();
   await expect(
     page.getByText(/do not look like the same person/),
   ).toBeVisible();
   expect(sent[0].body).toEqual({
     source: "refuse-me",
-    reason: "same NHS number, duplicate registration",
+    reason: "same national health number, duplicate registration",
   });
 
   await page.getByLabel(/^Id of the record/).fill(OLD);
@@ -3316,7 +3324,7 @@ test("a refused merge gives its reasons in the page's language, and the API's ow
   page,
 }) => {
   const english =
-    "these do not look like the same person (match score 0.10; different verified NHS numbers)";
+    "these do not look like the same person (match score 0.10; different verified national health numbers)";
   let known = true;
   await stubAllergies(page);
   await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
@@ -3326,7 +3334,7 @@ test("a refused merge gives its reasons in the page's language, and the API's ow
     json(route, 422, {
       errors: [english],
       conflict_codes: known
-        ? [{ code: "different_nhs_numbers" }]
+        ? [{ code: "different_national_numbers" }]
         : [{ code: "brand_new_reason" }],
     }),
   );
@@ -3336,7 +3344,7 @@ test("a refused merge gives its reasons in the page's language, and the API's ow
   await page.getByRole("button", { name: "Merge into this record" }).click();
   await expect(
     page.getByText(
-      "Das scheinen nicht dieselben Personen zu sein: unterschiedliche geprüfte NHS-Nummern",
+      "Das scheinen nicht dieselben Personen zu sein: unterschiedliche geprüfte nationale Gesundheitsnummern",
     ),
   ).toBeVisible();
   known = false;

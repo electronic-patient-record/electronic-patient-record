@@ -206,7 +206,7 @@ async fn bad_merges_are_refused_with_a_reason() {
     assert!(msg(unmerge(&db, &a, &c).await).contains("not currently merged"));
     assert!(msg(unmerge(&db, &c, &b).await).contains("not currently merged"));
 
-    // Different people, and two different verified NHS numbers, are refused.
+    // Different people, and two different verified national health numbers, are refused.
     let other = Patient {
         names: vec![HumanName {
             family: Some(tag("other")),
@@ -227,7 +227,7 @@ async fn bad_merges_are_refused_with_a_reason() {
         }],
         birth_date: Some("1975-06-01".into()),
         identifiers: vec![electronic_patient_record_matcher::Identifier {
-            system: electronic_patient_record_matcher::NHS_NUMBER_SYSTEM.into(),
+            system: electronic_patient_record_matcher::NATIONAL_NUMBER_SYSTEM.into(),
             value: n.into(),
         }],
         ..Default::default()

@@ -385,8 +385,8 @@ async fn ids_are_found_in_any_case_and_looked_up_by_index() {
     );
 }
 
-/// A valid, non-placeholder NHS number from `seed`.
-fn nhs(seed: u64) -> String {
+/// A valid, non-placeholder national health number from `seed`.
+fn national_number(seed: u64) -> String {
     let mut s = seed;
     loop {
         let digits: Vec<u32> = format!("{:09}", s % 1_000_000_000)
@@ -410,7 +410,7 @@ fn nhs(seed: u64) -> String {
             "{}{check}",
             digits.iter().map(u32::to_string).collect::<String>()
         );
-        if !electronic_patient_record_matcher::is_placeholder_nhs_number(&n) {
+        if !electronic_patient_record_matcher::is_placeholder_national_number(&n) {
             return n;
         }
         s += 1;
@@ -445,10 +445,10 @@ async fn the_strongest_candidates_survive_a_crowded_birth_date() {
             .unwrap();
     }
     let family = tag("same");
-    let number = nhs(nanos);
+    let number = national_number(nanos);
     let mut by_number = patient(&tag("other"), "1950-01-01");
     by_number.identifiers.push(Identifier {
-        system: electronic_patient_record_matcher::NHS_NUMBER_SYSTEM.into(),
+        system: electronic_patient_record_matcher::NATIONAL_NUMBER_SYSTEM.into(),
         value: number.clone(),
     });
     let by_number = store::create(&db, "t", None, &by_number).await.unwrap();
@@ -458,7 +458,7 @@ async fn the_strongest_candidates_survive_a_crowded_birth_date() {
 
     let mut probe = patient(&family, &dob);
     probe.identifiers.push(Identifier {
-        system: electronic_patient_record_matcher::NHS_NUMBER_SYSTEM.into(),
+        system: electronic_patient_record_matcher::NATIONAL_NUMBER_SYSTEM.into(),
         value: number,
     });
     let (found, cut) = store::candidates_ranked(&db, &probe).await.unwrap();

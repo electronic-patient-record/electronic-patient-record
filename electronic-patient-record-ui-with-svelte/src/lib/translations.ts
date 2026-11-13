@@ -289,9 +289,9 @@ export { en as LOG_FORM_ENGLISH };
 // when two records may be one person): do not call it reviewed until a clinician who speaks the
 // language has read it (hazard H-001).
 export const CONFLICT_KEYS = [
-  "differentNhsNumbers",
-  "sameNhsDifferentBirthDates",
-  "sameNhsDifferentNames",
+  "differentNationalNumbers",
+  "sameNationalNumberDifferentBirthDates",
+  "sameNationalNumberDifferentNames",
   "differentIhis",
   "sameIhiDifferentBirthDates",
   "sameIhiDifferentNames",
@@ -310,9 +310,11 @@ export const CONFLICT_KEYS = [
 export type ConflictWords = Record<(typeof CONFLICT_KEYS)[number], string>;
 
 export const CONFLICT_ENGLISH: ConflictWords = {
-  differentNhsNumbers: "different verified NHS numbers",
-  sameNhsDifferentBirthDates: "same NHS number but different birth dates",
-  sameNhsDifferentNames: "same NHS number but different names",
+  differentNationalNumbers: "different verified national health numbers",
+  sameNationalNumberDifferentBirthDates:
+    "same national health number but different birth dates",
+  sameNationalNumberDifferentNames:
+    "same national health number but different names",
   differentIhis: "different verified IHIs",
   sameIhiDifferentBirthDates: "same IHI but different birth dates",
   sameIhiDifferentNames: "same IHI but different names",
@@ -331,10 +333,12 @@ export const CONFLICT_ENGLISH: ConflictWords = {
 };
 
 const conflict_de: ConflictWords = {
-  differentNhsNumbers: "unterschiedliche geprüfte NHS-Nummern",
-  sameNhsDifferentBirthDates:
-    "gleiche NHS-Nummer, aber unterschiedliche Geburtsdaten",
-  sameNhsDifferentNames: "gleiche NHS-Nummer, aber unterschiedliche Namen",
+  differentNationalNumbers:
+    "unterschiedliche geprüfte nationale Gesundheitsnummern",
+  sameNationalNumberDifferentBirthDates:
+    "gleiche nationale Gesundheitsnummer, aber unterschiedliche Geburtsdaten",
+  sameNationalNumberDifferentNames:
+    "gleiche nationale Gesundheitsnummer, aber unterschiedliche Namen",
   differentIhis: "unterschiedliche geprüfte IHI",
   sameIhiDifferentBirthDates: "gleiche IHI, aber unterschiedliche Geburtsdaten",
   sameIhiDifferentNames: "gleiche IHI, aber unterschiedliche Namen",
@@ -354,10 +358,12 @@ const conflict_de: ConflictWords = {
 };
 
 const conflict_es: ConflictWords = {
-  differentNhsNumbers: "números NHS verificados distintos",
-  sameNhsDifferentBirthDates:
-    "mismo número NHS pero fechas de nacimiento distintas",
-  sameNhsDifferentNames: "mismo número NHS pero nombres distintos",
+  differentNationalNumbers:
+    "números sanitarios nacionales verificados distintos",
+  sameNationalNumberDifferentBirthDates:
+    "mismo número sanitario nacional pero fechas de nacimiento distintas",
+  sameNationalNumberDifferentNames:
+    "mismo número sanitario nacional pero nombres distintos",
   differentIhis: "IHI verificados distintos",
   sameIhiDifferentBirthDates: "mismo IHI pero fechas de nacimiento distintas",
   sameIhiDifferentNames: "mismo IHI pero nombres distintos",
@@ -376,10 +382,11 @@ const conflict_es: ConflictWords = {
 };
 
 const conflict_fr: ConflictWords = {
-  differentNhsNumbers: "numéros NHS vérifiés différents",
-  sameNhsDifferentBirthDates:
-    "même numéro NHS mais dates de naissance différentes",
-  sameNhsDifferentNames: "même numéro NHS mais noms différents",
+  differentNationalNumbers: "numéros de santé nationaux vérifiés différents",
+  sameNationalNumberDifferentBirthDates:
+    "même numéro de santé national mais dates de naissance différentes",
+  sameNationalNumberDifferentNames:
+    "même numéro de santé national mais noms différents",
   differentIhis: "IHI vérifiés différents",
   sameIhiDifferentBirthDates: "même IHI mais dates de naissance différentes",
   sameIhiDifferentNames: "même IHI mais noms différents",
@@ -399,9 +406,9 @@ const conflict_fr: ConflictWords = {
 };
 
 const conflict_zh: ConflictWords = {
-  differentNhsNumbers: "已验证的 NHS 编号不同",
-  sameNhsDifferentBirthDates: "NHS 编号相同但出生日期不同",
-  sameNhsDifferentNames: "NHS 编号相同但姓名不同",
+  differentNationalNumbers: "已验证的国家健康编号不同",
+  sameNationalNumberDifferentBirthDates: "国家健康编号相同但出生日期不同",
+  sameNationalNumberDifferentNames: "国家健康编号相同但姓名不同",
   differentIhis: "已验证的 IHI 不同",
   sameIhiDifferentBirthDates: "IHI 相同但出生日期不同",
   sameIhiDifferentNames: "IHI 相同但姓名不同",
@@ -419,9 +426,11 @@ const conflict_zh: ConflictWords = {
 };
 
 const conflict_hi: ConflictWords = {
-  differentNhsNumbers: "सत्यापित NHS नंबर अलग हैं",
-  sameNhsDifferentBirthDates: "NHS नंबर वही है लेकिन जन्म तिथियाँ अलग हैं",
-  sameNhsDifferentNames: "NHS नंबर वही है लेकिन नाम अलग हैं",
+  differentNationalNumbers: "सत्यापित राष्ट्रीय स्वास्थ्य नंबर अलग हैं",
+  sameNationalNumberDifferentBirthDates:
+    "राष्ट्रीय स्वास्थ्य नंबर वही है लेकिन जन्म तिथियाँ अलग हैं",
+  sameNationalNumberDifferentNames:
+    "राष्ट्रीय स्वास्थ्य नंबर वही है लेकिन नाम अलग हैं",
   differentIhis: "सत्यापित IHI अलग-अलग हैं",
   sameIhiDifferentBirthDates: "IHI वही है लेकिन जन्म तिथियाँ अलग हैं",
   sameIhiDifferentNames: "IHI वही है लेकिन नाम अलग हैं",
@@ -439,9 +448,10 @@ const conflict_hi: ConflictWords = {
 };
 
 const conflict_ar: ConflictWords = {
-  differentNhsNumbers: "أرقام NHS الموثّقة مختلفة",
-  sameNhsDifferentBirthDates: "رقم NHS نفسه لكن تواريخ الميلاد مختلفة",
-  sameNhsDifferentNames: "رقم NHS نفسه لكن الأسماء مختلفة",
+  differentNationalNumbers: "أرقام الصحة الوطنية الموثّقة مختلفة",
+  sameNationalNumberDifferentBirthDates:
+    "رقم الصحة الوطني نفسه لكن تواريخ الميلاد مختلفة",
+  sameNationalNumberDifferentNames: "رقم الصحة الوطني نفسه لكن الأسماء مختلفة",
   differentIhis: "رقما IHI موثّقان مختلفان",
   sameIhiDifferentBirthDates: "رقم IHI نفسه لكن تواريخ الميلاد مختلفة",
   sameIhiDifferentNames: "رقم IHI نفسه لكن الأسماء مختلفة",
@@ -459,9 +469,11 @@ const conflict_ar: ConflictWords = {
 };
 
 const conflict_cy: ConflictWords = {
-  differentNhsNumbers: "rhifau GIG gwiriedig gwahanol",
-  sameNhsDifferentBirthDates: "yr un rhif GIG ond dyddiadau geni gwahanol",
-  sameNhsDifferentNames: "yr un rhif GIG ond enwau gwahanol",
+  differentNationalNumbers: "rhifau iechyd cenedlaethol gwiriedig gwahanol",
+  sameNationalNumberDifferentBirthDates:
+    "yr un rhif iechyd cenedlaethol ond dyddiadau geni gwahanol",
+  sameNationalNumberDifferentNames:
+    "yr un rhif iechyd cenedlaethol ond enwau gwahanol",
   differentIhis: "IHI wedi'u gwirio gwahanol",
   sameIhiDifferentBirthDates: "yr un IHI ond dyddiadau geni gwahanol",
   sameIhiDifferentNames: "yr un IHI ond enwau gwahanol",
@@ -615,8 +627,8 @@ export function refusalWords(locale: Locale): RefusalWords {
 export type PatientProblemWords = Record<
   | "familyNameRequired"
   | "birthDateInvalid"
-  | "nhsNumberPlaceholder"
-  | "nhsNumberCheckDigit"
+  | "nationalNumberPlaceholder"
+  | "nationalNumberCheckDigit"
   | "identifierIncomplete"
   | "temporaryIdentityReasonRequired",
   string
@@ -626,9 +638,10 @@ const problem_de: PatientProblemWords = {
   familyNameRequired: "Mindestens ein Name mit Familiennamen ist erforderlich.",
   birthDateInvalid:
     "Das Geburtsdatum muss ein Jahr, ein Jahr mit Monat oder ein echtes Datum sein.",
-  nhsNumberPlaceholder:
-    "Die NHS-Nummer ist ein Platzhalter (zehnmal dieselbe Ziffer), keine vergebene Nummer.",
-  nhsNumberCheckDigit: "Die NHS-Nummer besteht die Prüfziffernprüfung nicht.",
+  nationalNumberPlaceholder:
+    "Die nationale Gesundheitsnummer ist ein Platzhalter (zehnmal dieselbe Ziffer), keine vergebene Nummer.",
+  nationalNumberCheckDigit:
+    "Die nationale Gesundheitsnummer besteht die Prüfziffernprüfung nicht.",
   identifierIncomplete: "Eine Kennung braucht ein System und einen Wert.",
   temporaryIdentityReasonRequired:
     "Dies ist eine vorläufige Identität: Für eine echte Identität ist eine Begründung erforderlich.",
@@ -638,10 +651,10 @@ const problem_es: PatientProblemWords = {
   familyNameRequired: "Se requiere al menos un nombre con apellido.",
   birthDateInvalid:
     "La fecha de nacimiento debe ser un año, un año y mes, o una fecha real.",
-  nhsNumberPlaceholder:
-    "El número NHS es un marcador (diez copias de un mismo dígito), no un número asignado.",
-  nhsNumberCheckDigit:
-    "El número NHS no supera la comprobación del dígito de control.",
+  nationalNumberPlaceholder:
+    "El número sanitario nacional es un marcador (diez copias de un mismo dígito), no un número asignado.",
+  nationalNumberCheckDigit:
+    "El número sanitario nacional no supera la comprobación del dígito de control.",
   identifierIncomplete: "Un identificador necesita un sistema y un valor.",
   temporaryIdentityReasonRequired:
     "Esta es una identidad temporal: para asignar una identidad real se necesita un motivo.",
@@ -651,9 +664,10 @@ const problem_fr: PatientProblemWords = {
   familyNameRequired: "Au moins un nom avec un nom de famille est obligatoire.",
   birthDateInvalid:
     "La date de naissance doit être une année, une année et un mois, ou une date réelle.",
-  nhsNumberPlaceholder:
-    "Le numéro NHS est un numéro factice (dix fois le même chiffre), pas un numéro attribué.",
-  nhsNumberCheckDigit: "Le numéro NHS échoue au contrôle de la clé.",
+  nationalNumberPlaceholder:
+    "Le numéro de santé national est un numéro factice (dix fois le même chiffre), pas un numéro attribué.",
+  nationalNumberCheckDigit:
+    "Le numéro de santé national échoue au contrôle de la clé.",
   identifierIncomplete: "Un identifiant a besoin d'un système et d'une valeur.",
   temporaryIdentityReasonRequired:
     "Ceci est une identité temporaire : un motif est obligatoire pour attribuer une identité réelle.",
@@ -662,8 +676,9 @@ const problem_fr: PatientProblemWords = {
 const problem_zh: PatientProblemWords = {
   familyNameRequired: "至少需要一个带姓氏的姓名。",
   birthDateInvalid: "出生日期必须是年份、年月或真实日期。",
-  nhsNumberPlaceholder: "NHS 号码是占位符(同一数字重复十次),不是已签发的号码。",
-  nhsNumberCheckDigit: "NHS 号码未通过校验位检查。",
+  nationalNumberPlaceholder:
+    "国家健康号码是占位符(同一数字重复十次),不是已签发的号码。",
+  nationalNumberCheckDigit: "国家健康号码未通过校验位检查。",
   identifierIncomplete: "标识符需要系统和值。",
   temporaryIdentityReasonRequired:
     "这是临时身份：更改为真实身份时需要说明原因。",
@@ -673,9 +688,10 @@ const problem_hi: PatientProblemWords = {
   familyNameRequired: "कम से कम एक नाम, उपनाम के साथ, आवश्यक है।",
   birthDateInvalid:
     "जन्म तिथि एक वर्ष, वर्ष और महीना, या वास्तविक तिथि होनी चाहिए।",
-  nhsNumberPlaceholder:
-    "NHS नंबर एक प्लेसहोल्डर है (एक ही अंक दस बार), जारी किया गया नंबर नहीं।",
-  nhsNumberCheckDigit: "NHS नंबर चेक-डिजिट जाँच में विफल है।",
+  nationalNumberPlaceholder:
+    "राष्ट्रीय स्वास्थ्य नंबर एक प्लेसहोल्डर है (एक ही अंक दस बार), जारी किया गया नंबर नहीं।",
+  nationalNumberCheckDigit:
+    "राष्ट्रीय स्वास्थ्य नंबर चेक-डिजिट जाँच में विफल है।",
   identifierIncomplete: "पहचानकर्ता के लिए सिस्टम और मान दोनों आवश्यक हैं।",
   temporaryIdentityReasonRequired:
     "यह अस्थायी पहचान है: वास्तविक पहचान देने के लिए कारण आवश्यक है।",
@@ -685,9 +701,9 @@ const problem_ar: PatientProblemWords = {
   familyNameRequired: "مطلوب اسم واحد على الأقل مع اسم العائلة.",
   birthDateInvalid:
     "يجب أن يكون تاريخ الميلاد سنة، أو سنة وشهرًا، أو تاريخًا حقيقيًا.",
-  nhsNumberPlaceholder:
-    "رقم NHS عنصر نائب (عشر نسخ من رقم واحد) وليس رقمًا صادرًا.",
-  nhsNumberCheckDigit: "رقم NHS لا يجتاز فحص رقم التحقق.",
+  nationalNumberPlaceholder:
+    "رقم الصحة الوطني عنصر نائب (عشر نسخ من رقم واحد) وليس رقمًا صادرًا.",
+  nationalNumberCheckDigit: "رقم الصحة الوطني لا يجتاز فحص رقم التحقق.",
   identifierIncomplete: "يحتاج المعرّف إلى نظام وقيمة.",
   temporaryIdentityReasonRequired:
     "هذه هوية مؤقتة: يلزم ذكر سبب لتعيين هوية حقيقية.",
@@ -697,9 +713,10 @@ const problem_cy: PatientProblemWords = {
   familyNameRequired: "Mae angen o leiaf un enw gydag enw teuluol.",
   birthDateInvalid:
     "Rhaid i'r dyddiad geni fod yn flwyddyn, yn flwyddyn a mis, neu'n ddyddiad go iawn.",
-  nhsNumberPlaceholder:
-    "Dim ond llanwr yw rhif GIG (deg copi o'r un digid), nid rhif a gyhoeddwyd.",
-  nhsNumberCheckDigit: "Nid yw rhif GIG yn pasio'r prawf digid gwirio.",
+  nationalNumberPlaceholder:
+    "Dim ond llanwr yw rhif iechyd cenedlaethol (deg copi o'r un digid), nid rhif a gyhoeddwyd.",
+  nationalNumberCheckDigit:
+    "Nid yw rhif iechyd cenedlaethol yn pasio'r prawf digid gwirio.",
   identifierIncomplete: "Mae angen system a gwerth ar ddynodydd.",
   temporaryIdentityReasonRequired:
     "Hunaniaeth dros dro yw hon: mae angen rheswm i roi hunaniaeth go iawn.",

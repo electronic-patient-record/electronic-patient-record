@@ -335,7 +335,7 @@ pub fn from_fhir_json(text: &str) -> Result<FromFhir, Unreadable> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use electronic_patient_record_matcher::NHS_NUMBER_SYSTEM;
+    use electronic_patient_record_matcher::NATIONAL_NUMBER_SYSTEM;
 
     fn stored() -> Stored {
         Stored {
@@ -359,7 +359,7 @@ mod tests {
                 birth_date: Some("1980-03".into()),
                 sex: Some(AdministrativeSex::Female),
                 identifiers: vec![Identifier {
-                    system: NHS_NUMBER_SYSTEM.into(),
+                    system: NATIONAL_NUMBER_SYSTEM.into(),
                     value: "9434765919".into(),
                 }],
                 addresses: vec![Address {
@@ -385,7 +385,7 @@ mod tests {
         assert_eq!(json["birthDate"], "1980-03");
         assert_eq!(json["name"][0]["given"], json!(["Ann", "Marie"]));
         assert_eq!(json["name"][1]["family"], "Jones");
-        assert_eq!(json["identifier"][0]["system"], NHS_NUMBER_SYSTEM);
+        assert_eq!(json["identifier"][0]["system"], NATIONAL_NUMBER_SYSTEM);
         assert_eq!(json["address"][0]["postalCode"], "AB1 2CD");
     }
 

@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-13 - The service and UI name a national health number, not the NHS (matcher 0.8.0 published)
+
+- **Clinical risk:** small, in wording only. A clinician now reads "National health number" where the label, banner, patient list, search and registration form said "NHS number", and the refusal reasons say "national health number"; the Welsh, German, Spanish, French, Chinese, Hindi and Arabic words changed with them (machine-written, unreviewed). No rule changed: the check, the merge refusal and the matching decisions are as before. The hazard log's wording follows (H-001, H-003 and the rows naming the number); no hazard's status changed.
+- **Built:** matcher 0.8.0 is published to crates.io and the service uses it. The API's conflict codes are now `different_national_numbers`, `same_national_number_different_birth_dates` and `same_national_number_different_names`, and the registration refusal codes are `national_number_placeholder` and `national_number_check_digit`; the UI reads only the new codes. Service and UI names, comments, tests and specs follow (`NATIONAL_NUMBER_SYSTEM`, `nationalNumber`, `bannerNationalNumber` and the rest).
+- **Kept, as data:** the FHIR identifier system URI real records carry for this number (once in the matcher, once in the UI, and in one database test's query), the HL7 assigning authority `NHS` that senders put in PID-3 and the sample messages that carry it, and the official name of the source of the Welsh cancer-site list.
+- **Checked:** service fmt, clippy and database-free tests; the database suite on a scratch database, where 175 passed and `http_roles` failed once with an expired test token under machine load (average 34) and passed when run again alone; UI lint, both type checks, 347 unit tests and 113 browser tests; the hazard log check.
+- **Not done / not verified:** a client of the API that reads the old codes breaks; none is known outside this repository. The real-Keycloak tests were not run. No speaker reviewed the new translated words. Documents outside the three projects are reworded in the next commit.
+
 ## 2026-11-13 - The matcher names a national health number, not the NHS (matcher 0.8.0)
 
 - **Clinical risk:** none today, and none in behaviour. Every matching rule is unchanged; only names, codes and English messages change. When the service moves to 0.8.0, the conflict codes and messages a clinician sees change with it, and the UI must change in the same commit.

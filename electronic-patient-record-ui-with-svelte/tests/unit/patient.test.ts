@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
-  NHS_NUMBER_SYSTEM,
+  NATIONAL_NUMBER_SYSTEM,
   comparisonRows,
   emptyForm,
   formToPatient,
   isRestricted,
-  nhsDigits,
+  nationalNumberDigits,
   patientToForm,
   searchQuery,
   type PatientRecord,
@@ -22,7 +22,7 @@ const rich: PatientRecord = {
   sex: "female",
   identifiers: [
     { system: "urn:example:mrn", value: "M-1" },
-    { system: NHS_NUMBER_SYSTEM, value: "9434765919" },
+    { system: NATIONAL_NUMBER_SYSTEM, value: "9434765919" },
   ],
   addresses: [{ postal_code: "AB1 2CD" }, { postal_code: "ZZ9 9ZZ" }],
   telecom: [{ system: "email", value: "ann@example.org" }],
@@ -46,7 +46,7 @@ describe("patientToForm / formToPatient", () => {
       given: "Ann Marie",
       birthDate: "1980-03-14",
       sex: "female",
-      nhsNumber: "9434765919",
+      nationalNumber: "9434765919",
       postalCode: "AB1 2CD",
       temporaryIdentity: false,
     });
@@ -82,8 +82,11 @@ describe("patientToForm / formToPatient", () => {
     expect(out.addresses).toEqual([]);
   });
 
-  it("clearing the NHS number removes it and keeps other identifiers", () => {
-    const out = formToPatient({ ...patientToForm(rich), nhsNumber: "" }, rich);
+  it("clearing the national health number removes it and keeps other identifiers", () => {
+    const out = formToPatient(
+      { ...patientToForm(rich), nationalNumber: "" },
+      rich,
+    );
     expect(out.identifiers).toEqual([
       { system: "urn:example:mrn", value: "M-1" },
     ]);
@@ -95,11 +98,12 @@ describe("patientToForm / formToPatient", () => {
     expect(out.addresses).toHaveLength(2);
   });
 
-  it("strips spaces and hyphens from an NHS number as written", () => {
-    expect(nhsDigits("943 476 5919")).toBe("9434765919");
+  it("strips spaces and hyphens from an national health number as written", () => {
+    expect(nationalNumberDigits("943 476 5919")).toBe("9434765919");
     expect(
-      formToPatient({ ...emptyForm(), nhsNumber: "943-476-5919" }).identifiers,
-    ).toEqual([{ system: NHS_NUMBER_SYSTEM, value: "9434765919" }]);
+      formToPatient({ ...emptyForm(), nationalNumber: "943-476-5919" })
+        .identifiers,
+    ).toEqual([{ system: NATIONAL_NUMBER_SYSTEM, value: "9434765919" }]);
   });
 
   it("splits given names on any whitespace", () => {
@@ -116,36 +120,36 @@ describe("searchQuery", () => {
       "",
     );
   });
-  it("encodes the family name, birth date and NHS identifier", () => {
+  it("encodes the family name, birth date and national health number", () => {
     const q = new URLSearchParams(
       searchQuery({
         ...emptyForm(),
         family: "O'Neil & Co",
         birthDate: "1980",
-        nhsNumber: "943 476 5919",
+        nationalNumber: "943 476 5919",
       }),
     );
     expect(q.get("family")).toBe("O'Neil & Co");
     expect(q.get("birth_date")).toBe("1980");
-    expect(q.get("identifier")).toBe(`${NHS_NUMBER_SYSTEM}|9434765919`);
+    expect(q.get("identifier")).toBe(`${NATIONAL_NUMBER_SYSTEM}|9434765919`);
   });
 });
 
 describe("comparisonRows", () => {
-  it("marks equal, non-empty values as the same, ignoring case and NHS spacing", () => {
+  it("marks equal, non-empty values as the same, ignoring case and number spacing", () => {
     const rows = Object.fromEntries(
       comparisonRows(
         {
           ...emptyForm(),
           family: "smith",
-          nhsNumber: "943 476 5919",
+          nationalNumber: "943 476 5919",
           given: "Bob",
         },
         rich,
       ).map((r) => [r.field, r]),
     );
     expect(rows.family?.same).toBe(true);
-    expect(rows.nhsNumber?.same).toBe(true);
+    expect(rows.nationalNumber?.same).toBe(true);
     expect(rows.given?.same).toBe(false);
   });
   it("never calls two missing values the same", () => {
@@ -188,14 +192,14 @@ describe("isRestricted", () => {
   });
 });
 
-import { ageOn, nhsDisplay } from "../../src/lib/patient";
+import { ageOn, nationalNumberDisplay } from "../../src/lib/patient";
 
 describe("banner helpers", () => {
   const day = (s: string) => new Date(`${s}T12:00:00Z`);
-  it("writes an NHS number the way people read it, and leaves anything else alone", () => {
-    expect(nhsDisplay("9434765919")).toBe("943 476 5919");
-    expect(nhsDisplay("12345")).toBe("12345");
-    expect(nhsDisplay("")).toBe("");
+  it("writes an national health number the way people read it, and leaves anything else alone", () => {
+    expect(nationalNumberDisplay("9434765919")).toBe("943 476 5919");
+    expect(nationalNumberDisplay("12345")).toBe("12345");
+    expect(nationalNumberDisplay("")).toBe("");
   });
   it("gives whole years from a full birth date, counting the birthday itself", () => {
     expect(ageOn("1980-03-14", day("2026-03-13"))).toEqual({

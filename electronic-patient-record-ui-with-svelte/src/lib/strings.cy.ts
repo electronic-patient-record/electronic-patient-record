@@ -8,7 +8,7 @@
 //
 // For the reviewer, the wording least sure of:
 //   - "clinigwr" for clinician; "clinigwr ar ddyletswydd" for on-duty clinician.
-//   - "rhif GIG" for NHS number (the conflict words in `translations.ts` say the same).
+//   - "rhif iechyd cenedlaethol" for national health number (the conflict words in `translations.ts` say the same).
 //   - vital signs ("arwyddion hanfodol"), "dirlawnder ocsigen", "cyfradd anadlu", "systolig",
 //     "diastolig".
 //   - "anoddefiadau" (intolerances); "wedi'i gofnodi trwy gamgymeriad" (entered in error).
@@ -131,7 +131,7 @@ export const CY: Strings = {
   signIn: "Mewngofnodi",
   searchTitle: "Dod o hyd i glaf",
   searchHint:
-    "Rhowch o leiaf un o'r canlynol: cyfenw, dyddiad geni neu rif GIG. Mae'r cyfenw yn cyfateb i ddechrau'r enw.",
+    "Rhowch o leiaf un o'r canlynol: cyfenw, dyddiad geni neu rif iechyd cenedlaethol. Mae'r cyfenw yn cyfateb i ddechrau'r enw.",
   search: "Chwilio",
   searchNothing: "Rhowch o leiaf un term chwilio.",
   noResults: "Nid oes claf yn cyfateb.",
@@ -142,7 +142,7 @@ export const CY: Strings = {
   registerLink: "Cofrestru claf newydd",
   registerTitle: "Cofrestru claf",
   register: "Cofrestru",
-  nhsNumber: "Rhif GIG",
+  nationalNumber: "Rhif iechyd cenedlaethol",
   postalCode: "Cod post",
   sex: "Rhyw",
   sexUnset: "Heb ei gofnodi",
@@ -949,7 +949,7 @@ export const CY: Strings = {
   bannerAgeYearsApprox: "tua {n} oed",
   bannerAgeMonths: "{n} mis oed",
   bannerNoBirthDate: "Dyddiad geni heb ei gofnodi",
-  bannerNhs: "Rhif GIG",
+  bannerNationalNumber: "Rhif iechyd cenedlaethol",
   bannerOtherId: "Dynodwr arall",
   bannerNone: "dim wedi'i gofnodi",
   bannerPhoto: "Dim llun yn cael ei gadw",

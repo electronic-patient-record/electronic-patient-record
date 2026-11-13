@@ -197,7 +197,7 @@
       [TEXT.given, f.given],
       [TEXT.birthDate, f.birthDate],
       [TEXT.sex, f.sex ? TEXT.sexes[f.sex] : ""],
-      [TEXT.nhsNumber, f.nhsNumber],
+      [TEXT.nationalNumber, f.nationalNumber],
       [TEXT.postalCode, f.postalCode],
     ] as const;
   };

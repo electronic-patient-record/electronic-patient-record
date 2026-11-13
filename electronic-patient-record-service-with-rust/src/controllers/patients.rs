@@ -755,7 +755,9 @@ pub fn routes() -> Routes {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use electronic_patient_record_matcher::{Decision, HumanName, Identifier, NHS_NUMBER_SYSTEM};
+    use electronic_patient_record_matcher::{
+        Decision, HumanName, Identifier, NATIONAL_NUMBER_SYSTEM,
+    };
 
     fn p(family: &str, given: &str, dob: &str) -> Patient {
         Patient {
@@ -815,10 +817,10 @@ mod tests {
     }
 
     #[test]
-    fn a_shared_nhs_number_with_a_different_birth_date_is_still_a_candidate() {
+    fn a_shared_national_number_with_a_different_birth_date_is_still_a_candidate() {
         let mut new = p("Smith", "John", "1980-03-14");
         new.identifiers = vec![Identifier {
-            system: NHS_NUMBER_SYSTEM.into(),
+            system: NATIONAL_NUMBER_SYSTEM.into(),
             value: "9434765919".into(),
         }];
         let mut other = p("Smith", "John", "1981-03-14");

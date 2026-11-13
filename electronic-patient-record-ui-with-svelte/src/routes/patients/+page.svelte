@@ -65,7 +65,7 @@
   <PatientFields
     bind:form
     prefix="s"
-    only={["family", "birthDate", "nhsNumber"]}
+    only={["family", "birthDate", "nationalNumber"]}
   />
   <button type="submit" disabled={busy.on}>{TEXT.search}</button>
 </form>
@@ -89,7 +89,7 @@
           <tr>
             <th>{TEXT.family} / {TEXT.given}</th>
             <th>{TEXT.birthDate}</th>
-            <th>{TEXT.nhsNumber}</th>
+            <th>{TEXT.nationalNumber}</th>
             <th></th>
           </tr>
         </thead>
@@ -104,7 +104,7 @@
                 {/if}
               </td>
               <td>{f.birthDate || TEXT.notAvailable}</td>
-              <td>{f.nhsNumber || TEXT.notAvailable}</td>
+              <td>{f.nationalNumber || TEXT.notAvailable}</td>
               <td>
                 <a href={localizePath(`/patients/${s.id}`, locale)}
                   >{TEXT.open}<span class="sr-only"> {label(s)}</span></a

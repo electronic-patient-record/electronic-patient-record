@@ -4,7 +4,7 @@
 //! missing optional segment or a local `Z` segment does not stop a registration), and the
 //! dictionary check from `hl7::v2` is reported as `warnings` rather than as a refusal. What *does*
 //! refuse a message is the identity rules the rest of the service already applies
-//! (`patients_store::validate`): a patient with no family name or a bad NHS number is not
+//! (`patients_store::validate`): a patient with no family name or a bad national health number is not
 //! registered because a feed said so.
 //!
 //! The reply is an `ACK` built by `hl7::v2`: `AA` accepted, `AE` the message was understood but
@@ -16,7 +16,7 @@
 use crate::death::Occurred;
 use crate::patients_store;
 use electronic_patient_record_matcher::{
-    Address, AdministrativeSex, HumanName, Identifier, NHS_NUMBER_SYSTEM, Patient, Telecom,
+    Address, AdministrativeSex, HumanName, Identifier, NATIONAL_NUMBER_SYSTEM, Patient, Telecom,
 };
 
 /// ADT events that register or update a patient: admit, register, update, add person.
@@ -180,9 +180,11 @@ pub fn patient_from_adt(text: &str) -> Result<Inbound, Rejection> {
         let value = get(&message, &format!("PID-3[{n}].1"));
         let authority = get(&message, &format!("PID-3[{n}].4.1"));
         let type_code = get(&message, &format!("PID-3[{n}].5"));
+        // `NH` and `NHS` are the type code and assigning authority that senders put on this number:
+        // message data, matched as sent.
         if type_code == "NH" || authority.eq_ignore_ascii_case("NHS") {
             identifiers.push(Identifier {
-                system: NHS_NUMBER_SYSTEM.into(),
+                system: NATIONAL_NUMBER_SYSTEM.into(),
                 value: value.chars().filter(|c| !c.is_whitespace()).collect(),
             });
         } else if authority.is_empty() {
@@ -312,7 +314,7 @@ mod tests {
             p.identifiers,
             [
                 Identifier {
-                    system: NHS_NUMBER_SYSTEM.into(),
+                    system: NATIONAL_NUMBER_SYSTEM.into(),
                     value: "9434765919".into()
                 },
                 Identifier {
@@ -394,10 +396,10 @@ mod tests {
 
     #[test]
     fn the_services_identity_rules_still_apply() {
-        // A bad NHS number.
-        let bad_nhs = ADT.replace("9434765919", "9434765910");
+        // A bad national health number.
+        let bad_number = ADT.replace("9434765919", "9434765910");
         assert!(
-            matches!(patient_from_adt(&bad_nhs), Err(Rejection::Invalid(p)) if p.iter().any(|m| m.contains("modulus 11")))
+            matches!(patient_from_adt(&bad_number), Err(Rejection::Invalid(p)) if p.iter().any(|m| m.contains("modulus 11")))
         );
         // No family name.
         let nameless = ADT.replace("SMITH^ANN^MARIE~JONES^ANN", "");

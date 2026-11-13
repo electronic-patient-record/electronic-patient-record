@@ -6,7 +6,8 @@
 // form dropped would be deleted from the next version.
 import type { ConflictCode } from "./conflicts.js";
 
-export const NHS_NUMBER_SYSTEM = "https://fhir.nhs.uk/Id/nhs-number";
+/** The FHIR identifier system real records carry for the national health number, kept as it is so they are recognised. */
+export const NATIONAL_NUMBER_SYSTEM = "https://fhir.nhs.uk/Id/nhs-number";
 
 export type Sex = "male" | "female" | "other" | "unknown";
 export const SEXES: readonly Sex[] = ["male", "female", "other", "unknown"];
@@ -72,7 +73,7 @@ export interface PatientForm {
   given: string;
   birthDate: string;
   sex: "" | Sex;
-  nhsNumber: string;
+  nationalNumber: string;
   postalCode: string;
   temporaryIdentity: boolean;
 }
@@ -82,18 +83,19 @@ export const emptyForm = (): PatientForm => ({
   given: "",
   birthDate: "",
   sex: "",
-  nhsNumber: "",
+  nationalNumber: "",
   postalCode: "",
   temporaryIdentity: false,
 });
 
 const blankToNull = (s: string): string | null => s.trim() || null;
 
-/** An NHS number is written "943 476 5919"; the API stores and checks the digits. */
-export const nhsDigits = (s: string): string => s.replace(/[\s-]/g, "");
+/** An national health number is written "943 476 5919"; the API stores and checks the digits. */
+export const nationalNumberDigits = (s: string): string =>
+  s.replace(/[\s-]/g, "");
 
-/** An NHS number as people read it: "9434765919" is "943 476 5919". Anything else is shown as given. */
-export const nhsDisplay = (digits: string): string =>
+/** An national health number as people read it: "9434765919" is "943 476 5919". Anything else is shown as given. */
+export const nationalNumberDisplay = (digits: string): string =>
   /^\d{10}$/.test(digits)
     ? `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`
     : digits;
@@ -160,7 +162,7 @@ export function calendarDay(
   return { year: n("year"), month: n("month"), day: n("day") };
 }
 
-/** The form's view of a record: the first name, the NHS number, the first postcode. */
+/** The form's view of a record: the first name, the national health number, the first postcode. */
 export function patientToForm(p: PatientRecord): PatientForm {
   const name = p.names[0];
   return {
@@ -168,8 +170,9 @@ export function patientToForm(p: PatientRecord): PatientForm {
     given: (name?.given ?? []).join(" "),
     birthDate: p.birth_date ?? "",
     sex: p.sex ?? "",
-    nhsNumber:
-      p.identifiers.find((i) => i.system === NHS_NUMBER_SYSTEM)?.value ?? "",
+    nationalNumber:
+      p.identifiers.find((i) => i.system === NATIONAL_NUMBER_SYSTEM)?.value ??
+      "",
     postalCode: p.addresses[0]?.postal_code ?? "",
     temporaryIdentity: p.temporary_identity === true,
   };
@@ -188,20 +191,20 @@ export function formToPatient(
     family: blankToNull(form.family),
     given: form.given.split(/\s+/).filter(Boolean),
   };
-  const nhs = nhsDigits(form.nhsNumber);
-  // Change the NHS number where it already sits, so the order of the other identifiers holds.
+  const national = nationalNumberDigits(form.nationalNumber);
+  // Change the national health number where it already sits, so the order of the other identifiers holds.
   const had = (base?.identifiers ?? []).some(
-    (i) => i.system === NHS_NUMBER_SYSTEM,
+    (i) => i.system === NATIONAL_NUMBER_SYSTEM,
   );
   const identifiers = (base?.identifiers ?? []).flatMap((i) =>
-    i.system !== NHS_NUMBER_SYSTEM
+    i.system !== NATIONAL_NUMBER_SYSTEM
       ? [i]
-      : nhs
-        ? [{ system: NHS_NUMBER_SYSTEM, value: nhs }]
+      : national
+        ? [{ system: NATIONAL_NUMBER_SYSTEM, value: national }]
         : [],
   );
-  if (nhs && !had)
-    identifiers.unshift({ system: NHS_NUMBER_SYSTEM, value: nhs });
+  if (national && !had)
+    identifiers.unshift({ system: NATIONAL_NUMBER_SYSTEM, value: national });
   const postal = blankToNull(form.postalCode);
   const addresses = [...(base?.addresses ?? [])];
   if (addresses[0] || postal) {
@@ -226,8 +229,8 @@ export function searchQuery(form: PatientForm): string {
   const q = new URLSearchParams();
   if (form.family.trim()) q.set("family", form.family.trim());
   if (form.birthDate.trim()) q.set("birth_date", form.birthDate.trim());
-  const nhs = nhsDigits(form.nhsNumber);
-  if (nhs) q.set("identifier", `${NHS_NUMBER_SYSTEM}|${nhs}`);
+  const national = nationalNumberDigits(form.nationalNumber);
+  if (national) q.set("identifier", `${NATIONAL_NUMBER_SYSTEM}|${national}`);
   return q.toString();
 }
 
@@ -237,7 +240,7 @@ export const COMPARED_FIELDS = [
   "given",
   "birthDate",
   "sex",
-  "nhsNumber",
+  "nationalNumber",
   "postalCode",
 ] as const satisfies readonly (keyof PatientForm)[];
 
@@ -252,7 +255,7 @@ export function comparisonRows(
 }[] {
   const other = patientToForm(existing);
   const norm = (f: (typeof COMPARED_FIELDS)[number], v: string) =>
-    (f === "nhsNumber" ? nhsDigits(v) : v).trim().toLowerCase();
+    (f === "nationalNumber" ? nationalNumberDigits(v) : v).trim().toLowerCase();
   return COMPARED_FIELDS.map((field) => ({
     field,
     entered: entered[field],

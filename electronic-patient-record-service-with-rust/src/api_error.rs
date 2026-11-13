@@ -243,7 +243,7 @@ mod tests {
     fn a_refused_merge_carries_its_reasons_as_codes_beside_the_errors() {
         let e = ApiError::from(&StoreError::NotSamePerson {
             message: "these do not look like the same person".into(),
-            conflict_codes: serde_json::json!([{ "code": "different_nhs_numbers" }]),
+            conflict_codes: serde_json::json!([{ "code": "different_national_numbers" }]),
         });
         assert_eq!(e.status(), StatusCode::UNPROCESSABLE_ENTITY);
         assert_eq!(
@@ -254,7 +254,7 @@ mod tests {
                 "status": 422,
                 "detail": "the record was refused",
                 "errors": ["these do not look like the same person"],
-                "conflict_codes": [{ "code": "different_nhs_numbers" }],
+                "conflict_codes": [{ "code": "different_national_numbers" }],
             })
         );
     }

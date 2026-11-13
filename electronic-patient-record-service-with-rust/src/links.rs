@@ -11,8 +11,8 @@
 //!
 //! - the two records must exist and differ; the source must not already be merged away; the target
 //!   must not itself be merged away (merge into the surviving record);
-//! - the matcher must not call the pair a non-match, which includes two different verified NHS
-//!   numbers; its score and decision are kept with the link;
+//! - the matcher must not call the pair a non-match, which includes two different verified national
+//!   health numbers; its score and decision are kept with the link;
 //! - a reason is required (provenance), and merging is serialised so two merges cannot race.
 //!
 //! A care relationship on the source does **not** carry over: access to the surviving record needs a
@@ -110,7 +110,7 @@ impl From<NotSamePerson> for StoreError {
 }
 
 /// The matcher's verdict on a pair that is to be merged, or why the merge is refused. Two different
-/// verified NHS numbers, or anything else the matcher calls a non-match, refuse. Pure: the same pair
+/// verified national health numbers, or anything else the matcher calls a non-match, refuse. Pure: the same pair
 /// gives the same answer in either order.
 ///
 /// # Errors
@@ -460,7 +460,7 @@ pub async fn unmerge(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use electronic_patient_record_matcher::{HumanName, Identifier, NHS_NUMBER_SYSTEM};
+    use electronic_patient_record_matcher::{HumanName, Identifier, NATIONAL_NUMBER_SYSTEM};
 
     #[test]
     fn every_refusal_message_has_a_code() {
@@ -488,17 +488,17 @@ mod tests {
         assert!(refusal("something else").is_none());
     }
 
-    fn person(family: &str, given: &str, dob: &str, nhs: Option<&str>) -> Patient {
+    fn person(family: &str, given: &str, dob: &str, number: Option<&str>) -> Patient {
         Patient {
             names: vec![HumanName {
                 family: Some(family.into()),
                 given: vec![given.into()],
             }],
             birth_date: Some(dob.into()),
-            identifiers: nhs
+            identifiers: number
                 .map(|n| {
                     vec![Identifier {
-                        system: NHS_NUMBER_SYSTEM.into(),
+                        system: NATIONAL_NUMBER_SYSTEM.into(),
                         value: n.into(),
                     }]
                 })
@@ -514,13 +514,13 @@ mod tests {
         let (score, decision) = judge(&a, &b).unwrap();
         assert!(score > 0.9, "{score}");
         assert_eq!(decision, "auto_link");
-        // A typo in the name, same birth date, one has no NHS number: for a person to decide.
+        // A typo in the name, same birth date, one has no national health number: for a person to decide.
         let c = person("Smyth", "Jon", "1980-03-14", None);
         assert!(judge(&c, &a).is_ok());
     }
 
     #[test]
-    fn two_different_verified_nhs_numbers_refuse_the_merge_whatever_else_matches() {
+    fn two_different_verified_national_numbers_refuse_the_merge_whatever_else_matches() {
         let a = person("Smith", "John", "1980-03-14", Some("9434765919"));
         // 9999999999 is a valid-looking number that differs; the matcher treats two different valid
         // numbers as a non-match.

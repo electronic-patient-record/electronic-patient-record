@@ -6,7 +6,7 @@
 use crate::ids;
 use crate::pool::Db;
 use electronic_patient_record_matcher::{
-    NHS_NUMBER_SYSTEM, Patient, is_placeholder_nhs_number, is_valid_nhs_number,
+    NATIONAL_NUMBER_SYSTEM, Patient, is_placeholder_national_number, is_valid_national_number,
 };
 use sqlx::postgres::PgRow;
 use sqlx::{AssertSqlSafe, PgPool, Row};
@@ -81,7 +81,7 @@ pub const TEMPORARY_IDENTITY_CLEARED: &str =
 /// Check a patient before it is stored. Returns every problem found.
 ///
 /// A record needs a family name, and its birth date, if given, must be `YYYY`, `YYYY-MM` or a real
-/// `YYYY-MM-DD`. An NHS number with a bad check digit is refused; an identifier in any other system
+/// `YYYY-MM-DD`. An national health number with a bad check digit is refused; an identifier in any other system
 /// is kept as given (unverified).
 #[must_use]
 pub fn validate(patient: &Patient) -> Vec<String> {
@@ -92,8 +92,8 @@ pub fn validate(patient: &Patient) -> Vec<String> {
 }
 
 /// [`validate`] with a stable code beside each message, in the same order, so a client can say it in
-/// the reader's language: `family_name_required`, `birth_date_invalid`, `nhs_number_placeholder`,
-/// `nhs_number_check_digit`, `identifier_incomplete`, `death_date_not_accepted`.
+/// the reader's language: `family_name_required`, `birth_date_invalid`, `national_number_placeholder`,
+/// `national_number_check_digit`, `identifier_incomplete`, `death_date_not_accepted`.
 #[must_use]
 pub fn validate_coded(patient: &Patient) -> Vec<(&'static str, String)> {
     let mut problems = Vec::new();
@@ -125,16 +125,16 @@ pub fn validate_coded(patient: &Patient) -> Vec<(&'static str, String)> {
         ));
     }
     for id in &patient.identifiers {
-        if id.system == NHS_NUMBER_SYSTEM && is_placeholder_nhs_number(&id.value) {
+        if id.system == NATIONAL_NUMBER_SYSTEM && is_placeholder_national_number(&id.value) {
             problems.push((
-                "nhs_number_placeholder",
-                "NHS number is a placeholder (ten copies of one digit), not an issued number"
+                "national_number_placeholder",
+                "National health number is a placeholder (ten copies of one digit), not an issued number"
                     .to_string(),
             ));
-        } else if id.system == NHS_NUMBER_SYSTEM && !is_valid_nhs_number(&id.value) {
+        } else if id.system == NATIONAL_NUMBER_SYSTEM && !is_valid_national_number(&id.value) {
             problems.push((
-                "nhs_number_check_digit",
-                "NHS number fails the modulus 11 check".to_string(),
+                "national_number_check_digit",
+                "National health number fails the modulus 11 check".to_string(),
             ));
         }
         if id.system.trim().is_empty() || id.value.trim().is_empty() {
@@ -591,10 +591,10 @@ mod tests {
     }
 
     #[test]
-    fn nhs_numbers_are_checked_and_other_systems_are_kept() {
+    fn national_numbers_are_checked_and_other_systems_are_kept() {
         let mut p = patient("Smith", None);
         p.identifiers = vec![Identifier {
-            system: NHS_NUMBER_SYSTEM.into(),
+            system: NATIONAL_NUMBER_SYSTEM.into(),
             value: "9434765919".into(),
         }];
         assert!(validate(&p).is_empty());

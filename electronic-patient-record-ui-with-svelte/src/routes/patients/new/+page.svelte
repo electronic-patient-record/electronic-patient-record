@@ -92,7 +92,7 @@
       given: TEXT.given,
       birthDate: TEXT.birthDate,
       sex: TEXT.sex,
-      nhsNumber: TEXT.nhsNumber,
+      nationalNumber: TEXT.nationalNumber,
       postalCode: TEXT.postalCode,
     })[f] ?? f;
   const shown = (v: string) => v || TEXT.notAvailable;

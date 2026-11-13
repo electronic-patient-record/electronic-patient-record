@@ -11,9 +11,9 @@ import {
 
 /** One reason as the matcher sends it (`ConflictCode`, tagged by `code`). Unknown codes are kept. */
 export type ConflictCode =
-  | { code: "different_nhs_numbers" }
-  | { code: "same_nhs_different_birth_dates" }
-  | { code: "same_nhs_different_names" }
+  | { code: "different_national_numbers" }
+  | { code: "same_national_number_different_birth_dates" }
+  | { code: "same_national_number_different_names" }
   | { code: "different_ihis" }
   | { code: "same_ihi_different_birth_dates" }
   | { code: "same_ihi_different_names" }
@@ -52,12 +52,12 @@ export function conflictText(c: ConflictCode, locale: Locale): string | null {
     return key ? w[key] : null;
   };
   switch (c.code) {
-    case "different_nhs_numbers":
-      return w.differentNhsNumbers;
-    case "same_nhs_different_birth_dates":
-      return w.sameNhsDifferentBirthDates;
-    case "same_nhs_different_names":
-      return w.sameNhsDifferentNames;
+    case "different_national_numbers":
+      return w.differentNationalNumbers;
+    case "same_national_number_different_birth_dates":
+      return w.sameNationalNumberDifferentBirthDates;
+    case "same_national_number_different_names":
+      return w.sameNationalNumberDifferentNames;
     case "different_ihis":
       return w.differentIhis;
     case "same_ihi_different_birth_dates":
@@ -154,8 +154,8 @@ export function refusalText(
 const PATIENT_PROBLEM: Record<string, keyof PatientProblemWords> = {
   family_name_required: "familyNameRequired",
   birth_date_invalid: "birthDateInvalid",
-  nhs_number_placeholder: "nhsNumberPlaceholder",
-  nhs_number_check_digit: "nhsNumberCheckDigit",
+  national_number_placeholder: "nationalNumberPlaceholder",
+  national_number_check_digit: "nationalNumberCheckDigit",
   identifier_incomplete: "identifierIncomplete",
   temporary_identity_reason_required: "temporaryIdentityReasonRequired",
 };

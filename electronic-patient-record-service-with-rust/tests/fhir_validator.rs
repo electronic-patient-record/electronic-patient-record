@@ -24,7 +24,7 @@ use electronic_patient_record::observations_store::{
 };
 use electronic_patient_record::patients_store::Stored;
 use electronic_patient_record_matcher::{
-    Address, AdministrativeSex, HumanName, Identifier, NHS_NUMBER_SYSTEM, Patient, Telecom,
+    Address, AdministrativeSex, HumanName, Identifier, NATIONAL_NUMBER_SYSTEM, Patient, Telecom,
 };
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
@@ -49,7 +49,7 @@ fn patient() -> Stored {
             birth_date: Some("1980-03".into()),
             sex: Some(AdministrativeSex::Female),
             identifiers: vec![Identifier {
-                system: NHS_NUMBER_SYSTEM.into(),
+                system: NATIONAL_NUMBER_SYSTEM.into(),
                 value: "9434765919".into(),
             }],
             addresses: vec![Address {

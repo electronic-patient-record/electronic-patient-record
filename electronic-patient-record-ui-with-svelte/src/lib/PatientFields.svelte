@@ -46,11 +46,11 @@
     {#each SEXES as s (s)}<option value={s}>{TEXT.sexes[s]}</option>{/each}
   </select>
 {/if}
-{#if show("nhsNumber")}
-  <label for="{prefix}-nhs">{TEXT.nhsNumber}</label>
+{#if show("nationalNumber")}
+  <label for="{prefix}-national-number">{TEXT.nationalNumber}</label>
   <input
-    id="{prefix}-nhs"
-    bind:value={form.nhsNumber}
+    id="{prefix}-national-number"
+    bind:value={form.nationalNumber}
     autocomplete="off"
     inputmode="numeric"
   />

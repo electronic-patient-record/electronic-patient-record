@@ -9,11 +9,11 @@
 //!   is recorded. The integrator role's permission to create and update identity is checked through
 //!   the policy engine like any other caller's.
 //! - A message is matched on the identifiers it carries (the sender's own number, `urn:hl7v2:…`, then
-//!   a valid NHS number). One match is an update; none is a new patient; more than one is refused.
+//!   a valid national health number). One match is an update; none is a new patient; more than one is refused.
 //! - A new patient that the matcher thinks may already exist is **refused**, not created: a duplicate
 //!   made by a machine at 3 a.m. is worse than a message that waits.
 //! - An update never blanks a field the message does not carry, and it never changes a birth date or
-//!   an NHS number: those corrections are made by a person, in the UI, with a reason.
+//!   an national health number: those corrections are made by a person, in the UI, with a reason.
 //! - A death on a message (BV-2) is a report: it is stored as an assertion from this feed, it holds
 //!   contact at once, and the message is answered `AA`. It never touches the identity record, and only
 //!   a person can confirm or withdraw it. A repeat of what the feed already said adds nothing, because
@@ -34,7 +34,7 @@ use crate::feed_queue;
 use crate::interop::hl7_adt::{self, Inbound, Rejection};
 use crate::patients_store::{self as store, StoreError};
 use crate::policy::{self, Consent, Purpose, Relationship, Resource, Role, Subject};
-use electronic_patient_record_matcher::{Identifier, NHS_NUMBER_SYSTEM, Patient};
+use electronic_patient_record_matcher::{Identifier, NATIONAL_NUMBER_SYSTEM, Patient};
 use sqlx::PgPool;
 
 /// Who the feed is, for the audit trail and the policy check. The sender's own claim (MSH-3, MSH-4)
@@ -90,7 +90,7 @@ fn is_local(i: &Identifier) -> bool {
 /// the message adds nothing, so no version is written for a repeat.
 ///
 /// Fields the message lacks are kept. Names: the message's first name replaces the record's first,
-/// and its other names are added if new. A different birth date or NHS number is a conflict.
+/// and its other names are added if new. A different birth date or national health number is a conflict.
 ///
 /// # Errors
 ///
@@ -108,17 +108,17 @@ pub fn merge_update(
                 .to_string(),
         );
     }
-    let nhs = |p: &Patient| {
+    let national = |p: &Patient| {
         p.identifiers
             .iter()
-            .find(|i| i.system == NHS_NUMBER_SYSTEM)
+            .find(|i| i.system == NATIONAL_NUMBER_SYSTEM)
             .map(|i| i.value.clone())
     };
-    if let (Some(a), Some(b)) = (nhs(existing), nhs(incoming))
+    if let (Some(a), Some(b)) = (national(existing), national(incoming))
         && a != b
     {
         conflicts.push(
-            "the NHS number differs from the record: a person must correct it, with a reason"
+            "the national health number differs from the record: a person must correct it, with a reason"
                 .to_string(),
         );
     }
@@ -192,11 +192,11 @@ fn temporary(e: &StoreError) -> Refusal {
 async fn find(db: &PgPool, patient: &Patient) -> Result<Option<store::Stored>, Refusal> {
     // The sender's own numbers first, then a national number.
     let locals = patient.identifiers.iter().filter(|i| is_local(i));
-    let nhs = patient
+    let national = patient
         .identifiers
         .iter()
-        .filter(|i| i.system == NHS_NUMBER_SYSTEM);
-    for id in locals.chain(nhs) {
+        .filter(|i| i.system == NATIONAL_NUMBER_SYSTEM);
+    for id in locals.chain(national) {
         let found = store::search(
             db,
             &store::Search {
@@ -600,7 +600,7 @@ mod tests {
             sex: Some(AdministrativeSex::Female),
             identifiers: vec![
                 Identifier {
-                    system: NHS_NUMBER_SYSTEM.into(),
+                    system: NATIONAL_NUMBER_SYSTEM.into(),
                     value: "9434765919".into(),
                 },
                 Identifier {
@@ -695,26 +695,26 @@ mod tests {
     }
 
     #[test]
-    fn a_different_birth_date_or_nhs_number_is_never_applied() {
+    fn a_different_birth_date_or_national_number_is_never_applied() {
         let dob = Patient {
             birth_date: Some("1981-03-14".into()),
             ..Patient::default()
         };
         let e = merge_update(&person(), &dob).unwrap_err();
         assert!(e[0].contains("birth date"), "{e:?}");
-        let nhs = Patient {
+        let with_number = Patient {
             identifiers: vec![Identifier {
-                system: NHS_NUMBER_SYSTEM.into(),
+                system: NATIONAL_NUMBER_SYSTEM.into(),
                 value: "4010232137".into(),
             }],
             ..Patient::default()
         };
-        let e = merge_update(&person(), &nhs).unwrap_err();
-        assert!(e[0].contains("NHS number"), "{e:?}");
+        let e = merge_update(&person(), &with_number).unwrap_err();
+        assert!(e[0].contains("national health number"), "{e:?}");
         // Both at once: both are reported.
         let both = Patient {
             birth_date: Some("1999-01-01".into()),
-            ..nhs
+            ..with_number
         };
         assert_eq!(merge_update(&person(), &both).unwrap_err().len(), 2);
     }

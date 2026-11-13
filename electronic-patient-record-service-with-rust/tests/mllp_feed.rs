@@ -373,9 +373,9 @@ async fn conflicts_duplicates_unsupported_and_invalid_messages_are_refused_and_c
     assert_eq!(code(&send(&mut s, &oru).await.unwrap()), "AR");
     let nameless = adt("A28", "C5", &tag("m"), "", &d, "");
     assert_eq!(code(&send(&mut s, &nameless).await.unwrap()), "AE");
-    let bad_nhs = adt("A28", "C6", &tag("m"), &tag("Bad"), &d, "")
+    let bad_number = adt("A28", "C6", &tag("m"), &tag("Bad"), &d, "")
         .replace("PID|1||", "PID|1||9434765910^^^NHS^NH~");
-    assert_eq!(code(&send(&mut s, &bad_nhs).await.unwrap()), "AE");
+    assert_eq!(code(&send(&mut s, &bad_number).await.unwrap()), "AE");
 
     // Every refusal is in the trail with outcome 4 and no content.
     let refused = sqlx::query("SELECT count(*) AS n FROM audit_events

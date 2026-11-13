@@ -129,17 +129,17 @@ test("registers a patient, catches the duplicate, overrides it, and edits with a
     await p.getByLabel("Family name").fill(family);
     await p.getByLabel("Given name").fill("Ann");
     await p.getByLabel("Birth date").fill("1980-03-14");
-    await p.getByLabel("NHS number").fill("943 476 5919");
+    await p.getByLabel("National health number").fill("943 476 5919");
     await p.getByRole("button", { name: "Register", exact: true }).click();
   };
 
-  // A bad NHS number is refused with the reason.
+  // A bad national health number is refused with the reason.
   await page.goto("/en-001/patients/new");
   await page.getByLabel("Family name").fill(family);
-  await page.getByLabel("NHS number").fill("9434765910");
+  await page.getByLabel("National health number").fill("9434765910");
   await page.getByRole("button", { name: "Register", exact: true }).click();
   await expect(
-    page.getByText("NHS number fails the modulus 11 check"),
+    page.getByText("National health number fails the modulus 11 check"),
   ).toBeVisible();
 
   // Registered: the page moves to the new record, version 1.
