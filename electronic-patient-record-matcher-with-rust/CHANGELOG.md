@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-13
+
+- **Breaking:** the national health number is no longer named for one country's health service. The module `nhs` is `national_number`; `NHS_NUMBER_SYSTEM`, `is_valid_nhs_number` and `is_placeholder_nhs_number` are `NATIONAL_NUMBER_SYSTEM`, `is_valid_national_number` and `is_placeholder_national_number`. The conflict codes `different_nhs_numbers`, `same_nhs_different_birth_dates` and `same_nhs_different_names` are `different_national_numbers`, `same_national_number_different_birth_dates` and `same_national_number_different_names` (the enum variants follow), and their English messages and the `deterministic` reason say "national health number". A client that reads the old codes must change with this version.
+- **Unchanged:** every rule. The check (ten digits, modulus 11, no repeated-digit placeholder), what a shared or a different number decides, and the identifier system URI that records carry, which `NATIONAL_NUMBER_SYSTEM` still holds, so existing records are recognised as before.
+- **Not done / not verified:** this version is not published, so the service still uses 0.7.0 and still sends the old codes. Earlier entries below keep the old names, as they were.
+
 ## [0.7.0] - 2026-11-05
 
 - **Added:** `Patient.death_date` and `Weights.death_date` (0.05), weak match evidence decided as OQ-BV3. Counted only when both records carry one. Omitted from JSON when absent, and defaults to absent, so existing records score as before.

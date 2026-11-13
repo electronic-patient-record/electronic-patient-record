@@ -60,7 +60,7 @@ const DOB: &[&str] = &[
     "1980-02-30",
     "1981-03-14",
 ];
-const NHS: &[&str] = &[
+const NUMBERS: &[&str] = &[
     "9434765919",
     "9434765918",
     "0000000000",
@@ -107,9 +107,9 @@ fn patient(r: &mut Lcg) -> Patient {
             system: if r.below(4) == 0 {
                 "urn:other".into()
             } else {
-                NHS_NUMBER_SYSTEM.into()
+                NATIONAL_NUMBER_SYSTEM.into()
             },
-            value: r.pick(NHS).to_string(),
+            value: r.pick(NUMBERS).to_string(),
         });
     }
     for _ in 0..r.below(2) {
@@ -207,7 +207,7 @@ fn compare_is_symmetric_when_the_given_name_lists_are_the_same_length() {
 /// A way to drop one field: its name, the scored field it feeds, and the edit.
 type Drop = (&'static str, &'static str, fn(&mut Patient));
 
-fn shares_a_valid_nhs_number(a: &Patient, b: &Patient) -> bool {
+fn shares_a_valid_national_number(a: &Patient, b: &Patient) -> bool {
     MatchingEngine::default()
         .compare(a, b)
         .deterministic
@@ -217,9 +217,9 @@ fn shares_a_valid_nhs_number(a: &Patient, b: &Patient) -> bool {
 /// Dropping a field from one record can lower the score (less evidence) but must never produce an
 /// automatic link that the full pair did not have: absent evidence is never agreement. Fields that
 /// disagreed are not dropped (removing a contradiction can legitimately raise the score). Pairs that
-/// share a valid NHS number are excluded: that path decides on the number alone (see the next test).
+/// share a valid national health number are excluded: that path decides on the number alone (see the next test).
 #[test]
-fn removing_a_field_never_creates_an_auto_link_without_a_shared_nhs_number() {
+fn removing_a_field_never_creates_an_auto_link_without_a_shared_national_number() {
     let engine = MatchingEngine::default();
     let mut r = Lcg(SEED + 3);
     // (name, the scored field it feeds, how to drop it)
@@ -232,7 +232,7 @@ fn removing_a_field_never_creates_an_auto_link_without_a_shared_nhs_number() {
     let mut checked = 0;
     for i in 0..CASES {
         let (a, b) = (patient(&mut r), patient(&mut r));
-        if shares_a_valid_nhs_number(&a, &b) {
+        if shares_a_valid_national_number(&a, &b) {
             continue;
         }
         checked += 1;
@@ -261,52 +261,59 @@ fn removing_a_field_never_creates_an_auto_link_without_a_shared_nhs_number() {
     assert!(checked > 5_000, "the filter left too few cases: {checked}");
 }
 
-/// **CQ-37, decided 2026-10-25:** a shared valid NHS number no longer links automatically on its own.
+/// **CQ-37, decided 2026-10-25:** a shared valid national health number no longer links automatically on its own.
 /// Missing evidence is not agreement, as for every other pair: with no given name, family name or birth
 /// date on a side, the pair goes to Review with the missing field named, and dropping a conflicting
 /// birth date can no longer turn Review into AutoLink. A family name that differs (marriage) still links
 /// when the rest is present, and a fully present, agreeing pair still links.
 #[test]
-fn a_shared_nhs_number_alone_goes_to_review() {
+fn a_shared_national_number_alone_goes_to_review() {
     let engine = MatchingEngine::default();
-    let with_nhs = |dob: Option<&str>, given: Option<&str>, family: Option<&str>| Patient {
-        identifiers: vec![Identifier {
-            system: NHS_NUMBER_SYSTEM.into(),
-            value: "9434765919".into(),
-        }],
-        birth_date: dob.map(Into::into),
-        names: if given.is_some() || family.is_some() {
-            vec![HumanName {
-                family: family.map(Into::into),
-                given: given.map(|g| vec![g.into()]).unwrap_or_default(),
-            }]
-        } else {
-            vec![]
-        },
-        ..Default::default()
-    };
-    let full = || with_nhs(Some("1980-03-14"), Some("Ann"), Some("Smith"));
+    let with_national_number =
+        |dob: Option<&str>, given: Option<&str>, family: Option<&str>| Patient {
+            identifiers: vec![Identifier {
+                system: NATIONAL_NUMBER_SYSTEM.into(),
+                value: "9434765919".into(),
+            }],
+            birth_date: dob.map(Into::into),
+            names: if given.is_some() || family.is_some() {
+                vec![HumanName {
+                    family: family.map(Into::into),
+                    given: given.map(|g| vec![g.into()]).unwrap_or_default(),
+                }]
+            } else {
+                vec![]
+            },
+            ..Default::default()
+        };
+    let full = || with_national_number(Some("1980-03-14"), Some("Ann"), Some("Smith"));
     // Everything present and agreeing: still an automatic link.
     assert_eq!(
         engine.compare(&full(), &full()).decision,
         Decision::AutoLink
     );
     // Nothing but the number: Review, each missing field named, and the number still the stated basis.
-    let bare = engine.compare(&with_nhs(None, None, None), &with_nhs(None, None, None));
+    let bare = engine.compare(
+        &with_national_number(None, None, None),
+        &with_national_number(None, None, None),
+    );
     assert_eq!(bare.decision, Decision::Review);
     assert_eq!(
         bare.deterministic.as_deref(),
-        Some("shared verified NHS number")
+        Some("shared verified national health number")
     );
     assert_eq!(bare.conflict_codes.len(), 3, "{bare:?}");
     // Two different full birth dates were already Review.
     let differ = engine.compare(
         &full(),
-        &with_nhs(Some("1981-03-14"), Some("Ann"), Some("Smith")),
+        &with_national_number(Some("1981-03-14"), Some("Ann"), Some("Smith")),
     );
     assert_eq!(differ.decision, Decision::Review);
     // Dropping the conflicting birth date used to turn that Review into AutoLink: now it is Review.
-    let dropped = engine.compare(&full(), &with_nhs(None, Some("Ann"), Some("Smith")));
+    let dropped = engine.compare(
+        &full(),
+        &with_national_number(None, Some("Ann"), Some("Smith")),
+    );
     assert_eq!(dropped.decision, Decision::Review);
     assert!(
         dropped
@@ -316,12 +323,15 @@ fn a_shared_nhs_number_alone_goes_to_review() {
             })
     );
     // One name missing on one side: Review too.
-    let no_given = engine.compare(&full(), &with_nhs(Some("1980-03-14"), None, Some("Smith")));
+    let no_given = engine.compare(
+        &full(),
+        &with_national_number(Some("1980-03-14"), None, Some("Smith")),
+    );
     assert_eq!(no_given.decision, Decision::Review);
     // A family name that changed (marriage) with everything else present is not blocked.
     let married = engine.compare(
         &full(),
-        &with_nhs(Some("1980-03-14"), Some("Ann"), Some("Jones")),
+        &with_national_number(Some("1980-03-14"), Some("Ann"), Some("Jones")),
     );
     assert_eq!(married.decision, Decision::AutoLink);
 }

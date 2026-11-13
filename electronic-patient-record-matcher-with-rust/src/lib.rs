@@ -9,7 +9,7 @@
 
 pub mod engine;
 pub mod ihi;
-pub mod nhs;
+pub mod national_number;
 pub mod normalize;
 pub mod patient;
 
@@ -18,5 +18,7 @@ pub use engine::{
     MatchingEngine, Weights,
 };
 pub use ihi::{IHI_SYSTEM, is_valid_ihi};
-pub use nhs::{NHS_NUMBER_SYSTEM, is_placeholder_nhs_number, is_valid_nhs_number};
+pub use national_number::{
+    NATIONAL_NUMBER_SYSTEM, is_placeholder_national_number, is_valid_national_number,
+};
 pub use patient::{Address, AdministrativeSex, HumanName, Identifier, Patient, Telecom};

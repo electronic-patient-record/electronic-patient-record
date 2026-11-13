@@ -7,7 +7,7 @@ Pure Rust library: patient identity matching for a master patient index. Read [`
 - **Explainable**: every `MatchResult` carries a per-field breakdown. Absent evidence is `similarity: None` with a
   note, never zero.
 - **Refuses before it guesses**: automatic linking needs given name, family name and birth date present and
-  agreeing; a missing field blocks `AutoLink` (it goes to `Review`). Two different valid NHS numbers are
+  agreeing; a missing field blocks `AutoLink` (it goes to `Review`). Two different valid national health numbers are
   `NonMatch`. Do not loosen a guard to make a test pass; a wrong automatic link is a patient safety incident.
 - `Patient` is also the service's API DTO. Change it here, and update the entity spec §5 and the UI types in one commit.
 - Gates: `cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test`, and `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --document-private-items` (every public item is documented: `#![deny(missing_docs)]`).

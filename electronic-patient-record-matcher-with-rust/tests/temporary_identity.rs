@@ -1,10 +1,10 @@
 //! TT-1, hazard H-047: a temporary identity is not evidence of who a person is.
 
 use electronic_patient_record_matcher::{
-    ConflictCode, Decision, HumanName, Identifier, MatchingEngine, Patient,
+    ConflictCode, Decision, HumanName, Identifier, MatchingEngine, NATIONAL_NUMBER_SYSTEM, Patient,
 };
 
-/// The safer format from NHS alert NHS/PSA/RE/2018/008: looks real, with an estimated date.
+/// The safer format from a 2018 national patient safety alert on naming unknown patients: looks real, with an estimated date.
 fn temporary(family: &str, given: &str) -> Patient {
     Patient {
         names: vec![HumanName {
@@ -24,9 +24,9 @@ fn real(family: &str, given: &str) -> Patient {
     }
 }
 
-fn with_nhs(mut p: Patient) -> Patient {
+fn with_national_number(mut p: Patient) -> Patient {
     p.identifiers.push(Identifier {
-        system: "https://fhir.nhs.uk/Id/nhs-number".into(),
+        system: NATIONAL_NUMBER_SYSTEM.into(),
         value: "9434765919".into(),
     });
     p
@@ -54,8 +54,8 @@ fn a_temporary_identity_never_auto_links_either_way_round() {
         (temporary("Whisky", "Foxtrot"), real("Whisky", "Foxtrot")),
         (real("Whisky", "Foxtrot"), temporary("Whisky", "Foxtrot")),
         (
-            with_nhs(temporary("Whisky", "Foxtrot")),
-            with_nhs(real("Whisky", "Foxtrot")),
+            with_national_number(temporary("Whisky", "Foxtrot")),
+            with_national_number(real("Whisky", "Foxtrot")),
         ),
     ] {
         let r = m.compare(&a, &b);

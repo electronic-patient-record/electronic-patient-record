@@ -14,9 +14,9 @@ fn person(family: &str, given: &[&str], dob: Option<&str>) -> Patient {
     }
 }
 
-fn nhs(mut p: Patient, n: &str) -> Patient {
+fn with_number(mut p: Patient, n: &str) -> Patient {
     p.identifiers.push(Identifier {
-        system: NHS_NUMBER_SYSTEM.into(),
+        system: NATIONAL_NUMBER_SYSTEM.into(),
         value: n.into(),
     });
     p
@@ -78,17 +78,20 @@ fn the_text_is_the_message_of_each_code_in_order() {
 }
 
 #[test]
-fn nhs_number_conflicts_have_codes() {
+fn national_number_conflicts_have_codes() {
     // 9434765919 and 9434765870 both pass modulus 11.
-    let a = nhs(person("Hughes", &["Ann"], Some("1980-03-14")), "9434765919");
-    let b = nhs(person("Hughes", &["Ann"], Some("1980-03-14")), "9434765870");
+    let a = with_number(person("Hughes", &["Ann"], Some("1980-03-14")), "9434765919");
+    let b = with_number(person("Hughes", &["Ann"], Some("1980-03-14")), "9434765870");
     let r = codes(&a, &b);
-    assert_eq!(r.conflict_codes, vec![ConflictCode::DifferentNhsNumbers]);
-    let c = nhs(person("Hughes", &["Ann"], Some("1981-03-14")), "9434765919");
+    assert_eq!(
+        r.conflict_codes,
+        vec![ConflictCode::DifferentNationalNumbers]
+    );
+    let c = with_number(person("Hughes", &["Ann"], Some("1981-03-14")), "9434765919");
     let r = codes(&a, &c);
     assert!(
         r.conflict_codes
-            .contains(&ConflictCode::SameNhsDifferentBirthDates)
+            .contains(&ConflictCode::SameNationalNumberDifferentBirthDates)
     );
 }
 

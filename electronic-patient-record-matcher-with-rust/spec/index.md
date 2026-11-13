@@ -24,8 +24,8 @@ reviewer can see why two records were or were not linked.
 6. **Diacritics are preserved.** Folding is NFKC plus lowercase; accents are never stripped.
 7. **A temporary identity is not evidence.** A person sets `temporary_identity` on a record for someone who cannot yet be
    identified. If either record has it, the names and birth dates of both are withheld, the conflict `temporary_identity`
-   comes first, and the decision can never be `AutoLink`, even with a shared NHS number. The placeholder list cannot do
-   this: a safer temporary name, as NHS alert NHS/PSA/RE/2018/008 recommends, looks like a real one. `Review` remains possible on
+   comes first, and the decision can never be `AutoLink`, even with a shared national health number. The placeholder list cannot do
+   this: a safer temporary name, as a 2018 national patient safety alert on naming unknown patients recommends, looks like a real one. `Review` remains possible on
    other evidence, and the flag only applies when set: the matcher does not guess that a name is temporary (H-047).
 
 ## 3. Scoring
@@ -63,10 +63,10 @@ values** (ID-1 asks for a 200-pair labelled corpus before they are trusted).
 
 ## 4. Deterministic identifiers
 
-- A **valid NHS number** has a correct modulus-11 check digit and is not ten copies of one digit. Every
+- A **valid national health number** has a correct modulus-11 check digit and is not ten copies of one digit. Every
   repeated-digit number (`0000000000` … `9999999999`) passes modulus 11, none is issued, and systems use them as
-  placeholders, so they are invalid (`is_placeholder_nhs_number` says which).
-- A **shared valid NHS number** (system `https://fhir.nhs.uk/Id/nhs-number`) gives score 1.0 and `AutoLink`, unless
+  placeholders, so they are invalid (`is_placeholder_national_number` says which).
+- A **shared valid national health number** (the identifier system `NATIONAL_NUMBER_SYSTEM`, the one FHIR URI real records carry for it) gives score 1.0 and `AutoLink`, unless
   either of these holds, which gives `Review` with a conflict for each:
   - both records have full birth dates that differ;
   - both the given and the family name are below their auto-link minimums (a family name alone may change, as on
@@ -75,11 +75,11 @@ values** (ID-1 asks for a 200-pair labelled corpus before they are trusted).
     missing field): missing evidence is not agreement, as for every other pair (CQ-37, decided 2026-10-25). A
     number alone, or a number with a date dropped, is for a person to confirm. The score is still 1.0 and the
     stated basis still the shared number.
-- **Two different valid NHS numbers** give `NonMatch` with a conflict, however alike the demographics.
-- Invalid NHS numbers are ignored for matching.
+- **Two different valid national health numbers** give `NonMatch` with a conflict, however alike the demographics.
+- Invalid national health numbers are ignored for matching.
 - An **Australian IHI** (system `http://ns.electronichealth.net.au/id/hi/ihi/1.0`; sixteen digits, prefix `800360`,
   Luhn check digit) is a deterministic key only when `MatchConfig::use_ihi` is true (default false). It then behaves
-  as the NHS number does (same guards, conflicts `different_ihis`, `same_ihi_different_birth_dates`,
+  as the national health number does (same guards, conflicts `different_ihis`, `same_ihi_different_birth_dates`,
   `same_ihi_different_names`, basis "shared verified IHI"). A clash on either number gives `NonMatch`.
 - Other identifiers (MRN) do not decide a match yet.
 

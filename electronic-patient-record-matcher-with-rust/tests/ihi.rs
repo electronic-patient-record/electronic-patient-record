@@ -1,4 +1,4 @@
-//! The Australian IHI as an opt-in deterministic identifier (OS-10, step c). It behaves as the NHS number
+//! The Australian IHI as an opt-in deterministic identifier (OS-10, step c). It behaves as the national health number
 //! does, and does nothing unless `use_ihi` is on.
 
 use electronic_patient_record_matcher::*;

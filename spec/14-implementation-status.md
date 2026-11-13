@@ -18,7 +18,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | Fact | Value | Method |
 |---|---|---|
 | Service version | 0.1.0 | `version` in the service `Cargo.toml` |
-| Matcher version | 0.7.0 | `version` in the matcher `Cargo.toml` |
+| Matcher version | 0.8.0 | `version` in the matcher `Cargo.toml` |
 | Front-end version | 0.1.0 | `version` in the front-end `package.json` |
 | Migrations | 35 | files named `*.sql` in `migrations` |
 | Route registrations | 97 | `.add(` calls in `src/controllers/*.rs` |

@@ -27,10 +27,10 @@ pub struct HumanName {
     pub given: Vec<String>,
 }
 
-/// An identifier such as an NHS number or a medical record number.
+/// An identifier such as an national health number or a medical record number.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Identifier {
-    /// The identifier's system, such as the NHS number system URI.
+    /// The identifier's system, such as the national health number system URI.
     pub system: String,
     /// The identifier's value within that system.
     pub value: String,
@@ -69,7 +69,7 @@ pub struct Patient {
     /// The administrative sex, if known. Absent is not the same as unknown.
     #[serde(default)]
     pub sex: Option<AdministrativeSex>,
-    /// Identifiers such as an NHS number or a medical record number.
+    /// Identifiers such as an national health number or a medical record number.
     #[serde(default)]
     pub identifiers: Vec<Identifier>,
     /// Addresses; only the postcode takes part in matching.

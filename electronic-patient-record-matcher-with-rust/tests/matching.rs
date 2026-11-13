@@ -16,9 +16,9 @@ fn patient(family: &str, given: &[&str], dob: &str, sex: AdministrativeSex) -> P
     }
 }
 
-fn with_nhs(mut p: Patient, n: &str) -> Patient {
+fn with_national_number(mut p: Patient, n: &str) -> Patient {
     p.identifiers.push(Identifier {
-        system: NHS_NUMBER_SYSTEM.into(),
+        system: NATIONAL_NUMBER_SYSTEM.into(),
         value: n.into(),
     });
     p
@@ -35,14 +35,14 @@ const M: AdministrativeSex = AdministrativeSex::Male;
 const F: AdministrativeSex = AdministrativeSex::Female;
 
 #[test]
-fn nhs_number_check_digit() {
-    assert!(is_valid_nhs_number("943 476 5919"));
-    assert!(is_valid_nhs_number("9434765919"));
-    assert!(!is_valid_nhs_number("9434765918"));
-    assert!(!is_valid_nhs_number("123"));
-    assert!(!is_valid_nhs_number("94347659AB"));
+fn national_number_check_digit() {
+    assert!(is_valid_national_number("943 476 5919"));
+    assert!(is_valid_national_number("9434765919"));
+    assert!(!is_valid_national_number("9434765918"));
+    assert!(!is_valid_national_number("123"));
+    assert!(!is_valid_national_number("94347659AB"));
     // check digit computes to 10: never valid
-    assert!(!is_valid_nhs_number("0000000100"));
+    assert!(!is_valid_national_number("0000000100"));
 }
 
 #[test]
@@ -119,10 +119,10 @@ fn junior_and_senior_with_same_name_need_birth_date() {
 }
 
 #[test]
-fn shared_valid_nhs_number_is_deterministic() {
+fn shared_valid_national_number_is_deterministic() {
     let e = MatchingEngine::default();
-    let a = with_nhs(patient("Smith", &["Jane"], "1970-01-01", F), "943 476 5919");
-    let b = with_nhs(patient("Smythe", &["Janet"], "1970-01-01", F), "9434765919");
+    let a = with_national_number(patient("Smith", &["Jane"], "1970-01-01", F), "943 476 5919");
+    let b = with_national_number(patient("Smythe", &["Janet"], "1970-01-01", F), "9434765919");
     let r = e.compare(&a, &b);
     assert_eq!(r.decision, Decision::AutoLink);
     assert_eq!(r.score, 1.0);
@@ -130,26 +130,30 @@ fn shared_valid_nhs_number_is_deterministic() {
 }
 
 #[test]
-fn shared_nhs_number_with_different_birth_dates_goes_to_review() {
+fn shared_national_number_with_different_birth_dates_goes_to_review() {
     let e = MatchingEngine::default();
-    let a = with_nhs(patient("Smith", &["Jane"], "1970-01-01", F), "9434765919");
-    let b = with_nhs(patient("Smith", &["Jane"], "1985-09-09", F), "9434765919");
+    let a = with_national_number(patient("Smith", &["Jane"], "1970-01-01", F), "9434765919");
+    let b = with_national_number(patient("Smith", &["Jane"], "1985-09-09", F), "9434765919");
     let r = e.compare(&a, &b);
     assert_eq!(r.decision, Decision::Review);
     assert!(!r.conflicts.is_empty());
 }
 
 #[test]
-fn different_valid_nhs_numbers_forbid_a_link() {
+fn different_valid_national_numbers_forbid_a_link() {
     let e = MatchingEngine::default();
-    let a = with_nhs(patient("Smith", &["Jane"], "1970-01-01", F), "9434765919");
-    let b = with_nhs(patient("Smith", &["Jane"], "1970-01-01", F), "9434765910");
+    let a = with_national_number(patient("Smith", &["Jane"], "1970-01-01", F), "9434765919");
+    let b = with_national_number(patient("Smith", &["Jane"], "1970-01-01", F), "9434765910");
     // 9434765910 has a wrong check digit, so it is ignored and the demographics decide.
     assert_ne!(e.compare(&a, &b).decision, Decision::NonMatch);
-    let c = with_nhs(patient("Smith", &["Jane"], "1970-01-01", F), "4010232137");
+    let c = with_national_number(patient("Smith", &["Jane"], "1970-01-01", F), "4010232137");
     let r = e.compare(&a, &c);
     assert_eq!(r.decision, Decision::NonMatch, "{r:?}");
-    assert!(r.conflicts.iter().any(|c| c.contains("NHS")));
+    assert!(
+        r.conflicts
+            .iter()
+            .any(|c| c.contains("national health number"))
+    );
 }
 
 #[test]
@@ -213,24 +217,24 @@ fn compare_is_symmetric_over_a_grid() {
 }
 
 #[test]
-fn repeated_digit_nhs_numbers_are_not_valid() {
+fn repeated_digit_national_numbers_are_not_valid() {
     // Regression (CQ-2): every repeated-digit number passes modulus 11, and none is ever issued.
     for d in 0..=9 {
         let n = d.to_string().repeat(10);
-        assert!(!is_valid_nhs_number(&n), "{n}");
-        assert!(is_placeholder_nhs_number(&n), "{n}");
+        assert!(!is_valid_national_number(&n), "{n}");
+        assert!(is_placeholder_national_number(&n), "{n}");
     }
-    assert!(!is_placeholder_nhs_number("9434765919"));
-    assert!(!is_valid_nhs_number("000 000 0000"));
+    assert!(!is_placeholder_national_number("9434765919"));
+    assert!(!is_valid_national_number("000 000 0000"));
     // The 999 test range stays usable for demo data.
-    assert!(is_valid_nhs_number("9990000018"));
+    assert!(is_valid_national_number("9990000018"));
 }
 
 #[test]
-fn shared_placeholder_nhs_number_does_not_decide() {
+fn shared_placeholder_national_number_does_not_decide() {
     let e = MatchingEngine::default();
-    let a = with_nhs(patient("Smith", &["John"], "1980-03-14", M), "0000000000");
-    let b = with_nhs(
+    let a = with_national_number(patient("Smith", &["John"], "1980-03-14", M), "0000000000");
+    let b = with_national_number(
         patient("Okafor", &["Chiamaka"], "1980-03-14", M),
         "0000000000",
     );
@@ -240,10 +244,10 @@ fn shared_placeholder_nhs_number_does_not_decide() {
 }
 
 #[test]
-fn shared_nhs_number_with_different_names_goes_to_review() {
+fn shared_national_number_with_different_names_goes_to_review() {
     let e = MatchingEngine::default();
-    let a = with_nhs(patient("Smith", &["John"], "1980-03-14", M), "9434765919");
-    let b = with_nhs(
+    let a = with_national_number(patient("Smith", &["John"], "1980-03-14", M), "9434765919");
+    let b = with_national_number(
         patient("Okafor", &["Chiamaka"], "1980-03-14", M),
         "9434765919",
     );
@@ -256,21 +260,21 @@ fn shared_nhs_number_with_different_names_goes_to_review() {
 }
 
 #[test]
-fn shared_nhs_number_with_a_changed_family_name_still_links() {
+fn shared_national_number_with_a_changed_family_name_still_links() {
     // Marriage: the family name changes, the given name does not.
     let e = MatchingEngine::default();
-    let a = with_nhs(patient("Smith", &["Mary"], "1980-03-14", F), "9434765919");
-    let b = with_nhs(patient("Okafor", &["Mary"], "1980-03-14", F), "9434765919");
+    let a = with_national_number(patient("Smith", &["Mary"], "1980-03-14", F), "9434765919");
+    let b = with_national_number(patient("Okafor", &["Mary"], "1980-03-14", F), "9434765919");
     assert_eq!(e.compare(&a, &b).decision, Decision::AutoLink);
 }
 
 #[test]
-fn shared_nhs_number_with_any_different_full_birth_date_goes_to_review() {
+fn shared_national_number_with_any_different_full_birth_date_goes_to_review() {
     // Regression (CQ-3): spec §4 says any two different full dates go to Review; a near date did not.
     let e = MatchingEngine::default();
     for other in ["1980-01-28", "1980-02-01", "1981-01-01", "1980-10-10"] {
-        let a = with_nhs(patient("Smith", &["John"], "1980-01-01", M), "9434765919");
-        let b = with_nhs(patient("Smith", &["John"], other, M), "9434765919");
+        let a = with_national_number(patient("Smith", &["John"], "1980-01-01", M), "9434765919");
+        let b = with_national_number(patient("Smith", &["John"], other, M), "9434765919");
         let r = e.compare(&a, &b);
         assert_eq!(r.decision, Decision::Review, "{other}: {r:?}");
         assert!(

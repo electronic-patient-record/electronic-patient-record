@@ -2,7 +2,9 @@
 //! patients to an explainable result. No clocks, no randomness, no IO.
 
 use crate::ihi::{IHI_SYSTEM, is_valid_ihi};
-use crate::nhs::{NHS_NUMBER_SYSTEM, canonical_identifier, is_valid_nhs_number};
+use crate::national_number::{
+    NATIONAL_NUMBER_SYSTEM, canonical_identifier, is_valid_national_number,
+};
 use crate::normalize::{
     PartialDate, are_nicknames, fold_name, fold_postcode, fold_telecom, is_usable_name,
     normalize_phone, parse_date, soundex, transliterate,
@@ -64,7 +66,7 @@ pub struct MatchConfig {
     /// Country calling code assumed for a phone number written with a leading `0` (44 for the UK).
     #[serde(default = "default_calling_code")]
     pub default_calling_code: u16,
-    /// Treat a shared valid Australian IHI as the NHS number is treated (off by default).
+    /// Treat a shared valid Australian IHI as the national health number is treated (off by default).
     #[serde(default)]
     pub use_ihi: bool,
 }
@@ -177,12 +179,12 @@ impl GuardField {
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "code", rename_all = "snake_case")]
 pub enum ConflictCode {
-    /// Both records carry a verified NHS number and the numbers differ.
-    DifferentNhsNumbers,
-    /// The NHS numbers match but the birth dates differ.
-    SameNhsDifferentBirthDates,
-    /// The NHS numbers match but the names differ.
-    SameNhsDifferentNames,
+    /// Both records carry a verified national health number and the numbers differ.
+    DifferentNationalNumbers,
+    /// The national health numbers match but the birth dates differ.
+    SameNationalNumberDifferentBirthDates,
+    /// The national health numbers match but the names differ.
+    SameNationalNumberDifferentNames,
     /// Both records carry a verified IHI and the numbers differ.
     DifferentIhis,
     /// The IHIs match but the birth dates differ.
@@ -222,9 +224,13 @@ impl ConflictCode {
     /// The English text, kept stable for clients that print it.
     pub fn message(&self) -> String {
         match self {
-            Self::DifferentNhsNumbers => "different verified NHS numbers".into(),
-            Self::SameNhsDifferentBirthDates => "same NHS number but different birth dates".into(),
-            Self::SameNhsDifferentNames => "same NHS number but different names".into(),
+            Self::DifferentNationalNumbers => "different verified national health numbers".into(),
+            Self::SameNationalNumberDifferentBirthDates => {
+                "same national health number but different birth dates".into()
+            }
+            Self::SameNationalNumberDifferentNames => {
+                "same national health number but different names".into()
+            }
             Self::DifferentIhis => "different verified IHIs".into(),
             Self::SameIhiDifferentBirthDates => "same IHI but different birth dates".into(),
             Self::SameIhiDifferentNames => "same IHI but different names".into(),
@@ -449,9 +455,9 @@ impl MatchingEngine {
 
         // National identifiers: a shared valid number decides; two different valid ones forbid a link.
         // The IHI counts only when `use_ihi` is on; a clash on either number forbids a link.
-        let (nhs_a, nhs_b) = (
-            valid_numbers(a, NHS_NUMBER_SYSTEM, is_valid_nhs_number),
-            valid_numbers(b, NHS_NUMBER_SYSTEM, is_valid_nhs_number),
+        let (national_a, national_b) = (
+            valid_numbers(a, NATIONAL_NUMBER_SYSTEM, is_valid_national_number),
+            valid_numbers(b, NATIONAL_NUMBER_SYSTEM, is_valid_national_number),
         );
         let (ihi_a, ihi_b) = if self.config.use_ihi {
             (
@@ -461,25 +467,25 @@ impl MatchingEngine {
         } else {
             (vec![], vec![])
         };
-        let nhs_shared = nhs_a.iter().any(|n| nhs_b.contains(n));
+        let national_shared = national_a.iter().any(|n| national_b.contains(n));
         let ihi_shared = ihi_a.iter().any(|n| ihi_b.contains(n));
-        let nhs_clash = !nhs_a.is_empty() && !nhs_b.is_empty() && !nhs_shared;
+        let national_clash = !national_a.is_empty() && !national_b.is_empty() && !national_shared;
         let ihi_clash = !ihi_a.is_empty() && !ihi_b.is_empty() && !ihi_shared;
-        let clash = nhs_clash || ihi_clash;
-        let shared = nhs_shared || ihi_shared;
+        let clash = national_clash || ihi_clash;
+        let shared = national_shared || ihi_shared;
         let dob_conflict = matches!((full_date(a), full_date(b)), (Some(x), Some(y)) if x != y);
 
         if clash {
-            conflicts.push(if nhs_clash {
-                ConflictCode::DifferentNhsNumbers
+            conflicts.push(if national_clash {
+                ConflictCode::DifferentNationalNumbers
             } else {
                 ConflictCode::DifferentIhis
             });
             decision = Decision::NonMatch;
         } else if shared {
             deterministic = Some(
-                if nhs_shared {
-                    "shared verified NHS number"
+                if national_shared {
+                    "shared verified national health number"
                 } else {
                     "shared verified IHI"
                 }
@@ -487,8 +493,8 @@ impl MatchingEngine {
             );
             score = 1.0;
             if dob_conflict {
-                conflicts.push(if nhs_shared {
-                    ConflictCode::SameNhsDifferentBirthDates
+                conflicts.push(if national_shared {
+                    ConflictCode::SameNationalNumberDifferentBirthDates
                 } else {
                     ConflictCode::SameIhiDifferentBirthDates
                 });
@@ -499,8 +505,8 @@ impl MatchingEngine {
             if given.is_some_and(|s| s < c.min_given_for_auto)
                 && family.is_some_and(|s| s < c.min_family_for_auto)
             {
-                conflicts.push(if nhs_shared {
-                    ConflictCode::SameNhsDifferentNames
+                conflicts.push(if national_shared {
+                    ConflictCode::SameNationalNumberDifferentNames
                 } else {
                     ConflictCode::SameIhiDifferentNames
                 });

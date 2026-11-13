@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-13 - The matcher names a national health number, not the NHS (matcher 0.8.0)
+
+- **Clinical risk:** none today, and none in behaviour. Every matching rule is unchanged; only names, codes and English messages change. When the service moves to 0.8.0, the conflict codes and messages a clinician sees change with it, and the UI must change in the same commit.
+- **Built:** in the matcher, the NHS number is a "national health number": module `national_number`, `NATIONAL_NUMBER_SYSTEM`, `is_valid_national_number`, `is_placeholder_national_number`, and the conflict codes `different_national_numbers`, `same_national_number_different_birth_dates` and `same_national_number_different_names`. Tests, the spec, `AGENTS.md` and `index.md` follow. Version 0.8.0 (breaking: the public names and codes).
+- **Kept:** the FHIR identifier system URI that real records carry for this number. It is spelled out once, in `NATIONAL_NUMBER_SYSTEM`, because without it those records would not be recognised and the rule that two different numbers never link would stop applying.
+- **Checked:** fmt, clippy, every matcher test, and rustdoc.
+- **Not done / not verified:** 0.8.0 is not published, so the service still builds against 0.7.0 and the API still sends the old codes. Earlier changelog entries keep the old names.
+
 ## 2026-11-13 - First posts for GitHub Discussions
 
 - **Clinical risk:** none. Draft posts only; nothing in the software changes.

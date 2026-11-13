@@ -184,10 +184,10 @@ fn an_initial_matches_a_name_that_starts_with_it() {
     );
 }
 
-fn shares_nhs(dob: &str) -> Patient {
+fn shares_national_number(dob: &str) -> Patient {
     Patient {
         identifiers: vec![Identifier {
-            system: NHS_NUMBER_SYSTEM.into(),
+            system: NATIONAL_NUMBER_SYSTEM.into(),
             value: "9434765919".into(),
         }],
         // Names that agree: a shared number with no name to check it against goes to Review (CQ-37),
@@ -202,9 +202,12 @@ fn shares_nhs(dob: &str) -> Patient {
 }
 
 #[test]
-fn only_complete_birth_dates_conflict_under_a_shared_nhs_number() {
+fn only_complete_birth_dates_conflict_under_a_shared_national_number() {
     let e = MatchingEngine::default();
-    let d = |x: &str, y: &str| e.compare(&shares_nhs(x), &shares_nhs(y)).decision;
+    let d = |x: &str, y: &str| {
+        e.compare(&shares_national_number(x), &shares_national_number(y))
+            .decision
+    };
     assert_eq!(d("1980-03-14", "1981-03-14"), Decision::Review);
     assert_eq!(
         d("1980-03", "1990-05-01"),
@@ -284,24 +287,24 @@ fn the_engine_keeps_the_config_it_was_given() {
 }
 
 #[test]
-fn a_shared_nhs_number_with_names_exactly_at_the_minimum_is_not_a_conflict() {
+fn a_shared_national_number_with_names_exactly_at_the_minimum_is_not_a_conflict() {
     let config = MatchConfig {
         min_given_for_auto: 1.0,
         min_family_for_auto: 1.0,
         ..Default::default()
     };
-    let with_nhs = |mut p: Patient| {
+    let with_national_number = |mut p: Patient| {
         p.identifiers.push(Identifier {
-            system: NHS_NUMBER_SYSTEM.into(),
+            system: NATIONAL_NUMBER_SYSTEM.into(),
             value: "9434765919".into(),
         });
         p
     };
-    let a = with_nhs(full("Smith", "Ann", "1980-03-14"));
+    let a = with_national_number(full("Smith", "Ann", "1980-03-14"));
     let m = MatchingEngine::new(config).compare(&a, &a.clone());
     assert_eq!(m.decision, Decision::AutoLink, "{m:?}");
     // Only the given name at the minimum, family clearly below: still one name agreeing.
-    let other = with_nhs(full("Jones", "Ann", "1980-03-14"));
+    let other = with_national_number(full("Jones", "Ann", "1980-03-14"));
     let m = MatchingEngine::new(config).compare(&a, &other);
     assert_eq!(m.decision, Decision::AutoLink, "{m:?}");
 }
@@ -312,15 +315,15 @@ fn a_family_name_exactly_at_the_minimum_still_counts_as_agreeing_when_the_given_
         min_family_for_auto: 1.0,
         ..Default::default()
     };
-    let with_nhs = |mut p: Patient| {
+    let with_national_number = |mut p: Patient| {
         p.identifiers.push(Identifier {
-            system: NHS_NUMBER_SYSTEM.into(),
+            system: NATIONAL_NUMBER_SYSTEM.into(),
             value: "9434765919".into(),
         });
         p
     };
-    let a = with_nhs(full("Smith", "Ann", "1980-03-14"));
-    let b = with_nhs(full("Smith", "Zed", "1980-03-14"));
+    let a = with_national_number(full("Smith", "Ann", "1980-03-14"));
+    let b = with_national_number(full("Smith", "Zed", "1980-03-14"));
     let m = MatchingEngine::new(config).compare(&a, &b);
     assert_eq!(m.decision, Decision::AutoLink, "{m:?}");
 }
