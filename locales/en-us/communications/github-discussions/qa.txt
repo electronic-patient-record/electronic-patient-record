@@ -1,0 +1,33 @@
+How to ask a question that gets a good answer
+
+This category is for questions with answers: how to run, test, configure, or understand Electronic Patient Record. When a reply solves your question, please mark it as the answer, so the next person with the same question finds it quickly.
+
+Before you ask, check [the README](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/README.md), [AGENTS.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AGENTS.md) (which lists the easy-to-miss traps, such as ports, Podman, and clock drift), and [the implementation status](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/14-implementation-status.md), which says what is built and what is not.
+
+## Checklist for your question
+
+Title your question with the problem, such as "How do I run the database tests on a different port?", not "Help". Ask one question per discussion. Then include:
+
+- **Goal:** what you are trying to do, in one sentence.
+- **What I tried:** the steps or commands, in order.
+- **Expected:** what you thought would happen.
+- **Actual:** what happened, with the exact error text in a code block, not a screenshot.
+- **Environment:** the commit or version; the subproject (matcher, service, or UI); your operating system; and the Rust, Node, pnpm, Podman, and PostgreSQL versions, as they apply.
+- **Minimal example:** the smallest set of commands or code that still shows the problem.
+
+Paste text inside fenced code blocks:
+
+```text
+the exact error message goes here
+```
+
+## Please do not paste
+
+- **Real patient data.** The software is not for clinical use. Use made-up records, and say so.
+- **Secrets**, such as tokens, keys, passwords, or a `DB_URL` with a password in it. Replace them with a placeholder.
+
+## Where else to go
+
+- If you found a bug, open an [issue](https://github.com/electronic-patient-record/electronic-patient-record/issues).
+- If you want a feature, post in Ideas.
+- If it is a security problem, report it privately, as [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) explains.

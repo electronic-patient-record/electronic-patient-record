@@ -1,0 +1,24 @@
+Which country's standards should the first release meet first: the UK's or the US's?
+
+The project plans to meet both the UK's and the US's national standards for patient records. Work has to start somewhere, and the order changes what is built first. This is question 2 in [RFC.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/RFC.md), and this poll is a quick way to answer it.
+
+**What each choice means:**
+
+- **UK first:** UK Core FHIR profiles, the Personal Demographics Service (PDS), and the clinical safety standard DCB0129 with the DTAC assessment.
+- **US first:** US Core FHIR profiles and the ONC certification rules.
+
+**How the result will be used:** the vote is advisory. The maintainer makes the decision, records it in [plan.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/plan.md), and explains it in this thread. The result will be weighed together with the reasons in the comments, not counted alone. No closing date is set yet.
+
+**Please say why in a comment**, especially if you work with either set of standards. A vote shows what people prefer, and a comment shows the reasons.
+
+The project is a pre-release scaffold and not for clinical use. Neither choice is a promise of a date.
+
+---
+
+Poll question: Which country's standards should the first release meet first?
+
+Options:
+1. The UK's (UK Core, PDS, DCB0129, and DTAC)
+2. The US's (US Core and ONC certification)
+3. Neither yet: finish the shared core first
+4. Something else (explain in a comment)

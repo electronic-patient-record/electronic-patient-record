@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-13 - First posts for GitHub Discussions
+
+- **Clinical risk:** none. Draft posts only; nothing in the software changes.
+- **Built:** six first posts in `locales/en-us/communications/github-discussions/`, one per default Discussions category, each with its title on the first line: `announcements.txt` (Discussions open, what exists, where to go for what), `general.txt` (a welcome with one question), `ideas.txt` (how to suggest an idea, with headings to copy), `polls.txt` (RFC question 2, the UK's or the US's standards first, advisory, with four options), `qa.txt` (how to ask, with what never to paste), and `show-and-tell.txt` (the matcher declining to link two records when a given name is missing, with commands to try it). Written from the skills in `skills-on-ai`, using only facts from this repository. The matcher output in the show-and-tell post is from a real run on 2026-11-13.
+- **Not done / not verified:** Discussions are not enabled on the repository, so nothing is posted, and the category names are GitHub's defaults, which may differ once they are enabled. The poll has no closing date. The posts are English only. No reader has seen them.
+
 ## 2026-11-13 - The API listens on port 1241
 
 - **Clinical risk:** none. A port number only.

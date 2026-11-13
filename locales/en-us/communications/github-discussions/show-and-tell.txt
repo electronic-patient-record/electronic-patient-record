@@ -1,0 +1,56 @@
+Share what you built: here is the matcher explaining a record it would not link
+
+This category is for things you have made with or around Electronic Patient Record: integrations, scripts, demos, tutorials, and experiments. To show the format, here is a small thing the project already does.
+
+## What it is
+
+The matcher is a Rust library that compares two patient identity records and says, field by field, why it would or would not link them.
+
+## Why it exists
+
+Linking two records of different people mixes their medical histories, and that can harm both of them. So the matcher never decides silently. A missing field is reported as missing, never counted as agreement, and some gaps block an automatic link outright.
+
+## Try it
+
+Two made-up records: the same family name and birth date, but the second has no given name.
+
+```sh
+git clone https://github.com/electronic-patient-record/electronic-patient-record.git
+cd electronic-patient-record/electronic-patient-record-matcher-with-rust
+echo '{"names":[{"family":"Rivera","given":["Alex"]}],"birth_date":"1980-04-12","sex":"female"}' > a.json
+echo '{"names":[{"family":"Rivera","given":[]}],"birth_date":"1980-04-12"}' > b.json
+cargo run -- a.json b.json
+```
+
+Part of the output:
+
+```json
+{
+  "score": 1.0,
+  "decision": "review",
+  "fields": [
+    { "field": "family_name", "similarity": 1.0, "weight": 0.25, "note": "similarity 1.00" },
+    { "field": "given_name", "similarity": null, "weight": 0.2, "note": "no given name on one or both records" },
+    { "field": "birth_date", "similarity": 1.0, "weight": 0.3, "note": "similarity 1.00" }
+  ],
+  "conflicts": [ "given name not available to confirm the link" ]
+}
+```
+
+## What surprised me
+
+Every field the two records share agrees, so the score is 1.0, and the matcher still refuses to link them. It sends them to a person, because a missing given name can never confirm a link. A high score is not enough on its own.
+
+The thresholds are not validated, and the software is not for clinical use.
+
+## Share yours
+
+Post what you made in a new discussion here, with:
+
+- what it is, in one sentence;
+- why you made it;
+- something to look at: a snippet, a screenshot, or a link;
+- how someone else can try it;
+- the kind of feedback you want.
+
+Please use made-up records only, never real patient data. And if you build on someone else's work, credit them.
