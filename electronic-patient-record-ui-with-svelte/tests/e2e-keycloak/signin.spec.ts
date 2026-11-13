@@ -197,7 +197,7 @@ test("registers a patient, catches the duplicate, overrides it, and edits with a
 // the patient then signs in through the UI and reads it.
 const ADMIN = process.env.EPR_E2E_ADMIN_USERNAME ?? "";
 const PATIENT = process.env.EPR_E2E_PATIENT_USERNAME ?? "";
-const API = process.env.EPR_E2E_API_URL ?? "http://127.0.0.1:5150";
+const API = process.env.EPR_E2E_API_URL ?? "http://127.0.0.1:1241";
 const ISSUER = process.env.EPR_E2E_ISSUER ?? "http://127.0.0.1:8081/realms/epr";
 
 async function devToken(username: string): Promise<string> {

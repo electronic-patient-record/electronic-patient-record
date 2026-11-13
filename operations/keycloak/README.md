@@ -50,7 +50,7 @@ The UI's `epr-web` client signs readers in (task SE-9). Start the API as below, 
 
 ```sh
 cd electronic-patient-record-ui-with-svelte && pnpm run build
-EPR_API_URL=http://127.0.0.1:5150 EPR_OIDC_ISSUER=http://127.0.0.1:8081/realms/epr EPR_PUBLIC_URL=http://127.0.0.1:4310 \
+EPR_API_URL=http://127.0.0.1:1241 EPR_OIDC_ISSUER=http://127.0.0.1:8081/realms/epr EPR_PUBLIC_URL=http://127.0.0.1:4310 \
   pnpm exec vite preview --host 127.0.0.1 --port 4310 --strictPort
 # end-to-end, with the dev user from below: EPR_E2E_API_URL=… EPR_E2E_PASSWORD=$DEV_USER_PASSWORD \
 #   pnpm exec playwright test -c playwright.keycloak.config.ts
@@ -72,7 +72,7 @@ Run the API on the **host** against it (the API refuses a plain-HTTP Keycloak UR
 ```sh
 EPR_REQUIRE_AUTH=true EPR_KEYCLOAK_URL=http://127.0.0.1:8081 EPR_KEYCLOAK_REALM=epr EPR_KEYCLOAK_AUDIENCES=epr-api \
   EPR_KEYCLOAK_ROLE_MAP_FILE=$PWD/operations/keycloak/role-map.json DB_URL=… cargo run -- start --binding 127.0.0.1
-curl -X POST http://127.0.0.1:5150/api/patients/compare -H "authorization: Bearer $(sh scripts/keycloak-dev-token.sh)" \
+curl -X POST http://127.0.0.1:1241/api/patients/compare -H "authorization: Bearer $(sh scripts/keycloak-dev-token.sh)" \
   -H 'content-type: application/json' -d '{"a":{},"b":{}}'
 ```
 

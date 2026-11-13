@@ -5,7 +5,7 @@ REST service on Axum and `axa`. Scaffold; **not for clinical use**.
 ```sh
 TEST_DB_PORT=5543 TEST_REDIS_PORT=6390 podman compose -f compose.test.yaml up -d --wait
 DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test cargo run -- start
-curl -s 127.0.0.1:5150/_health/live
+curl -s 127.0.0.1:1241/_health/live
 cargo test --lib
 ```
 

@@ -188,7 +188,7 @@ with a small dependency tree, is the product.
 electronic-patient-record-ui-with-svelte  (SvelteKit SPA + BFF; browser holds no token)
    │  clinician: /patients, /patients/[id]/{summary,problems,meds,allergies,results,notes,orders,encounters}
    │  inbox, worklists, scheduling, admin; patient portal under /portal
-   ▼  REST + FHIR (PUBLIC_API_BASE_URL, default :5150)
+   ▼  REST + FHIR (PUBLIC_API_BASE_URL, default :1241)
 electronic-patient-record-service-with-rust  (Axum / axa)
    │  /api/...       native REST for the UI (task-shaped, paginated)
    │  /fhir/R4/...   FHIR R4 facade: read, vread, search, history, create, update, $match, $everything, $export

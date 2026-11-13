@@ -20,7 +20,7 @@ pub struct App;
 fn defaults() -> Defaults {
     Defaults {
         database: "electronic_patient_record",
-        port: 5150,
+        port: 1241,
         production_port: None,
         body_limit: 2 * MB,
         max_connections: 1,

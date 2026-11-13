@@ -64,13 +64,13 @@ COPY --chown=epr:epr packs ./packs
 RUN chown -R epr:epr /app
 
 USER epr
-EXPOSE 5150
+EXPOSE 1241
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-    CMD curl --silent --fail http://localhost:5150/_health/live || exit 1
+    CMD curl --silent --fail http://localhost:1241/_health/live || exit 1
 
 # Production settings; requires DB_URL, and refuses to start without it. See /compose.yaml.
 ENV APP_ENV=production \
-    PORT=5150
+    PORT=1241
 
 CMD ["/app/electronic-patient-record", "start"]

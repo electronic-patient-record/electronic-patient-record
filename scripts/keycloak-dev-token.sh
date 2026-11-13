@@ -3,7 +3,7 @@
 #
 #   DEV_USER_PASSWORD=... sh scripts/keycloak-dev-token.sh [username]
 #
-# Use it:  curl -H "Authorization: Bearer $(sh scripts/keycloak-dev-token.sh)" http://127.0.0.1:5150/...
+# Use it:  curl -H "Authorization: Bearer $(sh scripts/keycloak-dev-token.sh)" http://127.0.0.1:1241/...
 set -eu
 user=${1:-dev.clinician}
 : "${DEV_USER_PASSWORD:?set DEV_USER_PASSWORD}"

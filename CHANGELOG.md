@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-13 - The API listens on port 1241
+
+- **Clinical risk:** none. A port number only.
+- **Built:** the service's default port is 1241, where it was 5150 (`src/app.rs`). Everything else that named 5150 now names 1241: the Containerfile (`EXPOSE`, `PORT`, the health check), `compose.yaml` (the published port, `PORT`, the health check, the UI's `EPR_API_URL`), the CI container job, the UI proxy's default and `.env.example`, the real-Keycloak Playwright config and test, the READMEs, `operations/keycloak/README.md`, `scripts/keycloak-dev-token.sh`, `agents/testing.md`, `plan.md` and `spec/07-non-functional-requirements.md`. Earlier entries in this changelog still say 5150, because that was true then. A deployment that sets `PORT` itself is unchanged.
+- **Checked:** the service's database-free tests; `electronic-patient-record check` reports `PORT=1241`; the UI's lint, both type checks and 347 unit tests; `compose.yaml` and `ci.yml` parse. Nothing on this machine listens on 1241.
+- **Not done / not verified:** the service was not started on 1241 locally (a bare start exits with no database or keys); the container images were not built (the Podman VM's disk is full), so the compose stack and the CI container job's health check on 1241 are first tried in CI. The real-Keycloak tests were not run.
+
 ## 2026-11-13 - The path to production (PR-9, H-056)
 
 - **Clinical risk:** yes, small, and logged as H-056 (open). The warning on every page keeps its words, "Not for clinical use. Do not enter real patient data.", and gains a link. The new page puts a percentage on each line of readiness, and a reader might take those figures as permission to use the software in real care. Against that, the page says each figure is a guess no person has checked, gives no overall figure, and no line is 100%.

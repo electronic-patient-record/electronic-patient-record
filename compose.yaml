@@ -2,7 +2,7 @@
 #
 #   POSTGRES_PASSWORD=change-me EPR_PASETO_KEYS_URL=https://auth.example.com/.well-known/paseto-keys \
 #     podman compose up -d --build --wait
-#   curl -fsS http://localhost:5150/_health/live
+#   curl -fsS http://localhost:1241/_health/live
 #   podman compose down -v                     # stop and delete the database volume
 #
 # SAFE BY DEFAULT: login enforcement is ON. Every route except /_health/live, /_health/ready and /_health/startup
@@ -25,13 +25,13 @@
 # The UI's server sends the API the browser's address as X-Forwarded-For. The API believes it only from the
 # addresses in TRUSTED_PROXIES, so the stack's network has a fixed subnet and the UI container a fixed address
 # (10.89.240.250), and the API trusts that one address and nothing else. Trusting the whole subnet would trust the
-# host too: a request to the published port 5150 arrives from inside it, and could then name any address.
+# host too: a request to the published port 1241 arrives from inside it, and could then name any address.
 
 name: electronic-patient-record
 
 x-api-environment: &api-environment
   APP_ENV: production
-  PORT: "5150"
+  PORT: "1241"
   DB_URL: postgres://epr:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD (any value for local use)}@postgres:5432/electronic_patient_record
   # Postgres here has no TLS, and production refuses a plain connection to another host. This stack is for one
   # machine, on a private network with made-up data, so it says so by name. A real deployment must not copy this:
@@ -108,12 +108,12 @@ services:
       <<: *api-environment
       EPR_REQUIRE_AUTH: "true"
     ports:
-      - "5150:5150"
+      - "1241:1241"
     depends_on:
       migrate:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD", "curl", "--silent", "--fail", "http://localhost:5150/_health/live"]
+      test: ["CMD", "curl", "--silent", "--fail", "http://localhost:1241/_health/live"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -126,7 +126,7 @@ services:
       dockerfile: electronic-patient-record-ui-with-svelte/Containerfile
     image: electronic-patient-record-ui:local
     environment:
-      EPR_API_URL: http://api:5150
+      EPR_API_URL: http://api:1241
     networks:
       default:
         # The one address the API's TRUSTED_PROXIES lists. Keep the two the same.

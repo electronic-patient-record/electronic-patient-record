@@ -262,9 +262,9 @@ jobs:
         run: |
           set -eu
           podman compose up -d
-          for i in $(seq 1 60); do curl -fsS http://127.0.0.1:5150/_health/live && break; sleep 2; done
-          curl -fsS http://127.0.0.1:5150/_health/live
-          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:5150/api/patients/compare)" = 401
+          for i in $(seq 1 60); do curl -fsS http://127.0.0.1:1241/_health/live && break; sleep 2; done
+          curl -fsS http://127.0.0.1:1241/_health/live
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:1241/api/patients/compare)" = 401
           podman compose down -v
 
   fresh-clone:

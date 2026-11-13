@@ -26,7 +26,7 @@ whatever issues your tokens; without them it refuses to start.
 ```sh
 POSTGRES_PASSWORD=change-me EPR_PASETO_KEYS_URL=https://auth.example.com/.well-known/paseto-keys \
   podman compose up -d --build --wait
-curl -fsS http://localhost:5150/_health/live
+curl -fsS http://localhost:1241/_health/live
 ```
 
 Keycloak (development) and standalone PostgreSQL/Redis under Podman: [`operations/keycloak/README.md`](operations/keycloak/README.md).

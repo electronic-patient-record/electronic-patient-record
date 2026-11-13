@@ -21,7 +21,7 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 120_000,
     env: {
-      EPR_API_URL: process.env.EPR_E2E_API_URL ?? "http://127.0.0.1:5150",
+      EPR_API_URL: process.env.EPR_E2E_API_URL ?? "http://127.0.0.1:1241",
       EPR_OIDC_ISSUER: ISSUER,
       EPR_OIDC_CLIENT_ID: "epr-web",
       EPR_PUBLIC_URL: ORIGIN,

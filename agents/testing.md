@@ -11,4 +11,4 @@
 | `doc_census` (OS-9) | Config, `SECURITY.md` and `deny.toml` name only files that exist | That their description is true |
 
 To check a change for real, boot the service (`cargo run -- start` against a test Postgres) and curl
-`127.0.0.1:5150`. A passing test is evidence of the behaviour the test describes, nothing more.
+`127.0.0.1:1241`. A passing test is evidence of the behaviour the test describes, nothing more.
