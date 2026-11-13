@@ -86,6 +86,22 @@ export const CY: Strings = {
     "Sgaffald yn unig. Nid oes cofnod clinigol yn bodoli eto; gall y fersiwn hwn gymharu dau gofnod hunaniaeth claf ac egluro'r canlyniad.",
   notClinical:
     "Nid at ddefnydd clinigol. Peidiwch â rhoi data cleifion go iawn i mewn.",
+  navPath: "Y llwybr at ddefnydd go iawn",
+  ptpTitle: "Y llwybr at ddefnydd go iawn",
+  ptpMeaning:
+    "Ystyr defnydd go iawn (production) yw bod y feddalwedd hon yn cael ei defnyddio i ofalu am gleifion go iawn, gyda'u data go iawn, mewn safle a enwir, gan bobl sy'n dibynnu ar yr hyn y mae'n ei ddangos.",
+  ptpNotThere:
+    "Nid yw yno. Sgaffald ydyw: mae rhai rhannau wedi'u hadeiladu a'u profi, ac nid oes dim wedi'i ddefnyddio mewn gofal go iawn. Mae pob llinell isod yn un peth y mae'n rhaid ei wneud yn gyntaf, gyda'r hyn sy'n bodoli heddiw ac amcangyfrif o ba mor bell y mae wedi dod.",
+  ptpEstimates:
+    "Barn yw pob amcangyfrif, nid mesuriad. Ysgrifennodd cynorthwyydd codio AI nhw o'r cod a'r dogfennau ar {day}, ac nid oes unrhyw berson wedi'u gwirio. Mae 100% yn golygu bod y dystiolaeth yn bodoli a bod person wedi edrych arni mewn defnydd go iawn.",
+  ptpNoTotal:
+    "Nid oes ffigur cyffredinol. Rhaid gwneud pob llinell, a byddai cyfartaledd yn cuddio llinell ar 0%.",
+  ptpEnglish:
+    "Mae'r rhestr yn Saesneg ar bob tudalen, fel ei bod yn darllen yr un fath â'r rhestr wirio y daw ohoni: governance/production-readiness.md.",
+  ptpListLabel: "Beth sydd rhaid ei wneud cyn defnydd go iawn",
+  ptpToday: "Heddiw",
+  ptpWhy: "Pam yr amcangyfrif hwn",
+  ptpSlider: "Amcangyfrif parodrwydd ar gyfer {area}: {question}",
   machineTranslated:
     "Peiriant a gyfieithodd y geiriau hyn ac nid oes siaradwr wedi'u gwirio. Darllenwch unrhyw beth clinigol yn Saesneg.",
   readInEnglish: "Darllen y dudalen hon yn Saesneg",

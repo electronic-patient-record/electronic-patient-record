@@ -1,26 +1,28 @@
-# Production readiness checklist (PR-7, DRAFT)
+# Path to production: the evidence checklist (PR-7, DRAFT)
 
-**NOT FOR CLINICAL USE.** An item is ticked only with evidence named next to it. On 2026-11-04 **no item is ticked**: this is a scaffold (milestone M0). The right-hand column says what exists today, which is not the same as done. A tick needs a person to look at a real deployment.
+**NOT FOR CLINICAL USE.** Production means the software is used in the care of real patients, with their real data, at a named site, by people who rely on what it shows. Before that, every line below must be done, and a line is done only with evidence named next to it and a person who has looked at it on a real deployment. On 2026-11-04 **no line is done**: this is a scaffold (milestone M0). The UI shows this list at `/<locale>/path-to-production` (for example `/en-001/path-to-production`).
 
-| Area | Question | Evidence needed | What exists today |
-|---|---|---|---|
-| Safety | Is each hazard reviewed, and is every open one accepted or closed by the Clinical Safety Officer? | `hazard-log.csv` statuses and `reviewers.txt` | 55 hazards on 2026-11-09, 34 open, none accepted or closed; no reviewer is named |
-| Safety | Does each control name a test that still exists? | `scripts/check-hazard-log.py --report` | Named for H-044 only |
-| Privacy | DPIA signed, retention periods set, data-subject routes tested | [dpia](dpia.md), [retention](retention-schedule.md) | Drafts; the periods are not set |
-| Identity | Second factor required for staff | [mfa-plan](mfa-plan.md) | Not enforced or checked |
-| Transport | TLS everywhere, including in front of MLLP, and `DB_URL` sets `sslmode` to `require`, `verify-ca` or `verify-full` | A scan of the deployed endpoints; `axa` refuses to start in production without `sslmode`, unless the address is on the same machine or `DB_ALLOW_INSECURE=true` | Not built here; MLLP is plaintext |
-| Secrets | Keys held outside the image and rotated; `EPR_INTEGRITY_MAC_KEY` set | The deployment's secret store | Variables exist; rotation untested end to end |
-| Data | Backups taken and a restore tried; recovery time known | A restore record | **No backup procedure exists** |
-| Audit | Chain verified on a schedule; archive anchors checked | A run of the verify route on the live data | Verify route and tests exist; no schedule |
-| Operations | Metrics scraped, alerts set, logs kept | A dashboard and an alert test | `/metrics` exists (off by default); no alerts |
-| Operations | One replica runs each background job | `audit_retention::run_once` lock | Built (PR-4); not tried with two real processes |
-| Workforce | Workforce planning holds the rota and keeps an `on-duty-clinician` on every shift, and the role changes in the identity provider at each handover | The workforce system's own record; the identity provider | No link built; the role is given by hand, and the service cannot see a gap |
-| Referrals | Timeout periods set per priority; an owner for the unmatched queue | `EPR_REFERRAL_TIMEOUTS`; a rota | Off by default; no owner named |
-| Interop | Each feed and message type tested with the real partner | A partner test log | Only the synthetic and unit cases |
-| Accessibility | Screen-reader and keyboard pass on the real screens | A written audit | Automated checks only |
-| Language | Any non-English text reviewed by a speaker | [translation-review](translation-review.md) | Machine-written; none reviewed |
-| Release | Supply chain, SBOM, licences, vulnerability scan green on the release commit | CI run | CI runs these on each push |
-| Support | A named on-call, an incident route, a rollback | A runbook | Not written |
+The column "What exists today" says what exists, which is not the same as done. The column "Estimate" is a judgement, not a measurement: written by an AI coding assistant from this repository on 2026-11-13, and checked by no person. 100% means the evidence exists and a person has looked at it; nothing short of that is 100%. There is no overall figure: every line must be done, and an average would hide a line at 0%. The UI's copy of this table is `electronic-patient-record-ui-with-svelte/src/lib/path-to-production.ts`, and a unit test fails when the two differ.
+
+| Area | Question | Evidence needed | What exists today | Estimate |
+|---|---|---|---|---|
+| Safety | Is each hazard reviewed, and is every open one accepted or closed by the Clinical Safety Officer? | `hazard-log.csv` statuses and `reviewers.txt` | 55 hazards on 2026-11-09, 34 open, none accepted or closed; no reviewer is named | 5% |
+| Safety | Does each control name a test that still exists? | `scripts/check-hazard-log.py --report` | Named for H-044 only | 5% |
+| Privacy | DPIA signed, retention periods set, data-subject routes tested | [dpia](dpia.md), [retention](retention-schedule.md) | Drafts; the periods are not set | 15% |
+| Identity | Second factor required for staff | [mfa-plan](mfa-plan.md) | Not enforced or checked | 10% |
+| Transport | TLS everywhere, including in front of MLLP, and `DB_URL` sets `sslmode` to `require`, `verify-ca` or `verify-full` | A scan of the deployed endpoints; `axa` refuses to start in production without `sslmode`, unless the address is on the same machine or `DB_ALLOW_INSECURE=true` | Not built here; MLLP is plaintext | 20% |
+| Secrets | Keys held outside the image and rotated; `EPR_INTEGRITY_MAC_KEY` set | The deployment's secret store | Variables exist; rotation untested end to end | 30% |
+| Data | Backups taken and a restore tried; recovery time known | A restore record | **No backup procedure exists** | 0% |
+| Audit | Chain verified on a schedule; archive anchors checked | A run of the verify route on the live data | Verify route and tests exist; no schedule | 40% |
+| Operations | Metrics scraped, alerts set, logs kept | A dashboard and an alert test | `/metrics` exists (off by default); no alerts | 20% |
+| Operations | One replica runs each background job | `audit_retention::run_once` lock | Built (PR-4); not tried with two real processes | 50% |
+| Workforce | Workforce planning holds the rota and keeps an `on-duty-clinician` on every shift, and the role changes in the identity provider at each handover | The workforce system's own record; the identity provider | No link built; the role is given by hand, and the service cannot see a gap | 5% |
+| Referrals | Timeout periods set per priority; an owner for the unmatched queue | `EPR_REFERRAL_TIMEOUTS`; a rota | Off by default; no owner named | 30% |
+| Interop | Each feed and message type tested with the real partner | A partner test log | Only the synthetic and unit cases | 5% |
+| Accessibility | Screen-reader and keyboard pass on the real screens | A written audit | Automated checks only | 25% |
+| Language | Any non-English text reviewed by a speaker | [translation-review](translation-review.md) | Machine-written; none reviewed | 10% |
+| Release | Supply chain, SBOM, licences, vulnerability scan green on the release commit | CI run | CI runs these on each push | 50% |
+| Support | A named on-call, an incident route, a rollback | A runbook | Not written | 0% |
 
 ## "Live", per site (WL-11)
 

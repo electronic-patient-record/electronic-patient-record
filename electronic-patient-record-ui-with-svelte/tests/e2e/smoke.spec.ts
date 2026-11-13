@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "./fixtures";
+import { PRODUCTION_STEPS } from "../../src/lib/path-to-production";
 
 const RESULT = {
   score: 0.5,
@@ -219,4 +220,39 @@ test("registering shows a possible duplicate's reasons in French", async ({
       "les noms se prononcent de façon proche mais s'écrivent différemment",
     ),
   ).toBeVisible();
+});
+
+// PR-7: what production means, and one disabled Lily slider per line of the evidence checklist, each with its
+// estimate as text too. The warning banner on every page links here, and its words are unchanged.
+test("the path to production lists each line with its estimate", async ({
+  page,
+}) => {
+  await page.goto("/en-001/path-to-production");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Path to production",
+  );
+  await expect(page.getByText(/^Production means/)).toBeVisible();
+  const steps = page.getByTestId("production-step");
+  await expect(steps).toHaveCount(PRODUCTION_STEPS.length);
+  const sliders = page.getByRole("slider");
+  await expect(sliders).toHaveCount(PRODUCTION_STEPS.length);
+  for (const [i, step] of PRODUCTION_STEPS.entries()) {
+    await expect(sliders.nth(i)).toHaveValue(String(step.estimate));
+    await expect(sliders.nth(i)).toBeDisabled();
+    await expect(steps.nth(i)).toContainText(`${step.estimate}%`);
+  }
+  const results = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag22aa"])
+    .analyze();
+  expect(results.violations).toEqual([]);
+});
+
+test("the warning banner links to the path to production", async ({ page }) => {
+  await page.goto("/en-001/patients");
+  const note = page.getByRole("note").first();
+  await expect(note).toContainText(
+    "Not for clinical use. Do not enter real patient data.",
+  );
+  await note.getByRole("link", { name: "Path to production" }).click();
+  await expect(page).toHaveURL(/\/en-001\/path-to-production$/);
 });

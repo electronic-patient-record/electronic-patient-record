@@ -4,7 +4,8 @@ Open-source electronic patient record software: a safe, append-only, audited lon
 with FHIR R4 as both data model and API, and explainable patient identity matching.
 
 > **Pre-release scaffold. Not for clinical use. Do not enter real patient data.** There is no clinical record yet;
-> see [`spec/14-implementation-status.md`](spec/14-implementation-status.md) for exactly what is built.
+> see [`spec/14-implementation-status.md`](spec/14-implementation-status.md) for exactly what is built, and
+> [the path to production](governance/production-readiness.md) for what production means and what must be done first.
 
 Project site: <https://electronic-patient-record.github.io> (source: [electronic-patient-record.github.io](https://github.com/electronic-patient-record/electronic-patient-record.github.io)).
 

@@ -1258,6 +1258,7 @@ Ranked in plan.md §25. Each item was checked against this repository's code; a 
   against the equity rule in `spec/02-scope.md`). Documents only; none is a claim that anything is done. **Acceptance:** each exists, is
   linked from `spec/index.md`, and says plainly what it has not checked.
 - [x] **PR-8 (S) — Not adopted: a weekly mutation run and the PAS-scope features.** Recorded so the question is not asked again.
+- [x] **PR-9 (S, clinical) — The path to production.** *(Built 2026-11-13, H-056.)* The maintainer asked for wording about readiness for production to point to one page that says what production means and gives an honest list. `/<locale>/path-to-production` shows each line of `governance/production-readiness.md` (now titled "Path to production") with a disabled Lily slider at a 0 to 100 estimate, the estimate as text and why; the checklist gains the Estimate column; the "Not for clinical use" warning on every page is unchanged and links to the page. **Not done:** no person has checked an estimate (they are an AI coding assistant's judgement on 2026-11-13); nothing updates them when the code changes; the other "NOT FOR CLINICAL USE" notices in documents keep their words and do not link here. **Acceptance:** a unit test fails when the page and the checklist differ; a browser test finds one slider per line with axe clean.
 
 ## Research 2026-11-04 — local CI/CD
 

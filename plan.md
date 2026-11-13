@@ -1423,7 +1423,7 @@ after the points already taken in §23 (Openfront) and §24 (care coordination) 
 **Evidence base, stated plainly.** I read the PAS at commit `4f75348` (2026-11-03): its `tasks.md` task titles and the first lines of
 about eighty of them, `spec/hazard/index.md`, `governance/production-readiness.md`, the names of its `governance/` files and its
 recent commit messages (OFH-1, OFH-4, OFH-10, PCC-1, PCC-2, PCC-5). I did **not** read its code, its `plan.md`, its UI, or the bodies of
-its governance documents other than the production-readiness checklist, so I cannot say how well any of its controls work. The task
+its governance documents other than the path-to-production checklist, so I cannot say how well any of its controls work. The task
 text is the PAS author's own account of what landed. The PAS covers appointments, waiting lists, wards, messaging and national
 integration; those belong to a PAS under the boundary decision PA-1 (`spec/02-scope.md`) and are **not** proposed here.
 
@@ -1442,7 +1442,7 @@ table (PC-1) and the identifier rule (PC-2) all came from earlier passes. The PA
 | PR-4 | A background job runs on one replica at a time. | QUAL-2 (`run_exclusive`, an advisory lock per job name) | `outbox::run_loop` claims with `FOR UPDATE SKIP LOCKED` and the idempotency purge is a plain `DELETE`; `audit_retention::run_loop` makes and archives partitions with no lock. **Not checked:** whether two replicas archiving at once fail harmlessly. | Medium, unverified | S |
 | PR-5 | A controllable clock. | QUAL-25 (`Clock`, `FixedClock`) | 15 `Utc::now`/`SystemTime::now` calls in `src/`; tests move time by writing rows (the expired idempotency key test does). PC-3's timeouts cannot be tested without one. | Medium; needed by PC-3 | M |
 | PR-6 | REST reads carry the version as an `ETag`, and a write may send it as `If-Match`. | OFH-1, OFH-10 (NFR-27) | Only the FHIR routes send a weak `ETag`; REST writes carry `expected_version` in the body. A decision, not a defect: see OQ-PR1. | Medium | M |
-| PR-7 | Governance documents the PAS has and this repository lacks: a data-flow description, an MFA plan, a production-readiness checklist, an audit of national assumptions. | `governance/` listing; `production-readiness.md` read in full | `governance/` here holds the DPIA, record of processing, retention schedule, translation register and `clinical-safety/`; the four named documents are absent (a grep of `plan.md`, `tasks.md` and `spec/` for "production-readiness", "MFA plan" and "national-assumptions" finds none). | Medium: they are what a deploying organisation asks for | S each |
+| PR-7 | Governance documents the PAS has and this repository lacks: a data-flow description, an MFA plan, a path-to-production checklist, an audit of national assumptions. | `governance/` listing; `production-readiness.md` read in full | `governance/` here holds the DPIA, record of processing, retention schedule, translation register and `clinical-safety/`; the four named documents are absent (a grep of `plan.md`, `tasks.md` and `spec/` for "production-readiness", "MFA plan" and "national-assumptions" finds none). | Medium: they are what a deploying organisation asks for | S each |
 | PR-8 | Not adopted, recorded so it is not asked again: a weekly mutation run, appointment and bed features, waiting-list validation, PIFU, transport, reminder ladders. | QUAL-18 and others | Mutation testing is already an acceptance line in `tasks.md`; the rest is PAS scope (PA-1). | none | none |
 
 ### 25.3 Assessment

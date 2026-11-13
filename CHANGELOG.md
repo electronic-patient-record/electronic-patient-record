@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-13 - The path to production (PR-9, H-056)
+
+- **Clinical risk:** yes, small, and logged as H-056 (open). The warning on every page keeps its words, "Not for clinical use. Do not enter real patient data.", and gains a link. The new page puts a percentage on each line of readiness, and a reader might take those figures as permission to use the software in real care. Against that, the page says each figure is a guess no person has checked, gives no overall figure, and no line is 100%.
+- **Built:** a UI page at `/<locale>/path-to-production` (`/en-001/path-to-production` in English). It says what production means: the care of real patients, with their real data, at a named site, by people who rely on it. It then lists the 17 lines of the evidence checklist, each with a disabled Lily `Slider` at its estimate (0 to 100), the percentage as text, what exists today and why. `governance/production-readiness.md` is retitled "Path to production: the evidence checklist", says what production means, and gains an Estimate column. `spec/index.md`, the Wales page, the auditability page, `plan.md` and `README.md` now call it the path to production; the file keeps its name so links hold. The page's words are in `STRINGS` with a machine-written, unreviewed Welsh table; the list stays in English, as the checklist's words. This is the first use of a Lily widget in the UI.
+- **Checked:** lint, both type checks, 347 unit tests and all 113 browser tests (the new page with axe, the banner link). The new unit test failed when one estimate was changed on the page alone and again on the checklist alone. Screenshots at 1100 and 320 px.
+- **Not done / not verified:** no person has checked any estimate. They were written by an AI coding assistant from this repository on 2026-11-13, and nothing changes them when the code changes. The other "NOT FOR CLINICAL USE" notices (about 30 documents, the OpenAPI descriptions, `llms.txt`) keep their words and do not link here, because they are safety warnings. The Welsh is not reviewed. The real-Keycloak tests were not run. The page scrolls sideways at 320 px (1151 px wide), the same as the home and patients pages, because of the site header (XP-1, XP-2).
+
 ## 2026-11-13 - A scratch database per local run (LC-4)
 
 - **Clinical risk:** none. Local tooling and one CI step; no service code changes.

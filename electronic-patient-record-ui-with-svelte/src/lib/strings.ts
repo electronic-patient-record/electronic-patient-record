@@ -57,6 +57,22 @@ export const STRINGS = {
   homeIntro:
     "Scaffold only. No clinical record exists yet; this build can compare two patient identity records and explain the result.",
   notClinical: "Not for clinical use. Do not enter real patient data.",
+  navPath: "Path to production",
+  ptpTitle: "Path to production",
+  ptpMeaning:
+    "Production means this software is used in the care of real patients, with their real data, at a named site, by people who rely on what it shows.",
+  ptpNotThere:
+    "It is not there. It is a scaffold: some parts are built and tested, and nothing has been used in real care. Each line below is one thing that must be done first, with what exists today and an estimate of how far it has got.",
+  ptpEstimates:
+    "Each estimate is a judgement, not a measurement. An AI coding assistant wrote them from the code and documents on {day}, and no person has checked them. 100% means the evidence exists and a person has looked at it on a real deployment.",
+  ptpNoTotal:
+    "There is no overall figure. Every line must be done, and an average would hide a line at 0%.",
+  ptpEnglish:
+    "The list is in English on every page, so that it reads the same as the checklist it comes from: governance/production-readiness.md.",
+  ptpListLabel: "What must be done before production",
+  ptpToday: "Today",
+  ptpWhy: "Why this estimate",
+  ptpSlider: "Readiness estimate for {area}: {question}",
   machineTranslated:
     "These words were translated by machine and no speaker has checked them. Read anything clinical in English.",
   readInEnglish: "Read this page in English",

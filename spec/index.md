@@ -119,7 +119,7 @@ Topics that span several numbered chapters and are kept whole:
 - [Bereavement](bereavement/index.md), with its [death assertions](bereavement/death-assertion.md), and [survivor grief](survivor-grief/index.md) — when a patient dies, and support for those left; [suicide watch](suicide-watch/index.md) and [trauma treatment](trauma-treatment/index.md) — enhanced observation without a risk score, and psychological and physical trauma (BV, SG, SW, TT, plan.md §32).
 - [Data flow](../governance/data-flow.md) — who sends what to whom, read from the routes, the feed and the outbox (draft, PR-7)
 - [MFA plan](../governance/mfa-plan.md) — what the service checks, what Keycloak enforces, what is left to the deployment (draft, PR-7)
-- [Production readiness](../governance/production-readiness.md) — a checklist that ticks only with evidence; nothing is ticked (draft, PR-7)
+- [Path to production](../governance/production-readiness.md) — what production means, and the evidence checklist with a readiness estimate per line (shown in the UI at `/<locale>/path-to-production`); nothing is done (draft, PR-7)
 - [National assumptions](../governance/national-assumptions.md) — a second pass over code built after the equity audit (draft, PR-7)
 
 ## Shared invariants (summary; §5.8 is canonical)

@@ -190,7 +190,11 @@
     {/if}
   {/if}
 </header>
-<p class="notice" role="note">{TEXT.notClinical}</p>
+<!-- The warning's words stay as they are; the link says what would have to be true first (PR-7). -->
+<p class="notice" role="note">
+  {TEXT.notClinical}
+  <a href={localizePath("/path-to-production", locale)}>{TEXT.navPath}</a>
+</p>
 {#if unreviewed}
   <p class="notice machine" role="note" data-testid="machine-translated">
     <span>{TEXT.machineTranslated}</span>
