@@ -137,6 +137,10 @@ jobs:
         env:
           EPR_CHAOS_SEED: "20261028"
         run: cargo test --workspace --locked --no-fail-fast -- --ignored --test-threads=1 --skip fhir_validator_
+      # The scratch database that scripts/ci-local.sh makes per run (LC-4): two at once on this server, and a
+      # leftover row in this job's database that neither may see.
+      - name: Scratch database per local run
+        run: sh ../scripts/test_scratch_db.sh
 
   deny:
     name: cargo deny

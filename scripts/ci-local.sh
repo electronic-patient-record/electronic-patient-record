@@ -11,7 +11,8 @@
 # nothing is skipped silently. EPR_CI_ALLOW_SKIP=1 lets skips exit 0, and the table still shows them.
 #
 # It bypasses the kache compiler cache, which has served stale libraries and fails under load. Set
-# EPR_CI_KEEP_CACHE=1 to keep it. The database gate uses DB_URL if set, or starts a throwaway Postgres 18.
+# EPR_CI_KEEP_CACHE=1 to keep it. The database gates use a scratch database made for the run and dropped after:
+# on the server DB_URL names, if set, or in a throwaway Postgres 18 on a free port.
 #
 # This proves the gates passed on this machine. It is not the CI run, and it does not replace it: cargo deny,
 # CodeQL, the secret scan, the coverage floor and the fresh clone stay on GitHub.
@@ -100,56 +101,32 @@ gate docs-llms "$root" 'python3 scripts/generate-llms.py --check'
 gate docs-schema-map "$root" 'python3 scripts/generate-schema-map.py --check'
 gate docs-hazard-log "$root" 'python3 scripts/check-hazard-log.py --report . && python3 scripts/test_check_hazard_log.py'
 
-pg_data=""
-pg_bin=""
-why=""
-stop_postgres() {
-  [ -n "$pg_data" ] || return 0
-  "$pg_bin/pg_ctl" -D "$pg_data" -m fast stop >/dev/null 2>&1
-  rm -rf "$pg_data"
-  pg_data=""
-}
-
-start_postgres() { # sets DB_URL, or sets why
-  for dir in "$(dirname "$(command -v pg_ctl 2>/dev/null || echo /none/pg_ctl)")" \
-    "$HOME/.local/share/mise/installs/postgres/18/bin"; do
-    if [ -x "$dir/pg_ctl" ] && "$dir/pg_ctl" --version | grep -q ' 18'; then
-      pg_bin="$dir"
-      break
-    fi
-  done
-  if [ -z "$pg_bin" ]; then
-    why="no Postgres 18 found"
-    return 1
-  fi
-  port="${EPR_CI_PG_PORT:-5544}"
-  pg_data="$(mktemp -d "${TMPDIR:-/tmp}/epr-ci-pg.XXXXXX")"
-  if ! { "$pg_bin/initdb" -D "$pg_data" -U loco --auth=trust -E UTF8 &&
-    "$pg_bin/pg_ctl" -D "$pg_data" -w -o "-p $port -c unix_socket_directories=''" -l "$pg_data/log" start &&
-    "$pg_bin/createdb" -h 127.0.0.1 -p "$port" -U loco electronic_patient_record_test &&
-    "$pg_bin/psql" -v ON_ERROR_STOP=1 -h 127.0.0.1 -p "$port" -U loco \
-      -d electronic_patient_record_test -f "$root/ci/postgres-init/00-extensions.sql"; } >"$logs/postgres.log" 2>&1; then
-    stop_postgres
-    why="Postgres did not start: see target/ci-local/postgres.log"
-    return 1
-  fi
-  DB_URL="postgres://loco:loco@127.0.0.1:$port/electronic_patient_record_test"
-  export DB_URL
-}
+# The database gates run against a scratch database made for this run and dropped after it (LC-4).
+. "$root/scripts/scratch-db.sh"
 
 if [ "$mode" != "--fast" ]; then
-  trap stop_postgres EXIT INT TERM
+  trap clean_up EXIT
+  trap 'clean_up; exit 130' INT TERM
   ready=yes
-  if [ "$mode" = "--full" ] && [ -z "${DB_URL:-}" ]; then
-    start_postgres || ready=no
+  if [ "$mode" = "--full" ]; then
+    : >"$logs/postgres.log"
+    scratch_server && create_scratch || ready=no
   fi
   if [ "$ready" = yes ]; then
+    gate service-migrate "$service" 'cargo run --locked --quiet -- db migrate'
     gate service-database "$service" \
       'EPR_CHAOS_SEED=20261028 cargo test --workspace --locked --no-fail-fast -- --ignored --test-threads=1 --skip fhir_validator_'
   else
+    skip service-migrate "$why"
     skip service-database "$why"
   fi
-  stop_postgres
+  clean_up
+
+  if [ "$mode" = "--list" ] || find_postgres || command -v psql >/dev/null 2>&1; then
+    gate scratch-db-test "$root" 'sh scripts/test_scratch_db.sh'
+  else
+    skip scratch-db-test "no Postgres tools found"
+  fi
 
   if [ "$mode" = "--list" ] || [ -d "$ui/node_modules/.bin" ]; then
     gate ui-browser "$ui" "PW_PORT=${PW_PORT:-4183} CI=true pnpm exec playwright test"

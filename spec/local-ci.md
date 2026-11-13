@@ -51,7 +51,15 @@ Successful runs: wall time **median 13.4 min, p90 15.6, max 38.3**. Job minutes 
 
 It prints a table of gate, result and seconds, keeps each gate's output in `target/ci-local/`, and runs every gate even after a failure, so one run shows everything that is wrong. It exits 0 when all passed, 1 when a gate failed, and 2 when a gate could not run. A gate that cannot run says `SKIP` and why, and that fails the run, so nothing is skipped silently. `EPR_CI_ALLOW_SKIP=1` lets it exit 0; the table still shows the skip.
 
-It bypasses the `kache` compiler cache by default, because kache has served stale libraries and fails under load (`EPR_CI_KEEP_CACHE=1` keeps it). The database gate uses `DB_URL` if set, or starts a throwaway Postgres 18 and removes it afterwards.
+It bypasses the `kache` compiler cache by default, because kache has served stale libraries and fails under load (`EPR_CI_KEEP_CACHE=1` keeps it). The database gates use a scratch database (LC-4, below).
+
+## A scratch database per run (LC-4, built 2026-11-13)
+
+`--full` makes a database for the run, named `epr_ci_<UTC time>_<pid>_<random>_test` (the suffix is what `tests/chaos_api.rs` asks of a database it may write to). It applies `ci/postgres-init/`, runs the migrations as a gate of their own (`service-migrate`: `electronic-patient-record db migrate`), points `DB_URL` at the new database for `service-database`, and drops it when the run ends, after an interrupt too. When `DB_URL` is set it names only the server: its own database is used to create and drop the scratch database, and the run writes nothing to it. When `DB_URL` is not set, a throwaway Postgres 18 is started on a free port (`EPR_CI_PG_PORT` chooses one) and removed after, so two runs no longer meet on port 5544. The functions are in `scripts/scratch-db.sh`.
+
+So two runs at once do not see each other's rows, and a row left in a shared test database cannot fail a run. `scripts/test_scratch_db.sh` checks this: two runs at once on one server with a leftover table in the shared database, then two runs at once with no `DB_URL`. Each run must see only its own row and none of the leftover table, the names must differ, and nothing may be left behind. It is the `scratch-db-test` gate here and a step of CI's `api-db` job. Two broken versions were run against it and both failed: one where every run got the same name, and one that used the shared database.
+
+**Not done:** a run killed with `kill -9` leaves its scratch database (find them by the `epr_ci_` prefix; nothing sweeps them). The role needs `CREATEDB` on a given server. Two runs at once still share `target/` (cargo makes the second wait), `target/ci-local/` logs (the later run overwrites them), the Playwright port and the container image tags.
 
 | CI job | Here |
 |---|---|

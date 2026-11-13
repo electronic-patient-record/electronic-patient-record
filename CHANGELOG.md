@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-13 - A scratch database per local run (LC-4)
+
+- **Clinical risk:** none. Local tooling and one CI step; no service code changes.
+- **Built:** `scripts/ci-local.sh --full` makes a database for the run, runs the migrations as their own gate (`service-migrate`), points `DB_URL` at it for the database tests and drops it at the end or on an interrupt. A `DB_URL` that is set now names only the server; nothing is written to its database. Without one, the throwaway Postgres 18 starts on a free port, where it used the fixed port 5544. The functions are in `scripts/scratch-db.sh`. `scripts/test_scratch_db.sh` runs two runs at once on one server with a leftover table in the shared database, then two runs at once with no `DB_URL`. It is the `scratch-db-test` gate and a step in CI's `api-db` job.
+- **Checked:** the test passes with a given `DB_URL` and without one. It fails against two broken versions: one where every run gets the same name, and one that uses the shared database. Afterwards the server held no scratch database and no table. A `--full` run passed every gate except three. The chaos test refused the first scratch name because it will only write to a database whose name contains `test`. The guard was kept and the name now ends `_test`, and on a rerun `service-migrate` and all 176 database tests passed. The two container builds failed because the Podman VM's disk is full (200 GB used), unrelated to this change.
+- **Not done / not verified:** nothing removes a scratch database left by a run killed with `kill -9`. A given server's role needs `CREATEDB`. The container gates were not rerun. Two runs at once still share `target/`, the logs in `target/ci-local/`, the Playwright port and the container image tags. The CI step has not run on GitHub yet, and there only the given-server half runs: the runner has no Postgres 18 server tools.
+
 ## 2026-11-10 - axa 0.12 (AX-12)
 
 - **Clinical risk:** none. For a Postgres service this upgrade is renaming only, and nothing the service does changes.
