@@ -86,6 +86,12 @@ With login off (development only) there is no subject and the gate stands aside,
 (default `authentication-service`), `EPR_TOKEN_AUDIENCE` (default `electronic-patient-record`), `EPR_REDIS_URL`
 (production cache), `DB_URL`, `PORT`, `EPR_METRICS` (`1` or `true` serves `/metrics`).
 
+From `axa` 0.13 (AX-13), the database settings are read by `axa`, not here: `DB_URL`, or `DB_URL_FILE` naming a file that
+holds it, as a mounted secret does (both set, or a file that cannot be read, stops startup in every environment);
+`DB_APPLICATION_NAME` (default the database name stem), which `pg_stat_activity` shows for each connection;
+`DB_STATEMENT_TIMEOUT_MS`; and `DB_READ_ONLY`.
+None is set by this repository's compose files.
+
 ## 2a. Handler tests (CQ-16)
 
 Through the real router (`tests/http_patients.rs`, `http_roles.rs`, `http_conflicts.rs`, Postgres): duplicate 409,

@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-14 - The service spec names axa 0.13's database settings (AX-13)
+
+- **Clinical risk:** none. Documents only.
+- **Built:** the service spec's configuration section names `DB_URL_FILE` (both it and `DB_URL` set stops startup), `DB_APPLICATION_NAME`, `DB_STATEMENT_TIMEOUT_MS` and `DB_READ_ONLY`, read by `axa`; the production checklist's secrets line names the two `_FILE` settings.
+- **Not done / not verified:** no test here sets any of them, no compose file uses them, and `DB_URL_FILE` with a mounted secret has not been tried.
+
 ## 2026-11-14 - UI dependency bumps (Dependabot #9, prettier 3.10)
 
 - **Clinical risk:** none expected. Tool and framework patch updates; the browser tests pass unchanged, and the only source change is Prettier's line wrapping in `src/lib/translations.ts` (no word changed).

@@ -11,7 +11,7 @@ The column "What exists today" says what exists, which is not the same as done. 
 | Privacy | DPIA signed, retention periods set, data-subject routes tested | [dpia](dpia.md), [retention](retention-schedule.md) | Drafts; the periods are not set | 15% |
 | Identity | Second factor required for staff | [mfa-plan](mfa-plan.md) | Not enforced or checked | 10% |
 | Transport | TLS everywhere, including in front of MLLP, and `DB_URL` sets `sslmode` to `require`, `verify-ca` or `verify-full` | A scan of the deployed endpoints; `axa` refuses to start in production without `sslmode`, unless the address is on the same machine or `DB_ALLOW_INSECURE=true` | Not built here; MLLP is plaintext | 20% |
-| Secrets | Keys held outside the image and rotated; `EPR_INTEGRITY_MAC_KEY` set | The deployment's secret store | Variables exist; rotation untested end to end | 30% |
+| Secrets | Keys held outside the image and rotated; `EPR_INTEGRITY_MAC_KEY` set | The deployment's secret store (`DB_URL_FILE` and `EPR_INTEGRITY_MAC_KEY_FILE` read a mounted secret) | Variables exist; rotation untested end to end | 30% |
 | Data | Backups taken and a restore tried; recovery time known | A restore record | **No backup procedure exists** | 0% |
 | Audit | Chain verified on a schedule; archive anchors checked | A run of the verify route on the live data | Verify route and tests exist; no schedule | 40% |
 | Operations | Metrics scraped, alerts set, logs kept | A dashboard and an alert test | `/metrics` exists (off by default); no alerts | 20% |
