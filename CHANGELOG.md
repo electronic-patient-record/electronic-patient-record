@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-14 - axa 0.13 (AX-13)
+
+- **Clinical risk:** none expected. No screen or rule changes; the API refuses a browser's cross-site write it accepted before, and the UI never sends one (its proxy forwards no `origin` or `sec-fetch-site`).
+- **Built:** `axa` 0.13.0 and `axa-test` 0.4.0; the lockfile moves `axa-postgres-sqlx` to 0.2.0. No source change; the OpenAPI document is unchanged. New behaviour from axa, with no code here: cross-site write refusal, compressed request bodies decoded, a JSON Pointer in a rejected body's problem, named Postgres connections, and `DB_URL_FILE` (both it and `DB_URL` set stops the boot).
+- **Not done / not verified:** the API container did not build locally (the Podman VM killed the compiler for memory, in `fhir-r5`); CI builds it. Real-Keycloak tests not run. None of axa 0.13's new pieces is adopted (`config::Settings`, tenancy, readiness waiting for migrations, `TestDatabase`), and no deployment document names `DB_URL_FILE` or `DB_APPLICATION_NAME` yet.
+
 ## 2026-11-14 - The UI adds syncpack as a dev dependency
 
 - **Clinical risk:** none. A development tool only; nothing the UI builds, serves or shows changes.

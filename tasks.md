@@ -1512,6 +1512,21 @@ the maintainer scheduled it on 2026-11-10.
   have final deprecation versions. The SeaORM, Diesel and Toasty renames and the new MySQL features do not apply.
   **Acceptance:** every gate green, the OpenAPI document unchanged, and a CHANGELOG entry.
 
+## Dependency 2026-11-14 — axa 0.13
+
+axa 0.13.0 and axa-test 0.4.0 were published on 2026-11-14. Upgrade guide: `help/upgrading-to-0.13/index.md` in the
+axa crate. This service builds none of the structs that gained fields by hand, so it upgrades by changing the version.
+
+- [x] **AX-13 (S) — Upgrade to axa 0.13.** **Done 2026-11-14:** `axa` 0.13 and `axa-test` 0.4 in `Cargo.toml`; the
+  lockfile moves `axa-postgres-sqlx` 0.1.3 to 0.2.0 and adds no crate; no source change. Behaviour that changes with no
+  compile error: the standard stack refuses a browser's cross-site write (`403`, `cross_site_write_refused` or
+  `origin_mismatch`), decodes a compressed request body, gives a rejected JSON body's problem a JSON Pointer, names each
+  Postgres connection (`application_name`), and refuses to boot with both `DB_URL` and `DB_URL_FILE` set. The UI's
+  proxy forwards neither `origin`, `sec-fetch-site` nor `content-encoding`, so its calls pass the guard unchanged, and
+  this service has no `form_post` route to list in `cross_site_paths`. Not adopted: `config::Settings`, the tenancy
+  pieces, `Checks::migrations`, `axa_test::postgres::TestDatabase`, uploads, webhooks and the outbound client; each is a
+  candidate task of its own. **Acceptance:** every gate green, the OpenAPI document unchanged, and a CHANGELOG entry.
+
 ## Research 2026-11-14 — clinical modules, patient portal, analytics, population health and research data
 
 Ranked in plan.md §35. Specs only: nothing here is built, no clinician, pharmacist or data protection officer has reviewed it, and each clinical task adds its hazard rows with its first code. Each task names the existing task it refines.
