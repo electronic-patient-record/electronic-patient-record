@@ -73,6 +73,16 @@ no network, database or compilation; counts are source lines, not test runs):
 | WL | 11 | 1 |
 | RS | 6 | 2 |
 | AX | 2 | 0 |
-| **Total** | **97** | **325** |
+| IW | 0 | 8 |
+| SC | 0 | 7 |
+| CN | 0 | 7 |
+| OE | 0 | 8 |
+| NF | 0 | 9 |
+| MA | 0 | 8 |
+| PP | 0 | 10 |
+| AN | 0 | 10 |
+| PH | 0 | 10 |
+| RD | 0 | 7 |
+| **Total** | **97** | **409** |
 
 <!-- generated:end -->

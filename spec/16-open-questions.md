@@ -81,5 +81,67 @@
 | OQ-WL1 | Is the health service in Wales a target deployment? **Decided 2026-11-09 by the maintainer: yes.** Welsh-language strings (WL-8) and the Wales FHIR pack (WL-9) move up, and the Welsh Control Standard and the Welsh language standards for health bodies must be read before a Welsh deployment. See [Welsh national health systems](wales/index.md). | maintainer |
 | OQ-WL2 | Under what licence may the All-Wales nursing forms (PURPOSE T, WAASP and the rest) be encoded? Joins OQ-M2 (WL-3). Open. | maintainer |
 | OQ-WL3 | The Wales FHIR guide package (`fhir.r4.wales` 2.7.0) states no licence: its `package.json` has none, its GitHub repository has none, and its resources say only a copyright line naming the health service in Wales and 2026. May it be fetched from the public registry to validate against in CI, without being copied into this repository, or must the health service in Wales (data.standards@wales.nhs.uk) be asked first? Blocks WL-9. Open. | maintainer |
+| OQ-IW1 | Is a ward transfer a new location entry or a new `Encounter` with `partOf`? Recommendation: a location entry within one encounter; a new encounter only for a change of service | maintainer |
+| OQ-IW2 | Which handover structure: I-PASS, SBAR or a pack choice? Recommendation: I-PASS headings in the core, the structure in a pack | clinical lead, Clinical Safety Officer |
+| OQ-IW3 | Can a patient be admitted to a ward with no bed, shown as its own state? Recommendation: yes and yes | clinical lead |
+| OQ-IW4 | Who owns a follow-up assigned to "hospital or GP"? Recommendation: exactly one owner per action | clinical lead |
+| OQ-IW5 | Does the EPR own the expected date of discharge and its criteria, or the PAS? | maintainer (PA-1) |
+| OQ-SC1 | Where a PAS is present, does the EPR hold the follow-up-due list or only show the PAS's? Recommendation: the EPR holds the clinical request and its loop; the PAS holds the booking | maintainer (PA-1) |
+| OQ-SC2 | Is a follow-up request a referral, a `ServiceRequest`/`Task` under CA-2, or a separate table until CA-2 exists? | maintainer |
+| OQ-SC3 | Which "was not brought" policy applies; a pack per jurisdiction? | safeguarding lead, Clinical Safety Officer |
+| OQ-SC4 | Is overbooking allowed at all in the minimal scheduler? | clinical lead |
+| OQ-SC5 | What may a reminder say without disclosing a diagnosis? | privacy lead |
+| OQ-CN1 | Who may see a draft note: the author only, or the care team? | Clinical Safety Officer and information governance lead |
+| OQ-CN2 | Which roles and note types need co-signature; is it a deployment setting? | deploying organisation's clinical lead (maintainer sets the default) |
+| OQ-CN3 | Is a copied block unchanged for N days prompted at signing, and what is N? | clinical lead and usability |
+| OQ-CN4 | Does the record show that an AI scribe was used, and are audio and transcripts kept? | information governance lead, Clinical Safety Officer and maintainer |
+| OQ-CN5 | Which document type codes, and does UK Core profile Composition? | maintainer |
+| OQ-CN6 | Is the default addressee of a clinic letter the patient or the GP? | deploying organisation |
+| OQ-OE1 | What is N seconds for identity re-entry, and which form does it take? | Clinical Safety Officer |
+| OQ-OE2 | Send lab orders out in 1.0, or only file results against hand-entered orders? | maintainer |
+| OQ-OE3 | Which checks may be hard stops, and is there an emergency route past them? | Clinical Safety Officer and a pharmacist |
+| OQ-OE4 | Inpatient prescribing built here, or an external prescribing system? (with OQ-M3, EM-2) | maintainer |
+| OQ-OE5 | Is an order not on a pathway allowed, and on which pathway does an admission's order land? (with OQ-CP1) | maintainer and clinical lead |
+| OQ-NF1 | Does a computed NEWS2 meet the RCP's "not modified" condition? Write to the RCP before shipping? | maintainer, with the RCP |
+| OQ-NF2 | Which code for the NEWS2 total and components (LOINC, SNOMED CT or local)? | maintainer and terminology lead |
+| OQ-NF3 | Are escalation response times and responder roles pack content or shipped defaults? | Clinical Safety Officer and deployment |
+| OQ-NF4 | Store the score as history or only recompute it; if stored, how is a score changed by a later correction shown? | Clinical Safety Officer |
+| OQ-NF5 | Which paediatric and obstetric scores come later, under what licence? | maintainer |
+| OQ-NF6 | Show the SpO2 skin-tone caveat on screen, and in what words? | Clinical Safety Officer |
+| OQ-MA1 | Is the time-critical medicines list pack content or a shipped default? | deployment pharmacist and maintainer |
+| OQ-MA2 | How is pharmacist verification modelled? | maintainer |
+| OQ-MA3 | What is the closed list of not-given reasons, and is it coded? | nurses and pharmacists, via the Clinical Safety Officer |
+| OQ-MA4 | What is the controlled-drug witness rule per jurisdiction? | deployment, under local law |
+| OQ-MA5 | How are emergency doses without an order handled? | Clinical Safety Officer |
+| OQ-MA6 | What is the downtime plan (paper, then back-entry with original times)? | deployment and Clinical Safety Officer |
+| OQ-PP1 | Which results are released immediately, after sign-off or after a delay, in each pack? | Clinical Safety Officer and a deployment clinical lead per country |
+| OQ-PP2 | What is the adolescent review age and reduced proxy set per pack? | Clinical lead and a privacy or legal adviser |
+| OQ-PP3 | Does this EPR own patient messaging, or hand it to a PAS or engagement product? | maintainer (extends PA-1) |
+| OQ-PP4 | Is billing permanently outside this EPR, or is a read-only billing port in scope after 1.0? | maintainer |
+| OQ-PP5 | What reply-time promise and escalation time apply to messages, and who answers out of hours? | deployment clinical lead |
+| OQ-PP6 | May a patient share with a third-party app before IO-2's app vetting exists? | maintainer with a privacy officer |
+| OQ-PP7 | May a patient choose to delay their own results until a clinician has reviewed them? | Clinical Safety Officer and a legal adviser |
+| OQ-AN1 | Who owns and runs the reporting database and exploration environment: the deployer, a regional body or a trusted research environment? | maintainer with deployers |
+| OQ-AN2 | Which transformation and metric tool: a project-owned runner, dbt/MetricFlow or another? | maintainer |
+| OQ-AN3 | What default minimum cell size (10 proposed), and may a country pack lower it? | data protection officer |
+| OQ-AN4 | The analytics query log keeps query text; who may read it and how long is it kept? | data protection officer and auditor |
+| OQ-AN5 | How is an objection to secondary use recorded: a new consent kind, a national opt-out feed, or both? | data protection officer and Clinical Safety Officer |
+| OQ-AN6 | Which sensitive-label categories may an approved project receive, and who approves? | data protection officer and a guardian role |
+| OQ-AN7 | Pin SQL-on-FHIR at 2.0.0 while 3.0.0 is at ballot? | maintainer |
+| OQ-AN8 | When is OMOP wanted, and with which research partner? | maintainer |
+| OQ-PH1 | Is population health (registries, outreach, measures) in scope for 1.0, or post-1.0? | maintainer |
+| OQ-PH2 | Which role, if any, may hold the `payment` purpose for contract reporting, and is registry or outreach work treatment or operations? | maintainer and data protection officer |
+| OQ-PH3 | Which risk scores may be encoded, and under what licence? (joins OQ-M2) | maintainer and Clinical Safety Officer |
+| OQ-PH4 | Which groups does the fairness report split by, and what if a deployment records no ethnicity? | clinical lead and data protection officer |
+| OQ-PH5 | May outreach use automated voice or text, with what frequency cap and quiet hours per jurisdiction? | maintainer and legal (with PA-13) |
+| OQ-PH6 | Who may add a documented reason that removes a patient from a measure denominator, and is it reviewed? | Clinical Safety Officer |
+| OQ-RD1 | Should the project build a research extract at all before a clinical record of substance exists? | maintainer |
+| OQ-RD2 | Is the linked, tokenised pool personal data for the pool operator? | data protection officer |
+| OQ-RD3 | What minimum cell size and k? | data access committee and data protection officer |
+| OQ-RD4 | In the US, can keyed tokens fit the limited-data-set and de-identification rules, or is expert determination needed? | deploying organisation's counsel |
+| OQ-RD5 | Should aggregate queries honour opt-outs even where the law exempts aggregate data? (The page says yes.) | data protection officer and a patient panel |
+| OQ-RD6 | Who operates the pool and the linkage unit, and who funds them? | contributing organisations |
+| OQ-RD7 | Is commercial research permitted, and on what terms? | data access committee with patient members |
+| OQ-RD8 | What happens to row-level data when an organisation withdraws? | access committee and contributing organisations |
 
 No answers recorded yet, except where a row says decided or proposed.

@@ -2,6 +2,29 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-14 - Research pass: clinical modules, patient portal, analytics, population health, research data (plan.md §35)
+
+- **Clinical risk:** no change to the product. Documents only: no code, route, screen or hazard row changed. Most new tasks are marked clinical, and each adds its hazard rows with its first code; each page describes its candidate hazards.
+- **Built:** ten spec pages:
+  - `spec/clinical-workflows/` (inpatient first, then the clinic visit);
+  - `spec/scheduling/`;
+  - `spec/clinical-documentation/`;
+  - `spec/order-entry/`;
+  - `spec/nursing-flowsheets/` (NEWS2 and escalation);
+  - `spec/medication-administration/` (the drug chart and bedside scanning);
+  - `spec/patient-portal/` (results, messages, booking, bills and sharing);
+  - `spec/analytics/`;
+  - `spec/population-health/`;
+  - `spec/research-dataset/`.
+
+  Each page has workflows, testable rules, candidate hazards, a first slice and keyed sources. `plan.md` §35 brings together the ranked ideas, risks and the order of work. `tasks.md` gains 84 tasks under ten new prefixes (IW, SC, CN, OE, NF, MA, PP, AN, PH and RD), registered in `scripts/generate-status.sh`. Each task names the existing task it refines. Spec 16 gains 62 open questions, and spec 17 and the spec index link the pages.
+- **Findings worth acting on:**
+  - The local national data opt-out refuses only the `research` purpose, while England's opt-out also covers planning (RD-1).
+  - NEWS2 needs level of consciousness and air or oxygen, which the record does not hold (NF-1).
+  - A stalled replication slot could take the clinical record offline once any reporting copy exists (AN-3).
+  - The portal page recommends that billing stay outside the EPR (OQ-PP4).
+- **Not done / not verified:** the research ran as seven parallel passes whose pages were not read line by line here. Most study figures are from abstracts or search summaries, as each page says. External URLs were not link-checked. No clinician, pharmacist, data protection officer or ethics committee has reviewed anything. No licence question (NEWS2 in software, HEDIS, risk scores) is answered.
+
 ## 2026-11-13 - Documents name no national health service (NHS, NHS Wales, DHCW)
 
 - **Clinical risk:** none. Documents and code comments only; no rule, screen or code path changes.

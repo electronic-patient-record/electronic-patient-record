@@ -116,6 +116,16 @@ Topics that span several numbered chapters and are kept whole:
 - [Welsh national health systems](wales/index.md) — the Welsh Clinical Portal, GP Record, Immunisation, Intensive Care, Nursing Care and Community Care systems, and what this project can learn (WL, plan.md §34).
 - [Suspicion along a referral](referral-suspicion/index.md) — the PAS must track what is suspected, from when, and what became of it; cancer the worked example (RS).
 - [Reasonable adjustments and communication needs](reasonable-adjustments/index.md): what a person needs in order to use care
+- [Clinical workflows](clinical-workflows/index.md) — admission, transfer, ward round and handover, discharge, then the clinic visit; encounters as events on a pathway (IW).
+- [Scheduling](scheduling/index.md) — clinic templates, staff booking, the follow-up-due list, cancellations, DNA and "was not brought", reminders (SC).
+- [Clinical documentation](clinical-documentation/index.md) — progress notes, co-signature, copy-forward provenance, AI-drafted content, discharge summaries and letters (CN).
+- [Order entry](order-entry/index.md) — lab and other orders, order sets, checks at ordering, results back to the orderer, wrong-patient guards (OE).
+- [Nursing flowsheets](nursing-flowsheets/index.md) — the observations grid, NEWS2 and escalation, fluid balance, assessments, the ward list (NF).
+- [Medication administration](medication-administration/index.md) — the drug chart, dose states, omitted doses, bedside scanning, controlled-drug witness (MA).
+- [Patient portal](patient-portal/index.md) — patients view results, message their care team, see appointments, reach billing and share records (PP).
+- [Analytics](analytics/index.md) — a separate reporting database and exploration copy, metric definitions, disclosure and freshness rules (AN).
+- [Population health](population-health/index.md) — registries, risk scores as declared packs, outreach, gaps in care and quality measures for value-based contracts (PH).
+- [Research dataset](research-dataset/index.md) — a de-identified dataset pooled from participating organisations, its legal basis, linkage and governance (RD).
 - [Bereavement](bereavement/index.md), with its [death assertions](bereavement/death-assertion.md), and [survivor grief](survivor-grief/index.md) — when a patient dies, and support for those left; [suicide watch](suicide-watch/index.md) and [trauma treatment](trauma-treatment/index.md) — enhanced observation without a risk score, and psychological and physical trauma (BV, SG, SW, TT, plan.md §32).
 - [Data flow](../governance/data-flow.md) — who sends what to whom, read from the routes, the feed and the outbox (draft, PR-7)
 - [MFA plan](../governance/mfa-plan.md) — what the service checks, what Keycloak enforces, what is left to the deployment (draft, PR-7)

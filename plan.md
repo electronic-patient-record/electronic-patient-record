@@ -1844,3 +1844,254 @@ OQ-WL1 (is Wales a target deployment?) and OQ-WL2 (the licence of the All-Wales 
 ### 34.6 Not done, not verified
 
 No system was used. The Welsh GP Record FAQ, the January 2025 WICIS release and the Digital Health articles could not be opened, so what they say rests on search snippets. No clinician read the ideas. The Welsh Control Standard and the Wales FHIR guide were not opened. Sources are listed in the spec page.
+
+## 35. Research pass 2026-11-14: clinical modules, patient portal, analytics, population health and research data
+
+Asked for on 2026-11-14:
+- inpatient and ambulatory workflows, documentation, order entry, scheduling, nursing flowsheets and medication administration;
+- then a patient portal where patients view results, message their care team, book appointments, pay bills and share records;
+- then an analytics model for operational reports and ad hoc exploration, a population health module, and a de-identified research dataset built from participating organisations' data.
+
+The maintainer chose a specs-and-tasks pass with no code, and inpatient before ambulatory.
+
+The research was split across seven parallel passes. Each wrote its own spec page or pages, and this section brings their findings together. Every claim is sourced on its page, and most study figures come from abstracts or search summaries, as each page's "Not verified" section says. Nothing is built. No clinician, pharmacist, data protection officer or ethics committee has reviewed any of it. Each page's hazards are described only: a clinical task adds its hazard rows to the log with its first code.
+
+The tasks are in tasks.md under "Research 2026-11-14", prefixes IW, SC, CN, OE, NF, MA, PP, AN, PH and RD. Each names the existing task it refines (CA-1, CA-4, CA-5, DO-1, DO-5, OR-1, EM-2, IO-7, XP-9 and others). The open questions are in spec/16, OQ-IW1 to OQ-RD8.
+
+### 35.1 Inpatient and ambulatory workflows, and scheduling (IW, SC)
+
+Spec: [`spec/clinical-workflows/`](spec/clinical-workflows/index.md) and [`spec/scheduling/`](spec/scheduling/index.md).
+
+Nothing exists: no encounter, bed, appointment or schedule. Inpatient comes first, as decided on 2026-11-14. The strongest evidence is a 2021 English safety investigation: follow-up intended at discharge was written as free text and never booked. So the highest-value idea is to make every follow-up a tracked step with an owner. Encounters stay events on a care pathway (spec/05 §5.2.1), so CA-2's pathway basics come before the encounter store.
+
+Ideas, ranked:
+
+| # | Idea | Why | Effort | Clinical |
+|---|---|---|---|---|
+| 1 | Every follow-up in a discharge summary or clinic letter becomes a tracked step with an owner and a due window, on a worklist until booked or closed with a reason | A 2021 English safety investigation found follow-up written as free text and never booked | M | yes |
+| 2 | Encounter and location store as an append-only state table, with cancel events instead of edits | Base for CA-1 and EM-5; keeps the record append-only | M | yes |
+| 3 | Handover list and note on I-PASS headings; quoted data read-only and timestamped; open items keep a patient on the list | I-PASS was followed by fewer errors and preventable adverse events | M | yes |
+| 4 | Responsibility changes on acceptance, not on request, recorded apart from access | Closes the transfer gap | S | yes |
+| 5 | Results arriving after discharge go to a named clinician | Many discharge summaries lack pending results | S | yes |
+| 6 | Appointment store and state table; double booking refused; overbooking only where configured, with a reason | CA-4 acceptance | M | yes |
+| 7 | A DNA stays open until a clinician decides the next step; no automatic discharge; "was not brought" for children | Missed appointments mark risk; for children a safeguarding sign | S | yes |
+| 8 | A scheduling port on IHE ITI Scheduling `$find`/`$book`, plus SIU inbound | One interface whether a PAS or the minimal scheduler is behind it (PA-1) | M | no |
+| 9 | Reminders with a delivery status, minimal content and the patient's language | Text reminders raise attendance; failed delivery was not studied | M | yes |
+| 10 | Bed board with bed status, isolation never filtered out, outlier flag, occupancy with no hard-coded threshold | The 85% figure is contested | M | yes |
+| 11 | No-show prediction off by default; if on, waiting time reported by equity group | Predictive overbooking lengthened waits for Black patients | S | yes |
+
+Risks:
+
+- Building the encounter before the pathway (CA-2) invites episode-shaped rules that spec/05 §5.2.1 forbids.
+- The scheduler could grow into a PAS while PA-1 is unconfirmed.
+- Handover notes that copy data show stale values as current.
+- Follow-up tracking works only if actions are structured; free text past the flag recreates the investigated harm.
+- No-show prediction and reminders carry equity and privacy risks the trials did not measure.
+
+Order of work: Settle PA-1, OQ-CP2 and OQ-IW1, then CA-2 basics; IW-1 with IW-2; in parallel SC-1 and SC-2, which need only the existing referral loop, and with IW-4 close the "intended but never booked" loop; then IW-3, IW-5 and SC-3; then IW-6, SC-4 and SC-5; SC-6, IW-8 and SC-7 once a PAS integration is real.
+
+### 35.2 Clinical documentation and order entry (CN, OE)
+
+Spec: [`spec/clinical-documentation/`](spec/clinical-documentation/index.md) and [`spec/order-entry/`](spec/order-entry/index.md).
+
+No note or order exists, but the built results store (append-only versions, a version-named sign-off, entered-in-error) is the pattern for both. Wrong-patient orders are the most serious harm these features add, so the identity re-entry guard and the retract-and-reorder measure come with the first slice. Copy-forward provenance is cheap to design now and expensive to add later.
+
+Ideas, ranked:
+
+| # | Idea | Why | Effort | Clinical |
+|---|---|---|---|---|
+| 1 | Lab orders linked to results: a result filed against an order goes to the orderer; the step closes only on sign-off | Closes the "result nobody sees" gap with built patterns | M | yes |
+| 2 | Inpatient progress notes as append-only versions with sign, addendum and entered-in-error | Turns DO-1 into a small slice by reusing the results store pattern | M | yes |
+| 3 | Every note block records where it came from (typed, copied, imported, template, AI-drafted) | Most note text is copied or imported; provenance must be visible | M | yes |
+| 4 | Identity re-entry at signing, and a retract-and-reorder count from stored data | Re-entry cut wrong-patient orders most in a trial | S-M | yes |
+| 5 | Order catalogue and order sets as reviewed, versioned data; a set applies as drafts only | Uses the assessment-form pattern; no automatic signing | M | yes |
+| 6 | Tiered order-sign cards with stored outcomes and coded override reasons; fail open and record "checks not run" | Override rates are high; tiering raised acceptance | L | yes |
+| 7 | A signed note or order is never edited: amend, replace or revoke; cancelling a sent order is a request | Keeps the record append-only | S | yes |
+| 8 | Co-sign list for trainee notes ("awaiting co-signature by X") | A plan followed before supervision is a hazard | S-M | yes |
+| 9 | AI-drafted blocks reviewed block by block before signing, provenance kept | DO-6; scribes omit things | M | yes |
+| 10 | Discharge summary on the PRSB headings; not sent unless signed and medicines reconciled | EM-8; depends on RC-10 | L | yes |
+| 11 | A "since last review" panel beside the note, not pasted into it | Curbs note bloat | M | yes |
+| 12 | Clinic letters addressed to the patient by default | Academy of Medical Royal Colleges guidance | S | yes |
+
+Risks:
+
+- Wrong-patient orders and notes are the most serious harm; the guard and the measure arrive with the first slice.
+- Alert design can make things worse: fatigue or delay; without override analytics (OR-7) nobody can tell.
+- Checks that fail open silently make "no alerts" read as "checked".
+- Copy-forward provenance is cheap now and expensive later.
+- Discharge summaries and medication orders depend on RC-10 and EM-2.
+
+Order of work: CN-1 and OE-1 in parallel, each with its hazard row; CN-2 before notes are stored in volume; OE-2 before OE-1 is used; OE-3; OE-4 and OE-5; CN-3 and CN-4; then OE-6, OE-7 and CN-5; CN-6, CN-7 and OE-8 wait for RC-10 and EM-2.
+
+### 35.3 Nursing flowsheets and medication administration (NF, MA)
+
+Spec: [`spec/nursing-flowsheets/`](spec/nursing-flowsheets/index.md) and [`spec/medication-administration/`](spec/medication-administration/index.md).
+
+Vital signs are built, but NEWS2 needs two inputs the record does not hold: level of consciousness and air or oxygen. An incomplete NEWS2 is still computed, shown as incomplete, and never counts a missing parameter as 0. The Royal College of Physicians allows NEWS2 use without modification; whether software computing it counts as modification is OQ-NF1. Medicines wait for terminology (RC-7) and scope (OQ-M1); a drug chart on fixture data must never look clinical.
+
+Ideas, ranked:
+
+| # | Idea | Why | Effort | Clinical |
+|---|---|---|---|---|
+| 1 | Pure NEWS2 computed on read: components, total, complete, missing, band, rule version | DO-5 core; missing is never 0 | M | yes |
+| 2 | Observation kinds NEWS2 needs (ACVPU, supplemental oxygen) and an "unable to obtain despite equipment" reason | NEWS2 cannot be computed without them | S | yes |
+| 3 | Monitoring plan: frequency, a recorded Scale 2 decision, individual thresholds with a review date | Scale 2 is often misapplied | M | yes |
+| 4 | Escalation record that stays open until a response is recorded; concern alone can raise one | Unanswered escalation is a known harm | M | yes |
+| 5 | Medication orders and a pure due-dose state machine before any scanning | EM-2 needs orders first; omitted is shown, never blank | L | yes |
+| 6 | Omitted and delayed dose view, time-critical first | Omitted time-critical doses harm | M | yes |
+| 7 | Positive patient ID and medicine scan (GS1), typed fallback, closed-list override reasons | Barcode eMAR cut non-timing errors; overrides come from design | L | yes |
+| 8 | Controlled-drug witness as a second performer | Local policy near universal | S | yes |
+| 9 | Fluid balance where a gap is "not recorded" and a partial total is labelled | EM-4 | M | yes |
+| 10 | Flowsheet row governance: every row has an approver and a reason | Hundreds of manual entries per shift | S | no |
+| 11 | Skin-tone caveat on SpO2 and the score | Oximetry bias | S | yes |
+| 12 | Infusions as one administration with a period; pump feed post-1.0 | EM-11 | M | yes |
+
+Risks:
+
+- NEWS2 band errors at edges, or a missing parameter scored as 0, put a deteriorating patient in a falsely low band.
+- Scale 2 misapplied, and oximetry overestimating saturation in darker skin, both push the score falsely low.
+- Barcode scanning that nurses bypass gives false safety; per-ward scan rates must be visible.
+- Medicines terminology is not built; an eMAR on a fixture must never look clinical.
+- A computed score and a closed-loop eMAR may be medical-device functions (OQ-6).
+
+Order of work: NF-1, then NF-2 with reference cases and hazard rows after OQ-NF1; NF-9 and NF-3; NF-4 and NF-5; NF-8. Medicines wait for RC-7 terminology and OQ-M1: MA-1, MA-2, MA-3 and MA-7, MA-4, MA-6; MA-5 after OQ-M3; NF-6 and NF-7 when licences allow; MA-8 after 1.0.
+
+### 35.4 Patient portal: results, messages, booking, bills and sharing (PP)
+
+Spec: [`spec/patient-portal/`](spec/patient-portal/index.md).
+
+Patients can sign in, see /my-record, read who accessed their record, and act through scoped proxies. Results cannot be shown to patients until release rules exist (OR-4). The page recommends that billing stay outside the EPR: at most a configured link to a separate billing system, with no price, balance or card data held here. This matches spec/02, which puts billing out of scope for 1.0 (OQ-PP4). Booking stays behind the scheduling port, the boundary proposed in PA-1.
+
+Ideas, ranked:
+
+| # | Idea | Why | Effort | Clinical |
+|---|---|---|---|---|
+| 1 | Result release rules per kind of result (`immediate`, `after-sign-off`, `after-delay(N)`, `never-online`) as pack data with a checker | OR-4 refuses patients until release rules exist; US, England and Australia rules differ | M | yes |
+| 2 | Patient results view with sign-off status in words ("not yet reviewed") | Uses the built sign-off; an unflagged result must not read as normal | M | yes |
+| 3 | Proxy scopes for results, messages, appointments, billing and share, plus the adolescent rule | PA-5 and CA-5 acceptance; guardians use many adolescent accounts | M | yes |
+| 4 | Patient-to-team messaging as append-only `Communication`, with not-for-emergencies text, a reply-time promise and escalation | Message volume has risen sharply; keyword screens miss most high-risk messages | L | yes |
+| 5 | A constant "this view does not show everything" notice for proxies | A hidden item must never be revealed by its absence | S | yes |
+| 6 | Shares recorded as consent with a scope and a required end, every use logged | Wrong-person share hazard; builds on SE-2 and SE-6 | M | yes |
+| 7 | IPS download for the patient | IO-5; the simplest useful share | M | no |
+| 8 | Read-only appointments through the scheduling port, with an "as of" time | Matches the PA-1 boundary | S | yes |
+| 9 | Billing as a configured link only, hidden when unset | Keeps billing out of the EPR | S | no |
+| 10 | Portal use measured by group, and a non-digital route for every capability | Large offer and use gaps by race, education and income | M | yes |
+
+Risks:
+
+- Immediate release without "not reviewed" wording: a serious result read alone, or an unflagged result read as normal.
+- Proxy leakage of adolescent-confidential care, including through bills and messages.
+- Messaging adds clinician workload without staffing; messages used for emergencies sit unread.
+- Billing creeping into the clinical record with country law the project cannot test.
+- Digital exclusion widening gaps.
+
+Order of work: PP-9 and OQ-PP1, OQ-PP2, OQ-PP4 first; then PP-1, PP-2, PP-3 before any proxy sees results or messages; then PP-5 and PP-7; then PP-4 (after CA-6) and PP-6 (after SE-2, IO-2); PP-8 as a decision record any time; PP-10 once there is use.
+
+### 35.5 Analytics model: operational reports and ad hoc exploration (AN)
+
+Spec: [`spec/analytics/`](spec/analytics/index.md).
+
+The recommendation has three parts. Operational reports run on a separate PostgreSQL 18 reporting database, fed by an insert-only logical publication. Analysts explore in a separate copy: Bulk Data export, then pinned SQL-on-FHIR 2.0.0 views, then Parquet queried with DuckDB, pseudonymised per project. No analyst ever queries the primary or a standby, and nothing is written back. The most serious risk is operational: a stalled replication slot can fill the primary's disk and take the clinical record offline, and both PostgreSQL limits are off by default.
+
+Ideas, ranked:
+
+| # | Idea | Why | Effort | Clinical |
+|---|---|---|---|---|
+| 1 | An insert-only logical publication into a separate PostgreSQL 18 reporting database | Store tables are insert-only; a standby cannot filter or hold marts, and long queries on it harm the primary | M | no |
+| 2 | Replication slot limits plus lag monitoring | A stalled slot can fill the primary's disk and take the clinical record offline; both limits default to off | S | yes |
+| 3 | A metric registry: id, version, owner, definition, time basis, minimum cell size, maximum age, balancing metric | One meaning per number | S | yes |
+| 4 | Disclosure rules: counts 1 to 9 withheld by default, secondary withholding, withheld never shown as 0, absent null with a reason | Makes "minimum cell size" testable | S | yes |
+| 5 | Freshness on every number; no number when freshness is unknown | A stale report must not read as current | S | yes |
+| 6 | Worklists stay in the live app; analytics never names patients or staff | One access model | S | yes |
+| 7 | Bulk `$export` to SQL-on-FHIR 2.0.0 views to Parquet to DuckDB, pseudonymised per project | Portable; consent and labels applied at export | L | yes |
+| 8 | OpenSAFELY-style governance: synthetic development, run inside, an airlock with a second-person output check | A proven pattern | M | no |
+| 9 | Row security forced on every mart; no analyst role owns, is superuser or bypasses it | Those roles bypass row security unless forced | S | no |
+| 10 | Copy completeness checked through the audit hash chain | Finds gaps in the copy | S | no |
+| 11 | OMOP CDM mapping from the view output | Joins research networks | L | yes |
+
+Risks:
+
+- An unbounded replication slot can take the clinical record offline; both PostgreSQL limits are off by default.
+- A stale, withheld or null figure read as current or zero.
+- Labels and consent are not yet on clinical records (SE-4), so an early copy has nothing to filter on.
+- Unpinned definitions turn trends into artefacts.
+- Re-identification by differencing or by joining project copies.
+- Analytics outputs drifting into clinical screens without decision-support governance.
+
+Order of work: AN-1 and the ownership questions first; slot limits and the publication census on synthetic data (AN-3, AN-2); then the registry and runner (AN-4, AN-5) on referral acknowledgement and result sign-off; XP-14, PM-2 and OR-7 reuse the runner; AN-6 before anyone outside the maintainers sees a report; AN-7 and AN-8 after SE-4, IO-4 and IO-7; OMOP and AN-10 last, on demand.
+
+### 35.6 Population health: care management, risk, outreach and quality measures (PH)
+
+Spec: [`spec/population-health/`](spec/population-health/index.md).
+
+The design rests on two built rules. SW-1's census already forbids risk-score fields in the core, so any score is a declared pack with a model card. The death-report hold (BV-3) already stops outbound events, and outreach reuses it. HEDIS content cannot be shipped (NCQA licence), and other score licences are not established. With no problem list, medicines or immunisations yet, most real registries and measures cannot be defined, so the first slice is deliberately narrow.
+
+Ideas, ranked:
+
+| # | Idea | Why | Effort | Clinical |
+|---|---|---|---|---|
+| 1 | Registry as a versioned definition and a dated member list, each member with the rule it met, and "cannot tell" listed | Every other part reads from it; missing data stays visible | M | yes |
+| 2 | An outreach list builder that only filters (death report, opt-out, consent, channel needs, untold suspicion, frequency) and counts each removal | Stops the worst harms before any sender exists | S | yes |
+| 3 | A gaps-in-care report in the DEQM shape over existing data | A useful list with no new data model | M | yes |
+| 4 | Outcome codes keeping "not reached" apart from "declined"; outreach never closes a gap | Stops gaps closed by sending a letter | S | yes |
+| 5 | A risk score as a declared pack with a model card, inputs, version, and missing inputs shown as unknown | Explainability; fits the existing ban on score fields in the core (SW-1) | M | yes |
+| 6 | A fairness report for every registry, score and measure, split by recorded groups with the missing-data rate | The Obermeyer 2019 lesson | M | yes |
+| 7 | Cost is not need: a care-priority pack whose outcome label is cost or use is refused | Prevents the documented bias | S | yes |
+| 8 | A CQL measure engine over export and views producing MeasureReport | Contract reporting | L | yes |
+| 9 | Care manager caseload on the pathway model, with admissions and discharges on the worklist | Care management without a separate model | L | yes |
+| 10 | Attribution import (Da Vinci ATR) as a Group, with a test that attribution grants no access | Value-based contracts without an access leak | M | yes |
+| 11 | A licence field required on every measure and score pack; no HEDIS content in the repository | HEDIS is licensed; other score licences are unknown | S | no |
+
+Risks:
+
+- A biased or poorly validated score: readmission models mostly discriminate poorly, and a cost-label score repeats the Obermeyer failure.
+- Licences: HEDIS cannot be shipped; other score licences are not established.
+- Little data yet: with no problem list, medicines or immunisations, most registries and measures cannot be defined.
+- Outreach harms: contacting dead or opted-out patients, or the wrong phone.
+- Moving US targets for digital quality measures.
+
+Order of work: PH-1 and PH-10 first; PH-2 and PH-3 over existing data; PH-4 and PH-5, sending nothing until PA-13 has a real sink; PH-7 with PA-7's first caller; PH-6 after XP-10 and OQ-PH3; IO-4, IO-7 and IO-14 before any contract MeasureReport (needs OQ-PH2); PH-8 after CA-2 and CA-6; PH-9 only if a US deployment asks.
+
+### 35.7 De-identified research dataset (RD)
+
+Spec: [`spec/research-dataset/`](spec/research-dataset/index.md).
+
+The project cannot itself be the pool. The software's part is extraction, de-identification, opt-out and audit inside each deployment. A separate pool operator and linkage unit, such as a trusted research environment, does the rest. The pass found a gap in today's code: the local national data opt-out refuses only the `research` purpose, while England's national data opt-out also covers planning (RD-1). Whether to build any of this before the record holds much is OQ-RD1.
+
+Ideas, ranked:
+
+| # | Idea | Why | Effort | Clinical |
+|---|---|---|---|---|
+| 1 | The opt-out refuses every secondary purpose, including planning, not only `research` | Closes a real gap against England's national data opt-out guidance | S | no |
+| 2 | Federated aggregate queries first: suppressed counts, no rows leave a site | Lowest risk, no central copy | M | no |
+| 3 | Pipeline inside each organisation: `$export` (IO-4) to SQL-on-FHIR views (IO-7) to OMOP tables | One pipeline that also serves local quality work | M | no |
+| 4 | A suppressed cell is null with reason `suppressed`, totals suppressed so differencing fails | "Absent is null, never zero"; stops recovery by subtraction | S | no |
+| 5 | One date-shift offset per patient, from the linkage unit | Intervals stay true across organisations | S | no |
+| 6 | Keyed-hash tokens from a third-party linkage unit, which issues research ids unrelated to the token | Unkeyed hashes have published attacks | M | no |
+| 7 | Extract, query and release events in the audit trail and the patient's access log | Transparency | S | no |
+| 8 | Protected categories and free text excluded by default | Highest re-identification harm | S | no |
+| 9 | A re-identification risk report per release | ICO and HIPAA expert-determination evidence | M | no |
+| 10 | Row-level access only in a trusted research environment run by a third party | The Five Safes shape; the project does not run it | L | no |
+| 11 | Findings fed back into care only through clinical safety | The only clinical route | L | yes |
+
+Risks:
+
+- Re-identification: rich, pooled, longitudinal records are close to unique.
+- Opt-out and withdrawal work only going forward; published aggregates cannot be recalled.
+- The local opt-out is not checked against England's national service, and today misses planning.
+- Without a funded pool operator and linkage unit, a deployer may send data somewhere unsafe.
+- Loss of public trust has sunk earlier national schemes.
+
+Order of work: RD-1 first; RD-2 with the data protection officer's answers; RD-5 before any extract; RD-3 and RD-4 after IO-4 and IO-7, synthetic data only; RD-6 and RD-7 alongside, but no key is made and no data leaves a deployment until an operator, a linkage unit and an access committee exist (OQ-RD6); row-level access and any feedback into care last.
+
+### 35.8 Order of work across the areas
+
+1. **Decide the boundaries first, because they decide scope.** PA-1 (what a PAS owns), OQ-PP4 (billing outside the EPR), OQ-PH1 (population health in 1.0 or after) and OQ-RD1 (a research extract at all, yet).
+2. **Do the small protective items, which need nothing new.** RD-1 (the opt-out covers planning), AN-3 (replication slot limits, before any reporting copy exists), PH-10 (licence census) and NF-1 (the observation kinds NEWS2 needs).
+3. **Build the inpatient core on the pathway model.** CA-2's pathway basics, then IW-1 and IW-2 (encounter, location and responsibility on acceptance). Alongside, SC-1, SC-2 and IW-4 close the "follow-up intended but never booked" loop with the referral loop that exists.
+4. **Build the clinical record of the stay.** CN-1 and OE-1 with OE-2's wrong-patient guard. Then OE-3 (results to the orderer), NF-2 (NEWS2, pure) with NF-3 to NF-5, and IW-3 (handover).
+5. **Then medicines.** These wait for RC-7 terminology and OQ-M1: MA-1 to MA-3 and MA-7, then MA-5 scanning after OQ-M3.
+6. **Patient-facing work after its rules exist.** PP-1 release rules, then PP-2 and PP-3, before any patient or proxy sees results or messages.
+7. **Reporting and population work on what exists.** AN-4 and AN-5 on referrals and results, then PH-2 and PH-3. AN-7, PH-6 and RD-3 wait for SE-4 labels, IO-4 export and IO-7 views.
+
+The risk shared by all seven areas is building screens before the rules that keep them safe. In each area the first slice is a pure rule or a store with its census test, and a screen comes only after that.
