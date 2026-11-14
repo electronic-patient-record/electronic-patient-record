@@ -210,8 +210,7 @@ const hi: LogFormStrings = {
   purposeAny: "कोई भी उद्देश्य",
   apply: "लागू करें",
   clear: "साफ़ करें",
-  download:
-    "CSV फ़ाइल के रूप में डाउनलोड करें (सबसे हाल की 1000 प्रविष्टियाँ तक)",
+  download: "CSV फ़ाइल के रूप में डाउनलोड करें (सबसे हाल की 1000 प्रविष्टियाँ तक)",
   downloadCut:
     "फ़ाइल में केवल सबसे हाल की 1000 प्रविष्टियाँ हैं। पुरानी प्रविष्टियों के लिए दिनों को सीमित करें।",
   badDay: "2026-10-21 जैसे असली दिन लिखें।",
@@ -429,8 +428,7 @@ const conflict_hi: ConflictWords = {
   differentNationalNumbers: "सत्यापित राष्ट्रीय स्वास्थ्य नंबर अलग हैं",
   sameNationalNumberDifferentBirthDates:
     "राष्ट्रीय स्वास्थ्य नंबर वही है लेकिन जन्म तिथियाँ अलग हैं",
-  sameNationalNumberDifferentNames:
-    "राष्ट्रीय स्वास्थ्य नंबर वही है लेकिन नाम अलग हैं",
+  sameNationalNumberDifferentNames: "राष्ट्रीय स्वास्थ्य नंबर वही है लेकिन नाम अलग हैं",
   differentIhis: "सत्यापित IHI अलग-अलग हैं",
   sameIhiDifferentBirthDates: "IHI वही है लेकिन जन्म तिथियाँ अलग हैं",
   sameIhiDifferentNames: "IHI वही है लेकिन नाम अलग हैं",
@@ -578,13 +576,11 @@ const refusal_zh: RefusalWords = {
 const refusal_hi: RefusalWords = {
   reasonRequired: "कारण आवश्यक है।",
   sameRecord: "कोई रिकॉर्ड स्वयं में मर्ज नहीं किया जा सकता।",
-  drillAndReal:
-    "अभ्यास रिकॉर्ड और वास्तविक रिकॉर्ड को कभी मर्ज नहीं किया जा सकता।",
+  drillAndReal: "अभ्यास रिकॉर्ड और वास्तविक रिकॉर्ड को कभी मर्ज नहीं किया जा सकता।",
   notMerged: "वह रिकॉर्ड अभी इस रिकॉर्ड में मर्ज नहीं है।",
   sourceAlreadyMerged:
     "जिस रिकॉर्ड को मर्ज करना था, वह पहले ही {id} में मर्ज हो चुका है।",
-  targetAlreadyMerged:
-    "बचा हुआ रिकॉर्ड स्वयं {id} में मर्ज हो चुका है: उसी में मर्ज करें।",
+  targetAlreadyMerged: "बचा हुआ रिकॉर्ड स्वयं {id} में मर्ज हो चुका है: उसी में मर्ज करें।",
 };
 
 const refusal_ar: RefusalWords = {
@@ -690,8 +686,7 @@ const problem_hi: PatientProblemWords = {
     "जन्म तिथि एक वर्ष, वर्ष और महीना, या वास्तविक तिथि होनी चाहिए।",
   nationalNumberPlaceholder:
     "राष्ट्रीय स्वास्थ्य नंबर एक प्लेसहोल्डर है (एक ही अंक दस बार), जारी किया गया नंबर नहीं।",
-  nationalNumberCheckDigit:
-    "राष्ट्रीय स्वास्थ्य नंबर चेक-डिजिट जाँच में विफल है।",
+  nationalNumberCheckDigit: "राष्ट्रीय स्वास्थ्य नंबर चेक-डिजिट जाँच में विफल है।",
   identifierIncomplete: "पहचानकर्ता के लिए सिस्टम और मान दोनों आवश्यक हैं।",
   temporaryIdentityReasonRequired:
     "यह अस्थायी पहचान है: वास्तविक पहचान देने के लिए कारण आवश्यक है।",

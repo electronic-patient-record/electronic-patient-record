@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-14 - UI dependency bumps (Dependabot #9, prettier 3.10)
+
+- **Clinical risk:** none expected. Tool and framework patch updates; the browser tests pass unchanged, and the only source change is Prettier's line wrapping in `src/lib/translations.ts` (no word changed).
+- **Built:** `@sveltejs/adapter-node` 6.0.2, `@sveltejs/kit` 3.2.0, `prettier` 3.10.1 (Dependabot asked for 3.10.0), `typescript-eslint` 8.72.2 and `vite` 8.3.8, as Dependabot PR #9 asked; that PR failed CI because Prettier 3.10 wraps long non-Latin strings differently. The lockfile refreshes their transitive dependencies.
+- **Not done / not verified:** the releases are two to four days old; no changelog of theirs was read beyond what the gates exercise.
+
 ## 2026-11-14 - axa 0.13 (AX-13)
 
 - **Clinical risk:** none expected. No screen or rule changes; the API refuses a browser's cross-site write it accepted before, and the UI never sends one (its proxy forwards no `origin` or `sec-fetch-site`).
