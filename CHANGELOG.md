@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-14 - The UI adds syncpack as a dev dependency
+
+- **Clinical risk:** none. A development tool only; nothing the UI builds, serves or shows changes.
+- **Built:** `syncpack` 15.3.3 in the UI's `devDependencies`, pinned exactly, added with `pnpm add -D` (no `package-lock.json`). `pnpm exec syncpack lint` reports no issues.
+- **Not done / not verified:** no syncpack config, no `package.json` script and no CI or `ci-local.sh` gate, so nothing runs it. With one `package.json` in the repository it has little to keep in step yet.
+
 ## 2026-11-14 - Research pass: clinical modules, patient portal, analytics, population health, research data (plan.md §35)
 
 - **Clinical risk:** no change to the product. Documents only: no code, route, screen or hazard row changed. Most new tasks are marked clinical, and each adds its hazard rows with its first code; each page describes its candidate hazards.
