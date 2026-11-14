@@ -8,6 +8,7 @@ locally first with GitHub as a second, independent witness, and what that does a
 | Tier | What runs | Where | Source |
 |---|---|---|---|
 | 0 | UI lint, `cargo fmt --check`, generated docs, links, only for staged files | the author's machine, on commit | `.githooks/pre-commit` |
+| 0b | `scripts/ci-local.sh --fast` for the projects the pushed commits touch | the author's machine, on push | `.githooks/pre-push` (LC-5) |
 | 1 | The gates in AGENTS.md: fmt, clippy, tests, docs, UI lint, check, unit and browser tests | the author's machine, by hand before a push | AGENTS.md "Gates" |
 | 2 | Fifteen jobs behind one required check, `ci-ok`; a clean x86-64 Linux machine each time | GitHub Actions on `ubuntu-latest` | `.github/workflows/ci.yml` |
 | 3 | The release build on a version tag | GitHub Actions | `.github/workflows/release.yml` |
@@ -60,6 +61,33 @@ It bypasses the `kache` compiler cache by default, because kache has served stal
 So two runs at once do not see each other's rows, and a row left in a shared test database cannot fail a run. `scripts/test_scratch_db.sh` checks this: two runs at once on one server with a leftover table in the shared database, then two runs at once with no `DB_URL`. Each run must see only its own row and none of the leftover table, the names must differ, and nothing may be left behind. It is the `scratch-db-test` gate here and a step of CI's `api-db` job. Two broken versions were run against it and both failed: one where every run got the same name, and one that used the shared database.
 
 **Not done:** a run killed with `kill -9` leaves its scratch database (find them by the `epr_ci_` prefix; nothing sweeps them). The role needs `CREATEDB` on a given server. Two runs at once still share `target/` (cargo makes the second wait), `target/ci-local/` logs (the later run overwrites them), the Playwright port and the container image tags.
+
+## A pre-push hook (LC-5, built 2026-11-14)
+
+`.githooks/pre-push` runs `sh scripts/ci-local.sh --fast` before each push, for the projects the pushed commits touch,
+and `scripts/install-hooks.sh` installs it with the pre-commit hook. For each ref git pushes it lists the files changed
+since the remote's commit, or since where a new branch left `origin/main`. A file under a project's directory selects
+that project, `rust-toolchain.toml` selects both Rust projects, and the document checks run whenever anything is
+pushed. A deleted branch, or a push with no new commits, checks nothing. When the remote's commit is not in the clone
+(fetch first), every project is checked. `git push --no-verify` skips it once.
+
+`ci-local.sh` takes the selection as `EPR_CI_ONLY` (`matcher`, `service`, `ui`, `docs`, space-separated). A gate left
+out shows in the table as `off`, so a narrowed run never reads as a whole one, and an unknown project is refused (exit 64).
+
+It checks the working tree, not the pushed commits. With uncommitted changes in a checked project it says so, because
+a pass is then about files the push does not carry.
+
+**Acceptance, run 2026-11-14.** A badly formatted function added to the matcher's `src/lib.rs`, with a push of a
+commit that touches the matcher: `matcher-fmt` failed (and `matcher-clippy`, on the unused function), and the hook
+exited 1 in 55 s. Measured with every project selected and the build caches warm, at a load average of 80: 107 s, of
+which the matcher's tests were 50 s. After a dependency change the service's clippy and tests rebuild; that took
+about 270 s in the `--full` run of the same day. `scripts/test_pre_push.sh` checks the selection in a throwaway
+repository, plus `EPR_CI_ONLY`, and is the `docs-hooks` gate here and a step of CI's docs job. It was run against a
+broken hook (an unknown remote commit checking nothing) and failed.
+
+**Not done:** the hook does not stash uncommitted changes, so it can pass on files the push does not carry, or fail on
+them. A push of tags alone checks the files the tag's commit brings, like a branch. Nothing measured a cold build on a
+fresh clone.
 
 | CI job | Here |
 |---|---|

@@ -1,0 +1,69 @@
+#!/bin/sh
+# The fast gates before a push (LC-5): `scripts/ci-local.sh --fast` for the projects the pushed commits touch,
+# and the document checks whenever anything is pushed. See spec/local-ci.md. Skip once with
+# `git push --no-verify`. Install with `sh scripts/install-hooks.sh`.
+#
+# It checks the working tree, not the pushed commits: with uncommitted changes in a checked project it says so,
+# because then a pass is about files the push does not carry.
+#
+# EPR_PRE_PUSH_DRY_RUN=1 prints the projects it would check and exits (scripts/test_pre_push.sh uses it).
+set -eu
+root="$(git rev-parse --show-toplevel)"
+cd "$root"
+
+all_zero() { case "$1" in *[!0]*) return 1 ;; *) return 0 ;; esac; }
+
+changed=""
+everything=no
+while read -r _local_ref local_sha _remote_ref remote_sha; do
+  all_zero "$local_sha" && continue # a branch being deleted carries no files
+  if all_zero "$remote_sha"; then
+    # A new branch: compare with where it left main.
+    base="$(git merge-base "$local_sha" origin/main 2>/dev/null || true)"
+  else
+    base="$remote_sha"
+  fi
+  if [ -n "$base" ] && git cat-file -e "$base^{commit}" 2>/dev/null; then
+    changed="$changed
+$(git diff --name-only "$base" "$local_sha")"
+  else
+    everything=yes # the remote's commit is not here (fetch first), so check every project
+  fi
+done
+
+has() { printf '%s\n' "$changed" | grep -Eq "$1"; }
+
+projects=""
+if [ "$everything" = yes ]; then
+  projects="matcher service ui docs"
+elif [ -n "$(printf '%s' "$changed" | tr -d '[:space:]')" ]; then
+  has '^electronic-patient-record-matcher-with-rust/|^rust-toolchain\.toml$' && projects="$projects matcher"
+  has '^electronic-patient-record-service-with-rust/|^rust-toolchain\.toml$' && projects="$projects service"
+  has '^electronic-patient-record-ui-with-svelte/' && projects="$projects ui"
+  projects="${projects# } docs"
+  projects="${projects# }"
+fi
+
+if [ "${EPR_PRE_PUSH_DRY_RUN:-}" = "1" ]; then
+  printf '%s\n' "$projects"
+  exit 0
+fi
+[ -n "$projects" ] || exit 0
+
+dirty=""
+for project in $projects; do
+  case "$project" in
+    matcher) dir=electronic-patient-record-matcher-with-rust ;;
+    service) dir=electronic-patient-record-service-with-rust ;;
+    ui) dir=electronic-patient-record-ui-with-svelte ;;
+    *) dir=. ;;
+  esac
+  [ -n "$(git status --porcelain --untracked-files=no -- "$dir")" ] && dirty="$dirty $project"
+done
+[ -z "$dirty" ] || echo "pre-push: uncommitted changes in:$dirty. The gates check the working tree, not the push." >&2
+
+echo "pre-push: sh scripts/ci-local.sh --fast for: $projects"
+if ! EPR_CI_ONLY="$projects" sh scripts/ci-local.sh --fast; then
+  echo "pre-push: a gate failed (logs in target/ci-local/). Fix it, or skip once with git push --no-verify." >&2
+  exit 1
+fi

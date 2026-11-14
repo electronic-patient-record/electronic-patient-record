@@ -195,6 +195,7 @@ jobs:
       - run: python3 scripts/generate-schema-map.py --check
       - run: python3 scripts/check-hazard-log.py --report .
       - run: python3 scripts/test_check_hazard_log.py
+      - run: sh scripts/test_pre_push.sh
 
   # A pull request labelled `clinical-impact` must change the hazard log (task AS-1).
   hazard-log:

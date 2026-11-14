@@ -14,6 +14,9 @@
 # EPR_CI_KEEP_CACHE=1 to keep it. The database gates use a scratch database made for the run and dropped after:
 # on the server DB_URL names, if set, or in a throwaway Postgres 18 on a free port.
 #
+# EPR_CI_ONLY="matcher service ui docs" (any of the four, space-separated) runs only those projects' gates; the
+# others show in the table as "off", so a narrowed run never reads as a whole one. The pre-push hook sets it (LC-5).
+#
 # This proves the gates passed on this machine. It is not the CI run, and it does not replace it: cargo deny,
 # CodeQL, the secret scan, the coverage floor and the fresh clone stay on GitHub.
 set -u
@@ -44,9 +47,36 @@ if [ "${EPR_CI_KEEP_CACHE:-}" != "1" ]; then
   unset CARGO_TARGET_AARCH64_APPLE_DARWIN_RUNNER CC_KNOWN_WRAPPER_CUSTOM
 fi
 
+only="${EPR_CI_ONLY:-}"
+for project in $only; do
+  case "$project" in
+    matcher | service | ui | docs) ;;
+    *)
+      echo "EPR_CI_ONLY: unknown project '$project' (use matcher, service, ui, docs)" >&2
+      exit 64
+      ;;
+  esac
+done
+
+project_of() { # gate name -> the project it checks
+  case "$1" in
+    matcher-*) echo matcher ;;
+    service-* | scratch-* | fhir-* | container-api) echo service ;;
+    ui-* | container-ui) echo ui ;;
+    *) echo docs ;;
+  esac
+}
+
+selected() { # gate name
+  [ -z "$only" ] && return 0
+  case " $only " in *" $(project_of "$1") "*) return 0 ;; esac
+  return 1
+}
+
 rows=""
 failed=0
 skipped=0
+off=0
 
 record() { # name, result, seconds, note
   rows="$rows$(printf '%-24s %-5s %6s  %s' "$1" "$2" "$3" "$4")
@@ -55,7 +85,12 @@ record() { # name, result, seconds, note
 
 gate() { # name, directory, command
   if [ "$mode" = "--list" ]; then
-    printf '%s\n' "$1"
+    selected "$1" && printf '%s\n' "$1"
+    return
+  fi
+  if ! selected "$1"; then
+    off=$((off + 1))
+    record "$1" off - "not in EPR_CI_ONLY"
     return
   fi
   printf '%s ... ' "$1" >&2
@@ -73,7 +108,12 @@ gate() { # name, directory, command
 
 skip() { # name, why
   if [ "$mode" = "--list" ]; then
-    printf '%s\n' "$1"
+    selected "$1" && printf '%s\n' "$1"
+    return
+  fi
+  if ! selected "$1"; then
+    off=$((off + 1))
+    record "$1" off - "not in EPR_CI_ONLY"
     return
   fi
   printf '%s ... SKIP: %s\n' "$1" "$2" >&2
@@ -100,6 +140,7 @@ gate docs-status "$root" 'sh scripts/generate-status.sh --check'
 gate docs-llms "$root" 'python3 scripts/generate-llms.py --check'
 gate docs-schema-map "$root" 'python3 scripts/generate-schema-map.py --check'
 gate docs-hazard-log "$root" 'python3 scripts/check-hazard-log.py --report . && python3 scripts/test_check_hazard_log.py'
+gate docs-hooks "$root" 'sh scripts/test_pre_push.sh'
 
 # The database gates run against a scratch database made for this run and dropped after it (LC-4).
 . "$root/scripts/scratch-db.sh"
@@ -161,5 +202,9 @@ fi
 if [ "$skipped" -gt 0 ] && [ "${EPR_CI_ALLOW_SKIP:-}" != "1" ]; then
   printf '\n%s could not run, so this is not a full pass.\n' "$skipped"
   exit 2
+fi
+if [ "$off" -gt 0 ]; then
+  printf '\nThe gates run passed on this machine; %s were off (EPR_CI_ONLY="%s"). CI is still the independent check.\n' "$off" "$only"
+  exit 0
 fi
 printf '\nAll gates passed on this machine. CI is still the independent check.\n'

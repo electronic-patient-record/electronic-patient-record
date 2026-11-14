@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-14 - A pre-push hook (LC-5)
+
+- **Clinical risk:** none. Developer tooling only.
+- **Built:** `.githooks/pre-push` runs `scripts/ci-local.sh --fast` for the projects the pushed commits touch (the document checks always), installed by `scripts/install-hooks.sh`. `ci-local.sh` gains `EPR_CI_ONLY`, with left-out gates shown as `off`. `scripts/test_pre_push.sh` tests the selection in a throwaway repository; it is the `docs-hooks` gate and a step of CI's docs job, and it failed against a broken hook. A badly formatted Rust file stopped a push (exit 1, 55 s); every project with warm caches took 107 s.
+- **Not done / not verified:** the hook checks the working tree, not the pushed commits, and does not stash; it warns when a checked project has uncommitted changes. A cold build on a fresh clone was not timed.
+
 ## 2026-11-14 - The service spec names axa 0.13's database settings (AX-13)
 
 - **Clinical risk:** none. Documents only.
