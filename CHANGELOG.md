@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-15 - AGENTS.md names the API image's memory need
+
+- **Clinical risk:** none. Documents only.
+- **Built:** a line in AGENTS.md: the API image needs a Podman VM with about 16 GB or more, because `fhir-r4` and `fhir-r5` each take about 4.5 GB to compile side by side; with 12 GB the kernel killed `rustc` (seen 2026-11-14 in its log). With the VM at 32 GB, the `container-api` gate built in 276 s, and every `--full` gate has passed on this machine (the browser tests on another port, as 4183 was taken).
+- **Not done / not verified:** 16 GB is an estimate from two 4.5 GB compiles plus overhead; only 12 GB (fails) and 32 GB (passes) were tried.
+
 ## 2026-11-14 - A pre-push hook (LC-5)
 
 - **Clinical risk:** none. Developer tooling only.

@@ -63,4 +63,5 @@ python3 scripts/check-links.py . && sh scripts/generate-status.sh --check && pyt
 - The Podman VM's clock drifts (after sleep, say). Keycloak then issues tokens that are already expired by the host's clock, and the API answers
   401 `keycloak: … InvalidSignature` (the verifier keeps only the last key's error, so expiry looks like a bad signature). Compare `date -u +%s`
   with `podman exec <container> date -u +%s`; reset with `podman machine ssh "sudo date -u -s @$(date -u +%s)"`.
+- The API image needs a Podman VM with about 16 GB or more: `fhir-r4` and `fhir-r5` each take about 4.5 GB to compile at `opt-level=3`, side by side. With 12 GB the kernel kills `rustc` (`signal: 9, SIGKILL`; `podman machine ssh 'sudo dmesg'` shows `Out of memory`). Raise it with `podman machine stop && podman machine set --memory 32768 && podman machine start`; that stops every running container.
 - Translations are machine-written until a speaker reviews them. Never claim a translation is reviewed.
