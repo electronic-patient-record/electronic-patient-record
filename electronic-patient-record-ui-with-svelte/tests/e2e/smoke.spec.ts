@@ -256,3 +256,16 @@ test("the warning banner links to the path to production", async ({ page }) => {
   await note.getByRole("link", { name: "Path to production" }).click();
   await expect(page).toHaveURL(/\/en-001\/path-to-production$/);
 });
+
+// TH-1: the page follows the device's light or dark setting, so the dark project's axe runs check the dark theme,
+// not the light one again.
+test("the theme follows the device's light or dark setting", async ({
+  page,
+}, info) => {
+  await page.goto("/en-001");
+  const background = await page.evaluate(
+    () => getComputedStyle(document.body).backgroundColor,
+  );
+  const dark = info.project.use.colorScheme === "dark";
+  expect(background).toBe(dark ? "rgb(20, 22, 26)" : "rgb(255, 255, 255)");
+});

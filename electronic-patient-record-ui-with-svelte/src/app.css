@@ -1,18 +1,25 @@
+/* The two passing themes (TH-1, spec/index.md "Themes"): each token pair a page uses meets WCAG 2.2 AA, checked by
+   tests/unit/theme-contrast.test.ts. `--border` is for dividers and tables (decoration); `--control-border` is the
+   edge of an input, select or textarea, which 1.4.11 holds to 3:1. `data-color-scheme="light"` forces light. */
 :root {
+  color-scheme: light;
   --bg: #ffffff;
   --fg: #1a1a1a;
   --muted: #4a4a4a;
   --border: #c8c8c8;
+  --control-border: #767676;
   --accent: #0b5cad;
   --warn-bg: #fff4d6;
   --warn-border: #8a6100;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-color-scheme="light"]) {
+    color-scheme: dark;
     --bg: #14161a;
     --fg: #f0f0f0;
     --muted: #b8b8b8;
     --border: #444a52;
+    --control-border: #858c96;
     --accent: #7ab8ff;
     --warn-bg: #3a2f0f;
     --warn-border: #d9a520;
@@ -98,7 +105,7 @@ input {
   box-sizing: border-box;
   color: var(--fg);
   background: var(--bg);
-  border: 1px solid var(--border);
+  border: 1px solid var(--control-border);
 }
 button {
   font: inherit;
@@ -124,7 +131,7 @@ textarea {
   box-sizing: border-box;
   color: var(--fg);
   background: var(--bg);
-  border: 1px solid var(--border);
+  border: 1px solid var(--control-border);
 }
 small {
   color: var(--muted);

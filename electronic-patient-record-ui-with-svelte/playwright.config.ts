@@ -15,7 +15,18 @@ export default defineConfig({
     trace: "on-first-retry",
     timezoneId: "UTC",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  // Every test runs twice: with the device in light mode and in dark mode, so axe checks every page in both
+  // passing themes (TH-1, spec/index.md "Themes").
+  projects: [
+    {
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"], colorScheme: "light" },
+    },
+    {
+      name: "chromium-dark",
+      use: { ...devices["Desktop Chrome"], colorScheme: "dark" },
+    },
+  ],
   webServer: {
     command: `pnpm run build && pnpm exec vite preview --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}`,

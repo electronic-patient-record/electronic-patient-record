@@ -122,12 +122,22 @@ rule, since axe does not check every non-text edge. A browser test picks a non-p
 theme control, the banner, the warning and an allergy flag are still present and the control still passes. axe is
 not run against a non-passing theme: it would fail, and it is allowed to.
 
-**Today** (2026-11-15, `src/app.css`): two token sets, light and dark by `prefers-color-scheme`, with
-`data-color-scheme="light"` forcing light. Text passes in both (foreground on background 17.4:1 light and 15.9:1
-dark; muted 8.9 and 9.1; accent 6.7 and 8.7; text on the warning background 15.9 and 11.6). **`--border` on the
-background is 1.67:1 (light) and 2.02:1 (dark), below 1.4.11's 3:1:** where a border is the only thing that shows an
-input's edge, neither theme passes yet. axe runs in light only, so the dark theme has never been checked on a page.
-There is no theme control and no third theme.
+**Built 2026-11-15:** points 1, 2 and 6 for the two passing themes, and their tests.
+- `src/app.html` no longer forces `data-color-scheme="light"`, which it had done since the scaffold, so the dark
+  theme had never been shown to anyone. The page now follows `prefers-color-scheme`; `color-scheme` is set in both
+  themes, so native controls (buttons, checkboxes, scrollbars) follow too.
+- `--control-border` (light `#767676`, 4.54:1; dark `#858c96`, 5.34:1) is the edge of every input, select and
+  textarea; `--border` (1.67:1 and 2.02:1) is left for table cells, fieldsets and the header's rule, which are
+  decoration.
+- Every browser test runs twice, in Playwright projects `chromium` (light) and `chromium-dark`, so axe checks every
+  page in both themes; a test checks the page's background really changes with the device's setting.
+- `tests/unit/theme-contrast.test.ts` checks every token pair in both themes (text 4.5:1; control edges, the focus
+  ring and the notice's edge 3:1), that dark sets every token light sets, and that form controls use
+  `--control-border`.
+
+**Not built:** the theme control (points 3 and 4), so a user cannot yet choose light against the device, or any other
+theme; there is no non-passing theme; point 5's "not by colour alone" is not audited flag by flag; forced colours
+(point 6) are not tested. The ratios are of the tokens; axe checks rendered text, not every border.
 
 ## 2. Not built
 

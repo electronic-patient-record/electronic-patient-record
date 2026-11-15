@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-15 - The dark theme is on and checked; form control edges reach 3:1 (TH-1, in part)
+
+- **Clinical risk:** yes: what a clinician sees changes. A device set to dark now gets the dark theme, which the scaffold's `data-color-scheme="light"` had hidden from everyone, and inputs, selects and textareas have darker edges in light (`#767676`) and lighter ones in dark (`#858c96`). Hazard H-057 updated (still open).
+- **Built:** `--control-border`, 3:1 or more in both themes, for form controls; `--border` stays for decoration. `color-scheme` in both themes. Every browser test runs in light and in dark (`chromium-dark`), so axe checks every page in both: 228 runs pass, 32 s. A test checks the background really changes with the device. `tests/unit/theme-contrast.test.ts` (27 tests) checks every token pair in both themes, that dark sets every token, and that form controls use the control border; it failed with the old border colour put back.
+- **Not done / not verified:** the theme control, so no user can yet choose light on a dark device or any other theme; a flag-by-flag check that no meaning is carried by colour alone; forced colours; how the dark theme looks to a person (no one has looked at it; axe and the ratios are the only checks).
+
 ## 2026-11-15 - Themes: light and dark must pass, others by the user's choice (TH-1, spec only)
 
 - **Clinical risk:** a theme changes what a clinician can see. Recorded as hazard H-057 (open); nothing is built, so nothing on screen changes with this entry.
