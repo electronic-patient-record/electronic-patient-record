@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-15 - Speed spike: cargo-nextest adopted (LC-8)
+
+- **Clinical risk:** none. Test runner only; the same tests run.
+- **Built:** CI's API job runs `cargo nextest run` then `cargo test --doc`, and `ci-local.sh`'s Rust test gates do the same when `cargo-nextest` is installed (plain `cargo test` otherwise). nextest ran the same tests (117 matcher, 553 service, 182 database tests left out) about 25 s faster warm in CI over two runs, and faster here.
+- **Not adopted:** mold (no faster in CI), sccache (CI already caches dependencies with rust-cache). The API image's cold release build, 679 s of a code push, is the lever left: new task LC-14.
+- **Not done / not verified:** few samples on runners whose speed varies by tens of seconds; why the warm nextest build was faster is not known; the matcher's CI job is unchanged because it was not measured. The spike branch and workflow were deleted.
+
 ## 2026-11-15 - A signed local gate record (LC-6)
 
 - **Clinical risk:** none. Developer tooling only. A record is self-attested and is not evidence for the hazard log or the safety case; it says so in its own text, as OQ-LC3 recommends (hosted runs only).

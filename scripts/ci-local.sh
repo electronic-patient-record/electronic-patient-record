@@ -137,11 +137,18 @@ fi
 
 gate matcher-fmt "$matcher" 'cargo fmt --check'
 gate matcher-clippy "$matcher" 'cargo clippy --all-targets --all-features -- -D warnings'
-gate matcher-test "$matcher" 'cargo test --locked'
+# LC-8: cargo-nextest ran the same tests faster here (matcher 15-22 s against 25-41 s, service 8 s against 10-12 s), and
+# in CI for the service. It runs no doc tests, so `cargo test --doc` follows it. Without nextest, plain cargo test.
+if command -v cargo-nextest >/dev/null 2>&1; then
+  unit_tests='cargo nextest run --workspace --locked --no-fail-fast && cargo test --workspace --locked --doc'
+else
+  unit_tests='cargo test --workspace --locked --no-fail-fast'
+fi
+gate matcher-test "$matcher" "$unit_tests"
 gate matcher-doc "$matcher" 'RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --document-private-items'
 gate service-fmt "$service" 'cargo fmt --check'
 gate service-clippy "$service" 'cargo clippy --all-targets --all-features -- -D warnings'
-gate service-test "$service" 'cargo test --workspace --locked --no-fail-fast'
+gate service-test "$service" "$unit_tests"
 gate service-doc "$service" 'RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --document-private-items --workspace'
 gate ui-lint "$ui" 'pnpm run lint'
 gate ui-check "$ui" 'pnpm run check'

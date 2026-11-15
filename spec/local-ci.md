@@ -62,6 +62,44 @@ So two runs at once do not see each other's rows, and a row left in a shared tes
 
 **Not done:** a run killed with `kill -9` leaves its scratch database (find them by the `epr_ci_` prefix; nothing sweeps them). The role needs `CREATEDB` on a given server. Two runs at once still share `target/` (cargo makes the second wait), `target/ci-local/` logs (the later run overwrites them), the Playwright port and the container image tags.
 
+## Speed spike (LC-8, run 2026-11-15)
+
+**Where the time goes.** In CI's last full run (`d520ab6`) the API container image took **679 s**, a release build from
+nothing on every push, and sets the wall time of a code push. Then the database tests (150 s), the FHIR validator (135 s)
+and the API's database-free tests (100 s, of which the tests ran about 8 s; the rest builds and links over 50 test
+binaries). Locally, a clean debug build of the service with `--timings` took 105 s by the clock and 658 s of compile time
+over 554 units at a load of 18 to 29. The largest were `fhir-r5` (48 s), `fhir-r4` (43 s), the service's library test
+build (40 s), `aws-lc-sys` (30 s) and `ring`, built twice (15 s each). Both TLS back ends are built because `sqlx`
+pulls `ring` and `reqwest` pulls `aws-lc-rs`.
+
+**cargo-nextest: adopted.** It runs the same tests: 117 in the matcher, 553 in the service with the same 182 database
+tests left out, and neither project has doc tests, which nextest does not run (`cargo test --doc` follows it anyway).
+
+| Where | `cargo test` | nextest | Load or cache |
+|---|---|---|---|
+| Matcher, here, warm, three runs | 25 to 41 s | 15 to 22 s | load 18 to 24 |
+| Service, here, warm, three runs | 10 to 12 s | 8 s | load 30 to 41 |
+| Service in CI, build and run, cold, one run | 262 + 13 s | 274 + 11 s | no cache |
+| Service in CI, build and run, warm, two runs | 130 + 9, 128 + 8 s | 105 + 12, 96 + 8 s | cache restored |
+
+CI's API job now uses `cargo nextest run` then `cargo test --doc`. `ci-local.sh`'s `matcher-test` and `service-test`
+use them when `cargo-nextest` is installed, and plain `cargo test` when it is not. The matcher's CI job was not
+measured and is unchanged. Why the warm nextest build was faster is not known; one cold run showed no difference.
+
+**mold: not adopted.** In CI, warm, the mold variants built in 123 s on both runs, no faster than `cargo test` and
+slower than nextest alone; cold, mold took 325 s against 262 s. On macOS the system linker is used.
+
+**sccache: not tried.** CI already restores the dependency build with `Swatinem/rust-cache` in every Rust job, so
+sccache would cache what is already cached. Locally it would replace kache.
+
+**The lever that is left** is the API image, about two thirds of a code push's wall time. A layer cache does not
+survive between hosted runs, so it needs either a dependency layer kept in a registry, or the release binary built on
+the runner with its cache and copied in. Both change how the image is built: task LC-14.
+
+**Not measured:** two warm samples and one cold sample per variant on hosted runners, whose speed varies by tens of
+seconds between identical runs. The spike ran on the branch `spike/lc-8` (workflow `speed-spike.yml`, run 43694245176,
+three attempts), which was then deleted.
+
 ## A signed local gate record (LC-6, built 2026-11-15)
 
 `sh scripts/ci-local.sh --full`, on a tree whose tracked files match HEAD, ends by writing
