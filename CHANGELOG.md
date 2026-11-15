@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-15 - CI runs only the jobs a push needs (LC-7)
+
+- **Clinical risk:** none. CI only; every check still runs, nightly if not on the push.
+- **Built:** a `changes` job runs `scripts/ci-changes.sh` on the files changed since the last commit on the branch whose CI passed (not since the previous commit, which a newer push may have cancelled), or since a pull request left its base. Rust jobs run when Rust needs them, UI jobs when the UI does, the container build when either does, and each CodeQL language with its project. Documents run neither. The docs, secret-scan, toolchain and hazard-log jobs run on every push, and a nightly run (03:17 UTC) and a manual run do everything. `ci-ok` waits on `changes` too and stays the single required check; a skipped job passes. The concurrency group now names the event, so a push no longer cancels the nightly run.
+- **Tests:** `scripts/test_ci_changes.sh` (the `docs-ci-changes` gate and a step of CI's docs job) has fixed cases and a census of what the tests read outside their own project, 10 files today. Each must run the project that reads it. The census found that a UI test reads the service's `src/adjustments.rs`, which a hand-made list had missed. Run with `SECURITY.md` dropped from the list, it failed.
+- **Not done / not verified:** the minutes saved are not measured yet (the next documents-only push). The pre-push hook still maps files by directory and does not use `ci-changes.sh`. A skipped CodeQL language still starts a runner for a few seconds. The first nightly run has not happened.
+
 ## 2026-11-15 - A preflight before a full local run (LC-12)
 
 - **Clinical risk:** none. Developer tooling only.

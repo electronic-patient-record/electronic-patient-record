@@ -148,6 +148,7 @@ gate docs-schema-map "$root" 'python3 scripts/generate-schema-map.py --check'
 gate docs-hazard-log "$root" 'python3 scripts/check-hazard-log.py --report . && python3 scripts/test_check_hazard_log.py'
 gate docs-hooks "$root" 'sh scripts/test_pre_push.sh'
 gate docs-preflight "$root" 'sh scripts/test_preflight.sh'
+gate docs-ci-changes "$root" 'sh scripts/test_ci_changes.sh'
 
 # The database gates run against a scratch database made for this run and dropped after it (LC-4).
 . "$root/scripts/scratch-db.sh"

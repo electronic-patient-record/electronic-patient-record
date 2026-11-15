@@ -11,9 +11,14 @@ on:
     # the hazard-log job (CQ-21).
     types: [opened, synchronize, reopened, labeled, unlabeled]
   workflow_dispatch:
+  # Every job, every night (LC-7): a push runs only the jobs its files need (the `changes` job), so the nightly run
+  # catches what no file change shows, such as a new advisory for a locked crate or a changed base image.
+  schedule:
+    - cron: "17 3 * * *"
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  # The event is in the group so a push never cancels the nightly run, nor the nightly run a push.
+  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -28,8 +33,52 @@ env:
   UI: electronic-patient-record-ui-with-svelte
 
 jobs:
+  # Which jobs this push or pull request needs (LC-7), from the files it changes: `scripts/ci-changes.sh`, whose
+  # test checks that every document a project's tests read runs that project. A push is compared with the last
+  # commit on its branch whose CI passed, not with the commit before it, because a newer push cancels a run in
+  # progress and its files would otherwise never be checked. A pull request is compared with where it left its
+  # base. A nightly or manual run, or no green commit to compare with, runs everything.
+  changes:
+    name: Which jobs run
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      rust: ${{ steps.which.outputs.rust }}
+      ui: ${{ steps.which.outputs.ui }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: which
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          BRANCH: ${{ github.ref_name }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          case "$EVENT" in
+            push)
+              from="$(gh run list --workflow ci.yml --branch "$BRANCH" --status success --limit 1 \
+                --json headSha -q '.[0].headSha' 2>/dev/null || true)"
+              echo "Last green commit on $BRANCH: ${from:-none}" ;;
+            pull_request) from="$(git merge-base "$BASE" HEAD 2>/dev/null || true)" ;;
+            *) from="" ;;
+          esac
+          if [ -n "$from" ] && git cat-file -e "$from^{commit}" 2>/dev/null; then
+            git diff --name-only "$from" HEAD | tee changed.txt
+            sh scripts/ci-changes.sh < changed.txt | tee -a "$GITHUB_OUTPUT"
+          else
+            echo "No base commit to compare with ($EVENT): every job runs."
+            printf 'rust=true\nui=true\n' | tee -a "$GITHUB_OUTPUT"
+          fi
+
   matcher:
     name: Matcher (fmt, clippy, tests)
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -52,6 +101,8 @@ jobs:
 
   api:
     name: API (fmt, clippy, database-free tests)
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
     env:
       # Over 50 test binaries with full debug info filled the runner's disk (2026-11-04). Line tables keep panic locations.
@@ -78,6 +129,8 @@ jobs:
 
   fhir-validator:
     name: FHIR validator (what the API writes, base R4 and R5)
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -102,6 +155,8 @@ jobs:
 
   api-db:
     name: API (Postgres 18 tests)
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -144,6 +199,8 @@ jobs:
 
   deny:
     name: cargo deny
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -160,6 +217,8 @@ jobs:
 
   ui:
     name: UI (check, unit tests, browser tests)
+    needs: changes
+    if: needs.changes.outputs.ui == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -197,6 +256,7 @@ jobs:
       - run: python3 scripts/test_check_hazard_log.py
       - run: sh scripts/test_pre_push.sh
       - run: sh scripts/test_preflight.sh
+      - run: sh scripts/test_ci_changes.sh
 
   # A pull request labelled `clinical-impact` must change the hazard log (task AS-1).
   hazard-log:
@@ -227,6 +287,8 @@ jobs:
 
   container:
     name: Container images build (Podman)
+    needs: changes
+    if: needs.changes.outputs.rust == 'true' || needs.changes.outputs.ui == 'true'
     runs-on: ubuntu-latest
     env:
       # `podman compose` would pick the preinstalled docker-compose first; name the Podman-native provider.
@@ -281,6 +343,8 @@ jobs:
 
   coverage:
     name: Coverage floor (matcher, service unit tests)
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -322,18 +386,27 @@ jobs:
         # Rust analysis is generally available without a build since CodeQL 2.23.3 (GitHub changelog,
         # 2025-10-14); both run with `build-mode: none`.
         language: [javascript-typescript, rust]
+    needs: changes
+    env:
+      # `matrix` cannot be read in a job-level `if`, so each step asks whether its language changed.
+      WANTED: ${{ (matrix.language == 'rust' && needs.changes.outputs.rust == 'true') || (matrix.language == 'javascript-typescript' && needs.changes.outputs.ui == 'true') }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: github/codeql-action/init@v4
+      - if: env.WANTED == 'true'
+        uses: actions/checkout@v7
+      - if: env.WANTED == 'true'
+        uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
           build-mode: none
-      - uses: github/codeql-action/analyze@v4
+      - if: env.WANTED == 'true'
+        uses: github/codeql-action/analyze@v4
         with:
           category: /language:${{ matrix.language }}
 
   pnpm-audit:
     name: pnpm audit (high and above)
+    needs: changes
+    if: needs.changes.outputs.ui == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -367,7 +440,8 @@ jobs:
   ci-ok:
     name: ci-ok
     if: always()
-    needs: [matcher, api, api-db, fhir-validator, deny, coverage, codeql, pnpm-audit, secrets, ui, docs, hazard-log, hazard-signoff, container, fresh-clone]
+    # A job the `changes` job left out is `skipped`, which passes; a failed `changes` fails this.
+    needs: [changes, matcher, api, api-db, fhir-validator, deny, coverage, codeql, pnpm-audit, secrets, ui, docs, hazard-log, hazard-signoff, container, fresh-clone]
     runs-on: ubuntu-latest
     steps:
       - run: |
