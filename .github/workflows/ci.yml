@@ -257,6 +257,7 @@ jobs:
       - run: sh scripts/test_pre_push.sh
       - run: sh scripts/test_preflight.sh
       - run: sh scripts/test_ci_changes.sh
+      - run: sh scripts/test_gate_record.sh
 
   # A pull request labelled `clinical-impact` must change the hazard log (task AS-1).
   hazard-log:

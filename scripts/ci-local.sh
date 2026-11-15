@@ -4,6 +4,7 @@
 #   sh scripts/ci-local.sh --fast    fmt, clippy, docs, database-free tests, UI lint and check, doc checks
 #   sh scripts/ci-local.sh --full    adds the database tests, UI browser tests, the FHIR validator, containers
 #   sh scripts/ci-local.sh --list    the gates, without running them
+#   sh scripts/ci-local.sh --verify <commit>   check the signed record a --full run wrote for that commit (LC-6)
 #
 # Prints a table of gate, result and seconds, and keeps each gate's output in target/ci-local/<gate>.log.
 # Every gate runs even after a failure, so one run shows everything that is wrong. Exit status: 0 all passed,
@@ -30,8 +31,9 @@ logs="$root/target/ci-local"
 mode="${1:-}"
 case "$mode" in
   --fast | --full | --list) ;;
+  --verify) cd "$root" && exec sh scripts/gate-record.sh verify "${2:?usage: sh scripts/ci-local.sh --verify <commit>}" ;;
   *)
-    echo "usage: sh scripts/ci-local.sh --fast | --full | --list" >&2
+    echo "usage: sh scripts/ci-local.sh --fast | --full | --list | --verify <commit>" >&2
     exit 64
     ;;
 esac
@@ -81,6 +83,7 @@ off=0
 record() { # name, result, seconds, note
   rows="$rows$(printf '%-24s %-5s %6s  %s' "$1" "$2" "$3" "$4")
 "
+  [ "$mode" = "--list" ] || printf '%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" >>"$logs/results.tsv"
 }
 
 gate() { # name, directory, command
@@ -121,7 +124,10 @@ skip() { # name, why
   record "$1" SKIP - "$2"
 }
 
-[ "$mode" = "--list" ] || mkdir -p "$logs"
+[ "$mode" = "--list" ] || { mkdir -p "$logs" && : >"$logs/results.tsv"; }
+# A --full run on a clean tree writes a signed record of its gates (LC-6): HEAD now, and whether tracked files match it.
+start_head="$(git -C "$root" rev-parse HEAD 2>/dev/null || true)"
+start_clean="$([ -z "$(git -C "$root" status --porcelain --untracked-files=no 2>/dev/null)" ] && echo yes || echo no)"
 
 # The traps that have failed a full run here, checked before any gate (LC-12): ports, the validator jar, the Podman
 # VM's clock, memory and disk. Exit 3 names each problem and its fix.
@@ -149,6 +155,7 @@ gate docs-hazard-log "$root" 'python3 scripts/check-hazard-log.py --report . && 
 gate docs-hooks "$root" 'sh scripts/test_pre_push.sh'
 gate docs-preflight "$root" 'sh scripts/test_preflight.sh'
 gate docs-ci-changes "$root" 'sh scripts/test_ci_changes.sh'
+gate docs-gate-record "$root" 'sh scripts/test_gate_record.sh'
 
 # The database gates run against a scratch database made for this run and dropped after it (LC-4).
 . "$root/scripts/scratch-db.sh"
@@ -200,6 +207,17 @@ if [ "$mode" != "--fast" ]; then
 fi
 
 [ "$mode" != "--list" ] || exit 0
+
+if [ "$mode" = "--full" ]; then
+  if [ "$start_clean" != yes ]; then
+    printf '\nNo gate record: tracked files differed from HEAD when the run started.\n'
+  elif [ "$(git -C "$root" rev-parse HEAD)" != "$start_head" ]; then
+    printf '\nNo gate record: HEAD moved during the run.\n'
+  else
+    printf '\n'
+    (cd "$root" && sh scripts/gate-record.sh write "$logs/results.tsv") || true
+  fi
+fi
 
 printf '\n%-24s %-5s %6s  %s\n' gate result secs note
 printf '%s' "$rows"

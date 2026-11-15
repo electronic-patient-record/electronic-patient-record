@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-15 - A signed local gate record (LC-6)
+
+- **Clinical risk:** none. Developer tooling only. A record is self-attested and is not evidence for the hazard log or the safety case; it says so in its own text, as OQ-LC3 recommends (hosted runs only).
+- **Built:** `scripts/ci-local.sh --full` on a tree whose tracked files match HEAD writes `target/ci-local/<commit>.json`: the commit and tree, the host's OS and architecture, the tool versions, each gate's result and seconds, and whether all passed. Untracked files are counted, not refused. It signs the record with git's `user.signingkey` (`ssh-keygen -Y sign`, namespace `epr-ci-local`). A dirty tree, or HEAD moving during the run, writes none. `ci-local.sh --verify <commit>` (`scripts/gate-record.sh verify`) checks the signature against git's allowed signers, and that the record names that commit and its tree. A run narrowed by `EPR_CI_ONLY` never counts as passed.
+- **Tests:** `scripts/test_gate_record.sh` (the `docs-gate-record` gate and a step of CI's docs job) uses a throwaway key and repository: a record verifies; changed, copied to another commit, or signed by a key not on the list, it fails; a dirty tree is refused; a failed run names its gates; a signing failure leaves an earlier record as it was.
+- **Not done / not verified:** nothing publishes or keeps a record beyond `target/`, which is not committed. A record is signed, not reproduced: it says this key's holder ran the gates, not that they would pass elsewhere.
+
 ## 2026-11-15 - CI runs only the jobs a push needs (LC-7)
 
 - **Clinical risk:** none. CI only; every check still runs, nightly if not on the push.
