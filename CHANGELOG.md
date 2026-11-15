@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-15 - Themes: light and dark must pass, others by the user's choice (TH-1, spec only)
+
+- **Clinical risk:** a theme changes what a clinician can see. Recorded as hazard H-057 (open); nothing is built, so nothing on screen changes with this entry.
+- **Specified:** NFR-4 and the UI spec's new [themes](electronic-patient-record-ui-with-svelte/spec/index.md#themes-th-1) section. The light and the dark theme each pass WCAG 2.2 AA on every page (1.4.3, 1.4.11, 1.4.1), and one of them is always the default. A user may choose a theme that does not pass, for themselves only; it is labelled, never a default, and the theme control stays readable in every theme, following WCAG's conforming alternate version (W3C Understanding Conformance, technique C29). A theme changes colours only: the banner, the warning, allergy and critical flags and focus stay, not by colour alone. Task TH-1 holds the tests and the work.
+- **Found:** text contrast passes in both themes today (6.7:1 or more), but `--border` on the background is 1.67:1 light and 2.02:1 dark, below 1.4.11's 3:1, and axe has only ever run in the light theme.
+- **Not done / not verified:** no code, test or theme control; the ratios were computed from `src/app.css`'s tokens, not measured on rendered pages; the WCAG conformance text was read on W3C's Understanding page, not in the standard's own section.
+
 ## 2026-11-15 - Load tests and benchmarks (OS-5, SF-2)
 
 - **Clinical risk:** none. Tests, benchmarks and CI only; no service or UI code changed, and nothing a clinician sees.

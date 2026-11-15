@@ -642,6 +642,20 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
 
 ### UI
 
+- [ ] **TH-1 (M) — Themes: light and dark pass, others by the user's choice.** Required 2026-11-15; spec:
+  [UI spec, themes](electronic-patient-record-ui-with-svelte/spec/index.md#themes-th-1), NFR-4. Hazard H-057.
+  - Run the browser tests' axe check in both `colorScheme` light and dark (a second Playwright project, or a loop).
+  - A unit test of every token pair in both passing themes against 1.4.3 and 1.4.11.
+  - Fix `--border` (1.67:1 light, 2.02:1 dark) so input edges reach 3:1, or give inputs another visible edge.
+  - A theme control on every page, drawn in a passing theme whatever is in force; light, dark and "follow the
+    device"; the choice kept per user (cookie, not the server).
+  - Non-passing themes, if any are added: labelled as not meeting the contrast checks; never a default; the banner,
+    warning, allergy and critical flags and focus kept, and not by colour alone; `forced-colors` respected.
+
+  **Acceptance:** axe passes on every page in light and dark; the token test passes; with a non-passing theme
+  chosen, a browser test finds the control, the banner, the warning and an allergy flag, and the control passes
+  axe's contrast rule.
+
 - [x] **CQ-31 (S) — Proxy and session resilience.** **Landed 2026-10-23** (`proxy-handler.ts`, `auth.ts`, `forwarded-proto.ts`; 13 new unit tests; Playwright 43 pass). **Not done:** the real-Keycloak suite was not run; the handler test stubs `forwardedProto`, so the proxy-trust rule is tested on its helper, not through the handler; no retry in the browser on a 503. Adds `AbortSignal.timeout` to the upstream call
   (`api/proxy/[...path]/+server.ts:43`).
   - Transport errors map to 502 or 504 JSON.

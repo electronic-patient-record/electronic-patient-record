@@ -90,12 +90,51 @@ attempt is read with `GETDEL`, so it is single-use across replicas. If Redis is 
 the cookie, and the page shows the reader as signed out without deleting anything. Sessions are not counted in Redis, so the
 10,000 cap applies to memory only; set `maxmemory` on the Redis. Rotating the key signs everyone out.
 
+### Themes (TH-1)
+
+**Required 2026-11-15; not built beyond today's two token sets.** NFR-4 in [spec/07](../../spec/07-non-functional-requirements.md).
+
+1. **Two themes pass.** The light theme and the dark theme each meet WCAG 2.2 AA on every page: text contrast
+   (1.4.3: 4.5:1, or 3:1 for large text), non-text contrast (1.4.11: 3:1 for the edges of inputs and buttons, focus
+   indicators, icons that carry meaning), and use of colour (1.4.1: colour is never the only carrier of a meaning).
+   These two are the **passing themes**.
+2. **The default is a passing theme.** With no choice made, the page follows `prefers-color-scheme`: light or dark.
+   A site, an administrator or a pack cannot make any other theme the default, for one user or for all.
+3. **Other themes are allowed when the user chooses them.** A user may pick a theme that does not pass (lower
+   contrast for glare or migraine, a brand palette, anything else) because it suits them. It applies to that user
+   only, is never chosen automatically or for someone else, and the picker says, in words beside each such theme,
+   that it does not meet the contrast checks. This follows WCAG's *conforming alternate version*: a page may have a
+   version that does not conform when a conforming one can be reached from it, and a style switcher is one way to
+   provide it (W3C, Understanding Conformance; technique C29).
+4. **The way back is always readable.** The theme control is reachable from every page in every theme, by keyboard,
+   and is drawn in a passing theme's colours whatever theme is in force, so a user who picked a theme they cannot
+   read can always get out of it. Returning to a passing theme is one step.
+5. **A theme changes colours, nothing else.** In any theme, the patient banner, the "Not for clinical use" warning,
+   allergy and critical-result flags, `role="alert"` failures and focus stay present, and keep a meaning that does
+   not depend on colour (text or a shape beside it). A theme cannot hide, shrink or reorder them (hazard H-057).
+6. **The user's own settings win.** Forced colours (Windows contrast themes, `forced-colors: active`) and the
+   browser's zoom and text spacing are not overridden by any theme.
+
+**Tests (to build).** The browser tests run axe (WCAG 2.2 AA tags, as now) on every page in both passing themes:
+Playwright's `colorScheme` set to `light` and to `dark`. A unit test computes the contrast of every token pair the
+two passing themes use (text on each background, borders and the accent on each background) and fails below the
+rule, since axe does not check every non-text edge. A browser test picks a non-passing theme and checks that the
+theme control, the banner, the warning and an allergy flag are still present and the control still passes. axe is
+not run against a non-passing theme: it would fail, and it is allowed to.
+
+**Today** (2026-11-15, `src/app.css`): two token sets, light and dark by `prefers-color-scheme`, with
+`data-color-scheme="light"` forcing light. Text passes in both (foreground on background 17.4:1 light and 15.9:1
+dark; muted 8.9 and 9.1; accent 6.7 and 8.7; text on the warning background 15.9 and 11.6). **`--border` on the
+background is 1.67:1 (light) and 2.02:1 (dark), below 1.4.11's 3:1:** where a border is the only thing that shows an
+input's edge, neither theme passes yet. axe runs in light only, so the dark theme has never been checked on a page.
+There is no theme control and no third theme.
+
 ## 2. Not built
 
 A shared session store is built but off by default (below); it was not exercised behind two real UI processes. Keycloak-initiated logout; the Keycloak end-to-end
 run in CI; patient search,
 registration, banner, summary; the clinical pages; the Lily widgets and `DataTable`; translations other than the machine-written Welsh table (and the small tables in `translations.ts`), and any reviewed translation; the inbox; the
-portal; dark-theme toggle (colours follow `prefers-color-scheme`).
+portal; the theme control and the dark-theme checks of TH-1 (colours follow `prefers-color-scheme`; [themes](#themes-th-1)).
 
 **Reasons a link cannot be automatic (CQ-38).** The compare and registration pages show each reason from the matcher's `conflict_codes` (nine codes: different national health numbers, the same national health number with different birth dates or names, sound-alike, swapped, extra given name, field unavailable, field below minimum, thin evidence) in the page's locale, with the numbers in the locale's digits (`src/lib/conflicts.ts`). A code, field or number the page does not know shows the matcher's English text for that position; codes missing or a different length from the English list show the English list whole. The wording is machine-written, **not reviewed by any speaker**, and is clinical wording (H-001).
 

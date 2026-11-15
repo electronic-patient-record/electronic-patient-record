@@ -83,6 +83,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | AN | 0 | 10 |
 | PH | 0 | 10 |
 | RD | 0 | 7 |
-| **Total** | **104** | **404** |
+| TH | 0 | 1 |
+| **Total** | **104** | **405** |
 
 <!-- generated:end -->
