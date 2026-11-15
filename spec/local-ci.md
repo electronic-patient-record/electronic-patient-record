@@ -62,6 +62,28 @@ So two runs at once do not see each other's rows, and a row left in a shared tes
 
 **Not done:** a run killed with `kill -9` leaves its scratch database (find them by the `epr_ci_` prefix; nothing sweeps them). The role needs `CREATEDB` on a given server. Two runs at once still share `target/` (cargo makes the second wait), `target/ci-local/` logs (the later run overwrites them), the Playwright port and the container image tags.
 
+## One definition per gate (LC-3, built 2026-11-15)
+
+Each gate is one script, `scripts/gates/<name>.sh`, named as in `ci-local.sh`'s table. It changes to its own directory, so
+it runs the same from anywhere, and both `ci.yml` (`run: sh scripts/gates/<name>.sh`) and `ci-local.sh` call it: 30
+scripts. What a gate does can no longer differ between here and CI, though the machine, the tools installed (nextest,
+for one) and the environment still can.
+
+`scripts/check-gates.py` (the `docs-gates` gate) reads every `run:` step in `ci.yml`. Each one must call a gate script that
+exists, or be listed in the check with its reason:
+- **setup:** installing packages, the browser, podman-compose and gitleaks, deciding which jobs run, preparing CI's
+  database;
+- **GitHub only:** the secret scan, the two pull-request checks, `ci-ok`, the toolchain pin and pnpm audit;
+- **CI only:** the two `podman compose` start-up checks, which need a clean runner's free ports.
+
+It also fails when a gate script has no local twin, or a listed step no longer exists, so the list stays true.
+`scripts/test_check_gates.sh` adds an inline gate, a call to a missing script and a stale entry to copies of the
+workflow, and each fails. CodeQL and cargo deny are GitHub actions with no `run:` step and no local twin; the check
+names them.
+
+`ci-local.sh --full` gained the two coverage floors (`coverage-matcher`, `coverage-service`), which only CI ran before.
+They SKIP without `cargo-llvm-cov`.
+
 ## Speed spike (LC-8, run 2026-11-15)
 
 **Where the time goes.** In CI's last full run (`d520ab6`) the API container image took **679 s**, a release build from

@@ -141,19 +141,13 @@ jobs:
           path: .cache/fhir-validator
           key: fhir-validator-${{ hashFiles('scripts/fhir-validator.sh') }}
       - name: Validate every resource kind the API writes
-        working-directory: ${{ env.API }}
-        run: |
-          FHIR_VALIDATOR_JAR="$(sh ../scripts/fhir-validator.sh)" \
-            cargo test --test fhir_validator -- --ignored --test-threads=1
+        run: sh scripts/gates/fhir-validator.sh
 
   api-db:
     name: API (Postgres 18 tests)
     needs: changes
     if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: electronic-patient-record-service-with-rust
     services:
       postgres:
         image: postgres:18-alpine
@@ -177,18 +171,14 @@ jobs:
           workspaces: ${{ env.API }}
       # The same init SQL compose runs on a fresh data directory (CQ-24), so the two databases match.
       - name: Apply ci/postgres-init
-        run: PGPASSWORD=loco psql -v ON_ERROR_STOP=1 -h localhost -U loco -d electronic_patient_record_test -f ../ci/postgres-init/00-extensions.sql
-      # Every ignored (database-gated) test wherever it lives, every binary even after a failure.
+        run: PGPASSWORD=loco psql -v ON_ERROR_STOP=1 -h localhost -U loco -d electronic_patient_record_test -f ci/postgres-init/00-extensions.sql
+      # Every ignored (database-gated) test, with the chaos seed pinned (scripts/gates/service-database.sh).
       - name: Every DB-gated test
-        # The FHIR validator tests are `#[ignore]` too but need Java and the jar: the `fhir-validator` job runs them.
-        # EPR_CHAOS_SEED pins the hostile-input sweep (PA-12) so a red run repeats; locally the seed is random.
-        env:
-          EPR_CHAOS_SEED: "20261028"
-        run: cargo test --workspace --locked --no-fail-fast -- --ignored --test-threads=1 --skip fhir_validator_
+        run: sh scripts/gates/service-database.sh
       # The scratch database that scripts/ci-local.sh makes per run (LC-4): two at once on this server, and a
       # leftover row in this job's database that neither may see.
       - name: Scratch database per local run
-        run: sh ../scripts/test_scratch_db.sh
+        run: sh scripts/gates/scratch-db-test.sh
 
   deny:
     name: cargo deny
@@ -290,9 +280,9 @@ jobs:
       - uses: actions/checkout@v7
       - run: pipx install podman-compose
       - name: API image
-        run: podman build -f ${{ env.API }}/Containerfile -t epr-api:ci .
+        run: sh scripts/gates/container-api.sh epr-api:ci
       - name: UI image
-        run: podman build -f ${{ env.UI }}/Containerfile -t epr-ui:ci .
+        run: sh scripts/gates/container-ui.sh epr-ui:ci
       - name: The API refuses to start with login on and no keys
         run: |
           set -u
@@ -351,14 +341,11 @@ jobs:
           workspaces: |
             ${{ env.MATCHER }}
             ${{ env.API }}
-      # Floors sit just under the figures measured on 2026-10-30 (matcher 97.65 percent of lines;
-      # service database-free tests 52.24 percent). A floor may rise; lowering one needs a written reason.
+      # The floors and their reasons are in the scripts.
       - name: Matcher lines
-        working-directory: electronic-patient-record-matcher-with-rust
-        run: cargo llvm-cov --locked --lcov --output-path lcov.info --fail-under-lines 95
+        run: sh scripts/gates/coverage-matcher.sh
       - name: Service lines (database-free tests only)
-        working-directory: electronic-patient-record-service-with-rust
-        run: cargo llvm-cov --locked --lib --lcov --output-path lcov.info --fail-under-lines 50
+        run: sh scripts/gates/coverage-service.sh
       - uses: actions/upload-artifact@v7
         with:
           name: coverage-lcov

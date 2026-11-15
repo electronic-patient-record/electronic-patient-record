@@ -31,21 +31,17 @@ NOT_GATES = {
     ("ci-ok", "echo '${{ toJSON(needs) }}'"): "GitHub only: the aggregate of the jobs",
     ("fresh-clone", 'want="$(sed'): "GitHub only: compares the pin with CI's own toolchain",
     ("pnpm-audit", "pnpm audit"): "GitHub only: needs the advisory service; not a local gate",
+    ("api-db", "PGPASSWORD=loco psql"): "setup: applies ci/postgres-init to the job's database; locally "
+                                         "scripts/scratch-db.sh applies it to each scratch database",
+    ("container", "set -u"): "CI only: brings up compose.yaml on a clean runner and checks the API refuses to start "
+                            "with no keys; locally its ports and container names are often taken",
+    ("container", "set -eu"): "CI only: brings up compose.yaml with keys and checks /_health/live and a 401; locally "
+                             "its ports and container names are often taken",
 }
 
-# Gates still inline, moved a batch at a time (LC-3). This list only shrinks.
-NOT_MOVED_YET = {
-    ("fhir-validator", 'FHIR_VALIDATOR_JAR="$(sh ../scripts/fhir-validator.sh)"'),
-    ("api-db", "PGPASSWORD=loco psql"),
-    ("api-db", "cargo test --workspace --locked --no-fail-fast -- --ignored"),
-    ("api-db", "sh ../scripts/test_scratch_db.sh"),
-    ("container", "podman build -f ${{ env.API }}"),
-    ("container", "podman build -f ${{ env.UI }}"),
-    ("container", "set -u"),
-    ("container", "set -eu"),
-    ("coverage", "cargo llvm-cov --locked --lcov"),
-    ("coverage", "cargo llvm-cov --locked --lib"),
-}
+# Gates still inline, moved a batch at a time (LC-3). This list only shrinks; it is empty now, and a new entry needs a
+# reason in the commit that adds it.
+NOT_MOVED_YET = set()
 
 # Gates that are GitHub actions with no `run:` step and no local twin, listed so the gap is visible.
 GITHUB_ONLY_ACTIONS = ["CodeQL (github/codeql-action)", "cargo deny (EmbarkStudios/cargo-deny-action)"]

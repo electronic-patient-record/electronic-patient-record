@@ -62,8 +62,8 @@ done
 
 project_of() { # gate name -> the project it checks
   case "$1" in
-    matcher-*) echo matcher ;;
-    service-* | scratch-* | fhir-* | container-api) echo service ;;
+    matcher-* | coverage-matcher) echo matcher ;;
+    service-* | scratch-* | fhir-* | container-api | coverage-service) echo service ;;
     ui-* | container-ui) echo ui ;;
     *) echo docs ;;
   esac
@@ -175,8 +175,7 @@ if [ "$mode" != "--fast" ]; then
   fi
   if [ "$ready" = yes ]; then
     gate service-migrate "$service" 'cargo run --locked --quiet -- db migrate'
-    gate service-database "$service" \
-      'EPR_CHAOS_SEED=20261028 cargo test --workspace --locked --no-fail-fast -- --ignored --test-threads=1 --skip fhir_validator_'
+    gate_script service-database
   else
     skip service-migrate "$why"
     skip service-database "$why"
@@ -184,7 +183,7 @@ if [ "$mode" != "--fast" ]; then
   clean_up
 
   if [ "$mode" = "--list" ] || find_postgres || command -v psql >/dev/null 2>&1; then
-    gate scratch-db-test "$root" 'sh scripts/test_scratch_db.sh'
+    gate_script scratch-db-test
   else
     skip scratch-db-test "no Postgres tools found"
   fi
@@ -195,16 +194,23 @@ if [ "$mode" != "--fast" ]; then
     skip ui-browser "run pnpm install first"
   fi
 
+  if [ "$mode" = "--list" ] || command -v cargo-llvm-cov >/dev/null 2>&1; then
+    gate_script coverage-matcher
+    gate_script coverage-service
+  else
+    skip coverage-matcher "cargo-llvm-cov is not installed (cargo install cargo-llvm-cov)"
+    skip coverage-service "cargo-llvm-cov is not installed (cargo install cargo-llvm-cov)"
+  fi
+
   if [ "$mode" = "--list" ] || command -v java >/dev/null 2>&1; then
-    gate fhir-validator "$service" \
-      'FHIR_VALIDATOR_JAR="$(sh ../scripts/fhir-validator.sh)" cargo test --test fhir_validator -- --ignored --test-threads=1'
+    gate_script fhir-validator
   else
     skip fhir-validator "no java on PATH"
   fi
 
   if [ "$mode" = "--list" ] || podman info >/dev/null 2>&1; then
-    gate container-api "$root" 'podman build -f electronic-patient-record-service-with-rust/Containerfile -t epr-api:local .'
-    gate container-ui "$root" 'podman build -f electronic-patient-record-ui-with-svelte/Containerfile -t epr-ui:local .'
+    gate_script container-api
+    gate_script container-ui
   else
     skip container-api "podman is not answering"
     skip container-ui "podman is not answering"
