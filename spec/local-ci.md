@@ -62,6 +62,44 @@ So two runs at once do not see each other's rows, and a row left in a shared tes
 
 **Not done:** a run killed with `kill -9` leaves its scratch database (find them by the `epr_ci_` prefix; nothing sweeps them). The role needs `CREATEDB` on a given server. Two runs at once still share `target/` (cargo makes the second wait), `target/ci-local/` logs (the later run overwrites them), the Playwright port and the container image tags.
 
+## CI runs only what a push needs (LC-7, built 2026-11-15)
+
+A `changes` job in `ci.yml` lists the files changed and runs `scripts/ci-changes.sh` on them, which answers two
+questions: does Rust need checking, and does the UI?
+
+| Job | Runs when |
+|---|---|
+| Matcher, API, API with Postgres, FHIR validator, cargo deny, coverage | Rust |
+| UI, pnpm audit | UI |
+| Container images | Rust or UI |
+| CodeQL | per language: Rust or UI (a skipped language still starts a runner for a few seconds) |
+| Docs, secret scan, toolchain pin, hazard log, `ci-ok` | every push |
+
+Files in a project's directory need that project. The UI's `src/` needs Rust too, because the service's risk and grief
+censuses read it. Documents need neither, except the ones a project's tests read (`SECURITY.md`,
+`governance/personal-data-inventory.csv`, `governance/production-readiness.md`, `governance/translation-review.md`,
+`operations/keycloak/`). Any file the script does not know, such as a workflow or a script, needs both.
+
+**What a push is compared with.** For a push it is the last commit on the branch whose CI passed, not the commit
+before it: a newer push cancels a run in progress (20% of runs, LC-1), and comparing with the previous commit would
+then never check the cancelled run's files. For a pull request it is where the branch left its base. A nightly run
+(03:17 UTC), a manual run, or a branch with no green commit runs everything. The nightly run catches what no file shows,
+such as a new advisory for a locked crate or a changed base image. The concurrency group names the event, so a push
+does not cancel the nightly run.
+
+`ci-ok` waits on `changes` as well as every job, and stays the single required check. A job the `changes` job left out
+is `skipped`, which passes; a failed `changes` job fails `ci-ok`.
+
+**Keeping it honest.** `scripts/test_ci_changes.sh` (the `docs-ci-changes` gate and a step of CI's docs job) has fixed
+cases, and a census. It finds every file a project's tests or source name outside the project's own directory, as a
+`"../path"` literal or a `join("dir/...")` from the repository root, and fails unless a change to that file runs the
+project that reads it. It found 10 such files, among them one a hand-made list had missed: a UI test reads the
+service's `src/adjustments.rs`. Run with `SECURITY.md` dropped from the list, it failed.
+
+**Not done:** the pre-push hook (LC-5) still maps files by directory and does not use `ci-changes.sh`, so a change to
+`SECURITY.md` alone runs only the document checks before a push. The census sees only literal paths; a path built at
+run time would escape it, and the nightly run is then the backstop.
+
 ## A preflight (LC-12, built 2026-11-15)
 
 `sh scripts/ci-local.sh --full` first runs `scripts/preflight.sh`, which checks the traps that have failed a full run
