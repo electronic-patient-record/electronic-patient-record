@@ -2128,12 +2128,19 @@ test("recording a vital sends its own unit and the site's time as UTC, never an 
   await section.getByLabel(/^Measured at/).fill("2026-10-26T09:45");
   await section.getByLabel("Why there is no value").selectOption("");
   await section.getByRole("button", { name: "Record vital sign" }).click();
+  // The browser's own required check refuses it, so no message shows; the exact count after the next send backs this up.
+  expect(
+    await section
+      .getByLabel("Why there is no value")
+      .evaluate((el) => (el as HTMLSelectElement).validity.valueMissing),
+  ).toBe(true);
   expect(sent).toHaveLength(1);
   await section
     .getByLabel("Why there is no value")
     .selectOption({ label: "declined" });
   await section.getByRole("button", { name: "Record vital sign" }).click();
   await expect(section.getByText("Vital sign recorded.")).toBeVisible();
+  expect(sent).toHaveLength(2);
   expect(sent[1].observation).toEqual({
     code: "8867-4",
     effective_at: "2026-10-26T13:45:00Z",
@@ -2724,14 +2731,15 @@ test("recording a proxy sends its basis, scopes and last day, and the list shows
   await page.getByLabel(/^Last day/).fill("2026-12-31");
   await axe(page);
   await page.getByRole("button", { name: "Record relationship" }).click();
+  await expect(
+    page.getByText("Allergies · until the end of 2026-12-31"),
+  ).toBeVisible();
+  expect(sent).toHaveLength(1);
   expect(sent[0].relationship.proxy).toEqual({
     basis: "parental-responsibility",
     scopes: ["allergies"],
     expires_at: Date.UTC(2027, 0, 1) / 1000,
   });
-  await expect(
-    page.getByText("Allergies · until the end of 2026-12-31"),
-  ).toBeVisible();
   await expect(page.getByText(/this proxy sees nothing/)).toBeVisible();
 });
 
@@ -3877,12 +3885,14 @@ test("a clinician sends a referral and takes a step; the service's list of next 
 
   // A step that needs a note opens its field first and sends nothing until it is filled in.
   await page.getByRole("button", { name: /^Ask to cancel/ }).click();
+  await expect(page.getByLabel("Note (needed for this step)")).toBeVisible();
   expect(sent).toHaveLength(1);
   await page.getByLabel("Note (needed for this step)").fill("No longer needed");
   await page
     .getByRole("button", { name: "Ask to cancel", exact: true })
     .click();
   await expect(page.getByText("Done.", { exact: true })).toBeVisible();
+  expect(sent).toHaveLength(2);
   expect(sent[1]?.body).toEqual({
     event: "request-cancel",
     expected_version: 1,
@@ -4594,6 +4604,8 @@ test("an administrator reads an unmatched referral reply and clears it, by hand 
   await expect(
     page.getByText("No unmatched referral replies are waiting."),
   ).toBeVisible();
+  // The refusal was already on the page, so the check straight after the click proves little: this count does.
+  expect(sent).toHaveLength(1);
   expect(sent[0].url).toContain("/55555555-5555-4555-8555-555555555555/clear");
   expect(sent[0].body).toEqual({
     how: "matched",

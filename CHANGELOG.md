@@ -2,11 +2,17 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-15 - Browser tests wait before reading what was sent
+
+- **Clinical risk:** none. Tests only; the screens and what they send are unchanged.
+- **Fixed:** an audit of the browser tests' captured-request checks for the race fixed below found four more that read the requests straight after a click. One was a real race: `recording a proxy sends its basis, scopes and last day` read the request before the list showed the proxy; it now waits for the list first. Three check that nothing was sent (a vital sign with no reason, a referral step whose note is empty, an unmatched reply cleared with no referral id). Such a check can pass when a stray request arrives late, so each now waits for the field or state that shows the click was handled where there is one, and the test counts the requests exactly after the next real send. The four tests passed five times each.
+- **Not done / not verified:** the audit matched a check on a captured array whose line before is a click, fill or similar; a check two lines after an action with no wait between was not looked for. The full browser suite was not rerun here; the pre-push hook and CI run it.
+
 ## 2026-11-15 - A browser test waits for the request it checks
 
 - **Clinical risk:** none. A test only; the screen and what it sends are unchanged.
 - **Fixed:** `a patient asks for a reading to be corrected, withdraws, and states disagreement with a refusal` read the last request straight after clicking "Add my statement", with nothing on the page to wait for, and on CI's run of `7040cc3` it still saw the withdrawal. It now polls until the statement's request arrives. It passed ten times in a row here.
-- **Not done / not verified:** the other 60 checks of captured requests in the browser tests were not audited for the same race; those read so far follow a wait for text on the page.
+- **Not done / not verified:** the other 60 checks of captured requests in the browser tests were not audited for the same race here; the entry above did that.
 
 ## 2026-11-15 - One definition per gate, first batch (LC-3)
 
