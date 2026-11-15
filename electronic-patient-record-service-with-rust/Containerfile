@@ -26,6 +26,8 @@ WORKDIR /app
 COPY electronic-patient-record-service-with-rust/Cargo.toml electronic-patient-record-service-with-rust/Cargo.lock electronic-patient-record-service-with-rust/
 COPY electronic-patient-record-service-with-rust/migrations electronic-patient-record-service-with-rust/migrations
 COPY electronic-patient-record-service-with-rust/src electronic-patient-record-service-with-rust/src
+# Cargo.toml names benches/service.rs ([[bench]]), so the manifest does not parse without it; it is not built here.
+COPY electronic-patient-record-service-with-rust/benches electronic-patient-record-service-with-rust/benches
 
 WORKDIR /app/electronic-patient-record-service-with-rust
 
