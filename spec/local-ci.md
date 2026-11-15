@@ -62,6 +62,34 @@ So two runs at once do not see each other's rows, and a row left in a shared tes
 
 **Not done:** a run killed with `kill -9` leaves its scratch database (find them by the `epr_ci_` prefix; nothing sweeps them). The role needs `CREATEDB` on a given server. Two runs at once still share `target/` (cargo makes the second wait), `target/ci-local/` logs (the later run overwrites them), the Playwright port and the container image tags.
 
+## A preflight (LC-12, built 2026-11-15)
+
+`sh scripts/ci-local.sh --full` first runs `scripts/preflight.sh`, which checks the traps that have failed a full run
+here, reports every one it finds with the command that fixes it, and stops the run with exit 3 before any gate runs.
+`EPR_CI_SKIP_PREFLIGHT=1` skips it. `--fast` does not run it: none of its gates meets these traps.
+
+| Check | Fails when | Fix it names |
+|---|---|---|
+| Browser test port | `PW_PORT` (default 4183) is in use | a free `PW_PORT`, or `lsof` to find what listens |
+| Throwaway Postgres port | `EPR_CI_PG_PORT` is set and in use | unset it, or a free port |
+| A given Postgres | `DB_URL` names a port on this machine with nothing listening | start that server, or unset `DB_URL` |
+| FHIR validator | `java` is on `PATH` and the pinned jar is not cached | `sh scripts/fhir-validator.sh` |
+| Podman VM clock | more than 30 s from the host's | `podman machine ssh "sudo date -u -s @$(date -u +%s)"` |
+| Podman VM memory | under 16,000 MB | `podman machine set --memory 32768` (stops every container) |
+| Podman VM disk | under 20 GB free on `/var` | `podman system prune`, after reading what it lists |
+
+A check whose tool is missing (no `podman`, no `java`) passes, because that gate already shows as `SKIP`. On Linux,
+where Podman has no VM, the three VM checks do not run. Redis is not checked: no local gate uses it.
+
+`scripts/test_preflight.sh` breaks each condition on purpose, with a listener it starts holding a port and faked VM
+readings, and expects exit 3 and the named fix; a good machine must pass and two problems must both be reported. It is
+the `docs-preflight` gate and a step of CI's docs job. Run against a preflight whose clock check never fired, it failed
+twice. With port 4183 really taken, `--full` stopped in 1 s with the message and exit 3. The whole preflight takes about
+1 s on this machine.
+
+**Not done:** the thresholds (30 s, 16,000 MB, 20 GB) are judgements from the failures seen, not measured limits. The
+VM checks were tried only on macOS with `applehv`. A remote `DB_URL` is not checked; the database gates find it.
+
 ## A pre-push hook (LC-5, built 2026-11-14)
 
 `.githooks/pre-push` runs `sh scripts/ci-local.sh --fast` before each push, for the projects the pushed commits touch,

@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-15 - A preflight before a full local run (LC-12)
+
+- **Clinical risk:** none. Developer tooling only.
+- **Built:** `scripts/preflight.sh`, run first by `ci-local.sh --full`. It checks `PW_PORT`, `EPR_CI_PG_PORT`, a local `DB_URL` server, the FHIR validator jar, and the Podman VM's clock, memory and disk. It reports every problem with its fix and exits 3 before any gate runs; `EPR_CI_SKIP_PREFLIGHT=1` skips it. `scripts/test_preflight.sh` breaks each condition on purpose (the `docs-preflight` gate and a step of CI's docs job), and failed against a preflight whose clock check never fired. With port 4183 really taken, `--full` stopped in 1 s.
+- **Not done / not verified:** the thresholds are judgements from the failures seen. The VM checks ran only on macOS. A remote `DB_URL` is not checked.
+
 ## 2026-11-15 - Playwright 1.65.1
 
 - **Clinical risk:** none. A test tool only.

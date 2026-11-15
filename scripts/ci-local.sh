@@ -7,8 +7,8 @@
 #
 # Prints a table of gate, result and seconds, and keeps each gate's output in target/ci-local/<gate>.log.
 # Every gate runs even after a failure, so one run shows everything that is wrong. Exit status: 0 all passed,
-# 1 a gate failed, 2 a gate could not run. A gate that cannot run says SKIP and why, and that fails the run:
-# nothing is skipped silently. EPR_CI_ALLOW_SKIP=1 lets skips exit 0, and the table still shows them.
+# 1 a gate failed, 2 a gate could not run, 3 the preflight (--full only, scripts/preflight.sh) found a problem.
+# A gate that cannot run says SKIP and why, and that fails the run: nothing is skipped silently. EPR_CI_ALLOW_SKIP=1 lets skips exit 0, and the table still shows them.
 #
 # It bypasses the kache compiler cache, which has served stale libraries and fails under load. Set
 # EPR_CI_KEEP_CACHE=1 to keep it. The database gates use a scratch database made for the run and dropped after:
@@ -123,6 +123,12 @@ skip() { # name, why
 
 [ "$mode" = "--list" ] || mkdir -p "$logs"
 
+# The traps that have failed a full run here, checked before any gate (LC-12): ports, the validator jar, the Podman
+# VM's clock, memory and disk. Exit 3 names each problem and its fix.
+if [ "$mode" = "--full" ] && [ "${EPR_CI_SKIP_PREFLIGHT:-}" != "1" ]; then
+  sh "$root/scripts/preflight.sh" || exit 3
+fi
+
 gate matcher-fmt "$matcher" 'cargo fmt --check'
 gate matcher-clippy "$matcher" 'cargo clippy --all-targets --all-features -- -D warnings'
 gate matcher-test "$matcher" 'cargo test --locked'
@@ -141,6 +147,7 @@ gate docs-llms "$root" 'python3 scripts/generate-llms.py --check'
 gate docs-schema-map "$root" 'python3 scripts/generate-schema-map.py --check'
 gate docs-hazard-log "$root" 'python3 scripts/check-hazard-log.py --report . && python3 scripts/test_check_hazard_log.py'
 gate docs-hooks "$root" 'sh scripts/test_pre_push.sh'
+gate docs-preflight "$root" 'sh scripts/test_preflight.sh'
 
 # The database gates run against a scratch database made for this run and dropped after it (LC-4).
 . "$root/scripts/scratch-db.sh"
