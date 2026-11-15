@@ -269,3 +269,64 @@ test("the theme follows the device's light or dark setting", async ({
   const dark = info.project.use.colorScheme === "dark";
   expect(background).toBe(dark ? "rgb(20, 22, 26)" : "rgb(255, 255, 255)");
 });
+
+// TH-1: the theme control. A choice applies at once, is kept for the next page (the server puts it on <html>, so
+// there is no flash of the other theme), and "Follow this device" hands the decision back to the browser.
+const LIGHT_BG = "rgb(255, 255, 255)";
+const DARK_BG = "rgb(20, 22, 26)";
+const background = (page: import("@playwright/test").Page) =>
+  page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+
+test("the theme control overrides the device, keeps the choice, and can follow the device again", async ({
+  page,
+}, info) => {
+  const deviceDark = info.project.use.colorScheme === "dark";
+  const device = deviceDark ? DARK_BG : LIGHT_BG;
+  const other = deviceDark ? "light" : "dark";
+  await page.goto("/en-001");
+  const control = page.getByLabel("Theme");
+  await expect(control).toHaveValue("device");
+  expect(await background(page)).toBe(device);
+
+  await control.selectOption(other);
+  await expect
+    .poll(() => background(page))
+    .toBe(deviceDark ? LIGHT_BG : DARK_BG);
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-color-scheme",
+    other,
+  );
+  await expect(page.getByLabel("Theme")).toHaveValue(other);
+  expect(await background(page)).toBe(deviceDark ? LIGHT_BG : DARK_BG);
+  const results = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag22aa"])
+    .analyze();
+  expect(results.violations).toEqual([]);
+
+  await page.getByLabel("Theme").selectOption("device");
+  await expect.poll(() => background(page)).toBe(device);
+  await page.reload();
+  await expect(page.locator("html")).not.toHaveAttribute(
+    "data-color-scheme",
+    /./,
+  );
+  expect(await background(page)).toBe(device);
+});
+
+test("a forged theme cookie is read as following the device", async ({
+  page,
+  context,
+}, info) => {
+  await context.addCookies([
+    { name: "epr-theme", value: '"><script>', url: info.project.use.baseURL! },
+  ]);
+  await page.goto("/en-001");
+  await expect(page.locator("html")).not.toHaveAttribute(
+    "data-color-scheme",
+    /./,
+  );
+  expect(await background(page)).toBe(
+    info.project.use.colorScheme === "dark" ? DARK_BG : LIGHT_BG,
+  );
+});

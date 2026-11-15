@@ -642,7 +642,7 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
 
 ### UI
 
-- [ ] **TH-1 (M) — Themes: light and dark pass, others by the user's choice.** **Landed in part 2026-11-15:** the dark theme is on (the scaffold had forced light), `--control-border` reaches 3:1 in both themes, the browser suite runs in light and dark (axe on every page in both), and a token contrast test. **Not built:** the theme control, any other theme, a flag-by-flag colour audit, a forced-colours test. Left open. Required 2026-11-15; spec:
+- [ ] **TH-1 (M) — Themes: light and dark pass, others by the user's choice.** **Landed in part 2026-11-15:** the dark theme is on (the scaffold had forced light), `--control-border` reaches 3:1 in both themes, the browser suite runs in light and dark (axe on every page in both), and a token contrast test. **The control landed too, 2026-11-15:** *Follow this device*, *Light*, *Dark* in the header, kept in the `epr-theme` cookie and set on `<html>` by the server. **Not built:** any other theme, a flag-by-flag colour audit, a forced-colours test. Left open. Required 2026-11-15; spec:
   [UI spec, themes](electronic-patient-record-ui-with-svelte/spec/index.md#themes-th-1), NFR-4. Hazard H-057.
   - Run the browser tests' axe check in both `colorScheme` light and dark (a second Playwright project, or a loop).
   - A unit test of every token pair in both passing themes against 1.4.3 and 1.4.11.

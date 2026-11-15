@@ -98,31 +98,39 @@ the cookie, and the page shows the reader as signed out without deleting anythin
    (1.4.3: 4.5:1, or 3:1 for large text), non-text contrast (1.4.11: 3:1 for the edges of inputs and buttons, focus
    indicators, icons that carry meaning), and use of colour (1.4.1: colour is never the only carrier of a meaning).
    These two are the **passing themes**.
-2. **The default is a passing theme.** With no choice made, the page follows `prefers-color-scheme`: light or dark.
-   A site, an administrator or a pack cannot make any other theme the default, for one user or for all.
-3. **Other themes are allowed when the user chooses them.** A user may pick a theme that does not pass (lower
+2. **The UI uses the browser's light/dark setting.** With no choice made in the app, the page follows the browser's
+   `prefers-color-scheme`: light or dark, both passing themes. A site, an administrator or a pack cannot make any
+   other theme the default, for one user or for all.
+3. **An in-app theme control** in the header of every page offers *Follow this device* (the default), *Light* and
+   *Dark*. A choice applies at once, is kept in a cookie in this browser (`epr-theme`: `device`, `light` or `dark`;
+   one year, `Path=/`, `SameSite=Lax`, `Secure` over HTTPS; not `HttpOnly`, since the page writes it), and is put on
+   `<html>` as `data-color-scheme` by the server for the next page, so the other theme never flashes. Any other
+   value is read as *Follow this device*. It is this browser's choice, not the account's: nothing is stored on the
+   server, and nobody can set it for someone else.
+4. **Other themes are allowed when the user chooses them.** A user may pick a theme that does not pass (lower
    contrast for glare or migraine, a brand palette, anything else) because it suits them. It applies to that user
    only, is never chosen automatically or for someone else, and the picker says, in words beside each such theme,
    that it does not meet the contrast checks. This follows WCAG's *conforming alternate version*: a page may have a
    version that does not conform when a conforming one can be reached from it, and a style switcher is one way to
    provide it (W3C, Understanding Conformance; technique C29).
-4. **The way back is always readable.** The theme control is reachable from every page in every theme, by keyboard,
+5. **The way back is always readable.** The theme control is reachable from every page in every theme, by keyboard,
    and is drawn in a passing theme's colours whatever theme is in force, so a user who picked a theme they cannot
    read can always get out of it. Returning to a passing theme is one step.
-5. **A theme changes colours, nothing else.** In any theme, the patient banner, the "Not for clinical use" warning,
+6. **A theme changes colours, nothing else.** In any theme, the patient banner, the "Not for clinical use" warning,
    allergy and critical-result flags, `role="alert"` failures and focus stay present, and keep a meaning that does
    not depend on colour (text or a shape beside it). A theme cannot hide, shrink or reorder them (hazard H-057).
-6. **The user's own settings win.** Forced colours (Windows contrast themes, `forced-colors: active`) and the
+7. **The user's own settings win.** Forced colours (Windows contrast themes, `forced-colors: active`) and the
    browser's zoom and text spacing are not overridden by any theme.
 
-**Tests (to build).** The browser tests run axe (WCAG 2.2 AA tags, as now) on every page in both passing themes:
+**Tests.** The browser tests run axe (WCAG 2.2 AA tags, as now) on every page in both passing themes:
 Playwright's `colorScheme` set to `light` and to `dark`. A unit test computes the contrast of every token pair the
 two passing themes use (text on each background, borders and the accent on each background) and fails below the
 rule, since axe does not check every non-text edge. A browser test picks a non-passing theme and checks that the
 theme control, the banner, the warning and an allergy flag are still present and the control still passes. axe is
 not run against a non-passing theme: it would fail, and it is allowed to.
 
-**Built 2026-11-15:** points 1, 2 and 6 for the two passing themes, and their tests.
+**Built 2026-11-15:** points 1, 2, 3, 5 and 7 for the two passing themes, and their tests. Point 5 holds because
+the control offers only passing themes.
 - `src/app.html` no longer forces `data-color-scheme="light"`, which it had done since the scaffold, so the dark
   theme had never been shown to anyone. The page now follows `prefers-color-scheme`; `color-scheme` is set in both
   themes, so native controls (buttons, checkboxes, scrollbars) follow too.
@@ -132,19 +140,22 @@ not run against a non-passing theme: it would fail, and it is allowed to.
 - Every browser test runs twice, in Playwright projects `chromium` (light) and `chromium-dark`, so axe checks every
   page in both themes; a test checks the page's background really changes with the device's setting.
 - `tests/unit/theme-contrast.test.ts` checks every token pair in both themes (text 4.5:1; control edges, the focus
-  ring and the notice's edge 3:1), that dark sets every token light sets, and that form controls use
-  `--control-border`.
+  ring and the notice's edge 3:1), that dark sets every token light sets, that dark by choice and dark by the device
+  set the same tokens, and that form controls use `--control-border`.
+- The control (`src/lib/theme.ts`, the layout, `hooks.server.ts`): `tests/unit/theme.test.ts`, and browser tests that
+  a choice applies at once, survives a reload with the attribute set by the server, passes axe, and that *Follow this
+  device* hands back to the browser; a forged cookie is read as following the device. Each runs on a light and on a
+  dark device.
 
-**Not built:** the theme control (points 3 and 4), so a user cannot yet choose light against the device, or any other
-theme; there is no non-passing theme; point 5's "not by colour alone" is not audited flag by flag; forced colours
-(point 6) are not tested. The ratios are of the tokens; axe checks rendered text, not every border.
+**Not built:** any non-passing theme (point 4); point 6's "not by colour alone" is not audited flag by flag; forced
+colours (point 7) are not tested. The Welsh words for the control are machine-written and not reviewed. The ratios are of the tokens; axe checks rendered text, not every border.
 
 ## 2. Not built
 
 A shared session store is built but off by default (below); it was not exercised behind two real UI processes. Keycloak-initiated logout; the Keycloak end-to-end
 run in CI; patient search,
 registration, banner, summary; the clinical pages; the Lily widgets and `DataTable`; translations other than the machine-written Welsh table (and the small tables in `translations.ts`), and any reviewed translation; the inbox; the
-portal; the theme control and the dark-theme checks of TH-1 (colours follow `prefers-color-scheme`; [themes](#themes-th-1)).
+portal; a theme other than light and dark ([themes](#themes-th-1)).
 
 **Reasons a link cannot be automatic (CQ-38).** The compare and registration pages show each reason from the matcher's `conflict_codes` (nine codes: different national health numbers, the same national health number with different birth dates or names, sound-alike, swapped, extra given name, field unavailable, field below minimum, thin evidence) in the page's locale, with the numbers in the locale's digits (`src/lib/conflicts.ts`). A code, field or number the page does not know shows the matcher's English text for that position; codes missing or a different length from the English list show the English list whole. The wording is machine-written, **not reviewed by any speaker**, and is clinical wording (H-001).
 

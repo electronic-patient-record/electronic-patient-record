@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-15 - A theme control: follow this device, light, dark (TH-1)
+
+- **Clinical risk:** yes, what a clinician sees: a user can now pick light or dark against their browser's setting. Both pass WCAG 2.2 AA; no other theme is offered. Hazard H-057 updated (still open).
+- **Specified:** the UI uses the browser's light/dark setting (`prefers-color-scheme`), and an in-app control can override it for that browser (the maintainer chose the control, 2026-11-15). Written into NFR-4 and the UI spec's themes section (points 2 and 3).
+- **Built:** `src/lib/theme.ts`; a *Theme* select in every page's header with *Follow this device* (the default), *Light* and *Dark*; the choice applies at once, is kept in the `epr-theme` cookie for a year, and `hooks.server.ts` puts it on `<html>` as `data-color-scheme` (the `%theme%` placeholder in `app.html`), so the next page never flashes the other theme. Any other cookie value is read as following the device. `app.css` has dark tokens for a chosen dark as well as a device's dark, and a test keeps them equal. English and Welsh words.
+- **Tested:** `tests/unit/theme.test.ts` (4), two more contrast tests; browser tests that a choice applies, survives a reload, passes axe, and goes back to following the device, and that a forged cookie changes nothing, each on a light and a dark device. 379 unit tests and 232 browser runs pass.
+- **Not done / not verified:** the Welsh words ("Thema", "Dilyn y ddyfais hon", "Golau", "Tywyll") are machine-written and not reviewed; the choice is per browser, not per account; no other theme; no forced-colours test; no person has looked at either theme.
+
 ## 2026-11-15 - axa 0.14 (AX-14)
 
 - **Clinical risk:** none. The outbox stores two more columns that are always empty; nothing a clinician sees or sends changes.

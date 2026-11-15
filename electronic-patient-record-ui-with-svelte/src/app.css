@@ -1,6 +1,7 @@
 /* The two passing themes (TH-1, spec/index.md "Themes"): each token pair a page uses meets WCAG 2.2 AA, checked by
    tests/unit/theme-contrast.test.ts. `--border` is for dividers and tables (decoration); `--control-border` is the
-   edge of an input, select or textarea, which 1.4.11 holds to 3:1. `data-color-scheme="light"` forces light. */
+   edge of an input, select or textarea, which 1.4.11 holds to 3:1. `data-color-scheme` on <html> (`light` or
+   `dark`) is the user's choice from the theme control; without it the device decides. */
 :root {
   color-scheme: light;
   --bg: #ffffff;
@@ -11,6 +12,18 @@
   --accent: #0b5cad;
   --warn-bg: #fff4d6;
   --warn-border: #8a6100;
+}
+/* Dark by the user's choice (the theme control); the same tokens as dark by the device, below. */
+:root[data-color-scheme="dark"] {
+  color-scheme: dark;
+  --bg: #14161a;
+  --fg: #f0f0f0;
+  --muted: #b8b8b8;
+  --border: #444a52;
+  --control-border: #858c96;
+  --accent: #7ab8ff;
+  --warn-bg: #3a2f0f;
+  --warn-border: #d9a520;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-color-scheme="light"]) {
@@ -226,5 +239,20 @@ header.site .purpose select {
   width: auto;
 }
 header.site .purpose + .account {
+  margin-inline-start: 0;
+}
+/* The theme control (TH-1): at the end of the header, after the purpose when there is one. */
+header.site .theme {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  margin: 0;
+  margin-inline-start: auto;
+}
+header.site .theme select {
+  width: auto;
+}
+header.site .purpose + .theme,
+header.site .theme + .account {
   margin-inline-start: 0;
 }

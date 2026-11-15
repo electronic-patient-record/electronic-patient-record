@@ -170,6 +170,8 @@ export const CY: Strings = {
     "Efallai mai'r un person yw cofnod arall, ond mae ei berchennog wedi cyfyngu ar bwy all ei weld. Gofynnwch i rywun sy'n cael edrych, neu cofrestrwch beth bynnag gyda rheswm.",
   purposeLabel: "Pwrpas y defnydd",
   purposes: { operations: "Gweithrediadau", treatment: "Triniaeth" },
+  themeLabel: "Thema",
+  themes: { device: "Dilyn y ddyfais hon", light: "Golau", dark: "Tywyll" },
   navMyRecord: "Fy nghofnod",
   myRecordTitle: "Fy nghofnod",
   myRecordIntro:

@@ -107,8 +107,15 @@ describe("theme contrast", () => {
     }
   });
 
-  it("the page follows the device: app.html does not force a scheme", () => {
+  it("the page follows the device unless the user chose: app.html forces no scheme, only a placeholder", () => {
     const html = readFileSync(join(process.cwd(), "src/app.html"), "utf8");
     expect(html).not.toMatch(/<html[^>]*data-color-scheme/);
+    expect(html).toMatch(/<html[^>]*%theme%/);
+  });
+
+  it("dark by choice and dark by the device set the same tokens", () => {
+    const start = css.indexOf(':root[data-color-scheme="dark"]');
+    const chosen = tokens(css.slice(start, css.indexOf("}", start)));
+    expect(chosen).toEqual(dark);
   });
 });

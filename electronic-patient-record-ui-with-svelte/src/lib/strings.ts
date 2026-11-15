@@ -135,6 +135,8 @@ export const STRINGS = {
     "Another record may be the same person, but its owner has restricted who can see it. Ask someone who is allowed to look, or register anyway with a reason.",
   purposeLabel: "Purpose of use",
   purposes: { operations: "Operations", treatment: "Treatment" },
+  themeLabel: "Theme",
+  themes: { device: "Follow this device", light: "Light", dark: "Dark" },
   navMyRecord: "My record",
   myRecordTitle: "My record",
   myRecordIntro:

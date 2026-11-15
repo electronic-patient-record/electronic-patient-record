@@ -16,6 +16,7 @@ import { setLocaleSource } from "#lib/i18n.js";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { forwardedProto } from "#lib/forwarded-proto.js";
 import { applySecurityHeaders, isHttps } from "#lib/security-headers.js";
+import { normalizeTheme, THEME_COOKIE, themeAttribute } from "#lib/theme.js";
 
 /** Remembers the reader's locale, to choose one for a bare, unprefixed URL. */
 export const LOCALE_COOKIE = "locale";
@@ -90,7 +91,11 @@ const localeHandle: Handle = async ({ event, resolve }) => {
       transformPageChunk: ({ html }) =>
         html
           .replace('lang="%lang%"', `lang="${locale}"`)
-          .replace('dir="%dir%"', `dir="${isRtl(locale) ? "rtl" : "ltr"}"`),
+          .replace('dir="%dir%"', `dir="${isRtl(locale) ? "rtl" : "ltr"}"`)
+          .replace(
+            "%theme%",
+            themeAttribute(normalizeTheme(event.cookies.get(THEME_COOKIE))),
+          ),
     }),
   );
 };
