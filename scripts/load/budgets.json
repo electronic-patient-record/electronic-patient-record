@@ -1,0 +1,15 @@
+{
+  "source": "spec/07-non-functional-requirements.md NFR-2 for chart-open, search and fhir-read; the rest is no failures only. A budget applies at every concurrency a run uses. See spec/performance-testing.md.",
+  "budgets": {
+    "chart-open": { "p95_ms": 1000, "max_failure_rate": 0 },
+    "search": { "p95_ms": 200, "max_failure_rate": 0 },
+    "fhir-search": { "p95_ms": 200, "max_failure_rate": 0 },
+    "fhir-read": { "p50_ms": 10, "max_failure_rate": 0 },
+    "read": { "max_failure_rate": 0 },
+    "register": { "max_failure_rate": 0 },
+    "compare": { "max_failure_rate": 0 },
+    "record-observation": { "max_failure_rate": 0 },
+    "record-allergy": { "max_failure_rate": 0 },
+    "mixed": { "p95_ms": 1000, "max_failure_rate": 0.01 }
+  }
+}

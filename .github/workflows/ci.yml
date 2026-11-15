@@ -229,6 +229,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
       - run: sh scripts/gates/docs-links.sh
       - run: sh scripts/gates/docs-status.sh
       - run: sh scripts/gates/docs-llms.sh
@@ -239,6 +242,54 @@ jobs:
       - run: sh scripts/gates/docs-ci-changes.sh
       - run: sh scripts/gates/docs-gate-record.sh
       - run: sh scripts/gates/docs-gates.sh
+      - run: sh scripts/gates/docs-load-harness.sh
+
+  # Load and benchmarks (OS-5, spec/performance-testing.md), nightly and by hand only: a release build and a
+  # standard load run take about 30 minutes, too long for every push. The smoke and the benchmark runs are gates
+  # (each works, nothing fails); the standard run is a measurement, kept as an artefact, that checks failures but
+  # not latency, since a shared runner's latency is noise.
+  performance:
+    name: Performance (load smoke, benchmarks, nightly measurement)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: loco
+          POSTGRES_PASSWORD: loco
+          POSTGRES_DB: postgres
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd "pg_isready -U loco -d postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      # The server only: scripts/scratch-db.sh makes a scratch database on it and drops it after.
+      DB_URL: postgres://loco:loco@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@1.99.1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            ${{ env.API }}
+            ${{ env.MATCHER }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+      - run: sh scripts/gates/service-load-smoke.sh
+      - run: sh scripts/gates/matcher-bench.sh
+      - run: sh scripts/gates/service-bench.sh
+      - name: Standard load run (a measurement; failures checked, latency recorded)
+        run: EPR_LOAD_SKIP_BUILD=1 LOAD_NOTE="GitHub-hosted runner, nightly; release build, login off, pool 20" sh scripts/load/run-local.sh --profile standard --repeat 1 --no-latency-budgets --out target/load/nightly.json
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: load-${{ github.sha }}
+          path: target/load/
+          if-no-files-found: warn
 
   # A pull request labelled `clinical-impact` must change the hazard log (task AS-1).
   hazard-log:
@@ -420,7 +471,7 @@ jobs:
     name: ci-ok
     if: always()
     # A job the `changes` job left out is `skipped`, which passes; a failed `changes` fails this.
-    needs: [changes, matcher, api, api-db, fhir-validator, deny, coverage, codeql, pnpm-audit, secrets, ui, docs, hazard-log, hazard-signoff, container, fresh-clone]
+    needs: [changes, matcher, api, api-db, fhir-validator, deny, coverage, codeql, pnpm-audit, secrets, ui, docs, hazard-log, hazard-signoff, container, fresh-clone, performance]
     runs-on: ubuntu-latest
     steps:
       - run: |

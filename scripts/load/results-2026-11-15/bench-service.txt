@@ -1,0 +1,12 @@
+audit/digest_unkeyed    time:   [1.3844 µs 1.3996 µs 1.4166 µs]
+policy/clinician_reads  time:   [24.074 ns 24.352 ns 24.719 ns]
+policy/nurse_writes     time:   [7.4191 ns 7.6057 ns 7.8108 ns]
+policy/no_relationship  time:   [22.157 ns 22.615 ns 23.113 ns]
+patients/parse_request  time:   [837.30 ns 849.90 ns 860.14 ns]
+patients/validate_coded time:   [248.62 ns 252.37 ns 256.74 ns]
+patients/compare_with_site_rules
+                        time:   [5.7131 µs 6.1131 µs 6.5223 µs]
+observation/validate    time:   [7.8994 ns 7.9758 ns 8.0730 ns]
+observation/flag        time:   [2.4469 ns 2.4580 ns 2.4693 ns]
+hl7/patient_from_adt    time:   [13.186 µs 13.593 µs 14.071 µs]
+metrics/observe         time:   [48.037 ns 52.101 ns 57.231 ns]

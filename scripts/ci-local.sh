@@ -161,6 +161,7 @@ gate_script docs-preflight
 gate_script docs-ci-changes
 gate_script docs-gate-record
 gate_script docs-gates
+gate_script docs-load-harness
 
 # The database gates run against a scratch database made for this run and dropped after it (LC-4).
 . "$root/scripts/scratch-db.sh"
@@ -187,6 +188,16 @@ if [ "$mode" != "--fast" ]; then
   else
     skip scratch-db-test "no Postgres tools found"
   fi
+
+  # Performance (spec/performance-testing.md): every load scenario briefly on a scratch database, and every
+  # benchmark once. They check that it works and nothing fails; they measure nothing worth keeping.
+  if [ "$mode" = "--list" ] || find_postgres || command -v psql >/dev/null 2>&1; then
+    gate_script service-load-smoke
+  else
+    skip service-load-smoke "no Postgres tools found"
+  fi
+  gate_script matcher-bench
+  gate_script service-bench
 
   if [ "$mode" = "--list" ] || [ -d "$ui/node_modules/.bin" ]; then
     gate ui-browser "$root" "PW_PORT=${PW_PORT:-4183} sh scripts/gates/ui-browser.sh"

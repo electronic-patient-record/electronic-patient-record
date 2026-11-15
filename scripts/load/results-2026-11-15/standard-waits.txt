@@ -1,0 +1,10 @@
+Database waits while the harness ran: samples of busy sessions, five a second, by what each waited on.
+`Lock advisory` is a request waiting for the audit chain's lock (CQ-18); CPU is a session running.
+29300 Lock	advisory
+4704 CPU	running
+ 770 Client	ClientRead
+ 168 IO	WalWrite
+  27 Timeout	VacuumDelay
+  15 IO	DataFileExtend
+   5 LWLock	LockManager
+   1 LWLock	ProcArray

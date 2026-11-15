@@ -1,0 +1,35 @@
+normalize/fold_name/Smith
+                        time:   [170.08 ns 193.55 ns 218.24 ns]
+normalize/fold_name/O'Brien-Lloyd
+                        time:   [283.71 ns 323.02 ns 366.27 ns]
+normalize/fold_name/Ffion Siân Ap Gruffudd
+                        time:   [485.31 ns 535.99 ns 589.77 ns]
+normalize/fold_name/Zoë Ångström-Müller
+                        time:   [401.15 ns 407.04 ns 413.76 ns]
+normalize/transliterate time:   [121.25 ns 121.73 ns 122.23 ns]
+normalize/soundex       time:   [169.14 ns 170.32 ns 171.44 ns]
+normalize/are_nicknames time:   [8.4443 ns 8.8600 ns 9.3477 ns]
+normalize/parse_date    time:   [14.195 ns 17.886 ns 23.054 ns]
+normalize/fold_postcode time:   [123.65 ns 124.70 ns 125.59 ns]
+normalize/normalize_phone
+                        time:   [114.37 ns 149.01 ns 191.75 ns]
+identifiers/national_number_valid
+                        time:   [177.92 ns 204.32 ns 235.32 ns]
+identifiers/national_number_invalid
+                        time:   [149.11 ns 150.40 ns 151.60 ns]
+identifiers/ihi         time:   [90.046 ns 91.180 ns 92.282 ns]
+compare/identical       time:   [5.7562 µs 5.7945 µs 5.8379 µs]
+compare/typo_in_family  time:   [6.5392 µs 6.5863 µs 6.6305 µs]
+compare/nickname_no_identifier
+                        time:   [6.4286 µs 6.4896 µs 6.5422 µs]
+compare/conflicting_identifier
+                        time:   [6.3182 µs 6.4491 µs 6.6028 µs]
+compare/different_person
+                        time:   [7.5913 µs 7.8346 µs 8.1112 µs]
+compare/sparse          time:   [3.1120 µs 3.1866 µs 3.2766 µs]
+register/1              time:   [5.1481 µs 5.1886 µs 5.2349 µs]
+                        thrpt:  [191.02 Kelem/s 192.73 Kelem/s 194.25 Kelem/s]
+register/50             time:   [311.54 µs 314.75 µs 317.38 µs]
+                        thrpt:  [157.54 Kelem/s 158.86 Kelem/s 160.49 Kelem/s]
+register/1000           time:   [6.6428 ms 6.7663 ms 6.9058 ms]
+                        thrpt:  [144.81 Kelem/s 147.79 Kelem/s 150.54 Kelem/s]

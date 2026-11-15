@@ -6,7 +6,9 @@ Targets, not measurements. Nothing here has been measured yet. Where the field s
 
 - **NFR-1 Safety.** Hazard log before shipping (DCB0129 shape); no automatic patient link on missing evidence.
 - **NFR-2 Performance.** Chart open p95 ≤ 1 s; patient search/typeahead p95 ≤ 200 ms; order sign p95 ≤ 2 s; FHIR
-  read p50 ≤ 10 ms.
+  read p50 ≤ 10 ms. How these are measured, and the budgets the load harness checks them with, is
+  [performance testing](performance-testing.md); results are in [BENCHMARKS.md](../BENCHMARKS.md). Order sign has no
+  scenario: no orders exist.
 - **NFR-3 Availability.** 99.9%; stateless app tier; PostgreSQL replication; RPO ≤ 5 min, RTO ≤ 4 h; restoration within 72 h
   (proposed HIPAA rule). Downtime snapshot ([plan](../plan.md) §6.5).
 - **NFR-4 Accessibility.** WCAG 2.2 AA; axe on every page; keyboard-only operation of critical tasks. **Mobile viewability** is part of it: reflow at 320 CSS pixels, touch targets, and a patient banner that stays whole on a phone ([mobile viewability](mobile-viewability.md); proposed 2026-11-04, nothing built).

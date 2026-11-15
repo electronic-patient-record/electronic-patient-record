@@ -1,0 +1,984 @@
+{
+ "statement": "One run on one machine. Not a capacity claim: it says what this build did here, once.",
+ "at": "2026-11-15T12:31:06.436Z",
+ "commit": "46fdc48848280cd3f3ea15c103a25a0f0b1482a1",
+ "dirty": true,
+ "base": "http://127.0.0.1:54914",
+ "note": "release build, container-dev (login off), pool 20, log warn, scratch database",
+ "host": {
+  "os": "Darwin 27.2.0",
+  "arch": "arm64",
+  "cpus": 16,
+  "cpu": "Apple M4 Max",
+  "memory_gib": 128
+ },
+ "node": "v26.8.1",
+ "settings": {
+  "what": "every scenario at 1, 8 and 32 workers, three times",
+  "concurrency": [
+   1,
+   8,
+   32
+  ],
+  "seconds": 10,
+  "warmup": 2,
+  "repeat": 3,
+  "seedPatients": 200,
+  "latencyBudgets": true,
+  "profile": "standard",
+  "scenarios": [
+   "register",
+   "read",
+   "search",
+   "chart-open",
+   "fhir-read",
+   "fhir-search",
+   "compare",
+   "record-observation",
+   "record-allergy"
+  ]
+ },
+ "seeded": 200,
+ "steps": [
+  {
+   "scenario": "register",
+   "concurrency": 1,
+   "requests": 3888,
+   "per_second": 140.62,
+   "min_ms": 3.08,
+   "mean_ms": 7.11,
+   "p50_ms": 6.43,
+   "p90_ms": 10.21,
+   "p95_ms": 11.89,
+   "p99_ms": 24.37,
+   "max_ms": 46.79,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "201": 3888
+   },
+   "p95_spread_ms": [
+    11.78,
+    17.43
+   ],
+   "repeats": 3
+  },
+  {
+   "scenario": "register",
+   "concurrency": 8,
+   "requests": 3131,
+   "per_second": 84.49,
+   "min_ms": 39.65,
+   "mean_ms": 94.25,
+   "p50_ms": 85.9,
+   "p90_ms": 137.41,
+   "p95_ms": 183.01,
+   "p99_ms": 266.48,
+   "max_ms": 372.99,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "201": 3131
+   },
+   "p95_spread_ms": [
+    77.96,
+    189.93
+   ],
+   "repeats": 3
+  },
+  {
+   "scenario": "register",
+   "concurrency": 32,
+   "requests": 3020,
+   "per_second": 90.08,
+   "min_ms": 267.63,
+   "mean_ms": 344,
+   "p50_ms": 336.57,
+   "p90_ms": 397.51,
+   "p95_ms": 411.81,
+   "p99_ms": 468.82,
+   "max_ms": 501.31,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "201": 3020
+   },
+   "p95_spread_ms": [
+    367.86,
+    433.14
+   ],
+   "repeats": 3
+  },
+  {
+   "scenario": "read",
+   "concurrency": 1,
+   "requests": 5661,
+   "per_second": 201.87,
+   "min_ms": 1.02,
+   "mean_ms": 4.95,
+   "p50_ms": 3.63,
+   "p90_ms": 7.85,
+   "p95_ms": 11.09,
+   "p99_ms": 26.15,
+   "max_ms": 53.93,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "200": 5661
+   },
+   "p95_spread_ms": [
+    10.42,
+    15.81
+   ],
+   "repeats": 3
+  },
+  {
+   "scenario": "read",
+   "concurrency": 8,
+   "requests": 35890,
+   "per_second": 1198.28,
+   "min_ms": 1.73,
+   "mean_ms": 6.67,
+   "p50_ms": 5.67,
+   "p90_ms": 10.71,
+   "p95_ms": 14.62,
+   "p99_ms": 19.23,
+   "max_ms": 42.81,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "200": 35890
+   },
+   "p95_spread_ms": [
+    9.26,
+    15.95
+   ],
+   "repeats": 3
+  },
+  {
+   "scenario": "read",
+   "concurrency": 32,
+   "requests": 38181,
+   "per_second": 1250.85,
+   "min_ms": 12,
+   "mean_ms": 25.51,
+   "p50_ms": 21.43,
+   "p90_ms": 38.44,
+   "p95_ms": 46.05,
+   "p99_ms": 58.72,
+   "max_ms": 70.29,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "200": 38181
+   },
+   "p95_spread_ms": [
+    44.66,
+    48.66
+   ],
+   "repeats": 3
+  },
+  {
+   "scenario": "search",
+   "concurrency": 1,
+   "requests": 2431,
+   "per_second": 81.04,
+   "min_ms": 9.08,
+   "mean_ms": 12.34,
+   "p50_ms": 12.06,
+   "p90_ms": 14.09,
+   "p95_ms": 14.87,
+   "p99_ms": 16.82,
+   "max_ms": 19.35,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "200": 2431
+   },
+   "p95_spread_ms": [
+    14.55,
+    15.15
+   ],
+   "repeats": 3
+  },
+  {
+   "scenario": "search",
+   "concurrency": 8,
+   "requests": 15985,
+   "per_second": 530.23,
+   "min_ms": 7.88,
+   "mean_ms": 15.07,
+   "p50_ms": 13.63,
+   "p90_ms": 21.16,
+   "p95_ms": 25.21,
+   "p99_ms": 36.71,
+   "max_ms": 73.14,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "200": 15985
+   },
+   "p95_spread_ms": [
+    24.93,
+    26.57
+   ],
+   "repeats": 3
+  },
+  {
+   "scenario": "search",
+   "concurrency": 32,
+   "requests": 21688,
+   "per_second": 701.16,
+   "min_ms": 13.43,
+   "mean_ms": 45.47,
+   "p50_ms": 42.91,
+   "p90_ms": 68.85,
+   "p95_ms": 80.73,
+   "p99_ms": 122.14,
+   "max_ms": 201,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "200": 21688
+   },
+   "p95_spread_ms": [
+    67.74,
+    89.94
+   ],
+   "repeats": 3
+  },
+  {
+   "scenario": "chart-open",
+   "concurrency": 1,
+   "requests": 3607,
+   "per_second": 118.26,
+   "min_ms": 3.22,
+   "mean_ms": 8.45,
+   "p50_ms": 8,
+   "p90_ms": 10.97,
+   "p95_ms": 12.35,
+   "p99_ms": 16.25,
+   "max_ms": 80.37,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "200": 3607
+   },
+   "p95_spread_ms": [
+    10.76,
+    12.45
+   ],
+   "repeats": 3
+  },
+  {
+   "scenario": "chart-open",
+   "concurrency": 8,
+   "requests": 5046,
+   "per_second": 167.73,
+   "min_ms": 23.64,
+   "mean_ms": 47.44,
+   "p50_ms": 46.52,
+   "p90_ms": 62.82,
+   "p95_ms": 67.92,
+   "p99_ms": 79.98,
+   "max_ms": 112.59,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "200": 5046
+   },
+   "p95_spread_ms": [
+    67.32,
+    68.41
+   ],
+   "repeats": 3
+  },
+  {
+   "scenario": "chart-open",
+   "concurrency": 32,
+   "requests": 4547,
+   "per_second": 151.62,
+   "min_ms": 130.78,
+   "mean_ms": 207.66,
+   "p50_ms": 205.16,
+   "p90_ms": 268.8,
+   "p95_ms": 289,
+   "p99_ms": 341.82,
+   "max_ms": 414.84,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "200": 4547
+   },
+   "p95_spread_ms": [
+    266.62,
+    373.11
+   ],
+   "repeats": 3
+  },
+  {
+   "scenario": "fhir-read",
+   "concurrency": 1,
+   "requests": 5640,
+   "per_second": 191.89,
+   "min_ms": 2.28,
+   "mean_ms": 5.21,
+   "p50_ms": 4.42,
+   "p90_ms": 7.36,
+   "p95_ms": 9.38,
+   "p99_ms": 18.61,
+   "max_ms": 41.25,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "200": 5640
+   },
+   "p95_spread_ms": [
+    9.28,
+    10.57
+   ],
+   "repeats": 3
+  },
+  {
+   "scenario": "fhir-read",
+   "concurrency": 8,
+   "requests": 23840,
+   "per_second": 860.47,
+   "min_ms": 2.32,
+   "mean_ms": 9.29,
+   "p50_ms": 8.07,
+   "p90_ms": 15.44,
+   "p95_ms": 21.01,
+   "p99_ms": 33.23,
+   "max_ms": 77.61,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "200": 23840
+   },
+   "p95_spread_ms": [
+    17.27,
+    30.86
+   ],
+   "repeats": 3
+  },
+  {
+   "scenario": "fhir-read",
+   "concurrency": 32,
+   "requests": 28030,
+   "per_second": 932.72,
+   "min_ms": 11.67,
+   "mean_ms": 34.18,
+   "p50_ms": 32.46,
+   "p90_ms": 43.88,
+   "p95_ms": 47.53,
+   "p99_ms": 53.41,
+   "max_ms": 67.01,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "200": 28030
+   },
+   "p95_spread_ms": [
+    45.07,
+    72.66
+   ],
+   "repeats": 3
+  },
+  {
+   "scenario": "fhir-search",
+   "concurrency": 1,
+   "requests": 681,
+   "per_second": 21.78,
+   "min_ms": 10.63,
+   "mean_ms": 45.91,
+   "p50_ms": 39.96,
+   "p90_ms": 81,
+   "p95_ms": 119.76,
+   "p99_ms": 185.27,
+   "max_ms": 240.33,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "200": 681
+   },
+   "p95_spread_ms": [
+    52.96,
+    128.46
+   ],
+   "repeats": 3
+  },
+  {
+   "scenario": "fhir-search",
+   "concurrency": 8,
+   "requests": 4400,
+   "per_second": 148.31,
+   "min_ms": 8.23,
+   "mean_ms": 53.6,
+   "p50_ms": 56.8,
+   "p90_ms": 82.95,
+   "p95_ms": 94.76,
+   "p99_ms": 143.03,
+   "max_ms": 202.32,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "200": 4400
+   },
+   "p95_spread_ms": [
+    80.23,
+    109.98
+   ],
+   "repeats": 3
+  },
+  {
+   "scenario": "fhir-search",
+   "concurrency": 32,
+   "requests": 7768,
+   "per_second": 265.61,
+   "min_ms": 10.44,
+   "mean_ms": 119.53,
+   "p50_ms": 109.32,
+   "p90_ms": 213.17,
+   "p95_ms": 247.69,
+   "p99_ms": 292.59,
+   "max_ms": 405.07,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "200": 7768
+   },
+   "p95_spread_ms": [
+    208.85,
+    319.71
+   ],
+   "repeats": 3
+  },
+  {
+   "scenario": "compare",
+   "concurrency": 1,
+   "requests": 9244,
+   "per_second": 332.36,
+   "min_ms": 0.73,
+   "mean_ms": 3.01,
+   "p50_ms": 2.81,
+   "p90_ms": 3.83,
+   "p95_ms": 4.53,
+   "p99_ms": 9.61,
+   "max_ms": 57.08,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "200": 9244
+   },
+   "p95_spread_ms": [
+    4.1,
+    7.03
+   ],
+   "repeats": 3
+  },
+  {
+   "scenario": "compare",
+   "concurrency": 8,
+   "requests": 30210,
+   "per_second": 1012,
+   "min_ms": 0.88,
+   "mean_ms": 7.9,
+   "p50_ms": 7.23,
+   "p90_ms": 12,
+   "p95_ms": 14.21,
+   "p99_ms": 20.64,
+   "max_ms": 71.54,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "200": 30210
+   },
+   "p95_spread_ms": [
+    12.99,
+    16.37
+   ],
+   "repeats": 3
+  },
+  {
+   "scenario": "compare",
+   "concurrency": 32,
+   "requests": 32692,
+   "per_second": 1100.42,
+   "min_ms": 7.43,
+   "mean_ms": 29,
+   "p50_ms": 28.54,
+   "p90_ms": 37.91,
+   "p95_ms": 41.42,
+   "p99_ms": 54.77,
+   "max_ms": 72.26,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "200": 32692
+   },
+   "p95_spread_ms": [
+    39.63,
+    46.91
+   ],
+   "repeats": 3
+  },
+  {
+   "scenario": "record-observation",
+   "concurrency": 1,
+   "requests": 7470,
+   "per_second": 265.5,
+   "min_ms": 0.87,
+   "mean_ms": 3.77,
+   "p50_ms": 3.48,
+   "p90_ms": 5.15,
+   "p95_ms": 6.22,
+   "p99_ms": 8.16,
+   "max_ms": 13.81,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "201": 7470
+   },
+   "p95_spread_ms": [
+    4.48,
+    7.49
+   ],
+   "repeats": 3
+  },
+  {
+   "scenario": "record-observation",
+   "concurrency": 8,
+   "requests": 26624,
+   "per_second": 960.69,
+   "min_ms": 1.39,
+   "mean_ms": 8.32,
+   "p50_ms": 8.04,
+   "p90_ms": 11.56,
+   "p95_ms": 13.64,
+   "p99_ms": 22.24,
+   "max_ms": 71.36,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "201": 26624
+   },
+   "p95_spread_ms": [
+    12.45,
+    17.63
+   ],
+   "repeats": 3
+  },
+  {
+   "scenario": "record-observation",
+   "concurrency": 32,
+   "requests": 81505,
+   "per_second": 3345.97,
+   "min_ms": 6.94,
+   "mean_ms": 9.56,
+   "p50_ms": 9.25,
+   "p90_ms": 10.95,
+   "p95_ms": 12.78,
+   "p99_ms": 22.71,
+   "max_ms": 87.63,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "201": 81505
+   },
+   "p95_spread_ms": [
+    11.9,
+    37.9
+   ],
+   "repeats": 3
+  },
+  {
+   "scenario": "record-allergy",
+   "concurrency": 1,
+   "requests": 12030,
+   "per_second": 401.58,
+   "min_ms": 0.82,
+   "mean_ms": 2.49,
+   "p50_ms": 2.49,
+   "p90_ms": 2.75,
+   "p95_ms": 2.82,
+   "p99_ms": 2.96,
+   "max_ms": 57.95,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "201": 12030
+   },
+   "p95_spread_ms": [
+    2.8,
+    2.85
+   ],
+   "repeats": 3
+  },
+  {
+   "scenario": "record-allergy",
+   "concurrency": 8,
+   "requests": 38969,
+   "per_second": 991.74,
+   "min_ms": 1.71,
+   "mean_ms": 8.06,
+   "p50_ms": 3.5,
+   "p90_ms": 10.5,
+   "p95_ms": 28.76,
+   "p99_ms": 104.84,
+   "max_ms": 206.59,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "201": 38969
+   },
+   "p95_spread_ms": [
+    4.34,
+    110.14
+   ],
+   "repeats": 3
+  },
+  {
+   "scenario": "record-allergy",
+   "concurrency": 32,
+   "requests": 9421,
+   "per_second": 202.21,
+   "min_ms": 7.73,
+   "mean_ms": 157.07,
+   "p50_ms": 149.61,
+   "p90_ms": 281,
+   "p95_ms": 346.23,
+   "p99_ms": 398.35,
+   "max_ms": 472.67,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "201": 9421
+   },
+   "p95_spread_ms": [
+    236.17,
+    374.06
+   ],
+   "repeats": 3
+  }
+ ],
+ "windows": null,
+ "budgets": {
+  "checks": [
+   {
+    "scenario": "register",
+    "concurrency": 1,
+    "measure": "failure_rate",
+    "limit": 0,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "register",
+    "concurrency": 8,
+    "measure": "failure_rate",
+    "limit": 0,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "register",
+    "concurrency": 32,
+    "measure": "failure_rate",
+    "limit": 0,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "read",
+    "concurrency": 1,
+    "measure": "failure_rate",
+    "limit": 0,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "read",
+    "concurrency": 8,
+    "measure": "failure_rate",
+    "limit": 0,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "read",
+    "concurrency": 32,
+    "measure": "failure_rate",
+    "limit": 0,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "search",
+    "concurrency": 1,
+    "measure": "failure_rate",
+    "limit": 0,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "search",
+    "concurrency": 1,
+    "measure": "p95_ms",
+    "limit": 200,
+    "value": 14.87,
+    "result": "pass"
+   },
+   {
+    "scenario": "search",
+    "concurrency": 8,
+    "measure": "failure_rate",
+    "limit": 0,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "search",
+    "concurrency": 8,
+    "measure": "p95_ms",
+    "limit": 200,
+    "value": 25.21,
+    "result": "pass"
+   },
+   {
+    "scenario": "search",
+    "concurrency": 32,
+    "measure": "failure_rate",
+    "limit": 0,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "search",
+    "concurrency": 32,
+    "measure": "p95_ms",
+    "limit": 200,
+    "value": 80.73,
+    "result": "pass"
+   },
+   {
+    "scenario": "chart-open",
+    "concurrency": 1,
+    "measure": "failure_rate",
+    "limit": 0,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "chart-open",
+    "concurrency": 1,
+    "measure": "p95_ms",
+    "limit": 1000,
+    "value": 12.35,
+    "result": "pass"
+   },
+   {
+    "scenario": "chart-open",
+    "concurrency": 8,
+    "measure": "failure_rate",
+    "limit": 0,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "chart-open",
+    "concurrency": 8,
+    "measure": "p95_ms",
+    "limit": 1000,
+    "value": 67.92,
+    "result": "pass"
+   },
+   {
+    "scenario": "chart-open",
+    "concurrency": 32,
+    "measure": "failure_rate",
+    "limit": 0,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "chart-open",
+    "concurrency": 32,
+    "measure": "p95_ms",
+    "limit": 1000,
+    "value": 289,
+    "result": "pass"
+   },
+   {
+    "scenario": "fhir-read",
+    "concurrency": 1,
+    "measure": "failure_rate",
+    "limit": 0,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "fhir-read",
+    "concurrency": 1,
+    "measure": "p50_ms",
+    "limit": 10,
+    "value": 4.42,
+    "result": "pass"
+   },
+   {
+    "scenario": "fhir-read",
+    "concurrency": 8,
+    "measure": "failure_rate",
+    "limit": 0,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "fhir-read",
+    "concurrency": 8,
+    "measure": "p50_ms",
+    "limit": 10,
+    "value": 8.07,
+    "result": "pass"
+   },
+   {
+    "scenario": "fhir-read",
+    "concurrency": 32,
+    "measure": "failure_rate",
+    "limit": 0,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "fhir-read",
+    "concurrency": 32,
+    "measure": "p50_ms",
+    "limit": 10,
+    "value": 32.46,
+    "result": "FAIL"
+   },
+   {
+    "scenario": "fhir-search",
+    "concurrency": 1,
+    "measure": "failure_rate",
+    "limit": 0,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "fhir-search",
+    "concurrency": 1,
+    "measure": "p95_ms",
+    "limit": 200,
+    "value": 119.76,
+    "result": "pass"
+   },
+   {
+    "scenario": "fhir-search",
+    "concurrency": 8,
+    "measure": "failure_rate",
+    "limit": 0,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "fhir-search",
+    "concurrency": 8,
+    "measure": "p95_ms",
+    "limit": 200,
+    "value": 94.76,
+    "result": "pass"
+   },
+   {
+    "scenario": "fhir-search",
+    "concurrency": 32,
+    "measure": "failure_rate",
+    "limit": 0,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "fhir-search",
+    "concurrency": 32,
+    "measure": "p95_ms",
+    "limit": 200,
+    "value": 247.69,
+    "result": "FAIL"
+   },
+   {
+    "scenario": "compare",
+    "concurrency": 1,
+    "measure": "failure_rate",
+    "limit": 0,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "compare",
+    "concurrency": 8,
+    "measure": "failure_rate",
+    "limit": 0,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "compare",
+    "concurrency": 32,
+    "measure": "failure_rate",
+    "limit": 0,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "record-observation",
+    "concurrency": 1,
+    "measure": "failure_rate",
+    "limit": 0,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "record-observation",
+    "concurrency": 8,
+    "measure": "failure_rate",
+    "limit": 0,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "record-observation",
+    "concurrency": 32,
+    "measure": "failure_rate",
+    "limit": 0,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "record-allergy",
+    "concurrency": 1,
+    "measure": "failure_rate",
+    "limit": 0,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "record-allergy",
+    "concurrency": 8,
+    "measure": "failure_rate",
+    "limit": 0,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "record-allergy",
+    "concurrency": 32,
+    "measure": "failure_rate",
+    "limit": 0,
+    "value": 0,
+    "result": "pass"
+   }
+  ],
+  "passed": false
+ },
+ "passed": false
+}

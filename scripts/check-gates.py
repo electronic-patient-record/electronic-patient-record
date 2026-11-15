@@ -35,6 +35,8 @@ NOT_GATES = {
                                          "scripts/scratch-db.sh applies it to each scratch database",
     ("container", "set -u"): "CI only: brings up compose.yaml on a clean runner and checks the API refuses to start "
                             "with no keys; locally its ports and container names are often taken",
+    ("performance", "EPR_LOAD_SKIP_BUILD=1"): "measurement, not a gate: the nightly standard load run, kept as an "
+                                             "artefact; its gate is service-load-smoke, which ci-local.sh runs",
     ("container", "set -eu"): "CI only: brings up compose.yaml with keys and checks /_health/live and a 401; locally "
                              "its ports and container names are often taken",
 }

@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-15 - Load tests and benchmarks (OS-5, SF-2)
+
+- **Clinical risk:** none. Tests, benchmarks and CI only; no service or UI code changed, and nothing a clinician sees.
+- **Built:** criterion 0.8 benchmarks (a dev dependency only) for the matcher (`benches/matcher.rs`: normalisation, identifiers, six comparison shapes, a register of 1 to 1,000 candidates) and the service (`benches/service.rs`: the audit digest, the policy decision, registration parsing and validation, a comparison with the site's rules, observation checks, an HL7 v2 parse, the duration histogram). A load harness replaces `scripts/load/measure.mjs`: `run.mjs` with ten scenarios (register, read, search, a chart open made of the chart page's 8 reads, FHIR read and search, compare, a vital sign, an allergy, and a weighted mix), closed and open loops (the open loop charges a stall to every request it delayed), smoke, standard, stress and soak profiles, the NFR-2 budgets in `budgets.json`, `--baseline` regression and JSON output naming the machine and commit; `run-local.sh` builds a release binary, runs it on a scratch database with login off and samples the database's waits. `test_load.mjs` has 16 tests, including whole runs against a fake service for each exit status. Gates: `docs-load-harness` (every push), `service-load-smoke`, `matcher-bench` and `service-bench` (`ci-local.sh --full` and a new nightly `performance` CI job, which also keeps a standard run as an artefact). [Performance testing](spec/performance-testing.md) is the spec; NFR-2 cites it.
+- **Measured** (one laptop run, `BENCHMARKS.md`): chart open p95 12 ms at 1 worker and 289 ms at 32, within NFR-2's 1 s; search p95 81 ms at 32, within 200 ms. FHIR read p50 (32 ms against 10) and FHIR search p95 (248 ms against 200) broke their budgets at 32 workers. The mix broke its 1 s p95 at 64 workers. A 3 minute soak showed no drift. 84 percent of busy database sessions were waiting on the audit chain's advisory lock (CQ-18).
+- **Not done / not verified:** latency is not a gate in CI (a shared runner); the nightly job has not run yet. The chart is thin, login is off, the mix is a guess, order sign is not measured, one client ran on the same host, the soak was 3 minutes, and the run without the audit append was not done. Why recording a vital sign outran every other write at 32 workers (3,346 a second) while an allergy fell to 202 was not looked into.
+
 ## 2026-11-15 - Browser tests wait before reading what was sent
 
 - **Clinical risk:** none. Tests only; the screens and what they send are unchanged.

@@ -27,7 +27,7 @@ Capacity failures are visible at national scale: in October 2022 an Oracle Cerne
 | Measure | How to measure | Suggested target or rule for setting one | Where in our data/CI |
 |---|---|---|---|
 | Latency percentiles per route | Histogram of request duration, p50, p95, p99, success and failure apart [4] | Start from NFR-2; set each from a task budget (Nielsen limits [3]) and keep a margin for the browser and network | `/metrics` histogram (OS-6); `BENCHMARKS.md` |
-| Throughput at a fixed concurrency | Requests per second at 1, 8, 32, then more clients | Record, do not target, until a real deployment size is named | `scripts/load/measure.mjs` |
+| Throughput at a fixed concurrency | Requests per second at 1, 8, 32, then more clients | Record, do not target, until a real deployment size is named | `scripts/load/run.mjs` ([performance testing](../../spec/performance-testing.md)) |
 | Saturation | Pool wait time, CPU, lock waits (`pg_stat_activity`), queue depth | Alert before the pool is exhausted; value set from a sweep | not collected; listed as not done in `BENCHMARKS.md` |
 | Capacity | Patients, audit rows, observations at which p95 breaks target | Test at 10 times the intended site, then trim | 1M-patient load test (planned) |
 | Resource use | Memory and CPU per replica at steady load; image size | Fit the smallest hardware named in the equity rule for a low-resource site | not measured |
@@ -54,8 +54,8 @@ Capacity failures are visible at national scale: in October 2022 an Oracle Cerne
 
 ## Ideas
 
-1. Run `measure.mjs` on `main` in CI on a fixed runner and store the JSON (OS-5); fail only outside a measured noise band.
-2. Add FHIR read and a synthetic chart-open step so NFR-2 rows each have a number, even a poor one.
+1. Run `measure.mjs` on `main` in CI on a fixed runner and store the JSON (OS-5); fail only outside a measured noise band. *Partly built 2026-11-15: `scripts/load/run.mjs` runs nightly on a GitHub-hosted runner and keeps the JSON; no fixed runner, so latency is recorded, not gated.*
+2. Add FHIR read and a synthetic chart-open step so NFR-2 rows each have a number, even a poor one. *Built 2026-11-15 (`fhir-read`, `chart-open`).*
 3. Repeat the audit-append test with the append disabled to turn the lock hypothesis into a result (extends OS-5).
 4. Seed 1 million patients and a plausible clinical load for the planned capacity test.
 5. Define a "low-resource profile" (one core, 2 GiB, 3G latency) as a named test target, tied to the equity rule.

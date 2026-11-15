@@ -57,4 +57,9 @@ snomed = "0.56.1"
 [dev-dependencies]
 authentication-verifier = { version = "0.9.1", default-features = false, features = ["test-idp"] }
 axa-test = "0.4"
+criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
 tower = { version = "0.5", features = ["util"] }
+
+[[bench]]
+name = "service"
+harness = false

@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- **Added:** `benches/matcher.rs` (criterion 0.8, a dev dependency only): name folding, transliteration, Soundex, nicknames, partial dates, postcodes, phone numbers, the national number and IHI checks, one comparison in six shapes, and one record scored against 1, 50 and 1,000 candidates. `cargo bench --bench matcher -- --test` runs each once (the `matcher-bench` gate). No library code changed.
+- **Not done / not verified:** numbers are from one laptop run (`BENCHMARKS.md`); no stored baseline, so a regression shows only against criterion's last local run.
+
 ## [0.8.0] - 2026-11-13
 
 - **Breaking:** the national health number is no longer named for one country's health service. The module `nhs` is `national_number`; `NHS_NUMBER_SYSTEM`, `is_valid_nhs_number` and `is_placeholder_nhs_number` are `NATIONAL_NUMBER_SYSTEM`, `is_valid_national_number` and `is_placeholder_national_number`. The conflict codes `different_nhs_numbers`, `same_nhs_different_birth_dates` and `same_nhs_different_names` are `different_national_numbers`, `same_national_number_different_birth_dates` and `same_national_number_different_names` (the enum variants follow), and their English messages and the `deterministic` reason say "national health number". A client that reads the old codes must change with this version.

@@ -1,0 +1,94 @@
+{
+ "statement": "One run on one machine. Not a capacity claim: it says what this build did here, once.",
+ "at": "2026-11-15T12:33:44.300Z",
+ "commit": "46fdc48848280cd3f3ea15c103a25a0f0b1482a1",
+ "dirty": true,
+ "base": "http://127.0.0.1:53272",
+ "note": "release build, container-dev (login off), pool 20, log warn, scratch database",
+ "host": {
+  "os": "Darwin 27.2.0",
+  "arch": "arm64",
+  "cpus": 16,
+  "cpu": "Apple M4 Max",
+  "memory_gib": 128
+ },
+ "node": "v26.8.1",
+ "settings": {
+  "what": "every scenario at 1, 8 and 32 workers, three times",
+  "concurrency": [
+   32
+  ],
+  "seconds": 10,
+  "warmup": 2,
+  "repeat": 1,
+  "seedPatients": 200,
+  "latencyBudgets": false,
+  "profile": "standard",
+  "scenarios": [
+   "register",
+   "read"
+  ]
+ },
+ "seeded": 200,
+ "steps": [
+  {
+   "scenario": "register",
+   "concurrency": 32,
+   "requests": 3278,
+   "per_second": 323.9,
+   "min_ms": 54.86,
+   "mean_ms": 97.94,
+   "p50_ms": 89.34,
+   "p90_ms": 125.23,
+   "p95_ms": 210.39,
+   "p99_ms": 233.56,
+   "max_ms": 249.54,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "201": 3278
+   }
+  },
+  {
+   "scenario": "read",
+   "concurrency": 32,
+   "requests": 18589,
+   "per_second": 1856.75,
+   "min_ms": 8.86,
+   "mean_ms": 17.21,
+   "p50_ms": 15.88,
+   "p90_ms": 22.63,
+   "p95_ms": 25.53,
+   "p99_ms": 42.94,
+   "max_ms": 166,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "200": 18589
+   }
+  }
+ ],
+ "windows": null,
+ "budgets": {
+  "checks": [
+   {
+    "scenario": "register",
+    "concurrency": 32,
+    "measure": "failure_rate",
+    "limit": 0,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "read",
+    "concurrency": 32,
+    "measure": "failure_rate",
+    "limit": 0,
+    "value": 0,
+    "result": "pass"
+   }
+  ],
+  "passed": true
+ },
+ "passed": true
+}

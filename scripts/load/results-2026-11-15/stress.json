@@ -1,0 +1,295 @@
+{
+ "statement": "One run on one machine. Not a capacity claim: it says what this build did here, once.",
+ "at": "2026-11-15T12:32:35.823Z",
+ "commit": "46fdc48848280cd3f3ea15c103a25a0f0b1482a1",
+ "dirty": true,
+ "base": "http://127.0.0.1:51962",
+ "note": "release build, container-dev (login off), pool 20, log warn, scratch database",
+ "host": {
+  "os": "Darwin 27.2.0",
+  "arch": "arm64",
+  "cpus": 16,
+  "cpu": "Apple M4 Max",
+  "memory_gib": 128
+ },
+ "node": "v26.8.1",
+ "settings": {
+  "what": "the mix with workers doubling from 1 to 256, until a budget breaks",
+  "concurrency": [
+   1,
+   2,
+   4,
+   8,
+   16,
+   32,
+   64,
+   128,
+   256
+  ],
+  "seconds": 10,
+  "warmup": 2,
+  "repeat": 1,
+  "seedPatients": 200,
+  "latencyBudgets": true,
+  "scenarios": [
+   "mixed"
+  ],
+  "stopAtBreak": true,
+  "profile": "stress"
+ },
+ "seeded": 200,
+ "steps": [
+  {
+   "scenario": "mixed",
+   "concurrency": 1,
+   "requests": 373,
+   "per_second": 37.29,
+   "min_ms": 1.76,
+   "mean_ms": 26.81,
+   "p50_ms": 15.95,
+   "p90_ms": 62.63,
+   "p95_ms": 88.99,
+   "p99_ms": 131.44,
+   "max_ms": 162.45,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "200": 314,
+    "201": 59
+   }
+  },
+  {
+   "scenario": "mixed",
+   "concurrency": 2,
+   "requests": 592,
+   "per_second": 58.74,
+   "min_ms": 2.75,
+   "mean_ms": 33.9,
+   "p50_ms": 24.51,
+   "p90_ms": 71.31,
+   "p95_ms": 93.16,
+   "p99_ms": 132.57,
+   "max_ms": 194.44,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "200": 472,
+    "201": 120
+   }
+  },
+  {
+   "scenario": "mixed",
+   "concurrency": 4,
+   "requests": 1318,
+   "per_second": 131.7,
+   "min_ms": 0.93,
+   "mean_ms": 30.34,
+   "p50_ms": 10.91,
+   "p90_ms": 85.18,
+   "p95_ms": 104.67,
+   "p99_ms": 178.84,
+   "max_ms": 275.03,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "200": 1053,
+    "201": 265
+   }
+  },
+  {
+   "scenario": "mixed",
+   "concurrency": 8,
+   "requests": 700,
+   "per_second": 69.24,
+   "min_ms": 14.7,
+   "mean_ms": 113.95,
+   "p50_ms": 106.5,
+   "p90_ms": 196.18,
+   "p95_ms": 224.73,
+   "p99_ms": 264.24,
+   "max_ms": 299.73,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "200": 569,
+    "201": 131
+   }
+  },
+  {
+   "scenario": "mixed",
+   "concurrency": 16,
+   "requests": 1452,
+   "per_second": 143.6,
+   "min_ms": 5.31,
+   "mean_ms": 109.73,
+   "p50_ms": 52.7,
+   "p90_ms": 277.56,
+   "p95_ms": 329.69,
+   "p99_ms": 418.4,
+   "max_ms": 531.88,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "200": 1182,
+    "201": 270
+   }
+  },
+  {
+   "scenario": "mixed",
+   "concurrency": 32,
+   "requests": 817,
+   "per_second": 79.97,
+   "min_ms": 24.81,
+   "mean_ms": 390.57,
+   "p50_ms": 373.03,
+   "p90_ms": 638.1,
+   "p95_ms": 705.55,
+   "p99_ms": 837.69,
+   "max_ms": 1053.21,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "200": 672,
+    "201": 145
+   }
+  },
+  {
+   "scenario": "mixed",
+   "concurrency": 64,
+   "requests": 892,
+   "per_second": 85.22,
+   "min_ms": 126.71,
+   "mean_ms": 721.97,
+   "p50_ms": 820.68,
+   "p90_ms": 1049.54,
+   "p95_ms": 1149.01,
+   "p99_ms": 1245.19,
+   "max_ms": 1348.43,
+   "failures": 0,
+   "failure_rate": 0,
+   "statuses": {
+    "200": 719,
+    "201": 173
+   }
+  }
+ ],
+ "windows": null,
+ "budgets": {
+  "checks": [
+   {
+    "scenario": "mixed",
+    "concurrency": 1,
+    "measure": "failure_rate",
+    "limit": 0.01,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "mixed",
+    "concurrency": 1,
+    "measure": "p95_ms",
+    "limit": 1000,
+    "value": 88.99,
+    "result": "pass"
+   },
+   {
+    "scenario": "mixed",
+    "concurrency": 2,
+    "measure": "failure_rate",
+    "limit": 0.01,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "mixed",
+    "concurrency": 2,
+    "measure": "p95_ms",
+    "limit": 1000,
+    "value": 93.16,
+    "result": "pass"
+   },
+   {
+    "scenario": "mixed",
+    "concurrency": 4,
+    "measure": "failure_rate",
+    "limit": 0.01,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "mixed",
+    "concurrency": 4,
+    "measure": "p95_ms",
+    "limit": 1000,
+    "value": 104.67,
+    "result": "pass"
+   },
+   {
+    "scenario": "mixed",
+    "concurrency": 8,
+    "measure": "failure_rate",
+    "limit": 0.01,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "mixed",
+    "concurrency": 8,
+    "measure": "p95_ms",
+    "limit": 1000,
+    "value": 224.73,
+    "result": "pass"
+   },
+   {
+    "scenario": "mixed",
+    "concurrency": 16,
+    "measure": "failure_rate",
+    "limit": 0.01,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "mixed",
+    "concurrency": 16,
+    "measure": "p95_ms",
+    "limit": 1000,
+    "value": 329.69,
+    "result": "pass"
+   },
+   {
+    "scenario": "mixed",
+    "concurrency": 32,
+    "measure": "failure_rate",
+    "limit": 0.01,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "mixed",
+    "concurrency": 32,
+    "measure": "p95_ms",
+    "limit": 1000,
+    "value": 705.55,
+    "result": "pass"
+   },
+   {
+    "scenario": "mixed",
+    "concurrency": 64,
+    "measure": "failure_rate",
+    "limit": 0.01,
+    "value": 0,
+    "result": "pass"
+   },
+   {
+    "scenario": "mixed",
+    "concurrency": 64,
+    "measure": "p95_ms",
+    "limit": 1000,
+    "value": 1149.01,
+    "result": "FAIL"
+   }
+  ],
+  "passed": false
+ },
+ "passed": false
+}

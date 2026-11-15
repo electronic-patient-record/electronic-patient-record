@@ -100,6 +100,7 @@ Topics that span several numbered chapters and are kept whole:
 - [Care settings and specialty views](care-settings.md) — acute, community and mental health on one record; specialty views such as renal as packs (XP)
 - [Pathway design](pathway-design.md) — clinicians design, review, publish and redesign care pathways (XP)
 - [Privacy-preserving analysis](privacy-analytics.md) — homomorphic encryption and its alternatives for secondary use, post-1.0 (XP)
+- [Performance testing](performance-testing.md) — criterion benchmarks for the matcher and the service, and the load harness: scenarios, profiles, NFR-2 budgets, a baseline comparison, database waits; where each runs (OS-5, SF-2)
 - [Local CI/CD](local-ci.md) — more of the checking on the author's machine, GitHub as the independent second witness; a proposal from plan.md §26 (LC)
 - [Other EPRs compared](epic/index.md) — public-source comparisons, one page each: [Epic](epic/index.md), [Oracle Health (Cerner)](oracle-cerner/index.md), [MEDITECH](meditech/index.md), [Nervecentre](nervecentre/index.md), [Alcidion](alcidion/index.md), [System C](system-c/index.md), [TPP SystmOne](tpp-system-one/index.md), [EMIS](emis/index.md), [Access Rio](access-rio/index.md), [Altera](altera/index.md), [InterSystems TrakCare](intersystems-trakcare/index.md), [Dedalus](dedalus/index.md) (VC, plan.md §28).
 - [Measuring clinical safety](clinical-safety/measurement.md) — measures by hazard class, what software cannot measure, the risks of measuring (SM, plan.md §29).

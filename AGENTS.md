@@ -36,6 +36,8 @@ RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --document-private-items
 #   DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test cargo test --test audit_immutable -- --ignored --test-threads=1
 # UI (another project may hold port 4173: use PW_PORT)
 cd electronic-patient-record-ui-with-svelte && pnpm run lint && pnpm run check && pnpm run check:tests && pnpm exec vitest run && PW_PORT=4183 CI=true pnpm exec playwright test
+# load and benchmarks (spec/performance-testing.md): a release build on a scratch database; `--profile standard` to measure
+sh scripts/load/run-local.sh --profile smoke && (cd electronic-patient-record-matcher-with-rust && cargo bench --bench matcher -- --test)
 # docs
 python3 scripts/check-links.py . && sh scripts/generate-status.sh --check && python3 scripts/generate-llms.py --check && python3 scripts/generate-schema-map.py --check
 ```

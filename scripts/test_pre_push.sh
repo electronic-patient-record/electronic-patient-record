@@ -65,7 +65,7 @@ check "two refs at once" "matcher service docs" \
   "$(printf '%s\n' "refs/heads/a $matcher refs/heads/a $docs" "refs/heads/b $service refs/heads/b $ui" | projects)"
 
 cd "$root"
-check "EPR_CI_ONLY narrows --list" "matcher-fmt matcher-clippy matcher-test matcher-doc coverage-matcher" \
+check "EPR_CI_ONLY narrows --list" "matcher-fmt matcher-clippy matcher-test matcher-doc matcher-bench coverage-matcher" \
   "$(EPR_CI_ONLY=matcher sh scripts/ci-local.sh --list | paste -sd' ' -)"
 check "EPR_CI_ONLY unset lists every project's gates" "matcher-fmt service-fmt ui-lint docs-links" \
   "$(sh scripts/ci-local.sh --list | grep -E '^(matcher-fmt|service-fmt|ui-lint|docs-links)$' | paste -sd' ' -)"
