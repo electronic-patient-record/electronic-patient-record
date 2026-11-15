@@ -171,6 +171,9 @@ pub async fn enqueue(
         topic: new.recipient.to_string(),
         kind: new.kind.to_string(),
         key,
+        // One site, one tenant: tenancy (SE-5) is not built, so no event names one, and every fingerprint is
+        // the pre-tenant form axa 0.14 keeps byte for byte.
+        tenant: None,
         payload,
     };
     axa::outbox::write(tx, &event).await.map_err(db_err)?;
@@ -577,9 +580,14 @@ mod tests {
 
     #[test]
     fn the_migration_makes_the_tables_axa_outbox_expects() {
-        let sql = include_str!("../migrations/20261108100028_axa_outbox.sql");
+        // The tables, then the tenant columns of axa 0.14: together they must hold every statement.
+        let sql = [
+            include_str!("../migrations/20261108100028_axa_outbox.sql"),
+            include_str!("../migrations/20261115000036_axa_outbox_tenant.sql"),
+        ]
+        .join("\n");
         let squash = |s: &str| s.split_whitespace().collect::<Vec<_>>().join(" ");
-        let migration = squash(sql);
+        let migration = squash(&sql);
         for statement in axa::outbox::SETUP_STATEMENTS {
             assert!(
                 migration.contains(&squash(statement)),

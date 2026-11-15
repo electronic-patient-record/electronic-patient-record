@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-15 - axa 0.14 (AX-14)
+
+- **Clinical risk:** none. The outbox stores two more columns that are always empty; nothing a clinician sees or sends changes.
+- **Approved exception:** axa 0.14.0 and axa-test 0.5.0 were published at 11:29 UTC today, inside the maintainer's two-day cooldown (`registry.global-min-publish-age`, which stable cargo does not enforce); the maintainer approved taking them now.
+- **Changed:** `axa` 0.14 and `axa-test` 0.5; the lockfile moves `axa-transactional-outbox` to 0.4.0, `axa-postgres-job-queue` to 0.3.0 and `axa-cursor-pagination` to 0.1.2. The outbox's `Event` has a `tenant`, set to none (one site). Migration 36 (`20261115000036_axa_outbox_tenant.sql`) adds the four setup statements 0.4.0 has that migration 28 lacks, in axa's words: nullable `tenant` on `axa_outbox_events` and `axa_outbox_owed`, a tenant form of `axa_outbox_fingerprint` (identical to the old one when there is no tenant, so no stored fingerprint changes) and the owed trigger; `Outbox::connect_existing` refuses tables without them. `outbox::tests` checks both migrations together against axa. The personal-data inventory classifies the two columns; its census test caught them.
+- **Checked:** clippy, the outbox unit tests and every database test on a fresh scratch database (all passed on the second full run; one `axum-test` and one `axa`).
+- **Not done / not verified:** in the first full database run after the inventory fix, `http_proxy_scopes::a_proxy_reads_only_what_its_terms_list_and_only_until_they_end` got 401 where it expected 403 after its 3 s wait for an expiry; alone it passed 5 times, and the next full run passed. Not diagnosed: the log says nothing about the 401, and nothing shows it comes from axa 0.14. The migration was not run against a database that already holds outbox events (the scratch databases start empty). The tenant features are not adopted.
+
 ## 2026-11-15 - The dark theme is on and checked; form control edges reach 3:1 (TH-1, in part)
 
 - **Clinical risk:** yes: what a clinician sees changes. A device set to dark now gets the dark theme, which the scaffold's `data-color-scheme="light"` had hidden from everyone, and inputs, selects and textareas have darker edges in light (`#767676`) and lighter ones in dark (`#858c96`). Hazard H-057 updated (still open).

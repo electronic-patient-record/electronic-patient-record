@@ -265,6 +265,7 @@ axa_outbox_events,kind,none,What happened as the recipient knows it,feed
 axa_outbox_events,key,identifier,The patient concerned; the event id when there is none,feed
 axa_outbox_events,fingerprint,health,A SHA-256 of the event and its payload so a changed row is never sent; derived from patient data,feed
 axa_outbox_events,created_at,none,When the event was written,feed
+axa_outbox_events,tenant,none,The tenant an event is for (axa 0.14); always empty: this service names no tenant (SE-5 not built),feed
 axa_outbox_payloads,event_id,none,The event,feed
 axa_outbox_payloads,payload,health,The recipient's roles and purpose; the kind of record; the patient; and what is sent ; patient data when a patient is named,feed
 axa_outbox_payloads,sealed,health,The payload encrypted; unused while sealing is off,feed
@@ -288,6 +289,7 @@ axa_outbox_owed,reason,none,The latest reason code,transient
 axa_outbox_owed,retry_at,none,When it may be tried again,transient
 axa_outbox_owed,held_since,none,When a hold began,transient
 axa_outbox_owed,recheck_at,none,When a hold is decided again,transient
+axa_outbox_owed,tenant,none,The owed event's tenant; always empty here,transient
 axa_outbox_leases,claim,none,A live claim,transient
 axa_outbox_leases,relay,none,The relay holding it,transient
 axa_outbox_leases,heard_at,none,When the relay last reported in,transient

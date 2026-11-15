@@ -1542,6 +1542,22 @@ axa crate. This service builds none of the structs that gained fields by hand, s
   pieces, `Checks::migrations`, `axa_test::postgres::TestDatabase`, uploads, webhooks and the outbound client; each is a
   candidate task of its own. **Acceptance:** every gate green, the OpenAPI document unchanged, and a CHANGELOG entry.
 
+## Dependency 2026-11-15 — axa 0.14
+
+axa 0.14.0 and axa-test 0.5.0 were published on 2026-11-15 at 11:29 UTC, inside the two-day cooldown
+(`registry.global-min-publish-age` in the maintainer's own cargo settings); **the maintainer approved the exception on
+2026-11-15.** Upgrade guide: `help/upgrading-to-0.14/index.md` in the axa crate.
+
+- [x] **AX-14 (S) — Upgrade to axa 0.14.** **Done 2026-11-15:** `axa` 0.14 and `axa-test` 0.5 in `Cargo.toml`; the
+  lockfile moves `axa-transactional-outbox` 0.3.0 to 0.4.0, `axa-postgres-job-queue` 0.2.0 to 0.3.0 and
+  `axa-cursor-pagination` 0.1.1 to 0.1.2, and adds no crate. The outbox now writes a `tenant`: `outbox::enqueue`
+  builds its `Event` with `tenant: None` (one site, SE-5 not built), and migration 36 adds axa's four new setup
+  statements (two nullable columns, the tenant form of the fingerprint, the owed trigger), since the service uses
+  `Outbox::connect_existing`, which refuses tables without them; `outbox::tests` now reads both outbox migrations.
+  The two columns are in the personal-data inventory (category none, always empty). Not adopted: the tenant pieces
+  (rate limit per tenant, tenant on the request span, suspended tenants, tenant-bound cursors), the webhook
+  extractor. **Acceptance:** every gate green, the OpenAPI document unchanged, and a CHANGELOG entry.
+
 ## Research 2026-11-14 — clinical modules, patient portal, analytics, population health and research data
 
 Ranked in plan.md §35. Specs only: nothing here is built, no clinician, pharmacist or data protection officer has reviewed it, and each clinical task adds its hazard rows with its first code. Each task names the existing task it refines.
