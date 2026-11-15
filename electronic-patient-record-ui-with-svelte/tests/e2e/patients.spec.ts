@@ -1875,11 +1875,15 @@ test("a patient asks for a reading to be corrected, withdraws, and states disagr
   await expect(page.getByText("Write your statement.")).toBeVisible();
   await page.getByLabel(/^Your statement\./).fill("I disagree.");
   await page.getByRole("button", { name: "Add my statement" }).click();
-  expect(sent.at(-1)).toEqual({
-    method: "PUT",
-    body: { expected_version: 1, step: "disagree", statement: "I disagree." },
-    purpose: "patient-access",
-  });
+  // Nothing on the page confirms this step, so wait for the request itself: read at once, a slow runner still saw
+  // the withdrawal as the last request (CI, 2026-11-15).
+  await expect
+    .poll(() => sent.at(-1))
+    .toEqual({
+      method: "PUT",
+      body: { expected_version: 1, step: "disagree", statement: "I disagree." },
+      purpose: "patient-access",
+    });
   list = [];
   await axe(page);
 });

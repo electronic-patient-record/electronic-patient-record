@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-15 - A browser test waits for the request it checks
+
+- **Clinical risk:** none. A test only; the screen and what it sends are unchanged.
+- **Fixed:** `a patient asks for a reading to be corrected, withdraws, and states disagreement with a refusal` read the last request straight after clicking "Add my statement", with nothing on the page to wait for, and on CI's run of `7040cc3` it still saw the withdrawal. It now polls until the statement's request arrives. It passed ten times in a row here.
+- **Not done / not verified:** the other 60 checks of captured requests in the browser tests were not audited for the same race; those read so far follow a wait for text on the page.
+
 ## 2026-11-15 - One definition per gate, first batch (LC-3)
 
 - **Clinical risk:** none. CI and local tooling only; the same checks run.
