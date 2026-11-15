@@ -96,6 +96,16 @@ cases, and a census. It finds every file a project's tests or source name outsid
 project that reads it. It found 10 such files, among them one a hand-made list had missed: a UI test reads the
 service's `src/adjustments.rs`. Run with `SECURITY.md` dropped from the list, it failed.
 
+**Measured 2026-11-15.** The documents-only push `792d5dc` ran the docs, secret-scan, toolchain and `changes` jobs, two
+CodeQL runners that skipped their steps, and `ci-ok`; the 11 build and test jobs were skipped. It took **0.6
+job-minutes and 18 s** of wall time, and `ci-ok` passed. The full run just before it (`3bf1757`, which changed the
+workflow, so everything ran) took 35.6 job-minutes and 10.1 min; LC-1's median was 42.3 and 13.4. Over the last 200
+commits on `main`, `ci-changes.sh` sorts 22 as documents only (11%), 99 as Rust only, 10 as UI only and 69 as both.
+From that run's job times, the saving is about 35 job-minutes on a documents-only push, 3.7 on a Rust-only push (the
+UI job, pnpm audit and CodeQL for JavaScript) and about 21 on a UI-only push. That is **about 6.8 job-minutes a push on
+average, some 16% of LC-1's median**. The wall time of a code push does not change: the container build still sets
+it. The estimate takes one run's job times as typical and the last 200 commits as the future mix.
+
 **Not done:** the pre-push hook (LC-5) still maps files by directory and does not use `ci-changes.sh`, so a change to
 `SECURITY.md` alone runs only the document checks before a push. The census sees only literal paths; a path built at
 run time would escape it, and the nightly run is then the backstop.
