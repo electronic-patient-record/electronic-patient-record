@@ -85,6 +85,13 @@ samples are not labelled by request). Two numbers do not fit a simple story and 
 a vital sign reached 3,346 a second at 32 workers, faster than any other write, while recording an allergy fell
 from 992 a second at 8 workers to 202 at 32. Both are audited; why they differ was not looked into.
 
+**The first CI run** (a manual run of the nightly `performance` job, run 43715476603 on `105142a`, a GitHub-hosted
+runner, one repeat per step, latency recorded not checked) did not show that split: a vital sign 667 and an allergy
+708 a second at 32 workers. So the laptop's split is more likely noise than a property of either write. The runner
+showed the lock the same way: 9,796 of 11,074 busy-session samples (88 percent) waited on `Lock advisory`. Its chart
+open p95 at 32 workers was 442 ms, and its FHIR search p95 at 32 was 472 ms. Its numbers are in the run's
+`load-<commit>` artefact, not in this repository.
+
 ## Benchmarks (criterion, one process, no database)
 
 `cargo bench` with 1 s of warm-up and 3 s of measurement per benchmark; the middle of criterion's interval.
@@ -112,7 +119,7 @@ ever returns that many (it returns at most 50).
 - The tree was dirty (the harness itself, not the service), so `dirty` is true in the JSON.
 - The database ran on the same host as the service, not in the Podman VM the 2026-10-30 run used, so the two runs
   do not compare directly.
-- No run on CI yet: the nightly `performance` job is new, and its first run has not been looked at.
+- One CI run, read above; the scheduled nightly run has not happened yet.
 
 ## The 2026-10-30 run
 **One laptop run on 2026-10-30, kept for comparison. Not a capacity claim.** Nothing here says what a deployment can carry; it says what
