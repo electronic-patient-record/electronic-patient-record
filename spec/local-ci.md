@@ -62,6 +62,38 @@ So two runs at once do not see each other's rows, and a row left in a shared tes
 
 **Not done:** a run killed with `kill -9` leaves its scratch database (find them by the `epr_ci_` prefix; nothing sweeps them). The role needs `CREATEDB` on a given server. Two runs at once still share `target/` (cargo makes the second wait), `target/ci-local/` logs (the later run overwrites them), the Playwright port and the container image tags.
 
+## A signed local gate record (LC-6, built 2026-11-15)
+
+`sh scripts/ci-local.sh --full`, on a tree whose tracked files match HEAD, ends by writing
+`target/ci-local/<commit>.json` and its signature, `<commit>.json.sig` (`scripts/gate-record.sh`). The record holds the
+commit and its tree, the number of untracked files, the host's OS and architecture, the versions of rustc, cargo, node,
+pnpm, podman, java and python, each gate's result, seconds and note, and `passed`, which is true only when every gate
+passed (a run narrowed by `EPR_CI_ONLY`, or with a `SKIP`, never passes). Its `statement` reads:
+
+> Self-attested, not a hosted build. This record says what one machine ran on one commit, signed with its author's
+> key; it is not evidence for the hazard log or the safety case (OQ-LC3).
+
+It is signed with git's `user.signingkey` by `ssh-keygen -Y sign` in the namespace `epr-ci-local`, so a signature made
+for a commit or for anything else cannot stand in for it. A tracked file that differs from HEAD, or HEAD moving during
+the run, writes no record. A failed signing keeps no new record and leaves an earlier one as it was.
+
+`sh scripts/ci-local.sh --verify <commit>` finds the signer in git's `gpg.ssh.allowedSignersFile`, checks the signature,
+checks that the record names that commit and its tree and carries the statement, then prints which gates passed.
+
+**Acceptance, run 2026-11-15** on `d520ab6`, the tree clean: all 28 gates passed, the record was written and signed with
+the maintainer's key, and `--verify d520ab6` printed "verified, signed by an allowed key; 28 gates, all passed" and the
+statement. `scripts/test_gate_record.sh` (the `docs-gate-record` gate and a step of CI's docs job) uses a throwaway key
+and repository and checks:
+- a record verifies;
+- one changed, copied to another commit, or signed by a key not on the list fails;
+- a dirty tree is refused;
+- a failed run names its gates;
+- a signing failure leaves an earlier record verifying.
+
+**Not done:** records stay in `target/`, which is not committed or published. A record shows that the key's holder ran
+the gates, not that they would pass on another machine. Whether a record may ever count as safety evidence is OQ-LC3,
+for the Clinical Safety Officer; until then it may not.
+
 ## CI runs only what a push needs (LC-7, built 2026-11-15)
 
 A `changes` job in `ci.yml` lists the files changed and runs `scripts/ci-changes.sh` on them, which answers two
