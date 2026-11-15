@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-15 - Playwright 1.65.1
+
+- **Clinical risk:** none. A test tool only.
+- **Built:** `@playwright/test` 1.65.0 to 1.65.1 in the UI; the 113 browser tests pass, with lint and the test type check. `@axe-core/playwright` 4.14.0 is already the latest.
+- **Not done / not verified:** the release is two days old and its notes were not read. Locally the browser tests ran on port 4193.
+
 ## 2026-11-15 - AGENTS.md names the API image's memory need
 
 - **Clinical risk:** none. Documents only.
