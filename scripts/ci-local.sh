@@ -109,6 +109,10 @@ gate() { # name, directory, command
   record "$1" "$result" "$seconds" ""
 }
 
+gate_script() { # name: the gate's one definition, scripts/gates/<name>.sh, also run by ci.yml (LC-3)
+  gate "$1" "$root" "sh scripts/gates/$1.sh"
+}
+
 skip() { # name, why
   if [ "$mode" = "--list" ]; then
     selected "$1" && printf '%s\n' "$1"
@@ -135,8 +139,8 @@ if [ "$mode" = "--full" ] && [ "${EPR_CI_SKIP_PREFLIGHT:-}" != "1" ]; then
   sh "$root/scripts/preflight.sh" || exit 3
 fi
 
-gate matcher-fmt "$matcher" 'cargo fmt --check'
-gate matcher-clippy "$matcher" 'cargo clippy --all-targets --all-features -- -D warnings'
+gate_script matcher-fmt
+gate_script matcher-clippy
 # LC-8: cargo-nextest ran the same tests faster here (matcher 15-22 s against 25-41 s, service 8 s against 10-12 s), and
 # in CI for the service. It runs no doc tests, so `cargo test --doc` follows it. Without nextest, plain cargo test.
 if command -v cargo-nextest >/dev/null 2>&1; then
@@ -144,8 +148,8 @@ if command -v cargo-nextest >/dev/null 2>&1; then
 else
   unit_tests='cargo test --workspace --locked --no-fail-fast'
 fi
-gate matcher-test "$matcher" "$unit_tests"
-gate matcher-doc "$matcher" 'RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --document-private-items'
+gate_script matcher-test
+gate_script matcher-doc
 gate service-fmt "$service" 'cargo fmt --check'
 gate service-clippy "$service" 'cargo clippy --all-targets --all-features -- -D warnings'
 gate service-test "$service" "$unit_tests"
@@ -154,15 +158,16 @@ gate ui-lint "$ui" 'pnpm run lint'
 gate ui-check "$ui" 'pnpm run check'
 gate ui-check-tests "$ui" 'pnpm run check:tests'
 gate ui-unit "$ui" 'pnpm exec vitest run'
-gate docs-links "$root" 'python3 scripts/check-links.py .'
-gate docs-status "$root" 'sh scripts/generate-status.sh --check'
-gate docs-llms "$root" 'python3 scripts/generate-llms.py --check'
-gate docs-schema-map "$root" 'python3 scripts/generate-schema-map.py --check'
-gate docs-hazard-log "$root" 'python3 scripts/check-hazard-log.py --report . && python3 scripts/test_check_hazard_log.py'
-gate docs-hooks "$root" 'sh scripts/test_pre_push.sh'
-gate docs-preflight "$root" 'sh scripts/test_preflight.sh'
-gate docs-ci-changes "$root" 'sh scripts/test_ci_changes.sh'
-gate docs-gate-record "$root" 'sh scripts/test_gate_record.sh'
+gate_script docs-links
+gate_script docs-status
+gate_script docs-llms
+gate_script docs-schema-map
+gate_script docs-hazard-log
+gate_script docs-hooks
+gate_script docs-preflight
+gate_script docs-ci-changes
+gate_script docs-gate-record
+gate_script docs-gates
 
 # The database gates run against a scratch database made for this run and dropped after it (LC-4).
 . "$root/scripts/scratch-db.sh"

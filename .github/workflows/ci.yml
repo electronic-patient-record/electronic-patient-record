@@ -80,9 +80,6 @@ jobs:
     needs: changes
     if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: electronic-patient-record-matcher-with-rust
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@1.99.1
@@ -91,13 +88,11 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: ${{ env.MATCHER }}
-      - run: cargo fmt --check
-      - run: cargo clippy --all-targets --all-features -- -D warnings
-      - run: cargo test --locked
-      # Documentation builds clean, private items included: a broken link or an undocumented public item fails here.
-      - run: cargo doc --no-deps --document-private-items
-        env:
-          RUSTDOCFLAGS: -D warnings
+      # Each gate's one definition is its script, which scripts/ci-local.sh runs too (LC-3).
+      - run: sh scripts/gates/matcher-fmt.sh
+      - run: sh scripts/gates/matcher-clippy.sh
+      - run: sh scripts/gates/matcher-test.sh
+      - run: sh scripts/gates/matcher-doc.sh
 
   api:
     name: API (fmt, clippy, database-free tests)
@@ -254,16 +249,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - run: python3 scripts/check-links.py .
-      - run: sh scripts/generate-status.sh --check
-      - run: python3 scripts/generate-llms.py --check
-      - run: python3 scripts/generate-schema-map.py --check
-      - run: python3 scripts/check-hazard-log.py --report .
-      - run: python3 scripts/test_check_hazard_log.py
-      - run: sh scripts/test_pre_push.sh
-      - run: sh scripts/test_preflight.sh
-      - run: sh scripts/test_ci_changes.sh
-      - run: sh scripts/test_gate_record.sh
+      - run: sh scripts/gates/docs-links.sh
+      - run: sh scripts/gates/docs-status.sh
+      - run: sh scripts/gates/docs-llms.sh
+      - run: sh scripts/gates/docs-schema-map.sh
+      - run: sh scripts/gates/docs-hazard-log.sh
+      - run: sh scripts/gates/docs-hooks.sh
+      - run: sh scripts/gates/docs-preflight.sh
+      - run: sh scripts/gates/docs-ci-changes.sh
+      - run: sh scripts/gates/docs-gate-record.sh
+      - run: sh scripts/gates/docs-gates.sh
 
   # A pull request labelled `clinical-impact` must change the hazard log (task AS-1).
   hazard-log:

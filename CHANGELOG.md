@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-15 - One definition per gate, first batch (LC-3)
+
+- **Clinical risk:** none. CI and local tooling only; the same checks run.
+- **Built:** `scripts/gates/<name>.sh` holds each gate once, and both `ci.yml` and `ci-local.sh` call it. Moved so far: the matcher's four gates and the ten document gates. `scripts/check-gates.py` (the `docs-gates` gate) fails on any `run:` step in `ci.yml` that neither calls a gate script nor is listed with its reason: setup, GitHub only (the secret scan, the pull-request checks, `ci-ok`, the toolchain pin, pnpm audit), or not moved yet (20 steps, a list that only shrinks). It also fails when a gate script has no local twin, or a listed step no longer exists. `scripts/test_check_gates.sh` adds an inline gate, a missing script and a stale entry to copies of the workflow, and each fails.
+- **Changed:** CI's matcher job now runs `matcher-test` as the script does: `cargo nextest run` and `cargo test --doc` where nextest is installed, plain `cargo test --no-fail-fast` where it is not (CI's matcher job, today).
+- **Not done / not verified:** the service, UI, database, FHIR validator, container and coverage gates are still inline. CodeQL and cargo deny are GitHub actions with no local twin, and are listed as such.
+
 ## 2026-11-15 - Speed spike: cargo-nextest adopted (LC-8)
 
 - **Clinical risk:** none. Test runner only; the same tests run.
