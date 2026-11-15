@@ -141,23 +141,16 @@ fi
 
 gate_script matcher-fmt
 gate_script matcher-clippy
-# LC-8: cargo-nextest ran the same tests faster here (matcher 15-22 s against 25-41 s, service 8 s against 10-12 s), and
-# in CI for the service. It runs no doc tests, so `cargo test --doc` follows it. Without nextest, plain cargo test.
-if command -v cargo-nextest >/dev/null 2>&1; then
-  unit_tests='cargo nextest run --workspace --locked --no-fail-fast && cargo test --workspace --locked --doc'
-else
-  unit_tests='cargo test --workspace --locked --no-fail-fast'
-fi
 gate_script matcher-test
 gate_script matcher-doc
-gate service-fmt "$service" 'cargo fmt --check'
-gate service-clippy "$service" 'cargo clippy --all-targets --all-features -- -D warnings'
-gate service-test "$service" "$unit_tests"
-gate service-doc "$service" 'RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --document-private-items --workspace'
-gate ui-lint "$ui" 'pnpm run lint'
-gate ui-check "$ui" 'pnpm run check'
-gate ui-check-tests "$ui" 'pnpm run check:tests'
-gate ui-unit "$ui" 'pnpm exec vitest run'
+gate_script service-fmt
+gate_script service-clippy
+gate_script service-test
+gate_script service-doc
+gate_script ui-lint
+gate_script ui-check
+gate_script ui-check-tests
+gate_script ui-unit
 gate_script docs-links
 gate_script docs-status
 gate_script docs-llms
@@ -197,7 +190,7 @@ if [ "$mode" != "--fast" ]; then
   fi
 
   if [ "$mode" = "--list" ] || [ -d "$ui/node_modules/.bin" ]; then
-    gate ui-browser "$ui" "PW_PORT=${PW_PORT:-4183} CI=true pnpm exec playwright test"
+    gate ui-browser "$root" "PW_PORT=${PW_PORT:-4183} sh scripts/gates/ui-browser.sh"
   else
     skip ui-browser "run pnpm install first"
   fi

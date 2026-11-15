@@ -102,9 +102,6 @@ jobs:
     env:
       # Over 50 test binaries with full debug info filled the runner's disk (2026-11-04). Line tables keep panic locations.
       CARGO_PROFILE_DEV_DEBUG: line-tables-only
-    defaults:
-      run:
-        working-directory: electronic-patient-record-service-with-rust
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@1.99.1
@@ -113,20 +110,15 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: ${{ env.API }}
-      - run: cargo fmt --check
-      - run: cargo clippy --all-targets --all-features -- -D warnings
-      # Every test that needs no database, in every crate and test binary, and the doctests: a new test
-      # file runs without a workflow edit (CQ-24). Database tests are `#[ignore]`d and run in `api-db`.
-      # cargo-nextest (LC-8): the same 553 tests, about 25 s faster warm than `cargo test` on two runs. It runs no
-      # doc tests, so `cargo test --doc` follows.
+      # Each gate's one definition is its script, which scripts/ci-local.sh runs too (LC-3).
+      - run: sh scripts/gates/service-fmt.sh
+      - run: sh scripts/gates/service-clippy.sh
+      # cargo-nextest (LC-8): the same 553 tests, about 25 s faster warm than `cargo test`; the script uses it.
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-nextest
-      - run: cargo nextest run --workspace --locked
-      - run: cargo test --workspace --locked --doc
-      - run: cargo doc --no-deps --document-private-items --workspace
-        env:
-          RUSTDOCFLAGS: -D warnings
+      - run: sh scripts/gates/service-test.sh
+      - run: sh scripts/gates/service-doc.sh
 
   fhir-validator:
     name: FHIR validator (what the API writes, base R4 and R5)
@@ -221,9 +213,6 @@ jobs:
     needs: changes
     if: needs.changes.outputs.ui == 'true'
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: electronic-patient-record-ui-with-svelte
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -235,14 +224,15 @@ jobs:
           cache: pnpm
           cache-dependency-path: electronic-patient-record-ui-with-svelte/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-      - run: pnpm run lint
-      - run: pnpm run check
-      - run: pnpm run check:tests
-      - run: pnpm exec vitest run --coverage
+        working-directory: ${{ env.UI }}
+      # Each gate's one definition is its script, which scripts/ci-local.sh runs too (LC-3).
+      - run: sh scripts/gates/ui-lint.sh
+      - run: sh scripts/gates/ui-check.sh
+      - run: sh scripts/gates/ui-check-tests.sh
+      - run: sh scripts/gates/ui-unit.sh --coverage
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm exec playwright test
-        env:
-          CI: "true"
+        working-directory: ${{ env.UI }}
+      - run: sh scripts/gates/ui-browser.sh
 
   docs:
     name: Docs (links, status, special files)

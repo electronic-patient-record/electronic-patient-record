@@ -35,20 +35,10 @@ NOT_GATES = {
 
 # Gates still inline, moved a batch at a time (LC-3). This list only shrinks.
 NOT_MOVED_YET = {
-    ("api", "cargo fmt --check"),
-    ("api", "cargo clippy"),
-    ("api", "cargo nextest run"),
-    ("api", "cargo test --workspace --locked --doc"),
-    ("api", "cargo doc"),
     ("fhir-validator", 'FHIR_VALIDATOR_JAR="$(sh ../scripts/fhir-validator.sh)"'),
     ("api-db", "PGPASSWORD=loco psql"),
     ("api-db", "cargo test --workspace --locked --no-fail-fast -- --ignored"),
     ("api-db", "sh ../scripts/test_scratch_db.sh"),
-    ("ui", "pnpm run lint"),
-    ("ui", "pnpm run check"),
-    ("ui", "pnpm run check:tests"),
-    ("ui", "pnpm exec vitest run"),
-    ("ui", "pnpm exec playwright test"),
     ("container", "podman build -f ${{ env.API }}"),
     ("container", "podman build -f ${{ env.UI }}"),
     ("container", "set -u"),
