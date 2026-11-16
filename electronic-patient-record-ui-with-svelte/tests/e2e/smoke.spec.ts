@@ -270,33 +270,51 @@ test("the theme follows the device's light or dark setting", async ({
   expect(background).toBe(dark ? "rgb(20, 22, 26)" : "rgb(255, 255, 255)");
 });
 
-// TH-1: the theme control. A choice applies at once, is kept for the next page (the server puts it on <html>, so
-// there is no flash of the other theme), and "Follow this device" hands the decision back to the browser.
+// TH-1: the theme control, Lily's ThemePicker as a native select. A choice applies at once, is kept for the next
+// page (the server puts it on <html>, so there is no flash of the other theme), and "Follow this device" hands the
+// decision back to the browser.
 const LIGHT_BG = "rgb(255, 255, 255)";
 const DARK_BG = "rgb(20, 22, 26)";
 const background = (page: import("@playwright/test").Page) =>
   page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+/** The <html> tag the server sends, before any script runs. */
+const servedHtmlTag = async (page: import("@playwright/test").Page) =>
+  ((await (await page.request.get("/en-001")).text()).match(/<html[^>]*>/) ?? [
+    "",
+  ])[0];
 
 test("the theme control overrides the device, keeps the choice, and can follow the device again", async ({
   page,
+  context,
 }, info) => {
   const deviceDark = info.project.use.colorScheme === "dark";
   const device = deviceDark ? DARK_BG : LIGHT_BG;
+  const deviceTheme = deviceDark ? "dark" : "light";
   const other = deviceDark ? "light" : "dark";
+  const stylesheets: number[] = [];
+  page.on("response", (r) => {
+    if (r.url().includes("/themes/")) stylesheets.push(r.status());
+  });
   await page.goto("/en-001");
   const control = page.getByLabel("Theme");
-  await expect(control).toHaveValue("device");
+  await expect(control).toHaveValue("system");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", deviceTheme);
   expect(await background(page)).toBe(device);
+  // A first visit keeps nothing: no cookie until the user chooses.
+  expect((await context.cookies()).some((c) => c.name === "epr-theme")).toBe(
+    false,
+  );
 
   await control.selectOption(other);
   await expect
     .poll(() => background(page))
     .toBe(deviceDark ? LIGHT_BG : DARK_BG);
+  expect(
+    (await context.cookies()).find((c) => c.name === "epr-theme")?.value,
+  ).toBe(other);
+  expect(await servedHtmlTag(page)).toContain(`data-theme="${other}"`);
   await page.reload();
-  await expect(page.locator("html")).toHaveAttribute(
-    "data-color-scheme",
-    other,
-  );
+  await expect(page.locator("html")).toHaveAttribute("data-theme", other);
   await expect(page.getByLabel("Theme")).toHaveValue(other);
   expect(await background(page)).toBe(deviceDark ? LIGHT_BG : DARK_BG);
   const results = await new AxeBuilder({ page })
@@ -304,29 +322,29 @@ test("the theme control overrides the device, keeps the choice, and can follow t
     .analyze();
   expect(results.violations).toEqual([]);
 
-  await page.getByLabel("Theme").selectOption("device");
+  await page.getByLabel("Theme").selectOption("system");
   await expect.poll(() => background(page)).toBe(device);
+  expect(await servedHtmlTag(page)).not.toMatch(/data-theme/);
   await page.reload();
-  await expect(page.locator("html")).not.toHaveAttribute(
-    "data-color-scheme",
-    /./,
-  );
+  await expect(page.locator("html")).toHaveAttribute("data-theme", deviceTheme);
   expect(await background(page)).toBe(device);
+  expect(stylesheets.length).toBeGreaterThan(0);
+  expect(stylesheets.every((s) => s === 200 || s === 304)).toBe(true);
 });
 
-test("a forged theme cookie is read as following the device", async ({
+test("a forged or old theme cookie is read as following the device", async ({
   page,
   context,
 }, info) => {
-  await context.addCookies([
-    { name: "epr-theme", value: '"><script>', url: info.project.use.baseURL! },
-  ]);
-  await page.goto("/en-001");
-  await expect(page.locator("html")).not.toHaveAttribute(
-    "data-color-scheme",
-    /./,
-  );
-  expect(await background(page)).toBe(
-    info.project.use.colorScheme === "dark" ? DARK_BG : LIGHT_BG,
-  );
+  for (const value of ['"><script>', "device", "..%2Fx"]) {
+    await context.addCookies([
+      { name: "epr-theme", value, url: info.project.use.baseURL! },
+    ]);
+    expect(await servedHtmlTag(page)).not.toMatch(/data-theme/);
+    await page.goto("/en-001");
+    await expect(page.getByLabel("Theme")).toHaveValue("system");
+    expect(await background(page)).toBe(
+      info.project.use.colorScheme === "dark" ? DARK_BG : LIGHT_BG,
+    );
+  }
 });

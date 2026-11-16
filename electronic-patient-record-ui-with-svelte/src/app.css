@@ -1,7 +1,9 @@
 /* The two passing themes (TH-1, spec/index.md "Themes"): each token pair a page uses meets WCAG 2.2 AA, checked by
    tests/unit/theme-contrast.test.ts. `--border` is for dividers and tables (decoration); `--control-border` is the
-   edge of an input, select or textarea, which 1.4.11 holds to 3:1. `data-color-scheme` on <html> (`light` or
-   `dark`) is the user's choice from the theme control; without it the device decides. */
+   edge of an input, select or textarea, which 1.4.11 holds to 3:1. `data-theme` on <html> (`light` or
+   `dark`) is the theme in force: the server sends it for an explicit choice, and the theme control (Lily's
+   ThemePicker) sets it in the page, to the device's scheme when following the device. Without it the device decides.
+   The tokens are here, not in static/themes/, so the first paint is already right. */
 :root {
   color-scheme: light;
   --bg: #ffffff;
@@ -14,7 +16,7 @@
   --warn-border: #8a6100;
 }
 /* Dark by the user's choice (the theme control); the same tokens as dark by the device, below. */
-:root[data-color-scheme="dark"] {
+:root[data-theme="dark"] {
   color-scheme: dark;
   --bg: #14161a;
   --fg: #f0f0f0;
@@ -26,7 +28,7 @@
   --warn-border: #d9a520;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-color-scheme="light"]) {
+  :root:not([data-theme="light"]) {
     color-scheme: dark;
     --bg: #14161a;
     --fg: #f0f0f0;

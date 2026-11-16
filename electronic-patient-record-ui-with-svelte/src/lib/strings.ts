@@ -136,7 +136,7 @@ export const STRINGS = {
   purposeLabel: "Purpose of use",
   purposes: { operations: "Operations", treatment: "Treatment" },
   themeLabel: "Theme",
-  themes: { device: "Follow this device", light: "Light", dark: "Dark" },
+  themes: { system: "Follow this device", light: "Light", dark: "Dark" },
   navMyRecord: "My record",
   myRecordTitle: "My record",
   myRecordIntro:

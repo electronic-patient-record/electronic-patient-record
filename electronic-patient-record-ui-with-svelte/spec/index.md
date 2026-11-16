@@ -102,10 +102,14 @@ the cookie, and the page shows the reader as signed out without deleting anythin
    `prefers-color-scheme`: light or dark, both passing themes. A site, an administrator or a pack cannot make any
    other theme the default, for one user or for all.
 3. **An in-app theme control** in the header of every page offers *Follow this device* (the default), *Light* and
-   *Dark*. A choice applies at once, is kept in a cookie in this browser (`epr-theme`: `device`, `light` or `dark`;
-   one year, `Path=/`, `SameSite=Lax`, `Secure` over HTTPS; not `HttpOnly`, since the page writes it), and is put on
-   `<html>` as `data-color-scheme` by the server for the next page, so the other theme never flashes. Any other
-   value is read as *Follow this device*. It is this browser's choice, not the account's: nothing is stored on the
+   *Dark*. It is Lily's ThemePicker (`@lilydesignsystem/svelte-theme-picker` 0.4, `variant="select"`: a native
+   select, with the visible label *Theme*). A choice applies at once, is kept in a cookie in this browser
+   (`epr-theme`: `system`, `light` or `dark`; 400 days, `Path=/`, `SameSite=Lax`, `Secure` over HTTPS; not
+   `HttpOnly`, since the page writes it; nothing in `localStorage`; no cookie until the user chooses), and is put on
+   `<html>` as `data-theme` by the server for the next page, so the other theme never flashes. In the page the
+   picker sets `data-theme` itself, to the device's scheme while following the device, and follows the device when
+   it changes. Any other value, the earlier `device` included, is read as *Follow this device*. The picker loads
+   `static/themes/<theme>.css`; for the two passing themes those files are empty and the tokens are in `app.css`. It is this browser's choice, not the account's: nothing is stored on the
    server, and nobody can set it for someone else.
 4. **Other themes are allowed when the user chooses them.** A user may pick a theme that does not pass (lower
    contrast for glare or migraine, a brand palette, anything else) because it suits them. It applies to that user
@@ -131,7 +135,7 @@ not run against a non-passing theme: it would fail, and it is allowed to.
 
 **Built 2026-11-15:** points 1, 2, 3, 5 and 7 for the two passing themes, and their tests. Point 5 holds because
 the control offers only passing themes.
-- `src/app.html` no longer forces `data-color-scheme="light"`, which it had done since the scaffold, so the dark
+- `src/app.html` no longer forces `data-color-scheme="light"` (now `data-theme`), which it had done since the scaffold, so the dark
   theme had never been shown to anyone. The page now follows `prefers-color-scheme`; `color-scheme` is set in both
   themes, so native controls (buttons, checkboxes, scrollbars) follow too.
 - `--control-border` (light `#767676`, 4.54:1; dark `#858c96`, 5.34:1) is the edge of every input, select and

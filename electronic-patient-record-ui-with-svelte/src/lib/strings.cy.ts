@@ -171,7 +171,7 @@ export const CY: Strings = {
   purposeLabel: "Pwrpas y defnydd",
   purposes: { operations: "Gweithrediadau", treatment: "Triniaeth" },
   themeLabel: "Thema",
-  themes: { device: "Dilyn y ddyfais hon", light: "Golau", dark: "Tywyll" },
+  themes: { system: "Dilyn y ddyfais hon", light: "Golau", dark: "Tywyll" },
   navMyRecord: "Fy nghofnod",
   myRecordTitle: "Fy nghofnod",
   myRecordIntro:

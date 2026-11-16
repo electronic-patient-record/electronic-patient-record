@@ -1,0 +1,4 @@
+/* The dark theme (TH-1). Lily's ThemePicker loads one stylesheet per theme; this one is empty on purpose. The tokens
+   are in src/app.css under :root and data-theme, so a page sent in this theme is right before any stylesheet loads,
+   and tests/unit/theme-contrast.test.ts checks them there. A theme that does not pass (spec/index.md "Themes",
+   point 4) would be a file here with its own tokens. */

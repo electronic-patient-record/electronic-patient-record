@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-16 - The theme control is Lily's ThemePicker 0.4 (TH-1)
+
+- **Clinical risk:** yes, what a clinician sees: the theme control in every page's header is now Lily's ThemePicker. It offers the same three choices (*Follow this device*, *Light*, *Dark*); both themes still pass WCAG 2.2 AA, and no other theme is offered. Hazard H-057 updated (still open).
+- **Approved exception:** `@lilydesignsystem/svelte-theme-picker` 0.4.0 was published at 17:41 UTC today, inside the maintainer's cooldown; the maintainer asked for the upgrade. pnpm wrote the exception for that one version into `pnpm-workspace.yaml` (`minimumReleaseAgeExclude`).
+- **Changed:** 0.4.0 added a *Follow this device* choice and a cookie that a server can read, which is what the UI's own select did; the UI now uses the picker (`variant="select"`, a native select with the visible label *Theme*) as a direct dependency. The cookie is still `epr-theme`, now `system`, `light` or `dark`, kept 400 days and written only when the user chooses; nothing goes in `localStorage`. The attribute on `<html>` is `data-theme` (was `data-color-scheme`), from the server for an explicit choice and from the picker in the page. An old `device` cookie reads as following the device. The picker loads `static/themes/light.css` and `dark.css`, which are empty on purpose: the tokens stay in `app.css` so the first paint is right.
+- **Tested:** `tests/unit/theme.test.ts` (5: the choices, old and forged values, the attribute, the picker refusing a cookie it does not offer, the stylesheets exist and hold no tokens); browser tests in light and dark: a choice applies, sets the cookie, is sent by the server and survives a reload, axe passes, following the device again sends no attribute, the first visit sets no cookie, the stylesheets load, and forged or old cookies change nothing. 380 unit tests and 232 browser runs pass.
+- **Not done / not verified:** the picker's default icon-button listbox is not used (the native select keeps the platform's keyboard and screen-reader behaviour); the picker bar is still not rendered; the Welsh words are machine-written and not reviewed; no person has used the new control; no forced-colours test.
+
 ## 2026-11-16 - Lily 0.9 and the Lily pickers
 
 - **Clinical risk:** none found. The only Lily component a page shows is the disabled `Slider` on the path-to-production page, and 0.9.0 does not change it; the Theme control is the UI's own select, unchanged.

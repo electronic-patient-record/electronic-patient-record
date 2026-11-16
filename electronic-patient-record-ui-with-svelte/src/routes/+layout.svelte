@@ -28,10 +28,11 @@
     refreshFeedCount,
   } from "#lib/feed-count.svelte.js";
   import { idleWarning, lastActivityAt, noteActivity } from "#lib/idle.js";
+  import { ThemePicker } from "@lilydesignsystem/svelte-theme-picker";
   import {
     normalizeTheme,
-    THEMES,
-    themeCookie,
+    PASSING_THEMES,
+    THEME_COOKIE,
     type Theme,
   } from "#lib/theme.js";
 
@@ -68,20 +69,15 @@
     purpose = next;
     storePurpose(window.sessionStorage, next);
   }
-  // The theme (TH-1): this browser's own choice, applied at once and kept in a cookie; the server puts it on <html>
-  // for the next page, so it never flashes the other theme. Light and dark both pass WCAG 2.2 AA.
+  // The theme (TH-1): Lily's ThemePicker, as a native select. It applies a choice at once, keeps it in the
+  // `epr-theme` cookie (no localStorage) and follows the device while "system" is chosen; the server reads the cookie
+  // and puts the theme on <html> for the next page, so it never flashes the other theme. Light and dark both pass
+  // WCAG 2.2 AA. The picker loads static/themes/<slug>.css, which hold no tokens (app.css has them).
   // eslint-disable-next-line svelte/prefer-writable-derived -- the server's value first, then the user's choice
-  let theme = $state<Theme>("device");
+  let theme = $state<Theme>("system");
   $effect.pre(() => {
     theme = normalizeTheme(page.data.theme);
   });
-  function chooseTheme(event: Event) {
-    theme = normalizeTheme((event.currentTarget as HTMLSelectElement).value);
-    const root = document.documentElement;
-    if (theme === "device") delete root.dataset.colorScheme;
-    else root.dataset.colorScheme = theme;
-    document.cookie = themeCookie(theme, location.protocol === "https:");
-  }
   // The count of refused messages is fetched on the admin pages only.
   const adminPage = $derived(isAdminPage(page.url.pathname));
   $effect(() => {
@@ -195,9 +191,17 @@
   {/if}
   <label class="theme">
     {TEXT.themeLabel}
-    <select value={theme} onchange={chooseTheme}>
-      {#each THEMES as t (t)}<option value={t}>{TEXT.themes[t]}</option>{/each}
-    </select>
+    <ThemePicker
+      variant="select"
+      label={TEXT.themeLabel}
+      themesUrl="/themes/"
+      themes={[...PASSING_THEMES]}
+      systemLabel={TEXT.themes.system}
+      themeLabels={{ light: TEXT.themes.light, dark: TEXT.themes.dark }}
+      cookieName={THEME_COOKIE}
+      storageKey=""
+      bind:value={theme}
+    />
   </label>
   {#if page.data.signIn?.enabled}
     {#if page.data.signIn.name}
