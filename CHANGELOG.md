@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-16 - Lily 0.9 and the Lily pickers
+
+- **Clinical risk:** none found. The only Lily component a page shows is the disabled `Slider` on the path-to-production page, and 0.9.0 does not change it; the Theme control is the UI's own select, unchanged.
+- **Approved exception:** `@lilydesignsystem/svelte-headless` 0.9.0 and `svelte-picker-bar` 0.6.0 were published on 2026-11-14 at 23:43 UTC, inside the maintainer's two-day cooldown; the maintainer asked for the upgrade.
+- **Changed:** `svelte-headless` 0.8.0 to 0.9.0 (adds the record lists and healthcare display components; nothing removed or renamed) and `svelte-picker-bar` 0.5.3 to 0.6.0. `svelte-theme-picker` was already at its latest, 0.3.2, as were the picker bar's other pickers and `themes` 0.6.2. pnpm's supply-chain check passed.
+- **Checked:** every UI and docs gate in `ci-local.sh --full`: lint, check, unit tests, browser tests in light and dark with axe, and the UI image.
+- **Not done / not verified:** the UI still renders neither the picker bar nor Lily's ThemePicker (both installed, neither imported), and none of 0.9.0's new clinical components is used.
+
 ## 2026-11-16 - axa 0.15 (AX-15)
 
 - **Clinical risk:** none. No code, schema or response changes.
