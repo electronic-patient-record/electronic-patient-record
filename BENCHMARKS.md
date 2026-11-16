@@ -92,6 +92,16 @@ showed the lock the same way: 9,796 of 11,074 busy-session samples (88 percent) 
 open p95 at 32 workers was 442 ms, and its FHIR search p95 at 32 was 472 ms. Its numbers are in the run's
 `load-<commit>` artefact, not in this repository.
 
+**The first scheduled nightly** (run 43856537675 on `231daf3`, 2026-11-16 11:18 UTC; the schedule fired hours after
+its cron time, as GitHub's do) passed: no failure in any step. Every step was slower than the first CI run, by 15 to
+60 percent in p95 and 16 to 50 percent in rate: chart open p95 at 32 workers 540 ms (was 442), FHIR search 637 ms
+(was 472), register 103 a second (was 129). The runner's CPU differed (AMD EPYC 9V74, where the first had a 9V45), and
+the code differed (the theme control and axa 0.14's outbox columns, neither in the path of a read). A slowdown this
+even across every scenario looks like the machine, but one run on each cannot tell the two apart; this is why CI
+records latency and does not check it. Two steps moved much more than the rest: FHIR read p95 at 8 and 32 workers
+(17 to 84 ms, 61 to 228 ms) and recording a vital sign at 32 (55 to 186 ms). Not investigated; a second nightly will
+say whether they repeat. The lock again: 9,627 of 11,072 busy-session samples (87 percent) on `Lock advisory`.
+
 ## Benchmarks (criterion, one process, no database)
 
 `cargo bench` with 1 s of warm-up and 3 s of measurement per benchmark; the middle of criterion's interval.
