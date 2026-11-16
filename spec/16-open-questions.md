@@ -143,5 +143,11 @@
 | OQ-RD6 | Who operates the pool and the linkage unit, and who funds them? | contributing organisations |
 | OQ-RD7 | Is commercial research permitted, and on what terms? | data access committee with patient members |
 | OQ-RD8 | What happens to row-level data when an organisation withdraws? | access committee and contributing organisations |
+| OQ-IH1 | When the feed refuses a message and keeps it for review, should it answer `AR` (do not resend), `AE`, or a setting per sender? (IH-1) | maintainer with each sender's integration lead |
+| OQ-IH2 | May MSH-10 be kept in plain text anywhere but the stored message, and which key makes its digest? (IH-3) | data protection officer |
+| OQ-IH3 | Is an update older than the last applied one refused, queued, or applied field by field; and what if the message time cannot be trusted? (IH-5) | Clinical Safety Officer |
+| OQ-IH4 | What inactivity and refusal thresholds raise a feed alarm, for day, evening and weekend, and who is told? (IH-8) | deploying organisation |
+| OQ-IH5 | How long may `MSA-3` be (the hub uses 199 characters; HL7 v2.5.1 sets its own length)? (IH-2) | maintainer, from the standard |
+| OQ-IH6 | Should a per-sender strict mode refuse unknown and `Z` segments, as the hub does, or stay lenient? | maintainer with senders |
 
 No answers recorded yet, except where a row says decided or proposed.

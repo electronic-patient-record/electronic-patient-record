@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-16 - Research: HL7 v2 feed hardening, from an integration hub rewritten in Rust (IH)
+
+- **Clinical risk:** none from this change (documents only). IH-1, IH-5, IH-8 and IH-12 are clinical and add hazard rows with their first code.
+- **Researched:** an HL7 v2 integration hub's Rust rewrite, read locally at one commit: how it acknowledges, what it never logs, how its senders retry, how it watches feeds, how it tests and how it cuts a feed over. Written up in `plan.md` §36, `spec/interoperability/hl7-v2-feed-hardening.md`, tasks IH-1 to IH-12 (prefix registered), OQ-IH1 to OQ-IH6, `spec/11` and `spec/17`.
+- **Found here:** a refused message is answered `AE`, which senders commonly resend, and each resend adds a work-queue row; MSH-10 is kept in plain text in audit rows, the queue and a log line; an older update can overwrite a newer one; a stale comment in `src/adt_feed.rs`. Two places where this project is ahead: the change commits before `AA`, and the listener has a connection cap and a loopback default.
+- **Not done / not verified:** nothing is built. None of the four findings was observed with a real sender; each is inferred from the code and the hub's documents. The hub was read, not run. `hl7::v2::builder::acknowledge` (MSH-11, `MSA-3` escaping) and the service's shutdown were not checked. HL7 v2.5.1 chapter 2 was not re-read.
+
 ## 2026-11-16 - Themes: no meaning by colour alone, and forced colours win (TH-1)
 
 - **Clinical risk:** yes, what a clinician sees, though nothing on screen changes: this checks that warnings, the banner's states and a high-risk allergy keep their meaning without colour and under a Windows contrast theme. Hazard H-057 updated (still open).

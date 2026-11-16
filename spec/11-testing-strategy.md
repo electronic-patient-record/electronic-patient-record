@@ -18,3 +18,9 @@ Against the field ([benchmark](benchmark.md), 2026-10-30): the census tests, the
 hand-run mutation pass have no counterpart in any comparator. Missing here and usual there: coverage measured and
 gated in CI (OS-4), a performance run on `main` with published numbers (OS-5), a documentation census (OS-9),
 property tests from a library rather than by hand (CQ-30), and conformance test kits in CI (after IO-2 and IO-4).
+
+Proposed from an HL7 v2 integration hub's rewrite (IH, 2026-11-16, [spec](interoperability/hl7-v2-feed-hardening.md),
+not built): a **marker test** that pushes one distinctive value through every field and refusal path of the HL7 feed
+and fails if it appears in any log, error, metric, `MSA-3` or audit row (IH-4); **golden acknowledgements** for the
+sample messages, compared byte for byte and never re-captured to make a test pass (IH-2, IH-11); and a redactor fuzzed
+for properties ("the marker never survives", "never panics") rather than outputs.

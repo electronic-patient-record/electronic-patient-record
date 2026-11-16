@@ -84,6 +84,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | PH | 0 | 10 |
 | RD | 0 | 7 |
 | TH | 0 | 1 |
-| **Total** | **106** | **405** |
+| IH | 0 | 12 |
+| **Total** | **106** | **417** |
 
 <!-- generated:end -->

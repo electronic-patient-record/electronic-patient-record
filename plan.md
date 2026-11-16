@@ -2095,3 +2095,90 @@ Order of work: RD-1 first; RD-2 with the data protection officer's answers; RD-5
 7. **Reporting and population work on what exists.** AN-4 and AN-5 on referrals and results, then PH-2 and PH-3. AN-7, PH-6 and RD-3 wait for SE-4 labels, IO-4 export and IO-7 views.
 
 The risk shared by all seven areas is building screens before the rules that keep them safe. In each area the first slice is a pure rule or a store with its census test, and a screen comes only after that.
+
+## 36. Research pass 2026-11-16: an HL7 v2 integration hub rewritten in Rust
+
+Asked for on 2026-11-16: research an HL7 v2 integration hub's Rust rewrite (`integration-hub-beta-riir`, read locally at
+commit `77de740`) for ideas, assess them and advise. Specs and tasks only; no code. Spec:
+[`spec/interoperability/hl7-v2-feed-hardening.md`](spec/interoperability/hl7-v2-feed-hardening.md). Tasks IH-1 to IH-12;
+open questions OQ-IH1 to OQ-IH6.
+
+### 36.1 What it is
+
+A message router, not a record. It takes HL7 v2 messages in over MLLP, SOAP and REST, validates them against a dictionary
+per sending system, transforms them, and delivers them over MLLP, SOAP, HTTP, FHIR and stored procedures, through a
+cloud message bus. It has a message store and replay job, an operator dashboard with alarms, a bus inspector, telemetry
+with redaction, five fuzz targets, golden files captured from the system it replaces, a test sender, mock receivers, a
+local gate in code, and a cutover runbook with a register of deliberate differences awaiting sign-off. Its documents are
+detailed and cite their own sections; it is not deployed, and the system it replaces still runs.
+
+### 36.2 Assessment
+
+This project's HL7 v2 feed is small and careful: it commits the change and its audit row before `AA`, caps connections,
+listens on loopback unless told otherwise and keeps refusals for a person. On those three points it is ahead of the hub,
+whose store write does not block the acknowledgement and whose ingress has no connection cap or TLS.
+
+The hub is ahead where a feed meets real senders over time: what an answer makes a sender do next, order, what may be
+logged, and how a feed is watched and brought live. Reading the two side by side found four things here:
+
+1. A refusal is answered `AE`, which senders commonly retry, and each retry adds a queue row (`feed_queue::record` has no
+   check on the sender or control id). A strict-order sender would also hold every later message behind it.
+2. MSH-10 is kept in plain text in the audit row, the queue and a log line; the hub found a sender that builds it from
+   the national patient number.
+3. A delayed or resent update is applied as it arrives, so an older A08 can undo a newer one.
+4. `src/adt_feed.rs` still says the refusal work queue is not built.
+
+None has been observed with a real sender; each is inferred from the code and the hub's documents.
+
+### 36.3 Ideas, ranked
+
+| # | Idea | Why | Effort | Clinical | Task |
+|---|---|---|---|---|---|
+| 1 | A kept refusal answered so the sender does not resend (`AR` "kept for review", or per sender); a resend adds no queue row | Stops queue duplicates and a blocked feed | S/M | yes (H-021, H-023) | IH-1 |
+| 2 | An older update is not applied over a newer one: kept as `out-of-order` | A late A08 undoing a correction is a wrong-record error | M | yes | IH-5 |
+| 3 | MSH-10 kept only as a keyed digest in audit, queue and logs | Some senders put a patient number in it | S | no (privacy) | IH-3 |
+| 4 | A marker test: no message value in any log, error, metric or `MSA-3`; a deny-by-default ER7 redactor for any frame logged | Proves "never the message" rather than asserting it | S/M | no | IH-4 |
+| 5 | ACK hygiene: MSH-11 copied, a processing-id mismatch refused, `MSA-3` escaped and capped, an `AE` with MSH-10 for an unparsable frame | A test message never acknowledged as live; senders can match replies | S | no | IH-2 |
+| 6 | Feed health: per-sender inactivity and refusal alarms by day, evening and weekend; no data is `unknown` | OR-3's missing alert; a silent feed is the common failure | M | yes (a missed refusal) | IH-8 |
+| 7 | Per-sender allowlists: MSH-3/4, MSH-12 and trigger events | One integrator setting today covers every sender | M | no | IH-6 |
+| 8 | Shutdown drains: stop accepting, finish, then close the pool | A message read at shutdown is answered truthfully | S | no | IH-7 |
+| 9 | Counters by sender, event and answer, no ids; frozen names | One unlabelled counter today | S | no | IH-9 |
+| 10 | TLS on MLLP, rustls only, a bad bundle a startup failure | Already owed by OR-3 | M | no | IH-10 |
+| 11 | Integrator tools: a rolled-back dry run, a test sender, golden ACKs | Faster, safer onboarding of a feed | M | no | IH-11 |
+| 12 | A going-live method: replay and compare, one feed at a time, keep the old route, a signed register of differences | No method exists today | S (docs) | yes (process) | IH-12 |
+
+Not adopted: the hub's bus, its store-and-replay tables and its bus inspector (this service's durable copy is the record
+and the work queue); a strict dictionary per sender that refuses `Z` segments (a later option, not a default); and
+acknowledging before a durable write.
+
+### 36.4 Risks
+
+- Changing `AE` to `AR` changes what live senders do. A sender set to alert on `AR` and retry `AE` would now alert where
+  it used to retry; one set the other way round would stop retrying what it should. The answer must be configurable per
+  sender and agreed with each one (OQ-IH1).
+- Refusing older messages needs a trustworthy message time. Senders' clocks and MSH-7 habits differ, and a refusal on a
+  bad clock is a missed update (OQ-IH3).
+- A keyed digest of MSH-10 needs a key that outlives rotation, or old rows stop joining to resends.
+- Alarms with poor thresholds are ignored; a deployer sets them (OQ-IH4).
+- The hub's documents describe intent at one commit; where it and this project differ, this project's spec decides.
+
+### 36.5 Order of work
+
+1. IH-1 and IH-3 first: they change what is stored and answered, so they come before more senders connect. IH-1 with
+   its hazard rows.
+2. IH-4's marker test before any new log line in the feed, then IH-2.
+3. IH-5 with the Clinical Safety Officer's answer to OQ-IH3.
+4. IH-9 counters, then IH-8 alarms on them; IH-6 and IH-7 alongside.
+5. IH-10 TLS and IH-11 tools before a first real feed; IH-12 written before it goes live.
+
+### 36.6 Sources
+
+- `integration-hub-beta-riir` at `77de740`, read locally: `plan.md` §7 to §12; `spec/01-architecture.md`,
+  `03-message-bus.md`, `04-observability.md`, `05-health-check.md`, `06-validation.md`, `07-hl7-server.md`,
+  `10-senders.md`, `12-message-store.md`, `13-message-replay.md`, `14-buswatch.md`, `15-dashboard.md`,
+  `17-testing-and-quality.md`, `18-deployment.md`, `21-local-ci.md`, `ultra7-test-message-sender.md`,
+  `integration-hub-tester-component-preview.md`; `docs/cutover-runbook.md`, `docs/deviation-sign-off.md`;
+  `fuzz/fuzz_targets/`.
+- This repository: `src/adt_feed.rs`, `src/feed_queue.rs`, `src/mllp.rs`, `src/interop/hl7_adt.rs`,
+  `migrations/20261021000009_feed_refusals.sql`.
+- HL7 v2.5.1, chapter 2 (control): acknowledgement codes and MSH-11 processing id. Not re-read for this pass.

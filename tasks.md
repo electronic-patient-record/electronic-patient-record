@@ -1542,6 +1542,57 @@ axa crate. This service builds none of the structs that gained fields by hand, s
   pieces, `Checks::migrations`, `axa_test::postgres::TestDatabase`, uploads, webhooks and the outbound client; each is a
   candidate task of its own. **Acceptance:** every gate green, the OpenAPI document unchanged, and a CHANGELOG entry.
 
+## Research 2026-11-16 — HL7 v2 feed hardening, from an integration hub rewritten in Rust (IH)
+
+Ranked in plan.md §36; spec [`spec/interoperability/hl7-v2-feed-hardening.md`](spec/interoperability/hl7-v2-feed-hardening.md).
+Specs only: nothing here is built. Each refines OR-3 unless it says otherwise; each clinical task adds its hazard rows
+with its first code. Open questions OQ-IH1 to OQ-IH6.
+
+- [ ] **IH-1 (S/M, clinical) — A kept refusal is not sent again.** Once a refusal is stored in `feed_refusals`, answer
+  so the sender does not resend: `AR` with `MSA-3` saying it was kept for review, or a per-sender choice (OQ-IH1); `AE`
+  only when a resend can help (the database unavailable, the refusal not stored). A resend of a queued message (same
+  sender, MSH-10 and text digest) adds no row and gets the same answer. Fix the stale "work queue not built" comment in
+  `src/adt_feed.rs`. Hazards H-021 and H-023 updated. **Acceptance:** a test sends one refused message three times and
+  finds one queue row and three identical answers; a test with the database down gets `AE`.
+- [ ] **IH-2 (S) — Acknowledgement hygiene.** MSH-11 copied into the ACK; a processing id that does not match the
+  deployment's refused `AR` and kept; `MSA-3` one line, escaped and capped (OQ-IH5); an HL7-shaped frame that does not
+  parse answered `AE` echoing MSH-10 when readable. First read what `hl7::v2::builder::acknowledge` already does.
+  **Acceptance:** golden ACKs for a `P`, a `T` and an unparsable message.
+- [ ] **IH-3 (S, privacy) — MSH-10 kept only as a keyed digest.** In the audit row, `feed_refusals.control_id` (a
+  migration adds the digest column; the old values stay, append-only) and every log line; the plain value only in the
+  stored message. The key's rotation keeps old digests joinable (OQ-IH2). Personal-data inventory updated.
+  **Acceptance:** a census test finds no plain MSH-10 in an audit row or log line after a run of the sample messages.
+- [ ] **IH-4 (S/M) — No message value anywhere but the stored message.** A marker test through every field and every
+  refusal path checks logs, errors, metrics, `MSA-3` and audit rows; errors carry a path and a reason, never a value. A
+  deny-by-default ER7 redactor (segment ids and MSH-2 to 7 and 9 to 12 kept, populated fields masked, empty fields kept,
+  non-ER7 masked whole), fuzzed for "the marker never survives" and "never panics". Refines CQ-30.
+- [ ] **IH-5 (M, clinical) — A late message does not undo a newer one.** Per patient and sender, keep the message time of
+  the last applied update (MSH-7, or EVN-2); an older update is queued as `out-of-order` and answered as IH-1; no usable
+  time applies as now with a warning (OQ-IH3). New hazard row. **Acceptance:** an A08 sent after a newer A08 changes
+  nothing and is queued.
+- [ ] **IH-6 (M) — Per-sender rules.** Each configured sender: MSH-3 and MSH-4, MSH-12, allowed trigger events; anything
+  else `AR` and kept. The audit agent stays configured. **Acceptance:** a message from an unlisted application is
+  refused and kept.
+- [ ] **IH-7 (S) — Shutdown drains the listener.** Stop accepting, finish what was read (commit and answer), close the
+  pool, within a bound. **Acceptance:** a test stops the service with a message in flight and gets either `AA` with the
+  change committed, or no answer and no change.
+- [ ] **IH-8 (M, clinical) — Feed health and alarms.** Per sender: no message in a window, refusals in a window, with
+  windows for day, evening and weekend in the site's time zone; no data is `unknown`; alarm state stored across a
+  restart; open refusals shown outside the admin pages. Thresholds by the deployer (OQ-IH4). Closes OR-3's "an alert
+  for the queue". Hazard H-023 updated.
+- [ ] **IH-9 (S) — Feed counters by sender.** `epr_feed_messages_total` and `epr_feed_refused_total` labelled `sender`,
+  `event` and `answer` only; names frozen once published. Note for OS-3: an outbox sink completes only on a positive
+  answer, makes a permanent refusal final (ids only), backs off a temporary one, refreshes a token once on 401, honours a
+  capped `Retry-After` on 429, and sends `Idempotency-Key`.
+- [ ] **IH-10 (M) — TLS on MLLP.** rustls only; a missing, empty or unusable bundle, certificate or key stops the start;
+  never downgraded. Refines OR-3's TLS item.
+- [ ] **IH-11 (M) — Tools for integrators.** A dry run in a rolled-back transaction, audited, administrator only; a test
+  sender for the MLLP port with varying fields; golden ACKs for the sample messages, never re-captured to pass.
+- [ ] **IH-12 (S, documentation, clinical process) — Going live with a feed.** In `operations/hl7/`: replay and compare
+  on a test deployment, one feed at a time, a held business day, the old route kept, refusals as a stop signal, and a
+  register of intended differences with decision, who and when blank until a named person signs. Refines PR-9's path
+  to production.
+
 ## Dependency 2026-11-16 — axa 0.15
 
 axa 0.15.0 and axa-test 0.6.0 were published on 2026-11-16 at 15:00 UTC, inside the two-day cooldown

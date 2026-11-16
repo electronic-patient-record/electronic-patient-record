@@ -92,6 +92,7 @@ Topics that span several numbered chapters and are kept whole:
   (OF-6).
 - [Closed-loop referral](interoperability/closed-loop-referral.md) — a draft referral state model, rules and the
   unmatched-outcome design, from one unreviewed outside guide (PC-1, PC-2; plan.md §24). Spans §5, §6, §9.
+- [HL7 v2 feed hardening](interoperability/hl7-v2-feed-hardening.md) — acknowledgements that do not make a sender loop, late messages, the control id kept private, feed health and going live with a feed (IH, plan.md §36; specs only).
 - [Equity audit](equity-audit.md) — country assumptions found in the core (IO-19): identifier, names, phone code, dates,
   units, locales, regulation.
 - [Locales](locales.md) — `<language>-<region>` names, same rules as the

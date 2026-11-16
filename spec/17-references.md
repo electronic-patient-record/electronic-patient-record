@@ -112,3 +112,10 @@ Clinical modules, patient portal, analytics, population health and research data
   - Sweeney 2002: https://www.cs.ubc.ca/~laks/cpsc504/kanonymity.pdf
   - Rocher et al. 2019: https://pmc.ncbi.nlm.nih.gov/articles/PMC6650473
   - OpenSAFELY: https://www.bennett.ox.ac.uk/blog/2025/01/how-opensafely-works/
+- HL7 v2 feed hardening (IH, 2026-11-16; [spec](interoperability/hl7-v2-feed-hardening.md)):
+  - `integration-hub-beta-riir`, an HL7 v2 integration hub rewritten in Rust, read locally at commit `77de740`
+    (2026-11-16): `spec/04-observability.md`, `06-validation.md`, `07-hl7-server.md`, `10-senders.md`,
+    `15-dashboard.md`, `17-testing-and-quality.md`, `18-deployment.md`; `docs/cutover-runbook.md`,
+    `docs/deviation-sign-off.md`. Not public as far as this pass knows; cited by path.
+  - GitHub Pages, data collection (visitor IP addresses logged for security), cited by the project site's privacy page:
+    https://docs.github.com/en/pages/getting-started-with-github-pages/about-github-pages#data-collection
