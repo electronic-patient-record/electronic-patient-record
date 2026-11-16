@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-16 - axa 0.15 (AX-15)
+
+- **Clinical risk:** none. No code, schema or response changes.
+- **Approved exception:** axa 0.15.0 and axa-test 0.6.0 were published at 15:00 UTC today, inside the maintainer's two-day cooldown (`registry.global-min-publish-age`, which stable cargo does not enforce); the maintainer asked for 0.15.0 by name.
+- **Changed:** `axa` 0.15 and `axa-test` 0.6; the lockfile moves `axa-postgres-job-queue` to 0.4.0 and adds `croner` 4 with its build dependencies. No migration: 0.15's new columns and index are on the job queue's tables, which this service never sets up or connects (the queue is compiled in only because `outbox` enables it).
+- **Checked:** every service gate in `ci-local.sh --full` (clippy, tests, docs, migrations, every database test, load smoke, benchmarks, coverage, the FHIR validator, the API image); one `axum-test` and one `axa`.
+- **Not done / not verified:** unique jobs, cron schedules, `mail` and `storage` are not adopted. The proxy-scopes test that once failed under 0.14 passed here; still not diagnosed.
+
 ## 2026-11-15 - A theme control: follow this device, light, dark (TH-1)
 
 - **Clinical risk:** yes, what a clinician sees: a user can now pick light or dark against their browser's setting. Both pass WCAG 2.2 AA; no other theme is offered. Hazard H-057 updated (still open).

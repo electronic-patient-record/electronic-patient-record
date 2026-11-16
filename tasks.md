@@ -1542,6 +1542,21 @@ axa crate. This service builds none of the structs that gained fields by hand, s
   pieces, `Checks::migrations`, `axa_test::postgres::TestDatabase`, uploads, webhooks and the outbound client; each is a
   candidate task of its own. **Acceptance:** every gate green, the OpenAPI document unchanged, and a CHANGELOG entry.
 
+## Dependency 2026-11-16 — axa 0.15
+
+axa 0.15.0 and axa-test 0.6.0 were published on 2026-11-16 at 15:00 UTC, inside the two-day cooldown
+(`registry.global-min-publish-age` in the maintainer's own cargo settings); **the maintainer asked for 0.15.0 by name
+on 2026-11-16**, which is taken as approving the exception. Upgrade guide: `help/upgrading-to-0.15/index.md` in the
+axa crate.
+
+- [x] **AX-15 (S) — Upgrade to axa 0.15.** **Done 2026-11-16:** `axa` 0.15 and `axa-test` 0.6 in `Cargo.toml`; the
+  lockfile moves `axa-postgres-job-queue` 0.3.0 to 0.4.0 and adds `croner` 4 (cron patterns) with its build
+  dependencies (`derive_builder`, `darling`, `strum`, `fnv`). No code change and no migration: 0.15's schema change is
+  to the job queue's tables (`unique_key`, the `axa_queue_unique` index, `axa_schedule.cron`), and this service never
+  connects the job queue (it is compiled in only because the `outbox` feature enables `queue`). Not adopted: unique
+  jobs, cron schedules, `mail`, `storage`. **Acceptance:** every gate green, the OpenAPI document unchanged, and a
+  CHANGELOG entry.
+
 ## Dependency 2026-11-15 — axa 0.14
 
 axa 0.14.0 and axa-test 0.5.0 were published on 2026-11-15 at 11:29 UTC, inside the two-day cooldown
