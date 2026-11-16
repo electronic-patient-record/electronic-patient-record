@@ -118,4 +118,36 @@ describe("theme contrast", () => {
     const chosen = tokens(css.slice(start, css.indexOf("}", start)));
     expect(chosen).toEqual(dark);
   });
+
+  // TH-1 point 6 (WCAG 1.4.1): colour is never the only carrier of a meaning. These are the rules that colour a thing
+  // with the warning tokens, and the words each thing also carries. A new rule that uses them fails here until it is
+  // added, with its words, after checking its markup.
+  const COLOURED: Record<string, string> = {
+    ".notice":
+      "'Not for clinical use' and the machine-translation note, in words (role=note)",
+    ".idle": "the idle sign-out warning, in words (role=alert)",
+    ".banner .merged": "'merged' in words (role=alert)",
+    ".overdue": "'Overdue' in words, in <strong>",
+    ".banner .drill":
+      "a drill, a death or a temporary identity, in words (role=alert)",
+    ".banner .allergies.high":
+      "each high-risk allergy says '(high risk)' in words",
+  };
+
+  it("every rule coloured as a warning is listed with the words that carry its meaning", () => {
+    const found = [
+      ...css
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .matchAll(/(^|\n)([^{}\n][^{}]*)\{([^}]*)\}/g),
+    ]
+      .filter((m) => /var\(--warn-(bg|border)\)/.test(m[3]))
+      .map((m) => m[2].trim())
+      .filter((sel) => !sel.startsWith(":root"));
+    expect(found.sort()).toEqual(Object.keys(COLOURED).sort());
+  });
+
+  it("no rule opts out of forced colours, so a Windows contrast theme always wins (point 7)", () => {
+    expect(css).not.toMatch(/forced-color-adjust\s*:\s*none/);
+    expect(css).not.toMatch(/-ms-high-contrast-adjust\s*:\s*none/);
+  });
 });

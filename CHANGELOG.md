@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-16 - Themes: no meaning by colour alone, and forced colours win (TH-1)
+
+- **Clinical risk:** yes, what a clinician sees, though nothing on screen changes: this checks that warnings, the banner's states and a high-risk allergy keep their meaning without colour and under a Windows contrast theme. Hazard H-057 updated (still open).
+- **Audited:** every CSS rule that uses the warning colours (the notice, the idle warning, the banner's merged and drill lines, a high-risk allergy line, an overdue grant) also carries its meaning in words; vital-sign flags are only words. Nothing needed changing.
+- **Tested:** `tests/unit/theme-contrast.test.ts` lists those rules with their words and fails when a new rule uses the warning colours, and fails if any rule sets `forced-color-adjust: none`. A browser test with forced colours on, on a light and a dark device, finds the banner, "Penicillin (high risk)", the warning and the theme control, the control focusable, nothing opting out, and the allergy line's and the warning's edges still drawn. With `forced-color-adjust: none` put on the warning, it failed.
+- **Not done / not verified:** forced colours are Chromium's emulation, not a real Windows contrast theme; zoom and text spacing are not tested; no person has looked at the page in forced colours.
+
 ## 2026-11-16 - The theme control is Lily's ThemePicker 0.4 (TH-1)
 
 - **Clinical risk:** yes, what a clinician sees: the theme control in every page's header is now Lily's ThemePicker. It offers the same three choices (*Follow this device*, *Light*, *Dark*); both themes still pass WCAG 2.2 AA, and no other theme is offered. Hazard H-057 updated (still open).

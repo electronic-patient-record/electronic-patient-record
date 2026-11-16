@@ -904,6 +904,68 @@ test("the banner's allergy line says exactly what is known, and never reads as n
   }
 });
 
+// TH-1 points 6 and 7: under forced colours (a Windows contrast theme) the browser's colours win: no element opts
+// out, and what a colour meant is still there in words, or in a border that forced colours keep and recolour.
+test("forced colours: the banner, a high-risk allergy, the warning and the theme control stay, in words and edges", async ({
+  page,
+}) => {
+  await page.emulateMedia({ forcedColors: "active" });
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, ANN),
+  );
+  await stubAllergies(page, {
+    allergies: [],
+    statement: null,
+    summary: {
+      state: "active",
+      items: [{ substance: "Penicillin", criticality: "high" }],
+    },
+  });
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  expect(
+    await page.evaluate(() => matchMedia("(forced-colors: active)").matches),
+  ).toBe(true);
+
+  const banner = page.getByRole("region", { name: "Patient banner" });
+  const allergy = banner.locator("p.allergies");
+  await expect(allergy).toHaveText("Allergies: Penicillin (high risk)");
+  const notice = page
+    .getByRole("note")
+    .filter({ hasText: "Not for clinical use" });
+  await expect(notice).toBeVisible();
+  const control = page.getByLabel("Theme");
+  await expect(control).toBeVisible();
+  await control.focus();
+  await expect(control).toBeFocused();
+
+  for (const [what, el, side] of [
+    ["the high-risk allergy line", allergy, "inline-start"],
+    ["the warning", notice, "top"],
+  ] as const) {
+    const style = await el.evaluate((e, side) => {
+      const s = getComputedStyle(e);
+      const edge = side === "top" ? "Top" : "Left";
+      return {
+        adjust: s.getPropertyValue("forced-color-adjust"),
+        width: s.getPropertyValue(`border-${edge.toLowerCase()}-width`),
+        style: s.getPropertyValue(`border-${edge.toLowerCase()}-style`),
+      };
+    }, side);
+    expect(style.adjust, `${what} opts out of forced colours`).toBe("auto");
+    expect(style.style, `${what} keeps its edge`).toBe("solid");
+    expect(parseFloat(style.width), `${what} keeps its edge`).toBeGreaterThan(
+      1,
+    );
+  }
+  for (const el of [banner, control]) {
+    expect(
+      await el.evaluate((e) =>
+        getComputedStyle(e).getPropertyValue("forced-color-adjust"),
+      ),
+    ).toBe("auto");
+  }
+});
+
 test("a clinician records, ends and retracts an allergy and states none known; the banner follows", async ({
   page,
 }) => {

@@ -151,8 +151,19 @@ the control offers only passing themes.
   device* hands back to the browser; a forged cookie is read as following the device. Each runs on a light and on a
   dark device.
 
-**Not built:** any non-passing theme (point 4); point 6's "not by colour alone" is not audited flag by flag; forced
-colours (point 7) are not tested. The Welsh words for the control are machine-written and not reviewed. The ratios are of the tokens; axe checks rendered text, not every border.
+**Checked 2026-11-16: points 6 and 7.**
+- Point 6, colour by colour: the rules that use the warning colours are the notice, the idle warning, the banner's
+  merged and drill lines (a drill, a death, a temporary identity), a high-risk allergy line and an overdue grant. Each
+  also says what it means in words (`role="alert"` or `role="note"` text, "(high risk)" after each such allergy,
+  "Overdue"), and a vital sign's flag is only ever words. `tests/unit/theme-contrast.test.ts` lists these rules with
+  their words and fails when a rule that uses the warning colours is added, until it is checked and listed.
+- Point 7: no rule sets `forced-color-adjust: none` (a unit test), and a browser test with forced colours on
+  (`emulateMedia({ forcedColors: "active" })`, on a light and a dark device) finds the banner, a high-risk allergy
+  in words, the warning and the theme control present, the control focusable, none of them opting out, and the
+  allergy line's and the warning's solid edges still drawn, which forced colours keep where they drop backgrounds.
+
+**Not built:** any non-passing theme (point 4); forced colours are emulated in Chromium, not tried with a Windows
+contrast theme; zoom and text spacing (point 7) are not tested. The Welsh words for the control are machine-written and not reviewed. The ratios are of the tokens; axe checks rendered text, not every border.
 
 ## 2. Not built
 
