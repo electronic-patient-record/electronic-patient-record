@@ -1606,9 +1606,10 @@ command (`--config 'registry.global-min-publish-age="0 days"'`); the settings ar
 - [x] **AX-17 (S) — Upgrade to axa 0.19.** **Done 2026-11-17:** `axa` 0.19 and `axa-test` 0.10; no code change. The
   lockfile moves `axa-postgres-job-queue` to 0.6.0 and adds jiff 1.0 (with `jiff-core`, `jiff-sqlx`, `jiff-static`),
   which axa's queue now uses in place of chrono; croner and sqlx's `chrono` feature are gone. 0.18's changes are to
-  axa's HTTP client, which the service does not use. **Not done:** the service and the domain crate stay on jiff 0.2
-  (jiff 1.0's bundled zone database needs `jiff-tzdb` 1.0, which is inside the cooldown and not approved), so two jiff
-  versions are in the tree; `pg_time.rs` could give way to `jiff-sqlx` once on 1.0.
+  axa's HTTP client, which the service does not use. **jiff 1.0 the same day:** the maintainer approved `jiff-tzdb` 1.0
+  inside its cooldown, and the service and the domain crate moved to jiff 1.0 (`to_zoned` is now
+  `to_zoned_datetime`). **Not done:** jiff 0.2 stays in the tree through `serde_with` (used by `fhir` and
+  `axum-keycloak-auth`); `pg_time.rs` could give way to `jiff-sqlx`.
 
 ## Dependency 2026-11-17 — chrono is unmaintained
 

@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - The service and the domain crate on jiff 1.0 (DEP-1, AX-17)
+
+- **Clinical risk:** none intended: the same times, formats and parse rules on the library's next major version; the full test suite is the check.
+- **Approved exception:** `jiff-tzdb` 1.0.0 (2026-11-15 21:46 UTC), which jiff 1.0's bundled zone database needs, is inside the maintainer's two-day cooldown; the maintainer approved it. Resolved with the minimum lifted for that one command.
+- **Changed:** jiff `1` in `[workspace.dependencies]`, the version axa 0.19 already uses; `to_zoned` is now `to_zoned_datetime` (jiff renamed `Zoned` to `ZonedDateTime`). The lockfile adds `jiff-tzdb` 1.0 and moves jiff 0.2 to 0.2.46.
+- **Tested:** clippy on the workspace; all 84 test binaries without a database; every database test on a fresh local Postgres 18 except the six FHIR validator tests (no Java here).
+- **Not done / not verified:** jiff 0.2 is still in the tree, through `serde_with` (which `fhir` and `axum-keycloak-auth` use), so the duplicate remains there; `pg_time.rs` is kept rather than replaced by `jiff-sqlx`.
+
 ## 2026-11-17 - Mutation testing: a script, hazard-weighted files, and the matcher's survivors pinned (CQ-30)
 
 - **Clinical risk:** none: tests. The matcher decides whether two records are one person (H-001); these pins hold behaviour that no test held.

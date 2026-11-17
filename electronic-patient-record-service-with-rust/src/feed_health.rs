@@ -92,7 +92,7 @@ impl Window {
     /// The window `now` falls in, in `zone`.
     #[must_use]
     pub fn at(zone: &TimeZone, now: Timestamp) -> Window {
-        let local = now.to_zoned(zone.clone());
+        let local = now.to_zoned_datetime(zone.clone());
         match local.weekday() {
             Weekday::Saturday | Weekday::Sunday => Window::Weekend,
             _ if (8..18).contains(&local.hour()) => Window::Day,

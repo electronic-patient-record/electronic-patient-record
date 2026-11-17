@@ -186,7 +186,7 @@ pub fn parse_rfc3339(text: &str) -> Option<Timestamp> {
 /// The UTC calendar day of `t` (chrono's `date_naive()` of a UTC time).
 #[must_use]
 pub fn utc_date(t: Timestamp) -> jiff::civil::Date {
-    t.to_zoned(jiff::tz::TimeZone::UTC).date()
+    t.to_zoned_datetime(jiff::tz::TimeZone::UTC).date()
 }
 
 /// A `YYYY-MM-DD` day, or `None` (chrono's `NaiveDate::parse_from_str(text, "%Y-%m-%d")`).
@@ -207,7 +207,7 @@ pub fn ymd(year: i32, month: u32, day: u32) -> Option<jiff::civil::Date> {
 /// 00:00 UTC on `day`, as an instant.
 #[must_use]
 pub fn day_start_utc(day: jiff::civil::Date) -> Option<Timestamp> {
-    day.to_zoned(jiff::tz::TimeZone::UTC)
+    day.to_zoned_datetime(jiff::tz::TimeZone::UTC)
         .ok()
         .map(|z| z.timestamp())
 }

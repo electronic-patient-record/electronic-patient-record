@@ -64,7 +64,7 @@ pub fn zone() -> TimeZone {
 /// The calendar day `now` falls on in `zone`.
 #[must_use]
 pub fn day_in(zone: &TimeZone, now: Timestamp) -> Date {
-    now.to_zoned(zone.clone()).date()
+    now.to_zoned_datetime(zone.clone()).date()
 }
 
 /// Today at the site: the day a "last day" or a due day is judged on, the same for every reader there.

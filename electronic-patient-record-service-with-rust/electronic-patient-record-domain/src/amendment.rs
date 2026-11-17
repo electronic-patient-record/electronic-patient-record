@@ -432,7 +432,7 @@ mod tests {
     fn t(day: u32) -> jiff::Timestamp {
         jiff::civil::date(2026, 10, i8::try_from(day).unwrap())
             .at(9, 0, 0, 0)
-            .to_zoned(jiff::tz::TimeZone::UTC)
+            .to_zoned_datetime(jiff::tz::TimeZone::UTC)
             .unwrap()
             .timestamp()
     }
