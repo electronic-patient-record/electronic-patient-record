@@ -6,13 +6,14 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { createServer } from "node:http";
+import { createServer as createTcpServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { checkBudgets, closedLoop, compareRuns, openLoop, quantile, summarise } from "./lib.mjs";
 import { parse } from "./run.mjs";
-import { CHART_PARTS, newPatient, word } from "./scenarios.mjs";
+import { adtMessage, CHART_PARTS, hl7Now, newPatient, word } from "./scenarios.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -151,7 +152,13 @@ test("options: profiles, overrides and refusals", () => {
   assert.equal(s.latencyBudgets, false);
   assert.equal(parse(["--profile", "standard", "--no-latency-budgets"]).latencyBudgets, false);
   assert.ok(!parse([]).scenarios.includes("mixed"), "mixed is not in the default list: it repeats the others");
-  for (const bad of [["--profile", "x"], ["--scenarios", "nope"], ["--seconds", "x"], ["--concurrency", "0"], ["--bogus"], ["--out"]]) {
+  // The HL7 scenarios run only with a listener to send to.
+  assert.ok(!parse([]).scenarios.some((s) => s.startsWith("hl7-")), "no HL7 scenario without --mllp");
+  const withFeed = parse(["--mllp", "127.0.0.1:2575"]);
+  assert.deepEqual(withFeed.mllp, { host: "127.0.0.1", port: 2575 });
+  assert.ok(withFeed.scenarios.includes("hl7-register") && withFeed.scenarios.includes("hl7-update"));
+  for (const bad of [["--profile", "x"], ["--scenarios", "nope"], ["--seconds", "x"], ["--concurrency", "0"], ["--bogus"], ["--out"],
+    ["--scenarios", "hl7-register"], ["--mllp", "nohost"], ["--mllp", "h:p"]]) {
     assert.throws(() => parse(bad), undefined, bad.join(" "));
   }
 });
@@ -224,6 +231,59 @@ test("a whole run against a service that answers well passes, writes its JSON, a
     }
   } finally {
     server.close();
+  }
+});
+
+test("an HL7 message names its patient, its time to the second, and the phone in PID-13", () => {
+  assert.match(hl7Now(new Date("2026-11-17T10:05:09.123Z")), /^20261117100509$/);
+  const m = adtMessage("s1", "A08", 3, "Ls1d", "C1", { phone: "01632960003", at: "20261117100000" });
+  const [msh, evn, pid] = m.split("\r");
+  assert.equal(msh.split("|")[8], "ADT^A08^ADT_A01");
+  assert.equal(msh.split("|")[9], "C1");
+  assert.equal(evn, "EVN|A08|20261117100000");
+  const f = pid.split("|");
+  assert.equal(f[3], "Ls1d^^^LOCAL");
+  assert.equal(f[5], `${newPatient("s1", 3).names[0].family}^${newPatient("s1", 3).names[0].given[0]}`);
+  assert.equal(f[7], newPatient("s1", 3).birth_date.replaceAll("-", ""));
+  assert.equal(f[13], "01632960003");
+  assert.equal(adtMessage("s1", "A28", 3, "M", "C").split("\r")[0].split("|")[8], "ADT^A28^ADT_A05");
+});
+
+/** A fake MLLP listener answering each framed message with an ACK whose MSA-1 is `code(message)`. */
+function fakeListener(code = () => "AA") {
+  const seen = [];
+  const server = createTcpServer((socket) => {
+    let buffer = Buffer.alloc(0);
+    socket.on("data", (chunk) => {
+      buffer = Buffer.concat([buffer, chunk]);
+      let end;
+      while ((end = buffer.indexOf(Buffer.from([0x1c, 0x0d]))) >= 0) {
+        const message = buffer.subarray(buffer.indexOf(0x0b) + 1, end).toString("utf8");
+        buffer = buffer.subarray(end + 2);
+        seen.push(message.split("\r")[0].split("|")[8]);
+        const ack = `MSH|^~\\&|EPR|HOSP|LOAD|CLINIC|20261117100000||ACK|A1|P|2.5\rMSA|${code(message)}|C1`;
+        socket.write(Buffer.concat([Buffer.from([0x0b]), Buffer.from(ack), Buffer.from([0x1c, 0x0d])]));
+      }
+    });
+  });
+  return new Promise((resolve) => server.listen(0, "127.0.0.1", () => resolve({ server, seen, mllp: `127.0.0.1:${server.address().port}` })));
+}
+
+test("the HL7 scenarios send over MLLP: AA passes, any other answer is a failure", async () => {
+  const { server, base } = await fakeService();
+  const good = await fakeListener();
+  const bad = await fakeListener((m) => (m.includes("ADT^A08") ? "AR" : "AA"));
+  try {
+    const r = await run(base, [...QUICK, "--mllp", good.mllp, "--scenarios", "hl7-register,hl7-update"]);
+    assert.equal(r.code, 0, r.out);
+    assert.ok(good.seen.includes("ADT^A28^ADT_A05") && good.seen.includes("ADT^A08^ADT_A01"), good.seen.join());
+    const refused = await run(base, [...QUICK, "--mllp", bad.mllp, "--scenarios", "hl7-update"]);
+    assert.equal(refused.code, 1, refused.out);
+    assert.match(refused.out, /hl7-update\s+2\s+failure_rate/);
+  } finally {
+    server.close();
+    good.server.close();
+    bad.server.close();
   }
 });
 

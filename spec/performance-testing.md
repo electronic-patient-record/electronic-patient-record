@@ -25,7 +25,12 @@ carry depends on its hardware, its database, its network and its users, none of 
 - **Service** (`electronic-patient-record-service-with-rust/benches/service.rs`): the work each request does
   outside the database. The audit row's digest (unkeyed SHA-256, computed inside the chain's lock, CQ-18), the
   policy decision in three cases, parsing and validating a registration, a comparison with the site's rules, an
-  observation's validation and flag, an HL7 v2 registration parsed, and the request-duration histogram.
+  observation's validation and flag, an HL7 v2 registration parsed, and the request-duration histogram. Added
+  2026-11-17: the audit digest under a key (HMAC-SHA-256, as a production deployment computes it) and the keyed
+  fingerprint that replaces an HL7 control id (IH-3); a patient's consents reduced for one disclosure, with 1, 10 and
+  50 active consents (SE-2); and the rest of an HL7 message's work outside the database: its message time (IH-5), the
+  masked shape a log line may show (IH-4), the acknowledgement for an accepted and a kept message and a long `MSA-3`
+  (IH-2), ten pipelined MLLP frames taken from one read, and a feed's health judged (IH-8).
 - `cargo bench --bench <name>` measures. `cargo bench --bench <name> -- --test` runs each benchmark once without
   measuring: that is the gate (`matcher-bench`, `service-bench`), so a benchmark that no longer builds or panics
   fails. `cargo clippy --all-targets` compiles them on every push.
@@ -53,7 +58,16 @@ audited, so every scenario also measures the audit chain.
 | `compare` | `POST /api/patients/compare`: the matcher and an audit row |
 | `record-observation` | `POST /api/patients/{id}/observations` (a heart rate) |
 | `record-allergy` | `POST /api/patients/{id}/allergies` |
+| `hl7-register` | An HL7 v2 A28 for a new patient over MLLP: read, matched, created, audited, answered `AA` (only with `--mllp`) |
+| `hl7-update` | An A08 changing the phone of a patient the feed registered: matched, the order check (IH-5), updated, `AA` (only with `--mllp`) |
 | `mixed` | A mix by weight: chart-open 30, search 20, read 15, fhir-read 10, record-observation 10, register 5, record-allergy 5, compare 5. **A guess, not a measured clinic**: no usage data exists |
+
+**The HL7 feed.** `run-local.sh` opens the listener on a free loopback port (`EPR_MLLP_BIND`, 64 connections,
+agent `mllp:load`; `EPR_LOAD_MLLP=0` leaves it off) and passes `--mllp host:port`; without it the `hl7-*` scenarios
+are left out of the default list, and naming one is refused. Connections are pooled and reused, as a sender keeps
+one open. `AA` is a success; `AE`, `AR` or no answer is a failure. Seeding registers a fifth as many feed patients as
+REST ones (at least one) for `hl7-update`. Message times are now, to the second, so the order check applies every
+update. NFR-2 names no feed target, so the budget is no failures only. The feed's messages are not in `mixed`.
 
 **Data.** Before the timed steps the harness registers synthetic patients (`Load<stamp><letters>`, birth dates
 spread so the duplicate check refuses none, no identifier), each with an allergy and three observations, so a chart
@@ -116,6 +130,7 @@ recording it in `BENCHMARKS.md`.
 - **The mix is a guess** with no usage data behind it.
 - **The audit lock (CQ-18) is still a hypothesis.** The harness can show that audited writes flatten; it does not
   look at database wait events or run without the append.
-- **No keyed audit digest** is benchmarked: the key set's type is private to the crate's configuration, so the
-  benchmark uses the unkeyed SHA-256 chain.
+- **The HL7 feed is plain TCP on loopback** in the load run: no TLS, no client certificates, one sender's rules.
+- **The 2026-11-17 benchmarks and the `hl7-*` scenarios have not been measured yet**: they were checked to run, while
+  other builds were using the machine; `BENCHMARKS.md` has no numbers for them.
 - **No stored baseline.** `--baseline` needs a run from the same machine; none is kept in the repository.

@@ -31,7 +31,7 @@ import os from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkBudgets, closedLoop, compareRuns, openLoop, table } from "./lib.mjs";
-import { context, MIX, SCENARIOS, seed } from "./scenarios.mjs";
+import { closeFeed, context, MIX, SCENARIOS, seed } from "./scenarios.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -72,6 +72,12 @@ function parse(argv) {
       case "--out": o.out = value(); break;
       case "--baseline": o.baseline = value(); break;
       case "--tolerance": o.tolerance = number(); break;
+      case "--mllp": {
+        const m = /^([^:]+):(\d+)$/.exec(value());
+        if (!m) throw new Error("--mllp needs host:port");
+        o.mllp = { host: m[1], port: Number(m[2]) };
+        break;
+      }
       case "--list": o.list = true; break;
       default: throw new Error(`unknown option ${a}`);
     }
@@ -79,8 +85,12 @@ function parse(argv) {
   const profile = PROFILES[o.profile ?? "standard"];
   if (!profile) throw new Error(`unknown profile ${o.profile}: ${Object.keys(PROFILES).join(", ")}`);
   const settings = { ...profile, ...o, profile: o.profile ?? "standard" };
-  settings.scenarios ??= Object.keys(SCENARIOS).filter((s) => s !== "mixed");
-  for (const s of settings.scenarios) if (!SCENARIOS[s]) throw new Error(`unknown scenario ${s}`);
+  // By default every scenario but the mix, and the HL7 ones only when there is a listener to send to.
+  settings.scenarios ??= Object.keys(SCENARIOS).filter((s) => s !== "mixed" && (!SCENARIOS[s].needs || settings[SCENARIOS[s].needs]));
+  for (const s of settings.scenarios) {
+    if (!SCENARIOS[s]) throw new Error(`unknown scenario ${s}`);
+    if (SCENARIOS[s].needs && !settings[SCENARIOS[s].needs]) throw new Error(`scenario ${s} needs --${SCENARIOS[s].needs}`);
+  }
   if (settings.concurrency?.some((c) => !Number.isInteger(c) || c < 1)) throw new Error("--concurrency needs whole numbers of 1 or more");
   return settings;
 }
@@ -145,12 +155,13 @@ async function main() {
   }
   const base = process.env.BASE ?? "http://127.0.0.1:1241";
   const budgets = JSON.parse(readFileSync(settings.budgets ?? join(here, "budgets.json"), "utf8")).budgets;
-  const ctx = context(base);
+  const ctx = context(base, { mllp: settings.mllp ?? null });
   try {
     const live = await fetch(`${base}/_health/live`);
     if (!live.ok) throw new Error(`/_health/live answered ${live.status}`);
     await seed(ctx, settings.seedPatients);
   } catch (e) {
+    closeFeed(ctx);
     console.error(`load: the service at ${base} could not be used: ${e.message}`);
     return 3;
   }
@@ -216,6 +227,7 @@ async function main() {
     passed &&= !run.comparison.regressed;
   }
   run.passed = passed;
+  closeFeed(ctx);
 
   const columns = ["scenario", "concurrency", "per_second", "p50_ms", "p95_ms", "p99_ms", "max_ms", "failures", "requests"];
   console.log(table(steps, columns));

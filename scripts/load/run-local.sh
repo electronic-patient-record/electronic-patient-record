@@ -51,6 +51,15 @@ if ! { scratch_server && create_scratch; }; then
   exit 3
 fi
 port="$(free_port)"
+# The HL7 listener on a free loopback port, for the hl7-* scenarios (passed to run.mjs as --mllp); 64 connections so
+# the listener's own limit is not what a 32-worker step measures. EPR_LOAD_MLLP=0 leaves it off.
+mllp_args=""
+if [ "${EPR_LOAD_MLLP:-1}" = 1 ]; then
+  mllp_port="$(free_port)"
+  while [ "$mllp_port" = "$port" ]; do mllp_port="$(free_port)"; done
+  export EPR_MLLP_BIND="127.0.0.1:$mllp_port" EPR_MLLP_AGENT=mllp:load EPR_MLLP_MAX_CONNECTIONS=64
+  mllp_args="--mllp 127.0.0.1:$mllp_port"
+fi
 export APP_ENV=container-dev PORT="$port" BINDING=127.0.0.1 DB_ALLOW_INSECURE=true \
   DB_MAX_CONNECTIONS="${EPR_LOAD_POOL:-20}" DB_MIN_CONNECTIONS=2 LOG_LEVEL="${EPR_LOAD_LOG_LEVEL:-warn}"
 "$binary" db migrate >"$logs/migrate.log" 2>&1 || {
@@ -86,7 +95,7 @@ fi
 
 status=0
 LOAD_NOTE="${LOAD_NOTE:-release build, container-dev (login off), pool ${DB_MAX_CONNECTIONS}, log ${LOG_LEVEL}, scratch database}" \
-  BASE="$base" node "$root/scripts/load/run.mjs" "$@" || status=$?
+  BASE="$base" node "$root/scripts/load/run.mjs" $mllp_args "$@" || status=$?
 if [ -n "$sampler" ]; then
   kill "$sampler" 2>/dev/null || true
   wait "$sampler" 2>/dev/null || true

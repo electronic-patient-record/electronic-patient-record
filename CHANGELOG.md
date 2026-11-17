@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - Benchmarks for the keyed audit digest, consent and the HL7 feed; HL7 load scenarios
+
+- **Clinical risk:** none: measurement only.
+- **Built:** in `benches/service.rs`: `audit/digest_keyed` and `audit/fingerprint_keyed` (the gap the performance spec named: the key set is built from `integrity_mac` directly), `consent/decide` with 1, 10 and 50 active consents, `hl7/message_time`, `hl7/redact_er7`, `hl7/acknowledgement_aa` and `_kept`, `hl7/msa_text_long`, `hl7/mllp_take_ten_frames`, and `feed_health/assess`. In the load harness, `hl7-register` and `hl7-update` send ADT messages over MLLP on pooled connections (`AA` passes, anything else fails), behind a new `--mllp host:port` option; `run-local.sh` opens the listener on a free port and passes it; budgets: no failures. `spec/performance-testing.md` describes both.
+- **Tested:** every benchmark runs once (`--test`, the `service-bench` gate); clippy is clean; the harness's tests (18) pass, two of them new: the message's fields, and whole runs against a fake MLLP listener that answers `AA`, then `AR`.
+- **Not done / not verified:** **nothing is measured yet**: the machine was busy with mutation runs, so no number is in `BENCHMARKS.md`; the `hl7-*` scenarios have not run against the real service (only the fake listener); the feed in the load run is plain TCP on loopback; the feed is not in the `mixed` scenario.
+
 ## 2026-11-17 - A formal security policy and disclosure policy
 
 - **Clinical risk:** none to the software; a process: a vulnerability that could show the wrong patient or change what a clinician decides or signs is now rated at least high and goes to the hazard log.
