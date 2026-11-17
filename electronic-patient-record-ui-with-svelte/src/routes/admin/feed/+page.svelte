@@ -10,6 +10,7 @@
     type Refusal,
   } from "#lib/feed-queue.js";
   import { refreshFeedCount } from "#lib/feed-count.svelte.js";
+  import { healthLines, type FeedHealthAnswer } from "#lib/feed-health.js";
   import { TEXT } from "#lib/i18n.js";
 
   const busy = new Busy();
@@ -23,6 +24,15 @@
   let siteZone = $state<string | undefined>(undefined);
   let outcome = $state<Outcome>("handled");
   let reason = $state("");
+  // The feed's health (IH-8): null until read, or when it could not be.
+  let health = $state<FeedHealthAnswer | null>(null);
+  let healthFailed = $state(false);
+
+  async function loadHealth() {
+    const res = await call<FeedHealthAnswer>("GET", "/api/feed/health");
+    healthFailed = res.status !== 200;
+    health = res.status === 200 ? res.body : null;
+  }
 
   async function load() {
     const res = await call<{
@@ -45,6 +55,7 @@
   }
   $effect(() => {
     void load();
+    void loadHealth();
   });
 
   async function toggle(r: Refusal) {
@@ -99,6 +110,22 @@
 <svelte:head><title>{TEXT.feedTitle}</title></svelte:head>
 <h1>{TEXT.feedTitle}</h1>
 <p>{TEXT.feedIntro}</p>
+<section aria-labelledby="health-h">
+  <h2 id="health-h">{TEXT.feedHealthTitle}</h2>
+  {#if healthFailed}
+    <p>{TEXT.feedHealthFailed}</p>
+  {:else if health && health.feeds.length === 0}
+    <p>{TEXT.feedHealthOff}</p>
+  {:else if health}
+    {#each health.feeds as f (f.sender)}
+      <div class="feed-health" data-state={f.state} data-testid="feed-health">
+        {#each healthLines(f, health.site_time_zone) as line, i (i)}
+          {#if i === 0}<p><strong>{line}</strong></p>{:else}<p>{line}</p>{/if}
+        {/each}
+      </div>
+    {/each}
+  {/if}
+</section>
 {#if message}<p role="status">{message}</p>{/if}
 {#if open !== null}
   {#if open.length === 0}

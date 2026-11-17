@@ -686,6 +686,26 @@ export const STRINGS = {
   feedTitle: "Refused HL7 messages",
   feedIntro:
     "Messages the patient-record feed could not apply. Each stays here until a person closes it. Fix the cause (for example, correct the record) in the patient record first, then close the entry here with a reason. The messages are patient data.",
+  feedHealthTitle: "Feed health",
+  feedHealthOff: "The HL7 listener is off: no feed is being received.",
+  feedHealthStates: {
+    unknown: "Unknown, nothing received yet",
+    healthy: "Healthy",
+    warning: "Warning",
+    critical: "Critical",
+  },
+  feedHealthLast: "Last message: {when}",
+  feedHealthNever: "none since the record began",
+  feedHealthCounts:
+    "Refused in the last hour: {hour}. Waiting for a person: {open}.",
+  feedHealthWindow: "Judged by the {window} limits.",
+  feedHealthWindows: {
+    day: "weekday daytime",
+    evening: "weekday evening",
+    weekend: "weekend",
+  },
+  feedHealthSince: "In this state since {when}.",
+  feedHealthFailed: "The feed's health could not be read.",
   feedNone: "No refused messages are waiting.",
   feedCount: "{n} waiting",
   feedMore: "This is the oldest {n}. Close some to see the rest.",

@@ -25,9 +25,26 @@ export type Refusal = {
 export const OUTCOMES = ["handled", "dismissed"] as const;
 export type Outcome = (typeof OUTCOMES)[number];
 
-/** "A08 · message M-1 · received 2026-10-21 09:00 UTC": which message, from the sender's own ids. */
+/**
+ * Whether a control id is the service's fingerprint of one (IH-3: `sha256:…`, or a keyed tag such as `d1.k1:…`) rather
+ * than the sender's own id. A fingerprint means nothing to a person; the sender's id is in the message itself.
+ */
+export function isFingerprint(controlId: string): boolean {
+  return (
+    /^sha256:[0-9a-f]{16,}$/.test(controlId) ||
+    /^[a-z0-9]+\.[A-Za-z0-9_-]+:[A-Za-z0-9+/=_-]{16,}$/.test(controlId)
+  );
+}
+
+/**
+ * "A08 · message M-1 · received 2026-10-21 09:00 UTC": which message, from the sender's own ids. An entry from 2026-11-17
+ * on keeps only a fingerprint of the id, so its headline leaves the id out.
+ */
 export function headline(r: Refusal, siteZone?: string): string {
-  return `${r.event} · ${TEXT.feedControl} ${r.control_id} · ${TEXT.feedReceived} ${siteWhenText(r.received_at, siteZone)}`;
+  const id = isFingerprint(r.control_id)
+    ? ""
+    : ` · ${TEXT.feedControl} ${r.control_id}`;
+  return `${r.event}${id} · ${TEXT.feedReceived} ${siteWhenText(r.received_at, siteZone)}`;
 }
 
 /** The message as a person reads it: HL7 separates segments with a carriage return, shown as lines. */

@@ -1609,6 +1609,56 @@ test("a break-glass review list that was cut short says so, and one that was not
   await expect(page.getByText("More are waiting")).toHaveCount(0);
 });
 
+// IH-8: the feed's health above the queue, in words, never by colour alone.
+test("the feed page says the feed's health in words, and when the listener is off", async ({
+  page,
+}) => {
+  await page.route("**/api/proxy/api/feed/refusals", (route) =>
+    json(route, 200, { refusals: [], limit: 50, more: false }),
+  );
+  await page.route("**/api/proxy/api/feed/health", (route) =>
+    json(route, 200, {
+      feeds: [
+        {
+          sender: "mllp:adt-feed",
+          state: "critical",
+          window: "day",
+          reasons: ["no message for longer than this window allows"],
+          since: "2026-11-17T09:00:00.000000Z",
+          last_message_at: "2026-11-17T07:30:00.000000Z",
+          refusals_last_hour: 0,
+          open_refusals: 0,
+          thresholds: {},
+        },
+      ],
+      site_time_zone: "UTC",
+    }),
+  );
+  await page.goto("/en-001/admin/feed");
+  const section = page.getByRole("region", { name: "Feed health" });
+  await expect(section.getByText("Critical: mllp:adt-feed")).toBeVisible();
+  await expect(
+    section.getByText("no message for longer than this window allows"),
+  ).toBeVisible();
+  await axe(page);
+
+  await page.unroute("**/api/proxy/api/feed/health");
+  await page.route("**/api/proxy/api/feed/health", (route) =>
+    json(route, 200, { feeds: [], site_time_zone: "UTC" }),
+  );
+  await page.goto("/en-001/admin/feed");
+  await expect(page.getByText("The HL7 listener is off")).toBeVisible();
+
+  await page.unroute("**/api/proxy/api/feed/health");
+  await page.route("**/api/proxy/api/feed/health", (route) =>
+    json(route, 500, { detail: "internal error" }),
+  );
+  await page.goto("/en-001/admin/feed");
+  await expect(
+    page.getByText("The feed's health could not be read."),
+  ).toBeVisible();
+});
+
 test("the refused-message queue says it was cut short when the service says so, even with few rows", async ({
   page,
 }) => {

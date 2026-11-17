@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - The HL7 feed's health on the feed screen (IH-8, UI)
+
+- **Clinical risk:** small, what an administrator sees: the feed screen now says whether the feed is silent or refusing, in words. H-023's controls already name the health; no change to the hazard.
+- **Built:** a "Feed health" section on `/admin/feed`, from `GET /api/feed/health`: per feed the state in words first (never by colour alone; a feed that has sent nothing is "Unknown, nothing received yet"), why, the last message, refusals in the last hour and waiting, the window it is judged by and since when; "The HL7 listener is off" when there is no feed; a failed read says so. A refused entry's headline no longer shows the control id when it is the service's fingerprint (IH-3), which meant nothing to a person. English and machine-written Welsh; the service's reasons stay English.
+- **Tested:** `tests/unit/feed-health.test.ts` (the lines, unknown, fingerprints left out); a browser test with a critical feed (axe), the listener off and a failed read. 390 unit tests and 240 browser runs pass.
+- **Not done / not verified:** neither the health nor the open count shows outside the admin pages; no alert; the Welsh is not reviewed.
+
 ## 2026-11-17 - A dry run for an HL7 message (IH-11)
 
 - **Clinical risk:** none to the record: nothing is kept. It is a new way to read the record: its answer says whether a patient with a message's identifiers exists, so it is for the clinical administrator only, as the queue is, and audited.

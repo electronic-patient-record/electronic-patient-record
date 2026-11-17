@@ -730,6 +730,27 @@ export const CY: Strings = {
   feedTitle: "Negeseuon HL7 a wrthodwyd",
   feedIntro:
     "Negeseuon na allai ffrwd cofnodion y claf eu cymhwyso. Mae pob un yn aros yma nes bod person yn ei gau. Trwsiwch yr achos (er enghraifft, cywiro'r cofnod) yng nghofnod y claf yn gyntaf, yna caewch y cofnod yma gyda rheswm. Data cleifion yw'r negeseuon.",
+  feedHealthTitle: "Iechyd y ffrwd",
+  feedHealthOff:
+    "Mae'r gwrandawr HL7 i ffwrdd: nid oes ffrwd yn cael ei derbyn.",
+  feedHealthStates: {
+    unknown: "Anhysbys, dim byd wedi'i dderbyn eto",
+    healthy: "Iach",
+    warning: "Rhybudd",
+    critical: "Difrifol",
+  },
+  feedHealthLast: "Neges olaf: {when}",
+  feedHealthNever: "dim un ers i'r cofnod ddechrau",
+  feedHealthCounts:
+    "Wedi'u gwrthod yn yr awr ddiwethaf: {hour}. Yn aros am berson: {open}.",
+  feedHealthWindow: "Wedi'i farnu yn ôl terfynau {window}.",
+  feedHealthWindows: {
+    day: "yn ystod y dydd ar ddydd o'r wythnos",
+    evening: "gyda'r nos ar ddydd o'r wythnos",
+    weekend: "y penwythnos",
+  },
+  feedHealthSince: "Yn y cyflwr hwn ers {when}.",
+  feedHealthFailed: "Nid oedd modd darllen iechyd y ffrwd.",
   feedNone: "Nid oes negeseuon a wrthodwyd yn aros.",
   feedCount: "{n} yn aros",
   feedMore: "Dyma'r {n} hynaf. Caewch rai i weld y gweddill.",
