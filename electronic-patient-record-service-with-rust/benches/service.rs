@@ -59,10 +59,16 @@ fn audit(c: &mut Criterion) {
 /// The same digest under a key (`EPR_INTEGRITY_MAC_KEY`, HMAC-SHA-256), as a production deployment computes it, and the
 /// keyed fingerprint that replaces an HL7 control id before anything is written (IH-3).
 fn audit_keyed(c: &mut Criterion) {
-    let key = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+    // A made-up key, built here so no key-shaped text sits in the source (the secret scan, OS-11): the SHA-256 of a
+    // fixed phrase, in hex. A key of one repeated byte is refused, so it must look like a real one.
+    let key: String =
+        <sha2::Sha256 as sha2::Digest>::digest(b"electronic-patient-record benchmark key")
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect();
     let chain = Chain::new(integrity_mac::KeySet::load(
         &integrity_mac::KeyConfig::new("bench", "BENCH"),
-        Some(key),
+        Some(&key),
         None,
     ));
     assert!(chain.keyed(), "the benchmark's chain must be keyed");

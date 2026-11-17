@@ -8,3 +8,8 @@
 # because it protects nothing.
 faa5d2f97efcedc9398b322e47ea7acbae55dd64:electronic-patient-record-service-with-rust/config/development.yaml:generic-api-key:103
 faa5d2f97efcedc9398b322e47ea7acbae55dd64:electronic-patient-record-service-with-rust/config/test.yaml:generic-api-key:97
+
+# 2026-11-17: the keyed audit digest benchmark's key in 218689d (benches/service.rs) was SHA-256 of the word "test",
+# the same made-up value the audit chain's unit tests use. It keys nothing: no deployment has it. The benchmark now
+# builds its key at run time; the old line stays in history.
+218689dca226a59876abf91443170fc25eaa137b:electronic-patient-record-service-with-rust/benches/service.rs:generic-api-key:62

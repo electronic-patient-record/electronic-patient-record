@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - The keyed-digest benchmark no longer carries a key-shaped string
+
+- **Clinical risk:** none: a benchmark and the secret scan's list.
+- **Found:** CI's secret scan (gitleaks, full history) failed on `9f02955`: the `audit/digest_keyed` benchmark added in `218689d` held a 64-hex-digit test key, SHA-256 of the word "test", the made-up value the audit chain's unit tests use. It keys nothing.
+- **Changed:** the benchmark derives its key at run time (SHA-256 of a fixed phrase; a key of one repeated byte is refused by the key loader). The old line stays in history, so its fingerprint is listed in `.gitleaksignore` with the reason.
+- **Tested:** gitleaks over the full history finds nothing; the three audit benchmarks run (`--test`); clippy passes.
+- **Not done / not verified:** the other benchmarks were not rerun.
+
 ## 2026-11-17 - The service and the domain crate on jiff 1.0 (DEP-1, AX-17)
 
 - **Clinical risk:** none intended: the same times, formats and parse rules on the library's next major version; the full test suite is the check.
