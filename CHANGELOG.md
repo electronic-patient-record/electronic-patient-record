@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - Half the service's integration tests share one program (LC-15)
+
+- **Clinical risk:** none: how tests are built.
+- **Why:** each file in `tests/` was its own program, rebuilt and linked against the library after every edit, about 44 s each and most of an edit's 240 s (measured earlier today).
+- **Changed:** `tests/suite.rs` includes 40 of the 79 files as modules (`#[path]`, so the files and every path to them stay); `autotests = false` in `Cargo.toml`, with the suite and the other 39 as `[[test]]` entries. Kept apart: the 30 files that set the auth settings in the process environment (in one process they would change each other's), those with process-wide state (metrics, lockout, rate limit, the MLLP feed, the outbox), those with helper submodules, and those a script or document runs by name (`fhir_validator`, `audit_immutable`, `openapi_census`, `hl7_samples`). `tests/test_targets.rs` fails when a test file is in neither list, so turning autotests off cannot silently drop one.
+- **Tested:** clippy on the workspace; 45 test programs where there were 84; 587 tests pass and 194 database tests are left out without a database (before: 586 and 194; the new census is the one more); every database test on a fresh local Postgres 18 in one process per program, one test at a time, as the database gate runs them: 188 passed, the same as before the fold, and the six FHIR validator tests failed as before (no Java here).
+- **Not done / not verified:** the other 39 files; the rebuild after a one-file edit was not measured again; run one file's tests with `cargo test --test suite <module>::`, which no document says yet beyond this entry and `tests/suite.rs`.
+
 ## 2026-11-17 - The keyed-digest benchmark no longer carries a key-shaped string
 
 - **Clinical risk:** none: a benchmark and the secret scan's list.

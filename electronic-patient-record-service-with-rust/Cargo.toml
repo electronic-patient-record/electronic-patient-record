@@ -6,6 +6,8 @@ members = [".", "electronic-patient-record-domain"]
 name = "electronic-patient-record"
 version = "0.1.0"
 edition = "2024"
+# The integration tests are listed below: most share one program (LC-15), so an edit relinks one, not eighty.
+autotests = false
 rust-version = "1.98"
 publish = true
 default-run = "electronic-patient-record"
@@ -101,3 +103,166 @@ debug = false
 inherits = "test"
 debug = "none"
 incremental = false
+
+# One program for the integration tests that share nothing process-wide (tests/suite.rs, LC-15).
+[[test]]
+name = "suite"
+path = "tests/suite.rs"
+
+# Each its own program: it sets the process environment (the auth settings), holds process-wide state, or a script or
+# a document runs it by name.
+[[test]]
+name = "audit_coverage"
+path = "tests/audit_coverage.rs"
+
+[[test]]
+name = "audit_immutable"
+path = "tests/audit_immutable.rs"
+
+[[test]]
+name = "audit_search_coverage"
+path = "tests/audit_search_coverage.rs"
+
+[[test]]
+name = "balp_claim"
+path = "tests/balp_claim.rs"
+
+[[test]]
+name = "chaos_api"
+path = "tests/chaos_api.rs"
+
+[[test]]
+name = "fhir_validator"
+path = "tests/fhir_validator.rs"
+
+[[test]]
+name = "hl7_samples"
+path = "tests/hl7_samples.rs"
+
+[[test]]
+name = "http_adjustments"
+path = "tests/http_adjustments.rs"
+
+[[test]]
+name = "http_amendments"
+path = "tests/http_amendments.rs"
+
+[[test]]
+name = "http_assessments"
+path = "tests/http_assessments.rs"
+
+[[test]]
+name = "http_audit_refusal"
+path = "tests/http_audit_refusal.rs"
+
+[[test]]
+name = "http_audit_refusal_roles"
+path = "tests/http_audit_refusal_roles.rs"
+
+[[test]]
+name = "http_conflicts"
+path = "tests/http_conflicts.rs"
+
+[[test]]
+name = "http_death_reports"
+path = "tests/http_death_reports.rs"
+
+[[test]]
+name = "http_deaths"
+path = "tests/http_deaths.rs"
+
+[[test]]
+name = "http_hazards"
+path = "tests/http_hazards.rs"
+
+[[test]]
+name = "http_idempotency"
+path = "tests/http_idempotency.rs"
+
+[[test]]
+name = "http_idempotency_roles"
+path = "tests/http_idempotency_roles.rs"
+
+[[test]]
+name = "http_lockout"
+path = "tests/http_lockout.rs"
+
+[[test]]
+name = "http_observations"
+path = "tests/http_observations.rs"
+
+[[test]]
+name = "http_overdue_reviews"
+path = "tests/http_overdue_reviews.rs"
+
+[[test]]
+name = "http_patients"
+path = "tests/http_patients.rs"
+
+[[test]]
+name = "http_permission_basis"
+path = "tests/http_permission_basis.rs"
+
+[[test]]
+name = "http_proxy_scopes"
+path = "tests/http_proxy_scopes.rs"
+
+[[test]]
+name = "http_rate_limit"
+path = "tests/http_rate_limit.rs"
+
+[[test]]
+name = "http_referral_queue"
+path = "tests/http_referral_queue.rs"
+
+[[test]]
+name = "http_referral_worklist"
+path = "tests/http_referral_worklist.rs"
+
+[[test]]
+name = "http_referrals"
+path = "tests/http_referrals.rs"
+
+[[test]]
+name = "http_results"
+path = "tests/http_results.rs"
+
+[[test]]
+name = "http_role_views"
+path = "tests/http_role_views.rs"
+
+[[test]]
+name = "http_roles"
+path = "tests/http_roles.rs"
+
+[[test]]
+name = "http_suspicions"
+path = "tests/http_suspicions.rs"
+
+[[test]]
+name = "http_watch_list"
+path = "tests/http_watch_list.rs"
+
+[[test]]
+name = "metrics"
+path = "tests/metrics.rs"
+
+[[test]]
+name = "mllp_feed"
+path = "tests/mllp_feed.rs"
+
+[[test]]
+name = "openapi_census"
+path = "tests/openapi_census.rs"
+
+[[test]]
+name = "openapi_responses"
+path = "tests/openapi_responses.rs"
+
+[[test]]
+name = "openapi_responses_roles"
+path = "tests/openapi_responses_roles.rs"
+
+[[test]]
+name = "outbox_store"
+path = "tests/outbox_store.rs"
