@@ -1063,7 +1063,13 @@ async fn a_late_update_does_not_undo_a_newer_one() {
         ack.contains("older than one this feed has already applied"),
         "{ack}"
     );
-    assert!(!ack.contains("2026111710"), "no time in the answer: {ack}");
+    // The answer's own MSH-7 is the time now, which can share these digits (a run at 10:00 on 2026-11-17 did), so
+    // only MSA, the text the sender reads, is checked.
+    let msa = ack
+        .split('\r')
+        .find(|seg| seg.starts_with("MSA|"))
+        .unwrap_or_default();
+    assert!(!msa.contains("2026111710"), "no time in the answer: {ack}");
     assert_eq!(by_mrn(&db, &mrn).await[0].version, version);
     let kept: i64 = sqlx::query_scalar("SELECT count(*) FROM feed_refusals WHERE control_id = $1")
         .bind(control_digest(FEED_AGENT, &late_control))

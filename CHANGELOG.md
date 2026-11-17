@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - The late-update test no longer fails between 10:00 and 11:00 on 17 November
+
+- **Clinical risk:** none: a test.
+- **Found:** CI for `f4bf1d8` failed `a_late_update_does_not_undo_a_newer_one`. It checked that the whole acknowledgement held no `2026111710` (the late message's time), but the acknowledgement's own MSH-7 is the time now, and CI ran at 10:05 UTC on 2026-11-17. The new `msrv` job in that run passed.
+- **Changed:** only `MSA`, the text the sender reads, is checked for the time.
+- **Tested:** passes at 10:xx UTC on 2026-11-17, when the old check fails.
+- **Not done / not verified:** other tests were not searched for the same mistake beyond this file's literal time checks.
+
 ## 2026-11-17 - CI builds each crate on the oldest Rust it claims (QA-8)
 
 - **Clinical risk:** none: a build check.
