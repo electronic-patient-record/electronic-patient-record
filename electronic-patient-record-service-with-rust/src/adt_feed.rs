@@ -66,6 +66,21 @@ pub enum KeptAnswer {
 /// The words `MSA-3` starts with when a refusal was kept for a person.
 pub const KEPT_NOTE: &str = "kept for review by a person; do not resend";
 
+/// The fingerprint domain for a sender's control id ([`control_digest`]).
+pub const CONTROL_ID_DOMAIN: &str = "feed-control-id";
+
+/// A sender's control id (MSH-10) as it is kept anywhere but the stored message text: a keyed fingerprint of the
+/// agent and the id (IH-3). Some senders build MSH-10 from a patient's number, so the plain value goes in no audit
+/// row, queue column, version reason or log line. The same sender and id give the same fingerprint, so a resend still
+/// matches. An id that could not be read (`?`) stays `?`.
+#[must_use]
+pub fn control_digest(agent: &str, control_id: &str) -> String {
+    if control_id == "?" {
+        return control_id.to_string();
+    }
+    audit::chain().fingerprint(CONTROL_ID_DOMAIN, &format!("{agent}\0{control_id}"))
+}
+
 /// What a message did.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Applied {
@@ -591,7 +606,12 @@ pub async fn process(
     ack_id: &str,
     timestamp: &str,
 ) -> Option<String> {
-    let read = hl7_adt::patient_from_adt(text);
+    // The control id is kept only as a fingerprint from here on (IH-3); the acknowledgement still echoes the sender's
+    // own MSH-10, read from the text.
+    let read = hl7_adt::patient_from_adt(text).map(|mut inbound| {
+        inbound.control_id = control_digest(&who.agent, &inbound.control_id);
+        inbound
+    });
     let outcome: Result<Inbound, Rejection> = match &read {
         Ok(inbound) => match apply(db, inbound, who).await {
             Ok(applied) => {
@@ -618,6 +638,7 @@ pub async fn process(
                     Rejection::NotHl7(m) => Refusal::Conflict(vec![m.clone()]),
                 };
                 let (event, control_id) = message_ids(text);
+                let control_id = control_digest(&who.agent, &control_id);
                 let kept = audit_refusal(db, who, &event, &control_id, &why, text).await;
                 return hl7_adt::acknowledgement(
                     text,
@@ -642,6 +663,16 @@ mod tests {
             peer: None,
             kept_answer,
         }
+    }
+
+    #[test]
+    fn a_control_id_is_kept_as_a_fingerprint_bound_to_its_sender() {
+        // IH-3: never the plain value; the same sender and id match; another sender's same id does not; `?` stays.
+        let a = control_digest("mllp:one", "20261117-9434765919");
+        assert_eq!(a, control_digest("mllp:one", "20261117-9434765919"));
+        assert!(!a.contains("9434765919"), "{a}");
+        assert_ne!(a, control_digest("mllp:two", "20261117-9434765919"));
+        assert_eq!(control_digest("mllp:one", "?"), "?");
     }
 
     #[test]

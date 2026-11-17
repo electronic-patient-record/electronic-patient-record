@@ -7,7 +7,7 @@
 //!   cargo test --test mllp_feed -- --ignored --test-threads=1
 //! ```
 
-use electronic_patient_record::adt_feed::KeptAnswer;
+use electronic_patient_record::adt_feed::{KeptAnswer, control_digest};
 use electronic_patient_record::death::{Actor, Answer, Occurred, Status, Step};
 use electronic_patient_record::death_store;
 use electronic_patient_record::mllp::{self, CR, Config, FS, VT};
@@ -382,7 +382,7 @@ async fn conflicts_duplicates_unsupported_and_invalid_messages_are_refused_and_c
     // Every refusal is in the trail with outcome 4 and no content.
     let refused = sqlx::query("SELECT count(*) AS n FROM audit_events
              WHERE agent = 'mllp:test-feed' AND outcome = 4 AND detail->>'control_id' = ANY($1::text[])")
-.bind(vec!["C2".to_string(), "C3".to_string(), "C4".to_string(), "C5".to_string(), "C6".to_string()])
+.bind(["C2", "C3", "C4", "C5", "C6"].map(|c| control_digest(FEED_AGENT, c)).to_vec())
 .fetch_optional(&db)
         .await
         .unwrap()
@@ -512,7 +512,7 @@ async fn a_refused_message_waits_in_the_queue_until_a_person_closes_it_once() {
         let db = db.clone();
         async move {
             sqlx::query("SELECT refusal_id::text AS id FROM feed_refusals WHERE control_id = $1")
-                .bind(control)
+                .bind(control_digest(FEED_AGENT, &control))
                 .fetch_optional(&db)
                 .await
                 .unwrap()
@@ -539,7 +539,9 @@ async fn a_refused_message_waits_in_the_queue_until_a_person_closes_it_once() {
     );
     assert!(entry.reasons.iter().any(|r| r.contains("birth date")));
     assert_eq!(entry.agent, "mllp:test-feed");
-    assert_eq!(entry.control_id, control);
+    // The queue keeps the control id only as a fingerprint (IH-3); the message text has the real one.
+    assert_eq!(entry.control_id, control_digest(FEED_AGENT, &control));
+    assert_ne!(entry.control_id, control);
     assert_eq!(queue::get(&db, &oru_id).await.unwrap().kind, "unsupported");
 
     // One entry shows the message as received.
@@ -693,7 +695,7 @@ async fn a_kept_refusal_is_answered_ar_and_a_resend_adds_no_row() {
         let db = db.clone();
         async move {
             sqlx::query("SELECT count(*) AS n FROM feed_refusals WHERE control_id = $1")
-                .bind(control)
+                .bind(control_digest(FEED_AGENT, &control))
                 .fetch_one(&db)
                 .await
                 .unwrap()
@@ -716,7 +718,7 @@ async fn a_kept_refusal_is_answered_ar_and_a_resend_adds_no_row() {
     let id: String = sqlx::query(
         "SELECT refusal_id::text AS id FROM feed_refusals WHERE control_id = $1 AND message = $2",
     )
-    .bind(&control)
+    .bind(control_digest(FEED_AGENT, &control))
     .bind(&refused)
     .fetch_one(&db)
     .await
@@ -784,4 +786,88 @@ async fn a_refusal_that_cannot_be_kept_is_answered_ae_so_the_sender_tries_again(
         .unwrap();
     assert_eq!(code(&ack), "AE", "{ack}");
     assert!(!ack.contains("kept for review"), "{ack}");
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn the_plain_control_id_is_kept_only_in_the_stored_message() {
+    // IH-3: a sender that builds MSH-10 from a patient's number must not have it copied into the audit trail, the
+    // queue's columns or the record's version history. Only the stored message text, under the queue's access rule,
+    // holds it, and the acknowledgement echoes it to the sender.
+    let db = db().await;
+    let addr = start(&db, |_| {}).await;
+    let (mrn, family, d) = (tag("mrn"), tag("Plain"), dob());
+    let accepted = format!("{}-9434765919", tag("P"));
+    let refused = format!("{}-9434765919", tag("P"));
+    let mut s = TcpStream::connect(addr).await.unwrap();
+    let ack = send(&mut s, &adt("A28", &accepted, &mrn, &family, &d, ""))
+        .await
+        .unwrap();
+    assert_eq!(code(&ack), "AA", "{ack}");
+    assert!(
+        ack.contains(&format!("MSA|AA|{accepted}")),
+        "the sender's own id is echoed: {ack}"
+    );
+    let message = adt("A08", &refused, &mrn, &family, &dob(), "");
+    assert_eq!(code(&send(&mut s, &message).await.unwrap()), "AR");
+
+    let count = |sql: &'static str, needle: String| {
+        let db = db.clone();
+        async move {
+            sqlx::query(AssertSqlSafe(sql))
+                .bind(format!("%{needle}%"))
+                .fetch_one(&db)
+                .await
+                .unwrap()
+                .try_get::<i64, _>("n")
+                .unwrap()
+        }
+    };
+    for plain in [&accepted, &refused] {
+        assert_eq!(
+            count(
+                "SELECT count(*) AS n FROM audit_events WHERE detail::text LIKE $1",
+                plain.clone()
+            )
+            .await,
+            0,
+            "an audit row holds {plain}"
+        );
+        assert_eq!(
+            count(
+                "SELECT count(*) AS n FROM patient_versions WHERE reason LIKE $1",
+                plain.clone()
+            )
+            .await,
+            0,
+            "a version reason holds {plain}"
+        );
+        assert_eq!(
+            count(
+                "SELECT count(*) AS n FROM feed_refusals WHERE control_id LIKE $1 OR reasons::text LIKE $1",
+                plain.clone()
+            )
+            .await,
+            0,
+            "a queue column holds {plain}"
+        );
+    }
+    // The fingerprint is what joins them.
+    assert_eq!(
+        count(
+            "SELECT count(*) AS n FROM audit_events WHERE detail::text LIKE $1",
+            control_digest(FEED_AGENT, &accepted)
+        )
+        .await,
+        1
+    );
+    assert_eq!(
+        count(
+            "SELECT count(*) AS n FROM feed_refusals WHERE message LIKE $1",
+            refused.clone()
+        )
+        .await,
+        1,
+        "the stored message keeps the text as received"
+    );
 }

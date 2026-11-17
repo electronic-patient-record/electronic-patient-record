@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - The HL7 control id is kept only as a keyed fingerprint (IH-3)
+
+- **Clinical risk:** none: nothing a clinician sees or the feed applies changes. A privacy change: some senders build MSH-10 from a patient's number.
+- **Changed:** the feed replaces MSH-10 with `adt_feed::control_digest` (an HMAC of the feed's agent and the id under the `feed-control-id` subkey of `EPR_INTEGRITY_MAC_KEY`; unkeyed SHA-256 when no key is set, as the audit chain does) before it writes anything. So the audit row, `feed_refusals.control_id`, the reason on a patient version made by the feed and the "ADT message applied" log line carry the fingerprint. The acknowledgement still echoes the sender's own MSH-10, and the stored message keeps it. The same feed and id give the same fingerprint, so IH-1's resend check still works. `openapi.json` and the personal-data inventory describe the column.
+- **Tested:** `audit::tests` (stable per key and domain, never the value), `adt_feed::tests` (bound to the sender; `?` stays), and `tests/mllp_feed.rs`: an id ending in a national number is in no audit row, version reason or queue column, only in the stored message, and the fingerprint joins the rows.
+- **Not done / not verified:** rows written before today keep the plain id (the tables are append-only); a new active key gives new fingerprints, so a resend across a key change is kept again; the admin screen shows the fingerprint, which is no use to a person, who reads the id in the message; log lines elsewhere were not audited for MSH-10 (IH-4 does that).
+
 ## 2026-11-17 - The clinician UI's privacy notice, linked from every page
 
 - **Clinical risk:** none found: a footer link and a page of words; nothing a clinician sees about a patient changes.

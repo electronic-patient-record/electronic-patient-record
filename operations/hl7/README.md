@@ -28,7 +28,9 @@ address is recorded on every audit row.
   corrected by a person with a reason. The first name is replaced by the message's first name; other names, telecom and
   addresses are added.
 - A repeat of what is held writes nothing (`AA`, "unchanged"). Every message, accepted or refused, writes an audit row with
-  the event, the control id and the result, never the message.
+  the event, the control id and the result, never the message. The control id (MSH-10) is kept only as a keyed
+  fingerprint of the feed and the id (IH-3), in the audit row, the work queue, the version history and the log, because
+  some senders build it from a patient's number. The plain id is in the stored message and in the acknowledgement.
 - Acknowledgements (IH-1): `AA` accepted. `AR` refused and **kept for a person**: `MSA-3` starts "kept for review by a
   person; do not resend", then the reasons. A message type that is not handled is `AR` too. `AE` only when a resend can
   help: the database unavailable, or the refusal could not be stored. `EPR_MLLP_KEPT_ANSWER=AE` answers kept refusals `AE`

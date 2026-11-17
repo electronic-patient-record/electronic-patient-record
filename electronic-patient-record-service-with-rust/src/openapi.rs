@@ -1151,7 +1151,7 @@ fn feed_schemas() -> Value {
                 "agent": {"type": "string", "description": "The feed's audit agent."},
                 "peer": {"type": ["string", "null"], "description": "The sender's address."},
                 "event": {"type": "string", "description": "The HL7 event such as A08, or ?."},
-                "control_id": {"type": "string", "description": "The sender's message control id (MSH-10), or ?."},
+                "control_id": {"type": "string", "description": "A keyed fingerprint of the sending feed and its message control id (MSH-10), or ?; never the id itself, which is in the stored message (IH-3). Entries from before 2026-11-17 hold the plain id."},
                 "kind": {"enum": ["unsupported", "conflict"]},
                 "reasons": {"type": "array", "items": {"type": "string"}, "description": "In words; names no patient data."},
                 "message": {"type": "string"},

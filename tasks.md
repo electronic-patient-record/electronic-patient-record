@@ -1558,7 +1558,7 @@ with its first code. Open questions OQ-IH1 to OQ-IH6.
   deployment's refused `AR` and kept; `MSA-3` one line, escaped and capped (OQ-IH5); an HL7-shaped frame that does not
   parse answered `AE` echoing MSH-10 when readable. First read what `hl7::v2::builder::acknowledge` already does.
   **Acceptance:** golden ACKs for a `P`, a `T` and an unparsable message.
-- [ ] **IH-3 (S, privacy) — MSH-10 kept only as a keyed digest.** In the audit row, `feed_refusals.control_id` (a
+- [x] **IH-3 (S, privacy) — MSH-10 kept only as a keyed digest.** **Done 2026-11-17:** `adt_feed::control_digest` (`audit::Chain::fingerprint`, domain `feed-control-id`, the integrity key's subkey; unkeyed SHA-256 without a key) replaces MSH-10 before anything is written, so the audit row, `feed_refusals.control_id` (the same column: no migration; older rows keep the plain id, append-only), the version reason and the log line carry the fingerprint; the ACK still echoes the sender's id. A test sends an id ending in a national number and finds it only in the stored message. **Not done:** fingerprints change when the active key changes (a resend across a key change is kept again); the admin screen shows the fingerprint, not the id. In the audit row, `feed_refusals.control_id` (a
   migration adds the digest column; the old values stay, append-only) and every log line; the plain value only in the
   stored message. The key's rotation keeps old digests joinable (OQ-IH2). Personal-data inventory updated.
   **Acceptance:** a census test finds no plain MSH-10 in an audit row or log line after a run of the sample messages.

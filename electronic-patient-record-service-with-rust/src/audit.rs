@@ -121,6 +121,27 @@ impl Chain {
         self.keys.is_some()
     }
 
+    /// A fingerprint of `value` for `domain`: a keyed MAC under the domain's own subkey when a key is configured, else
+    /// `sha256:` of the domain and the value (IH-3). The same value always gives the same fingerprint under one key, so
+    /// it still joins rows, and the value cannot be read back from it. A new active key gives new fingerprints.
+    #[must_use]
+    pub fn fingerprint(&self, domain: &str, value: &str) -> String {
+        match self
+            .keys
+            .as_ref()
+            .and_then(|k| k.tag(domain, value.as_bytes()))
+        {
+            Some(tag) => tag,
+            None => {
+                let mut h = Sha256::new();
+                h.update(domain.as_bytes());
+                h.update([0]);
+                h.update(value.as_bytes());
+                format!("sha256:{}", hex(&h.finalize()))
+            }
+        }
+    }
+
     /// The digest of `event` recorded at `recorded_at` after a row whose digest was `prev`.
     #[must_use]
     pub fn digest(&self, prev: Option<&str>, recorded_at: &str, event: &Event) -> String {
@@ -1451,6 +1472,28 @@ mod tests {
         let mut b = Event::new(Action::Read, "a");
         b.patient_ref = Some("bc".into());
         assert_ne!(c.digest(None, "t", &a), c.digest(None, "t", &b));
+    }
+
+    #[test]
+    fn a_fingerprint_is_stable_per_key_and_domain_and_hides_the_value() {
+        // IH-3: the same value gives the same fingerprint, a different domain or key a different one, and the
+        // value does not appear in it.
+        let (keyed, unkeyed) = (keyed(), Chain::unkeyed());
+        let v = "20261117093000-9434765919";
+        let a = keyed.fingerprint("feed-control-id", v);
+        assert_eq!(a, keyed.fingerprint("feed-control-id", v));
+        assert!(a.starts_with("d1.k1:"), "{a}");
+        assert!(!a.contains("9434765919"));
+        assert_ne!(a, keyed.fingerprint("another-domain", v));
+        assert_ne!(
+            a,
+            keyed.fingerprint("feed-control-id", "20261117093000-9434765910")
+        );
+        let u = unkeyed.fingerprint("feed-control-id", v);
+        assert!(u.starts_with("sha256:"), "{u}");
+        assert_ne!(u, a);
+        assert_ne!(u, unkeyed.fingerprint("another-domain", v));
+        assert!(!u.contains("9434765919"));
     }
 
     #[test]

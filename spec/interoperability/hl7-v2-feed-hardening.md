@@ -54,7 +54,7 @@ Each is a design to be confirmed, not a built behaviour. Clinical ones add hazar
    deployment's (`P` on a test system, `T` on a live one) is refused `AR` and kept. `MSA-3` is one line, escaped for HL7
    delimiters, and capped (the hub uses 199 characters; OQ-IH5). A frame that is HL7-shaped but does not parse gets an
    `AE` that echoes MSH-10 when it can be read, so the sender can match it, rather than a closed connection.
-3. **MSH-10 is not kept in plain text (IH-3, privacy).** The audit row, the queue's `control_id` column and every log line
+3. **MSH-10 is not kept in plain text (IH-3, privacy). Built 2026-11-17**, in the existing `control_id` column rather than a new one. The audit row, the queue's `control_id` column and every log line
    carry a keyed digest of the sender and MSH-10, which still joins a resend to its original; the plain value is in the
    stored message text only, which the queue already holds under its access rule (OQ-IH2).
 4. **No message value in any log, error, metric or `MSA-3` (IH-4).** A marker test pushes a distinctive value through
