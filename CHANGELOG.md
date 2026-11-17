@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - axa 0.19 (AX-17)
+
+- **Clinical risk:** none. No code, schema or response changes; the OpenAPI document is unchanged.
+- **Approved exception:** axa 0.18.0 and 0.19.0 and axa-test 0.9.0 and 0.10.0 were published today (11:42 and 14:35 UTC), inside the maintainer's two-day cooldown, which cargo 1.100 now enforces and refused; the maintainer approved the exception. The update was resolved with the minimum lifted for that one command; the cargo settings are unchanged.
+- **Changed:** `axa` 0.19 and `axa-test` 0.10. The lockfile moves `axa-postgres-job-queue` to 0.6.0 and adds jiff 1.0 with `jiff-core`, `jiff-sqlx` and `jiff-static` (axa's queue moved from chrono to jiff); croner and sqlx's `chrono` feature left the tree, so nothing the service builds uses chrono. RUSTSEC-2026-0543's ignore stays, with its reason updated: chrono is still in the tests, through axa-test's axum-test and its expect-json. 0.18's changes are to axa's HTTP client, which the service does not use.
+- **Checked:** clippy on the workspace; all 84 test binaries without a database; every database test on a fresh local Postgres 18 except the six FHIR validator tests (no Java here); `cargo deny check` (advisories, bans, licences, sources) passes; one `axa` and one `axum-test`.
+- **Not done / not verified:** the service and the domain crate stay on jiff 0.2, so two jiff versions are in the tree: jiff 1.0's bundled zone database needs `jiff-tzdb` 1.0, which is inside the cooldown and not covered by the exception. Moving to it would also let `pg_time.rs` give way to `jiff-sqlx`. Not pushed, with the earlier local commits.
+
 ## 2026-11-17 - The domain rules are their own crate (LC-16)
 
 - **Clinical risk:** none intended: code moved, no rule changed. Every rule that decides what a clinician may see or must do (policy, consent, role views, referrals, pathways, observations, deaths, the hazard register's rules) now lives in another crate, so a mistake in the move could change behaviour; the full test suite is the check. No hazard row changes.

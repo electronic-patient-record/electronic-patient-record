@@ -1595,13 +1595,28 @@ with its first code. Open questions OQ-IH1 to OQ-IH6.
   register of intended differences with decision, who and when blank until a named person signs. Refines PR-9's path
   to production.
 
+## Dependency 2026-11-17 — axa 0.19
+
+axa 0.18.0 (2026-11-17 11:42 UTC) and 0.19.0 (14:35 UTC) and axa-test 0.9.0 and 0.10.0 are inside the two-day
+cooldown, which cargo 1.100 now enforces (`registry.global-min-publish-age` in the maintainer's own cargo settings);
+**the maintainer approved the exception on 2026-11-17.** The update was resolved with the minimum lifted for that one
+command (`--config 'registry.global-min-publish-age="0 days"'`); the settings are unchanged. Upgrade guides:
+`help/upgrading-to-0.18/index.md` and `help/upgrading-to-0.19/index.md` in the axa crate.
+
+- [x] **AX-17 (S) — Upgrade to axa 0.19.** **Done 2026-11-17:** `axa` 0.19 and `axa-test` 0.10; no code change. The
+  lockfile moves `axa-postgres-job-queue` to 0.6.0 and adds jiff 1.0 (with `jiff-core`, `jiff-sqlx`, `jiff-static`),
+  which axa's queue now uses in place of chrono; croner and sqlx's `chrono` feature are gone. 0.18's changes are to
+  axa's HTTP client, which the service does not use. **Not done:** the service and the domain crate stay on jiff 0.2
+  (jiff 1.0's bundled zone database needs `jiff-tzdb` 1.0, which is inside the cooldown and not approved), so two jiff
+  versions are in the tree; `pg_time.rs` could give way to `jiff-sqlx` once on 1.0.
+
 ## Dependency 2026-11-17 — chrono is unmaintained
 
 RUSTSEC-2026-0543 (chrono) and RUSTSEC-2026-0555 (chrono-tz), published 2026-11-17: unmaintained, no vulnerability,
 no fixed version; the advisory suggests `jiff` or `time`. `cargo deny` failed CI on them. They are ignored in the
 service's `deny.toml` until **2027-02-17** (`tests/advisory_expiry.rs` fails after that).
 
-- [ ] **DEP-1 (M) — Move off chrono.** **The service's part done 2026-11-17 (the maintainer asked for jiff):** the service uses jiff 0.2 (already in the tree, with its bundled zone database) and depends on neither chrono nor chrono-tz; `clock.rs` keeps chrono's exact formats (and serde for the stored and answered fields), and the strictness of its RFC 3339 parse and of zone names; `pg_time.rs` binds jiff times to Postgres in its binary encoding, so no SQL changed; chrono-tz and its ignore are gone. **Still open:** chrono stays in the tree through axa (croner, and sqlx's `chrono` feature, which axa turns on), so RUSTSEC-2026-0543's ignore stays until axa drops it. Original: chrono is in the tree through the service (51 files under `src` and `tests`,
+- [ ] **DEP-1 (M) — Move off chrono.** **The service's part done 2026-11-17 (the maintainer asked for jiff):** the service uses jiff 0.2 (already in the tree, with its bundled zone database) and depends on neither chrono nor chrono-tz; `clock.rs` keeps chrono's exact formats (and serde for the stored and answered fields), and the strictness of its RFC 3339 parse and of zone names; `pg_time.rs` binds jiff times to Postgres in its binary encoding, so no SQL changed; chrono-tz and its ignore are gone. **axa 0.19 (2026-11-17)** dropped chrono from everything the service builds; it is left only in the tests (axa-test's axum-test, through expect-json). **Still open:** RUSTSEC-2026-0543's ignore stays until that drops it, since `cargo deny` checks dev-dependencies too. Original: chrono is in the tree through the service (51 files under `src` and `tests`,
   the site time zone through chrono-tz, sqlx's `chrono` feature for every timestamp column), and through axa, sqlx and
   `croner` (axa's job queue). The service's own part can move to `jiff` (with `jiff-tz` for the site time zone) or
   `time`, with sqlx's matching feature; the rest waits on axa and croner. **Acceptance:** before 2027-02-17, either

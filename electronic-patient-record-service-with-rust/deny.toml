@@ -15,10 +15,10 @@ yanked = "warn"
 # 2026-10-30: twelve earlier ignores were removed because `cargo deny` reported each as not encountered
 # (the locked versions are patched or the crate is no longer in the tree).
 ignore = [
-    # 2026-11-17: chrono is unmaintained (no vulnerability, no fixed version). The service no longer uses it (DEP-1, jiff);
-    # it is still in the tree through axa: croner (the job queue's cron patterns) and sqlx's `chrono` feature, which axa
-    # turns on. Delete this when axa drops it. chrono-tz left the tree with DEP-1, and its ignore with it. expires 2027-02-17
-    { id = "RUSTSEC-2026-0543", reason = "chrono unmaintained; only through axa (croner, sqlx's chrono feature); DEP-1" },
+    # 2026-11-17: chrono is unmaintained (no vulnerability, no fixed version). Since axa 0.19 nothing the service
+    # builds uses it (DEP-1); it is left only in the tests, through axa-test's axum-test and its expect-json. Delete
+    # this when they drop it. expires 2027-02-17
+    { id = "RUSTSEC-2026-0543", reason = "chrono unmaintained; only in dev-dependencies (axum-test's expect-json); DEP-1" },
 ]
 
 [licenses]
