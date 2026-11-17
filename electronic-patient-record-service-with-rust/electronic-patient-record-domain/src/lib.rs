@@ -35,4 +35,5 @@ pub mod results;
 pub mod role_views;
 pub mod site;
 pub mod suspicion;
+pub mod task_rules;
 pub mod watch_list;

@@ -1612,7 +1612,7 @@ only; nothing here was taken from its code. Open questions OQ-TL1 (who approves 
   each item with kind, author, time and a link to the record; consent and role views applied per item, as each record's
   own read applies them; audited as one read. No new store. **Acceptance:** an item hidden by consent or a role view is
   absent with nothing saying what it was; the timeline and the separate reads agree; a hazard row.
-- [ ] **TL-3 (M, clinical) — Task rules.** Versioned rules held as data, like the suspicion pathways: an event (a result
+- [ ] **TL-3 (M, clinical) — Task rules.** **Rules and store built 2026-11-17** (`task_rules.rs` and `task_rules.toml` in the domain crate, `tasks_store.rs`, migration 40, `tests/tasks_store.rs`, H-059; spec `spec/clinical-workflows/task-rules.md`), with TL-4's reminder decisions and TL-14's all-or-nothing writes and duplicate refusal. **Not built:** the event hooks, the routes, the reminder loop, the holiday setting, a screen. Versioned rules held as data, like the suspicion pathways: an event (a result
   filed, a referral step, an observation out of range, an adjustment due) and conditions create a task for a team, due
   after a number of working days on the site's calendar and time zone, with reminders. A rule creates tasks only: it
   never messages a patient, never changes the record. A dry run shows what a rule would create. Builds on CA-6 and PC-3.
@@ -1638,9 +1638,16 @@ only; nothing here was taken from its code. Open questions OQ-TL1 (who approves 
 - [ ] **TL-9 (S) — A documented sandbox.** A synthetic dataset and a script that loads it into a fresh deployment, for
   integrators and training, with no real person in it. **Acceptance:** one command makes a usable sandbox; the data
   passes the identifier and name checks for synthetic data.
-- [ ] **TL-10 (S, decision, clinical) — Access by licensed jurisdiction.** Decide (OQ-TL2) whether any target deployment
+- [x] **TL-10 (S, decision, clinical) — Access by licensed jurisdiction.** **Decided 2026-11-17 by the maintainer: yes**, a target deployment needs it (OQ-TL2 answered); building it is TL-15. Decide (OQ-TL2) whether any target deployment
   must limit a clinician to patients in the jurisdictions where they are licensed, as US telehealth can require.
   **Acceptance:** a recorded decision; if yes, a policy rule and its tests in a later task.
+- [ ] **TL-15 (M, clinical) — Access limited by licensed jurisdiction.** TL-10 decided yes. A clinician holds a list
+  of jurisdictions they are licensed in (from the identity provider's token or a site registry: to decide), a patient
+  has a jurisdiction where care is delivered (their address's region, or the encounter's location: to decide), and the
+  policy refuses a clinical read or write across them, except break-the-glass, which records it. Off unless a
+  deployment turns it on; a pack names the jurisdiction scheme (US states, other regions). **Acceptance:** a licensed
+  clinician reads, an unlicensed one is refused with an audited reason, break-the-glass works and is flagged, a patient
+  with no jurisdiction is refused rather than allowed when the rule is on, and a hazard row.
 - [ ] **TL-11 (S) — Write-only secrets.** Any secret the service stores (a subscription's signing secret, an
   integration token) is shown once when made and never returned by any read, export or log. **Acceptance:** a census
   over the OpenAPI document finds no secret-named field in any response schema; a test reads every route that lists one

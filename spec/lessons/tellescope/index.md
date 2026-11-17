@@ -110,7 +110,7 @@ applied, and no automation that acts on a patient or the record without a person
 ## Open questions
 
 - **OQ-TL1:** who approves a task rule (TL-3) before it runs, and does a rule change need the Clinical Safety Officer?
-- **OQ-TL2:** must access follow a clinician's licensed jurisdiction in any target deployment (TL-10)?
+- **OQ-TL2:** must access follow a clinician's licensed jurisdiction in any target deployment (TL-10)? **Answered 2026-11-17 by the maintainer: yes.** Building it is TL-15.
 
 ## Not verified
 

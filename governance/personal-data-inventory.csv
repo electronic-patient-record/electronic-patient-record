@@ -454,3 +454,32 @@ referral_suspicion_outcome_current,recorded_at,none,When the outcome was recorde
 referral_suspicion_outcome_current,author,staff-identifier,Who recorded it,record
 referral_suspicion_outcome_current,kind,health,Confirmed or ruled out or withdrawn,record
 referral_suspicion_outcome_current,body,health,The diagnosis or who ruled it out and on what or why it was withdrawn,record
+task_versions,task_id,none,Random record id,record
+task_versions,version,none,Version counter,record
+task_versions,patient_id,identifier,Links a record to the patient,record
+task_versions,rule_id,none,The rule that made the task,record
+task_versions,rule_version,none,The version of that rule,record
+task_versions,team,none,The role whose task it is,record
+task_versions,recorded_at,none,When the version was recorded,record
+task_versions,author,staff-identifier,Who or which rule wrote it,record
+task_versions,status,none,Open or done or cancelled,record
+task_versions,due_on,none,The day the task is due,record
+task_versions,body,health,What to do and its reminders and the record it came from and why it closed,record
+task_current,task_id,none,Random record id,record
+task_current,version,none,Version counter,record
+task_current,patient_id,identifier,Links a record to the patient,record
+task_current,rule_id,none,The rule that made the task,record
+task_current,rule_version,none,The version of that rule,record
+task_current,team,none,The role whose task it is,record
+task_current,recorded_at,none,When the version was recorded,record
+task_current,author,staff-identifier,Who or which rule wrote it,record
+task_current,status,none,Open or done or cancelled,record
+task_current,due_on,none,The day the task is due,record
+task_current,body,health,What to do and its reminders and the record it came from and why it closed,record
+task_reminder_decisions,task_id,none,The task reminded about,record
+task_reminder_decisions,remind_on,none,The day the reminder was for,record
+task_reminder_decisions,decision,none,Sent or skipped,record
+task_reminder_decisions,reason,none,Why a reminder was skipped,record
+task_reminder_decisions,recorded_at,none,When it was decided,record
+task_reminder_runs,ran_on,none,The site day the reminder sender ran,record
+task_reminder_runs,recorded_at,none,When it ran,record

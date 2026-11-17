@@ -87,5 +87,7 @@ mod sql_census;
 mod stored_words;
 #[path = "support_only.rs"]
 mod support_only;
+#[path = "tasks_store.rs"]
+mod tasks_store;
 #[path = "test_targets.rs"]
 mod test_targets;

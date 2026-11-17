@@ -4,7 +4,7 @@ Every table and view the service's migrations create. **Generated** by [`scripts
 
 Not listed: tables made by a statement built at run time (the monthly `audit_events` partitions), and what a column means (the migrations carry few comments, so only the name and SQL type are shown). The clinical tables are append-only: a change is a new row, and triggers refuse `UPDATE`, `DELETE` and `TRUNCATE`.
 
-39 tables, 19 views.
+42 tables, 20 views.
 
 ## Tables
 
@@ -48,6 +48,9 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `relationship_versions` | `20261021000004_relationship_versions` | `relationship_id` UUID, `version` INTEGER, `patient_id` UUID, `subject` TEXT, `kind` TEXT, `status` TEXT, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `body` JSONB |
 | `result_signoffs` | `20261109000029_results` | `signoff_id` UUID, `result_id` UUID, `result_version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `signed_by` TEXT |
 | `result_versions` | `20261109000029_results` | `result_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `status` TEXT, `reason` TEXT, `body` JSONB |
+| `task_reminder_decisions` | `20261117000040_tasks` | `task_id` UUID, `remind_on` DATE, `decision` TEXT, `reason` TEXT, `recorded_at` TIMESTAMPTZ |
+| `task_reminder_runs` | `20261117000040_tasks` | `ran_on` DATE, `recorded_at` TIMESTAMPTZ |
+| `task_versions` | `20261117000040_tasks` | `task_id` UUID, `version` INTEGER, `patient_id` UUID, `rule_id` TEXT, `rule_version` INTEGER, `team` TEXT, `recorded_at` TIMESTAMPTZ, `author` TEXT, `status` TEXT, `due_on` DATE, `body` JSONB |
 | `watch_entry_versions` | `20261109000034_watch_lists` | `entry_id` UUID, `version` INTEGER, `owner` TEXT, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `status` TEXT, `body` JSONB |
 
 ## Views
@@ -72,4 +75,5 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `referral_suspicion_outcome_current` | `20261110000035_suspicion_outcome_errors` |
 | `relationship_current` | `20261021000004_relationship_versions`, `20261021000011_current_views_seek` |
 | `result_current` | `20261109000029_results` |
+| `task_current` | `20261117000040_tasks` |
 | `watch_entry_current` | `20261109000034_watch_lists` |

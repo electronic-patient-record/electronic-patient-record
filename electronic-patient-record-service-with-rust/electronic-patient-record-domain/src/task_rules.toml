@@ -1,0 +1,38 @@
+# Task rules (TL-3, `spec/lessons/tellescope/index.md`): when something happens to a patient's record, which team gets
+# a task, due when, with which reminders, and what cancels it.
+#
+# EVERY RULE HERE IS A DRAFT. Who may approve a rule is open (OQ-TL1); until then approved_by and approved_on stay
+# empty, the dry run shows what a rule would do, and the service creates no task from it. A deployment replaces this
+# file with its own approved rules.
+#
+# Rules the service checks when it reads this file (`electronic-patient-record-domain/src/task_rules.rs`):
+# - a rule creates a task and nothing else: the only action is [rule.task], and any other key is refused;
+# - versions of one rule run 1, 2, 3 ... and none is removed, because a stored task names its rule version;
+# - approved_by and approved_on are both given (a YYYY-MM-DD day) or both empty;
+# - a condition names a fact its event carries (result-filed: abnormal, test; observation-out-of-range: code, flag;
+#   referral-stepped: state, priority; ...) and at least one value;
+# - due_working_days is 0 to 60 working days on the site calendar (no weekends, no site holidays);
+# - reminders are distinct working days before the due day, at most five, none beyond the due period;
+# - late_reminder says what a reminder whose day passed while reminders were not running does: send-once or skip;
+# - a rule is not cancelled by the event that starts it;
+# - no two rules are the same event, conditions and task.
+
+[[rule]]
+id = "abnormal-result-review"
+version = 1
+title = "An abnormal result needs a clinician's review"
+approved_by = ""
+approved_on = ""
+event = "result-filed"
+cancel_on = ["result-signed-off"]
+
+[[rule.when]]
+fact = "abnormal"
+any_of = ["true"]
+
+[rule.task]
+team = "clinician"
+title = "Review the abnormal result"
+due_working_days = 2
+remind_working_days_before = [1]
+late_reminder = "send-once"

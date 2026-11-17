@@ -2,6 +2,20 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - Task rules and their store (TL-3, TL-4, TL-14; H-059)
+
+- **Clinical risk:** yes, in time: rules will decide which team is asked to do what, and when. Nothing makes a task in a running service yet (no event hook or route), and every built-in rule is a draft. Hazard H-059 added (open).
+- **Built:** in the domain crate, `task_rules.rs` and `task_rules.toml`: rules as versioned data (an event, conditions on its facts, a task for a team due in working days, reminders, cancelling events, what a late reminder does), checked when read: the only action is a task and any other key stops the file loading, versions run 1, 2, 3, approver and day both or neither, conditions only on facts the event carries, due in 0 to 60 working days, at most five reminders, no rule cancelled by its own event, and no two rules the same work (TL-14). Working days skip weekends and site holidays. `plan` is also the dry run. In the service, `tasks_store.rs` and migration 40 (`task_versions` with `task_current`, `task_reminder_decisions`, `task_reminder_runs`, all append-only by trigger): tasks made and cancelled in the caller's transaction with audit rows; a person closes one with a reason at the version read; each reminder decided once, and a late one sent once or skipped with the reason (TL-4). Spec: `spec/clinical-workflows/task-rules.md`; inventory rows for the new columns.
+- **Decided:** the maintainer answered OQ-TL2: a target deployment does need access limited by a clinician's licensed jurisdiction. TL-10 is closed as decided; building it is TL-15.
+- **Tested:** 9 unit tests of the rules (a rule that tries to message a patient or change a field is refused; duplicates refused naming both; working days over a weekend and a holiday; a late reminder sent once or skipped, never both); 5 database tests (only an approved rule makes a task, with an audit row; a rolled-back write leaves none; an event cancels only its own source's open tasks; a person's close needs a reason and the current version; the tables refuse change; a reminder is decided once). Clippy on the workspace; the census tests a new table touches pass.
+- **Not done / not verified:** the event hooks in the result, observation and referral stores; routes, a dry-run route and a screen; the reminder loop; a site holiday setting; who approves a rule (OQ-TL1); no mutation run on the new files yet (a run started for them tested other files instead).
+
+## 2026-11-17 - aws-lc-rs is gone from the build (authentication-verifier 0.9.3)
+
+- **Clinical risk:** none: dependency and build change; the MLLP TLS provider was already `ring`, chosen explicitly.
+- **Changed:** `authentication-verifier` 0.9.2 to 0.9.3, whose `fetch` feature no longer enables `reqwest`'s bundled `aws-lc-rs`; `cargo tree -i aws-lc-rs --all-features` finds nothing. The stale comments in `Cargo.toml` and `src/mllp.rs` and the build-time note in `spec/local-ci.md` now say so. The 2026-11 MLLP TLS entry below is history and still says aws-lc-rs was in the tree; it was true then.
+- **Not done / not verified:** `cargo check --all-targets` only; no tests run; the CI timings in `spec/local-ci.md` were not re-measured.
+
 ## 2026-11-17 - Research pass: Tellescope's API documentation (plan.md 38, TL-11 to TL-14)
 
 - **Clinical risk:** none: documents only. TL-12, TL-13 and TL-14 are clinical when built.
