@@ -1584,7 +1584,7 @@ with its first code. Open questions OQ-IH1 to OQ-IH6.
   `event` and `answer` only; names frozen once published. Note for OS-3: an outbox sink completes only on a positive
   answer, makes a permanent refusal final (ids only), backs off a temporary one, refreshes a token once on 401, honours a
   capped `Retry-After` on 429, and sends `Idempotency-Key`.
-- [ ] **IH-10 (M) — TLS on MLLP.** rustls only; a missing, empty or unusable bundle, certificate or key stops the start;
+- [x] **IH-10 (M) — TLS on MLLP.** **Done 2026-11-17:** `mllp::tls_config` (rustls 0.23 with ring chosen explicitly, `rustls-pki-types` PEM; no new crate), `EPR_MLLP_TLS_CERT_FILE` and `EPR_MLLP_TLS_KEY_FILE`, optional `EPR_MLLP_TLS_CLIENT_CA_FILE` for client certificates; TLS only once on; every unusable file stops the start; H-021 updated. Tests make their certificates with `openssl` at run time (no key committed). **Not done:** reload of a renewed certificate (needs a restart); the client certificate's identity is not yet the audit agent (IH-6). rustls only; a missing, empty or unusable bundle, certificate or key stops the start;
   never downgraded. Refines OR-3's TLS item.
 - [ ] **IH-11 (M) — Tools for integrators.** A dry run in a rolled-back transaction, audited, administrator only; a test
   sender for the MLLP port with varying fields; golden ACKs for the sample messages, never re-captured to pass.

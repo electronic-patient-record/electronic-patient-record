@@ -114,7 +114,7 @@ fn adt(event: &str, control: &str, mrn: &str, family: &str, dob: &str, extra_pid
 }
 
 /// Read one framed answer.
-async fn read_ack(stream: &mut TcpStream) -> Option<String> {
+async fn read_ack<S: tokio::io::AsyncRead + Unpin>(stream: &mut S) -> Option<String> {
     let mut got = Vec::new();
     let mut byte = [0u8; 1];
     loop {
@@ -131,7 +131,10 @@ async fn read_ack(stream: &mut TcpStream) -> Option<String> {
     }
 }
 
-async fn send(stream: &mut TcpStream, message: &str) -> Option<String> {
+async fn send<S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin>(
+    stream: &mut S,
+    message: &str,
+) -> Option<String> {
     stream
         .write_all(&mllp::frame(message.as_bytes()))
         .await
@@ -1178,4 +1181,308 @@ async fn a_feeds_health_is_judged_from_the_database_and_a_change_is_stored_once(
         electronic_patient_record::metrics::render()
             .contains(&format!("epr_feed_health{{sender=\"{agent}\"}} 3"))
     );
+}
+
+/// Certificates for the TLS tests, made with the `openssl` command in a fresh directory (a test CA, a server certificate
+/// for 127.0.0.1 and a client certificate), so no private key is ever committed.
+struct Certs {
+    dir: std::path::PathBuf,
+}
+
+impl Certs {
+    fn make() -> Certs {
+        let dir = std::env::temp_dir().join(format!("epr-mllp-tls-{}", tag("t")));
+        std::fs::create_dir_all(&dir).unwrap();
+        let run = |args: &[&str]| {
+            let out = std::process::Command::new("openssl")
+                .args(args)
+                .current_dir(&dir)
+                .output()
+                .expect("the TLS tests need the openssl command");
+            assert!(
+                out.status.success(),
+                "openssl {args:?}: {}",
+                String::from_utf8_lossy(&out.stderr)
+            );
+        };
+        let ec = [
+            "-newkey",
+            "ec",
+            "-pkeyopt",
+            "ec_paramgen_curve:P-256",
+            "-nodes",
+        ];
+        run(&[
+            &["req", "-x509"][..],
+            &ec,
+            &[
+                "-keyout",
+                "ca.key",
+                "-out",
+                "ca.pem",
+                "-days",
+                "30",
+                "-subj",
+                "/CN=test ca",
+                "-addext",
+                "basicConstraints=critical,CA:TRUE",
+                "-addext",
+                "keyUsage=critical,keyCertSign,cRLSign",
+            ],
+        ]
+        .concat());
+        for (name, usage, san) in [
+            (
+                "server",
+                "serverAuth",
+                "subjectAltName=IP:127.0.0.1,DNS:localhost",
+            ),
+            ("client", "clientAuth", "subjectAltName=DNS:test-sender"),
+        ] {
+            run(&[
+                &["req"][..],
+                &ec,
+                &[
+                    "-keyout",
+                    &format!("{name}.key"),
+                    "-out",
+                    &format!("{name}.csr"),
+                    "-subj",
+                    &format!("/CN={name}"),
+                ],
+            ]
+            .concat());
+            std::fs::write(dir.join(format!("{name}.ext")), format!("basicConstraints=CA:FALSE\nkeyUsage=critical,digitalSignature\nextendedKeyUsage={usage}\n{san}\n")).unwrap();
+            run(&[
+                "x509",
+                "-req",
+                "-in",
+                &format!("{name}.csr"),
+                "-CA",
+                "ca.pem",
+                "-CAkey",
+                "ca.key",
+                "-CAcreateserial",
+                "-out",
+                &format!("{name}.pem"),
+                "-days",
+                "30",
+                "-extfile",
+                &format!("{name}.ext"),
+            ]);
+        }
+        Certs { dir }
+    }
+    fn path(&self, f: &str) -> String {
+        self.dir.join(f).to_string_lossy().into_owned()
+    }
+}
+
+impl Drop for Certs {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.dir);
+    }
+}
+
+/// A TLS client trusting the test CA, with the client certificate when `with_cert`.
+fn tls_client(certs: &Certs, with_cert: bool) -> tokio_rustls::TlsConnector {
+    use rustls_pki_types::pem::PemObject;
+    use rustls_pki_types::{CertificateDer, PrivateKeyDer};
+    let provider = std::sync::Arc::new(rustls::crypto::ring::default_provider());
+    let mut roots = rustls::RootCertStore::empty();
+    for c in CertificateDer::pem_file_iter(certs.path("ca.pem")).unwrap() {
+        roots.add(c.unwrap()).unwrap();
+    }
+    let b = rustls::ClientConfig::builder_with_provider(provider)
+        .with_safe_default_protocol_versions()
+        .unwrap()
+        .with_root_certificates(roots);
+    let config = if with_cert {
+        let chain = CertificateDer::pem_file_iter(certs.path("client.pem"))
+            .unwrap()
+            .map(Result::unwrap)
+            .collect();
+        b.with_client_auth_cert(
+            chain,
+            PrivateKeyDer::from_pem_file(certs.path("client.key")).unwrap(),
+        )
+        .unwrap()
+    } else {
+        b.with_no_client_auth()
+    };
+    tokio_rustls::TlsConnector::from(std::sync::Arc::new(config))
+}
+
+/// A listener with no database behind it: a type not handled is still answered `AR` (IH-1), which is all these tests
+/// need to see that a message got through.
+async fn start_tls(certs: &Certs, client_ca: bool) -> std::net::SocketAddr {
+    let db = sqlx::postgres::PgPoolOptions::new()
+        .acquire_timeout(Duration::from_millis(200))
+        .connect_lazy("postgres://nobody@127.0.0.1:1/none")
+        .unwrap();
+    let ca = certs.path("ca.pem");
+    let tls = mllp::tls_config(
+        &certs.path("server.pem"),
+        &certs.path("server.key"),
+        client_ca.then_some(ca.as_str()),
+    )
+    .unwrap();
+    start(&db, move |c| c.tls = Some(tls)).await
+}
+
+fn oru() -> String {
+    adt("A28", "T1", "m1", "Nobody", "19800314", "").replace("ADT^A28^ADT_A05", "ORU^R01^ORU_R01")
+}
+
+#[tokio::test]
+async fn with_tls_a_message_is_answered_over_tls_and_plain_text_gets_nothing() {
+    // IH-10.
+    let certs = Certs::make();
+    let addr = start_tls(&certs, false).await;
+    let tcp = TcpStream::connect(addr).await.unwrap();
+    let name = rustls_pki_types::ServerName::try_from("127.0.0.1").unwrap();
+    let mut secure = tls_client(&certs, false)
+        .connect(name, tcp)
+        .await
+        .expect("the handshake completes");
+    let ack = send(&mut secure, &oru()).await.expect("an answer over TLS");
+    assert_eq!(code(&ack), "AR", "{ack}");
+
+    // The same port in plain text: no acknowledgement, ever.
+    let mut plain = TcpStream::connect(addr).await.unwrap();
+    plain
+        .write_all(&mllp::frame(oru().as_bytes()))
+        .await
+        .unwrap();
+    assert_eq!(read_ack(&mut plain).await, None);
+}
+
+#[tokio::test]
+async fn with_a_client_ca_only_a_sender_with_a_certificate_is_served() {
+    let certs = Certs::make();
+    let addr = start_tls(&certs, true).await;
+    let name = || rustls_pki_types::ServerName::try_from("127.0.0.1").unwrap();
+    // Without a certificate the handshake fails, or the first read finds the connection closed.
+    let tcp = TcpStream::connect(addr).await.unwrap();
+    if let Ok(mut s) = tls_client(&certs, false).connect(name(), tcp).await {
+        let _ = s.write_all(&mllp::frame(oru().as_bytes())).await;
+        assert_eq!(
+            read_ack(&mut s).await,
+            None,
+            "a sender with no certificate was served"
+        );
+    }
+    let tcp = TcpStream::connect(addr).await.unwrap();
+    let mut s = tls_client(&certs, true)
+        .connect(name(), tcp)
+        .await
+        .expect("a sender with a certificate is let in");
+    assert_eq!(code(&send(&mut s, &oru()).await.unwrap()), "AR");
+}
+
+#[test]
+fn a_tls_setting_that_cannot_be_used_stops_the_start() {
+    let certs = Certs::make();
+    let empty = certs.path("empty.pem");
+    std::fs::write(&empty, "\n").unwrap();
+    let (cert, key, client_key, ca) = (
+        certs.path("server.pem"),
+        certs.path("server.key"),
+        certs.path("client.key"),
+        certs.path("ca.pem"),
+    );
+    let missing = certs.path("missing.pem");
+    let bind = ("EPR_MLLP_BIND", "127.0.0.1:2575");
+    let config = |pairs: Vec<(&str, &str)>| {
+        let map: std::collections::HashMap<String, String> = std::iter::once(bind)
+            .chain(pairs)
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
+        Config::from_lookup(move |k| map.get(k).cloned())
+    };
+    assert!(
+        config(vec![]).unwrap().unwrap().tls.is_none(),
+        "no TLS unless asked"
+    );
+    assert!(
+        config(vec![
+            ("EPR_MLLP_TLS_CERT_FILE", &cert),
+            ("EPR_MLLP_TLS_KEY_FILE", &key)
+        ])
+        .unwrap()
+        .unwrap()
+        .tls
+        .is_some()
+    );
+    assert!(
+        config(vec![
+            ("EPR_MLLP_TLS_CERT_FILE", &cert),
+            ("EPR_MLLP_TLS_KEY_FILE", &key),
+            ("EPR_MLLP_TLS_CLIENT_CA_FILE", &ca)
+        ])
+        .unwrap()
+        .unwrap()
+        .tls
+        .is_some()
+    );
+    for (why, pairs) in [
+        (
+            "a certificate with no key",
+            vec![("EPR_MLLP_TLS_CERT_FILE", cert.as_str())],
+        ),
+        (
+            "a key with no certificate",
+            vec![("EPR_MLLP_TLS_KEY_FILE", key.as_str())],
+        ),
+        (
+            "a missing file",
+            vec![
+                ("EPR_MLLP_TLS_CERT_FILE", missing.as_str()),
+                ("EPR_MLLP_TLS_KEY_FILE", key.as_str()),
+            ],
+        ),
+        (
+            "an empty certificate",
+            vec![
+                ("EPR_MLLP_TLS_CERT_FILE", empty.as_str()),
+                ("EPR_MLLP_TLS_KEY_FILE", key.as_str()),
+            ],
+        ),
+        (
+            "an empty key",
+            vec![
+                ("EPR_MLLP_TLS_CERT_FILE", cert.as_str()),
+                ("EPR_MLLP_TLS_KEY_FILE", empty.as_str()),
+            ],
+        ),
+        (
+            "a key that does not fit",
+            vec![
+                ("EPR_MLLP_TLS_CERT_FILE", cert.as_str()),
+                ("EPR_MLLP_TLS_KEY_FILE", client_key.as_str()),
+            ],
+        ),
+        (
+            "a certificate file that is a key",
+            vec![
+                ("EPR_MLLP_TLS_CERT_FILE", key.as_str()),
+                ("EPR_MLLP_TLS_KEY_FILE", key.as_str()),
+            ],
+        ),
+        (
+            "a client CA with no TLS",
+            vec![("EPR_MLLP_TLS_CLIENT_CA_FILE", ca.as_str())],
+        ),
+        (
+            "an empty client CA",
+            vec![
+                ("EPR_MLLP_TLS_CERT_FILE", cert.as_str()),
+                ("EPR_MLLP_TLS_KEY_FILE", key.as_str()),
+                ("EPR_MLLP_TLS_CLIENT_CA_FILE", empty.as_str()),
+            ],
+        ),
+    ] {
+        let got = config(pairs);
+        assert!(got.is_err(), "{why} was accepted");
+    }
 }

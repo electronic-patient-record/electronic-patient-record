@@ -82,7 +82,7 @@ Each is a design to be confirmed, not a built behaviour. Clinical ones add hazar
    configured name), `event` and `answer` (`AA`, `AE`, `AR`) only: never a control id or a patient (the hub's refusal
    counters carry the correlation and message ids, a cardinality and privacy fault, `spec/04-observability.md` §3).
    Names, once published, are not renamed, since alerts depend on them.
-10. **TLS on MLLP (IH-10).** rustls only. A missing, empty or unusable CA bundle, certificate or key stops the service
+10. **TLS on MLLP (IH-10). Built 2026-11-17**, with optional client certificates. rustls only. A missing, empty or unusable CA bundle, certificate or key stops the service
     starting; TLS asked for is never downgraded to plain text (hub `spec/18-deployment.md` §4, `spec/12-message-store.md`
     §5.8.2). Already listed as not built in OR-3.
 11. **Tools for integrators (IH-11).** A dry run: a message through the real path in a transaction that is rolled back,

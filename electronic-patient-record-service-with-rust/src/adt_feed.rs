@@ -28,7 +28,7 @@
 //!   refusal not stored). A resend of a message already waiting adds no row and gets the same answer.
 //!   `EPR_MLLP_KEPT_ANSWER=AE` answers kept refusals `AE` instead, for a sender that needs it (OQ-IH1).
 //!
-//! Not built: `A40` merges, `PV1`, `ORU`/`SIU`, and TLS.
+//! Not built: `A40` merges, `PV1`, `ORU`/`SIU`. (TLS is the listener's: [`crate::mllp`].)
 
 use crate::audit::{self, Action, Event};
 use crate::controllers::patients::likely_duplicates;

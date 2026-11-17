@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - TLS on the HL7 listener (IH-10)
+
+- **Clinical risk:** none directly; it closes part of H-021 (a port open to anyone, in plain text). H-021 updated (still open).
+- **Built:** `EPR_MLLP_TLS_CERT_FILE` and `EPR_MLLP_TLS_KEY_FILE` (PEM, both or neither) make the MLLP port TLS only: rustls 0.23 with ring's provider chosen explicitly (aws-lc-rs is in the tree too, and rustls will not guess between them), a handshake that fails or outlasts the idle time closes the connection, and plain text is never answered. `EPR_MLLP_TLS_CLIENT_CA_FILE` requires every sender to present a certificate from that CA. A missing, empty or unreadable file, a file with no certificate or key, a key that does not fit, or a client CA without TLS stops the service starting. `rustls`, `rustls-pki-types` and `tokio-rustls` are now direct dependencies; all were already in the tree, so no new crate.
+- **Tested:** with certificates made by `openssl` at run time (no private key is committed, so the secret scan stays clean): a message over TLS is answered; a plain-text client on the TLS port gets nothing; with a client CA, a sender with no certificate is not served and one with a certificate is; nine unusable settings each stop the start.
+- **Not done / not verified:** a renewed certificate needs a restart; the client certificate's name is not used as the audit agent (IH-6); not tried with a real sender's TLS stack; the CI runner's `openssl` is assumed.
+
 ## 2026-11-17 - HL7 feed health and its alarm (IH-8)
 
 - **Clinical risk:** yes, what a person is told: a refusal or a silent feed now raises a state an operator can alert on, where before someone had to open the admin screen. Hazard H-023 updated (still open).

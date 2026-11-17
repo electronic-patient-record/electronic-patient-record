@@ -6,8 +6,14 @@
 //!
 //! **MLLP has no authentication and no encryption.** The listener is therefore off unless
 //! `EPR_MLLP_BIND` is set, refuses a non-loopback address unless `EPR_MLLP_ALLOW_REMOTE=true`, and
-//! when it is allowed to listen beyond the machine it must sit behind a TLS terminator or a private
-//! network that the deployer controls. Whatever the sender says about itself in `MSH` is not used to
+//! when it is allowed to listen beyond the machine it must use TLS, sit behind a TLS terminator, or be
+//! on a private network that the deployer controls.
+//!
+//! **TLS (IH-10)**, rustls with ring only: `EPR_MLLP_TLS_CERT_FILE` and `EPR_MLLP_TLS_KEY_FILE` (PEM, both or neither)
+//! turn it on, and then the port speaks only TLS: a client that does not complete a handshake is closed, and nothing is
+//! ever served in plain text. `EPR_MLLP_TLS_CLIENT_CA_FILE` (PEM) also requires every sender to present a certificate
+//! that chains to it, which is the only way MLLP here can know who is sending. A file that is missing, empty or
+//! unreadable, holds no certificate or no key, or a key that does not fit the certificate, stops the service starting. Whatever the sender says about itself in `MSH` is not used to
 //! decide anything: the audit agent is `EPR_MLLP_AGENT`, and the peer address is recorded.
 //!
 //! Limits: one frame is at most 1 MiB; a connection that is silent for `EPR_MLLP_IDLE_SECONDS` (60)
@@ -21,8 +27,8 @@ use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::{TcpListener, TcpStream};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
+use tokio::net::TcpListener;
 use tokio::sync::Semaphore;
 
 /// Start of block.
@@ -148,6 +154,73 @@ pub struct Config {
     pub max_frame: usize,
     /// How a refusal kept in the work queue is answered (`EPR_MLLP_KEPT_ANSWER`, `AR` by default).
     pub kept_answer: KeptAnswer,
+    /// TLS, when configured: then the port speaks nothing else (IH-10).
+    pub tls: Option<Arc<rustls::ServerConfig>>,
+}
+
+/// A TLS server configuration from PEM files, with ring's provider chosen explicitly (aws-lc-rs is in the tree too, and
+/// rustls refuses to guess). With `client_ca`, every client must present a certificate that chains to it.
+///
+/// # Errors
+///
+/// A message naming the variable when a file is missing, empty or unreadable, holds no certificate or no private key,
+/// or the key does not fit the certificate.
+pub fn tls_config(
+    cert_file: &str,
+    key_file: &str,
+    client_ca_file: Option<&str>,
+) -> Result<Arc<rustls::ServerConfig>, String> {
+    use rustls_pki_types::pem::PemObject;
+    use rustls_pki_types::{CertificateDer, PrivateKeyDer};
+    let read = |var: &str, path: &str| -> Result<Vec<u8>, String> {
+        let bytes =
+            std::fs::read(path).map_err(|e| format!("{var} {path:?} cannot be read: {e}"))?;
+        if bytes.iter().all(u8::is_ascii_whitespace) {
+            return Err(format!("{var} {path:?} is empty"));
+        }
+        Ok(bytes)
+    };
+    let certs = |var: &str, path: &str| -> Result<Vec<CertificateDer<'static>>, String> {
+        let bytes = read(var, path)?;
+        let certs = CertificateDer::pem_slice_iter(&bytes)
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| format!("{var} {path:?} is not PEM certificates: {e}"))?;
+        if certs.is_empty() {
+            return Err(format!("{var} {path:?} holds no certificate"));
+        }
+        Ok(certs)
+    };
+    let chain = certs("EPR_MLLP_TLS_CERT_FILE", cert_file)?;
+    let key =
+        PrivateKeyDer::from_pem_slice(&read("EPR_MLLP_TLS_KEY_FILE", key_file)?).map_err(|e| {
+            format!("EPR_MLLP_TLS_KEY_FILE {key_file:?} holds no usable private key: {e}")
+        })?;
+    let provider = Arc::new(rustls::crypto::ring::default_provider());
+    let builder = rustls::ServerConfig::builder_with_provider(Arc::clone(&provider))
+        .with_safe_default_protocol_versions()
+        .map_err(|e| format!("MLLP TLS: {e}"))?;
+    let builder = match client_ca_file {
+        None => builder.with_no_client_auth(),
+        Some(path) => {
+            let mut roots = rustls::RootCertStore::empty();
+            for ca in certs("EPR_MLLP_TLS_CLIENT_CA_FILE", path)? {
+                roots
+                    .add(ca)
+                    .map_err(|e| format!("EPR_MLLP_TLS_CLIENT_CA_FILE {path:?}: {e}"))?;
+            }
+            let verifier = rustls::server::WebPkiClientVerifier::builder_with_provider(
+                Arc::new(roots),
+                provider,
+            )
+            .build()
+            .map_err(|e| format!("EPR_MLLP_TLS_CLIENT_CA_FILE {path:?}: {e}"))?;
+            builder.with_client_cert_verifier(verifier)
+        }
+    };
+    builder
+        .with_single_cert(chain, key)
+        .map(Arc::new)
+        .map_err(|e| format!("EPR_MLLP_TLS_KEY_FILE {key_file:?} does not fit EPR_MLLP_TLS_CERT_FILE {cert_file:?}: {e}"))
 }
 
 impl Config {
@@ -161,6 +234,7 @@ impl Config {
             idle: Duration::from_secs(60),
             max_frame: MAX_FRAME,
             kept_answer: KeptAnswer::Reject,
+            tls: None,
         }
     }
 
@@ -225,10 +299,29 @@ impl Config {
                 ));
             }
         };
+        let tls = match (set("EPR_MLLP_TLS_CERT_FILE"), set("EPR_MLLP_TLS_KEY_FILE")) {
+            (None, None) => {
+                if set("EPR_MLLP_TLS_CLIENT_CA_FILE").is_some() {
+                    return Err("EPR_MLLP_TLS_CLIENT_CA_FILE needs EPR_MLLP_TLS_CERT_FILE and EPR_MLLP_TLS_KEY_FILE".into());
+                }
+                None
+            }
+            (Some(cert), Some(key)) => Some(tls_config(
+                &cert,
+                &key,
+                set("EPR_MLLP_TLS_CLIENT_CA_FILE").as_deref(),
+            )?),
+            _ => {
+                return Err(
+                    "set both EPR_MLLP_TLS_CERT_FILE and EPR_MLLP_TLS_KEY_FILE, or neither".into(),
+                );
+            }
+        };
         Ok(Some(Config {
             bind,
             agent,
             kept_answer,
+            tls,
             max_connections: usize::try_from(number("EPR_MLLP_MAX_CONNECTIONS", 8, 1, 256)?)
                 .unwrap_or(8),
             idle: Duration::from_secs(number("EPR_MLLP_IDLE_SECONDS", 60, 1, 3600)?),
@@ -272,7 +365,21 @@ pub async fn serve(listener: TcpListener, db: PgPool, config: Config) {
         };
         let (db, config) = (db.clone(), Arc::clone(&config));
         tokio::spawn(async move {
-            connection(stream, peer, &db, &config).await;
+            match &config.tls {
+                None => connection(stream, peer, &db, &config).await,
+                // TLS only: a handshake that fails or does not finish within the idle time closes the connection,
+                // and nothing is read in plain text (IH-10).
+                Some(tls) => {
+                    let acceptor = tokio_rustls::TlsAcceptor::from(Arc::clone(tls));
+                    match tokio::time::timeout(config.idle, acceptor.accept(stream)).await {
+                        Ok(Ok(secure)) => connection(secure, peer, &db, &config).await,
+                        Ok(Err(e)) => {
+                            tracing::warn!(%peer, error = %e, "MLLP TLS handshake failed; closing")
+                        }
+                        Err(_) => tracing::warn!(%peer, "MLLP TLS handshake timed out; closing"),
+                    }
+                }
+            }
             drop(permit);
         });
     }
@@ -281,7 +388,12 @@ pub async fn serve(listener: TcpListener, db: PgPool, config: Config) {
 /// Serve one connection: read bytes, answer every complete frame in the buffer with [`adt_feed::process`] (an `AA`, `AE` or
 /// `AR` acknowledgement, framed), and close on a stream that is not valid MLLP, a message that is not UTF-8 or a frame
 /// that is not an HL7 message. Each message is given an acknowledgement id from a process-wide counter.
-async fn connection(mut stream: TcpStream, peer: SocketAddr, db: &PgPool, config: &Config) {
+async fn connection<S: AsyncRead + AsyncWrite + Unpin>(
+    mut stream: S,
+    peer: SocketAddr,
+    db: &PgPool,
+    config: &Config,
+) {
     let who = FeedIdentity {
         agent: config.agent.clone(),
         peer: Some(peer.ip().to_string()),

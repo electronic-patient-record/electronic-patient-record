@@ -14,10 +14,21 @@ identity record. It is **off by default**. **Development and evaluation only**: 
 | `EPR_MLLP_MAX_CONNECTIONS` | Connections served at once; others are closed on accept | 8 |
 | `EPR_MLLP_IDLE_SECONDS` | A silent connection is closed after this long | 60 |
 | `EPR_MLLP_KEPT_ANSWER` | How a refusal kept in the work queue is answered: `AR` (kept for a person, do not resend) or `AE` for a sender that needs it. Anything else refuses to start (IH-1) | `AR` |
+| `EPR_MLLP_TLS_CERT_FILE`, `EPR_MLLP_TLS_KEY_FILE` | PEM certificate chain and private key: TLS on the port, and then nothing in plain text (IH-10). Both or neither | unset |
+| `EPR_MLLP_TLS_CLIENT_CA_FILE` | PEM CA: every sender must present a certificate that chains to it. The only way the listener can know who is sending. Needs the two above | unset |
 
 A malformed setting, or a port that cannot be opened, stops the service starting. Run it on loopback and put a TLS
 terminator (stunnel, an integration engine's TLS listener) or a private network in front of anything remote. The peer's
 address is recorded on every audit row.
+
+## TLS
+
+With `EPR_MLLP_TLS_CERT_FILE` and `EPR_MLLP_TLS_KEY_FILE` the port speaks only TLS (rustls with ring; TLS 1.2 and 1.3):
+a client that does not finish a handshake within `EPR_MLLP_IDLE_SECONDS` is closed, and a plain-text client gets no
+answer. With `EPR_MLLP_TLS_CLIENT_CA_FILE` too, a sender without a certificate from that CA is refused at the handshake.
+A missing, empty or unreadable file, a file with no certificate or key, or a key that does not fit the certificate stops
+the service starting. A non-loopback bind still needs `EPR_MLLP_ALLOW_REMOTE=true`. Certificates are read once, at start:
+a renewed certificate needs a restart.
 
 ## What a message does
 
@@ -78,4 +89,4 @@ The screen is `/admin/feed` in the UI. The navigation shows how many are waiting
 
 ## What is not built
 
-`A40` merges, `PV1` and visit data, `ORU` results, `SIU`, TLS, authentication, an alert or count for the refusal queue, character sets other than UTF-8, and any conformance run against a real sending system.
+`A40` merges, `PV1` and visit data, `ORU` results, `SIU`, a notifier for the feed's alarm, the health or count outside the admin pages, character sets other than UTF-8, and any conformance run against a real sending system.
