@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - The task rules' mutation run (TL-3, CQ-30)
+
+- **Clinical risk:** none: tests.
+- **Found:** a mutation run on `task_rules.rs` left 16 mutants alive. New tests pin the event words, an empty id or title, the limits at their edges (60 working days, five reminders, a reminder the whole due period before) and the guard against a calendar of holidays; a re-run of the 100 mutants left four, none killable, listed with reasons in `docs/maintainability/mutation-testing.md`.
+- **Also recorded:** a run on the domain crate's other examined files with only the domain crate's tests left about 60 role-table mutants of `policy.rs` alive, which the service's tests may well catch; to be judged in the service run, not counted as gaps yet.
+- **Tested:** the 13 task-rule unit tests pass; the 15 working-day mutants were re-run after the last pin.
+- **Not done / not verified:** the domain crate's other misses are not judged; the service run is still to do.
+
 ## 2026-11-17 - Task rules and their store (TL-3, TL-4, TL-14; H-059)
 
 - **Clinical risk:** yes, in time: rules will decide which team is asked to do what, and when. Nothing makes a task in a running service yet (no event hook or route), and every built-in rule is a draft. Hazard H-059 added (open).

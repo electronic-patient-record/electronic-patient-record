@@ -36,6 +36,29 @@ shared with other builds). Pins added the same day (`src/ihi.rs`, `src/normalize
 
 Not re-run after the pins: the 31 are expected killed, not confirmed by a second run.
 
+## Task rules (2026-11-17)
+
+`electronic-patient-record-domain/src/task_rules.rs` (TL-3): 100 mutants. After the pins added the same day (event
+words, an empty id or title, the inclusive limits, a calendar of 1,500 holidays), every viable mutant is caught but four,
+none killable:
+
+- `add_working_days`: `guard < 366` to `<=` (twice). The guard only bounds a calendar with a year of holidays in a row;
+  366 and 367 days cannot be told apart by any real calendar.
+- `latest_versions`: `>` to `>=`. Versions of one rule are distinct by the time this runs (`parse` refuses a repeat).
+- `sub_working_days`: `day > from` to `>=`. The result is clamped to `from` afterwards, so one more step back changes
+  nothing.
+
+Confirmed by a second run of the 15 working-day mutants after the last pin.
+
+## The domain crate's other examined files (2026-11-17)
+
+A run with the domain crate's own tests only (no service tests) on the six examined domain files: 348 caught,
+91 missed (including the task rules' before their pins), 36 unviable, 5 timed out. About 60 of the misses are deleted
+arms of `policy::permitted`, the role table: the domain crate's unit tests do not exercise the whole table, and the
+service's route census and HTTP tests, which do, did not run. These are to be judged in the service run, with the
+service's tests, before any is called a gap. The rest (consent and death boundaries, hazard and policy word functions,
+purpose parsing) are listed in that run's output and not yet judged.
+
 ## Service (2026-11-17)
 
 The examined files: consent, policy, permission, death, the hazard and referral rules (now in the domain crate), the

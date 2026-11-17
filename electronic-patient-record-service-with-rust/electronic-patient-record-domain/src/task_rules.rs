@@ -711,4 +711,68 @@ late_reminder = "send-once"
         assert!(cancels(&[Event::ResultSignedOff], Event::ResultSignedOff));
         assert!(!cancels(&[Event::ResultSignedOff], Event::ResultFiled));
     }
+
+    // Pins from the 2026-11-17 mutation run (docs/maintainability/mutation-testing.md).
+    #[test]
+    fn each_event_word_is_its_serde_name() {
+        for e in Event::ALL {
+            let json = serde_json::to_string(&e).unwrap();
+            assert_eq!(json, format!("\"{}\"", e.word()));
+        }
+    }
+
+    #[test]
+    fn an_empty_id_or_title_alone_is_refused() {
+        assert!(parse(&GOOD.replace("id = \"abnormal-result\"", "id = \"\""), "t").is_err());
+        assert!(
+            parse(
+                &GOOD.replace(
+                    "title = \"An abnormal result needs a clinician\"",
+                    "title = \" \""
+                ),
+                "t"
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn the_limits_are_inclusive() {
+        let at_most = GOOD.replace("due_working_days = 2", "due_working_days = 60");
+        assert!(parse(&at_most, "t").is_ok(), "60 working days is allowed");
+        let five = at_most.replace(
+            "remind_working_days_before = [1]",
+            "remind_working_days_before = [1, 2, 3, 4, 5]",
+        );
+        assert!(parse(&five, "t").is_ok(), "five reminders are allowed");
+        let six = at_most.replace(
+            "remind_working_days_before = [1]",
+            "remind_working_days_before = [1, 2, 3, 4, 5, 6]",
+        );
+        assert!(parse(&six, "t").is_err(), "six are not");
+        let on_the_day = GOOD.replace(
+            "remind_working_days_before = [1]",
+            "remind_working_days_before = [2]",
+        );
+        assert!(
+            parse(&on_the_day, "t").is_ok(),
+            "a reminder the whole due period before is allowed"
+        );
+    }
+
+    #[test]
+    fn a_calendar_of_nothing_but_holidays_still_ends() {
+        let start = d("2026-01-01");
+        let mut holidays = BTreeSet::new();
+        let mut day = start;
+        // Longer than the guard's reach (366 days at the start and after each working day counted), so the bound shows:
+        // without the guard the answer would be the first working day after the run, years later.
+        for _ in 0..1500 {
+            holidays.insert(day);
+            day = day.tomorrow().unwrap();
+        }
+        // Bounded: the answer is some day within the guard, not a loop for ever.
+        let due = add_working_days(start, 2, &holidays);
+        assert!(due > start && due < d("2029-02-01"), "{due}");
+    }
 }
