@@ -1660,9 +1660,23 @@ async fn a_message_for_another_kind_of_deployment_is_kept_and_an_unreadable_msh_
 #[tokio::test]
 #[ignore = "needs Postgres: set DB_URL"]
 async fn a_stopping_listener_finishes_what_it_holds_and_answers_nothing_it_did_not_do() {
-    // IH-7: stop with a message in hand: either `AA` and the change committed, or no answer and no change. An idle
-    // connection is closed, nothing new is served, and the listener ends within its bound.
+    // IH-7: stop with a message certainly in hand: it is committed and answered `AA`. An idle connection is closed,
+    // nothing new is served, and the listener ends within its bound.
+    use sqlx::Connection;
     let db = db().await;
+    // The message is held mid-transaction: this connection locks audit_events against writes, and the stop is sent
+    // only once Postgres shows the feed's session waiting on that lock, so the finishing branch is taken every time.
+    let url = std::env::var("DB_URL").unwrap();
+    let mut holder = sqlx::PgConnection::connect(&url).await.unwrap();
+    let mut hold = holder.begin().await.unwrap();
+    sqlx::query("LOCK TABLE audit_events IN EXCLUSIVE MODE")
+        .execute(&mut *hold)
+        .await
+        .unwrap();
+    let held: i32 = sqlx::query_scalar("SELECT pg_backend_pid()")
+        .fetch_one(&mut *hold)
+        .await
+        .unwrap();
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
     let mut config = Config::local(addr);
@@ -1677,17 +1691,33 @@ async fn a_stopping_listener_finishes_what_it_holds_and_answers_nothing_it_did_n
     busy.write_all(&mllp::frame(message.as_bytes()))
         .await
         .unwrap();
-    stop.send(true).unwrap();
-
-    let answer = read_ack(&mut busy).await;
-    let stored = by_mrn(&db, &mrn).await;
-    match &answer {
-        Some(ack) => {
-            assert_eq!(code(ack), "AA", "{ack}");
-            assert_eq!(stored.len(), 1, "an AA with no change");
+    let waiting = tokio::time::timeout(Duration::from_secs(10), async {
+        loop {
+            let n: i64 = sqlx::query_scalar(
+                "SELECT count(*) FROM pg_stat_activity WHERE $1 = ANY(pg_blocking_pids(pid))",
+            )
+            .bind(held)
+            .fetch_one(&mut *hold)
+            .await
+            .unwrap();
+            if n > 0 {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
         }
-        None => assert!(stored.is_empty(), "a change with no AA"),
-    }
+    })
+    .await;
+    assert!(waiting.is_ok(), "the feed never reached the audit write");
+    stop.send(true).unwrap();
+    // Stopping does not abandon it: let it go and it finishes.
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    hold.rollback().await.unwrap();
+
+    let answer = read_ack(&mut busy)
+        .await
+        .expect("the message in hand is answered");
+    assert_eq!(code(&answer), "AA", "{answer}");
+    assert_eq!(by_mrn(&db, &mrn).await.len(), 1, "an AA with no change");
     let mut byte = [0u8; 1];
     let closed = tokio::time::timeout(Duration::from_secs(2), idle.read(&mut byte)).await;
     assert!(

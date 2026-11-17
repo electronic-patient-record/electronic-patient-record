@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - The shutdown test always stops with a message in hand (IH-7)
+
+- **Clinical risk:** none: a test.
+- **Changed:** `a_stopping_listener_finishes_what_it_holds_and_answers_nothing_it_did_not_do` used to send the stop just after the message, so it usually landed before the message was read and the "finish what is in hand" branch ran by chance. It now locks `audit_events` against writes in its own transaction, waits until Postgres shows the feed's session blocked on that lock, sends the stop, then releases the lock, and requires `AA` and the stored change.
+- **Tested:** passes five runs in a row; with the listener changed to abort its connections at stop, it fails. The 24 feed tests pass.
+- **Not done / not verified:** a message still unfinished after `STOP_WAIT` (rolled back, unanswered) has no test.
+
 ## 2026-11-17 - The HL7 feed checks the name on a sender's certificate (IH-6)
 
 - **Clinical risk:** small, which sender may change identity records: with the new setting, a sender whose certificate is from the right CA but for another name is now closed before anything is read. H-021's controls updated (still open).
