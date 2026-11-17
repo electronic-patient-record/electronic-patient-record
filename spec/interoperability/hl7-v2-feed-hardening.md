@@ -90,7 +90,7 @@ Each is a design to be confirmed, not a built behaviour. Clinical ones add hazar
     `spec/integration-hub-tester-component-preview.md`). A test sender for the MLLP port that sends a file of messages
     with varying fields (hub `spec/ultra7-test-message-sender.md`). Golden acknowledgements for the sample messages,
     byte-for-byte, never re-captured to make a test pass (hub `spec/17-testing-and-quality.md` §4.4).
-12. **Going live with a feed (IH-12, documentation).** Before a feed moves from an existing interface engine: its messages
+12. **Going live with a feed (IH-12, documentation). Written 2026-11-17:** [`operations/hl7/going-live.md`](../../operations/hl7/going-live.md), never used. Before a feed moves from an existing interface engine: its messages
     replayed through a test deployment and the outcomes compared; one feed at a time; held for one full business day;
     the old route kept, not deleted, so going back is a switch; queue depth and refusals watched, and any new refusal a
     stop signal. Every intended difference from the old route is a row in a register with the decision, who and when

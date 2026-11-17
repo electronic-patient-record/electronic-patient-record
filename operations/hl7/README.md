@@ -87,6 +87,11 @@ feed with the same control id, while its entry is still open, adds no row and ge
 closed, a resend is new work and is kept again. The stored text is patient data.
 The screen is `/admin/feed` in the UI. The navigation shows how many are waiting on the admin pages only. There is no alert: someone has to look.
 
+## Going live
+
+How a feed moves here from the system that serves it today, with the register of differences that must be signed
+first: [going live with an HL7 feed](going-live.md) (IH-12; never used).
+
 ## What is not built
 
 `A40` merges, `PV1` and visit data, `ORU` results, `SIU`, a notifier for the feed's alarm, the health or count outside the admin pages, character sets other than UTF-8, and any conformance run against a real sending system.

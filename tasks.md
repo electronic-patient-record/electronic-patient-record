@@ -1588,7 +1588,7 @@ with its first code. Open questions OQ-IH1 to OQ-IH6.
   never downgraded. Refines OR-3's TLS item.
 - [ ] **IH-11 (M) — Tools for integrators.** A dry run in a rolled-back transaction, audited, administrator only; a test
   sender for the MLLP port with varying fields; golden ACKs for the sample messages, never re-captured to pass.
-- [ ] **IH-12 (S, documentation, clinical process) — Going live with a feed.** In `operations/hl7/`: replay and compare
+- [x] **IH-12 (S, documentation, clinical process) — Going live with a feed.** **Done 2026-11-17:** [`operations/hl7/going-live.md`](operations/hl7/going-live.md): the sample and replay, the safety rules proven on it, the settings, the register of differences with blank sign-off columns, one feed at a time with the old route kept, the watch table and when to go back, and a record per feed. **Not done:** never used; no person has reviewed it. In `operations/hl7/`: replay and compare
   on a test deployment, one feed at a time, a held business day, the old route kept, refusals as a stop signal, and a
   register of intended differences with decision, who and when blank until a named person signs. Refines PR-9's path
   to production.

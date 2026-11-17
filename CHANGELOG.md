@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - How to take an HL7 feed live (IH-12)
+
+- **Clinical risk:** a process for a clinical change, documents only. H-021 lists it as a control not yet used.
+- **Written:** `operations/hl7/going-live.md`: agree the answers with the sender; replay a real sample on a test deployment and compare every outcome with the current system; prove the safety rules on it (late updates, duplicates, no blanking, the control id, the health); check the live settings (TLS, the client CA, thresholds, an alert); a register of intended differences whose decision, who and when stay blank until a named person signs, and no feed goes live until its rows are; one feed at a time, the old route kept and never deleted, a business day's hold; a table of what to watch and when to go back, going back first and finding out why after; and a record per feed.
+- **Not done / not verified:** never used; no clinician, Clinical Safety Officer or interface engineer has read it; the sample's handling needs the data owner's agreement, which the page asks for but cannot give.
+
 ## 2026-11-17 - TLS on the HL7 listener (IH-10)
 
 - **Clinical risk:** none directly; it closes part of H-021 (a port open to anyone, in plain text). H-021 updated (still open).
