@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - The header holds with WCAG text spacing on any font (TH-1, a fix)
+
+- **Clinical risk:** as the entry below: what a clinician sees at high zoom. No change to H-057.
+- **Found:** the zoom and text-spacing test passed here and failed in CI: on the runner's Linux fonts, with WCAG 1.4.12's spacing, part of the header was wider than the header.
+- **Changed:** nothing in the header may be wider than it (children shrink, long words break), and the purpose and theme controls wrap with their selects no wider than their row. The test now names any element that sticks out past the header, so a failure on another machine's fonts says why.
+- **Not verified:** not reproduced here (macOS fonts pass either way); CI on Linux is the check.
+
 ## 2026-11-17 - At 400 % zoom nothing runs off the side; WCAG text spacing cuts nothing off (TH-1)
 
 - **Clinical risk:** yes, what a clinician sees: at high zoom or on a narrow screen the header now wraps onto more lines, where before its links, the purpose and the theme control ran off the side (the page was 1,397 px wide at 320 px). Hazard H-057 updated (still open).

@@ -5017,7 +5017,22 @@ test.describe("zoom and text spacing", () => {
         )
         .map((e) => e.outerHTML.slice(0, 80)),
     );
-    expect(cut, "text cut off with WCAG text spacing").toEqual([]);
+    // Say which child sticks out, so a failure on another machine's fonts explains itself.
+    const sticking = await page.evaluate(() => {
+      const header = document.querySelector("header.site");
+      if (!header) return [];
+      const right = header.getBoundingClientRect().right;
+      return [...header.querySelectorAll("*")]
+        .filter((e) => e.getBoundingClientRect().right > right + 1)
+        .map(
+          (e) =>
+            `${e.tagName} ${Math.round(e.getBoundingClientRect().right - right)}px: ${(e.textContent ?? "").trim().slice(0, 30)}`,
+        );
+    });
+    expect(
+      cut,
+      `text cut off with WCAG text spacing; past the header: ${sticking.join(" | ")}`,
+    ).toEqual([]);
     const [scroll, client] = await page.evaluate(() => [
       document.documentElement.scrollWidth,
       document.documentElement.clientWidth,
