@@ -1707,10 +1707,10 @@ with criterion 0.8.2 (the latest); coverage used `cargo-llvm-cov`.
   every pair; fine at tens of rules read once, to revisit if a site file grows to hundreds.
 - [x] **QA-14 (S) — Coverage with cargo-tarpaulin.** **Done 2026-11-17:** `coverage-matcher` and `coverage-service` run
   `cargo tarpaulin --engine llvm` in their own target directory, and CI installs `cargo-tarpaulin` in place of
-  `cargo-llvm-cov` and `llvm-tools`. Floors re-set with the reason in each script: the matcher 95 (96.16 measured), the
+  `cargo-llvm-cov` and `llvm-tools`. Floors re-set with the reason in each script: the matcher 95 (97.52 measured on CI), the
   service 36 (37.71 measured; 50 under llvm-cov). The service's figure is lower because tarpaulin leaves the tests' own
-  lines out; with `--include-tests` it is 55.90, in line with llvm-cov's 53.44 on CI. **Not done:** CI's figures under
-  tarpaulin not yet compared with this machine's; no branch coverage (tarpaulin has none on the LLVM engine).
+  lines out; with `--include-tests` it is 55.90, in line with llvm-cov's 53.44 on CI. CI's figures match this machine's
+  (the service's exactly). **Not done:** no branch coverage (tarpaulin has none on the LLVM engine).
 
 ## Dependency 2026-11-17 — picomatch ReDoS, no fix
 

@@ -6,10 +6,10 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 
 - **Clinical risk:** none: benchmarks, coverage tooling and CI.
 - **Benchmarks:** `electronic-patient-record-domain/benches/domain.rs` (criterion 0.8.2, now a workspace dev dependency) takes the policy, consent and observation benchmarks from `benches/service.rs`, so a change to one rebuilds only the domain crate, and adds the task rules: the rules file checked (1, 10, 50 rules), the dry run (`plan`, 1, 10, 50), 60 working days across a holiday season, a late reminder's decision. `service-bench` runs both. `spec/performance-testing.md` updated.
-- **Coverage:** both coverage gates and CI's `coverage` job use `cargo-tarpaulin` (LLVM engine, its own target directory) in place of `cargo-llvm-cov`. The matcher measures 96.16 percent (floor 95, unchanged); the service 37.71 (floor 36, was 50). The service floor moved because tarpaulin leaves test code out of the count and llvm-cov did not: with `--include-tests` the figure is 55.90, against llvm-cov's 53.44 on CI. The reason is in `scripts/gates/coverage-service.sh`.
+- **Coverage:** both coverage gates and CI's `coverage` job use `cargo-tarpaulin` (LLVM engine, its own target directory) in place of `cargo-llvm-cov`. The matcher measures 97.52 percent on CI (floor 95, unchanged); the service 37.71 (floor 36, was 50). The service floor moved because tarpaulin leaves test code out of the count and llvm-cov did not: with `--include-tests` the figure is 55.90, against llvm-cov's 53.44 on CI. The reason is in `scripts/gates/coverage-service.sh`.
 - **Found:** this machine's llvm-cov run gave 36.12 percent because its target directory held binaries from before the domain crate moved out, which named 25 source files that no longer exist; CI's clean run was unaffected.
 - **Tested:** both bench targets run once (`-- --test`: 16 domain, 15 service benchmarks); both coverage gates pass locally; clippy on the workspace.
-- **Not done / not verified:** benchmark numbers from one run at a load average of 37, not a quiet machine; tarpaulin's figures on CI not yet compared with these; no branch coverage under tarpaulin's LLVM engine.
+- **Not done / not verified:** benchmark numbers from one run at a load average of 37, not a quiet machine; CI's tarpaulin figures match (the service's exactly: 5,719 of 15,164 lines); no branch coverage under tarpaulin's LLVM engine.
 
 ## 2026-11-17 - GitHub private vulnerability reporting is on
 
