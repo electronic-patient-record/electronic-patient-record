@@ -25,7 +25,9 @@ Report a suspected vulnerability **privately**, never in a public issue, pull re
   copy.
 - **Encryption:** if you need to send something sensitive, say so in a first email and a key will be agreed.
 
-GitHub's private vulnerability reporting is not switched on for this repository; email is the only channel.
+Or use GitHub's **private vulnerability reporting**: [report a vulnerability](https://github.com/electronic-patient-record/electronic-patient-record/security/advisories/new) (switched on 2026-11-17). The
+report is seen only by the maintainers, and the advisory can be drafted, fixed in a private fork and published from it.
+Either channel gets the same targets below.
 
 ## 2. What happens next
 

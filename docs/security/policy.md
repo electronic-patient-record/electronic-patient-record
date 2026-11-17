@@ -130,7 +130,7 @@ the feed and `/metrics`; their own penetration test before any real data; their 
 - No independent audit or penetration test; no certification claimed.
 - No threat model per data flow yet (QA-10) and no ASVS mapping (QA-9).
 - No DAST (ZAP) job in CI, although NFR-6 asks for one.
-- GitHub's private vulnerability reporting, secret scanning and Dependabot security updates are switched off for the
-  repository; the secret scan in CI is gitleaks.
+- GitHub's secret scanning and Dependabot security updates are switched off for the repository; the secret scan in CI
+  is gitleaks. (Private vulnerability reporting was switched on 2026-11-17; `SECURITY.md` gives it beside email.)
 - No one is the Clinical Safety Officer (OQ-2), so a vulnerability's hazard has no one to accept it.
 - Nothing checks this policy's review date.

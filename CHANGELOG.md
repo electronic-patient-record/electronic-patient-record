@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - GitHub private vulnerability reporting is on
+
+- **Clinical risk:** none: repository setting and documents.
+- **Changed:** private vulnerability reporting switched on for the GitHub repository, as the maintainer asked. `SECURITY.md` gives it beside email, with the same targets; `security.txt` lists it as a second `Contact`; `docs/security/policy.md` no longer says it is off.
+- **Tested:** the GitHub API reports it enabled; the `security.txt` unit tests pass (each contact appears in `SECURITY.md`).
+- **Not done / not verified:** no test report was filed through it; GitLab's mirror has no equivalent set; secret scanning and Dependabot security updates on GitHub stay off.
+
 ## 2026-11-17 - The UI audit ignores a picomatch advisory with no fix (DEP-2)
 
 - **Clinical risk:** none: build tooling only.

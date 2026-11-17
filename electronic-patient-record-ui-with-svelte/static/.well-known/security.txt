@@ -1,6 +1,7 @@
 # RFC 9116. The policy it points to is SECURITY.md; tests/unit/security-txt.test.ts keeps the two in step and fails
 # before Expires passes. A deployer serving this UI for real replaces Contact and Policy with their own.
 Contact: mailto:joel@joelparkerhenderson.com
+Contact: https://github.com/electronic-patient-record/electronic-patient-record/security/advisories/new
 Expires: 2027-05-17T00:00:00Z
 Policy: https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md
 Preferred-Languages: en
