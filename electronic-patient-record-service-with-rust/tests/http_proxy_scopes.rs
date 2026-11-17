@@ -232,7 +232,17 @@ async fn a_proxy_reads_only_what_its_terms_list_and_only_until_they_end() {
         };
         assert_eq!(read_short().await.status_code(), 200);
         tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-        assert_eq!(read_short().await.status_code(), 403);
+        // This once answered 401 instead of 403 in a full suite run (2026-11-15) and never alone (ten runs,
+        // 2026-11-17). The token lives 300 s, so a 401 here is the verifier refusing it, not the proxy terms: say what
+        // was refused, so the next failure explains itself.
+        let after = read_short().await;
+        assert_eq!(
+            after.status_code(),
+            403,
+            "after the terms' expiry: www-authenticate {:?}, body {}",
+            after.headers().get("www-authenticate"),
+            after.text()
+        );
     })
     .await;
 }

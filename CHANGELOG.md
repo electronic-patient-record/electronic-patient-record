@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - The flaky proxy-scopes test now says what refused it
+
+- **Clinical risk:** none: a test.
+- **Looked at:** `http_proxy_scopes::a_proxy_reads_only_what_its_terms_list_and_only_until_they_end` answered 401 instead of 403 once, on 2026-11-15, in a full database run. Alone it passed ten times in a row today (about 3.1 s each). Its tokens live 300 s, so a 401 after the 3 s wait is the token verifier refusing the request, not the proxy's expired terms.
+- **Changed:** the assertion after the wait now prints the `www-authenticate` header and the body, so the next failure says what was refused.
+- **Not done / not verified:** not reproduced and not diagnosed; the cause is still unknown.
+
 ## 2026-11-17 - The header holds with WCAG text spacing on any font (TH-1, a fix)
 
 - **Clinical risk:** as the entry below: what a clinician sees at high zoom. No change to H-057.
