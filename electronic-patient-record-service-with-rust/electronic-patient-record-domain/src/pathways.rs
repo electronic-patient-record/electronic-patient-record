@@ -2,7 +2,7 @@
 //! condition, when its clock starts, its target dates, its priority, and what else it needs. Pure: the
 //! catalogue and the arithmetic, no database.
 //!
-//! Cancer is one pathway among several. Each pathway version is data in `src/suspicion_pathways.toml`,
+//! Cancer is one pathway among several. Each pathway version is data in `electronic-patient-record-domain/src/suspicion_pathways.toml`,
 //! read into the build, with the sources it came from and an approver and day (both empty: a draft). A
 //! pathway either sets one priority and its targets, or has **bands** the writer must choose between
 //! (heart failure: the NT-proBNP value sets the interval), each with its own priority and targets. It may
@@ -14,7 +14,7 @@
 //! each target. These are the record's view, shown beside the suspicion; the PAS owns the clock that is
 //! reported (PA-15), and its pauses and stops are not modelled here.
 
-use crate::referrals_store::Priority;
+use crate::referral::Priority;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::sync::LazyLock;
@@ -525,7 +525,8 @@ mod tests {
 
     #[test]
     fn the_built_in_catalogue_parses_and_every_pathway_is_a_draft() {
-        let all = parse(SOURCE).expect("src/suspicion_pathways.toml must parse");
+        let all = parse(SOURCE)
+            .expect("electronic-patient-record-domain/src/suspicion_pathways.toml must parse");
         let ids: BTreeSet<&str> = all.iter().map(|p| p.id.as_str()).collect();
         for id in [
             "suspected-cancer-wales",

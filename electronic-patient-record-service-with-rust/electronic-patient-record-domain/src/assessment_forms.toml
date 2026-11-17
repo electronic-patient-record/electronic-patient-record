@@ -1,5 +1,5 @@
 # Assessment forms (WL-3): each form a versioned standard, held as data and read into the build by
-# `src/assessments.rs`, which refuses a file that does not meet the rules there.
+# `electronic-patient-record-domain/src/assessments.rs`, which refuses a file that does not meet the rules there.
 #
 # A form version is never edited once published: a change is a new version, and answers already given
 # keep the version they were given under. `approved_by` and `approved_on` name the clinical approver and

@@ -94,6 +94,13 @@ over 554 units at a load of 18 to 29. The largest were `fhir-r5` (48 s), `fhir-r
 build (40 s), `aws-lc-sys` (30 s) and `ring`, built twice (15 s each). Both TLS back ends are built because `sqlx`
 pulls `ring` and `reqwest` pulls `aws-lc-rs`.
 
+**Rebuild after an edit (measured 2026-11-17, one run, load average about 90 from other work on the machine).** After a
+one-file change to a controller: the service library alone rebuilt in 109 s; the library and every test program in
+240 s, wall clock, of which 83 build units took about 3,560 s of CPU between them, about 44 s for each of the ~80
+integration test programs (each file in `tests/` is its own program, built and linked against the library). The domain
+crate split (2026-11-17, [architecture](08-architecture.md)) spares the rules' share of the library; the test programs
+are most of the cost, and folding them into one program is task LC-15. Not measured on a quiet machine.
+
 **cargo-nextest: adopted.** It runs the same tests: 117 in the matcher, 553 in the service with the same 182 database
 tests left out, and neither project has doc tests, which nextest does not run (`cargo test --doc` follows it anyway).
 
@@ -186,7 +193,7 @@ is `skipped`, which passes; a failed `changes` job fails `ci-ok`.
 cases, and a census. It finds every file a project's tests or source name outside the project's own directory, as a
 `"../path"` literal or a `join("dir/...")` from the repository root, and fails unless a change to that file runs the
 project that reads it. It found 10 such files, among them one a hand-made list had missed: a UI test reads the
-service's `src/adjustments.rs`. Run with `SECURITY.md` dropped from the list, it failed.
+service's `electronic-patient-record-domain/src/adjustments.rs`. Run with `SECURITY.md` dropped from the list, it failed.
 
 **Measured 2026-11-15.** The documents-only push `792d5dc` ran the docs, secret-scan, toolchain and `changes` jobs, two
 CodeQL runners that skipped their steps, and `ci-ok`; the 11 build and test jobs were skipped. It took **0.6

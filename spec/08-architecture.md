@@ -4,11 +4,23 @@
 UI (SvelteKit + BFF)  ──►  Service (Axum, `axa`)  ──►  Matcher (pure, crates.io dependency)
                                 │   /api/…  native REST
                                 │   /fhir/R4/…  FHIR facade (built: src/controllers/fhir.rs); /fhir/R5/… read-only, derived (fhir_r5.rs)
-                                │   policy engine (built: src/policy.rs, authz.rs) → audit writer (built; every-access coverage not verified)
+                                │   policy engine (built: electronic-patient-record-domain/src/policy.rs, authz.rs) → audit writer (built; every-access coverage not verified)
                                 ├──► PostgreSQL 18 (resource_version, search index tables, audit, outbox)
                                 ├──► tantivy (patient typeahead)
                                 └──► TerminologyService (Snowstorm / Ontoserver; embedded fixtures in tests)
 ```
+
+**Two crates in the service (2026-11-17).** `electronic-patient-record-domain` (in the service's directory, a workspace
+member) holds the rules that are plain functions of their inputs: policy and role views, consent, permission, privacy,
+proxy terms, the referral state table, care pathways and suspicions, observations, results, adjustments, amendments,
+deaths, assessments, the watch list, the hazard register's rules, link tokens, the clock, the site's time zone, ids,
+pages and packs. It depends on no database, web framework or async runtime (serde, serde_json, jiff, toml, sha2, uuid,
+tracing and the matcher only), and never on the service. The service (`electronic-patient-record`) keeps the stores,
+routes, controllers, audit, authentication, the HL7 listener and the FHIR mapping, and re-exports each domain module
+under its old path. Why: an edit to a route or a store no longer rebuilds the rules, and the rules' tests run without
+Postgres (`cargo test -p electronic-patient-record-domain`). Not split yet: `interop` (its mappers read stores),
+`audit`, `metrics` and the stores; and most of an edit's rebuild time is the integration test programs, not the
+library (see [`local-ci.md`](local-ci.md)).
 
 Dependency direction is strictly downward. Events are to leave through a transactional outbox (subscriptions, webhooks,
 CDS Hooks, HL7 v2 adapter). Multi-tenancy is to be by `tenant_id` + PostgreSQL row-level security.

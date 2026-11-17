@@ -72,8 +72,8 @@ What the examples add to the cancer rules:
 **Requirement (2026-11-09, the maintainer).** Generalise what cancer needs (the suspicion, the target dates, the
 appointment priority) to configurable conditions, such as sleep apnoea, diabetes and dementia.
 
-Cancer is one **pathway** among several. A pathway version is data, `src/suspicion_pathways.toml` in the service, read
-into the build (`src/pathways.rs`). A stored suspicion will name the pathway and version it was made under (RS-1), so a
+Cancer is one **pathway** among several. A pathway version is data, `electronic-patient-record-domain/src/suspicion_pathways.toml` in the service, read
+into the build (`electronic-patient-record-domain/src/pathways.rs`). A stored suspicion will name the pathway and version it was made under (RS-1), so a
 new version never changes the dates of an old suspicion. Each pathway version has:
 
 | Field | Meaning | Example |
@@ -230,7 +230,7 @@ code against that condition's `subtypes`, and sends `subtype_scheme` with it; a 
 sent. The PAS's 400 is the backstop only. Of the built-in profiles, both carry the diabetes and dementia types, and
 only `wales` has the cancer site list: `generic` refuses any cancer subtype.
 
-**The mapping, built (2026-11-10).** `src/pas_suspicion.rs` in the service is the mapping as pure code: the PAS
+**The mapping, built (2026-11-10).** `electronic-patient-record-domain/src/pas_suspicion.rs` in the service is the mapping as pure code: the PAS
 condition for each pathway (and the subtype a child's type 1 diabetes implies), the `NewSuspicion`, `Amendment` and
 stop bodies, each checked against an `ActiveProfile` as the PAS answers it, or a hold with words naming ids and codes.
 A suspicion raised by a screening programme or a result is held, because the PAS needs the clinician's name. An

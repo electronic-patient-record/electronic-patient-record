@@ -3,9 +3,9 @@
 Axum 0.8 service on `axa`, on PostgreSQL 18. Read [`spec/index.md`](spec/index.md) first.
 
 - **Status**: early. Built: app wiring, secure-by-default PASETO and Keycloak guard (`src/auth.rs`), the policy engine and
-  its route gate (`src/policy.rs`, `src/authz.rs`, `src/routes.rs`), the hash-chained audit (`src/audit.rs`),
+  its route gate (`electronic-patient-record-domain/src/policy.rs`, `src/authz.rs`, `src/routes.rs`), the hash-chained audit (`src/audit.rs`),
   `POST /api/patients/compare`, and patient create, read, update and search over append-only versions
-  (`src/patients_store.rs`, `src/controllers/patients.rs`), and patient consent (`src/consent.rs` the rules,
+  (`src/patients_store.rs`, `src/controllers/patients.rs`), and patient consent (`electronic-patient-record-domain/src/consent.rs` the rules,
   `src/consents_store.rs` the append-only versions, `src/controllers/consents.rs`; a refusal hides a patient's identity
   from the named roles). Not built: the rest of the resource store, FHIR endpoints, break-the-glass grants, masking, a
   any export. Mappings to other formats live in `src/interop` (FHIR R4 `Patient`, HL7 v2 ADT with acknowledgements, SNOMED identifier check; library only, no endpoint). Care relationships (`src/relationships.rs`) are recorded by an administrator; nothing derives them from encounters.
@@ -15,7 +15,12 @@ Axum 0.8 service on `axa`, on PostgreSQL 18. Read [`spec/index.md`](spec/index.m
 - **Append-only.** No migration may add a delete path for clinical data. `audit_events` has triggers refusing
   UPDATE/DELETE/TRUNCATE; keep the DB-gated test green.
 - The binary needs the explicit `[[bin]]` entry in `Cargo.toml` (it lives in `src/bin/main.rs`).
-- Gates: `cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test --lib`, and `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --document-private-items --workspace`; then
+- **Domain rules live in `electronic-patient-record-domain/`**, a workspace crate with no database and no web
+  (policy, consent, referral, pathways, observations, adjustments, amendments, death, hazard rules and the rest). A
+  rule goes there when it is a plain function of its inputs; a store, a route, a controller or anything async stays
+  in `src/`. The service re-exports each domain module under its old path (`crate::consent`), so callers do not
+  change. The domain crate may not depend on the service, sqlx, axum, axa or tokio.
+- Gates: `cargo fmt --all --check && cargo clippy --workspace --all-targets --all-features -- -D warnings && cargo test --workspace --lib`, and `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --document-private-items --workspace`; then
   the DB-gated tests (see the repository `AGENTS.md`).
 - **Every new endpoint needs a row in `src/routes.rs` `TABLE`** (method, path template, resource, action). A route
   without one is refused with 403 for every caller, and `tests/route_census.rs` fails. Pick the resource and action

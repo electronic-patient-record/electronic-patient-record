@@ -2,7 +2,7 @@
 //! This project has no seeded synthetic patients yet, so the scenarios live here, written in plain words
 //! and invented, and a generator can take them from this table when one exists.
 //!
-//! Each runs through the pure rules in `src/death.rs`, step by step, and says what the one answer is for
+//! Each runs through the pure rules in `electronic-patient-record-domain/src/death.rs`, step by step, and says what the one answer is for
 //! each record at the end. Database-free. The routes, the store and the hold have their own tests.
 use electronic_patient_record::death::{
     Actor, Answer, Assertion, Occurred, Refusal, Source, Status, Step, advance, answer, report,

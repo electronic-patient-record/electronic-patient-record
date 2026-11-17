@@ -160,35 +160,7 @@ pub fn refusal(patient: &Patient) -> Option<crate::api_error::ApiError> {
     Some(crate::api_error::ApiError::invalid(messages).with("error_codes", codes))
 }
 
-/// Whether `d` is a plausible birth date written `YYYY`, `YYYY-MM` or `YYYY-MM-DD`, from the year 1800.
-pub(crate) fn valid_birth_date(d: &str) -> bool {
-    let parts: Vec<&str> = d.split('-').collect();
-    let num = |s: &str, len: usize| {
-        (s.len() == len && s.bytes().all(|b| b.is_ascii_digit()))
-            .then(|| s.parse::<u32>().ok())
-            .flatten()
-    };
-    match parts.as_slice() {
-        [y] => num(y, 4).is_some_and(|y| y >= 1800),
-        [y, m] => {
-            num(y, 4).is_some_and(|y| y >= 1800) && num(m, 2).is_some_and(|m| (1..=12).contains(&m))
-        }
-        [y, m, day] => {
-            let (Some(y), Some(m), Some(day)) = (num(y, 4), num(m, 2), num(day, 2)) else {
-                return false;
-            };
-            let leap = (y % 4 == 0 && y % 100 != 0) || y % 400 == 0;
-            let max = match m {
-                1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
-                4 | 6 | 9 | 11 => 30,
-                2 => 28 + u32::from(leap),
-                _ => return false,
-            };
-            y >= 1800 && (1..=max).contains(&day)
-        }
-        _ => false,
-    }
-}
+pub(crate) use crate::dates::valid_birth_date;
 
 /// Read one row into a [`Stored`] patient, putting the row's id into the record.
 ///

@@ -145,7 +145,7 @@ fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
 #[must_use]
 pub fn day_start(date: &str) -> Option<i64> {
     let parts: Vec<&str> = date.split('-').collect();
-    if parts.len() != 3 || !crate::patients_store::valid_birth_date(date) {
+    if parts.len() != 3 || !crate::dates::valid_birth_date(date) {
         return None;
     }
     let n = |s: &str| s.parse::<i64>().ok();
@@ -153,7 +153,8 @@ pub fn day_start(date: &str) -> Option<i64> {
 }
 
 /// Whether `now` (unix seconds) lies in the period. `None` if a date does not parse.
-pub(crate) fn in_period(period: Option<&Period>, now: i64) -> Option<bool> {
+#[must_use]
+pub fn in_period(period: Option<&Period>, now: i64) -> Option<bool> {
     let Some(p) = period else {
         return Some(true);
     };

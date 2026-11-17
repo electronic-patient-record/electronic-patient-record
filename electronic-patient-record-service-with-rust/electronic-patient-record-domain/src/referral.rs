@@ -264,6 +264,20 @@ pub fn next(state: State, event: Event) -> Result<State, Refused> {
     Ok(to)
 }
 
+/// How soon the referrer wants the recipient to act. The words are FHIR's `ServiceRequest.priority`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Priority {
+    /// Routine.
+    Routine,
+    /// Urgent.
+    Urgent,
+    /// As soon as possible.
+    Asap,
+    /// Immediately.
+    Stat,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

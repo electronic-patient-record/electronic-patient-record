@@ -1,5 +1,5 @@
 //! DB-gated, through the real router with login **on** (WL-7): a vaccinator, whose permissions come only
-//! from its view in `src/role_views.toml`, reads the patient's identity and allergies on REST and FHIR,
+//! from its view in `electronic-patient-record-domain/src/role_views.toml`, reads the patient's identity and allergies on REST and FHIR,
 //! and is refused their vital signs and results on both, and any write. One test, because the token guard
 //! is configured once per process.
 //!

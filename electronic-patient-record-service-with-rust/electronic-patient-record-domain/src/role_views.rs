@@ -1,6 +1,6 @@
 //! Role views (WL-7): a role that sees a named subset of the record, as data.
 //!
-//! `src/role_views.toml` is read into the build. Each view names a role whose permissions come only
+//! `electronic-patient-record-domain/src/role_views.toml` is read into the build. Each view names a role whose permissions come only
 //! from a view ([`Role::viewed`]), and the kinds of record it may read and search. [`crate::policy`] asks
 //! [`reads`] for such a role instead of its own table, so changing what a vaccinator sees is a change to
 //! the data file, reviewed like any other, not to the match in `policy.rs`. A view grants reads only;
@@ -83,7 +83,8 @@ mod tests {
 
     #[test]
     fn the_built_in_file_parses_and_the_vaccinator_sees_medicines_and_allergies() {
-        let views = parse(SOURCE).expect("src/role_views.toml must parse");
+        let views =
+            parse(SOURCE).expect("electronic-patient-record-domain/src/role_views.toml must parse");
         let expected: BTreeSet<Resource> = [
             Resource::PatientIdentity,
             Resource::AllergyIntolerance,

@@ -272,11 +272,11 @@ Staff lose patients too. They may have known a patient for years.
 | Discharge on death, ADT A03 | Refused `AR`; handled events are A01, A04, A08, A28, A31. So the feed cannot carry a discharge | Discharge and death events; A40 merges are also not built | `HANDLED_EVENTS`, the test `other_message_types_and_events_are_unsupported…`, `src/adt_feed.rs` header |
 | National demographics | No PDS link | A pack, with arrival and removal (codes 1, 2, U) | Search of service and UI `src` for `PDS`: no hits |
 | Stop outbound contact | Outbox is on only by setting; **nothing enqueues**, and only a policy-and-consent allow reaches the sink | A death check at send time in `outbox.rs`, before the first real sink | `src/outbox.rs`, [service spec](../../electronic-patient-record-service-with-rust/spec/index.md) |
-| Close a referral | 13 events, none for death; `cancelled` needs the recipient to confirm; `no-show` is available; a timeout worklist would flag it | A death event; no no-show after death | `src/referral.rs`, `src/referral_timeouts.rs` |
+| Close a referral | 13 events, none for death; `cancelled` needs the recipient to confirm; `no-show` is available; a timeout worklist would flag it | A death event; no no-show after death | `electronic-patient-record-domain/src/referral.rs`, `src/referral_timeouts.rs` |
 | Pathways | Direction only ([5.2.1](../05-domain-model.md)); not built | "Patient died" as a recorded outcome | [5.2.1](../05-domain-model.md) rule 3 |
-| Proxy ends at death | Ends only by revocation or `expires_at`, up to five years | Tie to the assertion; a separate after-death relationship | `src/proxy.rs` (`decide`), [service spec](../../electronic-patient-record-service-with-rust/spec/index.md) PA-5 |
+| Proxy ends at death | Ends only by revocation or `expires_at`, up to five years | Tie to the assertion; a separate after-death relationship | `electronic-patient-record-domain/src/proxy.rs` (`decide`), [service spec](../../electronic-patient-record-service-with-rust/spec/index.md) PA-5 |
 | Portal and access log after death | `self` and `proxy` read `/api/me/...` while the relationship is in force | Rule for a dead patient's login; a named person who may read the access log | `controllers::me`, service spec |
-| Medical examiner | Eleven roles, none for this; seven purposes, none for this | Role, purpose, time-bound access | `src/policy.rs` (`Purpose`, roles) |
+| Medical examiner | Eleven roles, none for this; seven purposes, none for this | Role, purpose, time-bound access | `electronic-patient-record-domain/src/policy.rs` (`Purpose`, roles) |
 | Next of kin, contact, related person | No type; relationship kinds are `care-team`, `active-encounter`, `self`, `proxy` | A related person who has no access | `src/relationships.rs`; search for `next_of_kin`, `emergency_contact`, `related_person`: no hits |
 | After-death wishes (AHRA s.4(3)) | Consent provisions permit or deny by role, purpose, resource, label, period | A note made in life, with effect after death, surviving a merge | [service spec](../../electronic-patient-record-service-with-rust/spec/index.md) SE-2 |
 | Age on the banner | `ageOn(birth_date, today, zone)` always counts to today | Age at death; a clear, gentle banner state | `src/lib/patient.ts`, `src/lib/PatientBanner.svelte` (UI) |
@@ -284,7 +284,7 @@ Staff lose patients too. They may have known a patient for years.
 | Undo | Append-only versions, `entered-in-error` on observations and allergies | A status, a reason, a restore list | [service spec](../../electronic-patient-record-service-with-rust/spec/index.md) |
 | Retention from death | Periods not set; "kept for ever by default" for audit | A date of death; the erasure question | [retention schedule](../../governance/retention-schedule.md) |
 | Implants for the MCCD | No implant list | Part of a wider gap | Not searched beyond the absence of a record type in the service spec |
-| Family flag | None; labels exist in `policy.rs` but no record carries one | Rules 1 to 7 above | `src/policy.rs`; SE-4 in [protected information](../access-control/protected-information.md) |
+| Family flag | None; labels exist in `policy.rs` but no record carries one | Rules 1 to 7 above | `electronic-patient-record-domain/src/policy.rs`; SE-4 in [protected information](../access-control/protected-information.md) |
 
 **What surprised me.** The feed today accepts a message that says a patient died, updates the name, and says "accepted". That is correct for what it does and quietly wrong for a clinician: the sender believes the death has been received. It stays latent while no staff member relies on the feed, and it should be fixed before someone does.
 

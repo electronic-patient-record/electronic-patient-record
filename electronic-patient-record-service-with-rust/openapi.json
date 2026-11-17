@@ -500,7 +500,7 @@
         "type": "object"
       },
       "AssessmentForm": {
-        "description": "One version of a form, from `src/assessment_forms.toml`. Empty approver and day mean a draft.",
+        "description": "One version of a form, from the form catalogue (`assessment_forms.toml`). Empty approver and day mean a draft.",
         "properties": {
           "approved_by": {
             "type": "string"
@@ -2931,7 +2931,7 @@
         "additionalProperties": false,
         "properties": {
           "code": {
-            "description": "A code from the catalogue in `src/adjustments.rs`.",
+            "description": "A code from the service's catalogue of adjustments.",
             "type": "string"
           },
           "note": {
@@ -4314,7 +4314,7 @@
       },
       "Suspicion": {
         "additionalProperties": false,
-        "description": "What the referrer suspects, under a pathway version from src/suspicion_pathways.toml. The whole suspicion is sent every time.",
+        "description": "What the referrer suspects, under a pathway version from the pathway catalogue (`suspicion_pathways.toml`). The whole suspicion is sent every time.",
         "properties": {
           "agreed": {
             "description": "Required by a pathway that needs the person's agreement, refused by one that does not.",
@@ -4562,7 +4562,7 @@
         "type": "object"
       },
       "SuspicionPathway": {
-        "description": "One pathway version from src/suspicion_pathways.toml, as the file spells it (target, band, factor are lists).",
+        "description": "One pathway version from the pathway catalogue (`suspicion_pathways.toml`), as the file spells it (target, band, factor are lists).",
         "properties": {
           "approved_by": {
             "description": "Empty: a draft.",

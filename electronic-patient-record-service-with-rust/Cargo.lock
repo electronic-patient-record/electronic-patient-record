@@ -1183,6 +1183,7 @@ dependencies = [
  "axa-test",
  "axum",
  "criterion",
+ "electronic-patient-record-domain",
  "electronic-patient-record-matcher",
  "er7",
  "fhir",
@@ -1205,6 +1206,20 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "url",
+ "uuid",
+]
+
+[[package]]
+name = "electronic-patient-record-domain"
+version = "0.1.0"
+dependencies = [
+ "electronic-patient-record-matcher",
+ "jiff",
+ "serde",
+ "serde_json",
+ "sha2 0.11.1",
+ "toml",
+ "tracing",
  "uuid",
 ]
 

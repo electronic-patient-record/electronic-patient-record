@@ -2,7 +2,7 @@
 
 The rules for recording that a person has died (BV-1). A first draft for clinical and legal review: no clinician, medical examiner or bereaved person has reviewed it. The reasons and sources are on [bereavement](index.md).
 
-**Built:** the rules and the read model in `electronic-patient-record-service-with-rust/src/death.rs`, and the append-only store in `death_store.rs` (table `death_assertion_versions`, view `death_assertion_current`, migration 25). The routes are in `controllers/deaths.rs`. The banner on the patient and summary pages says so, and `DeathSection.svelte` reports and takes steps. An HL7 message with PID-29 or PID-30 stores a report, as below. FHIR is below. **The hold:** the outbox runner holds any event about a patient with a standing assertion, as below. Nothing enqueues and no sink exists, so nothing is held in use today. **The list:** `/api/death-reports` and the `/death-reports` page, as below.
+**Built:** the rules and the read model in `electronic-patient-record-service-with-rust/electronic-patient-record-domain/src/death.rs`, and the append-only store in `death_store.rs` (table `death_assertion_versions`, view `death_assertion_current`, migration 25). The routes are in `controllers/deaths.rs`. The banner on the patient and summary pages says so, and `DeathSection.svelte` reports and takes steps. An HL7 message with PID-29 or PID-30 stores a report, as below. FHIR is below. **The hold:** the outbox runner holds any event about a patient with a standing assertion, as below. Nothing enqueues and no sink exists, so nothing is held in use today. **The list:** `/api/death-reports` and the `/death-reports` page, as below.
 
 ## The model
 

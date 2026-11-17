@@ -1,4 +1,6 @@
 [workspace]
+# The service, and its domain rules as their own crate, so an edit to a route or a store does not rebuild them.
+members = [".", "electronic-patient-record-domain"]
 
 [package]
 name = "electronic-patient-record"
@@ -20,22 +22,33 @@ name = "electronic-patient-record"
 path = "src/bin/main.rs"
 
 [workspace.dependencies]
+# Shared with the domain crate, so the two never differ.
+serde = { version = "1", features = ["derive"] }
+uuid = { version = "1", features = ["v4"] }
+serde_json = { version = "1", features = ["float_roundtrip", "arbitrary_precision"] }
+jiff = { version = "0.2", default-features = false, features = ["std", "serde", "tzdb-bundle-always"] }
+tracing = { version = "0.1" }
+sha2 = "0.11"
+toml = "1"
+electronic-patient-record-matcher = "0.8.0"
 # The shared service plumbing.
 axa = { version = "0.17", features = ["cursor-pagination", "idempotency", "outbox", "postgres-sqlx", "problem", "ratelimit"] }
 
 [dependencies]
 axa = { workspace = true }
-serde = { version = "1", features = ["derive"] }
+# The domain rules: no database, no web (electronic-patient-record-domain/).
+electronic-patient-record-domain = { version = "0.1.0", path = "electronic-patient-record-domain" }
+serde = { workspace = true }
 serde_urlencoded = "0.7"
-uuid = { version = "1", features = ["v4"] }
-serde_json = { version = "1", features = ["float_roundtrip", "arbitrary_precision"] }
+uuid = { workspace = true }
+serde_json = { workspace = true }
 # Time (DEP-1): jiff 0.2, already in the tree, with its own copy of the time-zone database so the image needs no
 # zoneinfo. chrono is unmaintained (RUSTSEC-2026-0543); it is still in the tree through axa, not through this crate.
-jiff = { version = "0.2", default-features = false, features = ["std", "serde", "tzdb-bundle-always"] }
+jiff = { workspace = true }
 tokio = { version = "1.54", default-features = false, features = ["rt-multi-thread", "sync", "time", "net", "io-util"] }
 async-trait = { version = "0.1" }
 axum = { version = "0.8" }
-tracing = { version = "0.1" }
+tracing = { workspace = true }
 # TLS on the MLLP listener (IH-10): rustls with ring only, already in the tree through sqlx. The provider is chosen
 # explicitly, because aws-lc-rs is in the tree too and rustls cannot pick between two installed providers.
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
@@ -46,11 +59,11 @@ rustls-webpki = { version = "0.103", default-features = false, features = ["std"
 sqlx = { version = "0.9", default-features = false, features = ["postgres", "runtime-tokio", "tls-rustls-ring-webpki", "json", "macros", "migrate"] }
 # Keyed integrity MACs for the audit hash chain; SHA-256 for the unkeyed fallback.
 integrity-mac = "0.2.0"
-sha2 = "0.11"
-toml = "1"
+sha2 = { workspace = true }
+toml = { workspace = true }
 url = "2"
 # The matcher's `Patient` is the API identity DTO, with no adapter layer. Published crate.
-electronic-patient-record-matcher = "0.8.0"
+electronic-patient-record-matcher = { workspace = true }
 # Offline PASETO v4.public verification against the authentication service's Ed25519 keys, and
 # Keycloak (OIDC) access-token verification against a realm's published keys.
 authentication-verifier = { version = "0.9.1", default-features = false, features = ["paseto", "fetch", "keycloak"] }

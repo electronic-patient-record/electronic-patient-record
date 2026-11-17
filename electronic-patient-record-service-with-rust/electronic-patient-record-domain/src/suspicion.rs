@@ -7,7 +7,7 @@
 //! grounds (a criterion met, a result, or a clinical judgement), any instruction the receiving team needs
 //! (Parkinson's: refer untreated), and whether the patient has been told.
 //!
-//! Each suspicion is made under a **pathway** version (`src/pathways.rs`, RS-6): the pathway sets the clock
+//! Each suspicion is made under a **pathway** version (`electronic-patient-record-domain/src/pathways.rs`, RS-6): the pathway sets the clock
 //! start, the target days and the priority, and may need a band, factors or the person's agreement, which
 //! the suspicion then carries.
 //!

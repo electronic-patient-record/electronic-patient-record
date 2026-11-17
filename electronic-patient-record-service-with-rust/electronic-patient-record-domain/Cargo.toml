@@ -1,0 +1,24 @@
+[package]
+name = "electronic-patient-record-domain"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.98"
+publish = true
+authors = ["Joel Parker Henderson <joel@joelparkerhenderson.com>"]
+description = "Electronic patient record domain rules: policy, consent, referrals, pathways, observations and the rest, with no database and no web"
+readme = "README.md"
+license = "MIT OR Apache-2.0 OR BSD-3-Clause OR GPL-2.0-only OR GPL-3.0-only"
+keywords = ["patient", "healthcare", "ehr", "epr"]
+categories = ["data-structures"]
+include = ["src/**/*", "README.md"]
+
+# Only libraries that hold no connection and serve no request: a rule here is a plain function of its inputs.
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+jiff = { workspace = true }
+toml = { workspace = true }
+sha2 = { workspace = true }
+uuid = { workspace = true }
+tracing = { workspace = true }
+electronic-patient-record-matcher = { workspace = true }

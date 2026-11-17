@@ -113,6 +113,10 @@ fn service() -> PathBuf {
 fn service_source() -> Vec<(String, String)> {
     let mut files = Vec::new();
     sources(&service().join("src"), &mut files);
+    sources(
+        &service().join("electronic-patient-record-domain/src"),
+        &mut files,
+    );
     files
         .into_iter()
         .map(|(path, text)| {
@@ -132,6 +136,7 @@ fn nothing_in_the_core_is_shaped_like_something_we_refuse_to_build() {
     let mut files = Vec::new();
     for dir in [
         service().join("src"),
+        service().join("electronic-patient-record-domain/src"),
         service().join("migrations"),
         root.join("electronic-patient-record-matcher-with-rust/src"),
         root.join("electronic-patient-record-ui-with-svelte/src"),
@@ -160,6 +165,10 @@ fn no_support_service_or_helpline_is_written_into_core_code() {
     let root = service().parent().unwrap().to_path_buf();
     let mut files = Vec::new();
     sources(&service().join("src"), &mut files);
+    sources(
+        &service().join("electronic-patient-record-domain/src"),
+        &mut files,
+    );
     sources(
         &root.join("electronic-patient-record-ui-with-svelte/src"),
         &mut files,
@@ -227,7 +236,7 @@ fn the_hold_and_the_proxy_stop_do_not_read_the_date() {
 #[test]
 fn a_death_does_not_start_a_referral() {
     for name in [
-        "src/death.rs",
+        "electronic-patient-record-domain/src/death.rs",
         "src/death_store.rs",
         "src/controllers/deaths.rs",
         "src/adt_feed.rs",

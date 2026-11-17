@@ -21,10 +21,9 @@ fn sources(dir: &Path, out: &mut Vec<(String, String)>) {
 #[test]
 fn no_id_column_is_compared_as_text() {
     let mut files = Vec::new();
-    sources(
-        &Path::new(env!("CARGO_MANIFEST_DIR")).join("src"),
-        &mut files,
-    );
+    for dir in ["src", "electronic-patient-record-domain/src"] {
+        sources(&Path::new(env!("CARGO_MANIFEST_DIR")).join(dir), &mut files);
+    }
     let mut found = Vec::new();
     for (path, text) in &files {
         for (n, line) in text.lines().enumerate() {
@@ -46,10 +45,9 @@ fn no_id_column_is_compared_as_text() {
 #[test]
 fn store_helpers_are_shared_and_conflicts_are_typed() {
     let mut files = Vec::new();
-    sources(
-        &Path::new(env!("CARGO_MANIFEST_DIR")).join("src"),
-        &mut files,
-    );
+    for dir in ["src", "electronic-patient-record-domain/src"] {
+        sources(&Path::new(env!("CARGO_MANIFEST_DIR")).join(dir), &mut files);
+    }
     let mut found = Vec::new();
     for (path, text) in &files {
         if path.ends_with("src/store.rs") {

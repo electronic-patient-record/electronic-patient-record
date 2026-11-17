@@ -342,20 +342,20 @@ Open:
 | A death to be bereaved by | **None**: no death is recorded | See [bereavement](../bereavement/index.md) | Search of service, matcher and UI `src`, migrations and tests: no hits for `death`, `deceased`, `bereave`, `grief` |
 | A related person with no access | None; kinds are `care-team`, `active-encounter`, `self`, `proxy` | A non-access relationship, by consent | `src/relationships.rs` |
 | Bereavement note on a survivor's record | No clinical note type; the record holds identity, allergies, observations | A dated life event, not a disorder | [service spec](../../electronic-patient-record-service-with-rust/spec/index.md) section 1 |
-| Referral to a non-EPR service | Store, routes (`/api/patients/{id}/referrals`, `.../events`), worklist, timeouts and queue exist; the recipient is expected to answer | Signposted and information-given steps; a recipient organisation | `src/routes.rs`, `src/referrals_store.rs`, `src/referral.rs`, `src/referral_timeouts.rs` |
+| Referral to a non-EPR service | Store, routes (`/api/patients/{id}/referrals`, `.../events`), worklist, timeouts and queue exist; the recipient is expected to answer | Signposted and information-given steps; a recipient organisation | `src/routes.rs`, `src/referrals_store.rs`, `electronic-patient-record-domain/src/referral.rs`, `src/referral_timeouts.rs` |
 | A `no-response` that means nothing | Timeouts list any unanswered referral for a configured priority | The signposted step, which never times out | `src/referral_timeouts.rs` |
-| Label for counselling notes | `R`, `V`, `PSY`, `HIV`, `SUD`, `ETH` only; no `PSYTHPN` | A service-limited class | `src/policy.rs` |
-| `PSY` as confidence | Unmasks for `Clinician, Nurse, AlliedHealth, Patient`; no team test | A service test | `src/policy.rs`, `unmasked_for` |
+| Label for counselling notes | `R`, `V`, `PSY`, `HIV`, `SUD`, `ETH` only; no `PSYTHPN` | A service-limited class | `electronic-patient-record-domain/src/policy.rs` |
+| `PSY` as confidence | Unmasks for `Clinician, Nurse, AlliedHealth, Patient`; no team test | A service test | `electronic-patient-record-domain/src/policy.rs`, `unmasked_for` |
 | Records carrying a label | None; masking not applied | SE-4 before any counselling note | [protected information](../access-control/protected-information.md) |
 | Consent for contact | Consent provisions cover access, not contact | A contact consent | [service spec](../../electronic-patient-record-service-with-rust/spec/index.md) SE-2 |
 | Outbound messages | Outbox built; nothing enqueues; only a `log` sink | A date-driven rule must not exist; `tests/grief_census.rs` fails on one | `src/outbox.rs` |
 | Scores | Only the matcher's score is allow-listed; a `score` column trips PA-3 | Reason and allow-list if an outcome is stored | `tests/support_only.rs`, [service spec](../../electronic-patient-record-service-with-rust/spec/index.md) |
-| Observation model for an outcome | Eight vital signs only, each with one UCUM unit | A questionnaire or outcome model | `src/observations.rs`, service spec RC-6 |
-| Counsellor role | Eleven roles; `allied-health` is the nearest | A counsellor or volunteer role, a service limit | `src/policy.rs` |
-| Proxy view of a survivor's note | A proxy reads identity, allergies, photo, access log by scope; nothing else | Keep a bereavement note out of every scope | `src/proxy.rs`, service spec PA-5 |
+| Observation model for an outcome | Eight vital signs only, each with one UCUM unit | A questionnaire or outcome model | `electronic-patient-record-domain/src/observations.rs`, service spec RC-6 |
+| Counsellor role | Eleven roles; `allied-health` is the nearest | A counsellor or volunteer role, a service limit | `electronic-patient-record-domain/src/policy.rs` |
+| Proxy view of a survivor's note | A proxy reads identity, allergies, photo, access log by scope; nothing else | Keep a bereavement note out of every scope | `electronic-patient-record-domain/src/proxy.rs`, service spec PA-5 |
 | Family or household view | None | **Keep it that way** | `tests/grief_census.rs` searches `src/routes.rs` for `family` and `household` |
 | Third-party review of an export | No patient-copy export | A human review step | [data exchange](../data-exchange/index.md) |
-| Purpose of use | Seven purposes | Likely fits `treatment`; a voluntary service's use is unclear | `src/policy.rs`, `Purpose` |
+| Purpose of use | Seven purposes | Likely fits `treatment`; a voluntary service's use is unclear | `electronic-patient-record-domain/src/policy.rs`, `Purpose` |
 
 **What surprised me.** The project's existing strictness helps here by accident. A proxy reads only named scopes, so anything new is hidden from a proxy by default. A `score` column trips a test. A column that means `withhold` or `suppress` does too, so a contact-suppression field will trip it and need a reason. That is a useful moment for someone to look.
 

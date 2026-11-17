@@ -15,5 +15,5 @@ for crate in electronic-patient-record-matcher-with-rust electronic-patient-reco
     rustup toolchain install "$version" --profile minimal --no-self-update
   fi
   echo "rust-msrv: $crate on Rust $version"
-  (cd "$root/$crate" && cargo "+$version" check --locked --all-targets)
+  (cd "$root/$crate" && cargo "+$version" check --locked --workspace --all-targets)
 done

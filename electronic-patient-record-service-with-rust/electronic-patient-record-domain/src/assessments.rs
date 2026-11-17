@@ -3,7 +3,7 @@
 //!
 //! The Welsh Nursing Care Record publishes each nursing form as a versioned national data standard with
 //! a named clinical sign-off (`spec/wales/index.md`). Here a form version is data in
-//! `src/assessment_forms.toml`, read into the build; a completed assessment keeps the form id and version
+//! `electronic-patient-record-domain/src/assessment_forms.toml`, read into the build; a completed assessment keeps the form id and version
 //! it was made under, and is always shown with that version's questions, so a later version never
 //! rewrites what was asked or answered. A form with no approver is a draft, and says so.
 //!
@@ -248,7 +248,8 @@ mod tests {
 
     #[test]
     fn the_built_in_catalogue_parses_with_two_versions_of_one_form_both_drafts() {
-        let forms = parse(SOURCE).expect("src/assessment_forms.toml must parse");
+        let forms = parse(SOURCE)
+            .expect("electronic-patient-record-domain/src/assessment_forms.toml must parse");
         assert_eq!(latest("skin-check"), Some(2));
         assert_eq!(form("skin-check", 1).unwrap().questions.len(), 2);
         assert_eq!(form("skin-check", 2).unwrap().questions.len(), 3);

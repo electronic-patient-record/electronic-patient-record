@@ -165,4 +165,4 @@ For the Clinical Safety Officer; none is accepted or closed by this page.
 - [DACB] DAC Beachcroft case note: https://www.dacbeachcroft.com/en/what-we-think/former-nhs-employee-prosecuted-and-fined-after-illegally-accessing-patient-records-without-a-valid-l (snippet)
 - [LGL] Local Government Lawyer: https://localgovernmentlawyer.co.uk/employment/395-employment-news/101787-nhs-england-orders-immediate-suspension-for-staff-suspected-of-snooping-on-patient-records-2 (snippet)
 - [MHR] OAIC My Health Record access controls: https://www.oaic.gov.au/privacy/guidance-and-advice/my-health-record/my-health-record-access-controls/ (snippet)
-- This repository: `electronic-patient-record-service-with-rust/src/policy.rs`, `relationships.rs`, `break_glass.rs`; [Access control](index.md); [Audit](../audit/index.md).
+- This repository: `electronic-patient-record-service-with-rust/electronic-patient-record-domain/src/policy.rs`, `relationships.rs`, `break_glass.rs`; [Access control](index.md); [Audit](../audit/index.md).

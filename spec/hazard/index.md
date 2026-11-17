@@ -73,13 +73,13 @@ column is never empty, even for a closed hazard).
 Everything above governs the hazard log **file** in this repository, which the manufacturer keeps (DCB0129). The request
 "in the EPR system" is a different thing: a **hazard register inside the running product**, where a deploying organisation
 keeps its own hazards (DCB0160, the deployer's duty, with its own CSO). **Nothing of it is built:** the service has no
-`ClinicalSafetyOfficer` role (`src/policy.rs` lists ten roles, none of them this one), no hazard table and no hazard route.
-`src/gate.rs` already names the CSO as an example approver, and that is the only trace.
+`ClinicalSafetyOfficer` role (`electronic-patient-record-domain/src/policy.rs` lists ten roles, none of them this one), no hazard table and no hazard route.
+`electronic-patient-record-domain/src/gate.rs` already names the CSO as an example approver, and that is the only trace.
 
 **Built 2026-10-28 (AS-17, in part):** the `clinical-safety-officer` role and the `Hazard` resource in the policy table
 (CSO and clinician read, raise, record controls and reopen; the auditor reads; nobody else); the append-only
 `hazard_versions` table with view `hazard_current` (migration 16, triggers refuse update, delete and truncate); the pure
-rules (`src/hazard.rs`); the store (`src/hazard_store.rs`, no delete function); `GET` and `POST /api/hazards` and
+rules (`electronic-patient-record-domain/src/hazard.rs`); the store (`src/hazard_store.rs`, no delete function); `GET` and `POST /api/hazards` and
 `PUT /api/hazards/{hazard_id}` with the steps `control`, `retire` and `reopen`; the 403 for a retirement without the role,
 which does not switch off when login is off; the 422 without evidence; four eyes (whoever recorded a control cannot
 retire); an audit row per step holding the evidence hashes and no free text; the table in the personal-data inventory;
@@ -113,7 +113,7 @@ hash and reference are stored), the repository-file items (AS-13 to AS-15).
 | Four eyes | The person who recorded the control or the removal cannot also retire it. On a one-person site this fails; allow it only with a recorded override and flag it on the safety case |
 | A hazard stuck open when the CSO leaves | Safe, but a lock-out: require **two** named CSOs (a deputy) and record who holds the role |
 | Evidence rots | Store the hash and a copy of small artefacts; a scheduled re-check re-hashes the evidence and **reopens** the hazard if it no longer matches, then raises an alert |
-| Retiring a hazard that gates a feature | Link a hazard to a gate (`src/gate.rs`): a feature with an open linked hazard may not reach `Show`. Retiring is then clinical, because it can turn a feature on |
+| Retiring a hazard that gates a feature | Link a hazard to a gate (`electronic-patient-record-domain/src/gate.rs`): a feature with an open linked hazard may not reach `Show`. Retiring is then clinical, because it can turn a feature on |
 | Time of day and clock | Use the server clock; the Podman clock-drift note in `AGENTS.md` applies to the test setup, not the rule |
 
 ### Risks

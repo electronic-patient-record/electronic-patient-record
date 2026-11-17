@@ -45,6 +45,10 @@ fn root() -> PathBuf {
 fn every_delivery_goes_through_a_listed_way_out() {
     let mut files = Vec::new();
     rust_files(&root().join("src"), &mut files);
+    rust_files(
+        &root().join("electronic-patient-record-domain/src"),
+        &mut files,
+    );
     let mut found: Vec<String> = Vec::new();
     for path in &files {
         let text = std::fs::read_to_string(path).unwrap();

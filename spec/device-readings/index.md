@@ -19,7 +19,7 @@ rejected reading stays in the record, never deleted, and never counts. A clinici
 their own observation, which names the device reading it replaces; the device's value is never edited. This is the
 RC-11 rule (readings tagged by source stay out of flowsheets and scores until accepted) applied to bedside devices.
 
-**What the record lacks for it today.** An `Observation` (`src/observations.rs`) holds a code, a value or an absent
+**What the record lacks for it today.** An `Observation` (`electronic-patient-record-domain/src/observations.rs`) holds a code, a value or an absent
 reason, a unit and ranges. It has no source, no device, no capture time apart from the version's recorded time, and no
 validated or rejected state. EM-11 and RC-11 add them; no score is computed anywhere yet, so nothing counts an
 unvalidated reading today.

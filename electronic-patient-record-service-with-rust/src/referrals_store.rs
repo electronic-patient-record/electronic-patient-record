@@ -25,19 +25,7 @@ const MAX_TEXT: usize = 2000;
 /// The most external identifiers on one referral.
 const MAX_EXTERNAL: usize = 10;
 
-/// How soon the referrer wants the recipient to act. The words are FHIR's `ServiceRequest.priority`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum Priority {
-    /// Routine.
-    Routine,
-    /// Urgent.
-    Urgent,
-    /// As soon as possible.
-    Asap,
-    /// Immediately.
-    Stat,
-}
+pub use crate::referral::Priority;
 
 /// An identifier the referral also carries, such as a national booking reference. The system is a pack's
 /// to define; the core does not name any.

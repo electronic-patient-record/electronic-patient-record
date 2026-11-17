@@ -431,7 +431,7 @@ fn pathway_schemas() -> Value {
         "SuspicionPathway": {
             "type": "object",
             "required": ["id", "version", "title", "sources", "approved_by", "approved_on", "clock_from", "needs_agreement", "no_target_reason", "target", "band", "factor"],
-            "description": "One pathway version from src/suspicion_pathways.toml, as the file spells it (target, band, factor are lists).",
+            "description": "One pathway version from the pathway catalogue (`suspicion_pathways.toml`), as the file spells it (target, band, factor are lists).",
             "properties": {
                 "id": {"type": "string"}, "version": {"type": "integer"}, "title": {"type": "string"},
                 "sources": {"type": "array", "items": {"type": "string"}},
@@ -464,7 +464,7 @@ fn suspicion_schemas() -> Value {
         "Suspicion": {
             "type": "object", "additionalProperties": false,
             "required": ["condition", "point_of_suspicion", "source", "by", "grounds", "patient_told", "pathway", "pathway_version"],
-            "description": "What the referrer suspects, under a pathway version from src/suspicion_pathways.toml. The whole suspicion is sent every time.",
+            "description": "What the referrer suspects, under a pathway version from the pathway catalogue (`suspicion_pathways.toml`). The whole suspicion is sent every time.",
             "properties": {
                 "condition": {"type": "string", "maxLength": 200, "description": "The referrer's words, always kept."},
                 "code": {"type": "object", "additionalProperties": false, "required": ["system", "code"], "properties": {
@@ -648,7 +648,7 @@ fn assessment_schemas() -> Value {
     json!({
         "AssessmentForm": {
             "type": "object", "required": ["id", "version", "title", "approved_by", "approved_on", "question"],
-            "description": "One version of a form, from `src/assessment_forms.toml`. Empty approver and day mean a draft.",
+            "description": "One version of a form, from the form catalogue (`assessment_forms.toml`). Empty approver and day mean a draft.",
             "properties": {
                 "id": {"type": "string"}, "version": {"type": "integer"}, "title": {"type": "string"},
                 "approved_by": {"type": "string"}, "approved_on": {"type": "string"},
@@ -989,7 +989,7 @@ fn amendment_schemas() -> Value {
         "RecordAdjustment": {
             "type": "object", "required": ["code", "reason"], "additionalProperties": false,
             "properties": {
-                "code": {"type": "string", "description": "A code from the catalogue in `src/adjustments.rs`."},
+                "code": {"type": "string", "description": "A code from the service's catalogue of adjustments."},
                 "note": {"type": ["string", "null"], "maxLength": 200, "description": "A short note. `interpreter-spoken` needs the language here."},
                 "review_by": {"type": ["string", "null"], "description": "`YYYY-MM-DD`, today or later."},
                 "reason": {"type": "string"}

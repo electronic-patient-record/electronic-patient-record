@@ -187,4 +187,4 @@ Summarised as OQ-PI1 to OQ-PI6 in [open questions](../16-open-questions.md).
 - [ONT] IPC Ontario, PHIPA Decision 144: https://decisions.ipc.on.ca/ipc-cipvp/phipa/en/496393/1/document.do ; Ottawa Hospital (snippets)
 - [MHR] OAIC, My Health Record access controls: https://www.oaic.gov.au/privacy/guidance-and-advice/my-health-record/my-health-record-access-controls/ (snippet)
 - [MOU] England's former national health data body ends sharing, Digital Health, November 2018: https://www.digitalhealth.net/2018/11/nhs-digital-patient-data-sharing-home-office-end/ (snippet)
-- This repository: `electronic-patient-record-service-with-rust/src/policy.rs`, `consent.rs`; [Access control](index.md); [Audit](../audit/index.md).
+- This repository: `electronic-patient-record-service-with-rust/electronic-patient-record-domain/src/policy.rs`, `consent.rs`; [Access control](index.md); [Audit](../audit/index.md).

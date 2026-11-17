@@ -7,7 +7,7 @@
 # approved_on are empty), and the service shows each as a draft. A deployment replaces this file with its
 # own approved catalogue.
 #
-# Rules the service checks when it reads this file (`src/pathways.rs`):
+# Rules the service checks when it reads this file (`electronic-patient-record-domain/src/pathways.rs`):
 # - versions of one pathway run 1, 2, 3 ... and none is removed, because a stored suspicion names its
 #   pathway version;
 # - approved_by and approved_on are both given (a YYYY-MM-DD day) or both empty;

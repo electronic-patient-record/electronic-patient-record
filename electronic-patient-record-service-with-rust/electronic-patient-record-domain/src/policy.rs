@@ -5,7 +5,7 @@
 //!
 //! 1. **The route gate** ([`gate`]): may this subject *ever* perform this action on this kind of
 //!    resource? It runs in middleware for every route, so a route without a policy entry is
-//!    refused (see [`crate::routes`]). It is coarse role-based access control (RBAC).
+//!    refused (see the service's `routes` module). It is coarse role-based access control (RBAC).
 //! 2. **The record decision** ([`evaluate`]): may this subject perform this action on *this*
 //!    record, given the relationship to the patient, the record's security labels, the purpose of
 //!    use, the patient's consent and any break-the-glass grant? It is attribute-based (ABAC) and
@@ -71,7 +71,7 @@ pub enum Role {
     /// The Medical Incident Officer: reads the hazard register and raises a hazard. Sees no clinical content, and cannot
     /// record a control or retire a hazard.
     MedicalIncidentOfficer,
-    /// Gives vaccinations (WL-7): reads only the subset its view in `src/role_views.toml` names.
+    /// Gives vaccinations (WL-7): reads only the subset its view in `electronic-patient-record-domain/src/role_views.toml` names.
     Vaccinator,
 }
 
@@ -139,7 +139,7 @@ impl Role {
         )
     }
 
-    /// Whether the role's permissions come only from a view in `src/role_views.toml` (WL-7).
+    /// Whether the role's permissions come only from a view in `electronic-patient-record-domain/src/role_views.toml` (WL-7).
     #[must_use]
     pub fn viewed(self) -> bool {
         matches!(self, Role::Vaccinator)
@@ -761,7 +761,7 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         // content, no export until consent (SE-2).
         (Role::Integrator, Identity) => &[Search, Create, Update],
         // A role with a view reads and searches what its view names, and nothing else (WL-7). The
-        // subset is data: `src/role_views.toml`, read by `role_views.rs`.
+        // subset is data: `electronic-patient-record-domain/src/role_views.toml`, read by `role_views.rs`.
         (r, resource) if r.viewed() && crate::role_views::reads(r, resource) => &[Read, Search],
         _ => &[],
     }

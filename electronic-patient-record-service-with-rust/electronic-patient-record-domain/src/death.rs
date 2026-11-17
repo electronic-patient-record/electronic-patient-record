@@ -158,7 +158,7 @@ fn named(actor: &Actor) -> bool {
 /// The date's earliest moment is not after `now`: a partial date is compared at its start, so a
 /// death earlier this year or this month is accepted.
 fn check_date(at: &str, now: jiff::Timestamp) -> Result<(), Refusal> {
-    let start = if crate::patients_store::valid_birth_date(at) {
+    let start = if crate::dates::valid_birth_date(at) {
         let mut parts = at.splitn(3, '-');
         let year: i32 = parts
             .next()

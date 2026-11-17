@@ -38,8 +38,8 @@ cargo_version() { sed -n 's/^version *= *"\([^"]*\)".*/\1/p' "$1" | sed -n 1p; }
 generate() {
   migrations=$(find "$API/migrations" -name '*.sql' | wc -l | tr -d ' ')
   routes=$(find "$API/src/controllers" -name '*.rs' -print0 | xargs -0 cat | grep -cE '\.add\(' || true)
-  svc_tests=$(count_rs '^[[:space:]]*#\[(tokio::)?test' "$API/src" "$API/tests")
-  svc_ignored=$(count_rs '^[[:space:]]*#\[ignore' "$API/src" "$API/tests")
+  svc_tests=$(count_rs '^[[:space:]]*#\[(tokio::)?test' "$API/src" "$API/electronic-patient-record-domain/src" "$API/tests")
+  svc_ignored=$(count_rs '^[[:space:]]*#\[ignore' "$API/src" "$API/electronic-patient-record-domain/src" "$API/tests")
   mat_tests=$(count_rs '^[[:space:]]*#\[(tokio::)?test' "$MATCHER/src" "$MATCHER/tests")
   mat_ignored=$(count_rs '^[[:space:]]*#\[ignore' "$MATCHER/src" "$MATCHER/tests")
   vitest=$(count_ts '^[[:space:]]*(it|test)(\.each)?[(`]' "$UI/tests/unit")

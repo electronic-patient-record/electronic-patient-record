@@ -17,7 +17,7 @@ fi
 for dir in electronic-patient-record-service-with-rust electronic-patient-record-matcher-with-rust; do
   if has "^$dir/.*\\.rs$"; then
     echo "pre-commit: cargo fmt --check ($dir)"
-    (cd "$dir" && cargo fmt --check) || fail=1
+    (cd "$dir" && cargo fmt --all --check) || fail=1
   fi
 done
 if has '\.(md|csv|rs|ts|svelte)$|^scripts/|^tasks\.md$'; then

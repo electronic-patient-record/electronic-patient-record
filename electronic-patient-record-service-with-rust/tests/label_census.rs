@@ -184,14 +184,18 @@ fn the_decision_is_still_asked_with_no_labels() {
 #[test]
 fn no_route_acts_on_a_mask_yet() {
     let mut files = Vec::new();
-    let mut dirs = vec![std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src")];
+    let service = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let mut dirs = vec![
+        service.join("src"),
+        service.join("electronic-patient-record-domain/src"),
+    ];
     while let Some(dir) = dirs.pop() {
         for entry in std::fs::read_dir(dir).unwrap() {
             let path = entry.unwrap().path();
             if path.is_dir() {
                 dirs.push(path);
             } else if path.extension().is_some_and(|e| e == "rs")
-                && !path.ends_with("src/policy.rs")
+                && !path.ends_with("electronic-patient-record-domain/src/policy.rs")
             {
                 files.push(path);
             }

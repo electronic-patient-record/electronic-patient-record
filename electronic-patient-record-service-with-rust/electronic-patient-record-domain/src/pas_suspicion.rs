@@ -308,8 +308,8 @@ mod tests {
 
     fn profile(name: &str) -> ActiveProfile {
         let text = match name {
-            "wales" => include_str!("../tests/fixtures/pas/profile-wales.json"),
-            _ => include_str!("../tests/fixtures/pas/profile-generic.json"),
+            "wales" => include_str!("../../tests/fixtures/pas/profile-wales.json"),
+            _ => include_str!("../../tests/fixtures/pas/profile-generic.json"),
         };
         serde_json::from_str(text).unwrap()
     }
