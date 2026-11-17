@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - Two feed tests pass on a database they have already run on
+
+- **Clinical risk:** none: tests.
+- **Found:** `the_sample_set_goes_through_the_feed_as_its_readme_says` (found during the axa 0.17 upgrade) and, once in three runs, `no_message_value_reaches_an_audit_row_the_queue_a_version_reason_a_metric_or_a_log_line` failed on a reused test database: a fixed birth date with a fixed name, or with marker names that share their start and end, made the duplicate check (rightly) take an earlier run's patient for the new one, so the first message was refused.
+- **Changed:** both tests now give each run its own family name or birth date. The sample files are unchanged.
+- **Tested:** the 18 feed database tests pass nine runs in a row on one database (they failed on the second run before).
+- **Not done / not verified:** other database tests were not run repeatedly on one database; CI uses a fresh one, so it never saw this.
+
 ## 2026-11-17 - axa 0.17 (AX-16)
 
 - **Clinical risk:** none. No schema or response body changes; the OpenAPI document is unchanged.

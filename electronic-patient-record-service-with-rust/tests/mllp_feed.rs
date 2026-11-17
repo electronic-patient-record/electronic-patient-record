@@ -939,12 +939,20 @@ async fn no_message_value_reaches_an_audit_row_the_queue_a_version_reason_a_metr
             "MSH|^~\\&|REG|CLINIC|EPR|HOSP|20261117090000||ADT^{event}^{structure}|{control}|P|2.5\rEVN|{event}|20261117090000"
         )
     };
-    let applied = format!("{}\r{}", msh("A28", "ADT_A05", &tag("V")), pid("19800314"));
-    let refused = format!("{}\r{}", msh("A08", "ADT_A05", &tag("V")), pid("19800315"));
+    // This run's own birth date, and another day of it for the conflict: markers share their start and end, so with a
+    // fixed date the duplicate check rightly takes an earlier run's patient for this one.
+    let born = dob();
+    let other = format!(
+        "{}{}",
+        &born[..6],
+        if &born[6..] == "01" { "02" } else { "01" }
+    );
+    let applied = format!("{}\r{}", msh("A28", "ADT_A05", &tag("V")), pid(&born));
+    let refused = format!("{}\r{}", msh("A08", "ADT_A05", &tag("V")), pid(&other));
     let unsupported = format!(
         "{}\r{}",
         msh("R01", "ORU_R01", &tag("V")).replace("ADT^R01", "ORU^R01"),
-        pid("19800314")
+        pid(&born)
     );
     let before = electronic_patient_record::metrics::render();
     let mut acks = Vec::new();
@@ -1800,6 +1808,9 @@ async fn the_sample_set_goes_through_the_feed_as_its_readme_says() {
     let mut s = TcpStream::connect(addr).await.unwrap();
     let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../operations/hl7/samples");
     let mrn = tag("mrn");
+    // A family name and birth date of this run's own: with the samples' fixed ones, the duplicate check rightly finds
+    // the patient an earlier run left in a shared database, and the first message is refused.
+    let (family, born) = (tag("Sample"), dob());
     let mut n = 0;
     let mut send_file = async |name: &str| {
         n += 1;
@@ -1811,6 +1822,8 @@ async fn the_sample_set_goes_through_the_feed_as_its_readme_says() {
             .join("\r")
             .replace("{{control}}", &tag(&format!("S{n}")))
             .replace("{{mrn}}", &mrn)
+            .replace("|Sample^", &format!("|{family}^"))
+            .replace("|19800314|", &format!("|{born}|"))
             // The national test number would match patients an earlier run left in a shared database.
             .replace("~9434765919^^^NHS^NH", "");
         code(&send(&mut s, &text).await.unwrap()).to_string()
