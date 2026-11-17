@@ -99,6 +99,19 @@ feed with the same control id, while its entry is still open, adds no row and ge
 closed, a resend is new work and is kept again. The stored text is patient data.
 The screen is `/admin/feed` in the UI. The navigation shows how many are waiting on the admin pages only. There is no alert: someone has to look.
 
+## Samples and a test sender
+
+`samples/` holds synthetic messages, one per case ([what each shows](samples/README.md)). To send them to a test
+listener and see each answer (IH-11):
+
+```sh
+node scripts/hl7/send.mjs --port 2575 operations/hl7/samples/a28-register.hl7 operations/hl7/samples/a08-update.hl7
+node scripts/hl7/send.mjs --tls --ca ca.pem --cert client.pem --key client.key --count 10 operations/hl7/samples/*.hl7
+```
+
+Every send gets a new control id; `{{mrn}}` is one patient for the run (`--mrn` to choose it). It exits 0 only when
+every answer is `AA`. Never point it at a live feed.
+
 ## Going live
 
 How a feed moves here from the system that serves it today, with the register of differences that must be signed

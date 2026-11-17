@@ -1,0 +1,3 @@
+MSH|^~\&|LAB|CLINIC|EPR|HOSP|20261117160000||ORU^R01^ORU_R01|{{control}}|P|2.5
+PID|1||{{mrn}}^^^LOCAL||Sample^Ann||19800314|F
+OBR|1|||1234-5^A test

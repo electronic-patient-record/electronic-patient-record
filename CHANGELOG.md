@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - HL7 sample messages, golden acknowledgements and a test sender (IH-11, in part)
+
+- **Clinical risk:** none: test material and a tool for test deployments.
+- **Built:** `operations/hl7/samples/`, ten synthetic messages (no real person; the national number is the published test value): each handled event for one patient, a correction, a death, a training message, a type not handled, a message with no PID and a bad national number, with a README of what each shows. `tests/hl7_samples.rs` reads every sample and compares the reader's acknowledgement byte for byte with `tests/golden/hl7-acks/<name>.ack`, rewritten only by `EPR_BLESS=1` for a meant change, and fails on a golden file with no sample. `scripts/hl7/send.mjs` sends samples to a listener, over TLS if asked, with a new control id per send and one patient per run, printing each answer; its tests run in the `docs-load-harness` gate, which now covers the Node tools.
+- **Tested:** the goldens; the samples' codes; on Postgres, the whole set sent in order through a production feed (six `AA`, four `AR`, one patient, the death holding contact); the sender against a fake listener (fill, answers, options, control ids, one patient).
+- **Not done / not verified:** the dry run (IH-11's other part); no sample from a real sending system; the goldens are the reader's answers, so a refusal the feed keeps reads `AE` there and `AR` in the feed, as the README says.
+
 ## 2026-11-17 - What an HL7 feed's sender may send (IH-6)
 
 - **Clinical risk:** small, what reaches the record: with the new settings, a message from another application or facility, of another HL7 version, or of an event the feed does not take is refused and kept, not applied. Covered by H-021's controls.

@@ -1641,3 +1641,50 @@ async fn a_message_from_a_sender_this_feed_does_not_take_is_kept_not_applied() {
         assert!(by_mrn(&db, &mrn).await.is_empty(), "{why} was applied");
     }
 }
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn the_sample_set_goes_through_the_feed_as_its_readme_says() {
+    // IH-11: the synthetic samples, sent in order through a production feed, for one patient.
+    let db = db().await;
+    let addr = start(&db, |c| c.processing_id = Some('P')).await;
+    let mut s = TcpStream::connect(addr).await.unwrap();
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../operations/hl7/samples");
+    let mrn = tag("mrn");
+    let mut n = 0;
+    let mut send_file = async |name: &str| {
+        n += 1;
+        let text = std::fs::read_to_string(dir.join(format!("{name}.hl7")))
+            .unwrap()
+            .trim_end()
+            .lines()
+            .collect::<Vec<_>>()
+            .join("\r")
+            .replace("{{control}}", &tag(&format!("S{n}")))
+            .replace("{{mrn}}", &mrn)
+            // The national test number would match patients an earlier run left in a shared database.
+            .replace("~9434765919^^^NHS^NH", "");
+        code(&send(&mut s, &text).await.unwrap()).to_string()
+    };
+    for (name, want) in [
+        ("a28-register", "AA"),
+        ("a08-update", "AA"),
+        ("a01-admit", "AA"),
+        ("a04-outpatient", "AA"),
+        ("a31-update-person", "AA"),
+        ("a08-death", "AA"),
+        ("a28-training", "AR"),
+        ("oru-not-handled", "AR"),
+        ("no-pid", "AR"),
+        ("bad-national-number", "AR"),
+    ] {
+        assert_eq!(send_file(name).await, want, "{name}");
+    }
+    let stored = by_mrn(&db, &mrn).await;
+    assert_eq!(stored.len(), 1, "one patient");
+    let id = stored[0].id.clone();
+    assert!(
+        death_store::answer(&db, &id).await.unwrap().holds_contact(),
+        "the death report holds contact"
+    );
+}
