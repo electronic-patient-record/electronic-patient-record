@@ -49,6 +49,9 @@ pub struct FeedIdentity {
     pub agent: String,
     /// The peer's address, recorded on every row.
     pub peer: Option<String>,
+    /// The name the sender's TLS client certificate was checked for (`EPR_MLLP_TLS_CLIENT_NAMES`), recorded on every
+    /// audit row as `peer_certificate`; `None` without TLS client names.
+    pub peer_certificate: Option<String>,
     /// How a refusal kept in the work queue is answered.
     pub kept_answer: KeptAnswer,
     /// The processing id (MSH-11) this deployment takes, `P`, `T` or `D`; any other is refused and kept (IH-2). `None`
@@ -56,6 +59,16 @@ pub struct FeedIdentity {
     pub processing_id: Option<char>,
     /// What this feed's sender may send (IH-6); empty lists take anything.
     pub rules: SenderRules,
+}
+
+impl FeedIdentity {
+    /// An audit row's detail with `peer_certificate` added when the sender's certificate was checked for a name.
+    fn detail(&self, mut detail: serde_json::Value) -> serde_json::Value {
+        if let (Some(name), Some(map)) = (&self.peer_certificate, detail.as_object_mut()) {
+            map.insert("peer_certificate".into(), name.clone().into());
+        }
+        detail
+    }
 }
 
 /// What a feed's sender may send (IH-6), from the listener's settings. An empty list takes anything, as before.
@@ -624,12 +637,12 @@ async fn apply_message(
         row.resource_ref = Some("DeathAssertion".into());
         row.purpose_of_use = Some(Purpose::Operations.code().into());
         row.network_address.clone_from(&who.peer);
-        row.detail = Some(serde_json::json!({
+        row.detail = Some(who.detail(serde_json::json!({
             "assertion": stored.id,
             "version": stored.version,
             "status": stored.assertion.status.word(),
             "control_id": inbound.control_id,
-        }));
+        })));
         audit::append(&mut *tx, audit::chain(), &row)
             .await
             .map_err(|e| temporary(&StoreError::Db(e.to_string())))?;
@@ -644,7 +657,7 @@ async fn apply_message(
     event.resource_ref = Some("Patient/hl7".into());
     event.purpose_of_use = Some(Purpose::Operations.code().into());
     event.network_address.clone_from(&who.peer);
-    event.detail = Some(serde_json::json!({
+    event.detail = Some(who.detail(serde_json::json!({
         "hl7_event": inbound.event,
         "control_id": inbound.control_id,
         "result": match &applied {
@@ -655,7 +668,7 @@ async fn apply_message(
         "warnings": inbound.warnings.len(),
         "candidates_cut": candidates_cut,
         "message_time_known": inbound.message_time.is_some(),
-    }));
+    })));
     audit::append(&mut *tx, audit::chain(), &event)
         .await
         .map_err(|e| temporary(&StoreError::Db(e.to_string())))?;
@@ -802,7 +815,7 @@ async fn audit_refusal(
     row.resource_ref = Some("Patient/hl7".into());
     row.purpose_of_use = Some(Purpose::Operations.code().into());
     row.network_address.clone_from(&who.peer);
-    row.detail = Some(serde_json::json!({
+    row.detail = Some(who.detail(serde_json::json!({
         "hl7_event": event,
         "control_id": control_id,
         "refused": match why {
@@ -810,7 +823,7 @@ async fn audit_refusal(
             Refusal::Conflict(_) => "conflict",
             Refusal::Temporary(_) => "temporary",
         },
-    }));
+    })));
     if let Err(e) = audit::append(db, audit::chain(), &row).await {
         tracing::error!(error = %e, "an ADT refusal could not be audited");
     }
@@ -960,6 +973,7 @@ mod tests {
         FeedIdentity {
             agent: "mllp:test".into(),
             peer: None,
+            peer_certificate: None,
             kept_answer,
             processing_id: None,
             rules: SenderRules::default(),
@@ -1297,6 +1311,7 @@ mod tests {
         let who = FeedIdentity {
             agent: "mllp:test".into(),
             peer: None,
+            peer_certificate: None,
             kept_answer: KeptAnswer::Reject,
             processing_id: None,
             rules: SenderRules::default(),

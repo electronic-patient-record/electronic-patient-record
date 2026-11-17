@@ -923,6 +923,7 @@ async fn no_message_value_reaches_an_audit_row_the_queue_a_version_reason_a_metr
     let who = FeedIdentity {
         agent: FEED_AGENT.into(),
         peer: Some("127.0.0.1".into()),
+        peer_certificate: None,
         kept_answer: KeptAnswer::Reject,
         processing_id: None,
         rules: Default::default(),
@@ -1317,7 +1318,7 @@ fn tls_client(certs: &Certs, with_cert: bool) -> tokio_rustls::TlsConnector {
 
 /// A listener with no database behind it: a type not handled is still answered `AR` (IH-1), which is all these tests
 /// need to see that a message got through.
-async fn start_tls(certs: &Certs, client_ca: bool) -> std::net::SocketAddr {
+async fn start_tls(certs: &Certs, client_ca: bool, names: &[&str]) -> std::net::SocketAddr {
     let db = sqlx::postgres::PgPoolOptions::new()
         .acquire_timeout(Duration::from_millis(200))
         .connect_lazy("postgres://nobody@127.0.0.1:1/none")
@@ -1329,7 +1330,12 @@ async fn start_tls(certs: &Certs, client_ca: bool) -> std::net::SocketAddr {
         client_ca.then_some(ca.as_str()),
     )
     .unwrap();
-    start(&db, move |c| c.tls = Some(tls)).await
+    let names: Vec<String> = names.iter().map(|n| (*n).to_string()).collect();
+    start(&db, move |c| {
+        c.tls = Some(tls);
+        c.client_names = names;
+    })
+    .await
 }
 
 fn oru() -> String {
@@ -1340,7 +1346,7 @@ fn oru() -> String {
 async fn with_tls_a_message_is_answered_over_tls_and_plain_text_gets_nothing() {
     // IH-10.
     let certs = Certs::make();
-    let addr = start_tls(&certs, false).await;
+    let addr = start_tls(&certs, false, &[]).await;
     let tcp = TcpStream::connect(addr).await.unwrap();
     let name = rustls_pki_types::ServerName::try_from("127.0.0.1").unwrap();
     let mut secure = tls_client(&certs, false)
@@ -1362,7 +1368,7 @@ async fn with_tls_a_message_is_answered_over_tls_and_plain_text_gets_nothing() {
 #[tokio::test]
 async fn with_a_client_ca_only_a_sender_with_a_certificate_is_served() {
     let certs = Certs::make();
-    let addr = start_tls(&certs, true).await;
+    let addr = start_tls(&certs, true, &[]).await;
     let name = || rustls_pki_types::ServerName::try_from("127.0.0.1").unwrap();
     // Without a certificate the handshake fails, or the first read finds the connection closed.
     let tcp = TcpStream::connect(addr).await.unwrap();
@@ -1483,10 +1489,123 @@ fn a_tls_setting_that_cannot_be_used_stops_the_start() {
                 ("EPR_MLLP_TLS_CLIENT_CA_FILE", empty.as_str()),
             ],
         ),
+        (
+            "client names with no client CA",
+            vec![
+                ("EPR_MLLP_TLS_CERT_FILE", cert.as_str()),
+                ("EPR_MLLP_TLS_KEY_FILE", key.as_str()),
+                ("EPR_MLLP_TLS_CLIENT_NAMES", "test-sender"),
+            ],
+        ),
+        (
+            "a client name that is not a name",
+            vec![
+                ("EPR_MLLP_TLS_CERT_FILE", cert.as_str()),
+                ("EPR_MLLP_TLS_KEY_FILE", key.as_str()),
+                ("EPR_MLLP_TLS_CLIENT_CA_FILE", ca.as_str()),
+                ("EPR_MLLP_TLS_CLIENT_NAMES", "test sender!"),
+            ],
+        ),
     ] {
         let got = config(pairs);
         assert!(got.is_err(), "{why} was accepted");
     }
+    let named = config(vec![
+        ("EPR_MLLP_TLS_CERT_FILE", &cert),
+        ("EPR_MLLP_TLS_KEY_FILE", &key),
+        ("EPR_MLLP_TLS_CLIENT_CA_FILE", &ca),
+        ("EPR_MLLP_TLS_CLIENT_NAMES", " test-sender, 10.0.0.7 ,"),
+    ])
+    .unwrap()
+    .unwrap();
+    assert_eq!(named.client_names, ["test-sender", "10.0.0.7"]);
+}
+
+#[test]
+fn a_certificate_is_named_only_for_a_name_it_is_valid_for() {
+    // IH-6: the subject alternative name decides, not the common name ("client").
+    use rustls_pki_types::pem::PemObject;
+    let certs = Certs::make();
+    let client = rustls_pki_types::CertificateDer::from_pem_file(certs.path("client.pem")).unwrap();
+    let names = |n: &[&str]| n.iter().map(|s| (*s).to_string()).collect::<Vec<_>>();
+    assert_eq!(
+        mllp::certificate_name(&client, &names(&["other", "test-sender"])).as_deref(),
+        Some("test-sender")
+    );
+    for none in [&["client"][..], &["other-sender"], &["127.0.0.1"], &[]] {
+        assert_eq!(
+            mllp::certificate_name(&client, &names(none)),
+            None,
+            "{none:?}"
+        );
+    }
+    let garbage = rustls_pki_types::CertificateDer::from(vec![0u8; 8]);
+    assert_eq!(
+        mllp::certificate_name(&garbage, &names(&["test-sender"])),
+        None
+    );
+}
+
+#[tokio::test]
+async fn with_client_names_a_certificate_valid_for_none_of_them_is_closed() {
+    let certs = Certs::make();
+    let addr = start_tls(&certs, true, &["other-sender"]).await;
+    let name = rustls_pki_types::ServerName::try_from("127.0.0.1").unwrap();
+    let tcp = TcpStream::connect(addr).await.unwrap();
+    // The chain is good, so the handshake may complete; nothing is answered.
+    if let Ok(mut s) = tls_client(&certs, true).connect(name, tcp).await {
+        let _ = s.write_all(&mllp::frame(oru().as_bytes())).await;
+        assert_eq!(
+            read_ack(&mut s).await,
+            None,
+            "a certificate for another name was served"
+        );
+    }
+    let addr = start_tls(&certs, true, &["test-sender"]).await;
+    let name = rustls_pki_types::ServerName::try_from("127.0.0.1").unwrap();
+    let tcp = TcpStream::connect(addr).await.unwrap();
+    let mut s = tls_client(&certs, true).connect(name, tcp).await.unwrap();
+    assert_eq!(
+        code(&send(&mut s, &oru()).await.unwrap()),
+        "AR",
+        "the listed name is served"
+    );
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn the_name_a_client_certificate_was_checked_for_is_on_the_audit_row() {
+    // IH-6: the sender is named by its certificate, not by what it says in MSH.
+    let db = db().await;
+    let certs = Certs::make();
+    let agent = tag("mllp:named");
+    let ca = certs.path("ca.pem");
+    let tls = mllp::tls_config(
+        &certs.path("server.pem"),
+        &certs.path("server.key"),
+        Some(&ca),
+    )
+    .unwrap();
+    let addr = {
+        let agent = agent.clone();
+        start(&db, move |c| {
+            c.agent = agent;
+            c.tls = Some(tls);
+            c.client_names = vec!["elsewhere".into(), "test-sender".into()];
+        })
+        .await
+    };
+    let name = rustls_pki_types::ServerName::try_from("127.0.0.1").unwrap();
+    let tcp = TcpStream::connect(addr).await.unwrap();
+    let mut s = tls_client(&certs, true).connect(name, tcp).await.unwrap();
+    assert_eq!(code(&send(&mut s, &oru()).await.unwrap()), "AR");
+    let named: Vec<Option<String>> =
+        sqlx::query_scalar("SELECT detail->>'peer_certificate' FROM audit_events WHERE agent = $1")
+            .bind(&agent)
+            .fetch_all(&db)
+            .await
+            .unwrap();
+    assert_eq!(named, [Some("test-sender".to_string())]);
 }
 
 #[tokio::test]
@@ -1699,6 +1818,7 @@ async fn a_dry_run_says_what_a_message_would_do_and_keeps_nothing() {
     let who = FeedIdentity {
         agent: agent.clone(),
         peer: None,
+        peer_certificate: None,
         kept_answer: KeptAnswer::Reject,
         processing_id: None,
         rules: Default::default(),

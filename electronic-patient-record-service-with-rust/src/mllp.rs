@@ -12,7 +12,10 @@
 //! **TLS (IH-10)**, rustls with ring only: `EPR_MLLP_TLS_CERT_FILE` and `EPR_MLLP_TLS_KEY_FILE` (PEM, both or neither)
 //! turn it on, and then the port speaks only TLS: a client that does not complete a handshake is closed, and nothing is
 //! ever served in plain text. `EPR_MLLP_TLS_CLIENT_CA_FILE` (PEM) also requires every sender to present a certificate
-//! that chains to it, which is the only way MLLP here can know who is sending. A file that is missing, empty or
+//! that chains to it, which is the only way MLLP here can know who is sending, and `EPR_MLLP_TLS_CLIENT_NAMES` (a comma
+//! list of DNS names or addresses, which needs the client CA) also requires that certificate to be valid for one of
+//! them: the name it matched is recorded on every audit row as `peer_certificate`, and a certificate valid for none of
+//! them closes the connection before anything is read. A file that is missing, empty or
 //! unreadable, holds no certificate or no key, or a key that does not fit the certificate, stops the service starting. Whatever the sender says about itself in `MSH` is not used to
 //! decide anything: the audit agent is `EPR_MLLP_AGENT`, and the peer address is recorded.
 //!
@@ -156,6 +159,8 @@ pub struct Config {
     pub kept_answer: KeptAnswer,
     /// TLS, when configured: then the port speaks nothing else (IH-10).
     pub tls: Option<Arc<rustls::ServerConfig>>,
+    /// The names a client certificate must be valid for, one of them (`EPR_MLLP_TLS_CLIENT_NAMES`); empty checks none.
+    pub client_names: Vec<String>,
     /// The processing id this deployment takes (`EPR_MLLP_PROCESSING_ID`: `P`, `T` or `D`), or any when unset (IH-2).
     pub processing_id: Option<char>,
     /// What the sender may send (`EPR_MLLP_SENDING_APPLICATIONS`, `EPR_MLLP_VERSIONS`, `EPR_MLLP_EVENTS`; IH-6).
@@ -239,6 +244,7 @@ impl Config {
             max_frame: MAX_FRAME,
             kept_answer: KeptAnswer::Reject,
             tls: None,
+            client_names: Vec::new(),
             processing_id: None,
             rules: SenderRules::default(),
         }
@@ -323,6 +329,26 @@ impl Config {
                 );
             }
         };
+        let client_names: Vec<String> = set("EPR_MLLP_TLS_CLIENT_NAMES")
+            .map(|v| {
+                v.split(',')
+                    .map(str::trim)
+                    .filter(|n| !n.is_empty())
+                    .map(String::from)
+                    .collect()
+            })
+            .unwrap_or_default();
+        if !client_names.is_empty() && set("EPR_MLLP_TLS_CLIENT_CA_FILE").is_none() {
+            return Err("EPR_MLLP_TLS_CLIENT_NAMES needs EPR_MLLP_TLS_CLIENT_CA_FILE".into());
+        }
+        if let Some(bad) = client_names
+            .iter()
+            .find(|n| rustls_pki_types::ServerName::try_from(n.as_str()).is_err())
+        {
+            return Err(format!(
+                "EPR_MLLP_TLS_CLIENT_NAMES entry {bad:?} must be a DNS name or an IP address"
+            ));
+        }
         let processing_id = match set("EPR_MLLP_PROCESSING_ID").as_deref() {
             None => None,
             Some("P") => Some('P'),
@@ -387,6 +413,7 @@ impl Config {
             agent,
             kept_answer,
             tls,
+            client_names,
             processing_id,
             rules,
             max_connections: usize::try_from(number("EPR_MLLP_MAX_CONNECTIONS", 8, 1, 256)?)
@@ -457,13 +484,32 @@ pub async fn serve_until(
         let (db, config, stop) = (db.clone(), Arc::clone(&config), stop.clone());
         connections.spawn(async move {
             match &config.tls {
-                None => connection(stream, peer, &db, &config, stop).await,
+                None => connection(stream, peer, None, &db, &config, stop).await,
                 // TLS only: a handshake that fails or does not finish within the idle time closes the connection,
                 // and nothing is read in plain text (IH-10).
                 Some(tls) => {
                     let acceptor = tokio_rustls::TlsAcceptor::from(Arc::clone(tls));
                     match tokio::time::timeout(config.idle, acceptor.accept(stream)).await {
-                        Ok(Ok(secure)) => connection(secure, peer, &db, &config, stop).await,
+                        Ok(Ok(secure)) if config.client_names.is_empty() => {
+                            connection(secure, peer, None, &db, &config, stop).await;
+                        }
+                        Ok(Ok(secure)) => {
+                            let named = secure
+                                .get_ref()
+                                .1
+                                .peer_certificates()
+                                .and_then(<[_]>::first)
+                                .and_then(|c| certificate_name(c, &config.client_names));
+                            match named {
+                                Some(name) => {
+                                    connection(secure, peer, Some(name), &db, &config, stop).await;
+                                }
+                                None => tracing::warn!(
+                                    %peer,
+                                    "MLLP client certificate is valid for none of EPR_MLLP_TLS_CLIENT_NAMES; closing"
+                                ),
+                            }
+                        }
                         Ok(Err(e)) => {
                             tracing::warn!(%peer, error = %e, "MLLP TLS handshake failed; closing")
                         }
@@ -496,6 +542,24 @@ pub async fn serve_until(
     }
 }
 
+/// The first of `names` that a client's end-entity certificate is valid for (its subject alternative names, as webpki
+/// checks a server's), or `None` when it is valid for none or cannot be read. The chain was already verified by the
+/// handshake; this only names the sender.
+#[must_use]
+pub fn certificate_name(
+    cert: &rustls_pki_types::CertificateDer<'_>,
+    names: &[String],
+) -> Option<String> {
+    let cert = webpki::EndEntityCert::try_from(cert).ok()?;
+    names
+        .iter()
+        .find(|n| {
+            rustls_pki_types::ServerName::try_from(n.as_str())
+                .is_ok_and(|name| cert.verify_is_valid_for_subject_name(&name).is_ok())
+        })
+        .cloned()
+}
+
 /// A listener the service started, and how to stop it.
 pub struct Running {
     stop: tokio::sync::watch::Sender<bool>,
@@ -510,6 +574,7 @@ impl Running {
         adt_feed::set_configured(FeedIdentity {
             agent: config.agent.clone(),
             peer: None,
+            peer_certificate: None,
             kept_answer: config.kept_answer,
             processing_id: config.processing_id,
             rules: config.rules.clone(),
@@ -555,6 +620,7 @@ pub async fn stop_kept() -> bool {
 async fn connection<S: AsyncRead + AsyncWrite + Unpin>(
     mut stream: S,
     peer: SocketAddr,
+    peer_certificate: Option<String>,
     db: &PgPool,
     config: &Config,
     mut stop: tokio::sync::watch::Receiver<bool>,
@@ -562,6 +628,7 @@ async fn connection<S: AsyncRead + AsyncWrite + Unpin>(
     let who = FeedIdentity {
         agent: config.agent.clone(),
         peer: Some(peer.ip().to_string()),
+        peer_certificate,
         kept_answer: config.kept_answer,
         processing_id: config.processing_id,
         rules: config.rules.clone(),

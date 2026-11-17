@@ -1197,6 +1197,7 @@ dependencies = [
  "integrity-mac",
  "rustls",
  "rustls-pki-types",
+ "rustls-webpki",
  "serde",
  "serde_json",
  "serde_urlencoded",

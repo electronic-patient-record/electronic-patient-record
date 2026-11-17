@@ -40,6 +40,8 @@ tracing = { version = "0.1" }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 rustls-pki-types = { version = "1", features = ["std"] }
 tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
+# The name on a sender's client certificate (IH-6): webpki is already in the tree through rustls; no crypto needed.
+rustls-webpki = { version = "0.103", default-features = false, features = ["std"] }
 sqlx = { version = "0.9", default-features = false, features = ["postgres", "runtime-tokio", "tls-rustls-ring-webpki", "json", "chrono", "macros", "migrate"] }
 # Keyed integrity MACs for the audit hash chain; SHA-256 for the unkeyed fallback.
 integrity-mac = "0.2.0"

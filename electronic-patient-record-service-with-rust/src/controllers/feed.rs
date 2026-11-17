@@ -191,6 +191,7 @@ async fn dry_run(
     let default_feed = crate::adt_feed::FeedIdentity {
         agent: "mllp:adt-feed".into(),
         peer: None,
+        peer_certificate: None,
         kept_answer: crate::adt_feed::KeptAnswer::default(),
         processing_id: None,
         rules: crate::adt_feed::SenderRules::default(),

@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - The HL7 feed checks the name on a sender's certificate (IH-6)
+
+- **Clinical risk:** small, which sender may change identity records: with the new setting, a sender whose certificate is from the right CA but for another name is now closed before anything is read. H-021's controls updated (still open).
+- **Built:** `EPR_MLLP_TLS_CLIENT_NAMES`, a comma list of DNS names or addresses, which needs `EPR_MLLP_TLS_CLIENT_CA_FILE`. After the handshake the sender's certificate must be valid for one of them (`mllp::certificate_name`: webpki's subject-name check on the subject alternative names, never the common name); the name it matched goes on every audit row the feed writes as `peer_certificate`. A name that is not a DNS name or address, or names without a client CA, stop the start. `rustls-webpki` is now a direct dependency; it was already in the tree through rustls.
+- **Tested:** the check on a test certificate (the listed name, the common name, another name, an address, garbage); a listener closing a certificate for another name and serving the listed one; the settings refused; the name on the audit row (Postgres).
+- **Not done / not verified:** the name is in the audit row's detail, not the agent, and not on the work queue entry or the feed health; several senders on one listener is still not built; not tried with a real sender's certificate.
+
 ## 2026-11-17 - The flaky proxy-scopes test now says what refused it
 
 - **Clinical risk:** none: a test.

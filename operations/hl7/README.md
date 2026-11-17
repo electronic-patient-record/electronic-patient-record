@@ -20,6 +20,7 @@ identity record. It is **off by default**. **Development and evaluation only**: 
 | `EPR_MLLP_PROCESSING_ID` | `P`, `T` or `D`: the processing id (MSH-11) this deployment takes; a message with another is refused `AR` and kept, so a test message never reaches a live record (IH-2). Unset takes any. A message outside any of these four lists is refused `AR` and kept, with a reason that quotes none of its values | unset |
 | `EPR_MLLP_TLS_CERT_FILE`, `EPR_MLLP_TLS_KEY_FILE` | PEM certificate chain and private key: TLS on the port, and then nothing in plain text (IH-10). Both or neither | unset |
 | `EPR_MLLP_TLS_CLIENT_CA_FILE` | PEM CA: every sender must present a certificate that chains to it. The only way the listener can know who is sending. Needs the two above | unset |
+| `EPR_MLLP_TLS_CLIENT_NAMES` | Comma-separated DNS names or IP addresses: the sender's certificate must also be valid for one of them (its subject alternative names, not its common name), and the name it matched is recorded on every audit row as `peer_certificate` (IH-6). Needs the client CA | unset |
 
 A malformed setting, or a port that cannot be opened, stops the service starting. Run it on loopback and put a TLS
 terminator (stunnel, an integration engine's TLS listener) or a private network in front of anything remote. The peer's
@@ -30,6 +31,8 @@ address is recorded on every audit row.
 With `EPR_MLLP_TLS_CERT_FILE` and `EPR_MLLP_TLS_KEY_FILE` the port speaks only TLS (rustls with ring; TLS 1.2 and 1.3):
 a client that does not finish a handshake within `EPR_MLLP_IDLE_SECONDS` is closed, and a plain-text client gets no
 answer. With `EPR_MLLP_TLS_CLIENT_CA_FILE` too, a sender without a certificate from that CA is refused at the handshake.
+With `EPR_MLLP_TLS_CLIENT_NAMES` as well, a certificate from that CA that is valid for none of the names is closed before
+anything is read, so one CA can serve several senders and each listener takes only its own.
 A missing, empty or unreadable file, a file with no certificate or key, or a key that does not fit the certificate stops
 the service starting. A non-loopback bind still needs `EPR_MLLP_ALLOW_REMOTE=true`. Certificates are read once, at start:
 a renewed certificate needs a restart.
