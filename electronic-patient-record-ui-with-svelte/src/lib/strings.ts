@@ -57,6 +57,64 @@ export const STRINGS = {
   homeIntro:
     "Scaffold only. No clinical record exists yet; this build can compare two patient identity records and explain the result.",
   notClinical: "Not for clinical use. Do not enter real patient data.",
+  navPrivacy: "Privacy",
+  privacyTitle: "Privacy",
+  privacyIntro:
+    "What this app keeps in your browser, why, and what it does not keep.",
+  privacyScope:
+    "This page covers your browser only. What you enter about patients is stored by the service, not in your browser, and is not described here. This is not a deployment's legal privacy notice: an organisation that deploys this software writes its own.",
+  privacyKeptTitle: "What is kept in your browser",
+  privacyTableLabel: "Cookies and storage this app uses",
+  privacyName: "Name",
+  privacyWhere: "Where",
+  privacyWhat: "What it holds",
+  privacyWhen: "When it is written",
+  privacyHowLong: "How long it is kept",
+  privacyPlaces: {
+    cookie: "Cookie",
+    cookieHttpOnly: "Cookie, not readable by the page",
+    session: "Session storage, this tab only",
+  },
+  privacySignInOnly: "Only when sign-in is turned on.",
+  privacyRows: {
+    theme: {
+      what: "The theme you chose: system (follow your device), light or dark",
+      when: "When you choose a theme in the header",
+      kept: "400 days, or until you choose again",
+    },
+    locale: {
+      what: "The language and region of the last page you opened, such as en-001",
+      when: "When you open a page in a language, whether or not you chose it",
+      kept: "One year, or until you open a page in another language",
+    },
+    purpose: {
+      what: "The purpose of use you chose, such as treatment",
+      when: "When you change the purpose in the header (staff only)",
+      kept: "Until you close the tab",
+    },
+    login: {
+      what: "A random number for a sign-in in progress",
+      when: "When you start to sign in",
+      kept: "Ten minutes, or until the sign-in finishes",
+    },
+    session: {
+      what: "A random number that names your session; the session itself is kept on the server",
+      when: "When you have signed in",
+      kept: "Until you sign out, the session ends, or its time limit passes",
+    },
+  },
+  privacyWhyTitle: "Why",
+  privacyWhy:
+    "The theme and language are kept so that the next page appears in them without a flash of the other. The purpose of use is kept so you do not choose it again on every page in this tab. The sign-in cookies keep you signed in; without them the app cannot work with sign-in turned on.",
+  privacyNotKeptTitle: "What is not kept",
+  privacyNotKept: [
+    "None of these values names you or a patient. The theme, language and purpose are one word from a short list.",
+    "No analytics, advertising or tracking, and no cookie from another site.",
+    "Cookies go only to this app's own server, which reads the theme and language to draw the page and the session to know who you are. Nothing here is sent anywhere else.",
+  ],
+  privacyRemoveTitle: "Removing what is kept",
+  privacyRemove:
+    "Choose again, sign out, close the tab, or clear this site's data in your browser's settings.",
   navPath: "Path to production",
   ptpTitle: "Path to production",
   ptpMeaning:

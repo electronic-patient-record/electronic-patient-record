@@ -258,3 +258,9 @@ header.site .purpose + .theme,
 header.site .theme + .account {
   margin-inline-start: 0;
 }
+/* The footer: the privacy notice, on every page. */
+footer.site {
+  margin-block-start: 2rem;
+  padding-block-start: 0.75rem;
+  border-block-start: 1px solid var(--border);
+}

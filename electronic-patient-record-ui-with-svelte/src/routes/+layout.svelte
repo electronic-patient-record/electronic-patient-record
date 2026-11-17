@@ -254,3 +254,6 @@
     {@render children()}
   {/key}
 </main>
+<footer class="site">
+  <a href={localizePath("/privacy", locale)}>{TEXT.navPrivacy}</a>
+</footer>

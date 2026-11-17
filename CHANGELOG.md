@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - The clinician UI's privacy notice, linked from every page
+
+- **Clinical risk:** none found: a footer link and a page of words; nothing a clinician sees about a patient changes.
+- **Built:** `/privacy`, linked from a new footer on every page, lists everything the app keeps in the browser and why: `epr-theme` (the theme chosen), `locale` (the language of the last page opened, which is set on every page in a language, not only by a choice; the page says so), `epr.purpose` (the purpose of use, this tab only), and with sign-in on, `epr_login` and `epr_session` (random ids in cookies the page cannot read; the session is on the server). It says none of these names a person, that cookies go only to the app's own server, that there are no analytics or third-party cookies, how to remove them, that patient data entered is not covered, and that this is not a deployment's legal privacy notice. English and Welsh (machine-written, not reviewed, marked as such on the page).
+- **Tested:** a unit test that reads `src/` and fails when a cookie or storage name is defined that the notice does not list (or one listed no longer exists), when a cookie is set by a bare string, or when `localStorage` or a hand-written `document.cookie` appears; browser tests for the footer link, the five rows and axe, and the Welsh page. 387 unit tests and 238 browser runs pass.
+- **Not done / not verified:** the other eight locales show the English notice, as for the rest of the UI; nobody has reviewed the Welsh; no data protection officer has read the page; the `locale` cookie is still set without a choice, which the notice describes rather than changes.
+
 ## 2026-11-17 - A kept HL7 refusal is answered AR, and a resend adds no row (IH-1)
 
 - **Clinical risk:** yes, what reaches the record: the feed's answer to a refused message changes, which changes what a sender does next. Hazards H-021 and H-023 updated (still open).

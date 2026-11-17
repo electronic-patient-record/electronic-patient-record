@@ -86,6 +86,64 @@ export const CY: Strings = {
     "Sgaffald yn unig. Nid oes cofnod clinigol yn bodoli eto; gall y fersiwn hwn gymharu dau gofnod hunaniaeth claf ac egluro'r canlyniad.",
   notClinical:
     "Nid at ddefnydd clinigol. Peidiwch â rhoi data cleifion go iawn i mewn.",
+  navPrivacy: "Preifatrwydd",
+  privacyTitle: "Preifatrwydd",
+  privacyIntro:
+    "Beth mae'r ap hwn yn ei gadw yn eich porwr, pam, a beth nad yw'n ei gadw.",
+  privacyScope:
+    "Mae'r dudalen hon yn ymdrin â'ch porwr yn unig. Mae'r gwasanaeth yn storio'r hyn a roddwch i mewn am gleifion, nid eich porwr, ac nid yw'n cael ei ddisgrifio yma. Nid hysbysiad preifatrwydd cyfreithiol ar gyfer defnydd go iawn yw hwn: mae sefydliad sy'n defnyddio'r feddalwedd hon yn ysgrifennu ei un ei hun.",
+  privacyKeptTitle: "Beth a gedwir yn eich porwr",
+  privacyTableLabel: "Cwcis a storfa y mae'r ap hwn yn eu defnyddio",
+  privacyName: "Enw",
+  privacyWhere: "Ble",
+  privacyWhat: "Beth mae'n ei ddal",
+  privacyWhen: "Pryd y caiff ei ysgrifennu",
+  privacyHowLong: "Am ba hyd y caiff ei gadw",
+  privacyPlaces: {
+    cookie: "Cwci",
+    cookieHttpOnly: "Cwci, na all y dudalen ei ddarllen",
+    session: "Storfa sesiwn, y tab hwn yn unig",
+  },
+  privacySignInOnly: "Dim ond pan fydd mewngofnodi wedi'i droi ymlaen.",
+  privacyRows: {
+    theme: {
+      what: "Y thema a ddewisoch: system (dilyn eich dyfais), golau neu dywyll",
+      when: "Pan fyddwch yn dewis thema yn y pennawd",
+      kept: "400 diwrnod, neu nes i chi ddewis eto",
+    },
+    locale: {
+      what: "Iaith a rhanbarth y dudalen olaf a agoroch, fel en-001",
+      when: "Pan fyddwch yn agor tudalen mewn iaith, p'un a wnaethoch ei dewis ai peidio",
+      kept: "Blwyddyn, neu nes i chi agor tudalen mewn iaith arall",
+    },
+    purpose: {
+      what: "Y diben defnydd a ddewisoch, fel triniaeth",
+      when: "Pan fyddwch yn newid y diben yn y pennawd (staff yn unig)",
+      kept: "Nes i chi gau'r tab",
+    },
+    login: {
+      what: "Rhif ar hap ar gyfer mewngofnodi sydd ar y gweill",
+      when: "Pan fyddwch yn dechrau mewngofnodi",
+      kept: "Deg munud, neu nes i'r mewngofnodi orffen",
+    },
+    session: {
+      what: "Rhif ar hap sy'n enwi eich sesiwn; cedwir y sesiwn ei hun ar y gweinydd",
+      when: "Pan fyddwch wedi mewngofnodi",
+      kept: "Nes i chi allgofnodi, i'r sesiwn ddod i ben, neu i'w therfyn amser fynd heibio",
+    },
+  },
+  privacyWhyTitle: "Pam",
+  privacyWhy:
+    "Cedwir y thema a'r iaith fel bod y dudalen nesaf yn ymddangos ynddynt heb fflach o'r llall. Cedwir y diben defnydd fel nad oes rhaid i chi ei ddewis eto ar bob tudalen yn y tab hwn. Mae'r cwcis mewngofnodi yn eich cadw wedi mewngofnodi; hebddynt ni all yr ap weithio pan fydd mewngofnodi wedi'i droi ymlaen.",
+  privacyNotKeptTitle: "Beth na chedwir",
+  privacyNotKept: [
+    "Nid yw'r un o'r gwerthoedd hyn yn eich enwi chi na chlaf. Un gair o restr fer yw'r thema, yr iaith a'r diben.",
+    "Dim dadansoddeg, hysbysebu nac olrhain, a dim cwci o wefan arall.",
+    "Dim ond i weinydd yr ap hwn ei hun yr anfonir cwcis, sy'n darllen y thema a'r iaith i lunio'r dudalen a'r sesiwn i wybod pwy ydych chi. Ni anfonir dim byd yma i unman arall.",
+  ],
+  privacyRemoveTitle: "Dileu'r hyn a gedwir",
+  privacyRemove:
+    "Dewiswch eto, allgofnodwch, caewch y tab, neu cliriwch ddata'r wefan hon yng ngosodiadau eich porwr.",
   navPath: "Y llwybr at ddefnydd go iawn",
   ptpTitle: "Y llwybr at ddefnydd go iawn",
   ptpMeaning:

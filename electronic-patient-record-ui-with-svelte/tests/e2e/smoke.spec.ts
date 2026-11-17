@@ -348,3 +348,51 @@ test("a forged or old theme cookie is read as following the device", async ({
     );
   }
 });
+
+// The privacy notice: linked from every page's footer, listing everything the app keeps in the browser.
+test("every page's footer links to the privacy notice, which lists what is kept and passes axe", async ({
+  page,
+}) => {
+  for (const path of ["/en-001", "/en-001/path-to-production"]) {
+    await page.goto(path);
+    const link = page
+      .getByRole("contentinfo")
+      .getByRole("link", { name: "Privacy" });
+    await expect(link).toHaveAttribute("href", "/en-001/privacy");
+  }
+  await page
+    .getByRole("contentinfo")
+    .getByRole("link", { name: "Privacy" })
+    .click();
+  await expect(page).toHaveURL(/\/en-001\/privacy$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Privacy");
+  const table = page.getByRole("table", {
+    name: "Cookies and storage this app uses",
+  });
+  for (const name of [
+    "epr-theme",
+    "locale",
+    "epr.purpose",
+    "epr_login",
+    "epr_session",
+  ])
+    await expect(table.getByRole("rowheader", { name })).toBeVisible();
+  await expect(page.getByTestId("privacy-row")).toHaveCount(5);
+  const results = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag22aa"])
+    .analyze();
+  expect(results.violations).toEqual([]);
+});
+
+test("the privacy notice is in Welsh on a Welsh page, marked as machine-written", async ({
+  page,
+}) => {
+  await page.goto("/cy-001/privacy");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Preifatrwydd",
+  );
+  await expect(page.getByTestId("machine-translated")).toBeVisible();
+  await expect(
+    page.getByRole("contentinfo").getByRole("link", { name: "Preifatrwydd" }),
+  ).toHaveAttribute("href", "/cy-001/privacy");
+});
