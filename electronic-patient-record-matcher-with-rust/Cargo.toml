@@ -34,6 +34,7 @@ harness = false
 # Faster dev/test builds: keep line tables for backtraces, drop the rest of the debug info.
 [profile.dev]
 debug = "line-tables-only"
+split-debuginfo = "unpacked"
 
 [profile.dev.package."*"]
 debug = false
