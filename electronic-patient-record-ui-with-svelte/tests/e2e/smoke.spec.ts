@@ -124,6 +124,18 @@ test("a failed comparison is announced", async ({ page }) => {
   await expect(page.getByRole("alert")).toHaveText("The comparison failed.");
 });
 
+// RFC 9116: the contact file is served at the root, as text, with no locale redirect.
+test("security.txt is served at /.well-known/security.txt", async ({
+  request,
+}) => {
+  const answer = await request.get("/.well-known/security.txt", {
+    maxRedirects: 0,
+  });
+  expect(answer.status()).toBe(200);
+  expect(answer.headers()["content-type"]).toMatch(/^text\/plain/);
+  expect(await answer.text()).toMatch(/^Contact: mailto:/m);
+});
+
 test("the proxy refuses paths outside /api", async ({ request }) => {
   expect((await request.get("/api/proxy/fhir/R4/Patient")).status()).toBe(404);
   expect((await request.get("/api/proxy/_health/live")).status()).toBe(404);

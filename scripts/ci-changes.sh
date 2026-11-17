@@ -16,8 +16,15 @@ while IFS= read -r path; do
   [ -n "$path" ] || continue
   case "$path" in
     # Read by the service's tests, or built into the service.
-    SECURITY.md | governance/personal-data-inventory.csv | packs/* | ci/* | rust-toolchain.toml | Cargo.lock)
+    governance/personal-data-inventory.csv | packs/* | ci/* | rust-toolchain.toml | Cargo.lock)
       rust=true ;;
+    # Read by the service's documentation census and the UI's security.txt test.
+    SECURITY.md)
+      rust=true
+      ui=true ;;
+    # Read by the UI's security.txt test (its review date).
+    docs/security/policy.md)
+      ui=true ;;
     # Read by the UI's tests.
     governance/production-readiness.md | governance/translation-review.md | operations/keycloak/*)
       ui=true ;;

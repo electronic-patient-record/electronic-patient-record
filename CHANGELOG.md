@@ -2,6 +2,15 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - A formal security policy and disclosure policy
+
+- **Clinical risk:** none to the software; a process: a vulnerability that could show the wrong patient or change what a clinician decides or signs is now rated at least high and goes to the hazard log.
+- **Written:** `SECURITY.md` is now a versioned vulnerability disclosure policy shaped on ISO/IEC 29147 and 30111: how to report (email; GitHub's private reporting is off), stages with targets (acknowledge 5 business days, triage 15), CVSS v4.0 severity raised for clinical harm, fix targets (critical 7 days, high 30, medium 90, low next release), coordinated disclosure at the fix or 90 days with an advisory and a CVE for medium and above, safe harbour for good-faith research on one's own installation, supported versions, scope, and the existing "does / does not claim" lists (now with the HL7 listener's TLS). `docs/security/policy.md` is the project's security policy: roles (no separation of duties with one maintainer; no CSO yet), principles, and secure development, supply chain, secrets, cryptography, incidents and exceptions, each rule with what enforces it, what a deployer must do, and what is not done.
+- **Built:** `/.well-known/security.txt` (RFC 9116) in the UI's static files. `tests/unit/security-txt.test.ts` checks its required fields, that `Expires` is in the future and at most a year ahead, that its contact is the one in `SECURITY.md`, and that both policies are within their review dates; a browser test checks it is served at the root as text. `scripts/ci-changes.sh` runs the UI when either policy changes.
+- **Corrected:** `docs/security/index.md` named a CI `zap` job that does not exist, and said MLLP has no encryption (it has TLS since IH-10).
+- **Tested:** the unit test fails with a past `Expires` and with another contact; 395 unit tests and the browser test (light and dark) pass; the documentation census passes.
+- **Not done / not verified:** GitHub's private vulnerability reporting, secret scanning and Dependabot security updates are off for the repository and were not changed; no PGP key is published; no threat model (QA-10), ASVS table (QA-9) or DAST job; the targets are one maintainer's and untested by any real report; no lawyer has read the safe-harbour section.
+
 ## 2026-11-17 - chrono is unmaintained: carried until 2027-02-17 (DEP-1)
 
 - **Clinical risk:** none: no code changes.

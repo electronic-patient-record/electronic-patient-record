@@ -24,9 +24,10 @@ Cross-checks used here: OWASP ASVS for verification requirements ([OWASP ASVS](h
 - Authorisation (SE-1, `spec/access-control/index.md`): a policy table with a route census; roles plus care relationship, purpose of use and consent; `404` rather than `403` where existence would leak; break-glass with a 4-hour grant, a reason and auditor review (SE-3, no real-time notification). Multi-tenancy (SE-5), sensitive masking (SE-4), and per-tenant keys are not built.
 - Rate limits (OS-2, NFR-6): per token subject, per process, counted by `axa-ratelimit`, which holds a subject only as a keyed hash and lets a new subject through when its table is full; not per address; no sign-in lockout; not shared between replicas.
 - MFA: the service reads no `acr` or `amr` claim and cannot demand a second factor; the development realm requires none; no test signs in with one (`governance/mfa-plan.md`).
-- Known weak points: HL7 MLLP has no authentication or encryption (off unless configured); `/metrics` is public when on; TLS and disk encryption are the deployer's job (`governance/dpia.md`, `governance/data-flow.md`).
+- The rules the project holds itself to, each with what enforces it, are the [security policy](policy.md); how a report is handled is [`SECURITY.md`](../../SECURITY.md).
+- Known weak points: HL7 MLLP is off unless configured, and has no authentication unless TLS with client certificates is set (IH-10, IH-6); `/metrics` is public when on; TLS and disk encryption are the deployer's job (`governance/dpia.md`, `governance/data-flow.md`).
 - Integrity: audit table triggers refuse UPDATE, DELETE and TRUNCATE; hash chain with keyed MAC (`EPR_INTEGRITY_MAC_KEY`); no SQL delete path for clinical data; a seeded chaos test sends hostile input to every route.
-- Not done: penetration test, third-party audit, any certification. A reporting route and response targets (5 and 15 business days) exist in `SECURITY.md`; one maintainer.
+- Not done: penetration test, third-party audit, any certification. `SECURITY.md` is a disclosure policy (stages with targets, CVSS v4.0 severity raised for clinical harm, fix targets, 90-day coordinated disclosure, safe harbour) with `/.well-known/security.txt` served by the UI; one maintainer.
 
 ## Measures
 
@@ -39,7 +40,7 @@ Cross-checks used here: OWASP ASVS for verification requirements ([OWASP ASVS](h
 | Staff accounts with a second factor | Share of active staff with MFA enrolled | 100 per cent, deployer-measured | Not collectable here; Keycloak |
 | Token acceptance faults | Count of refused tokens by reason | Alert on spikes | `/metrics` (partly) |
 | Time to patch critical advisory | Advisory date to release | Set by policy; SECURITY.md has acknowledgement targets only | Changelog, Dependabot |
-| DAST findings | ZAP baseline results | No high findings | CI `zap` job |
+| DAST findings | ZAP baseline results | No high findings | None: there is no `zap` job in CI yet |
 | Penetration test findings | Independent test before real use | Open critical findings zero at go-live | Not done |
 | Break-glass reviews overdue | Grants past review limit | Zero | EC-11 list (partly built) |
 
