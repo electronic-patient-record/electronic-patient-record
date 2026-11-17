@@ -37,7 +37,7 @@ const row = (over: Partial<StoredAdjustment["adjustment"]> = {}, top = {}) =>
 describe("the catalogue (PA-6)", () => {
   it("is the service's, code for code and category for category", () => {
     const rust = readFileSync(
-      "../electronic-patient-record-service-with-rust/src/adjustments.rs",
+      "../electronic-patient-record-service-with-rust/electronic-patient-record-domain/src/adjustments.rs",
       "utf8",
     );
     const block = rust.slice(

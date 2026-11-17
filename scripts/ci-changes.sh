@@ -29,7 +29,7 @@ while IFS= read -r path; do
     governance/production-readiness.md | governance/translation-review.md | operations/keycloak/*)
       ui=true ;;
     # Read by the UI's tests (adjustments.test.ts keeps the UI's list equal to the service's).
-    electronic-patient-record-service-with-rust/src/adjustments.rs)
+    electronic-patient-record-service-with-rust/electronic-patient-record-domain/src/adjustments.rs)
       rust=true
       ui=true ;;
     electronic-patient-record-matcher-with-rust/* | electronic-patient-record-service-with-rust/*)
