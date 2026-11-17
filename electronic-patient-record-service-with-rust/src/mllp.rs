@@ -156,6 +156,8 @@ pub struct Config {
     pub kept_answer: KeptAnswer,
     /// TLS, when configured: then the port speaks nothing else (IH-10).
     pub tls: Option<Arc<rustls::ServerConfig>>,
+    /// The processing id this deployment takes (`EPR_MLLP_PROCESSING_ID`: `P`, `T` or `D`), or any when unset (IH-2).
+    pub processing_id: Option<char>,
 }
 
 /// A TLS server configuration from PEM files, with ring's provider chosen explicitly (aws-lc-rs is in the tree too, and
@@ -235,6 +237,7 @@ impl Config {
             max_frame: MAX_FRAME,
             kept_answer: KeptAnswer::Reject,
             tls: None,
+            processing_id: None,
         }
     }
 
@@ -317,11 +320,23 @@ impl Config {
                 );
             }
         };
+        let processing_id = match set("EPR_MLLP_PROCESSING_ID").as_deref() {
+            None => None,
+            Some("P") => Some('P'),
+            Some("T") => Some('T'),
+            Some("D") => Some('D'),
+            Some(other) => {
+                return Err(format!(
+                    "EPR_MLLP_PROCESSING_ID {other:?} must be P (production), T (training) or D (debugging)"
+                ));
+            }
+        };
         Ok(Some(Config {
             bind,
             agent,
             kept_answer,
             tls,
+            processing_id,
             max_connections: usize::try_from(number("EPR_MLLP_MAX_CONNECTIONS", 8, 1, 256)?)
                 .unwrap_or(8),
             idle: Duration::from_secs(number("EPR_MLLP_IDLE_SECONDS", 60, 1, 3600)?),
@@ -398,6 +413,7 @@ async fn connection<S: AsyncRead + AsyncWrite + Unpin>(
         agent: config.agent.clone(),
         peer: Some(peer.ip().to_string()),
         kept_answer: config.kept_answer,
+        processing_id: config.processing_id,
     };
     let mut buf: Vec<u8> = Vec::new();
     let mut chunk = [0u8; 8192];

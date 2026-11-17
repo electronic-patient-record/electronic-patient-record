@@ -14,6 +14,7 @@ identity record. It is **off by default**. **Development and evaluation only**: 
 | `EPR_MLLP_MAX_CONNECTIONS` | Connections served at once; others are closed on accept | 8 |
 | `EPR_MLLP_IDLE_SECONDS` | A silent connection is closed after this long | 60 |
 | `EPR_MLLP_KEPT_ANSWER` | How a refusal kept in the work queue is answered: `AR` (kept for a person, do not resend) or `AE` for a sender that needs it. Anything else refuses to start (IH-1) | `AR` |
+| `EPR_MLLP_PROCESSING_ID` | `P`, `T` or `D`: the processing id (MSH-11) this deployment takes; a message with another is refused `AR` and kept, so a test message never reaches a live record (IH-2). Unset takes any | unset |
 | `EPR_MLLP_TLS_CERT_FILE`, `EPR_MLLP_TLS_KEY_FILE` | PEM certificate chain and private key: TLS on the port, and then nothing in plain text (IH-10). Both or neither | unset |
 | `EPR_MLLP_TLS_CLIENT_CA_FILE` | PEM CA: every sender must present a certificate that chains to it. The only way the listener can know who is sending. Needs the two above | unset |
 
@@ -52,7 +53,9 @@ a renewed certificate needs a restart.
   person; do not resend", then the reasons. A message type that is not handled is `AR` too. `AE` only when a resend can
   help: the database unavailable, or the refusal could not be stored. `EPR_MLLP_KEPT_ANSWER=AE` answers kept refusals `AE`
   instead (with the same words), for a sender that must have it; a type not handled stays `AR`. A stream that is not
-  MLLP, a frame that is not HL7 and text that is not UTF-8 close the connection.
+  MLLP, a frame that is not HL7 and text that is not UTF-8 close the connection, except a frame that starts as an `MSH`
+  but does not read, which gets an `AE` echoing its MSH-10. Every acknowledgement copies MSH-11 (`P` when there is
+  none), and `MSA-3` is one line of at most 199 characters with HL7's delimiters escaped (IH-2).
 
 ## Counting
 

@@ -49,7 +49,7 @@ Each is a design to be confirmed, not a built behaviour. Clinical ones add hazar
    queue, the answer tells the sender not to resend it: `AR` with `MSA-3` saying it was kept for review, or a per-sender
    setting (OQ-IH1). `AE` is kept for what a resend can fix: the database unavailable, the refusal not stored. A resend
    of a message already in the queue (same sender, same MSH-10, same text digest) adds no row and gets the same answer.
-2. **Acknowledgement hygiene (IH-2).** MSH-11 (processing id) is copied from the message into the ACK, so a test message
+2. **Acknowledgement hygiene (IH-2). Built 2026-11-17.** MSH-11 (processing id) is copied from the message into the ACK, so a test message
    is never acknowledged as production (hub `spec/07-hl7-server.md` §4.1); a message whose MSH-11 does not match the
    deployment's (`P` on a test system, `T` on a live one) is refused `AR` and kept. `MSA-3` is one line, escaped for HL7
    delimiters, and capped (the hub uses 199 characters; OQ-IH5). A frame that is HL7-shaped but does not parse gets an

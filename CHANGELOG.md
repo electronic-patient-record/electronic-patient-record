@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - HL7 acknowledgement hygiene (IH-2)
+
+- **Clinical risk:** small, what reaches the record: with `EPR_MLLP_PROCESSING_ID` set, a message meant for another kind of deployment (a training message on a live one) is refused and kept, not applied. H-021's controls already cover refusals; no new hazard.
+- **Found:** the HL7 builder already copied MSH-11 into each acknowledgement and escaped `MSA-3`; it left MSH-11 empty when the message had none, and nothing bounded `MSA-3`.
+- **Changed:** MSH-11 is `P` when the message has none (HL7 requires it in an ACK); `MSA-3` is one line, at most 199 characters (OQ-IH5); a frame that starts as an MSH segment but does not read is answered `AE` by a hand-built acknowledgement (every field escaped, MSH-10 echoed so the sender can match it, MSH-11 copied when `P`, `T` or `D`) instead of a closed connection, and the connection stays open; `EPR_MLLP_PROCESSING_ID` (`P`, `T` or `D`) refuses any other processing id with a reason that quotes nothing, kept for a person, `AR`.
+- **Tested:** golden checks of MSH-11 for `P`, `T` and none; `MSA-3` with line breaks, tabs, every delimiter and 400 characters reads back as one line of 199; the hand-built `AE` byte for byte, with delimiters escaped and non-MSH text unanswered; on Postgres, a `T` message to a `P` deployment refused, kept and answered as `T`, a `P` one applied, and an unreadable MSH answered `AE` with the connection still serving.
+- **Not done / not verified:** golden acknowledgements for a whole sample corpus (IH-11); whether senders accept 199 characters in `MSA-3`.
+
 ## 2026-11-17 - How to take an HL7 feed live (IH-12)
 
 - **Clinical risk:** a process for a clinical change, documents only. H-021 lists it as a control not yet used.

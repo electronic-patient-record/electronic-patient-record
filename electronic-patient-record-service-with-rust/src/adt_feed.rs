@@ -51,6 +51,20 @@ pub struct FeedIdentity {
     pub peer: Option<String>,
     /// How a refusal kept in the work queue is answered.
     pub kept_answer: KeptAnswer,
+    /// The processing id (MSH-11) this deployment takes, `P`, `T` or `D`; any other is refused and kept (IH-2). `None`
+    /// takes any, as before.
+    pub processing_id: Option<char>,
+}
+
+/// Why a message for another kind of deployment is refused (IH-2): a test message is never applied to a live record, nor
+/// a live one to a test system.
+pub const WRONG_PROCESSING_ID: &str = "MSH-11 (processing id) is not the one this deployment takes: a person must check where this message was meant to go";
+
+/// MSH-11's first character, read without a full parse, as [`message_ids`] reads MSH-9 and MSH-10.
+fn processing_id_of(text: &str) -> Option<char> {
+    let msh = text.split(['\r', '\n']).find(|l| l.starts_with("MSH"))?;
+    let sep = msh.chars().nth(3)?;
+    msh.split(sep).nth(10)?.chars().next()
 }
 
 /// How a refusal that was kept in the work queue is answered (IH-1, `EPR_MLLP_KEPT_ANSWER`).
@@ -679,7 +693,20 @@ pub async fn process(
         inbound.control_id = control_digest(&who.agent, &inbound.control_id);
         inbound
     });
+    let wrong_place = who
+        .processing_id
+        .is_some_and(|want| processing_id_of(text) != Some(want));
     let outcome: Result<Inbound, Rejection> = match &read {
+        Ok(inbound) if wrong_place => {
+            let refusal = Refusal::Unsupported(WRONG_PROCESSING_ID.to_string());
+            let kept =
+                audit_refusal(db, who, &inbound.event, &inbound.control_id, &refusal, text).await;
+            Err(answer_for(
+                Rejection::Unsupported(WRONG_PROCESSING_ID.to_string()),
+                kept,
+                who,
+            ))
+        }
         Ok(inbound) => match apply(db, inbound, who).await {
             Ok(applied) => {
                 tracing::info!(event = %inbound.event, control_id = %inbound.control_id, ?applied, "ADT message applied");
@@ -743,6 +770,7 @@ mod tests {
             agent: "mllp:test".into(),
             peer: None,
             kept_answer,
+            processing_id: None,
         }
     }
 
@@ -1040,6 +1068,7 @@ mod tests {
             agent: "mllp:test".into(),
             peer: None,
             kept_answer: KeptAnswer::Reject,
+            processing_id: None,
         };
         for kept in [false, true] {
             let answer = read.clone().map_err(|r| answer_for(r, kept, &who));

@@ -924,6 +924,7 @@ async fn no_message_value_reaches_an_audit_row_the_queue_a_version_reason_a_metr
         agent: FEED_AGENT.into(),
         peer: Some("127.0.0.1".into()),
         kept_answer: KeptAnswer::Reject,
+        processing_id: None,
     };
     let mrn = tag("mrn");
     let pid = |dob: &str| {
@@ -1484,5 +1485,54 @@ fn a_tls_setting_that_cannot_be_used_stops_the_start() {
     ] {
         let got = config(pairs);
         assert!(got.is_err(), "{why} was accepted");
+    }
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn a_message_for_another_kind_of_deployment_is_kept_and_an_unreadable_msh_is_answered() {
+    // IH-2: a deployment set to production takes only `P`; a `T` (training) message is refused, kept and answered `AR`
+    // with the processing id it came with.
+    let db = db().await;
+    let addr = start(&db, |c| c.processing_id = Some('P')).await;
+    let mut s = TcpStream::connect(addr).await.unwrap();
+    let control = tag("W");
+    let training = adt("A28", &control, &tag("mrn"), &tag("Train"), &dob(), "")
+        .replace(&format!("|{control}|P|2.5"), &format!("|{control}|T|2.5"));
+    let ack = send(&mut s, &training).await.unwrap();
+    assert_eq!(code(&ack), "AR", "{ack}");
+    assert!(ack.contains("processing id"), "{ack}");
+    assert_eq!(
+        ack.split('\r').next().unwrap().split('|').nth(10),
+        Some("T"),
+        "answered as the message's own kind: {ack}"
+    );
+    let kept: i64 = sqlx::query_scalar("SELECT count(*) FROM feed_refusals WHERE control_id = $1")
+        .bind(control_digest(FEED_AGENT, &control))
+        .fetch_one(&db)
+        .await
+        .unwrap();
+    assert_eq!(kept, 1);
+    // The same message as production is applied.
+    let ok = adt("A28", &tag("W"), &tag("mrn"), &tag("Live"), &dob(), "");
+    assert_eq!(code(&send(&mut s, &ok).await.unwrap()), "AA");
+    // An MSH that does not read gets an `AE` with its control id, and the connection stays open.
+    let unreadable = format!(
+        "MSH|^~\\&|REG|CLINIC|EPR|HOSP|20261117090000||ADT^A28|{}|P|2.5\rPID|1||\u{0}",
+        tag("U")
+    );
+    if let Some(ack) = send(&mut s, &unreadable).await {
+        assert_eq!(code(&ack), "AE", "{ack}");
+        assert_eq!(
+            code(
+                &send(
+                    &mut s,
+                    &adt("A28", &tag("W"), &tag("mrn"), &tag("After"), &dob(), "")
+                )
+                .await
+                .unwrap()
+            ),
+            "AA"
+        );
     }
 }

@@ -352,19 +352,99 @@ pub fn acknowledgement(
 ) -> Option<String> {
     let (code, note) = match outcome {
         Ok(_) => ("AA", None),
-        Err(Rejection::NotHl7(_)) => return None,
+        Err(Rejection::NotHl7(why)) => ("AE", Some(why.clone())),
         Err(Rejection::Unsupported(why)) => ("AR", Some(why.clone())),
         Err(Rejection::Invalid(problems)) => ("AE", Some(problems.join("; "))),
         Err(Rejection::Kept(reasons)) => ("AR", Some(reasons.join("; "))),
     };
-    let original = hl7::v2::parse(text).ok()?;
+    let note = note.map(|n| msa_text(&n));
+    let Ok(original) = hl7::v2::parse(text) else {
+        // A frame that starts as an MSH but does not read: answer `AE`, echoing its MSH-10 when it can be found, so the
+        // sender can match the answer (IH-2). Anything else has no sender to answer.
+        return generic_nak(
+            text,
+            note.as_deref().unwrap_or(NOT_HL7),
+            control_id,
+            timestamp,
+        );
+    };
     let mut ack = hl7::v2::builder::acknowledge(&original, code, control_id, timestamp);
+    // A message with no processing id is answered as production, `P`, as HL7 requires one in an ACK (IH-2).
+    let processing = original.get("MSH-11.1").ok().flatten().unwrap_or_default();
+    if processing.is_empty() {
+        ack = ack.processing_id("P");
+    }
     if let Some(note) = note {
         ack = ack.set("MSA-3", &note);
     }
-    ack.build().ok().map(|m| m.to_er7())
+    ack.build()
+        .ok()
+        .map(|m| m.to_er7())
+        .or_else(|| generic_nak(text, NOT_HL7, control_id, timestamp))
 }
 
+/// The longest `MSA-3` text sent (IH-2): HL7 v2.5 gives the field 80 characters and senders commonly allow more; the hub
+/// this follows sends 199. Longer text is cut at a character boundary (OQ-IH5).
+pub const MSA_TEXT_MAX: usize = 199;
+
+/// `MSA-3` text: one line (every line break and tab a space, runs of spaces one), at most [`MSA_TEXT_MAX`] characters.
+#[must_use]
+pub fn msa_text(note: &str) -> String {
+    let one_line = note
+        .split(['\r', '\n', '\t', ' '])
+        .filter(|w| !w.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ");
+    one_line.chars().take(MSA_TEXT_MAX).collect()
+}
+
+/// HL7 v2's escapes for the standard delimiters, so text cannot break the message it is put in.
+fn escape(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    for c in text.chars() {
+        match c {
+            '\\' => out.push_str("\\E\\"),
+            '|' => out.push_str("\\F\\"),
+            '^' => out.push_str("\\S\\"),
+            '&' => out.push_str("\\T\\"),
+            '~' => out.push_str("\\R\\"),
+            '\r' | '\n' => out.push(' '),
+            c => out.push(c),
+        }
+    }
+    out
+}
+
+/// An `AE` built by hand for a frame that starts with `MSH` and a separator but cannot be read: MSH-10 echoed when present
+/// (cut to 199 characters and escaped), MSH-11 copied when it is `P`, `T` or `D` and `P` otherwise. `None` when the
+/// text does not start as an MSH segment.
+fn generic_nak(text: &str, note: &str, control_id: &str, timestamp: &str) -> Option<String> {
+    let first = text.split(['\r', '\n']).next()?;
+    let sep = first.strip_prefix("MSH")?.chars().next()?;
+    if sep.is_alphanumeric() || sep.is_whitespace() {
+        return None;
+    }
+    let fields: Vec<&str> = first.split(sep).collect();
+    let control: String = fields
+        .get(9)
+        .copied()
+        .unwrap_or_default()
+        .chars()
+        .take(199)
+        .collect();
+    let processing = fields
+        .get(10)
+        .and_then(|f| f.chars().next())
+        .filter(|c| matches!(c, 'P' | 'T' | 'D'))
+        .unwrap_or('P');
+    Some(format!(
+        "MSH|^~\\&|||||{}||ACK|{}|{processing}|2.5\rMSA|AE|{}|{}",
+        escape(timestamp),
+        escape(control_id),
+        escape(&control),
+        escape(&msa_text(note))
+    ))
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -429,6 +509,95 @@ mod tests {
             .replace("EVN|A28|20261021090000\r", "")
             .replace("|20261021090000||", "|||");
         assert_eq!(patient_from_adt(&no_evn).unwrap().message_time, None);
+    }
+
+    fn msa(ack: &str) -> Vec<String> {
+        let line = ack.split('\r').find(|l| l.starts_with("MSA|")).unwrap();
+        line.split('|').map(str::to_string).collect()
+    }
+    fn msh11(ack: &str) -> String {
+        ack.split('\r')
+            .next()
+            .unwrap()
+            .split('|')
+            .nth(10)
+            .unwrap_or_default()
+            .to_string()
+    }
+
+    #[test]
+    fn an_acknowledgement_copies_the_processing_id_and_defaults_it_to_production() {
+        // IH-2: a test message is never acknowledged as production.
+        let ok = |text: &str| {
+            acknowledgement(text, &patient_from_adt(text), "ACK1", "20261117090000").unwrap()
+        };
+        assert_eq!(msh11(&ok(ADT)), "P");
+        assert_eq!(msh11(&ok(&ADT.replace("|MSG1|P|2.5", "|MSG1|T|2.5"))), "T");
+        assert_eq!(msh11(&ok(&ADT.replace("|MSG1|P|2.5", "|MSG1||2.5"))), "P");
+        assert_eq!(msa(&ok(ADT))[1..3], ["AA".to_string(), "MSG1".to_string()]);
+    }
+
+    #[test]
+    fn msa_3_is_one_line_escaped_and_capped() {
+        let long = format!("line one\r\nline\ttwo | a^b~c&d\\e {}", "x".repeat(400));
+        let ack = acknowledgement(
+            ADT,
+            &Err(Rejection::Invalid(vec![long])),
+            "ACK1",
+            "20261117090000",
+        )
+        .unwrap();
+        // The answer still reads as HL7, with the same two segments.
+        let parsed = hl7::v2::parse(&ack).unwrap();
+        assert_eq!(
+            ack.split('\r').filter(|l| !l.is_empty()).count(),
+            2,
+            "{ack:?}"
+        );
+        let text = parsed.get("MSA-3").unwrap().unwrap_or_default();
+        assert!(
+            text.starts_with("line one line two | a^b~c&d\\e x"),
+            "{text:?}"
+        );
+        assert_eq!(text.chars().count(), MSA_TEXT_MAX);
+        assert_eq!(msa_text("  a \r\n\r\n b\t\tc  "), "a b c");
+    }
+
+    #[test]
+    fn an_msh_frame_that_does_not_read_gets_an_ae_with_its_control_id() {
+        // IH-2: the sender can match the answer; the text is escaped, and what is not an MSH at all gets nothing.
+        let broken = "MSH|^~\\&|A|B|C|D|20261117||ADT^A28|C9^9|T|2.5\rPID|\u{1}";
+        let ack = acknowledgement(
+            broken,
+            &Err(Rejection::NotHl7(NOT_HL7.into())),
+            "ACK1",
+            "20261117090000",
+        );
+        if let Some(ack) = ack {
+            let m = msa(&ack);
+            assert_eq!(m[1], "AE", "{ack:?}");
+            assert!(m[2].starts_with('C'), "the control id is echoed: {ack:?}");
+            assert!(
+                !ack.contains("9^9"),
+                "a delimiter in MSH-10 is escaped: {ack:?}"
+            );
+            assert_eq!(msh11(&ack), "T");
+        }
+        let nak = generic_nak(
+            "MSH|^~\\&|A|B|C|D|t||ADT^A28|C9|X|2.5",
+            NOT_HL7,
+            "ACK1",
+            "20261117090000",
+        )
+        .unwrap();
+        assert_eq!(
+            nak,
+            "MSH|^~\\&|||||20261117090000||ACK|ACK1|P|2.5\rMSA|AE|C9|not an HL7 v2 message: it does not start with a readable MSH segment"
+        );
+        assert!(generic_nak("hello", NOT_HL7, "1", "t").is_none());
+        assert!(generic_nak("MSHA|B", NOT_HL7, "1", "t").is_none());
+        let escaped = generic_nak("MSH|^~\\&||||||||id|with^caret", "a|b", "1", "t").unwrap();
+        assert!(escaped.ends_with("MSA|AE|id|a\\F\\b"), "{escaped:?}");
     }
 
     #[test]

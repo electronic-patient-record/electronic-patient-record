@@ -1554,7 +1554,7 @@ with its first code. Open questions OQ-IH1 to OQ-IH6.
   sender, MSH-10 and text digest) adds no row and gets the same answer. Fix the stale "work queue not built" comment in
   `src/adt_feed.rs`. Hazards H-021 and H-023 updated. **Acceptance:** a test sends one refused message three times and
   finds one queue row and three identical answers; a test with the database down gets `AE`.
-- [ ] **IH-2 (S) — Acknowledgement hygiene.** MSH-11 copied into the ACK; a processing id that does not match the
+- [x] **IH-2 (S) — Acknowledgement hygiene.** **Done 2026-11-17:** the builder already copied MSH-11 and escaped `MSA-3`; now MSH-11 defaults to `P`, `MSA-3` is one line capped at 199 characters (OQ-IH5 open), an unreadable MSH frame gets a hand-built, escaped `AE` with its MSH-10 and the connection stays open, and `EPR_MLLP_PROCESSING_ID` refuses another processing id (kept, `AR`). **Not done:** golden ACK files for the sample corpus (IH-11). MSH-11 copied into the ACK; a processing id that does not match the
   deployment's refused `AR` and kept; `MSA-3` one line, escaped and capped (OQ-IH5); an HL7-shaped frame that does not
   parse answered `AE` echoing MSH-10 when readable. First read what `hl7::v2::builder::acknowledge` already does.
   **Acceptance:** golden ACKs for a `P`, a `T` and an unparsable message.
