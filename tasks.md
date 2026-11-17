@@ -1681,6 +1681,18 @@ command (`--config 'registry.global-min-publish-age="0 days"'`); the settings ar
   `to_zoned_datetime`). **Not done:** jiff 0.2 stays in the tree through `serde_with` (used by `fhir` and
   `axum-keycloak-auth`); `pg_time.rs` could give way to `jiff-sqlx`.
 
+## Dependency 2026-11-17 — axa 0.20
+
+axa 0.20.0 and axa-test 0.11.0 (both 2026-11-17) are inside the two-day cooldown; **the maintainer approved the
+exception on 2026-11-17**, and the update was resolved with the minimum lifted for that one command, as for AX-17.
+Upgrade guide: `help/upgrading-to-0.20/index.md` in the axa crate.
+
+- [x] **AX-18 (S) — Upgrade to axa 0.20.** **Done 2026-11-17:** `axa` 0.20 and `axa-test` 0.11; no code change. The one
+  breaking change makes Zstd compression an opt-in `zstd` feature; the service neither takes nor sends Zstd, so it is
+  left off, and the lockfile drops `zstd`, `zstd-safe`, `zstd-sys` (a C library) and `jobserver`. A request body in
+  Zstd is now a 415 and a caller asking only for Zstd gets an uncompressed answer; gzip, Brotli and deflate are
+  unchanged.
+
 ## Dependency 2026-11-17 — chrono is unmaintained
 
 RUSTSEC-2026-0543 (chrono) and RUSTSEC-2026-0555 (chrono-tz), published 2026-11-17: unmaintained, no vulnerability,

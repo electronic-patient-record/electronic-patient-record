@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - axa 0.20 (AX-18)
+
+- **Clinical risk:** none: dependency change; no handler changed.
+- **Changed:** `axa` 0.19 to 0.20 and `axa-test` 0.10 to 0.11, inside the publish cooldown with the maintainer's approval. Zstd compression is now an opt-in feature in axa, left off: the service took no Zstd before by choice and now refuses a Zstd request body with 415. The lockfile loses `zstd`, `zstd-safe`, `zstd-sys` and `jobserver`.
+- **Tested:** clippy on the workspace; 600 unit and HTTP tests; 193 database tests against a local Postgres 18; `cargo deny check`.
+- **Not done / not verified:** the six FHIR validator tests were not run (no validator jar here); no test sends a Zstd body.
+
 ## 2026-11-17 - The task rules' mutation run (TL-3, CQ-30)
 
 - **Clinical risk:** none: tests.
