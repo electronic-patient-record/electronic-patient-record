@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - Research pass: Tellescope (plan.md 37, TL-1 to TL-10)
+
+- **Clinical risk:** none: documents only. Four of the ideas are clinical (TL-2, TL-3, TL-4, TL-8) and each says it needs a hazard row when built.
+- **Written:** `spec/lessons/tellescope/index.md` (what it is, how its API and automation are built, an assessment, a comparison, ten ideas ranked, what is not adopted and why, two open questions, sources); `plan.md` §37 with the advice; tasks TL-1 to TL-10; TL added to the status script's prefixes.
+- **Advice:** task rules that only create tasks, due in working days (TL-3), with cancel conditions and skip-if-passed on every reminder (TL-4), first; scoped integration tokens (TL-1) next. Not adopted: A/B splits on patients, unattended patient messaging and AI agents, marketing analytics on care journeys, a switch that suppresses events, payments, built-in SMS or video.
+- **Not done / not verified:** public vendor pages and API documentation only, read once; the trust centre returned nothing readable, so the SOC 2 and HIPAA claims are the homepage's; no customer report, review or independent evaluation was looked for; nothing built.
+
 ## 2026-11-17 - Half the service's integration tests share one program (LC-15)
 
 - **Clinical risk:** none: how tests are built.

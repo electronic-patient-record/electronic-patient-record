@@ -2182,3 +2182,46 @@ acknowledging before a durable write.
 - This repository: `src/adt_feed.rs`, `src/feed_queue.rs`, `src/mllp.rs`, `src/interop/hl7_adt.rs`,
   `migrations/20261021000009_feed_refusals.sql`.
 - HL7 v2.5.1, chapter 2 (control): acknowledgement codes and MSH-11 processing id. Not re-read for this pass.
+
+## 37. Research pass 2026-11-17: Tellescope, a patient-engagement and workflow platform
+
+Asked for on 2026-11-17: research [Tellescope's features](https://www.tellescope.com/features) for ideas, assess them and
+advise. Specs and tasks only; no code. Spec: [`spec/lessons/tellescope/index.md`](spec/lessons/tellescope/index.md).
+Tasks TL-1 to TL-10; open questions OQ-TL1 and OQ-TL2.
+
+### 37.1 What it is
+
+A patient relationship management and workflow layer for US digital-health companies, beside an EHR rather than one
+(its API names Canvas and Healthie): messaging, intake forms, self-scheduling, a white-label portal, tasks, and
+**journeys**, an automation of events, conditions, delays and actions. It claims HIPAA compliance and a SOC 2 report.
+Its API has a staging host, scoped keys, an incremental sync and webhooks per model. No FHIR, HL7 or audit log was found
+in what was read.
+
+### 37.2 Assessment
+
+It is strong where this project is thin, what happens next and who does it, and silent where this project is strongest,
+the record, its audit and consent. Its automation can message patients and change records with no person in the loop,
+split patients for A/B tests, and send care events to marketing analytics; none of that fits a record. What fits is the
+shape of its rules, kept to creating tasks, and its operations details: working-day due dates, recorded cancellations,
+scoped integration keys, a sandbox and an incremental sync.
+
+### 37.3 Ideas, ranked
+
+| # | Idea | Effort | Clinical | Task |
+|---|---|---|---|---|
+| 1 | Task rules as versioned data that only create tasks, due in working days on the site calendar | M | yes | TL-3 |
+| 2 | Cancel conditions and skip-if-passed on scheduled reminders, the reason recorded | S | yes | TL-4 |
+| 3 | Scoped, hashed, expiring integration tokens (axa `api_tokens`) as the audit agent | S/M | no | TL-1 |
+| 4 | A read-only patient timeline over the append-only versions | M | yes | TL-2 |
+| 5 | A changes feed per append-only table for integrators | M | no | TL-5 |
+| 6 | Signed webhook deliveries; no caller may suppress a clinical write's event | S | no | TL-6 |
+| 7 | One-time booking links on the existing link-token rules | M | no | TL-7 |
+| 8 | AI summaries with every sentence linked to its source, a draft until filed | M | yes | TL-8 |
+| 9 | A documented sandbox with a synthetic dataset | S | no | TL-9 |
+| 10 | Decide whether access follows a clinician's licensed jurisdiction | decision | yes | TL-10 |
+
+**Advice:** start with TL-3 and TL-4 together, on top of the referral timeouts and the worklists that exist: they are the
+largest gain for clinicians and keep a person in every loop. TL-1 is small and closes a real gap now that integrators
+connect. Not adopted: A/B splits on patients, unattended patient messaging and AI agents, marketing analytics, a
+"send no event" switch, payments and built-in SMS or video.
+

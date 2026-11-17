@@ -1595,6 +1595,50 @@ with its first code. Open questions OQ-IH1 to OQ-IH6.
   register of intended differences with decision, who and when blank until a named person signs. Refines PR-9's path
   to production.
 
+## Research 2026-11-17 — Tellescope, a patient-engagement and workflow platform (TL)
+
+From [`spec/lessons/tellescope/index.md`](spec/lessons/tellescope/index.md) and `plan.md` §37. Public vendor material
+only; nothing here was taken from its code. Open questions OQ-TL1 (who approves a task rule) and OQ-TL2 (jurisdiction).
+
+- [ ] **TL-1 (S/M) — Scoped integration tokens.** A system authenticates with a named token (axa 0.16's `api_tokens`:
+  kept as a SHA-256 hash, scopes, expiry, revocation), not a person's sign-in; the token's name is the audit agent; one
+  scope per job (the feed's administration, an export). **Acceptance:** a token reaches only its scope (403 elsewhere),
+  an expired or revoked one is refused, the audit row names it, and no token is stored in clear.
+- [ ] **TL-2 (M, clinical) — A patient timeline.** `GET /api/patients/{id}/timeline`: one paged, read-only list over the
+  append-only versions (observations, results, allergies, referrals, adjustments, amendments, deaths), newest first,
+  each item with kind, author, time and a link to the record; consent and role views applied per item, as each record's
+  own read applies them; audited as one read. No new store. **Acceptance:** an item hidden by consent or a role view is
+  absent with nothing saying what it was; the timeline and the separate reads agree; a hazard row.
+- [ ] **TL-3 (M, clinical) — Task rules.** Versioned rules held as data, like the suspicion pathways: an event (a result
+  filed, a referral step, an observation out of range, an adjustment due) and conditions create a task for a team, due
+  after a number of working days on the site's calendar and time zone, with reminders. A rule creates tasks only: it
+  never messages a patient, never changes the record. A dry run shows what a rule would create. Builds on CA-6 and PC-3.
+  **Acceptance:** a rule that names anything but a task is refused when loaded; weekends and site holidays move due
+  dates; every task says which rule and version made it; a hazard row; OQ-TL1 answered before any rule is live.
+- [ ] **TL-4 (S, clinical) — Cancel conditions and skip-if-passed.** Every scheduled reminder (TL-3's, the referral
+  timeouts') can carry conditions that cancel it and a rule for a reminder whose time passed while the service was down;
+  a cancelled one records why and by whom (a person or a rule). **Acceptance:** after a simulated downtime, reminders
+  whose reason has gone are cancelled with a reason, the rest fire once; nothing is deleted.
+- [ ] **TL-5 (M) — A changes feed for integrators.** `?since=<cursor>` over each append-only table's versions, in commit
+  order, with the same consent, role and audit rules as a read. **Acceptance:** a consumer that stops and resumes from
+  its cursor misses and repeats nothing; a version hidden from the caller is skipped without a hint.
+- [ ] **TL-6 (S) — Signed deliveries, and no silent writes.** Extends IO-6: each subscription has a secret and every
+  delivery is signed (HMAC-SHA-256 over the body and a time); no request can ask that a clinical write raise no event.
+  **Acceptance:** a tampered or replayed delivery fails the receiver's check in a test; the route census finds no
+  suppression flag.
+- [ ] **TL-7 (M) — One-time booking links.** For CA-4: a link to book one appointment type, single use and expiring, on
+  the rules `link_token.rs` already enforces. **Acceptance:** a used or expired link is refused; the booking is audited
+  under the link, not a person.
+- [ ] **TL-8 (M, clinical) — AI summary boundary.** For DO-6: a summary shows, for every sentence, the record items it was
+  drawn from, is labelled a draft, and is filed only by a person who has read it. **Acceptance:** a sentence with no
+  source is refused; a filed summary names who filed it; a hazard row.
+- [ ] **TL-9 (S) — A documented sandbox.** A synthetic dataset and a script that loads it into a fresh deployment, for
+  integrators and training, with no real person in it. **Acceptance:** one command makes a usable sandbox; the data
+  passes the identifier and name checks for synthetic data.
+- [ ] **TL-10 (S, decision, clinical) — Access by licensed jurisdiction.** Decide (OQ-TL2) whether any target deployment
+  must limit a clinician to patients in the jurisdictions where they are licensed, as US telehealth can require.
+  **Acceptance:** a recorded decision; if yes, a policy rule and its tests in a later task.
+
 ## Dependency 2026-11-17 — axa 0.19
 
 axa 0.18.0 (2026-11-17 11:42 UTC) and 0.19.0 (14:35 UTC) and axa-test 0.9.0 and 0.10.0 are inside the two-day
