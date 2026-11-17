@@ -1536,3 +1536,54 @@ async fn a_message_for_another_kind_of_deployment_is_kept_and_an_unreadable_msh_
         );
     }
 }
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn a_stopping_listener_finishes_what_it_holds_and_answers_nothing_it_did_not_do() {
+    // IH-7: stop with a message in hand: either `AA` and the change committed, or no answer and no change. An idle
+    // connection is closed, nothing new is served, and the listener ends within its bound.
+    let db = db().await;
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let mut config = Config::local(addr);
+    config.agent = FEED_AGENT.into();
+    let (stop, stopped) = tokio::sync::watch::channel(false);
+    let served = tokio::spawn(mllp::serve_until(listener, db.clone(), config, stopped));
+
+    let mut idle = TcpStream::connect(addr).await.unwrap();
+    let mut busy = TcpStream::connect(addr).await.unwrap();
+    let mrn = tag("mrn");
+    let message = adt("A28", &tag("S"), &mrn, &tag("Stop"), &dob(), "");
+    busy.write_all(&mllp::frame(message.as_bytes()))
+        .await
+        .unwrap();
+    stop.send(true).unwrap();
+
+    let answer = read_ack(&mut busy).await;
+    let stored = by_mrn(&db, &mrn).await;
+    match &answer {
+        Some(ack) => {
+            assert_eq!(code(ack), "AA", "{ack}");
+            assert_eq!(stored.len(), 1, "an AA with no change");
+        }
+        None => assert!(stored.is_empty(), "a change with no AA"),
+    }
+    let mut byte = [0u8; 1];
+    let closed = tokio::time::timeout(Duration::from_secs(2), idle.read(&mut byte)).await;
+    assert!(
+        matches!(closed, Ok(Ok(0) | Err(_))),
+        "the idle connection was closed: {closed:?}"
+    );
+    tokio::time::timeout(mllp::STOP_WAIT + Duration::from_secs(1), served)
+        .await
+        .expect("the listener ended within its bound")
+        .unwrap();
+    // Nothing is listening now.
+    match TcpStream::connect(addr).await {
+        Err(_) => {}
+        Ok(mut late) => {
+            let _ = late.write_all(&mllp::frame(message.as_bytes())).await;
+            assert_eq!(read_ack(&mut late).await, None);
+        }
+    }
+}

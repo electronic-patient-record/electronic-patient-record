@@ -71,7 +71,7 @@ Each is a design to be confirmed, not a built behaviour. Clinical ones add hazar
 6. **Per-sender rules (IH-6).** Each configured sender names its sending application and facility (MSH-3, MSH-4), the
    HL7 version it sends (MSH-12) and the trigger events it may send; anything else is `AR` and kept (hub
    `spec/07-hl7-server.md` §3.3, §7). The audit agent stays configured, not taken from the message.
-7. **Shutdown drains (IH-7).** On a stop signal the listener stops accepting, lets each message already read finish
+7. **Shutdown drains (IH-7). Built 2026-11-17.** On a stop signal the listener stops accepting, lets each message already read finish
    (commit and answer), then closes the pool, within a bound; a message read but not committed gets no `AA`. The hub
    recorded the opposite order as a defect of the system it replaces (`plan.md` §9.9 there).
 8. **Feed health is never "healthy" without data (IH-8). Built 2026-11-17 in the service**; the UI part and a notifier are not. Per sender: an alarm for no message in a window, with windows

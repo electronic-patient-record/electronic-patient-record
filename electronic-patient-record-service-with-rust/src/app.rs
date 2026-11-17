@@ -178,7 +178,11 @@ impl App {
             Command::Start { .. } => {
                 let router = Self::router(&ctx).await?;
                 let served = server::serve(router, &ctx.config.server).await;
-                // Requests have finished; now let the outbox relay finish its publish (OS-3).
+                // Requests have finished; now the MLLP listener finishes the messages it holds (IH-7), and then
+                // the outbox relay finishes its publish (OS-3).
+                if !mllp::stop_kept().await {
+                    tracing::error!("the MLLP listener did not stop in time");
+                }
                 crate::outbox::stop_kept().await;
                 served
             }
@@ -239,7 +243,8 @@ impl App {
                 config.agent.clone(),
                 thresholds,
             ));
-            tokio::spawn(mllp::serve(listener, ctx.pool(), config));
+            // Kept so that `run` can drain it at shutdown (IH-7).
+            mllp::keep(mllp::Running::start(listener, ctx.pool(), config));
         }
         // The outbox relay is off unless `EPR_OUTBOX_INTERVAL_SECS` is set (OS-3). Its only sink is the
         // log sink, which sends nothing; a real sink arrives with IO-6. A missing table, index or

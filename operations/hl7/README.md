@@ -57,6 +57,12 @@ a renewed certificate needs a restart.
   but does not read, which gets an `AE` echoing its MSH-10. Every acknowledgement copies MSH-11 (`P` when there is
   none), and `MSA-3` is one line of at most 199 characters with HL7's delimiters escaped (IH-2).
 
+## Stopping
+
+On a stop the listener stops accepting, closes idle connections, finishes the message each connection is handling (the
+change committed and the answer sent) and waits up to 10 s; anything still unfinished is rolled back and gets no answer,
+so the sender sends it again (IH-7). A repeat of a message that was applied changes nothing.
+
 ## Counting
 
 With `EPR_METRICS=true`, `/metrics` has `epr_feed_messages_total{sender,event,answer}` (IH-9): `sender` is

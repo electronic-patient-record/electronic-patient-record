@@ -1573,7 +1573,7 @@ with its first code. Open questions OQ-IH1 to OQ-IH6.
 - [ ] **IH-6 (M) — Per-sender rules.** Each configured sender: MSH-3 and MSH-4, MSH-12, allowed trigger events; anything
   else `AR` and kept. The audit agent stays configured. **Acceptance:** a message from an unlisted application is
   refused and kept.
-- [ ] **IH-7 (S) — Shutdown drains the listener.** Stop accepting, finish what was read (commit and answer), close the
+- [x] **IH-7 (S) — Shutdown drains the listener.** **Done 2026-11-17:** `mllp::serve_until` with a stop signal, `Running`/`keep`/`stop_kept` as for the outbox, stopped by `run` after the HTTP server; `STOP_WAIT` 10 s. **Not done:** the test's stop usually lands before the message is read, so the finishing branch is exercised by chance, not on purpose. Stop accepting, finish what was read (commit and answer), close the
   pool, within a bound. **Acceptance:** a test stops the service with a message in flight and gets either `AA` with the
   change committed, or no answer and no change.
 - [x] **IH-8 (M, clinical) — Feed health and alarms.** **Done 2026-11-17 (service):** `feed_health.rs` (windows, thresholds from `EPR_FEED_SILENCE_MINUTES`, `EPR_FEED_REFUSALS_WARNING`, `EPR_FEED_REFUSALS_CRITICAL`; `unknown`/`healthy`/`warning`/`critical`), a loop every minute while listening, append-only `feed_alarm_states` (migration 39), the gauge `epr_feed_health{sender}` and `GET /api/feed/health`; H-023 updated. **Not done:** the UI (open refusals outside the admin pages, a health line on `/admin/feed`); a notifier (a deployer alerts on the log line or gauge); thresholds are placeholders (OQ-IH4). Per sender: no message in a window, refusals in a window, with

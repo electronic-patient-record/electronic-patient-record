@@ -362,10 +362,34 @@ fn now() -> i64 {
 
 /// Serve connections until the task is dropped. Each connection runs in its own task.
 pub async fn serve(listener: TcpListener, db: PgPool, config: Config) {
+    let (_keep, stop) = tokio::sync::watch::channel(false);
+    serve_until(listener, db, config, stop).await;
+}
+
+/// How long a stopping listener waits for the messages it is already handling (IH-7).
+pub const STOP_WAIT: Duration = Duration::from_secs(10);
+
+/// Serve connections until `stop` turns true, then drain (IH-7): stop accepting, close idle connections, let each
+/// message already being handled finish (its change committed and its answer sent), and wait up to [`STOP_WAIT`] for
+/// them. A connection still working after that is aborted: its transaction rolls back and it never answers `AA`, so the
+/// sender sends it again. Frames already read but not yet started are left unanswered, for the same reason.
+pub async fn serve_until(
+    listener: TcpListener,
+    db: PgPool,
+    config: Config,
+    mut stop: tokio::sync::watch::Receiver<bool>,
+) {
     let slots = Arc::new(Semaphore::new(config.max_connections));
     let config = Arc::new(config);
+    let mut connections = tokio::task::JoinSet::new();
     loop {
-        let (stream, peer) = match listener.accept().await {
+        let accepted = tokio::select! {
+            a = listener.accept() => a,
+            _ = stop.changed() => break,
+        };
+        // Reap finished connections so the set does not grow.
+        while connections.try_join_next().is_some() {}
+        let (stream, peer) = match accepted {
             Ok(c) => c,
             Err(e) => {
                 tracing::error!(error = %e, "MLLP accept failed");
@@ -378,16 +402,16 @@ pub async fn serve(listener: TcpListener, db: PgPool, config: Config) {
             drop(stream);
             continue;
         };
-        let (db, config) = (db.clone(), Arc::clone(&config));
-        tokio::spawn(async move {
+        let (db, config, stop) = (db.clone(), Arc::clone(&config), stop.clone());
+        connections.spawn(async move {
             match &config.tls {
-                None => connection(stream, peer, &db, &config).await,
+                None => connection(stream, peer, &db, &config, stop).await,
                 // TLS only: a handshake that fails or does not finish within the idle time closes the connection,
                 // and nothing is read in plain text (IH-10).
                 Some(tls) => {
                     let acceptor = tokio_rustls::TlsAcceptor::from(Arc::clone(tls));
                     match tokio::time::timeout(config.idle, acceptor.accept(stream)).await {
-                        Ok(Ok(secure)) => connection(secure, peer, &db, &config).await,
+                        Ok(Ok(secure)) => connection(secure, peer, &db, &config, stop).await,
                         Ok(Err(e)) => {
                             tracing::warn!(%peer, error = %e, "MLLP TLS handshake failed; closing")
                         }
@@ -397,6 +421,72 @@ pub async fn serve(listener: TcpListener, db: PgPool, config: Config) {
             }
             drop(permit);
         });
+    }
+    drop(listener);
+    let open = connections.len();
+    let drained = tokio::time::timeout(STOP_WAIT, async {
+        while connections.join_next().await.is_some() {}
+    })
+    .await
+    .is_ok();
+    if drained {
+        tracing::info!(
+            open,
+            "MLLP listener stopped; every message in hand was finished"
+        );
+    } else {
+        tracing::error!(
+            left = connections.len(),
+            seconds = STOP_WAIT.as_secs(),
+            "MLLP listener stopped with messages unfinished; they were rolled back and are not acknowledged"
+        );
+        connections.abort_all();
+    }
+}
+
+/// A listener the service started, and how to stop it.
+pub struct Running {
+    stop: tokio::sync::watch::Sender<bool>,
+    task: tokio::task::JoinHandle<()>,
+}
+
+impl Running {
+    /// Start [`serve_until`].
+    #[must_use]
+    pub fn start(listener: TcpListener, db: PgPool, config: Config) -> Self {
+        let (stop, stopped) = tokio::sync::watch::channel(false);
+        let task = tokio::spawn(serve_until(listener, db, config, stopped));
+        Running { stop, task }
+    }
+
+    /// Drain and stop: answers whether the listener ended within [`STOP_WAIT`] and a second.
+    pub async fn stop(self) -> bool {
+        let _ = self.stop.send(true);
+        tokio::time::timeout(STOP_WAIT + Duration::from_secs(1), self.task)
+            .await
+            .is_ok_and(|r| r.is_ok())
+    }
+}
+
+/// The listener the service started, kept for [`stop_kept`].
+static KEPT: std::sync::Mutex<Option<Running>> = std::sync::Mutex::new(None);
+
+/// Keep `running` until [`stop_kept`].
+pub fn keep(running: Running) {
+    *KEPT
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(running);
+}
+
+/// Drain and stop the kept listener, if any. Answers whether there was none or it stopped in time.
+pub async fn stop_kept() -> bool {
+    let kept = KEPT
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .take();
+    match kept {
+        Some(running) => running.stop().await,
+        None => true,
     }
 }
 
@@ -408,6 +498,7 @@ async fn connection<S: AsyncRead + AsyncWrite + Unpin>(
     peer: SocketAddr,
     db: &PgPool,
     config: &Config,
+    mut stop: tokio::sync::watch::Receiver<bool>,
 ) {
     let who = FeedIdentity {
         agent: config.agent.clone(),
@@ -418,8 +509,11 @@ async fn connection<S: AsyncRead + AsyncWrite + Unpin>(
     let mut buf: Vec<u8> = Vec::new();
     let mut chunk = [0u8; 8192];
     loop {
-        // Answer every complete frame already buffered before reading more.
+        // Answer every complete frame already buffered before reading more; when stopping, start no new one.
         loop {
+            if *stop.borrow() {
+                return;
+            }
             let payload = match take_frame(&mut buf, config.max_frame) {
                 Ok(Some(p)) => p,
                 Ok(None) => break,
@@ -450,7 +544,15 @@ async fn connection<S: AsyncRead + AsyncWrite + Unpin>(
                 }
             }
         }
-        match tokio::time::timeout(config.idle, stream.read(&mut chunk)).await {
+        if *stop.borrow() {
+            return;
+        }
+        let read = tokio::select! {
+            r = tokio::time::timeout(config.idle, stream.read(&mut chunk)) => r,
+            // Stopping: an idle connection closes now (IH-7).
+            _ = stop.changed() => return,
+        };
+        match read {
             Ok(Ok(0)) | Err(_) | Ok(Err(_)) => return,
             Ok(Ok(n)) => buf.extend_from_slice(&chunk[..n]),
         }

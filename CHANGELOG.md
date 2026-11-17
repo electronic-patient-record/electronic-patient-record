@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - The HL7 listener drains at shutdown (IH-7)
+
+- **Clinical risk:** none: it was already safe (a message killed mid-transaction rolls back unanswered; one committed and not answered is a harmless repeat when resent); this makes a stop tidy.
+- **Built:** `mllp::serve_until` takes a stop signal: it stops accepting, closes idle connections, lets the message each connection is handling finish (commit and answer) and starts no other buffered one, waits up to `mllp::STOP_WAIT` (10 s), then aborts what is left, whose transactions roll back unanswered. The service keeps the listener (`mllp::Running`, `keep`, `stop_kept`, the outbox's pattern) and `run` stops it after the HTTP server and before the outbox.
+- **Tested:** on Postgres, a message sent as the stop is given is either answered `AA` with the patient stored, or not answered and not stored; an idle connection is closed; the listener ends within its bound; nothing is served after. Run three times.
+- **Not done / not verified:** in those runs the stop came before the message was read, so the finishing branch was not exercised on purpose; no test of a message taking longer than the bound.
+
 ## 2026-11-17 - HL7 acknowledgement hygiene (IH-2)
 
 - **Clinical risk:** small, what reaches the record: with `EPR_MLLP_PROCESSING_ID` set, a message meant for another kind of deployment (a training message on a live one) is refused and kept, not applied. H-021's controls already cover refusals; no new hazard.
