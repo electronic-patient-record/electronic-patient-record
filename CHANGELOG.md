@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - The UI audit ignores a picomatch advisory with no fix (DEP-2)
+
+- **Clinical risk:** none: build tooling only.
+- **Changed:** GHSA-fc5q-39xc-vjpf (picomatch ReDoS, high, no patched version) is ignored in the UI's `pnpm-workspace.yaml`, with the reason and a review date of 2027-02-17, as the maintainer chose. It is in Vite's dependencies only; `pnpm audit --prod` finds nothing. CI's audit job had failed on it since 20c9ddb.
+- **Tested:** `pnpm audit --audit-level high` passes locally, showing the one ignored high and one moderate.
+- **Not done / not verified:** no check fails when the review date passes; the moderate finding is unchanged and below the gate.
+
 ## 2026-11-17 - axa 0.20 (AX-18)
 
 - **Clinical risk:** none: dependency change; no handler changed.

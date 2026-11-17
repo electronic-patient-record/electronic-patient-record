@@ -1693,6 +1693,18 @@ Upgrade guide: `help/upgrading-to-0.20/index.md` in the axa crate.
   Zstd is now a 415 and a caller asking only for Zstd gets an uncompressed answer; gzip, Brotli and deflate are
   unchanged.
 
+## Dependency 2026-11-17 — picomatch ReDoS, no fix
+
+GHSA-fc5q-39xc-vjpf (high): `picomatch` up to 4.0.7, the latest, is open to ReDoS through repeated extglobs, and no
+patched version exists. The UI's `pnpm audit --audit-level high` failed CI on it from 20c9ddb on. It reaches the UI only
+through Vite (`vite`, and `tinyglobby` > `fdir`), matching the project's own globs at build and dev time;
+`pnpm audit --prod` finds nothing. **The maintainer chose an ignore with a reason on 2026-11-17.**
+
+- [ ] **DEP-2 (S) — Drop the picomatch audit ignore.** Ignored in the UI's `pnpm-workspace.yaml`
+  (`auditConfig.ignoreGhsas`) with the reason and a review date of **2027-02-17**. **Acceptance:** `picomatch` 4.0.8 or
+  later in the lockfile, or the review date reached and the decision made again; the ignore removed and the audit green.
+  **Not done:** nothing fails when the review date passes (unlike `tests/advisory_expiry.rs` for `deny.toml`).
+
 ## Dependency 2026-11-17 — chrono is unmaintained
 
 RUSTSEC-2026-0543 (chrono) and RUSTSEC-2026-0555 (chrono-tz), published 2026-11-17: unmaintained, no vulnerability,

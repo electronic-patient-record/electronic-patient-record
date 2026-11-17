@@ -2,3 +2,8 @@ allowBuilds:
   esbuild: true
 minimumReleaseAgeExclude:
   - "@lilydesignsystem/svelte-theme-picker@0.4.0"
+auditConfig:
+  ignoreGhsas:
+    # 2026-11-17: picomatch <=4.0.7, ReDoS on repeated extglobs, no patched version. Dev only: Vite and fdir match the
+    # project's own globs at build time; `pnpm audit --prod` finds nothing. Review by 2027-02-17, or when 4.0.8 ships.
+    - GHSA-fc5q-39xc-vjpf
