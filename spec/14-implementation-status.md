@@ -72,7 +72,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | PX | 6 | 0 |
 | WL | 11 | 1 |
 | RS | 6 | 2 |
-| AX | 5 | 0 |
+| AX | 6 | 0 |
 | IW | 0 | 8 |
 | SC | 0 | 7 |
 | CN | 0 | 7 |
@@ -85,6 +85,6 @@ no network, database or compilation; counts are source lines, not test runs):
 | RD | 0 | 7 |
 | TH | 0 | 1 |
 | IH | 12 | 0 |
-| **Total** | **118** | **405** |
+| **Total** | **119** | **405** |
 
 <!-- generated:end -->

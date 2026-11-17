@@ -160,6 +160,10 @@ impl App {
         if matches!(cli.command, Command::Check) {
             return axa::cli::check(&environment, &defaults());
         }
+        // Asks the running server on this machine for its health, for an image with no `curl` (axa 0.16).
+        if let Command::Health { ready, port } = cli.command {
+            return axa::cli::health(&environment, &defaults(), ready, port).await;
+        }
         let mut config = Config::from_env(&environment, &defaults())?;
         if let Command::Start { binding, port, .. } = &cli.command {
             if let Some(binding) = binding {
@@ -189,7 +193,7 @@ impl App {
             Command::Db { command } => Self::db(&ctx, command).await,
             Command::Task { .. } => Err(Error::string("this service registers no tasks")),
             // Answered above, before anything connects.
-            Command::Check => Ok(()),
+            Command::Check | Command::Health { .. } => Ok(()),
         }
     }
 

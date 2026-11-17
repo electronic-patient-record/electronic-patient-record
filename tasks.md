@@ -1378,7 +1378,7 @@ Ranked in plan.md §30. Nothing here is built. Pages: `docs/<attribute>/index.md
 - [ ] **QA-5 (S) — No identifiers in logs.** A test that no identifier appears in `tracing` output on the main routes. **Acceptance:** the test.
 - [ ] **QA-6 (S) — A low-resource profile.** One core, 2 GiB, 3G latency as a named test target, from the equity rule. **Acceptance:** a measured run recorded in `BENCHMARKS.md`.
 - [ ] **QA-7 (S) — OpenAPI breaking-change check.** Add it to the OS-7 freshness gate. **Acceptance:** a planted break fails.
-- [ ] **QA-8 (S) — Build on the minimum Rust version.** **Acceptance:** a CI job on 1.97.
+- [ ] **QA-8 (S) — Build on the minimum Rust version.** **Acceptance:** a CI job on 1.98 for the service (axa 0.17 needs it) and 1.97 for the matcher.
 - [ ] **QA-9 (M) — ASVS table with evidence.** Level chosen with a reason; each row linked to evidence, no compliance claimed. **Acceptance:** a table under `docs/security/`.
 - [ ] **QA-10 (S) — A threat model per data flow.** STRIDE, one short entry per row in `governance/data-flow.md`. **Acceptance:** the entries exist.
 - [ ] **QA-11 (S, decision) — The audit chain's witness.** Decide whether to publish the chain head externally, and whether a keyed MAC is enough. **Acceptance:** a recorded decision.
@@ -1592,6 +1592,24 @@ with its first code. Open questions OQ-IH1 to OQ-IH6.
   on a test deployment, one feed at a time, a held business day, the old route kept, refusals as a stop signal, and a
   register of intended differences with decision, who and when blank until a named person signs. Refines PR-9's path
   to production.
+
+## Dependency 2026-11-17 — axa 0.17
+
+axa 0.16.0 (2026-11-16 16:06 UTC), 0.16.1 and 0.17.0 (2026-11-17 07:16 UTC) and axa-test 0.8.0 (2026-11-17 07:17 UTC)
+are inside the two-day cooldown (`registry.global-min-publish-age` in the maintainer's own cargo settings); **the
+maintainer approved skipping the cooldown on 2026-11-17.** Upgrade guides: `help/upgrading-to-0.16/index.md` and
+`help/upgrading-to-0.17/index.md` in the axa crate.
+
+- [x] **AX-16 (S) — Upgrade to axa 0.17.** **Done 2026-11-17:** `axa` 0.17 and `axa-test` 0.8; the service's
+  `rust-version` is 1.98, which axa 0.17 needs (the matcher stays 1.97). The new `health` command is answered by
+  `axa::cli::health` before anything connects. The lockfile moves `axa-idempotency-key` to 0.2.3,
+  `axa-postgres-job-queue` to 0.5.1, `axa-postgres-sqlx` to 0.2.1, `axa-request-rate-limit` to 0.3.3, and adds `ppp`
+  (PROXY protocol) and `thiserror` 1. Behaviour now in force: a trailing slash on a mounted path is a `308`; a
+  Keycloak refusal says only `invalid token`; an empty public prefix opens nothing (the service's public paths are a
+  fixed list, so nothing changes). Not adopted: `INTERNAL_PORT`, `PROXY_PROTOCOL_FROM`, `Patch`, `Form`, operator
+  guards, API tokens, a shared rate limit, Tokio metrics, background migrations, `axa-test`'s OpenAPI conformance
+  check; the image's health check still uses its own probe. **Acceptance:** every gate green, the OpenAPI document
+  unchanged, and a CHANGELOG entry.
 
 ## Dependency 2026-11-16 — axa 0.15
 

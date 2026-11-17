@@ -18,7 +18,7 @@ Version compatibility is the second pressure. Hospitals run browsers and operati
 
 - **API versioning** is the `Accepts-version` request header on the unversioned `/api` path; no version segment is allowed in a route (`AGENTS.md`, `spec/09-api-surface.md`).
 - **FHIR releases.** R4 is stored; R5 is a read-only derived facade (`/fhir/R5`, IO-16, built 2026-10-29), where a loss or warning in conversion fails the response. `fhirVersion` is read; there is no status code for an unsupported version yet (IO-17 partly). R6 is watch-only (IO-15). The decision on where the version is chosen is open (PA-9, OQ-PA3).
-- **Pinned platform.** Rust 1.99.1 pinned in `rust-toolchain.toml` with 1.97 as the minimum; Node 26, pnpm, Podman, PostgreSQL 18 for tests (`AGENTS.md`). Podman rather than Docker everywhere.
+- **Pinned platform.** Rust 1.99.1 pinned in `rust-toolchain.toml` with 1.98 as the service's minimum (axa 0.17 needs it) and 1.97 as the matcher's; Node 26, pnpm, Podman, PostgreSQL 18 for tests (`AGENTS.md`). Podman rather than Docker everywhere.
 - **Co-existence in practice.** The guide records that ports 5432 and 6379 are often taken and gives override variables; `localhost` can resolve to IPv6 where another project listens, so tests use `127.0.0.1`; the UI test port is overridable (`PW_PORT`). These are developer-machine cases, not hospital cases.
 - **Dependency coupling.** `axum-test` follows `axa` and must not be bumped alone (`AGENTS.md`); `cargo-deny` and Dependabot are in CI (NFR-11).
 - **UI environment.** Browser support list is not stated in the specs I read; mobile viewability is proposed (NFR-4) and nothing is built. A stateless UI tier depends on `EPR_SESSION_REDIS_URL` (OS-8, built, not run behind two replicas).

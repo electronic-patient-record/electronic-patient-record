@@ -2,6 +2,16 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - axa 0.17 (AX-16)
+
+- **Clinical risk:** none. No schema or response body changes; the OpenAPI document is unchanged.
+- **Approved exception:** axa 0.16.0, 0.16.1 and 0.17.0 and axa-test 0.8.0 were published between 2026-11-16 16:06 and 2026-11-17 07:17 UTC, inside the maintainer's two-day cooldown (`registry.global-min-publish-age`, which stable cargo does not enforce); the maintainer approved skipping it.
+- **Changed:** `axa` 0.17 and `axa-test` 0.8. The service's `rust-version` is 1.98, which axa 0.17 needs; the matcher stays 1.97 (`AGENTS.md`, `plan.md`, the compatibility page). The new `health` command is answered by `axa::cli::health` before anything connects. The lockfile moves `axa-idempotency-key` to 0.2.3, `axa-postgres-job-queue` to 0.5.1, `axa-postgres-sqlx` to 0.2.1 and `axa-request-rate-limit` to 0.3.3, and adds `ppp` and `thiserror` 1.
+- **Behaviour now in force:** a trailing slash on a mounted path is a `308` to the path without it; a Keycloak refusal says only `invalid token` (the reason is logged); an empty public prefix opens nothing, which changes nothing here because the service's public paths are a fixed list. No migration: the job queue's new trigger is on tables this service never sets up.
+- **Checked:** clippy, every test without a database, rustdoc, and every database test on a local Postgres 18 except the six FHIR validator tests, which need Java here (CI runs them); one `axa`, one `axum-test`.
+- **Found, not fixed:** `the_sample_set_goes_through_the_feed_as_its_readme_says` fails on a database where it has already run (its fixed sample patients exist, so the first message is refused); it passes on a fresh one, as in CI. Not caused by the upgrade.
+- **Not done / not verified:** no gate builds with exactly Rust 1.98 (QA-8). Not adopted: `INTERNAL_PORT`, `PROXY_PROTOCOL_FROM`, `Patch`, `Form`, operator guards, API tokens, a shared rate limit, Tokio metrics, background migrations, axa-test's OpenAPI conformance check; the image's health check is unchanged.
+
 ## 2026-11-17 - The shutdown test always stops with a message in hand (IH-7)
 
 - **Clinical risk:** none: a test.
