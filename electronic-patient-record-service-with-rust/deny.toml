@@ -15,6 +15,11 @@ yanked = "warn"
 # 2026-10-30: twelve earlier ignores were removed because `cargo deny` reported each as not encountered
 # (the locked versions are patched or the crate is no longer in the tree).
 ignore = [
+    # 2026-11-17: chrono and chrono-tz are unmaintained (no vulnerability, no fixed version). chrono also comes in through
+    # axa, sqlx's `chrono` feature and croner, so the service cannot leave it alone; task DEP-1 tracks the move. expires 2027-02-17
+    { id = "RUSTSEC-2026-0543", reason = "chrono unmaintained; also required by axa, sqlx and croner; DEP-1" },
+    # chrono-tz is the service's own (the site time zone); DEP-1 moves it with chrono. expires 2027-02-17
+    { id = "RUSTSEC-2026-0555", reason = "chrono-tz unmaintained; moves with chrono; DEP-1" },
 ]
 
 [licenses]

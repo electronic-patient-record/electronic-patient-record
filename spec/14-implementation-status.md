@@ -85,6 +85,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | RD | 0 | 7 |
 | TH | 0 | 1 |
 | IH | 12 | 0 |
-| **Total** | **120** | **404** |
+| DEP | 0 | 1 |
+| **Total** | **120** | **405** |
 
 <!-- generated:end -->

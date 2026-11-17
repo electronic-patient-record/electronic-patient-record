@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - chrono is unmaintained: carried until 2027-02-17 (DEP-1)
+
+- **Clinical risk:** none: no code changes.
+- **Found:** CI for `fd1166c` failed `cargo deny` (the service) on two advisories published today, RUSTSEC-2026-0543 (chrono) and RUSTSEC-2026-0555 (chrono-tz): unmaintained, no vulnerability, no fixed version. The late-update test fixed in that commit passed.
+- **Changed:** both are ignored in `deny.toml` with a reason and `expires 2027-02-17`, which `tests/advisory_expiry.rs` enforces. chrono also comes through axa, sqlx and croner, so the service cannot remove it from the tree alone. Task DEP-1 is the move to `jiff` or `time`.
+- **Tested:** `cargo deny check advisories` passes here with the ignores; the expiry test passes.
+- **Not done / not verified:** nothing moved off chrono; the maintainer may prefer to start DEP-1 now rather than carry the ignores.
+
 ## 2026-11-17 - The late-update test no longer fails between 10:00 and 11:00 on 17 November
 
 - **Clinical risk:** none: a test.

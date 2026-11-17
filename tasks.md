@@ -1593,6 +1593,19 @@ with its first code. Open questions OQ-IH1 to OQ-IH6.
   register of intended differences with decision, who and when blank until a named person signs. Refines PR-9's path
   to production.
 
+## Dependency 2026-11-17 — chrono is unmaintained
+
+RUSTSEC-2026-0543 (chrono) and RUSTSEC-2026-0555 (chrono-tz), published 2026-11-17: unmaintained, no vulnerability,
+no fixed version; the advisory suggests `jiff` or `time`. `cargo deny` failed CI on them. They are ignored in the
+service's `deny.toml` until **2027-02-17** (`tests/advisory_expiry.rs` fails after that).
+
+- [ ] **DEP-1 (M) — Move off chrono.** chrono is in the tree through the service (51 files under `src` and `tests`,
+  the site time zone through chrono-tz, sqlx's `chrono` feature for every timestamp column), and through axa, sqlx and
+  `croner` (axa's job queue). The service's own part can move to `jiff` (with `jiff-tz` for the site time zone) or
+  `time`, with sqlx's matching feature; the rest waits on axa and croner. **Acceptance:** before 2027-02-17, either
+  chrono is gone from `cargo tree` and both ignores are deleted, or the expiry is renewed in a commit that says what
+  upstream still holds it.
+
 ## Dependency 2026-11-17 — axa 0.17
 
 axa 0.16.0 (2026-11-16 16:06 UTC), 0.16.1 and 0.17.0 (2026-11-17 07:16 UTC) and axa-test 0.8.0 (2026-11-17 07:17 UTC)
