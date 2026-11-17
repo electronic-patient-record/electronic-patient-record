@@ -1170,6 +1170,32 @@ fn feed_schemas() -> Value {
         "FeedRefusalCount": {
             "type": "object", "required": ["open"],
             "properties": {"open": {"type": "integer"}}
+        },
+        "FeedHealth": {
+            "type": "object", "required": ["feeds", "site_time_zone"],
+            "description": "Each configured HL7 feed judged now (IH-8). Empty when the listener is off.",
+            "properties": {
+                "feeds": {"type": "array", "items": {
+                    "type": "object",
+                    "required": ["sender", "state", "window", "reasons", "since", "last_message_at", "refusals_last_hour", "open_refusals", "thresholds"],
+                    "properties": {
+                        "sender": {"type": "string", "description": "The feed's configured agent (EPR_MLLP_AGENT)."},
+                        "state": {"type": "string", "enum": ["unknown", "healthy", "warning", "critical"], "description": "No data is unknown, never healthy."},
+                        "window": {"type": "string", "enum": ["day", "evening", "weekend"]},
+                        "reasons": {"type": "array", "items": {"type": "string"}},
+                        "since": {"type": ["string", "null"], "format": "date-time", "description": "When this state began, from the last stored change; null when none matches."},
+                        "last_message_at": {"type": ["string", "null"], "format": "date-time"},
+                        "refusals_last_hour": {"type": "integer"},
+                        "open_refusals": {"type": "integer"},
+                        "thresholds": {"type": "object", "required": ["silence_day", "silence_evening", "silence_weekend", "refusals_warning", "refusals_critical"],
+                            "properties": {
+                                "silence_day": {"type": "integer"}, "silence_evening": {"type": "integer"}, "silence_weekend": {"type": "integer"},
+                                "refusals_warning": {"type": "integer"}, "refusals_critical": {"type": "integer"}
+                            }}
+                    }
+                }},
+                "site_time_zone": {"type": "string"}
+            }
         }
     })
 }
@@ -1925,6 +1951,7 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
     ),
     ("GET", "/api/feed/refusals", "FeedRefusalList", &[]),
     ("GET", "/api/feed/refusals/count", "FeedRefusalCount", &[]),
+    ("GET", "/api/feed/health", "FeedHealth", &[]),
     ("GET", "/api/feed/refusals/{id}", "FeedRefusal", &[]),
     ("GET", "/api/referral-queue", "ReferralQueueList", &[]),
     (

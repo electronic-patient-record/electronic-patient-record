@@ -232,6 +232,13 @@ impl App {
                 agent = %config.agent,
                 "MLLP listener is ON: it has no authentication or encryption"
             );
+            // The feed's health is judged every minute while it listens (IH-8). A bad threshold stops the start.
+            let thresholds = crate::feed_health::Thresholds::from_env().map_err(Error::Message)?;
+            tokio::spawn(crate::feed_health::run_loop(
+                ctx.pool(),
+                config.agent.clone(),
+                thresholds,
+            ));
             tokio::spawn(mllp::serve(listener, ctx.pool(), config));
         }
         // The outbox relay is off unless `EPR_OUTBOX_INTERVAL_SECS` is set (OS-3). Its only sink is the

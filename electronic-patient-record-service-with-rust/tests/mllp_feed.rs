@@ -1109,3 +1109,73 @@ async fn a_late_update_does_not_undo_a_newer_one() {
     .unwrap();
     assert_eq!(code(&ack), "AA", "{ack}");
 }
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn a_feeds_health_is_judged_from_the_database_and_a_change_is_stored_once() {
+    // IH-8: a feed of its own, so other tests' refusals do not count.
+    use electronic_patient_record::feed_health::{self, State, Thresholds};
+    let db = db().await;
+    let agent = tag("mllp:health");
+    let t = Thresholds::default();
+    let utc = chrono_tz::UTC;
+    // Never sent: unknown, and that is stored.
+    let now = chrono::Utc::now();
+    let (a, changed) = feed_health::check(&db, &agent, now, utc, &t).await.unwrap();
+    assert_eq!((a.state, changed), (State::Unknown, true));
+
+    let name = agent.clone();
+    let addr = start(&db, move |c| c.agent = name).await;
+    let mut s = TcpStream::connect(addr).await.unwrap();
+    let ack = send(
+        &mut s,
+        &adt("A28", &tag("H"), &tag("mrn"), &tag("Well"), &dob(), ""),
+    )
+    .await
+    .unwrap();
+    assert_eq!(code(&ack), "AA", "{ack}");
+    let now = chrono::Utc::now();
+    let (a, changed) = feed_health::check(&db, &agent, now, utc, &t).await.unwrap();
+    assert_eq!((a.state, changed), (State::Healthy, true), "{a:?}");
+    // The same state again stores nothing, so a restart that judges again raises nothing.
+    let (_, changed) = feed_health::check(&db, &agent, now, utc, &t).await.unwrap();
+    assert!(!changed);
+    let rows: i64 = sqlx::query_scalar("SELECT count(*) FROM feed_alarm_states WHERE agent = $1")
+        .bind(&agent)
+        .fetch_one(&db)
+        .await
+        .unwrap();
+    assert_eq!(rows, 2);
+
+    // A refusal makes it a warning; silence past every window makes it critical.
+    let ack = send(
+        &mut s,
+        &adt("A08", &tag("H"), &tag("mrn"), &tag("Ill"), &dob(), "")
+            .replace("PID|1||", "PID|1||9434765910^^^NHS^NH~"),
+    )
+    .await
+    .unwrap();
+    assert_eq!(code(&ack), "AR", "{ack}");
+    let (a, _) = feed_health::check(&db, &agent, chrono::Utc::now(), utc, &t)
+        .await
+        .unwrap();
+    assert_eq!(a.state, State::Warning, "{a:?}");
+    let later = chrono::Utc::now() + chrono::Duration::days(2);
+    let (a, changed) = feed_health::check(&db, &agent, later, utc, &t)
+        .await
+        .unwrap();
+    assert_eq!((a.state, changed), (State::Critical, true), "{a:?}");
+    assert!(a.reasons.contains(&feed_health::SILENT));
+    assert_eq!(
+        feed_health::last_state(&db, &agent)
+            .await
+            .unwrap()
+            .map(|(s, _)| s),
+        Some(State::Critical)
+    );
+    // The gauge says the same.
+    assert!(
+        electronic_patient_record::metrics::render()
+            .contains(&format!("epr_feed_health{{sender=\"{agent}\"}} 3"))
+    );
+}

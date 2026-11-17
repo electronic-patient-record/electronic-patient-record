@@ -1,7 +1,8 @@
 //! The work queue for refused HL7 messages (task OR-3): `GET /api/feed/refusals/count` (how many wait),
 //! `GET /api/feed/refusals` (the open ones),
 //! `GET /api/feed/refusals/{id}` (one, with the message as received) and
-//! `POST /api/feed/refusals/{id}/resolve` (close it, with an outcome and a reason).
+//! `POST /api/feed/refusals/{id}/resolve` (close it, with an outcome and a reason), and
+//! `GET /api/feed/health` (each configured feed's state, IH-8).
 //!
 //! The messages are patient data that belong to no patient on record, so the policy table gives
 //! the `FeedQueue` resource to the clinical administrator only and no care relationship applies.
@@ -143,6 +144,78 @@ async fn count(
     Json(serde_json::json!({ "open": open })).into_response()
 }
 
+/// `GET /api/feed/health`: each configured feed judged now (IH-8): its state, the window, why, since when the state has
+/// held (from the last stored change, if it matches), the facts and the thresholds. No message text, no patient.
+/// `feeds` is empty when the listener is off. Audited like any read of the queue.
+async fn health(
+    State(ctx): State<AppContext>,
+    Extension(agent): Extension<Agent>,
+    Extension(subject): Extension<Subject>,
+    headers: HeaderMap,
+) -> Response {
+    let purpose = match purpose_of(&headers) {
+        Ok(p) => p,
+        Err(r) => return r.into_response(),
+    };
+    if let Err(r) = authorize(
+        &ctx.pool(),
+        &agent,
+        &subject,
+        Resource::FeedQueue,
+        policy::Action::Read,
+        purpose,
+        None,
+    )
+    .await
+    {
+        return r.into_response();
+    }
+    let now = chrono::Utc::now();
+    let zone = crate::site::zone();
+    let mut feeds = Vec::new();
+    if let Some((sender, thresholds)) = crate::feed_health::configured() {
+        let facts = match crate::feed_health::facts(&ctx.pool(), sender, now).await {
+            Ok(f) => f,
+            Err(e) => return failure(e),
+        };
+        let judged = crate::feed_health::assess(now, zone, &facts, thresholds);
+        let since = match crate::feed_health::last_state(&ctx.pool(), sender).await {
+            Ok(Some((state, at))) if state == judged.state => Some(at),
+            Ok(_) => None,
+            Err(e) => return failure(e),
+        };
+        feeds.push(serde_json::json!({
+            "sender": sender,
+            "state": judged.state,
+            "window": judged.window,
+            "reasons": judged.reasons,
+            "since": since,
+            "last_message_at": facts.last_message_at,
+            "refusals_last_hour": facts.refusals_last_hour,
+            "open_refusals": facts.open_refusals,
+            "thresholds": thresholds,
+        }));
+    }
+    if let Err(r) = audit_resource(
+        &ctx.pool(),
+        &agent,
+        Access {
+            action: Action::Read,
+            outcome: 0,
+            purpose,
+            resource: "FeedQueue",
+            patient_id: None,
+        },
+        serde_json::json!({ "health": feeds.len() }),
+    )
+    .await
+    {
+        return r.into_response();
+    }
+    Json(serde_json::json!({ "feeds": feeds, "site_time_zone": crate::site::time_zone() }))
+        .into_response()
+}
+
 /// `GET /api/feed/refusals/{id}`: one refusal with the message as received. Audited before the text leaves; the audit
 /// row names the refusal, its HL7 event and kind, never the message.
 async fn read(
@@ -267,4 +340,5 @@ pub fn routes() -> Routes {
         .add("/refusals/count", get(count))
         .add("/refusals/{id}", get(read))
         .add("/refusals/{id}/resolve", post(resolve))
+        .add("/health", get(health))
 }

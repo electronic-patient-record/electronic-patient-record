@@ -1746,6 +1746,114 @@
         ],
         "type": "object"
       },
+      "FeedHealth": {
+        "description": "Each configured HL7 feed judged now (IH-8). Empty when the listener is off.",
+        "properties": {
+          "feeds": {
+            "items": {
+              "properties": {
+                "last_message_at": {
+                  "format": "date-time",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "open_refusals": {
+                  "type": "integer"
+                },
+                "reasons": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "refusals_last_hour": {
+                  "type": "integer"
+                },
+                "sender": {
+                  "description": "The feed's configured agent (EPR_MLLP_AGENT).",
+                  "type": "string"
+                },
+                "since": {
+                  "description": "When this state began, from the last stored change; null when none matches.",
+                  "format": "date-time",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "state": {
+                  "description": "No data is unknown, never healthy.",
+                  "enum": [
+                    "unknown",
+                    "healthy",
+                    "warning",
+                    "critical"
+                  ],
+                  "type": "string"
+                },
+                "thresholds": {
+                  "properties": {
+                    "refusals_critical": {
+                      "type": "integer"
+                    },
+                    "refusals_warning": {
+                      "type": "integer"
+                    },
+                    "silence_day": {
+                      "type": "integer"
+                    },
+                    "silence_evening": {
+                      "type": "integer"
+                    },
+                    "silence_weekend": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "silence_day",
+                    "silence_evening",
+                    "silence_weekend",
+                    "refusals_warning",
+                    "refusals_critical"
+                  ],
+                  "type": "object"
+                },
+                "window": {
+                  "enum": [
+                    "day",
+                    "evening",
+                    "weekend"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "sender",
+                "state",
+                "window",
+                "reasons",
+                "since",
+                "last_message_at",
+                "refusals_last_hour",
+                "open_refusals",
+                "thresholds"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "site_time_zone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "feeds",
+          "site_time_zone"
+        ],
+        "type": "object"
+      },
       "FeedRefusal": {
         "description": "One message the feed refused. `message`, the text as received, is present only when one refusal is read, never in a listing.",
         "properties": {
@@ -5874,6 +5982,57 @@
         ],
         "x-epr-action": "Search",
         "x-epr-resource": "DeathReports"
+      }
+    },
+    "/api/feed/health": {
+      "get": {
+        "operationId": "getApiFeedHealth",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedHealth"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/feed/health",
+        "tags": [
+          "feed"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "FeedQueue"
       }
     },
     "/api/feed/refusals": {

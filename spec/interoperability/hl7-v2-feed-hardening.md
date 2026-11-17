@@ -74,7 +74,7 @@ Each is a design to be confirmed, not a built behaviour. Clinical ones add hazar
 7. **Shutdown drains (IH-7).** On a stop signal the listener stops accepting, lets each message already read finish
    (commit and answer), then closes the pool, within a bound; a message read but not committed gets no `AA`. The hub
    recorded the opposite order as a defect of the system it replaces (`plan.md` §9.9 there).
-8. **Feed health is never "healthy" without data (IH-8).** Per sender: an alarm for no message in a window, with windows
+8. **Feed health is never "healthy" without data (IH-8). Built 2026-11-17 in the service**; the UI part and a notifier are not. Per sender: an alarm for no message in a window, with windows
    for day, evening and weekend in the site's time zone; an alarm for refusals in a window; any open refusal is shown
    outside the admin pages. No data is `unknown`, never `healthy`. Alarm state is stored so a restart does not raise it
    again (hub `spec/15-dashboard.md` §3, §5). Thresholds are the deployer's (OQ-IH4). This is OR-3's missing alert.

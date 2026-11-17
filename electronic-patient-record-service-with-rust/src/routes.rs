@@ -347,6 +347,7 @@ pub const TABLE: &[(&str, &str, Resource, Action)] = &[
         Resource::FeedQueue,
         Action::Search,
     ),
+    ("GET", "/api/feed/health", Resource::FeedQueue, Action::Read),
     (
         "GET",
         "/api/feed/refusals/{id}",

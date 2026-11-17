@@ -1576,7 +1576,7 @@ with its first code. Open questions OQ-IH1 to OQ-IH6.
 - [ ] **IH-7 (S) — Shutdown drains the listener.** Stop accepting, finish what was read (commit and answer), close the
   pool, within a bound. **Acceptance:** a test stops the service with a message in flight and gets either `AA` with the
   change committed, or no answer and no change.
-- [ ] **IH-8 (M, clinical) — Feed health and alarms.** Per sender: no message in a window, refusals in a window, with
+- [x] **IH-8 (M, clinical) — Feed health and alarms.** **Done 2026-11-17 (service):** `feed_health.rs` (windows, thresholds from `EPR_FEED_SILENCE_MINUTES`, `EPR_FEED_REFUSALS_WARNING`, `EPR_FEED_REFUSALS_CRITICAL`; `unknown`/`healthy`/`warning`/`critical`), a loop every minute while listening, append-only `feed_alarm_states` (migration 39), the gauge `epr_feed_health{sender}` and `GET /api/feed/health`; H-023 updated. **Not done:** the UI (open refusals outside the admin pages, a health line on `/admin/feed`); a notifier (a deployer alerts on the log line or gauge); thresholds are placeholders (OQ-IH4). Per sender: no message in a window, refusals in a window, with
   windows for day, evening and weekend in the site's time zone; no data is `unknown`; alarm state stored across a
   restart; open refusals shown outside the admin pages. Thresholds by the deployer (OQ-IH4). Closes OR-3's "an alert
   for the queue". Hazard H-023 updated.

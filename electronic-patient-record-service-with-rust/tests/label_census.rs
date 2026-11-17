@@ -123,6 +123,11 @@ const OUTPUT: &[(&str, &str, Label)] = &[
     ("GET", "/api/feed/refusals/count", NoPatientData("a number")),
     (
         "GET",
+        "/api/feed/health",
+        NoPatientData("states, counts and times about the feed"),
+    ),
+    (
+        "GET",
         "/api/break-glass/reviews/count",
         NoPatientData("a number"),
     ),

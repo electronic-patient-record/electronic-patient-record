@@ -136,6 +136,11 @@ feed_refusals,received_at,none,When the message arrived,feed
 feed_refusals,agent,staff-identifier,Who or what acted,feed
 feed_refusals,peer,staff-trace,Address of the sending system,feed
 feed_refusals,event,none,Step of the request,feed
+feed_alarm_states,seq,none,Order of the stored states,feed
+feed_alarm_states,agent,staff-identifier,The HL7 feed's configured audit agent,feed
+feed_alarm_states,state,none,The feed's health state (IH-8),feed
+feed_alarm_states,reasons,none,Fixed words saying why; never message content,feed
+feed_alarm_states,recorded_at,none,When the state began,feed
 feed_message_times,agent,staff-identifier,The HL7 feed's configured audit agent,feed
 feed_message_times,patient_id,identifier,The patient a feed message was applied to,feed
 feed_message_times,message_time,none,When the sender says the event happened (EVN-2 or MSH-7) so a late message never undoes a newer one (IH-5),feed

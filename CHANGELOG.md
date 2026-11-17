@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - HL7 feed health and its alarm (IH-8)
+
+- **Clinical risk:** yes, what a person is told: a refusal or a silent feed now raises a state an operator can alert on, where before someone had to open the admin screen. Hazard H-023 updated (still open).
+- **Built:** `feed_health.rs` judges each configured feed by the site's local window (weekdays 08:00 to 17:59 day, the rest of a weekday evening, Saturday and Sunday weekend): `unknown` when it has sent nothing (never `healthy`), `critical` for silence past the window (`EPR_FEED_SILENCE_MINUTES`, default `day=60,evening=240,weekend=720`) or many refusals in an hour (`EPR_FEED_REFUSALS_CRITICAL`, 10), `warning` for a refusal in the hour (`EPR_FEED_REFUSALS_WARNING`, 1) or any open one. The defaults are placeholders (OQ-IH4); a bad setting stops the start. While the listener is on, a loop judges every minute, stores each change in a new append-only table (`feed_alarm_states`, migration 39, which also indexes the audit trail by agent) and logs it once, as an error when critical. A restart reads the last state, so it logs nothing again. The gauge `epr_feed_health{sender}` and `GET /api/feed/health` (clinical administrator, audited) show it.
+- **Tested:** the windows (zones, summer time, edges), no data is unknown, silence and refusals raise the state, thresholds read and checked; on Postgres, a feed of its own goes unknown, healthy (stored once; judging again stores nothing), warning after a refusal and critical after two days' silence, with the gauge; the route against its OpenAPI schema.
+- **Not done / not verified:** no notifier, so nobody is paged unless a deployer alerts on the log line or gauge; the UI shows neither the health nor the open count outside the admin pages; one listener is one feed (IH-6 brings senders); the loop's minute is fixed.
+
 ## 2026-11-17 - HL7 feed counters by sender, event and answer (IH-9)
 
 - **Clinical risk:** none: a counter.

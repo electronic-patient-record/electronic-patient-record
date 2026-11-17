@@ -645,6 +645,18 @@ async fn real_responses_of_the_role_gated_routes_validate_against_the_served_sch
             StatusCode::OK,
             &counted.json(),
         );
+        let health = server
+            .get("/api/feed/health")
+            .add_header(mh.clone(), mv.clone())
+            .await;
+        assert_eq!(health.status_code(), StatusCode::OK, "{}", health.text());
+        expect(
+            "feed health",
+            "/api/feed/health",
+            "get",
+            StatusCode::OK,
+            &health.json(),
+        );
         let one = format!("{queue}/{stored}");
         let read = server.get(&one).add_header(mh.clone(), mv.clone()).await;
         assert_eq!(read.status_code(), StatusCode::OK, "{}", read.text());

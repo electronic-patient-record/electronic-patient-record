@@ -144,6 +144,32 @@ pub fn feed_message(sender: &str, event: &str, handled: &[&str], answer: &str) {
     *series.entry(key).or_default() += 1;
 }
 
+/// Each configured feed's health (IH-8): 0 unknown, 1 healthy, 2 warning, 3 critical, as last judged.
+static FEED_HEALTH: Mutex<BTreeMap<String, u64>> = Mutex::new(BTreeMap::new());
+
+/// Set a configured feed's health gauge. `sender` is the configured agent.
+pub fn feed_health(sender: &str, value: u64) {
+    let mut g = FEED_HEALTH.lock().unwrap_or_else(|e| e.into_inner());
+    if g.contains_key(sender) || g.len() < MAX_FEED_SERIES {
+        g.insert(sender.to_string(), value);
+    }
+}
+
+fn render_feed_health() -> String {
+    let g = FEED_HEALTH.lock().unwrap_or_else(|e| e.into_inner());
+    if g.is_empty() {
+        return String::new();
+    }
+    let name = "epr_feed_health";
+    let mut out = format!(
+        "# HELP {name} HL7 feed health as last judged: 0 unknown, 1 healthy, 2 warning, 3 critical.\n# TYPE {name} gauge\n"
+    );
+    for (sender, v) in g.iter() {
+        out.push_str(&format!("{name}{{sender=\"{}\"}} {v}\n", escape(sender)));
+    }
+    out
+}
+
 /// The feed counter's lines, one per sender, event and answer.
 fn render_feed() -> String {
     let series = FEED_MESSAGES.lock().unwrap_or_else(|e| e.into_inner());
@@ -348,6 +374,7 @@ pub fn render() -> String {
         ));
     }
     out.push_str(&render_feed());
+    out.push_str(&render_feed_health());
     let series = REQUESTS.lock().unwrap_or_else(|e| e.into_inner());
     out.push_str(&render_histograms(&series));
     out

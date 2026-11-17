@@ -50,6 +50,22 @@ With `EPR_METRICS=true`, `/metrics` has `epr_feed_messages_total{sender,event,an
 on `answer="AE"` rising (the database or the queue is failing) and on any `answer="AR"` (a person has work). Nothing from
 a message is a label. `epr_feed_refused_messages_total` stays as before.
 
+## Health and alarm
+
+While the listener is on, the feed is judged every minute (IH-8): `unknown` (it has sent nothing), `healthy`, `warning`
+(refusals in the last hour, or any waiting) or `critical` (silent longer than the window allows, or many refusals in an
+hour). Windows are the site's local day (weekdays 08:00 to 17:59), evening and weekend.
+
+| Variable | Meaning | Default (a placeholder) |
+|---|---|---|
+| `EPR_FEED_SILENCE_MINUTES` | Longest silence per window, `day=N,evening=N,weekend=N` | `day=60,evening=240,weekend=720` |
+| `EPR_FEED_REFUSALS_WARNING` | Refusals in an hour that make a warning | 1 |
+| `EPR_FEED_REFUSALS_CRITICAL` | Refusals in an hour that make it critical | 10 |
+
+A change of state is logged once ("HL7 feed alarm", an error when critical) and stored, so a restart does not log it
+again. Alert on that line or on the gauge `epr_feed_health{sender}` (3 is critical). `GET /api/feed/health` shows the
+state, the window, why, since when and the facts, to a clinical administrator. Nothing pages anyone by itself.
+
 ## Refused messages
 
 A refused message is kept as received in `feed_refusals` until a clinical administrator closes it
