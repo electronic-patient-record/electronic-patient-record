@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - At 400 % zoom nothing runs off the side; WCAG text spacing cuts nothing off (TH-1)
+
+- **Clinical risk:** yes, what a clinician sees: at high zoom or on a narrow screen the header now wraps onto more lines, where before its links, the purpose and the theme control ran off the side (the page was 1,397 px wide at 320 px). Hazard H-057 updated (still open).
+- **Changed:** the header and its navigation wrap. The privacy page's table scrolls in its own focusable, named region, so the page itself does not.
+- **Tested:** a browser test at 320 CSS px wide (400 % zoom, WCAG 1.4.10) on home, a patient chart, privacy and path to production finds no sideways scroll; with WCAG 1.4.12's text spacing applied, the banner, the allergy line ("Penicillin (high risk), Latex"), the warning and the header lose nothing. It failed on the header and the privacy table before the fix. 390 unit tests and 242 browser runs pass.
+- **Not done / not verified:** four pages, not every page; the test turns the page's content security policy off to apply the spacing styles; no person has used the app at 400 % zoom.
+
 ## 2026-11-17 - The HL7 feed's health on the feed screen (IH-8, UI)
 
 - **Clinical risk:** small, what an administrator sees: the feed screen now says whether the feed is silent or refusing, in words. H-023's controls already name the health; no change to the hazard.

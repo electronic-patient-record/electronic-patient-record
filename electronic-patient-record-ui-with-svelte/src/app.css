@@ -84,9 +84,11 @@ a {
   padding: 0.5rem 0.75rem;
   margin: 1rem 0;
 }
+/* The header wraps, so at 400 % zoom or on a narrow screen nothing runs off the side (WCAG 1.4.10, TH-1 point 7). */
 header.site {
   display: flex;
-  gap: 1.5rem;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
   align-items: baseline;
   border-bottom: 1px solid var(--border);
   padding: 0.75rem 0;
@@ -99,7 +101,8 @@ header.site .account {
 }
 header.site nav {
   display: flex;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
 }
 .pair {
   display: grid;
@@ -263,4 +266,9 @@ footer.site {
   margin-block-start: 2rem;
   padding-block-start: 0.75rem;
   border-block-start: 1px solid var(--border);
+}
+/* A wide table scrolls inside its own region, so the page never scrolls sideways (WCAG 1.4.10). */
+.table-scroll {
+  overflow-x: auto;
+  max-width: 100%;
 }

@@ -4953,3 +4953,75 @@ test("a role refused the list of reports is told so, and it does not read as non
     0,
   );
 });
+
+// TH-1 point 7: the user's own zoom and text spacing are never overridden. At 320 CSS px wide (400 % zoom of a
+// 1280 px window, WCAG 1.4.10) no page scrolls sideways; with WCAG 1.4.12's text spacing the banner, the allergy line,
+// the warning and the theme control lose nothing.
+const SPACING = `* { line-height: 1.5 !important; letter-spacing: 0.12em !important; word-spacing: 0.16em !important; }
+p { margin-block-end: 2em !important; }`;
+
+test.describe("zoom and text spacing", () => {
+  test.use({ bypassCSP: true });
+
+  test("at 320 px wide no page scrolls sideways, and with WCAG text spacing nothing is cut off", async ({
+    page,
+  }) => {
+    await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+      json(route, 200, ANN),
+    );
+    await stubAllergies(page, {
+      allergies: [],
+      statement: null,
+      summary: {
+        state: "active",
+        items: [
+          { substance: "Penicillin", criticality: "high" },
+          { substance: "Latex", criticality: null },
+        ],
+      },
+    });
+    await page.setViewportSize({ width: 320, height: 640 });
+    for (const path of [
+      "/en-001",
+      `/en-001/patients/${ANN.id}`,
+      "/en-001/privacy",
+      "/en-001/path-to-production",
+    ]) {
+      await page.goto(path);
+      const [scroll, client] = await page.evaluate(() => [
+        document.documentElement.scrollWidth,
+        document.documentElement.clientWidth,
+      ]);
+      expect(scroll, `${path} scrolls sideways at 320 px`).toBeLessThanOrEqual(
+        client + 1,
+      );
+    }
+
+    await page.goto(`/en-001/patients/${ANN.id}`);
+    await page.addStyleTag({ content: SPACING });
+    const banner = page.getByRole("region", { name: "Patient banner" });
+    await expect(banner.locator("p.allergies")).toHaveText(
+      "Allergies: Penicillin (high risk), Latex",
+    );
+    const cut = await page.evaluate(() =>
+      [
+        ...document.querySelectorAll(
+          "[aria-label='Patient banner'] p, p.notice, label.theme, header.site",
+        ),
+      ]
+        .filter(
+          (e) =>
+            e.scrollWidth > e.clientWidth + 1 ||
+            (getComputedStyle(e).overflowY !== "visible" &&
+              e.scrollHeight > e.clientHeight + 1),
+        )
+        .map((e) => e.outerHTML.slice(0, 80)),
+    );
+    expect(cut, "text cut off with WCAG text spacing").toEqual([]);
+    const [scroll, client] = await page.evaluate(() => [
+      document.documentElement.scrollWidth,
+      document.documentElement.clientWidth,
+    ]);
+    expect(scroll).toBeLessThanOrEqual(client + 1);
+  });
+});

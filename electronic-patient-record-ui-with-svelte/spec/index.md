@@ -163,8 +163,14 @@ the control offers only passing themes.
   in words, the warning and the theme control present, the control focusable, none of them opting out, and the
   allergy line's and the warning's solid edges still drawn, which forced colours keep where they drop backgrounds.
 
+**Checked 2026-11-17: zoom and text spacing (point 7).** A browser test at 320 CSS px wide (400 % zoom of 1280 px, WCAG
+1.4.10) finds that no page scrolls sideways (home, a patient chart, privacy, path to production), and with WCAG 1.4.12's
+text spacing applied that the banner, the allergy line, the warning and the header lose nothing. It found the header
+1,397 px wide at that width: the header and its navigation now wrap. The privacy page's table scrolls in its own
+focusable, named region, as 1.4.10 allows a data table.
+
 **Not built:** any non-passing theme (point 4); forced colours are emulated in Chromium, not tried with a Windows
-contrast theme; zoom and text spacing (point 7) are not tested. The Welsh words for the control are machine-written and not reviewed. The ratios are of the tokens; axe checks rendered text, not every border.
+contrast theme; reflow is checked on four pages, not every page. The Welsh words for the control are machine-written and not reviewed. The ratios are of the tokens; axe checks rendered text, not every border.
 
 ## 2. Not built
 

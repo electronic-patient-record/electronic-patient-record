@@ -12,31 +12,40 @@
 <p>{TEXT.privacyScope}</p>
 
 <h2>{TEXT.privacyKeptTitle}</h2>
-<table aria-label={TEXT.privacyTableLabel}>
-  <thead>
-    <tr>
-      <th scope="col">{TEXT.privacyName}</th>
-      <th scope="col">{TEXT.privacyWhere}</th>
-      <th scope="col">{TEXT.privacyWhat}</th>
-      <th scope="col">{TEXT.privacyWhen}</th>
-      <th scope="col">{TEXT.privacyHowLong}</th>
-    </tr>
-  </thead>
-  <tbody>
-    {#each KEPT as k (k.name)}
-      <tr data-testid="privacy-row">
-        <th scope="row"><code>{k.name}</code></th>
-        <td>{TEXT.privacyPlaces[k.place]}</td>
-        <td>{TEXT.privacyRows[k.row].what}</td>
-        <td>
-          {TEXT.privacyRows[k.row].when}
-          {#if k.signInOnly}<br />{TEXT.privacySignInOnly}{/if}
-        </td>
-        <td>{TEXT.privacyRows[k.row].kept}</td>
+<!-- A table may scroll on its own at 400 % zoom (WCAG 1.4.10 lets data tables keep two dimensions); the page does not.
+     Focusable and named, so a keyboard can scroll it. -->
+<div
+  class="table-scroll"
+  role="region"
+  aria-label={TEXT.privacyTableLabel}
+  tabindex="0"
+>
+  <table aria-label={TEXT.privacyTableLabel}>
+    <thead>
+      <tr>
+        <th scope="col">{TEXT.privacyName}</th>
+        <th scope="col">{TEXT.privacyWhere}</th>
+        <th scope="col">{TEXT.privacyWhat}</th>
+        <th scope="col">{TEXT.privacyWhen}</th>
+        <th scope="col">{TEXT.privacyHowLong}</th>
       </tr>
-    {/each}
-  </tbody>
-</table>
+    </thead>
+    <tbody>
+      {#each KEPT as k (k.name)}
+        <tr data-testid="privacy-row">
+          <th scope="row"><code>{k.name}</code></th>
+          <td>{TEXT.privacyPlaces[k.place]}</td>
+          <td>{TEXT.privacyRows[k.row].what}</td>
+          <td>
+            {TEXT.privacyRows[k.row].when}
+            {#if k.signInOnly}<br />{TEXT.privacySignInOnly}{/if}
+          </td>
+          <td>{TEXT.privacyRows[k.row].kept}</td>
+        </tr>
+      {/each}
+    </tbody>
+  </table>
+</div>
 
 <h2>{TEXT.privacyWhyTitle}</h2>
 <p>{TEXT.privacyWhy}</p>
