@@ -167,8 +167,8 @@ pub struct Config {
     pub rules: SenderRules,
 }
 
-/// A TLS server configuration from PEM files, with ring's provider chosen explicitly (aws-lc-rs is in the tree too, and
-/// rustls refuses to guess). With `client_ca`, every client must present a certificate that chains to it.
+/// A TLS server configuration from PEM files, with ring's provider chosen explicitly (it is the only one
+/// in the tree). With `client_ca`, every client must present a certificate that chains to it.
 ///
 /// # Errors
 ///

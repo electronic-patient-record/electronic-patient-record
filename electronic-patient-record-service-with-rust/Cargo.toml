@@ -52,7 +52,7 @@ async-trait = { version = "0.1" }
 axum = { version = "0.8" }
 tracing = { workspace = true }
 # TLS on the MLLP listener (IH-10): rustls with ring only, already in the tree through sqlx. The provider is chosen
-# explicitly, because aws-lc-rs is in the tree too and rustls cannot pick between two installed providers.
+# explicitly so only ring is built.
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 rustls-pki-types = { version = "1", features = ["std"] }
 tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
@@ -68,7 +68,7 @@ url = "2"
 electronic-patient-record-matcher = { workspace = true }
 # Offline PASETO v4.public verification against the authentication service's Ed25519 keys, and
 # Keycloak (OIDC) access-token verification against a realm's published keys.
-authentication-verifier = { version = "0.9.1", default-features = false, features = ["paseto", "fetch", "keycloak"] }
+authentication-verifier = { version = "0.9.3", default-features = false, features = ["paseto", "fetch", "keycloak"] }
 
 # Interoperability (src/interop). All four are this project's author's crates; `fhir` is built for
 # R4 only (each release is ~135k generated lines).
@@ -78,7 +78,7 @@ fhir = { version = "4.2.4", default-features = false, features = ["r4", "r5"] }
 snomed = "0.56.1"
 
 [dev-dependencies]
-authentication-verifier = { version = "0.9.1", default-features = false, features = ["test-idp"] }
+authentication-verifier = { version = "0.9.3", default-features = false, features = ["test-idp"] }
 axa-test = "0.10"
 criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
 tower = { version = "0.5", features = ["util"] }
