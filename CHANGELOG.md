@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - A kept HL7 refusal is answered AR, and a resend adds no row (IH-1)
+
+- **Clinical risk:** yes, what reaches the record: the feed's answer to a refused message changes, which changes what a sender does next. Hazards H-021 and H-023 updated (still open).
+- **Changed:** a refused message the service has kept in the work queue is now answered `AR`, with `MSA-3` starting "kept for review by a person; do not resend" and then the reasons; it was `AE`, which senders commonly resend, so each resend added a queue row and a strict-order sender would have held every later message behind it. `AE` is now only for what a resend can fix: the database unavailable, or the refusal not stored. `EPR_MLLP_KEPT_ANSWER=AE` keeps the old answer, with the same words, for a sender that needs it; a type not handled stays `AR`. `feed_queue::record` returns the open entry when the same agent sends the same message with the same control id again (`Recorded.repeat`), under a transaction-scoped advisory lock; migration 37 adds the index it uses. A closed entry does not count: a resend after a person closed it is kept again. The stale "work queue not built" comment in `src/adt_feed.rs` is gone.
+- **Tested:** `adt_feed::tests` (the answer rule), `mllp::tests` (the setting), and in `tests/mllp_feed.rs` three sends of one refused message give one row and three identical `AR` answers, a changed text with the same control id is a new row, a resend after closing is kept again, the `AE` setting, and with no database a valid message gets `AE` and nothing says it was kept. Every refusal test that expected `AE` now expects `AR`.
+- **Not done / not verified:** one setting per listener, not per sender (IH-6 brings senders); not tried with a real sending system; a sender set to alert on `AR` will now alert where it used to retry, so each sender must be told (OQ-IH1).
+
 ## 2026-11-16 - Research: HL7 v2 feed hardening, from an integration hub rewritten in Rust (IH)
 
 - **Clinical risk:** none from this change (documents only). IH-1, IH-5, IH-8 and IH-12 are clinical and add hazard rows with their first code.

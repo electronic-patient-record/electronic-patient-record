@@ -7,6 +7,7 @@
 //!   cargo test --test mllp_feed -- --ignored --test-threads=1
 //! ```
 
+use electronic_patient_record::adt_feed::KeptAnswer;
 use electronic_patient_record::death::{Actor, Answer, Occurred, Status, Step};
 use electronic_patient_record::death_store;
 use electronic_patient_record::mllp::{self, CR, Config, FS, VT};
@@ -252,7 +253,7 @@ async fn conflicts_duplicates_unsupported_and_invalid_messages_are_refused_and_c
     let ack = send(&mut s, &adt("A08", "C2", &mrn, &family, &other_dob, ""))
         .await
         .unwrap();
-    assert_eq!(code(&ack), "AE");
+    assert_eq!(code(&ack), "AR");
     assert!(ack.contains("birth date"), "{ack}");
     assert_eq!(by_mrn(&db, &mrn).await[0].version, 1);
 
@@ -261,7 +262,7 @@ async fn conflicts_duplicates_unsupported_and_invalid_messages_are_refused_and_c
     let ack = send(&mut s, &adt("A28", "C3", &other, &family, &d, ""))
         .await
         .unwrap();
-    assert_eq!(code(&ack), "AE");
+    assert_eq!(code(&ack), "AR");
     assert!(ack.contains("may be the same person"), "{ack}");
     assert!(by_mrn(&db, &other).await.is_empty());
 
@@ -331,7 +332,7 @@ async fn conflicts_duplicates_unsupported_and_invalid_messages_are_refused_and_c
     let ack = send(&mut s, &adt("A08", "C10", &mrn, &family, &d, &death))
         .await
         .unwrap();
-    assert_eq!(code(&ack), "AE");
+    assert_eq!(code(&ack), "AR");
     assert!(ack.contains("withdrew as an error"), "{ack}");
     assert!(ack.contains("reports a death"), "{ack}");
     assert!(
@@ -363,19 +364,20 @@ async fn conflicts_duplicates_unsupported_and_invalid_messages_are_refused_and_c
     )
     .await
     .unwrap();
-    assert_eq!(code(&ack), "AE");
+    assert_eq!(code(&ack), "AR");
     assert!(ack.contains("reports a death"), "{ack}");
     assert!(by_mrn(&db, &unknown).await.is_empty());
 
-    // A message type this adapter does not handle is rejected, and one with no usable patient is an error.
+    // A message type this adapter does not handle is rejected, and so is one with no usable patient: both are kept
+    // for a person, so both are `AR` (IH-1).
     let oru =
         adt("A28", "C4", &tag("m"), &family, &d, "").replace("ADT^A28^ADT_A05", "ORU^R01^ORU_R01");
     assert_eq!(code(&send(&mut s, &oru).await.unwrap()), "AR");
     let nameless = adt("A28", "C5", &tag("m"), "", &d, "");
-    assert_eq!(code(&send(&mut s, &nameless).await.unwrap()), "AE");
+    assert_eq!(code(&send(&mut s, &nameless).await.unwrap()), "AR");
     let bad_number = adt("A28", "C6", &tag("m"), &tag("Bad"), &d, "")
         .replace("PID|1||", "PID|1||9434765910^^^NHS^NH~");
-    assert_eq!(code(&send(&mut s, &bad_number).await.unwrap()), "AE");
+    assert_eq!(code(&send(&mut s, &bad_number).await.unwrap()), "AR");
 
     // Every refusal is in the trail with outcome 4 and no content.
     let refused = sqlx::query("SELECT count(*) AS n FROM audit_events
@@ -499,7 +501,7 @@ async fn a_refused_message_waits_in_the_queue_until_a_person_closes_it_once() {
     // A different birth date is refused, and so is a type the feed does not handle.
     let control = tag("Q");
     let refused = adt("A08", &control, &mrn, &family, &dob(), "");
-    assert_eq!(code(&send(&mut s, &refused).await.unwrap()), "AE");
+    assert_eq!(code(&send(&mut s, &refused).await.unwrap()), "AR");
     let oru_control = tag("R");
     let oru = adt("A28", &oru_control, &tag("m"), &family, &d, "")
         .replace("ADT^A28^ADT_A05", "ORU^R01^ORU_R01");
@@ -630,13 +632,15 @@ async fn a_refusal_list_longer_than_the_list_limit_says_it_was_cut_short() {
     let mut txn = db.begin().await.unwrap();
     let mut open = queue::count_open(&mut *txn).await.unwrap();
     while open < i64::try_from(queue::LIST_LIMIT).unwrap() + 1 {
+        // A distinct control id each time: the same message again would be a resend, which adds no row (IH-1).
+        let control = format!("c{open}");
         queue::record(
             &mut *txn,
             New {
                 agent: "clinic-feed",
                 peer: None,
                 event: "A01",
-                control_id: "c",
+                control_id: &control,
                 kind: Kind::Unsupported,
                 reasons: &[],
                 message: "MSH|^~\\&|",
@@ -653,4 +657,131 @@ async fn a_refusal_list_longer_than_the_list_limit_says_it_was_cut_short() {
         "{open} are open but the list does not say it is cut"
     );
     txn.rollback().await.unwrap();
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn a_kept_refusal_is_answered_ar_and_a_resend_adds_no_row() {
+    // IH-1: a sender that resends a refused message gets the same answer each time, and the work queue keeps one entry.
+    let db = db().await;
+    let addr = start(&db, |_| {}).await;
+    let (mrn, family, d) = (tag("mrn"), tag("Resend"), dob());
+    let mut s = TcpStream::connect(addr).await.unwrap();
+    assert_eq!(
+        code(
+            &send(&mut s, &adt("A28", &tag("K"), &mrn, &family, &d, ""))
+                .await
+                .unwrap()
+        ),
+        "AA"
+    );
+    let control = tag("K");
+    let refused = adt("A08", &control, &mrn, &family, &dob(), "");
+    let mut answers = Vec::new();
+    for _ in 0..3 {
+        answers.push(send(&mut s, &refused).await.unwrap());
+    }
+    for ack in &answers {
+        assert_eq!(code(ack), "AR", "{ack}");
+        assert!(
+            ack.contains("kept for review by a person; do not resend"),
+            "{ack}"
+        );
+        assert!(ack.contains("birth date"), "{ack}");
+    }
+    let rows = |control: String| {
+        let db = db.clone();
+        async move {
+            sqlx::query("SELECT count(*) AS n FROM feed_refusals WHERE control_id = $1")
+                .bind(control)
+                .fetch_one(&db)
+                .await
+                .unwrap()
+                .try_get::<i64, _>("n")
+                .unwrap()
+        }
+    };
+    assert_eq!(
+        rows(control.clone()).await,
+        1,
+        "three sends, one queue entry"
+    );
+
+    // The same control id with different text is a different message, and is kept on its own.
+    let changed = adt("A08", &control, &mrn, &family, &dob(), "");
+    assert_eq!(code(&send(&mut s, &changed).await.unwrap()), "AR");
+    assert_eq!(rows(control.clone()).await, 2);
+
+    // Once a person closes the entry, a resend is new work.
+    let id: String = sqlx::query(
+        "SELECT refusal_id::text AS id FROM feed_refusals WHERE control_id = $1 AND message = $2",
+    )
+    .bind(&control)
+    .bind(&refused)
+    .fetch_one(&db)
+    .await
+    .unwrap()
+    .try_get("id")
+    .unwrap();
+    electronic_patient_record::feed_queue::resolve(
+        &db,
+        &id,
+        "admin",
+        electronic_patient_record::feed_queue::Outcome::Dismissed,
+        "seen",
+    )
+    .await
+    .unwrap();
+    assert_eq!(code(&send(&mut s, &refused).await.unwrap()), "AR");
+    assert_eq!(rows(control).await, 3);
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn a_sender_that_needs_ae_for_kept_refusals_can_have_it_but_a_type_not_handled_stays_ar() {
+    let db = db().await;
+    let addr = start(&db, |c| c.kept_answer = KeptAnswer::Error).await;
+    let (mrn, family, d) = (tag("mrn"), tag("Kept"), dob());
+    let mut s = TcpStream::connect(addr).await.unwrap();
+    assert_eq!(
+        code(
+            &send(&mut s, &adt("A28", &tag("E"), &mrn, &family, &d, ""))
+                .await
+                .unwrap()
+        ),
+        "AA"
+    );
+    let ack = send(&mut s, &adt("A08", &tag("E"), &mrn, &family, &dob(), ""))
+        .await
+        .unwrap();
+    assert_eq!(code(&ack), "AE", "{ack}");
+    assert!(ack.contains("kept for review by a person"), "{ack}");
+    let oru = adt("A28", &tag("E"), &tag("m"), &family, &d, "")
+        .replace("ADT^A28^ADT_A05", "ORU^R01^ORU_R01");
+    assert_eq!(code(&send(&mut s, &oru).await.unwrap()), "AR");
+}
+
+#[tokio::test]
+async fn a_refusal_that_cannot_be_kept_is_answered_ae_so_the_sender_tries_again() {
+    // No database: nothing can be read or kept, so a resend is exactly what is wanted.
+    let db = sqlx::postgres::PgPoolOptions::new()
+        .acquire_timeout(std::time::Duration::from_millis(200))
+        .connect_lazy("postgres://nobody@127.0.0.1:1/none")
+        .unwrap();
+    let addr = start(&db, |_| {}).await;
+    let mut s = TcpStream::connect(addr).await.unwrap();
+    let oru = adt("A28", "T1", "m1", "Nobody", "19800314", "")
+        .replace("ADT^A28^ADT_A05", "ORU^R01^ORU_R01");
+    let ack = send(&mut s, &oru).await.unwrap();
+    assert_eq!(
+        code(&ack),
+        "AR",
+        "a type not handled is AR even when it cannot be kept: {ack}"
+    );
+    assert!(!ack.contains("kept for review"), "{ack}");
+    let ack = send(&mut s, &adt("A28", "T2", "m2", "Nobody", "19800314", ""))
+        .await
+        .unwrap();
+    assert_eq!(code(&ack), "AE", "{ack}");
+    assert!(!ack.contains("kept for review"), "{ack}");
 }

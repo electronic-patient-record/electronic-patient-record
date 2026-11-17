@@ -177,16 +177,29 @@ pub struct New<'a> {
     pub message: &'a str,
 }
 
-/// Keep a refused message. A message over [`MAX_MESSAGE`] bytes is cut.
+/// What [`record`] did.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Recorded {
+    /// The queue entry.
+    pub id: String,
+    /// `true` when the same message from the same sender was already waiting, so no row was added.
+    pub repeat: bool,
+}
+
+/// Keep a refused message, once (IH-1). A message over [`MAX_MESSAGE`] bytes is cut. When an open entry already holds
+/// the same message from the same agent with the same control id (a sender sending it again), no row is added and that
+/// entry is returned. A closed entry does not count: a message sent again after a person closed it is new work.
+/// Concurrent sends of one message are serialised by a transaction-scoped advisory lock on the agent and control id.
 ///
 /// # Errors
 ///
-/// [`StoreError::Db`] when the insert fails.
-pub async fn record(db: impl Into<Db<'_>>, new: New<'_>) -> Result<String, StoreError> {
+/// [`StoreError::Db`] when the lookup or the insert fails.
+pub async fn record(db: impl Into<Db<'_>>, new: New<'_>) -> Result<Recorded, StoreError> {
     // Counted first, so a refusal shows even when it cannot be stored.
     crate::metrics::FEED_REFUSALS.inc();
     let mut conn = db.into().acquire().await.map_err(db_err)?;
-    let db = &mut *conn;
+    let mut tx = sqlx::Connection::begin(&mut *conn).await.map_err(db_err)?;
+    let db = &mut *tx;
     let message = new.message;
     let mut text = message;
     if text.len() > MAX_MESSAGE {
@@ -195,6 +208,31 @@ pub async fn record(db: impl Into<Db<'_>>, new: New<'_>) -> Result<String, Store
             end -= 1;
         }
         text = &text[..end];
+    }
+    sqlx::query(
+        "SELECT pg_advisory_xact_lock(hashtextextended('feed_refusals:' || $1 || ':' || $2, 0))",
+    )
+    .bind(new.agent)
+    .bind(new.control_id)
+    .execute(&mut *db)
+    .await
+    .map_err(db_err)?;
+    let waiting = sqlx::query(
+        "SELECT f.refusal_id::text AS id FROM feed_refusals f
+           LEFT JOIN feed_refusal_resolutions r USING (refusal_id)
+          WHERE r.refusal_id IS NULL AND f.agent = $1 AND f.control_id = $2 AND f.message = $3
+          ORDER BY f.received_at LIMIT 1",
+    )
+    .bind(new.agent)
+    .bind(new.control_id)
+    .bind(text)
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(db_err)?;
+    if let Some(row) = waiting {
+        let id = row.try_get("id").map_err(db_err)?;
+        tx.commit().await.map_err(db_err)?;
+        return Ok(Recorded { id, repeat: true });
     }
     let row = sqlx::query(
         "INSERT INTO feed_refusals (agent, peer, event, control_id, kind, reasons, message)
@@ -211,7 +249,9 @@ pub async fn record(db: impl Into<Db<'_>>, new: New<'_>) -> Result<String, Store
     .await
     .map_err(db_err)?
     .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
-    row.try_get("id").map_err(db_err)
+    let id = row.try_get("id").map_err(db_err)?;
+    tx.commit().await.map_err(db_err)?;
+    Ok(Recorded { id, repeat: false })
 }
 
 /// The refusals nobody has closed, oldest first, without their message text.

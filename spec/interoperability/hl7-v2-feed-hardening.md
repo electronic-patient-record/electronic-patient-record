@@ -45,7 +45,7 @@ Found while reading for this pass:
 
 Each is a design to be confirmed, not a built behaviour. Clinical ones add hazard rows with their first code.
 
-1. **A refused message the service has kept is not sent again (IH-1, clinical).** Once a refusal is stored in the work
+1. **A refused message the service has kept is not sent again (IH-1, clinical). Built 2026-11-17**, with one setting per listener (`EPR_MLLP_KEPT_ANSWER`), not yet per sender. Once a refusal is stored in the work
    queue, the answer tells the sender not to resend it: `AR` with `MSA-3` saying it was kept for review, or a per-sender
    setting (OQ-IH1). `AE` is kept for what a resend can fix: the database unavailable, the refusal not stored. A resend
    of a message already in the queue (same sender, same MSH-10, same text digest) adds no row and gets the same answer.

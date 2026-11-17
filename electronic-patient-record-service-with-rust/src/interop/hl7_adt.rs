@@ -47,6 +47,9 @@ pub enum Rejection {
     Unsupported(String),
     /// A handled message whose patient is unacceptable. Acknowledged `AE`.
     Invalid(Vec<String>),
+    /// Refused and kept for a person, so the sender should not send it again (IH-1): acknowledged `AR`, the reasons
+    /// in `MSA-3`. The reader never returns this; the feed does, once the message is stored.
+    Kept(Vec<String>),
 }
 
 /// The administrative sex an HL7 code names: `M`, `F`, `O`; and `U`, `A` or `N` (unknown, ambiguous, not applicable) all
@@ -282,6 +285,7 @@ pub fn acknowledgement(
         Err(Rejection::NotHl7(_)) => return None,
         Err(Rejection::Unsupported(why)) => ("AR", Some(why.clone())),
         Err(Rejection::Invalid(problems)) => ("AE", Some(problems.join("; "))),
+        Err(Rejection::Kept(reasons)) => ("AR", Some(reasons.join("; "))),
     };
     let original = hl7::v2::parse(text).ok()?;
     let mut ack = hl7::v2::builder::acknowledge(&original, code, control_id, timestamp);

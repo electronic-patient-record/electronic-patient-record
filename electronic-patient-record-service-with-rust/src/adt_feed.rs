@@ -23,8 +23,12 @@
 //! - The change and its audit row are one transaction; the audit row holds the event, the control id
 //!   and what happened, never the message.
 //!
-//! Not built: `A40` merges, `PV1`, `ORU`/`SIU`, a work queue for the messages that are refused
-//! (the sender is told `AE` and is expected to hold and retry), and TLS.
+//! - A refusal kept in the work queue (`feed_queue`) is answered `AR` by default (IH-1): a person will deal with it, so
+//!   the sender should not send it again. `AE` is kept for what a resend can fix (the database unavailable, the
+//!   refusal not stored). A resend of a message already waiting adds no row and gets the same answer.
+//!   `EPR_MLLP_KEPT_ANSWER=AE` answers kept refusals `AE` instead, for a sender that needs it (OQ-IH1).
+//!
+//! Not built: `A40` merges, `PV1`, `ORU`/`SIU`, and TLS.
 
 use crate::audit::{self, Action, Event};
 use crate::controllers::patients::likely_duplicates;
@@ -45,7 +49,22 @@ pub struct FeedIdentity {
     pub agent: String,
     /// The peer's address, recorded on every row.
     pub peer: Option<String>,
+    /// How a refusal kept in the work queue is answered.
+    pub kept_answer: KeptAnswer,
 }
+
+/// How a refusal that was kept in the work queue is answered (IH-1, `EPR_MLLP_KEPT_ANSWER`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum KeptAnswer {
+    /// `AR`: kept for a person, do not send it again (the default).
+    #[default]
+    Reject,
+    /// `AE`: for a sender that must be told `AE` for a refused message.
+    Error,
+}
+
+/// The words `MSA-3` starts with when a refusal was kept for a person.
+pub const KEPT_NOTE: &str = "kept for review by a person; do not resend";
 
 /// What a message did.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -482,7 +501,9 @@ fn message_ids(text: &str) -> (String, String) {
     (event, control)
 }
 
-/// Write the audit row for a message that was refused (nothing else was written). Failure is logged.
+/// Write the audit row for a message that was refused (nothing else was written), and keep the message in the work
+/// queue unless the failure was temporary. Returns whether the message is in the queue (stored now, or already
+/// waiting from an earlier send). Failure is logged.
 async fn audit_refusal(
     db: &PgPool,
     who: &FeedIdentity,
@@ -490,7 +511,7 @@ async fn audit_refusal(
     control_id: &str,
     why: &Refusal,
     text: &str,
-) {
+) -> bool {
     let mut row = Event::new(Action::Execute, who.agent.clone());
     row.outcome = 4;
     row.resource_ref = Some("Patient/hl7".into());
@@ -514,9 +535,9 @@ async fn audit_refusal(
     let (kind, reasons) = match why {
         Refusal::Unsupported(m) => (feed_queue::Kind::Unsupported, vec![m.clone()]),
         Refusal::Conflict(m) => (feed_queue::Kind::Conflict, m.clone()),
-        Refusal::Temporary(_) => return,
+        Refusal::Temporary(_) => return false,
     };
-    if let Err(e) = feed_queue::record(
+    match feed_queue::record(
         db,
         feed_queue::New {
             agent: &who.agent,
@@ -530,7 +551,33 @@ async fn audit_refusal(
     )
     .await
     {
-        tracing::error!(error = %e, "a refused ADT message could not be queued");
+        Ok(_) => true,
+        Err(e) => {
+            tracing::error!(error = %e, "a refused ADT message could not be queued");
+            false
+        }
+    }
+}
+
+/// The answer to a refusal: a kept one is `AR` (or `AE` by setting) with [`KEPT_NOTE`] first; one that was not kept
+/// stays as the reader said (`AE`, so the sender tries again, or `AR` for a type not handled).
+fn answer_for(rejection: Rejection, kept: bool, who: &FeedIdentity) -> Rejection {
+    if !kept {
+        return rejection;
+    }
+    // A type not handled is `AR` whatever the setting: no resend can change it.
+    let (reasons, always_reject) = match rejection {
+        Rejection::Unsupported(m) => (vec![m], true),
+        Rejection::Invalid(m) | Rejection::Kept(m) => (m, false),
+        other @ Rejection::NotHl7(_) => return other,
+    };
+    let note = std::iter::once(KEPT_NOTE.to_string())
+        .chain(reasons)
+        .collect::<Vec<_>>();
+    if always_reject || who.kept_answer == KeptAnswer::Reject {
+        Rejection::Kept(note)
+    } else {
+        Rejection::Invalid(note)
     }
 }
 
@@ -552,23 +599,32 @@ pub async fn process(
                 Ok(inbound.clone())
             }
             Err(refusal) => {
-                audit_refusal(db, who, &inbound.event, &inbound.control_id, &refusal, text).await;
-                Err(match refusal {
+                let kept =
+                    audit_refusal(db, who, &inbound.event, &inbound.control_id, &refusal, text)
+                        .await;
+                let rejection = match refusal {
                     Refusal::Unsupported(m) => Rejection::Unsupported(m),
                     Refusal::Conflict(m) => Rejection::Invalid(m),
                     Refusal::Temporary(m) => Rejection::Invalid(vec![m]),
-                })
+                };
+                Err(answer_for(rejection, kept, who))
             }
         },
         Err(rejection) => {
             if !matches!(rejection, Rejection::NotHl7(_)) {
                 let why = match rejection {
                     Rejection::Unsupported(m) => Refusal::Unsupported(m.clone()),
-                    Rejection::Invalid(m) => Refusal::Conflict(m.clone()),
+                    Rejection::Invalid(m) | Rejection::Kept(m) => Refusal::Conflict(m.clone()),
                     Rejection::NotHl7(m) => Refusal::Conflict(vec![m.clone()]),
                 };
                 let (event, control_id) = message_ids(text);
-                audit_refusal(db, who, &event, &control_id, &why, text).await;
+                let kept = audit_refusal(db, who, &event, &control_id, &why, text).await;
+                return hl7_adt::acknowledgement(
+                    text,
+                    &Err(answer_for(rejection.clone(), kept, who)),
+                    ack_id,
+                    timestamp,
+                );
             }
             Err(rejection.clone())
         }
@@ -579,6 +635,44 @@ pub async fn process(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn feed(kept_answer: KeptAnswer) -> FeedIdentity {
+        FeedIdentity {
+            agent: "mllp:test".into(),
+            peer: None,
+            kept_answer,
+        }
+    }
+
+    #[test]
+    fn a_kept_refusal_is_ar_with_the_note_first_and_one_not_kept_is_unchanged() {
+        // IH-1. Kept: AR by default, the note first, then the reasons.
+        let invalid = Rejection::Invalid(vec!["a different birth date".into()]);
+        assert_eq!(
+            answer_for(invalid.clone(), true, &feed(KeptAnswer::Reject)),
+            Rejection::Kept(vec![KEPT_NOTE.into(), "a different birth date".into()])
+        );
+        // AE by setting, with the same words.
+        assert_eq!(
+            answer_for(invalid.clone(), true, &feed(KeptAnswer::Error)),
+            Rejection::Invalid(vec![KEPT_NOTE.into(), "a different birth date".into()])
+        );
+        // A type not handled stays AR whatever the setting.
+        let unsupported = Rejection::Unsupported("ORU^R01 is not handled".into());
+        assert!(matches!(
+            answer_for(unsupported.clone(), true, &feed(KeptAnswer::Error)),
+            Rejection::Kept(_)
+        ));
+        // Not kept (the database unavailable, the queue write failed): as the reader said, so AE invites a resend.
+        assert_eq!(
+            answer_for(invalid.clone(), false, &feed(KeptAnswer::Reject)),
+            invalid
+        );
+        assert_eq!(
+            answer_for(unsupported.clone(), false, &feed(KeptAnswer::Reject)),
+            unsupported
+        );
+    }
     use electronic_patient_record_matcher::{AdministrativeSex, HumanName, Telecom};
 
     fn person() -> Patient {

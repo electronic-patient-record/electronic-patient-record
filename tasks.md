@@ -1548,7 +1548,7 @@ Ranked in plan.md §36; spec [`spec/interoperability/hl7-v2-feed-hardening.md`](
 Specs only: nothing here is built. Each refines OR-3 unless it says otherwise; each clinical task adds its hazard rows
 with its first code. Open questions OQ-IH1 to OQ-IH6.
 
-- [ ] **IH-1 (S/M, clinical) — A kept refusal is not sent again.** Once a refusal is stored in `feed_refusals`, answer
+- [x] **IH-1 (S/M, clinical) — A kept refusal is not sent again.** **Done 2026-11-17:** `AR` with `adt_feed::KEPT_NOTE` once kept; `AE` when nothing was kept; `EPR_MLLP_KEPT_ANSWER=AE` per deployment (a type not handled stays `AR`); `feed_queue::record` returns an open entry for a resend (agent, control id, text) under an advisory lock, migration 37 indexes it; the stale comment fixed; H-021 and H-023 updated. **Not done:** a setting per sender (one per listener, until IH-6); not tried with a real sender. Once a refusal is stored in `feed_refusals`, answer
   so the sender does not resend: `AR` with `MSA-3` saying it was kept for review, or a per-sender choice (OQ-IH1); `AE`
   only when a resend can help (the database unavailable, the refusal not stored). A resend of a queued message (same
   sender, MSH-10 and text digest) adds no row and gets the same answer. Fix the stale "work queue not built" comment in

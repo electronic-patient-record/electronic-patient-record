@@ -13,6 +13,7 @@ identity record. It is **off by default**. **Development and evaluation only**: 
 | `EPR_MLLP_AGENT` | The audit agent recorded for every message (never taken from the message) | `mllp:adt-feed` |
 | `EPR_MLLP_MAX_CONNECTIONS` | Connections served at once; others are closed on accept | 8 |
 | `EPR_MLLP_IDLE_SECONDS` | A silent connection is closed after this long | 60 |
+| `EPR_MLLP_KEPT_ANSWER` | How a refusal kept in the work queue is answered: `AR` (kept for a person, do not resend) or `AE` for a sender that needs it. Anything else refuses to start (IH-1) | `AR` |
 
 A malformed setting, or a port that cannot be opened, stops the service starting. Run it on loopback and put a TLS
 terminator (stunnel, an integration engine's TLS listener) or a private network in front of anything remote. The peer's
@@ -22,22 +23,26 @@ address is recorded on every audit row.
 
 - It is matched on the identifiers it carries: the sender's own number (`urn:hl7v2:<assigning authority>`), then a valid national
   health number. One match is an **update**, none is a **new patient**, more than one is refused.
-- A new patient that the matcher thinks may already exist is **refused** (`AE`), not created. A person decides.
+- A new patient that the matcher thinks may already exist is **refused** and kept for a person (`AR`), not created. A person decides.
 - An update **never blanks** a field the message lacks, and **never changes a birth date or an national health number**: those are
   corrected by a person with a reason. The first name is replaced by the message's first name; other names, telecom and
   addresses are added.
 - A repeat of what is held writes nothing (`AA`, "unchanged"). Every message, accepted or refused, writes an audit row with
   the event, the control id and the result, never the message.
-- Acknowledgements: `AA` accepted; `AE` refused for a reason the sender or a person can fix (the reason is in `MSA-3`) or a
-  temporary failure to retry; `AR` a message type that is not handled. A stream that is not MLLP, a frame that is not HL7 and
-  text that is not UTF-8 close the connection.
+- Acknowledgements (IH-1): `AA` accepted. `AR` refused and **kept for a person**: `MSA-3` starts "kept for review by a
+  person; do not resend", then the reasons. A message type that is not handled is `AR` too. `AE` only when a resend can
+  help: the database unavailable, or the refusal could not be stored. `EPR_MLLP_KEPT_ANSWER=AE` answers kept refusals `AE`
+  instead (with the same words), for a sender that must have it; a type not handled stays `AR`. A stream that is not
+  MLLP, a frame that is not HL7 and text that is not UTF-8 close the connection.
 
 ## Refused messages
 
-A message answered `AE` or `AR` is kept as received in `feed_refusals` until a clinical administrator closes it
+A refused message is kept as received in `feed_refusals` until a clinical administrator closes it
 (`GET /api/feed/refusals`, `GET /api/feed/refusals/{id}`, `POST /api/feed/refusals/{id}/resolve` with `outcome`
-`handled` or `dismissed` and a reason). The sender should still hold and resend what it can; the queue is for the person
-who fixes the cause (a corrected birth date, a registration) through `/api/patients`. The stored text is patient data.
+`handled` or `dismissed` and a reason). The queue is for the person who fixes the cause (a corrected birth date, a
+registration) through `/api/patients`; the sender does not need to resend. If it does, the same message from the same
+feed with the same control id, while its entry is still open, adds no row and gets the same answer; once the entry is
+closed, a resend is new work and is kept again. The stored text is patient data.
 The screen is `/admin/feed` in the UI. The navigation shows how many are waiting on the admin pages only. There is no alert: someone has to look.
 
 ## What is not built

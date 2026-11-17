@@ -15,7 +15,7 @@
 //! accept. A byte stream that does not start a frame with `<VT>`, a frame that never ends, a stray
 //! `<VT>` inside a frame and text that is not UTF-8 each close the connection: nothing is guessed.
 
-use crate::adt_feed::{self, FeedIdentity};
+use crate::adt_feed::{self, FeedIdentity, KeptAnswer};
 use sqlx::PgPool;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
@@ -146,6 +146,8 @@ pub struct Config {
     pub idle: Duration,
     /// The largest message.
     pub max_frame: usize,
+    /// How a refusal kept in the work queue is answered (`EPR_MLLP_KEPT_ANSWER`, `AR` by default).
+    pub kept_answer: KeptAnswer,
 }
 
 impl Config {
@@ -158,6 +160,7 @@ impl Config {
             max_connections: 8,
             idle: Duration::from_secs(60),
             max_frame: MAX_FRAME,
+            kept_answer: KeptAnswer::Reject,
         }
     }
 
@@ -213,9 +216,19 @@ impl Config {
                 "EPR_MLLP_AGENT must be up to 100 characters, without control characters".into(),
             );
         }
+        let kept_answer = match set("EPR_MLLP_KEPT_ANSWER").as_deref() {
+            None | Some("AR") => KeptAnswer::Reject,
+            Some("AE") => KeptAnswer::Error,
+            Some(other) => {
+                return Err(format!(
+                    "EPR_MLLP_KEPT_ANSWER {other:?} must be AR (the default: kept for a person, do not resend) or AE"
+                ));
+            }
+        };
         Ok(Some(Config {
             bind,
             agent,
+            kept_answer,
             max_connections: usize::try_from(number("EPR_MLLP_MAX_CONNECTIONS", 8, 1, 256)?)
                 .unwrap_or(8),
             idle: Duration::from_secs(number("EPR_MLLP_IDLE_SECONDS", 60, 1, 3600)?),
@@ -272,6 +285,7 @@ async fn connection(mut stream: TcpStream, peer: SocketAddr, db: &PgPool, config
     let who = FeedIdentity {
         agent: config.agent.clone(),
         peer: Some(peer.ip().to_string()),
+        kept_answer: config.kept_answer,
     };
     let mut buf: Vec<u8> = Vec::new();
     let mut chunk = [0u8; 8192];
@@ -448,6 +462,16 @@ mod tests {
         assert!(Config::from_lookup(env(&[bind, ("EPR_MLLP_MAX_CONNECTIONS", "999")])).is_err());
         assert!(Config::from_lookup(env(&[bind, ("EPR_MLLP_IDLE_SECONDS", "soon")])).is_err());
         assert!(Config::from_lookup(env(&[bind, ("EPR_MLLP_AGENT", "a\nb")])).is_err());
+        // IH-1: how a kept refusal is answered; AR unless set to AE; anything else stops the start.
+        let kept = |v: &str| Config::from_lookup(env(&[bind, ("EPR_MLLP_KEPT_ANSWER", v)]));
+        assert_eq!(kept("").unwrap().unwrap().kept_answer, KeptAnswer::Reject);
+        assert_eq!(kept("AR").unwrap().unwrap().kept_answer, KeptAnswer::Reject);
+        assert_eq!(
+            kept(" AE ").unwrap().unwrap().kept_answer,
+            KeptAnswer::Error
+        );
+        assert!(kept("ae").is_err());
+        assert!(kept("AA").is_err());
         let c = Config::from_lookup(env(&[
             bind,
             ("EPR_MLLP_AGENT", "mllp:ward-system"),

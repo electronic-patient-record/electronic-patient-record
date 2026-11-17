@@ -622,7 +622,8 @@ async fn real_responses_of_the_role_gated_routes_validate_against_the_served_sch
             },
         )
         .await
-        .expect("a refusal is stored");
+        .expect("a refusal is stored")
+        .id;
         let queue = "/api/feed/refusals";
         let listed = server.get(queue).add_header(mh.clone(), mv.clone()).await;
         assert_eq!(listed.status_code(), StatusCode::OK, "{}", listed.text());
