@@ -707,17 +707,31 @@ pub async fn process(
                 let (event, control_id) = message_ids(text);
                 let control_id = control_digest(&who.agent, &control_id);
                 let kept = audit_refusal(db, who, &event, &control_id, &why, text).await;
-                return hl7_adt::acknowledgement(
+                let ack = hl7_adt::acknowledgement(
                     text,
                     &Err(answer_for(rejection.clone(), kept, who)),
                     ack_id,
                     timestamp,
                 );
+                count(who, text, ack.as_deref());
+                return ack;
             }
             Err(rejection.clone())
         }
     };
-    hl7_adt::acknowledgement(text, &outcome, ack_id, timestamp)
+    let ack = hl7_adt::acknowledgement(text, &outcome, ack_id, timestamp);
+    count(who, text, ack.as_deref());
+    ack
+}
+
+/// Count a message by its feed, its event and the answer it got (IH-9).
+fn count(who: &FeedIdentity, text: &str, ack: Option<&str>) {
+    let (event, _) = message_ids(text);
+    let answer = ack
+        .and_then(|a| a.split('\r').find(|l| l.starts_with("MSA|")))
+        .and_then(|msa| msa.split('|').nth(1))
+        .unwrap_or("none");
+    crate::metrics::feed_message(&who.agent, &event, hl7_adt::HANDLED_EVENTS, answer);
 }
 
 #[cfg(test)]

@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - HL7 feed counters by sender, event and answer (IH-9)
+
+- **Clinical risk:** none: a counter.
+- **Built:** `/metrics` has `epr_feed_messages_total{sender,event,answer}`: `sender` is the feed's configured agent, `event` a handled trigger or `other` (so a sender cannot make new series), `answer` `AA`, `AE`, `AR` or `none` when the frame was not HL7. No control id, patient or text is a label; at most 200 series, then the sender `overflow`. `epr_feed_refused_messages_total` is unchanged. `operations/hl7/README.md` says what to alert on.
+- **Tested:** `metrics::tests` (labels, clamping, no value from the message, the old counter still served) and, on Postgres, three `AR` answers to a resent message counted under the feed and event.
+- **Not done / not verified:** no alert rules ship (IH-8 is the feed's own alarm); counters restart at zero with the process, as the others do.
+
 ## 2026-11-17 - A late HL7 update does not undo a newer one (IH-5)
 
 - **Clinical risk:** yes, what reaches the record: an update that arrives after a newer one from the same feed is no longer applied. New hazard H-058 (open).

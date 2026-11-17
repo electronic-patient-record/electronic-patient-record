@@ -109,6 +109,62 @@ pub static LOCKOUTS: Counter = Counter::new();
 /// an attack that has made the limit useless, and needs a person.
 pub static RATE_LIMIT_OVERFLOWED: Counter = Counter::new();
 
+/// HL7 feed messages by sender, event and answer (IH-9). The sender is the feed's configured agent, never anything the
+/// message says; the event is a handled trigger or `other`; the answer is `AA`, `AE`, `AR` or `none` (no
+/// acknowledgement, because the frame was not HL7). No control id, patient or text is a label. Past
+/// [`MAX_FEED_SERIES`] distinct series, new ones count under the sender `overflow`.
+static FEED_MESSAGES: Mutex<BTreeMap<(String, String, String), u64>> = Mutex::new(BTreeMap::new());
+
+/// Most distinct feed series kept: a few configured feeds times a few events and answers.
+const MAX_FEED_SERIES: usize = 200;
+
+/// Count one feed message. `event` outside `handled` is counted as `other`, so a sender cannot make new series.
+pub fn feed_message(sender: &str, event: &str, handled: &[&str], answer: &str) {
+    let event = if handled.contains(&event) {
+        event
+    } else {
+        "other"
+    };
+    let answer = if matches!(answer, "AA" | "AE" | "AR") {
+        answer
+    } else {
+        "none"
+    };
+    let mut series = FEED_MESSAGES.lock().unwrap_or_else(|e| e.into_inner());
+    let key = (sender.to_string(), event.to_string(), answer.to_string());
+    let key = if series.contains_key(&key) || series.len() < MAX_FEED_SERIES {
+        key
+    } else {
+        (
+            "overflow".to_string(),
+            event.to_string(),
+            answer.to_string(),
+        )
+    };
+    *series.entry(key).or_default() += 1;
+}
+
+/// The feed counter's lines, one per sender, event and answer.
+fn render_feed() -> String {
+    let series = FEED_MESSAGES.lock().unwrap_or_else(|e| e.into_inner());
+    if series.is_empty() {
+        return String::new();
+    }
+    let name = "epr_feed_messages_total";
+    let mut out = format!(
+        "# HELP {name} HL7 feed messages by configured sender, event and answer.\n# TYPE {name} counter\n"
+    );
+    for ((sender, event, answer), n) in series.iter() {
+        out.push_str(&format!(
+            "{name}{{sender=\"{}\",event=\"{}\",answer=\"{}\"}} {n}\n",
+            escape(sender),
+            escape(event),
+            escape(answer)
+        ));
+    }
+    out
+}
+
 /// Upper bounds, in seconds, of the request-duration buckets.
 pub const BUCKETS: [f64; 11] = [
     0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0,
@@ -291,6 +347,7 @@ pub fn render() -> String {
             gauge.get()
         ));
     }
+    out.push_str(&render_feed());
     let series = REQUESTS.lock().unwrap_or_else(|e| e.into_inner());
     out.push_str(&render_histograms(&series));
     out
@@ -336,6 +393,41 @@ pub fn response(enabled: bool) -> Response {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn feed_messages_are_counted_by_sender_event_and_answer_with_no_value_from_the_message() {
+        let handled = ["A08", "A28"];
+        feed_message("mllp:ih9-test", "A08", &handled, "AA");
+        feed_message("mllp:ih9-test", "A08", &handled, "AA");
+        feed_message("mllp:ih9-test", "ZQ9-9434765919", &handled, "AR");
+        feed_message("mllp:ih9-test", "A28", &handled, "something");
+        let text = render();
+        assert!(
+            text.contains("# TYPE epr_feed_messages_total counter"),
+            "{text}"
+        );
+        assert!(
+            text.contains(
+                r#"epr_feed_messages_total{sender="mllp:ih9-test",event="A08",answer="AA"} 2"#
+            ),
+            "{text}"
+        );
+        assert!(
+            text.contains(
+                r#"epr_feed_messages_total{sender="mllp:ih9-test",event="other",answer="AR"} 1"#
+            ),
+            "{text}"
+        );
+        assert!(
+            text.contains(
+                r#"epr_feed_messages_total{sender="mllp:ih9-test",event="A28",answer="none"} 1"#
+            ),
+            "{text}"
+        );
+        assert!(!text.contains("9434765919"), "{text}");
+        // The older, unlabelled count keeps its name: alerts may depend on it.
+        assert!(text.contains("epr_feed_refused_messages_total"), "{text}");
+    }
 
     #[test]
     fn the_text_format_has_help_type_and_value() {

@@ -708,6 +708,19 @@ async fn a_kept_refusal_is_answered_ar_and_a_resend_adds_no_row() {
         1,
         "three sends, one queue entry"
     );
+    // Each answer is counted by feed, event and answer, with nothing from the message (IH-9).
+    let counted = |text: &str| {
+        text.lines()
+            .find(|l| {
+                l.starts_with(
+                    r#"epr_feed_messages_total{sender="mllp:test-feed",event="A08",answer="AR"}"#,
+                )
+            })
+            .and_then(|l| l.rsplit(' ').next())
+            .and_then(|n| n.parse::<u64>().ok())
+            .unwrap_or(0)
+    };
+    assert!(counted(&electronic_patient_record::metrics::render()) >= 3);
 
     // The same control id with different text is a different message, and is kept on its own.
     let changed = adt("A08", &control, &mrn, &family, &dob(), "");

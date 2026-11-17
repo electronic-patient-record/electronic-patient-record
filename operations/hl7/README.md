@@ -43,6 +43,13 @@ address is recorded on every audit row.
   instead (with the same words), for a sender that must have it; a type not handled stays `AR`. A stream that is not
   MLLP, a frame that is not HL7 and text that is not UTF-8 close the connection.
 
+## Counting
+
+With `EPR_METRICS=true`, `/metrics` has `epr_feed_messages_total{sender,event,answer}` (IH-9): `sender` is
+`EPR_MLLP_AGENT`, `event` a handled trigger or `other`, `answer` `AA`, `AE`, `AR` or `none` (the frame was not HL7). Alert
+on `answer="AE"` rising (the database or the queue is failing) and on any `answer="AR"` (a person has work). Nothing from
+a message is a label. `epr_feed_refused_messages_total` stays as before.
+
 ## Refused messages
 
 A refused message is kept as received in `feed_refusals` until a clinical administrator closes it
