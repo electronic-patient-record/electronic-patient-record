@@ -394,3 +394,140 @@ fn a_date_of_death_is_weak_evidence_and_never_enough_alone() {
     let text = serde_json::to_string(&person(None)).unwrap();
     assert!(!text.contains("death_date"), "{text}");
 }
+
+// Pins from the 2026-11-17 mutation run (docs/maintainability/mutation-testing.md): each kills mutants that survived.
+
+fn named(lists: &[&[&str]], dob: &str) -> Patient {
+    Patient {
+        names: lists
+            .iter()
+            .map(|given| HumanName {
+                family: Some("Hughes".into()),
+                given: given.iter().map(|g| (*g).into()).collect(),
+            })
+            .collect(),
+        birth_date: Some(dob.into()),
+        ..Default::default()
+    }
+}
+
+fn extra_given(r: &MatchResult) -> bool {
+    r.conflict_codes.contains(&ConflictCode::ExtraGivenName)
+}
+
+#[test]
+fn the_best_pair_of_given_name_lists_wins_whichever_order_they_come_in() {
+    let engine = MatchingEngine::default();
+    let ann = named(&[&["Ann"]], "1980-03-14");
+    // Against `Zoe` and against `Ann Mary`: the better pair (Ann, Ann Mary) decides, and it leaves Mary unmatched.
+    for b in [
+        named(&[&["Zoe"], &["Ann", "Mary"]], "1980-03-14"),
+        named(&[&["Ann", "Mary"], &["Zoe"]], "1980-03-14"),
+    ] {
+        let r = engine.compare(&ann, &b);
+        assert_eq!(sim(&ann, &b, "given_name"), Some(1.0), "{:?}", b.names);
+        assert!(extra_given(&r), "{:?}", b.names);
+    }
+    // A tie between (Ann, Ann) and (Ann, Ann Mary): the pair with nothing unmatched wins, in either order.
+    for b in [
+        named(&[&["Ann"], &["Ann", "Mary"]], "1980-03-14"),
+        named(&[&["Ann", "Mary"], &["Ann"]], "1980-03-14"),
+    ] {
+        let r = engine.compare(&ann, &b);
+        assert_eq!(sim(&ann, &b, "given_name"), Some(1.0));
+        assert!(!extra_given(&r), "{:?}", b.names);
+    }
+}
+
+#[test]
+fn a_longer_list_whose_every_name_is_matched_has_nothing_extra() {
+    // `Ann` against `Ann Ann`: every name on the longer side matches one on the shorter, so nothing is extra; against
+    // `Ann Mary`, Mary is.
+    let engine = MatchingEngine::default();
+    let ann = named(&[&["Ann"]], "1980-03-14");
+    assert!(!extra_given(
+        &engine.compare(&ann, &named(&[&["Ann", "Ann"]], "1980-03-14"))
+    ));
+    assert!(extra_given(
+        &engine.compare(&ann, &named(&[&["Ann", "Mary"]], "1980-03-14"))
+    ));
+}
+
+#[test]
+fn swapped_names_score_at_nine_tenths() {
+    let a = Patient {
+        names: vec![HumanName {
+            family: Some("Hughes".into()),
+            given: vec!["Gareth".into()],
+        }],
+        birth_date: Some("1980-03-14".into()),
+        ..Default::default()
+    };
+    let b = Patient {
+        names: vec![HumanName {
+            family: Some("Gareth".into()),
+            given: vec!["Hughes".into()],
+        }],
+        ..a.clone()
+    };
+    let r = MatchingEngine::default().compare(&a, &b);
+    for f in ["family_name", "given_name"] {
+        let s = sim(&a, &b, f).unwrap();
+        assert!((s - 0.9).abs() < 1e-9, "{f}: {s}");
+    }
+    assert!(!r.conflict_codes.is_empty() || r.decision != Decision::AutoLink);
+}
+
+#[test]
+fn thin_evidence_reports_the_share_present_of_the_weight_counted() {
+    // Names and a birth date only: AutoLink on the score, then refused for thin evidence when the floor is high.
+    let c = MatchConfig {
+        min_evidence_weight: 0.99,
+        ..Default::default()
+    };
+    let a = named(&[&["Ann"]], "1980-03-14");
+    let r = MatchingEngine::new(c).compare(&a, &a.clone());
+    let counted: f64 = r
+        .fields
+        .iter()
+        .filter(|f| f.field != "death_date" || f.similarity.is_some())
+        .map(|f| f.weight)
+        .sum();
+    let present: f64 = r
+        .fields
+        .iter()
+        .filter(|f| f.similarity.is_some())
+        .map(|f| f.weight)
+        .sum();
+    let percent = r
+        .conflict_codes
+        .iter()
+        .find_map(|c| match c {
+            ConflictCode::EvidenceThin { percent_present } => Some(*percent_present),
+            _ => None,
+        })
+        .expect("thin evidence");
+    assert!(
+        (percent - 100.0 * present / counted).abs() < 1e-9,
+        "{percent}"
+    );
+    assert!(percent > 0.0 && percent < 99.0, "{percent}");
+}
+
+#[test]
+fn equal_thresholds_are_a_valid_config() {
+    let c = MatchConfig {
+        auto_link_threshold: 0.9,
+        review_threshold: 0.9,
+        ..Default::default()
+    };
+    assert!(c.validate().is_ok());
+}
+
+#[test]
+fn a_config_that_leaves_out_the_calling_code_gets_44() {
+    let mut v = serde_json::to_value(MatchConfig::default()).unwrap();
+    v.as_object_mut().unwrap().remove("default_calling_code");
+    let c: MatchConfig = serde_json::from_value(v).unwrap();
+    assert_eq!(c.default_calling_code, 44);
+}

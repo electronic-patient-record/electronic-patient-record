@@ -33,7 +33,8 @@ if [ -n "$diff" ]; then
   patch="$(mktemp)"
   trap 'rm -f "$patch"' EXIT
   git diff "$diff" -- . >"$patch"
-  cargo mutants -j "$jobs" --in-diff "$patch"
+  cargo mutants -j "$jobs" --workspace --in-diff "$patch"
 else
-  cargo mutants -j "$jobs"
+  # --workspace: the service's examined files include the domain crate's (electronic-patient-record-domain).
+  cargo mutants -j "$jobs" --workspace
 fi

@@ -578,7 +578,7 @@ hazard-log row (AS-1) in the same commit. Keep each entry to description, accept
   - `MatchConfig::validate()`.
 
   **Acceptance:** each rule has a named test, and the ID-1 labelled corpus shows no increase in false AutoLinks.
-- [ ] **CQ-30 (M) — Matcher test depth.** **Landed 2026-10-23 except the fuzz target** (`tests/properties.rs`, 6 tests; `tests/fields.rs`, 11; `cargo mutants` on `engine.rs` and `national_number.rs`: 147 caught, 5 unviable, none missed; see CHANGELOG). **Open:** the `cargo fuzz` target (SF-2) and mutants on the other matcher files. Hand-rolled generator, not proptest. proptest for symmetry, totality and "removing a field never raises the
+- [ ] **CQ-30 (M) — Matcher test depth.** **Mutation run 2026-11-17 ([`docs/maintainability/mutation-testing.md`](docs/maintainability/mutation-testing.md)):** every matcher file, 36 missed of 348; pins for 31, five listed as not killable with reasons; not re-run to confirm. The service's run (12 hazard-weighted files, both crates) was interrupted and is still to do; `scripts/mutants.sh` and each crate's `.cargo/mutants.toml` run it. **Landed 2026-10-23 except the fuzz target** (`tests/properties.rs`, 6 tests; `tests/fields.rs`, 11; `cargo mutants` on `engine.rs` and `national_number.rs`: 147 caught, 5 unviable, none missed; see CHANGELOG). **Open:** the `cargo fuzz` target (SF-2) and mutants on the other matcher files. Hand-rolled generator, not proptest. proptest for symmetry, totality and "removing a field never raises the
   decision"; cargo-mutants on `engine.rs` and `national_number.rs`; a `cargo fuzz` target (closes part of SF-2).
   **Acceptance:** surviving mutants are fixed or listed with a reason.
 

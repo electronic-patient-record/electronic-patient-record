@@ -57,6 +57,36 @@ mod tests {
         assert_eq!(wrong, 1);
     }
 
+    /// Numbers whose check digits were worked out outside this code (a separate Luhn calculation), so a change to the
+    /// algorithm here cannot also change what the test expects (mutation testing, CQ-30). Each digit doubled from the
+    /// right: 5 to 9 give 10 to 18, which wrap to 1 to 9.
+    const KNOWN_GOOD: [&str; 5] = [
+        "8003608166690503",
+        "8003600000000007",
+        "8003609999999996",
+        "8003601234567894",
+        "8003605555555552",
+    ];
+
+    #[test]
+    fn numbers_checked_elsewhere_are_ihis_and_every_single_digit_change_is_not() {
+        for good in KNOWN_GOOD {
+            assert!(is_valid_ihi(good), "{good}");
+            // Luhn catches every change of one digit; the prefix is checked separately, so change the rest.
+            for i in 6..16 {
+                for d in b'0'..=b'9' {
+                    let mut bad = good.as_bytes().to_vec();
+                    if bad[i] == d {
+                        continue;
+                    }
+                    bad[i] = d;
+                    let bad = String::from_utf8(bad).unwrap();
+                    assert!(!is_valid_ihi(&bad), "{bad} is one digit away from {good}");
+                }
+            }
+        }
+    }
+
     #[test]
     fn a_wrong_prefix_length_or_character_is_not_an_ihi() {
         let n = with_check("800360816669001");

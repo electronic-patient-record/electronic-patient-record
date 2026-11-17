@@ -280,3 +280,28 @@ pub fn are_nicknames(a: &str, b: &str) -> bool {
             .iter()
             .any(|g| g.contains(&a) && g.contains(&b))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Pins from the 2026-11-17 mutation run (docs/maintainability/mutation-testing.md).
+    #[test]
+    fn umlauts_become_two_letters_and_other_scripts_keep_their_marks() {
+        assert_eq!(transliterate("jäger"), "jaeger");
+        assert_eq!(transliterate("böhm"), "boehm");
+        // Greek alpha with tonos decomposes to a Greek alpha, not a Latin letter: it is left alone.
+        assert_eq!(transliterate("ά"), "ά");
+    }
+
+    #[test]
+    fn a_date_with_a_fourth_part_is_not_a_date() {
+        assert_eq!(parse_date("2026-01-02-03"), None);
+    }
+
+    #[test]
+    fn l_codes_as_4_in_soundex() {
+        assert_eq!(soundex("hall"), soundex("hal"));
+        assert_ne!(soundex("hall"), soundex("ha"));
+    }
+}

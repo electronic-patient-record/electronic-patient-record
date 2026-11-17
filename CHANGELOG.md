@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - Mutation testing: a script, hazard-weighted files, and the matcher's survivors pinned (CQ-30)
+
+- **Clinical risk:** none: tests. The matcher decides whether two records are one person (H-001); these pins hold behaviour that no test held.
+- **Built:** `scripts/mutants.sh matcher|service [--in-diff <base>] [-j N]` runs cargo-mutants on each crate's `.cargo/mutants.toml` (the matcher: every file but `main.rs`; the service: 12 files chosen by hazard, six of them now in the domain crate, so the script passes `--workspace`), with output git- and container-ignored. Not a CI gate (PR-8 declined a scheduled run). Results and reasons: `docs/maintainability/mutation-testing.md`.
+- **Found and pinned:** the matcher run missed 36 of 348. The IHI tests derived their check digit with the function under test, so a broken Luhn agreed with itself; the given-name rules had no record with two name lists; the swap penalty, the share of thin evidence, equal thresholds, a config without a calling code, `ä`, `ö`, a Greek letter with a mark, a four-part date and `l` in Soundex were never read. New tests in `src/ihi.rs`, `src/normalize.rs` and `tests/fields.rs` pin 31; five cannot be killed (an even number is never 9; exact boundaries at 0.85 and at the evidence floor; a swap shape real names do not produce), and are listed.
+- **Tested:** the matcher's tests and clippy pass with the pins.
+- **Not done / not verified:** the matcher was not re-run, so the 31 are expected killed, not confirmed; the service's run was interrupted after 159 of 773 (at a load average near 100) and nothing from it is acted on; my first restart of the runs used `pkill -f cargo-mutants`, which also stopped another session's run on another project.
+
 ## 2026-11-17 - axa 0.19 (AX-17)
 
 - **Clinical risk:** none. No code, schema or response changes; the OpenAPI document is unchanged.

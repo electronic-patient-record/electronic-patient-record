@@ -2,15 +2,15 @@
 # Run with `sh scripts/mutants.sh service`; results and every surviving mutant's reason are in
 # docs/maintainability/mutation-testing.md. A file is added here when a hazard rests on it.
 examine_globs = [
-    "src/consent.rs",        # who may see what (SE-2; H-005)
-    "src/policy.rs",         # the role and resource table (SE-1)
+    "electronic-patient-record-domain/src/consent.rs",        # who may see what (SE-2; H-005)
+    "electronic-patient-record-domain/src/policy.rs",         # the role and resource table (SE-1)
     "src/authz.rs",          # the gate in front of every route
-    "src/permission.rs",
+    "electronic-patient-record-domain/src/permission.rs",
     "src/break_glass.rs",    # emergency access (SE-3; H-008, H-024)
     "src/links.rs",          # merge and unmerge (ID-5; H-020)
-    "src/death.rs",          # a reported death (H-046)
-    "src/hazard.rs",         # the hazard register's rules (AS-17; H-036)
-    "src/referral.rs",       # the referral state table (CA-3)
+    "electronic-patient-record-domain/src/death.rs",          # a reported death (H-046)
+    "electronic-patient-record-domain/src/hazard.rs",         # the hazard register's rules (AS-17; H-036)
+    "electronic-patient-record-domain/src/referral.rs",       # the referral state table (CA-3)
     "src/audit.rs",          # the hash chain (AU-1)
     "src/interop/hl7_adt.rs", # the HL7 reader (OR-3; H-021)
     "src/interop/redact.rs", # what an HL7 log line may show (IH-4)
