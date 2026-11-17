@@ -64,7 +64,7 @@ Each is a design to be confirmed, not a built behaviour. Clinical ones add hazar
    kept (MSH-10 only by rule 3), every other populated field masked, an empty field left empty, anything that is not ER7
    masked whole, with the separator read as the fourth character (a fuzz-found panic in the hub,
    `spec/04-observability.md` §2.5a).
-5. **A late message does not undo a newer one (IH-5, clinical).** For each patient and sender, the message time (MSH-7,
+5. **A late message does not undo a newer one (IH-5, clinical). Built 2026-11-17** (H-058), kept as kind `conflict` with the out-of-order reason. For each patient and sender, the message time (MSH-7,
    or EVN-2 when present) of the last applied update is kept. An update older than it is not applied: it is kept in the
    work queue as `out-of-order` and answered as rule 1. A message with no usable time is applied as now, with a warning
    in the audit row (OQ-IH3).

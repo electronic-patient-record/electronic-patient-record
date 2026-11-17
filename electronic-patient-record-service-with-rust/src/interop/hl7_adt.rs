@@ -36,6 +36,53 @@ pub struct Inbound {
     /// Things worth knowing that did not stop the message: dictionary findings, identifiers that
     /// were skipped.
     pub warnings: Vec<String>,
+    /// When the sender says the event happened (EVN-2), or else when it built the message (MSH-7), read by
+    /// [`message_time`]; `None` when neither is a usable time. The feed uses it so that a late message never undoes
+    /// a newer one (IH-5).
+    pub message_time: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// An HL7 v2 `DTM` to at least the minute (`YYYYMMDDHHMM[SS[.S…]][+/-ZZZZ]`) as a UTC time. A time with no offset is
+/// read as UTC: one sender's times compare with each other, which is all the feed asks of them. Anything shorter
+/// than a minute, or not a real time, is `None`.
+#[must_use]
+pub fn message_time(ts: &str) -> Option<chrono::DateTime<chrono::Utc>> {
+    use chrono::{FixedOffset, NaiveDateTime, TimeZone, Utc};
+    let ts = ts.trim();
+    let (main, offset) = match ts.find(['+', '-']) {
+        Some(i) => (&ts[..i], Some(&ts[i..])),
+        None => (ts, None),
+    };
+    let main = main.split('.').next()?;
+    if !main.chars().all(|c| c.is_ascii_digit()) {
+        return None;
+    }
+    let full = match main.len() {
+        12 => format!("{main}00"),
+        14 => main.to_string(),
+        _ => return None,
+    };
+    let naive = NaiveDateTime::parse_from_str(&full, "%Y%m%d%H%M%S").ok()?;
+    let seconds = match offset {
+        None => 0,
+        Some(o) => {
+            let (sign, digits) = o.split_at(1);
+            if digits.len() != 4 || !digits.chars().all(|c| c.is_ascii_digit()) {
+                return None;
+            }
+            let hours: i32 = digits[..2].parse().ok()?;
+            let minutes: i32 = digits[2..].parse().ok()?;
+            if hours > 14 || minutes > 59 {
+                return None;
+            }
+            let s = hours * 3600 + minutes * 60;
+            if sign == "-" { -s } else { s }
+        }
+    };
+    FixedOffset::east_opt(seconds)?
+        .from_local_datetime(&naive)
+        .single()
+        .map(|t| t.with_timezone(&Utc))
 }
 
 /// The reason for text that is not an HL7 v2 message: fixed, because the parser's own error quotes the text (IH-4).
@@ -281,7 +328,10 @@ pub fn patient_from_adt(text: &str) -> Result<Inbound, Rejection> {
         }
         return Err(Rejection::Invalid(problems));
     }
+    let message_time =
+        message_time(&get(&message, "EVN-2")).or_else(|| message_time(&get(&message, "MSH-7")));
     Ok(Inbound {
+        message_time,
         event,
         control_id: get(&message, "MSH-10"),
         patient,
@@ -323,6 +373,63 @@ mod tests {
         EVN|A28|20261021090000\r\
         PID|1||9434765919^^^NHS^NH~M-1^^^LOCAL||SMITH^ANN^MARIE~JONES^ANN||19800314|F|||1 HIGH ST^^LEEDS^^LS1 4AB||01632 960001~^^^ann@example.org\r\
         ZXX|local segment";
+
+    #[test]
+    fn a_message_time_is_read_to_the_minute_with_or_without_an_offset() {
+        let t = |s: &str| message_time(s).map(|d| d.to_rfc3339());
+        assert_eq!(
+            t("202611170930").as_deref(),
+            Some("2026-11-17T09:30:00+00:00")
+        );
+        assert_eq!(
+            t("20261117093015").as_deref(),
+            Some("2026-11-17T09:30:15+00:00")
+        );
+        assert_eq!(
+            t("20261117093015.1234").as_deref(),
+            Some("2026-11-17T09:30:15+00:00")
+        );
+        assert_eq!(
+            t("20261117093015+0100").as_deref(),
+            Some("2026-11-17T08:30:15+00:00")
+        );
+        assert_eq!(
+            t("20261117093015.5-0500").as_deref(),
+            Some("2026-11-17T14:30:15+00:00")
+        );
+        for bad in [
+            "",
+            "2026",
+            "20261117",
+            "2026111709",
+            "20261317093000",
+            "20261117096000",
+            "x0261117093000",
+            "20261117093000+1",
+            "20261117093000+2500",
+        ] {
+            assert_eq!(t(bad), None, "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn the_event_time_is_preferred_to_the_message_time() {
+        let read = patient_from_adt(ADT).unwrap();
+        assert_eq!(
+            read.message_time.map(|d| d.to_rfc3339()).as_deref(),
+            Some("2026-10-21T09:00:00+00:00")
+        );
+        let later_evn = ADT.replace("EVN|A28|20261021090000", "EVN|A28|20261021100000");
+        let read = patient_from_adt(&later_evn).unwrap();
+        assert_eq!(
+            read.message_time.map(|d| d.to_rfc3339()).as_deref(),
+            Some("2026-10-21T10:00:00+00:00")
+        );
+        let no_evn = ADT
+            .replace("EVN|A28|20261021090000\r", "")
+            .replace("|20261021090000||", "|||");
+        assert_eq!(patient_from_adt(&no_evn).unwrap().message_time, None);
+    }
 
     #[test]
     fn a_finding_keeps_its_path_and_reason_and_loses_its_value() {

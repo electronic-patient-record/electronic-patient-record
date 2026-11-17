@@ -136,6 +136,11 @@ feed_refusals,received_at,none,When the message arrived,feed
 feed_refusals,agent,staff-identifier,Who or what acted,feed
 feed_refusals,peer,staff-trace,Address of the sending system,feed
 feed_refusals,event,none,Step of the request,feed
+feed_message_times,agent,staff-identifier,The HL7 feed's configured audit agent,feed
+feed_message_times,patient_id,identifier,The patient a feed message was applied to,feed
+feed_message_times,message_time,none,When the sender says the event happened (EVN-2 or MSH-7) so a late message never undoes a newer one (IH-5),feed
+feed_message_times,control_id,none,The keyed fingerprint of the feed and the message control id (IH-3),feed
+feed_message_times,recorded_at,none,When the row was written,feed
 feed_refusals,control_id,none,A keyed fingerprint of the feed and the HL7 control id (MSH-10) since some senders build it from a patient number (IH-3); rows before 2026-11-17 hold the plain id,feed
 feed_refusals,kind,none,Kind of record,feed
 feed_refusals,reasons,none,Why the message was refused,feed

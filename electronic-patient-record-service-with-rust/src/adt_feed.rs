@@ -222,6 +222,60 @@ fn temporary(e: &StoreError) -> Refusal {
     Refusal::Temporary("temporary failure, please retry".into())
 }
 
+/// Why an update older than one already applied is refused (IH-5). Time-free, like every reason: it reaches `MSA-3`.
+pub const OUT_OF_ORDER: &str = "this update is older than one this feed has already applied for this patient: a person must check which is right";
+
+/// Whether this feed has applied a message for `patient_id` that is newer than `at`, read under a transaction-scoped
+/// lock on the feed and patient, so two connections cannot both pass.
+async fn newer_applied(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    agent: &str,
+    patient_id: &str,
+    at: chrono::DateTime<chrono::Utc>,
+) -> Result<bool, Refusal> {
+    let db_err = |e: sqlx::Error| temporary(&StoreError::Db(e.to_string()));
+    sqlx::query(
+        "SELECT pg_advisory_xact_lock(hashtextextended('feed-order:' || $1 || ':' || $2, 0))",
+    )
+    .bind(agent)
+    .bind(patient_id)
+    .execute(&mut **tx)
+    .await
+    .map_err(db_err)?;
+    let newer: bool = sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM feed_message_times
+                         WHERE agent = $1 AND patient_id = $2::uuid AND message_time > $3)",
+    )
+    .bind(agent)
+    .bind(patient_id)
+    .bind(at)
+    .fetch_one(&mut **tx)
+    .await
+    .map_err(db_err)?;
+    Ok(newer)
+}
+
+/// Record the time of a message the feed applied, in the same transaction as the change (IH-5).
+async fn record_time(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    agent: &str,
+    patient_id: &str,
+    at: chrono::DateTime<chrono::Utc>,
+    control_id: &str,
+) -> Result<(), Refusal> {
+    sqlx::query(
+        "INSERT INTO feed_message_times (agent, patient_id, message_time, control_id) VALUES ($1, $2::uuid, $3, $4)",
+    )
+    .bind(agent)
+    .bind(patient_id)
+    .bind(at)
+    .bind(control_id)
+    .execute(&mut **tx)
+    .await
+    .map(|_| ())
+    .map_err(|e| temporary(&StoreError::Db(e.to_string())))
+}
+
 /// Find the one patient a message is about, by the identifiers it carries.
 async fn find(db: &PgPool, patient: &Patient) -> Result<Option<store::Stored>, Refusal> {
     // The sender's own numbers first, then a national number.
@@ -401,6 +455,13 @@ async fn apply_message(
         .begin()
         .await
         .map_err(|e| temporary(&StoreError::Db(e.to_string())))?;
+    // A late message never undoes a newer one (IH-5): under a lock per feed and patient, an update older than the
+    // newest one this feed applied for the patient waits for a person.
+    if let (Plan::Update { id, .. }, Some(at)) = (&plan, inbound.message_time)
+        && newer_applied(&mut tx, &who.agent, id, at).await?
+    {
+        return Err(Refusal::Conflict(vec![OUT_OF_ORDER.to_string()]));
+    }
     // Whether the duplicate check saw only the strongest CANDIDATE_LIMIT of more matches (CQ-36).
     let mut candidates_cut = false;
     let (applied, audit_action) = match plan {
@@ -469,6 +530,11 @@ async fn apply_message(
             .await
             .map_err(|e| temporary(&StoreError::Db(e.to_string())))?;
     }
+    // The message's time, for the next message's order check (IH-5). A message with no usable time is applied, as
+    // before, and its audit row says so.
+    if let Some(at) = inbound.message_time {
+        record_time(&mut tx, &who.agent, &id, at, &inbound.control_id).await?;
+    }
     let mut event = Event::new(audit_action, who.agent.clone());
     event.patient_ref = Some(format!("Patient/{id}"));
     event.resource_ref = Some("Patient/hl7".into());
@@ -484,6 +550,7 @@ async fn apply_message(
         },
         "warnings": inbound.warnings.len(),
         "candidates_cut": candidates_cut,
+        "message_time_known": inbound.message_time.is_some(),
     }));
     audit::append(&mut *tx, audit::chain(), &event)
         .await

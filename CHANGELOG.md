@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - A late HL7 update does not undo a newer one (IH-5)
+
+- **Clinical risk:** yes, what reaches the record: an update that arrives after a newer one from the same feed is no longer applied. New hazard H-058 (open).
+- **Built:** the reader takes each message's time from EVN-2, else MSH-7 (`hl7_adt::message_time`: at least to the minute, a `+HHMM`/`-HHMM` offset honoured, no offset read as UTC). Every message the feed applies records that time, per feed and patient, in a new append-only table, `feed_message_times` (migration 38), in the same transaction as the change. Under a lock per feed and patient, an update older than the newest one applied is not applied: it is kept in the work queue with the time-free reason "this update is older than one this feed has already applied for this patient: a person must check which is right" and answered `AR`. The same time is not older; another feed's times do not count. A message with no usable time is applied as before, and its audit row has `message_time_known: false`.
+- **Tested:** the time parser (formats, offsets, bad times); the event time preferred to the message time; on Postgres, a create, a newer update, a late update refused and kept with the record unchanged and no time in the answer, an equal time applied, a timeless message applied and noted, and another feed not held back. The personal-data inventory and the schema map list the new table.
+- **Not done / not verified:** OQ-IH3 is open (whether a late message should instead be applied field by field); a sender that changes its offset convention can make a real update look older; two feeds updating one patient are not ordered against each other; no clinician or Clinical Safety Officer has reviewed H-058.
+
 ## 2026-11-17 - No HL7 message value outside the stored message (IH-4)
 
 - **Clinical risk:** none: what the feed applies and answers is unchanged. A privacy change.

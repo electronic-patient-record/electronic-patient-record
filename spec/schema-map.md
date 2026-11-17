@@ -4,7 +4,7 @@ Every table and view the service's migrations create. **Generated** by [`scripts
 
 Not listed: tables made by a statement built at run time (the monthly `audit_events` partitions), and what a column means (the migrations carry few comments, so only the name and SQL type are shown). The clinical tables are append-only: a change is a new row, and triggers refuse `UPDATE`, `DELETE` and `TRUNCATE`.
 
-37 tables, 19 views.
+38 tables, 19 views.
 
 ## Tables
 
@@ -27,6 +27,7 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `break_glass_reviews` | `20261021000010_break_glass` | `grant_id` UUID, `reviewed_at` TIMESTAMPTZ, `reviewed_by` TEXT, `outcome` TEXT, `note` TEXT |
 | `consent_versions` | `20261021000003_consent_versions` | `consent_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `status` TEXT, `body` JSONB |
 | `death_assertion_versions` | `20261105000025_death_assertions` | `assertion_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `status` TEXT, `body` JSONB |
+| `feed_message_times` | `20261117000038_feed_message_times` | `agent` TEXT, `patient_id` UUID, `message_time` TIMESTAMPTZ, `control_id` TEXT, `recorded_at` TIMESTAMPTZ |
 | `feed_refusal_resolutions` | `20261021000009_feed_refusals` | `refusal_id` UUID, `resolved_at` TIMESTAMPTZ, `resolved_by` TEXT, `outcome` TEXT, `reason` TEXT |
 | `feed_refusals` | `20261021000009_feed_refusals` | `refusal_id` UUID, `received_at` TIMESTAMPTZ, `agent` TEXT, `peer` TEXT, `event` TEXT, `control_id` TEXT, `kind` TEXT, `reasons` JSONB, `message` TEXT |
 | `hazard_versions` | `20261028000016_hazard_events` | `hazard_id` UUID, `version` INTEGER, `recorded_at` TIMESTAMPTZ, `author` TEXT, `state` TEXT, `event` JSONB, `body` JSONB |

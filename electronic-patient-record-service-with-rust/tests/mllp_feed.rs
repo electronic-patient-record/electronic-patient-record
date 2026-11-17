@@ -981,3 +981,118 @@ async fn no_message_value_reaches_an_audit_row_the_queue_a_version_reason_a_metr
         "the two kept messages hold it"
     );
 }
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn a_late_update_does_not_undo_a_newer_one() {
+    // IH-5: per feed and patient, an update older than the newest one applied waits for a person. The order is the
+    // event time (EVN-2), or the message time (MSH-7) when there is none.
+    let db = db().await;
+    let addr = start(&db, |_| {}).await;
+    let (mrn, family, d) = (tag("mrn"), tag("Late"), dob());
+    let at = |m: String, t: &str| m.replace("20261021090000", t);
+    let phone = |n: &str| format!("|||||{n}");
+    let mut s = TcpStream::connect(addr).await.unwrap();
+    let ack = send(
+        &mut s,
+        &at(
+            adt("A28", &tag("L"), &mrn, &family, &d, ""),
+            "20261117090000",
+        ),
+    )
+    .await
+    .unwrap();
+    assert_eq!(code(&ack), "AA", "{ack}");
+    // A newer update applies.
+    let ack = send(
+        &mut s,
+        &at(
+            adt("A08", &tag("L"), &mrn, &family, &d, &phone("01632960003")),
+            "20261117110000",
+        ),
+    )
+    .await
+    .unwrap();
+    assert_eq!(code(&ack), "AA", "{ack}");
+    let version = by_mrn(&db, &mrn).await[0].version;
+    assert_eq!(version, 2);
+
+    // One sent at 10:00, arriving after the 11:00 one, is kept for a person and changes nothing.
+    let late_control = tag("L");
+    let late = at(
+        adt(
+            "A08",
+            &late_control,
+            &mrn,
+            &family,
+            &d,
+            &phone("01632960002"),
+        ),
+        "20261117100000",
+    );
+    let ack = send(&mut s, &late).await.unwrap();
+    assert_eq!(code(&ack), "AR", "{ack}");
+    assert!(
+        ack.contains("older than one this feed has already applied"),
+        "{ack}"
+    );
+    assert!(!ack.contains("2026111710"), "no time in the answer: {ack}");
+    assert_eq!(by_mrn(&db, &mrn).await[0].version, version);
+    let kept: i64 = sqlx::query_scalar("SELECT count(*) FROM feed_refusals WHERE control_id = $1")
+        .bind(control_digest(FEED_AGENT, &late_control))
+        .fetch_one(&db)
+        .await
+        .unwrap();
+    assert_eq!(kept, 1);
+
+    // The same time as the newest is not older: it applies.
+    let ack = send(
+        &mut s,
+        &at(
+            adt("A08", &tag("L"), &mrn, &family, &d, &phone("01632960004")),
+            "20261117110000",
+        ),
+    )
+    .await
+    .unwrap();
+    assert_eq!(code(&ack), "AA", "{ack}");
+    assert_eq!(by_mrn(&db, &mrn).await[0].version, version + 1);
+
+    // A message with no usable time applies as before, and its audit row says the time was not known.
+    let timeless_control = tag("L");
+    let timeless = adt(
+        "A08",
+        &timeless_control,
+        &mrn,
+        &family,
+        &d,
+        &phone("01632960005"),
+    )
+    .replace("|20261021090000||", "|||")
+    .replace("EVN|A08|20261021090000", "EVN|A08|");
+    let ack = send(&mut s, &timeless).await.unwrap();
+    assert_eq!(code(&ack), "AA", "{ack}");
+    assert_eq!(by_mrn(&db, &mrn).await[0].version, version + 2);
+    let known: Option<bool> = sqlx::query_scalar(
+        "SELECT (detail->>'message_time_known')::boolean FROM audit_events WHERE detail->>'control_id' = $1",
+    )
+    .bind(control_digest(FEED_AGENT, &timeless_control))
+    .fetch_one(&db)
+    .await
+    .unwrap();
+    assert_eq!(known, Some(false));
+
+    // Another feed's newest time does not hold this one back.
+    let other_addr = start(&db, |c| c.agent = "mllp:other-feed".into()).await;
+    let mut o = TcpStream::connect(other_addr).await.unwrap();
+    let ack = send(
+        &mut o,
+        &at(
+            adt("A08", &tag("L"), &mrn, &family, &d, &phone("01632960006")),
+            "20261117080000",
+        ),
+    )
+    .await
+    .unwrap();
+    assert_eq!(code(&ack), "AA", "{ack}");
+}

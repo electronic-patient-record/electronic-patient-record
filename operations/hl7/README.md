@@ -31,6 +31,10 @@ address is recorded on every audit row.
   the event, the control id and the result, never the message. The control id (MSH-10) is kept only as a keyed
   fingerprint of the feed and the id (IH-3), in the audit row, the work queue, the version history and the log, because
   some senders build it from a patient's number. The plain id is in the stored message and in the acknowledgement.
+- A late update never undoes a newer one (IH-5): each applied message's time (EVN-2, or MSH-7) is kept per feed and
+  patient, and an update older than the newest one applied is kept for a person (`AR`, "older than one this feed has
+  already applied"). A time with no offset is read as UTC, so a sender must keep one convention. A message with no
+  usable time is applied as before.
 - No message value is written anywhere but the stored message and the patient record (IH-4): reasons and warnings name
   the field, never its value, and a frame that is not HL7 is logged only as its shape, with every value `***`.
 - Acknowledgements (IH-1): `AA` accepted. `AR` refused and **kept for a person**: `MSA-3` starts "kept for review by a

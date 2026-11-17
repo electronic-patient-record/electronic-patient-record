@@ -1566,7 +1566,7 @@ with its first code. Open questions OQ-IH1 to OQ-IH6.
   refusal path checks logs, errors, metrics, `MSA-3` and audit rows; errors carry a path and a reason, never a value. A
   deny-by-default ER7 redactor (segment ids and MSH-2 to 7 and 9 to 12 kept, populated fields masked, empty fields kept,
   non-ER7 masked whole), fuzzed for "the marker never survives" and "never panics". Refines CQ-30.
-- [ ] **IH-5 (M, clinical) — A late message does not undo a newer one.** Per patient and sender, keep the message time of
+- [x] **IH-5 (M, clinical) — A late message does not undo a newer one.** **Done 2026-11-17:** `hl7_adt::message_time` (EVN-2, else MSH-7), append-only `feed_message_times` (migration 38), the check under a lock per feed and patient inside the change's transaction, `OUT_OF_ORDER` kept and answered `AR`; no time applies with `message_time_known: false` in the audit row; hazard H-058. Queued as kind `conflict` with the out-of-order reason rather than a new kind. **Not done:** OQ-IH3 unanswered (refuse, as built, or apply field by field); a sender that changes its time-zone convention can make a real update look older. Per patient and sender, keep the message time of
   the last applied update (MSH-7, or EVN-2); an older update is queued as `out-of-order` and answered as IH-1; no usable
   time applies as now with a warning (OQ-IH3). New hazard row. **Acceptance:** an A08 sent after a newer A08 changes
   nothing and is queued.
