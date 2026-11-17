@@ -27,6 +27,8 @@ path = "src/bin/main.rs"
 # Shared with the domain crate, so the two never differ.
 serde = { version = "1", features = ["derive"] }
 uuid = { version = "1", features = ["v4"] }
+# Benchmarks in the service and the domain crate (spec/performance-testing.md); a dev dependency only.
+criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
 serde_json = { version = "1", features = ["float_roundtrip", "arbitrary_precision"] }
 jiff = { version = "1", default-features = false, features = ["std", "serde", "tzdb-bundle-always"] }
 tracing = { version = "0.1" }
@@ -80,7 +82,7 @@ snomed = "0.56.1"
 [dev-dependencies]
 authentication-verifier = { version = "0.9.3", default-features = false, features = ["test-idp"] }
 axa-test = "0.11"
-criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
+criterion = { workspace = true }
 tower = { version = "0.5", features = ["util"] }
 # Captures log lines in tests, so a test can check that no message value reaches one (IH-4). Already in the tree.
 tracing-subscriber = { version = "0.3.23", default-features = false, features = ["fmt", "std"] }

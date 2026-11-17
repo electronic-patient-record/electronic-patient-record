@@ -1693,6 +1693,25 @@ Upgrade guide: `help/upgrading-to-0.20/index.md` in the axa crate.
   Zstd is now a 415 and a caller asking only for Zstd gets an uncompressed answer; gzip, Brotli and deflate are
   unchanged.
 
+## Quality 2026-11-17 — criterion benchmarks for the domain, tarpaulin for coverage
+
+The maintainer asked for benchmarking with `criterion` and coverage with `tarpaulin`. Both crates already benchmarked
+with criterion 0.8.2 (the latest); coverage used `cargo-llvm-cov`.
+
+- [x] **QA-13 (S) — Domain benchmarks.** **Done 2026-11-17:** `electronic-patient-record-domain/benches/domain.rs`
+  (criterion, a workspace dev dependency): the policy, consent and observation benchmarks moved from the service's
+  `benches/service.rs`, so changing one rebuilds only the domain crate, and new ones for the task rules (TL-3): the file
+  checked with 1, 10 and 50 rules, `plan` (the dry run) over 1, 10 and 50, 60 working days across a holiday season, a
+  late reminder's decision. The `service-bench` gate runs both. **Not done:** no quiet-machine measurement (one run at a
+  load average of 37); checking 50 rules takes about 15 times as long as 10, since the duplicate check (TL-14) compares
+  every pair; fine at tens of rules read once, to revisit if a site file grows to hundreds.
+- [x] **QA-14 (S) — Coverage with cargo-tarpaulin.** **Done 2026-11-17:** `coverage-matcher` and `coverage-service` run
+  `cargo tarpaulin --engine llvm` in their own target directory, and CI installs `cargo-tarpaulin` in place of
+  `cargo-llvm-cov` and `llvm-tools`. Floors re-set with the reason in each script: the matcher 95 (96.16 measured), the
+  service 36 (37.71 measured; 50 under llvm-cov). The service's figure is lower because tarpaulin leaves the tests' own
+  lines out; with `--include-tests` it is 55.90, in line with llvm-cov's 53.44 on CI. **Not done:** CI's figures under
+  tarpaulin not yet compared with this machine's; no branch coverage (tarpaulin has none on the LLVM engine).
+
 ## Dependency 2026-11-17 — picomatch ReDoS, no fix
 
 GHSA-fc5q-39xc-vjpf (high): `picomatch` up to 4.0.7, the latest, is open to ReDoS through repeated extglobs, and no

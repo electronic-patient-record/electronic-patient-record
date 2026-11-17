@@ -211,12 +211,12 @@ if [ "$mode" != "--fast" ]; then
     skip ui-browser "run pnpm install first"
   fi
 
-  if [ "$mode" = "--list" ] || command -v cargo-llvm-cov >/dev/null 2>&1; then
+  if [ "$mode" = "--list" ] || command -v cargo-tarpaulin >/dev/null 2>&1; then
     gate_script coverage-matcher
     gate_script coverage-service
   else
-    skip coverage-matcher "cargo-llvm-cov is not installed (cargo install cargo-llvm-cov)"
-    skip coverage-service "cargo-llvm-cov is not installed (cargo install cargo-llvm-cov)"
+    skip coverage-matcher "cargo-tarpaulin is not installed (cargo install cargo-tarpaulin --locked)"
+    skip coverage-service "cargo-tarpaulin is not installed (cargo install cargo-tarpaulin --locked)"
   fi
 
   if [ "$mode" = "--list" ] || command -v java >/dev/null 2>&1; then

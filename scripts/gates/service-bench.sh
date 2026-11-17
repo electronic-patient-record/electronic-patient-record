@@ -4,3 +4,5 @@
 set -eu
 cd "$(dirname "$0")/../../electronic-patient-record-service-with-rust"
 cargo bench --locked --bench service -- --test
+# The domain rules' own benchmarks (policy, consent, observations, task rules).
+cargo bench --locked -p electronic-patient-record-domain --bench domain -- --test

@@ -34,7 +34,7 @@ The SEI quality attribute scenario method (source, stimulus, artefact, environme
 
 | Measure | How to measure | Suggested target or rule for setting one | Where in our data/CI |
 |---|---|---|---|
-| Line and branch coverage | `cargo llvm-cov`; `vitest --coverage` | Ratchet: a floor never lowered without a written reason | `coverage` job (OS-4), unrun on GitHub |
+| Line and branch coverage | `cargo tarpaulin` (LLVM engine, test code left out); `vitest --coverage` | Ratchet: a floor never lowered without a written reason | `coverage` job (OS-4), unrun on GitHub |
 | Mutation score on safety-relevant code | `cargo mutants` per file | Zero missed on matcher and consent rules; report survivors per file | Hand-run; CHANGELOG (CQ-30) |
 | Census coverage | Count of route, write and doc census tests against routes, writes and documents | Each new route, write or document fails CI without a row | `tests/*census*` |
 | Lead time of a change | Commit timestamps of spec, code and test for one item | Watch the trend, set no number first | git history (not collected) |

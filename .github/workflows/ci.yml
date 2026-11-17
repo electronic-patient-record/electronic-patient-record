@@ -399,12 +399,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      # cargo-tarpaulin with its LLVM engine (the scripts pass --engine llvm); it reads the profiles itself, so no
+      # llvm-tools component is needed.
       - uses: dtolnay/rust-toolchain@1.100.0
-        with:
-          components: llvm-tools-preview
       - uses: taiki-e/install-action@v2
         with:
-          tool: cargo-llvm-cov
+          tool: cargo-tarpaulin
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: |

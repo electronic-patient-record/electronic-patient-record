@@ -82,7 +82,7 @@ workflow, and each fails. CodeQL and cargo deny are GitHub actions with no `run:
 names them.
 
 `ci-local.sh --full` gained the two coverage floors (`coverage-matcher`, `coverage-service`), which only CI ran before.
-They SKIP without `cargo-llvm-cov`.
+They SKIP without `cargo-tarpaulin` (until 2026-11-17, `cargo-llvm-cov`).
 
 ## Speed spike (LC-8, run 2026-11-15)
 

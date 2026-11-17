@@ -22,3 +22,10 @@ sha2 = { workspace = true }
 uuid = { workspace = true }
 tracing = { workspace = true }
 electronic-patient-record-matcher = { workspace = true }
+
+[dev-dependencies]
+criterion = { workspace = true }
+
+[[bench]]
+name = "domain"
+harness = false

@@ -1173,6 +1173,7 @@ dependencies = [
 name = "electronic-patient-record-domain"
 version = "0.1.0"
 dependencies = [
+ "criterion",
  "electronic-patient-record-matcher",
  "jiff 1.0.0",
  "serde",

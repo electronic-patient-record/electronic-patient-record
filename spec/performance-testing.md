@@ -24,15 +24,25 @@ carry depends on its hardware, its database, its network and its users, none of 
   1, 50 and 1,000 candidates. 50 is the most the service's search returns.
 - **Service** (`electronic-patient-record-service-with-rust/benches/service.rs`): the work each request does
   outside the database. The audit row's digest (unkeyed SHA-256, computed inside the chain's lock, CQ-18), the
-  policy decision in three cases, parsing and validating a registration, a comparison with the site's rules, an
-  observation's validation and flag, an HL7 v2 registration parsed, and the request-duration histogram. Added
+  policy decision in three cases (moved to the domain crate on 2026-11-17, below), parsing and validating a
+  registration, a comparison with the site's rules, an observation's validation and flag (also moved), an HL7 v2
+  registration parsed, and the request-duration histogram. Added
   2026-11-17: the audit digest under a key (HMAC-SHA-256, as a production deployment computes it) and the keyed
   fingerprint that replaces an HL7 control id (IH-3); a patient's consents reduced for one disclosure, with 1, 10 and
-  50 active consents (SE-2); and the rest of an HL7 message's work outside the database: its message time (IH-5), the
+  50 active consents (SE-2, also moved); and the rest of an HL7 message's work outside the database: its message time (IH-5), the
   masked shape a log line may show (IH-4), the acknowledgement for an accepted and a kept message and a long `MSA-3`
   (IH-2), ten pipelined MLLP frames taken from one read, and a feed's health judged (IH-8).
+- **Domain rules** (`electronic-patient-record-service-with-rust/electronic-patient-record-domain/benches/domain.rs`,
+  2026-11-17): the benchmarks of pure domain rules, moved from the service so that changing one rebuilds only the
+  domain crate: the policy decision in three cases, a patient's consents with 1, 10 and 50 active consents, and an
+  observation's validation and flag; and the task rules (TL-3): the rules file checked as it loads with 1, 10 and 50
+  rules, what one event would create (the dry run) over 1, 10 and 50 rules, a due date 60 working days on across a
+  holiday season, and one late reminder's decision. A first run under heavy load (load average 37) gave about 3 µs to
+  check one rule and 0.7 ms for 50: the duplicate check compares every pair, so the time grows faster than the
+  count; a site file is expected to hold tens of rules, read once at start. Run it with
+  `cargo bench -p electronic-patient-record-domain --bench domain`.
 - `cargo bench --bench <name>` measures. `cargo bench --bench <name> -- --test` runs each benchmark once without
-  measuring: that is the gate (`matcher-bench`, `service-bench`), so a benchmark that no longer builds or panics
+  measuring: that is the gate (`matcher-bench`, `service-bench`, which runs the domain benchmarks too), so a benchmark that no longer builds or panics
   fails. `cargo clippy --all-targets` compiles them on every push.
 - criterion keeps its last result in `target/criterion/`, so a second run on the same machine prints the change.
   That comparison is the regression check for benchmarks. It is local only: no stored baseline is kept in the

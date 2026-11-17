@@ -1,25 +1,20 @@
 //! Benchmarks for the service's pure work on each request (spec/performance-testing.md).
 //!
 //! `cargo bench --bench service` measures; `cargo bench --bench service -- --test` runs each benchmark once, as a
-//! check that it still works. Nothing here touches the database: the database's share of a request is what the
+//! check that it still works. The domain rules alone (policy, consent, observations, task rules) are measured in
+//! `electronic-patient-record-domain/benches/domain.rs`, so changing one rebuilds only that crate. Nothing here touches the database: the database's share of a request is what the
 //! load tests in `scripts/load/` measure. The numbers are for one machine and say nothing about a deployment.
 
-use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
+use criterion::{Criterion, criterion_group, criterion_main};
 use electronic_patient_record::audit::{Action, Chain, Event};
-use electronic_patient_record::consent::{self, ConsentRecord, Context};
 use electronic_patient_record::feed_health::{self, Facts, Thresholds};
 use electronic_patient_record::interop::hl7_adt::{
     Rejection, acknowledgement, message_time, msa_text, patient_from_adt,
 };
 use electronic_patient_record::interop::redact;
 use electronic_patient_record::mllp;
-use electronic_patient_record::observations::{self, Observation, Range};
-use electronic_patient_record::policy::{
-    self, Action as PolicyAction, Consent, Purpose, Relationship, Request, Resource, Role, Subject,
-};
 use electronic_patient_record::{metrics, packs, patients_store};
 use electronic_patient_record_matcher::{HumanName, Identifier, NATIONAL_NUMBER_SYSTEM, Patient};
-use std::collections::BTreeSet;
 use std::hint::black_box;
 
 fn patient() -> Patient {
@@ -95,92 +90,6 @@ fn audit_keyed(c: &mut Criterion) {
     });
 }
 
-/// A patient's consents reduced to one value, on every disclosure of a record (SE-2): 1, 10 and 50 active consents,
-/// each a deny or permit for some roles and purposes, none deciding until the last.
-fn consent_decide(c: &mut Criterion) {
-    let mut g = c.benchmark_group("consent/decide");
-    let ctx = Context {
-        roles: BTreeSet::from([Role::Clinician]),
-        purpose: Purpose::Treatment,
-        resource: Resource::PatientIdentity,
-        labels: BTreeSet::new(),
-        now: 1_763_373_600,
-    };
-    for n in [1usize, 10, 50] {
-        let records: Vec<(String, ConsentRecord)> = (0..n)
-            .map(|i| {
-                let effect = if i + 1 == n { "deny" } else { "permit" };
-                let json = format!(
-                    r#"{{"status":"active","period":{{"start":"2026-01-01","end":"2027-12-31"}},
-                        "provisions":[{{"effect":"{effect}","actors":["clinician","nurse"],
-                        "purposes":["treatment","emergency"],"resources":["PatientIdentity"]}}]}}"#
-                );
-                (
-                    format!("consent-{i}"),
-                    serde_json::from_str(&json).expect("a consent"),
-                )
-            })
-            .collect();
-        g.bench_with_input(BenchmarkId::from_parameter(n), &records, |b, records| {
-            b.iter(|| {
-                consent::decide(
-                    records.iter().map(|(id, r)| (id.as_str(), r)),
-                    black_box(&ctx),
-                )
-            })
-        });
-    }
-    g.finish();
-}
-
-/// The record decision, made on every read and write of a record.
-fn policy(c: &mut Criterion) {
-    let mut g = c.benchmark_group("policy");
-    let cases = [
-        (
-            "clinician_reads",
-            Role::Clinician,
-            PolicyAction::Read,
-            Relationship::CareTeam,
-            Purpose::Treatment,
-        ),
-        (
-            "nurse_writes",
-            Role::Nurse,
-            PolicyAction::Create,
-            Relationship::CareTeam,
-            Purpose::Treatment,
-        ),
-        (
-            "no_relationship",
-            Role::Clinician,
-            PolicyAction::Read,
-            Relationship::None,
-            Purpose::Treatment,
-        ),
-    ];
-    for (name, role, action, relationship, purpose) in cases {
-        let request = Request {
-            subject: Subject {
-                roles: BTreeSet::from([role]),
-                ..Subject::default()
-            },
-            resource: Resource::PatientIdentity,
-            action,
-            labels: BTreeSet::new(),
-            relationship,
-            purpose,
-            consent: Consent::NotRecorded,
-            break_glass: None,
-            now: 1_000,
-        };
-        g.bench_with_input(BenchmarkId::from_parameter(name), &request, |b, r| {
-            b.iter(|| policy::evaluate(black_box(r)))
-        });
-    }
-    g.finish();
-}
-
 /// What a registration does before it reaches the database: validate, then score against a candidate.
 fn patients(c: &mut Criterion) {
     let p = patient();
@@ -199,26 +108,6 @@ fn patients(c: &mut Criterion) {
     g.bench_function("compare_with_site_rules", |b| {
         b.iter(|| engine.compare(black_box(&p), black_box(&other)))
     });
-    g.finish();
-}
-
-fn observation(c: &mut Criterion) {
-    let o = Observation {
-        code: "8867-4".to_string(),
-        value: Some(112.0),
-        unit: Some("/min".to_string()),
-        absent_reason: None,
-        range: Some(Range {
-            low: Some(60.0),
-            high: Some(100.0),
-        }),
-        critical: None,
-    };
-    let mut g = c.benchmark_group("observation");
-    g.bench_function("validate", |b| {
-        b.iter(|| observations::validate(black_box(&o)))
-    });
-    g.bench_function("flag", |b| b.iter(|| observations::flag(black_box(&o))));
     g.finish();
 }
 
@@ -328,10 +217,7 @@ criterion_group!(
     benches,
     audit,
     audit_keyed,
-    consent_decide,
-    policy,
     patients,
-    observation,
     hl7,
     hl7_feed,
     feed_health_assess,
