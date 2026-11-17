@@ -15,7 +15,7 @@ Project site: <https://electronic-patient-record.github.io> (source: [electronic
 | [`electronic-patient-record-service-with-rust`](electronic-patient-record-service-with-rust) | Axum and `axa` service; the API identity DTO is the matcher's `Patient` | `cargo run -- start` (needs Postgres) | `cargo test --lib`; `cargo test --test audit_immutable -- --ignored` (needs Postgres) |
 | [`electronic-patient-record-ui-with-svelte`](electronic-patient-record-ui-with-svelte) | SvelteKit 3, Svelte 5 UI with a backend-for-frontend proxy | `pnpm install && pnpm dev` | `pnpm run check`, `pnpm exec vitest run`, `pnpm exec playwright test` |
 
-The Rust toolchain is pinned in [`rust-toolchain.toml`](rust-toolchain.toml) (1.99.1). The UI needs Node 26 and
+The Rust toolchain is pinned in [`rust-toolchain.toml`](rust-toolchain.toml) (1.100.0). The UI needs Node 26 and
 pnpm; its browser tests stub the backend, so they do not need the service.
 
 ## Run the API from a fresh clone

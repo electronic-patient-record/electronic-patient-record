@@ -69,7 +69,7 @@ safety incident.
 
 | Layer | Choice |
 |---|---|
-| Rust | 1.99.1 pinned in `rust-toolchain.toml`, MSRV 1.98 for the service (axa 0.17) and 1.97 for the matcher, edition 2024 |
+| Rust | 1.100.0 pinned in `rust-toolchain.toml`, MSRV 1.98 for the service (axa 0.17) and 1.97 for the matcher, edition 2024 |
 | Service framework | Axum 0.8 with `axa` 0.15 (features `postgres-sqlx`, `outbox`, `idempotency`, `problem`, `ratelimit`, `cursor-pagination`); no JWT library: tokens are PASETO or Keycloak, verified by `authentication-verifier` |
 | Database | PostgreSQL 18 through `sqlx` (`axa`'s `postgres-sqlx` feature), no ORM; migrations are `.sql` files in the service's `migrations/`, with no down files |
 | Auth | PASETO v4.public verified offline with `authentication-verifier` (Ed25519 key set URL); OIDC upstream; SMART on FHIR 2.2 authorisation layered on top (see §6.4) |
