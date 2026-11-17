@@ -8,6 +8,7 @@
 //! - [`fhir_audit`]: an audit row as a FHIR R4 `AuditEvent`, claiming a BALP profile only when it meets it.
 //! - [`fhir_patient`]: FHIR R4 `Patient` (crate `fhir`).
 //! - [`hl7_adt`]: HL7 v2 ADT patient feeds and their acknowledgements (crates `er7`, `hl7`).
+//! - [`redact`]: an HL7 v2 message with its values masked, for a log line (IH-4).
 //! - [`terminology`]: SNOMED CT identifier checks (crate `snomed`).
 //!
 //! A mapping that cannot carry something says so (`dropped`, `warnings`) instead of discarding it
@@ -19,4 +20,5 @@ pub mod fhir_flag;
 pub mod fhir_observation;
 pub mod fhir_patient;
 pub mod hl7_adt;
+pub mod redact;
 pub mod terminology;

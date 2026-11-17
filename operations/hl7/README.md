@@ -31,6 +31,8 @@ address is recorded on every audit row.
   the event, the control id and the result, never the message. The control id (MSH-10) is kept only as a keyed
   fingerprint of the feed and the id (IH-3), in the audit row, the work queue, the version history and the log, because
   some senders build it from a patient's number. The plain id is in the stored message and in the acknowledgement.
+- No message value is written anywhere but the stored message and the patient record (IH-4): reasons and warnings name
+  the field, never its value, and a frame that is not HL7 is logged only as its shape, with every value `***`.
 - Acknowledgements (IH-1): `AA` accepted. `AR` refused and **kept for a person**: `MSA-3` starts "kept for review by a
   person; do not resend", then the reasons. A message type that is not handled is `AR` too. `AE` only when a resend can
   help: the database unavailable, or the refusal could not be stored. `EPR_MLLP_KEPT_ANSWER=AE` answers kept refusals `AE`

@@ -923,6 +923,106 @@ mod tests {
         }
     }
 
+    /// The sample with field `n` of the first `seg` segment (`MSH` counted as HL7 counts it) set to `value`.
+    fn with_field(seg: &str, n: usize, value: &str) -> String {
+        SAMPLE
+            .split('\r')
+            .map(|line| {
+                if !line.starts_with(seg) {
+                    return line.to_string();
+                }
+                let mut f: Vec<String> = line.split('|').map(str::to_string).collect();
+                // MSH-1 is the separator itself, so MSH-n is at index n-1; other segments' field n is at index n.
+                let at = if seg == "MSH" { n - 1 } else { n };
+                while f.len() <= at {
+                    f.push(String::new());
+                }
+                f[at] = value.to_string();
+                f.join("|")
+            })
+            .collect::<Vec<_>>()
+            .join("\r")
+    }
+
+    const MARKER: &str = "QzMarkerQz";
+
+    /// Every text the reader and the feed's answer produce for `text`, other than the stored message itself.
+    fn said(text: &str) -> Vec<String> {
+        let read = hl7_adt::patient_from_adt(text);
+        let mut out = Vec::new();
+        match &read {
+            Ok(i) => out.extend(i.warnings.iter().cloned()),
+            Err(Rejection::Unsupported(m) | Rejection::NotHl7(m)) => out.push(m.clone()),
+            Err(Rejection::Invalid(m) | Rejection::Kept(m)) => out.extend(m.iter().cloned()),
+        }
+        let who = FeedIdentity {
+            agent: "mllp:test".into(),
+            peer: None,
+            kept_answer: KeptAnswer::Reject,
+        };
+        for kept in [false, true] {
+            let answer = read.clone().map_err(|r| answer_for(r, kept, &who));
+            if let Some(ack) = hl7_adt::acknowledgement(text, &answer, "ACK1", "20261021090000") {
+                // The acknowledgement's MSH copies the sender's own MSH-3 to MSH-6 and MSA-2 echoes MSH-10, which the
+                // marker never goes in; everything else must not carry it.
+                out.extend(
+                    ack.split('\r')
+                        .filter(|l| l.starts_with("MSA"))
+                        .map(str::to_string),
+                );
+            }
+        }
+        let (event, _) = message_ids(text);
+        out.push(event);
+        out
+    }
+
+    #[test]
+    fn no_message_value_appears_in_a_reason_a_warning_or_an_acknowledgement() {
+        // IH-4: the marker in every PID field (as a whole value, and in each of five components and a repetition),
+        // in MSH-7, MSH-8 and EVN; never in what the feed says about the message. The structural fields (MSH-3 to
+        // 6, MSH-9 to 12) are left out: the acknowledgement and the audit row carry them on purpose.
+        let mut cases: Vec<(String, String)> = Vec::new();
+        for n in 1..=30 {
+            for value in [
+                MARKER.to_string(),
+                format!("{MARKER}^{MARKER}^{MARKER}^{MARKER}^{MARKER}"),
+                format!("x~{MARKER}"),
+            ] {
+                cases.push((format!("PID-{n} = {value}"), with_field("PID", n, &value)));
+            }
+        }
+        for n in [7, 8] {
+            cases.push((format!("MSH-{n}"), with_field("MSH", n, MARKER)));
+        }
+        for n in 1..=6 {
+            cases.push((format!("EVN-{n}"), with_field("EVN", n, MARKER)));
+        }
+        // And text that does not read as HL7 at all, where the reader's own error is the reason kept.
+        for text in [
+            MARKER.to_string(),
+            format!("MSH{MARKER}"),
+            format!("MSH|^~\\&|{MARKER}"),
+            format!("{MARKER}\rPID|1||{MARKER}"),
+            format!("MSH|^~\\&|A|B|C|D|T||ADT^A28|C9|P|2.5\rPID|1||{MARKER}\u{0}{MARKER}"),
+        ] {
+            cases.push((format!("unreadable {text:?}"), text));
+        }
+        let mut leaks = Vec::new();
+        for (what, text) in &cases {
+            for line in said(text) {
+                if line.contains(MARKER) {
+                    leaks.push(format!("{what}: {line}"));
+                }
+            }
+        }
+        assert!(
+            leaks.is_empty(),
+            "a message value leaked:\n{}",
+            leaks.join("\n")
+        );
+    }
+
     #[test]
     fn the_sample_is_readable_so_the_fuzzing_starts_from_something_real() {
         assert!(hl7_adt::patient_from_adt(SAMPLE).is_ok());

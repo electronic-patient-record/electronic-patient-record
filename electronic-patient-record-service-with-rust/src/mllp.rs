@@ -312,7 +312,12 @@ async fn connection(mut stream: TcpStream, peer: SocketAddr, db: &PgPool, config
                     }
                 }
                 None => {
-                    tracing::warn!(%peer, "MLLP frame is not an HL7 message; closing");
+                    // Its shape only, cut short: every value is masked (IH-4).
+                    let shape: String = crate::interop::redact::er7(&text)
+                        .chars()
+                        .take(200)
+                        .collect();
+                    tracing::warn!(%peer, %shape, "MLLP frame is not an HL7 message; closing");
                     return;
                 }
             }

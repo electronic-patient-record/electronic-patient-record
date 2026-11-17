@@ -59,6 +59,8 @@ authentication-verifier = { version = "0.9.1", default-features = false, feature
 axa-test = "0.6"
 criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
 tower = { version = "0.5", features = ["util"] }
+# Captures log lines in tests, so a test can check that no message value reaches one (IH-4). Already in the tree.
+tracing-subscriber = { version = "0.3.23", default-features = false, features = ["fmt", "std"] }
 
 [[bench]]
 name = "service"

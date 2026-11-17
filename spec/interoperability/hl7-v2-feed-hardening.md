@@ -57,7 +57,7 @@ Each is a design to be confirmed, not a built behaviour. Clinical ones add hazar
 3. **MSH-10 is not kept in plain text (IH-3, privacy). Built 2026-11-17**, in the existing `control_id` column rather than a new one. The audit row, the queue's `control_id` column and every log line
    carry a keyed digest of the sender and MSH-10, which still joins a resend to its original; the plain value is in the
    stored message text only, which the queue already holds under its access rule (OQ-IH2).
-4. **No message value in any log, error, metric or `MSA-3` (IH-4).** A marker test pushes a distinctive value through
+4. **No message value in any log, error, metric or `MSA-3` (IH-4). Built 2026-11-17**; the marker test found the dictionary's findings and two warnings quoting values. A marker test pushes a distinctive value through
    every field and every refusal path and asserts it appears nowhere but the stored message (hub `spec/06-validation.md`
    §3.3.3, `spec/17-testing-and-quality.md` §6). Errors carry a structural path and a reason, never a value. Should a frame
    ever be logged, it goes through a deny-by-default ER7 redactor: segment ids and MSH-2 to MSH-7 and MSH-9 to MSH-12

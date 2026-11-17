@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - No HL7 message value outside the stored message (IH-4)
+
+- **Clinical risk:** none: what the feed applies and answers is unchanged. A privacy change.
+- **Found by the new marker test:** the HL7 dictionary's findings (`PID[1]-7[1].1: "…" is not a valid DTM value`) and the feed's own PID-7 and PID-8 warnings quoted the field's value. They reached nothing but a count in the audit row, but they carried patient data one log line away from a leak. The parser's own error, for text that is not HL7, quoted the text's first segment.
+- **Changed:** `hl7_adt::withhold_values` takes every quoted value out of a finding, keeping the path and the reason; the PID-7 and PID-8 warnings no longer quote; unreadable text gets the fixed `hl7_adt::NOT_HL7`. New `interop::redact::er7`, a deny-by-default ER7 redactor (segment ids and MSH-2 to 7, 9, 11 and 12 kept; MSH-8, MSH-10 and every other populated field `***`; empty fields kept; anything not ER7 masked whole; the separator read as a character, not a byte), shapes the listener's one log line about a frame. `tracing-subscriber` (already in the tree) is a dev-dependency, to capture log lines in a test.
+- **Tested:** a marker in every PID field (whole, in five components, in a repetition), in MSH-7, MSH-8 and EVN, and in unreadable text, against every reason, warning and acknowledgement (no database; it failed before the fix); end to end on Postgres, a marker in a message applied, one refused and one not handled, against audit rows, the queue's columns, version reasons, metrics and captured log lines; the redactor over 20,000 random texts (never panics, masking twice changes nothing, no marker outside a kept MSH field).
+- **Not done / not verified:** no `cargo fuzz` target (in-test generators, as for the rest of the feed); log lines elsewhere in the service were not checked; MSH-3 to MSH-6 and MSH-9 are kept as structure, so a sender that puts patient data there would still have it echoed and logged.
+
 ## 2026-11-17 - The HL7 control id is kept only as a keyed fingerprint (IH-3)
 
 - **Clinical risk:** none: nothing a clinician sees or the feed applies changes. A privacy change: some senders build MSH-10 from a patient's number.

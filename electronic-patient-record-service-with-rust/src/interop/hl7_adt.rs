@@ -38,6 +38,29 @@ pub struct Inbound {
     pub warnings: Vec<String>,
 }
 
+/// The reason for text that is not an HL7 v2 message: fixed, because the parser's own error quotes the text (IH-4).
+pub const NOT_HL7: &str = "not an HL7 v2 message: it does not start with a readable MSH segment";
+
+/// A finding about a message with every quoted value taken out (IH-4): the path and the reason stay, the value goes.
+/// The HL7 dictionary's findings quote the field they are about (`PID[1]-7[1].1: "…" is not a valid DTM value`), and a
+/// field holds patient data, so no finding leaves the reader with one. An unclosed quote withholds the rest.
+#[must_use]
+pub fn withhold_values(finding: &str) -> String {
+    let mut out = String::with_capacity(finding.len());
+    let mut quoted = false;
+    for c in finding.chars() {
+        if c == '"' {
+            if !quoted {
+                out.push_str("(value withheld)");
+            }
+            quoted = !quoted;
+        } else if !quoted {
+            out.push(c);
+        }
+    }
+    out
+}
+
 /// Why a message was not accepted.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Rejection {
@@ -142,7 +165,8 @@ fn get(message: &er7::Message, path: &str) -> String {
 ///
 /// [`Rejection`], saying which acknowledgement (if any) is owed.
 pub fn patient_from_adt(text: &str) -> Result<Inbound, Rejection> {
-    let message = er7::parse(text).map_err(|e| Rejection::NotHl7(e.to_string()))?;
+    // The reader's own error names what it found first, which is the sender's text: only a fixed reason leaves here.
+    let message = er7::parse(text).map_err(|_| Rejection::NotHl7(NOT_HL7.to_string()))?;
     let msg_type = get(&message, "MSH-9.1");
     let event = get(&message, "MSH-9.2");
     if msg_type != "ADT" || !HANDLED_EVENTS.contains(&event.as_str()) {
@@ -159,8 +183,8 @@ pub fn patient_from_adt(text: &str) -> Result<Inbound, Rejection> {
     let mut warnings = Vec::new();
     // The dictionary check is advice here: parse again through the HL7 layer and keep its findings.
     match hl7::v2::parse(text) {
-        Ok(m) => warnings.extend(m.validate().iter().map(ToString::to_string)),
-        Err(e) => warnings.push(format!("hl7 v2: {e}")),
+        Ok(m) => warnings.extend(m.validate().iter().map(|f| withhold_values(&f.to_string()))),
+        Err(e) => warnings.push(withhold_values(&format!("hl7 v2: {e}"))),
     }
     if message.segment_at("PID", 1).is_none() {
         return Err(Rejection::Invalid(vec!["no PID segment".into()]));
@@ -243,14 +267,10 @@ pub fn patient_from_adt(text: &str) -> Result<Inbound, Rejection> {
         temporary_identity: false,
     };
     if !raw_birth.is_empty() && patient.birth_date.is_none() {
-        warnings.push(format!(
-            "PID-7 {raw_birth:?} is not a date; birth date left blank"
-        ));
+        warnings.push("PID-7 is not a date; birth date left blank".to_string());
     }
     if !raw_sex.is_empty() && patient.sex.is_none() {
-        warnings.push(format!(
-            "PID-8 {raw_sex:?} is not a known sex code; left blank"
-        ));
+        warnings.push("PID-8 is not a known sex code; left blank".to_string());
     }
     let mut problems = patients_store::validate(&patient);
     let death = reports_a_death(&get(&message, "PID-29"), &get(&message, "PID-30"))
@@ -303,6 +323,23 @@ mod tests {
         EVN|A28|20261021090000\r\
         PID|1||9434765919^^^NHS^NH~M-1^^^LOCAL||SMITH^ANN^MARIE~JONES^ANN||19800314|F|||1 HIGH ST^^LEEDS^^LS1 4AB||01632 960001~^^^ann@example.org\r\
         ZXX|local segment";
+
+    #[test]
+    fn a_finding_keeps_its_path_and_reason_and_loses_its_value() {
+        assert_eq!(
+            withhold_values(r#"error: PID[1]-7[1].1: "19801399" is not a valid DTM value"#),
+            "error: PID[1]-7[1].1: (value withheld) is not a valid DTM value"
+        );
+        assert_eq!(withhold_values("no value here"), "no value here");
+        assert_eq!(
+            withhold_values(r#"a "b" c "d" e"#),
+            "a (value withheld) c (value withheld) e"
+        );
+        assert_eq!(
+            withhold_values(r#"cut "open to the end"#),
+            "cut (value withheld)"
+        );
+    }
 
     #[test]
     fn an_admit_becomes_an_identity_record() {

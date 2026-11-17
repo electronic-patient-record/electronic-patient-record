@@ -871,3 +871,113 @@ async fn the_plain_control_id_is_kept_only_in_the_stored_message() {
         "the stored message keeps the text as received"
     );
 }
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn no_message_value_reaches_an_audit_row_the_queue_a_version_reason_a_metric_or_a_log_line() {
+    // IH-4, end to end on the real path: the marker in names, address, phone and other fields, in a message that is
+    // applied, one that is refused and kept, and one of a type not handled. The patient record itself holds the
+    // names it was given, and the stored message holds the text; nothing else may.
+    use electronic_patient_record::adt_feed::{self, FeedIdentity};
+    use std::io::Write;
+    use std::sync::{Arc, Mutex};
+
+    #[derive(Clone, Default)]
+    struct Lines(Arc<Mutex<Vec<u8>>>);
+    impl Write for Lines {
+        fn write(&mut self, b: &[u8]) -> std::io::Result<usize> {
+            self.0.lock().unwrap().extend_from_slice(b);
+            Ok(b.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+    let lines = Lines::default();
+    let writer = lines.clone();
+    let subscriber = tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::TRACE)
+        .with_writer(move || writer.clone())
+        .with_ansi(false)
+        .finish();
+    let _guard = tracing::subscriber::set_default(subscriber);
+
+    let db = db().await;
+    let marker = tag("QzMark");
+    let who = FeedIdentity {
+        agent: FEED_AGENT.into(),
+        peer: Some("127.0.0.1".into()),
+        kept_answer: KeptAnswer::Reject,
+    };
+    let mrn = tag("mrn");
+    let pid = |dob: &str| {
+        format!(
+            "PID|1||{mrn}^^^LOCAL||{marker}^{marker}||{dob}|{marker}|||{marker} St^^{marker}^^{marker}||{marker}|{marker}||||{marker}"
+        )
+    };
+    let msh = |event: &str, structure: &str, control: &str| {
+        format!(
+            "MSH|^~\\&|REG|CLINIC|EPR|HOSP|20261117090000||ADT^{event}^{structure}|{control}|P|2.5\rEVN|{event}|20261117090000"
+        )
+    };
+    let applied = format!("{}\r{}", msh("A28", "ADT_A05", &tag("V")), pid("19800314"));
+    let refused = format!("{}\r{}", msh("A08", "ADT_A05", &tag("V")), pid("19800315"));
+    let unsupported = format!(
+        "{}\r{}",
+        msh("R01", "ORU_R01", &tag("V")).replace("ADT^R01", "ORU^R01"),
+        pid("19800314")
+    );
+    let before = electronic_patient_record::metrics::render();
+    let mut acks = Vec::new();
+    for text in [&applied, &refused, &unsupported] {
+        acks.push(
+            adt_feed::process(&db, text, &who, "ACK1", "20261117090001")
+                .await
+                .unwrap(),
+        );
+    }
+    assert!(acks[0].contains("MSA|AA|"), "{}", acks[0]);
+    assert!(acks[1].contains("MSA|AR|"), "{}", acks[1]);
+
+    for ack in &acks {
+        assert!(!ack.contains(&marker), "an acknowledgement: {ack}");
+    }
+    let logged = String::from_utf8(lines.0.lock().unwrap().clone()).unwrap();
+    assert!(
+        logged.contains("ADT message applied"),
+        "the capture works: {logged}"
+    );
+    assert!(!logged.contains(&marker), "a log line: {logged}");
+    assert!(!electronic_patient_record::metrics::render().contains(&marker));
+    assert!(!before.contains(&marker));
+    let found = |sql: &'static str| {
+        let db = db.clone();
+        let needle = format!("%{marker}%");
+        async move {
+            sqlx::query(AssertSqlSafe(sql))
+                .bind(needle)
+                .fetch_one(&db)
+                .await
+                .unwrap()
+                .try_get::<i64, _>("n")
+                .unwrap()
+        }
+    };
+    assert_eq!(found("SELECT count(*) AS n FROM audit_events WHERE detail::text LIKE $1 OR coalesce(network_address, '') LIKE $1").await, 0, "an audit row");
+    assert_eq!(
+        found("SELECT count(*) AS n FROM patient_versions WHERE coalesce(reason, '') LIKE $1")
+            .await,
+        0,
+        "a version reason"
+    );
+    assert_eq!(
+        found("SELECT count(*) AS n FROM feed_refusals WHERE reasons::text LIKE $1 OR control_id LIKE $1 OR event LIKE $1").await,
+        0,
+        "a queue column other than the message"
+    );
+    assert_eq!(
+        found("SELECT count(*) AS n FROM feed_refusals WHERE message LIKE $1").await,
+        2,
+        "the two kept messages hold it"
+    );
+}
