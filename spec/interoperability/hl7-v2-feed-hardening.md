@@ -68,7 +68,7 @@ Each is a design to be confirmed, not a built behaviour. Clinical ones add hazar
    or EVN-2 when present) of the last applied update is kept. An update older than it is not applied: it is kept in the
    work queue as `out-of-order` and answered as rule 1. A message with no usable time is applied as now, with a warning
    in the audit row (OQ-IH3).
-6. **Per-sender rules (IH-6).** Each configured sender names its sending application and facility (MSH-3, MSH-4), the
+6. **Per-sender rules (IH-6). Built 2026-11-17 per listener**, one listener being one sender. Each configured sender names its sending application and facility (MSH-3, MSH-4), the
    HL7 version it sends (MSH-12) and the trigger events it may send; anything else is `AR` and kept (hub
    `spec/07-hl7-server.md` §3.3, §7). The audit agent stays configured, not taken from the message.
 7. **Shutdown drains (IH-7). Built 2026-11-17.** On a stop signal the listener stops accepting, lets each message already read finish

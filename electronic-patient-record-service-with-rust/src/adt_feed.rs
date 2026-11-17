@@ -54,6 +54,77 @@ pub struct FeedIdentity {
     /// The processing id (MSH-11) this deployment takes, `P`, `T` or `D`; any other is refused and kept (IH-2). `None`
     /// takes any, as before.
     pub processing_id: Option<char>,
+    /// What this feed's sender may send (IH-6); empty lists take anything.
+    pub rules: SenderRules,
+}
+
+/// What a feed's sender may send (IH-6), from the listener's settings. An empty list takes anything, as before.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct SenderRules {
+    /// Sending applications, each `APP` (MSH-3) or `APP^FACILITY` (MSH-3 and MSH-4), first components only.
+    pub applications: Vec<String>,
+    /// HL7 versions (MSH-12), such as `2.5` or `2.5.1`.
+    pub versions: Vec<String>,
+    /// Trigger events (MSH-9.2), a subset of [`hl7_adt::HANDLED_EVENTS`].
+    pub events: Vec<String>,
+}
+
+/// Why a message from an application this feed does not take is refused (IH-6). Like every reason, it quotes nothing.
+pub const WRONG_APPLICATION: &str = "MSH-3 and MSH-4 (sending application and facility) are not ones this feed takes: a person must check where this message came from";
+/// Why a message of another HL7 version is refused (IH-6).
+pub const WRONG_VERSION: &str = "MSH-12 (HL7 version) is not one this feed takes";
+/// Why a trigger event this feed does not take is refused (IH-6).
+pub const WRONG_EVENT: &str = "this trigger event is not one this feed takes";
+
+/// Field `n` of the MSH segment (MSH-1 is the separator), first component only, read without a full parse.
+fn msh_first_component(text: &str, n: usize) -> Option<String> {
+    let msh = text.split(['\r', '\n']).find(|l| l.starts_with("MSH"))?;
+    let sep = msh.chars().nth(3)?;
+    let component = msh.chars().nth(4).unwrap_or('^');
+    let field = msh.split(sep).nth(n - 1)?;
+    Some(
+        field
+            .split(component)
+            .next()
+            .unwrap_or_default()
+            .to_string(),
+    )
+}
+
+impl SenderRules {
+    /// The first rule `text` breaks, if any.
+    fn broken_by(&self, text: &str) -> Option<&'static str> {
+        let app = msh_first_component(text, 3).unwrap_or_default();
+        let facility = msh_first_component(text, 4).unwrap_or_default();
+        if !self.applications.is_empty()
+            && !self.applications.iter().any(|a| match a.split_once('^') {
+                Some((x, f)) => x == app && f == facility,
+                None => *a == app,
+            })
+        {
+            return Some(WRONG_APPLICATION);
+        }
+        let version = msh_first_component(text, 12).unwrap_or_default();
+        if !self.versions.is_empty() && !self.versions.contains(&version) {
+            return Some(WRONG_VERSION);
+        }
+        if !self.events.is_empty() {
+            let msh9 = text
+                .split(['\r', '\n'])
+                .find(|l| l.starts_with("MSH"))
+                .and_then(|m| {
+                    m.chars()
+                        .nth(3)
+                        .and_then(|sep| m.split(sep).nth(8).map(str::to_string))
+                })
+                .unwrap_or_default();
+            let event = msh9.split('^').nth(1).unwrap_or_default();
+            if !self.events.iter().any(|e| e == event) {
+                return Some(WRONG_EVENT);
+            }
+        }
+        None
+    }
 }
 
 /// Why a message for another kind of deployment is refused (IH-2): a test message is never applied to a live record, nor
@@ -693,19 +764,21 @@ pub async fn process(
         inbound.control_id = control_digest(&who.agent, &inbound.control_id);
         inbound
     });
-    let wrong_place = who
+    let not_for_here = if who
         .processing_id
-        .is_some_and(|want| processing_id_of(text) != Some(want));
+        .is_some_and(|want| processing_id_of(text) != Some(want))
+    {
+        Some(WRONG_PROCESSING_ID)
+    } else {
+        who.rules.broken_by(text)
+    };
     let outcome: Result<Inbound, Rejection> = match &read {
-        Ok(inbound) if wrong_place => {
-            let refusal = Refusal::Unsupported(WRONG_PROCESSING_ID.to_string());
+        Ok(inbound) if not_for_here.is_some() => {
+            let why = not_for_here.unwrap_or(WRONG_PROCESSING_ID).to_string();
+            let refusal = Refusal::Unsupported(why.clone());
             let kept =
                 audit_refusal(db, who, &inbound.event, &inbound.control_id, &refusal, text).await;
-            Err(answer_for(
-                Rejection::Unsupported(WRONG_PROCESSING_ID.to_string()),
-                kept,
-                who,
-            ))
+            Err(answer_for(Rejection::Unsupported(why), kept, who))
         }
         Ok(inbound) => match apply(db, inbound, who).await {
             Ok(applied) => {
@@ -771,6 +844,45 @@ mod tests {
             peer: None,
             kept_answer,
             processing_id: None,
+            rules: SenderRules::default(),
+        }
+    }
+
+    #[test]
+    fn sender_rules_take_only_what_is_listed_and_an_empty_list_takes_anything() {
+        // IH-6. The sample is from REG at CLINIC, HL7 2.5, an A08.
+        assert_eq!(SenderRules::default().broken_by(SAMPLE), None);
+        let rules = |a: &[&str], v: &[&str], e: &[&str]| SenderRules {
+            applications: a.iter().map(|x| (*x).to_string()).collect(),
+            versions: v.iter().map(|x| (*x).to_string()).collect(),
+            events: e.iter().map(|x| (*x).to_string()).collect(),
+        };
+        assert_eq!(rules(&["REG"], &["2.5"], &["A08"]).broken_by(SAMPLE), None);
+        assert_eq!(rules(&["REG^CLINIC"], &[], &[]).broken_by(SAMPLE), None);
+        assert_eq!(
+            rules(&["REG^ELSEWHERE"], &[], &[]).broken_by(SAMPLE),
+            Some(WRONG_APPLICATION)
+        );
+        assert_eq!(
+            rules(&["OTHER"], &[], &[]).broken_by(SAMPLE),
+            Some(WRONG_APPLICATION)
+        );
+        assert_eq!(
+            rules(&[], &["2.5.1"], &[]).broken_by(SAMPLE),
+            Some(WRONG_VERSION)
+        );
+        assert_eq!(
+            rules(&[], &[], &["A28", "A31"]).broken_by(SAMPLE),
+            Some(WRONG_EVENT)
+        );
+        // A component after the first does not matter: `REG^1.2.3^ISO` is still REG.
+        let with_oid = SAMPLE.replace("MSH|^~\\&|REG|", "MSH|^~\\&|REG^1.2.3^ISO|");
+        assert_eq!(rules(&["REG"], &[], &[]).broken_by(&with_oid), None);
+        for reason in [WRONG_APPLICATION, WRONG_VERSION, WRONG_EVENT] {
+            assert!(
+                !reason.contains("REG") && !reason.contains("2.5"),
+                "{reason}"
+            );
         }
     }
 
@@ -1069,6 +1181,7 @@ mod tests {
             peer: None,
             kept_answer: KeptAnswer::Reject,
             processing_id: None,
+            rules: SenderRules::default(),
         };
         for kept in [false, true] {
             let answer = read.clone().map_err(|r| answer_for(r, kept, &who));

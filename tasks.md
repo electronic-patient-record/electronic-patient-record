@@ -1570,7 +1570,7 @@ with its first code. Open questions OQ-IH1 to OQ-IH6.
   the last applied update (MSH-7, or EVN-2); an older update is queued as `out-of-order` and answered as IH-1; no usable
   time applies as now with a warning (OQ-IH3). New hazard row. **Acceptance:** an A08 sent after a newer A08 changes
   nothing and is queued.
-- [ ] **IH-6 (M) — Per-sender rules.** Each configured sender: MSH-3 and MSH-4, MSH-12, allowed trigger events; anything
+- [x] **IH-6 (M) — Per-sender rules.** **Done 2026-11-17, per listener:** `adt_feed::SenderRules` from `EPR_MLLP_SENDING_APPLICATIONS`, `EPR_MLLP_VERSIONS`, `EPR_MLLP_EVENTS`, checked at start; outside them is kept and `AR`. **Not done:** several senders on one listener, each with its own agent, answer setting and rules (one listener is one sender today); the TLS client certificate's name as the agent. Each configured sender: MSH-3 and MSH-4, MSH-12, allowed trigger events; anything
   else `AR` and kept. The audit agent stays configured. **Acceptance:** a message from an unlisted application is
   refused and kept.
 - [x] **IH-7 (S) — Shutdown drains the listener.** **Done 2026-11-17:** `mllp::serve_until` with a stop signal, `Running`/`keep`/`stop_kept` as for the outbox, stopped by `run` after the HTTP server; `STOP_WAIT` 10 s. **Not done:** the test's stop usually lands before the message is read, so the finishing branch is exercised by chance, not on purpose. Stop accepting, finish what was read (commit and answer), close the

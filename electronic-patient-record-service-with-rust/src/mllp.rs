@@ -21,7 +21,7 @@
 //! accept. A byte stream that does not start a frame with `<VT>`, a frame that never ends, a stray
 //! `<VT>` inside a frame and text that is not UTF-8 each close the connection: nothing is guessed.
 
-use crate::adt_feed::{self, FeedIdentity, KeptAnswer};
+use crate::adt_feed::{self, FeedIdentity, KeptAnswer, SenderRules};
 use sqlx::PgPool;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
@@ -158,6 +158,8 @@ pub struct Config {
     pub tls: Option<Arc<rustls::ServerConfig>>,
     /// The processing id this deployment takes (`EPR_MLLP_PROCESSING_ID`: `P`, `T` or `D`), or any when unset (IH-2).
     pub processing_id: Option<char>,
+    /// What the sender may send (`EPR_MLLP_SENDING_APPLICATIONS`, `EPR_MLLP_VERSIONS`, `EPR_MLLP_EVENTS`; IH-6).
+    pub rules: SenderRules,
 }
 
 /// A TLS server configuration from PEM files, with ring's provider chosen explicitly (aws-lc-rs is in the tree too, and
@@ -238,6 +240,7 @@ impl Config {
             kept_answer: KeptAnswer::Reject,
             tls: None,
             processing_id: None,
+            rules: SenderRules::default(),
         }
     }
 
@@ -331,12 +334,61 @@ impl Config {
                 ));
             }
         };
+        let list = |k: &str| -> Vec<String> {
+            set(k)
+                .map(|v| {
+                    v.split(',')
+                        .map(|x| x.trim().to_string())
+                        .filter(|x| !x.is_empty())
+                        .collect()
+                })
+                .unwrap_or_default()
+        };
+        let rules = SenderRules {
+            applications: list("EPR_MLLP_SENDING_APPLICATIONS"),
+            versions: list("EPR_MLLP_VERSIONS"),
+            events: list("EPR_MLLP_EVENTS"),
+        };
+        let clean = |x: &str| {
+            x.chars()
+                .all(|c| c.is_ascii_alphanumeric() || "^._- ".contains(c))
+                && x.len() <= 180
+        };
+        if let Some(bad) = rules
+            .applications
+            .iter()
+            .find(|a| !clean(a) || a.matches('^').count() > 1)
+        {
+            return Err(format!(
+                "EPR_MLLP_SENDING_APPLICATIONS entry {bad:?} must be APP or APP^FACILITY in letters, digits, '.', '_', '-' or spaces"
+            ));
+        }
+        if let Some(bad) = rules
+            .versions
+            .iter()
+            .find(|v| v.is_empty() || !v.chars().all(|c| c.is_ascii_digit() || c == '.'))
+        {
+            return Err(format!(
+                "EPR_MLLP_VERSIONS entry {bad:?} must be a version such as 2.5 or 2.5.1"
+            ));
+        }
+        if let Some(bad) = rules
+            .events
+            .iter()
+            .find(|e| !crate::interop::hl7_adt::HANDLED_EVENTS.contains(&e.as_str()))
+        {
+            return Err(format!(
+                "EPR_MLLP_EVENTS entry {bad:?} is not an event this feed handles ({})",
+                crate::interop::hl7_adt::HANDLED_EVENTS.join(", ")
+            ));
+        }
         Ok(Some(Config {
             bind,
             agent,
             kept_answer,
             tls,
             processing_id,
+            rules,
             max_connections: usize::try_from(number("EPR_MLLP_MAX_CONNECTIONS", 8, 1, 256)?)
                 .unwrap_or(8),
             idle: Duration::from_secs(number("EPR_MLLP_IDLE_SECONDS", 60, 1, 3600)?),
@@ -505,6 +557,7 @@ async fn connection<S: AsyncRead + AsyncWrite + Unpin>(
         peer: Some(peer.ip().to_string()),
         kept_answer: config.kept_answer,
         processing_id: config.processing_id,
+        rules: config.rules.clone(),
     };
     let mut buf: Vec<u8> = Vec::new();
     let mut chunk = [0u8; 8192];
@@ -697,6 +750,31 @@ mod tests {
         assert!(Config::from_lookup(env(&[bind, ("EPR_MLLP_MAX_CONNECTIONS", "999")])).is_err());
         assert!(Config::from_lookup(env(&[bind, ("EPR_MLLP_IDLE_SECONDS", "soon")])).is_err());
         assert!(Config::from_lookup(env(&[bind, ("EPR_MLLP_AGENT", "a\nb")])).is_err());
+        // IH-6: what a sender may send, checked at start.
+        let rules = |pairs: &[(&str, &str)]| {
+            let mut all = vec![bind];
+            all.extend_from_slice(pairs);
+            Config::from_lookup(env(&all))
+        };
+        let ok = rules(&[
+            ("EPR_MLLP_SENDING_APPLICATIONS", "REG^CLINIC, PAS"),
+            ("EPR_MLLP_VERSIONS", "2.5,2.5.1"),
+            ("EPR_MLLP_EVENTS", "A08, A28"),
+        ])
+        .unwrap()
+        .unwrap();
+        assert_eq!(ok.rules.applications, ["REG^CLINIC", "PAS"]);
+        assert_eq!(ok.rules.versions, ["2.5", "2.5.1"]);
+        assert_eq!(ok.rules.events, ["A08", "A28"]);
+        assert_eq!(rules(&[]).unwrap().unwrap().rules, SenderRules::default());
+        for bad in [
+            ("EPR_MLLP_SENDING_APPLICATIONS", "A^B^C"),
+            ("EPR_MLLP_SENDING_APPLICATIONS", "A|B"),
+            ("EPR_MLLP_VERSIONS", "two"),
+            ("EPR_MLLP_EVENTS", "R01"),
+        ] {
+            assert!(rules(&[bad]).is_err(), "{bad:?}");
+        }
         // IH-1: how a kept refusal is answered; AR unless set to AE; anything else stops the start.
         let kept = |v: &str| Config::from_lookup(env(&[bind, ("EPR_MLLP_KEPT_ANSWER", v)]));
         assert_eq!(kept("").unwrap().unwrap().kept_answer, KeptAnswer::Reject);

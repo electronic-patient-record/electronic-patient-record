@@ -925,6 +925,7 @@ async fn no_message_value_reaches_an_audit_row_the_queue_a_version_reason_a_metr
         peer: Some("127.0.0.1".into()),
         kept_answer: KeptAnswer::Reject,
         processing_id: None,
+        rules: Default::default(),
     };
     let mrn = tag("mrn");
     let pid = |dob: &str| {
@@ -1585,5 +1586,58 @@ async fn a_stopping_listener_finishes_what_it_holds_and_answers_nothing_it_did_n
             let _ = late.write_all(&mllp::frame(message.as_bytes())).await;
             assert_eq!(read_ack(&mut late).await, None);
         }
+    }
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn a_message_from_a_sender_this_feed_does_not_take_is_kept_not_applied() {
+    // IH-6: the feed takes REG at CLINIC, version 2.5, A28 and A08 only.
+    let db = db().await;
+    let addr = start(&db, |c| {
+        c.rules = electronic_patient_record::adt_feed::SenderRules {
+            applications: vec!["REG^CLINIC".into()],
+            versions: vec!["2.5".into()],
+            events: vec!["A28".into(), "A08".into()],
+        };
+    })
+    .await;
+    let mut s = TcpStream::connect(addr).await.unwrap();
+    let mrn = tag("mrn");
+    let good = adt("A28", &tag("R"), &mrn, &tag("Rule"), &dob(), "");
+    assert_eq!(code(&send(&mut s, &good).await.unwrap()), "AA");
+    for (why, message) in [
+        (
+            "another application",
+            adt("A28", &tag("R"), &tag("mrn"), &tag("Rule"), &dob(), "")
+                .replace("|REG|CLINIC|", "|OTHER|CLINIC|"),
+        ),
+        (
+            "another facility",
+            adt("A28", &tag("R"), &tag("mrn"), &tag("Rule"), &dob(), "")
+                .replace("|REG|CLINIC|", "|REG|ELSEWHERE|"),
+        ),
+        (
+            "another version",
+            adt("A28", &tag("R"), &tag("mrn"), &tag("Rule"), &dob(), "")
+                .replace("|P|2.5\r", "|P|2.4\r"),
+        ),
+        (
+            "another event",
+            adt("A04", &tag("R"), &tag("mrn"), &tag("Rule"), &dob(), ""),
+        ),
+    ] {
+        let mrn = message
+            .split("PID|1||")
+            .nth(1)
+            .unwrap()
+            .split('^')
+            .next()
+            .unwrap()
+            .to_string();
+        let ack = send(&mut s, &message).await.unwrap();
+        assert_eq!(code(&ack), "AR", "{why}: {ack}");
+        assert!(ack.contains("kept for review"), "{why}: {ack}");
+        assert!(by_mrn(&db, &mrn).await.is_empty(), "{why} was applied");
     }
 }

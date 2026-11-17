@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - What an HL7 feed's sender may send (IH-6)
+
+- **Clinical risk:** small, what reaches the record: with the new settings, a message from another application or facility, of another HL7 version, or of an event the feed does not take is refused and kept, not applied. Covered by H-021's controls.
+- **Built:** `EPR_MLLP_SENDING_APPLICATIONS` (`APP`, or `APP^FACILITY` for MSH-3 and MSH-4, first components only), `EPR_MLLP_VERSIONS` (MSH-12) and `EPR_MLLP_EVENTS` (a subset of the handled triggers), each comma-separated and checked at start: a malformed entry, or an event the feed does not handle, stops the service. A message outside them is answered `AR` and kept, with a reason that quotes none of its values. Unset lists take anything, as before. The audit agent stays the configured `EPR_MLLP_AGENT`, never MSH-3.
+- **Tested:** the rules (application alone, with facility, a later component ignored, version, event, empty lists), the settings and their errors, and on Postgres four messages outside the rules each kept and not applied while one inside is applied.
+- **Not done / not verified:** one listener is one sender: several senders on one port, each with its own agent, answer and rules, is not built; the TLS client certificate's name is not used.
+
 ## 2026-11-17 - The HL7 listener drains at shutdown (IH-7)
 
 - **Clinical risk:** none: it was already safe (a message killed mid-transaction rolls back unanswered; one committed and not answered is a harmless repeat when resent); this makes a stop tidy.
