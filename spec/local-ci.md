@@ -260,6 +260,7 @@ fresh clone.
 | CI job | Here |
 |---|---|
 | Matcher, API, UI, docs, FHIR validator, API database tests | The same gates, except that UI unit tests run without the coverage report |
+| Minimum Rust (`rust-msrv`, QA-8) | The same gate, in `--full` only (another toolchain's build); it installs the toolchain when missing |
 | Container images | Built. **Not** the checks that the API refuses to start with no keys and demands a token |
 | `cargo deny`, CodeQL, `pnpm audit`, the secret scan, the coverage floor, the fresh clone, the two hazard-log pull-request checks | GitHub only |
 

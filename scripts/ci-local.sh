@@ -63,7 +63,7 @@ done
 project_of() { # gate name -> the project it checks
   case "$1" in
     matcher-* | coverage-matcher) echo matcher ;;
-    service-* | scratch-* | fhir-* | container-api | coverage-service) echo service ;;
+    service-* | scratch-* | fhir-* | container-api | coverage-service | rust-msrv) echo service ;;
     ui-* | container-ui) echo ui ;;
     *) echo docs ;;
   esac
@@ -198,6 +198,12 @@ if [ "$mode" != "--fast" ]; then
   fi
   gate_script matcher-bench
   gate_script service-bench
+  # Each crate on the oldest Rust it claims (QA-8): another toolchain's build, so --full only.
+  if [ "$mode" = "--list" ] || command -v rustup >/dev/null 2>&1; then
+    gate_script rust-msrv
+  else
+    skip rust-msrv "rustup is not installed"
+  fi
 
   if [ "$mode" = "--list" ] || [ -d "$ui/node_modules/.bin" ]; then
     gate ui-browser "$root" "PW_PORT=${PW_PORT:-4183} sh scripts/gates/ui-browser.sh"

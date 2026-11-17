@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - CI builds each crate on the oldest Rust it claims (QA-8)
+
+- **Clinical risk:** none: a build check.
+- **Built:** gate `rust-msrv` (`scripts/gates/rust-msrv.sh`): for the matcher and the service, read `rust-version` from `Cargo.toml` and run `cargo +<version> check --locked --all-targets`, installing that toolchain when missing (minimal profile). CI runs it as the `msrv` job, which `ci-ok` needs; `ci-local.sh` runs it in `--full` only, since it builds with another toolchain. Listed in `spec/local-ci.md`.
+- **Tested:** passes here on Rust 1.97 for the matcher and 1.98 for the service; with the service on 1.97 cargo refuses it (axa 0.17 needs 1.98), which is the failure the gate exists for. The gate census (`check-gates.py`) passes.
+- **Not done / not verified:** it checks that the code builds, and does not run the tests on the old toolchains; clippy and fmt stay on the pinned 1.99.1. Not yet run on GitHub.
+
 ## 2026-11-17 - Two feed tests pass on a database they have already run on
 
 - **Clinical risk:** none: tests.

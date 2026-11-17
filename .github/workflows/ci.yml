@@ -180,6 +180,24 @@ jobs:
       - name: Scratch database per local run
         run: sh scripts/gates/scratch-db-test.sh
 
+  # Each crate builds on the oldest Rust its `rust-version` claims (QA-8): the service 1.98 (axa 0.17), the matcher 1.97.
+  msrv:
+    name: Minimum Rust (cargo check)
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-latest
+    env:
+      CARGO_PROFILE_DEV_DEBUG: line-tables-only
+    steps:
+      - uses: actions/checkout@v7
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            ${{ env.API }}
+            ${{ env.MATCHER }}
+          key: msrv
+      - run: sh scripts/gates/rust-msrv.sh
+
   deny:
     name: cargo deny
     needs: changes
@@ -471,7 +489,7 @@ jobs:
     name: ci-ok
     if: always()
     # A job the `changes` job left out is `skipped`, which passes; a failed `changes` fails this.
-    needs: [changes, matcher, api, api-db, fhir-validator, deny, coverage, codeql, pnpm-audit, secrets, ui, docs, hazard-log, hazard-signoff, container, fresh-clone, performance]
+    needs: [changes, matcher, api, msrv, api-db, fhir-validator, deny, coverage, codeql, pnpm-audit, secrets, ui, docs, hazard-log, hazard-signoff, container, fresh-clone, performance]
     runs-on: ubuntu-latest
     steps:
       - run: |
