@@ -2225,3 +2225,24 @@ largest gain for clinicians and keep a person in every loop. TL-1 is small and c
 connect. Not adopted: A/B splits on patients, unattended patient messaging and AI agents, marketing analytics, a
 "send no event" switch, payments and built-in SMS or video.
 
+## 38. Research pass 2026-11-17: Tellescope's API documentation
+
+Asked for on 2026-11-17: read Tellescope's whole public API reference, assess and advise. Spec:
+[`spec/lessons/tellescope-api-documentation/index.md`](spec/lessons/tellescope-api-documentation/index.md); it extends §37.
+Tasks TL-11 to TL-14, and TL-1, TL-3 and TL-4 extended.
+
+**What the page holds.** 279,252 characters, read in three parts, documenting models alphabetically from AI
+conversations to automation steps; it ends mid-example, so endusers, forms, tickets and webhooks are not on it. Good
+practice in it: keys shown once and never stored in clear, scopes set only by administrators, immutable AI configuration
+versions with a 409 on a stale save, cost and latency recorded for every AI call, one list shape everywhere, a staging
+host.
+
+**Assessment.** Its defaults are a record's risks: updates append to arrays and merge objects unless told otherwise,
+most models have hard deletes, administrators can aggregate over any model, a caller can suppress webhooks, automation
+actions can continue after one fails, and webhook secrets sit in readable configuration. None is documented as audited.
+
+**Advice.** Build TL-1 to Tellescope's key rules; give task rules (TL-3) all-or-nothing actions and refuse duplicates
+(TL-14); make any stored secret write-only (TL-11); put AI governance (approvers, off by default, a cap, a cost record)
+into DO-6 (TL-12); and keep whole-version updates, stating a maximum for every list (TL-13). Not adopted: implicit
+append and merge, hard deletes, ad hoc aggregation, `continueOnError` on record writes, readable secrets.
+

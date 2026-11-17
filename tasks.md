@@ -1602,8 +1602,11 @@ only; nothing here was taken from its code. Open questions OQ-TL1 (who approves 
 
 - [ ] **TL-1 (S/M) — Scoped integration tokens.** A system authenticates with a named token (axa 0.16's `api_tokens`:
   kept as a SHA-256 hash, scopes, expiry, revocation), not a person's sign-in; the token's name is the audit agent; one
-  scope per job (the feed's administration, an export). **Acceptance:** a token reaches only its scope (403 elsewhere),
-  an expired or revoked one is refused, the audit row names it, and no token is stored in clear.
+  scope per job (the feed's administration, an export). As Tellescope's keys (§38): the token is shown once at creation
+  and never again; only an administrator sets scopes; a list shows metadata only; any administrator may revoke any
+  token; only the description can change. **Acceptance:** a token reaches only its scope (403 elsewhere), an expired or
+  revoked one is refused, the audit row names it, creation, change and revocation are audited, and no token is stored or
+  returned in clear.
 - [ ] **TL-2 (M, clinical) — A patient timeline.** `GET /api/patients/{id}/timeline`: one paged, read-only list over the
   append-only versions (observations, results, allergies, referrals, adjustments, amendments, deaths), newest first,
   each item with kind, author, time and a link to the record; consent and role views applied per item, as each record's
@@ -1617,7 +1620,7 @@ only; nothing here was taken from its code. Open questions OQ-TL1 (who approves 
   dates; every task says which rule and version made it; a hazard row; OQ-TL1 answered before any rule is live.
 - [ ] **TL-4 (S, clinical) — Cancel conditions and skip-if-passed.** Every scheduled reminder (TL-3's, the referral
   timeouts') can carry conditions that cancel it and a rule for a reminder whose time passed while the service was down;
-  a cancelled one records why and by whom (a person or a rule). **Acceptance:** after a simulated downtime, reminders
+  a cancelled one records why and by whom (a person or a rule: Tellescope's `cancelReason` and `cancelledBy`). **Acceptance:** after a simulated downtime, reminders
   whose reason has gone are cancelled with a reason, the rest fire once; nothing is deleted.
 - [ ] **TL-5 (M) — A changes feed for integrators.** `?since=<cursor>` over each append-only table's versions, in commit
   order, with the same consent, role and audit rules as a read. **Acceptance:** a consumer that stops and resumes from
@@ -1638,6 +1641,22 @@ only; nothing here was taken from its code. Open questions OQ-TL1 (who approves 
 - [ ] **TL-10 (S, decision, clinical) — Access by licensed jurisdiction.** Decide (OQ-TL2) whether any target deployment
   must limit a clinician to patients in the jurisdictions where they are licensed, as US telehealth can require.
   **Acceptance:** a recorded decision; if yes, a policy rule and its tests in a later task.
+- [ ] **TL-11 (S) — Write-only secrets.** Any secret the service stores (a subscription's signing secret, an
+  integration token) is shown once when made and never returned by any read, export or log. **Acceptance:** a census
+  over the OpenAPI document finds no secret-named field in any response schema; a test reads every route that lists one
+  and finds no secret.
+- [ ] **TL-12 (S/M, clinical) — AI governance.** For DO-6 and TL-8: an AI configuration names its approvers, is off
+  until approved, has a spending cap, and keeps versions as other records do; each call records model, version, token
+  counts, latency and cost, never its content in a log. **Acceptance:** an unapproved or over-cap configuration is
+  refused; the cost record exists for every call in a test.
+- [ ] **TL-13 (S, clinical) — Explicit updates and stated list limits.** Updates stay whole new versions; if a PATCH is
+  ever added, an absent field and `null` differ (axa's `Patch<T>`) and nothing appends implicitly. Every list in the
+  OpenAPI document states a maximum. **Acceptance:** a census fails on a list schema without `maxItems`; a request over
+  the limit is a 422 naming the field.
+- [ ] **TL-14 (S, clinical) — All-or-nothing task rules, no duplicates.** For TL-3: a rule's actions are written in
+  one transaction with their audit rows, or none are; a rule with the same event, conditions and action as another is
+  refused when rules load. **Acceptance:** a failure in the second action leaves no first task; a duplicate fails the
+  load naming both rules.
 
 ## Dependency 2026-11-17 — axa 0.19
 

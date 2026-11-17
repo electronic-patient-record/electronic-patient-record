@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - Research pass: Tellescope's API documentation (plan.md 38, TL-11 to TL-14)
+
+- **Clinical risk:** none: documents only. TL-12, TL-13 and TL-14 are clinical when built.
+- **Written:** `spec/lessons/tellescope-api-documentation/index.md` (what the page holds, an assessment, a comparison, six ideas, what is not adopted); `plan.md` §38; tasks TL-11 to TL-14, and TL-1 and TL-4 extended.
+- **Found:** the published page documents only models from AI conversations to automation steps and ends mid-example; endusers, forms, tickets and webhooks are not on it.
+- **Not done / not verified:** read once from the page; nothing tried against the API; nothing built.
+
 ## 2026-11-17 - Research pass: Tellescope (plan.md 37, TL-1 to TL-10)
 
 - **Clinical risk:** none: documents only. Four of the ideas are clinical (TL-2, TL-3, TL-4, TL-8) and each says it needs a hazard row when built.
