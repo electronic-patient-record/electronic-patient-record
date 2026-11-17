@@ -1,0 +1,5 @@
+# cargo-mutants (CQ-30): every file of the matcher is examined; it decides whether two records are one person (H-001).
+# Run with `sh scripts/mutants.sh matcher`; results and every surviving mutant's reason are in
+# docs/maintainability/mutation-testing.md.
+exclude_globs = ["src/main.rs"]
+timeout_multiplier = 3.0

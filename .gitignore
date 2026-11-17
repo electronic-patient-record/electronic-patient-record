@@ -24,3 +24,7 @@ chaos-report.json
 
 # Downloaded tools (scripts/fhir-validator.sh).
 .cache/
+
+# cargo-mutants output (scripts/mutants.sh).
+mutants.out/
+mutants.out.old/

@@ -5,7 +5,8 @@
 //! would show some patients' ages a day out near midnight, and nobody would know why. The zone is the
 //! site's, not the reader's: every clinician at the site sees the same age on the same day.
 
-use chrono_tz::Tz;
+use jiff::tz::TimeZone;
+use jiff::{Timestamp, civil::Date};
 use std::sync::OnceLock;
 
 /// The zone when none is set.
@@ -23,7 +24,12 @@ pub fn zone_from(value: Option<&str>) -> Result<String, String> {
         .map(str::trim)
         .filter(|v| !v.is_empty())
         .unwrap_or(DEFAULT_ZONE);
-    name.parse::<Tz>().map(|_| name.to_string()).map_err(|_| {
+    // jiff finds a zone whatever its case; the name must be the database's own spelling, as it had to be before
+    // DEP-1, so a setting reads the same in every log and screen.
+    let known = TimeZone::get(name)
+        .ok()
+        .is_some_and(|tz| tz.iana_name() == Some(name));
+    known.then(|| name.to_string()).ok_or_else(|| {
         format!(
             "EPR_SITE_TIME_ZONE `{name}` is not an IANA time zone name (for example Europe/London)"
         )
@@ -49,22 +55,22 @@ pub fn time_zone() -> String {
         .unwrap_or_else(|| DEFAULT_ZONE.to_string())
 }
 
-/// The site's zone as a [`Tz`]: the one [`init`] checked, or UTC when it has not run (a test).
+/// The site's zone as a [`TimeZone`]: the one [`init`] checked, or UTC when it has not run (a test).
 #[must_use]
-pub fn zone() -> Tz {
-    time_zone().parse().unwrap_or(chrono_tz::UTC)
+pub fn zone() -> TimeZone {
+    TimeZone::get(&time_zone()).unwrap_or(TimeZone::UTC)
 }
 
 /// The calendar day `now` falls on in `zone`.
 #[must_use]
-pub fn day_in(zone: Tz, now: chrono::DateTime<chrono::Utc>) -> chrono::NaiveDate {
-    now.with_timezone(&zone).date_naive()
+pub fn day_in(zone: &TimeZone, now: Timestamp) -> Date {
+    now.to_zoned(zone.clone()).date()
 }
 
 /// Today at the site: the day a "last day" or a due day is judged on, the same for every reader there.
 #[must_use]
-pub fn today() -> chrono::NaiveDate {
-    day_in(zone(), chrono::Utc::now())
+pub fn today() -> Date {
+    day_in(&zone(), Timestamp::now())
 }
 
 #[cfg(test)]
@@ -73,15 +79,11 @@ mod tests {
 
     #[test]
     fn the_sites_day_can_differ_from_the_utc_day() {
-        let late = chrono::DateTime::parse_from_rfc3339("2026-06-30T23:30:00Z")
-            .unwrap()
-            .with_timezone(&chrono::Utc);
-        assert_eq!(day_in(chrono_tz::UTC, late).to_string(), "2026-06-30");
-        assert_eq!(
-            day_in(chrono_tz::Europe::London, late).to_string(),
-            "2026-07-01"
-        );
-        assert_eq!(zone(), chrono_tz::UTC, "unset in a test: UTC");
+        let late: Timestamp = "2026-06-30T23:30:00Z".parse().unwrap();
+        assert_eq!(day_in(&TimeZone::UTC, late).to_string(), "2026-06-30");
+        let london = TimeZone::get("Europe/London").unwrap();
+        assert_eq!(day_in(&london, late).to_string(), "2026-07-01");
+        assert_eq!(zone(), TimeZone::UTC, "unset in a test: UTC");
     }
 
     #[test]
@@ -103,6 +105,8 @@ mod tests {
             "Mars/Olympus",
             "+01:00",
             "europe/london-ish",
+            // The right zone in the wrong case: refused before DEP-1, and still.
+            "europe/london",
         ] {
             let e = zone_from(Some(bad)).unwrap_err();
             assert!(e.contains("EPR_SITE_TIME_ZONE") && e.contains(bad), "{e}");

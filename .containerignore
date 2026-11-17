@@ -12,3 +12,5 @@
 **/.env.*
 !**/.env.example
 **/data/search-index
+**/mutants.out
+**/mutants.out.old

@@ -19,8 +19,9 @@
 
 use crate::patients_store::StoreError;
 use crate::pool::Db;
-use chrono::{DateTime, Datelike, Duration, Timelike, Utc};
-use chrono_tz::Tz;
+use jiff::civil::Weekday;
+use jiff::tz::TimeZone;
+use jiff::{SignedDuration, Timestamp};
 use serde::Serialize;
 use sqlx::{PgPool, Row};
 use std::sync::OnceLock;
@@ -90,10 +91,10 @@ pub enum Window {
 impl Window {
     /// The window `now` falls in, in `zone`.
     #[must_use]
-    pub fn at(zone: Tz, now: DateTime<Utc>) -> Window {
-        let local = now.with_timezone(&zone);
+    pub fn at(zone: &TimeZone, now: Timestamp) -> Window {
+        let local = now.to_zoned(zone.clone());
         match local.weekday() {
-            chrono::Weekday::Sat | chrono::Weekday::Sun => Window::Weekend,
+            Weekday::Saturday | Weekday::Sunday => Window::Weekend,
             _ if (8..18).contains(&local.hour()) => Window::Day,
             _ => Window::Evening,
         }
@@ -206,7 +207,7 @@ impl Thresholds {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub struct Facts {
     /// The last message the feed sent that was audited, applied or refused; `None` when it has sent none.
-    pub last_message_at: Option<DateTime<Utc>>,
+    pub last_message_at: Option<Timestamp>,
     /// Refusals received in the hour before now.
     pub refusals_last_hour: u64,
     /// Refusals nobody has closed.
@@ -237,7 +238,7 @@ pub const WAITING: &str = "refused messages are waiting for a person";
 
 /// Judge a feed at `now` (pure).
 #[must_use]
-pub fn assess(now: DateTime<Utc>, zone: Tz, facts: &Facts, t: &Thresholds) -> Assessment {
+pub fn assess(now: Timestamp, zone: &TimeZone, facts: &Facts, t: &Thresholds) -> Assessment {
     let window = Window::at(zone, now);
     let Some(last) = facts.last_message_at else {
         return Assessment {
@@ -252,7 +253,7 @@ pub fn assess(now: DateTime<Utc>, zone: Tz, facts: &Facts, t: &Thresholds) -> As
         state = state.max(to);
         reasons.push(why);
     };
-    if now - last > Duration::minutes(i64::from(t.silence(window))) {
+    if now.duration_since(last) > SignedDuration::from_mins(i64::from(t.silence(window))) {
         raise(State::Critical, SILENT);
     }
     if facts.refusals_last_hour >= u64::from(t.refusals_critical) {
@@ -278,19 +279,20 @@ pub fn assess(now: DateTime<Utc>, zone: Tz, facts: &Facts, t: &Thresholds) -> As
 pub async fn facts(
     db: impl Into<Db<'_>>,
     agent: &str,
-    now: DateTime<Utc>,
+    now: Timestamp,
 ) -> Result<Facts, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
     let row = sqlx::query(
         "SELECT
-           (SELECT max(recorded_at) FROM audit_events WHERE agent = $1 AND resource_ref = 'Patient/hl7') AS last_message_at,
-           (SELECT count(*) FROM feed_refusals WHERE agent = $1 AND received_at > $2) AS refusals_last_hour,
+           to_char((SELECT max(recorded_at) FROM audit_events WHERE agent = $1 AND resource_ref = 'Patient/hl7')
+             AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS last_message_at,
+           (SELECT count(*) FROM feed_refusals WHERE agent = $1 AND received_at > $2::timestamptz) AS refusals_last_hour,
            (SELECT count(*) FROM feed_refusals f LEFT JOIN feed_refusal_resolutions r USING (refusal_id)
              WHERE f.agent = $1 AND r.refusal_id IS NULL) AS open_refusals",
     )
     .bind(agent)
-    .bind(now - Duration::hours(1))
+    .bind(crate::clock::rfc3339_micros(now - SignedDuration::from_hours(1)))
     .fetch_one(&mut *db)
     .await
     .map_err(db_err)?;
@@ -300,7 +302,11 @@ pub async fn facts(
             .map_err(db_err)
     };
     Ok(Facts {
-        last_message_at: row.try_get("last_message_at").map_err(db_err)?,
+        last_message_at: row
+            .try_get::<Option<String>, _>("last_message_at")
+            .map_err(db_err)?
+            .as_deref()
+            .and_then(crate::clock::parse_rfc3339),
         refusals_last_hour: n("refusals_last_hour")?,
         open_refusals: n("open_refusals")?,
     })
@@ -314,10 +320,11 @@ pub async fn facts(
 pub async fn last_state(
     db: impl Into<Db<'_>>,
     agent: &str,
-) -> Result<Option<(State, DateTime<Utc>)>, StoreError> {
+) -> Result<Option<(State, Timestamp)>, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let row = sqlx::query(
-        "SELECT state, recorded_at FROM feed_alarm_states WHERE agent = $1 ORDER BY recorded_at DESC, seq DESC LIMIT 1",
+        "SELECT state, to_char(recorded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS recorded_at
+           FROM feed_alarm_states WHERE agent = $1 ORDER BY feed_alarm_states.recorded_at DESC, seq DESC LIMIT 1",
     )
     .bind(agent)
     .fetch_optional(&mut *conn)
@@ -325,7 +332,9 @@ pub async fn last_state(
     .map_err(db_err)?;
     let Some(row) = row else { return Ok(None) };
     let word: String = row.try_get("state").map_err(db_err)?;
-    let at: DateTime<Utc> = row.try_get("recorded_at").map_err(db_err)?;
+    let at: String = row.try_get("recorded_at").map_err(db_err)?;
+    let at = crate::clock::parse_rfc3339(&at)
+        .ok_or_else(|| StoreError::Db(format!("a feed alarm time that is not a time: {at}")))?;
     Ok(State::from_word(&word).map(|s| (s, at)))
 }
 
@@ -338,8 +347,8 @@ pub async fn last_state(
 pub async fn check(
     db: &PgPool,
     agent: &str,
-    now: DateTime<Utc>,
-    zone: Tz,
+    now: Timestamp,
+    zone: &TimeZone,
     t: &Thresholds,
 ) -> Result<(Assessment, bool), StoreError> {
     let found = facts(db, agent, now).await?;
@@ -382,7 +391,15 @@ pub async fn run_loop(db: PgPool, agent: String, thresholds: Thresholds) {
     let mut every = tokio::time::interval(std::time::Duration::from_secs(60));
     loop {
         every.tick().await;
-        if let Err(e) = check(&db, &agent, Utc::now(), crate::site::zone(), &thresholds).await {
+        if let Err(e) = check(
+            &db,
+            &agent,
+            Timestamp::now(),
+            &crate::site::zone(),
+            &thresholds,
+        )
+        .await
+        {
             tracing::error!(feed = %agent, error = %e, "the HL7 feed's health could not be judged");
         }
     }
@@ -391,48 +408,43 @@ pub async fn run_loop(db: PgPool, agent: String, thresholds: Thresholds) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::TimeZone;
-
-    fn at(s: &str) -> DateTime<Utc> {
-        DateTime::parse_from_rfc3339(s).unwrap().with_timezone(&Utc)
+    fn at(s: &str) -> Timestamp {
+        s.parse().unwrap()
     }
 
     #[test]
     fn the_window_is_the_sites_local_day_evening_or_weekend() {
-        let london: Tz = "Europe/London".parse().unwrap();
+        let london = TimeZone::get("Europe/London").unwrap();
         // Tuesday 2026-11-17: 08:00 and 17:59 are day, 18:00 and 07:59 evening; Saturday is the weekend.
-        assert_eq!(Window::at(london, at("2026-11-17T08:00:00Z")), Window::Day);
-        assert_eq!(Window::at(london, at("2026-11-17T17:59:00Z")), Window::Day);
+        assert_eq!(Window::at(&london, at("2026-11-17T08:00:00Z")), Window::Day);
+        assert_eq!(Window::at(&london, at("2026-11-17T17:59:00Z")), Window::Day);
         assert_eq!(
-            Window::at(london, at("2026-11-17T18:00:00Z")),
+            Window::at(&london, at("2026-11-17T18:00:00Z")),
             Window::Evening
         );
         assert_eq!(
-            Window::at(london, at("2026-11-17T07:59:00Z")),
+            Window::at(&london, at("2026-11-17T07:59:00Z")),
             Window::Evening
         );
         assert_eq!(
-            Window::at(london, at("2026-11-21T12:00:00Z")),
+            Window::at(&london, at("2026-11-21T12:00:00Z")),
             Window::Weekend
         );
         // The zone decides: 08:30 UTC is 19:30 in Sydney, an evening.
-        let sydney: Tz = "Australia/Sydney".parse().unwrap();
+        let sydney = TimeZone::get("Australia/Sydney").unwrap();
         assert_eq!(
-            Window::at(sydney, at("2026-11-17T08:30:00Z")),
+            Window::at(&sydney, at("2026-11-17T08:30:00Z")),
             Window::Evening
         );
         // Summer time: 07:30 UTC on a July weekday is 08:30 in London, the day.
-        assert_eq!(
-            Window::at(london, Utc.with_ymd_and_hms(2026, 7, 14, 7, 30, 0).unwrap()),
-            Window::Day
-        );
+        assert_eq!(Window::at(&london, at("2026-07-14T07:30:00Z")), Window::Day);
     }
 
     #[test]
     fn no_data_is_unknown_never_healthy() {
         let a = assess(
             at("2026-11-17T10:00:00Z"),
-            chrono_tz::UTC,
+            &TimeZone::UTC,
             &Facts {
                 last_message_at: None,
                 refusals_last_hour: 0,
@@ -449,11 +461,11 @@ mod tests {
         let t = Thresholds::default();
         let now = at("2026-11-17T10:00:00Z"); // a Tuesday morning: the day window, 60 minutes
         let facts = |mins: i64, last_hour: u64, open: u64| Facts {
-            last_message_at: Some(now - Duration::minutes(mins)),
+            last_message_at: Some(now - SignedDuration::from_mins(mins)),
             refusals_last_hour: last_hour,
             open_refusals: open,
         };
-        let judge = |f: Facts| assess(now, chrono_tz::UTC, &f, &t);
+        let judge = |f: Facts| assess(now, &TimeZone::UTC, &f, &t);
         assert_eq!(judge(facts(5, 0, 0)).state, State::Healthy);
         assert!(judge(facts(5, 0, 0)).reasons.is_empty());
         assert_eq!(
@@ -476,12 +488,12 @@ mod tests {
         // The same silence at the weekend is within its twelve hours.
         let saturday = at("2026-11-21T10:00:00Z");
         let f = Facts {
-            last_message_at: Some(saturday - Duration::minutes(300)),
+            last_message_at: Some(saturday - SignedDuration::from_mins(300)),
             refusals_last_hour: 0,
             open_refusals: 0,
         };
         assert_eq!(
-            assess(saturday, chrono_tz::UTC, &f, &t).state,
+            assess(saturday, &TimeZone::UTC, &f, &t).state,
             State::Healthy
         );
     }
