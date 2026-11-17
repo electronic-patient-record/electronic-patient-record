@@ -85,7 +85,7 @@ Each is a design to be confirmed, not a built behaviour. Clinical ones add hazar
 10. **TLS on MLLP (IH-10). Built 2026-11-17**, with optional client certificates. rustls only. A missing, empty or unusable CA bundle, certificate or key stops the service
     starting; TLS asked for is never downgraded to plain text (hub `spec/18-deployment.md` §4, `spec/12-message-store.md`
     §5.8.2). Already listed as not built in OR-3.
-11. **Tools for integrators (IH-11). Samples, golden acknowledgements and the sender built 2026-11-17; the dry run is not.** A dry run: a message through the real path in a transaction that is rolled back,
+11. **Tools for integrators (IH-11). Built 2026-11-17**: samples, golden acknowledgements, the sender and the dry run. A dry run: a message through the real path in a transaction that is rolled back,
     answering what would have happened, audited as a dry run, for an administrator only (hub
     `spec/integration-hub-tester-component-preview.md`). A test sender for the MLLP port that sends a file of messages
     with varying fields (hub `spec/ultra7-test-message-sender.md`). Golden acknowledgements for the sample messages,

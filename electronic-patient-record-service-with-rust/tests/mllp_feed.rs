@@ -1688,3 +1688,91 @@ async fn the_sample_set_goes_through_the_feed_as_its_readme_says() {
         "the death report holds contact"
     );
 }
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn a_dry_run_says_what_a_message_would_do_and_keeps_nothing() {
+    // IH-11: the real path, rolled back. No patient, version, queue entry, audit row or count is left.
+    use electronic_patient_record::adt_feed::{self, FeedIdentity};
+    let db = db().await;
+    let agent = tag("mllp:dry");
+    let who = FeedIdentity {
+        agent: agent.clone(),
+        peer: None,
+        kept_answer: KeptAnswer::Reject,
+        processing_id: None,
+        rules: Default::default(),
+    };
+    let count = |sql: &'static str| {
+        let (db, agent) = (db.clone(), agent.clone());
+        async move {
+            sqlx::query_scalar::<_, i64>(AssertSqlSafe(sql))
+                .bind(agent)
+                .fetch_one(&db)
+                .await
+                .unwrap()
+        }
+    };
+    let trail = "SELECT count(*) FROM audit_events WHERE agent = $1";
+    let queue = "SELECT count(*) FROM feed_refusals WHERE agent = $1";
+    let (mrn, family, d) = (tag("mrn"), tag("Dry"), dob());
+    let register = adt("A28", &tag("D"), &mrn, &family, &d, "");
+    let metrics_before = electronic_patient_record::metrics::render();
+
+    let tried = adt_feed::dry_run(&db, &register, &who).await;
+    assert_eq!(tried.would, "created", "{tried:?}");
+    assert!(
+        tried
+            .acknowledgement
+            .as_deref()
+            .is_some_and(|a| a.contains("MSA|AA|")),
+        "{tried:?}"
+    );
+    assert!(
+        by_mrn(&db, &mrn).await.is_empty(),
+        "a dry run created a patient"
+    );
+    assert_eq!(count(trail).await, 0, "a dry run left an audit row");
+
+    // Now for real, then a dry run of an update says updated and changes nothing.
+    let ack = adt_feed::process(&db, &register, &who, "A1", "20261117090000")
+        .await
+        .unwrap();
+    assert!(ack.contains("MSA|AA|"), "{ack}");
+    let rows = count(trail).await;
+    let update = adt("A08", &tag("D"), &mrn, &family, &d, "|||||01632960009");
+    let tried = adt_feed::dry_run(&db, &update, &who).await;
+    assert_eq!(tried.would, "updated", "{tried:?}");
+    assert_eq!(by_mrn(&db, &mrn).await[0].version, 1);
+    assert_eq!(count(trail).await, rows);
+
+    // A refusal is said, with the answer the feed would give, and is not kept.
+    let conflict = adt("A08", &tag("D"), &mrn, &family, &dob(), "");
+    let tried = adt_feed::dry_run(&db, &conflict, &who).await;
+    assert_eq!(tried.would, "refused", "{tried:?}");
+    assert!(
+        tried.reasons.iter().any(|r| r.contains("birth date")),
+        "{tried:?}"
+    );
+    assert!(
+        tried
+            .acknowledgement
+            .as_deref()
+            .is_some_and(|a| a.contains("MSA|AR|")),
+        "{tried:?}"
+    );
+    assert_eq!(count(queue).await, 0, "a dry run kept a refusal");
+    assert_eq!(count(trail).await, rows);
+    let feed_series = |m: &str| {
+        m.lines()
+            .filter(|l| l.contains(&format!("sender=\"{agent}\"")))
+            .map(str::to_string)
+            .collect::<Vec<_>>()
+    };
+    // Only the one real message was counted.
+    assert!(feed_series(&metrics_before).is_empty());
+    assert_eq!(
+        feed_series(&electronic_patient_record::metrics::render()).len(),
+        1
+    );
+}

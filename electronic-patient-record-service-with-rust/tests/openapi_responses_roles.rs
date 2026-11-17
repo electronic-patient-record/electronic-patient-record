@@ -657,6 +657,14 @@ async fn real_responses_of_the_role_gated_routes_validate_against_the_served_sch
             StatusCode::OK,
             &health.json(),
         );
+        let tried = server
+            .post("/api/feed/dry-run")
+            .add_header(mh.clone(), mv.clone())
+            .json(&serde_json::json!({ "message": "MSH|^~\\&|REG|CLINIC|EPR|HOSP|20261117090000||ORU^R01^ORU_R01|DRY1|P|2.5\nPID|1||M-1^^^LOCAL||Dry^Run||19800314|F" }))
+            .await;
+        assert_eq!(tried.status_code(), StatusCode::OK, "{}", tried.text());
+        expect("feed dry run", "/api/feed/dry-run", "post", StatusCode::OK, &tried.json());
+        assert_eq!(tried.json::<Value>()["would"], "refused");
         let one = format!("{queue}/{stored}");
         let read = server.get(&one).add_header(mh.clone(), mv.clone()).await;
         assert_eq!(read.status_code(), StatusCode::OK, "{}", read.text());

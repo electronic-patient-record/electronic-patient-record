@@ -472,7 +472,25 @@ async fn death_report(
 ///
 /// A [`Refusal`]; nothing was written (a refusal is audited separately by the caller).
 pub async fn apply(db: &PgPool, inbound: &Inbound, who: &FeedIdentity) -> Result<Applied, Refusal> {
-    let mut result = apply_message(db, inbound, who).await;
+    apply_in(db, inbound, who, Mode::Apply).await
+}
+
+/// Whether a message's changes are kept (IH-11).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Mode {
+    /// The feed: the change and its audit rows commit together.
+    Apply,
+    /// A dry run: everything runs in the transaction, which is then rolled back.
+    DryRun,
+}
+
+async fn apply_in(
+    db: &PgPool,
+    inbound: &Inbound,
+    who: &FeedIdentity,
+    mode: Mode,
+) -> Result<Applied, Refusal> {
+    let mut result = apply_message(db, inbound, who, mode).await;
     if inbound.death.is_some()
         && let Err(Refusal::Conflict(reasons)) = &mut result
     {
@@ -487,6 +505,7 @@ async fn apply_message(
     db: &PgPool,
     inbound: &Inbound,
     who: &FeedIdentity,
+    mode: Mode,
 ) -> Result<Applied, Refusal> {
     let existing = find(db, &inbound.patient).await?;
     let action = if existing.is_some() {
@@ -640,10 +659,109 @@ async fn apply_message(
     audit::append(&mut *tx, audit::chain(), &event)
         .await
         .map_err(|e| temporary(&StoreError::Db(e.to_string())))?;
-    tx.commit()
-        .await
-        .map_err(|e| temporary(&StoreError::Db(e.to_string())))?;
+    match mode {
+        Mode::Apply => tx.commit().await,
+        // A dry run keeps nothing: the change, the death report, the message time and the audit rows all go (IH-11).
+        Mode::DryRun => tx.rollback().await,
+    }
+    .map_err(|e| temporary(&StoreError::Db(e.to_string())))?;
     Ok(applied)
+}
+
+/// What a message would do, from [`dry_run`] (IH-11).
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct DryRun {
+    /// `created`, `updated`, `unchanged`, `refused` (it would be kept for a person), `retry` (a temporary failure:
+    /// the feed would answer `AE`) or `not-hl7`.
+    pub would: &'static str,
+    /// Why, when refused; never a message value.
+    pub reasons: Vec<String>,
+    /// How many warnings the reader had (their words are not shown: they name fields of the message).
+    pub warnings: usize,
+    /// The acknowledgement the feed would send, or `None` for text with no sender to answer.
+    pub acknowledgement: Option<String>,
+}
+
+/// Run a message through the feed's real path, with `who`'s rules, and keep nothing (IH-11): the reading, the rules,
+/// matching, the duplicate check, the order check and the writes all run, in a transaction that is rolled back. A
+/// refusal is not stored in the work queue, nothing is counted, and the only trace is the caller's audit row.
+pub async fn dry_run(db: &PgPool, text: &str, who: &FeedIdentity) -> DryRun {
+    let read = hl7_adt::patient_from_adt(text).map(|mut inbound| {
+        inbound.control_id = control_digest(&who.agent, &inbound.control_id);
+        inbound
+    });
+    let not_for_here = if who
+        .processing_id
+        .is_some_and(|want| processing_id_of(text) != Some(want))
+    {
+        Some(WRONG_PROCESSING_ID)
+    } else {
+        who.rules.broken_by(text)
+    };
+    let warnings = read.as_ref().map_or(0, |i| i.warnings.len());
+    let (would, reasons, outcome): (&'static str, Vec<String>, Result<Inbound, Rejection>) =
+        match &read {
+            Err(Rejection::NotHl7(m)) => (
+                "not-hl7",
+                vec![m.clone()],
+                Err(Rejection::NotHl7(m.clone())),
+            ),
+            Err(r) => {
+                let reasons = match r {
+                    Rejection::Unsupported(m) => vec![m.clone()],
+                    Rejection::Invalid(m) | Rejection::Kept(m) => m.clone(),
+                    Rejection::NotHl7(_) => Vec::new(),
+                };
+                ("refused", reasons, Err(answer_for(r.clone(), true, who)))
+            }
+            Ok(_) if not_for_here.is_some() => {
+                let why = not_for_here.unwrap_or(WRONG_PROCESSING_ID).to_string();
+                (
+                    "refused",
+                    vec![why.clone()],
+                    Err(answer_for(Rejection::Unsupported(why), true, who)),
+                )
+            }
+            Ok(inbound) => match apply_in(db, inbound, who, Mode::DryRun).await {
+                Ok(Applied::Created { .. }) => ("created", Vec::new(), Ok(inbound.clone())),
+                Ok(Applied::Updated { .. }) => ("updated", Vec::new(), Ok(inbound.clone())),
+                Ok(Applied::Unchanged { .. }) => ("unchanged", Vec::new(), Ok(inbound.clone())),
+                Err(Refusal::Temporary(m)) => {
+                    ("retry", vec![m.clone()], Err(Rejection::Invalid(vec![m])))
+                }
+                Err(Refusal::Unsupported(m)) => (
+                    "refused",
+                    vec![m.clone()],
+                    Err(answer_for(Rejection::Unsupported(m), true, who)),
+                ),
+                Err(Refusal::Conflict(m)) => (
+                    "refused",
+                    m.clone(),
+                    Err(answer_for(Rejection::Invalid(m), true, who)),
+                ),
+            },
+        };
+    DryRun {
+        would,
+        reasons,
+        warnings,
+        acknowledgement: hl7_adt::acknowledgement(text, &outcome, "DRYRUN", "00000000000000"),
+    }
+}
+
+/// The identity of the feed the service listens for, set when the listener starts; a dry run uses it, so it applies
+/// the same rules (IH-11).
+static CONFIGURED: std::sync::OnceLock<FeedIdentity> = std::sync::OnceLock::new();
+
+/// Record the listening feed's identity (no peer). Set once.
+pub fn set_configured(who: FeedIdentity) {
+    let _ = CONFIGURED.set(who);
+}
+
+/// The listening feed's identity, if the listener is on.
+#[must_use]
+pub fn configured() -> Option<&'static FeedIdentity> {
+    CONFIGURED.get()
 }
 
 /// The trigger event (MSH-9.2) and control id (MSH-10) of a message, cleaned for the audit row, even

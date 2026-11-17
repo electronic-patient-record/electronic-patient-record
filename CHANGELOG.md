@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - A dry run for an HL7 message (IH-11)
+
+- **Clinical risk:** none to the record: nothing is kept. It is a new way to read the record: its answer says whether a patient with a message's identifiers exists, so it is for the clinical administrator only, as the queue is, and audited.
+- **Built:** `POST /api/feed/dry-run` with `{"message": "MSH|…"}` runs `adt_feed::dry_run`: the listening feed's identity and rules (recorded when the listener starts; the defaults when it is off, and the answer says so), the reader, the rules, matching, the duplicate check, the order check and the writes, in a transaction that is rolled back. No queue entry, no count, no message time. It answers what the message would do (`created`, `updated`, `unchanged`, `refused`, `retry`, `not-hl7`), why, the warning count and the acknowledgement the feed would send. The call is audited as one `Execute` row with the outcome word only. `apply_message` now takes a mode; the feed's path is unchanged.
+- **Tested:** on Postgres, a new patient dry-runs `created` and leaves no patient or audit row; after the real message, an update dry-runs `updated` and leaves the version; a conflict dry-runs `refused` with its reason and the `AR` the feed would give, and is not queued; only the real message is counted; the route against its OpenAPI schema. The route censuses list it as a POST that reads and not a write.
+- **Not done / not verified:** no screen; the audit row inside the rolled-back transaction (the would-be change's own row) goes with it, which is the point, but means the trail records only that a dry run happened.
+
 ## 2026-11-17 - HL7 sample messages, golden acknowledgements and a test sender (IH-11, in part)
 
 - **Clinical risk:** none: test material and a tool for test deployments.

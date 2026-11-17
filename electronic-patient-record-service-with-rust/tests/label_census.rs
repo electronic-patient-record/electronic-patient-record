@@ -127,6 +127,11 @@ const OUTPUT: &[(&str, &str, Label)] = &[
         NoPatientData("states, counts and times about the feed"),
     ),
     (
+        "POST",
+        "/api/feed/dry-run",
+        NoPatientData("outcome words and the acknowledgement of the caller's own message"),
+    ),
+    (
         "GET",
         "/api/break-glass/reviews/count",
         NoPatientData("a number"),
@@ -135,7 +140,8 @@ const OUTPUT: &[(&str, &str, Label)] = &[
 
 /// POST routes that answer with something read from the record. Every other POST or PUT answers with what
 /// was written, which is listed by its read.
-const POSTS_THAT_READ: &[&str] = &["/api/patients/compare"];
+// The dry run (IH-11) reads the record: "updated" or "unchanged" says a patient with those identifiers exists.
+const POSTS_THAT_READ: &[&str] = &["/api/patients/compare", "/api/feed/dry-run"];
 
 fn source(path: &str) -> String {
     std::fs::read_to_string(format!("{}/{path}", env!("CARGO_MANIFEST_DIR"))).unwrap()

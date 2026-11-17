@@ -26,7 +26,8 @@ use audit_switch::{DRIVEN, LOGIN_OFF, LOGIN_ON, install, refused_then_accepted, 
 const PNG: &[u8] = &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3];
 
 /// A read in write clothing: it audits, but it changes nothing.
-const NOT_A_WRITE: [&str; 1] = ["POST /api/patients/compare"];
+// A POST that keeps nothing but its own audit row: the comparison, and the feed's dry run (IH-11, rolled back).
+const NOT_A_WRITE: [&str; 2] = ["POST /api/patients/compare", "POST /api/feed/dry-run"];
 
 fn tag(label: &str) -> String {
     let mut n = std::time::SystemTime::now()

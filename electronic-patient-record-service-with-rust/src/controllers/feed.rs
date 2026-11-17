@@ -2,7 +2,8 @@
 //! `GET /api/feed/refusals` (the open ones),
 //! `GET /api/feed/refusals/{id}` (one, with the message as received) and
 //! `POST /api/feed/refusals/{id}/resolve` (close it, with an outcome and a reason), and
-//! `GET /api/feed/health` (each configured feed's state, IH-8).
+//! `GET /api/feed/health` (each configured feed's state, IH-8), and
+//! `POST /api/feed/dry-run` (what a message would do, keeping nothing, IH-11).
 //!
 //! The messages are patient data that belong to no patient on record, so the policy table gives
 //! the `FeedQueue` resource to the clinical administrator only and no care relationship applies.
@@ -142,6 +143,86 @@ async fn count(
         return r.into_response();
     }
     Json(serde_json::json!({ "open": open })).into_response()
+}
+
+/// A message to try.
+#[derive(Debug, Deserialize)]
+pub struct DryRunRequest {
+    /// The message as the sender would send it, segments separated by `\r` (a `\n` is read as one).
+    pub message: String,
+}
+
+/// The largest message a dry run takes: the listener's own frame limit.
+const DRY_RUN_MAX: usize = crate::mllp::MAX_FRAME;
+
+/// `POST /api/feed/dry-run`: run a message through the feed's real path with the listening feed's rules, in a
+/// transaction that is rolled back (IH-11), and say what it would do and what the feed would answer. Nothing is kept:
+/// no change, no queue entry, no count. For a clinical administrator, as for the queue; the audit row records that a
+/// dry run was made and its outcome word, never the message.
+async fn dry_run(
+    State(ctx): State<AppContext>,
+    Extension(agent): Extension<Agent>,
+    Extension(subject): Extension<Subject>,
+    headers: HeaderMap,
+    Json(request): Json<DryRunRequest>,
+) -> Response {
+    let purpose = match purpose_of(&headers) {
+        Ok(p) => p,
+        Err(r) => return r.into_response(),
+    };
+    if let Err(r) = authorize(
+        &ctx.pool(),
+        &agent,
+        &subject,
+        Resource::FeedQueue,
+        policy::Action::Read,
+        purpose,
+        None,
+    )
+    .await
+    {
+        return r.into_response();
+    }
+    if request.message.len() > DRY_RUN_MAX {
+        return ApiError::invalid(vec![format!("the message is over {DRY_RUN_MAX} bytes")])
+            .into_response();
+    }
+    let text = request.message.replace("\r\n", "\r").replace('\n', "\r");
+    let default_feed = crate::adt_feed::FeedIdentity {
+        agent: "mllp:adt-feed".into(),
+        peer: None,
+        kept_answer: crate::adt_feed::KeptAnswer::default(),
+        processing_id: None,
+        rules: crate::adt_feed::SenderRules::default(),
+    };
+    let configured = crate::adt_feed::configured();
+    let who = configured.unwrap_or(&default_feed);
+    let result = crate::adt_feed::dry_run(&ctx.pool(), &text, who).await;
+    if let Err(r) = audit_resource(
+        &ctx.pool(),
+        &agent,
+        Access {
+            action: Action::Execute,
+            outcome: 0,
+            purpose,
+            resource: "FeedQueue",
+            patient_id: None,
+        },
+        serde_json::json!({ "dry_run": result.would }),
+    )
+    .await
+    {
+        return r.into_response();
+    }
+    Json(serde_json::json!({
+        "would": result.would,
+        "reasons": result.reasons,
+        "warnings": result.warnings,
+        "acknowledgement": result.acknowledgement,
+        "feed": who.agent,
+        "feed_configured": configured.is_some(),
+    }))
+    .into_response()
 }
 
 /// `GET /api/feed/health`: each configured feed judged now (IH-8): its state, the window, why, since when the state has
@@ -341,4 +422,5 @@ pub fn routes() -> Routes {
         .add("/refusals/{id}", get(read))
         .add("/refusals/{id}/resolve", post(resolve))
         .add("/health", get(health))
+        .add("/dry-run", post(dry_run))
 }

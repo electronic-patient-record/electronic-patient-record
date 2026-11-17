@@ -109,6 +109,12 @@ node scripts/hl7/send.mjs --port 2575 operations/hl7/samples/a28-register.hl7 op
 node scripts/hl7/send.mjs --tls --ca ca.pem --cert client.pem --key client.key --count 10 operations/hl7/samples/*.hl7
 ```
 
+To see what one message would do without keeping anything, a clinical administrator can post it to
+`POST /api/feed/dry-run` (`{"message": "MSH|…"}`): it runs through the listening feed's rules, matching and checks in
+a transaction that is rolled back, and answers what it would do (`created`, `updated`, `unchanged`, `refused`, `retry`
+or `not-hl7`), why, and the acknowledgement the feed would send. Nothing is stored, queued or counted; the call itself
+is audited.
+
 Every send gets a new control id; `{{mrn}}` is one patient for the run (`--mrn` to choose it). It exits 0 only when
 every answer is `AA`. Never point it at a live feed.
 

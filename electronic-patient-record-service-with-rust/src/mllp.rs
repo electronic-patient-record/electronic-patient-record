@@ -507,6 +507,13 @@ impl Running {
     #[must_use]
     pub fn start(listener: TcpListener, db: PgPool, config: Config) -> Self {
         let (stop, stopped) = tokio::sync::watch::channel(false);
+        adt_feed::set_configured(FeedIdentity {
+            agent: config.agent.clone(),
+            peer: None,
+            kept_answer: config.kept_answer,
+            processing_id: config.processing_id,
+            rules: config.rules.clone(),
+        });
         let task = tokio::spawn(serve_until(listener, db, config, stopped));
         Running { stop, task }
     }

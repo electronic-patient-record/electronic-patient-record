@@ -1123,6 +1123,23 @@ const AUDIT_CRITERIA: &[&str] = &[
 /// The schemas for the feed-refusal queue: an entry, its resolution, the resolve body, the list and the count.
 fn feed_schemas() -> Value {
     json!({
+        "FeedDryRunRequest": {
+            "type": "object", "required": ["message"],
+            "description": "An HL7 v2 message to try against the feed, keeping nothing (IH-11). Segments separated by \\r or line breaks; at most 1 MiB.",
+            "properties": {"message": {"type": "string"}}
+        },
+        "FeedDryRun": {
+            "type": "object", "required": ["would", "reasons", "warnings", "acknowledgement", "feed", "feed_configured"],
+            "description": "What the message would do through the listening feed's rules, in a transaction that was rolled back.",
+            "properties": {
+                "would": {"type": "string", "enum": ["created", "updated", "unchanged", "refused", "retry", "not-hl7"]},
+                "reasons": {"type": "array", "items": {"type": "string"}, "description": "Why, when refused; never a message value."},
+                "warnings": {"type": "integer", "description": "How many warnings the reader had; their words name fields and are not shown."},
+                "acknowledgement": {"type": ["string", "null"], "description": "The ER7 acknowledgement the feed would send, or null when there is nobody to answer."},
+                "feed": {"type": "string", "description": "The feed whose rules were used."},
+                "feed_configured": {"type": "boolean", "description": "False when the listener is off and the defaults were used."}
+            }
+        },
         "ResolveFeedRefusal": {
             "type": "object", "required": ["outcome", "reason"],
             "description": "Close a refused feed message. The reason (1 to 500 characters) is required; a refusal already closed is a 409.",
@@ -1806,6 +1823,14 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
         "ResolveFeedRefusal",
         "200",
         "FeedRefusal",
+        "Error",
+    ),
+    (
+        "POST",
+        "/api/feed/dry-run",
+        "FeedDryRunRequest",
+        "200",
+        "FeedDryRun",
         "Error",
     ),
     (

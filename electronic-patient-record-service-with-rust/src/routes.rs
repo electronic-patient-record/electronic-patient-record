@@ -362,6 +362,12 @@ pub const TABLE: &[(&str, &str, Resource, Action)] = &[
     ),
     (
         "POST",
+        "/api/feed/dry-run",
+        Resource::FeedQueue,
+        Action::Read,
+    ),
+    (
+        "POST",
         "/api/patients/{id}/break-glass",
         Resource::BreakGlass,
         Action::Create,
