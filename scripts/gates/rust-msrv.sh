@@ -1,7 +1,7 @@
 #!/bin/sh
 # Gate rust-msrv (QA-8, LC-3): the one definition, run by .github/workflows/ci.yml and scripts/ci-local.sh.
-# Each crate builds with the oldest Rust its Cargo.toml's `rust-version` claims (the service 1.98, which axa 0.17
-# needs; the matcher 1.97), overriding the pin in rust-toolchain.toml. Library, binary and test code, with the
+# Each crate builds with the oldest Rust its Cargo.toml's `rust-version` claims (1.98, which axa 0.17
+# needs for the service), overriding the pin in rust-toolchain.toml. Library, binary and test code, with the
 # lockfile as committed. A toolchain that is not installed is installed (minimal profile).
 set -eu
 root="$(cd "$(dirname "$0")/../.." && pwd)"

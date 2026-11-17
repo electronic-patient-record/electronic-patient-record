@@ -8,7 +8,7 @@ Entry point for AI coding agents at the repository root. Three projects live her
 | Matcher (pure Rust library, patient identity) | `electronic-patient-record-matcher-with-rust` | [AGENTS.md](electronic-patient-record-matcher-with-rust/AGENTS.md) |
 | Clinician UI (SvelteKit, Svelte 5, backend-for-frontend) | `electronic-patient-record-ui-with-svelte` | [AGENTS.md](electronic-patient-record-ui-with-svelte/AGENTS.md) |
 
-Version 0.1.0. Rust 1.100.0 (pinned in `rust-toolchain.toml`; minimum supported 1.98 for the service, which axa 0.17 needs, and 1.97 for the matcher), Node 26, pnpm, Podman.
+Version 0.1.0. Rust 1.100.0 (pinned in `rust-toolchain.toml`; minimum supported 1.98 for the service, which axa 0.17 needs, and the matcher), Node 26, pnpm, Podman.
 **NOT FOR CLINICAL USE.** This is a scaffold (milestone M0): no clinical record exists yet.
 
 ## How work is done here
