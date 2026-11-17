@@ -6,8 +6,6 @@
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test amendments_store -- --ignored --test-threads=1
 //! ```
-
-use chrono::Utc;
 use electronic_patient_record::amendment::{Event, Ground, Notice, State};
 use electronic_patient_record::amendments_store as store;
 use electronic_patient_record::observations_store::{self as obs, ObservationRecord, Status};
@@ -59,9 +57,17 @@ fn heart(value: f64) -> ObservationRecord {
 async fn a_request_runs_its_course_through_the_store_and_every_step_is_kept() {
     let db = db().await;
     let p = person(&db).await;
-    let o = obs::create(&db, &p, "nurse", None, &heart(172.0), "UTC", Utc::now())
-        .await
-        .unwrap();
+    let o = obs::create(
+        &db,
+        &p,
+        "nurse",
+        None,
+        &heart(172.0),
+        "UTC",
+        jiff::Timestamp::now(),
+    )
+    .await
+    .unwrap();
 
     // A kind that cannot be amended, a version the record lacks, and a blank text are refused.
     for (kind, version, text) in [
@@ -70,17 +76,35 @@ async fn a_request_runs_its_course_through_the_store_and_every_step_is_kept() {
         ("Observation", 0, "x"),
         ("Observation", 1, "  "),
     ] {
-        let e = store::open(&db, &p, "pat", kind, &o.id, version, text, Utc::now())
-            .await
-            .unwrap_err();
+        let e = store::open(
+            &db,
+            &p,
+            "pat",
+            kind,
+            &o.id,
+            version,
+            text,
+            jiff::Timestamp::now(),
+        )
+        .await
+        .unwrap_err();
         assert!(
             matches!(e, StoreError::BadQuery(_)),
             "{kind} {version}: {e:?}"
         );
     }
-    let e = store::open(&db, &p, "pat", "Observation", &p, 1, "x", Utc::now())
-        .await
-        .unwrap_err();
+    let e = store::open(
+        &db,
+        &p,
+        "pat",
+        "Observation",
+        &p,
+        1,
+        "x",
+        jiff::Timestamp::now(),
+    )
+    .await
+    .unwrap_err();
     assert!(matches!(e, StoreError::NotFound), "{e:?}");
 
     let a = store::open(
@@ -91,7 +115,7 @@ async fn a_request_runs_its_course_through_the_store_and_every_step_is_kept() {
         &o.id,
         1,
         "It was 72",
-        Utc::now(),
+        jiff::Timestamp::now(),
     )
     .await
     .unwrap();
@@ -106,25 +130,57 @@ async fn a_request_runs_its_course_through_the_store_and_every_step_is_kept() {
         by: by.into(),
         reason: "checked".into(),
     };
-    let e = store::advance(&db, &p, &a.id, 1, "pat", accept("pat"), Utc::now())
-        .await
-        .unwrap_err();
+    let e = store::advance(
+        &db,
+        &p,
+        &a.id,
+        1,
+        "pat",
+        accept("pat"),
+        jiff::Timestamp::now(),
+    )
+    .await
+    .unwrap_err();
     assert!(matches!(e, StoreError::BadQuery(_)), "{e:?}");
-    let e = store::advance(&db, &p, &a.id, 5, "dr", accept("dr"), Utc::now())
-        .await
-        .unwrap_err();
+    let e = store::advance(
+        &db,
+        &p,
+        &a.id,
+        5,
+        "dr",
+        accept("dr"),
+        jiff::Timestamp::now(),
+    )
+    .await
+    .unwrap_err();
     assert!(matches!(e, StoreError::Conflict { current: 1 }), "{e:?}");
 
-    let a2 = store::advance(&db, &p, &a.id, 1, "dr", accept("dr"), Utc::now())
-        .await
-        .unwrap();
+    let a2 = store::advance(
+        &db,
+        &p,
+        &a.id,
+        1,
+        "dr",
+        accept("dr"),
+        jiff::Timestamp::now(),
+    )
+    .await
+    .unwrap();
     assert_eq!(a2.request.state.word(), "accepted");
 
     // The correction cannot be applied until the record has it.
     let apply = Event::Apply { version: 2 };
-    let e = store::advance(&db, &p, &a.id, 2, "dr", apply.clone(), Utc::now())
-        .await
-        .unwrap_err();
+    let e = store::advance(
+        &db,
+        &p,
+        &a.id,
+        2,
+        "dr",
+        apply.clone(),
+        jiff::Timestamp::now(),
+    )
+    .await
+    .unwrap_err();
     assert!(matches!(e, StoreError::BadQuery(_)), "{e:?}");
     obs::update(
         &db,
@@ -135,11 +191,11 @@ async fn a_request_runs_its_course_through_the_store_and_every_step_is_kept() {
         Some("amendment"),
         &heart(72.0),
         "UTC",
-        Utc::now(),
+        jiff::Timestamp::now(),
     )
     .await
     .unwrap();
-    let a3 = store::advance(&db, &p, &a.id, 2, "dr", apply, Utc::now())
+    let a3 = store::advance(&db, &p, &a.id, 2, "dr", apply, jiff::Timestamp::now())
         .await
         .unwrap();
     assert_eq!(a3.request.state, State::Applied { version: 2 });
@@ -168,12 +224,29 @@ async fn a_request_runs_its_course_through_the_store_and_every_step_is_kept() {
 async fn a_refusal_keeps_the_patients_statement_with_the_record_and_nothing_can_be_edited() {
     let db = db().await;
     let p = person(&db).await;
-    let o = obs::create(&db, &p, "nurse", None, &heart(80.0), "UTC", Utc::now())
-        .await
-        .unwrap();
-    let a = store::open(&db, &p, "pat", "Observation", &o.id, 1, "Wrong", Utc::now())
-        .await
-        .unwrap();
+    let o = obs::create(
+        &db,
+        &p,
+        "nurse",
+        None,
+        &heart(80.0),
+        "UTC",
+        jiff::Timestamp::now(),
+    )
+    .await
+    .unwrap();
+    let a = store::open(
+        &db,
+        &p,
+        "pat",
+        "Observation",
+        &o.id,
+        1,
+        "Wrong",
+        jiff::Timestamp::now(),
+    )
+    .await
+    .unwrap();
     let denied = store::advance(
         &db,
         &p,
@@ -185,7 +258,7 @@ async fn a_refusal_keeps_the_patients_statement_with_the_record_and_nothing_can_
             ground: Ground::AccurateAndComplete,
             reason: "monitor print-out".into(),
         },
-        Utc::now(),
+        jiff::Timestamp::now(),
     )
     .await
     .unwrap();
@@ -199,7 +272,7 @@ async fn a_refusal_keeps_the_patients_statement_with_the_record_and_nothing_can_
             by: "pat".into(),
             statement: "I was not on that ward".into(),
         },
-        Utc::now(),
+        jiff::Timestamp::now(),
     )
     .await
     .unwrap();
@@ -218,7 +291,7 @@ async fn a_refusal_keeps_the_patients_statement_with_the_record_and_nothing_can_
         said.version,
         "pat",
         Event::Withdraw { by: "pat".into() },
-        Utc::now(),
+        jiff::Timestamp::now(),
     )
     .await
     .unwrap_err();

@@ -8,8 +8,6 @@
 //! passed in, so a test needs no clock. When this is wired to a table, the spend must be one atomic
 //! `UPDATE … WHERE consumed_at IS NULL AND expires_at > now()` so two callers cannot both win; this
 //! module cannot prove that, and nothing in the service uses it yet.
-
-use chrono::{DateTime, Utc};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
@@ -66,15 +64,15 @@ pub struct Link {
     /// SHA-256 of the token, lowercase hex.
     pub token_hash: String,
     /// The last instant it can be used is just before this one.
-    pub expires_at: DateTime<Utc>,
+    pub expires_at: jiff::Timestamp,
     /// Set when it is spent.
-    pub consumed_at: Option<DateTime<Utc>>,
+    pub consumed_at: Option<jiff::Timestamp>,
 }
 
 impl Link {
     /// A new link for `token`, which the caller shows once and does not keep.
     #[must_use]
-    pub fn new(token: &str, expires_at: DateTime<Utc>) -> Self {
+    pub fn new(token: &str, expires_at: jiff::Timestamp) -> Self {
         Self {
             token_hash: hash(token),
             expires_at,
@@ -91,7 +89,7 @@ impl Link {
     /// Where the link stands at `now`. Read-only: looking never spends it. A spent link is `Used`
     /// even after its time has passed.
     #[must_use]
-    pub fn view(&self, now: DateTime<Utc>) -> State {
+    pub fn view(&self, now: jiff::Timestamp) -> State {
         if self.consumed_at.is_some() {
             State::Used
         } else if self.expires_at <= now {
@@ -105,7 +103,7 @@ impl Link {
     ///
     /// # Errors
     /// [`Refused::Used`] if it was spent, [`Refused::Expired`] if its time has passed.
-    pub fn consume(&mut self, now: DateTime<Utc>) -> Result<(), Refused> {
+    pub fn consume(&mut self, now: jiff::Timestamp) -> Result<(), Refused> {
         match self.view(now) {
             State::Usable => {
                 self.consumed_at = Some(now);
@@ -120,10 +118,9 @@ impl Link {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::{Duration, TimeZone};
 
-    fn t0() -> DateTime<Utc> {
-        Utc.with_ymd_and_hms(2026, 10, 28, 9, 0, 0).unwrap()
+    fn t0() -> jiff::Timestamp {
+        "2026-10-28T09:00:00Z".parse::<jiff::Timestamp>().unwrap()
     }
 
     #[test]
@@ -150,7 +147,7 @@ mod tests {
     #[test]
     fn the_link_stores_the_hash_and_never_the_token() {
         let token = new_token();
-        let link = Link::new(&token, t0() + Duration::hours(1));
+        let link = Link::new(&token, t0() + jiff::SignedDuration::from_hours(1));
         assert!(link.is_for(&token));
         assert!(!link.is_for(&new_token()));
         assert!(!format!("{link:?}").contains(&token));
@@ -158,7 +155,7 @@ mod tests {
 
     #[test]
     fn a_link_works_once() {
-        let mut link = Link::new(&new_token(), t0() + Duration::hours(1));
+        let mut link = Link::new(&new_token(), t0() + jiff::SignedDuration::from_hours(1));
         assert_eq!(link.consume(t0()), Ok(()));
         assert_eq!(link.consume(t0()), Err(Refused::Used));
         assert_eq!(link.view(t0()), State::Used);
@@ -166,14 +163,17 @@ mod tests {
 
     #[test]
     fn an_expired_link_is_refused_at_and_after_its_time_and_not_spent() {
-        let mut link = Link::new(&new_token(), t0() + Duration::hours(1));
-        assert_eq!(link.view(t0() + Duration::minutes(59)), State::Usable);
+        let mut link = Link::new(&new_token(), t0() + jiff::SignedDuration::from_hours(1));
         assert_eq!(
-            link.consume(t0() + Duration::hours(1)),
+            link.view(t0() + jiff::SignedDuration::from_mins(59)),
+            State::Usable
+        );
+        assert_eq!(
+            link.consume(t0() + jiff::SignedDuration::from_hours(1)),
             Err(Refused::Expired)
         );
         assert_eq!(
-            link.consume(t0() + Duration::days(9)),
+            link.consume(t0() + crate::clock::days(9)),
             Err(Refused::Expired)
         );
         assert_eq!(link.consumed_at, None);
@@ -181,18 +181,18 @@ mod tests {
 
     #[test]
     fn looking_never_changes_the_link() {
-        let link = Link::new(&new_token(), t0() + Duration::hours(1));
+        let link = Link::new(&new_token(), t0() + jiff::SignedDuration::from_hours(1));
         let before = link.clone();
         for minutes in [0, 30, 59, 61, 600] {
-            let _ = link.view(t0() + Duration::minutes(minutes));
+            let _ = link.view(t0() + jiff::SignedDuration::from_mins(minutes));
         }
         assert_eq!(link, before);
     }
 
     #[test]
     fn a_spent_link_stays_used_after_its_time_passes() {
-        let mut link = Link::new(&new_token(), t0() + Duration::hours(1));
+        let mut link = Link::new(&new_token(), t0() + jiff::SignedDuration::from_hours(1));
         link.consume(t0()).unwrap();
-        assert_eq!(link.view(t0() + Duration::days(1)), State::Used);
+        assert_eq!(link.view(t0() + crate::clock::days(1)), State::Used);
     }
 }

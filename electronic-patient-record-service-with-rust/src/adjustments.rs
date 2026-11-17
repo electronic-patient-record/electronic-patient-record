@@ -13,8 +13,6 @@
 //! Rules: a code must be in the catalogue; a spoken interpreter needs the language in the note; a change
 //! needs a reason; a review date is a real day, today or later; ending one is final, and it stays in the
 //! history.
-
-use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 
 /// Every code: `(category, code, the words)`. The UI holds its own translated words for each, and a test
@@ -166,14 +164,14 @@ pub enum Refusal {
     AlreadyActive,
 }
 
-fn check_review_by(review_by: Option<&str>, today: NaiveDate) -> Result<(), Refusal> {
+fn check_review_by(review_by: Option<&str>, today: jiff::civil::Date) -> Result<(), Refusal> {
     let Some(day) = review_by else {
         return Ok(());
     };
     if day.len() != 10 {
         return Err(Refusal::DateInvalid);
     }
-    let parsed = NaiveDate::parse_from_str(day, "%Y-%m-%d").map_err(|_| Refusal::DateInvalid)?;
+    let parsed = crate::clock::parse_day(day).ok_or(Refusal::DateInvalid)?;
     if parsed < today {
         return Err(Refusal::DateInPast);
     }
@@ -199,7 +197,7 @@ pub fn record(
     note: Option<&str>,
     review_by: Option<&str>,
     reason: &str,
-    today: NaiveDate,
+    today: jiff::civil::Date,
 ) -> Result<Adjustment, Refusal> {
     if lookup(code).is_none() {
         return Err(Refusal::UnknownCode);
@@ -243,7 +241,7 @@ pub fn change(
     adjustment: &Adjustment,
     change: &Change,
     reason: &str,
-    today: NaiveDate,
+    today: jiff::civil::Date,
 ) -> Result<Adjustment, Refusal> {
     if reason.trim().is_empty() {
         return Err(Refusal::ReasonRequired);
@@ -269,12 +267,12 @@ pub fn change(
 /// Whether the date to check this with the person has passed. An ended adjustment is never overdue, and
 /// one with no date is not overdue, which says only that no date was set.
 #[must_use]
-pub fn overdue(adjustment: &Adjustment, today: NaiveDate) -> bool {
+pub fn overdue(adjustment: &Adjustment, today: jiff::civil::Date) -> bool {
     adjustment.status == Status::Active
         && adjustment
             .review_by
             .as_deref()
-            .and_then(|d| NaiveDate::parse_from_str(d, "%Y-%m-%d").ok())
+            .and_then(crate::clock::parse_day)
             .is_some_and(|d| d < today)
 }
 
@@ -282,11 +280,11 @@ pub fn overdue(adjustment: &Adjustment, today: NaiveDate) -> bool {
 mod tests {
     use super::*;
 
-    fn day(s: &str) -> NaiveDate {
-        NaiveDate::parse_from_str(s, "%Y-%m-%d").unwrap()
+    fn day(s: &str) -> jiff::civil::Date {
+        crate::clock::parse_day(s).unwrap()
     }
 
-    fn today() -> NaiveDate {
+    fn today() -> jiff::civil::Date {
         day("2026-11-05")
     }
 

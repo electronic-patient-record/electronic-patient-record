@@ -16,8 +16,6 @@
 //!
 //! Which roles may take each step is not decided here but in the policy table and
 //! `controllers/deaths.rs` (OQ-BV2).
-
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 /// Where a report came from. A closed list, so that sources can be counted.
@@ -159,7 +157,7 @@ fn named(actor: &Actor) -> bool {
 
 /// The date's earliest moment is not after `now`: a partial date is compared at its start, so a
 /// death earlier this year or this month is accepted.
-fn check_date(at: &str, now: DateTime<Utc>) -> Result<(), Refusal> {
+fn check_date(at: &str, now: jiff::Timestamp) -> Result<(), Refusal> {
     let start = if crate::patients_store::valid_birth_date(at) {
         let mut parts = at.splitn(3, '-');
         let year: i32 = parts
@@ -174,14 +172,11 @@ fn check_date(at: &str, now: DateTime<Utc>) -> Result<(), Refusal> {
             .next()
             .map_or(Some(1), |d| d.parse().ok())
             .ok_or(Refusal::DateInvalid)?;
-        chrono::NaiveDate::from_ymd_opt(year, month, day)
-            .and_then(|d| d.and_hms_opt(0, 0, 0))
+        crate::clock::ymd(year, month, day)
+            .and_then(crate::clock::day_start_utc)
             .ok_or(Refusal::DateInvalid)?
-            .and_utc()
     } else {
-        DateTime::parse_from_rfc3339(at)
-            .map_err(|_| Refusal::DateInvalid)?
-            .to_utc()
+        crate::clock::parse_rfc3339(at).ok_or(Refusal::DateInvalid)?
     };
     if start > now {
         Err(Refusal::DateInFuture)
@@ -201,7 +196,7 @@ pub fn report(
     reported_by: Actor,
     occurred: Occurred,
     reason: &str,
-    now: DateTime<Utc>,
+    now: jiff::Timestamp,
 ) -> Result<Assertion, Refusal> {
     if !named(&reported_by) {
         return Err(Refusal::AuthorRequired);
@@ -340,12 +335,11 @@ pub fn answer(assertions: &[Assertion]) -> Answer {
 mod tests {
     use super::*;
     use Status::{Certified, Registered, Reported, Verified, WithdrawnInError as Withdrawn};
-    use chrono::TimeZone;
 
     const ALL: [Status; 5] = Status::ALL;
 
-    fn now() -> DateTime<Utc> {
-        Utc.with_ymd_and_hms(2026, 11, 5, 12, 0, 0).unwrap()
+    fn now() -> jiff::Timestamp {
+        "2026-11-05T12:00:00Z".parse::<jiff::Timestamp>().unwrap()
     }
 
     fn nurse() -> Actor {

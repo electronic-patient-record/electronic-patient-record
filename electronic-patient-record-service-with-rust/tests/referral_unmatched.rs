@@ -14,8 +14,6 @@
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test referral_unmatched -- --ignored --test-threads=1
 //! ```
-
-use chrono::Utc;
 use electronic_patient_record::patients_store::{self, StoreError};
 use electronic_patient_record::referral::{Actor, Event, State};
 use electronic_patient_record::referral_unmatched::{self as queue, Clearance, Filed, Inbound};
@@ -70,7 +68,7 @@ async fn referral(db: &PgPool) -> store::StoredReferral {
             external_ids: vec![],
             replaces: None,
         },
-        Utc::now(),
+        jiff::Timestamp::now(),
     )
     .await
     .unwrap()
@@ -112,7 +110,7 @@ async fn a_message_with_a_known_id_moves_the_referral() {
             event: Event::Accept,
             note: None,
         },
-        Utc::now(),
+        jiff::Timestamp::now(),
     )
     .await
     .unwrap();
@@ -124,7 +122,7 @@ async fn a_message_with_a_known_id_moves_the_referral() {
             Some("outcome"),
             Some("Seen; not angina"),
         ),
-        Utc::now(),
+        jiff::Timestamp::now(),
     )
     .await
     .unwrap();
@@ -156,7 +154,7 @@ async fn a_message_that_does_not_match_is_queued_with_a_reason_and_changes_nothi
                 event: Event::RequestCancel,
                 note: Some("not needed"),
             },
-            Utc::now(),
+            jiff::Timestamp::now(),
         )
         .await
         .unwrap();
@@ -170,7 +168,7 @@ async fn a_message_that_does_not_match_is_queued_with_a_reason_and_changes_nothi
                 event: Event::ConfirmCancel,
                 note: None,
             },
-            Utc::now(),
+            jiff::Timestamp::now(),
         )
         .await
         .unwrap()
@@ -207,7 +205,11 @@ async fn a_message_that_does_not_match_is_queued_with_a_reason_and_changes_nothi
     ];
     let mut mine = Vec::new();
     for (message, kind) in cases {
-        let entry = queued(queue::file(&db, message, Utc::now()).await.unwrap());
+        let entry = queued(
+            queue::file(&db, message, jiff::Timestamp::now())
+                .await
+                .unwrap(),
+        );
         mine.push(entry.id.clone());
         assert_eq!(entry.kind, kind, "{message:?}");
         assert_eq!(entry.reasons.len(), 1);
@@ -228,7 +230,7 @@ async fn a_message_that_does_not_match_is_queued_with_a_reason_and_changes_nothi
             event: Event::Accept,
             note: None,
         },
-        Utc::now(),
+        jiff::Timestamp::now(),
     )
     .await
     .unwrap();
@@ -236,7 +238,7 @@ async fn a_message_that_does_not_match_is_queued_with_a_reason_and_changes_nothi
         queue::file(
             &db,
             inbound(Some(&accepted.id), Some("outcome"), None),
-            Utc::now(),
+            jiff::Timestamp::now(),
         )
         .await
         .unwrap(),
@@ -269,9 +271,13 @@ async fn a_person_clears_an_entry_once_by_matching_it_or_dismissing_it() {
     let db = db().await;
     let r = referral(&db).await;
     let entry = queued(
-        queue::file(&db, inbound(None, Some("outcome"), Some("x")), Utc::now())
-            .await
-            .unwrap(),
+        queue::file(
+            &db,
+            inbound(None, Some("outcome"), Some("x")),
+            jiff::Timestamp::now(),
+        )
+        .await
+        .unwrap(),
     );
     // A reason is required; a hand match names a referral that exists.
     assert!(matches!(
@@ -324,7 +330,7 @@ async fn a_person_clears_an_entry_once_by_matching_it_or_dismissing_it() {
     );
 
     let other = queued(
-        queue::file(&db, inbound(None, None, None), Utc::now())
+        queue::file(&db, inbound(None, None, None), jiff::Timestamp::now())
             .await
             .unwrap(),
     );
@@ -346,7 +352,7 @@ async fn a_person_clears_an_entry_once_by_matching_it_or_dismissing_it() {
 async fn the_database_refuses_to_edit_delete_or_truncate_the_queue() {
     let db = db().await;
     let entry = queued(
-        queue::file(&db, inbound(None, None, None), Utc::now())
+        queue::file(&db, inbound(None, None, None), jiff::Timestamp::now())
             .await
             .unwrap(),
     );
@@ -391,7 +397,7 @@ async fn a_queue_longer_than_the_list_limit_says_it_was_cut_short() {
     let mut txn = db.begin().await.unwrap();
     let mut open = queue::count_open(&mut *txn).await.unwrap();
     while open < i64::try_from(queue::LIST_LIMIT).unwrap() + 1 {
-        queue::file(&mut *txn, inbound(None, None, None), Utc::now())
+        queue::file(&mut *txn, inbound(None, None, None), jiff::Timestamp::now())
             .await
             .unwrap();
         open += 1;

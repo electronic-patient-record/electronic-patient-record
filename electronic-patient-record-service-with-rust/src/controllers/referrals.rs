@@ -256,7 +256,7 @@ pub(super) async fn create(
         &agent.0,
         &patient,
         &request.referral,
-        chrono::Utc::now(),
+        jiff::Timestamp::now(),
     )
     .await
     {
@@ -292,7 +292,7 @@ pub(super) async fn create(
                     old,
                     &stored.id,
                     &agent.0,
-                    chrono::Utc::now(),
+                    jiff::Timestamp::now(),
                 )
                 .await
                 {
@@ -454,7 +454,7 @@ async fn step(
             event,
             note: request.note.as_deref(),
         },
-        chrono::Utc::now(),
+        jiff::Timestamp::now(),
     )
     .await?;
     Ok((stored, actor))

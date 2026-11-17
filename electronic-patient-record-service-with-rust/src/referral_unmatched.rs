@@ -14,7 +14,6 @@ use crate::patients_store::StoreError;
 use crate::pool::Db;
 use crate::referral::{Actor, Event};
 use crate::referrals_store::{self, Step, StoredReferral};
-use chrono::{DateTime, Utc};
 use serde::Serialize;
 use sqlx::postgres::PgRow;
 use sqlx::{AssertSqlSafe, Row};
@@ -245,7 +244,7 @@ async fn queue(
 pub async fn file(
     db: impl Into<Db<'_>>,
     inbound: Inbound<'_>,
-    now: DateTime<Utc>,
+    now: jiff::Timestamp,
 ) -> Result<Filed, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;

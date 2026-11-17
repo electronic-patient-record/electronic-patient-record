@@ -1599,7 +1599,7 @@ RUSTSEC-2026-0543 (chrono) and RUSTSEC-2026-0555 (chrono-tz), published 2026-11-
 no fixed version; the advisory suggests `jiff` or `time`. `cargo deny` failed CI on them. They are ignored in the
 service's `deny.toml` until **2027-02-17** (`tests/advisory_expiry.rs` fails after that).
 
-- [ ] **DEP-1 (M) — Move off chrono.** chrono is in the tree through the service (51 files under `src` and `tests`,
+- [ ] **DEP-1 (M) — Move off chrono.** **The service's part done 2026-11-17 (the maintainer asked for jiff):** the service uses jiff 0.2 (already in the tree, with its bundled zone database) and depends on neither chrono nor chrono-tz; `clock.rs` keeps chrono's exact formats (and serde for the stored and answered fields), and the strictness of its RFC 3339 parse and of zone names; `pg_time.rs` binds jiff times to Postgres in its binary encoding, so no SQL changed; chrono-tz and its ignore are gone. **Still open:** chrono stays in the tree through axa (croner, and sqlx's `chrono` feature, which axa turns on), so RUSTSEC-2026-0543's ignore stays until axa drops it. Original: chrono is in the tree through the service (51 files under `src` and `tests`,
   the site time zone through chrono-tz, sqlx's `chrono` feature for every timestamp column), and through axa, sqlx and
   `croner` (axa's job queue). The service's own part can move to `jiff` (with `jiff-tz` for the site time zone) or
   `time`, with sqlx's matching feature; the rest waits on axa and croner. **Acceptance:** before 2027-02-17, either

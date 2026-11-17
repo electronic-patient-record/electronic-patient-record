@@ -11,8 +11,6 @@
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test referrals_store -- --ignored --test-threads=1
 //! ```
-
-use chrono::Utc;
 use electronic_patient_record::patients_store::{self, StoreError};
 use electronic_patient_record::referral::{Actor, Event, State};
 use electronic_patient_record::referrals_store::{self as store, Priority, Referral, Step};
@@ -82,7 +80,7 @@ fn step(actor: Actor, event: Event, note: Option<&'static str>) -> Step<'static>
 #[ignore = "needs Postgres: set DB_URL"]
 async fn a_referral_runs_from_request_to_outcome_and_keeps_every_step() {
     let db = db().await;
-    let now = Utc::now();
+    let now = jiff::Timestamp::now();
     let pid = patient(&db).await;
     let r = store::request(&db, "dr-1", &pid, &referral(), now)
         .await
@@ -148,7 +146,7 @@ async fn a_referral_runs_from_request_to_outcome_and_keeps_every_step() {
 #[ignore = "needs Postgres: set DB_URL"]
 async fn a_cancellation_is_a_request_that_only_the_recipient_confirms() {
     let db = db().await;
-    let now = Utc::now();
+    let now = jiff::Timestamp::now();
     let pid = patient(&db).await;
     let r = store::request(&db, "dr-1", &pid, &referral(), now)
         .await
@@ -232,7 +230,7 @@ async fn a_cancellation_is_a_request_that_only_the_recipient_confirms() {
 #[ignore = "needs Postgres: set DB_URL"]
 async fn a_decline_can_follow_acceptance_and_bad_steps_are_refused() {
     let db = db().await;
-    let now = Utc::now();
+    let now = jiff::Timestamp::now();
     let pid = patient(&db).await;
     let r = store::request(&db, "dr-1", &pid, &referral(), now)
         .await
@@ -328,7 +326,7 @@ async fn a_decline_can_follow_acceptance_and_bad_steps_are_refused() {
 #[ignore = "needs Postgres: set DB_URL"]
 async fn a_request_needs_a_real_patient_and_a_whole_request() {
     let db = db().await;
-    let now = Utc::now();
+    let now = jiff::Timestamp::now();
     let none = store::request(
         &db,
         "dr-1",
@@ -364,7 +362,7 @@ async fn a_request_needs_a_real_patient_and_a_whole_request() {
 async fn the_database_refuses_to_edit_delete_or_truncate_a_referral_version() {
     let db = db().await;
     let pid = patient(&db).await;
-    let r = store::request(&db, "dr-1", &pid, &referral(), Utc::now())
+    let r = store::request(&db, "dr-1", &pid, &referral(), jiff::Timestamp::now())
         .await
         .unwrap();
     for sql in [

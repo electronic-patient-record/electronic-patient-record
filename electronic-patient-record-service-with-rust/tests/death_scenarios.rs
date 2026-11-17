@@ -4,14 +4,12 @@
 //!
 //! Each runs through the pure rules in `src/death.rs`, step by step, and says what the one answer is for
 //! each record at the end. Database-free. The routes, the store and the hold have their own tests.
-
-use chrono::{DateTime, TimeZone, Utc};
 use electronic_patient_record::death::{
     Actor, Answer, Assertion, Occurred, Refusal, Source, Status, Step, advance, answer, report,
 };
 
-fn now() -> DateTime<Utc> {
-    Utc.with_ymd_and_hms(2026, 11, 5, 12, 0, 0).unwrap()
+fn now() -> jiff::Timestamp {
+    "2026-11-05T12:00:00Z".parse::<jiff::Timestamp>().unwrap()
 }
 
 fn person(id: &str) -> Actor {

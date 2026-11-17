@@ -19,8 +19,6 @@
 //! grounds and gives a reason; every decision needs a reason that is not blank; an application must
 //! point at a version later than the one disputed; a statement of disagreement is kept once and
 //! cannot be edited; nothing leaves a final state.
-
-use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 
 /// Days allowed to act on a request. **A guess from HIPAA's 60; configurable later.**
@@ -98,7 +96,8 @@ pub struct Request {
     /// What they want changed, in their words.
     pub text: String,
     /// When it arrived.
-    pub received_at: DateTime<Utc>,
+    #[serde(with = "crate::clock::utc")]
+    pub received_at: jiff::Timestamp,
     /// The written reason for the one extension, once taken.
     pub extension: Option<String>,
     /// Where it stands.
@@ -199,7 +198,7 @@ impl Request {
         target: Target,
         requester: &str,
         text: &str,
-        received_at: DateTime<Utc>,
+        received_at: jiff::Timestamp,
     ) -> Result<Self, Refusal> {
         if blank(text) {
             return Err(Refusal::Blank("text"));
@@ -216,19 +215,19 @@ impl Request {
 
     /// The instant by which a decision is due: 60 days, 90 after the extension.
     #[must_use]
-    pub fn due(&self) -> DateTime<Utc> {
+    pub fn due(&self) -> jiff::Timestamp {
         let days = ACT_WITHIN_DAYS
             + if self.extension.is_some() {
                 EXTENSION_DAYS
             } else {
                 0
             };
-        self.received_at + Duration::days(days)
+        self.received_at + crate::clock::days(days)
     }
 
     /// Whether it is undecided past its due time.
     #[must_use]
-    pub fn overdue(&self, now: DateTime<Utc>) -> bool {
+    pub fn overdue(&self, now: jiff::Timestamp) -> bool {
         matches!(self.state, State::Requested) && now > self.due()
     }
 
@@ -429,10 +428,13 @@ pub const AMENDMENT_NOTICE_URL: &str =
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::TimeZone;
 
-    fn t(day: u32) -> DateTime<Utc> {
-        Utc.with_ymd_and_hms(2026, 10, day, 9, 0, 0).unwrap()
+    fn t(day: u32) -> jiff::Timestamp {
+        jiff::civil::date(2026, 10, i8::try_from(day).unwrap())
+            .at(9, 0, 0, 0)
+            .to_zoned(jiff::tz::TimeZone::UTC)
+            .unwrap()
+            .timestamp()
     }
 
     fn open() -> Request {
@@ -581,9 +583,9 @@ mod tests {
     #[test]
     fn the_due_time_is_60_days_and_90_after_the_one_extension_which_needs_a_reason() {
         let r = open();
-        assert_eq!(r.due(), t(1) + Duration::days(60));
-        assert!(!r.overdue(t(1) + Duration::days(60)));
-        assert!(r.overdue(t(1) + Duration::days(61)));
+        assert_eq!(r.due(), t(1) + crate::clock::days(60));
+        assert!(!r.overdue(t(1) + crate::clock::days(60)));
+        assert!(r.overdue(t(1) + crate::clock::days(61)));
         assert_eq!(
             r.apply(Event::Extend { reason: " ".into() }),
             Err(Refusal::Blank("reason"))
@@ -593,8 +595,8 @@ mod tests {
                 reason: "records off site".into(),
             })
             .unwrap();
-        assert_eq!(e.due(), t(1) + Duration::days(90));
-        assert!(!e.overdue(t(1) + Duration::days(61)));
+        assert_eq!(e.due(), t(1) + crate::clock::days(90));
+        assert!(!e.overdue(t(1) + crate::clock::days(61)));
         assert_eq!(
             e.apply(Event::Extend {
                 reason: "again".into()
@@ -602,7 +604,11 @@ mod tests {
             Err(Refusal::AlreadyExtended)
         );
         // A decided request is never overdue.
-        assert!(!r.apply(deny()).unwrap().overdue(t(1) + Duration::days(400)));
+        assert!(
+            !r.apply(deny())
+                .unwrap()
+                .overdue(t(1) + crate::clock::days(400))
+        );
     }
 
     #[test]

@@ -207,6 +207,7 @@ impl Thresholds {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub struct Facts {
     /// The last message the feed sent that was audited, applied or refused; `None` when it has sent none.
+    #[serde(with = "crate::clock::utc_option")]
     pub last_message_at: Option<Timestamp>,
     /// Refusals received in the hour before now.
     pub refusals_last_hour: u64,

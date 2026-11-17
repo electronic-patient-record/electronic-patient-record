@@ -56,6 +56,7 @@ pub mod pas_suspicion;
 pub mod pathways;
 pub mod patients_store;
 pub mod permission;
+pub mod pg_time;
 pub mod photos_store;
 pub mod policy;
 pub mod pool;

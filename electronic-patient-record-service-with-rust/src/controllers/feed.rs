@@ -252,7 +252,7 @@ async fn health(
     {
         return r.into_response();
     }
-    let now = chrono::Utc::now();
+    let now = jiff::Timestamp::now();
     let zone = crate::site::zone();
     let mut feeds = Vec::new();
     if let Some((sender, thresholds)) = crate::feed_health::configured() {
@@ -260,7 +260,7 @@ async fn health(
             Ok(f) => f,
             Err(e) => return failure(e),
         };
-        let judged = crate::feed_health::assess(now, zone, &facts, thresholds);
+        let judged = crate::feed_health::assess(now, &zone, &facts, thresholds);
         let since = match crate::feed_health::last_state(&ctx.pool(), sender).await {
             Ok(Some((state, at))) if state == judged.state => Some(at),
             Ok(_) => None,
@@ -271,8 +271,8 @@ async fn health(
             "state": judged.state,
             "window": judged.window,
             "reasons": judged.reasons,
-            "since": since,
-            "last_message_at": facts.last_message_at,
+            "since": since.map(crate::clock::rfc3339_z),
+            "last_message_at": facts.last_message_at.map(crate::clock::rfc3339_z),
             "refusals_last_hour": facts.refusals_last_hour,
             "open_refusals": facts.open_refusals,
             "thresholds": thresholds,

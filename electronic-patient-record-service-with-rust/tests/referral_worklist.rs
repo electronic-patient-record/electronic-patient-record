@@ -13,8 +13,6 @@
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test referral_worklist -- --ignored --test-threads=1
 //! ```
-
-use chrono::{Duration, Utc};
 use electronic_patient_record::clock::{Clock, FixedClock};
 use electronic_patient_record::patients_store::{self, StoreError};
 use electronic_patient_record::referral::{Actor, Event, State};
@@ -74,7 +72,7 @@ async fn referral_by(db: &PgPool, author: &str) -> store::StoredReferral {
             external_ids: vec![],
             replaces: None,
         },
-        Utc::now(),
+        jiff::Timestamp::now(),
     )
     .await
     .unwrap()
@@ -99,7 +97,7 @@ async fn step(
             event,
             note,
         },
-        Utc::now(),
+        jiff::Timestamp::now(),
     )
     .await
     .unwrap()
@@ -298,7 +296,7 @@ async fn a_referral_that_has_gone_quiet_is_listed_only_for_a_priority_with_a_per
     );
     let r = referral_by(&db, &sender).await;
     // The clock starts at the real time and is moved; no row is rewritten (PR-5).
-    let clock = FixedClock::new(Utc::now());
+    let clock = FixedClock::new(jiff::Timestamp::now());
     let ids = |page: &electronic_patient_record::page::Page<wl::Item>| -> Vec<(String, Why)> {
         page.iter()
             .map(|i| (i.referral_id.clone(), i.why))
@@ -320,7 +318,7 @@ async fn a_referral_that_has_gone_quiet_is_listed_only_for_a_priority_with_a_per
         .any(|(i, _)| *i == r.id)
     );
     // Old and unanswered: listed with a reason, but only where a period is set for its priority.
-    clock.advance(Duration::days(3));
+    clock.advance(electronic_patient_record::clock::days(3));
     assert!(
         ids(&wl::list_at(&db, &sender, &routine_2, clock.now())
             .await
@@ -379,7 +377,7 @@ async fn a_referral_that_has_gone_quiet_is_listed_only_for_a_priority_with_a_per
         .iter()
         .any(|(i, _)| *i == r.id)
     );
-    clock.advance(Duration::days(6));
+    clock.advance(electronic_patient_record::clock::days(6));
     assert!(
         ids(&wl::list_at(&db, &sender, &routine_2, clock.now())
             .await

@@ -3,8 +3,6 @@
 //! The check is the subset of JSON Schema those schemas use: required fields, no field the schema does
 //! not name, `string`/`null` types and enums. No database, no network. The PAS side runs its own tests
 //! against the same schemas; nothing here proves the copy is current.
-
-use chrono::{DateTime, Utc};
 use electronic_patient_record::pas_suspicion::{self, ActiveProfile};
 use electronic_patient_record::suspicion::{
     Grounds, GroundsKind, Outcome, OutcomeKind, PatientTold, Source, Subtype, Suspicion,
@@ -62,7 +60,7 @@ fn conform(all: &Value, name: &str, body: &Value) -> Vec<String> {
         if p.get("format").and_then(Value::as_str) == Some("date") {
             let ok = v
                 .as_str()
-                .is_some_and(|d| chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d").is_ok());
+                .is_some_and(|d| electronic_patient_record::clock::parse_day(d).is_some());
             if !ok {
                 out.push(format!("{name}: {k} is not a date"));
             }
@@ -149,7 +147,7 @@ fn every_body_the_epr_sends_meets_the_pas_schemas() {
         "{amend}"
     );
 
-    let at: DateTime<Utc> = "2026-11-20T10:00:00Z".parse().unwrap();
+    let at: jiff::Timestamp = "2026-11-20T10:00:00Z".parse().unwrap();
     for kind in [OutcomeKind::RuledOut, OutcomeKind::Withdrawn] {
         let o = Outcome {
             kind,

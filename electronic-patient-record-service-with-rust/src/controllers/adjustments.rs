@@ -31,7 +31,6 @@ use axum::{
     response::{IntoResponse, Response},
     routing::get,
 };
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
 /// Record an adjustment.
@@ -135,7 +134,7 @@ pub(super) async fn list_service(
         Some(patient),
     )
     .await?;
-    let today = Utc::now().date_naive();
+    let today = crate::clock::utc_date(jiff::Timestamp::now());
     let adjustments = match store::list(&ctx.pool(), patient, today).await {
         Ok(a) => a,
         Err(e) => {
@@ -201,7 +200,7 @@ pub(super) async fn create(
     {
         return r.into_response();
     }
-    let today = Utc::now().date_naive();
+    let today = crate::clock::utc_date(jiff::Timestamp::now());
     let made = adjustments::record(
         &request.code,
         request.note.as_deref(),
@@ -288,7 +287,7 @@ pub(super) async fn update(
         },
         ChangeAction::End => Change::End,
     };
-    let today = Utc::now().date_naive();
+    let today = crate::clock::utc_date(jiff::Timestamp::now());
     let mut tx = match begin(&ctx.pool()).await {
         Ok(t) => t,
         Err(r) => return r.into_response(),
@@ -399,10 +398,11 @@ pub(super) async fn overdue(
         Ok(p) => p,
         Err(r) => return r.into_response(),
     };
-    let page = match store::overdue(&ctx.pool(), Utc::now().date_naive()).await {
-        Ok(p) => p,
-        Err(e) => return failure(e).into_response(),
-    };
+    let page =
+        match store::overdue(&ctx.pool(), crate::clock::utc_date(jiff::Timestamp::now())).await {
+            Ok(p) => p,
+            Err(e) => return failure(e).into_response(),
+        };
     let seen = i64::try_from(page.len()).unwrap_or(i64::MAX);
     if let Err(r) = audit_overdue(&ctx, &agent, purpose, seen).await {
         return r.into_response();
@@ -425,10 +425,13 @@ pub(super) async fn overdue_count(
         Ok(p) => p,
         Err(r) => return r.into_response(),
     };
-    let open = match store::overdue_count(&ctx.pool(), Utc::now().date_naive()).await {
-        Ok(n) => n,
-        Err(e) => return failure(e).into_response(),
-    };
+    let open =
+        match store::overdue_count(&ctx.pool(), crate::clock::utc_date(jiff::Timestamp::now()))
+            .await
+        {
+            Ok(n) => n,
+            Err(e) => return failure(e).into_response(),
+        };
     if let Err(r) = audit_overdue(&ctx, &agent, purpose, open).await {
         return r.into_response();
     }

@@ -290,23 +290,17 @@ fn hl7_feed(c: &mut Criterion) {
 /// A feed's health judged, once a minute per feed while the listener runs (IH-8).
 fn feed_health_assess(c: &mut Criterion) {
     let thresholds = Thresholds::from_lookup(|_| None).expect("the default thresholds");
-    let now = chrono::DateTime::parse_from_rfc3339("2026-11-17T10:30:00Z")
-        .expect("a time")
-        .with_timezone(&chrono::Utc);
+    let now = "2026-11-17T10:30:00Z"
+        .parse::<jiff::Timestamp>()
+        .expect("a time");
+    let london = jiff::tz::TimeZone::get("Europe/London").expect("a zone");
     let facts = Facts {
-        last_message_at: Some(now - chrono::Duration::minutes(7)),
+        last_message_at: Some(now - jiff::SignedDuration::from_mins(7)),
         refusals_last_hour: 3,
         open_refusals: 2,
     };
     c.bench_function("feed_health/assess", |b| {
-        b.iter(|| {
-            feed_health::assess(
-                black_box(now),
-                chrono_tz::Europe::London,
-                black_box(&facts),
-                &thresholds,
-            )
-        })
+        b.iter(|| feed_health::assess(black_box(now), &london, black_box(&facts), &thresholds))
     });
 }
 

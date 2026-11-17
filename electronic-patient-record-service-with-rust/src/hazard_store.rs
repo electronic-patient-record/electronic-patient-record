@@ -6,7 +6,6 @@ use crate::hazard::{Actor, Event, Hazard, Refusal};
 use crate::ids;
 use crate::patients_store::StoreError;
 use crate::pool::Db;
-use chrono::{DateTime, SecondsFormat, Utc};
 use serde::Serialize;
 use sqlx::postgres::PgRow;
 use sqlx::{AssertSqlSafe, Row};
@@ -84,7 +83,7 @@ pub async fn raise(
     title: &str,
     severity: u8,
     likelihood: u8,
-    now: DateTime<Utc>,
+    now: jiff::Timestamp,
 ) -> Result<StoredHazard, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
@@ -100,7 +99,7 @@ pub async fn raise(
     .bind(serde_json::json!({
         "event": "raise",
         "by": author,
-        "at": now.to_rfc3339_opts(SecondsFormat::Micros, true),
+        "at": crate::clock::rfc3339_micros(now),
     }))
     .bind(serde_json::to_value(&hazard).map_err(db_err)?)
     .fetch_optional(&mut *db)
@@ -161,7 +160,7 @@ pub async fn advance(
     expected_version: i32,
     actor: &Actor<'_>,
     event: Event,
-    now: DateTime<Utc>,
+    now: jiff::Timestamp,
 ) -> Result<StoredHazard, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
@@ -177,7 +176,7 @@ pub async fn advance(
         .map_err(refused)?;
     let mut logged = serde_json::to_value(&event).map_err(db_err)?;
     logged["by"] = actor.id.into();
-    logged["at"] = now.to_rfc3339_opts(SecondsFormat::Micros, true).into();
+    logged["at"] = crate::clock::rfc3339_micros(now).into();
     let appended = crate::store::append_version(
         &mut *db,
         STORE,

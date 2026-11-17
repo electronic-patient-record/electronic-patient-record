@@ -329,7 +329,7 @@ async fn newer_applied(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     agent: &str,
     patient_id: &str,
-    at: chrono::DateTime<chrono::Utc>,
+    at: jiff::Timestamp,
 ) -> Result<bool, Refusal> {
     let db_err = |e: sqlx::Error| temporary(&StoreError::Db(e.to_string()));
     sqlx::query(
@@ -346,7 +346,7 @@ async fn newer_applied(
     )
     .bind(agent)
     .bind(patient_id)
-    .bind(at)
+    .bind(crate::pg_time::PgTimestamp(at))
     .fetch_one(&mut **tx)
     .await
     .map_err(db_err)?;
@@ -358,7 +358,7 @@ async fn record_time(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     agent: &str,
     patient_id: &str,
-    at: chrono::DateTime<chrono::Utc>,
+    at: jiff::Timestamp,
     control_id: &str,
 ) -> Result<(), Refusal> {
     sqlx::query(
@@ -366,7 +366,7 @@ async fn record_time(
     )
     .bind(agent)
     .bind(patient_id)
-    .bind(at)
+    .bind(crate::pg_time::PgTimestamp(at))
     .bind(control_id)
     .execute(&mut **tx)
     .await
@@ -448,7 +448,7 @@ async fn death_report(
         ]));
     }
     let feed = Actor::Feed(who.agent.clone());
-    let now = chrono::Utc::now();
+    let now = jiff::Timestamp::now();
     let report = |occurred: Occurred| {
         death::report(Source::OtherSystem, feed.clone(), occurred, reason, now)
     };

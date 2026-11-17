@@ -165,7 +165,7 @@ pub fn problems(r: &ResultRecord) -> Vec<Refusal> {
     {
         out.push(Refusal::TooLong);
     }
-    if chrono::DateTime::parse_from_rfc3339(&r.issued).is_err() {
+    if crate::clock::parse_rfc3339(&r.issued).is_none() {
         out.push(Refusal::IssuedInvalid);
     }
     out

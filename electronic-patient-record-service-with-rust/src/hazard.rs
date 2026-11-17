@@ -15,8 +15,6 @@
 //! The hash proves the evidence did not change after it was recorded. It does not prove the evidence is
 //! true; only an independent reviewer or the audit trail narrows that. The register holds no patient data:
 //! every text is length-limited and the table is listed in the personal-data inventory.
-
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 /// The longest title.
@@ -48,7 +46,8 @@ pub struct Evidence {
     /// Where it can be found (a path, a commit, a link). Never patient data.
     pub reference: String,
     /// When the evidence was taken (UTC).
-    pub taken_at: DateTime<Utc>,
+    #[serde(with = "crate::clock::utc")]
+    pub taken_at: jiff::Timestamp,
     /// SHA-256 of the artefact as it was then, 64 lowercase hex digits.
     pub sha256: String,
 }
@@ -235,7 +234,7 @@ impl Hazard {
         &self,
         actor: &Actor<'_>,
         event: Event,
-        now: DateTime<Utc>,
+        now: jiff::Timestamp,
     ) -> Result<Hazard, Refusal> {
         let mut next = self.clone();
         match event {
@@ -305,7 +304,7 @@ mod tests {
 
     const HASH: &str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
-    fn now() -> DateTime<Utc> {
+    fn now() -> jiff::Timestamp {
         "2026-10-28T12:00:00Z".parse().unwrap()
     }
 

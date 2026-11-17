@@ -15,8 +15,6 @@
 //! with a reason, because a clock may start from the point of suspicion. An amendment that changes
 //! nothing is refused. It ends only with an [`Outcome`] (RS-3): confirmed with the diagnosis, ruled out
 //! with who and on what, or withdrawn with a reason; never by the referral closing or a missed appointment.
-
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 /// The longest condition, code, display or "by".
@@ -183,7 +181,7 @@ fn text(out: &mut Vec<String>, what: &str, value: &str, max: usize) {
 
 /// Every problem with a suspicion, as words that name the field and never quote it.
 #[must_use]
-pub fn problems(s: &Suspicion, now: DateTime<Utc>) -> Vec<String> {
+pub fn problems(s: &Suspicion, now: jiff::Timestamp) -> Vec<String> {
     let mut out = Vec::new();
     text(&mut out, "condition", &s.condition, SHORT);
     text(&mut out, "by", &s.by, SHORT);
@@ -198,12 +196,12 @@ pub fn problems(s: &Suspicion, now: DateTime<Utc>) -> Vec<String> {
     if let Some(i) = &s.instruction {
         text(&mut out, "instruction", i, LONG);
     }
-    match DateTime::parse_from_rfc3339(&s.point_of_suspicion) {
-        Err(_) => out.push("the point of suspicion must be an RFC 3339 time".into()),
-        Ok(t) if t.with_timezone(&Utc) > now + chrono::Duration::seconds(SKEW_SECONDS) => {
+    match crate::clock::parse_rfc3339(&s.point_of_suspicion) {
+        None => out.push("the point of suspicion must be an RFC 3339 time".into()),
+        Some(t) if t > now + jiff::SignedDuration::from_secs(SKEW_SECONDS) => {
             out.push("the point of suspicion is in the future".into());
         }
-        Ok(_) => {}
+        Some(_) => {}
     }
     match (s.grounds.kind, &s.grounds.result_id) {
         (GroundsKind::Result, None) => {
@@ -342,10 +340,8 @@ pub fn outcome_problems(o: &Outcome) -> Vec<String> {
 mod tests {
     use super::*;
 
-    fn now() -> DateTime<Utc> {
-        DateTime::parse_from_rfc3339("2026-11-09T12:00:00Z")
-            .unwrap()
-            .with_timezone(&Utc)
+    fn now() -> jiff::Timestamp {
+        "2026-11-09T12:00:00Z".parse::<jiff::Timestamp>().unwrap()
     }
 
     fn lower_gi() -> Suspicion {

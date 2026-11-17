@@ -29,7 +29,6 @@ use axum::{
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
 /// Ask for a record to be amended.
@@ -132,14 +131,10 @@ fn failure(e: StoreError) -> ApiError {
 }
 
 /// The request with what a reader needs beside it.
-fn view(a: &StoredAmendment, now: chrono::DateTime<Utc>) -> serde_json::Value {
+fn view(a: &StoredAmendment, now: jiff::Timestamp) -> serde_json::Value {
     let mut v = serde_json::to_value(a).unwrap_or_default();
     v["notice"] = serde_json::to_value(a.request.notice()).unwrap_or_default();
-    v["due"] = a
-        .request
-        .due()
-        .to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
-        .into();
+    v["due"] = crate::clock::rfc3339_secs(a.request.due()).into();
     v["overdue"] = a.request.overdue(now).into();
     v
 }
@@ -227,7 +222,7 @@ pub(super) async fn list(
     {
         return r.into_response();
     }
-    let now = Utc::now();
+    let now = jiff::Timestamp::now();
     Json(AmendmentList {
         amendments: all.iter().map(|a| view(a, now)).collect(),
     })
@@ -261,7 +256,7 @@ pub(super) async fn create(
     {
         return r.into_response();
     }
-    let now = Utc::now();
+    let now = jiff::Timestamp::now();
     let mut tx = match begin(&ctx.pool()).await {
         Ok(t) => t,
         Err(r) => return r.into_response(),
@@ -346,7 +341,7 @@ pub(super) async fn update(
     if auth::authentication_enforced() && !subject.roles.contains(&request.step.role()) {
         return ApiError::forbidden().into_response();
     }
-    let now = Utc::now();
+    let now = jiff::Timestamp::now();
     let event = request.step.event(&agent.0);
     let mut tx = match begin(&ctx.pool()).await {
         Ok(t) => t,

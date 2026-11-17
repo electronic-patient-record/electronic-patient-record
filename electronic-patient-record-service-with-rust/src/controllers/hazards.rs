@@ -29,7 +29,6 @@ use axum::{
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
 /// Raise a hazard.
@@ -192,7 +191,7 @@ pub(super) async fn create(
         &request.title,
         request.severity,
         request.likelihood,
-        Utc::now(),
+        jiff::Timestamp::now(),
     )
     .await
     {
@@ -287,7 +286,7 @@ pub(super) async fn update(
         request.expected_version,
         &actor,
         request.event,
-        Utc::now(),
+        jiff::Timestamp::now(),
     )
     .await
     {

@@ -182,7 +182,7 @@ pub async fn list_with(
 ) -> Result<Page<Item>, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
-    list_at(&mut *db, by, timeouts, chrono::Utc::now()).await
+    list_at(&mut *db, by, timeouts, jiff::Timestamp::now()).await
 }
 
 /// [`list_with`] judging how long a referral has waited by `at`, the time a [`crate::clock::Clock`] shows.
@@ -194,7 +194,7 @@ pub async fn list_at(
     db: impl Into<Db<'_>>,
     by: &str,
     timeouts: &Timeouts,
-    at: chrono::DateTime<chrono::Utc>,
+    at: jiff::Timestamp,
 ) -> Result<Page<Item>, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
@@ -206,7 +206,7 @@ pub async fn list_at(
                 LIST_LIMIT + 1
             )))
 .bind(by)
-.bind(at)
+.bind(crate::pg_time::PgTimestamp(at))
 .fetch_all(&mut *db)
         .await
         .map_err(db_err)?;
@@ -260,7 +260,7 @@ pub async fn count_with(
 ) -> Result<i64, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
-    count_at(&mut *db, by, timeouts, chrono::Utc::now()).await
+    count_at(&mut *db, by, timeouts, jiff::Timestamp::now()).await
 }
 
 /// [`count_with`] judging by `at`.
@@ -272,7 +272,7 @@ pub async fn count_at(
     db: impl Into<Db<'_>>,
     by: &str,
     timeouts: &Timeouts,
-    at: chrono::DateTime<chrono::Utc>,
+    at: jiff::Timestamp,
 ) -> Result<i64, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
@@ -281,7 +281,7 @@ pub async fn count_at(
         waiting(timeouts)
     )))
     .bind(by)
-    .bind(at)
+    .bind(crate::pg_time::PgTimestamp(at))
     .fetch_optional(&mut *db)
     .await
     .map_err(db_err)?

@@ -39,15 +39,14 @@ pub struct Inbound {
     /// When the sender says the event happened (EVN-2), or else when it built the message (MSH-7), read by
     /// [`message_time`]; `None` when neither is a usable time. The feed uses it so that a late message never undoes
     /// a newer one (IH-5).
-    pub message_time: Option<chrono::DateTime<chrono::Utc>>,
+    pub message_time: Option<jiff::Timestamp>,
 }
 
 /// An HL7 v2 `DTM` to at least the minute (`YYYYMMDDHHMM[SS[.S…]][+/-ZZZZ]`) as a UTC time. A time with no offset is
 /// read as UTC: one sender's times compare with each other, which is all the feed asks of them. Anything shorter
 /// than a minute, or not a real time, is `None`.
 #[must_use]
-pub fn message_time(ts: &str) -> Option<chrono::DateTime<chrono::Utc>> {
-    use chrono::{FixedOffset, NaiveDateTime, TimeZone, Utc};
+pub fn message_time(ts: &str) -> Option<jiff::Timestamp> {
     let ts = ts.trim();
     let (main, offset) = match ts.find(['+', '-']) {
         Some(i) => (&ts[..i], Some(&ts[i..])),
@@ -62,7 +61,7 @@ pub fn message_time(ts: &str) -> Option<chrono::DateTime<chrono::Utc>> {
         14 => main.to_string(),
         _ => return None,
     };
-    let naive = NaiveDateTime::parse_from_str(&full, "%Y%m%d%H%M%S").ok()?;
+    let naive = jiff::civil::DateTime::strptime("%Y%m%d%H%M%S", &full).ok()?;
     let seconds = match offset {
         None => 0,
         Some(o) => {
@@ -79,10 +78,10 @@ pub fn message_time(ts: &str) -> Option<chrono::DateTime<chrono::Utc>> {
             if sign == "-" { -s } else { s }
         }
     };
-    FixedOffset::east_opt(seconds)?
-        .from_local_datetime(&naive)
-        .single()
-        .map(|t| t.with_timezone(&Utc))
+    jiff::tz::Offset::from_seconds(seconds)
+        .ok()?
+        .to_timestamp(naive)
+        .ok()
 }
 
 /// The reason for text that is not an HL7 v2 message: fixed, because the parser's own error quotes the text (IH-4).
@@ -456,7 +455,7 @@ mod tests {
 
     #[test]
     fn a_message_time_is_read_to_the_minute_with_or_without_an_offset() {
-        let t = |s: &str| message_time(s).map(|d| d.to_rfc3339());
+        let t = |s: &str| message_time(s).map(crate::clock::rfc3339_offset);
         assert_eq!(
             t("202611170930").as_deref(),
             Some("2026-11-17T09:30:00+00:00")
@@ -496,13 +495,17 @@ mod tests {
     fn the_event_time_is_preferred_to_the_message_time() {
         let read = patient_from_adt(ADT).unwrap();
         assert_eq!(
-            read.message_time.map(|d| d.to_rfc3339()).as_deref(),
+            read.message_time
+                .map(crate::clock::rfc3339_offset)
+                .as_deref(),
             Some("2026-10-21T09:00:00+00:00")
         );
         let later_evn = ADT.replace("EVN|A28|20261021090000", "EVN|A28|20261021100000");
         let read = patient_from_adt(&later_evn).unwrap();
         assert_eq!(
-            read.message_time.map(|d| d.to_rfc3339()).as_deref(),
+            read.message_time
+                .map(crate::clock::rfc3339_offset)
+                .as_deref(),
             Some("2026-10-21T10:00:00+00:00")
         );
         let no_evn = ADT

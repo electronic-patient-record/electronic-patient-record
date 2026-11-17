@@ -22,7 +22,6 @@
 //! A [`Hold`] names ids and codes, never the condition in words, the grounds or a person.
 
 use crate::suspicion::{Outcome, OutcomeKind, Source, Suspicion};
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 /// The PAS's active profile, as `GET /api/suspicion-profile` answers; fields the mapping does not use
@@ -145,12 +144,14 @@ pub fn condition(pathway: &str) -> Option<(&'static str, Implied)> {
 ///
 /// A [`Hold`] when the zone is not an IANA name or the time is not RFC 3339.
 pub fn day_in(time_zone: &str, time: &str) -> Result<String, Hold> {
-    let tz: chrono_tz::Tz = time_zone
-        .parse()
-        .map_err(|_| Hold(format!("the PAS time zone {time_zone} is not an IANA name")))?;
-    let t = DateTime::parse_from_rfc3339(time)
-        .map_err(|_| Hold("a time to send is not RFC 3339".into()))?;
-    Ok(t.with_timezone(&tz).format("%Y-%m-%d").to_string())
+    // The database's own spelling of the name, as chrono-tz required (DEP-1).
+    let tz = jiff::tz::TimeZone::get(time_zone)
+        .ok()
+        .filter(|tz| tz.iana_name() == Some(time_zone))
+        .ok_or_else(|| Hold(format!("the PAS time zone {time_zone} is not an IANA name")))?;
+    let t = crate::clock::parse_rfc3339(time)
+        .ok_or_else(|| Hold("a time to send is not RFC 3339".into()))?;
+    Ok(crate::site::day_in(&tz, t).to_string())
 }
 
 fn mapped(s: &Suspicion) -> Result<(&'static str, Implied), Hold> {
@@ -284,7 +285,7 @@ pub fn amendment(
 /// A [`Hold`] for a bad time zone or time.
 pub fn stop(
     o: &Outcome,
-    at: DateTime<Utc>,
+    at: jiff::Timestamp,
     stopped_by: &str,
     p: &ActiveProfile,
 ) -> Result<Option<Stop>, Hold> {
@@ -295,10 +296,7 @@ pub fn stop(
     };
     Ok(Some(Stop {
         reason,
-        stopped_on: day_in(
-            &p.time_zone,
-            &at.to_rfc3339_opts(chrono::SecondsFormat::Secs, true),
-        )?,
+        stopped_on: day_in(&p.time_zone, &crate::clock::rfc3339_secs(at))?,
         stopped_by: stopped_by.to_string(),
     }))
 }
@@ -459,9 +457,7 @@ mod tests {
     #[test]
     fn only_ruled_out_and_withdrawn_stop_the_pas_clock() {
         let p = profile("wales");
-        let at = DateTime::parse_from_rfc3339("2026-12-31T23:30:00Z")
-            .unwrap()
-            .with_timezone(&Utc);
+        let at = "2026-12-31T23:30:00Z".parse::<jiff::Timestamp>().unwrap();
         let o = |kind| Outcome {
             kind,
             diagnosis: Some("d".into()),

@@ -183,7 +183,7 @@ pub(super) async fn history(
         Err(r) => return r.into_response(),
     };
     let history =
-        match store::history(&ctx.pool(), &patient, &referral_id, chrono::Utc::now()).await {
+        match store::history(&ctx.pool(), &patient, &referral_id, jiff::Timestamp::now()).await {
             Ok(h) => h,
             Err(e) => {
                 if let Some(kind) = kind_of(&e)
@@ -250,7 +250,7 @@ pub(super) async fn raise(
         &referral_id,
         &agent.0,
         &request.suspicion,
-        chrono::Utc::now(),
+        jiff::Timestamp::now(),
     )
     .await;
     finish(
@@ -301,7 +301,7 @@ pub(super) async fn amend(
         request.expected_version,
         request.reason.as_deref(),
         &request.suspicion,
-        chrono::Utc::now(),
+        jiff::Timestamp::now(),
     )
     .await;
     finish(
@@ -398,7 +398,7 @@ pub(super) async fn end(
         &agent.0,
         request.expected_version,
         &request.outcome,
-        chrono::Utc::now(),
+        jiff::Timestamp::now(),
     )
     .await
     {
@@ -477,7 +477,7 @@ pub(super) async fn mark_outcome_in_error(
         &agent.0,
         request.seq,
         &request.reason,
-        chrono::Utc::now(),
+        jiff::Timestamp::now(),
     )
     .await
     {

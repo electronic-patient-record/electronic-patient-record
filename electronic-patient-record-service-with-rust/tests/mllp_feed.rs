@@ -1138,10 +1138,12 @@ async fn a_feeds_health_is_judged_from_the_database_and_a_change_is_stored_once(
     let db = db().await;
     let agent = tag("mllp:health");
     let t = Thresholds::default();
-    let utc = chrono_tz::UTC;
+    let utc = jiff::tz::TimeZone::UTC;
     // Never sent: unknown, and that is stored.
-    let now = chrono::Utc::now();
-    let (a, changed) = feed_health::check(&db, &agent, now, utc, &t).await.unwrap();
+    let now = jiff::Timestamp::now();
+    let (a, changed) = feed_health::check(&db, &agent, now, &utc, &t)
+        .await
+        .unwrap();
     assert_eq!((a.state, changed), (State::Unknown, true));
 
     let name = agent.clone();
@@ -1154,11 +1156,15 @@ async fn a_feeds_health_is_judged_from_the_database_and_a_change_is_stored_once(
     .await
     .unwrap();
     assert_eq!(code(&ack), "AA", "{ack}");
-    let now = chrono::Utc::now();
-    let (a, changed) = feed_health::check(&db, &agent, now, utc, &t).await.unwrap();
+    let now = jiff::Timestamp::now();
+    let (a, changed) = feed_health::check(&db, &agent, now, &utc, &t)
+        .await
+        .unwrap();
     assert_eq!((a.state, changed), (State::Healthy, true), "{a:?}");
     // The same state again stores nothing, so a restart that judges again raises nothing.
-    let (_, changed) = feed_health::check(&db, &agent, now, utc, &t).await.unwrap();
+    let (_, changed) = feed_health::check(&db, &agent, now, &utc, &t)
+        .await
+        .unwrap();
     assert!(!changed);
     let rows: i64 = sqlx::query_scalar("SELECT count(*) FROM feed_alarm_states WHERE agent = $1")
         .bind(&agent)
@@ -1176,12 +1182,12 @@ async fn a_feeds_health_is_judged_from_the_database_and_a_change_is_stored_once(
     .await
     .unwrap();
     assert_eq!(code(&ack), "AR", "{ack}");
-    let (a, _) = feed_health::check(&db, &agent, chrono::Utc::now(), utc, &t)
+    let (a, _) = feed_health::check(&db, &agent, jiff::Timestamp::now(), &utc, &t)
         .await
         .unwrap();
     assert_eq!(a.state, State::Warning, "{a:?}");
-    let later = chrono::Utc::now() + chrono::Duration::days(2);
-    let (a, changed) = feed_health::check(&db, &agent, later, utc, &t)
+    let later = jiff::Timestamp::now() + electronic_patient_record::clock::days(2);
+    let (a, changed) = feed_health::check(&db, &agent, later, &utc, &t)
         .await
         .unwrap();
     assert_eq!((a.state, changed), (State::Critical, true), "{a:?}");

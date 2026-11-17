@@ -7,8 +7,6 @@
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test observations_store -- --ignored --test-threads=1
 //! ```
-
-use chrono::{DateTime, Utc};
 use electronic_patient_record::links;
 use electronic_patient_record::observations::{AbsentReason, Flag, Range};
 use electronic_patient_record::observations_store::{self as store, ObservationRecord, Status};
@@ -47,8 +45,8 @@ async fn person(db: &PgPool, family: &str) -> String {
     patients_store::create(db, "t", None, &p).await.unwrap().id
 }
 
-fn now() -> DateTime<Utc> {
-    Utc::now()
+fn now() -> jiff::Timestamp {
+    jiff::Timestamp::now()
 }
 
 fn heart(value: f64, at: &str) -> ObservationRecord {

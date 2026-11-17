@@ -6,8 +6,6 @@
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
 //!   cargo test --test hazards_store -- --ignored --test-threads=1
 //! ```
-
-use chrono::Utc;
 use electronic_patient_record::hazard::{Actor, Event, Evidence, EvidenceKind, State};
 use electronic_patient_record::hazard_store as store;
 use electronic_patient_record::patients_store::StoreError;
@@ -27,7 +25,7 @@ fn evidence() -> Evidence {
     Evidence {
         kind: EvidenceKind::TestRun,
         reference: "tests/example.rs".into(),
-        taken_at: Utc::now() - chrono::Duration::hours(1),
+        taken_at: jiff::Timestamp::now() - jiff::SignedDuration::from_hours(1),
         sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef".into(),
     }
 }
@@ -52,7 +50,7 @@ const CLINICIAN: Actor<'static> = Actor {
 #[ignore = "needs Postgres: set DB_URL"]
 async fn a_hazard_is_retired_only_by_the_cso_with_evidence_and_keeps_its_history() {
     let db = db().await;
-    let now = Utc::now();
+    let now = jiff::Timestamp::now();
     let h = store::raise(&db, "dr-1", "Wrong patient overlay", 5, 2, now)
         .await
         .unwrap();
@@ -128,7 +126,7 @@ async fn a_hazard_is_retired_only_by_the_cso_with_evidence_and_keeps_its_history
 #[ignore = "needs Postgres: set DB_URL"]
 async fn the_database_refuses_to_edit_delete_or_truncate_a_version() {
     let db = db().await;
-    let h = store::raise(&db, "dr-1", "Append only", 3, 3, Utc::now())
+    let h = store::raise(&db, "dr-1", "Append only", 3, 3, jiff::Timestamp::now())
         .await
         .unwrap();
     for sql in [

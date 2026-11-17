@@ -11,7 +11,6 @@ use crate::patients_store::StoreError;
 use crate::pool::Db;
 use crate::referrals_store;
 use crate::suspicion::{self, Outcome, Suspicion};
-use chrono::{DateTime, Utc};
 use serde::Serialize;
 use sqlx::postgres::PgRow;
 use sqlx::{AssertSqlSafe, Row};
@@ -96,10 +95,8 @@ fn refuse(message: impl Into<String>) -> StoreError {
     StoreError::BadQuery(message.into())
 }
 
-fn time(s: &str) -> Result<DateTime<Utc>, StoreError> {
-    DateTime::parse_from_rfc3339(s)
-        .map(|t| t.with_timezone(&Utc))
-        .map_err(db_err)
+fn time(s: &str) -> Result<jiff::Timestamp, StoreError> {
+    crate::clock::parse_rfc3339(s).ok_or_else(|| db_err(format!("not an RFC 3339 time: {s}")))
 }
 
 /// The referral, when it belongs to this patient; a referral from another record is a miss.
@@ -107,7 +104,7 @@ async fn referral_sent(
     db: &mut sqlx::PgConnection,
     patient_id: &str,
     referral_id: &str,
-) -> Result<DateTime<Utc>, StoreError> {
+) -> Result<jiff::Timestamp, StoreError> {
     let versions = referrals_store::history(&mut *db, referral_id).await?;
     let first = versions.first().ok_or(StoreError::NotFound)?;
     if first.patient_id != patient_id {
@@ -124,8 +121,8 @@ const MAX_CARRIES: usize = 50;
 async fn first_sent(
     db: &mut sqlx::PgConnection,
     referral_id: &str,
-    own: DateTime<Utc>,
-) -> Result<DateTime<Utc>, StoreError> {
+    own: jiff::Timestamp,
+) -> Result<jiff::Timestamp, StoreError> {
     let (mut id, mut sent) = (referral_id.to_string(), own);
     for _ in 0..MAX_CARRIES {
         let row = sqlx::query(
@@ -152,7 +149,11 @@ async fn first_sent(
     ))
 }
 
-fn plan_for(s: &Suspicion, sent: DateTime<Utc>, now: DateTime<Utc>) -> Result<Plan, StoreError> {
+fn plan_for(
+    s: &Suspicion,
+    sent: jiff::Timestamp,
+    now: jiff::Timestamp,
+) -> Result<Plan, StoreError> {
     // A stored suspicion names a pathway version the build no longer has only if a version was removed,
     // which the catalogue's rules forbid; it is an error, not a silent blank.
     let p = pathways::pathway(&s.pathway, s.pathway_version).ok_or_else(|| {
@@ -174,8 +175,8 @@ fn plan_for(s: &Suspicion, sent: DateTime<Utc>, now: DateTime<Utc>) -> Result<Pl
 fn row_to_stored(
     row: &PgRow,
     previous: Option<&Suspicion>,
-    sent: DateTime<Utc>,
-    now: DateTime<Utc>,
+    sent: jiff::Timestamp,
+    now: jiff::Timestamp,
 ) -> Result<StoredSuspicion, StoreError> {
     let body: serde_json::Value = row.try_get("body").map_err(db_err)?;
     let s: Suspicion = serde_json::from_value(body).map_err(db_err)?;
@@ -198,7 +199,7 @@ async fn check(
     db: &mut sqlx::PgConnection,
     patient_id: &str,
     s: &Suspicion,
-    now: DateTime<Utc>,
+    now: jiff::Timestamp,
 ) -> Result<(), StoreError> {
     let problems = suspicion::problems(s, now);
     if !problems.is_empty() {
@@ -294,8 +295,8 @@ async fn outcomes_in_error(
 
 fn build(
     rows: &[PgRow],
-    sent: DateTime<Utc>,
-    now: DateTime<Utc>,
+    sent: jiff::Timestamp,
+    now: jiff::Timestamp,
     outcome: Option<StoredOutcome>,
     outcomes_in_error: Vec<OutcomeInError>,
 ) -> Result<SuspicionHistory, StoreError> {
@@ -328,7 +329,7 @@ pub async fn history(
     db: impl Into<Db<'_>>,
     patient_id: &str,
     referral_id: &str,
-    now: DateTime<Utc>,
+    now: jiff::Timestamp,
 ) -> Result<SuspicionHistory, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
@@ -386,7 +387,7 @@ pub async fn raise(
     referral_id: &str,
     author: &str,
     s: &Suspicion,
-    now: DateTime<Utc>,
+    now: jiff::Timestamp,
 ) -> Result<StoredSuspicion, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
@@ -420,7 +421,7 @@ pub async fn amend(
     expected_version: i32,
     reason: Option<&str>,
     s: &Suspicion,
-    now: DateTime<Utc>,
+    now: jiff::Timestamp,
 ) -> Result<StoredSuspicion, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
@@ -486,7 +487,7 @@ pub async fn carry(
     from: &str,
     to: &str,
     author: &str,
-    now: DateTime<Utc>,
+    now: jiff::Timestamp,
 ) -> Result<Option<StoredSuspicion>, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
@@ -529,7 +530,7 @@ pub async fn end(
     author: &str,
     expected_version: i32,
     outcome: &Outcome,
-    now: DateTime<Utc>,
+    now: jiff::Timestamp,
 ) -> Result<SuspicionHistory, StoreError> {
     let problems = suspicion::outcome_problems(outcome);
     if !problems.is_empty() {
@@ -596,7 +597,7 @@ pub async fn mark_outcome_in_error(
     author: &str,
     seq: i32,
     reason: &str,
-    now: DateTime<Utc>,
+    now: jiff::Timestamp,
 ) -> Result<SuspicionHistory, StoreError> {
     let reason = reason.trim();
     if reason.is_empty() {

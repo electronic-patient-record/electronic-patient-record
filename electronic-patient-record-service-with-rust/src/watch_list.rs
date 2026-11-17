@@ -5,8 +5,6 @@
 //! patient is on one, and so do these: an entry needs a **reason**, and may carry the day it **ends**.
 //! An entry is ended by its owner with a reason, or lapses after its end day; either way it leaves the
 //! list and stays in the history, never deleted.
-
-use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 
 /// The longest reason kept.
@@ -61,14 +59,14 @@ fn reason(out: &mut Vec<String>, what: &str, value: &str) {
 /// Every problem with a new entry: a blank or long reason, an end day that is not a date or has
 /// passed. Words name the field, never quote it.
 #[must_use]
-pub fn problems(e: &NewEntry, today: NaiveDate) -> Vec<String> {
+pub fn problems(e: &NewEntry, today: jiff::civil::Date) -> Vec<String> {
     let mut out = Vec::new();
     reason(&mut out, "reason", &e.reason);
     if let Some(until) = &e.until {
-        match NaiveDate::parse_from_str(until, "%Y-%m-%d") {
-            Err(_) => out.push("the end day must be YYYY-MM-DD".into()),
-            Ok(d) if d < today => out.push("the end day has passed".into()),
-            Ok(_) => {}
+        match crate::clock::parse_day(until) {
+            None => out.push("the end day must be YYYY-MM-DD".into()),
+            Some(d) if d < today => out.push("the end day has passed".into()),
+            Some(_) => {}
         }
     }
     out
@@ -88,9 +86,9 @@ pub fn end_problems(end_reason: Option<&str>) -> Vec<String> {
 
 /// The state of an entry stored as `stored`, with end day `until`, on `today`.
 #[must_use]
-pub fn state(stored: State, until: Option<&str>, today: NaiveDate) -> State {
+pub fn state(stored: State, until: Option<&str>, today: jiff::civil::Date) -> State {
     let lapsed = until
-        .and_then(|u| NaiveDate::parse_from_str(u, "%Y-%m-%d").ok())
+        .and_then(crate::clock::parse_day)
         .is_some_and(|u| u < today);
     match stored {
         State::Active if lapsed => State::Lapsed,
@@ -102,8 +100,8 @@ pub fn state(stored: State, until: Option<&str>, today: NaiveDate) -> State {
 mod tests {
     use super::*;
 
-    fn day(s: &str) -> NaiveDate {
-        NaiveDate::parse_from_str(s, "%Y-%m-%d").unwrap()
+    fn day(s: &str) -> jiff::civil::Date {
+        crate::clock::parse_day(s).unwrap()
     }
 
     #[test]

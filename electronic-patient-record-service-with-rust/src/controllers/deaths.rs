@@ -30,7 +30,6 @@ use axum::{
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
 /// Report a death.
@@ -354,7 +353,7 @@ pub(super) async fn create(
         reporter(&agent, &subject),
         request.occurred,
         &request.reason,
-        Utc::now(),
+        jiff::Timestamp::now(),
     )
     .map_err(store::refused);
     let mut tx = match begin(&ctx.pool()).await {

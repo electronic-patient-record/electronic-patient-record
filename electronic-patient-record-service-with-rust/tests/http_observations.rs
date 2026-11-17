@@ -52,7 +52,7 @@ fn observation(value: f64, unit: &str, status: &str) -> Value {
     json!({
         "code": "8867-4", "value": value, "unit": unit,
         "range": { "low": 60.0, "high": 100.0 },
-        "effective_at": (chrono::Utc::now() - chrono::Duration::hours(1)).to_rfc3339(), "status": status
+        "effective_at": electronic_patient_record::clock::rfc3339_offset(jiff::Timestamp::now() - jiff::SignedDuration::from_hours(1)), "status": status
     })
 }
 

@@ -124,9 +124,7 @@ pub fn parse(text: &str) -> Result<Vec<Form>, String> {
         }
         let by = f.approved_by.trim().is_empty();
         let on = f.approved_on.trim();
-        if by != on.is_empty()
-            || (!on.is_empty() && chrono::NaiveDate::parse_from_str(on, "%Y-%m-%d").is_err())
-        {
+        if by != on.is_empty() || (!on.is_empty() && crate::clock::parse_day(on).is_none()) {
             return Err(format!(
                 "assessment forms: {name} needs both an approver and a YYYY-MM-DD day, or neither"
             ));

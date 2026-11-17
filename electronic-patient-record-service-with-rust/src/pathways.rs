@@ -15,7 +15,6 @@
 //! reported (PA-15), and its pauses and stops are not modelled here.
 
 use crate::referrals_store::Priority;
-use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::sync::LazyLock;
@@ -253,8 +252,7 @@ fn check(p: &Pathway) -> Result<(), String> {
     }
     let by = p.approved_by.trim().is_empty();
     let on = p.approved_on.trim();
-    if by != on.is_empty() || (!on.is_empty() && NaiveDate::parse_from_str(on, "%Y-%m-%d").is_err())
-    {
+    if by != on.is_empty() || (!on.is_empty() && crate::clock::parse_day(on).is_none()) {
         return Err(format!(
             "suspicion pathways: {name} needs both an approver and a YYYY-MM-DD day, or neither"
         ));
@@ -456,9 +454,9 @@ pub struct NamedSubtype {
 pub fn plan(
     p: &Pathway,
     c: &Choice<'_>,
-    clock_start: DateTime<Utc>,
-    now: DateTime<Utc>,
-    zone: chrono_tz::Tz,
+    clock_start: jiff::Timestamp,
+    now: jiff::Timestamp,
+    zone: jiff::tz::TimeZone,
 ) -> Option<Plan> {
     if !problems(p, c).is_empty() {
         return None;
@@ -472,17 +470,17 @@ pub fn plan(
         .map(|f| f.priority)
         .fold(base, |a, b| if rank(b) > rank(a) { b } else { a });
     let targets = band.map_or(&p.targets, |b| &b.targets);
-    let start = clock_start.with_timezone(&zone).date_naive();
-    let today = now.with_timezone(&zone).date_naive();
+    let start = crate::site::day_in(&zone, clock_start);
+    let today = crate::site::day_in(&zone, now);
     let targets = targets
         .iter()
         .map(|t| {
-            let due = start + chrono::Days::new(u64::from(t.days));
+            let due = start.saturating_add(jiff::Span::new().days(i64::from(t.days)));
             Due {
                 id: t.id.clone(),
                 text: t.text.clone(),
                 days: t.days,
-                due_on: due.format("%Y-%m-%d").to_string(),
+                due_on: due.to_string(),
                 overdue: today > due,
             }
         })
@@ -494,8 +492,8 @@ pub fn plan(
         approved: p.approved(),
         latest_version: latest(&p.id).unwrap_or(p.version),
         clock_from: p.clock_from,
-        clock_start: clock_start.to_rfc3339_opts(chrono::SecondsFormat::Secs, true),
-        time_zone: zone.name().to_string(),
+        clock_start: crate::clock::rfc3339_secs(clock_start),
+        time_zone: zone.iana_name().unwrap_or("UTC").to_string(),
         priority,
         instruction: p.instruction.clone(),
         no_target_reason: Some(p.no_target_reason.trim().to_string()).filter(|r| !r.is_empty()),
@@ -516,10 +514,13 @@ pub fn plan(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono_tz::{Europe::London, UTC};
 
-    fn at(s: &str) -> DateTime<Utc> {
-        DateTime::parse_from_rfc3339(s).unwrap().with_timezone(&Utc)
+    fn london() -> jiff::tz::TimeZone {
+        jiff::tz::TimeZone::get("Europe/London").unwrap()
+    }
+
+    fn at(s: &str) -> jiff::Timestamp {
+        s.parse().unwrap()
     }
 
     #[test]
@@ -559,7 +560,7 @@ mod tests {
             &Choice::default(),
             at("2026-11-09T09:30:00Z"),
             at("2026-12-08T10:00:00Z"),
-            UTC,
+            jiff::tz::TimeZone::UTC,
         )
         .unwrap();
         assert_eq!(plan.clock_from, ClockFrom::PointOfSuspicion);
@@ -584,8 +585,8 @@ mod tests {
         let p = pathway("suspected-cancer-wales", 1).unwrap();
         let start = at("2026-06-30T23:30:00Z");
         let now = at("2026-07-29T22:30:00Z");
-        let utc = plan(p, &Choice::default(), start, now, UTC).unwrap();
-        let local = plan(p, &Choice::default(), start, now, London).unwrap();
+        let utc = plan(p, &Choice::default(), start, now, jiff::tz::TimeZone::UTC).unwrap();
+        let local = plan(p, &Choice::default(), start, now, london()).unwrap();
         assert_eq!(utc.targets[0].due_on, "2026-07-28");
         assert!(utc.targets[0].overdue);
         assert_eq!(
@@ -605,7 +606,7 @@ mod tests {
             &Choice::default(),
             start,
             at("2026-11-09T23:59:00Z"),
-            UTC,
+            jiff::tz::TimeZone::UTC,
         )
         .unwrap();
         assert_eq!(late.priority, Priority::Stat);
@@ -615,7 +616,7 @@ mod tests {
             &Choice::default(),
             start,
             at("2026-11-10T00:01:00Z"),
-            UTC,
+            jiff::tz::TimeZone::UTC,
         )
         .unwrap();
         assert!(next.targets[0].overdue);
@@ -647,7 +648,7 @@ mod tests {
                 grounds_is_result: true,
                 ..Choice::default()
             };
-            let plan = plan(p, &c, start, start, UTC).unwrap();
+            let plan = plan(p, &c, start, start, jiff::tz::TimeZone::UTC).unwrap();
             assert_eq!((plan.targets[0].days, plan.priority), (days, priority));
         }
     }
@@ -656,7 +657,7 @@ mod tests {
     fn a_factor_raises_the_priority_and_an_unknown_one_is_refused() {
         let p = pathway("obstructive-sleep-apnoea", 1).unwrap();
         let start = at("2026-11-09T09:00:00Z");
-        let plain = plan(p, &Choice::default(), start, start, UTC).unwrap();
+        let plain = plan(p, &Choice::default(), start, start, jiff::tz::TimeZone::UTC).unwrap();
         assert_eq!(plain.priority, Priority::Routine);
         assert!(plain.targets.is_empty());
         assert!(plain.no_target_reason.is_some(), "no interval says why");
@@ -666,7 +667,9 @@ mod tests {
             ..Choice::default()
         };
         assert_eq!(
-            plan(p, &c, start, start, UTC).unwrap().priority,
+            plan(p, &c, start, start, jiff::tz::TimeZone::UTC)
+                .unwrap()
+                .priority,
             Priority::Urgent
         );
         let odd = ["pilot".to_string()];
@@ -744,7 +747,7 @@ mod tests {
         };
         assert!(problems(dementia, &declined).is_empty(), "optional there");
         let start = at("2026-11-09T09:00:00Z");
-        let named = plan(v2, &lower_gi, start, start, UTC)
+        let named = plan(v2, &lower_gi, start, start, jiff::tz::TimeZone::UTC)
             .unwrap()
             .subtype
             .unwrap();
@@ -753,10 +756,18 @@ mod tests {
             ("Primary cancer site", "Lower GI")
         );
         assert_eq!(
-            plan(v2, &lower_gi, start, start, UTC).unwrap().targets,
-            plan(v1, &Choice::default(), start, start, UTC)
+            plan(v2, &lower_gi, start, start, jiff::tz::TimeZone::UTC)
                 .unwrap()
                 .targets,
+            plan(
+                v1,
+                &Choice::default(),
+                start,
+                start,
+                jiff::tz::TimeZone::UTC
+            )
+            .unwrap()
+            .targets,
             "the site changes no date"
         );
     }

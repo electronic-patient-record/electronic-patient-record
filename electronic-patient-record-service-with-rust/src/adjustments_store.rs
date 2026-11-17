@@ -12,7 +12,6 @@ use crate::links;
 use crate::page::Page;
 use crate::patients_store::{self, StoreError};
 use crate::pool::Db;
-use chrono::NaiveDate;
 use serde::Serialize;
 use sqlx::postgres::PgRow;
 use sqlx::{AssertSqlSafe, Row};
@@ -51,7 +50,7 @@ const COLUMNS: &str = "adjustment_id::text AS id, patient_id::text AS patient_id
 /// # Errors
 ///
 /// [`StoreError::Db`] when a column is missing or the stored body is unreadable.
-fn row_to_stored(row: &PgRow, today: NaiveDate) -> Result<StoredAdjustment, StoreError> {
+fn row_to_stored(row: &PgRow, today: jiff::civil::Date) -> Result<StoredAdjustment, StoreError> {
     let body: serde_json::Value = row.try_get("body").map_err(db_err)?;
     let adjustment: Adjustment = serde_json::from_value(body).map_err(db_err)?;
     let (category, display) = adjustments::lookup(&adjustment.code)
@@ -95,7 +94,7 @@ pub(crate) fn refused(r: Refusal) -> StoreError {
 pub async fn list(
     db: impl Into<Db<'_>>,
     patient_id: &str,
-    today: NaiveDate,
+    today: jiff::civil::Date,
 ) -> Result<Vec<StoredAdjustment>, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
@@ -144,7 +143,7 @@ const OVERDUE: &str = "status = 'active' AND body->>'review_by' < $1";
 /// [`StoreError::Db`] on a database failure.
 pub async fn overdue(
     db: impl Into<Db<'_>>,
-    today: NaiveDate,
+    today: jiff::civil::Date,
 ) -> Result<Page<OverdueReview>, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
@@ -182,7 +181,10 @@ pub async fn overdue(
 /// # Errors
 ///
 /// [`StoreError::Db`] on a database failure.
-pub async fn overdue_count(db: impl Into<Db<'_>>, today: NaiveDate) -> Result<i64, StoreError> {
+pub async fn overdue_count(
+    db: impl Into<Db<'_>>,
+    today: jiff::civil::Date,
+) -> Result<i64, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
     let row = sqlx::query(AssertSqlSafe(format!(
@@ -206,7 +208,7 @@ pub async fn record(
     patient_id: &str,
     author: &str,
     adjustment: &Adjustment,
-    today: NaiveDate,
+    today: jiff::civil::Date,
 ) -> Result<StoredAdjustment, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
@@ -246,7 +248,7 @@ pub async fn current(
     db: impl Into<Db<'_>>,
     patient_id: &str,
     adjustment_id: &str,
-    today: NaiveDate,
+    today: jiff::civil::Date,
 ) -> Result<StoredAdjustment, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
@@ -280,7 +282,7 @@ pub async fn change(
     author: &str,
     what: &Change,
     reason: &str,
-    today: NaiveDate,
+    today: jiff::civil::Date,
 ) -> Result<StoredAdjustment, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;

@@ -3539,7 +3539,7 @@ mod tests {
         let evidence = Evidence {
             kind: EvidenceKind::ReviewRecord,
             reference: "r".into(),
-            taken_at: chrono::Utc::now(),
+            taken_at: jiff::Timestamp::now(),
             sha256: "0".repeat(64),
         };
         let hazard = Hazard {

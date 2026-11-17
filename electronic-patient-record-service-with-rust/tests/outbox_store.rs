@@ -313,7 +313,7 @@ async fn a_report_of_death_holds_an_event_until_it_is_withdrawn() {
             reason: "the message gave no date".into(),
         },
         "HL7 ADT A08 C1",
-        chrono::Utc::now(),
+        jiff::Timestamp::now(),
     )
     .unwrap();
     let stored = death_store::report(&db, &id, &made).await.unwrap();
@@ -700,7 +700,7 @@ async fn a_message_naming_an_untold_suspicion_never_reaches_the_patient() {
     let db = db().await;
     let recipient = format!("sink-{}", nanos());
     let (p, other) = (patient(&db).await, patient(&db).await);
-    let now = chrono::Utc::now();
+    let now = jiff::Timestamp::now();
     let referral = referrals_store::request(
         &db,
         "t",

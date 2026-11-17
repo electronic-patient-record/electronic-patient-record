@@ -127,7 +127,7 @@ async fn receive(
             note: request.note.as_deref(),
             message: &request.message,
         },
-        chrono::Utc::now(),
+        jiff::Timestamp::now(),
     )
     .await;
     match filed {

@@ -2,6 +2,16 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-17 - The service moves from chrono to jiff (DEP-1)
+
+- **Clinical risk:** yes, in principle: every date and time the service reads, checks, stores and shows now goes through another library (an age, a due day, an overdue flag, a measured time refused as future, a feed's silence). The formats, the parse rules and the days are kept as they were and tested; no hazard row changes, since no rule changed. Not reviewed by a clinician.
+- **Asked for:** the maintainer asked to move to jiff, the alternative the advisory names.
+- **Changed:** the service depends on jiff 0.2 (0.2.41, already in the lockfile, with its bundled zone database, so the image needs no zoneinfo) and on neither chrono nor chrono-tz; sqlx's `chrono` feature is off. `clock.rs` holds the formats the service wrote with chrono, byte for byte (to the microsecond, to the second, `to_rfc3339`'s `+00:00`, and serde's `Z` with the fraction in groups of three, used on the three serialized time fields and the feed-health answer); a parse as strict as chrono's RFC 3339 one (jiff alone takes a time without seconds); and day helpers. Zone names must be the database's own spelling, as chrono-tz required (`europe/london` is still refused). `pg_time.rs` binds a jiff time or day in Postgres's binary encoding, as sqlx's chrono support did, so no query changed. 52 files changed, most mechanically.
+- **Unchanged by design:** the audit chain formats its times in SQL, so no stored digest can differ.
+- **Removed:** chrono-tz left the tree, and its advisory ignore (RUSTSEC-2026-0555) with it.
+- **Tested:** clippy on every target; all 82 test binaries without a database; every database test on a fresh local Postgres 18 except the six FHIR validator tests (no Java here; CI runs them); new tests for the formats against chrono's, the strict parse (what chrono refused is refused), Postgres's epoch, truncation toward the past and infinity, and a zone name in the wrong case; `cargo deny check advisories` passes.
+- **Not done / not verified:** chrono is still in the tree through axa (croner and sqlx's `chrono` feature), so RUSTSEC-2026-0543's ignore stays until axa drops it; no answer was compared byte for byte with one from before the move beyond the tests' own; the 2026-11-17 benchmarks are still unmeasured.
+
 ## 2026-11-17 - Benchmarks for the keyed audit digest, consent and the HL7 feed; HL7 load scenarios
 
 - **Clinical risk:** none: measurement only.

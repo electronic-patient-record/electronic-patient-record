@@ -29,7 +29,6 @@ use axum::{
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
 /// Record an observation.
@@ -265,7 +264,7 @@ pub(super) async fn create(
     {
         return r.into_response();
     }
-    let now = Utc::now();
+    let now = jiff::Timestamp::now();
     // Check the record first so the 422 carries codes; the store checks again.
     if let Some(invalid) = store::refusal(&request.observation, now) {
         let as_store = StoreError::BadQuery("the observation was refused".into());
@@ -378,7 +377,7 @@ pub(super) async fn update(
     {
         return r.into_response();
     }
-    let now = Utc::now();
+    let now = jiff::Timestamp::now();
     if let Some(invalid) = store::refusal(&request.observation, now) {
         let as_store = StoreError::BadQuery("the observation was refused".into());
         if let Some(r) = refused(&ctx, &agent, purpose, Action::Update, &as_store).await {

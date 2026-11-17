@@ -8,7 +8,6 @@ use crate::links;
 use crate::patients_store::{self, StoreError};
 use crate::pool::Db;
 use crate::watch_list::{self, NewEntry, State};
-use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgRow;
 use sqlx::{AssertSqlSafe, Row};
@@ -85,7 +84,7 @@ fn refuse(message: impl Into<String>) -> StoreError {
     StoreError::BadQuery(message.into())
 }
 
-fn row_to_entry(row: &PgRow, today: NaiveDate) -> Result<Entry, StoreError> {
+fn row_to_entry(row: &PgRow, today: jiff::civil::Date) -> Result<Entry, StoreError> {
     let body: Body =
         serde_json::from_value(row.try_get("body").map_err(db_err)?).map_err(db_err)?;
     let status: String = row.try_get("status").map_err(db_err)?;
@@ -116,7 +115,7 @@ fn row_to_entry(row: &PgRow, today: NaiveDate) -> Result<Entry, StoreError> {
 pub async fn for_patient(
     db: impl Into<Db<'_>>,
     patient_id: &str,
-    today: NaiveDate,
+    today: jiff::civil::Date,
 ) -> Result<Vec<Entry>, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
@@ -149,7 +148,7 @@ pub async fn add(
     patient_id: &str,
     owner: &str,
     entry: &NewEntry,
-    today: NaiveDate,
+    today: jiff::civil::Date,
 ) -> Result<Entry, StoreError> {
     let problems = watch_list::problems(entry, today);
     if !problems.is_empty() {
@@ -196,7 +195,7 @@ pub async fn add(
 async fn one(
     db: &mut sqlx::PgConnection,
     entry_id: &str,
-    today: NaiveDate,
+    today: jiff::civil::Date,
 ) -> Result<Entry, StoreError> {
     let id = ids::uuid(entry_id).ok_or(StoreError::NotFound)?;
     let row = sqlx::query(AssertSqlSafe(format!(
@@ -226,7 +225,7 @@ pub async fn end(
     owner: &str,
     expected_version: i32,
     end_reason: Option<&str>,
-    today: NaiveDate,
+    today: jiff::civil::Date,
 ) -> Result<Entry, StoreError> {
     let problems = watch_list::end_problems(end_reason);
     if !problems.is_empty() {
@@ -284,7 +283,7 @@ pub async fn end(
 pub async fn own(
     db: impl Into<Db<'_>>,
     owner: &str,
-    today: NaiveDate,
+    today: jiff::civil::Date,
 ) -> Result<(Vec<Pointer>, bool), StoreError> {
     pointers(
         db,
@@ -306,7 +305,7 @@ pub async fn own(
 pub async fn lapsed(
     db: impl Into<Db<'_>>,
     owner: &str,
-    today: NaiveDate,
+    today: jiff::civil::Date,
 ) -> Result<(Vec<Pointer>, bool), StoreError> {
     pointers(
         db,
@@ -321,7 +320,7 @@ pub async fn lapsed(
 async fn pointers(
     db: impl Into<Db<'_>>,
     owner: &str,
-    today: NaiveDate,
+    today: jiff::civil::Date,
     condition: &str,
     order: &str,
 ) -> Result<(Vec<Pointer>, bool), StoreError> {
@@ -335,7 +334,7 @@ async fn pointers(
         OWN_LIMIT + 1
     )))
     .bind(owner)
-    .bind(today)
+    .bind(crate::pg_time::PgDate(today))
     .fetch_all(&mut *db)
     .await
     .map_err(db_err)?;

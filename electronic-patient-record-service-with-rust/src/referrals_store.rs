@@ -13,7 +13,6 @@ use crate::ids;
 use crate::patients_store::StoreError;
 use crate::pool::Db;
 use crate::referral::{self, Actor, Event, State};
-use chrono::{DateTime, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgRow;
 use sqlx::{AssertSqlSafe, Row};
@@ -212,7 +211,7 @@ pub async fn request(
     author: &str,
     patient_id: &str,
     referral: &Referral,
-    now: DateTime<Utc>,
+    now: jiff::Timestamp,
 ) -> Result<StoredReferral, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
@@ -240,7 +239,7 @@ pub async fn request(
                     "event": "request",
                     "by": author,
                     "role": "referrer",
-                    "at": now.to_rfc3339_opts(SecondsFormat::Micros, true),
+                    "at": crate::clock::rfc3339_micros(now),
                 })
                 )
 .bind(serde_json::to_value(referral).map_err(db_err)?)
@@ -401,7 +400,7 @@ pub async fn advance(
     referral_id: &str,
     expected_version: i32,
     step: Step<'_>,
-    now: DateTime<Utc>,
+    now: jiff::Timestamp,
 ) -> Result<StoredReferral, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
@@ -440,7 +439,7 @@ pub async fn advance(
         "event": event.as_str(),
         "by": by,
         "role": match actor { Actor::Referrer => "referrer", Actor::Recipient => "recipient" },
-        "at": now.to_rfc3339_opts(SecondsFormat::Micros, true),
+        "at": crate::clock::rfc3339_micros(now),
         "note": note.map(str::trim).filter(|n| !n.is_empty()),
     });
     let appended = crate::store::append_version(

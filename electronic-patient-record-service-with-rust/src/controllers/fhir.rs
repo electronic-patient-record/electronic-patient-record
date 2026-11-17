@@ -1711,7 +1711,7 @@ mod tests {
                 None,
                 None,
                 "they asked",
-                chrono::NaiveDate::from_ymd_opt(2026, 11, 5).unwrap(),
+                crate::clock::ymd(2026, 11, 5).unwrap(),
             )
             .unwrap(),
             category: "communication".into(),

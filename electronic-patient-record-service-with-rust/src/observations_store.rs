@@ -12,7 +12,6 @@ use crate::links;
 use crate::observations::{self, Flag, Observation};
 use crate::patients_store::{self, StoreError};
 use crate::pool::Db;
-use chrono::{DateTime, Datelike, Duration, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgRow;
 use sqlx::{AssertSqlSafe, Row};
@@ -122,23 +121,21 @@ pub struct StoredObservation {
 /// a stable error code and a sentence. A reading cannot be dated in the future, but a little clock skew is allowed.
 fn parse_effective(
     text: &str,
-    now: DateTime<Utc>,
-) -> Result<DateTime<Utc>, (&'static str, String)> {
-    let at = DateTime::parse_from_rfc3339(text)
-        .map_err(|_| {
-            (
-                "effective_at_invalid",
-                "effective_at must be an RFC 3339 time, such as 2026-10-26T09:30:00Z".to_string(),
-            )
-        })?
-        .with_timezone(&Utc);
-    if at.year() < 1900 {
+    now: jiff::Timestamp,
+) -> Result<jiff::Timestamp, (&'static str, String)> {
+    let at = crate::clock::parse_rfc3339(text).ok_or_else(|| {
+        (
+            "effective_at_invalid",
+            "effective_at must be an RFC 3339 time, such as 2026-10-26T09:30:00Z".to_string(),
+        )
+    })?;
+    if crate::clock::utc_date(at).year() < 1900 {
         return Err((
             "effective_at_invalid",
             "effective_at is before 1900".to_string(),
         ));
     }
-    if at > now + Duration::minutes(FUTURE_SKEW_MINUTES) {
+    if at > now + jiff::SignedDuration::from_mins(FUTURE_SKEW_MINUTES) {
         return Err((
             "effective_at_future",
             format!("effective_at is more than {FUTURE_SKEW_MINUTES} minutes in the future"),
@@ -171,16 +168,12 @@ pub fn late_days_from(value: Option<&str>) -> i64 {
 }
 
 /// The start of a birth date (`YYYY`, `YYYY-MM` or `YYYY-MM-DD`) in UTC, or `None` if it cannot be read.
-fn birth_start(birth_date: &str) -> Option<DateTime<Utc>> {
+fn birth_start(birth_date: &str) -> Option<jiff::Timestamp> {
     let mut parts = birth_date.splitn(3, '-');
     let year: i32 = parts.next()?.parse().ok()?;
     let month: u32 = parts.next().map_or(Some(1), |m| m.parse().ok())?;
     let day: u32 = parts.next().map_or(Some(1), |d| d.parse().ok())?;
-    Some(
-        chrono::NaiveDate::from_ymd_opt(year, month, day)?
-            .and_hms_opt(0, 0, 0)?
-            .and_utc(),
-    )
+    crate::clock::day_start_utc(crate::clock::ymd(year, month, day)?)
 }
 
 /// What is wrong with a measured time for this patient, as a stable code and a sentence. A time before
@@ -194,7 +187,7 @@ pub fn timing_problems(
     reason: Option<&str>,
     birth_date: Option<&str>,
     late_days: i64,
-    now: DateTime<Utc>,
+    now: jiff::Timestamp,
 ) -> Vec<(&'static str, String)> {
     let mut problems = Vec::new();
     if record.status == Status::EnteredInError {
@@ -205,14 +198,14 @@ pub fn timing_problems(
     };
     if birth_date
         .and_then(birth_start)
-        .is_some_and(|born| at < born - Duration::days(1))
+        .is_some_and(|born| at < born - crate::clock::days(1))
     {
         problems.push((
             "effective_at_before_birth",
             "the measured time is before the patient's birth date".to_string(),
         ));
     }
-    if at < now - Duration::days(late_days) && reason.is_none_or(|r| r.trim().is_empty()) {
+    if at < now - crate::clock::days(late_days) && reason.is_none_or(|r| r.trim().is_empty()) {
         problems.push((
             "effective_at_reason_required",
             format!(
@@ -234,7 +227,7 @@ pub async fn timing_refusal(
     patient_id: &str,
     record: &ObservationRecord,
     reason: Option<&str>,
-    now: DateTime<Utc>,
+    now: jiff::Timestamp,
 ) -> Result<Option<crate::api_error::ApiError>, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
@@ -258,7 +251,7 @@ pub async fn timing_refusal(
 /// What is wrong with a record, as a stable code and a sentence, in a fixed order (the observation's
 /// own problems first); empty if nothing.
 #[must_use]
-pub fn validate(record: &ObservationRecord, now: DateTime<Utc>) -> Vec<(&'static str, String)> {
+pub fn validate(record: &ObservationRecord, now: jiff::Timestamp) -> Vec<(&'static str, String)> {
     let mut problems = observations::validate(&record.observation());
     if let Err(p) = parse_effective(&record.effective_at, now) {
         problems.push(p);
@@ -270,7 +263,7 @@ pub fn validate(record: &ObservationRecord, now: DateTime<Utc>) -> Vec<(&'static
 #[must_use]
 pub fn refusal(
     record: &ObservationRecord,
-    now: DateTime<Utc>,
+    now: jiff::Timestamp,
 ) -> Option<crate::api_error::ApiError> {
     let coded = validate(record, now);
     if coded.is_empty() {
@@ -320,7 +313,7 @@ fn row_to_observation(row: &PgRow) -> Result<StoredObservation, StoreError> {
 }
 
 /// The record's problems as one [`StoreError::BadQuery`] (the sentences joined with `; `), or `None` when it is acceptable.
-fn bad(record: &ObservationRecord, now: DateTime<Utc>) -> Option<StoreError> {
+fn bad(record: &ObservationRecord, now: jiff::Timestamp) -> Option<StoreError> {
     let problems = validate(record, now);
     (!problems.is_empty()).then(|| {
         StoreError::BadQuery(
@@ -338,9 +331,9 @@ fn bad(record: &ObservationRecord, now: DateTime<Utc>) -> Option<StoreError> {
 /// # Errors
 ///
 /// [`StoreError::BadQuery`] when the time does not parse or is out of range.
-fn utc_text(record: &ObservationRecord, now: DateTime<Utc>) -> Result<String, StoreError> {
+fn utc_text(record: &ObservationRecord, now: jiff::Timestamp) -> Result<String, StoreError> {
     parse_effective(&record.effective_at, now)
-        .map(|t| t.to_rfc3339_opts(SecondsFormat::Micros, true))
+        .map(crate::clock::rfc3339_micros)
         .map_err(|(_, m)| StoreError::BadQuery(m))
 }
 
@@ -357,7 +350,7 @@ pub async fn create(
     reason: Option<&str>,
     record: &ObservationRecord,
     site_zone: &str,
-    now: DateTime<Utc>,
+    now: jiff::Timestamp,
 ) -> Result<StoredObservation, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
@@ -513,7 +506,7 @@ pub async fn update(
     reason: Option<&str>,
     record: &ObservationRecord,
     site_zone: &str,
-    now: DateTime<Utc>,
+    now: jiff::Timestamp,
 ) -> Result<StoredObservation, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
@@ -567,12 +560,9 @@ pub async fn update(
 mod tests {
     use super::*;
     use crate::observations::AbsentReason;
-    use chrono::TimeZone;
 
-    fn now() -> DateTime<Utc> {
-        DateTime::parse_from_rfc3339("2026-10-26T12:00:00Z")
-            .unwrap()
-            .with_timezone(&Utc)
+    fn now() -> jiff::Timestamp {
+        "2026-10-26T12:00:00Z".parse::<jiff::Timestamp>().unwrap()
     }
     fn record(at: &str) -> ObservationRecord {
         ObservationRecord {
@@ -659,7 +649,7 @@ mod tests {
 
     #[test]
     fn a_reading_older_than_the_limit_needs_a_reason_and_is_never_refused_with_one() {
-        let now = Utc.with_ymd_and_hms(2026, 11, 5, 12, 0, 0).unwrap();
+        let now = "2026-11-05T12:00:00Z".parse::<jiff::Timestamp>().unwrap();
         let eight = record("2026-10-28T12:00:00Z");
         let codes = |r: Option<&str>, rec: &ObservationRecord| -> Vec<&str> {
             timing_problems(rec, r, None, 7, now)
@@ -680,7 +670,7 @@ mod tests {
 
     #[test]
     fn a_reading_before_the_birth_date_is_impossible_with_a_day_for_the_time_zone() {
-        let now = Utc.with_ymd_and_hms(2026, 11, 5, 12, 0, 0).unwrap();
+        let now = "2026-11-05T12:00:00Z".parse::<jiff::Timestamp>().unwrap();
         let codes = |at: &str, born: &str| -> Vec<&str> {
             timing_problems(&record(at), Some("r"), Some(born), 7, now)
                 .into_iter()
@@ -713,7 +703,7 @@ mod tests {
 
     #[test]
     fn a_mistaken_date_can_always_be_marked_in_error() {
-        let now = Utc.with_ymd_and_hms(2026, 11, 5, 12, 0, 0).unwrap();
+        let now = "2026-11-05T12:00:00Z".parse::<jiff::Timestamp>().unwrap();
         let mut r = record("1950-01-01T00:00:00Z");
         r.status = Status::EnteredInError;
         assert!(timing_problems(&r, None, Some("2000-01-01"), 7, now).is_empty());
