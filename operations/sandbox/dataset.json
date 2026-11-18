@@ -1,0 +1,857 @@
+{
+  "about": "A synthetic sandbox (TL-9): no real person. Every family name starts with Sandbox; every national number is in the 999 range, reserved for testing and never issued, and passes modulus 11. Loaded by scripts/sandbox/load.mjs.",
+  "patients": [
+    {
+      "key": "sandbox-alder",
+      "patient": {
+        "names": [
+          {
+            "family": "SandboxAlder",
+            "given": [
+              "Ada"
+            ]
+          }
+        ],
+        "birth_date": "1930-01-01",
+        "identifiers": [
+          {
+            "system": "https://fhir.nhs.uk/Id/nhs-number",
+            "value": "9991000003"
+          }
+        ]
+      },
+      "observations": [
+        {
+          "code": "8867-4",
+          "value": 60,
+          "unit": "/min",
+          "range": {
+            "low": 60,
+            "high": 100
+          }
+        },
+        {
+          "code": "8310-5",
+          "value": 36.0,
+          "unit": "Cel",
+          "range": {
+            "low": 36.0,
+            "high": 37.5
+          }
+        }
+      ],
+      "allergies": [
+        {
+          "substance": "Penicillin",
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "key": "sandbox-birch",
+      "patient": {
+        "names": [
+          {
+            "family": "SandboxBirch",
+            "given": [
+              "Ben"
+            ]
+          }
+        ],
+        "birth_date": "1933-06-08",
+        "identifiers": [
+          {
+            "system": "https://fhir.nhs.uk/Id/nhs-number",
+            "value": "9991001379"
+          }
+        ]
+      },
+      "observations": [
+        {
+          "code": "8867-4",
+          "value": 67,
+          "unit": "/min",
+          "range": {
+            "low": 60,
+            "high": 100
+          }
+        }
+      ]
+    },
+    {
+      "key": "sandbox-cedar",
+      "patient": {
+        "names": [
+          {
+            "family": "SandboxCedar",
+            "given": [
+              "Cara"
+            ]
+          }
+        ],
+        "birth_date": "1936-11-15",
+        "identifiers": [
+          {
+            "system": "https://fhir.nhs.uk/Id/nhs-number",
+            "value": "9991004114"
+          }
+        ]
+      },
+      "observations": [
+        {
+          "code": "8867-4",
+          "value": 74,
+          "unit": "/min",
+          "range": {
+            "low": 60,
+            "high": 100
+          }
+        }
+      ]
+    },
+    {
+      "key": "sandbox-damson",
+      "patient": {
+        "names": [
+          {
+            "family": "SandboxDamson",
+            "given": [
+              "Dai"
+            ]
+          }
+        ],
+        "birth_date": "1939-04-22",
+        "identifiers": [
+          {
+            "system": "https://fhir.nhs.uk/Id/nhs-number",
+            "value": "9991006850"
+          }
+        ]
+      },
+      "observations": [
+        {
+          "code": "8867-4",
+          "value": 81,
+          "unit": "/min",
+          "range": {
+            "low": 60,
+            "high": 100
+          }
+        },
+        {
+          "code": "8310-5",
+          "value": 36.6,
+          "unit": "Cel",
+          "range": {
+            "low": 36.0,
+            "high": 37.5
+          }
+        }
+      ]
+    },
+    {
+      "key": "sandbox-elder",
+      "patient": {
+        "names": [
+          {
+            "family": "SandboxElder",
+            "given": [
+              "Efa"
+            ]
+          }
+        ],
+        "birth_date": "1942-09-01",
+        "identifiers": [
+          {
+            "system": "https://fhir.nhs.uk/Id/nhs-number",
+            "value": "9991008225"
+          }
+        ]
+      },
+      "observations": [
+        {
+          "code": "8867-4",
+          "value": 88,
+          "unit": "/min",
+          "range": {
+            "low": 60,
+            "high": 100
+          }
+        }
+      ],
+      "allergies": [
+        {
+          "substance": "Latex",
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "key": "sandbox-fir",
+      "patient": {
+        "names": [
+          {
+            "family": "SandboxFir",
+            "given": [
+              "Finn"
+            ]
+          }
+        ],
+        "birth_date": "1945-02-08",
+        "identifiers": [
+          {
+            "system": "https://fhir.nhs.uk/Id/nhs-number",
+            "value": "9991009590"
+          }
+        ]
+      },
+      "observations": [
+        {
+          "code": "8867-4",
+          "value": 95,
+          "unit": "/min",
+          "range": {
+            "low": 60,
+            "high": 100
+          }
+        }
+      ]
+    },
+    {
+      "key": "sandbox-gorse",
+      "patient": {
+        "names": [
+          {
+            "family": "SandboxGorse",
+            "given": [
+              "Gwen"
+            ]
+          }
+        ],
+        "birth_date": "1948-07-15",
+        "identifiers": [
+          {
+            "system": "https://fhir.nhs.uk/Id/nhs-number",
+            "value": "9991010963"
+          }
+        ]
+      },
+      "observations": [
+        {
+          "code": "8867-4",
+          "value": 102,
+          "unit": "/min",
+          "range": {
+            "low": 60,
+            "high": 100
+          }
+        },
+        {
+          "code": "8310-5",
+          "value": 37.2,
+          "unit": "Cel",
+          "range": {
+            "low": 36.0,
+            "high": 37.5
+          }
+        }
+      ]
+    },
+    {
+      "key": "sandbox-hazel",
+      "patient": {
+        "names": [
+          {
+            "family": "SandboxHazel",
+            "given": [
+              "Huw"
+            ]
+          }
+        ],
+        "birth_date": "1951-12-22",
+        "identifiers": [
+          {
+            "system": "https://fhir.nhs.uk/Id/nhs-number",
+            "value": "9991012338"
+          }
+        ]
+      },
+      "observations": [
+        {
+          "code": "8867-4",
+          "value": 109,
+          "unit": "/min",
+          "range": {
+            "low": 60,
+            "high": 100
+          }
+        }
+      ]
+    },
+    {
+      "key": "sandbox-ivy",
+      "patient": {
+        "names": [
+          {
+            "family": "SandboxIvy",
+            "given": [
+              "Iris"
+            ]
+          }
+        ],
+        "birth_date": "1954-05-01",
+        "identifiers": [
+          {
+            "system": "https://fhir.nhs.uk/Id/nhs-number",
+            "value": "9991013709"
+          }
+        ]
+      },
+      "observations": [
+        {
+          "code": "8867-4",
+          "value": 61,
+          "unit": "/min",
+          "range": {
+            "low": 60,
+            "high": 100
+          }
+        }
+      ],
+      "allergies": [
+        {
+          "substance": "Peanut",
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "key": "sandbox-juniper",
+      "patient": {
+        "names": [
+          {
+            "family": "SandboxJuniper",
+            "given": [
+              "Jac"
+            ]
+          }
+        ],
+        "birth_date": "1957-10-08",
+        "identifiers": [
+          {
+            "system": "https://fhir.nhs.uk/Id/nhs-number",
+            "value": "9991015078"
+          }
+        ]
+      },
+      "observations": [
+        {
+          "code": "8867-4",
+          "value": 68,
+          "unit": "/min",
+          "range": {
+            "low": 60,
+            "high": 100
+          }
+        },
+        {
+          "code": "8310-5",
+          "value": 37.8,
+          "unit": "Cel",
+          "range": {
+            "low": 36.0,
+            "high": 37.5
+          }
+        }
+      ]
+    },
+    {
+      "key": "sandbox-larch",
+      "patient": {
+        "names": [
+          {
+            "family": "SandboxLarch",
+            "given": [
+              "Kit"
+            ]
+          }
+        ],
+        "birth_date": "1960-03-15",
+        "identifiers": [
+          {
+            "system": "https://fhir.nhs.uk/Id/nhs-number",
+            "value": "9991016449"
+          }
+        ]
+      },
+      "observations": [
+        {
+          "code": "8867-4",
+          "value": 75,
+          "unit": "/min",
+          "range": {
+            "low": 60,
+            "high": 100
+          }
+        }
+      ]
+    },
+    {
+      "key": "sandbox-maple",
+      "patient": {
+        "names": [
+          {
+            "family": "SandboxMaple",
+            "given": [
+              "Lowri"
+            ]
+          }
+        ],
+        "birth_date": "1963-08-22",
+        "identifiers": [
+          {
+            "system": "https://fhir.nhs.uk/Id/nhs-number",
+            "value": "9991019189"
+          }
+        ]
+      },
+      "observations": [
+        {
+          "code": "8867-4",
+          "value": 82,
+          "unit": "/min",
+          "range": {
+            "low": 60,
+            "high": 100
+          }
+        }
+      ]
+    },
+    {
+      "key": "sandbox-nettle",
+      "patient": {
+        "names": [
+          {
+            "family": "SandboxNettle",
+            "given": [
+              "Mali"
+            ]
+          }
+        ],
+        "birth_date": "1966-01-01",
+        "identifiers": [
+          {
+            "system": "https://fhir.nhs.uk/Id/nhs-number",
+            "value": "9991020551"
+          }
+        ]
+      },
+      "observations": [
+        {
+          "code": "8867-4",
+          "value": 89,
+          "unit": "/min",
+          "range": {
+            "low": 60,
+            "high": 100
+          }
+        },
+        {
+          "code": "8310-5",
+          "value": 36.4,
+          "unit": "Cel",
+          "range": {
+            "low": 36.0,
+            "high": 37.5
+          }
+        }
+      ],
+      "allergies": [
+        {
+          "substance": "Aspirin",
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "key": "sandbox-oak",
+      "patient": {
+        "names": [
+          {
+            "family": "SandboxOak",
+            "given": [
+              "Nye"
+            ]
+          }
+        ],
+        "birth_date": "1969-06-08",
+        "identifiers": [
+          {
+            "system": "https://fhir.nhs.uk/Id/nhs-number",
+            "value": "9991021922"
+          }
+        ]
+      },
+      "observations": [
+        {
+          "code": "8867-4",
+          "value": 96,
+          "unit": "/min",
+          "range": {
+            "low": 60,
+            "high": 100
+          }
+        }
+      ]
+    },
+    {
+      "key": "sandbox-pine",
+      "patient": {
+        "names": [
+          {
+            "family": "SandboxPine",
+            "given": [
+              "Owen"
+            ]
+          }
+        ],
+        "birth_date": "1972-11-15",
+        "identifiers": [
+          {
+            "system": "https://fhir.nhs.uk/Id/nhs-number",
+            "value": "9991023291"
+          }
+        ]
+      },
+      "observations": [
+        {
+          "code": "8867-4",
+          "value": 103,
+          "unit": "/min",
+          "range": {
+            "low": 60,
+            "high": 100
+          }
+        }
+      ]
+    },
+    {
+      "key": "sandbox-quince",
+      "patient": {
+        "names": [
+          {
+            "family": "SandboxQuince",
+            "given": [
+              "Pip"
+            ]
+          }
+        ],
+        "birth_date": "1975-04-22",
+        "identifiers": [
+          {
+            "system": "https://fhir.nhs.uk/Id/nhs-number",
+            "value": "9991024662"
+          }
+        ]
+      },
+      "observations": [
+        {
+          "code": "8867-4",
+          "value": 110,
+          "unit": "/min",
+          "range": {
+            "low": 60,
+            "high": 100
+          }
+        },
+        {
+          "code": "8310-5",
+          "value": 37.0,
+          "unit": "Cel",
+          "range": {
+            "low": 36.0,
+            "high": 37.5
+          }
+        }
+      ]
+    },
+    {
+      "key": "sandbox-rowan",
+      "patient": {
+        "names": [
+          {
+            "family": "SandboxRowan",
+            "given": [
+              "Rhys"
+            ]
+          }
+        ],
+        "birth_date": "1978-09-01",
+        "identifiers": [
+          {
+            "system": "https://fhir.nhs.uk/Id/nhs-number",
+            "value": "9991026037"
+          }
+        ]
+      },
+      "observations": [
+        {
+          "code": "8867-4",
+          "value": 62,
+          "unit": "/min",
+          "range": {
+            "low": 60,
+            "high": 100
+          }
+        }
+      ],
+      "allergies": [
+        {
+          "substance": "Shellfish",
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "key": "sandbox-sorrel",
+      "patient": {
+        "names": [
+          {
+            "family": "SandboxSorrel",
+            "given": [
+              "Siân"
+            ]
+          }
+        ],
+        "birth_date": "1981-02-08",
+        "identifiers": [
+          {
+            "system": "https://fhir.nhs.uk/Id/nhs-number",
+            "value": "9991027408"
+          }
+        ]
+      },
+      "observations": [
+        {
+          "code": "8867-4",
+          "value": 69,
+          "unit": "/min",
+          "range": {
+            "low": 60,
+            "high": 100
+          }
+        }
+      ]
+    },
+    {
+      "key": "sandbox-teasel",
+      "patient": {
+        "names": [
+          {
+            "family": "SandboxTeasel",
+            "given": [
+              "Tom"
+            ]
+          }
+        ],
+        "birth_date": "1984-07-15",
+        "identifiers": [
+          {
+            "system": "https://fhir.nhs.uk/Id/nhs-number",
+            "value": "9991028773"
+          }
+        ]
+      },
+      "observations": [
+        {
+          "code": "8867-4",
+          "value": 76,
+          "unit": "/min",
+          "range": {
+            "low": 60,
+            "high": 100
+          }
+        },
+        {
+          "code": "8310-5",
+          "value": 37.6,
+          "unit": "Cel",
+          "range": {
+            "low": 36.0,
+            "high": 37.5
+          }
+        }
+      ]
+    },
+    {
+      "key": "sandbox-umber",
+      "patient": {
+        "names": [
+          {
+            "family": "SandboxUmber",
+            "given": [
+              "Una"
+            ]
+          }
+        ],
+        "birth_date": "1987-12-22",
+        "identifiers": [
+          {
+            "system": "https://fhir.nhs.uk/Id/nhs-number",
+            "value": "9991031510"
+          }
+        ]
+      },
+      "observations": [
+        {
+          "code": "8867-4",
+          "value": 83,
+          "unit": "/min",
+          "range": {
+            "low": 60,
+            "high": 100
+          }
+        }
+      ]
+    },
+    {
+      "key": "sandbox-vetch",
+      "patient": {
+        "names": [
+          {
+            "family": "SandboxVetch",
+            "given": [
+              "Vic"
+            ]
+          }
+        ],
+        "birth_date": "1990-05-01",
+        "identifiers": [
+          {
+            "system": "https://fhir.nhs.uk/Id/nhs-number",
+            "value": "9991032886"
+          }
+        ]
+      },
+      "observations": [
+        {
+          "code": "8867-4",
+          "value": 90,
+          "unit": "/min",
+          "range": {
+            "low": 60,
+            "high": 100
+          }
+        }
+      ],
+      "allergies": [
+        {
+          "substance": "Ibuprofen",
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "key": "sandbox-willow",
+      "patient": {
+        "names": [
+          {
+            "family": "SandboxWillow",
+            "given": [
+              "Wyn"
+            ]
+          }
+        ],
+        "birth_date": "1993-10-08",
+        "identifiers": [
+          {
+            "system": "https://fhir.nhs.uk/Id/nhs-number",
+            "value": "9991034250"
+          }
+        ]
+      },
+      "observations": [
+        {
+          "code": "8867-4",
+          "value": 97,
+          "unit": "/min",
+          "range": {
+            "low": 60,
+            "high": 100
+          }
+        },
+        {
+          "code": "8310-5",
+          "value": 36.2,
+          "unit": "Cel",
+          "range": {
+            "low": 36.0,
+            "high": 37.5
+          }
+        }
+      ]
+    },
+    {
+      "key": "sandbox-yarrow",
+      "patient": {
+        "names": [
+          {
+            "family": "SandboxYarrow",
+            "given": [
+              "Yan"
+            ]
+          }
+        ],
+        "birth_date": "1996-03-15",
+        "identifiers": [
+          {
+            "system": "https://fhir.nhs.uk/Id/nhs-number",
+            "value": "9991035621"
+          }
+        ]
+      },
+      "observations": [
+        {
+          "code": "8867-4",
+          "value": 104,
+          "unit": "/min",
+          "range": {
+            "low": 60,
+            "high": 100
+          }
+        }
+      ]
+    },
+    {
+      "key": "sandbox-zelkova",
+      "patient": {
+        "names": [
+          {
+            "family": "SandboxZelkova",
+            "given": [
+              "Zoe"
+            ]
+          }
+        ],
+        "birth_date": "1999-08-22",
+        "identifiers": [
+          {
+            "system": "https://fhir.nhs.uk/Id/nhs-number",
+            "value": "9991036997"
+          }
+        ]
+      },
+      "observations": [
+        {
+          "code": "8867-4",
+          "value": 111,
+          "unit": "/min",
+          "range": {
+            "low": 60,
+            "high": 100
+          }
+        }
+      ]
+    }
+  ]
+}

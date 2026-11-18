@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-18 - A synthetic sandbox (TL-9)
+
+- **Clinical risk:** none in a sandbox; loading it into a live record would add 24 false patients, which is why the loader needs an explicit flag and refuses data that is not plainly synthetic.
+- **Built:** `operations/sandbox/dataset.json`: 24 patients, every family name `Sandbox<Word>`, every national number in the 999 range (reserved for testing, never issued) and passing modulus 11, a heart rate each, a temperature for every third and an allergy for every fourth. `scripts/sandbox/load.mjs`: loads it through the API (each record checked and audited as any other), skips a patient already on record so a second run adds nothing, needs `--yes-this-is-a-sandbox`, takes `--url` or `EPR_SANDBOX_URL` and `EPR_SANDBOX_BEARER`. `operations/sandbox/README.md`.
+- **Tested:** `scripts/sandbox/test_load.mjs` in the `docs-load-harness` gate (the dataset passes the synthetic checks; the checks catch a real-looking family name, a number outside the test range, a bad check digit, a repeat and a future birth date; the flag is required; a load against a fake service makes each patient once and a second adds nothing; a refusal stops it). Once by hand against the debug build on a fresh database: 24 patients, 32 observations and 6 allergies in about a third of a second, all accepted by the service's own checks; a second run added nothing.
+- **Not done / not verified:** no referrals, results or tasks in the dataset; the flag is the only guard (the loader cannot tell a sandbox from a live service); not run with login on.
+
 ## 2026-11-18 - Signing in with an integration token (TL-1)
 
 - **Clinical risk:** none new: a token does at most what the integrator role (the ADT feed's) already does, and usually one part of it. A token with `patient-identity:create` can register a patient, as the feed can.

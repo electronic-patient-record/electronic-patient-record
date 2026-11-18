@@ -1635,7 +1635,7 @@ only; nothing here was taken from its code. Open questions OQ-TL1 (who approves 
 - [ ] **TL-8 (M, clinical) — AI summary boundary.** For DO-6: a summary shows, for every sentence, the record items it was
   drawn from, is labelled a draft, and is filed only by a person who has read it. **Acceptance:** a sentence with no
   source is refused; a filed summary names who filed it; a hazard row.
-- [ ] **TL-9 (S) — A documented sandbox.** A synthetic dataset and a script that loads it into a fresh deployment, for
+- [x] **TL-9 (S) — A documented sandbox.** **Done 2026-11-18:** `operations/sandbox/dataset.json` (24 patients, `Sandbox` family names, 999-range national numbers that pass modulus 11, observations and allergies) and `node scripts/sandbox/load.mjs --yes-this-is-a-sandbox` (through the API, re-runnable, refuses without the flag or with data that is not plainly synthetic); tested in `docs-load-harness` and once against a real service. A synthetic dataset and a script that loads it into a fresh deployment, for
   integrators and training, with no real person in it. **Acceptance:** one command makes a usable sandbox; the data
   passes the identifier and name checks for synthetic data.
 - [x] **TL-10 (S, decision, clinical) — Access by licensed jurisdiction.** **Decided 2026-11-17 by the maintainer: yes**, a target deployment needs it (OQ-TL2 answered); building it is TL-15. Decide (OQ-TL2) whether any target deployment
