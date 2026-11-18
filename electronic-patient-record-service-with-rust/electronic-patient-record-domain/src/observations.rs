@@ -20,6 +20,7 @@
 //!   low or high, and strictly outside the critical range is critical.
 
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 /// A supported vital sign.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -153,6 +154,38 @@ pub enum Flag {
     High,
     /// Above the critical range.
     CriticalHigh,
+}
+
+impl Flag {
+    /// The kebab-case word, as serialised.
+    #[must_use]
+    pub fn word(self) -> &'static str {
+        match self {
+            Flag::CriticalLow => "critical-low",
+            Flag::Low => "low",
+            Flag::Normal => "normal",
+            Flag::High => "high",
+            Flag::CriticalHigh => "critical-high",
+        }
+    }
+}
+
+/// Whether `o` is outside its reference or critical range. No value, no range, or a range that makes no sense is not
+/// out of range: [`flag`] gives no flag, and no flag is never read as abnormal or as normal.
+#[must_use]
+pub fn out_of_range(o: &Observation) -> bool {
+    flag(o).is_some_and(|f| f != Flag::Normal)
+}
+
+/// The facts an observation's task events carry (TL-3): `code`, the LOINC code, and `flag`, the [`Flag`] word, only
+/// when there is a flag.
+#[must_use]
+pub fn task_facts(o: &Observation) -> BTreeMap<String, String> {
+    let mut facts = BTreeMap::from([("code".to_string(), o.code.clone())]);
+    if let Some(f) = flag(o) {
+        facts.insert("flag".to_string(), f.word().to_string());
+    }
+    facts
 }
 
 /// Whether a bound is absent or a finite number (not infinity or NaN).
@@ -576,5 +609,50 @@ mod tests {
             serde_json::from_str(r#"{"code":"8867-4","absent_reason":"declined"}"#).unwrap();
         assert_eq!(none.value, None);
         assert_eq!(none.absent_reason, Some(AbsentReason::Declined));
+    }
+
+    #[test]
+    fn task_facts_carry_the_flag_only_when_there_is_one_and_out_of_range_is_never_a_guess() {
+        let mut o = Observation {
+            code: "8867-4".into(),
+            value: Some(130.0),
+            unit: Some("/min".into()),
+            absent_reason: None,
+            range: Some(Range {
+                low: Some(60.0),
+                high: Some(100.0),
+            }),
+            critical: Some(Range {
+                low: Some(40.0),
+                high: Some(140.0),
+            }),
+        };
+        for (v, word, out) in [
+            (30.0, "critical-low", true),
+            (50.0, "low", true),
+            (60.0, "normal", false),
+            (130.0, "high", true),
+            (150.0, "critical-high", true),
+        ] {
+            o.value = Some(v);
+            assert_eq!(task_facts(&o).get("flag").map(String::as_str), Some(word));
+            assert_eq!(out_of_range(&o), out, "{v}");
+            assert_eq!(serde_json::to_value(flag(&o).unwrap()).unwrap(), word);
+        }
+        o.range = None;
+        o.critical = None;
+        assert!(!task_facts(&o).contains_key("flag"), "no range, no flag");
+        assert!(!out_of_range(&o));
+        assert_eq!(
+            task_facts(&o).get("code").map(String::as_str),
+            Some("8867-4")
+        );
+        for fact in task_facts(&o).keys().chain(["flag".to_string()].iter()) {
+            assert!(
+                crate::task_rules::Event::ObservationOutOfRange
+                    .facts()
+                    .contains(&fact.as_str())
+            );
+        }
     }
 }

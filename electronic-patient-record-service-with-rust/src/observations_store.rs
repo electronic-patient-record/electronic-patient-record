@@ -12,6 +12,8 @@ use crate::links;
 use crate::observations::{self, Flag, Observation};
 use crate::patients_store::{self, StoreError};
 use crate::pool::Db;
+use crate::task_rules::{Event, Rule};
+use crate::tasks_store::{self, Source};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgRow;
 use sqlx::{AssertSqlSafe, Row};
@@ -337,7 +339,8 @@ fn utc_text(record: &ObservationRecord, now: jiff::Timestamp) -> Result<String, 
         .map_err(|(_, m)| StoreError::BadQuery(m))
 }
 
-/// Record a new observation at version 1. `site_zone` is the site's zone now.
+/// Record a new observation at version 1. `site_zone` is the site's zone now. One outside its range raises
+/// `observation-out-of-range` (TL-3) under the service's task rules ([`tasks_store::rules`]), on the same connection.
 ///
 /// # Errors
 ///
@@ -351,6 +354,35 @@ pub async fn create(
     record: &ObservationRecord,
     site_zone: &str,
     now: jiff::Timestamp,
+) -> Result<StoredObservation, StoreError> {
+    create_with_rules(
+        db,
+        patient_id,
+        author,
+        reason,
+        record,
+        site_zone,
+        now,
+        tasks_store::rules()?,
+    )
+    .await
+}
+
+/// [`create`] under the given task rules instead of the service's: the same write, for a test of a rule.
+///
+/// # Errors
+///
+/// As [`create`].
+#[allow(clippy::too_many_arguments)]
+pub async fn create_with_rules(
+    db: impl Into<Db<'_>>,
+    patient_id: &str,
+    author: &str,
+    reason: Option<&str>,
+    record: &ObservationRecord,
+    site_zone: &str,
+    now: jiff::Timestamp,
+    rules: &[Rule],
 ) -> Result<StoredObservation, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
@@ -382,7 +414,28 @@ pub async fn create(
         .await
         .map_err(db_err)?
         .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
-    row_to_observation(&row)
+    let stored = row_to_observation(&row)?;
+    let o = stored.record.observation();
+    if observations::out_of_range(&o) {
+        tasks_store::raise(
+            &mut *db,
+            rules,
+            Event::ObservationOutOfRange,
+            &observations::task_facts(&o),
+            &stored.patient_id,
+            &source(&stored.id),
+        )
+        .await?;
+    }
+    Ok(stored)
+}
+
+/// The task source for an observation.
+fn source(observation_id: &str) -> Source {
+    Source {
+        kind: "observation".into(),
+        id: observation_id.to_string(),
+    }
 }
 
 /// The current version of every observation of a patient, every status, newest measurement first. It
@@ -548,12 +601,58 @@ pub async fn update(
     )
     .await?;
     match appended {
-        crate::store::Appended::Row(row) => row_to_observation(&row),
+        crate::store::Appended::Row(row) => {
+            let stored = row_to_observation(&row)?;
+            raise_for_change(&mut *db, &was, &stored).await?;
+            Ok(stored)
+        }
         crate::store::Appended::Taken => {
             let current = current(&mut *db, patient_id, observation_id).await?.version;
             Err(StoreError::Conflict { current })
         }
     }
+}
+
+/// The task event a new version raises (TL-3), on the writer's connection: entered in error raises
+/// `observation-entered-in-error` with the facts as they were, so the tasks the value made can be cancelled; a version
+/// out of range where the last was not raises `observation-out-of-range`, so a correction into range and back, or a
+/// second save of the same abnormal value, makes no second task.
+async fn raise_for_change(
+    conn: &mut sqlx::PgConnection,
+    was: &StoredObservation,
+    now: &StoredObservation,
+) -> Result<(), StoreError> {
+    let (before, after) = (was.record.observation(), now.record.observation());
+    let event = if now.record.status == Status::EnteredInError
+        && was.record.status != Status::EnteredInError
+    {
+        Some((
+            Event::ObservationEnteredInError,
+            observations::task_facts(&before),
+        ))
+    } else if now.record.status == Status::Final
+        && observations::out_of_range(&after)
+        && !observations::out_of_range(&before)
+    {
+        Some((
+            Event::ObservationOutOfRange,
+            observations::task_facts(&after),
+        ))
+    } else {
+        None
+    };
+    if let Some((event, facts)) = event {
+        tasks_store::raise(
+            conn,
+            tasks_store::rules()?,
+            event,
+            &facts,
+            &now.patient_id,
+            &source(&now.id),
+        )
+        .await?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]

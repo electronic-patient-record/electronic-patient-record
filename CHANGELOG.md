@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-18 - Observations raise task events (TL-3; H-059)
+
+- **Clinical risk:** yes, in time, as H-059: once a rule is approved, an observation out of range will make a task and entering it in error will cancel it. Every built-in rule is still a draft, so a running service makes none. H-059 stays open.
+- **Built:** `observations::out_of_range`, `task_facts` (`code`, and `flag` only when there is one) and `Flag::word`; `observations_store::create` raises `observation-out-of-range`, and `update` raises `observation-entered-in-error` (facts as they were) or `observation-out-of-range` when the new version is out of range and the last was not. `create_with_rules` for a test. Spec events table updated.
+- **Tested:** a unit test of the flags and facts (five values, no range); a database test that in-range and low values make no task under a rule for high, a high one makes one, a correction to another high value makes no second, and entered in error cancels it naming the event. 603 unit and HTTP tests; on a fresh database every database test passes (195) except the six FHIR validator tests, not run here.
+- **Not done / not verified:** the referral hooks; a correction from out of range back into range does not cancel the task (no event says so); on this machine's long-lived test database three older tests fail on accumulated data (a feed refusal list, a duplicate name, an overdue list) and pass on a fresh one.
+
 ## 2026-11-18 - Results raise task events; the site's holidays (TL-3; H-059)
 
 - **Clinical risk:** yes, in time, as H-059 says: once a rule is approved, filing a result will make a task and signing it off will cancel it, and the due day now skips the site's holidays. Today every built-in rule is a draft, so a running service makes no task. H-059 stays open.

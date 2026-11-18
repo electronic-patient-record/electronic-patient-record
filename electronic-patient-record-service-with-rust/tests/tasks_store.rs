@@ -2,8 +2,12 @@
 //! the caller's transaction; a rolled-back write leaves no task; an event cancels only its own source's tasks; a person
 //! closes a task with a reason at the version read; the tables refuse change; each reminder is decided once, and a
 //! late one follows its rule. Filing a result raises its event in the same transaction, and signing it off cancels
-//! its task.
+//! its task; an observation out of range makes one, and entered in error cancels it.
 
+use electronic_patient_record::observations::Range;
+use electronic_patient_record::observations_store::{
+    self, ObservationRecord, Status as ObservationStatus,
+};
 use electronic_patient_record::patients_store::{self, StoreError};
 use electronic_patient_record::results::{Interpretation, ResultRecord, Status as ResultStatus};
 use electronic_patient_record::results_store;
@@ -489,5 +493,144 @@ async fn filing_a_result_makes_its_task_in_the_same_transaction_and_signing_it_o
     assert_eq!(
         store::one(&db, &open[0].id).await.unwrap().version,
         task.version
+    );
+}
+
+fn observation_rules(team: &str) -> Vec<task_rules::Rule> {
+    task_rules::parse(
+        &format!(
+            r#"
+[[rule]]
+id = "high-heart-rate"
+version = 1
+title = "High heart rate"
+approved_by = "A Clinician"
+approved_on = "2026-11-18"
+event = "observation-out-of-range"
+cancel_on = ["observation-entered-in-error"]
+[[rule.when]]
+fact = "flag"
+any_of = ["high", "critical-high"]
+[rule.task]
+team = "{team}"
+title = "Review the heart rate"
+due_working_days = 0
+late_reminder = "send-once"
+"#
+        ),
+        "test",
+    )
+    .unwrap()
+}
+
+fn heart_rate(value: f64, status: ObservationStatus) -> ObservationRecord {
+    ObservationRecord {
+        code: "8867-4".into(),
+        value: Some(value),
+        unit: Some("/min".into()),
+        absent_reason: None,
+        range: Some(Range {
+            low: Some(60.0),
+            high: Some(100.0),
+        }),
+        critical: None,
+        effective_at: "2026-11-18T08:00:00Z".into(),
+        status,
+    }
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn an_out_of_range_observation_makes_its_task_and_entered_in_error_cancels_it() {
+    let db = db().await;
+    let team = format!("team-{}", stamp());
+    let rules = observation_rules(&team);
+    let p = patient(&db).await;
+    let now: jiff::Timestamp = "2026-11-18T09:00:00Z".parse().unwrap();
+    let open_for = |all: Vec<store::Task>, id: &str| {
+        all.into_iter()
+            .filter(|t| t.source.id == id)
+            .collect::<Vec<_>>()
+    };
+
+    // In range, or low (the rule asks only for high): no task.
+    for v in [72.0, 50.0] {
+        let o = observations_store::create_with_rules(
+            &db,
+            &p,
+            "nurse-1",
+            None,
+            &heart_rate(v, ObservationStatus::Final),
+            "UTC",
+            now,
+            &rules,
+        )
+        .await
+        .unwrap();
+        assert!(open_for(store::for_team(&db, &team).await.unwrap().0, &o.id).is_empty());
+    }
+
+    // High: one task, from this observation.
+    let high = observations_store::create_with_rules(
+        &db,
+        &p,
+        "nurse-1",
+        None,
+        &heart_rate(130.0, ObservationStatus::Final),
+        "UTC",
+        now,
+        &rules,
+    )
+    .await
+    .unwrap();
+    let open = open_for(store::for_team(&db, &team).await.unwrap().0, &high.id);
+    assert_eq!(open.len(), 1);
+    assert_eq!(open[0].source.kind, "observation");
+
+    // Corrected to another high value: still high, so no second task.
+    observations_store::update(
+        &db,
+        &p,
+        &high.id,
+        1,
+        "nurse-1",
+        Some("misread"),
+        &heart_rate(135.0, ObservationStatus::Final),
+        "UTC",
+        now,
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        open_for(store::for_team(&db, &team).await.unwrap().0, &high.id).len(),
+        1,
+        "a second save of a high value makes no second task"
+    );
+
+    // Entered in error: its task is cancelled, naming the event.
+    let mut conn = db.acquire().await.unwrap();
+    let mut tx = conn.begin().await.unwrap();
+    observations_store::update(
+        &mut *tx,
+        &p,
+        &high.id,
+        2,
+        "nurse-1",
+        Some("wrong patient"),
+        &heart_rate(130.0, ObservationStatus::EnteredInError),
+        "UTC",
+        now,
+    )
+    .await
+    .unwrap();
+    tx.commit().await.unwrap();
+    assert!(open_for(store::for_team(&db, &team).await.unwrap().0, &high.id).is_empty());
+    let task = store::one(&db, &open[0].id).await.unwrap();
+    assert_eq!(
+        (task.status, task.cancelled_by.as_deref()),
+        (
+            Status::Cancelled,
+            Some("event:observation-entered-in-error")
+        )
     );
 }
