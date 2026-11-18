@@ -278,6 +278,39 @@ pub enum Priority {
     Stat,
 }
 
+impl Priority {
+    /// The FHIR word, as serialised.
+    #[must_use]
+    pub fn word(self) -> &'static str {
+        match self {
+            Priority::Routine => "routine",
+            Priority::Urgent => "urgent",
+            Priority::Asap => "asap",
+            Priority::Stat => "stat",
+        }
+    }
+}
+
+/// The task event a referral reaching `state` raises (TL-3), with its facts: `referral-closed` with `state` when the
+/// state is an end ([`State::is_end`]), otherwise `referral-stepped` with `state` and `priority`. A new referral is a
+/// step into `requested`.
+#[must_use]
+pub fn task_event(
+    state: State,
+    priority: Priority,
+) -> (
+    crate::task_rules::Event,
+    std::collections::BTreeMap<String, String>,
+) {
+    let mut facts =
+        std::collections::BTreeMap::from([("state".to_string(), state.as_str().to_string())]);
+    if state.is_end() {
+        return (crate::task_rules::Event::ReferralClosed, facts);
+    }
+    facts.insert("priority".to_string(), priority.word().to_string());
+    (crate::task_rules::Event::ReferralStepped, facts)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -501,5 +534,35 @@ mod tests {
             refused.to_string(),
             "a referral that is completed cannot take Accept"
         );
+    }
+
+    #[test]
+    fn a_step_raises_stepped_with_its_priority_and_an_end_raises_closed() {
+        for state in State::ALL {
+            let (event, facts) = task_event(state, Priority::Urgent);
+            assert_eq!(facts.get("state").map(String::as_str), Some(state.as_str()));
+            for fact in facts.keys() {
+                assert!(event.facts().contains(&fact.as_str()), "{state:?} {fact}");
+            }
+            if state.is_end() {
+                assert_eq!(event, crate::task_rules::Event::ReferralClosed, "{state:?}");
+                assert!(!facts.contains_key("priority"));
+            } else {
+                assert_eq!(
+                    event,
+                    crate::task_rules::Event::ReferralStepped,
+                    "{state:?}"
+                );
+                assert_eq!(facts.get("priority").map(String::as_str), Some("urgent"));
+            }
+        }
+        for p in [
+            Priority::Routine,
+            Priority::Urgent,
+            Priority::Asap,
+            Priority::Stat,
+        ] {
+            assert_eq!(serde_json::to_value(p).unwrap(), p.word());
+        }
     }
 }

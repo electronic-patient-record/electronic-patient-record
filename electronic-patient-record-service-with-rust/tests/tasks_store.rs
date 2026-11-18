@@ -2,13 +2,16 @@
 //! the caller's transaction; a rolled-back write leaves no task; an event cancels only its own source's tasks; a person
 //! closes a task with a reason at the version read; the tables refuse change; each reminder is decided once, and a
 //! late one follows its rule. Filing a result raises its event in the same transaction, and signing it off cancels
-//! its task; an observation out of range makes one, and entered in error cancels it.
+//! its task; an observation out of range makes one, and entered in error cancels it; an urgent referral makes one, and closing
+//! the referral cancels it.
 
 use electronic_patient_record::observations::Range;
 use electronic_patient_record::observations_store::{
     self, ObservationRecord, Status as ObservationStatus,
 };
 use electronic_patient_record::patients_store::{self, StoreError};
+use electronic_patient_record::referral::{Actor, Event as ReferralEvent};
+use electronic_patient_record::referrals_store::{self, Priority, Referral, Step};
 use electronic_patient_record::results::{Interpretation, ResultRecord, Status as ResultStatus};
 use electronic_patient_record::results_store;
 use electronic_patient_record::task_rules::{self, Event, ReminderNow};
@@ -632,5 +635,130 @@ async fn an_out_of_range_observation_makes_its_task_and_entered_in_error_cancels
             Status::Cancelled,
             Some("event:observation-entered-in-error")
         )
+    );
+}
+
+fn referral_rules(team: &str) -> Vec<task_rules::Rule> {
+    task_rules::parse(
+        &format!(
+            r#"
+[[rule]]
+id = "triage-urgent-referral"
+version = 1
+title = "Triage an urgent referral"
+approved_by = "A Clinician"
+approved_on = "2026-11-18"
+event = "referral-stepped"
+cancel_on = ["referral-closed"]
+[[rule.when]]
+fact = "state"
+any_of = ["requested"]
+[[rule.when]]
+fact = "priority"
+any_of = ["urgent", "stat"]
+[rule.task]
+team = "{team}"
+title = "Triage the referral"
+due_working_days = 1
+late_reminder = "send-once"
+"#
+        ),
+        "test",
+    )
+    .unwrap()
+}
+
+fn referral(priority: Priority) -> Referral {
+    Referral {
+        recipient: "Cardiology outpatients".into(),
+        reason: "Exertional chest pain".into(),
+        question: "Is this angina?".into(),
+        priority,
+        external_ids: vec![],
+        replaces: None,
+    }
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn an_urgent_referral_makes_its_task_and_closing_the_referral_cancels_it() {
+    let db = db().await;
+    let team = format!("team-{}", stamp());
+    let rules = referral_rules(&team);
+    let p = patient(&db).await;
+    let now = jiff::Timestamp::now();
+    let open_for = |all: Vec<store::Task>, id: &str| {
+        all.into_iter()
+            .filter(|t| t.source.id == id)
+            .collect::<Vec<_>>()
+    };
+
+    let routine = referrals_store::request_with_rules(
+        &db,
+        "gp-1",
+        &p,
+        &referral(Priority::Routine),
+        now,
+        &rules,
+    )
+    .await
+    .unwrap();
+    assert!(open_for(store::for_team(&db, &team).await.unwrap().0, &routine.id).is_empty());
+
+    let urgent = referrals_store::request_with_rules(
+        &db,
+        "gp-1",
+        &p,
+        &referral(Priority::Urgent),
+        now,
+        &rules,
+    )
+    .await
+    .unwrap();
+    let open = open_for(store::for_team(&db, &team).await.unwrap().0, &urgent.id);
+    assert_eq!(open.len(), 1);
+    assert_eq!(open[0].source.kind, "referral");
+
+    // Accepted: a step, which this rule neither makes nor cancels on.
+    let step = |event, version| {
+        referrals_store::advance(
+            &db,
+            &urgent.id,
+            version,
+            Step {
+                actor: Actor::Recipient,
+                by: "cardiology-1",
+                event,
+                note: None,
+            },
+            now,
+        )
+    };
+    step(ReferralEvent::Accept, 1).await.unwrap();
+    assert_eq!(
+        open_for(store::for_team(&db, &team).await.unwrap().0, &urgent.id).len(),
+        1
+    );
+
+    // Completed: closed, so its task is cancelled, naming the event.
+    referrals_store::advance(
+        &db,
+        &urgent.id,
+        2,
+        Step {
+            actor: Actor::Recipient,
+            by: "cardiology-1",
+            event: ReferralEvent::Outcome,
+            note: Some("Stable angina; started on treatment"),
+        },
+        now,
+    )
+    .await
+    .unwrap();
+    assert!(open_for(store::for_team(&db, &team).await.unwrap().0, &urgent.id).is_empty());
+    let task = store::one(&db, &open[0].id).await.unwrap();
+    assert_eq!(
+        (task.status, task.cancelled_by.as_deref()),
+        (Status::Cancelled, Some("event:referral-closed"))
     );
 }

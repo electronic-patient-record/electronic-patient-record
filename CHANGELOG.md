@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-18 - Referrals raise task events (TL-3; H-059)
+
+- **Clinical risk:** yes, in time, as H-059: once a rule is approved, a referral step will make a task (say, triage of an urgent request) and its end will cancel it. Every built-in rule is still a draft. H-059 stays open.
+- **Built:** `referral::task_event` and `Priority::word`: a step into any state that is not an end raises `referral-stepped` with `state` and `priority`, an end raises `referral-closed` with `state`; `referrals_store::request` raises it for `requested` and `advance` for each step, so the routes and the inbound referral feed both raise. `request_with_rules` for a test. Spec events table updated.
+- **Tested:** a unit test over every state; a database test that a routine request makes no task under a rule for urgent ones, an urgent one makes one, accepting it changes nothing, and its outcome cancels the task naming `referral-closed`. 604 unit and HTTP tests; on a fresh database every database test passes (196) except the six FHIR validator tests, not run here.
+- **Not done / not verified:** the referral timeouts (PC-3) raise nothing of their own; a result's later versions; the routes, the reminder loop and a site's rules file.
+
 ## 2026-11-18 - Observations raise task events (TL-3; H-059)
 
 - **Clinical risk:** yes, in time, as H-059: once a rule is approved, an observation out of range will make a task and entering it in error will cancel it. Every built-in rule is still a draft, so a running service makes none. H-059 stays open.

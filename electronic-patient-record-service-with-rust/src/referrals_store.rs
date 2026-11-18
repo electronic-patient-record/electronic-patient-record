@@ -13,6 +13,8 @@ use crate::ids;
 use crate::patients_store::StoreError;
 use crate::pool::Db;
 use crate::referral::{self, Actor, Event, State};
+use crate::task_rules::Rule;
+use crate::tasks_store::{self, Source};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgRow;
 use sqlx::{AssertSqlSafe, Row};
@@ -188,7 +190,8 @@ fn check(referral: &Referral) -> Result<(), StoreError> {
     Ok(())
 }
 
-/// Make a referral: version 1, state `requested`.
+/// Make a referral: version 1, state `requested`. Raises `referral-stepped` (TL-3) under the service's task rules
+/// ([`tasks_store::rules`]), on the same connection.
 ///
 /// # Errors
 ///
@@ -200,6 +203,22 @@ pub async fn request(
     patient_id: &str,
     referral: &Referral,
     now: jiff::Timestamp,
+) -> Result<StoredReferral, StoreError> {
+    request_with_rules(db, author, patient_id, referral, now, tasks_store::rules()?).await
+}
+
+/// [`request`] under the given task rules instead of the service's: the same write, for a test of a rule.
+///
+/// # Errors
+///
+/// As [`request`].
+pub async fn request_with_rules(
+    db: impl Into<Db<'_>>,
+    author: &str,
+    patient_id: &str,
+    referral: &Referral,
+    now: jiff::Timestamp,
+    rules: &[Rule],
 ) -> Result<StoredReferral, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
@@ -235,7 +254,32 @@ pub async fn request(
         .await
         .map_err(db_err)?
         .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
-    row_to_referral(&row)
+    let stored = row_to_referral(&row)?;
+    raise(&mut *db, rules, &stored).await?;
+    Ok(stored)
+}
+
+/// Raise the task event for the state `stored` has reached (TL-3): `referral-closed` at an end, otherwise
+/// `referral-stepped` ([`referral::task_event`]), on the writer's connection.
+async fn raise(
+    conn: &mut sqlx::PgConnection,
+    rules: &[Rule],
+    stored: &StoredReferral,
+) -> Result<(), StoreError> {
+    let (event, facts) = referral::task_event(stored.state, stored.referral.priority);
+    tasks_store::raise(
+        conn,
+        rules,
+        event,
+        &facts,
+        &stored.patient_id,
+        &Source {
+            kind: "referral".into(),
+            id: stored.id.clone(),
+        },
+    )
+    .await
+    .map(|_| ())
 }
 
 /// Refuse to replace a referral that is not this patient's, not redirected, or already replaced. A
@@ -383,6 +427,9 @@ pub struct Step<'a> {
 /// [`StoreError::NotFound`]; [`StoreError::Conflict`] (a stale or racing version);
 /// [`StoreError::BadQuery`] (the actor is not the one this event expects, the state table does not allow
 /// it, or a needed note is missing or too long).
+///
+/// Each step raises its task event (TL-3) on the same connection: `referral-closed` at an end, otherwise
+/// `referral-stepped`.
 pub async fn advance(
     db: impl Into<Db<'_>>,
     referral_id: &str,
@@ -449,7 +496,11 @@ pub async fn advance(
     )
     .await?;
     match appended {
-        crate::store::Appended::Row(row) => row_to_referral(&row),
+        crate::store::Appended::Row(row) => {
+            let stored = row_to_referral(&row)?;
+            raise(&mut *db, tasks_store::rules()?, &stored).await?;
+            Ok(stored)
+        }
         crate::store::Appended::Taken => {
             let current = current(&mut *db, referral_id).await?.version;
             Err(StoreError::Conflict { current })

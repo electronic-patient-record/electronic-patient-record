@@ -43,6 +43,8 @@ then too, so a rules file that does not load stops the service rather than the f
 | `result-signed-off` | `results_store::sign_off`, a new sign-off only (signing again raises nothing) | as filed, from the version signed | `result` |
 | `observation-out-of-range` | `observations_store::create`, an observation outside its reference or critical range; `update`, a version out of range when the last was not (a second save of the same abnormal value raises nothing) | `code` (LOINC); `flag` (`critical-low`, `low`, `high`, `critical-high`) | `observation`, its id |
 | `observation-entered-in-error` | `observations_store::update`, the version that marks it entered in error | `code` and `flag` as they were before, so the tasks the value made can be cancelled | `observation` |
+| `referral-stepped` | `referrals_store::request` (a step into `requested`) and `advance`, every step that does not end the referral | `state` (the state reached); `priority` (`routine`, `urgent`, `asap`, `stat`) | `referral`, its id |
+| `referral-closed` | `referrals_store::advance`, a step into an end state (`declined`, `completed`, `cancelled`, `redirected`) | `state` | `referral` |
 
 Raising an event (`tasks_store::raise`) first cancels the source's open tasks that the event cancels, then makes what
 the approved rules call for, so a new event replaces what an older one asked and never cancels a task it has just made.
@@ -66,7 +68,7 @@ with the reason and who: a person, or `event:<word>`. `task_current` is the late
 
 ## Not built
 
-The referral events (`referral-stepped`, `referral-closed`); an observation with no value, no range, or a range that
+An observation with no value, no range, or a range that
 makes no sense has no flag and raises nothing (never read as normal or abnormal); a result's later versions (amended, corrected, entered in error) raise nothing yet, so a task made
 for a result later entered in error stays open until a person closes it; results from an HL7 feed (none is built);
 routes (a team's list, close, a dry run); the reminder sender's loop; a site's own rules file (only the built-in
