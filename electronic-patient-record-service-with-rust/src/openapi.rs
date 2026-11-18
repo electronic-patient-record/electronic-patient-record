@@ -647,6 +647,22 @@ fn watch_list_schemas() -> Value {
 fn task_schemas() -> Value {
     let event = json!({"enum": ["result-filed", "result-signed-off", "observation-out-of-range",
         "observation-entered-in-error", "referral-stepped", "referral-closed"]});
+    let mut all = task_schema_list(&event);
+    // A list item is a task and the day the reminder sender last reminded it.
+    let mut item = all["Task"].clone();
+    item["required"]
+        .as_array_mut()
+        .expect("an array")
+        .push(json!("reminded_on"));
+    item["properties"]["reminded_on"] = json!({"type": ["string", "null"],
+        "description": "YYYY-MM-DD, the latest reminder sent (EPR_TASK_REMINDER_MINUTES); null when never reminded."});
+    item["description"] = json!("A task on a team's list, with the day it was last reminded.");
+    all["TaskListItem"] = item;
+    all
+}
+
+/// The task schemas other than the list item, which [`task_schemas`] builds from `Task`.
+fn task_schema_list(event: &Value) -> Value {
     json!({
         "Task": {
             "type": "object",
@@ -675,7 +691,7 @@ fn task_schemas() -> Value {
             "description": "A team's open tasks, due first, up to `limit`.",
             "properties": {
                 "team": {"type": "string"},
-                "items": {"type": "array", "items": {"$ref": "#/components/schemas/Task"}},
+                "items": {"type": "array", "items": {"$ref": "#/components/schemas/TaskListItem"}},
                 "limit": {"type": "integer"},
                 "more": {"type": "boolean", "description": "True when more are open than `limit` allowed: the list is cut short and the latest due are not shown."},
                 "site_time_zone": {"type": "string"}

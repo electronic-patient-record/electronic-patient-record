@@ -48,6 +48,8 @@ x-api-environment: &api-environment
   # The site's IANA time zone, whose calendar day a patient's age is counted on; blank means UTC.
   EPR_SITE_TIME_ZONE: ${EPR_SITE_TIME_ZONE:-}
   EPR_SITE_HOLIDAYS: ${EPR_SITE_HOLIDAYS:-}
+  # Minutes between runs of the task reminder sender (1 to 1440); blank is off, and no reminder is decided.
+  EPR_TASK_REMINDER_MINUTES: ${EPR_TASK_REMINDER_MINUTES:-}
   SMTP_HOST: ${SMTP_HOST:-localhost}
   SMTP_PORT: ${SMTP_PORT:-587}
   SMTP_USER: ${SMTP_USER:-}

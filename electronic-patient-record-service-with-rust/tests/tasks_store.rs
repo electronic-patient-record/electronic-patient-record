@@ -14,6 +14,7 @@ use electronic_patient_record::referral::{Actor, Event as ReferralEvent};
 use electronic_patient_record::referrals_store::{self, Priority, Referral, Step};
 use electronic_patient_record::results::{Interpretation, ResultRecord, Status as ResultStatus};
 use electronic_patient_record::results_store;
+use electronic_patient_record::task_reminders;
 use electronic_patient_record::task_rules::{self, Event, ReminderNow};
 use electronic_patient_record::tasks_store::{self as store, Source, Status};
 use electronic_patient_record_matcher::{HumanName, Patient};
@@ -760,5 +761,83 @@ async fn an_urgent_referral_makes_its_task_and_closing_the_referral_cancels_it()
     assert_eq!(
         (task.status, task.cancelled_by.as_deref()),
         (Status::Cancelled, Some("event:referral-closed"))
+    );
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn the_sender_decides_a_due_reminder_once_and_the_list_shows_the_day() {
+    let db = db().await;
+    let team = format!("team-{}", stamp());
+    let p = patient(&db).await;
+    let mut conn = db.acquire().await.unwrap();
+    let mut tx = conn.begin().await.unwrap();
+    // Made on Friday 2026-11-20: due Tuesday the 24th, reminded Monday the 23rd.
+    let task = store::create_from_event(
+        &mut tx,
+        &rules(&team),
+        Event::ResultFiled,
+        &abnormal(),
+        &p,
+        &Source {
+            kind: "result".into(),
+            id: format!("r-{}", stamp()),
+        },
+        d("2026-11-20"),
+        &BTreeSet::new(),
+    )
+    .await
+    .unwrap()
+    .remove(0);
+    tx.commit().await.unwrap();
+    let decision = |db: PgPool, id: String| async move {
+        sqlx::query_scalar::<_, String>(
+            "SELECT decision FROM task_reminder_decisions WHERE task_id = $1::uuid",
+        )
+        .bind(id)
+        .fetch_all(&db)
+        .await
+        .unwrap()
+    };
+
+    // The day before: nothing to decide for this task.
+    task_reminders::run_once(&db, d("2026-11-22"))
+        .await
+        .unwrap();
+    assert!(decision(db.clone(), task.id.clone()).await.is_empty());
+    assert!(
+        store::reminded_on(&db, std::slice::from_ref(&task.id))
+            .await
+            .unwrap()
+            .is_empty()
+    );
+
+    // Its day: sent, once; a second run finds it decided.
+    let first = task_reminders::run_once(&db, d("2026-11-23"))
+        .await
+        .unwrap();
+    assert!(first.sent >= 1, "{first:?}");
+    assert_eq!(decision(db.clone(), task.id.clone()).await, ["sent"]);
+    task_reminders::run_once(&db, d("2026-11-23"))
+        .await
+        .unwrap();
+    assert_eq!(
+        decision(db.clone(), task.id.clone()).await,
+        ["sent"],
+        "never twice"
+    );
+    assert_eq!(
+        store::reminded_on(&db, std::slice::from_ref(&task.id))
+            .await
+            .unwrap()
+            .get(&task.id),
+        Some(&d("2026-11-23"))
+    );
+    assert_eq!(
+        store::last_run(&db)
+            .await
+            .unwrap()
+            .map(|l| l >= d("2026-11-23")),
+        Some(true)
     );
 }

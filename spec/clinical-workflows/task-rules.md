@@ -65,6 +65,12 @@ with the reason and who: a person, or `event:<word>`. `task_current` is the late
   each run of the sender is recorded (`task_reminder_runs`). A reminder whose day fell after the last run and before
   today was missed while nothing ran: its rule says `send-once` (sent once, now) or `skip` (recorded with why). A
   reminder puts the task on its team's list as reminded; nothing goes to a patient.
+- **The sender** (`task_reminders.rs`) runs every `EPR_TASK_REMINDER_MINUTES` (1 to 1440; a bad value stops the
+  start). Unset, it is off and the start logs a warning: no reminder is decided, so none shows on a list. Each run takes
+  the reminders whose day has come on the site's today, decides each (sent, or skipped with the reason), and records
+  the run; one already decided, by another replica or an earlier run, is left. Each decision is its own write, so a
+  failure part way leaves the rest for the next run. The log line carries counts only. A team's list shows each task's
+  `reminded_on`, the latest day a reminder was sent, or null.
 
 ## Routes
 
@@ -84,5 +90,5 @@ any care team. The service starts only if every built-in rule's team is a role w
 An observation with no value, no range, or a range that
 makes no sense has no flag and raises nothing (never read as normal or abnormal); a result's later versions (amended, corrected, entered in error) raise nothing yet, so a task made
 for a result later entered in error stays open until a person closes it; results from an HL7 feed (none is built);
-the reminder sender's loop; a site's own rules file (only the built-in
+an alert beyond the list (nobody is paged or messaged when a reminder is sent); a site's own rules file (only the built-in
 catalogue runs, and every rule in it is a draft); a screen; who approves a rule (OQ-TL1); teams finer than a role (OQ-TL3).

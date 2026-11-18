@@ -281,6 +281,23 @@ impl App {
         let archive_after =
             crate::audit_retention::archive_months_from_env().map_err(Error::Message)?;
         tokio::spawn(crate::audit_retention::run_loop(ctx.pool(), archive_after));
+        // The task reminder sender (TL-3, TL-4), off unless `EPR_TASK_REMINDER_MINUTES` is set; a bad value stops
+        // the start. Off, no reminder is decided, so the start says so.
+        match crate::task_reminders::interval_from(
+            std::env::var(crate::task_reminders::SETTING)
+                .ok()
+                .as_deref(),
+        )
+        .map_err(Error::Message)?
+        {
+            Some(every) => {
+                tokio::spawn(crate::task_reminders::run_loop(ctx.pool(), every));
+            }
+            None => tracing::warn!(
+                "task reminders are OFF: set {} to decide them",
+                crate::task_reminders::SETTING
+            ),
+        }
         // Country packs the deployment enables (OS-10). A pack that does not load stops the service.
         crate::packs::init().map_err(Error::Message)?;
         // Request limits per token subject (OS-2). A bad setting stops the service starting.

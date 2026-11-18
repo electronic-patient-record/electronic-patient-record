@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-18 - The task reminder sender (TL-3, TL-4; H-059)
+
+- **Clinical risk:** yes, as H-059: a reminder now marks a task on its team's list on its day, or is skipped with the reason after downtime when its rule says so. Off unless set; every built-in rule is still a draft. H-059 stays open.
+- **Built:** `task_reminders.rs`: `EPR_TASK_REMINDER_MINUTES` (1 to 1440; a bad value stops the start; unset is off and the start logs a warning), `run_once` (decide each reminder due on the site's today, once; one already decided is left; record the run), `run_loop` (logs counts only). `tasks_store::reminded_on`; `GET /api/tasks` items carry `reminded_on` (schema `TaskListItem`; `openapi.json` re-blessed). `compose.yaml` passes the setting. Specs: task rules (the sender), API surface.
+- **Tested:** a unit test of the setting (off, blank, 15, 1440, six bad values); a database test that a reminder is not decided the day before, is sent on its day, is not decided twice by a second run, shows as `reminded_on`, and that the run is recorded. 608 unit and HTTP tests; on a fresh database every database test passes (198) except the six FHIR validator tests, not run here.
+- **Found:** the SQL census refused a first draft that compared task ids as text; the query casts to UUIDs.
+- **Not done / not verified:** nobody is alerted when a reminder is sent (it only marks the list); `reminders_due` reads every open task each run, with no limit, which is fine for a scaffold and not measured at scale; the loop itself (as opposed to one run) is not tested; a result's later versions, a site's rules file and a screen are still to do.
+
 ## 2026-11-18 - Task routes: a team's list, closing a task, the dry run (TL-3; H-059; OQ-TL3)
 
 - **Clinical risk:** yes, as H-059: a clinician will see and close their team's tasks here. Every built-in rule is still a draft, so the list is empty in a running service until a rule is approved. H-059 stays open.

@@ -5175,7 +5175,7 @@
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/Task"
+              "$ref": "#/components/schemas/TaskListItem"
             },
             "type": "array"
           },
@@ -5199,6 +5199,124 @@
           "limit",
           "more",
           "site_time_zone"
+        ],
+        "type": "object"
+      },
+      "TaskListItem": {
+        "description": "A task on a team's list, with the day it was last reminded.",
+        "properties": {
+          "author": {
+            "description": "rule:<id>@<version>, or the person who closed it.",
+            "type": "string"
+          },
+          "cancelled_by": {
+            "description": "event:<word>, or the person.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "close_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "due_on": {
+            "description": "YYYY-MM-DD, the site's day.",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "late_reminder": {
+            "enum": [
+              "send-once",
+              "skip"
+            ]
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "recorded_at": {
+            "description": "UTC.",
+            "type": "string"
+          },
+          "reminded_on": {
+            "description": "YYYY-MM-DD, the latest reminder sent (EPR_TASK_REMINDER_MINUTES); null when never reminded.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reminders": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "rule": {
+            "type": "string"
+          },
+          "rule_version": {
+            "type": "integer"
+          },
+          "source": {
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "kind": {
+                "enum": [
+                  "result",
+                  "observation",
+                  "referral"
+                ]
+              }
+            },
+            "required": [
+              "kind",
+              "id"
+            ],
+            "type": "object"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "done",
+              "cancelled"
+            ]
+          },
+          "team": {
+            "description": "A role word: only those who hold it list or close the task.",
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "version": {
+            "description": "1 as made; 2 once closed or cancelled.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "patient_id",
+          "rule",
+          "rule_version",
+          "team",
+          "status",
+          "title",
+          "due_on",
+          "reminders",
+          "late_reminder",
+          "source",
+          "author",
+          "recorded_at",
+          "close_reason",
+          "cancelled_by",
+          "reminded_on"
         ],
         "type": "object"
       },

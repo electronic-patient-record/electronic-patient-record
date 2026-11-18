@@ -1,6 +1,7 @@
 //! Tasks that rules made (TL-3, hazard H-059): a team's list, closing a task, and the dry run of the rules.
 //!
-//! - `GET  /api/tasks?team=<role>`: the team's open tasks, due first, with `limit` and `more`.
+//! - `GET  /api/tasks?team=<role>`: the team's open tasks, due first, with `limit` and `more`; each with
+//!   `reminded_on`, the day the reminder sender last reminded it, or null.
 //! - `POST /api/tasks/{task_id}/close`: `{expected_version, status, reason}`, `done` or `cancelled`, by a person.
 //! - `POST /api/tasks/dry-run`: `{event, facts, day?}`, what the service's rules would make for that event, drafts
 //!   included and marked; nothing is written.
@@ -172,10 +173,26 @@ async fn list(
         )
         .await;
     }
-    let (items, more) = match store::for_team(&ctx.pool(), team).await {
+    let (tasks, more) = match store::for_team(&ctx.pool(), team).await {
         Ok(p) => p,
         Err(e) => return failure(e),
     };
+    let ids: Vec<String> = tasks.iter().map(|t| t.id.clone()).collect();
+    let reminded = match store::reminded_on(&ctx.pool(), &ids).await {
+        Ok(r) => r,
+        Err(e) => return failure(e),
+    };
+    // Each task with the day it was last reminded, or null: what the reminder sender has put on the list.
+    let items: Vec<serde_json::Value> = tasks
+        .iter()
+        .map(|t| {
+            let mut v = serde_json::to_value(t).unwrap_or_default();
+            v["reminded_on"] = reminded
+                .get(&t.id)
+                .map_or(serde_json::Value::Null, |d| d.to_string().into());
+            v
+        })
+        .collect();
     if let Err(r) = audit_resource(
         &ctx.pool(),
         &agent,

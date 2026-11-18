@@ -79,6 +79,7 @@ pub mod store;
 pub use electronic_patient_record_domain::suspicion;
 pub use electronic_patient_record_domain::task_rules;
 pub mod suspicions_store;
+pub mod task_reminders;
 pub mod tasks_store;
 pub mod terminology;
 pub use electronic_patient_record_domain::watch_list;

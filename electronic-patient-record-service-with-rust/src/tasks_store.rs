@@ -556,6 +556,36 @@ pub async fn reminders_due(
     Ok(out)
 }
 
+/// The latest day each of `task_ids` was reminded (a reminder decided `sent`), for a list to show. A task never
+/// reminded is absent.
+///
+/// # Errors
+///
+/// [`StoreError::Db`].
+pub async fn reminded_on(
+    db: impl Into<Db<'_>>,
+    task_ids: &[String],
+) -> Result<BTreeMap<String, Date>, StoreError> {
+    // Only well-formed ids: one that is not a UUID would fail the cast for the whole list.
+    let task_ids: Vec<String> = task_ids.iter().filter_map(|id| ids::uuid(id)).collect();
+    if task_ids.is_empty() {
+        return Ok(BTreeMap::new());
+    }
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let rows: Vec<(String, String)> = sqlx::query_as(
+        "SELECT task_id::text, max(remind_on)::text FROM task_reminder_decisions
+         WHERE decision = 'sent' AND task_id = ANY($1::text[]::uuid[]) GROUP BY task_id",
+    )
+    .bind(&task_ids)
+    .fetch_all(&mut *conn)
+    .await
+    .map_err(db_err)?;
+    Ok(rows
+        .into_iter()
+        .filter_map(|(id, day)| crate::clock::parse_day(&day).map(|d| (id, d)))
+        .collect())
+}
+
 /// Record a reminder's one decision: `None` reason is sent, `Some` is skipped with it. A second decision for the same
 /// task and day is refused by the table, so no reminder is sent twice.
 ///
