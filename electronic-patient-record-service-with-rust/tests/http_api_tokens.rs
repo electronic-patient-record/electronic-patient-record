@@ -203,6 +203,65 @@ async fn only_an_administrator_manages_tokens_and_a_token_is_shown_once_and_neve
             .await;
         assert_eq!(r.status_code(), StatusCode::NOT_FOUND, "{}", r.text());
 
+        // Signing in with a token: it acts as `token:<name>` with the integrator role and only its scopes.
+        let finder = tag("patient-finder");
+        let r = issue(&admin, json!({"name": finder, "scopes": ["patient-identity:search"], "expires_in_days": 1})).await;
+        assert_eq!(r.status_code(), StatusCode::CREATED, "{}", r.text());
+        let issued = r.json::<Value>();
+        let finder_id = issued["id"].as_str().unwrap().to_string();
+        let as_token = bearer(issued["token"].as_str().unwrap());
+        let before: i64 = sqlx::query("SELECT count(*)::bigint AS n FROM audit_events_all WHERE agent = $1")
+            .bind(format!("token:{finder}"))
+            .fetch_one(db)
+            .await
+            .unwrap()
+            .get("n");
+        let r = server
+            .get("/api/patients?family=nobodyatall")
+            .add_header(as_token.0.clone(), as_token.1.clone())
+            .await;
+        assert_eq!(r.status_code(), StatusCode::OK, "within its scope: {}", r.text());
+        let after: i64 = sqlx::query("SELECT count(*)::bigint AS n FROM audit_events_all WHERE agent = $1")
+            .bind(format!("token:{finder}"))
+            .fetch_one(db)
+            .await
+            .unwrap()
+            .get("n");
+        assert!(after > before, "the audit row names the token");
+        let used: Option<String> =
+            sqlx::query_scalar("SELECT last_used_at::text FROM api_token_uses WHERE token_id = $1::uuid")
+                .bind(uuid::Uuid::parse_str(&finder_id).unwrap().to_string())
+                .fetch_optional(db)
+                .await
+                .unwrap();
+        assert!(used.is_some(), "its last use is recorded");
+        // The integrator role may register a patient, but no scope says so; nor may a token manage tokens.
+        let r = server
+            .post("/api/patients")
+            .add_header(as_token.0.clone(), as_token.1.clone())
+            .json(&json!({"patient": {"names": [{"family": "Tokenmade"}], "birth_date": "1950-01-01"}}))
+            .await;
+        assert_eq!(r.status_code(), StatusCode::FORBIDDEN, "outside its scope: {}", r.text());
+        let r = server.get("/api/tokens").add_header(as_token.0.clone(), as_token.1.clone()).await;
+        assert_eq!(r.status_code(), StatusCode::FORBIDDEN, "{}", r.text());
+        // A malformed, unknown or revoked token is the same 401, saying nothing of why.
+        let unknown = format!("epr_{}_{}", "0".repeat(32), "a".repeat(62));
+        let r = server
+            .post(&format!("/api/tokens/{finder_id}/revoke"))
+            .add_header(admin.0.clone(), admin.1.clone())
+            .json(&json!({"expected_version": 1, "reason": "test over"}))
+            .await;
+        assert_eq!(r.status_code(), StatusCode::OK, "{}", r.text());
+        let mut bodies = Vec::new();
+        for t in ["epr_short".to_string(), unknown, issued["token"].as_str().unwrap().to_string()] {
+            let h = bearer(&t);
+            let r = server.get("/api/patients?family=nobodyatall").add_header(h.0, h.1).await;
+            assert_eq!(r.status_code(), StatusCode::UNAUTHORIZED, "{}", r.text());
+            bodies.push(r.text());
+        }
+        assert!(bodies.iter().all(|b| b == &bodies[0]), "one answer for every refusal: {bodies:?}");
+        assert!(!bodies[0].contains("revoked") && !bodies[0].contains("expired"));
+
         // The tables refuse change.
         for sql in [
             "UPDATE api_tokens SET scopes = ARRAY['patient-identity:update']",

@@ -38,6 +38,7 @@ fn app_in(db: PgPool, agent: &str, roles: &[Role], organisations: &[&str]) -> Ro
     let subject = Subject {
         roles: roles.iter().copied().collect(),
         organisations: organisations.iter().map(|o| (*o).to_string()).collect(),
+        ..Subject::default()
     };
     Router::new()
         .route("/api/patients/compare", post(|| async { "compared" }))

@@ -41,26 +41,10 @@ pub fn prefix() -> Prefix {
     Prefix::new(PREFIX).expect("the prefix is valid")
 }
 
-/// A resource's name as a scope word: `PatientIdentity` is `patient-identity`.
-fn kebab(name: &str) -> String {
-    let mut out = String::new();
-    for (i, c) in name.chars().enumerate() {
-        if c.is_ascii_uppercase() {
-            if i > 0 {
-                out.push('-');
-            }
-            out.push(c.to_ascii_lowercase());
-        } else {
-            out.push(c);
-        }
-    }
-    out
-}
-
-/// The scope word for `action` on `resource`.
+/// The scope word for `action` on `resource`, as the policy checks it.
 #[must_use]
 pub fn scope_word(resource: Resource, action: Action) -> String {
-    format!("{}:{}", kebab(resource.name()), action.name())
+    policy::scope_word(resource, action)
 }
 
 /// Every scope a token may hold: each `(resource, action)` the integrator role holds in the role table, in its order.

@@ -222,6 +222,8 @@ impl App {
         .await
         .map_err(Error::Message)?;
         // The site's time zone, for the age on a banner: a name that is not an IANA zone stops the service.
+        // Integration tokens (TL-1) sign in against the database; before this, every one is refused.
+        crate::auth::init_tokens(ctx.pool());
         crate::site::init().map_err(Error::Message)?;
         // The task rules (TL-3): the site's file (`EPR_TASK_RULES_FILE`) or the built-in catalogue, and the site's
         // holidays (`EPR_SITE_HOLIDAYS`, read by `site::init`). Rules that do not load stop the service here, not at

@@ -92,7 +92,9 @@ that adds it.
   no one in, and it is compared in constant time. A token reads `epr_<id>_<secret>`, so a secret scanner can find a
   leaked one. Each is named (never reused), holds only scopes the integrator role already has, and expires within 365
   days; revocation is final. Issuing, changing and revoking are the clinical administrator's and are audited without
-  the token. Signing in with one is not built yet.
+  the token. A token signs in as `token:<name>` with the integrator role and only its scopes, checked in the policy
+  itself, so a handler's own checks are scoped too; a malformed, unknown, expired or revoked token gets one 401 that
+  says nothing of why, and the reason is logged with the token's id, never the token.
 
 ## 7. Cryptography
 

@@ -200,6 +200,9 @@ pub fn permits(
     let subject = Subject {
         roles: roles.iter().filter_map(|r| Role::parse(r)).collect(),
         organisations: BTreeSet::new(),
+        // An event keeps its writer's roles, not a token's scopes (TL-1): a token's event is checked again against its
+        // roles alone, which for a token is the integrator role, the ceiling every scope sits under.
+        scopes: None,
     };
     let request = policy::Request {
         subject,

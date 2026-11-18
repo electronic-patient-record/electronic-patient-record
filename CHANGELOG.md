@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-18 - Signing in with an integration token (TL-1)
+
+- **Clinical risk:** none new: a token does at most what the integrator role (the ADT feed's) already does, and usually one part of it. A token with `patient-identity:create` can register a patient, as the feed can.
+- **Built:** `auth::authenticate` sends a bearer token starting `epr_` to `integration`: parsed, its record found, the secret's hash compared in constant time, then revocation and expiry (`axa::api_tokens`); last use written at most once a minute; the caller is `token:<name>` with the integrator role and its scopes. `policy::Subject` gains `scopes` (`None` for a person; `Some` for a token), checked in `gate` and in `evaluate`, so every authorisation, the route's and a handler's, is scoped; `policy::scope_word` moves to the domain. A malformed, unknown, expired or revoked token gets one 401 with the same body, the reason logged with the token's id; a database that cannot be reached is a 503. The outbox's later check keeps roles only, which for a token is the integrator role. Specs: API surface, security policy. TL-1 ticked.
+- **Tested:** a policy unit test (a token reaches what its role allows and a scope names, never one without the other; an empty set allows nothing; a person is unchanged; within its scope a token is decided as its role is); the login-on HTTP test now signs in with a token (a search within its scope is served and audited as `token:<name>`, its last use recorded; registering a patient, which the role allows and no scope names, is 403; managing tokens is 403; a malformed, an unknown and a revoked token get the same 401). 613 unit and HTTP tests; on a fresh database every database test passes (200) except the six FHIR validator tests, not run here; `cargo doc` clean.
+- **Not done / not verified:** expiry over HTTP (unit-tested in the crate); no screen for tokens; no warning before a token expires.
+
 ## 2026-11-18 - Integration tokens: issue, list, describe, revoke (TL-1; OQ-TL4)
 
 - **Clinical risk:** none in this slice: a token cannot sign in yet. When it can, a token reaches only what the integrator role already does.

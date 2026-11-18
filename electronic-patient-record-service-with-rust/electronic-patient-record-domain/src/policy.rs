@@ -546,6 +546,9 @@ pub struct Subject {
     /// With Keycloak the attribute comes from the role map, so an organisation is a realm role
     /// that `role-map.json` maps to `{"organisation": ["…"]}`.
     pub organisations: BTreeSet<String>,
+    /// The scopes an integration token holds (TL-1): `None` for a person, whose roles alone decide; `Some` for a token,
+    /// which may then do only what its roles allow **and** a scope names ([`scope_word`]). An empty set allows nothing.
+    pub scopes: Option<BTreeSet<String>>,
 }
 
 impl Subject {
@@ -573,8 +576,39 @@ impl Subject {
         Subject {
             roles,
             organisations,
+            scopes: None,
         }
     }
+
+    /// Whether the subject's scopes, if it has any, name `action` on `resource`. A person (no scopes) always passes.
+    #[must_use]
+    pub fn scoped(&self, resource: Resource, action: Action) -> bool {
+        self.scopes
+            .as_ref()
+            .is_none_or(|held| held.contains(&scope_word(resource, action)))
+    }
+}
+
+/// A resource's name as a scope word: `PatientIdentity` is `patient-identity`.
+fn kebab(name: &str) -> String {
+    let mut out = String::new();
+    for (i, c) in name.chars().enumerate() {
+        if c.is_ascii_uppercase() {
+            if i > 0 {
+                out.push('-');
+            }
+            out.push(c.to_ascii_lowercase());
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
+
+/// The scope word for `action` on `resource` (TL-1): `patient-identity:create`.
+#[must_use]
+pub fn scope_word(resource: Resource, action: Action) -> String {
+    format!("{}:{}", kebab(resource.name()), action.name())
 }
 
 /// What the caller must do if the decision is an allow.
@@ -833,10 +867,11 @@ fn purpose_fits(role: Role, purpose: Purpose) -> bool {
 /// The route gate: may a subject holding `roles` ever do `action` to `resource`?
 #[must_use]
 pub fn gate(subject: &Subject, resource: Resource, action: Action) -> bool {
-    subject
-        .roles
-        .iter()
-        .any(|r| permitted(*r, resource).contains(&action))
+    subject.scoped(resource, action)
+        && subject
+            .roles
+            .iter()
+            .any(|r| permitted(*r, resource).contains(&action))
 }
 
 /// Everything the record decision looks at.
@@ -865,6 +900,10 @@ pub struct Request {
 /// The record decision. See the module notes for the rules.
 #[must_use]
 pub fn evaluate(request: &Request) -> Decision {
+    // A token reaches only what a scope names (TL-1), whatever its roles allow.
+    if !request.subject.scoped(request.resource, request.action) {
+        return deny(DenyReason::NotPermitted, false);
+    }
     let mut best: Option<Decision> = None;
     for role in &request.subject.roles {
         let decision = evaluate_role(*role, request);
@@ -1495,6 +1534,76 @@ mod tests {
             Subject::from_attrs(&BTreeMap::new())
                 .organisations
                 .is_empty()
+        );
+    }
+
+    #[test]
+    fn a_token_reaches_only_what_its_roles_allow_and_a_scope_names() {
+        let token = |scopes: &[&str]| Subject {
+            roles: BTreeSet::from([Role::Integrator]),
+            scopes: Some(scopes.iter().map(|s| (*s).to_string()).collect()),
+            ..Subject::default()
+        };
+        let feed = token(&["referral-queue:create"]);
+        assert!(gate(&feed, Resource::ReferralQueue, Action::Create));
+        assert!(
+            !gate(&feed, Resource::PatientIdentity, Action::Create),
+            "the role allows it, no scope names it"
+        );
+        assert!(
+            !gate(
+                &token(&["audit-log:export"]),
+                Resource::AuditLog,
+                Action::Export
+            ),
+            "a scope names it, the role does not allow it"
+        );
+        let none = token(&[]);
+        for resource in Resource::ALL {
+            for action in Action::ALL {
+                assert!(!gate(&none, resource, action), "{resource:?} {action:?}");
+            }
+        }
+        // A person has no scopes: roles alone decide, as before.
+        let person = subject(&[Role::Integrator]);
+        assert!(gate(&person, Resource::PatientIdentity, Action::Create));
+        // The record decision refuses an unscoped action too.
+        let request = |subject: Subject, resource, action| Request {
+            subject,
+            resource,
+            action,
+            labels: BTreeSet::new(),
+            relationship: Relationship::None,
+            purpose: Purpose::Operations,
+            consent: Consent::NotRecorded,
+            break_glass: None,
+            now: 1_000,
+        };
+        assert!(
+            !evaluate(&request(
+                feed.clone(),
+                Resource::PatientIdentity,
+                Action::Create
+            ))
+            .allowed()
+        );
+        assert_eq!(
+            evaluate(&request(
+                feed.clone(),
+                Resource::ReferralQueue,
+                Action::Create
+            ))
+            .allowed(),
+            evaluate(&request(person, Resource::ReferralQueue, Action::Create)).allowed(),
+            "within its scope a token is decided as its role is"
+        );
+        assert_eq!(
+            scope_word(Resource::PatientIdentity, Action::Create),
+            "patient-identity:create"
+        );
+        assert_eq!(
+            scope_word(Resource::DeathAssertion, Action::MarkEnteredInError),
+            "death-assertion:entered-in-error"
         );
     }
 }

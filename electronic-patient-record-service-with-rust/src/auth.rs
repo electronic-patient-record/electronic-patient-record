@@ -39,6 +39,68 @@ pub const ANONYMOUS: &str = "anonymous";
 static VERIFIER: OnceLock<Verifier> = OnceLock::new();
 static KEYCLOAK: OnceLock<KeycloakVerifier> = OnceLock::new();
 static REQUIRE_AUTH: OnceLock<bool> = OnceLock::new();
+static TOKEN_DB: OnceLock<sqlx::PgPool> = OnceLock::new();
+
+/// What every refused integration token is told: nothing about why (revoked, expired, unknown), which is logged.
+const TOKEN_REFUSED: &str = "the integration token was refused";
+
+/// Let integration tokens (TL-1) sign in, checked against `db`. Until this runs, every token is refused.
+pub fn init_tokens(db: sqlx::PgPool) {
+    let _ = TOKEN_DB.set(db);
+}
+
+/// The agent an integration token acts as: `token:<name>`, so the audit trail names the token, never a person.
+#[must_use]
+pub fn token_agent(name: &str) -> String {
+    format!("token:{name}")
+}
+
+/// An integration token (`epr_<id>_<secret>`, TL-1): parsed, its record found, its secret's hash compared in constant
+/// time, then revocation and expiry; its last use is written at most once a minute. It acts as `token:<name>` with the
+/// integrator role and only its scopes.
+async fn integration(token: &str) -> Result<(Agent, Subject), (StatusCode, String)> {
+    let refused = || (StatusCode::UNAUTHORIZED, TOKEN_REFUSED.to_string());
+    let db = TOKEN_DB.get().ok_or_else(refused)?;
+    let presented =
+        axa::api_tokens::parse(token, &crate::api_tokens_store::prefix()).ok_or_else(refused)?;
+    let (record, name) = match crate::api_tokens_store::record(db, presented.id()).await {
+        Ok(Some(found)) => found,
+        Ok(None) => {
+            tracing::info!(token_id = %presented.id(), "integration token refused: no such token");
+            return Err(refused());
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "integration tokens cannot be checked");
+            return Err((
+                StatusCode::SERVICE_UNAVAILABLE,
+                "the integration token cannot be checked now".into(),
+            ));
+        }
+    };
+    let now = std::time::SystemTime::now();
+    let verified = record.verify(&presented, now).map_err(|why| {
+        tracing::info!(token_id = %presented.id(), token = %name, reason = %why, "integration token refused");
+        refused()
+    })?;
+    if verified.record_use()
+        && let Err(e) =
+            crate::api_tokens_store::record_use(db, verified.id(), jiff::Timestamp::now()).await
+    {
+        tracing::warn!(error = %e, token = %name, "an integration token's last use was not recorded");
+    }
+    let subject = Subject {
+        roles: std::collections::BTreeSet::from([crate::policy::Role::Integrator]),
+        scopes: Some(
+            record
+                .scopes
+                .iter()
+                .map(|s| s.as_str().to_string())
+                .collect(),
+        ),
+        ..Subject::default()
+    };
+    Ok((Agent(token_agent(&name)), subject))
+}
 
 /// Paths that never need a token: health probes, `/_dependencies` (labels only, see
 /// [`crate::dependencies`]), and `/metrics`, which answers 404 unless the
@@ -196,8 +258,9 @@ pub fn authentication_enforced() -> bool {
 
 /// The decision: `Ok(agent)` lets the request through; `Err((401, why))` rejects.
 ///
-/// A token starting `v4.` is a PASETO and goes to `paseto`. Any other token goes to `keycloak` when
-/// one is configured; when none is, it is refused. A PASETO-shaped token is never offered to
+/// A token starting `epr_` is an integration token (TL-1), checked against its stored hash. A token starting `v4.`
+/// is a PASETO and goes to `paseto`. Any other token goes to `keycloak` when one is configured; when none is, it is
+/// refused. A PASETO-shaped token is never offered to
 /// Keycloak and a Keycloak token is never offered to PASETO.
 ///
 /// # Errors
@@ -234,6 +297,10 @@ pub async fn authenticate(
     }
     let token = bearer_token(headers)?;
     let unauthorized = |e: String| (StatusCode::UNAUTHORIZED, e);
+    // An integration token is never offered to PASETO or Keycloak, nor they to it.
+    if token.starts_with(&format!("{}_", crate::api_tokens_store::PREFIX)) {
+        return integration(token).await;
+    }
     let claims = if token.starts_with("v4.") {
         paseto
             .verify(token)

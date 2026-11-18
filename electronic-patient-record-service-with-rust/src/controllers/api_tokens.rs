@@ -9,7 +9,7 @@
 //! **Assumed, awaiting the maintainer (OQ-TL4):** the clinical administrator manages tokens (resource `ApiToken`),
 //! and any administrator may revoke any token. Every issue, change and revocation is audited with the token's id,
 //! name and scopes, never the token; a list is audited with the count. A write and its audit row are one
-//! transaction. Signing in with a token is not built yet (TL-1's second slice).
+//! transaction. A token signs in through `auth::authenticate` (`Bearer epr_...`), as `token:<name>` with its scopes.
 
 use super::common::{Access, audit_resource, authorize, begin, commit, purpose_of, store_failure};
 use crate::api_error::ApiError;
