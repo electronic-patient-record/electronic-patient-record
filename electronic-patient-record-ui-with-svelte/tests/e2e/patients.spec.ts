@@ -4902,6 +4902,100 @@ test("a role refused the overdue checks is told so, and it does not read as none
   await expect(page.getByText("No checks are overdue.")).toHaveCount(0);
 });
 
+test("a team's tasks show what is due, overdue and reminded, link to the record, and close with a reason", async ({
+  page,
+}) => {
+  const task = (id: string, over: Record<string, unknown> = {}) => ({
+    id,
+    version: 1,
+    patient_id: ANN.id,
+    rule: "abnormal-result-review",
+    rule_version: 1,
+    team: "clinician",
+    status: "open",
+    title: "An abnormal result needs a clinician's review",
+    due_on: "2000-01-04",
+    reminders: ["2000-01-03"],
+    late_reminder: "send-once",
+    source: { kind: "result", id: "r-1" },
+    author: "rule:abnormal-result-review@1",
+    recorded_at: "2000-01-01T00:00:00.000000Z",
+    close_reason: null,
+    cancelled_by: null,
+    reminded_on: "2000-01-03",
+    ...over,
+  });
+  let items = [
+    task("33333333-3333-4333-8333-333333333333"),
+    task("44444444-4444-4444-8444-444444444444", {
+      due_on: "2999-12-31",
+      reminded_on: null,
+      title: "Triage the referral",
+      source: { kind: "referral", id: "ref-1" },
+    }),
+  ];
+  let closed: unknown = null;
+  await page.route("**/api/proxy/api/tasks?team=clinician", (route) =>
+    json(route, 200, {
+      team: "clinician",
+      items,
+      limit: 200,
+      more: false,
+      site_time_zone: "UTC",
+    }),
+  );
+  await page.route("**/api/proxy/api/tasks/*/close", async (route) => {
+    closed = route.request().postDataJSON();
+    items = items.slice(1);
+    await json(route, 200, { ...items[0], status: "done", version: 2 });
+  });
+  await page.goto("/en-001/tasks");
+  await expect(page.getByText("Overdue: it was due 2000-01-04")).toBeVisible();
+  await expect(page.getByText("Reminded 2000-01-03")).toBeVisible();
+  await expect(page.getByText("Due 2999-12-31")).toBeVisible();
+  await expect(page.getByText("From a referral")).toBeVisible();
+  const links = page.getByRole("link", { name: "Open the patient" });
+  await expect(links.nth(0)).toHaveAttribute(
+    "href",
+    new RegExp(`/patients/${ANN.id}$`),
+  );
+  await expect(links.nth(1)).toHaveAttribute(
+    "href",
+    new RegExp(`/patients/${ANN.id}#referrals-h$`),
+  );
+  await axe(page);
+
+  // A close needs a reason, then sends the version read.
+  await page.getByRole("button", { name: "Close this task" }).first().click();
+  await page.getByRole("button", { name: "Close the task" }).click();
+  await expect(page.getByText("Say why the task is closed.")).toBeVisible();
+  expect(closed).toBeNull();
+  await page.getByLabel("Not needed: cancel it").check();
+  await page.getByLabel("Why (required)").fill("seen in clinic");
+  await page.getByRole("button", { name: "Close the task" }).click();
+  await expect(page.getByRole("status")).toHaveText("Task closed.");
+  expect(closed).toEqual({
+    expected_version: 1,
+    status: "cancelled",
+    reason: "seen in clinic",
+  });
+  await expect(page.getByText("Overdue: it was due 2000-01-04")).toHaveCount(0);
+  await axe(page);
+});
+
+test("a team whose role the reader does not hold is told so, and it does not read as no tasks", async ({
+  page,
+}) => {
+  await page.route("**/api/proxy/api/tasks?team=*", (route) =>
+    json(route, 403, {}),
+  );
+  await page.goto("/en-001/tasks");
+  await expect(page.getByRole("status")).toHaveText(
+    "This list is for staff who hold the clinician role. Choose a team whose role you hold.",
+  );
+  await expect(page.getByText("No open tasks for this team.")).toHaveCount(0);
+});
+
 test("reports of a death list oldest first, name who is accountable and say when they are cut", async ({
   page,
 }) => {

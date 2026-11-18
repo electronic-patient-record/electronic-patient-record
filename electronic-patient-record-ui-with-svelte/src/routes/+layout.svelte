@@ -154,6 +154,7 @@
     <a href={localizePath("/overdue-reviews", locale)}
       >{TEXT.navOverdueReviews}</a
     >
+    <a href={localizePath("/tasks", locale)}>{TEXT.navTasks}</a>
     <a href={localizePath("/referrals", locale)}
       >{TEXT.navReplies}{#if worklistPage && worklistCount.open}
         <span class="count"

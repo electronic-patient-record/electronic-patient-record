@@ -100,4 +100,4 @@ any care team. The service starts only if every built-in rule's team is a role w
 
 An observation with no value, no range, or a range that
 makes no sense has no flag and raises nothing (never read as normal or abnormal); a result amended from abnormal back to normal cancels nothing (no event says so); results from an HL7 feed (none is built);
-an alert beyond the list (nobody is paged or messaged when a reminder is sent); a screen; who approves a rule (OQ-TL1); teams finer than a role (OQ-TL3).
+an alert beyond the list (nobody is paged or messaged when a reminder is sent); who approves a rule (OQ-TL1); teams finer than a role (OQ-TL3).

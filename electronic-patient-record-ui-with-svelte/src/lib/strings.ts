@@ -22,6 +22,37 @@ export const STRINGS = {
   orHeld:
     "A report of this person's death stands. Do not contact them or their family to check this: read the record first.",
   orOpen: "Open the patient",
+  navTasks: "Team tasks",
+  tkTitle: "Tasks for a team",
+  tkIntro:
+    "Rules make these tasks from results, observations and referrals. Each one points to a patient: open the record to see what it is about. Only staff who hold a team's role can see its list.",
+  tkTeam: "Team",
+  tkShow: "Show the list",
+  tkNone: "No open tasks for this team.",
+  tkCount: "{n} open",
+  tkMore:
+    "Showing the first {n} by due day. More are open, and the latest due are not shown.",
+  tkDue: "Due {day}",
+  tkOverdue: "Overdue: it was due {day}",
+  tkReminded: "Reminded {day}",
+  tkFrom: {
+    result: "From a result",
+    observation: "From an observation",
+    referral: "From a referral",
+  },
+  tkOpen: "Open the patient",
+  tkCloseLegend: "Close this task",
+  tkDone: "Done",
+  tkCancel: "Not needed: cancel it",
+  tkReason: "Why (required)",
+  tkReasonRequired: "Say why the task is closed.",
+  tkReasonTooLong: "The reason is longer than 500 characters.",
+  tkSave: "Close the task",
+  tkClosed: "Task closed.",
+  tkChanged:
+    "This task changed after the list was read, so the list has been read again. Check it before you close it.",
+  tkNotYours:
+    "This list is for staff who hold the {team} role. Choose a team whose role you hold.",
   drTitle: "Reports of death that wait for a person",
   drIntro:
     "Each report here holds contact and has not been confirmed. Open the patient: a clinician or nurse verifies it, and only a clinician withdraws it. A report that has not been confirmed may be wrong, so do not tell a family from this list.",

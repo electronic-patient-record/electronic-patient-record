@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-18 - The team tasks screen (TL-3; H-059)
+
+- **Clinical risk:** yes, as H-059: clinicians will see and close their team's tasks on this page. H-059 stays open.
+- **Built:** `/tasks` in the UI and in the navigation: a team chosen from the staff roles (the service decides whose list it is), each task with the rule's title, due day or overdue on the site's day (`siteToday`), its source, the day last reminded, and a link to the patient's record (vitals for an observation, referrals for a referral, the record for a result). Closing as done or cancelled needs a reason of 1 to 500 characters, checked before sending, at the version read; a 409 or 422 reads the list again and says so; a refused team is said and never reads as no tasks. `src/lib/tasks.ts`; English and Welsh strings (Welsh machine-written, unreviewed). UI spec updated.
+- **Tested:** `tests/unit/tasks.test.ts` (anchors, overdue, the reason rule counting characters, today at the site in three zones and an unknown one, teams are staff roles with names); two Playwright tests (due, overdue, reminded, links, a close refused without a reason then sent with the version and outcome; a refused team), axe on each state. 248 browser tests, UI lint, type check and unit tests pass.
+- **Not done / not verified:** the page cannot know the reader's roles, so it offers every staff team and the service refuses the others; no count in the navigation; a result's task links to the record, not a results section (there is none); TL-3 is not ticked until OQ-TL1 is answered.
+
 ## 2026-11-18 - A site's own task rules file (TL-3; H-059)
 
 - **Clinical risk:** yes, as H-059: this is the way a site makes task rules live. A site file's approved rules make tasks from the next start; the built-in catalogue stays all drafts. H-059 stays open, and who may approve a rule is still OQ-TL1.

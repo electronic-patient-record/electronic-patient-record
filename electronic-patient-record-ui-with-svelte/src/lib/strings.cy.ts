@@ -49,6 +49,37 @@ export const CY: Strings = {
   orDue: "Roedd y gwiriad i fod erbyn {day}",
   orHeld:
     "Mae adroddiad am farwolaeth y person hwn yn sefyll. Peidiwch â chysylltu â nhw na'u teulu i wirio hyn: darllenwch y cofnod yn gyntaf.",
+  navTasks: "Tasgau tîm",
+  tkTitle: "Tasgau ar gyfer tîm",
+  tkIntro:
+    "Mae rheolau'n gwneud y tasgau hyn o ganlyniadau, arsylwadau ac atgyfeiriadau. Mae pob un yn cyfeirio at glaf: agorwch y cofnod i weld beth yw ei destun. Dim ond staff sydd â rôl tîm all weld ei restr.",
+  tkTeam: "Tîm",
+  tkShow: "Dangos y rhestr",
+  tkNone: "Nid oes tasgau agored ar gyfer y tîm hwn.",
+  tkCount: "{n} ar agor",
+  tkMore:
+    "Yn dangos y {n} cyntaf yn ôl y diwrnod dyledus. Mae rhagor ar agor, ac nid yw'r rhai diweddaraf yn cael eu dangos.",
+  tkDue: "I'w wneud erbyn {day}",
+  tkOverdue: "Yn hwyr: roedd i fod erbyn {day}",
+  tkReminded: "Atgoffwyd {day}",
+  tkFrom: {
+    result: "O ganlyniad",
+    observation: "O arsylwad",
+    referral: "O atgyfeiriad",
+  },
+  tkOpen: "Agor y claf",
+  tkCloseLegend: "Cau'r dasg hon",
+  tkDone: "Wedi'i gwneud",
+  tkCancel: "Dim angen: ei chanslo",
+  tkReason: "Pam (gofynnol)",
+  tkReasonRequired: "Dywedwch pam mae'r dasg yn cael ei chau.",
+  tkReasonTooLong: "Mae'r rheswm yn hirach na 500 nod.",
+  tkSave: "Cau'r dasg",
+  tkClosed: "Caewyd y dasg.",
+  tkChanged:
+    "Newidiodd y dasg hon ar ôl darllen y rhestr, felly mae'r rhestr wedi'i darllen eto. Gwiriwch hi cyn ei chau.",
+  tkNotYours:
+    "Mae'r rhestr hon ar gyfer staff sydd â rôl {team}. Dewiswch dîm y mae ei rôl gennych.",
   orOpen: "Agor y claf",
   drTitle: "Adroddiadau am farwolaeth sy'n aros am berson",
   drIntro:
