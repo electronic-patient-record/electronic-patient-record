@@ -23,6 +23,15 @@ neither; a condition only on a fact its event carries, with values; due in 0 to 
 reminders within the due period; never cancelled by its own event; no two rules the same event, conditions and task
 (TL-14).
 
+## Where the rules come from
+
+The built-in catalogue (`task_rules.toml` in the domain crate), every rule of which is a draft; or, when
+`EPR_TASK_RULES_FILE` names one, the site's own file, in the same shape, which **replaces** the catalogue. Either is read
+once at start-up and checked the same way (above), and every team must be a role word (OQ-TL3). A file that cannot be
+read, is over 1 MB, does not check, or names a team that is no role stops the service, naming the setting and the file.
+The start logs how many rules run, how many are approved, and from where. The dry run uses the same rules. A site file's
+`approved_by` is the site's own word: who may approve is still OQ-TL1. Changing the file takes a restart.
+
 ## Working days
 
 The event's day is the site's calendar day it fell on (`site::day_in`). Saturday, Sunday and the site's holidays are not
@@ -91,5 +100,4 @@ any care team. The service starts only if every built-in rule's team is a role w
 
 An observation with no value, no range, or a range that
 makes no sense has no flag and raises nothing (never read as normal or abnormal); a result amended from abnormal back to normal cancels nothing (no event says so); results from an HL7 feed (none is built);
-an alert beyond the list (nobody is paged or messaged when a reminder is sent); a site's own rules file (only the built-in
-catalogue runs, and every rule in it is a draft); a screen; who approves a rule (OQ-TL1); teams finer than a role (OQ-TL3).
+an alert beyond the list (nobody is paged or messaged when a reminder is sent); a screen; who approves a rule (OQ-TL1); teams finer than a role (OQ-TL3).

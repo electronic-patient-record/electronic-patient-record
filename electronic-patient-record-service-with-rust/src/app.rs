@@ -223,12 +223,22 @@ impl App {
         .map_err(Error::Message)?;
         // The site's time zone, for the age on a banner: a name that is not an IANA zone stops the service.
         crate::site::init().map_err(Error::Message)?;
-        // The task rules (TL-3) and the site's holidays (`EPR_SITE_HOLIDAYS`, read by `site::init`): a rules file
-        // that does not load stops the service here, not at the first result filed.
-        let rules = crate::task_rules::catalogue().map_err(Error::Message)?;
-        if let Some(problem) = crate::tasks_store::team_problem(rules) {
-            return Err(Error::Message(problem));
-        }
+        // The task rules (TL-3): the site's file (`EPR_TASK_RULES_FILE`) or the built-in catalogue, and the site's
+        // holidays (`EPR_SITE_HOLIDAYS`, read by `site::init`). Rules that do not load stop the service here, not at
+        // the first result filed; the start says what runs.
+        let rules = crate::tasks_store::init_rules().map_err(Error::Message)?;
+        tracing::info!(
+            rules = rules.len(),
+            approved = rules.iter().filter(|r| r.approved()).count(),
+            from = if std::env::var(crate::tasks_store::RULES_FILE)
+                .is_ok_and(|v| !v.trim().is_empty())
+            {
+                "site file"
+            } else {
+                "built-in catalogue"
+            },
+            "task rules loaded"
+        );
         crate::audit::init_server().map_err(Error::Message)?;
         // The referral timeouts (PC-3): a setting that is wrong stops the service rather than switching one off.
         crate::referral_timeouts::init().map_err(Error::Message)?;

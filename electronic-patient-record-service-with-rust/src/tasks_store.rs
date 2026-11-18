@@ -293,14 +293,76 @@ async fn append(
     one(&mut *conn, &was.id).await.map(Some)
 }
 
-/// The rules that run in the service: the built-in catalogue, checked when the service starts. Only approved rules make
-/// tasks, and every built-in rule is a draft until approved (OQ-TL1); a site's own rules file is not built yet.
+/// The setting naming a site's own task rules file.
+pub const RULES_FILE: &str = "EPR_TASK_RULES_FILE";
+
+/// The most bytes a site's rules file may hold: far more than tens of rules need.
+pub const MAX_RULES_FILE: u64 = 1_000_000;
+
+static SITE_RULES: std::sync::OnceLock<Vec<Rule>> = std::sync::OnceLock::new();
+
+/// The rules that run in the service: the site's file ([`init_rules`]) when one is set, otherwise the built-in
+/// catalogue, every rule of which is a draft until approved (OQ-TL1). Only approved rules make tasks.
 ///
 /// # Errors
 ///
 /// [`StoreError::Db`] when the catalogue does not load (a test keeps it valid).
 pub fn rules() -> Result<&'static [Rule], StoreError> {
-    task_rules::catalogue().map_err(StoreError::Db)
+    match SITE_RULES.get() {
+        Some(site) => Ok(site),
+        None => task_rules::catalogue().map_err(StoreError::Db),
+    }
+}
+
+/// The rules in the file at `path`, checked as the built-in catalogue is ([`task_rules::parse`]) and for teams that are
+/// roles ([`team_problem`]).
+///
+/// # Errors
+///
+/// A message naming the setting and the file when it cannot be read, is larger than [`MAX_RULES_FILE`], does not
+/// parse or check, or names a team that is not a role.
+pub fn load_rules(path: &std::path::Path) -> Result<Vec<Rule>, String> {
+    let shown = path.display();
+    let size = std::fs::metadata(path)
+        .map_err(|e| format!("{RULES_FILE} `{shown}` cannot be read: {e}"))?
+        .len();
+    if size > MAX_RULES_FILE {
+        return Err(format!(
+            "{RULES_FILE} `{shown}` is {size} bytes; at most {MAX_RULES_FILE}"
+        ));
+    }
+    let text = std::fs::read_to_string(path)
+        .map_err(|e| format!("{RULES_FILE} `{shown}` cannot be read: {e}"))?;
+    let rules =
+        task_rules::parse(&text, &shown.to_string()).map_err(|e| format!("{RULES_FILE}: {e}"))?;
+    if let Some(problem) = team_problem(&rules) {
+        return Err(format!("{RULES_FILE} `{shown}`: {problem}"));
+    }
+    Ok(rules)
+}
+
+/// Read the rules once, at start-up: the file `EPR_TASK_RULES_FILE` names, which then replaces the built-in catalogue,
+/// or, unset or blank, the catalogue. Returns the rules that will run, so the start can log what runs.
+///
+/// # Errors
+///
+/// [`load_rules`]' for a file; for the catalogue, a message when it does not load or names a team that is not a role.
+pub fn init_rules() -> Result<&'static [Rule], String> {
+    let setting = std::env::var(RULES_FILE).ok();
+    match setting.as_deref().map(str::trim).filter(|v| !v.is_empty()) {
+        Some(path) => {
+            let rules = load_rules(std::path::Path::new(path))?;
+            let _ = SITE_RULES.set(rules);
+            Ok(SITE_RULES.get().map_or(&[], Vec::as_slice))
+        }
+        None => {
+            let rules = task_rules::catalogue()?;
+            if let Some(problem) = team_problem(rules) {
+                return Err(problem);
+            }
+            Ok(rules)
+        }
+    }
 }
 
 /// The first rule in `rules` whose team is not a role word, as a message: a task for a team nobody can hold would
@@ -636,6 +698,60 @@ pub async fn record_run(db: impl Into<Db<'_>>, day: Date) -> Result<(), StoreErr
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_site_rules_file_is_checked_like_the_catalogue_and_any_fault_names_the_setting() {
+        let dir = std::env::temp_dir().join(format!("epr-task-rules-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = |name: &str, text: &str| {
+            let p = dir.join(name);
+            std::fs::write(&p, text).unwrap();
+            p
+        };
+        let good = file(
+            "good.toml",
+            r#"
+[[rule]]
+id = "site-review"
+version = 1
+title = "Review"
+approved_by = "A Clinician"
+approved_on = "2026-11-18"
+event = "result-filed"
+[rule.task]
+team = "clinician"
+title = "Review the result"
+due_working_days = 1
+late_reminder = "skip"
+"#,
+        );
+        let rules = load_rules(&good).unwrap();
+        assert_eq!((rules.len(), rules[0].approved()), (1, true));
+        let ward = file(
+            "ward.toml",
+            &std::fs::read_to_string(&good)
+                .unwrap()
+                .replace("\"clinician\"", "\"ward-7\""),
+        );
+        let messages = file(
+            "message.toml",
+            "[[rule]]\nid = \"x\"\naction = \"message-patient\"\n",
+        );
+        for (path, says) in [
+            (dir.join("missing.toml"), "cannot be read"),
+            (ward, "ward-7"),
+            (messages, "message.toml"),
+        ] {
+            let e = load_rules(&path).unwrap_err();
+            assert!(e.contains(RULES_FILE) && e.contains(says), "{e}");
+        }
+        let big = file(
+            "big.toml",
+            &"#".repeat(usize::try_from(MAX_RULES_FILE).unwrap() + 1),
+        );
+        assert!(load_rules(&big).unwrap_err().contains("at most"));
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
 
     #[test]
     fn every_built_in_rule_is_for_a_role_and_a_team_that_is_none_is_named() {

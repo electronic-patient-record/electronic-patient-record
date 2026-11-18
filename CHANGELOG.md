@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-18 - A site's own task rules file (TL-3; H-059)
+
+- **Clinical risk:** yes, as H-059: this is the way a site makes task rules live. A site file's approved rules make tasks from the next start; the built-in catalogue stays all drafts. H-059 stays open, and who may approve a rule is still OQ-TL1.
+- **Built:** `tasks_store::load_rules` and `init_rules`: `EPR_TASK_RULES_FILE` names a TOML file in the catalogue's shape, which replaces the built-in catalogue; read once at start-up, at most 1 MB, checked by `task_rules::parse` and for teams that are roles; any fault stops the start naming the setting and the file. `rules()` gives the site's file when set (the hooks, the routes' dry run). The start logs the count, the approved count and the source. `compose.yaml` passes the setting. Spec: where the rules come from.
+- **Tested:** a unit test with real files: a good file loads with its approved rule; a missing file, a team that is no role, a rule with an unknown key, and a file over 1 MB are each refused naming the setting. 609 unit and HTTP tests; the task database and route tests pass.
+- **Not done / not verified:** no test boots the service with a file set (the setting is read once per process); a change to the file takes a restart; nothing checks who a file's `approved_by` is.
+
 ## 2026-11-18 - A result's later versions raise task events (TL-3; H-059)
 
 - **Clinical risk:** yes, as H-059: once a rule is approved, a result entered in error after filing cancels the task it made, and one amended or corrected to abnormal makes one. Every built-in rule is still a draft. H-059 stays open.
