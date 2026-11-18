@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-18 - Task routes: a team's list, closing a task, the dry run (TL-3; H-059; OQ-TL3)
+
+- **Clinical risk:** yes, as H-059: a clinician will see and close their team's tasks here. Every built-in rule is still a draft, so the list is empty in a running service until a rule is approved. H-059 stays open.
+- **Built:** `controllers/tasks.rs`: `GET /api/tasks?team=` (open, due first, up to 200), `POST /api/tasks/{task_id}/close` (done or cancelled, reason, version read; 409 stale, 422 closed or blank, 404), `POST /api/tasks/dry-run` (what the service's rules would make for an event and its facts on the site's calendar, drafts marked, nothing written; a fact the event does not carry or a bad day is a 422). Policy resource `Tasks` (not clinical: pointers): staff list and close, a clinician, the on-duty clinician and the Clinical Safety Officer run the dry run. **Assumed, awaiting the maintainer (OQ-TL3):** a team is a role; only a caller who holds it lists or closes (403, audited). The service starts only if every built-in rule's team is a role. OpenAPI schemas `Task`, `TaskList`, `CloseTask`, `TaskDryRun`, `TaskDryRunAnswer`; `openapi.json` re-blessed. Specs: `spec/09-api-surface.md`, `spec/clinical-workflows/task-rules.md`; OQ-TL3 in the Tellescope lessons.
+- **Tested:** `tests/http_tasks.rs` with login on (a clinician lists the clinician team, audited; no team 422; another role's team or no role 403, audited; the auditor has no list; a nurse cannot close the clinician team's task; blank reason 422, stale 409, closed once, no task 404; the Clinical Safety Officer's dry run shows the built-in draft not approved and due two working days on, writes no task; a normal result plans nothing; a fact typo and a bad day are 422; a nurse cannot run it); the close route's audit-refusal test (500 and nothing stored when its audit row fails, then 200); unit tests of the fact check, the team check and the start-up team check; the policy matrix at 27 resources. 607 unit and HTTP tests; on a fresh database every database test passes (197) except the six FHIR validator tests, not run here.
+- **Not done / not verified:** no screen; the reminder sender's loop; a site's own rules file; teams finer than a role; the login-off search walk exempts `/api/tasks` (no roles with login off) and its audit row is tested with login on instead.
+
 ## 2026-11-18 - Referrals raise task events (TL-3; H-059)
 
 - **Clinical risk:** yes, in time, as H-059: once a rule is approved, a referral step will make a task (say, triage of an urgent request) and its end will cancel it. Every built-in rule is still a draft. H-059 stays open.

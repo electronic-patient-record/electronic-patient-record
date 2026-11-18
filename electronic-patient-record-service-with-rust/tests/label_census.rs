@@ -59,6 +59,7 @@ const OUTPUT: &[(&str, &str, Label)] = &[
     ("GET", "/api/audit", NotApplied),
     ("GET", "/api/audit/export", NotApplied),
     ("GET", "/api/referrals/worklist", NotApplied),
+    ("GET", "/api/tasks", NotApplied),
     ("GET", "/api/watch-list", NotApplied),
     ("GET", "/api/patients/{id}/watch-list", NotApplied),
     ("GET", "/api/death-reports", NotApplied),

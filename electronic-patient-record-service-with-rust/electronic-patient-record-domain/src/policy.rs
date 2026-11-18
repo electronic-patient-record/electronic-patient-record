@@ -224,11 +224,16 @@ pub enum Resource {
     /// One's own watch list across patients (WL-6): pointers only (patient, since, until), no reason,
     /// like the referral worklist. Each entry is read through the patient's route.
     OwnWatchList,
+    /// Tasks that rules made for a team (TL-3, `tasks_store.rs`): a team's list across patients, closing a task, and
+    /// the dry run of the rules. Pointers only (patient, the rule's own title, due day, the source's kind and id),
+    /// like the referral worklist; the record opens through the patient's routes. The route keeps each team's list to
+    /// those who hold the team's role.
+    Tasks,
 }
 
 impl Resource {
     /// Every resource kind, in a fixed order.
-    pub const ALL: [Resource; 26] = [
+    pub const ALL: [Resource; 27] = [
         Resource::PatientIdentity,
         Resource::Encounter,
         Resource::Condition,
@@ -255,6 +260,7 @@ impl Resource {
         Resource::ReferralWorklist,
         Resource::WatchList,
         Resource::OwnWatchList,
+        Resource::Tasks,
     ];
 
     /// A stable name for audit rows and route tables.
@@ -287,6 +293,7 @@ impl Resource {
             Resource::ReferralWorklist => "ReferralWorklist",
             Resource::WatchList => "WatchList",
             Resource::OwnWatchList => "OwnWatchList",
+            Resource::Tasks => "Tasks",
         }
     }
 
@@ -316,6 +323,7 @@ impl Resource {
                 | Resource::ReferralQueue
                 | Resource::ReferralWorklist
                 | Resource::OwnWatchList
+                | Resource::Tasks
         )
     }
 }
@@ -621,7 +629,7 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         Encounter, FeedQueue as Queue, Hazard, MedicationRequest as Meds, Observation,
         OverdueReviews as Overdue, OwnWatchList as OwnWatch, PatientIdentity as Identity,
         PatientLink as Link, QuestionnaireResponse as Assess, Referral, ReferralQueue as RefQueue,
-        ReferralWorklist as Worklist, WatchList as Watch,
+        ReferralWorklist as Worklist, Tasks, WatchList as Watch,
     };
     match (role, resource) {
         // Clinicians: full clinical work, and register or correct identity.
@@ -694,6 +702,20 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
             &[Read, Search, Create, Update]
         }
         (Role::Clinician | Role::Nurse | Role::AlliedHealth, OwnWatch) => &[Search],
+        // Tasks from rules (TL-3, assumed, awaiting the maintainer, OQ-TL3): any member of staff lists and closes
+        // the tasks of a team, and the route keeps that to the team whose role they hold. The dry run (Read) shows
+        // what rules would make and holds no patient data: a clinician, the on-duty clinician and the Clinical
+        // Safety Officer, who would approve a rule, run it.
+        (Role::Clinician | Role::OnDutyClinician, Tasks) => &[Read, Search, Update],
+        (
+            Role::Nurse
+            | Role::Pharmacist
+            | Role::AlliedHealth
+            | Role::Receptionist
+            | Role::ClinicalAdmin,
+            Tasks,
+        ) => &[Search, Update],
+        (Role::ClinicalSafetyOfficer, Tasks) => &[Read],
         // Nurses: record care; cannot withdraw others' entries; read-only on prescriptions.
         (Role::Nurse, Identity) => &[Read, Search],
         (Role::Nurse, Encounter | Condition | Observation | Allergy | Document) => {
@@ -1426,8 +1448,8 @@ mod tests {
                 }
             }
         }
-        // 17 roles × 26 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
-        assert_eq!(cells, 17 * 26 * 6 * 8 * 5 * 3 * 7 * 2);
+        // 17 roles × 27 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
+        assert_eq!(cells, 17 * 27 * 6 * 8 * 5 * 3 * 7 * 2);
         assert!(allows > 0);
     }
 

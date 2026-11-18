@@ -24,10 +24,17 @@ use electronic_patient_record::routes;
 use sqlx::{PgPool, Row};
 
 /// Search routes this test does not call, with the reason.
-const EXEMPT: &[(&str, &str)] = &[(
-    "/api/patients/compare",
-    "pure: it compares two patients the caller supplied and reads no stored record",
-)];
+const EXEMPT: &[(&str, &str)] = &[
+    (
+        "/api/patients/compare",
+        "pure: it compares two patients the caller supplied and reads no stored record",
+    ),
+    (
+        "/api/tasks",
+        "a team's list is only for those who hold its role, and login off has none: its audit row is tested with \
+         login on in tests/http_tasks.rs",
+    ),
+];
 
 /// The call for a search route: its path with a query that matches nothing in particular.
 fn call(template: &str, patient: &str) -> Option<String> {

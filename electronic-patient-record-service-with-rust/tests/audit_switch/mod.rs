@@ -53,17 +53,18 @@ pub const LOGIN_OFF: [&str; 40] = [
 ];
 
 /// The write routes driven with login on (`http_audit_refusal_roles.rs`).
-pub const LOGIN_ON: [&str; 3] = [
+pub const LOGIN_ON: [&str; 4] = [
     "POST /api/patients/{id}/break-glass",
     "POST /api/break-glass/reviews/{id}",
     "POST /api/feed/refusals/{id}/resolve",
+    "POST /api/tasks/{task_id}/close",
 ];
 
 /// The routes `refused_then_accepted` has been called with.
 pub static DRIVEN: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
 
 /// Every table a write route changes.
-pub const STORES: [&str; 25] = [
+pub const STORES: [&str; 26] = [
     "patient_versions",
     "consent_versions",
     "relationship_versions",
@@ -89,6 +90,7 @@ pub const STORES: [&str; 25] = [
     "referral_acknowledgements",
     "referral_unmatched",
     "referral_unmatched_clearances",
+    "task_versions",
 ];
 
 pub async fn sql(db: &PgPool, text: &str) {

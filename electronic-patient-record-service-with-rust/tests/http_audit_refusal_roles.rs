@@ -1,6 +1,6 @@
 //! DB-gated, through the real router with login **on** (CQ-39): the writes that need a role and, for the grant,
 //! no care relationship, refuse when their audit row cannot be written: opening a break-the-glass grant, reviewing
-//! one, and resolving a refused feed message. The mechanism is the one in `http_audit_refusal.rs`
+//! one, resolving a refused feed message, and closing a team's task (TL-3). The mechanism is the one in `http_audit_refusal.rs`
 //! (`audit_switch`): 500 with no row stored, then the same request succeeds. One test, because the token guard is
 //! configured once per process.
 //!
@@ -127,6 +127,45 @@ async fn break_glass_and_the_feed_queue_refuse_when_their_audit_row_cannot_be_wr
             .unwrap_or_else(|| panic!("a refusal id in {refusal}"))
             .to_string();
 
+        // A task for the clinician team, made as an approved rule would make it on an abnormal result.
+        let rules = electronic_patient_record::task_rules::parse(
+            r#"
+[[rule]]
+id = "audit-refusal-review"
+version = 1
+title = "Review"
+approved_by = "A Clinician"
+approved_on = "2026-11-18"
+event = "result-filed"
+[rule.task]
+team = "clinician"
+title = "Review the result"
+due_working_days = 1
+late_reminder = "skip"
+"#,
+            "test",
+        )
+        .unwrap();
+        let mut conn = db.acquire().await.unwrap();
+        let task_id = electronic_patient_record::tasks_store::create_from_event(
+            &mut conn,
+            &rules,
+            electronic_patient_record::task_rules::Event::ResultFiled,
+            &std::collections::BTreeMap::new(),
+            &pid,
+            &electronic_patient_record::tasks_store::Source {
+                kind: "result".into(),
+                id: tag("auditresult"),
+            },
+            jiff::civil::date(2026, 11, 18),
+            &std::collections::BTreeSet::new(),
+        )
+        .await
+        .unwrap()
+        .remove(0)
+        .id;
+        drop(conn);
+
         install(db).await;
 
         // Open a grant. The first run is refused, the second opens it.
@@ -168,6 +207,17 @@ async fn break_glass_and_the_feed_queue_refuse_when_their_audit_row_cannot_be_wr
                 .post(&format!("/api/feed/refusals/{refusal_id}/resolve"))
                 .add_header(ah.clone(), av.clone())
                 .json(&json!({ "outcome": "dismissed", "reason": "test message" }))
+                .await;
+            (r.status_code(), r.text())
+        })
+        .await;
+
+        // Close the task, as a clinician: the team is their role.
+        refused_then_accepted(db, "POST /api/tasks/{task_id}/close", || async {
+            let r = server
+                .post(&format!("/api/tasks/{task_id}/close"))
+                .add_header(ch.clone(), cv.clone())
+                .json(&json!({ "expected_version": 1, "status": "done", "reason": "reviewed" }))
                 .await;
             (r.status_code(), r.text())
         })

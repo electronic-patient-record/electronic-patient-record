@@ -66,10 +66,23 @@ with the reason and who: a person, or `event:<word>`. `task_current` is the late
   today was missed while nothing ran: its rule says `send-once` (sent once, now) or `skip` (recorded with why). A
   reminder puts the task on its team's list as reminded; nothing goes to a patient.
 
+## Routes
+
+| Route | Who | What |
+|---|---|---|
+| `GET /api/tasks?team=<role>` | staff who hold the team's role | the team's open tasks, due first, up to 200, with `more` |
+| `POST /api/tasks/{task_id}/close` | staff who hold the task's team role | `{expected_version, status, reason}`: done or cancelled, with a reason, at the version read |
+| `POST /api/tasks/dry-run` | a clinician, the on-duty clinician, the Clinical Safety Officer | `{event, facts, day?}`: what the service's rules would make, drafts marked `approved: false`; writes nothing |
+
+Policy resource `Tasks`, not clinical: a task is a pointer, and the record opens through the patient's routes. Every
+list, close and dry run is audited with ids and counts; a refused list or close is audited too. **Assumed, awaiting the
+maintainer (OQ-TL3):** a team is a role, so a task for `clinician` is for whoever holds that role, at any site and on
+any care team. The service starts only if every built-in rule's team is a role word.
+
 ## Not built
 
 An observation with no value, no range, or a range that
 makes no sense has no flag and raises nothing (never read as normal or abnormal); a result's later versions (amended, corrected, entered in error) raise nothing yet, so a task made
 for a result later entered in error stays open until a person closes it; results from an HL7 feed (none is built);
-routes (a team's list, close, a dry run); the reminder sender's loop; a site's own rules file (only the built-in
-catalogue runs, and every rule in it is a draft); a screen; who approves a rule (OQ-TL1).
+the reminder sender's loop; a site's own rules file (only the built-in
+catalogue runs, and every rule in it is a draft); a screen; who approves a rule (OQ-TL1); teams finer than a role (OQ-TL3).

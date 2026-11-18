@@ -1051,6 +1051,30 @@
         ],
         "type": "object"
       },
+      "CloseTask": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "done",
+              "cancelled"
+            ]
+          }
+        },
+        "required": [
+          "expected_version",
+          "status",
+          "reason"
+        ],
+        "type": "object"
+      },
       "ConsentList": {
         "properties": {
           "consents": {
@@ -4909,6 +4933,274 @@
           }
         ],
         "description": "The history, and the newest version of every pathway (no patient data), for a screen that raises one."
+      },
+      "Task": {
+        "description": "A task a rule made. A pointer: the title is the rule's own; open the record through the patient's routes.",
+        "properties": {
+          "author": {
+            "description": "rule:<id>@<version>, or the person who closed it.",
+            "type": "string"
+          },
+          "cancelled_by": {
+            "description": "event:<word>, or the person.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "close_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "due_on": {
+            "description": "YYYY-MM-DD, the site's day.",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "late_reminder": {
+            "enum": [
+              "send-once",
+              "skip"
+            ]
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "recorded_at": {
+            "description": "UTC.",
+            "type": "string"
+          },
+          "reminders": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "rule": {
+            "type": "string"
+          },
+          "rule_version": {
+            "type": "integer"
+          },
+          "source": {
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "kind": {
+                "enum": [
+                  "result",
+                  "observation",
+                  "referral"
+                ]
+              }
+            },
+            "required": [
+              "kind",
+              "id"
+            ],
+            "type": "object"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "done",
+              "cancelled"
+            ]
+          },
+          "team": {
+            "description": "A role word: only those who hold it list or close the task.",
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "version": {
+            "description": "1 as made; 2 once closed or cancelled.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "patient_id",
+          "rule",
+          "rule_version",
+          "team",
+          "status",
+          "title",
+          "due_on",
+          "reminders",
+          "late_reminder",
+          "source",
+          "author",
+          "recorded_at",
+          "close_reason",
+          "cancelled_by"
+        ],
+        "type": "object"
+      },
+      "TaskDryRun": {
+        "additionalProperties": false,
+        "properties": {
+          "day": {
+            "description": "YYYY-MM-DD; today at the site when absent.",
+            "type": "string"
+          },
+          "event": {
+            "enum": [
+              "result-filed",
+              "result-signed-off",
+              "observation-out-of-range",
+              "observation-entered-in-error",
+              "referral-stepped",
+              "referral-closed"
+            ]
+          },
+          "facts": {
+            "additionalProperties": {
+              "maxLength": 200,
+              "type": "string"
+            },
+            "description": "Only facts the event carries: result events `abnormal`, `test`; observation events `code`, `flag`; `referral-stepped` `state`, `priority`; `referral-closed` `state`.",
+            "type": "object"
+          }
+        },
+        "required": [
+          "event"
+        ],
+        "type": "object"
+      },
+      "TaskDryRunAnswer": {
+        "description": "What the service's rules would make; nothing is written. Drafts are included with `approved: false`, and only approved rules make tasks.",
+        "properties": {
+          "day": {
+            "type": "string"
+          },
+          "event": {
+            "enum": [
+              "result-filed",
+              "result-signed-off",
+              "observation-out-of-range",
+              "observation-entered-in-error",
+              "referral-stepped",
+              "referral-closed"
+            ]
+          },
+          "planned": {
+            "items": {
+              "properties": {
+                "approved": {
+                  "type": "boolean"
+                },
+                "cancel_on": {
+                  "items": {
+                    "enum": [
+                      "result-filed",
+                      "result-signed-off",
+                      "observation-out-of-range",
+                      "observation-entered-in-error",
+                      "referral-stepped",
+                      "referral-closed"
+                    ]
+                  },
+                  "type": "array"
+                },
+                "due_on": {
+                  "type": "string"
+                },
+                "late_reminder": {
+                  "enum": [
+                    "send-once",
+                    "skip"
+                  ]
+                },
+                "reminders": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "rule": {
+                  "type": "string"
+                },
+                "team": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "rule",
+                "version",
+                "approved",
+                "team",
+                "title",
+                "due_on",
+                "reminders",
+                "late_reminder",
+                "cancel_on"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "site_holidays": {
+            "description": "How many holidays EPR_SITE_HOLIDAYS lists.",
+            "type": "integer"
+          },
+          "site_time_zone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "event",
+          "day",
+          "planned",
+          "site_time_zone",
+          "site_holidays"
+        ],
+        "type": "object"
+      },
+      "TaskList": {
+        "description": "A team's open tasks, due first, up to `limit`.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Task"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "more": {
+            "description": "True when more are open than `limit` allowed: the list is cut short and the latest due are not shown.",
+            "type": "boolean"
+          },
+          "site_time_zone": {
+            "type": "string"
+          },
+          "team": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "team",
+          "items",
+          "limit",
+          "more",
+          "site_time_zone"
+        ],
+        "type": "object"
       },
       "UpdateAllergy": {
         "properties": {
@@ -12217,6 +12509,255 @@
         ],
         "x-epr-action": "Update",
         "x-epr-resource": "ReferralWorklist"
+      }
+    },
+    "/api/tasks": {
+      "get": {
+        "operationId": "getApiTasks",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "team",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskList"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/tasks",
+        "tags": [
+          "tasks"
+        ],
+        "x-epr-action": "Search",
+        "x-epr-resource": "Tasks"
+      }
+    },
+    "/api/tasks/dry-run": {
+      "post": {
+        "operationId": "postApiTasksDry-run",
+        "parameters": [
+          {
+            "description": "1 to 128 letters, digits or . _ : -. A retry with the same key and the same request returns the first answer (header `Idempotent-Replayed: true`) and writes nothing; the same key for a different request is a 422; a key whose first request is unfinished is a 409. Only a success is kept; keys expire after 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskDryRun"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskDryRunAnswer"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/tasks/dry-run",
+        "tags": [
+          "tasks"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "Tasks"
+      }
+    },
+    "/api/tasks/{task_id}/close": {
+      "post": {
+        "operationId": "postApiTasksTask_idClose",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "1 to 128 letters, digits or . _ : -. A retry with the same key and the same request returns the first answer (header `Idempotent-Replayed: true`) and writes nothing; the same key for a different request is a 422; a key whose first request is unfinished is a 409. Only a success is kept; keys expire after 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloseTask"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "A likely duplicate or a stale expected_version."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/tasks/{task_id}/close",
+        "tags": [
+          "tasks"
+        ],
+        "x-epr-action": "Update",
+        "x-epr-resource": "Tasks"
       }
     },
     "/api/watch-list": {

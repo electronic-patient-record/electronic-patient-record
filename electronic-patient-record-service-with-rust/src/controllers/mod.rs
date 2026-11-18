@@ -25,6 +25,7 @@ pub mod referrals;
 pub mod relationships;
 pub mod results;
 pub mod suspicions;
+pub mod tasks;
 pub mod watch_list;
 
 use axa::routes::AppRoutes;
@@ -48,6 +49,7 @@ pub fn route_groups() -> Vec<axa::routes::Routes> {
         hazards::routes(),
         referral_queue::routes(),
         referral_worklist::routes(),
+        tasks::routes(),
         watch_list::routes(),
         deaths::routes(),
         adjustments::routes(),

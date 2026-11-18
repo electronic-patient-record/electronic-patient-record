@@ -64,7 +64,9 @@ pub enum Status {
 }
 
 impl Status {
-    fn word(self) -> &'static str {
+    /// The stored word: `open`, `done` or `cancelled`.
+    #[must_use]
+    pub fn word(self) -> &'static str {
         match self {
             Status::Open => "open",
             Status::Done => "done",
@@ -299,6 +301,25 @@ async fn append(
 /// [`StoreError::Db`] when the catalogue does not load (a test keeps it valid).
 pub fn rules() -> Result<&'static [Rule], StoreError> {
     task_rules::catalogue().map_err(StoreError::Db)
+}
+
+/// The first rule in `rules` whose team is not a role word, as a message: a task for a team nobody can hold would
+/// sit on no one's list (OQ-TL3: a team is a role). `None` when every team is a role.
+#[must_use]
+pub fn team_problem(rules: &[Rule]) -> Option<String> {
+    rules
+        .iter()
+        .find(|r| {
+            !crate::policy::Role::ALL
+                .iter()
+                .any(|role| role.as_str() == r.task.team)
+        })
+        .map(|r| {
+            format!(
+                "task rule {} version {}: team `{}` is not a role, so nobody could see its tasks",
+                r.id, r.version, r.task.team
+            )
+        })
 }
 
 /// What one event did to tasks.
@@ -580,4 +601,18 @@ pub async fn record_run(db: impl Into<Db<'_>>, day: Date) -> Result<(), StoreErr
         .await
         .map_err(db_err)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_built_in_rule_is_for_a_role_and_a_team_that_is_none_is_named() {
+        assert_eq!(team_problem(rules().unwrap()), None);
+        let mut odd = rules().unwrap().to_vec();
+        odd[0].task.team = "ward-7".into();
+        let p = team_problem(&odd).unwrap();
+        assert!(p.contains("ward-7") && p.contains(&odd[0].id), "{p}");
+    }
 }

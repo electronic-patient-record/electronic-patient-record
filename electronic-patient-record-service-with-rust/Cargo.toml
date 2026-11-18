@@ -162,6 +162,10 @@ name = "http_audit_refusal_roles"
 path = "tests/http_audit_refusal_roles.rs"
 
 [[test]]
+name = "http_tasks"
+path = "tests/http_tasks.rs"
+
+[[test]]
 name = "http_conflicts"
 path = "tests/http_conflicts.rs"
 

@@ -189,6 +189,14 @@ pub const TABLE: &[(&str, &str, Resource, Action)] = &[
         Resource::ReferralWorklist,
         Action::Search,
     ),
+    ("GET", "/api/tasks", Resource::Tasks, Action::Search),
+    ("POST", "/api/tasks/dry-run", Resource::Tasks, Action::Read),
+    (
+        "POST",
+        "/api/tasks/{task_id}/close",
+        Resource::Tasks,
+        Action::Update,
+    ),
     (
         "GET",
         "/api/referrals/worklist/count",

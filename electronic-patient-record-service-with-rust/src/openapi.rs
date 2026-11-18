@@ -643,6 +643,81 @@ fn watch_list_schemas() -> Value {
     })
 }
 
+/// The schemas for tasks from rules (TL-3).
+fn task_schemas() -> Value {
+    let event = json!({"enum": ["result-filed", "result-signed-off", "observation-out-of-range",
+        "observation-entered-in-error", "referral-stepped", "referral-closed"]});
+    json!({
+        "Task": {
+            "type": "object",
+            "required": ["id", "version", "patient_id", "rule", "rule_version", "team", "status", "title", "due_on",
+                "reminders", "late_reminder", "source", "author", "recorded_at", "close_reason", "cancelled_by"],
+            "description": "A task a rule made. A pointer: the title is the rule's own; open the record through the patient's routes.",
+            "properties": {
+                "id": {"type": "string"}, "version": {"type": "integer", "description": "1 as made; 2 once closed or cancelled."},
+                "patient_id": {"type": "string"}, "rule": {"type": "string"}, "rule_version": {"type": "integer"},
+                "team": {"type": "string", "description": "A role word: only those who hold it list or close the task."},
+                "status": {"enum": ["open", "done", "cancelled"]},
+                "title": {"type": "string"},
+                "due_on": {"type": "string", "description": "YYYY-MM-DD, the site's day."},
+                "reminders": {"type": "array", "items": {"type": "string"}},
+                "late_reminder": {"enum": ["send-once", "skip"]},
+                "source": {"type": "object", "required": ["kind", "id"], "properties": {
+                    "kind": {"enum": ["result", "observation", "referral"]}, "id": {"type": "string"}}},
+                "author": {"type": "string", "description": "rule:<id>@<version>, or the person who closed it."},
+                "recorded_at": {"type": "string", "description": "UTC."},
+                "close_reason": {"type": ["string", "null"]},
+                "cancelled_by": {"type": ["string", "null"], "description": "event:<word>, or the person."}
+            }
+        },
+        "TaskList": {
+            "type": "object", "required": ["team", "items", "limit", "more", "site_time_zone"],
+            "description": "A team's open tasks, due first, up to `limit`.",
+            "properties": {
+                "team": {"type": "string"},
+                "items": {"type": "array", "items": {"$ref": "#/components/schemas/Task"}},
+                "limit": {"type": "integer"},
+                "more": {"type": "boolean", "description": "True when more are open than `limit` allowed: the list is cut short and the latest due are not shown."},
+                "site_time_zone": {"type": "string"}
+            }
+        },
+        "CloseTask": {
+            "type": "object", "additionalProperties": false, "required": ["expected_version", "status", "reason"],
+            "properties": {
+                "expected_version": {"type": "integer"},
+                "status": {"enum": ["done", "cancelled"]},
+                "reason": {"type": "string", "maxLength": 500}
+            }
+        },
+        "TaskDryRun": {
+            "type": "object", "additionalProperties": false, "required": ["event"],
+            "properties": {
+                "event": event,
+                "facts": {"type": "object", "additionalProperties": {"type": "string", "maxLength": 200},
+                    "description": "Only facts the event carries: result events `abnormal`, `test`; observation events `code`, `flag`; `referral-stepped` `state`, `priority`; `referral-closed` `state`."},
+                "day": {"type": "string", "description": "YYYY-MM-DD; today at the site when absent."}
+            }
+        },
+        "TaskDryRunAnswer": {
+            "type": "object", "required": ["event", "day", "planned", "site_time_zone", "site_holidays"],
+            "description": "What the service's rules would make; nothing is written. Drafts are included with `approved: false`, and only approved rules make tasks.",
+            "properties": {
+                "event": event, "day": {"type": "string"},
+                "planned": {"type": "array", "items": {"type": "object",
+                    "required": ["rule", "version", "approved", "team", "title", "due_on", "reminders", "late_reminder", "cancel_on"],
+                    "properties": {
+                        "rule": {"type": "string"}, "version": {"type": "integer"}, "approved": {"type": "boolean"},
+                        "team": {"type": "string"}, "title": {"type": "string"}, "due_on": {"type": "string"},
+                        "reminders": {"type": "array", "items": {"type": "string"}},
+                        "late_reminder": {"enum": ["send-once", "skip"]},
+                        "cancel_on": {"type": "array", "items": event}}}},
+                "site_time_zone": {"type": "string"},
+                "site_holidays": {"type": "integer", "description": "How many holidays EPR_SITE_HOLIDAYS lists."}
+            }
+        }
+    })
+}
+
 /// The schemas for assessments under versioned forms (WL-3).
 fn assessment_schemas() -> Value {
     json!({
@@ -1596,6 +1671,7 @@ fn patient_schemas() -> Value {
         suspicion_schemas(),
         pathway_schemas(),
         watch_list_schemas(),
+        task_schemas(),
         consent_schemas(),
         relationship_schemas(),
     ] {
@@ -1851,6 +1927,22 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
     ),
     (
         "POST",
+        "/api/tasks/{task_id}/close",
+        "CloseTask",
+        "200",
+        "Task",
+        "Error",
+    ),
+    (
+        "POST",
+        "/api/tasks/dry-run",
+        "TaskDryRun",
+        "200",
+        "TaskDryRunAnswer",
+        "",
+    ),
+    (
+        "POST",
         "/api/referral-queue/{id}/clear",
         "ClearReferralEntry",
         "200",
@@ -2002,6 +2094,7 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
         &[],
     ),
     ("GET", "/api/watch-list", "OwnWatchList", &[]),
+    ("GET", "/api/tasks", "TaskList", &["team"]),
     (
         "GET",
         "/api/patients/{id}/watch-list",

@@ -225,7 +225,10 @@ impl App {
         crate::site::init().map_err(Error::Message)?;
         // The task rules (TL-3) and the site's holidays (`EPR_SITE_HOLIDAYS`, read by `site::init`): a rules file
         // that does not load stops the service here, not at the first result filed.
-        crate::task_rules::catalogue().map_err(Error::Message)?;
+        let rules = crate::task_rules::catalogue().map_err(Error::Message)?;
+        if let Some(problem) = crate::tasks_store::team_problem(rules) {
+            return Err(Error::Message(problem));
+        }
         crate::audit::init_server().map_err(Error::Message)?;
         // The referral timeouts (PC-3): a setting that is wrong stops the service rather than switching one off.
         crate::referral_timeouts::init().map_err(Error::Message)?;
