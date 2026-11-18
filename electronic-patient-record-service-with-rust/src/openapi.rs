@@ -643,6 +643,64 @@ fn watch_list_schemas() -> Value {
     })
 }
 
+/// The schemas for integration tokens (TL-1). No schema ever holds a token's hash; only `IssuedToken` holds the token.
+fn api_token_schemas() -> Value {
+    let scope = json!({"enum": crate::api_tokens_store::scope_words()});
+    let view = json!({
+        "type": "object",
+        "required": ["id", "version", "name", "description", "scopes", "expires_at", "expired", "revoked",
+            "revoked_reason", "created_by", "created_at", "last_used_at"],
+        "properties": {
+            "id": {"type": "string", "description": "32 hex digits: the middle part of the token, which is not secret."},
+            "version": {"type": "integer"}, "name": {"type": "string", "description": "Its audit agent, never reused."},
+            "description": {"type": "string"},
+            "scopes": {"type": "array", "items": scope.clone()},
+            "expires_at": {"type": "string", "description": "UTC."},
+            "expired": {"type": "boolean"}, "revoked": {"type": "boolean"},
+            "revoked_reason": {"type": ["string", "null"]},
+            "created_by": {"type": "string"}, "created_at": {"type": "string"},
+            "last_used_at": {"type": ["string", "null"], "description": "At most a minute stale."}
+        }
+    });
+    let mut issued = view.clone();
+    issued["required"]
+        .as_array_mut()
+        .expect("an array")
+        .push(json!("token"));
+    issued["properties"]["token"] = json!({"type": "string",
+        "description": "epr_<id>_<secret>. Shown once, in this answer only: it is not stored and cannot be read again."});
+    issued["description"] =
+        json!("A token just issued. Keep the token now: it is not shown again.");
+    json!({
+        "ApiToken": view,
+        "IssuedToken": issued,
+        "ApiTokenList": {
+            "type": "object", "required": ["tokens", "scopes"],
+            "properties": {
+                "tokens": {"type": "array", "items": {"$ref": "#/components/schemas/ApiToken"}},
+                "scopes": {"type": "array", "items": scope.clone(), "description": "Every scope a token may hold: what the integrator role may do."}
+            }
+        },
+        "IssueToken": {
+            "type": "object", "additionalProperties": false, "required": ["name", "scopes", "expires_in_days"],
+            "properties": {
+                "name": {"type": "string", "pattern": "^[a-z][a-z0-9-]{1,63}$"},
+                "description": {"type": "string", "maxLength": 500},
+                "scopes": {"type": "array", "minItems": 1, "maxItems": 16, "items": scope},
+                "expires_in_days": {"type": "integer", "minimum": 1, "maximum": 365}
+            }
+        },
+        "DescribeToken": {
+            "type": "object", "additionalProperties": false, "required": ["expected_version", "description"],
+            "properties": {"expected_version": {"type": "integer"}, "description": {"type": "string", "maxLength": 500}}
+        },
+        "RevokeToken": {
+            "type": "object", "additionalProperties": false, "required": ["expected_version", "reason"],
+            "properties": {"expected_version": {"type": "integer"}, "reason": {"type": "string", "maxLength": 500}}
+        }
+    })
+}
+
 /// The schemas for tasks from rules (TL-3).
 fn task_schemas() -> Value {
     let event = json!({"enum": crate::task_rules::Event::ALL.map(crate::task_rules::Event::word)});
@@ -1687,6 +1745,7 @@ fn patient_schemas() -> Value {
         pathway_schemas(),
         watch_list_schemas(),
         task_schemas(),
+        api_token_schemas(),
         consent_schemas(),
         relationship_schemas(),
     ] {
@@ -1958,6 +2017,30 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
     ),
     (
         "POST",
+        "/api/tokens",
+        "IssueToken",
+        "201",
+        "IssuedToken",
+        "Error",
+    ),
+    (
+        "POST",
+        "/api/tokens/{token_id}/description",
+        "DescribeToken",
+        "200",
+        "ApiToken",
+        "Error",
+    ),
+    (
+        "POST",
+        "/api/tokens/{token_id}/revoke",
+        "RevokeToken",
+        "200",
+        "ApiToken",
+        "Error",
+    ),
+    (
+        "POST",
         "/api/referral-queue/{id}/clear",
         "ClearReferralEntry",
         "200",
@@ -2110,6 +2193,7 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
     ),
     ("GET", "/api/watch-list", "OwnWatchList", &[]),
     ("GET", "/api/tasks", "TaskList", &["team"]),
+    ("GET", "/api/tokens", "ApiTokenList", &[]),
     (
         "GET",
         "/api/patients/{id}/watch-list",

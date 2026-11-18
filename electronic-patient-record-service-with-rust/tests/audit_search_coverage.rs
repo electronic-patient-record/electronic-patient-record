@@ -65,7 +65,8 @@ fn call(template: &str, patient: &str) -> Option<String> {
         | "/api/referral-queue"
         | "/api/referral-queue/count"
         | "/api/break-glass/reviews"
-        | "/api/break-glass/reviews/count" => template.into(),
+        | "/api/break-glass/reviews/count"
+        | "/api/tokens" => template.into(),
         _ => return None,
     })
 }

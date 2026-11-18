@@ -190,6 +190,20 @@ pub const TABLE: &[(&str, &str, Resource, Action)] = &[
         Action::Search,
     ),
     ("GET", "/api/tasks", Resource::Tasks, Action::Search),
+    ("GET", "/api/tokens", Resource::ApiToken, Action::Search),
+    ("POST", "/api/tokens", Resource::ApiToken, Action::Create),
+    (
+        "POST",
+        "/api/tokens/{token_id}/description",
+        Resource::ApiToken,
+        Action::Update,
+    ),
+    (
+        "POST",
+        "/api/tokens/{token_id}/revoke",
+        Resource::ApiToken,
+        Action::Update,
+    ),
     ("POST", "/api/tasks/dry-run", Resource::Tasks, Action::Read),
     (
         "POST",

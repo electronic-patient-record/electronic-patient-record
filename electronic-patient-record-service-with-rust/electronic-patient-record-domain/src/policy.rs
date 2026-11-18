@@ -229,11 +229,14 @@ pub enum Resource {
     /// like the referral worklist; the record opens through the patient's routes. The route keeps each team's list to
     /// those who hold the team's role.
     Tasks,
+    /// Integration tokens (TL-1, `api_tokens_store.rs`): issuing, listing, describing and revoking them. Holds no
+    /// patient data; the token itself is never kept.
+    ApiToken,
 }
 
 impl Resource {
     /// Every resource kind, in a fixed order.
-    pub const ALL: [Resource; 27] = [
+    pub const ALL: [Resource; 28] = [
         Resource::PatientIdentity,
         Resource::Encounter,
         Resource::Condition,
@@ -261,6 +264,7 @@ impl Resource {
         Resource::WatchList,
         Resource::OwnWatchList,
         Resource::Tasks,
+        Resource::ApiToken,
     ];
 
     /// A stable name for audit rows and route tables.
@@ -294,6 +298,7 @@ impl Resource {
             Resource::WatchList => "WatchList",
             Resource::OwnWatchList => "OwnWatchList",
             Resource::Tasks => "Tasks",
+            Resource::ApiToken => "ApiToken",
         }
     }
 
@@ -324,6 +329,7 @@ impl Resource {
                 | Resource::ReferralWorklist
                 | Resource::OwnWatchList
                 | Resource::Tasks
+                | Resource::ApiToken
         )
     }
 }
@@ -619,12 +625,19 @@ impl Decision {
     }
 }
 
+/// What `role` may do to `resource`, from the role table: for a ceiling built on it, such as the scopes an integration
+/// token may hold (TL-1), which can never reach further than the integrator role.
+#[must_use]
+pub fn permitted_actions(role: Role, resource: Resource) -> &'static [Action] {
+    permitted(role, resource)
+}
+
 /// What a role may do to a kind of resource. The whole RBAC table.
 fn permitted(role: Role, resource: Resource) -> &'static [Action] {
     use Action::{Create, Export, MarkEnteredInError as Eie, Read, Search, Update};
     use Resource::{
-        Adjustment as Adjust, AllergyIntolerance as Allergy, Amendment, AuditLog,
-        BreakGlass as Glass, CareRelationship as Rel, Condition, Consent as Cons,
+        Adjustment as Adjust, AllergyIntolerance as Allergy, Amendment, ApiToken as Tokens,
+        AuditLog, BreakGlass as Glass, CareRelationship as Rel, Condition, Consent as Cons,
         DeathAssertion as Death, DeathReports as Deaths, DiagnosticReport as Results, Document,
         Encounter, FeedQueue as Queue, Hazard, MedicationRequest as Meds, Observation,
         OverdueReviews as Overdue, OwnWatchList as OwnWatch, PatientIdentity as Identity,
@@ -716,6 +729,10 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
             Tasks,
         ) => &[Search, Update],
         (Role::ClinicalSafetyOfficer, Tasks) => &[Read],
+        // Integration tokens (TL-1, assumed, awaiting the maintainer, OQ-TL4): the clinical administrator, who already
+        // keeps the feed and the referral queue, issues, lists, describes and revokes them. Nobody else, and a token
+        // can never manage tokens.
+        (Role::ClinicalAdmin, Tokens) => &[Read, Search, Create, Update],
         // Nurses: record care; cannot withdraw others' entries; read-only on prescriptions.
         (Role::Nurse, Identity) => &[Read, Search],
         (Role::Nurse, Encounter | Condition | Observation | Allergy | Document) => {
@@ -1448,8 +1465,8 @@ mod tests {
                 }
             }
         }
-        // 17 roles × 27 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
-        assert_eq!(cells, 17 * 27 * 6 * 8 * 5 * 3 * 7 * 2);
+        // 17 roles × 28 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
+        assert_eq!(cells, 17 * 28 * 6 * 8 * 5 * 3 * 7 * 2);
         assert!(allows > 0);
     }
 

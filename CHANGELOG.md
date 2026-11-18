@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-18 - Integration tokens: issue, list, describe, revoke (TL-1; OQ-TL4)
+
+- **Clinical risk:** none in this slice: a token cannot sign in yet. When it can, a token reaches only what the integrator role already does.
+- **Dependency:** `axa` gains its `api-tokens` feature, adding `axa-api-tokens` 0.1.0 (published 2026-11-16 16:05 UTC, inside the two-day cooldown; the maintainer approved the exception, and the update ran with the minimum lifted for that one command). Its own dependencies were already in the tree; the lockfile gained that one package.
+- **Built:** migration 41: `api_tokens` (id, unique name, the secret's SHA-256 hash, scopes, expiry, issuer; refuses change), `api_token_versions` (description and final revocation with a reason; append-only), `api_token_current`, `api_token_uses` (last use, updated, never deleted). `api_tokens_store.rs`: `issue` (the token once, `epr_<id>_<secret>`), `list`, `describe`, `revoke`, and `record` and `record_use` for the next slice; scopes are `<resource>:<action>` from what the integrator role holds (`policy::permitted_actions`), 1 to 16 a token, life 1 to 365 days. `controllers/api_tokens.rs`: `POST /api/tokens` (201, `Cache-Control: no-store`, 409 for a name ever used), `GET /api/tokens` (metadata only), `POST /api/tokens/{token_id}/description`, `POST /api/tokens/{token_id}/revoke`. Policy resource `ApiToken`, the clinical administrator's (**assumed, awaiting the maintainer, OQ-TL4**). OpenAPI schemas; `openapi.json` re-blessed; 29 inventory rows; schema map regenerated. Specs: API surface, security policy; OQ-TL4 in the Tellescope lessons.
+- **Tested:** unit tests (the scopes are exactly the integrator role's five; a bad name, an unknown or repeated scope, no scope, a life out of range or a long description is refused; only 32 hex digits are an id); `tests/http_api_tokens.rs` with login on (a clinician and an integrator can neither issue nor list; bad requests 422; issued once with `no-store`; the list carries neither the token nor its hash, and neither the token tables nor the audit trail hold the secret; the stored record verifies the token for its scope only, and refuses it once revoked; a name is not reused; a stale description 409; a blank reason 422; another administrator revokes; a revoked token takes no change; the tables refuse change); the three write routes' audit-refusal tests; the label census, the login-off search walk. 612 unit and HTTP tests; on a fresh database every database test passes (200) except the six FHIR validator tests, not run here.
+- **Not done / not verified:** signing in with a token; no screen; no expiry warning; the feed's administration and an export are not scopes.
+
 ## 2026-11-18 - The team tasks screen (TL-3; H-059)
 
 - **Clinical risk:** yes, as H-059: clinicians will see and close their team's tasks on this page. H-059 stays open.

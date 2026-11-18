@@ -187,6 +187,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "503f2f37873a0ed6adcc552126c7e79c517280e6771279d4af2376181ba02c16"
 dependencies = [
  "async-trait",
+ "axa-api-tokens",
  "axa-cursor-pagination",
  "axa-environment",
  "axa-idempotency-key",
@@ -213,6 +214,17 @@ dependencies = [
  "tracing-subscriber",
  "uuid",
  "validator",
+]
+
+[[package]]
+name = "axa-api-tokens"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1c2fbfa4619c24f0b2551e84c8f693dce0d6ffea62aa959b27822ae120d22798"
+dependencies = [
+ "sha2 0.11.1",
+ "thiserror 2.0.21",
+ "uuid",
 ]
 
 [[package]]

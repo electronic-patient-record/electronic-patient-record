@@ -18,6 +18,7 @@ pub mod allergies;
 pub use electronic_patient_record_domain::amendment;
 pub mod amendments_store;
 pub mod api_error;
+pub mod api_tokens_store;
 pub mod app;
 pub use electronic_patient_record_domain::assessments;
 pub mod assessments_store;

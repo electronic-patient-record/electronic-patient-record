@@ -1600,7 +1600,7 @@ with its first code. Open questions OQ-IH1 to OQ-IH6.
 From [`spec/lessons/tellescope/index.md`](spec/lessons/tellescope/index.md) and `plan.md` §37. Public vendor material
 only; nothing here was taken from its code. Open questions OQ-TL1 (who approves a task rule) and OQ-TL2 (jurisdiction).
 
-- [ ] **TL-1 (S/M) — Scoped integration tokens.** A system authenticates with a named token (axa 0.16's `api_tokens`:
+- [ ] **TL-1 (S/M) — Scoped integration tokens.** **Tokens and their management built 2026-11-18** (the maintainer approved `axa-api-tokens` 0.1.0 inside its cooldown): migration 41, `api_tokens_store.rs`, `controllers/api_tokens.rs`, `tests/http_api_tokens.rs`: issued once and kept as a hash, named and never reused, scopes only from what the integrator role holds, 1 to 365 days, revocation final, only the description changes, the clinical administrator's (assumed, OQ-TL4), audited without the token. **Not built:** signing in with a token (the token's name as the audit agent, a 403 outside its scope); the feed's administration and an export are not scopes, since the integrator role cannot do them. A system authenticates with a named token (axa 0.16's `api_tokens`:
   kept as a SHA-256 hash, scopes, expiry, revocation), not a person's sign-in; the token's name is the audit agent; one
   scope per job (the feed's administration, an export). As Tellescope's keys (§38): the token is shown once at creation
   and never again; only an administrator sets scopes; a list shows metadata only; any administrator may revoke any

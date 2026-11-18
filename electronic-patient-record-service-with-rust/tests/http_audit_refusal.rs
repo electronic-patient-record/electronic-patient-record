@@ -377,6 +377,42 @@ async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_r
         )
         .await;
 
+        // Integration tokens (TL-1): issue one, then describe and revoke another issued with audit working.
+        refused_then_accepted(db, "POST /api/tokens", || async {
+            let r = server
+                .post("/api/tokens")
+                .json(&json!({ "name": tag("audtoken"), "scopes": ["referral-queue:create"], "expires_in_days": 30 }))
+                .await;
+            (r.status_code(), r.text())
+        })
+        .await;
+        let made = server
+            .post("/api/tokens")
+            .json(&json!({ "name": tag("audtokentwo"), "scopes": ["referral-queue:create"], "expires_in_days": 30 }))
+            .await;
+        assert_eq!(made.status_code(), StatusCode::CREATED, "{}", made.text());
+        let token_id = made.json::<Value>()["id"].as_str().unwrap().to_string();
+        refused_then_accepted(
+            db,
+            "POST /api/tokens/{token_id}/description",
+            || async {
+                let r = server
+                    .post(&format!("/api/tokens/{token_id}/description"))
+                    .json(&json!({ "expected_version": 1, "description": "the referral feed" }))
+                    .await;
+                (r.status_code(), r.text())
+            },
+        )
+        .await;
+        refused_then_accepted(db, "POST /api/tokens/{token_id}/revoke", || async {
+            let r = server
+                .post(&format!("/api/tokens/{token_id}/revoke"))
+                .json(&json!({ "expected_version": 2, "reason": "rotated" }))
+                .await;
+            (r.status_code(), r.text())
+        })
+        .await;
+
         // An inbound referral message (queued: it names no referral), and its clearance.
         refused_then_accepted(db, "POST /api/referral-messages", || async {
             let r = server

@@ -87,6 +87,12 @@ that adds it.
   (`tests/mllp_feed.rs`).
 - Secrets reach the service only through its environment or files the deployer provides; none has a usable default.
 - Commits on `main` are signed by the maintainer's key. A lost or exposed key is an incident (section 8).
+- Integration tokens (TL-1, `api_tokens_store.rs`): a token is shown once, when it is issued, and never stored or
+  returned again; only the SHA-256 hash of its 244-bit secret is kept (`axa::api_tokens`), so a copy of the table lets
+  no one in, and it is compared in constant time. A token reads `epr_<id>_<secret>`, so a secret scanner can find a
+  leaked one. Each is named (never reused), holds only scopes the integrator role already has, and expires within 365
+  days; revocation is final. Issuing, changing and revoking are the clinical administrator's and are audited without
+  the token. Signing in with one is not built yet.
 
 ## 7. Cryptography
 

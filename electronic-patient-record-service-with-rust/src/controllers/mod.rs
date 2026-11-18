@@ -3,6 +3,7 @@
 pub mod adjustments;
 pub mod allergies;
 pub mod amendments;
+pub mod api_tokens;
 pub mod assessments;
 pub mod audit;
 pub mod break_glass;
@@ -50,6 +51,7 @@ pub fn route_groups() -> Vec<axa::routes::Routes> {
         referral_queue::routes(),
         referral_worklist::routes(),
         tasks::routes(),
+        api_tokens::routes(),
         watch_list::routes(),
         deaths::routes(),
         adjustments::routes(),

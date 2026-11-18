@@ -483,3 +483,32 @@ task_reminder_decisions,reason,none,Why a reminder was skipped,record
 task_reminder_decisions,recorded_at,none,When it was decided,record
 task_reminder_runs,ran_on,none,The site day the reminder sender ran,record
 task_reminder_runs,recorded_at,none,When it ran,record
+api_tokens,token_id,none,Random token id (not secret),record
+api_tokens,name,none,The token's name and audit agent,record
+api_tokens,hash,none,SHA-256 hash of the token's secret (never the token),record
+api_tokens,scopes,none,What the token may do,record
+api_tokens,expires_at,none,When the token stops working,record
+api_tokens,created_by,staff-identifier,Who issued the token,record
+api_tokens,created_at,none,When the token was issued,record
+api_token_versions,token_id,none,Random token id (not secret),record
+api_token_versions,version,none,Version counter,record
+api_token_versions,description,free-text,What the token is for,record
+api_token_versions,revoked,none,Whether the token was revoked,record
+api_token_versions,reason,free-text,Why the token was revoked,record
+api_token_versions,author,staff-identifier,Who wrote this version,record
+api_token_versions,recorded_at,none,When the version was written,record
+api_token_current,token_id,none,Random token id (not secret),record
+api_token_current,name,none,The token's name and audit agent,record
+api_token_current,hash,none,SHA-256 hash of the token's secret (never the token),record
+api_token_current,scopes,none,What the token may do,record
+api_token_current,expires_at,none,When the token stops working,record
+api_token_current,created_by,staff-identifier,Who issued the token,record
+api_token_current,created_at,none,When the token was issued,record
+api_token_current,version,none,Version counter,record
+api_token_current,description,free-text,What the token is for,record
+api_token_current,revoked,none,Whether the token was revoked,record
+api_token_current,reason,free-text,Why the token was revoked,record
+api_token_current,author,staff-identifier,Who wrote this version,record
+api_token_current,recorded_at,none,When the version was written,record
+api_token_uses,token_id,none,Random token id (not secret),transient
+api_token_uses,last_used_at,none,When the token was last used,transient

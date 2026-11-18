@@ -36,7 +36,7 @@ sha2 = "0.11"
 toml = "1"
 electronic-patient-record-matcher = "0.8.0"
 # The shared service plumbing.
-axa = { version = "0.20", features = ["cursor-pagination", "idempotency", "outbox", "postgres-sqlx", "problem", "ratelimit"] }
+axa = { version = "0.20", features = ["api-tokens", "cursor-pagination", "idempotency", "outbox", "postgres-sqlx", "problem", "ratelimit"] }
 
 [dependencies]
 axa = { workspace = true }
@@ -160,6 +160,10 @@ path = "tests/http_audit_refusal.rs"
 [[test]]
 name = "http_audit_refusal_roles"
 path = "tests/http_audit_refusal_roles.rs"
+
+[[test]]
+name = "http_api_tokens"
+path = "tests/http_api_tokens.rs"
 
 [[test]]
 name = "http_tasks"

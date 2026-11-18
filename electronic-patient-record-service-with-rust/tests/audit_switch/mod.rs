@@ -9,7 +9,7 @@ use sqlx::{AssertSqlSafe, PgPool};
 use std::future::Future;
 
 /// The write routes driven with login off (`http_audit_refusal.rs`), spelled as in `routes::TABLE`.
-pub const LOGIN_OFF: [&str; 40] = [
+pub const LOGIN_OFF: [&str; 43] = [
     "POST /api/patients",
     "PUT /api/patients/{id}",
     "POST /fhir/R4/Patient",
@@ -50,6 +50,9 @@ pub const LOGIN_OFF: [&str; 40] = [
     "PUT /api/patients/{id}/relationships/{relationship_id}",
     "POST /api/patients/{id}/merge",
     "POST /api/patients/{id}/unmerge",
+    "POST /api/tokens",
+    "POST /api/tokens/{token_id}/description",
+    "POST /api/tokens/{token_id}/revoke",
 ];
 
 /// The write routes driven with login on (`http_audit_refusal_roles.rs`).
@@ -64,7 +67,7 @@ pub const LOGIN_ON: [&str; 4] = [
 pub static DRIVEN: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
 
 /// Every table a write route changes.
-pub const STORES: [&str; 26] = [
+pub const STORES: [&str; 28] = [
     "patient_versions",
     "consent_versions",
     "relationship_versions",
@@ -91,6 +94,8 @@ pub const STORES: [&str; 26] = [
     "referral_unmatched",
     "referral_unmatched_clearances",
     "task_versions",
+    "api_tokens",
+    "api_token_versions",
 ];
 
 pub async fn sql(db: &PgPool, text: &str) {
