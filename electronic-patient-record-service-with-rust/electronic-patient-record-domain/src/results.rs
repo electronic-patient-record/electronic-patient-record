@@ -10,6 +10,7 @@
 //! unsigned abnormal result, and an HL7 ORU feed (OR-4's remaining slices).
 
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 /// The longest test name, value, unit, range or performer kept.
 pub const TEXT_LIMIT: usize = 500;
@@ -171,6 +172,19 @@ pub fn problems(r: &ResultRecord) -> Vec<Refusal> {
     out
 }
 
+/// The facts a result's task events carry (TL-3): `test`, the test's name as reported, and `abnormal`, `true` when the
+/// reporting service flagged the value abnormal or critical and `false` when it flagged it normal. With no flag there is
+/// no `abnormal` fact, never `false`: a rule on `abnormal` then does not match, and silence is not read as normal.
+#[must_use]
+pub fn task_facts(record: &ResultRecord) -> BTreeMap<String, String> {
+    let mut facts = BTreeMap::from([("test".to_string(), record.test.clone())]);
+    if let Some(i) = record.interpretation {
+        let abnormal = matches!(i, Interpretation::Abnormal | Interpretation::Critical);
+        facts.insert("abnormal".to_string(), abnormal.to_string());
+    }
+    facts
+}
+
 /// Whether a first version may have this status.
 #[must_use]
 pub fn first_refusal(status: Status) -> Option<Refusal> {
@@ -306,6 +320,42 @@ mod tests {
     fn stored_words_are_the_serde_words() {
         for s in Status::ALL {
             assert_eq!(serde_json::to_value(s).unwrap(), s.word());
+        }
+    }
+
+    #[test]
+    fn task_facts_say_abnormal_only_when_the_service_flagged_it() {
+        let mut r = ResultRecord {
+            test: "Serum potassium".into(),
+            value: Some("6.1".into()),
+            unit: None,
+            reference_range: None,
+            interpretation: None,
+            status: Status::Final,
+            issued: "2026-11-18T09:00:00Z".into(),
+            performer: None,
+        };
+        let f = task_facts(&r);
+        assert_eq!(f.get("test").map(String::as_str), Some("Serum potassium"));
+        assert!(!f.contains_key("abnormal"), "no flag is no fact, not false");
+        for (i, want) in [
+            (Interpretation::Normal, "false"),
+            (Interpretation::Abnormal, "true"),
+            (Interpretation::Critical, "true"),
+        ] {
+            r.interpretation = Some(i);
+            assert_eq!(
+                task_facts(&r).get("abnormal").map(String::as_str),
+                Some(want)
+            );
+        }
+        for fact in task_facts(&r).keys() {
+            assert!(
+                crate::task_rules::Event::ResultFiled
+                    .facts()
+                    .contains(&fact.as_str()),
+                "{fact} is a fact the event declares"
+            );
         }
     }
 }

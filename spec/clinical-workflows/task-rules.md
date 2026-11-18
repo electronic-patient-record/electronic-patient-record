@@ -29,6 +29,23 @@ The event's day is the site's calendar day it fell on (`site::day_in`). Saturday
 working days. Due in 0 working days is that day, or the next working day if it is not one. A reminder N working days
 before the due day is never set before the event's day.
 
+**The site's holidays** are `EPR_SITE_HOLIDAYS`: calendar days `YYYY-MM-DD`, separated by commas or spaces, at most 200;
+unset or blank is none (weekends are still not working days). Checked once at start-up with the time zone
+(`site::init`): a value that is not a calendar day, such as `25/12/2026` or `2026-02-30`, stops the service, because a
+due day counted through a forgotten holiday is a day early and nobody would know why. The built-in rules are checked
+then too, so a rules file that does not load stops the service rather than the first result filed.
+
+## Events raised
+
+| Event | Raised by | Facts | Source |
+|---|---|---|---|
+| `result-filed` | `results_store::create`, a result filed at version 1 that is not entered in error | `test` (the name as reported); `abnormal`, `true` for an abnormal or critical flag, `false` for a normal one, and absent with no flag (silence is not normal) | `result`, the result's id |
+| `result-signed-off` | `results_store::sign_off`, a new sign-off only (signing again raises nothing) | as filed, from the version signed | `result` |
+
+Raising an event (`tasks_store::raise`) first cancels the source's open tasks that the event cancels, then makes what
+the approved rules call for, so a new event replaces what an older one asked and never cancels a task it has just made.
+Both run on the write's own connection; the results routes pass their transaction, which also holds the audit row.
+
 ## The store
 
 `task_versions` (append-only, migration 40): version 1 as a rule made it (`open`), version 2 `done` or `cancelled`
@@ -47,5 +64,8 @@ with the reason and who: a person, or `event:<word>`. `task_current` is the late
 
 ## Not built
 
-The event hooks in the stores that raise each event; routes (a team's list, close, a dry run); the reminder sender's
-loop; the site holiday list setting; a screen; who approves a rule (OQ-TL1).
+The observation and referral events (`observation-out-of-range`, `observation-entered-in-error`, `referral-stepped`,
+`referral-closed`); a result's later versions (amended, corrected, entered in error) raise nothing yet, so a task made
+for a result later entered in error stays open until a person closes it; results from an HL7 feed (none is built);
+routes (a team's list, close, a dry run); the reminder sender's loop; a site's own rules file (only the built-in
+catalogue runs, and every rule in it is a draft); a screen; who approves a rule (OQ-TL1).

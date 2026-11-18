@@ -291,6 +291,56 @@ async fn append(
     one(&mut *conn, &was.id).await.map(Some)
 }
 
+/// The rules that run in the service: the built-in catalogue, checked when the service starts. Only approved rules make
+/// tasks, and every built-in rule is a draft until approved (OQ-TL1); a site's own rules file is not built yet.
+///
+/// # Errors
+///
+/// [`StoreError::Db`] when the catalogue does not load (a test keeps it valid).
+pub fn rules() -> Result<&'static [Rule], StoreError> {
+    task_rules::catalogue().map_err(StoreError::Db)
+}
+
+/// What one event did to tasks.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+pub struct Raised {
+    /// Tasks it made.
+    pub made: Vec<Task>,
+    /// Tasks it cancelled.
+    pub cancelled: Vec<Task>,
+}
+
+/// Raise `event` from `source` in the caller's transaction (TL-3, TL-14): first cancel the source's open tasks that the
+/// event cancels, then make the tasks the approved `rules` call for, due on the site's working days counted from the
+/// site's today ([`crate::site`]). Cancelling first means a new event replaces what an older one asked, and never
+/// cancels a task it has just made. If either step fails, the caller's write rolls back with it.
+///
+/// # Errors
+///
+/// [`StoreError::Db`], [`StoreError::NotFound`] (a patient id that is not a UUID).
+pub async fn raise(
+    conn: &mut PgConnection,
+    rules: &[Rule],
+    event: Event,
+    facts: &BTreeMap<String, String>,
+    patient_id: &str,
+    source: &Source,
+) -> Result<Raised, StoreError> {
+    let cancelled = cancel_for_event(conn, event, patient_id, source).await?;
+    let made = create_from_event(
+        conn,
+        rules,
+        event,
+        facts,
+        patient_id,
+        source,
+        crate::site::today(),
+        crate::site::holidays(),
+    )
+    .await?;
+    Ok(Raised { made, cancelled })
+}
+
 /// Cancel the open tasks from `source` whose rule is cancelled by `event`, in the caller's transaction, each with an
 /// audit row naming the event. Returns what was cancelled.
 ///

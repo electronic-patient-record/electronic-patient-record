@@ -1,9 +1,12 @@
 //! Tasks from rules (TL-3, TL-4, TL-14) against Postgres: only an approved rule makes a task, with an audit row, in
 //! the caller's transaction; a rolled-back write leaves no task; an event cancels only its own source's tasks; a person
 //! closes a task with a reason at the version read; the tables refuse change; each reminder is decided once, and a
-//! late one follows its rule.
+//! late one follows its rule. Filing a result raises its event in the same transaction, and signing it off cancels
+//! its task.
 
 use electronic_patient_record::patients_store::{self, StoreError};
+use electronic_patient_record::results::{Interpretation, ResultRecord, Status as ResultStatus};
+use electronic_patient_record::results_store;
 use electronic_patient_record::task_rules::{self, Event, ReminderNow};
 use electronic_patient_record::tasks_store::{self as store, Source, Status};
 use electronic_patient_record_matcher::{HumanName, Patient};
@@ -387,5 +390,104 @@ async fn each_reminder_is_decided_once_and_a_late_one_follows_its_rule() {
     assert!(
         mine(store::reminders_due(&db, d("2026-11-25")).await.unwrap()).is_empty(),
         "decided, so not offered again"
+    );
+}
+
+fn result(interpretation: Option<Interpretation>, status: ResultStatus) -> ResultRecord {
+    ResultRecord {
+        test: "Serum potassium".into(),
+        value: Some("6.1".into()),
+        unit: Some("mmol/L".into()),
+        reference_range: Some("3.5-5.3".into()),
+        interpretation,
+        status,
+        issued: "2026-11-18T09:00:00Z".into(),
+        performer: None,
+    }
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn filing_a_result_makes_its_task_in_the_same_transaction_and_signing_it_off_cancels_it() {
+    let db = db().await;
+    let team = format!("team-{}", stamp());
+    let rules = rules(&team);
+    let p = patient(&db).await;
+    let mine = |all: Vec<store::Task>, id: &str| {
+        all.into_iter()
+            .filter(|t| t.source.id == id)
+            .collect::<Vec<_>>()
+    };
+
+    // Rolled back: neither the result nor its task is left.
+    let mut conn = db.acquire().await.unwrap();
+    let mut tx = conn.begin().await.unwrap();
+    let gone = results_store::create_with_rules(
+        &mut *tx,
+        &p,
+        "lab-1",
+        &result(Some(Interpretation::Abnormal), ResultStatus::Final),
+        &rules,
+    )
+    .await
+    .unwrap();
+    tx.rollback().await.unwrap();
+    assert!(mine(store::for_team(&db, &team).await.unwrap().0, &gone.id).is_empty());
+
+    // Abnormal: the approved rule makes one task for this result; the draft makes none.
+    let mut tx = conn.begin().await.unwrap();
+    let filed = results_store::create_with_rules(
+        &mut *tx,
+        &p,
+        "lab-1",
+        &result(Some(Interpretation::Critical), ResultStatus::Final),
+        &rules,
+    )
+    .await
+    .unwrap();
+    tx.commit().await.unwrap();
+    let open = mine(store::for_team(&db, &team).await.unwrap().0, &filed.id);
+    assert_eq!(open.len(), 1);
+    assert_eq!(
+        (open[0].rule.as_str(), open[0].source.kind.as_str()),
+        ("approved-review", "result")
+    );
+
+    // No flag, a normal flag, or entered in error: no task.
+    for (i, status) in [
+        (None, ResultStatus::Final),
+        (Some(Interpretation::Normal), ResultStatus::Final),
+        (Some(Interpretation::Abnormal), ResultStatus::EnteredInError),
+    ] {
+        let r = results_store::create_with_rules(&db, &p, "lab-1", &result(i, status), &rules)
+            .await
+            .unwrap();
+        assert!(
+            mine(store::for_team(&db, &team).await.unwrap().0, &r.id).is_empty(),
+            "{i:?} {status:?} made a task"
+        );
+    }
+
+    // Signing it off cancels its task, naming the event; signing again changes nothing.
+    let mut tx = conn.begin().await.unwrap();
+    let (_, new) = results_store::sign_off(&mut *tx, &p, &filed.id, 1, "dr-2")
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+    assert!(new);
+    assert!(mine(store::for_team(&db, &team).await.unwrap().0, &filed.id).is_empty());
+    let task = store::one(&db, &open[0].id).await.unwrap();
+    assert_eq!(task.status, Status::Cancelled);
+    assert_eq!(
+        task.cancelled_by.as_deref(),
+        Some("event:result-signed-off")
+    );
+    let (_, again) = results_store::sign_off(&db, &p, &filed.id, 1, "dr-2")
+        .await
+        .unwrap();
+    assert!(!again);
+    assert_eq!(
+        store::one(&db, &open[0].id).await.unwrap().version,
+        task.version
     );
 }

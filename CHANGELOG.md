@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-18 - Results raise task events; the site's holidays (TL-3; H-059)
+
+- **Clinical risk:** yes, in time, as H-059 says: once a rule is approved, filing a result will make a task and signing it off will cancel it, and the due day now skips the site's holidays. Today every built-in rule is a draft, so a running service makes no task. H-059 stays open.
+- **Built:** `site::holidays_from` and `EPR_SITE_HOLIDAYS` (calendar days, at most 200, a bad day stops the start); the built-in task rules checked at start-up; `results::task_facts` (`test`, and `abnormal` only when the service flagged the value: no flag is no fact, never `false`); `tasks_store::raise`, which cancels the source's open tasks the event cancels and then makes what approved rules call for, on the caller's connection; `results_store::create` raises `result-filed` (not for a result entered in error) and `sign_off` raises `result-signed-off` on a new sign-off only. `create_with_rules` files under given rules, for a test. Spec: `spec/clinical-workflows/task-rules.md` (holidays, the events table, what is not built).
+- **Tested:** unit tests of the holiday setting (separators, repeats, six bad forms, the limit) and of the facts; a database test that a rolled-back filing leaves no task, an abnormal result makes one task, no flag, a normal flag or entered in error makes none, a sign-off cancels it naming the event, and signing again changes nothing. 602 unit and HTTP tests; 192 database tests.
+- **Not done / not verified:** two database tests failed on this machine's long-lived test database (a feed refusal past the first page of 1,130 old ones, and a duplicate-name refusal) and pass on a fresh one; not changed. The six FHIR validator tests not run. The observation and referral hooks, a result's later versions, the routes, the reminder loop and a site's rules file are still to do.
+
 ## 2026-11-17 - Domain benchmarks with criterion; coverage with tarpaulin (QA-13, QA-14)
 
 - **Clinical risk:** none: benchmarks, coverage tooling and CI.

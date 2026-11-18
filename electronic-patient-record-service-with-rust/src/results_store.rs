@@ -8,6 +8,8 @@ use crate::links;
 use crate::patients_store::{self, StoreError};
 use crate::pool::Db;
 use crate::results::{self, Refusal, ResultRecord, SignOff, Status};
+use crate::task_rules::{Event, Rule};
+use crate::tasks_store::{self, Source};
 use serde::Serialize;
 use sqlx::postgres::PgRow;
 use sqlx::{AssertSqlSafe, Row};
@@ -104,7 +106,9 @@ fn check(record: &ResultRecord) -> Result<(), StoreError> {
     }
 }
 
-/// File a new result at version 1.
+/// File a new result at version 1, raising `result-filed` (TL-3) under the service's task rules
+/// ([`tasks_store::rules`]) unless it is entered in error. The tasks are made on the same connection, so a caller
+/// that passes its transaction keeps the result, its tasks and its audit row together.
 ///
 /// # Errors
 ///
@@ -114,6 +118,21 @@ pub async fn create(
     patient_id: &str,
     author: &str,
     record: &ResultRecord,
+) -> Result<StoredResult, StoreError> {
+    create_with_rules(db, patient_id, author, record, tasks_store::rules()?).await
+}
+
+/// [`create`] under the given task rules instead of the service's: the same write, for a test of a rule.
+///
+/// # Errors
+///
+/// As [`create`].
+pub async fn create_with_rules(
+    db: impl Into<Db<'_>>,
+    patient_id: &str,
+    author: &str,
+    record: &ResultRecord,
+    rules: &[Rule],
 ) -> Result<StoredResult, StoreError> {
     check(record)?;
     if let Some(r) = results::first_refusal(record.status) {
@@ -135,7 +154,27 @@ pub async fn create(
     .await
     .map_err(db_err)?
     .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
-    row_to_stored(&row)
+    let stored = row_to_stored(&row)?;
+    if stored.result.status != Status::EnteredInError {
+        tasks_store::raise(
+            &mut *db,
+            rules,
+            Event::ResultFiled,
+            &results::task_facts(&stored.result),
+            &stored.patient_id,
+            &source(&stored.id),
+        )
+        .await?;
+    }
+    Ok(stored)
+}
+
+/// The task source for a result.
+fn source(result_id: &str) -> Source {
+    Source {
+        kind: "result".into(),
+        id: result_id.to_string(),
+    }
 }
 
 /// One result's current version, on this patient or a record merged into it.
@@ -301,7 +340,8 @@ pub async fn list(db: impl Into<Db<'_>>, patient_id: &str) -> Result<Vec<ResultV
 
 /// Sign off `version` of a result. Only the current version can be signed: an older one is a
 /// [`StoreError::Conflict`] naming the current, because the signer has not seen the change. Signing a
-/// version that is already signed returns that sign-off and `false`.
+/// version that is already signed returns that sign-off and `false`. A new sign-off raises `result-signed-off` (TL-3),
+/// which cancels the result's open tasks whose rule says so, on the same connection.
 ///
 /// # Errors
 ///
@@ -338,6 +378,15 @@ pub async fn sign_off(
     .await
     .map_err(db_err)?;
     if let Some(row) = inserted {
+        tasks_store::raise(
+            &mut *db,
+            tasks_store::rules()?,
+            Event::ResultSignedOff,
+            &results::task_facts(&current.result),
+            &current.patient_id,
+            &source(&current.id),
+        )
+        .await?;
         return Ok((row_to_sign_off(&row)?, true));
     }
     let row = sqlx::query(AssertSqlSafe(format!(

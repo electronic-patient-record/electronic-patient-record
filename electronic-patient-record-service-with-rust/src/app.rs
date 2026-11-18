@@ -223,6 +223,9 @@ impl App {
         .map_err(Error::Message)?;
         // The site's time zone, for the age on a banner: a name that is not an IANA zone stops the service.
         crate::site::init().map_err(Error::Message)?;
+        // The task rules (TL-3) and the site's holidays (`EPR_SITE_HOLIDAYS`, read by `site::init`): a rules file
+        // that does not load stops the service here, not at the first result filed.
+        crate::task_rules::catalogue().map_err(Error::Message)?;
         crate::audit::init_server().map_err(Error::Message)?;
         // The referral timeouts (PC-3): a setting that is wrong stops the service rather than switching one off.
         crate::referral_timeouts::init().map_err(Error::Message)?;
