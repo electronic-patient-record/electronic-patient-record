@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-18 - A rule's second action failing leaves nothing (TL-14)
+
+- **Clinical risk:** none: a test. It shows the property H-059 relies on.
+- **Tested:** `tests/tasks_store.rs::a_failure_in_a_rules_second_action_leaves_no_first_task_and_no_result`: two approved rules on one event, run in id order; a temporary trigger refuses only the second rule's task; filing the result fails, and neither the first rule's task nor the result is kept; with the trigger gone the same filing makes both tasks. The trigger is dropped before any assertion, so a failure cannot leave it behind. The 11 task database tests pass. TL-14 ticked.
+- **Not done / not verified:** the same failure is not forced through an HTTP route (the route commits only after the store returns, as the other tests show).
+
 ## 2026-11-18 - A synthetic sandbox (TL-9)
 
 - **Clinical risk:** none in a sandbox; loading it into a live record would add 24 false patients, which is why the loader needs an explicit flag and refuses data that is not plainly synthetic.

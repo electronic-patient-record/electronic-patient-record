@@ -1660,7 +1660,7 @@ only; nothing here was taken from its code. Open questions OQ-TL1 (who approves 
   ever added, an absent field and `null` differ (axa's `Patch<T>`) and nothing appends implicitly. Every list in the
   OpenAPI document states a maximum. **Acceptance:** a census fails on a list schema without `maxItems`; a request over
   the limit is a 422 naming the field.
-- [ ] **TL-14 (S, clinical) — All-or-nothing task rules, no duplicates.** For TL-3: a rule's actions are written in
+- [x] **TL-14 (S, clinical) — All-or-nothing task rules, no duplicates.** **Done 2026-11-18:** tasks are written in the writer's transaction (`tasks_store::raise`), and `tests/tasks_store.rs::a_failure_in_a_rules_second_action_leaves_no_first_task_and_no_result` forces the second of two rules to fail: neither task nor the result is kept, and with the fault gone the same write makes both; a duplicate rule fails the load naming both (`task_rules` tests). For TL-3: a rule's actions are written in
   one transaction with their audit rows, or none are; a rule with the same event, conditions and action as another is
   refused when rules load. **Acceptance:** a failure in the second action leaves no first task; a duplicate fails the
   load naming both rules.

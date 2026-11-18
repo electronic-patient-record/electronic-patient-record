@@ -932,3 +932,116 @@ late_reminder = "send-once"
         (Status::Cancelled, Some("event:result-entered-in-error"))
     );
 }
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn a_failure_in_a_rules_second_action_leaves_no_first_task_and_no_result() {
+    let db = db().await;
+    let team = format!("team-{}", stamp());
+    // Two approved rules on one event, run in id order: the first's task is written, then the second's is refused.
+    let rules = task_rules::parse(
+        &format!(
+            r#"
+[[rule]]
+id = "tl14-a-first"
+version = 1
+title = "First"
+approved_by = "A Clinician"
+approved_on = "2026-11-18"
+event = "result-filed"
+[rule.task]
+team = "{team}"
+title = "The first task"
+due_working_days = 1
+late_reminder = "skip"
+
+[[rule]]
+id = "tl14-b-second"
+version = 1
+title = "Second"
+approved_by = "A Clinician"
+approved_on = "2026-11-18"
+event = "result-filed"
+[rule.task]
+team = "{team}"
+title = "The second task"
+due_working_days = 2
+late_reminder = "skip"
+"#
+        ),
+        "test",
+    )
+    .unwrap();
+    let p = patient(&db).await;
+    for sql in [
+        "CREATE OR REPLACE FUNCTION epr_test_tl14_refuse() RETURNS trigger AS $$
+         BEGIN
+           IF NEW.rule_id = 'tl14-b-second' THEN RAISE EXCEPTION 'the second action fails'; END IF;
+           RETURN NEW;
+         END $$ LANGUAGE plpgsql",
+        "DROP TRIGGER IF EXISTS epr_test_tl14_refuse ON task_versions",
+        "CREATE TRIGGER epr_test_tl14_refuse BEFORE INSERT ON task_versions
+         FOR EACH ROW EXECUTE FUNCTION epr_test_tl14_refuse()",
+    ] {
+        sqlx::raw_sql(sqlx::AssertSqlSafe(sql))
+            .execute(&db)
+            .await
+            .unwrap();
+    }
+    let results_before: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM result_versions WHERE patient_id = $1::uuid")
+            .bind(&p)
+            .fetch_one(&db)
+            .await
+            .unwrap();
+
+    let mut conn = db.acquire().await.unwrap();
+    let mut tx = conn.begin().await.unwrap();
+    let filed = results_store::create_with_rules(
+        &mut *tx,
+        &p,
+        "lab-1",
+        &result(Some(Interpretation::Abnormal), ResultStatus::Final),
+        &rules,
+    )
+    .await;
+    let _ = tx.rollback().await;
+    drop(conn);
+    for sql in [
+        "DROP TRIGGER IF EXISTS epr_test_tl14_refuse ON task_versions",
+        "DROP FUNCTION IF EXISTS epr_test_tl14_refuse()",
+    ] {
+        sqlx::raw_sql(sqlx::AssertSqlSafe(sql))
+            .execute(&db)
+            .await
+            .unwrap();
+    }
+
+    assert!(filed.is_err(), "the write fails with its second action");
+    assert!(
+        store::for_team(&db, &team).await.unwrap().0.is_empty(),
+        "the first rule's task went with it"
+    );
+    let results_after: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM result_versions WHERE patient_id = $1::uuid")
+            .bind(&p)
+            .fetch_one(&db)
+            .await
+            .unwrap();
+    assert_eq!(results_before, results_after, "and so did the result");
+
+    // With the trigger gone, the same write makes both tasks.
+    results_store::create_with_rules(
+        &db,
+        &p,
+        "lab-1",
+        &result(Some(Interpretation::Abnormal), ResultStatus::Final),
+        &rules,
+    )
+    .await
+    .unwrap();
+    let made = store::for_team(&db, &team).await.unwrap().0;
+    let mut rules_made: Vec<&str> = made.iter().map(|t| t.rule.as_str()).collect();
+    rules_made.sort_unstable();
+    assert_eq!(rules_made, ["tl14-a-first", "tl14-b-second"]);
+}
