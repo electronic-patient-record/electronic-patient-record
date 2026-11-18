@@ -40,7 +40,9 @@ then too, so a rules file that does not load stops the service rather than the f
 | Event | Raised by | Facts | Source |
 |---|---|---|---|
 | `result-filed` | `results_store::create`, a result filed at version 1 that is not entered in error | `test` (the name as reported); `abnormal`, `true` for an abnormal or critical flag, `false` for a normal one, and absent with no flag (silence is not normal) | `result`, the result's id |
+| `result-filed`, again | `results_store::update`, an amended or corrected version flagged abnormal where the last was not (a second abnormal version raises nothing) | as filed, from the new version | `result` |
 | `result-signed-off` | `results_store::sign_off`, a new sign-off only (signing again raises nothing) | as filed, from the version signed | `result` |
+| `result-entered-in-error` | `results_store::update`, the version that marks it entered in error | `abnormal` and `test` as they were before, so the tasks the result made can be cancelled | `result` |
 | `observation-out-of-range` | `observations_store::create`, an observation outside its reference or critical range; `update`, a version out of range when the last was not (a second save of the same abnormal value raises nothing) | `code` (LOINC); `flag` (`critical-low`, `low`, `high`, `critical-high`) | `observation`, its id |
 | `observation-entered-in-error` | `observations_store::update`, the version that marks it entered in error | `code` and `flag` as they were before, so the tasks the value made can be cancelled | `observation` |
 | `referral-stepped` | `referrals_store::request` (a step into `requested`) and `advance`, every step that does not end the referral | `state` (the state reached); `priority` (`routine`, `urgent`, `asap`, `stat`) | `referral`, its id |
@@ -88,7 +90,6 @@ any care team. The service starts only if every built-in rule's team is a role w
 ## Not built
 
 An observation with no value, no range, or a range that
-makes no sense has no flag and raises nothing (never read as normal or abnormal); a result's later versions (amended, corrected, entered in error) raise nothing yet, so a task made
-for a result later entered in error stays open until a person closes it; results from an HL7 feed (none is built);
+makes no sense has no flag and raises nothing (never read as normal or abnormal); a result amended from abnormal back to normal cancels nothing (no event says so); results from an HL7 feed (none is built);
 an alert beyond the list (nobody is paged or messaged when a reminder is sent); a site's own rules file (only the built-in
 catalogue runs, and every rule in it is a draft); a screen; who approves a rule (OQ-TL1); teams finer than a role (OQ-TL3).

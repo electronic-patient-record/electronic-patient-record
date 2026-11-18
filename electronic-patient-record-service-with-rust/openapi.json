@@ -5055,6 +5055,7 @@
             "enum": [
               "result-filed",
               "result-signed-off",
+              "result-entered-in-error",
               "observation-out-of-range",
               "observation-entered-in-error",
               "referral-stepped",
@@ -5066,7 +5067,7 @@
               "maxLength": 200,
               "type": "string"
             },
-            "description": "Only facts the event carries: result events `abnormal`, `test`; observation events `code`, `flag`; `referral-stepped` `state`, `priority`; `referral-closed` `state`.",
+            "description": "Only facts the event carries: result events (filed, signed off, entered in error) `abnormal`, `test`; observation events `code`, `flag`; `referral-stepped` `state`, `priority`; `referral-closed` `state`.",
             "type": "object"
           }
         },
@@ -5085,6 +5086,7 @@
             "enum": [
               "result-filed",
               "result-signed-off",
+              "result-entered-in-error",
               "observation-out-of-range",
               "observation-entered-in-error",
               "referral-stepped",
@@ -5102,6 +5104,7 @@
                     "enum": [
                       "result-filed",
                       "result-signed-off",
+                      "result-entered-in-error",
                       "observation-out-of-range",
                       "observation-entered-in-error",
                       "referral-stepped",

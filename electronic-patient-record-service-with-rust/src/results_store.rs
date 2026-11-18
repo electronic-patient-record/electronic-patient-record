@@ -169,6 +169,48 @@ pub async fn create_with_rules(
     Ok(stored)
 }
 
+/// The task event a later version raises (TL-3), on the writer's connection: entered in error raises
+/// `result-entered-in-error` with the facts as they were, so the tasks the result made can be cancelled; an amended or
+/// corrected version flagged abnormal where the last was not raises `result-filed`, so a second abnormal version makes
+/// no second task.
+async fn raise_for_change(
+    conn: &mut sqlx::PgConnection,
+    rules: &[Rule],
+    was: &StoredResult,
+    now: &StoredResult,
+) -> Result<(), StoreError> {
+    let abnormal = |r: &ResultRecord| {
+        results::task_facts(r).get("abnormal").map(String::as_str) == Some("true")
+    };
+    let event = if now.result.status == Status::EnteredInError
+        && was.result.status != Status::EnteredInError
+    {
+        Some((
+            Event::ResultEnteredInError,
+            results::task_facts(&was.result),
+        ))
+    } else if now.result.status != Status::EnteredInError
+        && abnormal(&now.result)
+        && !abnormal(&was.result)
+    {
+        Some((Event::ResultFiled, results::task_facts(&now.result)))
+    } else {
+        None
+    };
+    if let Some((event, facts)) = event {
+        tasks_store::raise(
+            conn,
+            rules,
+            event,
+            &facts,
+            &now.patient_id,
+            &source(&now.id),
+        )
+        .await?;
+    }
+    Ok(())
+}
+
 /// The task source for a result.
 fn source(result_id: &str) -> Source {
     Source {
@@ -205,12 +247,14 @@ pub async fn current(
 }
 
 /// Append the next version of a result: amended, corrected, final after preliminary, or entered in
-/// error. Any sign-off stays on the version it named, so the result reads as changed since sign-off.
+/// error. Any sign-off stays on the version it named, so the result reads as changed since sign-off. Entered in error
+/// raises `result-entered-in-error` (TL-3); a version flagged abnormal where the last was not raises `result-filed`.
 ///
 /// # Errors
 ///
 /// [`StoreError::NotFound`], [`StoreError::Conflict`] (stale or racing version),
 /// [`StoreError::BadQuery`] (the change was refused).
+#[allow(clippy::too_many_arguments)]
 pub async fn update(
     db: impl Into<Db<'_>>,
     patient_id: &str,
@@ -219,6 +263,35 @@ pub async fn update(
     author: &str,
     reason: Option<&str>,
     record: &ResultRecord,
+) -> Result<StoredResult, StoreError> {
+    update_with_rules(
+        db,
+        patient_id,
+        result_id,
+        expected_version,
+        author,
+        reason,
+        record,
+        tasks_store::rules()?,
+    )
+    .await
+}
+
+/// [`update`] under the given task rules instead of the service's: the same write, for a test of a rule.
+///
+/// # Errors
+///
+/// As [`update`].
+#[allow(clippy::too_many_arguments)]
+pub async fn update_with_rules(
+    db: impl Into<Db<'_>>,
+    patient_id: &str,
+    result_id: &str,
+    expected_version: i32,
+    author: &str,
+    reason: Option<&str>,
+    record: &ResultRecord,
+    rules: &[Rule],
 ) -> Result<StoredResult, StoreError> {
     check(record)?;
     let mut conn = db.into().acquire().await.map_err(db_err)?;
@@ -250,7 +323,11 @@ pub async fn update(
     )
     .await?;
     match appended {
-        crate::store::Appended::Row(row) => row_to_stored(&row),
+        crate::store::Appended::Row(row) => {
+            let stored = row_to_stored(&row)?;
+            raise_for_change(&mut *db, rules, &was, &stored).await?;
+            Ok(stored)
+        }
         crate::store::Appended::Taken => {
             let current = current(&mut *db, patient_id, result_id).await?.version;
             Err(StoreError::Conflict { current })

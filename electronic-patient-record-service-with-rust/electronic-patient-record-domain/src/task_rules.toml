@@ -24,7 +24,7 @@ title = "An abnormal result needs a clinician's review"
 approved_by = ""
 approved_on = ""
 event = "result-filed"
-cancel_on = ["result-signed-off"]
+cancel_on = ["result-signed-off", "result-entered-in-error"]
 
 [[rule.when]]
 fact = "abnormal"

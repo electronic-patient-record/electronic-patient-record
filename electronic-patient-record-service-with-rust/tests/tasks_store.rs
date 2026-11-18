@@ -841,3 +841,94 @@ async fn the_sender_decides_a_due_reminder_once_and_the_list_shows_the_day() {
         Some(true)
     );
 }
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn a_result_amended_to_abnormal_makes_its_task_once_and_entered_in_error_cancels_it() {
+    let db = db().await;
+    let team = format!("team-{}", stamp());
+    let rules = task_rules::parse(
+        &format!(
+            r#"
+[[rule]]
+id = "amended-review"
+version = 1
+title = "Review"
+approved_by = "A Clinician"
+approved_on = "2026-11-18"
+event = "result-filed"
+cancel_on = ["result-entered-in-error"]
+[[rule.when]]
+fact = "abnormal"
+any_of = ["true"]
+[rule.task]
+team = "{team}"
+title = "Review the result"
+due_working_days = 1
+late_reminder = "send-once"
+"#
+        ),
+        "test",
+    )
+    .unwrap();
+    let p = patient(&db).await;
+    let open_for = |all: Vec<store::Task>, id: &str| {
+        all.into_iter()
+            .filter(|t| t.source.id == id)
+            .collect::<Vec<_>>()
+    };
+    let filed = results_store::create_with_rules(
+        &db,
+        &p,
+        "lab-1",
+        &result(Some(Interpretation::Normal), ResultStatus::Final),
+        &rules,
+    )
+    .await
+    .unwrap();
+    assert!(open_for(store::for_team(&db, &team).await.unwrap().0, &filed.id).is_empty());
+
+    // Amended to abnormal: one task. Corrected, still abnormal: no second.
+    for (version, status, why) in [
+        (1, ResultStatus::Amended, "repeat sample"),
+        (2, ResultStatus::Corrected, "unit typo"),
+    ] {
+        results_store::update_with_rules(
+            &db,
+            &p,
+            &filed.id,
+            version,
+            "lab-1",
+            Some(why),
+            &result(Some(Interpretation::Abnormal), status),
+            &rules,
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            open_for(store::for_team(&db, &team).await.unwrap().0, &filed.id).len(),
+            1,
+            "{status:?}"
+        );
+    }
+    let task = open_for(store::for_team(&db, &team).await.unwrap().0, &filed.id).remove(0);
+
+    // Entered in error: its task is cancelled, naming the event.
+    results_store::update_with_rules(
+        &db,
+        &p,
+        &filed.id,
+        3,
+        "lab-1",
+        Some("wrong patient"),
+        &result(Some(Interpretation::Abnormal), ResultStatus::EnteredInError),
+        &rules,
+    )
+    .await
+    .unwrap();
+    let task = store::one(&db, &task.id).await.unwrap();
+    assert_eq!(
+        (task.status, task.cancelled_by.as_deref()),
+        (Status::Cancelled, Some("event:result-entered-in-error"))
+    );
+}

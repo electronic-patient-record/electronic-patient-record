@@ -645,8 +645,7 @@ fn watch_list_schemas() -> Value {
 
 /// The schemas for tasks from rules (TL-3).
 fn task_schemas() -> Value {
-    let event = json!({"enum": ["result-filed", "result-signed-off", "observation-out-of-range",
-        "observation-entered-in-error", "referral-stepped", "referral-closed"]});
+    let event = json!({"enum": crate::task_rules::Event::ALL.map(crate::task_rules::Event::word)});
     let mut all = task_schema_list(&event);
     // A list item is a task and the day the reminder sender last reminded it.
     let mut item = all["Task"].clone();
@@ -710,7 +709,7 @@ fn task_schema_list(event: &Value) -> Value {
             "properties": {
                 "event": event,
                 "facts": {"type": "object", "additionalProperties": {"type": "string", "maxLength": 200},
-                    "description": "Only facts the event carries: result events `abnormal`, `test`; observation events `code`, `flag`; `referral-stepped` `state`, `priority`; `referral-closed` `state`."},
+                    "description": "Only facts the event carries: result events (filed, signed off, entered in error) `abnormal`, `test`; observation events `code`, `flag`; `referral-stepped` `state`, `priority`; `referral-closed` `state`."},
                 "day": {"type": "string", "description": "YYYY-MM-DD; today at the site when absent."}
             }
         },

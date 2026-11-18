@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-18 - A result's later versions raise task events (TL-3; H-059)
+
+- **Clinical risk:** yes, as H-059: once a rule is approved, a result entered in error after filing cancels the task it made, and one amended or corrected to abnormal makes one. Every built-in rule is still a draft. H-059 stays open.
+- **Built:** the event `result-entered-in-error` (facts `abnormal`, `test` as they were); `results_store::update` raises it, or `result-filed` when the new version is flagged abnormal and the last was not; `update_with_rules` for a test. The built-in draft `abnormal-result-review` is cancelled by `result-entered-in-error` as well as `result-signed-off`. The OpenAPI event list is now built from `Event::ALL`, so it cannot fall behind (`openapi.json` re-blessed). Spec events table updated.
+- **Tested:** a database test that a normal result makes no task, amending it to abnormal makes one, correcting it while still abnormal makes no second, and entering it in error cancels the task naming the event. 608 unit and HTTP tests; on a fresh database every database test passes (199) except the six FHIR validator tests, not run here.
+- **Not done / not verified:** a result amended from abnormal back to normal cancels nothing; a site's rules file and a screen are still to do.
+
 ## 2026-11-18 - The task reminder sender (TL-3, TL-4; H-059)
 
 - **Clinical risk:** yes, as H-059: a reminder now marks a task on its team's list on its day, or is skipped with the reason after downtime when its rule says so. Off unless set; every built-in rule is still a draft. H-059 stays open.

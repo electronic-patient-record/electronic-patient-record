@@ -42,6 +42,8 @@ pub enum Event {
     ResultFiled,
     /// A result was signed off.
     ResultSignedOff,
+    /// A result filed earlier was marked entered in error.
+    ResultEnteredInError,
     /// An observation was recorded outside its range.
     ObservationOutOfRange,
     /// An observation was entered in error.
@@ -54,9 +56,10 @@ pub enum Event {
 
 impl Event {
     /// Every event, in order.
-    pub const ALL: [Event; 6] = [
+    pub const ALL: [Event; 7] = [
         Event::ResultFiled,
         Event::ResultSignedOff,
+        Event::ResultEnteredInError,
         Event::ObservationOutOfRange,
         Event::ObservationEnteredInError,
         Event::ReferralStepped,
@@ -68,7 +71,9 @@ impl Event {
     #[must_use]
     pub fn facts(self) -> &'static [&'static str] {
         match self {
-            Event::ResultFiled | Event::ResultSignedOff => &["abnormal", "test"],
+            Event::ResultFiled | Event::ResultSignedOff | Event::ResultEnteredInError => {
+                &["abnormal", "test"]
+            }
             Event::ObservationOutOfRange | Event::ObservationEnteredInError => &["code", "flag"],
             Event::ReferralStepped => &["state", "priority"],
             Event::ReferralClosed => &["state"],
@@ -81,6 +86,7 @@ impl Event {
         match self {
             Event::ResultFiled => "result-filed",
             Event::ResultSignedOff => "result-signed-off",
+            Event::ResultEnteredInError => "result-entered-in-error",
             Event::ObservationOutOfRange => "observation-out-of-range",
             Event::ObservationEnteredInError => "observation-entered-in-error",
             Event::ReferralStepped => "referral-stepped",
