@@ -63,6 +63,19 @@ request is refused (503 `idempotency_unavailable`), not run unguarded, and the s
 table. A request without the header behaves as before. `/fhir/` creates and other methods are not covered. Hazard
 H-043.
 
+### Explicit updates and list limits (TL-13, H-060)
+
+Updates are whole new versions. There is no `PATCH` route. If one is added, it must distinguish an absent field (keep
+the old value) from `null` (clear it), and an array supplied by the caller replaces the old array; it never appends
+implicitly. The OpenAPI census requires a future PATCH operation to state those semantics.
+
+Every array schema in the OpenAPI document states `maxItems`. A smaller domain limit wins (for example, 16 integration
+token scopes and 20 hazard evidence items); otherwise the limit is **1,000**. Before any handler can append a version,
+middleware walks a JSON request recursively and refuses an array over 1,000 with 422, `field` (a dotted path),
+`max_items` and an English error that repeats the field and limit. It returns no submitted value. Smaller domain limits
+continue to be checked by their domain rule. This is a structural guard, not a promise that every response page contains
+1,000 items: list endpoints may state and enforce smaller page sizes.
+
 ### Error bodies
 
 Every refusal and failure is built by `api_error::ApiError`, never by hand (`tests/error_census.rs`):

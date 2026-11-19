@@ -1656,7 +1656,7 @@ only; nothing here was taken from its code. Open questions OQ-TL1 (who approves 
   until approved, has a spending cap, and keeps versions as other records do; each call records model, version, token
   counts, latency and cost, never its content in a log. **Acceptance:** an unapproved or over-cap configuration is
   refused; the cost record exists for every call in a test.
-- [ ] **TL-13 (S, clinical) — Explicit updates and stated list limits.** Updates stay whole new versions; if a PATCH is
+- [x] **TL-13 (S, clinical) — Explicit updates and stated list limits.** **Done 2026-11-19:** every OpenAPI array schema has `maxItems` (a field's smaller domain maximum, otherwise 1,000), with a census and a planted omission; `list_limits` refuses a JSON request recursively before its handler when any array exceeds 1,000, as 422 naming the dotted field and the limit, with tests at and over the boundary. Updates remain whole versions; there is no PATCH, and the census requires a future one to state `absent` keeps, `null` clears and arrays never append implicitly. H-060. Updates stay whole new versions; if a PATCH is
   ever added, an absent field and `null` differ (axa's `Patch<T>`) and nothing appends implicitly. Every list in the
   OpenAPI document states a maximum. **Acceptance:** a census fails on a list schema without `maxItems`; a request over
   the limit is a 422 naming the field.

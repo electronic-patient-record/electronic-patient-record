@@ -34,6 +34,7 @@
             "items": {
               "type": "string"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "purpose": {
@@ -50,6 +51,7 @@
             "items": {
               "type": "string"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "what": {
@@ -82,6 +84,7 @@
             "items": {
               "$ref": "#/components/schemas/AccessLogEntry"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "next": {
@@ -204,6 +207,7 @@
             "items": {
               "$ref": "#/components/schemas/Adjustment"
             },
+            "maxItems": 1000,
             "type": "array"
           }
         },
@@ -219,6 +223,7 @@
             "items": {
               "$ref": "#/components/schemas/StoredAllergy"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "amendment_notices": {
@@ -366,6 +371,7 @@
             "items": {
               "$ref": "#/components/schemas/AmendmentView"
             },
+            "maxItems": 1000,
             "type": "array"
           }
         },
@@ -551,6 +557,7 @@
                 "referral-queue:create"
               ]
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "version": {
@@ -586,12 +593,14 @@
                 "referral-queue:create"
               ]
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "tokens": {
             "items": {
               "$ref": "#/components/schemas/ApiToken"
             },
+            "maxItems": 1000,
             "type": "array"
           }
         },
@@ -620,6 +629,7 @@
                   "items": {
                     "type": "string"
                   },
+                  "maxItems": 1000,
                   "type": "array"
                 },
                 "id": {
@@ -642,6 +652,7 @@
               ],
               "type": "object"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "title": {
@@ -667,12 +678,14 @@
             "items": {
               "$ref": "#/components/schemas/StoredAssessment"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "forms": {
             "items": {
               "$ref": "#/components/schemas/AssessmentForm"
             },
+            "maxItems": 1000,
             "type": "array"
           }
         },
@@ -707,6 +720,7 @@
               ],
               "type": "object"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "form": {
@@ -868,6 +882,7 @@
             "items": {
               "$ref": "#/components/schemas/AuditRow"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "next": {
@@ -893,6 +908,7 @@
             "items": {
               "type": "string"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "error": {
@@ -1043,6 +1059,7 @@
             "items": {
               "$ref": "#/components/schemas/BreakGlassGrant"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "limit": {
@@ -1183,6 +1200,7 @@
             "items": {
               "$ref": "#/components/schemas/StoredConsent"
             },
+            "maxItems": 1000,
             "type": "array"
           }
         },
@@ -1229,6 +1247,7 @@
                   "items": {
                     "type": "string"
                   },
+                  "maxItems": 1000,
                   "type": "array"
                 },
                 "effect": {
@@ -1241,6 +1260,7 @@
                   "items": {
                     "type": "string"
                   },
+                  "maxItems": 1000,
                   "type": "array"
                 },
                 "period": {
@@ -1268,12 +1288,14 @@
                   "items": {
                     "type": "string"
                   },
+                  "maxItems": 1000,
                   "type": "array"
                 },
                 "resources": {
                   "items": {
                     "type": "string"
                   },
+                  "maxItems": 1000,
                   "type": "array"
                 }
               },
@@ -1282,6 +1304,7 @@
               ],
               "type": "object"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "status": {
@@ -1629,6 +1652,7 @@
             "items": {
               "$ref": "#/components/schemas/DeathAssertion"
             },
+            "maxItems": 1000,
             "type": "array"
           }
         },
@@ -1698,6 +1722,7 @@
             "items": {
               "$ref": "#/components/schemas/DeathReportItem"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "limit": {
@@ -1727,12 +1752,14 @@
             "items": {
               "type": "string"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "degraded": {
             "items": {
               "type": "string"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "ok": {
@@ -1771,6 +1798,7 @@
             "items": {
               "type": "object"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "candidates_cut": {
@@ -1868,6 +1896,7 @@
             "items": {
               "type": "string"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "status": {
@@ -1912,6 +1941,7 @@
             "items": {
               "type": "string"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "warnings": {
@@ -1972,6 +2002,7 @@
                   "items": {
                     "type": "string"
                   },
+                  "maxItems": 1000,
                   "type": "array"
                 },
                 "refusals_last_hour": {
@@ -2048,6 +2079,7 @@
               ],
               "type": "object"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "site_time_zone": {
@@ -2099,6 +2131,7 @@
             "items": {
               "type": "string"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "received_at": {
@@ -2147,6 +2180,7 @@
             "items": {
               "$ref": "#/components/schemas/FeedRefusal"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "site_time_zone": {
@@ -2198,12 +2232,14 @@
             "items": {
               "$ref": "#/components/schemas/HazardControl"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "evidence": {
             "items": {
               "$ref": "#/components/schemas/HazardEvidence"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "likelihood": {
@@ -2307,6 +2343,7 @@
             "items": {
               "$ref": "#/components/schemas/StoredHazard"
             },
+            "maxItems": 1000,
             "type": "array"
           }
         },
@@ -2406,6 +2443,7 @@
                 "referral-queue:create"
               ]
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "token": {
@@ -2497,6 +2535,7 @@
             "items": {
               "$ref": "#/components/schemas/StoredObservation"
             },
+            "maxItems": 1000,
             "type": "array"
           }
         },
@@ -2681,6 +2720,7 @@
             "items": {
               "$ref": "#/components/schemas/ObservationVersion"
             },
+            "maxItems": 1000,
             "type": "array"
           }
         },
@@ -2708,6 +2748,7 @@
             "items": {
               "type": "object"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "resourceType": {
@@ -2764,6 +2805,7 @@
             "items": {
               "$ref": "#/components/schemas/OverdueReviewItem"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "limit": {
@@ -2816,6 +2858,7 @@
             "items": {
               "$ref": "#/components/schemas/OwnRecord"
             },
+            "maxItems": 1000,
             "type": "array"
           }
         },
@@ -2858,6 +2901,7 @@
               ],
               "type": "object"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "lapsed": {
@@ -2891,6 +2935,7 @@
               ],
               "type": "object"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "lapsed_more": {
@@ -2927,6 +2972,7 @@
               },
               "type": "object"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "birth_date": {
@@ -2958,6 +3004,7 @@
               ],
               "type": "object"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "names": {
@@ -2973,11 +3020,13 @@
                   "items": {
                     "type": "string"
                   },
+                  "maxItems": 1000,
                   "type": "array"
                 }
               },
               "type": "object"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "sex": {
@@ -3005,6 +3054,7 @@
               ],
               "type": "object"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "temporary_identity": {
@@ -3081,6 +3131,7 @@
             "items": {
               "$ref": "#/components/schemas/PatientLink"
             },
+            "maxItems": 1000,
             "type": "array"
           }
         },
@@ -3099,6 +3150,7 @@
             "items": {
               "$ref": "#/components/schemas/Stored"
             },
+            "maxItems": 1000,
             "type": "array"
           }
         },
@@ -3141,6 +3193,7 @@
             "items": {
               "type": "string"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "site_time_zone": {
@@ -3281,6 +3334,7 @@
             "items": {
               "$ref": "#/components/schemas/StoredReferral"
             },
+            "maxItems": 1000,
             "type": "array"
           }
         },
@@ -3295,6 +3349,7 @@
             "items": {
               "$ref": "#/components/schemas/StoredReferral"
             },
+            "maxItems": 1000,
             "type": "array"
           }
         },
@@ -3453,6 +3508,7 @@
             "items": {
               "type": "string"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "received_at": {
@@ -3485,6 +3541,7 @@
             "items": {
               "$ref": "#/components/schemas/ReferralQueueEntry"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "limit": {
@@ -3525,6 +3582,7 @@
               ],
               "type": "object"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "priority": {
@@ -3616,6 +3674,7 @@
             "items": {
               "$ref": "#/components/schemas/ReferralWorklistItem"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "limit": {
@@ -3639,6 +3698,7 @@
                     "stat"
                   ]
                 },
+                "maxItems": 1000,
                 "type": "array"
               },
               "no_response": {
@@ -3650,6 +3710,7 @@
                     "stat"
                   ]
                 },
+                "maxItems": 1000,
                 "type": "array"
               }
             },
@@ -3675,6 +3736,7 @@
             "items": {
               "$ref": "#/components/schemas/StoredRelationship"
             },
+            "maxItems": 1000,
             "type": "array"
           }
         },
@@ -3739,6 +3801,7 @@
                     "adjustments"
                   ]
                 },
+                "maxItems": 1000,
                 "type": "array"
               }
             },
@@ -3826,6 +3889,7 @@
             "items": {
               "$ref": "#/components/schemas/ResultView"
             },
+            "maxItems": 1000,
             "type": "array"
           }
         },
@@ -4130,6 +4194,7 @@
               ],
               "type": "object"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "author": {
@@ -4392,6 +4457,7 @@
               ],
               "type": "object"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "patient_id": {
@@ -4520,6 +4586,7 @@
             "items": {
               "type": "string"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "patient_id": {
@@ -4635,6 +4702,7 @@
             "items": {
               "type": "string"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "grounds": {
@@ -4771,12 +4839,14 @@
               ],
               "type": "object"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "versions": {
             "items": {
               "$ref": "#/components/schemas/StoredSuspicion"
             },
+            "maxItems": 1000,
             "type": "array"
           }
         },
@@ -4870,6 +4940,7 @@
                   "items": {
                     "type": "object"
                   },
+                  "maxItems": 1000,
                   "type": "array"
                 },
                 "text": {
@@ -4885,6 +4956,7 @@
               ],
               "type": "object"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "clock_from": {
@@ -4918,6 +4990,7 @@
               ],
               "type": "object"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "id": {
@@ -4945,6 +5018,7 @@
             "items": {
               "type": "string"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "subtypes": {
@@ -4965,6 +5039,7 @@
                   ],
                   "type": "object"
                 },
+                "maxItems": 1000,
                 "type": "array"
               },
               "required": {
@@ -5009,6 +5084,7 @@
               ],
               "type": "object"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "title": {
@@ -5136,6 +5212,7 @@
               ],
               "type": "object"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "time_zone": {
@@ -5177,6 +5254,7 @@
                 "items": {
                   "$ref": "#/components/schemas/SuspicionPathway"
                 },
+                "maxItems": 1000,
                 "type": "array"
               }
             },
@@ -5232,6 +5310,7 @@
             "items": {
               "type": "string"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "rule": {
@@ -5365,6 +5444,7 @@
                       "referral-closed"
                     ]
                   },
+                  "maxItems": 1000,
                   "type": "array"
                 },
                 "due_on": {
@@ -5380,6 +5460,7 @@
                   "items": {
                     "type": "string"
                   },
+                  "maxItems": 1000,
                   "type": "array"
                 },
                 "rule": {
@@ -5408,6 +5489,7 @@
               ],
               "type": "object"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "site_holidays": {
@@ -5434,6 +5516,7 @@
             "items": {
               "$ref": "#/components/schemas/TaskListItem"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "limit": {
@@ -5510,6 +5593,7 @@
             "items": {
               "type": "string"
             },
+            "maxItems": 1000,
             "type": "array"
           },
           "rule": {
@@ -5880,6 +5964,7 @@
             "items": {
               "$ref": "#/components/schemas/WatchEntry"
             },
+            "maxItems": 1000,
             "type": "array"
           }
         },

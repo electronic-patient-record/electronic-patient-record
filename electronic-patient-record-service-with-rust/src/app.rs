@@ -338,6 +338,9 @@ impl App {
             .map_err(|e| Error::Message(format!("idempotency keys: {e}")))?;
         tokio::spawn(crate::idempotency::run_loop(keys.clone()));
         // The last layer added runs first: authenticate, count, authorize, then the idempotency key.
+        // Array limits run inside idempotency, before a handler can write a version; a replay was
+        // checked on its first run and does not read its body again.
+        let router = router.layer(axum::middleware::from_fn(crate::list_limits::enforce_mw));
         let gate = authz::Authz { db: ctx.pool() };
         let router = crate::idempotency::layer(router, keys, ctx.pool()).layer(
             axum::middleware::from_fn_with_state(gate, authz::authorize_mw),

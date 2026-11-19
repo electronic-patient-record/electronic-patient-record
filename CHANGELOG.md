@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-19 - Explicit updates and stated list limits (TL-13; H-060)
+
+- **Clinical risk:** yes. A structural limit can refuse an otherwise valid clinical write, while a missing limit can let an oversized list consume time or memory. H-060 is new and open; no clinician or Clinical Safety Officer has reviewed the limit.
+- **Built:** every array schema in the derived OpenAPI document now states `maxItems`: an existing, smaller domain maximum is preserved, and every other array says 1,000. `list_limits::enforce_mw` checks JSON bodies recursively inside authorization and idempotency but before handlers; over 1,000 is a 422 whose `field`, `max_items` and error name the dotted path and limit, never the submitted values. Updates remain whole versions. There is no PATCH; the census requires a future PATCH operation to declare that absent keeps, `null` clears and arrays never append implicitly. Specs: API surface and service.
+- **Tested:** two middleware tests (exactly 1,000 reaches the handler unchanged; 1,001 nested at `patient.names[0].given` is refused and names that field); OpenAPI census of every array with a planted missing maximum; PATCH guard. `openapi.json` re-blessed. The service workspace library suite passed (515 tests), clippy with all targets and features was clean, rustdoc passed with warnings denied, and `sh scripts/ci-local.sh --fast` passed every gate. Its first sandboxed run failed only where tests tried to bind `127.0.0.1` (`EPERM`); the permitted rerun passed, including those tests.
+- **Not done / not verified:** 1,000 is an engineering limit, not one reviewed with users; smaller domain limits remain in their existing validators rather than this structural middleware; response serialization does not independently check its documented maximum; no PATCH implementation exists; no database test is needed because the refusal happens before a handler or transaction.
+
 ## 2026-11-19 - Write-only secrets (TL-11)
 
 - **Clinical risk:** none: integration tokens, not the record.

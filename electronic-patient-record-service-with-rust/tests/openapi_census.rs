@@ -1,7 +1,8 @@
 //! OpenAPI census (OS-7): the committed `openapi.json` is exactly what the code produces, every
 //! served route is in it with its policy requirement, public routes say so, and no path carries a
 //! version segment (the API is versioned by the `Accepts-version` header). And no answer but the one
-//! that makes a secret holds a secret-named field (TL-11).
+//! that makes a secret holds a secret-named field (TL-11). Every array schema states its maximum
+//! (TL-13).
 //!
 //! To accept a deliberate change: `EPR_BLESS=1 cargo test --test openapi_census`, then review the diff.
 
@@ -98,6 +99,86 @@ fn operation_ids_are_unique() {
     ids.sort();
     ids.dedup();
     assert_eq!(ids.len(), n, "operationId collision");
+}
+
+fn arrays_without_a_maximum(value: &Value, path: &str, out: &mut Vec<String>) {
+    match value {
+        Value::Object(map) => {
+            let is_array = map.get("type").is_some_and(|kind| {
+                kind.as_str() == Some("array")
+                    || kind
+                        .as_array()
+                        .is_some_and(|kinds| kinds.iter().any(|kind| kind == "array"))
+            });
+            if is_array && map.get("maxItems").and_then(Value::as_u64).is_none() {
+                out.push(path.to_string());
+            }
+            for (key, child) in map {
+                arrays_without_a_maximum(child, &format!("{path}/{key}"), out);
+            }
+        }
+        Value::Array(items) => {
+            for (index, child) in items.iter().enumerate() {
+                arrays_without_a_maximum(child, &format!("{path}/{index}"), out);
+            }
+        }
+        _ => {}
+    }
+}
+
+#[test]
+fn every_array_schema_states_a_maximum() {
+    let mut missing = Vec::new();
+    arrays_without_a_maximum(&openapi::document(), "", &mut missing);
+    assert!(
+        missing.is_empty(),
+        "array schemas without maxItems: {missing:?}"
+    );
+}
+
+#[test]
+fn a_planted_array_without_a_maximum_is_found() {
+    let mut doc = openapi::document();
+    doc["components"]["schemas"]["Patient"]["properties"]["names"]
+        .as_object_mut()
+        .unwrap()
+        .remove("maxItems");
+    let mut missing = Vec::new();
+    arrays_without_a_maximum(&doc, "", &mut missing);
+    assert!(
+        missing
+            .iter()
+            .any(|path| path.ends_with("/Patient/properties/names")),
+        "{missing:?}"
+    );
+}
+
+#[test]
+fn a_patch_must_state_the_only_permitted_update_semantics() {
+    fn without_semantics(doc: &Value) -> Vec<&str> {
+        doc["paths"]
+            .as_object()
+            .unwrap()
+            .iter()
+            .filter_map(|(path, item)| {
+                let patch = item.get("patch")?;
+                (patch["x-epr-patch-semantics"]
+                    != "absent-keeps-null-clears-no-implicit-array-append")
+                    .then_some(path.as_str())
+            })
+            .collect()
+    }
+
+    assert!(
+        without_semantics(&openapi::document()).is_empty(),
+        "a PATCH must say absent keeps, null clears, and arrays never append implicitly"
+    );
+    let mut doc = openapi::document();
+    doc["paths"]["/api/planted"] = serde_json::json!({"patch": {}});
+    assert_eq!(without_semantics(&doc), ["/api/planted"]);
+    doc["paths"]["/api/planted"]["patch"]["x-epr-patch-semantics"] =
+        serde_json::json!("absent-keeps-null-clears-no-implicit-array-append");
+    assert!(without_semantics(&doc).is_empty());
 }
 
 /// The words that name a secret, matched against each whole word of a field's name (TL-11).

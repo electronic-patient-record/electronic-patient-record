@@ -2303,6 +2303,28 @@ fn all_schemas() -> Value {
     all
 }
 
+/// Give every array schema an explicit maximum. Smaller, field-specific maxima written into a
+/// schema (for example token scopes and hazard evidence) are kept.
+fn state_array_limits(value: &mut Value) {
+    match value {
+        Value::Object(map) => {
+            let is_array = map.get("type").is_some_and(|kind| {
+                kind.as_str() == Some("array")
+                    || kind
+                        .as_array()
+                        .is_some_and(|kinds| kinds.iter().any(|kind| kind == "array"))
+            });
+            if is_array {
+                map.entry("maxItems".to_string())
+                    .or_insert_with(|| json!(crate::list_limits::MAX_ITEMS));
+            }
+            map.values_mut().for_each(state_array_limits);
+        }
+        Value::Array(items) => items.iter_mut().for_each(state_array_limits),
+        _ => {}
+    }
+}
+
 /// The audit export is a file and the verify answer has three shapes by status, so neither fits the
 /// tables above. Search gets its 400 here.
 fn audit_operation(
@@ -2600,7 +2622,7 @@ pub fn document_for(served: &[(String, String)]) -> Value {
             .expect("an object was just inserted")
             .insert(method.to_ascii_lowercase(), Value::Object(op));
     }
-    json!({
+    let mut document = json!({
         "openapi": "3.1.0",
         "info": {
             "title": "Electronic Patient Record service",
@@ -2613,7 +2635,9 @@ pub fn document_for(served: &[(String, String)]) -> Value {
             "securitySchemes": {"bearerAuth": {"type": "http", "scheme": "bearer"}},
             "schemas": all_schemas()
         }
-    })
+    });
+    state_array_limits(&mut document);
+    document
 }
 
 /// The document for the routes this build serves.
