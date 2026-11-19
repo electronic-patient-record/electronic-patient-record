@@ -91,8 +91,10 @@ nothing on every push, and sets the wall time of a code push. Then the database 
 and the API's database-free tests (100 s, of which the tests ran about 8 s; the rest builds and links over 50 test
 binaries). Locally, a clean debug build of the service with `--timings` took 105 s by the clock and 658 s of compile time
 over 554 units at a load of 18 to 29. The largest were `fhir-r5` (48 s), `fhir-r4` (43 s), the service's library test
-build (40 s), `aws-lc-sys` (30 s) and `ring`, built twice (15 s each). Both TLS back ends are built because `sqlx`
-pulls `ring` and `reqwest` pulls `aws-lc-rs`.
+build (40 s), `aws-lc-sys` (30 s) and `ring`, built twice (15 s each). Both TLS back ends were built then because `sqlx`
+pulled `ring` and `reqwest` pulled `aws-lc-rs`. Since `authentication-verifier` 0.9.3 (2026-11-17) `reqwest` takes no
+TLS provider of its own and `ring` is the only one, so `aws-lc-sys` and its 30 s are no longer built; these timings were
+not re-measured after that change.
 
 **Rebuild after an edit (measured 2026-11-17, one run, load average about 90 from other work on the machine).** After a
 one-file change to a controller: the service library alone rebuilt in 109 s; the library and every test program in
