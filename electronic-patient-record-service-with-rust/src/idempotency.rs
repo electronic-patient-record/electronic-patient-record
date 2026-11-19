@@ -17,7 +17,8 @@
 //! service never calls `rerun_abandoned_after`, which would let a retry run the write again after a
 //! shorter lease; a unit test pins that.
 //!
-//! Not covered: `/fhir/` creates, other methods, and a request whose first run wrote the record and then
+//! Not covered: `/fhir/` creates, other methods, `POST /api/tokens` (its answer holds the token, shown
+//! once: TL-11), and a request whose first run wrote the record and then
 //! failed with a non-success answer (the key is released, so a retry can write again).
 
 use crate::api_error::ApiError;
@@ -43,9 +44,14 @@ const MAX_REQUEST: usize = 1 << 20;
 /// The most response body bytes kept for a replay.
 const MAX_RESPONSE: usize = 4 << 20;
 
-/// Whether a request is one this layer runs once: a `POST` under `/api/`.
-fn covered(method: &Method, path: &str) -> bool {
-    method == Method::POST && path.starts_with("/api/")
+/// The routes whose answer holds a secret shown once (TL-11). Their answer is never kept: a kept answer
+/// would hold the secret in clear for a day and give it again on a replay.
+pub const SHOWN_ONCE: &[&str] = &["/api/tokens"];
+
+/// Whether a request is one this layer runs once: a `POST` under `/api/`, except a [`SHOWN_ONCE`] route.
+#[must_use]
+pub fn covered(method: &Method, path: &str) -> bool {
+    method == Method::POST && path.starts_with("/api/") && !SHOWN_ONCE.contains(&path)
 }
 
 /// The keys, in `db`, per token subject.
@@ -124,6 +130,7 @@ mod tests {
             (Method::PUT, "/api/patients/x"),
             (Method::PATCH, "/api/patients/x"),
             (Method::GET, "/api/patients"),
+            (Method::POST, "/api/tokens"),
         ] {
             assert!(!covered(&m, p), "{m} {p}");
         }

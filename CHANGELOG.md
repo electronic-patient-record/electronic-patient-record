@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-19 - Write-only secrets (TL-11)
+
+- **Clinical risk:** none: integration tokens, not the record.
+- **Fixed:** `POST /api/tokens` with an `Idempotency-Key` kept its answer, the token in clear, in `axa_idempotency` for up to a day, and a retry under the same key replayed it (shown twice, against TL-1's "shown once"). The route is now outside the idempotency layer (`idempotency::SHOWN_ONCE`) and its OpenAPI operation no longer lists the header; a retry is a new request, a 409 because the name is taken. Spec: API surface (idempotent creates, write-only secrets).
+- **Built:** `tests/openapi_census.rs`: every response schema, `$ref`s followed, is searched for a field whose name has a whole word naming a secret (secret, password, passphrase, token, hash, salt, credential, key; snake, kebab and camel case); only `IssuedToken.token` on `POST /api/tokens` is allowed, and the census fails if it no longer sees that one. A planted `signingSecret` is caught; `keyed`, `tokens` and `monkey` are not. `openapi.json` re-blessed (the one parameter removed).
+- **Tested:** the census (7 tests); `tests/http_api_tokens.rs` with login on: describing and revoking return no token, a keyed issue then a keyed retry gives 201 then 409 without `Idempotent-Replayed` and without the token, and no `axa_idempotency` body holds either token's secret. With the fix removed the test fails (the retry replays the token with 201). The idempotency unit tests and both idempotency HTTP tests pass; clippy clean.
+- **Not done / not verified:** logs are not read by any test (the token routes log only a token's id); the census matches names only, so a secret under an innocent field name would pass; no stored secret other than a token exists yet (a subscription's signing secret is TL-6).
+
 ## 2026-11-18 - A rule's second action failing leaves nothing (TL-14)
 
 - **Clinical risk:** none: a test. It shows the property H-059 relies on.

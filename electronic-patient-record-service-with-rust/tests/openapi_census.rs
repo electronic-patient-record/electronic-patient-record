@@ -1,11 +1,13 @@
 //! OpenAPI census (OS-7): the committed `openapi.json` is exactly what the code produces, every
 //! served route is in it with its policy requirement, public routes say so, and no path carries a
-//! version segment (the API is versioned by the `Accepts-version` header).
+//! version segment (the API is versioned by the `Accepts-version` header). And no answer but the one
+//! that makes a secret holds a secret-named field (TL-11).
 //!
 //! To accept a deliberate change: `EPR_BLESS=1 cargo test --test openapi_census`, then review the diff.
 
 use electronic_patient_record::{auth, openapi, routes};
-use std::{fs, path::Path};
+use serde_json::Value;
+use std::{collections::BTreeSet, fs, path::Path};
 
 const FILE: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/openapi.json");
 
@@ -96,4 +98,157 @@ fn operation_ids_are_unique() {
     ids.sort();
     ids.dedup();
     assert_eq!(ids.len(), n, "operationId collision");
+}
+
+/// The words that name a secret, matched against each whole word of a field's name (TL-11).
+const SECRET_WORDS: &[&str] = &[
+    "secret",
+    "password",
+    "passphrase",
+    "token",
+    "hash",
+    "salt",
+    "credential",
+    "credentials",
+    "key",
+];
+
+/// The one answer that may hold a secret: the token just issued, shown once (TL-1).
+const SHOWN_ONCE: (&str, &str, &str) = ("POST /api/tokens", "IssuedToken", "token");
+
+fn is_secret_name(field: &str) -> bool {
+    field
+        .split(|c: char| c == '_' || c == '-' || !c.is_ascii_alphanumeric())
+        .flat_map(|w| {
+            // camelCase: split before each capital.
+            let mut words = Vec::new();
+            let mut cur = String::new();
+            for c in w.chars() {
+                if c.is_ascii_uppercase() && !cur.is_empty() {
+                    words.push(std::mem::take(&mut cur));
+                }
+                cur.push(c.to_ascii_lowercase());
+            }
+            words.push(cur);
+            words
+        })
+        .any(|w| SECRET_WORDS.contains(&w.as_str()))
+}
+
+/// Every (operation, schema, field) where a response schema, followed through `$ref`s, names a secret.
+fn secret_fields(doc: &Value) -> BTreeSet<(String, String, String)> {
+    fn walk(
+        doc: &Value,
+        schema: &Value,
+        name: &str,
+        op: &str,
+        seen: &mut BTreeSet<String>,
+        out: &mut BTreeSet<(String, String, String)>,
+    ) {
+        match schema {
+            Value::Object(map) => {
+                if let Some(r) = map.get("$ref").and_then(Value::as_str) {
+                    let target = r.trim_start_matches("#/components/schemas/");
+                    if seen.insert(target.to_string()) {
+                        walk(
+                            doc,
+                            &doc["components"]["schemas"][target],
+                            target,
+                            op,
+                            seen,
+                            out,
+                        );
+                    }
+                }
+                if let Some(props) = map.get("properties").and_then(Value::as_object) {
+                    for (field, sub) in props {
+                        if is_secret_name(field) {
+                            out.insert((op.to_string(), name.to_string(), field.clone()));
+                        }
+                        walk(doc, sub, name, op, seen, out);
+                    }
+                }
+                for (k, v) in map {
+                    if k != "properties" && k != "$ref" {
+                        walk(doc, v, name, op, seen, out);
+                    }
+                }
+            }
+            Value::Array(items) => items.iter().for_each(|v| walk(doc, v, name, op, seen, out)),
+            _ => {}
+        }
+    }
+    let mut out = BTreeSet::new();
+    for (path, item) in doc["paths"].as_object().unwrap() {
+        for (method, op) in item.as_object().unwrap() {
+            let label = format!("{} {path}", method.to_ascii_uppercase());
+            for response in op["responses"]
+                .as_object()
+                .into_iter()
+                .flat_map(|r| r.values())
+            {
+                for media in response["content"]
+                    .as_object()
+                    .into_iter()
+                    .flat_map(|c| c.values())
+                {
+                    walk(
+                        doc,
+                        &media["schema"],
+                        "(inline)",
+                        &label,
+                        &mut BTreeSet::new(),
+                        &mut out,
+                    );
+                }
+            }
+        }
+    }
+    out
+}
+
+#[test]
+fn no_answer_but_the_one_that_makes_a_secret_holds_a_secret_named_field() {
+    let found = secret_fields(&openapi::document());
+    let allowed = (
+        SHOWN_ONCE.0.to_string(),
+        SHOWN_ONCE.1.to_string(),
+        SHOWN_ONCE.2.to_string(),
+    );
+    assert!(
+        found.contains(&allowed),
+        "the census no longer sees the issued token: {found:?}"
+    );
+    let others: Vec<_> = found.iter().filter(|f| **f != allowed).collect();
+    assert!(
+        others.is_empty(),
+        "secret-named fields in answers: {others:?}"
+    );
+}
+
+#[test]
+fn a_planted_secret_in_an_answer_is_found() {
+    let mut doc = openapi::document();
+    doc["components"]["schemas"]["ApiToken"]["properties"]["signingSecret"] =
+        serde_json::json!({"type": "string"});
+    let found = secret_fields(&doc);
+    assert!(
+        found.contains(&(
+            "GET /api/tokens".into(),
+            "ApiToken".into(),
+            "signingSecret".into()
+        )),
+        "{found:?}"
+    );
+    for (name, secret) in [
+        ("signing_secret", true),
+        ("api_key", true),
+        ("passwordHash", true),
+        ("keyed", false),
+        ("tokens", false),
+        ("monkey", false),
+        ("token", true),
+    ] {
+        assert_eq!(is_secret_name(name), secret, "{name}");
+    }
 }

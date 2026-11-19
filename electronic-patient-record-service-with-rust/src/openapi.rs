@@ -2576,7 +2576,10 @@ pub fn document_for(served: &[(String, String)]) -> Value {
                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/BreakGlassGrant"}}}}),
             );
         }
-        if method == "POST" && path.starts_with("/api/") {
+        if method
+            .parse::<axum::http::Method>()
+            .is_ok_and(|m| crate::idempotency::covered(&m, path))
+        {
             let mut parameters = op
                 .get("parameters")
                 .and_then(Value::as_array)
@@ -3479,6 +3482,15 @@ mod tests {
         for (path, item) in doc["paths"].as_object().unwrap() {
             let Some(op) = item.get("post") else { continue };
             if !path.starts_with("/api/") {
+                continue;
+            }
+            if crate::idempotency::SHOWN_ONCE.contains(&path.as_str()) {
+                assert!(
+                    op.get("parameters")
+                        .and_then(Value::as_array)
+                        .is_none_or(|p| p.iter().all(|p| p["name"] != "Idempotency-Key")),
+                    "{path} shows a secret once, so it takes no Idempotency-Key"
+                );
                 continue;
             }
             posts += 1;

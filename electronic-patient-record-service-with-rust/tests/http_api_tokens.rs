@@ -1,7 +1,8 @@
 //! DB-gated, through the real router with login **on** (TL-1): only the clinical administrator issues, lists, describes
 //! and revokes integration tokens; a token is shown once and never stored or returned in clear; a name is never reused;
 //! a scope must be one the integrator role holds; revocation is final; the token tables refuse change; every step is
-//! audited without the token. One test, because the token guard is configured once per process.
+//! audited without the token; an Idempotency-Key never keeps the token (TL-11). One test, because the token guard is
+//! configured once per process.
 //!
 //! ```text
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
@@ -161,6 +162,36 @@ async fn only_an_administrator_manages_tokens_and_a_token_is_shown_once_and_neve
         let r = issue(&admin, json!({"name": name, "scopes": ["referral-queue:create"], "expires_in_days": 30})).await;
         assert_eq!(r.status_code(), StatusCode::CONFLICT, "{}", r.text());
 
+        // TL-11: an issue sent with an Idempotency-Key keeps no answer, so the store never holds the token, and a
+        // retry under the same key is a new request (409: the name is taken), never a replay of the token.
+        let keyed_name = tag("keyed-feed");
+        let keyed = |body: Value| {
+            server
+                .post("/api/tokens")
+                .add_header(admin.0.clone(), admin.1.clone())
+                .add_header(HeaderName::from_static("idempotency-key"), HeaderValue::from_static("tl-11-issue"))
+                .json(&body)
+        };
+        let body = json!({"name": keyed_name, "scopes": ["referral-queue:create"], "expires_in_days": 1});
+        let r = keyed(body.clone()).await;
+        assert_eq!(r.status_code(), StatusCode::CREATED, "{}", r.text());
+        let keyed_secret = r.json::<Value>()["token"].as_str().unwrap().rsplit('_').next().unwrap().to_string();
+        let r = keyed(body).await;
+        assert_eq!(r.status_code(), StatusCode::CONFLICT, "{}", r.text());
+        assert!(r.headers().get("idempotent-replayed").is_none());
+        assert!(!r.text().contains(&keyed_secret), "a retry never shows the token again");
+        for s in [&secret, &keyed_secret] {
+            let n: i64 = sqlx::query(
+                "SELECT count(*)::bigint AS n FROM axa_idempotency WHERE position(convert_to($1, 'UTF8') in body) > 0",
+            )
+            .bind(s)
+            .fetch_one(db)
+            .await
+            .unwrap()
+            .get("n");
+            assert_eq!(n, 0, "the idempotency store holds no token");
+        }
+
         // Describe at the version read; a stale version is a 409.
         let describe = |v: i64, d: &str| {
             server
@@ -171,6 +202,7 @@ async fn only_an_administrator_manages_tokens_and_a_token_is_shown_once_and_neve
         assert_eq!(describe(2, "x").await.status_code(), StatusCode::CONFLICT);
         let r = describe(1, "Inbound referrals from the hospital").await;
         assert_eq!(r.status_code(), StatusCode::OK, "{}", r.text());
+        assert!(!r.text().contains(&secret), "describing never returns the token");
         assert_eq!(r.json::<Value>()["version"], 2);
 
         // Another administrator revokes it, with a reason; then it takes no change, and revoking again is refused.
@@ -184,6 +216,7 @@ async fn only_an_administrator_manages_tokens_and_a_token_is_shown_once_and_neve
         assert_eq!(revoke(&clinician, 2, "no").await.status_code(), StatusCode::FORBIDDEN);
         let r = revoke(&other_admin, 2, "the feed moved").await;
         assert_eq!(r.status_code(), StatusCode::OK, "{}", r.text());
+        assert!(!r.text().contains(&secret), "revoking never returns the token");
         let revoked = r.json::<Value>();
         assert_eq!((revoked["revoked"].as_bool(), revoked["revoked_reason"].as_str()), (Some(true), Some("the feed moved")));
         assert_eq!(revoke(&other_admin, 3, "again").await.status_code(), StatusCode::UNPROCESSABLE_ENTITY);

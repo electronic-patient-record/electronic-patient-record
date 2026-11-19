@@ -1648,7 +1648,7 @@ only; nothing here was taken from its code. Open questions OQ-TL1 (who approves 
   deployment turns it on; a pack names the jurisdiction scheme (US states, other regions). **Acceptance:** a licensed
   clinician reads, an unlicensed one is refused with an audited reason, break-the-glass works and is flagged, a patient
   with no jurisdiction is refused rather than allowed when the rule is on, and a hazard row.
-- [ ] **TL-11 (S) — Write-only secrets.** Any secret the service stores (a subscription's signing secret, an
+- [x] **TL-11 (S) — Write-only secrets.** **Done 2026-11-19:** `tests/openapi_census.rs` refuses a secret-named field (a whole word: secret, password, passphrase, token, hash, salt, credential, key) in any response schema, `$ref`s followed, except `IssuedToken.token`, and a planted one is caught; `POST /api/tokens` no longer takes an `Idempotency-Key` (`idempotency::SHOWN_ONCE`): before, a keyed issue kept the token in clear in `axa_idempotency` for a day and a retry replayed it. `tests/http_api_tokens.rs` checks the list, describe, revoke and a keyed retry carry no token and the idempotency store holds none. **Not verified:** logs (no test reads them; the token routes log only a token's id). Any secret the service stores (a subscription's signing secret, an
   integration token) is shown once when made and never returned by any read, export or log. **Acceptance:** a census
   over the OpenAPI document finds no secret-named field in any response schema; a test reads every route that lists one
   and finds no secret.
