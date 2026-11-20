@@ -1729,7 +1729,11 @@ with criterion 0.8.2 (the latest); coverage used `cargo-llvm-cov`.
   inline `#[cfg(test)]` items, rank uncovered product lines, then add behaviour-focused tests until every project is
   above 95%. Raise the committed CI floors only after the same commands pass locally and on CI. **Not done / not
   verified:** the service and UI are not yet proved above 95%; no coverage-increasing test has landed yet; branch
-  coverage remains outside QA-14's LLVM-engine measure.
+  coverage remains outside QA-14's LLVM-engine measure. **Stopped 2026-11-20 at the maintainer's request:** the
+  worktree and the absent `target/llvm-cov-target` confirmed the uncached rebuild still has a clean start;
+  `pg_isready` accepted `127.0.0.1:5543`, but bounded `psql` queries still did not return. A fresh isolated PostgreSQL
+  18 container was started for another attempt, then removed before any coverage command ran. No source, test or
+  coverage result changed in this final attempt.
 
 ## Dependency 2026-11-17 — picomatch ReDoS, no fix
 
