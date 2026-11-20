@@ -191,9 +191,9 @@ fn configured(pool: PgPool, keycloak: Option<String>, paseto_keys: Option<String
 
 static LAST: LazyLock<Reused> = LazyLock::new(|| Reused::new(REUSE_FOR, TIME_LIMIT));
 
-async fn report(State(ctx): State<AppContext>) -> Json<Report> {
+async fn report(ctx: AppContext, reused: Reused) -> Json<Report> {
     let pool = ctx.pool();
-    let answer = LAST.answer(move || {
+    let answer = reused.answer(move || {
         configured(
             pool,
             setting("EPR_KEYCLOAK_URL"),
@@ -206,7 +206,22 @@ async fn report(State(ctx): State<AppContext>) -> Json<Report> {
 /// `GET /_dependencies`.
 #[must_use]
 pub fn routes() -> Routes {
-    Routes::new().add("/_dependencies", get(report))
+    routes_with_cache(LAST.clone())
+}
+
+/// `GET /_dependencies` with an explicit answer cache.
+///
+/// This is useful for an isolated router, including a test router: its dependency result cannot be
+/// inherited from another application in the same process.
+#[must_use]
+pub fn routes_with_cache(reused: Reused) -> Routes {
+    Routes::new().add(
+        "/_dependencies",
+        get(move |State(ctx): State<AppContext>| {
+            let reused = reused.clone();
+            async move { report(ctx, reused).await }
+        }),
+    )
 }
 
 #[cfg(test)]

@@ -20,6 +20,38 @@ use electronic_patient_record_matcher::{HumanName, Patient};
 use serde_json::{Value, json};
 use sqlx::{AssertSqlSafe, Row};
 
+fn assert_secret_absent(value: &Value, secrets: &[&str]) {
+    match value {
+        Value::String(text) => {
+            // Audit identifiers are random UUIDs. A numeric clinical value can occur in
+            // one by chance, which says nothing about whether the value was disclosed.
+            if uuid::Uuid::parse_str(text).is_ok() {
+                return;
+            }
+            for secret in secrets {
+                assert!(
+                    !text
+                        .to_ascii_lowercase()
+                        .contains(&secret.to_ascii_lowercase()),
+                    "{secret} leaked into the audit value: {text}"
+                );
+            }
+        }
+        Value::Array(values) => {
+            for value in values {
+                assert_secret_absent(value, secrets);
+            }
+        }
+        Value::Object(fields) => {
+            for (name, value) in fields {
+                assert_secret_absent(&Value::String(name.clone()), secrets);
+                assert_secret_absent(value, secrets);
+            }
+        }
+        Value::Null | Value::Bool(_) | Value::Number(_) => {}
+    }
+}
+
 fn nanos() -> u128 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -445,11 +477,10 @@ async fn a_suspicion_keeps_its_point_of_suspicion_and_follows_its_pathway() {
         .await
         .unwrap();
         assert!(rows.len() >= 5, "raises, an amendment and reads: {}", rows.len());
+        let secrets = ["gastrointestinal", "Gwen", "rectal", "week before", "2600", "heart", "cancer", "echocardiogram", "Owen", "not suitable"];
         for row in rows {
-            let d: String = row.try_get("d").unwrap();
-            for secret in ["gastrointestinal", "Gwen", "rectal", "week before", "2600", "heart", "cancer", "echocardiogram", "Owen", "not suitable"] {
-                assert!(!d.contains(secret), "{secret} leaked into the audit row: {d}");
-            }
+            let detail: Value = serde_json::from_str(&row.try_get::<String, _>("d").unwrap()).unwrap();
+            assert_secret_absent(&detail, &secrets);
         }
     })
     .await;

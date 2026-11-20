@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-20 - Deterministic coverage-suite isolation
+
+- **Clinical risk:** none: test isolation and assertions only; service behaviour is unchanged.
+- **Fixed:** the consolidated integration suite could reuse `/_dependencies`' process-wide five-second result from a different test application, so an unreachable database sometimes read as healthy. `dependencies::routes_with_cache` lets an isolated router own its cache while the production `routes()` keeps the same shared cache and limits. The suspicion audit-leak test also no longer mistakes a random UUID containing the digits of a clinical value for disclosure: it parses the audit JSON, ignores UUID-valued identifiers and checks every other key and string value case-insensitively.
+- **Tested:** all three readiness tests pass together with ignored tests enabled and one test thread; the login-on suspicion HTTP test passes against PostgreSQL. Both defects were reproduced first by the full LLVM coverage run.
+- **Not done / not verified:** no production route behaviour changed; the complete coverage run and repository gates remain to be rerun after these repairs, and the five MLLP TLS tests remain incompatible with LLVM instrumentation (they stay covered by the normal suite).
+
 ## 2026-11-19 - Explicit updates and stated list limits (TL-13; H-060)
 
 - **Clinical risk:** yes. A structural limit can refuse an otherwise valid clinical write, while a missing limit can let an oversized list consume time or memory. H-060 is new and open; no clinician or Clinical Safety Officer has reviewed the limit.

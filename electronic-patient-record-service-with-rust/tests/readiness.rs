@@ -79,7 +79,12 @@ async fn a_database_that_does_not_answer_is_reported_with_a_200() {
     let config = Config::from_lookup(&Environment::Test, &defaults, |_| None).unwrap();
     let ctx = AppContext::new(Environment::Test, pool, config);
     let router = AppRoutes::empty()
-        .add_route(electronic_patient_record::dependencies::routes())
+        .add_route(electronic_patient_record::dependencies::routes_with_cache(
+            electronic_patient_record::dependencies::Reused::new(
+                Duration::ZERO,
+                Duration::from_millis(100),
+            ),
+        ))
         .into_router(ctx);
     let response = router
         .oneshot(
