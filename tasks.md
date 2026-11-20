@@ -1711,6 +1711,25 @@ with criterion 0.8.2 (the latest); coverage used `cargo-llvm-cov`.
   service 36 (37.71 measured; 50 under llvm-cov). The service's figure is lower because tarpaulin leaves the tests' own
   lines out; with `--include-tests` it is 55.90, in line with llvm-cov's 53.44 on CI. CI's figures match this machine's
   (the service's exactly). **Not done:** no branch coverage (tarpaulin has none on the LLVM engine).
+- [ ] **QA-15 (L, in progress) — Raise honest source-line coverage above 95%.** Requested 2026-11-19. Coverage must
+  measure production source, not count test code or remove reachable code from the denominator. The matcher already
+  meets the target (97.52% under the existing tarpaulin gate). The service's database-free tarpaulin baseline after
+  TL-13 was 37.53% (6,070/16,173); it omits the extensive database and HTTP suites, so it is not a repository-wide
+  measure. A full LLVM run exposed and fixed two suite-isolation defects in commit `1278d0a`: the dependency endpoint's
+  process-wide five-second cache could cross test applications, and an audit-leak assertion could mistake digits in a
+  random UUID for a disclosed clinical value. The three readiness tests and the suspicion HTTP test pass after those
+  fixes. **Measurement WIP:** `kache` reused linked coverage binaries with two source-path spellings, so preliminary
+  figures were rejected rather than reported as coverage; the 14.9 GiB generated LLVM target was cleaned to force a
+  complete uncached relink. Five MLLP TLS cases cannot run under LLVM instrumentation because instrumented `ring`
+  rejects the generated EC keys; they pass in the normal suite and must remain there. An isolated PostgreSQL 18
+  container was started for the clean rerun, but host PostgreSQL clients then stopped returning while other coverage
+  builds were active, so no authoritative post-fix percentage was produced. **Next:** rerun from the clean target with
+  `RUSTC_WRAPPER` and `CARGO_TARGET_AARCH64_APPLE_DARWIN_RUNNER` unset, all database tests on a fresh database, the five
+  TLS cases excluded from instrumentation only; canonicalise duplicate paths if any remain, exclude `tests/` and
+  inline `#[cfg(test)]` items, rank uncovered product lines, then add behaviour-focused tests until every project is
+  above 95%. Raise the committed CI floors only after the same commands pass locally and on CI. **Not done / not
+  verified:** the service and UI are not yet proved above 95%; no coverage-increasing test has landed yet; branch
+  coverage remains outside QA-14's LLVM-engine measure.
 
 ## Dependency 2026-11-17 — picomatch ReDoS, no fix
 
