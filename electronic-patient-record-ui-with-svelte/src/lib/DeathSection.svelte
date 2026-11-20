@@ -143,9 +143,9 @@
                 bind:value={reason}
                 autocomplete="off"
               />
-              <button type="submit" disabled={busy.on}
-                >{TEXT.deathConfirm}</button
-              >
+              <button type="submit" disabled={busy.on}>
+                {TEXT.deathConfirm}
+              </button>
               <button type="button" onclick={() => (open = null)}>
                 {TEXT.deathCancel}
               </button>

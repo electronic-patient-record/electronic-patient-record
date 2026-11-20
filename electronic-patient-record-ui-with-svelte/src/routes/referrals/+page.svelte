@@ -83,15 +83,17 @@
       {#each items as i (i.referral_id)}
         <li>
           <strong>{itemHeadline(i, siteZone)}</strong>
-          <a href={localizePath(`/patients/${i.patient_id}`, locale)}
-            >{TEXT.wlOpen}</a
-          >
+          <a href={localizePath(`/patients/${i.patient_id}`, locale)}>
+            {TEXT.wlOpen}
+          </a>
           {#if i.why === "reply"}
             <button
               disabled={busy.on}
               type="button"
-              onclick={() => void acknowledge(i)}>{TEXT.wlAcknowledge}</button
+              onclick={() => void acknowledge(i)}
             >
+              {TEXT.wlAcknowledge}
+            </button>
           {/if}
         </li>
       {/each}

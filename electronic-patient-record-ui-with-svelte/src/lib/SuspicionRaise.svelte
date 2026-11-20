@@ -71,9 +71,9 @@
     <select id={id("pathway")} bind:value={f.pathway}>
       <option value="">{TEXT.raiseChoose}</option>
       {#each pathways as p (p.id)}
-        <option value={p.id}
-          >{p.title}{p.approved_by.trim() ? "" : ` ${TEXT.raiseDraft}`}</option
-        >
+        <option value={p.id}>
+          {p.title}{p.approved_by.trim() ? "" : ` ${TEXT.raiseDraft}`}
+        </option>
       {/each}
     </select>
     <label for={id("condition")}>{TEXT.raiseCondition}</label>
@@ -114,14 +114,14 @@
     {/if}
     <fieldset>
       <legend>{TEXT.raiseTold}</legend>
-      <label
-        ><input type="radio" value="told" bind:group={f.told} />
-        {TEXT.raiseToldYes}</label
-      >
-      <label
-        ><input type="radio" value="not-told" bind:group={f.told} />
-        {TEXT.raiseToldNo}</label
-      >
+      <label>
+        <input type="radio" value="told" bind:group={f.told} />
+        {TEXT.raiseToldYes}
+      </label>
+      <label>
+        <input type="radio" value="not-told" bind:group={f.told} />
+        {TEXT.raiseToldNo}
+      </label>
     </fieldset>
     {#if chosen && chosen.band.length > 0}
       <label for={id("band")}>{TEXT.raiseBand}</label>
@@ -136,21 +136,19 @@
       <fieldset>
         <legend>{TEXT.raiseFactors}</legend>
         {#each chosen.factor as x (x.id)}
-          <label
-            ><input type="checkbox" value={x.id} bind:group={f.factors} />
-            {x.text}</label
-          >
+          <label>
+            <input type="checkbox" value={x.id} bind:group={f.factors} />
+            {x.text}
+          </label>
         {/each}
       </fieldset>
     {/if}
     {#if chosen?.subtypes}
       <label for={id("subtype")}>{chosen.subtypes.title}</label>
       <select id={id("subtype")} bind:value={f.subtype}>
-        <option value=""
-          >{chosen.subtypes.required
-            ? TEXT.raiseChoose
-            : TEXT.raiseSubtypeNone}</option
-        >
+        <option value="">
+          {chosen.subtypes.required ? TEXT.raiseChoose : TEXT.raiseSubtypeNone}
+        </option>
         {#each chosen.subtypes.code as c (c.code)}
           <option value={c.code}>{c.name}</option>
         {/each}
@@ -159,14 +157,14 @@
     {#if chosen?.needs_agreement}
       <fieldset>
         <legend>{TEXT.raiseAgreed}</legend>
-        <label
-          ><input type="radio" value="yes" bind:group={f.agreed} />
-          {TEXT.raiseAgreedYes}</label
-        >
-        <label
-          ><input type="radio" value="no" bind:group={f.agreed} />
-          {TEXT.raiseAgreedNo}</label
-        >
+        <label>
+          <input type="radio" value="yes" bind:group={f.agreed} />
+          {TEXT.raiseAgreedYes}
+        </label>
+        <label>
+          <input type="radio" value="no" bind:group={f.agreed} />
+          {TEXT.raiseAgreedNo}
+        </label>
       </fieldset>
     {/if}
     <label for={id("instruction")}>{TEXT.raiseInstruction}</label>

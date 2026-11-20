@@ -284,9 +284,9 @@
             {#if rangeText(o.range)}· {TEXT.vitalRange}
               {rangeText(o.range)}{/if}
             ·
-            <time datetime={o.effective_at}
-              >{siteWhenText(o.effective_at, siteZone)}</time
-            >
+            <time datetime={o.effective_at}>
+              {siteWhenText(o.effective_at, siteZone)}
+            </time>
             · {writtenText(o, siteZone)}
             · {TEXT.vitalBy} <code>{o.author}</code>
             {#if o.version > 1}· {TEXT.vitalVersion.replace(
@@ -303,9 +303,9 @@
             {@render noticeList(o)}
             {@render historyList(o)}
             {#if !correcting}
-              <button type="button" onclick={() => startCorrection(o)}
-                >{TEXT.vitalCorrect}</button
-              >
+              <button type="button" onclick={() => startCorrection(o)}>
+                {TEXT.vitalCorrect}
+              </button>
             {/if}
             {#if erroring === o.id}
               <label for="vs-err-{o.id}">{TEXT.vitalMarkErrorWhy}</label>
@@ -363,11 +363,11 @@
             <tbody>
               {#each t.rows as o (o.id)}
                 <tr>
-                  <td
-                    ><time datetime={o.effective_at}
-                      >{siteWhenText(o.effective_at, siteZone)}</time
-                    ></td
-                  >
+                  <td>
+                    <time datetime={o.effective_at}>
+                      {siteWhenText(o.effective_at, siteZone)}
+                    </time>
+                  </td>
                   <td>{writtenText(o, siteZone)}</td>
                   <td>{valueText(o)}</td>
                   <td>{assessmentText(o)}</td>
@@ -380,17 +380,17 @@
     {/if}
     {#if mistaken.length}
       <details>
-        <summary
-          >{TEXT.vitalInError.replace("{n}", String(mistaken.length))}</summary
-        >
+        <summary>
+          {TEXT.vitalInError.replace("{n}", String(mistaken.length))}
+        </summary>
         <ul>
           {#each mistaken as o (o.id)}
             <li>
               <s>{vitalName(o.code)} · {valueText(o)}</s>
               ·
-              <time datetime={o.effective_at}
-                >{siteWhenText(o.effective_at, siteZone)}</time
-              >
+              <time datetime={o.effective_at}>
+                {siteWhenText(o.effective_at, siteZone)}
+              </time>
               · {writtenText(o, siteZone)}
               <button
                 type="button"
@@ -444,9 +444,9 @@
           {/each}
         </select>
       {/if}
-      <label for="vs-at"
-        >{TEXT.vitalMeasuredAt.replace("{zone}", siteZone)}</label
-      >
+      <label for="vs-at">
+        {TEXT.vitalMeasuredAt.replace("{zone}", siteZone)}
+      </label>
       <input
         id="vs-at"
         type="datetime-local"
@@ -473,9 +473,9 @@
         {correcting ? TEXT.vitalCorrectSubmit : TEXT.vitalSubmit}
       </button>
       {#if correcting}
-        <button type="button" onclick={cancelCorrection}
-          >{TEXT.vitalMarkErrorCancel}</button
-        >
+        <button type="button" onclick={cancelCorrection}>
+          {TEXT.vitalMarkErrorCancel}
+        </button>
       {/if}
     </form>
   {/if}

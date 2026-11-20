@@ -124,8 +124,7 @@
     {#if result.conflicts.length}
       <h3>{TEXT.conflicts}</h3>
       <ul>
-        {#each conflictList(result.conflicts, result.conflict_codes, locale) as c, i (i)}<li
-          >
+        {#each conflictList(result.conflicts, result.conflict_codes, locale) as c, i (i)}<li>
             {c}
           </li>{/each}
       </ul>
@@ -138,11 +137,11 @@
         {#each result.fields as f (f.field)}
           <tr>
             <td>{f.field}</td>
-            <td
-              >{f.similarity === null
+            <td>
+              {f.similarity === null
                 ? TEXT.notAvailable
-                : f.similarity.toFixed(2)}</td
-            >
+                : f.similarity.toFixed(2)}
+            </td>
             <td>{f.note}</td>
           </tr>
         {/each}

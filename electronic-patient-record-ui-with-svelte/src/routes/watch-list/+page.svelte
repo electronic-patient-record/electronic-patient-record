@@ -58,9 +58,9 @@
       {#each lapsed as i (i.id)}
         <li>
           {TEXT.myWatchLapsedOn.replace("{until}", i.until ?? "")}
-          <a href={localizePath(`/patients/${i.patient_id}`, locale)}
-            >{TEXT.myWatchLapsedOpen}</a
-          >
+          <a href={localizePath(`/patients/${i.patient_id}`, locale)}>
+            {TEXT.myWatchLapsedOpen}
+          </a>
         </li>
       {/each}
     </ul>
@@ -77,9 +77,9 @@
         <li>
           {TEXT.myWatchSince.replace("{since}", siteWhenText(i.since))}
           {#if i.until}· {TEXT.watchUntil.replace("{until}", i.until)}{/if}
-          <a href={localizePath(`/patients/${i.patient_id}`, locale)}
-            >{TEXT.myWatchOpen}</a
-          >
+          <a href={localizePath(`/patients/${i.patient_id}`, locale)}>
+            {TEXT.myWatchOpen}
+          </a>
         </li>
       {/each}
     </ul>

@@ -147,9 +147,9 @@
         {#each latest as o (o.id)}
           <li>
             {vitalName(o.code)} · {valueText(o)} · {assessmentText(o)} ·
-            <time datetime={o.effective_at}
-              >{siteWhenText(o.effective_at, siteZone)}</time
-            >
+            <time datetime={o.effective_at}>
+              {siteWhenText(o.effective_at, siteZone)}
+            </time>
             · {writtenText(o, siteZone)}
             {#each vitals.notices[o.id] ?? [] as n, i (i)}
               <p role="note">{noticeText(n)}</p>

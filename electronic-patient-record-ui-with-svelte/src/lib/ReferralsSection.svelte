@@ -142,12 +142,9 @@
       <ul>
         {#each rows as r (r.id)}
           <li>
-            <strong
-              >{TEXT.referralTo.replace(
-                "{recipient}",
-                r.referral.recipient,
-              )}</strong
-            >
+            <strong>
+              {TEXT.referralTo.replace("{recipient}", r.referral.recipient)}
+            </strong>
             · {TEXT.referralPriorities[r.referral.priority]}
             · {TEXT.referralStates[r.state]}
             · {siteWhenText(r.recorded_at, siteZone)}

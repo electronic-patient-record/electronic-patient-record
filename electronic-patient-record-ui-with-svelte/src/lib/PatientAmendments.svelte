@@ -171,18 +171,18 @@
         {#if standing.length}
           <optgroup label={TEXT.askReadingGroup}>
             {#each standing as o (o.id)}
-              <option value={`Observation:${o.id}`}
-                >{vitalLine(o, siteZone)}</option
-              >
+              <option value={`Observation:${o.id}`}>
+                {vitalLine(o, siteZone)}
+              </option>
             {/each}
           </optgroup>
         {/if}
         {#if standingAllergies.length}
           <optgroup label={TEXT.askAllergyGroup}>
             {#each standingAllergies as g (g.id)}
-              <option value={`AllergyIntolerance:${g.id}`}
-                >{allergyLine(g)}</option
-              >
+              <option value={`AllergyIntolerance:${g.id}`}>
+                {allergyLine(g)}
+              </option>
             {/each}
           </optgroup>
         {/if}
@@ -200,12 +200,9 @@
       {#each rows as a (a.id)}
         {@const s = a.request.state}
         <li>
-          <strong
-            >{TEXT.askAboutReading.replace(
-              "{reading}",
-              aboutText(a, lines),
-            )}</strong
-          >
+          <strong>
+            {TEXT.askAboutReading.replace("{reading}", aboutText(a, lines))}
+          </strong>
           · {siteWhenText(a.request.received_at, siteZone)}
           <p>{a.request.text}</p>
           <p>{stateText(s)} {dueText(a, siteZone)}</p>
@@ -234,12 +231,12 @@
               <form onsubmit={(e) => disagree(e, a)}>
                 <label for="ask-s-{a.id}">{TEXT.askDisagreeLabel}</label>
                 <textarea id="ask-s-{a.id}" bind:value={statement}></textarea>
-                <button type="submit" disabled={busy.on}
-                  >{TEXT.askDisagreeSend}</button
-                >
-                <button type="button" onclick={() => (stating = null)}
-                  >{TEXT.amendCancel}</button
-                >
+                <button type="submit" disabled={busy.on}>
+                  {TEXT.askDisagreeSend}
+                </button>
+                <button type="button" onclick={() => (stating = null)}>
+                  {TEXT.amendCancel}
+                </button>
               </form>
             {:else}
               <button

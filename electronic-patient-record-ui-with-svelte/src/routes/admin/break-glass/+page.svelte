@@ -115,9 +115,9 @@
               </select>
               <label for="g-note">{TEXT.glassNote}</label>
               <input id="g-note" bind:value={note} autocomplete="off" />
-              <button disabled={busy.on} type="submit"
-                >{TEXT.glassRecord}</button
-              >
+              <button disabled={busy.on} type="submit">
+                {TEXT.glassRecord}
+              </button>
             </form>
           {/if}
         </li>

@@ -50,12 +50,9 @@
   {@const ended = h.outcome !== null}
   <div>
     <p>
-      <strong
-        >{TEXT.suspicionTitle.replace(
-          "{condition}",
-          c.suspicion.condition,
-        )}</strong
-      >
+      <strong>
+        {TEXT.suspicionTitle.replace("{condition}", c.suspicion.condition)}
+      </strong>
     </p>
     {#if c.suspicion.patient_told === "not-told"}
       <p role="note"><strong>{TEXT.suspicionToldNo}</strong></p>

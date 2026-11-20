@@ -141,36 +141,40 @@
             href={localizePath(
               `/patients/${t.patient_id}${sourceAnchor(t.source.kind)}`,
               locale,
-            )}>{TEXT.tkOpen}</a
+            )}
           >
+            {TEXT.tkOpen}
+          </a>
           <button
             type="button"
             disabled={busy.on}
             aria-expanded={closing === t.id}
-            onclick={() => open(t)}>{TEXT.tkCloseLegend}</button
+            onclick={() => open(t)}
           >
+            {TEXT.tkCloseLegend}
+          </button>
           {#if closing === t.id}
             <form onsubmit={(e) => void close(e, t)}>
               <fieldset>
                 <legend>{TEXT.tkCloseLegend}</legend>
-                <label
-                  ><input
+                <label>
+                  <input
                     type="radio"
                     name="t-outcome-{t.id}"
                     value="done"
                     bind:group={outcome}
                   />
-                  {TEXT.tkDone}</label
-                >
-                <label
-                  ><input
+                  {TEXT.tkDone}
+                </label>
+                <label>
+                  <input
                     type="radio"
                     name="t-outcome-{t.id}"
                     value="cancelled"
                     bind:group={outcome}
                   />
-                  {TEXT.tkCancel}</label
-                >
+                  {TEXT.tkCancel}
+                </label>
               </fieldset>
               <label for="t-reason-{t.id}">{TEXT.tkReason}</label>
               <textarea

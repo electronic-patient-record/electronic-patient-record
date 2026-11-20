@@ -320,14 +320,14 @@
 <h1>{TEXT.patientTitle}</h1>
 <p><a href={localizePath("/patients", locale)}>{TEXT.backToSearch}</a></p>
 <p>
-  <a href={localizePath(`/patients/${id}/summary`, locale)}
-    >{TEXT.summaryOpen}</a
-  >
+  <a href={localizePath(`/patients/${id}/summary`, locale)}>
+    {TEXT.summaryOpen}
+  </a>
 </p>
 <p>
-  <a href={localizePath(`/patients/${id}/access`, locale)}
-    >{TEXT.accessManage}</a
-  >
+  <a href={localizePath(`/patients/${id}/access`, locale)}>
+    {TEXT.accessManage}
+  </a>
 </p>
 
 {#if loading}
@@ -447,14 +447,18 @@
       <button
         type="button"
         disabled={photoBusy}
-        onclick={() => void sendPhoto(false)}>{TEXT.photoUpload}</button
+        onclick={() => void sendPhoto(false)}
       >
+        {TEXT.photoUpload}
+      </button>
       {#if stored.photo_version}
         <button
           type="button"
           disabled={photoBusy}
-          onclick={() => void sendPhoto(true)}>{TEXT.photoWithdraw}</button
+          onclick={() => void sendPhoto(true)}
         >
+          {TEXT.photoWithdraw}
+        </button>
       {/if}
       {#if photoMessage}<p role="status">{photoMessage}</p>{/if}
     </section>

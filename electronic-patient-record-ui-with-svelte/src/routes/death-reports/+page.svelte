@@ -54,15 +54,15 @@
     <ul>
       {#each items as i (i.assertion_id)}
         <li>
-          <strong
-            >{TEXT.drReported.replace(
+          <strong>
+            {TEXT.drReported.replace(
               "{when}",
               siteWhenText(i.reported_at, siteZone),
-            )}</strong
-          >
-          <a href={localizePath(`/patients/${i.patient_id}`, locale)}
-            >{TEXT.drOpen}</a
-          >
+            )}
+          </strong>
+          <a href={localizePath(`/patients/${i.patient_id}`, locale)}>
+            {TEXT.drOpen}
+          </a>
         </li>
       {/each}
     </ul>

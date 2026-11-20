@@ -71,14 +71,14 @@
   <form onsubmit={save} novalidate>
     <fieldset>
       <legend>{TEXT.raiseTold}</legend>
-      <label
-        ><input type="radio" value="told" bind:group={f.told} />
-        {TEXT.raiseToldYes}</label
-      >
-      <label
-        ><input type="radio" value="not-told" bind:group={f.told} />
-        {TEXT.raiseToldNo}</label
-      >
+      <label>
+        <input type="radio" value="told" bind:group={f.told} />
+        {TEXT.raiseToldYes}
+      </label>
+      <label>
+        <input type="radio" value="not-told" bind:group={f.told} />
+        {TEXT.raiseToldNo}
+      </label>
     </fieldset>
     <label for={id("point")}>{TEXT.raisePoint}</label>
     <input id={id("point")} type="datetime-local" bind:value={f.point} />

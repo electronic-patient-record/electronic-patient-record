@@ -145,38 +145,35 @@
     <a href={localizePath("/", locale)}>{TEXT.navHome}</a>
     <a href={localizePath("/patients", locale)}>{TEXT.navPatients}</a>
     <a href={localizePath("/patients/new", locale)}>{TEXT.registerLink}</a>
-    <a href={localizePath("/death-reports", locale)}
-      >{TEXT.navDeathReports}{#if deathReportsPage && deathReportsCount.open}
-        <span class="count"
-          >({TEXT.drCount.replace("{n}", String(deathReportsCount.open))})</span
-        >{/if}</a
-    >
-    <a href={localizePath("/overdue-reviews", locale)}
-      >{TEXT.navOverdueReviews}</a
-    >
+    <a href={localizePath("/death-reports", locale)}>
+      {TEXT.navDeathReports}{#if deathReportsPage && deathReportsCount.open}
+        <span class="count">
+          ({TEXT.drCount.replace("{n}", String(deathReportsCount.open))})
+        </span>{/if}
+    </a>
+    <a href={localizePath("/overdue-reviews", locale)}>
+      {TEXT.navOverdueReviews}
+    </a>
     <a href={localizePath("/tasks", locale)}>{TEXT.navTasks}</a>
-    <a href={localizePath("/referrals", locale)}
-      >{TEXT.navReplies}{#if worklistPage && worklistCount.open}
-        <span class="count"
-          >({TEXT.wlCount.replace("{n}", String(worklistCount.open))})</span
-        >{/if}</a
-    >
+    <a href={localizePath("/referrals", locale)}>
+      {TEXT.navReplies}{#if worklistPage && worklistCount.open}
+        <span class="count">
+          ({TEXT.wlCount.replace("{n}", String(worklistCount.open))})
+        </span>{/if}
+    </a>
     <a href={localizePath("/watch-list", locale)}>{TEXT.navWatch}</a>
-    <a href={localizePath("/admin/feed", locale)}
-      >{TEXT.navFeed}{#if adminPage && feedCount.open}
-        <span class="count"
-          >({TEXT.feedCount.replace("{n}", String(feedCount.open))})</span
-        >{/if}</a
-    >
-    <a href={localizePath("/admin/referral-queue", locale)}
-      >{TEXT.navReferralQueue}{#if adminPage && referralQueueCount.open}
-        <span class="count"
-          >({TEXT.rqCount.replace(
-            "{n}",
-            String(referralQueueCount.open),
-          )})</span
-        >{/if}</a
-    >
+    <a href={localizePath("/admin/feed", locale)}>
+      {TEXT.navFeed}{#if adminPage && feedCount.open}
+        <span class="count">
+          ({TEXT.feedCount.replace("{n}", String(feedCount.open))})
+        </span>{/if}
+    </a>
+    <a href={localizePath("/admin/referral-queue", locale)}>
+      {TEXT.navReferralQueue}{#if adminPage && referralQueueCount.open}
+        <span class="count">
+          ({TEXT.rqCount.replace("{n}", String(referralQueueCount.open))})
+        </span>{/if}
+    </a>
     <a href={localizePath("/admin/break-glass", locale)}>{TEXT.navGlass}</a>
     <a href={localizePath("/my-record", locale)}>{TEXT.navMyRecord}</a>
   </nav>
@@ -184,9 +181,9 @@
     <label class="purpose">
       {TEXT.purposeLabel}
       <select value={purpose} onchange={choose}>
-        {#each STAFF_PURPOSES as p (p)}<option value={p}
-            >{TEXT.purposes[p]}</option
-          >{/each}
+        {#each STAFF_PURPOSES as p (p)}<option value={p}>
+            {TEXT.purposes[p]}
+          </option>{/each}
       </select>
     </label>
   {/if}
@@ -216,8 +213,10 @@
         data-sveltekit-reload
         href="/auth/login?returnTo={encodeURIComponent(
           page.url.pathname + page.url.search,
-        )}">{TEXT.signIn}</a
+        )}"
       >
+        {TEXT.signIn}
+      </a>
     {/if}
   {/if}
 </header>
@@ -233,17 +232,18 @@
     <a
       lang="en"
       href={localizePath(page.url.pathname + page.url.search, "en-001")}
-      >{STRINGS.readInEnglish}</a
     >
+      {STRINGS.readInEnglish}
+    </a>
   </p>
 {/if}
 {#if minutesLeft !== null}
   <div class="idle" role="alert">
     {#if minutesLeft > 0}
       <p>{TEXT.idleWarning.replace("{n}", String(minutesLeft))}</p>
-      <button type="button" onclick={() => void staySignedIn()}
-        >{TEXT.staySignedIn}</button
-      >
+      <button type="button" onclick={() => void staySignedIn()}>
+        {TEXT.staySignedIn}
+      </button>
     {:else}
       <p>{TEXT.idleEnded}</p>
     {/if}

@@ -130,21 +130,18 @@
     {#if counts.open > 0}
       <p role="status">
         {TEXT.amendOpenCount.replace("{n}", String(counts.open))}
-        {#if counts.overdue > 0}<strong
-            >{TEXT.amendOverdueCount.replace(
-              "{n}",
-              String(counts.overdue),
-            )}</strong
-          >{/if}
+        {#if counts.overdue > 0}<strong>
+            {TEXT.amendOverdueCount.replace("{n}", String(counts.overdue))}
+          </strong>{/if}
       </p>
     {/if}
     <ul>
       {#each rows as a (a.id)}
         {@const s = a.request.state}
         <li>
-          <strong
-            >{TEXT.amendAbout.replace("{kind}", aboutText(a, lines))}</strong
-          >
+          <strong>
+            {TEXT.amendAbout.replace("{kind}", aboutText(a, lines))}
+          </strong>
           · {TEXT.amendAsked.replace(
             "{when}",
             siteWhenText(a.request.received_at, siteZone),
@@ -189,18 +186,18 @@
                   autocomplete="off"
                 />
               {/if}
-              <button type="submit" disabled={busy.on}
-                >{TEXT.amendConfirm}</button
-              >
-              <button type="button" onclick={() => (open = null)}
-                >{TEXT.amendCancel}</button
-              >
+              <button type="submit" disabled={busy.on}>
+                {TEXT.amendConfirm}
+              </button>
+              <button type="button" onclick={() => (open = null)}>
+                {TEXT.amendCancel}
+              </button>
             </form>
           {:else}
             {#each stepsFor(a) as step (step)}
-              <button type="button" onclick={() => start(a, step)}
-                >{label[step]}</button
-              >
+              <button type="button" onclick={() => start(a, step)}>
+                {label[step]}
+              </button>
             {/each}
           {/if}
         </li>

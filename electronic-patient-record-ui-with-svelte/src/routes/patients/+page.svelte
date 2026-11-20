@@ -106,9 +106,9 @@
               <td>{f.birthDate || TEXT.notAvailable}</td>
               <td>{f.nationalNumber || TEXT.notAvailable}</td>
               <td>
-                <a href={localizePath(`/patients/${s.id}`, locale)}
-                  >{TEXT.open}<span class="sr-only"> {label(s)}</span></a
-                >
+                <a href={localizePath(`/patients/${s.id}`, locale)}>
+                  {TEXT.open}<span class="sr-only"> {label(s)}</span>
+                </a>
               </td>
             </tr>
           {/each}

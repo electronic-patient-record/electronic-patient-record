@@ -328,14 +328,17 @@
               onclick={() => {
                 editing[entry.patient.id] = { ...NO_FILTER };
                 void loadLog(entry.patient.id, undefined, NO_FILTER);
-              }}>{F.clear}</button
+              }}
             >
+              {F.clear}
+            </button>
             <button
               type="button"
               disabled={logBusy.on}
               onclick={() => void downloadLog(entry.patient.id)}
-              >{F.download}</button
             >
+              {F.download}
+            </button>
           </fieldset>
         </form>
         <div aria-live="polite">

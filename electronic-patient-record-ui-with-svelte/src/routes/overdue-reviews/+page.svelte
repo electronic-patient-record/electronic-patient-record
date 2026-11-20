@@ -54,8 +54,10 @@
             href={localizePath(
               `/patients/${i.patient_id}#adjustments-h`,
               locale,
-            )}>{TEXT.orOpen}</a
+            )}
           >
+            {TEXT.orOpen}
+          </a>
         </li>
       {/each}
     </ul>

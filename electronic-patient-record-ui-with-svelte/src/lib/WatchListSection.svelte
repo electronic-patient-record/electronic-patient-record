@@ -136,9 +136,9 @@
                     maxlength="500"
                     autocomplete="off"
                   />
-                  <button disabled={busy.on} type="submit"
-                    >{TEXT.watchEndSend}</button
-                  >
+                  <button disabled={busy.on} type="submit">
+                    {TEXT.watchEndSend}
+                  </button>
                 </form>
               {:else}
                 <button
@@ -148,8 +148,10 @@
                     ending = e.id;
                     endReason = "";
                     message = null;
-                  }}>{TEXT.watchEnd}</button
+                  }}
                 >
+                  {TEXT.watchEnd}
+                </button>
               {/if}
             {/if}
           </li>

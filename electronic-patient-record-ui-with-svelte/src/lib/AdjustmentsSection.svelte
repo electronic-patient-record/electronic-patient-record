@@ -150,9 +150,9 @@
           {:else if open?.id === a.id}
             <form onsubmit={(e) => change(e, a)}>
               {#if open.action === "review"}
-                <label for="adjustment-next-{a.id}"
-                  >{TEXT.adjustmentNextReview}</label
-                >
+                <label for="adjustment-next-{a.id}">
+                  {TEXT.adjustmentNextReview}
+                </label>
                 <input
                   id="adjustment-next-{a.id}"
                   type="date"
@@ -189,12 +189,9 @@
 
   {#if ended.length}
     <details>
-      <summary
-        >{TEXT.adjustmentEndedTitle.replace(
-          "{n}",
-          String(ended.length),
-        )}</summary
-      >
+      <summary>
+        {TEXT.adjustmentEndedTitle.replace("{n}", String(ended.length))}
+      </summary>
       <ul>
         {#each ended as a (a.id)}
           <li>

@@ -147,8 +147,7 @@
           {#if c.conflicts.length}
             <p>{TEXT.conflicts}</p>
             <ul>
-              {#each conflictList(c.conflicts, c.conflict_codes, locale) as why, i (i)}<li
-                >
+              {#each conflictList(c.conflicts, c.conflict_codes, locale) as why, i (i)}<li>
                   {why}
                 </li>{/each}
             </ul>
@@ -168,17 +167,18 @@
                   <td>{shown(row.entered)}</td>
                   <td>
                     {shown(row.existing)}
-                    {#if row.same}<span class="same">({TEXT.sameValue})</span
-                      >{/if}
+                    {#if row.same}<span class="same">
+                        ({TEXT.sameValue})
+                      </span>{/if}
                   </td>
                 </tr>
               {/each}
             </tbody>
           </table>
           <p>
-            <a href={localizePath(`/patients/${c.existing.id}`, locale)}
-              >{TEXT.openExisting}</a
-            >
+            <a href={localizePath(`/patients/${c.existing.id}`, locale)}>
+              {TEXT.openExisting}
+            </a>
           </p>
         </article>
       {/if}
