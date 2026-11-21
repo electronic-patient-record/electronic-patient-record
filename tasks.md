@@ -1665,6 +1665,15 @@ only; nothing here was taken from its code. Open questions OQ-TL1 (who approves 
   refused when rules load. **Acceptance:** a failure in the second action leaves no first task; a duplicate fails the
   load naming both rules.
 
+- [ ] **QA-16 (L) — Boot tests from given settings, with no process environment (axa 0.21, TST-11).** Opened 2026-11-21.
+  `App` implements `TestApp::boot_test_with(lookup)`, and the 32 test files that call `std::env::set_var` (126 calls, one
+  process per file today, each with an `unsafe` block) pass their settings to `axa_test::request_with` instead, so the
+  files can share one test program (LC-15) and run in parallel. **Needs first:** the 23 `std::env::var` reads in `src/`
+  (audit keys, auth, rate limit, outbox, lockout, referral timeouts and the rest) read through one lookup carried in the
+  context, and the existing `from_lookup` constructors (`feed_health`, `mllp`) are the pattern. **Acceptance:** no test
+  sets process environment; a setting a test names reaches every reader (a test that names one and sees it ignored fails);
+  `boot_test_with` refusing a service that reads the process environment stays true. **Not started.**
+
 ## Dependency 2026-11-17 — axa 0.19
 
 axa 0.18.0 (2026-11-17 11:42 UTC) and 0.19.0 (14:35 UTC) and axa-test 0.9.0 and 0.10.0 are inside the two-day

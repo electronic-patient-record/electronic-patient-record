@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-21 - axa 0.21 and axa-test 0.12
+
+- **Clinical risk:** none: dependency update; no route, rule or record changed.
+- **Built:** `axa` 0.20.0 to 0.21.0 and `axa-test` 0.11.0 to 0.12.0 (both published 13 hours earlier, inside the two-day resolver age, so the update used `CARGO_RESOLVER_INCOMPATIBLE_PUBLISH_AGE=allow` for these two only; `cargo update -p axa -p axa-test` moved nothing else). The upgrade guide's one compile change (`axa-test` 0.12) was the only edit. Production now refuses a retired setting name (`DATABASE_URL`, `BODY_LIMIT_BYTES`, `HEADER_READ_TIMEOUT_SECONDS`, `HTTP_CSP`, `LOCO_ENV`): the repository's own compose, Containerfile, scripts and docs set none of them (searched; only history mentions them), but a deployment's own configuration was not seen.
+- **Tested:** clippy over the workspace with all targets and features, no warnings; the 306 library tests; the whole workspace with ignored tests on a fresh PostgreSQL 18 database, one thread: everything passed except the six `fhir_validator_*` tests, which need Java and run in their own CI job (`chaos_api` also needs a database named `*_test`, and passed on one).
+- **Not done / not verified:** the new capabilities are not yet used. Candidates, from the 0.21 upgrade guide, with what each would replace here: `TestApp::boot_test_with` and `axa_test::request_with` for the 32 test files that call `std::env::set_var` (126 calls, each file its own process); that needs the service's own `EPR_*` settings (23 `std::env::var` reads in `src/`) to come through a lookup as well, or a test would silently boot with the process environment, so it is a task, not a swap (QA-16); `Settings::renamed` for retired `EPR_*` names; `axa::error::Problems` for the hand-built 422 lists and `SafeInt` for amounts; `ReloadablePolicy::watch_file` if the role map is ever read from a file. Nothing else was checked against the 0.21 changelog; the root AGENTS.md line that named axa 0.17 now names 0.21 (the minimum Rust, 1.98, is the same in both).
+
 ## 2026-11-21 - Service: the first authoritative full coverage figure, and the `db` commands tested (QA-15)
 
 - **Clinical risk:** none: tests only.
