@@ -51,6 +51,8 @@ mod hazards_store;
 mod keycloak_guard;
 #[path = "label_census.rs"]
 mod label_census;
+#[path = "licence_files.rs"]
+mod licence_files;
 #[path = "links_store.rs"]
 mod links_store;
 #[path = "migration_down.rs"]
