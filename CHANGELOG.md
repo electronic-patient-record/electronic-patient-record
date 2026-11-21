@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-21 - UI coverage: the sign-in singleton's helpers (QA-15)
+
+- **Clinical risk:** none: tests only.
+- **Tested:** `tests/unit/auth-instance.test.ts` (6 tests, Redis mocked): `backendFrom` is memory with no settings and refuses either half-setting; with both it builds a Redis backend that connects once, on first use, and logs a client error; `cookieName` pins `__Host-` only on HTTPS; `sameOrigin` rejects a foreign or missing origin; `localeFrom` falls back to the default; `sessionFrom` is null without sign-in, passes the cookie and options to the store, and shows signed out (logging the reason) when the store throws. Vitest over `src/lib`: lines 95.26 to 96.53, branches 89.30 to 90.02, functions 91.05 to 94.37; 419 tests pass; lint and `check:tests` clean.
+- **Not done / not verified:** `getAuth` (reads the environment) is still untested; `.svelte` and `src/routes` stay outside the measure; the CI floors were not raised; no real Redis was used here (the live test exists separately).
+
 ## 2026-11-21 - UI unit coverage, lines 91.89 to 95.26 percent (QA-15)
 
 - **Clinical risk:** none: tests only; no UI behaviour changed.
