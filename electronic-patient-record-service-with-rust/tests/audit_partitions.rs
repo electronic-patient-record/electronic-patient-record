@@ -531,3 +531,118 @@ async fn two_replicas_running_at_once_do_the_work_once_and_neither_fails() {
     );
     s.finish().await;
 }
+
+/// A scratch database whose three oldest rows are archived by `chain`, and the archive's one table.
+async fn archived(chain: &Chain) -> Scratch {
+    let s = Scratch::new(None).await;
+    for n in 0..3 {
+        audit::append(&s.db, chain, &event(n)).await.unwrap();
+    }
+    append_next_month(&s, chain, 10).await;
+    s.text(
+        "SELECT array_to_string(audit_archive_before(
+             (date_trunc('month', now() AT TIME ZONE 'UTC') + interval '1 month') AT TIME ZONE 'UTC'
+             + interval '1 day'), ',')",
+    )
+    .await
+    .unwrap();
+    s
+}
+
+/// Run `sql` on the archived table with its triggers off, as a superuser could.
+async fn tamper_archive(s: &Scratch, sql: &str) {
+    s.exec("ALTER TABLE audit_archive.audit_events_p0 DISABLE TRIGGER USER")
+        .await;
+    s.exec(sql).await;
+    s.exec("ALTER TABLE audit_archive.audit_events_p0 ENABLE TRIGGER USER")
+        .await;
+}
+
+async fn broken_reason(s: &Scratch, chain: &Chain) -> String {
+    match audit::verify_archive(&s.db, chain, 2).await.unwrap() {
+        Verdict::Broken { reason, .. } => reason,
+        other => panic!("expected a break, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn the_archive_check_finds_a_row_removed_from_the_end_of_an_archived_table() {
+    let chain = Chain::unkeyed();
+    let s = archived(&chain).await;
+    tamper_archive(&s, "DELETE FROM audit_archive.audit_events_p0 WHERE id = 3").await;
+    let reason = broken_reason(&s, &chain).await;
+    assert!(
+        reason.contains("holds 2 rows, the anchor says 3"),
+        "{reason}"
+    );
+    s.finish().await;
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn the_archive_check_finds_a_last_row_that_is_not_the_one_the_anchor_recorded() {
+    let chain = Chain::unkeyed();
+    let s = archived(&chain).await;
+    tamper_archive(
+        &s,
+        "UPDATE audit_archive.audit_events_p0 SET id = 99 WHERE id = 3",
+    )
+    .await;
+    let reason = broken_reason(&s, &chain).await;
+    assert!(
+        reason.contains("its last row is not the one the anchor recorded"),
+        "{reason}"
+    );
+    s.finish().await;
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn the_archive_check_finds_a_row_that_does_not_link_to_the_one_before() {
+    let chain = Chain::unkeyed();
+    let s = archived(&chain).await;
+    tamper_archive(
+        &s,
+        "UPDATE audit_archive.audit_events_p0 SET prev_digest = 'not-the-digest' WHERE id = 2",
+    )
+    .await;
+    let reason = broken_reason(&s, &chain).await;
+    assert!(
+        reason.contains("does not link to the previous row"),
+        "{reason}"
+    );
+    s.finish().await;
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn an_archive_written_under_a_key_this_build_does_not_hold_is_unchecked_not_intact() {
+    use integrity_mac::{KeyConfig, KeySet};
+    let keyed = |key: &str| Chain::new(KeySet::load(&KeyConfig::new("t", "T"), Some(key), None));
+    let writer = keyed("9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08");
+    // A build holding no key cannot check what a key wrote; one holding another key says the digest is wrong.
+    let reader = Chain::unkeyed();
+    let s = archived(&writer).await;
+    assert_eq!(
+        audit::verify_archive(&s.db, &writer, 2).await.unwrap(),
+        Verdict::Intact { rows: 3 }
+    );
+    match audit::verify_archive(&s.db, &reader, 2).await.unwrap() {
+        Verdict::Unchecked {
+            rows,
+            unchecked,
+            causes,
+            ..
+        } => {
+            assert_eq!(rows, 3);
+            assert_eq!(unchecked, 3);
+            assert!(
+                causes.iter().any(|c| c.contains("is not held")),
+                "{causes:?}"
+            );
+        }
+        other => panic!("a key not held must not read as intact: {other:?}"),
+    }
+    s.finish().await;
+}

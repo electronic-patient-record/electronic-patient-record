@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-21 - Service tests: four ways an archived audit table can be wrong (QA-15)
+
+- **Clinical risk:** none: tests only. They pin how the archive check reports damage to the audit record.
+- **Tested:** four database tests in `tests/audit_partitions.rs`, each on a scratch database with three archived rows and the table's triggers switched off to simulate a superuser: a row removed from the end is reported as "holds 2 rows, the anchor says 3"; a last row with a changed id as "its last row is not the one the anchor recorded"; a row whose `prev_digest` is altered as "does not link to the previous row"; and an archive written under a key, read by a build holding none, is `Unchecked` (3 rows, every one unchecked, "is not held"), never `Intact`. The 13 `audit_partitions` tests pass (through `suite`) on a fresh database; clippy clean.
+- **Not done / not verified:** an unknown digest scheme in an archived row is not forced (`SchemeUnknown` stays unreached); a reader holding a different key under the same key id reads as a digest mismatch, which the existing edited-row test already shows; the coverage figure was not re-measured.
+
 ## 2026-11-21 - Service test: the feed health route with a configured feed (QA-15)
 
 - **Clinical risk:** none: a test.
