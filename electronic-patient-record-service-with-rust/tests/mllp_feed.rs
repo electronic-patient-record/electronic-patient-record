@@ -1986,3 +1986,48 @@ async fn a_started_listener_serves_until_the_kept_one_is_stopped() {
     let refused = TcpStream::connect(addr).await;
     assert!(refused.is_err(), "the stopped listener accepts nobody");
 }
+
+/// A dry run says what the feed would do without keeping anything: text that is not HL7, a message type it does not
+/// take, and a message for another processing id are each said, and none touches the record.
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn a_dry_run_names_text_that_is_not_hl7_a_type_not_taken_and_a_wrong_processing_id() {
+    use electronic_patient_record::adt_feed::{self, FeedIdentity, WRONG_PROCESSING_ID};
+    let db = db().await;
+    let who = |processing_id| FeedIdentity {
+        agent: tag("mllp:dry-kinds"),
+        peer: None,
+        peer_certificate: None,
+        kept_answer: KeptAnswer::Reject,
+        processing_id,
+        rules: Default::default(),
+    };
+
+    let nonsense = adt_feed::dry_run(&db, "this is not a message", &who(None)).await;
+    assert_eq!(nonsense.would, "not-hl7", "{nonsense:?}");
+    assert!(nonsense.acknowledgement.is_none(), "{nonsense:?}");
+
+    let other_type = adt("A99", &tag("D"), &tag("mrn"), &tag("Kind"), &dob(), "");
+    let refused = adt_feed::dry_run(&db, &other_type, &who(None)).await;
+    assert_eq!(refused.would, "refused", "{refused:?}");
+    assert!(
+        refused.reasons.iter().any(|r| r.contains("is not handled")),
+        "{refused:?}"
+    );
+    assert!(
+        refused
+            .acknowledgement
+            .as_deref()
+            .is_some_and(|a| a.contains("MSA|AR|")),
+        "{refused:?}"
+    );
+
+    // The message's own processing id is P; a deployment taking T refuses it, and says so.
+    let valid = adt("A28", &tag("D"), &tag("mrn"), &tag("Kind"), &dob(), "");
+    let wrong = adt_feed::dry_run(&db, &valid, &who(Some('T'))).await;
+    assert_eq!(wrong.would, "refused", "{wrong:?}");
+    assert!(
+        wrong.reasons.iter().any(|r| r == WRONG_PROCESSING_ID),
+        "{wrong:?}"
+    );
+}

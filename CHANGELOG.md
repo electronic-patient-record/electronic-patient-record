@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-21 - Service test: what a dry run says for three kinds of refusal (QA-15)
+
+- **Clinical risk:** none: a test.
+- **Tested:** one database test in `tests/mllp_feed.rs` for `adt_feed::dry_run`: text that is not HL7 is `not-hl7` with no acknowledgement; an `ADT^A99` is `refused` with "is not handled" and an `AR` acknowledgement; a valid message for a deployment taking processing id `T` (the message says `P`) is `refused` with `WRONG_PROCESSING_ID`. None keeps anything. The `a_dry_run` tests pass (2) on a fresh `*_test` database; clippy clean.
+- **Not done / not verified:** the `retry` (temporary failure) and an unsupported-by-store refusal in a dry run are not forced; the coverage figure was not re-measured.
+
 ## 2026-11-21 - Service tests: four ways an archived audit table can be wrong (QA-15)
 
 - **Clinical risk:** none: tests only. They pin how the archive check reports damage to the audit record.
