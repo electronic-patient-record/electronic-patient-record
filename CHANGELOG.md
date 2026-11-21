@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-21 - A STRIDE entry per data flow (QA-10)
+
+- **Clinical risk:** none: a governance document. No code changed.
+- **Added:** a "Threats per flow" table in `governance/data-flow.md`, twelve rows, each with the main threats, what the design already does and the gap. Gaps worth acting on: MLLP has no authentication or encryption, `/metrics` is public when on, no backups exist, and the outbox recipient is undesigned.
+- **Not done / not verified:** no control was exercised and no code re-read beyond what the document already states; no likelihood or impact ranking, no diagram, no security engineer's review. No hazard-log entry was added, since none of these gaps is yet tied to a patient harm.
+
 ## 2026-11-21 - Service coverage re-measured: 95.79 percent (QA-15)
 
 - **Clinical risk:** none: a measurement.

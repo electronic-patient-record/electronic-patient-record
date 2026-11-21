@@ -1382,7 +1382,7 @@ Ranked in plan.md §30. Nothing here is built. Pages: `docs/<attribute>/index.md
 - [ ] **QA-7 (S) — OpenAPI breaking-change check.** Add it to the OS-7 freshness gate. **Acceptance:** a planted break fails.
 - [x] **QA-8 (S) — Build on the minimum Rust version.** **Done 2026-11-17:** `scripts/gates/rust-msrv.sh` runs `cargo +<rust-version> check --locked --all-targets` for each crate, reading the version from its `Cargo.toml` and installing the toolchain when missing; CI's `msrv` job and `ci-local.sh --full`. Passes here on 1.97 (matcher) and 1.98 (service); the service on 1.97 is refused (axa 0.17 needs 1.98). **Not done:** a check, not tests, on the old toolchains; clippy and fmt stay on the pin. **Acceptance:** a CI job on 1.98 for the service (axa 0.17 needs it) and 1.97 for the matcher.
 - [ ] **QA-9 (M) — ASVS table with evidence.** Level chosen with a reason; each row linked to evidence, no compliance claimed. **Acceptance:** a table under `docs/security/`.
-- [ ] **QA-10 (S) — A threat model per data flow.** STRIDE, one short entry per row in `governance/data-flow.md`. **Acceptance:** the entries exist.
+- [x] **QA-10 (S) — A threat model per data flow.** STRIDE, one short entry per row in `governance/data-flow.md`. **Acceptance:** the entries exist. **Done 2026-11-21:** twelve rows (five in, six out, one at rest); a reading of the design, not a test.
 - [ ] **QA-11 (S, decision) — The audit chain's witness.** Decide whether to publish the chain head externally, and whether a keyed MAC is enough. **Acceptance:** a recorded decision.
 - [ ] **QA-12 (S, decision) — Tenancy before more tables.** Is one deployment one tenant for 1.0? Retrofitting `tenant_id` on append-only tables is costly (SE-5). **Acceptance:** a recorded decision.
 
