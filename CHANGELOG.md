@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-21 - UI coverage: the four counters and two more loaders (QA-15)
+
+- **Clinical risk:** none: tests only.
+- **Tested:** `tests/unit/feed-count.test.ts` (8 tests): the refused-message, referral-queue, death-report and referral-reply counts each read their own endpoint, show the number on 200, and show nothing (null) for a refusal, a non-integer or an empty body. `loadAmendments` and `loadSuspicion` return null on any status but 200. Vitest over `src/lib`: lines 96.53 to 97.63, branches 90.02 to 92.18; 429 tests pass; lint and `check:tests` clean.
+- **Not done / not verified:** about 26 lines remain uncovered in `src/lib` (branches in `vitals.ts`, `session*.ts`, `adjustments.ts`, `i18n.ts`, `getAuth`); `.svelte` and `src/routes` stay outside the measure; the CI floors were not raised; the browser suite was not run.
+
 ## 2026-11-21 - UI coverage: the sign-in singleton's helpers (QA-15)
 
 - **Clinical risk:** none: tests only.

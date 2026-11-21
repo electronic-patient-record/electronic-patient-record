@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { loadAmendments } from "../../src/lib/amendments";
+import { loadSuspicion } from "../../src/lib/suspicions";
 import { loadAllergies } from "../../src/lib/allergies";
 import { loadAssertions, loadDeath } from "../../src/lib/death";
 import { lastActivityAt, noteActivity } from "../../src/lib/idle";
@@ -55,6 +57,33 @@ describe("loaders keep a failed look apart from nothing found", () => {
       status: 403,
       data: null,
     });
+  });
+});
+
+describe("amendments and suspicions", () => {
+  it("amendments are null unless the answer is 200", async () => {
+    answer(200, { amendments: [{ id: "a1" }] });
+    expect(
+      (await loadAmendments("p1", { purpose: "treatment" })).amendments,
+    ).toEqual([{ id: "a1" }]);
+    answer(500, {});
+    expect(await loadAmendments("p1")).toEqual({
+      status: 500,
+      amendments: null,
+    });
+  });
+
+  it("a suspicion history is null unless the answer is 200", async () => {
+    answer(200, { entries: [], pathways: [] });
+    expect((await loadSuspicion("p1", "r1")).history).toEqual({
+      entries: [],
+      pathways: [],
+    });
+    answer(404, {});
+    const missing = await loadSuspicion("p1", "r1");
+    expect(missing.status).toBe(404);
+    expect(missing.history).toBeNull();
+    expect(missing.pathways).toEqual([]);
   });
 });
 
