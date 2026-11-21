@@ -118,6 +118,10 @@ name = "audit_coverage"
 path = "tests/audit_coverage.rs"
 
 [[test]]
+name = "http_feed_health"
+path = "tests/http_feed_health.rs"
+
+[[test]]
 name = "audit_immutable"
 path = "tests/audit_immutable.rs"
 

@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-21 - Service test: the feed health route with a configured feed (QA-15)
+
+- **Clinical risk:** none: a test.
+- **Tested:** `tests/http_feed_health.rs` (database-gated, login off, its own program because the configured feed is process-wide and set once): `GET /api/feed/health` answers an empty list before a feed is configured; once `feed_health::run_loop` has started it names the sender, a state, the window and the thresholds, and a feed that has sent nothing has no last-message time. It reaches the `controllers/feed.rs` branch (about 20 lines) that no earlier test did. Passed on a fresh `*_test` database; clippy clean; the `test_targets` census passes with the new `[[test]]` entry.
+- **Not done / not verified:** the state judged is not asserted (it depends on the time and window the test runs in); a feed with messages and refusals is covered by the `feed_health` unit tests, not here; the effect on the coverage figure was not re-measured.
+
 ## 2026-11-21 - Service coverage re-measured: 95.32 percent; the `db` command tests now count (QA-15)
 
 - **Clinical risk:** none: tests only.
