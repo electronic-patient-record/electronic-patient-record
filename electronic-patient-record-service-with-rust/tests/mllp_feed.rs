@@ -1951,3 +1951,38 @@ async fn a_dry_run_says_what_a_message_would_do_and_keeps_nothing() {
         1
     );
 }
+
+/// The listener the service starts: `Running::start` serves until it is stopped, `keep` holds it for `stop_kept`, and a
+/// second `stop_kept` has nothing to stop.
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn a_started_listener_serves_until_the_kept_one_is_stopped() {
+    let db = db().await;
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let mut config = Config::local(addr);
+    config.agent = FEED_AGENT.into();
+    mllp::keep(mllp::Running::start(listener, db.clone(), config));
+
+    let mut stream = TcpStream::connect(addr).await.unwrap();
+    let message = adt(
+        "A28",
+        &format!("RUN{}", mixed() % 1_000_000_000),
+        &format!("RUN{}", mixed() % 1_000_000_000),
+        &tag("Run"),
+        &dob(),
+        "",
+    );
+    let mut framed = vec![VT];
+    framed.extend_from_slice(message.as_bytes());
+    framed.extend_from_slice(&[FS, CR]);
+    stream.write_all(&framed).await.unwrap();
+    let ack = read_ack(&mut stream).await.expect("an answer");
+    assert!(ack.contains("MSA|AA|"), "{ack}");
+    drop(stream);
+
+    assert!(mllp::stop_kept().await, "the listener stops in time");
+    assert!(mllp::stop_kept().await, "nothing kept is a clean stop");
+    let refused = TcpStream::connect(addr).await;
+    assert!(refused.is_err(), "the stopped listener accepts nobody");
+}

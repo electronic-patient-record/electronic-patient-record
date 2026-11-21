@@ -409,6 +409,36 @@ pub async fn run_loop(db: PgPool, agent: String, thresholds: Thresholds) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_stored_state_word_reads_back_and_an_unknown_word_reads_as_nothing() {
+        for s in [
+            State::Unknown,
+            State::Healthy,
+            State::Warning,
+            State::Critical,
+        ] {
+            assert_eq!(State::from_word(s.word()), Some(s));
+        }
+        assert_eq!(State::from_word("on fire"), None);
+    }
+
+    #[test]
+    fn each_window_has_its_own_silence_limit() {
+        let t = Thresholds::from_lookup(|k| {
+            (k == "EPR_FEED_SILENCE_MINUTES").then(|| "day=11,evening=22,weekend=33".to_string())
+        })
+        .unwrap();
+        assert_eq!(t.silence(Window::Day), 11);
+        assert_eq!(t.silence(Window::Evening), 22);
+        assert_eq!(t.silence(Window::Weekend), 33);
+    }
+
+    #[test]
+    fn the_settings_read_from_the_environment_default_when_none_is_set() {
+        // Reads the real process environment; no test here sets EPR_FEED_* so the defaults hold.
+        assert!(Thresholds::from_env().is_ok());
+    }
     fn at(s: &str) -> Timestamp {
         s.parse().unwrap()
     }

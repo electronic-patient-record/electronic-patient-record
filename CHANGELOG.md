@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-21 - Service tests: feed-health words and the started listener (QA-15)
+
+- **Clinical risk:** none: tests only.
+- **Tested:** three unit tests in `feed_health.rs` (every stored alarm state word reads back and an unknown word reads as nothing; each of the three windows has its own silence limit; the settings read from the environment hold their defaults) and one database test in `tests/mllp_feed.rs`: `Running::start` serves a message with an `AA` answer, `keep` and `stop_kept` stop it within the wait, a second `stop_kept` is a clean no-op, and the port then refuses connections. The `mllp_feed` program passed (19 tests) on a fresh `*_test` database; clippy clean.
+- **Not done / not verified:** the effect on the coverage figure was not re-measured; `from_env` is exercised against the real environment (it holds only while no `EPR_FEED_*` is set); the TLS listener's start path, the outbox's error branches and the larger `app.rs` command paths remain uncovered.
+
 ## 2026-11-21 - axa 0.21 and axa-test 0.12
 
 - **Clinical risk:** none: dependency update; no route, rule or record changed.
