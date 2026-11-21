@@ -811,3 +811,29 @@ async fn a_message_naming_an_untold_suspicion_never_reaches_the_patient() {
         "told: it passes the suspicion check"
     );
 }
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn the_log_sink_delivers_by_logging_and_the_relay_records_it() {
+    let db = db().await;
+    let recipient = format!("log-{}", nanos());
+    let id = enqueue(&db, event(&recipient, None, &serde_json::json!({"n": 12}))).await;
+    let mut sinks = Sinks::new();
+    sinks.insert(recipient.clone(), Box::new(outbox::LogSink));
+    let relay = Relay::start(sinks).await;
+    assert_eq!(wait_for(&db, &id, "delivered", 1).await, 1);
+    relay.stop().await;
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn keeping_a_second_relay_stops_the_first_and_stop_kept_stops_the_second() {
+    let start = || async {
+        let outbox = Outbox::connect_existing(&url(), quick()).await.unwrap();
+        outbox::Running::start(outbox, Sinks::new(), Duration::from_secs(60))
+    };
+    outbox::keep(start().await).await;
+    outbox::keep(start().await).await;
+    assert!(outbox::stop_kept().await, "the kept relay stops in time");
+    assert!(outbox::stop_kept().await, "nothing kept is a clean stop");
+}

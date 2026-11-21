@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-21 - Service tests: the log sink and keeping a second relay (QA-15)
+
+- **Clinical risk:** none: tests only.
+- **Tested:** two database tests in `tests/outbox_store.rs`: an event to a recipient served by `LogSink` is delivered and recorded as one `delivered` attempt (the sink sends nothing anywhere); keeping a second relay stops the first, `stop_kept` stops the second within the wait, and a further `stop_kept` is a clean no-op. The `outbox_store` program passed (16 tests) on a fresh `*_test` database; clippy clean.
+- **Not done / not verified:** the branch where a relay task ends in a panic is still unreached (no sink here panics on purpose); the effect on the coverage figure was not re-measured.
+
 ## 2026-11-21 - Service tests: feed-health words and the started listener (QA-15)
 
 - **Clinical risk:** none: tests only.
