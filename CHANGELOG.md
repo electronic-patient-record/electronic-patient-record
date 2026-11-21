@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-21 - Service coverage re-measured: 95.79 percent (QA-15)
+
+- **Clinical risk:** none: a measurement.
+- **Measured:** the complete service run a third time (all tests, ignored included, fresh `*_test` database, one thread, `tests/` excluded): 23,976 of 25,029 lines, **95.79 percent** (95.12, then 95.32 earlier today). Only the six Java-needing `fhir_validator_*` tests failed. What is left is mostly single error-propagation lines in the controllers and stores (a failed query, a failed audit append, a serialisation that cannot fail), which need an injected fault to reach; `app.rs` (command paths) and `audit.rs` hold the largest blocks.
+- **Not done / not verified:** the figure counts inline `#[cfg(test)]` code, so production-only coverage is lower; the CI service floor (36, database-free) and the matcher and UI floors were not raised; no fault-injection harness exists, so 100 percent is not reachable by behaviour tests alone.
+
 ## 2026-11-21 - Service test: what a dry run says for three kinds of refusal (QA-15)
 
 - **Clinical risk:** none: a test.
