@@ -48,6 +48,10 @@ impl Scratch {
         if confirmed {
             command.env("AXA_DESTROY_DATA", "true");
         }
+        // The one variable kept from the test's own environment, so a coverage run records what this program does.
+        if let Some(profile) = std::env::var_os("LLVM_PROFILE_FILE") {
+            command.env("LLVM_PROFILE_FILE", profile);
+        }
         command.output().expect("the binary runs")
     }
 

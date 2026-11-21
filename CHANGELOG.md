@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-21 - Service coverage re-measured: 95.32 percent; the `db` command tests now count (QA-15)
+
+- **Clinical risk:** none: tests only.
+- **Measured:** the complete service run again (all tests, ignored included, fresh `*_test` database, one thread, `tests/` excluded): 23,857 of 25,029 lines, **95.32 percent** (was 95.12). Only the six Java-needing `fhir_validator_*` tests failed. Still the largest gaps: `app.rs` 113 lines, `audit.rs` 58, `controllers/fhir.rs` 57, `adt_feed.rs` 55, `controllers/feed.rs` 42.
+- **Fixed:** `tests/db_commands.rs` ran the real binary with `env_clear()`, which also removed `LLVM_PROFILE_FILE`, so what the binary did was never counted (`app.rs` did not move). It now passes that one variable through. Run alone under `cargo llvm-cov`, the three tests cover 68 of `app.rs`'s 231 lines.
+- **Not done / not verified:** the full-run `app.rs` figure was not re-measured after the fix; the figure still counts inline `#[cfg(test)]` code; the CI service floor (36, database-free) is unchanged.
+
 ## 2026-11-21 - Service tests: the log sink and keeping a second relay (QA-15)
 
 - **Clinical risk:** none: tests only.
