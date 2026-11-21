@@ -531,3 +531,16 @@ fn a_config_that_leaves_out_the_calling_code_gets_44() {
     let c: MatchConfig = serde_json::from_value(v).unwrap();
     assert_eq!(c.default_calling_code, 44);
 }
+
+#[test]
+fn a_telephone_compares_by_its_digits_alone() {
+    let a = tel(&[("phone", "+44 (0)7700 900123")]);
+    assert_eq!(
+        sim(&a, &tel(&[("phone", "0044-07700-900123")]), "telecom"),
+        Some(1.0)
+    );
+    assert_eq!(
+        sim(&a, &tel(&[("phone", "07700 900124")]), "telecom"),
+        Some(0.0)
+    );
+}

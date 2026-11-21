@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-21 - Matcher coverage 96.16 to 98.43 percent (QA-15)
+
+- **Clinical risk:** none: tests only; no matcher behaviour changed.
+- **Tested:** five new behaviour tests and one new test file. A shared IHI with unlike names is not auto-linked and carries `SameIhiDifferentNames` with its message (`tests/main/ihi.rs`); a national number whose modulus-11 check would be 10 is invalid for every last digit (`matching.rs`); a telephone compares by digits alone (`fields.rs`); the demo binary prints a decision for two files, prints usage and exits 2 for a wrong call, and fails with no output for a missing or malformed file (`tests/main/demo_binary.rs`). Matcher suite 126 tests; clippy clean; `coverage-matcher.sh` measured 564 of 573 lines (tarpaulin, LLVM engine).
+- **Not done / not verified:** the 9 lines left are 8 in a stray local `target/package/.../engine.rs` that is not source (a leftover of `cargo package`) and `normalize.rs` line 78 (the digit fold in `fold_telecom`), which the phone test exercises yet tarpaulin reports as unhit, probably a line-attribution quirk of the function-path argument; not investigated further. The floor stays 95 until CI shows the same figure. The service (database-free 37.5 percent) and UI are untouched: QA-15 stays open for them.
+
 ## 2026-11-20 - Deterministic coverage-suite isolation
 
 - **Clinical risk:** none: test isolation and assertions only; service behaviour is unchanged.

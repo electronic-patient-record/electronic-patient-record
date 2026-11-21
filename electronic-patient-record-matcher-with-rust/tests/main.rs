@@ -4,6 +4,8 @@
 mod codes;
 #[path = "main/config.rs"]
 mod config;
+#[path = "main/demo_binary.rs"]
+mod demo_binary;
 #[path = "main/fields.rs"]
 mod fields;
 #[path = "main/household.rs"]

@@ -39,6 +39,10 @@ fn national_number_check_digit() {
     assert!(is_valid_national_number("943 476 5919"));
     assert!(is_valid_national_number("9434765919"));
     assert!(!is_valid_national_number("9434765918"));
+    // 1000000019 would need check digit 10, which is never issued, so it is invalid whatever its last digit.
+    for last in 0..10 {
+        assert!(!is_valid_national_number(&format!("100000001{last}")));
+    }
     assert!(!is_valid_national_number("123"));
     assert!(!is_valid_national_number("94347659AB"));
     // check digit computes to 10: never valid

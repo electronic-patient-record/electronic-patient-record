@@ -111,3 +111,20 @@ fn a_config_saved_before_the_setting_existed_still_loads_with_it_off() {
     let c: MatchConfig = serde_json::from_value(serde_json::Value::Object(old)).unwrap();
     assert!(!c.use_ihi);
 }
+
+#[test]
+fn a_shared_ihi_with_unlike_names_forbids_a_link_and_says_so() {
+    let n = ihi("816669001");
+    let a = person("Nguyen", "Lan", Some("1980-03-14"), &[&n]);
+    let b = person("Okafor", "Chidi", Some("1980-03-14"), &[&n]);
+    let r = on().compare(&a, &b);
+    assert_ne!(r.decision, Decision::AutoLink);
+    assert!(
+        r.conflict_codes
+            .contains(&ConflictCode::SameIhiDifferentNames)
+    );
+    assert_eq!(
+        ConflictCode::SameIhiDifferentNames.message(),
+        "same IHI but different names"
+    );
+}
