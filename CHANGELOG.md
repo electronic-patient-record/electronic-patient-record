@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-21 - UI unit coverage, lines 91.89 to 95.26 percent (QA-15)
+
+- **Clinical risk:** none: tests only; no UI behaviour changed.
+- **Tested:** 13 new unit tests. `Busy` ignores a second call in flight and clears on a throw; `newIdempotencyKey` is a fresh UUID; `loadReferrals`, `loadWatchList`, `loadDeath`, `loadAssertions` and `loadAllergies` return null or empty, never "nothing found", on any status but 200, and the allergy loader offers break-glass only on a 403 that says so; `fetchBlob` and `sendBytes` handle success, refusal, a non-JSON body and a network failure; `lastActivityAt`. Vitest (v8) over `src/lib`: 94.25 percent of statements, 89.30 of branches, 91.05 of functions, 95.26 of lines (was 91.34, 85.89, 87.41, 91.89); 413 tests pass; lint and `check:tests` clean.
+- **Not done / not verified:** `.svelte` components and `src/routes` stay outside the measure (QA-15 left open); `auth-instance.ts`, `account.svelte.ts`, `amendments.ts` and `api.ts` still have uncovered lines; the UI floors in CI (90 lines, 84 branches) were not raised; the browser suite was not run.
+
 ## 2026-11-21 - Matcher coverage 96.16 to 98.43 percent (QA-15)
 
 - **Clinical risk:** none: tests only; no matcher behaviour changed.

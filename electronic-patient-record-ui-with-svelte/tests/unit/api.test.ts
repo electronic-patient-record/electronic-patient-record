@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { call } from "../../src/lib/api";
+import { call, fetchBlob, sendBytes } from "../../src/lib/api";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -62,5 +62,80 @@ describe("call", () => {
     );
     expect(bg?.headers).toEqual({ "x-epr-background": "1" });
     expect(fg?.headers).toEqual({});
+  });
+});
+
+describe("fetchBlob and sendBytes", () => {
+  it("fetchBlob returns the bytes and the next cursor, a null body on refusal, and status 0 on failure", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response("png", {
+            status: 200,
+            headers: { "x-next-before": "c9" },
+          }),
+      ),
+    );
+    const ok = await fetchBlob("/api/x", "treatment");
+    expect(ok.status).toBe(200);
+    expect(ok.next).toBe("c9");
+    expect(await ok.body?.text()).toBe("png");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("no", { status: 404 })),
+    );
+    expect(await fetchBlob("/api/x")).toEqual({ status: 404, body: null });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("down");
+      }),
+    );
+    expect(await fetchBlob("/api/x")).toEqual({ status: 0, body: null });
+  });
+
+  it("sendBytes sends the type and purpose, parses JSON, and survives a bad body or a failure", async () => {
+    const fetchMock = vi.fn(
+      async () => new Response('{"a":1}', { status: 201 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const blob = new Blob(["x"], { type: "image/png" });
+    expect(await sendBytes("PUT", "/api/p", blob, "treatment")).toEqual({
+      status: 201,
+      body: { a: 1 },
+    });
+    const init = (
+      fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+    )[1];
+    expect(init.headers).toEqual({
+      "content-type": "image/png",
+      "x-purpose-of-use": "treatment",
+    });
+    await sendBytes("POST", "/api/p", null);
+    const second = (
+      fetchMock.mock.calls[1] as unknown as [string, RequestInit]
+    )[1];
+    expect(second.headers).toEqual({
+      "content-type": "application/octet-stream",
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("<html>", { status: 502 })),
+    );
+    expect(await sendBytes("PUT", "/api/p", blob)).toEqual({
+      status: 502,
+      body: null,
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("down");
+      }),
+    );
+    expect(await sendBytes("PUT", "/api/p", blob)).toEqual({
+      status: 0,
+      body: null,
+    });
   });
 });
