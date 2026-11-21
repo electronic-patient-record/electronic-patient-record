@@ -2,13 +2,6 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
-## 2026-11-21 - Service: the first authoritative full coverage figure, and the `db` commands tested (QA-15)
-
-- **Clinical risk:** none: tests only.
-- **Measured:** the first complete service run since the isolation repairs: `cargo llvm-cov --ignore-run-fail` over every test with ignored ones included, one thread, on a fresh PostgreSQL 18 database, `tests/` excluded from the report: 23,787 of 25,008 lines hit, **95.12 percent** (line records merged by their highest count, so two spellings of one line are one line). The only failures were the six `fhir_validator_*` tests (they need Java; CI runs them in their own job). The largest gaps: `app.rs` 113 lines, `mllp.rs` 59, `adt_feed.rs` 58, `audit.rs` 57, `controllers/fhir.rs` 55, `controllers/feed.rs` 42.
-- **Tested:** `tests/db_commands.rs` (3 database-gated tests, run through `suite`): the real binary's `db status` shows every migration pending on a new database and applied after `db migrate`, and a second migrate changes nothing; `db down` and `db truncate` fail with their own messages even when confirmed; a confirmed `db reset` drops a table left behind and migrates again. All 3 pass; clippy clean.
-- **Not done / not verified:** the new tests' effect on the figure was not re-measured; the 95.12 figure counts inline `#[cfg(test)]` code, so production-only coverage is lower (QA-15 asks for production source); the MLLP TLS tests were not excluded and no test other than the six validator ones failed in this run (the two whose names contain `tls` passed), so the 2026-11-20 note that they cannot run under instrumentation did not reproduce here; not investigated; the CI service floor is still 36 on the database-free measure and was not changed. Many of the remaining gaps are error branches that need a failing database or peer.
-
 ## 2026-11-21 - UI coverage: the four counters and two more loaders (QA-15)
 
 - **Clinical risk:** none: tests only.
