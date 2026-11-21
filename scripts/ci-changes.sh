@@ -41,7 +41,7 @@ while IFS= read -r path; do
     electronic-patient-record-ui-with-svelte/*)
       ui=true ;;
     # Documents that no build or test reads: the docs job checks them.
-    *.md | spec/* | agents/* | docs/* | locales/* | governance/* | llms.txt | llms.json | CITATION.cff | LICENSE | CODEOWNERS)
+    *.md | spec/* | agents/* | docs/* | locales/* | governance/* | llms.txt | llms.json | CITATION.cff | LICENSES/* | CODEOWNERS)
       ;;
     *)
       rust=true

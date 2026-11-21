@@ -27,6 +27,8 @@ mod break_glass_store;
 mod consents_store;
 #[path = "current_views.rs"]
 mod current_views;
+#[path = "db_commands.rs"]
+mod db_commands;
 #[path = "death_scenarios.rs"]
 mod death_scenarios;
 #[path = "death_store.rs"]
@@ -49,6 +51,8 @@ mod hazards_store;
 mod keycloak_guard;
 #[path = "label_census.rs"]
 mod label_census;
+#[path = "licence_files.rs"]
+mod licence_files;
 #[path = "links_store.rs"]
 mod links_store;
 #[path = "migration_down.rs"]
