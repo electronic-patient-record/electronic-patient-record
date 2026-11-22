@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-22 - ci-changes lists the licence files the tests read
+
+- **Clinical risk:** none: a CI script.
+- **Fixed:** `scripts/ci-changes.sh` now runs the Rust tests when `LICENSE.md` or `LICENSES/*` change, because `tests/licence_files.rs` reads them. They were treated as documents no test reads, which failed the `docs-ci-changes` gate after the licence commit `62c0479`.
+- **Not done / not verified:** only `scripts/test_ci_changes.sh` was run (it passes); the CI workflow itself was not run.
+
 ## 2026-11-21 - A STRIDE entry per data flow (QA-10)
 
 - **Clinical risk:** none: a governance document. No code changed.

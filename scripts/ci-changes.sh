@@ -18,6 +18,9 @@ while IFS= read -r path; do
     # Read by the service's tests, or built into the service.
     governance/personal-data-inventory.csv | packs/* | ci/* | rust-toolchain.toml | Cargo.lock)
       rust=true ;;
+    # Read by the service's licence census (tests/licence_files.rs).
+    LICENSE.md | LICENSES/*)
+      rust=true ;;
     # Read by the service's documentation census and the UI's security.txt test.
     SECURITY.md)
       rust=true
@@ -41,7 +44,7 @@ while IFS= read -r path; do
     electronic-patient-record-ui-with-svelte/*)
       ui=true ;;
     # Documents that no build or test reads: the docs job checks them.
-    *.md | spec/* | agents/* | docs/* | locales/* | governance/* | llms.txt | llms.json | CITATION.cff | LICENSES/* | CODEOWNERS)
+    *.md | spec/* | agents/* | docs/* | locales/* | governance/* | llms.txt | llms.json | CITATION.cff | CODEOWNERS)
       ;;
     *)
       rust=true
