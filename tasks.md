@@ -1673,6 +1673,16 @@ only; nothing here was taken from its code. Open questions OQ-TL1 (who approves 
   context, and the existing `from_lookup` constructors (`feed_health`, `mllp`) are the pattern. **Acceptance:** no test
   sets process environment; a setting a test names reaches every reader (a test that names one and sees it ignored fails);
   `boot_test_with` refusing a service that reads the process environment stays true. **Not started.**
+  **Finding 2026-11-22 (read the code, changed none):** the 23 reads are the smaller part. Eleven settings land in
+  process-wide `OnceLock`s that the first boot fills and later boots cannot change: `auth` (verifier, Keycloak,
+  `REQUIRE_AUTH`, token pool), `audit` (the chain and the server address), `referral_timeouts`, `tasks_store`
+  (site rules), `feed_health` and `adt_feed`. A lookup passed to `boot_test_with` would be ignored by every boot after
+  the first in a program, which is exactly the failure the acceptance forbids, and it is why 43 `[[test]]` entries
+  exist. So the work has three stages, each its own commit: (1) route every read through one `Settings` lookup
+  (mechanical, no behaviour change); (2) move each `OnceLock` into the app's context or a shared store keyed by it,
+  which changes the signatures of the auth and audit calls made from middleware that holds no context (the real
+  cost); (3) implement `boot_test_with` and move the 32 test files over. Stage 1 alone does not make one test
+  program possible.
 
 ## Dependency 2026-11-17 — axa 0.19
 
