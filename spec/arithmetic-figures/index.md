@@ -16,3 +16,4 @@ The declarations that [`../rust-checked-arithmetic/index.md`](../rust-checked-ar
 | A suspicion pathway's target due day (`pathways::plan`) | the date is out of range | no plan (`None`) |
 | The published total of a suppressed table (`privacy::suppress`) | the sum overflows `u64` | no total (`None`) |
 | An observation's late-entry and before-birth limits (`observations_store::timing_problems`) | the limit date is out of the calendar's range (invalid data) | a refusal with code `effective_at_out_of_range`; no verdict is guessed either way (RCA-DECL-5) |
+| A task's due and reminder days (`task_rules::add_working_days`, `sub_working_days`, `plan`) | the date is past the calendar's end or before its start | no date and no plan (`None`); a day-of-event that cannot plan is a 422 on the dry run and a rolled-back event elsewhere. The reminder is never set before the task's own start (TL-4, declared) |

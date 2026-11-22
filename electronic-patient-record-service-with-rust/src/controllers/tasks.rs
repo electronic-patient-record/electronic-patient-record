@@ -345,13 +345,18 @@ async fn dry_run(
         Ok(r) => r,
         Err(e) => return failure(e),
     };
-    let planned = task_rules::plan(
+    let Some(planned) = task_rules::plan(
         rules,
         request.event,
         &request.facts,
         day,
         crate::site::holidays(),
-    );
+    ) else {
+        return ApiError::invalid(vec![
+            "a due or reminder date would be outside the calendar for this day".to_string(),
+        ])
+        .into_response();
+    };
     if let Err(r) = audit_resource(
         &ctx.pool(),
         &agent,

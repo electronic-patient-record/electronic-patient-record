@@ -213,10 +213,11 @@ pub async fn create_from_event(
 ) -> Result<Vec<Task>, StoreError> {
     let patient = ids::uuid(patient_id).ok_or(StoreError::NotFound)?;
     let mut made = Vec::new();
-    for p in task_rules::plan(rules, event, facts, day, holidays)
-        .into_iter()
-        .filter(|p| p.approved)
-    {
+    // A date outside the calendar is no plan: nothing is made and the caller's transaction rolls back (RCA-P-3).
+    let planned = task_rules::plan(rules, event, facts, day, holidays).ok_or_else(|| {
+        StoreError::Db("a task's due or reminder date is outside the calendar".into())
+    })?;
+    for p in planned.into_iter().filter(|p| p.approved) {
         let author = format!("rule:{}@{}", p.rule, p.version);
         let body = Body {
             title: p.title.clone(),

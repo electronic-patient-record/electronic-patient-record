@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-22 - task_rules: a due date past the calendar is no plan (QA-17, first module under the arithmetic lints)
+
+- **Clinical risk:** low, but touches what a clinician sees: a task's due and reminder days. `add_working_days` and `sub_working_days` used to stop at the calendar's end (`unwrap_or(d)`) and return a wrong day; they now return `None`, `plan` returns `None`, the dry run answers 422, and a real event whose plan has no date fails and rolls back. Only dates near year 9999 or 0001 are affected. Hazard log not edited.
+- **Changed:** `task_rules.rs` denies the arithmetic lints for the module (RCA-ENF-3); no `as`, no `+ 1`, no counters; a named `MAX_NON_WORKING_RUN`; `spec/arithmetic-figures/index.md` row; test `a_date_past_the_calendar_is_no_date_not_the_last_one`.
+- **Not done / not verified:** every other module still allows the lints; the 366-day give-up for an all-holiday calendar still returns the last day reached rather than an error (the calendar is site configuration, so RCA-IN-4 would have it refused at start; not done). Full suite on a fresh database: 854 passed, 6 failed (Java `fhir_validator`). CI not observed.
+
 ## 2026-11-22 - Option::unwrap_or_default banned in the service (QA-17, RCA-ENF-2, RCA-P-3)
 
 - **Clinical risk:** none intended: every site keeps its behaviour, now spelled as the empty value it uses (`unwrap_or("")`, `map_or_else(Vec::new, ..)`, `Value::Null`). The audit digest input is unchanged (an absent detail is still the empty text).

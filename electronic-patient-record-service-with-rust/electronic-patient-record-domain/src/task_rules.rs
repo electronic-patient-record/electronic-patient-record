@@ -20,6 +20,16 @@
 //! **No duplicates (TL-14).** Two rules with the same event, conditions and task would make two tasks for one thing;
 //! reading such a file fails, naming both.
 
+// RCA-ENF-3: this module is converted, so the arithmetic lints are denied here; the rest of the crate follows.
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::default_numeric_fallback,
+    clippy::integer_division,
+    clippy::modulo_arithmetic,
+    clippy::as_conversions,
+    clippy::string_slice
+)]
+
 use jiff::civil::{Date, Weekday};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -270,7 +280,7 @@ pub fn parse(text: &str, name: &str) -> Result<Vec<Rule>, String> {
         v.sort_unstable();
         if v.iter()
             .enumerate()
-            .any(|(i, n)| i64::from(*n) != i as i64 + 1)
+            .any(|(i, n)| usize::try_from(*n).ok() != i.checked_add(1))
         {
             return Err(format!(
                 "task rules: {name}: rule {id}: versions must run 1, 2, 3 ... with none missing or repeated"
@@ -280,7 +290,7 @@ pub fn parse(text: &str, name: &str) -> Result<Vec<Rule>, String> {
     // TL-14: the same work twice. Versions of one rule are its history, so only each rule's latest is compared.
     let latest: Vec<&Rule> = latest_versions(&rules);
     for (i, a) in latest.iter().enumerate() {
-        for b in latest.iter().skip(i + 1) {
+        for b in latest.iter().skip(i).skip(1) {
             if a.identity() == b.identity() {
                 return Err(format!(
                     "task rules: {name}: rules {} and {} are the same event, conditions and task",
@@ -321,41 +331,52 @@ pub fn working_day(day: Date, holidays: &BTreeSet<Date>) -> bool {
     !matches!(day.weekday(), Weekday::Saturday | Weekday::Sunday) && !holidays.contains(&day)
 }
 
-/// `days` working days after `from`. 0 is `from` itself when it is a working day, else the next working day; 1 is the
-/// next working day after that, and so on. Saturating at the calendar's end.
-#[must_use]
-pub fn add_working_days(from: Date, days: u32, holidays: &BTreeSet<Date>) -> Date {
-    let next = |d: Date| d.tomorrow().unwrap_or(d);
-    let mut day = from;
-    // At most a long holiday run past any start: bounded so a calendar of all holidays cannot loop for ever.
-    let mut guard = 0;
-    while !working_day(day, holidays) && guard < 366 {
-        day = next(day);
-        guard += 1;
-    }
-    for _ in 0..days {
-        day = next(day);
-        let mut guard = 0;
-        while !working_day(day, holidays) && guard < 366 {
-            day = next(day);
-            guard += 1;
+/// The longest run of non-working days looked past: a calendar of all holidays cannot loop for ever (it keeps the last
+/// day reached). A year, which no real holiday run approaches.
+const MAX_NON_WORKING_RUN: u16 = 366;
+
+/// The first working day on or after `day`, or `day` after [`MAX_NON_WORKING_RUN`] days of none. `None` when the next
+/// day is past the calendar's end.
+fn settle(mut day: Date, holidays: &BTreeSet<Date>) -> Option<Date> {
+    for _ in 0..MAX_NON_WORKING_RUN {
+        if working_day(day, holidays) {
+            break;
         }
+        day = day.tomorrow().ok()?;
     }
-    day
+    Some(day)
 }
 
-/// `days` working days before `due`, never before `from` (a reminder is not set in the past of the task).
+/// `days` working days after `from`. 0 is `from` itself when it is a working day, else the next working day; 1 is the
+/// next working day after that, and so on. `None` when the date is past the calendar's end: the date does not exist,
+/// and no other is put in its place (RCA-P-3).
 #[must_use]
-pub fn sub_working_days(due: Date, days: u32, from: Date, holidays: &BTreeSet<Date>) -> Date {
+pub fn add_working_days(from: Date, days: u32, holidays: &BTreeSet<Date>) -> Option<Date> {
+    let mut day = settle(from, holidays)?;
+    for _ in 0..days {
+        day = settle(day.tomorrow().ok()?, holidays)?;
+    }
+    Some(day)
+}
+
+/// `days` working days before `due`, never before `from` (a reminder is not set in the past of the task: the
+/// bound is declared by TL-4). `None` when a date is before the calendar's start.
+#[must_use]
+pub fn sub_working_days(
+    due: Date,
+    days: u32,
+    from: Date,
+    holidays: &BTreeSet<Date>,
+) -> Option<Date> {
     let mut day = due;
     let mut left = days;
     while left > 0 && day > from {
-        day = day.yesterday().unwrap_or(day);
+        day = day.yesterday().ok()?;
         if working_day(day, holidays) {
-            left -= 1;
+            left = left.checked_sub(1)?; // `left > 0` was just checked, so this is `Some`
         }
     }
-    day.max(from)
+    Some(day.max(from)) // TL-4: never before the task's own start
 }
 
 /// A task a rule would create.
@@ -382,7 +403,8 @@ pub struct Planned {
 }
 
 /// What `event`, with `facts`, on site day `day`, would create under the latest version of each rule in `rules`,
-/// approved or not (the caller creates only the approved ones). Pure, so it is the dry run too.
+/// approved or not (the caller creates only the approved ones). Pure, so it is the dry run too. `None` when a due or
+/// reminder date is outside the calendar: there is no plan, and no date is invented for it (RCA-P-3).
 #[must_use]
 pub fn plan(
     rules: &[Rule],
@@ -390,21 +412,21 @@ pub fn plan(
     facts: &BTreeMap<String, String>,
     day: Date,
     holidays: &BTreeSet<Date>,
-) -> Vec<Planned> {
+) -> Option<Vec<Planned>> {
     latest_versions(rules)
         .into_iter()
         .filter(|r| r.matches(event, facts))
         .map(|r| {
-            let due_on = add_working_days(day, r.task.due_working_days, holidays);
+            let due_on = add_working_days(day, r.task.due_working_days, holidays)?;
             let mut reminders: Vec<Date> = r
                 .task
                 .remind_working_days_before
                 .iter()
                 .map(|d| sub_working_days(due_on, *d, day, holidays))
-                .collect();
+                .collect::<Option<_>>()?;
             reminders.sort();
             reminders.dedup();
-            Planned {
+            Some(Planned {
                 rule: r.id.clone(),
                 version: r.version,
                 approved: r.approved(),
@@ -414,7 +436,7 @@ pub fn plan(
                 reminders,
                 late_reminder: r.task.late_reminder,
                 cancel_on: r.cancel_on.clone(),
-            }
+            })
         })
         .collect()
 }
@@ -601,25 +623,37 @@ late_reminder = "send-once"
     fn working_days_skip_weekends_and_holidays() {
         let none = BTreeSet::new();
         // Friday 2026-11-20 plus one working day is Monday the 23rd; plus zero is itself.
-        assert_eq!(add_working_days(d("2026-11-20"), 1, &none), d("2026-11-23"));
-        assert_eq!(add_working_days(d("2026-11-20"), 0, &none), d("2026-11-20"));
+        assert_eq!(
+            add_working_days(d("2026-11-20"), 1, &none),
+            Some(d("2026-11-23"))
+        );
+        assert_eq!(
+            add_working_days(d("2026-11-20"), 0, &none),
+            Some(d("2026-11-20"))
+        );
         // An event on Saturday is counted from Monday.
-        assert_eq!(add_working_days(d("2026-11-21"), 0, &none), d("2026-11-23"));
-        assert_eq!(add_working_days(d("2026-11-21"), 2, &none), d("2026-11-25"));
+        assert_eq!(
+            add_working_days(d("2026-11-21"), 0, &none),
+            Some(d("2026-11-23"))
+        );
+        assert_eq!(
+            add_working_days(d("2026-11-21"), 2, &none),
+            Some(d("2026-11-25"))
+        );
         // Christmas and Boxing Day as holidays: Thursday the 24th plus one is Monday the 28th.
         let holidays: BTreeSet<Date> = [d("2026-12-25")].into_iter().collect();
         assert_eq!(
             add_working_days(d("2026-12-24"), 1, &holidays),
-            d("2026-12-28")
+            Some(d("2026-12-28"))
         );
         // A reminder one working day before Monday's due day is the Friday, never before the event's day.
         assert_eq!(
             sub_working_days(d("2026-11-23"), 1, d("2026-11-19"), &none),
-            d("2026-11-20")
+            Some(d("2026-11-20"))
         );
         assert_eq!(
             sub_working_days(d("2026-11-23"), 5, d("2026-11-20"), &none),
-            d("2026-11-20")
+            Some(d("2026-11-20"))
         );
     }
 
@@ -633,7 +667,8 @@ late_reminder = "send-once"
             &facts(&[("abnormal", "true")]),
             d("2026-11-20"),
             &none,
-        );
+        )
+        .unwrap();
         assert_eq!(p.len(), 1);
         assert_eq!(p[0].due_on, d("2026-11-24"));
         assert_eq!(p[0].reminders, vec![d("2026-11-23")]);
@@ -646,6 +681,7 @@ late_reminder = "send-once"
                 d("2026-11-20"),
                 &none
             )
+            .unwrap()
             .is_empty()
         );
         assert!(
@@ -656,6 +692,7 @@ late_reminder = "send-once"
                 d("2026-11-20"),
                 &none
             )
+            .unwrap()
             .is_empty(),
             "a missing fact does not match"
         );
@@ -667,6 +704,7 @@ late_reminder = "send-once"
                 d("2026-11-20"),
                 &none
             )
+            .unwrap()
             .is_empty()
         );
         let newer = format!(
@@ -680,10 +718,11 @@ late_reminder = "send-once"
             &facts(&[("abnormal", "true")]),
             d("2026-11-20"),
             &none,
-        );
+        )
+        .unwrap();
         assert_eq!(
             (p.len(), p[0].version, p[0].due_on),
-            (1, 2, d("2026-11-27"))
+            (1, 2_i32, d("2026-11-27"))
         );
     }
 
@@ -773,12 +812,41 @@ late_reminder = "send-once"
         let mut day = start;
         // Longer than the guard's reach (366 days at the start and after each working day counted), so the bound shows:
         // without the guard the answer would be the first working day after the run, years later.
-        for _ in 0..1500 {
+        for _ in 0_i32..1500_i32 {
             holidays.insert(day);
             day = day.tomorrow().unwrap();
         }
         // Bounded: the answer is some day within the guard, not a loop for ever.
-        let due = add_working_days(start, 2, &holidays);
+        let due = add_working_days(start, 2, &holidays).unwrap();
         assert!(due > start && due < d("2029-02-01"), "{due}");
+    }
+
+    #[test]
+    fn a_date_past_the_calendar_is_no_date_not_the_last_one() {
+        let none = BTreeSet::new();
+        let last = Date::MAX; // a Friday: 9999-12-31
+        assert_eq!(add_working_days(last, 0, &none), Some(last));
+        assert_eq!(add_working_days(last, 1, &none), None);
+        assert_eq!(
+            add_working_days(Date::MAX.yesterday().unwrap(), 2, &none),
+            None
+        );
+        assert_eq!(
+            sub_working_days(Date::MIN, 1, Date::MIN, &none),
+            Some(Date::MIN)
+        );
+        assert_eq!(
+            sub_working_days(Date::MIN.tomorrow().unwrap(), 5, Date::MIN, &none),
+            Some(Date::MIN)
+        );
+        let rules = parse(GOOD, "t").unwrap();
+        let planned = plan(
+            &rules,
+            Event::ResultFiled,
+            &facts(&[("abnormal", "true")]),
+            last,
+            &none,
+        );
+        assert_eq!(planned, None, "a due day past the end is no plan");
     }
 }
