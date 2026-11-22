@@ -8,6 +8,16 @@
 //! themselves access). **Nothing here proves** the person holding a `sub` is the patient: that is
 //! the administrator's identity check, outside this service.
 
+// RCA-ENF-3: this module is converted, so the arithmetic lints are denied here; the rest of the crate follows.
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::default_numeric_fallback,
+    clippy::integer_division,
+    clippy::modulo_arithmetic,
+    clippy::as_conversions,
+    clippy::string_slice
+)]
+
 use crate::consent::{Period, in_period};
 use crate::ids;
 use crate::patients_store::{self, StoreError};
@@ -153,11 +163,11 @@ pub fn resolve<'a>(
     scope: Option<Scope>,
 ) -> Relationship {
     let rank = |r: Relationship| match r {
-        Relationship::SelfPatient => 4,
-        Relationship::Proxy => 3,
-        Relationship::ActiveEncounter => 2,
-        Relationship::CareTeam => 1,
-        Relationship::None => 0,
+        Relationship::SelfPatient => 4_u8,
+        Relationship::Proxy => 3_u8,
+        Relationship::ActiveEncounter => 2_u8,
+        Relationship::CareTeam => 1_u8,
+        Relationship::None => 0_u8,
     };
     records
         .into_iter()
@@ -324,6 +334,7 @@ pub async fn update(
             "the subject and kind cannot change: end this relationship and record another".into(),
         ));
     }
+    let new_version = crate::store::next_version(expected_version)?;
     // A concurrent writer took this version: the primary key refuses the second (CQ-12).
     let row = match crate::store::append_version(&mut *db, STORE, sqlx::query(AssertSqlSafe(format!(
                 "INSERT INTO relationship_versions
@@ -331,7 +342,7 @@ pub async fn update(
                  VALUES ($1::uuid, $2, $3::uuid, $4, $5, $6, $7, $8, $9) RETURNING {COLUMNS}"
             )))
 .bind(now.id.clone())
-.bind(expected_version + 1)
+.bind(new_version)
 .bind(now.patient_id.clone())
 .bind(record.subject.clone())
 .bind(record.kind.as_str())

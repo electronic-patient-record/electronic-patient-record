@@ -6,6 +6,16 @@
 //! Postgres keeps microseconds: a time with nanoseconds is truncated toward the past on the way in, as chrono's was.
 //! `infinity` and `-infinity` are refused on the way out, since no column here holds them.
 
+// RCA-ENF-3: this module is converted, so the arithmetic lints are denied here; the rest of the crate follows.
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::default_numeric_fallback,
+    clippy::integer_division,
+    clippy::modulo_arithmetic,
+    clippy::as_conversions,
+    clippy::string_slice
+)]
+
 use jiff::civil::Date;
 use jiff::{SignedDuration, Timestamp};
 use sqlx::decode::Decode;
@@ -45,23 +55,36 @@ impl Type<Postgres> for PgDate {
     }
 }
 
-/// Microseconds since the Postgres epoch, truncated toward the past.
-fn to_pg_micros(t: Timestamp) -> i64 {
-    let since = t.as_duration() - SignedDuration::from_secs(PG_EPOCH_SECONDS);
-    let micros = since.as_micros();
-    let micros = if since.subsec_nanos() < 0 && since.subsec_nanos() % 1_000 != 0 {
-        micros - 1
-    } else {
-        micros
-    };
-    i64::try_from(micros).unwrap_or(if micros < 0 { i64::MIN } else { i64::MAX })
+/// Microseconds since the Postgres epoch, truncated toward the past (a floor, so a time before the epoch with
+/// nanoseconds goes to the earlier microsecond).
+///
+/// # Errors
+///
+/// A time the column cannot hold: it is refused, not moved to the nearest bound (RCA-IN-2). Not reachable from a
+/// `Timestamp`, whose range is far inside `timestamptz`'s.
+fn to_pg_micros(t: Timestamp) -> Result<i64, BoxDynError> {
+    let out_of_range = || BoxDynError::from("a time outside the range of timestamptz");
+    let since = t
+        .as_duration()
+        .checked_sub(SignedDuration::from_secs(PG_EPOCH_SECONDS))
+        .ok_or_else(out_of_range)?;
+    let micros = since
+        .as_nanos()
+        .checked_div_euclid(NANOS_PER_MICRO)
+        .ok_or_else(out_of_range)?;
+    i64::try_from(micros).map_err(|_| out_of_range())
 }
+
+/// Nanoseconds in a microsecond, the unit Postgres keeps.
+const NANOS_PER_MICRO: i128 = 1_000;
 
 fn from_pg_micros(micros: i64) -> Result<Timestamp, BoxDynError> {
     if micros == i64::MAX || micros == i64::MIN {
         return Err("a timestamptz that is infinity".into());
     }
-    let since = SignedDuration::from_micros(micros) + SignedDuration::from_secs(PG_EPOCH_SECONDS);
+    let since = SignedDuration::from_micros(micros)
+        .checked_add(SignedDuration::from_secs(PG_EPOCH_SECONDS))
+        .ok_or("a timestamptz outside the range of a time")?;
     Ok(Timestamp::from_duration(since)?)
 }
 
@@ -72,7 +95,7 @@ fn parse_pg_text(text: &str) -> Result<Timestamp, BoxDynError> {
     let tail = iso
         .rfind(['+', '-'])
         .filter(|&i| i > 10)
-        .map(|i| &iso[i + 1..]);
+        .and_then(|i| iso.get(i.checked_add(1)?..));
     let iso = match tail {
         Some(t) if t.len() == 2 => format!("{iso}:00"),
         _ => iso,
@@ -82,7 +105,7 @@ fn parse_pg_text(text: &str) -> Result<Timestamp, BoxDynError> {
 
 impl Encode<'_, Postgres> for PgTimestamp {
     fn encode_by_ref(&self, buf: &mut PgArgumentBuffer) -> Result<IsNull, BoxDynError> {
-        Encode::<Postgres>::encode(to_pg_micros(self.0), buf)
+        Encode::<Postgres>::encode(to_pg_micros(self.0)?, buf)
     }
 
     fn size_hint(&self) -> usize {
@@ -129,21 +152,34 @@ impl<'r> Decode<'r, Postgres> for PgDate {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn the_ends_of_the_jiff_range_fit_timestamptz_and_round_trip_to_the_microsecond() {
+        for t in [Timestamp::MIN, Timestamp::MAX] {
+            let micros = to_pg_micros(t).unwrap();
+            let back = from_pg_micros(micros).unwrap();
+            let gap = t.as_duration().checked_sub(back.as_duration()).unwrap();
+            assert!(
+                gap >= SignedDuration::ZERO && gap < SignedDuration::from_micros(1),
+                "{t}: truncated toward the past by under a microsecond"
+            );
+        }
+    }
+
     use super::*;
 
     #[test]
     fn the_postgres_epoch_is_zero_and_microseconds_truncate_toward_the_past() {
         let epoch: Timestamp = "2000-01-01T00:00:00Z".parse().unwrap();
-        assert_eq!(to_pg_micros(epoch), 0);
+        assert_eq!(to_pg_micros(epoch).unwrap(), 0);
         let t: Timestamp = "2026-11-17T10:05:09.123456789Z".parse().unwrap();
-        let micros = to_pg_micros(t);
+        let micros = to_pg_micros(t).unwrap();
         assert_eq!(
             from_pg_micros(micros).unwrap(),
             "2026-11-17T10:05:09.123456Z".parse::<Timestamp>().unwrap()
         );
         // Before the epoch, a fraction of a microsecond goes back, not forward (chrono's rule).
         let before: Timestamp = "1999-12-31T23:59:59.999999500Z".parse().unwrap();
-        assert_eq!(to_pg_micros(before), -1);
+        assert_eq!(to_pg_micros(before).unwrap(), -1);
         assert_eq!(
             from_pg_micros(-1).unwrap(),
             "1999-12-31T23:59:59.999999Z".parse::<Timestamp>().unwrap()
@@ -173,12 +209,12 @@ mod tests {
     fn days_count_from_2000_01_01() {
         assert_eq!(
             pg_epoch_date().since(pg_epoch_date()).unwrap().get_days(),
-            0
+            0_i32
         );
         let d = jiff::civil::date(2026, 11, 17);
-        assert_eq!(d.since(pg_epoch_date()).unwrap().get_days(), 9817);
+        assert_eq!(d.since(pg_epoch_date()).unwrap().get_days(), 9_817_i32);
         let back = pg_epoch_date()
-            .checked_add(jiff::Span::new().days(9817))
+            .checked_add(jiff::Span::new().days(9_817_i32))
             .unwrap();
         assert_eq!(back, d);
     }

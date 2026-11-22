@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-22 - pg_time.rs and relationships.rs under the arithmetic lints (QA-17)
+
+- **Clinical risk:** none intended: every time the service can hold encodes to the same microsecond as before, and the relationship version written is unchanged. `to_pg_micros` used to turn a time outside `timestamptz`'s range into `i64::MIN` or `MAX` (`infinity`); it now refuses (not reachable from a `jiff::Timestamp`, whose range is far inside).
+- **Changed:** both modules deny the arithmetic lints (RCA-ENF-3); the microsecond floor is `checked_div_euclid` on nanoseconds; `parse_pg_text` slices with `get`; the relationship rank is `u8`; new test `the_ends_of_the_jiff_range_fit_timestamptz_and_round_trip_to_the_microsecond`.
+- **Not done / not verified:** the refusal in `to_pg_micros` has no test, since no `Timestamp` reaches it. Full suite on a fresh database: 857 passed, 6 failed (Java `fhir_validator`). CI not observed.
+
 ## 2026-11-22 - audit.rs under the arithmetic lints (QA-17)
 
 - **Clinical risk:** low, but it is the audit trail's verifier: no verdict changes for a database the service itself wrote. Differences: a row count that overflows `usize` (not reachable) is an error instead of `usize::MAX`; an archive anchor whose `first_id` is the smallest `i64` is reported `Broken` ("the anchor's first id is not valid") instead of overflowing. Hazard log not edited.
