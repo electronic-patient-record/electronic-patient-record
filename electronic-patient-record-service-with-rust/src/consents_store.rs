@@ -166,9 +166,9 @@ pub async fn active_with_merged(
         if own.is_none() && merged.is_none() {
             continue;
         }
-        let mut list = own.unwrap_or_default();
+        let mut list: Vec<_> = own.into_iter().flatten().collect();
         for source in merged.into_iter().flatten() {
-            list.extend(consents.get(source).cloned().unwrap_or_default());
+            list.extend(consents.get(source).into_iter().flatten().cloned());
         }
         out.insert(id.clone(), list);
     }

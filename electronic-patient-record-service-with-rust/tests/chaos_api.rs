@@ -209,7 +209,7 @@ fn leaks(body: &str) -> Option<&'static str> {
 
 fn database_is_throwaway() {
     let url = std::env::var("DB_URL").unwrap_or_default();
-    let name = url.rsplit('/').next().unwrap_or_default();
+    let name = url.rsplit('/').next().unwrap_or("");
     assert!(
         name.contains("test") || std::env::var("CI").is_ok(),
         "the monkey writes whatever the API allows: run it on a database named like *_test (got {name:?})"
@@ -315,7 +315,7 @@ async fn no_route_panics_answers_500_or_leaks_internals_under_hostile_input() {
                 let short: String = text.chars().take(200).collect();
                 failures.push(format!(
                     "{method} {template} -> {status}{} | url {} | body {sent} | answer {short}",
-                    leaked.map(|w| format!(" (leaks {w})")).unwrap_or_default(),
+                    leaked.map_or_else(String::new, |w| format!(" (leaks {w})")),
                     url.chars().take(200).collect::<String>()
                 ));
             }

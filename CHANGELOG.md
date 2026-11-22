@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-22 - Option::unwrap_or_default banned in the service (QA-17, RCA-ENF-2, RCA-P-3)
+
+- **Clinical risk:** none intended: every site keeps its behaviour, now spelled as the empty value it uses (`unwrap_or("")`, `map_or_else(Vec::new, ..)`, `Value::Null`). The audit digest input is unchanged (an absent detail is still the empty text).
+- **Changed:** 51 sites in 17 source files and 7 test files; `unwrap_or_default` added to `clippy.toml`; the two `mllp.rs` slice reads that cannot fail return an error instead of an empty slice; the grep gate's known list loses the two `hl7_adt` entries (the text no longer matches its pattern, but the discarded error is still there; see `tasks.md`).
+- **Not done / not verified:** where an absent or malformed input becomes empty (`fhir_patient` names and addresses, `hl7_adt` unreadable paths, a missing schema in `openapi.rs` becoming `null`) the behaviour is unchanged and still against RCA-IN-2 and RCA-IN-6; that needs a specified change. Full suite on a fresh database: 854 passed, 6 failed (Java `fhir_validator`). CI not observed.
+
 ## 2026-11-22 - Checked-arithmetic enforcement: release overflow checks, banned methods, a grep gate, settings that fail loudly (QA-17)
 
 - **Clinical risk:** low, but one behaviour change: a malformed `EPR_BREAK_GLASS_REVIEW_HOURS` or `EPR_OBSERVATION_LATE_DAYS` (set to anything but a whole number in range, an empty value included) now stops the service at start instead of using 72 hours or 7 days silently (RCA-IN-4). Unset still means the default. No such setting is in the repository's compose or environment files.

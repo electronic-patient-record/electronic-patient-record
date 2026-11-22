@@ -227,23 +227,21 @@ pub fn from_fhir_json(text: &str) -> Result<FromFhir, Unreadable> {
     let names = raw
         .get("name")
         .and_then(Value::as_array)
-        .map(|a| {
+        .map_or_else(Vec::new, |a| {
             a.iter()
                 .map(|n| HumanName {
                     family: text_of(n, "family"),
                     given: n
                         .get("given")
                         .and_then(Value::as_array)
-                        .map(|g| {
+                        .map_or_else(Vec::new, |g| {
                             g.iter()
                                 .filter_map(|x| x.as_str().map(str::to_string))
                                 .collect()
-                        })
-                        .unwrap_or_default(),
+                        }),
                 })
                 .collect()
-        })
-        .unwrap_or_default();
+        });
 
     let mut identifiers = Vec::new();
     for (i, id) in raw
@@ -276,14 +274,13 @@ pub fn from_fhir_json(text: &str) -> Result<FromFhir, Unreadable> {
     let addresses = raw
         .get("address")
         .and_then(Value::as_array)
-        .map(|a| {
+        .map_or_else(Vec::new, |a| {
             a.iter()
                 .map(|x| Address {
                     postal_code: text_of(x, "postalCode"),
                 })
                 .collect()
-        })
-        .unwrap_or_default();
+        });
 
     let mut telecom = Vec::new();
     for (i, t) in raw
@@ -302,15 +299,12 @@ pub fn from_fhir_json(text: &str) -> Result<FromFhir, Unreadable> {
     if !problems.is_empty() {
         return Err(Unreadable(problems));
     }
-    let dropped = raw
-        .as_object()
-        .map(|o| {
-            o.keys()
-                .filter(|k| !MAPPED.contains(&k.as_str()))
-                .cloned()
-                .collect()
-        })
-        .unwrap_or_default();
+    let dropped = raw.as_object().map_or_else(Vec::new, |o| {
+        o.keys()
+            .filter(|k| !MAPPED.contains(&k.as_str()))
+            .cloned()
+            .collect()
+    });
     let temporary_identity = raw
         .pointer("/meta/tag")
         .and_then(Value::as_array)

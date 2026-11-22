@@ -119,8 +119,7 @@ pub async fn no_nul_mw(req: Request, next: Next) -> Response {
     let target = req
         .uri()
         .path_and_query()
-        .map(|p| p.as_str().to_owned())
-        .unwrap_or_default();
+        .map_or_else(String::new, |p| p.as_str().to_owned());
     if target_has_nul(&target) {
         return crate::api_error::ApiError::bad_request("the request contains a NUL byte")
             .for_path(req.uri().path());
@@ -133,16 +132,15 @@ pub async fn authorize_mw(State(authz): State<Authz>, req: Request, next: Next) 
     let actor = req
         .extensions()
         .get::<Subject>()
-        .map(|s| audit::Actor {
+        .map_or_else(audit::Actor::default, |s| audit::Actor {
             roles: s.roles.iter().map(|r| r.as_str().to_string()).collect(),
             organisations: s.organisations.iter().cloned().collect(),
-        })
-        .unwrap_or_default();
+        });
     let request_id = req
         .headers()
         .get(REQUEST_ID_HEADER)
         .and_then(|v| v.to_str().ok())
-        .unwrap_or_default()
+        .unwrap_or("")
         .to_string();
     // The permission basis (WL-4): exactly one of the words, or a 400, so nothing typed reaches the trail.
     let permission = match req.headers().get(crate::permission::HEADER) {

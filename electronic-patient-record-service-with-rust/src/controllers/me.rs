@@ -128,16 +128,14 @@ const LOG_CSV_HEADER: &str =
 /// (a staff identifier is never in it). Cells are guarded against spreadsheet formulas.
 fn log_csv(entries: &[serde_json::Value]) -> String {
     let join = |v: &serde_json::Value| {
-        v.as_array()
-            .map(|a| {
-                a.iter()
-                    .filter_map(|x| x.as_str())
-                    .collect::<Vec<_>>()
-                    .join(" ")
-            })
-            .unwrap_or_default()
+        v.as_array().map_or_else(String::new, |a| {
+            a.iter()
+                .filter_map(|x| x.as_str())
+                .collect::<Vec<_>>()
+                .join(" ")
+        })
     };
-    let text = |v: &serde_json::Value| v.as_str().unwrap_or_default().to_string();
+    let text = |v: &serde_json::Value| v.as_str().unwrap_or("").to_string();
     let mut out = String::from(LOG_CSV_HEADER);
     for e in entries {
         let cells = [

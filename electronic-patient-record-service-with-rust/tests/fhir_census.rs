@@ -5,7 +5,7 @@
 fn fhir_calls_services_not_json_handlers() {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/controllers/fhir.rs");
     let text = std::fs::read_to_string(path).unwrap();
-    let code = text.split("#[cfg(test)]").next().unwrap_or_default();
+    let code = text.split("#[cfg(test)]").next().unwrap_or("");
     let mut found = Vec::new();
     for (n, line) in code.lines().enumerate() {
         let l = line.replace(' ', "");

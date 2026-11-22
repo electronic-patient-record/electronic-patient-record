@@ -48,9 +48,6 @@ KNOWN = {
         "RCA-ENF-7", 1, "`required()` reads a malformed setting as `true` before `init`; moves to the runtime with QA-16",
     ),
     SERVICE + "src/authz.rs": ("RCA-ENF-7", 1, "an unreadable request-id header becomes empty, then a new id; to review"),
-    SERVICE + "src/interop/hl7_adt.rs": (
-        "RCA-ENF-7", 2, "an unreadable HL7 path is read as empty (RCA-IN-6 says unknown or error); needs the parser's errors threaded",
-    ),
 }
 
 

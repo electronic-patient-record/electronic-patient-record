@@ -88,7 +88,9 @@ pub fn take_frame(buf: &mut Vec<u8>, max: usize) -> Result<Option<Vec<u8>>, Fram
     if first != VT {
         return Err(FrameError::NoStartBlock);
     }
-    let body = buf.get(1..).unwrap_or_default();
+    let Some(body) = buf.get(1..) else {
+        return Ok(None); // not reachable: the first byte was read above
+    };
     match body.iter().position(|b| *b == FS) {
         None => {
             if body.contains(&VT) {
@@ -109,7 +111,9 @@ pub fn take_frame(buf: &mut Vec<u8>, max: usize) -> Result<Option<Vec<u8>>, Fram
             match body.get(end + 1) {
                 None => Ok(None), // the CR has not arrived yet
                 Some(&CR) => {
-                    let payload = body.get(..end).unwrap_or_default().to_vec();
+                    let Some(payload) = body.get(..end).map(<[u8]>::to_vec) else {
+                        return Err(FrameError::BadEnd); // not reachable: `end` is a position in `body`
+                    };
                     buf.drain(..end + 3);
                     Ok(Some(payload))
                 }
@@ -329,15 +333,14 @@ impl Config {
                 );
             }
         };
-        let client_names: Vec<String> = set("EPR_MLLP_TLS_CLIENT_NAMES")
-            .map(|v| {
+        let client_names: Vec<String> =
+            set("EPR_MLLP_TLS_CLIENT_NAMES").map_or_else(Vec::new, |v| {
                 v.split(',')
                     .map(str::trim)
                     .filter(|n| !n.is_empty())
                     .map(String::from)
                     .collect()
-            })
-            .unwrap_or_default();
+            });
         if !client_names.is_empty() && set("EPR_MLLP_TLS_CLIENT_CA_FILE").is_none() {
             return Err("EPR_MLLP_TLS_CLIENT_NAMES needs EPR_MLLP_TLS_CLIENT_CA_FILE".into());
         }
@@ -361,14 +364,12 @@ impl Config {
             }
         };
         let list = |k: &str| -> Vec<String> {
-            set(k)
-                .map(|v| {
-                    v.split(',')
-                        .map(|x| x.trim().to_string())
-                        .filter(|x| !x.is_empty())
-                        .collect()
-                })
-                .unwrap_or_default()
+            set(k).map_or_else(Vec::new, |v| {
+                v.split(',')
+                    .map(|x| x.trim().to_string())
+                    .filter(|x| !x.is_empty())
+                    .collect()
+            })
         };
         let rules = SenderRules {
             applications: list("EPR_MLLP_SENDING_APPLICATIONS"),
@@ -681,7 +682,10 @@ async fn connection<S: AsyncRead + AsyncWrite + Unpin>(
         };
         match read {
             Ok(Ok(0)) | Err(_) | Ok(Err(_)) => return,
-            Ok(Ok(n)) => buf.extend_from_slice(chunk.get(..n).unwrap_or_default()),
+            Ok(Ok(n)) => match chunk.get(..n) {
+                Some(read) => buf.extend_from_slice(read),
+                None => return, // not reachable: a read gives at most the chunk
+            },
         }
     }
 }

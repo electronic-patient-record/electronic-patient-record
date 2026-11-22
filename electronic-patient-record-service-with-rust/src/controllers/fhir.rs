@@ -107,8 +107,7 @@ fn error_outcome(problem: &Problem, update: bool) -> Response {
                 .extensions
                 .get("errors")
                 .and_then(|e| e.as_array())
-                .map(|a| a.iter().filter_map(|v| v.as_str()).collect())
-                .unwrap_or_default();
+                .map_or_else(Vec::new, |a| a.iter().filter_map(|v| v.as_str()).collect());
             outcome(status, "invalid", &problems.join("; "))
         }
         s if s.is_server_error() => outcome(s, "exception", "internal error"),
@@ -532,8 +531,8 @@ async fn search_audit_events(
     Extension(subject): Extension<Subject>,
     RawQuery(raw): RawQuery,
 ) -> Response {
-    let raw = raw.unwrap_or_default();
-    let Ok(pairs) = serde_urlencoded::from_str::<Vec<(String, String)>>(&raw) else {
+    let raw = raw.as_deref().unwrap_or(""); // no query string is an empty one
+    let Ok(pairs) = serde_urlencoded::from_str::<Vec<(String, String)>>(raw) else {
         return outcome(
             StatusCode::BAD_REQUEST,
             "invalid",
@@ -636,11 +635,18 @@ fn notices_of(
 /// A `searchset` of the patient's allergies, built from the JSON handler's answer.
 fn allergy_bundle(patient: &str, body: &serde_json::Value) -> Result<serde_json::Value, String> {
     let notices = notices_of(body.get("amendment_notices"))?;
-    let all: Vec<StoredAllergy> =
-        serde_json::from_value(body.get("allergies").cloned().unwrap_or_default())
-            .map_err(|e| e.to_string())?;
-    let summary: Summary = serde_json::from_value(body.get("summary").cloned().unwrap_or_default())
-        .map_err(|e| e.to_string())?;
+    let all: Vec<StoredAllergy> = serde_json::from_value(
+        body.get("allergies")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null),
+    )
+    .map_err(|e| e.to_string())?;
+    let summary: Summary = serde_json::from_value(
+        body.get("summary")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null),
+    )
+    .map_err(|e| e.to_string())?;
     let mut entries = Vec::new();
     for a in &all {
         if let Some(r) =
@@ -893,8 +899,7 @@ fn mounted_interactions() -> std::collections::BTreeMap<String, Vec<String>> {
     let mut found: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
     for handler in routes().handlers {
         let parts: Vec<&str> = handler.uri.trim_matches('/').split('/').collect();
-        let (Some(kind), rest) = (parts.first().copied(), parts.get(1..).unwrap_or_default())
-        else {
+        let (Some(kind), rest) = (parts.first().copied(), parts.get(1..).unwrap_or(&[])) else {
             continue;
         };
         if kind == "metadata" {

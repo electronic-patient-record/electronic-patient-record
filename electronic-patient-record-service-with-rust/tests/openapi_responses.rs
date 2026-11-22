@@ -576,7 +576,7 @@ async fn real_responses_validate_against_the_served_schemas() {
         expect("adjustments", p, "get", StatusCode::OK, &list.json(), &mut problems);
         let one = format!(
             "/api/patients/{id}/adjustments/{}",
-            made["id"].as_str().unwrap_or_default()
+            made["id"].as_str().unwrap_or("")
         );
         let change = server
             .put(&one)

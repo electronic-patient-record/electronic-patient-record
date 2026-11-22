@@ -685,7 +685,9 @@ async fn refusal_reasons(db: &PgPool, id: &str) -> Vec<String> {
     .map(|r| {
         r.try_get::<Option<String>, _>("reason")
             .unwrap()
-            .unwrap_or_default()
+            .as_deref()
+            .unwrap_or("")
+            .to_string()
     })
     .collect()
 }

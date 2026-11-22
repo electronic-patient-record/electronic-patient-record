@@ -229,7 +229,7 @@ async fn the_stored_consents_drive_the_decision_and_other_patients_are_untouched
     let active = store::active_for(&db, &ids).await.unwrap();
     assert!(!active.contains_key(&none));
     let verdict = |pid: &str, purpose| {
-        let records = active.get(pid).cloned().unwrap_or_default();
+        let records = active.get(pid).cloned().unwrap_or_else(Vec::new);
         consent::decide(
             records.iter().map(|c| (c.id.as_str(), &c.consent)),
             &ctx(purpose),

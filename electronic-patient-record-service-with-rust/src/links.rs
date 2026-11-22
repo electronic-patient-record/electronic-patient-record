@@ -495,14 +495,12 @@ mod tests {
                 given: vec![given.into()],
             }],
             birth_date: Some(dob.into()),
-            identifiers: number
-                .map(|n| {
-                    vec![Identifier {
-                        system: NATIONAL_NUMBER_SYSTEM.into(),
-                        value: n.into(),
-                    }]
-                })
-                .unwrap_or_default(),
+            identifiers: number.map_or_else(Vec::new, |n| {
+                vec![Identifier {
+                    system: NATIONAL_NUMBER_SYSTEM.into(),
+                    value: n.into(),
+                }]
+            }),
             ..Default::default()
         }
     }

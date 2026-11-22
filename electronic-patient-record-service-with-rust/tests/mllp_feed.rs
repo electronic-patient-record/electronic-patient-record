@@ -1068,7 +1068,7 @@ async fn a_late_update_does_not_undo_a_newer_one() {
     let msa = ack
         .split('\r')
         .find(|seg| seg.starts_with("MSA|"))
-        .unwrap_or_default();
+        .unwrap_or("");
     assert!(!msa.contains("2026111710"), "no time in the answer: {ack}");
     assert_eq!(by_mrn(&db, &mrn).await[0].version, version);
     let kept: i64 = sqlx::query_scalar("SELECT count(*) FROM feed_refusals WHERE control_id = $1")

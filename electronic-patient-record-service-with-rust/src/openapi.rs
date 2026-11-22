@@ -708,7 +708,7 @@ fn task_schemas() -> Value {
     let event = json!({"enum": crate::task_rules::Event::ALL.map(crate::task_rules::Event::word)});
     let mut all = task_schema_list(&event);
     // A list item is a task and the day the reminder sender last reminded it.
-    let mut item = all.get("Task").cloned().unwrap_or_default();
+    let mut item = all.get("Task").cloned().unwrap_or(Value::Null);
     crate::json::push_at(&mut item, "required", json!("reminded_on"));
     crate::json::set_at(
         &mut item,
@@ -1756,10 +1756,15 @@ fn patient_schemas() -> Value {
         consent_schemas(),
         relationship_schemas(),
     ] {
-        all.extend(part.as_object().cloned().unwrap_or_default());
+        all.extend(
+            part.as_object()
+                .into_iter()
+                .flatten()
+                .map(|(k, v)| (k.clone(), v.clone())),
+        );
     }
     // A version is a StoredObservation with the reason it was written beside it.
-    let mut version = all.get("StoredObservation").cloned().unwrap_or_default();
+    let mut version = all.get("StoredObservation").cloned().unwrap_or(Value::Null);
     crate::json::set_at(
         &mut version,
         &["properties", "reason"],
@@ -2443,8 +2448,7 @@ fn photo_operation(
     let mut parameters = op
         .get("parameters")
         .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default();
+        .map_or_else(Vec::new, Clone::clone);
     parameters.push(json!({"name": "expected_version", "in": "query", "required": true,
         "description": "The photo version last seen; 0 when there is none. Without it the answer is 400.",
         "schema": {"type": "integer"}}));
@@ -2549,8 +2553,7 @@ pub fn document_for(served: &[(String, String)]) -> Value {
             let mut parameters = op
                 .get("parameters")
                 .and_then(Value::as_array)
-                .cloned()
-                .unwrap_or_default();
+                .map_or_else(Vec::new, Clone::clone);
             for name in *query {
                 let schema = match *name {
                     "drill" | "break_glass" | "refused" => json!({"type": "boolean"}),
@@ -2615,8 +2618,7 @@ pub fn document_for(served: &[(String, String)]) -> Value {
             let mut parameters = op
                 .get("parameters")
                 .and_then(Value::as_array)
-                .cloned()
-                .unwrap_or_default();
+                .map_or_else(Vec::new, Clone::clone);
             parameters.push(json!({
                 "name": "Idempotency-Key", "in": "header", "required": false,
                 "description": "1 to 128 letters, digits or . _ : -. A retry with the same key and the same request returns the first answer (header `Idempotent-Replayed: true`) and writes nothing; the same key for a different request is a 422; a key whose first request is unfinished is a 409. Only a success is kept; keys expire after 24 hours.",

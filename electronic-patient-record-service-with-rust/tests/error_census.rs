@@ -27,7 +27,7 @@ fn no_error_body_is_built_outside_api_error() {
     for path in &files {
         let text = std::fs::read_to_string(path).unwrap();
         // Unit tests may read bodies; only the code that answers requests is checked.
-        let code = text.split("#[cfg(test)]").next().unwrap_or_default();
+        let code = text.split("#[cfg(test)]").next().unwrap_or("");
         for (n, line) in code.lines().enumerate() {
             let l = line.replace(' ', "");
             // The audit chain's verification report (424) carries `error` as one field of a report,

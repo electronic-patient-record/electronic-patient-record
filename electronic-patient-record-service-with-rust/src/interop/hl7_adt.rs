@@ -201,8 +201,7 @@ fn get(message: &er7::Message, path: &str) -> String {
         .query(path)
         .ok()
         .flatten()
-        .map(|v| v.trim().to_string())
-        .unwrap_or_default()
+        .map_or_else(String::new, |v| v.trim().to_string())
 }
 
 /// Read the patient from an ADT message.
@@ -369,7 +368,8 @@ pub fn acknowledgement(
     };
     let mut ack = hl7::v2::builder::acknowledge(&original, code, control_id, timestamp);
     // A message with no processing id is answered as production, `P`, as HL7 requires one in an ACK (IH-2).
-    let processing = original.get("MSH-11.1").ok().flatten().unwrap_or_default();
+    let processing = original.get("MSH-11.1").ok().flatten();
+    let processing = processing.as_deref().unwrap_or("");
     if processing.is_empty() {
         ack = ack.processing_id("P");
     }
@@ -427,7 +427,7 @@ fn generic_nak(text: &str, note: &str, control_id: &str, timestamp: &str) -> Opt
     let control: String = fields
         .get(9)
         .copied()
-        .unwrap_or_default()
+        .unwrap_or("")
         .chars()
         .take(199)
         .collect();
@@ -524,7 +524,7 @@ mod tests {
             .unwrap()
             .split('|')
             .nth(10)
-            .unwrap_or_default()
+            .unwrap_or("")
             .to_string()
     }
 
@@ -557,7 +557,8 @@ mod tests {
             2,
             "{ack:?}"
         );
-        let text = parsed.get("MSA-3").unwrap().unwrap_or_default();
+        let text = parsed.get("MSA-3").unwrap();
+        let text = text.as_deref().unwrap_or("");
         assert!(
             text.starts_with("line one line two | a^b~c&d\\e x"),
             "{text:?}"

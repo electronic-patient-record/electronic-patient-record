@@ -99,7 +99,7 @@ fn msh_first_component(text: &str, n: usize) -> Option<String> {
         field
             .split(component)
             .next()
-            .unwrap_or_default()
+            .unwrap_or("") // `split` always yields a first piece
             .to_string(),
     )
 }
@@ -107,8 +107,11 @@ fn msh_first_component(text: &str, n: usize) -> Option<String> {
 impl SenderRules {
     /// The first rule `text` breaks, if any.
     fn broken_by(&self, text: &str) -> Option<&'static str> {
-        let app = msh_first_component(text, 3).unwrap_or_default();
-        let facility = msh_first_component(text, 4).unwrap_or_default();
+        // A field the message lacks is empty here, and an empty field agrees with no rule.
+        let app = msh_first_component(text, 3);
+        let app = app.as_deref().unwrap_or("");
+        let facility = msh_first_component(text, 4);
+        let facility = facility.as_deref().unwrap_or("");
         if !self.applications.is_empty()
             && !self.applications.iter().any(|a| match a.split_once('^') {
                 Some((x, f)) => x == app && f == facility,
@@ -117,21 +120,18 @@ impl SenderRules {
         {
             return Some(WRONG_APPLICATION);
         }
-        let version = msh_first_component(text, 12).unwrap_or_default();
-        if !self.versions.is_empty() && !self.versions.contains(&version) {
+        let version = msh_first_component(text, 12);
+        let version = version.as_deref().unwrap_or("");
+        if !self.versions.is_empty() && !self.versions.iter().any(|v| v == version) {
             return Some(WRONG_VERSION);
         }
         if !self.events.is_empty() {
             let msh9 = text
                 .split(['\r', '\n'])
                 .find(|l| l.starts_with("MSH"))
-                .and_then(|m| {
-                    m.chars()
-                        .nth(3)
-                        .and_then(|sep| m.split(sep).nth(8).map(str::to_string))
-                })
-                .unwrap_or_default();
-            let event = msh9.split('^').nth(1).unwrap_or_default();
+                .and_then(|m| m.chars().nth(3).and_then(|sep| m.split(sep).nth(8)))
+                .unwrap_or("");
+            let event = msh9.split('^').nth(1).unwrap_or("");
             if !self.events.iter().any(|e| e == event) {
                 return Some(WRONG_EVENT);
             }

@@ -57,7 +57,7 @@ fn msh(segment: &str, sep: char) -> String {
 /// that is not a segment is masked whole.
 fn other(segment: &str, sep: char) -> String {
     let mut fields = segment.split(sep);
-    let id = fields.next().unwrap_or_default();
+    let id = fields.next().unwrap_or(""); // `split` always yields a first piece
     let is_id = id.len() == 3
         && id
             .chars()
@@ -141,7 +141,7 @@ mod tests {
             // A marker can survive only inside a kept MSH field, which the generator can build by chance; check
             // the masked text with the kept MSH fields taken out.
             let mut masked = once.split('\r');
-            let head = masked.next().unwrap_or_default();
+            let head = masked.next().unwrap_or("");
             let rest: Vec<&str> = masked.collect();
             assert!(
                 !rest.iter().any(|s| s.contains(MARKER)),

@@ -259,6 +259,11 @@ const EXPORT_LIMIT: std::time::Duration = std::time::Duration::from_mins(10);
 const CSV_HEADER: &str = "id,at,action,outcome,agent,patient,resource,purpose,break_glass,network_address,detail,digest,prev_digest\n";
 
 /// The rows as CSV, header first.
+/// A CSV cell for an optional text: absent is an empty cell, as a CSV has no null.
+fn cell(value: &Option<String>) -> String {
+    value.as_deref().unwrap_or("").to_string()
+}
+
 fn to_csv(rows: &[audit::AuditRow]) -> String {
     let mut out = String::from(CSV_HEADER);
     for r in rows {
@@ -268,17 +273,16 @@ fn to_csv(rows: &[audit::AuditRow]) -> String {
             r.action.clone(),
             r.outcome.to_string(),
             r.agent.clone(),
-            r.patient.clone().unwrap_or_default(),
-            r.resource.clone().unwrap_or_default(),
-            r.purpose.clone().unwrap_or_default(),
+            cell(&r.patient),
+            cell(&r.resource),
+            cell(&r.purpose),
             r.break_glass.to_string(),
-            r.network_address.clone().unwrap_or_default(),
+            cell(&r.network_address),
             r.detail
                 .as_ref()
-                .map(ToString::to_string)
-                .unwrap_or_default(),
-            r.digest.clone().unwrap_or_default(),
-            r.prev_digest.clone().unwrap_or_default(),
+                .map_or_else(String::new, ToString::to_string),
+            cell(&r.digest),
+            cell(&r.prev_digest),
         ];
         out.push_str(
             &cells

@@ -260,8 +260,7 @@ fn preimage(prev: Option<&str>, recorded_at: &str, e: &Event) -> Vec<u8> {
         "detail",
         &e.detail
             .as_ref()
-            .map(ToString::to_string)
-            .unwrap_or_default(),
+            .map_or_else(String::new, ToString::to_string),
     );
     out.into_bytes()
 }
@@ -694,12 +693,11 @@ fn strings(actor: &serde_json::Value, key: &str) -> Vec<String> {
     actor
         .get(key)
         .and_then(serde_json::Value::as_array)
-        .map(|a| {
+        .map_or_else(Vec::new, |a| {
             a.iter()
                 .filter_map(|v| v.as_str().map(str::to_string))
                 .collect()
         })
-        .unwrap_or_default()
 }
 
 /// Narrowing for [`patient_log`]. Every field narrows; none set is the whole log.
@@ -770,7 +768,7 @@ pub async fn patient_log(
     rows.iter()
         .map(|r| {
             let actor: Option<serde_json::Value> = r.try_get("actor").map_err(err)?;
-            let actor = actor.unwrap_or_default();
+            let actor = actor.unwrap_or(serde_json::Value::Null); // no actor recorded: no roles, no organisations
             Ok(PatientLogRow {
                 id: r.try_get("id").map_err(err)?,
                 at: r.try_get("ts").map_err(err)?,
