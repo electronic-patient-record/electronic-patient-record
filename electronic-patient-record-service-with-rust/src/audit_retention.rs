@@ -85,11 +85,7 @@ pub fn parse_archive_months(value: Option<&str>) -> Result<Option<u32>, String> 
 ///
 /// See [`parse_archive_months`].
 pub fn archive_months_from_env() -> Result<Option<u32>, String> {
-    parse_archive_months(
-        std::env::var("EPR_AUDIT_ARCHIVE_AFTER_MONTHS")
-            .ok()
-            .as_deref(),
-    )
+    parse_archive_months(crate::runtime::setting("EPR_AUDIT_ARCHIVE_AFTER_MONTHS").as_deref())
 }
 
 /// The advisory-lock key of the maintenance job: one replica at a time runs it (PR-4).

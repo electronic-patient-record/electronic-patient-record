@@ -137,7 +137,7 @@ impl Thresholds {
     ///
     /// A message naming the setting when one is malformed: a bad setting stops the service starting.
     pub fn from_env() -> Result<Thresholds, String> {
-        Self::from_lookup(|k| std::env::var(k).ok())
+        Self::from_lookup(crate::runtime::setting)
     }
 
     /// [`Thresholds::from_env`] over any lookup.

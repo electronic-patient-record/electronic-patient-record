@@ -11,6 +11,9 @@ use axa::{
 };
 use axum::Router as AxumRouter;
 
+use std::sync::Arc;
+
+use crate::runtime::{Runtime, Settings};
 use crate::{MIGRATOR, auth, authz, controllers, mllp, pool::Pool};
 
 /// The application.
@@ -62,6 +65,22 @@ impl TestApp for App {
             router: Some(router),
         })
     }
+
+    /// Boot under the `test` environment reading every setting, `axa`'s and the service's own, through `lookup`
+    /// and never the process environment, so tests in one program can differ (QA-16).
+    async fn boot_test_with(lookup: axa::boot::Lookup) -> Result<BootResult> {
+        let environment = Environment::Test;
+        let config = Config::from_lookup(&environment, &defaults(), |name| lookup(name))?;
+        let runtime = Arc::new(Runtime::with_settings(Settings::from_lookup(lookup)));
+        let ctx = Self::context(environment, config).await?;
+        ctx.shared_store.insert(runtime.clone());
+        Self::migrate(&ctx).await?;
+        let router = Runtime::scope(runtime, Self::router(&ctx)).await?;
+        Ok(BootResult {
+            app_context: ctx,
+            router: Some(router),
+        })
+    }
 }
 
 impl App {
@@ -88,6 +107,15 @@ impl App {
     pub async fn router(ctx: &AppContext) -> Result<AxumRouter> {
         let router = Self::routes(ctx).into_router(ctx.clone());
         let router = Self::after_routes(router, ctx).await?;
+        // Inside `axa`'s stack, outside the service's own layers: every request reads the settings its app booted with.
+        let runtime = ctx
+            .shared_store
+            .get_ref::<Arc<Runtime>>()
+            .map_or_else(|| Arc::new(Runtime::process()), |r| (*r).clone());
+        let router = router.layer(axum::middleware::from_fn_with_state(
+            runtime,
+            crate::runtime::scope_mw,
+        ));
         axa::middleware::apply(router, &ctx.config.http)
     }
 
@@ -109,7 +137,7 @@ impl App {
                 ));
             }
             DbCommand::Reset => {
-                let flag = std::env::var(DESTROY_DATA_VAR).ok();
+                let flag = crate::runtime::setting(DESTROY_DATA_VAR);
                 if !ctx.environment.may_destroy_data(flag.as_deref()) {
                     return Err(Error::string(&format!(
                         "db reset drops every table, so it is refused outside development and \
@@ -232,8 +260,8 @@ impl App {
         tracing::info!(
             rules = rules.len(),
             approved = rules.iter().filter(|r| r.approved()).count(),
-            from = if std::env::var(crate::tasks_store::RULES_FILE)
-                .is_ok_and(|v| !v.trim().is_empty())
+            from = if crate::runtime::setting(crate::tasks_store::RULES_FILE)
+                .is_some_and(|v| !v.trim().is_empty())
             {
                 "site file"
             } else {
@@ -296,9 +324,7 @@ impl App {
         // The task reminder sender (TL-3, TL-4), off unless `EPR_TASK_REMINDER_MINUTES` is set; a bad value stops
         // the start. Off, no reminder is decided, so the start says so.
         match crate::task_reminders::interval_from(
-            std::env::var(crate::task_reminders::SETTING)
-                .ok()
-                .as_deref(),
+            crate::runtime::setting(crate::task_reminders::SETTING).as_deref(),
         )
         .map_err(Error::Message)?
         {

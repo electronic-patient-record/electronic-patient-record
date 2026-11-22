@@ -122,6 +122,10 @@ name = "http_feed_health"
 path = "tests/http_feed_health.rs"
 
 [[test]]
+name = "runtime_boot"
+path = "tests/runtime_boot.rs"
+
+[[test]]
 name = "audit_immutable"
 path = "tests/audit_immutable.rs"
 

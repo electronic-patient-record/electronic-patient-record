@@ -238,7 +238,7 @@ pub async fn timing_refusal(
         Err(StoreError::NotFound) => return Ok(None),
         Err(e) => return Err(e),
     };
-    let late_days = late_days_from(std::env::var("EPR_OBSERVATION_LATE_DAYS").ok().as_deref());
+    let late_days = late_days_from(crate::runtime::setting("EPR_OBSERVATION_LATE_DAYS").as_deref());
     let coded = timing_problems(record, reason, birth_date.as_deref(), late_days, now);
     if coded.is_empty() {
         return Ok(None);

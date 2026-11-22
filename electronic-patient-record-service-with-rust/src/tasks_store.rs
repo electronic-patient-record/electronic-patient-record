@@ -348,7 +348,7 @@ pub fn load_rules(path: &std::path::Path) -> Result<Vec<Rule>, String> {
 ///
 /// [`load_rules`]' for a file; for the catalogue, a message when it does not load or names a team that is not a role.
 pub fn init_rules() -> Result<&'static [Rule], String> {
-    let setting = std::env::var(RULES_FILE).ok();
+    let setting = crate::runtime::setting(RULES_FILE);
     match setting.as_deref().map(str::trim).filter(|v| !v.is_empty()) {
         Some(path) => {
             let rules = load_rules(std::path::Path::new(path))?;

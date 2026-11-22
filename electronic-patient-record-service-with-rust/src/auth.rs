@@ -115,8 +115,7 @@ pub fn is_public_path(path: &str) -> bool {
 
 /// The value of an environment variable, or `default` when it is unset or blank.
 fn env_or(name: &str, default: &str) -> String {
-    std::env::var(name)
-        .ok()
+    crate::runtime::setting(name)
         .filter(|s| !s.trim().is_empty())
         .unwrap_or_else(|| default.to_string())
 }
@@ -184,12 +183,10 @@ fn inline_keys(raw: Option<&str>) -> Result<serde_json::Value, String> {
 pub async fn init(production: bool, config_require_auth: Option<bool>) -> Result<(), String> {
     let require = resolve_require_auth(
         config_require_auth,
-        std::env::var("EPR_REQUIRE_AUTH").ok().as_deref(),
+        crate::runtime::setting("EPR_REQUIRE_AUTH").as_deref(),
     );
-    let url = std::env::var("EPR_PASETO_KEYS_URL")
-        .ok()
-        .filter(|s| !s.trim().is_empty());
-    let inline = inline_keys(std::env::var("EPR_PASETO_KEYS").ok().as_deref())?;
+    let url = crate::runtime::setting("EPR_PASETO_KEYS_URL").filter(|s| !s.trim().is_empty());
+    let inline = inline_keys(crate::runtime::setting("EPR_PASETO_KEYS").as_deref())?;
     let mut verifier = build(&inline)?;
     if let Some(url) = &url {
         let issuer = env_or("EPR_TOKEN_ISSUER", DEFAULT_ISSUER);

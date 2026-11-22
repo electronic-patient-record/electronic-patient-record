@@ -31,11 +31,7 @@ pub const DEFAULT_REVIEW_DUE_HOURS: i64 = 72;
 /// 8760, else [`DEFAULT_REVIEW_DUE_HOURS`].
 #[must_use]
 pub fn review_due_hours() -> i64 {
-    due_hours_from(
-        std::env::var("EPR_BREAK_GLASS_REVIEW_HOURS")
-            .ok()
-            .as_deref(),
-    )
+    due_hours_from(crate::runtime::setting("EPR_BREAK_GLASS_REVIEW_HOURS").as_deref())
 }
 
 /// The review deadline in hours from a setting: a whole number from 1 to 8760 (a year), else the default. A bad value

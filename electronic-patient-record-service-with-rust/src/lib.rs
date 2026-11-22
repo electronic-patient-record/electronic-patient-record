@@ -72,6 +72,7 @@ pub mod referral_unmatched;
 pub mod referral_worklist;
 pub mod referrals_store;
 pub mod relationships;
+pub mod runtime;
 pub use electronic_patient_record_domain::results;
 pub mod results_store;
 pub use electronic_patient_record_domain::role_views;

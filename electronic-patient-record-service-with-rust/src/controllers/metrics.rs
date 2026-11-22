@@ -8,7 +8,7 @@ use axum::response::Response;
 /// `GET /metrics`: the Prometheus text exposition, or 404 when metrics are not enabled.
 async fn serve() -> Response {
     metrics::response(metrics::enabled(
-        std::env::var("EPR_METRICS").ok().as_deref(),
+        crate::runtime::setting("EPR_METRICS").as_deref(),
     ))
 }
 

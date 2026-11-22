@@ -58,7 +58,7 @@ pub fn parse_count(raw: Option<&str>) -> Result<Option<NonZeroU32>, String> {
 ///
 /// The text of a bad setting.
 pub fn count_from_env() -> Result<Option<NonZeroU32>, String> {
-    parse_count(std::env::var(SETTING).ok().as_deref())
+    parse_count(crate::runtime::setting(SETTING).as_deref())
 }
 
 /// A limiter that locks an address out after `count` `401`s in a window. It fails open: a new address

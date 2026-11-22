@@ -277,8 +277,8 @@ static CHAIN: OnceLock<Chain> = OnceLock::new();
 pub fn chain() -> &'static Chain {
     CHAIN.get_or_init(|| {
         let source = integrity_mac::resolve_root_key(
-            std::env::var(KEY_CONFIG.key_env()).ok().as_deref(),
-            std::env::var(KEY_CONFIG.key_file_env()).ok().as_deref(),
+            crate::runtime::setting(&KEY_CONFIG.key_env()).as_deref(),
+            crate::runtime::setting(&KEY_CONFIG.key_file_env()).as_deref(),
         );
         if let Some(w) = &source.warning {
             tracing::warn!("{w}");
@@ -286,7 +286,7 @@ pub fn chain() -> &'static Chain {
         if let Some(e) = &source.error {
             tracing::error!("{e}");
         }
-        let retired = std::env::var(KEY_CONFIG.retired_keys_env()).ok();
+        let retired = crate::runtime::setting(&KEY_CONFIG.retired_keys_env());
         let chain = Chain::new(KeySet::load(&KEY_CONFIG, source.key.as_deref(), retired.as_deref()));
         if !chain.keyed() {
             tracing::warn!(
@@ -393,7 +393,7 @@ pub fn server_from(value: Option<&str>) -> Result<Option<String>, String> {
 ///
 /// As [`server_from`].
 pub fn init_server() -> Result<(), String> {
-    let server = server_from(std::env::var("EPR_AUDIT_SERVER_ADDRESS").ok().as_deref())?;
+    let server = server_from(crate::runtime::setting("EPR_AUDIT_SERVER_ADDRESS").as_deref())?;
     let _ = SERVER.set(server);
     Ok(())
 }

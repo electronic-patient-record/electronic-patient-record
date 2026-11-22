@@ -113,7 +113,7 @@ impl Limits {
     ///
     /// The text of a bad setting.
     pub fn from_env() -> Result<Limits, String> {
-        let get = |n: &str| std::env::var(n).ok();
+        let get = |n: &str| crate::runtime::setting(n);
         Ok(Limits {
             general: parse_limit(
                 "EPR_RATE_LIMIT_PER_MINUTE",

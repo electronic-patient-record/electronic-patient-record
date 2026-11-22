@@ -258,7 +258,7 @@ impl Config {
     /// `EPR_MLLP_ALLOW_REMOTE` is not `true`: an unauthenticated, unencrypted port is never opened
     /// beyond the machine by accident.
     pub fn from_env() -> Result<Option<Config>, String> {
-        Self::from_lookup(|k| std::env::var(k).ok())
+        Self::from_lookup(crate::runtime::setting)
     }
 
     /// [`Config::from_env`] over any lookup, so the rules are testable.

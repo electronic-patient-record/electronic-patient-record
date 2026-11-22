@@ -131,7 +131,7 @@ impl Timeouts {
 ///
 /// As [`Timeouts::parse`].
 pub fn init() -> Result<(), String> {
-    let parsed = Timeouts::parse(std::env::var("EPR_REFERRAL_TIMEOUTS").ok().as_deref())?;
+    let parsed = Timeouts::parse(crate::runtime::setting("EPR_REFERRAL_TIMEOUTS").as_deref())?;
     let _ = CURRENT.set(parsed);
     Ok(())
 }

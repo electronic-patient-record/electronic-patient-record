@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-22 - Settings come from a per-app runtime, not the process environment (QA-16, stage 1)
+
+- **Clinical risk:** none intended: the same settings are read, from a new place. With no runtime given, the place is the process environment, as before.
+- **Changed:** `src/runtime.rs` holds `Settings` (a lookup) and `Runtime`; the service's 23 `std::env::var` reads now go through `runtime::setting`. A request reads the settings its app booted with (a tokio task-local set by `scope_mw`); outside a request the process environment is read at each call. `App` implements `TestApp::boot_test_with`, so `axa_test::request_with(&[..], ..)` boots an app from given settings, `axa`'s and the service's own. `tests/runtime_boot.rs` boots two apps in one program, one with `EPR_METRICS=1`, and each answers as its own settings say.
+- **Not done / not verified:** stages 2 and 3. Eleven settings still land in process-wide `OnceLock`s (auth, audit chain and server, referral timeouts, site rules, feed health), so a second app in the same program gets the first one's values for those; no test file has moved off `set_var`. A task spawned from a request does not inherit the runtime. Run here: clippy, the 313 lib tests and the new database test; not the full suite.
+
 ## 2026-11-22 - ci-changes lists the licence files the tests read
 
 - **Clinical risk:** none: a CI script.

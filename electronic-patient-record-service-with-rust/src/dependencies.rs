@@ -168,7 +168,7 @@ async fn listening(url: String) -> Outcome {
 
 /// The value of a setting, when it says anything.
 fn setting(name: &str) -> Option<String> {
-    std::env::var(name).ok().filter(|v| !v.trim().is_empty())
+    crate::runtime::setting(name).filter(|v| !v.trim().is_empty())
 }
 
 /// The database, then each key service this deployment configures.

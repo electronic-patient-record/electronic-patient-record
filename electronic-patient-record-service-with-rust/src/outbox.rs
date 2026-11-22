@@ -390,7 +390,7 @@ impl Sink for LogSink {
 ///
 /// The text of the bad setting.
 pub fn interval_from_env() -> Result<Option<Duration>, String> {
-    parse_interval(std::env::var("EPR_OUTBOX_INTERVAL_SECS").ok().as_deref())
+    parse_interval(crate::runtime::setting("EPR_OUTBOX_INTERVAL_SECS").as_deref())
 }
 
 /// [`interval_from_env`] over a value already read.
