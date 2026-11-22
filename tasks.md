@@ -1665,6 +1665,7 @@ only; nothing here was taken from its code. Open questions OQ-TL1 (who approves 
   refused when rules load. **Acceptance:** a failure in the second action leaves no first task; a duplicate fails the
   load naming both rules.
 
+- [ ] **QA-17 (M) — Arithmetic that cannot panic or wrap (`spec/arithmetic/index.md`).** Opened 2026-11-22 at the maintainer's request: use `checked_*` and return `None`. Triage the 94 sites clippy's `arithmetic_side_effects` flags in the service and domain crates (fix with `checked_*`, or `#[allow]` with a reason), then deny `arithmetic_side_effects` and the three cast lints in `[workspace.lints.clippy]`. **Acceptance:** the lint is denied and the gate passes; a test at the type's edge for each function that does arithmetic on outside values. **Not started.**
 - [ ] **QA-16 (L) — Boot tests from given settings, with no process environment (axa 0.21, TST-11).** Opened 2026-11-21.
   `App` implements `TestApp::boot_test_with(lookup)`, and the 32 test files that call `std::env::set_var` (126 calls, one
   process per file today, each with an `unsafe` block) pass their settings to `axa_test::request_with` instead, so the

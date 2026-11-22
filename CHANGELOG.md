@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-22 - Spec: arithmetic must not panic or wrap (QA-17)
+
+- **Clinical risk:** none: a specification. No code changed.
+- **Added:** `spec/arithmetic/index.md`: use `checked_*` and return `None` (`255_u8.checked_add(1)` is `None`), with the casts, `wrapping_*`, `saturating_*`, sums, floats and time covered, and what a `None` means for a clinical value. Task QA-17.
+- **Not done / not verified:** nothing enforces it yet. The 94 sites clippy's `arithmetic_side_effects` flagged have not been triaged and the lint is not denied; the spec says so. The matcher crate is undecided.
+
 ## 2026-11-22 - No panic in production code, and a lint that keeps it so
 
 - **Clinical risk:** none intended: the same answers, with a refusal or a skipped step where a panic would have been. One behaviour is worth knowing: `api_tokens_store::prefix()` now returns an `Option`, and a token whose prefix could not be built is refused like any bad token.
