@@ -434,6 +434,7 @@ pub async fn unmerge(
     .map_err(db_err)?
     .ok_or_else(|| StoreError::BadQuery(NOT_MERGED.into()))?;
     let now = row_to_link(&row)?;
+    let new_version = crate::store::next_version(now.version)?;
     let row = sqlx::query(AssertSqlSafe(format!(
         "INSERT INTO patient_link_versions
                    (link_id, version, author, reason, source_patient_id, target_patient_id, status,
@@ -443,7 +444,7 @@ pub async fn unmerge(
         columns()
     )))
     .bind(now.id.clone())
-    .bind(now.version + 1)
+    .bind(new_version)
     .bind(author)
     .bind(reason.trim())
     .bind(source.id)

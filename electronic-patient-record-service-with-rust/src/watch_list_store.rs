@@ -252,6 +252,7 @@ pub async fn end(
         until: was.until.clone(),
         end_reason: end_reason.map(|r| r.trim().to_string()),
     };
+    let new_version = crate::store::next_version(expected_version)?;
     let appended = crate::store::append_version(
         &mut *db,
         STORE,
@@ -261,7 +262,7 @@ pub async fn end(
              RETURNING entry_id",
         )
         .bind(was.id.clone())
-        .bind(expected_version + 1)
+        .bind(new_version)
         .bind(owner)
         .bind(was.patient_id.clone())
         .bind(serde_json::to_value(&body).map_err(db_err)?),

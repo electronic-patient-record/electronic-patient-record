@@ -311,6 +311,7 @@ pub async fn update(
     let mut body = patient.clone();
     body.id = None;
     // A concurrent writer took this version: the primary key refuses the second (CQ-12).
+    let new_version = crate::store::next_version(expected_version)?;
     let row = match crate::store::append_version(
         &mut *db,
         STORE,
@@ -319,7 +320,7 @@ pub async fn update(
                  VALUES ($1::uuid, $2, $3, $4, $5, $6) RETURNING {COLUMNS}"
         )))
         .bind(now.id.clone())
-        .bind(expected_version + 1)
+        .bind(new_version)
         .bind(author)
         .bind(reason.map(str::to_string))
         .bind(serde_json::to_value(&body).map_err(db_err)?)

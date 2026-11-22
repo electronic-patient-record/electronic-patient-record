@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-22 - Every append-only store uses the checked next version (QA-17)
+
+- **Clinical risk:** none intended: the version written is the same as before for every reachable value; at `i32::MAX` an append now answers a 400-class `BadQuery` ("version: out of range") instead of overflowing.
+- **Changed:** `expected_version + 1` and `was.version + 1` replaced by `store::next_version` in `patients_store`, `consents_store`, `links`, `tasks_store`, `referrals_store`, `watch_list_store`, `death_store` and `suspicions_store`.
+- **Not done / not verified:** those modules still allow the arithmetic lints for their other sites. No new test beyond `next_version`'s own: the stores' existing database tests cover the normal path. Full suite on a fresh database: 856 passed, 6 failed (Java `fhir_validator`). CI not observed.
+
 ## 2026-11-22 - allergies.rs under the arithmetic lints; a checked next version (QA-17)
 
 - **Clinical risk:** low, but the allergy record is clinical: no result changes except that an allergy or statement already at version `i32::MAX` now refuses an append (`StoreError::BadQuery`, "version: out of range") instead of overflowing; unreachable in practice. Hazard log not edited.

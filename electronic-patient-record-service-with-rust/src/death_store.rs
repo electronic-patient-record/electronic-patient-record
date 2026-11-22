@@ -282,6 +282,7 @@ pub async fn advance(
         });
     }
     let next = death::advance(&was.assertion, step).map_err(refused)?;
+    let new_version = crate::store::next_version(expected_version)?;
     let appended = crate::store::append_version(
         &mut *db,
         STORE,
@@ -292,7 +293,7 @@ pub async fn advance(
                  RETURNING {COLUMNS}"
         )))
         .bind(was.id.clone())
-        .bind(expected_version + 1)
+        .bind(new_version)
         .bind(was.patient_id.clone())
         .bind(author_of(&step.by))
         .bind(next.status.word())

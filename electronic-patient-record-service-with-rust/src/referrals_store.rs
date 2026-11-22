@@ -477,6 +477,7 @@ pub async fn advance(
         "at": crate::clock::rfc3339_micros(now),
         "note": note.map(str::trim).filter(|n| !n.is_empty()),
     });
+    let new_version = crate::store::next_version(expected_version)?;
     let appended = crate::store::append_version(
         &mut *db,
         STORE,
@@ -487,7 +488,7 @@ pub async fn advance(
                 columns()
             )))
 .bind(was.id.clone())
-.bind(expected_version + 1)
+.bind(new_version)
 .bind(was.patient_id.clone())
 .bind(by)
 .bind(state.as_str())

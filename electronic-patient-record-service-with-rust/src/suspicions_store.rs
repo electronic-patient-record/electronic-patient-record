@@ -448,10 +448,11 @@ pub async fn amend(
         return Err(refuse(r));
     }
     check(&mut *db, patient_id, s, now).await?;
+    let new_version = crate::store::next_version(expected_version)?;
     match insert(
         &mut *db,
         &referral_id,
-        expected_version + 1,
+        new_version,
         patient_id,
         author,
         reason,
@@ -465,7 +466,7 @@ pub async fn amend(
             let current = rows(&mut *db, &referral_id)
                 .await?
                 .last()
-                .map_or(Ok(expected_version + 1), |r| r.try_get("version"))
+                .map_or(Ok(new_version), |r| r.try_get("version"))
                 .map_err(db_err)?;
             Err(StoreError::Conflict { current })
         }

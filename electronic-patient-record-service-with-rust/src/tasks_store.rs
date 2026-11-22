@@ -268,6 +268,7 @@ async fn append(
         close_reason,
         cancelled_by,
     };
+    let new_version = crate::store::next_version(was.version)?;
     let appended = crate::store::append_version(
         &mut *conn,
         STORE,
@@ -277,7 +278,7 @@ async fn append(
              RETURNING task_id",
         )
         .bind(was.id.clone())
-        .bind(was.version + 1)
+        .bind(new_version)
         .bind(was.patient_id.clone())
         .bind(&was.rule)
         .bind(was.rule_version)
