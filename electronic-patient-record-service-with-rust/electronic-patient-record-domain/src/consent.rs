@@ -23,6 +23,16 @@
 //! Not here: who may read or write consent (the policy table), storing it (`consents_store`), the
 //! national data opt-out service itself (see [`Kind::NationalDataOptOut`]) and any bulk export.
 
+// RCA-ENF-3: this module is converted, so the arithmetic lints are denied here; the rest of the crate follows.
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::default_numeric_fallback,
+    clippy::integer_division,
+    clippy::modulo_arithmetic,
+    clippy::as_conversions,
+    clippy::string_slice
+)]
+
 use crate::policy::{self, Label, Purpose, Resource, Role};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
@@ -131,30 +141,23 @@ pub struct ConsentRecord {
     pub period: Option<Period>,
 }
 
-/// Days since 1970-01-01 for a proleptic Gregorian date (Howard Hinnant's `days_from_civil`).
-fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
-    let y = if m <= 2 { y - 1 } else { y };
-    let era = y.div_euclid(400);
-    let yoe = y.rem_euclid(400);
-    let doy = (153 * (m + if m > 2 { -3 } else { 9 }) + 2) / 5 + d - 1;
-    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
-    era * 146_097 + doe - 719_468
-}
-
 /// Unix seconds at 00:00 UTC on a real `YYYY-MM-DD` date, else `None`.
 #[must_use]
 pub fn day_start(date: &str) -> Option<i64> {
     if !crate::dates::valid_birth_date(date) {
         return None;
     }
-    let mut parts = date.split('-');
-    let n = |s: Option<&str>| s?.parse::<i64>().ok();
-    let (year, month, day) = (n(parts.next())?, n(parts.next())?, n(parts.next())?);
-    if parts.next().is_some() {
-        return None;
-    }
-    Some(days_from_civil(year, month, day) * 86_400)
+    let day: jiff::civil::Date = date.parse().ok()?;
+    // Counted in civil days, not through a `Timestamp`, whose range ends a few hours before 9999-12-31.
+    let days = day
+        .since((jiff::Unit::Day, jiff::civil::date(1970, 1, 1)))
+        .ok()?
+        .get_days();
+    i64::from(days).checked_mul(DAY_SECONDS)
 }
+
+/// One day, in seconds: a period's end date is the whole of that day.
+const DAY_SECONDS: i64 = 86_400;
 
 /// Whether `now` (unix seconds) lies in the period. `None` if a date does not parse.
 #[must_use]
@@ -168,7 +171,7 @@ pub fn in_period(period: Option<&Period>, now: i64) -> Option<bool> {
         return Some(false);
     }
     if let Some(end) = &p.end
-        && now >= day_start(end)? + 86_400
+        && now >= day_start(end)?.checked_add(DAY_SECONDS)?
     {
         return Some(false);
     }
@@ -210,8 +213,8 @@ pub fn validate(record: &ConsentRecord) -> Vec<String> {
         }
     };
     period("period", &record.period, &mut problems);
-    for (i, p) in record.provisions.iter().enumerate() {
-        let at = format!("provision {}", i + 1);
+    for (p, number) in record.provisions.iter().zip(1_usize..) {
+        let at = format!("provision {number}");
         let unknown = |what: &str, values: &[String], known: &dyn Fn(&str) -> bool| {
             values
                 .iter()
@@ -411,6 +414,8 @@ mod tests {
         assert_eq!(day_start("2000-03-01"), Some(951_868_800));
         assert_eq!(day_start("2024-02-29"), Some(1_709_164_800));
         assert_eq!(day_start("1969-12-31"), Some(-86_400));
+        // The limits of the calendar the record accepts: the last day is a day, not an overflow.
+        assert_eq!(day_start("9999-12-31"), Some(253_402_214_400));
         for bad in [
             "2023-02-29",
             "2026-13-01",

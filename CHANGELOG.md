@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-22 - consent.rs under the arithmetic lints (QA-17)
+
+- **Clinical risk:** low, but touches whether a consent is in force (`in_period`). No result is meant to change: the hand-written calendar arithmetic is replaced by `jiff` civil-day counting, and the end-of-day addition is checked. `day_start("9999-12-31")` still works (counting civil days, not a `Timestamp`, whose range ends a few hours earlier); the new test pins it. Hazard log not edited.
+- **Changed:** `consent.rs` denies the arithmetic lints for the module (RCA-ENF-3); `days_from_civil` removed; provisions are numbered with `zip(1_usize..)`.
+- **Not done / not verified:** a period whose end plus a day overflows `i64` (not reachable from a valid date) returns `None` ("does not parse") as before for bad dates. Full suite on a fresh database: 855 passed, 6 failed (Java `fhir_validator`). CI not observed.
+
 ## 2026-11-22 - task_rules: a due date past the calendar is no plan (QA-17, first module under the arithmetic lints)
 
 - **Clinical risk:** low, but touches what a clinician sees: a task's due and reminder days. `add_working_days` and `sub_working_days` used to stop at the calendar's end (`unwrap_or(d)`) and return a wrong day; they now return `None`, `plan` returns `None`, the dry run answers 422, and a real event whose plan has no date fails and rolls back. Only dates near year 9999 or 0001 are affected. Hazard log not edited.
