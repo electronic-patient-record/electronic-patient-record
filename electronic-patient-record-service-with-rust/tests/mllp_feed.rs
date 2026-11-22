@@ -723,7 +723,7 @@ async fn a_kept_refusal_is_answered_ar_and_a_resend_adds_no_row() {
             .and_then(|n| n.parse::<u64>().ok())
             .unwrap_or(0)
     };
-    assert!(counted(&electronic_patient_record::metrics::render()) >= 3);
+    assert!(counted(&electronic_patient_record::metrics::render().unwrap()) >= 3);
 
     // The same control id with different text is a different message, and is kept on its own.
     let changed = adt("A08", &control, &mrn, &family, &dob(), "");
@@ -954,7 +954,7 @@ async fn no_message_value_reaches_an_audit_row_the_queue_a_version_reason_a_metr
         msh("R01", "ORU_R01", &tag("V")).replace("ADT^R01", "ORU^R01"),
         pid(&born)
     );
-    let before = electronic_patient_record::metrics::render();
+    let before = electronic_patient_record::metrics::render().unwrap();
     let mut acks = Vec::new();
     for text in [&applied, &refused, &unsupported] {
         acks.push(
@@ -975,7 +975,11 @@ async fn no_message_value_reaches_an_audit_row_the_queue_a_version_reason_a_metr
         "the capture works: {logged}"
     );
     assert!(!logged.contains(&marker), "a log line: {logged}");
-    assert!(!electronic_patient_record::metrics::render().contains(&marker));
+    assert!(
+        !electronic_patient_record::metrics::render()
+            .unwrap()
+            .contains(&marker)
+    );
     assert!(!before.contains(&marker));
     let found = |sql: &'static str| {
         let db = db.clone();
@@ -1202,6 +1206,7 @@ async fn a_feeds_health_is_judged_from_the_database_and_a_change_is_stored_once(
     // The gauge says the same.
     assert!(
         electronic_patient_record::metrics::render()
+            .unwrap()
             .contains(&format!("epr_feed_health{{sender=\"{agent}\"}} 3"))
     );
 }
@@ -1892,7 +1897,7 @@ async fn a_dry_run_says_what_a_message_would_do_and_keeps_nothing() {
     let queue = "SELECT count(*) FROM feed_refusals WHERE agent = $1";
     let (mrn, family, d) = (tag("mrn"), tag("Dry"), dob());
     let register = adt("A28", &tag("D"), &mrn, &family, &d, "");
-    let metrics_before = electronic_patient_record::metrics::render();
+    let metrics_before = electronic_patient_record::metrics::render().unwrap();
 
     let tried = adt_feed::dry_run(&db, &register, &who).await;
     assert_eq!(tried.would, "created", "{tried:?}");
@@ -1947,7 +1952,7 @@ async fn a_dry_run_says_what_a_message_would_do_and_keeps_nothing() {
     // Only the one real message was counted.
     assert!(feed_series(&metrics_before).is_empty());
     assert_eq!(
-        feed_series(&electronic_patient_record::metrics::render()).len(),
+        feed_series(&electronic_patient_record::metrics::render().unwrap()).len(),
         1
     );
 }

@@ -2,11 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
-## 2026-11-22 - metrics.rs under the arithmetic lints; a declared counter ceiling (QA-17)
+## 2026-11-22 - metrics.rs: a count that overflows is an error (QA-17, RCA-NONE-4)
 
 - **Clinical risk:** none: operator metrics only.
-- **Changed:** `metrics.rs` denies the arithmetic lints for the module (RCA-ENF-3); its request, histogram and feed counters use `inc`, which holds at `u64::MAX` instead of panicking (debug) or wrapping to zero (release); the cumulative bucket sum uses the same ceiling. Declared as ARITH-4, with a test at `u64::MAX - 1` and `u64::MAX`.
-- **Not done / not verified:** the ceiling is a declared fallback chosen by me, not by you: a Prometheus counter cannot wrap without reading as a reset, and `2^64` events cannot occur, but if the spec should rather make it an error, `inc` is the one place to change. Full suite on a fresh database: 859 passed, 6 failed (Java `fhir_validator`). CI not observed.
+- **Changed:** `metrics.rs` denies the arithmetic lints for the module (RCA-ENF-3). The atomic `Counter::inc` used `fetch_add`, which wraps silently; every count now uses `checked_add`. A count that no longer fits (not reachable: `2^64` events) leaves the value as it was, is logged once, and makes `render` return `Err(Overflow { figure })`, so `GET /metrics` answers 500 naming the metric, with no number, until the process restarts. This replaces the ceiling (ARITH-4) I had pushed in `5ff8a66`, following your instruction that overflow is an error. Documented in the OpenAPI document and `spec/index.md`; `render` now returns `Result`. Tests: `a_count_that_no_longer_fits_is_an_error_naming_the_figure_never_held_or_wrapped`, `a_histogram_or_feed_count_at_the_top_is_an_error_not_a_new_value`.
+- **Not done / not verified:** the process-wide overflow flag (`OVERFLOWED`) has no test, since setting it would fail every other test in the program; the pieces that feed it are tested. The gauges set by `outbox.rs` still turn a failed conversion into `0` (`unwrap_or(0)`): an unknown shown as zero (RCA-P-3), still to fix. Full suite on a fresh database: 860 passed, 6 failed (Java `fhir_validator`). CI not observed.
 
 ## 2026-11-22 - The last append-only stores and two catalogues use checked versions (QA-17)
 

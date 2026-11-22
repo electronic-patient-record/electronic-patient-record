@@ -17,14 +17,39 @@
     clippy::string_slice
 )]
 
-/// The most a count holds (ARITH-4): a count that reaches it stays there.
-const COUNT_CEILING: u64 = u64::MAX;
+/// A count that no longer fits `u64`. It is an error, never a held or wrapped value: a Prometheus counter that
+/// wrapped would read as a reset, and one held at the top would read as a count that stopped. The figure is named
+/// and no value is shown (RCA-P-4, RCA-ERR-2). Not reachable in practice: it takes `2^64` events.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Overflow {
+    /// The metric whose count no longer fits.
+    pub figure: &'static str,
+}
 
-/// One more in a counter. A counter that has reached `u64::MAX` stays there: a Prometheus counter never goes down,
-/// and `2^64` events cannot happen (ARITH-4).
-fn inc(counter: &mut u64) {
-    let n = *counter;
-    *counter = n.checked_add(1).unwrap_or(n); // ARITH-4
+impl std::fmt::Display for Overflow {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: the count no longer fits", self.figure)
+    }
+}
+
+/// The first metric that overflowed in this process. From then on `/metrics` answers 500 naming it, until the process
+/// restarts: the exposed counts would otherwise be wrong without saying so (RCA-NONE-4).
+static OVERFLOWED: OnceLock<&'static str> = OnceLock::new();
+
+/// Remember an overflow, and say so once in the log.
+fn record(overflow: Overflow) {
+    if OVERFLOWED.set(overflow.figure).is_ok() {
+        tracing::error!(
+            figure = overflow.figure,
+            "a metric count no longer fits: /metrics now answers 500"
+        );
+    }
+}
+
+/// One more in a count of `figure`.
+fn inc(counter: &mut u64, figure: &'static str) -> Result<(), Overflow> {
+    *counter = counter.checked_add(1).ok_or(Overflow { figure })?;
+    Ok(())
 }
 
 use axum::{
@@ -36,26 +61,37 @@ use axum::{
 use std::{
     collections::BTreeMap,
     sync::{
-        Mutex,
-        atomic::{AtomicU64, Ordering},
+        Mutex, OnceLock,
+        atomic::{AtomicBool, AtomicU64, Ordering},
     },
     time::Instant,
 };
 
 /// A monotonically increasing count.
 #[derive(Debug, Default)]
-pub struct Counter(AtomicU64);
+pub struct Counter(AtomicU64, AtomicBool);
 
 impl Counter {
     /// A counter at zero.
     #[must_use]
     pub const fn new() -> Self {
-        Self(AtomicU64::new(0))
+        Self(AtomicU64::new(0), AtomicBool::new(false))
     }
 
-    /// Add one.
+    /// Add one. A count that no longer fits is not changed; the counter is marked, and [`render`] refuses, naming it.
     pub fn inc(&self) {
-        self.0.fetch_add(1, Ordering::Relaxed);
+        let added = self
+            .0
+            .try_update(Ordering::Relaxed, Ordering::Relaxed, |n| n.checked_add(1));
+        if added.is_err() {
+            self.1.store(true, Ordering::Relaxed);
+        }
+    }
+
+    /// Whether a count was lost to overflow.
+    #[must_use]
+    pub fn overflowed(&self) -> bool {
+        self.1.load(Ordering::Relaxed)
     }
 
     /// The current count.
@@ -140,6 +176,20 @@ const MAX_FEED_SERIES: usize = 200;
 
 /// Count one feed message. `event` outside `handled` is counted as `other`, so a sender cannot make new series.
 pub fn feed_message(sender: &str, event: &str, handled: &[&str], answer: &str) {
+    let mut series = FEED_MESSAGES.lock().unwrap_or_else(|e| e.into_inner());
+    if let Err(overflow) = feed_in(&mut series, sender, event, handled, answer) {
+        record(overflow);
+    }
+}
+
+/// [`feed_message`] on a given table.
+fn feed_in(
+    series: &mut BTreeMap<(String, String, String), u64>,
+    sender: &str,
+    event: &str,
+    handled: &[&str],
+    answer: &str,
+) -> Result<(), Overflow> {
     let event = if handled.contains(&event) {
         event
     } else {
@@ -150,7 +200,6 @@ pub fn feed_message(sender: &str, event: &str, handled: &[&str], answer: &str) {
     } else {
         "none"
     };
-    let mut series = FEED_MESSAGES.lock().unwrap_or_else(|e| e.into_inner());
     let key = (sender.to_string(), event.to_string(), answer.to_string());
     let key = if series.contains_key(&key) || series.len() < MAX_FEED_SERIES {
         key
@@ -161,8 +210,14 @@ pub fn feed_message(sender: &str, event: &str, handled: &[&str], answer: &str) {
             answer.to_string(),
         )
     };
-    inc(series.entry(key).or_default());
+    inc(series.entry(key).or_default(), FEED_FIGURE)
 }
+
+/// The feed counter's name.
+const FEED_FIGURE: &str = "epr_feed_messages_total";
+
+/// The request histogram's name.
+const HISTOGRAM_FIGURE: &str = "epr_http_request_duration_seconds";
 
 /// Each configured feed's health (IH-8): 0 unknown, 1 healthy, 2 warning, 3 critical, as last judged.
 static FEED_HEALTH: Mutex<BTreeMap<String, u64>> = Mutex::new(BTreeMap::new());
@@ -196,7 +251,7 @@ fn render_feed() -> String {
     if series.is_empty() {
         return String::new();
     }
-    let name = "epr_feed_messages_total";
+    let name = FEED_FIGURE;
     let mut out = format!(
         "# HELP {name} HL7 feed messages by configured sender, event and answer.\n# TYPE {name} counter\n"
     );
@@ -238,7 +293,13 @@ static REQUESTS: Mutex<Series> = Mutex::new(BTreeMap::new());
 
 /// Record one request in `series`, keyed by method, route template and status. Once there are `MAX_SERIES` series, a new
 /// key is counted under the route `overflow` instead, so a flood of distinct routes cannot grow the table without limit.
-fn observe_in(series: &mut Series, method: &str, route: &str, status: u16, seconds: f64) {
+fn observe_in(
+    series: &mut Series,
+    method: &str,
+    route: &str,
+    status: u16,
+    seconds: f64,
+) -> Result<(), Overflow> {
     let key = (method.to_string(), route.to_string(), status);
     let key = if series.contains_key(&key) || series.len() < MAX_SERIES {
         key
@@ -246,21 +307,24 @@ fn observe_in(series: &mut Series, method: &str, route: &str, status: u16, secon
         (method.to_string(), "overflow".to_string(), status)
     };
     let h = series.entry(key).or_default();
-    inc(&mut h.count);
+    inc(&mut h.count, HISTOGRAM_FIGURE)?;
     h.sum += seconds;
     if let Some(slot) = BUCKETS
         .iter()
         .position(|b| seconds <= *b)
         .and_then(|i| h.buckets.get_mut(i))
     {
-        inc(slot);
+        inc(slot, HISTOGRAM_FIGURE)?;
     }
+    Ok(())
 }
 
 /// Record one request. `route` is the matched route template, never the raw path.
 pub fn observe(method: &str, route: &str, status: u16, seconds: f64) {
     let mut guard = REQUESTS.lock().unwrap_or_else(|e| e.into_inner());
-    observe_in(&mut guard, method, route, status, seconds);
+    if let Err(overflow) = observe_in(&mut guard, method, route, status, seconds) {
+        record(overflow);
+    }
 }
 
 /// Middleware that times every request and labels it by method, matched route template and status.
@@ -291,11 +355,11 @@ fn escape(label: &str) -> String {
 }
 
 /// The request-duration histogram, one set of lines per method, route template and status.
-fn render_histograms(series: &Series) -> String {
+fn render_histograms(series: &Series) -> Result<String, Overflow> {
     if series.is_empty() {
-        return String::new();
+        return Ok(String::new());
     }
-    let name = "epr_http_request_duration_seconds";
+    let name = HISTOGRAM_FIGURE;
     let mut out = format!(
         "# HELP {name} Request duration by method, matched route template and status.\n# TYPE {name} histogram\n"
     );
@@ -307,7 +371,7 @@ fn render_histograms(series: &Series) -> String {
         );
         let mut cumulative = 0_u64;
         for (bound, n) in BUCKETS.iter().zip(h.buckets) {
-            cumulative = cumulative.checked_add(n).unwrap_or(COUNT_CEILING); // ARITH-4
+            cumulative = cumulative.checked_add(n).ok_or(Overflow { figure: name })?;
             out.push_str(&format!(
                 "{name}_bucket{{{labels},le=\"{bound}\"}} {cumulative}\n"
             ));
@@ -317,7 +381,7 @@ fn render_histograms(series: &Series) -> String {
             h.count, h.sum, h.count
         ));
     }
-    out
+    Ok(out)
 }
 
 /// `(name, help, counter)` for everything served.
@@ -388,9 +452,15 @@ fn gauges() -> [(&'static str, &'static str, &'static Gauge); 2] {
 }
 
 /// The counters in the Prometheus text exposition format.
-#[must_use]
-pub fn render() -> String {
-    let mut out = render_of(&all());
+///
+/// # Errors
+///
+/// [`Overflow`] naming the first metric whose count no longer fits: nothing is shown, as the text would be wrong.
+pub fn render() -> Result<String, Overflow> {
+    if let Some(figure) = OVERFLOWED.get() {
+        return Err(Overflow { figure });
+    }
+    let mut out = render_of(&all())?;
     for (name, help, gauge) in gauges() {
         out.push_str(&format!(
             "# HELP {name} {help}\n# TYPE {name} gauge\n{name} {}\n",
@@ -400,20 +470,23 @@ pub fn render() -> String {
     out.push_str(&render_feed());
     out.push_str(&render_feed_health());
     let series = REQUESTS.lock().unwrap_or_else(|e| e.into_inner());
-    out.push_str(&render_histograms(&series));
-    out
+    out.push_str(&render_histograms(&series)?);
+    Ok(out)
 }
 
 /// Counters in the text format, each with its `HELP` and `TYPE` lines.
-fn render_of(counters: &[(&str, &str, &Counter)]) -> String {
+fn render_of(counters: &[(&'static str, &str, &Counter)]) -> Result<String, Overflow> {
     let mut out = String::new();
     for (name, help, counter) in counters {
+        if counter.overflowed() {
+            return Err(Overflow { figure: name });
+        }
         out.push_str(&format!(
             "# HELP {name} {help}\n# TYPE {name} counter\n{name} {}\n",
             counter.get()
         ));
     }
-    out
+    Ok(out)
 }
 
 /// True when `EPR_METRICS` is `1` or `true`.
@@ -431,28 +504,76 @@ pub fn response(enabled: bool) -> Response {
     if !enabled {
         return StatusCode::NOT_FOUND.into_response();
     }
-    (
-        [(
-            header::CONTENT_TYPE,
-            "text/plain; version=0.0.4; charset=utf-8",
-        )],
-        render(),
-    )
-        .into_response()
+    match render() {
+        Ok(text) => (
+            [(
+                header::CONTENT_TYPE,
+                "text/plain; version=0.0.4; charset=utf-8",
+            )],
+            text,
+        )
+            .into_response(),
+        // RCA-ERR-4: the answer says a count could not be computed and shows no number.
+        Err(overflow) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("metrics: {overflow}\n"),
+        )
+            .into_response(),
+    }
 }
 
 #[cfg(test)]
 mod tests {
     #[test]
-    fn a_counter_at_the_largest_value_stays_there_it_never_wraps_to_zero() {
+    fn a_count_that_no_longer_fits_is_an_error_naming_the_figure_never_held_or_wrapped() {
         let mut n = 0_u64;
-        inc(&mut n);
+        inc(&mut n, "x").unwrap();
         assert_eq!(n, 1);
-        let mut full = u64::MAX - 1;
-        inc(&mut full);
-        assert_eq!(full, u64::MAX);
-        inc(&mut full);
-        assert_eq!(full, u64::MAX, "ARITH-4: held, not wrapped");
+        let mut full = u64::MAX;
+        assert_eq!(inc(&mut full, "x"), Err(Overflow { figure: "x" }));
+        assert_eq!(full, u64::MAX, "not changed by the failed update");
+
+        // The atomic counter marks itself, keeps its value, and the text refuses to show it.
+        let c = Counter::new();
+        c.0.store(u64::MAX, Ordering::Relaxed);
+        assert!(!c.overflowed());
+        c.inc();
+        assert!(c.overflowed());
+        assert_eq!(c.get(), u64::MAX);
+        assert_eq!(
+            render_of(&[("x_total", "An x.", &c)]),
+            Err(Overflow { figure: "x_total" })
+        );
+        assert_eq!(
+            Overflow { figure: "x_total" }.to_string(),
+            "x_total: the count no longer fits"
+        );
+    }
+
+    #[test]
+    fn a_histogram_or_feed_count_at_the_top_is_an_error_not_a_new_value() {
+        let mut series = Series::new();
+        observe_in(&mut series, "GET", "/x", 200, 0.004).unwrap();
+        for h in series.values_mut() {
+            h.count = u64::MAX;
+        }
+        assert_eq!(
+            observe_in(&mut series, "GET", "/x", 200, 0.004),
+            Err(Overflow {
+                figure: HISTOGRAM_FIGURE
+            })
+        );
+        let mut feed = BTreeMap::new();
+        feed_in(&mut feed, "s", "A08", &["A08"], "AA").unwrap();
+        for n in feed.values_mut() {
+            *n = u64::MAX;
+        }
+        assert_eq!(
+            feed_in(&mut feed, "s", "A08", &["A08"], "AA"),
+            Err(Overflow {
+                figure: FEED_FIGURE
+            })
+        );
     }
 
     use super::*;
@@ -464,7 +585,7 @@ mod tests {
         feed_message("mllp:ih9-test", "A08", &handled, "AA");
         feed_message("mllp:ih9-test", "ZQ9-9434765919", &handled, "AR");
         feed_message("mllp:ih9-test", "A28", &handled, "something");
-        let text = render();
+        let text = render().unwrap();
         assert!(
             text.contains("# TYPE epr_feed_messages_total counter"),
             "{text}"
@@ -498,7 +619,7 @@ mod tests {
         c.inc();
         c.inc();
         assert_eq!(
-            render_of(&[("x_total", "An x.", &c)]),
+            render_of(&[("x_total", "An x.", &c)]).unwrap(),
             "# HELP x_total An x.\n# TYPE x_total counter\nx_total 2\n"
         );
     }
@@ -506,10 +627,10 @@ mod tests {
     #[test]
     fn a_histogram_is_cumulative_and_ends_at_the_count() {
         let mut series = Series::new();
-        observe_in(&mut series, "GET", "/x/{id}", 200, 0.004);
-        observe_in(&mut series, "GET", "/x/{id}", 200, 0.2);
-        observe_in(&mut series, "GET", "/x/{id}", 200, 30.0);
-        let text = render_histograms(&series);
+        observe_in(&mut series, "GET", "/x/{id}", 200, 0.004).unwrap();
+        observe_in(&mut series, "GET", "/x/{id}", 200, 0.2).unwrap();
+        observe_in(&mut series, "GET", "/x/{id}", 200, 30.0).unwrap();
+        let text = render_histograms(&series).unwrap();
         let l = "method=\"GET\",route=\"/x/{id}\",status=\"200\"";
         assert!(
             text.contains(&format!("_bucket{{{l},le=\"0.005\"}} 1\n")),
@@ -534,7 +655,7 @@ mod tests {
     fn series_are_capped_and_overflow_is_labelled() {
         let mut series = Series::new();
         for i in 0..MAX_SERIES + 50 {
-            observe_in(&mut series, "GET", &format!("/r{i}"), 200, 0.001);
+            observe_in(&mut series, "GET", &format!("/r{i}"), 200, 0.001).unwrap();
         }
         assert_eq!(
             series.len(),

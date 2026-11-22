@@ -7,7 +7,6 @@ The declarations that [`../rust-checked-arithmetic/index.md`](../rust-checked-ar
 | ARITH-1 | `FixedClock` time (a test double, `electronic-patient-record-domain/src/clock.rs`) | `jiff::Timestamp` | advancing past the representable range | the clock stays where it was | a test clock that cannot move leaves the test to fail on the unchanged time; production code never reads it |
 | ARITH-2 | Labels hidden by a decision's `Mask` obligations (`policy.rs`, `masked`) | `usize`, a count | the sum overflows `usize` | `usize::MAX` | the count only ranks decisions, preferring the one that hides least; a count too large to hold hides more than any other |
 | ARITH-3 | Sum of hidden small-cell counts (`privacy.rs`, `suppress`) | `u64`, a count of people | the sum overflows `u64` | `u64::MAX` | the loop stops hiding more cells once the hidden sum reaches `k`; a sum too large for `u64` is certainly at least `k` |
-| ARITH-4 | A process metric's counts and a histogram's cumulative bucket (`metrics.rs`) | `u64`, a count of events | the count or the running sum overflows `u64` | `u64::MAX` | a Prometheus counter never goes down, and `2^64` events cannot happen in a process; a count held at the top is a valid value of the figure and never reads as a reset |
 
 ## Figures that return unknown, not a fallback
 
@@ -18,3 +17,4 @@ The declarations that [`../rust-checked-arithmetic/index.md`](../rust-checked-ar
 | The published total of a suppressed table (`privacy::suppress`) | the sum overflows `u64` | no total (`None`) |
 | An observation's late-entry and before-birth limits (`observations_store::timing_problems`) | the limit date is out of the calendar's range (invalid data) | a refusal with code `effective_at_out_of_range`; no verdict is guessed either way (RCA-DECL-5) |
 | A task's due and reminder days (`task_rules::add_working_days`, `sub_working_days`, `plan`) | the date is past the calendar's end or before its start | no date and no plan (`None`); a day-of-event that cannot plan is a 422 on the dry run and a rolled-back event elsewhere. The reminder is never set before the task's own start (TL-4, declared) |
+| A process metric's count, or a histogram's running sum (`metrics.rs`) | the count overflows `u64` | `Err(Overflow { figure })`: `/metrics` answers 500 naming the metric until the process restarts; no value is held at the top or wrapped (a maintainer decision, 2026-11-22) |

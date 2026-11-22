@@ -2600,6 +2600,10 @@ pub fn document_for(served: &[(String, String)]) -> Value {
                 "404".into(),
                 json!({"description": "Metrics are off (`EPR_METRICS` is not set). The body is empty."}),
             );
+            responses.insert(
+                "500".into(),
+                json!({"description": "A count no longer fits 64 bits (not reachable in practice: it takes 2^64 events). The text names the metric and shows no number, and the answer stays 500 until the process restarts, since the counts would be wrong (RCA-NONE-4)."}),
+            );
         }
         photo_operation(method, path, &mut op, &mut responses);
         audit_operation(method, path, &mut op, &mut responses);
