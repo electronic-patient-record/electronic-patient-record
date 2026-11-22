@@ -187,9 +187,13 @@ async fn list(
         .iter()
         .map(|t| {
             let mut v = serde_json::to_value(t).unwrap_or_default();
-            v["reminded_on"] = reminded
-                .get(&t.id)
-                .map_or(serde_json::Value::Null, |d| d.to_string().into());
+            crate::json::set(
+                &mut v,
+                "reminded_on",
+                reminded
+                    .get(&t.id)
+                    .map_or(serde_json::Value::Null, |d| d.to_string().into()),
+            );
             v
         })
         .collect();

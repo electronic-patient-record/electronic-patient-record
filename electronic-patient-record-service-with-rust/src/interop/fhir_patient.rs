@@ -79,16 +79,20 @@ pub fn deceased_element(answer: &Answer) -> Option<(&'static str, Value)> {
 /// A message when the typed model refuses the result.
 pub fn with_death(mut patient: Value, answer: &Answer) -> Result<Value, String> {
     if let Some((element, value)) = deceased_element(answer) {
-        patient[element] = value;
+        crate::json::set(&mut patient, element, value);
     } else if answer.holds_contact() {
         let tag = json!({
             "system": DRILL_TAG_SYSTEM,
             "code": DEATH_REPORTED_TAG,
             "display": "DEATH REPORTED - NOT CONFIRMED - HOLD CONTACT",
         });
-        match patient["meta"]["tag"].as_array_mut() {
+        match patient
+            .get_mut("meta")
+            .and_then(|meta| meta.get_mut("tag"))
+            .and_then(Value::as_array_mut)
+        {
             Some(tags) => tags.push(tag),
-            None => patient["meta"]["tag"] = json!([tag]),
+            None => crate::json::set_at(&mut patient, &["meta", "tag"], json!([tag])),
         }
     }
     serde_json::from_value::<Resource>(patient.clone()).map_err(|e| e.to_string())?;
@@ -127,7 +131,7 @@ pub fn to_fhir(stored: &Stored) -> Result<Resource, String> {
         }));
     }
     if !tags.is_empty() {
-        out["meta"]["tag"] = Value::Array(tags);
+        crate::json::set_at(&mut out, &["meta", "tag"], Value::Array(tags));
     }
     let map = out.as_object_mut().ok_or("not an object")?;
     if !p.identifiers.is_empty() {

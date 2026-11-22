@@ -298,8 +298,8 @@ pub async fn advance(
     }
     let next = was.request.apply(event.clone()).map_err(refused)?;
     let mut logged = serde_json::to_value(&event).map_err(db_err)?;
-    logged["by"] = author.into();
-    logged["at"] = crate::clock::rfc3339_micros(now).into();
+    crate::json::set(&mut logged, "by", author.into());
+    crate::json::set(&mut logged, "at", crate::clock::rfc3339_micros(now).into());
     let appended = crate::store::append_version(
         &mut *db,
         STORE,

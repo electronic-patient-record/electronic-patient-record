@@ -57,7 +57,9 @@ pub fn holidays_from(value: Option<&str>) -> Result<BTreeSet<Date>, String> {
         .split([',', ' ', '\t', '\n'])
         .filter(|w| !w.is_empty())
     {
-        let ok = word.len() == 10 && word.as_bytes()[4] == b'-' && word.as_bytes()[7] == b'-';
+        let ok = word.len() == 10
+            && word.as_bytes().get(4) == Some(&b'-')
+            && word.as_bytes().get(7) == Some(&b'-');
         let day: Date = ok.then(|| word.parse().ok()).flatten().ok_or_else(|| {
             format!("EPR_SITE_HOLIDAYS `{word}` is not a calendar day (YYYY-MM-DD)")
         })?;

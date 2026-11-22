@@ -265,8 +265,8 @@ pub fn merge_update(
         out.sex = incoming.sex;
     }
     for (n, name) in incoming.names.iter().enumerate() {
-        if n == 0 && !out.names.is_empty() {
-            out.names[0] = name.clone();
+        if let Some(first) = out.names.first_mut().filter(|_| n == 0) {
+            *first = name.clone();
         } else if !out.names.contains(name) {
             out.names.push(name.clone());
         }

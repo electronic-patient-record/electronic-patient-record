@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-22 - No panic in production code, and a lint that keeps it so
+
+- **Clinical risk:** none intended: the same answers, with a refusal or a skipped step where a panic would have been. One behaviour is worth knowing: `api_tokens_store::prefix()` now returns an `Option`, and a token whose prefix could not be built is refused like any bad token.
+- **Changed:** 93 sites in the service and domain crates that could panic (`expect`, slice and array indexing, `value["key"] = x` on JSON) now use `get`, `iter().skip`, `if let`, and `crate::json::{set, set_at, extend, push_at, str_is}`, which do nothing on a value of the wrong shape instead of panicking. `[workspace.lints.clippy]` denies `unwrap_used`, `expect_used`, `panic`, `indexing_slicing`, `unreachable`, `todo` and `unimplemented`; `clippy.toml` lifts the first four inside tests, and the two benchmark files allow them. The gate (`cargo clippy --workspace --all-targets`) now fails on a new one.
+- **Not done / not verified:** arithmetic overflow is not covered (it wraps in release and panics only in debug; no `arithmetic_side_effects` lint, which flagged 94 sites); the matcher crate has no such lint yet; a panic in a dependency is not prevented; the `openapi.rs` writers now skip a bad shape silently, so a wrong document would show as a diff against `openapi.json`, not as a crash. Ran: clippy over the workspace, and all 857 tests with the database, of which six `fhir_validator_*` need Java and failed here as before.
+
 ## 2026-11-22 - Settings come from a per-app runtime, not the process environment (QA-16, stage 1)
 
 - **Clinical risk:** none intended: the same settings are read, from a new place. With no runtime given, the place is the process environment, as before.

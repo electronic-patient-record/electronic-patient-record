@@ -179,7 +179,11 @@ pub fn to_fhir(row: &AuditRow) -> Result<Resource, String> {
         "requestor": true,
     });
     if let Some(address) = &row.network_address {
-        agent["network"] = json!({ "address": address, "type": "2" });
+        crate::json::set(
+            &mut agent,
+            "network",
+            json!({ "address": address, "type": "2" }),
+        );
     }
     let mut out = json!({
         "resourceType": "AuditEvent",

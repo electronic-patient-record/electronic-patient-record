@@ -35,10 +35,10 @@ pub const MAX_SCOPES: usize = 16;
 /// The longest description or revocation reason, in characters.
 pub const MAX_TEXT: usize = 500;
 
-/// The prefix, checked.
+/// The prefix, checked. `None` only if [`PREFIX`] were not a valid prefix, which a test rules out.
 #[must_use]
-pub fn prefix() -> Prefix {
-    Prefix::new(PREFIX).expect("the prefix is valid")
+pub fn prefix() -> Option<Prefix> {
+    Prefix::new(PREFIX).ok()
 }
 
 /// The scope word for `action` on `resource`, as the policy checks it.
@@ -140,7 +140,7 @@ pub fn problems(new: &NewToken<'_>) -> Vec<String> {
                 "scope {s} is not one an integration may hold (one of: {})",
                 known.join(", ")
             ));
-        } else if new.scopes[..i].contains(s) {
+        } else if new.scopes.iter().take(i).any(|earlier| earlier == s) {
             out.push(format!("scope {s} is given twice"));
         }
     }
@@ -234,7 +234,8 @@ pub async fn issue(
     if taken {
         return Err(StoreError::Conflict { current: 0 });
     }
-    let issued = tokens::issue(&prefix());
+    let prefix = prefix().ok_or_else(|| StoreError::Db("the token prefix is invalid".into()))?;
+    let issued = tokens::issue(&prefix);
     let uuid = token_uuid(issued.id()).ok_or_else(|| StoreError::Db("issued a bad id".into()))?;
     let expires = Timestamp::now() + SignedDuration::from_hours(24 * new.days);
     sqlx::query(
@@ -445,6 +446,11 @@ mod tests {
     use super::*;
 
     #[test]
+    fn the_prefix_is_valid() {
+        assert!(prefix().is_some());
+    }
+
+    #[test]
     fn a_tokens_scopes_are_exactly_what_the_integrator_role_holds() {
         assert_eq!(
             scope_words(),
@@ -527,7 +533,9 @@ mod tests {
 
     #[test]
     fn only_32_hex_digits_are_a_token_id() {
-        let id = tokens::issue(&prefix()).id().to_string();
+        let id = tokens::issue(&prefix().expect("a valid prefix"))
+            .id()
+            .to_string();
         assert!(token_uuid(&id).is_some());
         for bad in [
             "",

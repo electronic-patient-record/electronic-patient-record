@@ -144,7 +144,7 @@ fn with_links(
     let mut links = Vec::new();
     if let Some(to) = replaced_by {
         links.push(serde_json::json!({ "other": { "reference": format!("Patient/{to}") }, "type": "replaced-by" }));
-        json["active"] = serde_json::json!(false);
+        crate::json::set(&mut json, "active", serde_json::json!(false));
     }
     for from in replaces {
         links.push(serde_json::json!({ "other": { "reference": format!("Patient/{from}") }, "type": "replaces" }));
@@ -152,7 +152,7 @@ fn with_links(
     if links.is_empty() {
         return Ok(json);
     }
-    json["link"] = serde_json::Value::Array(links);
+    crate::json::set(&mut json, "link", serde_json::Value::Array(links));
     serde_json::from_value::<fhir::r4::resources::Resource>(json.clone())
         .map_err(|e| e.to_string())?;
     Ok(json)
@@ -278,7 +278,7 @@ fn bundle(
     });
     // At the limit there may be more: do not claim a total.
     if i64::try_from(found.len()).is_ok_and(|n| n < limit) {
-        b["total"] = serde_json::json!(found.len());
+        crate::json::set(&mut b, "total", serde_json::json!(found.len()));
     }
     Ok(b)
 }
@@ -583,10 +583,14 @@ async fn search_audit_events(
                 if !qs.is_empty() {
                     qs.push('&');
                 }
-                bundle["link"] = serde_json::json!([{
-                    "relation": "next",
-                    "url": format!("{BASE}/AuditEvent?{qs}_before={id}"),
-                }]);
+                crate::json::set(
+                    &mut bundle,
+                    "link",
+                    serde_json::json!([{
+                        "relation": "next",
+                        "url": format!("{BASE}/AuditEvent?{qs}_before={id}"),
+                    }]),
+                );
             }
             fhir(StatusCode::OK, &bundle, None)
         }
@@ -889,7 +893,8 @@ fn mounted_interactions() -> std::collections::BTreeMap<String, Vec<String>> {
     let mut found: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
     for handler in routes().handlers {
         let parts: Vec<&str> = handler.uri.trim_matches('/').split('/').collect();
-        let (Some(kind), rest) = (parts.first().copied(), &parts[1.min(parts.len())..]) else {
+        let (Some(kind), rest) = (parts.first().copied(), parts.get(1..).unwrap_or_default())
+        else {
             continue;
         };
         if kind == "metadata" {
@@ -980,11 +985,15 @@ fn capability() -> serde_json::Value {
         .into_iter()
         .map(|(kind, codes)| {
             let mut resource = resource_notes(&kind);
-            resource["type"] = serde_json::json!(kind);
-            resource["interaction"] = codes
-                .iter()
-                .map(|c| serde_json::json!({ "code": c }))
-                .collect();
+            crate::json::set(&mut resource, "type", serde_json::json!(kind));
+            crate::json::set(
+                &mut resource,
+                "interaction",
+                codes
+                    .iter()
+                    .map(|c| serde_json::json!({ "code": c }))
+                    .collect(),
+            );
             resource
         })
         .collect();

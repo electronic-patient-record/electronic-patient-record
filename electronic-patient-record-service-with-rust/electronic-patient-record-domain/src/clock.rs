@@ -166,15 +166,15 @@ pub fn parse_rfc3339(text: &str) -> Option<Timestamp> {
         |r: std::ops::Range<usize>| b.get(r).is_some_and(|d| d.iter().all(u8::is_ascii_digit));
     let shape = b.len() >= 20
         && digits(0..4)
-        && b[4] == b'-'
+        && b.get(4) == Some(&b'-')
         && digits(5..7)
-        && b[7] == b'-'
+        && b.get(7) == Some(&b'-')
         && digits(8..10)
-        && matches!(b[10], b'T' | b't' | b' ')
+        && matches!(b.get(10), Some(b'T' | b't' | b' '))
         && digits(11..13)
-        && b[13] == b':'
+        && b.get(13) == Some(&b':')
         && digits(14..16)
-        && b[16] == b':'
+        && b.get(16) == Some(&b':')
         && digits(17..19)
         && !text.contains('[');
     if !shape {

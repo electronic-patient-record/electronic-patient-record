@@ -133,9 +133,17 @@ fn failure(e: StoreError) -> ApiError {
 /// The request with what a reader needs beside it.
 fn view(a: &StoredAmendment, now: jiff::Timestamp) -> serde_json::Value {
     let mut v = serde_json::to_value(a).unwrap_or_default();
-    v["notice"] = serde_json::to_value(a.request.notice()).unwrap_or_default();
-    v["due"] = crate::clock::rfc3339_secs(a.request.due()).into();
-    v["overdue"] = a.request.overdue(now).into();
+    crate::json::set(
+        &mut v,
+        "notice",
+        serde_json::to_value(a.request.notice()).unwrap_or_default(),
+    );
+    crate::json::set(
+        &mut v,
+        "due",
+        crate::clock::rfc3339_secs(a.request.due()).into(),
+    );
+    crate::json::set(&mut v, "overdue", a.request.overdue(now).into());
     v
 }
 

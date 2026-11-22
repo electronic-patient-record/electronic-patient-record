@@ -115,7 +115,7 @@ async fn only_an_administrator_manages_tokens_and_a_token_is_shown_once_and_neve
         assert_eq!(issued["scopes"], json!(["referral-queue:create"]));
         let secret = secret_token.rsplit('_').next().unwrap().to_string();
         // The stored record verifies the token, with its scope and no other.
-        let prefix = electronic_patient_record::api_tokens_store::prefix();
+        let prefix = electronic_patient_record::api_tokens_store::prefix().expect("a valid prefix");
         let presented = axa::api_tokens::parse(&secret_token, &prefix).expect("a token");
         let (record, record_name) = electronic_patient_record::api_tokens_store::record(db, presented.id())
             .await

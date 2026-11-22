@@ -89,7 +89,10 @@ pub fn parse(text: &str) -> Result<Vec<Form>, String> {
     forms.sort_by(|a, b| (a.id.as_str(), a.version).cmp(&(b.id.as_str(), b.version)));
     for (i, f) in forms.iter().enumerate() {
         let name = format!("{} v{}", f.id, f.version);
-        let previous = i.checked_sub(1).map(|j| &forms[j]).filter(|p| p.id == f.id);
+        let previous = i
+            .checked_sub(1)
+            .and_then(|j| forms.get(j))
+            .filter(|p| p.id == f.id);
         let expected = previous.map_or(1, |p| p.version + 1);
         if f.version != expected {
             return Err(format!(

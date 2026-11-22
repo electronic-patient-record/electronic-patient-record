@@ -265,7 +265,7 @@ pub(super) async fn answer(
         return r.into_response();
     }
     let mut body = serde_json::to_value(&told).unwrap_or_default();
-    body["holds_contact"] = told.holds_contact().into();
+    crate::json::set(&mut body, "holds_contact", told.holds_contact().into());
     Json(body).into_response()
 }
 

@@ -125,12 +125,18 @@ async fn round(checks: Vec<Check>, limit: Duration) -> Report {
     let mut answered = vec![false; names.len()];
     while let Some(finished) = running.join_next().await {
         match finished {
-            Ok((index, Ok(Ok(())))) => answered[index] = true,
+            Ok((index, Ok(Ok(())))) => {
+                if let Some(slot) = answered.get_mut(index) {
+                    *slot = true;
+                }
+            }
             Ok((index, Ok(Err(error)))) => {
-                tracing::warn!(dependency = names[index], %error, "dependency_down");
+                let dependency = names.get(index).copied().unwrap_or("unknown");
+                tracing::warn!(dependency, %error, "dependency_down");
             }
             Ok((index, Err(_))) => {
-                tracing::warn!(dependency = names[index], "dependency_timed_out");
+                let dependency = names.get(index).copied().unwrap_or("unknown");
+                tracing::warn!(dependency, "dependency_timed_out");
             }
             Err(error) => tracing::error!(%error, "dependency_check_panicked"),
         }

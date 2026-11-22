@@ -23,6 +23,20 @@ include = ["src/**/*", "README.md"]
 name = "electronic-patient-record"
 path = "src/bin/main.rs"
 
+# No panic in production code (a request that panics is a dropped connection and a lost audit row). Tests may unwrap:
+# clippy.toml lifts these three inside `#[cfg(test)]` and `tests/`.
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+indexing_slicing = "deny"
+unreachable = "deny"
+todo = "deny"
+unimplemented = "deny"
+
+[lints]
+workspace = true
+
 [workspace.dependencies]
 # Shared with the domain crate, so the two never differ.
 serde = { version = "1", features = ["derive"] }

@@ -110,9 +110,7 @@ fn problem_schema(description: &str, required: &[&str], properties: &Value) -> V
         "status": {"type": "integer"},
         "detail": {"type": "string"}
     });
-    all.as_object_mut()
-        .expect("an object")
-        .extend(properties.as_object().expect("an object").clone());
+    crate::json::extend(&mut all, properties);
     let mut names = vec!["type", "title", "status", "detail"];
     names.extend_from_slice(required);
     json!({
@@ -663,14 +661,18 @@ fn api_token_schemas() -> Value {
         }
     });
     let mut issued = view.clone();
-    issued["required"]
-        .as_array_mut()
-        .expect("an array")
-        .push(json!("token"));
-    issued["properties"]["token"] = json!({"type": "string",
-        "description": "epr_<id>_<secret>. Shown once, in this answer only: it is not stored and cannot be read again."});
-    issued["description"] =
-        json!("A token just issued. Keep the token now: it is not shown again.");
+    crate::json::push_at(&mut issued, "required", json!("token"));
+    crate::json::set_at(
+        &mut issued,
+        &["properties", "token"],
+        json!({"type": "string",
+        "description": "epr_<id>_<secret>. Shown once, in this answer only: it is not stored and cannot be read again."}),
+    );
+    crate::json::set(
+        &mut issued,
+        "description",
+        json!("A token just issued. Keep the token now: it is not shown again."),
+    );
     json!({
         "ApiToken": view,
         "IssuedToken": issued,
@@ -706,15 +708,20 @@ fn task_schemas() -> Value {
     let event = json!({"enum": crate::task_rules::Event::ALL.map(crate::task_rules::Event::word)});
     let mut all = task_schema_list(&event);
     // A list item is a task and the day the reminder sender last reminded it.
-    let mut item = all["Task"].clone();
-    item["required"]
-        .as_array_mut()
-        .expect("an array")
-        .push(json!("reminded_on"));
-    item["properties"]["reminded_on"] = json!({"type": ["string", "null"],
-        "description": "YYYY-MM-DD, the latest reminder sent (EPR_TASK_REMINDER_MINUTES); null when never reminded."});
-    item["description"] = json!("A task on a team's list, with the day it was last reminded.");
-    all["TaskListItem"] = item;
+    let mut item = all.get("Task").cloned().unwrap_or_default();
+    crate::json::push_at(&mut item, "required", json!("reminded_on"));
+    crate::json::set_at(
+        &mut item,
+        &["properties", "reminded_on"],
+        json!({"type": ["string", "null"],
+        "description": "YYYY-MM-DD, the latest reminder sent (EPR_TASK_REMINDER_MINUTES); null when never reminded."}),
+    );
+    crate::json::set(
+        &mut item,
+        "description",
+        json!("A task on a team's list, with the day it was last reminded."),
+    );
+    crate::json::set(&mut all, "TaskListItem", item);
     all
 }
 
@@ -1749,16 +1756,21 @@ fn patient_schemas() -> Value {
         consent_schemas(),
         relationship_schemas(),
     ] {
-        all.extend(part.as_object().expect("an object").clone());
+        all.extend(part.as_object().cloned().unwrap_or_default());
     }
     // A version is a StoredObservation with the reason it was written beside it.
-    let mut version = all["StoredObservation"].clone();
-    version["properties"]["reason"] = json!({"type": ["string", "null"]});
-    version["required"]
-        .as_array_mut()
-        .expect("required list")
-        .push(json!("reason"));
-    version["description"] = json!("A StoredObservation plus the reason this version was written.");
+    let mut version = all.get("StoredObservation").cloned().unwrap_or_default();
+    crate::json::set_at(
+        &mut version,
+        &["properties", "reason"],
+        json!({"type": ["string", "null"]}),
+    );
+    crate::json::push_at(&mut version, "required", json!("reason"));
+    crate::json::set(
+        &mut version,
+        "description",
+        json!("A StoredObservation plus the reason this version was written."),
+    );
     all.insert("ObservationVersion".into(), version);
     Value::Object(all)
 }
@@ -2297,9 +2309,7 @@ fn error_schemas() -> Value {
 /// The error schemas together with the body schemas: the document's `components.schemas`.
 fn all_schemas() -> Value {
     let mut all = error_schemas();
-    all.as_object_mut()
-        .expect("an object")
-        .extend(patient_schemas().as_object().expect("an object").clone());
+    crate::json::extend(&mut all, &patient_schemas());
     all
 }
 
@@ -2615,12 +2625,12 @@ pub fn document_for(served: &[(String, String)]) -> Value {
             op.insert("parameters".into(), Value::Array(parameters));
         }
         op.insert("responses".into(), Value::Object(responses));
-        paths
+        if let Value::Object(methods) = paths
             .entry(path.clone())
             .or_insert_with(|| Value::Object(Map::new()))
-            .as_object_mut()
-            .expect("an object was just inserted")
-            .insert(method.to_ascii_lowercase(), Value::Object(op));
+        {
+            methods.insert(method.to_ascii_lowercase(), Value::Object(op));
+        }
     }
     let mut document = json!({
         "openapi": "3.1.0",
@@ -2649,7 +2659,7 @@ pub fn document() -> Value {
 /// The document as committed: pretty JSON with a final newline.
 #[must_use]
 pub fn rendered() -> String {
-    let mut text = serde_json::to_string_pretty(&document()).expect("a Value always serialises");
+    let mut text = serde_json::to_string_pretty(&document()).unwrap_or_default();
     text.push('\n');
     text
 }

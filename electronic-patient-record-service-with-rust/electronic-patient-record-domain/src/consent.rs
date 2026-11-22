@@ -144,12 +144,16 @@ fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
 /// Unix seconds at 00:00 UTC on a real `YYYY-MM-DD` date, else `None`.
 #[must_use]
 pub fn day_start(date: &str) -> Option<i64> {
-    let parts: Vec<&str> = date.split('-').collect();
-    if parts.len() != 3 || !crate::dates::valid_birth_date(date) {
+    if !crate::dates::valid_birth_date(date) {
         return None;
     }
-    let n = |s: &str| s.parse::<i64>().ok();
-    Some(days_from_civil(n(parts[0])?, n(parts[1])?, n(parts[2])?) * 86_400)
+    let mut parts = date.split('-');
+    let n = |s: Option<&str>| s?.parse::<i64>().ok();
+    let (year, month, day) = (n(parts.next())?, n(parts.next())?, n(parts.next())?);
+    if parts.next().is_some() {
+        return None;
+    }
+    Some(days_from_civil(year, month, day) * 86_400)
 }
 
 /// Whether `now` (unix seconds) lies in the period. `None` if a date does not parse.

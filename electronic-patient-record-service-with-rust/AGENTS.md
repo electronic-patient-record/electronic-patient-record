@@ -29,3 +29,4 @@ Axum 0.8 service on `axa`, on PostgreSQL 18. Read [`spec/index.md`](spec/index.m
   audit, break-the-glass flag), and audit with `audit::append` before it returns data (see `compare_audited`).
 - The permission table, label lists and purpose rules in `policy.rs` are an engineer's first draft, not clinical
   governance. Say so in any change to them and update the hazard log (AS-1).
+- No panic in production code: `unwrap`, `expect`, `panic!`, indexing and slicing are denied by `[workspace.lints.clippy]` (tests and benches are exempt). Use `get`, `?`, and `crate::json::set` for JSON writes.

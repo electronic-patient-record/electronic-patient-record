@@ -28,7 +28,7 @@ pub fn to_fhir(stored: &StoredAdjustment, patient: &str) -> Result<Value, String
     let mut code =
         json!({ "coding": [{ "system": CODE_SYSTEM, "code": a.code, "display": stored.display }] });
     if let Some(note) = &a.note {
-        code["text"] = json!(note);
+        crate::json::set(&mut code, "text", json!(note));
     }
     let ended = a.status == Status::Ended;
     let mut out = json!({
@@ -41,7 +41,7 @@ pub fn to_fhir(stored: &StoredAdjustment, patient: &str) -> Result<Value, String
         "subject": { "reference": format!("Patient/{patient}") },
     });
     if ended {
-        out["period"] = json!({ "end": stored.recorded_at });
+        crate::json::set(&mut out, "period", json!({ "end": stored.recorded_at }));
     }
     let resource: Resource = serde_json::from_value(out.clone()).map_err(|e| e.to_string())?;
     let issues = resource.validate();

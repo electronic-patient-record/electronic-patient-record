@@ -88,7 +88,7 @@ pub fn take_frame(buf: &mut Vec<u8>, max: usize) -> Result<Option<Vec<u8>>, Fram
     if first != VT {
         return Err(FrameError::NoStartBlock);
     }
-    let body = &buf[1..];
+    let body = buf.get(1..).unwrap_or_default();
     match body.iter().position(|b| *b == FS) {
         None => {
             if body.contains(&VT) {
@@ -103,13 +103,13 @@ pub fn take_frame(buf: &mut Vec<u8>, max: usize) -> Result<Option<Vec<u8>>, Fram
             if end > max {
                 return Err(FrameError::TooLarge);
             }
-            if body[..end].contains(&VT) {
+            if body.get(..end).is_some_and(|head| head.contains(&VT)) {
                 return Err(FrameError::StrayStart);
             }
             match body.get(end + 1) {
                 None => Ok(None), // the CR has not arrived yet
                 Some(&CR) => {
-                    let payload = body[..end].to_vec();
+                    let payload = body.get(..end).unwrap_or_default().to_vec();
                     buf.drain(..end + 3);
                     Ok(Some(payload))
                 }
@@ -681,7 +681,7 @@ async fn connection<S: AsyncRead + AsyncWrite + Unpin>(
         };
         match read {
             Ok(Ok(0)) | Err(_) | Ok(Err(_)) => return,
-            Ok(Ok(n)) => buf.extend_from_slice(&chunk[..n]),
+            Ok(Ok(n)) => buf.extend_from_slice(chunk.get(..n).unwrap_or_default()),
         }
     }
 }

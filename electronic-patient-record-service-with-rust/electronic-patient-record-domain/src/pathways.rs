@@ -272,7 +272,10 @@ pub fn parse(text: &str) -> Result<Vec<Pathway>, String> {
     let mut all = file.pathway;
     all.sort_by(|a, b| (a.id.as_str(), a.version).cmp(&(b.id.as_str(), b.version)));
     for (i, p) in all.iter().enumerate() {
-        let previous = i.checked_sub(1).map(|j| &all[j]).filter(|q| q.id == p.id);
+        let previous = i
+            .checked_sub(1)
+            .and_then(|j| all.get(j))
+            .filter(|q| q.id == p.id);
         let expected = previous.map_or(1, |q| q.version + 1);
         if p.version != expected {
             return Err(format!(

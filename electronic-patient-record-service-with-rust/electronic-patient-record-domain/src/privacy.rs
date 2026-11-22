@@ -71,7 +71,11 @@ pub fn suppress(counts: &[(String, u64)], k: u64, publish_total: bool) -> (Vec<R
                 .min_by_key(|(_, ((_, n), _))| *n)
                 .map(|(i, _)| i);
             match next {
-                Some(i) => hidden[i] = true,
+                Some(i) => {
+                    if let Some(slot) = hidden.get_mut(i) {
+                        *slot = true;
+                    }
+                }
                 None => break,
             }
         }

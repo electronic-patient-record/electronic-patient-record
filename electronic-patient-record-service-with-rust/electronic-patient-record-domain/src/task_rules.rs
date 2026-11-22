@@ -280,7 +280,7 @@ pub fn parse(text: &str, name: &str) -> Result<Vec<Rule>, String> {
     // TL-14: the same work twice. Versions of one rule are its history, so only each rule's latest is compared.
     let latest: Vec<&Rule> = latest_versions(&rules);
     for (i, a) in latest.iter().enumerate() {
-        for b in &latest[i + 1..] {
+        for b in latest.iter().skip(i + 1) {
             if a.identity() == b.identity() {
                 return Err(format!(
                     "task rules: {name}: rules {} and {} are the same event, conditions and task",

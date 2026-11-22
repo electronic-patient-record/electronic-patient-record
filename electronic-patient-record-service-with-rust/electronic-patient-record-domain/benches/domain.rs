@@ -5,6 +5,13 @@
 //! once, as a check that it still works. Pure functions only: no database, no web. The numbers are for one machine
 //! and say nothing about a deployment.
 
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::indexing_slicing,
+    clippy::panic
+)] // a benchmark may panic
+
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use electronic_patient_record_domain::consent::{self, ConsentRecord, Context};
 use electronic_patient_record_domain::observations::{self, Observation, Range};

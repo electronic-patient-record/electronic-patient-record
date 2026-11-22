@@ -29,3 +29,6 @@ criterion = { workspace = true }
 [[bench]]
 name = "domain"
 harness = false
+
+[lints]
+workspace = true

@@ -61,8 +61,8 @@ pub fn token_agent(name: &str) -> String {
 async fn integration(token: &str) -> Result<(Agent, Subject), (StatusCode, String)> {
     let refused = || (StatusCode::UNAUTHORIZED, TOKEN_REFUSED.to_string());
     let db = TOKEN_DB.get().ok_or_else(refused)?;
-    let presented =
-        axa::api_tokens::parse(token, &crate::api_tokens_store::prefix()).ok_or_else(refused)?;
+    let prefix = crate::api_tokens_store::prefix().ok_or_else(refused)?;
+    let presented = axa::api_tokens::parse(token, &prefix).ok_or_else(refused)?;
     let (record, name) = match crate::api_tokens_store::record(db, presented.id()).await {
         Ok(Some(found)) => found,
         Ok(None) => {

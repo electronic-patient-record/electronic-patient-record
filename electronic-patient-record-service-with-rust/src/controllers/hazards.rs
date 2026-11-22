@@ -292,9 +292,9 @@ pub(super) async fn update(
     {
         Ok(stored) => {
             let mut audit = details;
-            audit["hazard"] = stored.id.clone().into();
-            audit["version"] = stored.version.into();
-            audit["state"] = stored.hazard.state.word().into();
+            crate::json::set(&mut audit, "hazard", stored.id.clone().into());
+            crate::json::set(&mut audit, "version", stored.version.into());
+            crate::json::set(&mut audit, "state", stored.hazard.state.word().into());
             if let Err(r) = audit_resource(
                 &mut *tx,
                 &agent,

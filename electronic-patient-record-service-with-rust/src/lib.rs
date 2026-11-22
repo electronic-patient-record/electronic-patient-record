@@ -43,6 +43,7 @@ pub mod hazard_store;
 pub mod idempotency;
 pub use electronic_patient_record_domain::ids;
 pub mod interop;
+pub mod json;
 pub use electronic_patient_record_domain::link_token;
 pub mod links;
 pub mod list_limits;

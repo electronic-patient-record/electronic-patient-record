@@ -84,7 +84,11 @@ pub fn to_fhir(
     };
     let mut code = json!({ "text": a.substance });
     if let Some(c) = &a.coding {
-        code["coding"] = json!([{ "system": c.system, "code": c.code }]);
+        crate::json::set(
+            &mut code,
+            "coding",
+            json!([{ "system": c.system, "code": c.code }]),
+        );
     }
     let mut out = json!({
         "resourceType": "AllergyIntolerance",
@@ -96,23 +100,31 @@ pub fn to_fhir(
         "recordedDate": stored.recorded_at,
     });
     if let Some(c) = a.category {
-        out["category"] = json!([category(c)]);
+        crate::json::set(&mut out, "category", json!([category(c)]));
     }
     if let Some(c) = a.criticality {
-        out["criticality"] = json!(criticality(c));
+        crate::json::set(&mut out, "criticality", json!(criticality(c)));
     }
     if let Some(onset) = &a.onset {
-        out["onsetDateTime"] = json!(onset);
+        crate::json::set(&mut out, "onsetDateTime", json!(onset));
     }
     if let Some(reaction) = &a.reaction {
-        out["reaction"] = json!([{ "manifestation": [{ "text": reaction }] }]);
+        crate::json::set(
+            &mut out,
+            "reaction",
+            json!([{ "manifestation": [{ "text": reaction }] }]),
+        );
     }
     // A reader of the export is told the record is disputed, in the same words as a reader of the page.
     if !notices.is_empty() {
-        out["note"] = notices
-            .iter()
-            .map(crate::amendment::Notice::fhir_annotation)
-            .collect();
+        crate::json::set(
+            &mut out,
+            "note",
+            notices
+                .iter()
+                .map(crate::amendment::Notice::fhir_annotation)
+                .collect(),
+        );
     }
     parse(out).map(Some)
 }

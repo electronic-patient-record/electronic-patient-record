@@ -5,6 +5,13 @@
 //! `electronic-patient-record-domain/benches/domain.rs`, so changing one rebuilds only that crate. Nothing here touches the database: the database's share of a request is what the
 //! load tests in `scripts/load/` measure. The numbers are for one machine and say nothing about a deployment.
 
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::indexing_slicing,
+    clippy::panic
+)] // a benchmark may panic
+
 use criterion::{Criterion, criterion_group, criterion_main};
 use electronic_patient_record::audit::{Action, Chain, Event};
 use electronic_patient_record::feed_health::{self, Facts, Thresholds};

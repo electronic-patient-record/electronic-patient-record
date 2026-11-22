@@ -7,3 +7,9 @@ disallowed-methods = [
   { path = "chrono::Local::now", reason = "never read the process time zone; take an explicit zone via crate::tz" },
   { path = "chrono::Local::today", reason = "never read the process time zone; take an explicit zone via crate::tz" },
 ]
+
+# QA: no panic in production code. Tests may unwrap, expect, panic and index.
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+allow-indexing-slicing-in-tests = true

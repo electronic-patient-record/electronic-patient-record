@@ -228,8 +228,12 @@ fn observe_in(series: &mut Series, method: &str, route: &str, status: u16, secon
     let h = series.entry(key).or_default();
     h.count += 1;
     h.sum += seconds;
-    if let Some(i) = BUCKETS.iter().position(|b| seconds <= *b) {
-        h.buckets[i] += 1;
+    if let Some(slot) = BUCKETS
+        .iter()
+        .position(|b| seconds <= *b)
+        .and_then(|i| h.buckets.get_mut(i))
+    {
+        *slot += 1;
     }
 }
 

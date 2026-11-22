@@ -36,7 +36,7 @@ pub fn to_r5(body: &serde_json::Value, request: &str) -> Result<serde_json::Valu
     let mut body = body.clone();
     retype(&mut body);
     let converted = convert::between::<R4, R5>(&body);
-    let tolerant = body["resourceType"] == "OperationOutcome";
+    let tolerant = crate::json::str_is(&body, "resourceType", "OperationOutcome");
     if !tolerant && !converted.report.is_lossless() {
         let paths: Vec<String> = converted
             .report
@@ -48,11 +48,15 @@ pub fn to_r5(body: &serde_json::Value, request: &str) -> Result<serde_json::Valu
     let mut value = converted.value;
     rebase(&mut value);
     // R5 requires a self link on a search set (bdl-18); R4 did not, so the R4 body has none.
-    if value["resourceType"] == "Bundle"
-        && value["type"] == "searchset"
+    if crate::json::str_is(&value, "resourceType", "Bundle")
+        && crate::json::str_is(&value, "type", "searchset")
         && value.get("link").is_none()
     {
-        value["link"] = serde_json::json!([{ "relation": "self", "url": request }]);
+        crate::json::set(
+            &mut value,
+            "link",
+            serde_json::json!([{ "relation": "self", "url": request }]),
+        );
     }
     Ok(value)
 }

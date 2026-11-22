@@ -54,10 +54,10 @@ fn reference_range(r: &Range, unit: Option<&str>) -> Option<Value> {
     let unit = unit?;
     let mut out = json!({});
     if let Some(l) = r.low {
-        out["low"] = quantity(l, unit);
+        crate::json::set(&mut out, "low", quantity(l, unit));
     }
     if let Some(h) = r.high {
-        out["high"] = quantity(h, unit);
+        crate::json::set(&mut out, "high", quantity(h, unit));
     }
     (r.low.is_some() || r.high.is_some()).then_some(out)
 }
@@ -107,32 +107,42 @@ pub fn to_fhir(
         "issued": stored.recorded_at,
     });
     match (r.value, r.unit.as_deref(), r.absent_reason) {
-        (Some(v), Some(u), _) => out["valueQuantity"] = quantity(v, u),
+        (Some(v), Some(u), _) => crate::json::set(&mut out, "valueQuantity", quantity(v, u)),
         (_, _, Some(reason)) => {
-            out["dataAbsentReason"] =
-                json!({ "coding": [{ "system": ABSENT, "code": absent_code(reason) }] });
+            crate::json::set(
+                &mut out,
+                "dataAbsentReason",
+                json!({ "coding": [{ "system": ABSENT, "code": absent_code(reason) }] }),
+            );
         }
         // Stored records always have one or the other; refuse rather than guess.
         _ => return Err("an observation has neither a value with a unit nor a reason".into()),
     }
     if let Some(f) = stored.flag {
         let (code, display) = interpretation(f);
-        out["interpretation"] =
-            json!([{ "coding": [{ "system": INTERPRETATION, "code": code, "display": display }] }]);
+        crate::json::set(
+            &mut out,
+            "interpretation",
+            json!([{ "coding": [{ "system": INTERPRETATION, "code": code, "display": display }] }]),
+        );
     }
     if let Some(range) = r
         .range
         .as_ref()
         .and_then(|x| reference_range(x, r.unit.as_deref()))
     {
-        out["referenceRange"] = json!([range]);
+        crate::json::set(&mut out, "referenceRange", json!([range]));
     }
     // A reader of the export is told the record is disputed, in the same words as a reader of the page.
     if !notices.is_empty() {
-        out["note"] = notices
-            .iter()
-            .map(crate::amendment::Notice::fhir_annotation)
-            .collect();
+        crate::json::set(
+            &mut out,
+            "note",
+            notices
+                .iter()
+                .map(crate::amendment::Notice::fhir_annotation)
+                .collect(),
+        );
     }
     parse(out).map(Some)
 }

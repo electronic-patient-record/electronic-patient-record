@@ -259,7 +259,11 @@ pub(super) async fn authorize_scoped(
     let mut detail =
         serde_json::json!({ "denied": format!("{decision:?}"), "consent": verdict.decided_by });
     if !verdict.from_merged.is_empty() {
-        detail["consent_from_merged"] = serde_json::json!(verdict.from_merged);
+        crate::json::set(
+            &mut detail,
+            "consent_from_merged",
+            serde_json::json!(verdict.from_merged),
+        );
     }
     event.detail = Some(detail);
     if let Err(e) = audit::append(db, audit::chain(), &event).await {

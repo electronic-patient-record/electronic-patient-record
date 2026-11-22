@@ -940,7 +940,7 @@ async fn valid_instant(db: &PgPool, v: &str) -> bool {
                 b.is_ascii_digit()
             }
         })
-        && (v.len() == 10 || (v.as_bytes()[10] == b'T' && v.ends_with('Z')));
+        && (v.len() == 10 || (v.as_bytes().get(10) == Some(&b'T') && v.ends_with('Z')));
     shaped
         && sqlx::query("SELECT $1::timestamptz AS t")
             .bind(v.to_string())
