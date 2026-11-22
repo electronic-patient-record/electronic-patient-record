@@ -7,6 +7,7 @@ The declarations that [`../rust-checked-arithmetic/index.md`](../rust-checked-ar
 | ARITH-1 | `FixedClock` time (a test double, `electronic-patient-record-domain/src/clock.rs`) | `jiff::Timestamp` | advancing past the representable range | the clock stays where it was | a test clock that cannot move leaves the test to fail on the unchanged time; production code never reads it |
 | ARITH-2 | Labels hidden by a decision's `Mask` obligations (`policy.rs`, `masked`) | `usize`, a count | the sum overflows `usize` | `usize::MAX` | the count only ranks decisions, preferring the one that hides least; a count too large to hold hides more than any other |
 | ARITH-3 | Sum of hidden small-cell counts (`privacy.rs`, `suppress`) | `u64`, a count of people | the sum overflows `u64` | `u64::MAX` | the loop stops hiding more cells once the hidden sum reaches `k`; a sum too large for `u64` is certainly at least `k` |
+| ARITH-4 | A process metric's counts and a histogram's cumulative bucket (`metrics.rs`) | `u64`, a count of events | the count or the running sum overflows `u64` | `u64::MAX` | a Prometheus counter never goes down, and `2^64` events cannot happen in a process; a count held at the top is a valid value of the figure and never reads as a reset |
 
 ## Figures that return unknown, not a fallback
 

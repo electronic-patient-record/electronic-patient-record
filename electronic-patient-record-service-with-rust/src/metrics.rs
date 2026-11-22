@@ -7,6 +7,26 @@
 //! `/metrics` answers 404 unless `EPR_METRICS` is `1` or `true`. When on it needs no token (a scraper
 //! seldom holds one), so a deployer exposes it on an internal network only.
 
+// RCA-ENF-3: this module is converted, so the arithmetic lints are denied here; the rest of the crate follows.
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::default_numeric_fallback,
+    clippy::integer_division,
+    clippy::modulo_arithmetic,
+    clippy::as_conversions,
+    clippy::string_slice
+)]
+
+/// The most a count holds (ARITH-4): a count that reaches it stays there.
+const COUNT_CEILING: u64 = u64::MAX;
+
+/// One more in a counter. A counter that has reached `u64::MAX` stays there: a Prometheus counter never goes down,
+/// and `2^64` events cannot happen (ARITH-4).
+fn inc(counter: &mut u64) {
+    let n = *counter;
+    *counter = n.checked_add(1).unwrap_or(n); // ARITH-4
+}
+
 use axum::{
     extract::{MatchedPath, Request},
     http::{StatusCode, header},
@@ -141,7 +161,7 @@ pub fn feed_message(sender: &str, event: &str, handled: &[&str], answer: &str) {
             answer.to_string(),
         )
     };
-    *series.entry(key).or_default() += 1;
+    inc(series.entry(key).or_default());
 }
 
 /// Each configured feed's health (IH-8): 0 unknown, 1 healthy, 2 warning, 3 critical, as last judged.
@@ -226,14 +246,14 @@ fn observe_in(series: &mut Series, method: &str, route: &str, status: u16, secon
         (method.to_string(), "overflow".to_string(), status)
     };
     let h = series.entry(key).or_default();
-    h.count += 1;
+    inc(&mut h.count);
     h.sum += seconds;
     if let Some(slot) = BUCKETS
         .iter()
         .position(|b| seconds <= *b)
         .and_then(|i| h.buckets.get_mut(i))
     {
-        *slot += 1;
+        inc(slot);
     }
 }
 
@@ -285,9 +305,9 @@ fn render_histograms(series: &Series) -> String {
             escape(method),
             escape(route)
         );
-        let mut cumulative = 0;
+        let mut cumulative = 0_u64;
         for (bound, n) in BUCKETS.iter().zip(h.buckets) {
-            cumulative += n;
+            cumulative = cumulative.checked_add(n).unwrap_or(COUNT_CEILING); // ARITH-4
             out.push_str(&format!(
                 "{name}_bucket{{{labels},le=\"{bound}\"}} {cumulative}\n"
             ));
@@ -423,6 +443,18 @@ pub fn response(enabled: bool) -> Response {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_counter_at_the_largest_value_stays_there_it_never_wraps_to_zero() {
+        let mut n = 0_u64;
+        inc(&mut n);
+        assert_eq!(n, 1);
+        let mut full = u64::MAX - 1;
+        inc(&mut full);
+        assert_eq!(full, u64::MAX);
+        inc(&mut full);
+        assert_eq!(full, u64::MAX, "ARITH-4: held, not wrapped");
+    }
+
     use super::*;
 
     #[test]

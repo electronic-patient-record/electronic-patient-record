@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-22 - metrics.rs under the arithmetic lints; a declared counter ceiling (QA-17)
+
+- **Clinical risk:** none: operator metrics only.
+- **Changed:** `metrics.rs` denies the arithmetic lints for the module (RCA-ENF-3); its request, histogram and feed counters use `inc`, which holds at `u64::MAX` instead of panicking (debug) or wrapping to zero (release); the cumulative bucket sum uses the same ceiling. Declared as ARITH-4, with a test at `u64::MAX - 1` and `u64::MAX`.
+- **Not done / not verified:** the ceiling is a declared fallback chosen by me, not by you: a Prometheus counter cannot wrap without reading as a reset, and `2^64` events cannot occur, but if the spec should rather make it an error, `inc` is the one place to change. Full suite on a fresh database: 859 passed, 6 failed (Java `fhir_validator`). CI not observed.
+
 ## 2026-11-22 - The last append-only stores and two catalogues use checked versions (QA-17)
 
 - **Clinical risk:** none intended: the version written or expected is unchanged for every reachable value. At `i32::MAX` an append answers `BadQuery` ("version: out of range"); a form or pathway file whose previous version cannot be incremented is refused at load.
