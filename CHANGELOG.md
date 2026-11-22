@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-22 - api_tokens_store, photos_store and task_reminders under the arithmetic lints (QA-17)
+
+- **Clinical risk:** none to a clinician's view; **security-relevant**: `api_tokens_store::system_time` turned a stored token time before 1970 or out of `SystemTime` range into the epoch (an expiry of 1970, so refused, but a `last_used_at` of 1970 invented); it is now an error when a token is read (RCA-IN-6). Reachable only by a corrupt `api_token_current` row.
+- **Changed:** three modules deny the arithmetic lints (RCA-ENF-3); token expiry is `checked_mul` and `checked_add`; `next_version` in tokens and photos; `MAX_KIB` constant replaces `MAX_BYTES / 1024`; the reminder run counts with a checked `count`; `Duration::from_mins` for the interval setting.
+- **Not done / not verified:** the corrupt-row error has no test (it needs a token row with a pre-1970 time; the table's triggers may not allow one). Full suite on a fresh database: 858 passed, 6 failed (Java `fhir_validator`). CI not observed.
+
 ## 2026-11-22 - pg_time.rs and relationships.rs under the arithmetic lints (QA-17)
 
 - **Clinical risk:** none intended: every time the service can hold encodes to the same microsecond as before, and the relationship version written is unchanged. `to_pg_micros` used to turn a time outside `timestamptz`'s range into `i64::MIN` or `MAX` (`infinity`); it now refuses (not reachable from a `jiff::Timestamp`, whose range is far inside).

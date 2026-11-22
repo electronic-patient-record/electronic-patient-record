@@ -10,6 +10,16 @@
 //! - **Expiring.** Every token expires, 1 to 365 days after it is issued.
 //! - **Fixed.** Only the description changes; scopes, name and expiry never do. Revocation is final, with a reason.
 
+// RCA-ENF-3: this module is converted, so the arithmetic lints are denied here; the rest of the crate follows.
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::default_numeric_fallback,
+    clippy::integer_division,
+    clippy::modulo_arithmetic,
+    clippy::as_conversions,
+    clippy::string_slice
+)]
+
 use crate::patients_store::StoreError;
 use crate::pg_time::PgTimestamp;
 use crate::policy::{self, Action, Resource, Role};
@@ -25,6 +35,9 @@ crate::store_errors!("api_tokens");
 
 /// Every token's prefix.
 pub const PREFIX: &str = "epr";
+
+/// Hours in a day, for the expiry.
+const HOURS_PER_DAY: i64 = 24;
 
 /// The longest a token may live, in days.
 pub const MAX_DAYS: i64 = 365;
@@ -175,10 +188,18 @@ fn row_to_view(row: &PgRow, now: Timestamp) -> Result<TokenView, StoreError> {
     })
 }
 
-/// `t` as a [`SystemTime`], which [`Record::verify`] compares. A time before 1970 (never a token's) is the epoch.
-fn system_time(t: Timestamp) -> SystemTime {
-    let nanos = u64::try_from(t.as_nanosecond()).unwrap_or(0);
-    SystemTime::UNIX_EPOCH + std::time::Duration::from_nanos(nanos)
+/// `t` as a [`SystemTime`], which [`Record::verify`] compares.
+///
+/// # Errors
+///
+/// A stored time before 1970 or past the range of a `SystemTime` is corrupt data, never a token's (RCA-IN-6): it is
+/// an error, not the epoch.
+fn system_time(t: Timestamp) -> Result<SystemTime, StoreError> {
+    let bad = || StoreError::Db("a token time outside the range of a SystemTime".into());
+    let nanos = u64::try_from(t.as_nanosecond()).map_err(|_| bad())?;
+    SystemTime::UNIX_EPOCH
+        .checked_add(std::time::Duration::from_nanos(nanos))
+        .ok_or_else(bad)
 }
 
 /// A token's id as the database keeps it: the 32 hex digits as a UUID. `None` for anything else.
@@ -237,7 +258,12 @@ pub async fn issue(
     let prefix = prefix().ok_or_else(|| StoreError::Db("the token prefix is invalid".into()))?;
     let issued = tokens::issue(&prefix);
     let uuid = token_uuid(issued.id()).ok_or_else(|| StoreError::Db("issued a bad id".into()))?;
-    let expires = Timestamp::now() + SignedDuration::from_hours(24 * new.days);
+    // `problems` kept `days` to 1 to `MAX_DAYS`; the sums are still checked, as `days` is external.
+    let too_far = || StoreError::BadQuery(format!("a token lives 1 to {MAX_DAYS} days"));
+    let hours = new.days.checked_mul(HOURS_PER_DAY).ok_or_else(too_far)?;
+    let expires = Timestamp::now()
+        .checked_add(SignedDuration::from_hours(hours))
+        .map_err(|_| too_far())?;
     sqlx::query(
         "INSERT INTO api_tokens (token_id, name, hash, scopes, expires_at, created_by)
          VALUES ($1::uuid, $2, $3, $4, $5, $6)",
@@ -306,6 +332,7 @@ async fn append(
         });
     }
     let uuid = token_uuid(id).ok_or(StoreError::NotFound)?;
+    let new_version = crate::store::next_version(expected_version)?;
     let appended = crate::store::append_version(
         &mut *conn,
         STORE,
@@ -314,7 +341,7 @@ async fn append(
              VALUES ($1::uuid, $2, $3, $4, $5, $6) RETURNING token_id",
         )
         .bind(uuid)
-        .bind(expected_version + 1)
+        .bind(new_version)
         .bind(description)
         .bind(reason.is_some())
         .bind(reason)
@@ -414,9 +441,9 @@ pub async fn record(
         id: id.to_string(),
         hash: row.try_get("hash").map_err(db_err)?,
         scopes: scopes.iter().filter_map(|s| Scope::new(s).ok()).collect(),
-        expires_at: Some(system_time(expires.0)),
+        expires_at: Some(system_time(expires.0)?),
         revoked: row.try_get("revoked").map_err(db_err)?,
-        last_used_at: used.map(|u| system_time(u.0)),
+        last_used_at: used.map(|u| system_time(u.0)).transpose()?,
     };
     Ok(Some((record, row.try_get("name").map_err(db_err)?)))
 }
@@ -540,7 +567,7 @@ mod tests {
         for bad in [
             "",
             "not-a-token",
-            &id[..31],
+            id.get(..31).unwrap(),
             &format!("{id}0"),
             &id.replace('a', "g"),
         ] {

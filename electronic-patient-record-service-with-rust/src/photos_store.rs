@@ -10,6 +10,16 @@
 //! Withdrawing a photo is a new version with no bytes; earlier versions stay in the table (and so
 //! in backups), which is the same promise the rest of the record makes.
 
+// RCA-ENF-3: this module is converted, so the arithmetic lints are denied here; the rest of the crate follows.
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::default_numeric_fallback,
+    clippy::integer_division,
+    clippy::modulo_arithmetic,
+    clippy::as_conversions,
+    clippy::string_slice
+)]
+
 use crate::patients_store::{self, StoreError};
 use crate::pool::Db;
 use sha2::{Digest, Sha256};
@@ -19,7 +29,10 @@ use sqlx::{AssertSqlSafe, Row};
 crate::store_errors!("photos");
 
 /// The largest photo accepted, in bytes.
-pub const MAX_BYTES: usize = 512 * 1024;
+pub const MAX_KIB: usize = 512;
+
+/// The same in bytes.
+pub const MAX_BYTES: usize = MAX_KIB * 1024;
 
 /// A photo version as stored.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -58,7 +71,7 @@ pub fn validate(bytes: &[u8]) -> Result<&'static str, String> {
         return Err("the photo is empty".into());
     }
     if bytes.len() > MAX_BYTES {
-        return Err(format!("the photo is larger than {} KiB", MAX_BYTES / 1024));
+        return Err(format!("the photo is larger than {} KiB", MAX_KIB));
     }
     sniff(bytes).ok_or_else(|| "the photo must be a PNG or a JPEG".into())
 }
@@ -125,7 +138,8 @@ pub async fn put(
         None => None,
     };
     let now = current(&mut *db, patient_id).await?;
-    let have = now.as_ref().map_or(0, |p| p.version);
+    // No photo yet is version 0: the first is version 1 (declared in the photo spec).
+    let have = now.as_ref().map_or(0_i32, |p| p.version);
     if have != expected_version {
         return Err(StoreError::Conflict { current: have });
     }
@@ -140,6 +154,7 @@ pub async fn put(
             s
         })
     });
+    let new_version = crate::store::next_version(expected_version)?;
     // A concurrent writer took this version: the primary key refuses the second (CQ-12).
     let row = match crate::store::append_version(
         &mut *db,
@@ -150,7 +165,7 @@ pub async fn put(
                  VALUES ($1::uuid, $2, $3, $4, $5, $6, $7) RETURNING {COLUMNS}"
         )))
         .bind(id)
-        .bind(expected_version + 1)
+        .bind(new_version)
         .bind(author)
         .bind(reason.map(str::to_string))
         .bind(kind.map(str::to_string))
@@ -163,7 +178,7 @@ pub async fn put(
         crate::store::Appended::Taken => {
             let current = current(&mut *db, patient_id)
                 .await?
-                .map_or(0, |p| p.version);
+                .map_or(0_i32, |p| p.version);
             return Err(StoreError::Conflict { current });
         }
     };

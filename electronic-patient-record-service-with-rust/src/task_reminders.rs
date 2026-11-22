@@ -8,6 +8,16 @@
 //!
 //! Unset, no reminder is decided, so none shows on a list: the service logs a warning at start-up when it is off.
 
+// RCA-ENF-3: this module is converted, so the arithmetic lints are denied here; the rest of the crate follows.
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::default_numeric_fallback,
+    clippy::integer_division,
+    clippy::modulo_arithmetic,
+    clippy::as_conversions,
+    clippy::string_slice
+)]
+
 use crate::patients_store::StoreError;
 use crate::task_rules::ReminderNow;
 use crate::tasks_store;
@@ -29,7 +39,7 @@ pub fn interval_from(raw: Option<&str>) -> Result<Option<Duration>, String> {
         return Ok(None);
     };
     match raw.parse::<u64>() {
-        Ok(m) if (1..=1440).contains(&m) => Ok(Some(Duration::from_secs(m * 60))),
+        Ok(m) if (1..=1440).contains(&m) => Ok(Some(Duration::from_mins(m))),
         _ => Err(format!(
             "{SETTING} must be a whole number of minutes from 1 to 1440, not {raw:?}"
         )),
@@ -62,14 +72,22 @@ pub async fn run_once(db: &PgPool, today: Date) -> Result<Tick, StoreError> {
             ReminderNow::Skip { reason } => Some(reason.as_str()),
         };
         match tasks_store::decide_reminder(db, &r.task.id, r.on, skipped).await {
-            Ok(()) if skipped.is_some() => tick.skipped += 1,
-            Ok(()) => tick.sent += 1,
-            Err(StoreError::Conflict { .. }) => tick.already += 1,
+            Ok(()) if skipped.is_some() => count(&mut tick.skipped)?,
+            Ok(()) => count(&mut tick.sent)?,
+            Err(StoreError::Conflict { .. }) => count(&mut tick.already)?,
             Err(e) => return Err(e),
         }
     }
     tasks_store::record_run(db, today).await?;
     Ok(tick)
+}
+
+/// One more decision in a run's count. A count that no longer fits is an error, never a held or wrapped value.
+fn count(n: &mut usize) -> Result<(), StoreError> {
+    *n = n
+        .checked_add(1)
+        .ok_or_else(|| StoreError::Db("the reminder count overflows".into()))?;
+    Ok(())
 }
 
 /// Run the sender every `every`, on the site's today, until the service stops. Counts only are logged: no patient,
@@ -79,7 +97,7 @@ pub async fn run_loop(db: PgPool, every: Duration) {
     loop {
         ticks.tick().await;
         match run_once(&db, crate::site::today()).await {
-            Ok(t) if t.sent + t.skipped > 0 => {
+            Ok(t) if t.sent > 0 || t.skipped > 0 => {
                 tracing::info!(sent = t.sent, skipped = t.skipped, "task reminders decided");
             }
             Ok(_) => {}
