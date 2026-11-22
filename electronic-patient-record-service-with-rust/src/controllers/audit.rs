@@ -183,7 +183,7 @@ pub(super) async fn search_audited(
     event.resource_ref = Some("AuditLog".to_string());
     event.purpose_of_use = Some(Purpose::Audit.code().to_string());
     event.detail = Some(serde_json::json!({ "search": query.used(), "results": rows.len() }));
-    audit::append(db, audit::chain(), &event)
+    audit::append(db, &audit::chain(), &event)
         .await
         .map_err(Err)?;
     Ok((rows, next))
@@ -377,7 +377,7 @@ async fn export(
     event.detail = Some(serde_json::json!({
         "export": criteria.used(), "format": format, "rows": rows.len(), "truncated": more,
     }));
-    if let Err(e) = audit::append(&ctx.pool(), audit::chain(), &event).await {
+    if let Err(e) = audit::append(&ctx.pool(), &audit::chain(), &event).await {
         tracing::error!(error = %e, "audit export could not be audited");
         return ApiError::internal().into_response();
     }
@@ -439,7 +439,7 @@ async fn verify(
     {
         return r.into_response();
     }
-    match verify_audited(&ctx.pool(), audit::chain(), &agent, checkpoint.as_ref()).await {
+    match verify_audited(&ctx.pool(), &audit::chain(), &agent, checkpoint.as_ref()).await {
         Ok((status, body)) => (status, axum::Json(body)).into_response(),
         Err(e) => {
             tracing::error!(error = %e, "audit verification failed");

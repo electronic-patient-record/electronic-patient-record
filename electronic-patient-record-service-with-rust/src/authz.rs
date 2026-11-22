@@ -231,7 +231,7 @@ async fn audit_refusal(
         "method": method.as_str(),
         "roles": subject.map(|s| s.roles.iter().map(|r| r.as_str()).collect::<Vec<_>>()),
     }));
-    if let Err(e) = audit::append(db, audit::chain(), &event).await {
+    if let Err(e) = audit::append(db, &audit::chain(), &event).await {
         crate::metrics::UNAUDITED_REFUSALS.inc();
         tracing::error!(error = %e, "a refusal could not be audited");
     }

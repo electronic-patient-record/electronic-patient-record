@@ -643,7 +643,7 @@ async fn apply_message(
             "status": stored.assertion.status.word(),
             "control_id": inbound.control_id,
         })));
-        audit::append(&mut *tx, audit::chain(), &row)
+        audit::append(&mut *tx, &audit::chain(), &row)
             .await
             .map_err(|e| temporary(&StoreError::Db(e.to_string())))?;
     }
@@ -669,7 +669,7 @@ async fn apply_message(
         "candidates_cut": candidates_cut,
         "message_time_known": inbound.message_time.is_some(),
     })));
-    audit::append(&mut *tx, audit::chain(), &event)
+    audit::append(&mut *tx, &audit::chain(), &event)
         .await
         .map_err(|e| temporary(&StoreError::Db(e.to_string())))?;
     match mode {
@@ -824,7 +824,7 @@ async fn audit_refusal(
             Refusal::Temporary(_) => "temporary",
         },
     })));
-    if let Err(e) = audit::append(db, audit::chain(), &row).await {
+    if let Err(e) = audit::append(db, &audit::chain(), &row).await {
         tracing::error!(error = %e, "an ADT refusal could not be audited");
     }
     // Keep the message for a person (the work queue). A transient failure is not queued: the

@@ -77,7 +77,7 @@ async fn compare(
         ])
         .into_response());
     }
-    match compare_audited(&ctx.pool(), audit::chain(), &agent, &request).await {
+    match compare_audited(&ctx.pool(), &audit::chain(), &agent, &request).await {
         Ok(result) => format::json(result),
         Err(e) => {
             tracing::error!(error = %e, "refusing to answer: the access could not be audited");

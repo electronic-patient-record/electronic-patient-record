@@ -364,7 +364,7 @@ pub async fn record(attempt: &Attempt, conn: &mut PgConnection) -> Result<(), sq
     row.detail = Some(serde_json::json!({
         "outbox": attempt.outcome.as_str(), "kind": attempt.kind, "reason": attempt.reason,
     }));
-    audit::append(&mut *conn, audit::chain(), &row)
+    audit::append(&mut *conn, &audit::chain(), &row)
         .await
         .map_err(|e| sqlx::Error::Protocol(format!("outbox audit row: {e}")))?;
     Ok(())

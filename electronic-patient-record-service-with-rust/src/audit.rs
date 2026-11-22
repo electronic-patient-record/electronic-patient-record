@@ -16,7 +16,7 @@ use sha2::{Digest, Sha256};
 use sqlx::postgres::PgRow;
 use sqlx::{AssertSqlSafe, PgPool, Row};
 use std::fmt::Write as _;
-use std::sync::OnceLock;
+use std::sync::Arc;
 
 /// MAC domain for the audit chain.
 const DOMAIN: &str = "audit-chain";
@@ -270,15 +270,15 @@ fn preimage(prev: Option<&str>, recorded_at: &str, e: &Event) -> Vec<u8> {
 /// `EPR_INTEGRITY_MAC_KEY_ID` and `EPR_INTEGRITY_MAC_KEYS_RETIRED` (derived by the crate).
 const KEY_CONFIG: KeyConfig = KeyConfig::new("electronic-patient-record", "EPR");
 
-static CHAIN: OnceLock<Chain> = OnceLock::new();
-
-/// The process-wide chain, configured from the environment (see the private `KEY_CONFIG`). A key file that
+/// The running service's chain, configured from its settings (see the private `KEY_CONFIG`). A key file that
 /// cannot be read leaves the chain unkeyed and logs why; it never falls back to a stale inline key.
-pub fn chain() -> &'static Chain {
-    CHAIN.get_or_init(|| {
+pub fn chain() -> std::sync::Arc<Chain> {
+    let runtime = crate::runtime::Runtime::current();
+    let built = runtime.chain.get_or_init(|| {
+        let settings = runtime.settings();
         let source = integrity_mac::resolve_root_key(
-            crate::runtime::setting(&KEY_CONFIG.key_env()).as_deref(),
-            crate::runtime::setting(&KEY_CONFIG.key_file_env()).as_deref(),
+            settings.get(&KEY_CONFIG.key_env()).as_deref(),
+            settings.get(&KEY_CONFIG.key_file_env()).as_deref(),
         );
         if let Some(w) = &source.warning {
             tracing::warn!("{w}");
@@ -286,7 +286,7 @@ pub fn chain() -> &'static Chain {
         if let Some(e) = &source.error {
             tracing::error!("{e}");
         }
-        let retired = crate::runtime::setting(&KEY_CONFIG.retired_keys_env());
+        let retired = settings.get(&KEY_CONFIG.retired_keys_env());
         let chain = Chain::new(KeySet::load(&KEY_CONFIG, source.key.as_deref(), retired.as_deref()));
         if !chain.keyed() {
             tracing::warn!(
@@ -294,8 +294,9 @@ pub fn chain() -> &'static Chain {
                 KEY_CONFIG.key_env()
             );
         }
-        chain
-    })
+        Arc::new(chain)
+    });
+    Arc::clone(built)
 }
 
 /// Why an audit operation failed.
@@ -365,8 +366,6 @@ tokio::task_local! {
     pub static ORIGIN: Origin;
 }
 
-static SERVER: OnceLock<Option<String>> = OnceLock::new();
-
 /// The server address named by `value`: an `http` or `https` URL with a host and no credentials.
 /// Blank or absent is `None`.
 ///
@@ -394,7 +393,7 @@ pub fn server_from(value: Option<&str>) -> Result<Option<String>, String> {
 /// As [`server_from`].
 pub fn init_server() -> Result<(), String> {
     let server = server_from(crate::runtime::setting("EPR_AUDIT_SERVER_ADDRESS").as_deref())?;
-    let _ = SERVER.set(server);
+    let _ = crate::runtime::Runtime::current().audit_server.set(server);
     Ok(())
 }
 
@@ -474,7 +473,11 @@ fn with_request_id(event: &Event) -> Event {
 /// and this server's address (`EPR_AUDIT_SERVER_ADDRESS`) under `detail`, so the row itself holds them and
 /// the digest covers them. As with the actor, these come from the middleware, not from a handler.
 fn with_origin(event: &Event) -> Event {
-    let server = SERVER.get().cloned().flatten();
+    let server = crate::runtime::Runtime::current()
+        .audit_server
+        .get()
+        .cloned()
+        .flatten();
     with_origin_and_server(event, server)
 }
 

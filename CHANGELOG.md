@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-22 - The audit chain and server address belong to the runtime (QA-16, stage 2, first static)
+
+- **Clinical risk:** none intended: the same chain is built from the same settings. `audit::chain()` now returns an `Arc<Chain>` (built once per runtime) instead of a `&'static`, so its callers pass `&audit::chain()`.
+- **Changed:** `Runtime` owns the chain and `EPR_AUDIT_SERVER_ADDRESS`, so two apps in one program can hold different keys; outside a request the process runtime is one shared value. A unit test builds a keyed and an unkeyed runtime side by side.
+- **Not done / not verified:** the other statics (auth verifier and `REQUIRE_AUTH`, referral timeouts, site rules, feed health, `adt_feed`) are still process-wide; a spawned task does not inherit the runtime, so a background job reads the process runtime's chain. Ran: clippy over the workspace and 109 tests matching audit, chain, authz and metrics, with the database; not the whole suite.
+
 ## 2026-11-22 - Spec: arithmetic must not panic or wrap (QA-17)
 
 - **Clinical risk:** none: a specification. No code changed.

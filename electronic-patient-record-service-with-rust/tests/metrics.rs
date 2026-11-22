@@ -57,7 +57,7 @@ async fn a_failed_audit_append_is_counted() {
         .connect_lazy("postgres://nobody@127.0.0.1:1/none")
         .unwrap();
     let event = Event::new(Action::Read, "tester");
-    assert!(audit::append(&db, audit::chain(), &event).await.is_err());
+    assert!(audit::append(&db, &audit::chain(), &event).await.is_err());
     assert!(metrics::AUDIT_APPEND_FAILURES.get() > before);
 }
 

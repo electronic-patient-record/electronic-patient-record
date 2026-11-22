@@ -212,7 +212,7 @@ async fn answer_mw(State(gate): State<Gate>, req: Request, next: Next) -> Respon
             "class": class.name(),
             "method": method.as_str(),
         }));
-        if let Err(e) = audit::append(&gate.db, audit::chain(), &event).await {
+        if let Err(e) = audit::append(&gate.db, &audit::chain(), &event).await {
             crate::metrics::UNAUDITED_REFUSALS.inc();
             tracing::error!(error = %e, "a rate-limit refusal could not be audited");
         }

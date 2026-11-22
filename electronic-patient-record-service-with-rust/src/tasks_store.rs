@@ -169,7 +169,7 @@ async fn audit_row(
         "source": task.source.kind,
         "status": task.status.word(),
     }));
-    audit::append(&mut *conn, audit::chain(), &row)
+    audit::append(&mut *conn, &audit::chain(), &row)
         .await
         .map(|_| ())
         .map_err(db_err)

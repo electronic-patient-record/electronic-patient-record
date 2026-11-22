@@ -16,7 +16,7 @@
 //! that spawns must pass `Runtime::current()` in and call [`Runtime::scope`] on the new task.
 
 use std::future::Future;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock, OnceLock};
 
 use axum::{extract::Request, middleware::Next, response::Response};
 
@@ -67,11 +67,24 @@ impl std::fmt::Debug for Settings {
     }
 }
 
-/// One running service's settings.
-#[derive(Clone, Debug)]
+/// One running service's settings, and the state built from them the first time it is needed.
 pub struct Runtime {
     settings: Settings,
+    /// The audit chain, keyed from the settings (`audit::chain`).
+    pub(crate) chain: OnceLock<Arc<crate::audit::Chain>>,
+    /// `EPR_AUDIT_SERVER_ADDRESS`, checked at start (`audit::init_server`).
+    pub(crate) audit_server: OnceLock<Option<String>>,
 }
+
+impl std::fmt::Debug for Runtime {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Never print what was built from keys.
+        f.write_str("Runtime(..)")
+    }
+}
+
+/// The runtime used outside a request when none was given: it reads the process environment, and there is one.
+static PROCESS: LazyLock<Arc<Runtime>> = LazyLock::new(|| Arc::new(Runtime::process()));
 
 tokio::task_local! {
     static CURRENT: Arc<Runtime>;
@@ -81,15 +94,17 @@ impl Runtime {
     /// A runtime that reads the process environment: what a service booted the usual way has.
     #[must_use]
     pub fn process() -> Self {
-        Self {
-            settings: Settings::process(),
-        }
+        Self::with_settings(Settings::process())
     }
 
     /// A runtime that reads `settings` and nothing else.
     #[must_use]
     pub fn with_settings(settings: Settings) -> Self {
-        Self { settings }
+        Self {
+            settings,
+            chain: OnceLock::new(),
+            audit_server: OnceLock::new(),
+        }
     }
 
     /// The runtime of the running request, or the process default outside one.
@@ -97,7 +112,7 @@ impl Runtime {
     pub fn current() -> Arc<Runtime> {
         CURRENT
             .try_with(Arc::clone)
-            .unwrap_or_else(|_| Arc::new(Runtime::process()))
+            .unwrap_or_else(|_| Arc::clone(&PROCESS))
     }
 
     /// This runtime's settings.
@@ -179,5 +194,28 @@ mod tests {
         assert_eq!(s.lookup()("K").as_deref(), Some("v"));
         let l = Settings::from_lookup(Arc::new(|n| (n == "Z").then(|| "z".to_string())));
         assert_eq!(l.get("Z").as_deref(), Some("z"));
+    }
+
+    #[tokio::test]
+    async fn two_runtimes_in_one_program_build_their_own_audit_chain() {
+        let key = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"; // 32 bytes of hex, not a pattern
+        let keyed = Arc::new(Runtime::with_settings(Settings::from_pairs(&[(
+            "EPR_INTEGRITY_MAC_KEY",
+            key,
+        )])));
+        let unkeyed = Arc::new(Runtime::with_settings(Settings::from_pairs(&[])));
+        let (a, b) = tokio::join!(
+            Runtime::scope(keyed.clone(), async { crate::audit::chain().keyed() }),
+            Runtime::scope(unkeyed.clone(), async { crate::audit::chain().keyed() }),
+        );
+        assert!(a, "the runtime given a key has a keyed chain");
+        assert!(
+            !b,
+            "the runtime given none does not, though the other has one"
+        );
+        // Built once per runtime, not once per call.
+        let first = Runtime::scope(keyed.clone(), async { crate::audit::chain() }).await;
+        let second = Runtime::scope(keyed, async { crate::audit::chain() }).await;
+        assert!(Arc::ptr_eq(&first, &second));
     }
 }

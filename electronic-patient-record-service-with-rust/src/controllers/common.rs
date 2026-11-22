@@ -153,7 +153,7 @@ pub(super) async fn authorize_scoped(
         event.resource_ref = Some(format!("{}/{}", resource.name(), action.name()));
         event.purpose_of_use = Some(purpose.code().to_string());
         event.detail = Some(serde_json::json!({ "denied": "permission_basis_required" }));
-        if let Err(e) = audit::append(db, audit::chain(), &event).await {
+        if let Err(e) = audit::append(db, &audit::chain(), &event).await {
             crate::metrics::UNAUDITED_REFUSALS.inc();
             tracing::error!(error = %e, "a refusal could not be audited");
         }
@@ -266,7 +266,7 @@ pub(super) async fn authorize_scoped(
         );
     }
     event.detail = Some(detail);
-    if let Err(e) = audit::append(db, audit::chain(), &event).await {
+    if let Err(e) = audit::append(db, &audit::chain(), &event).await {
         crate::metrics::UNAUDITED_REFUSALS.inc();
         tracing::error!(error = %e, "a refusal could not be audited");
     }
@@ -333,7 +333,7 @@ pub(super) async fn audit_resource(
     event.resource_ref = Some(access.resource.to_string());
     event.purpose_of_use = Some(access.purpose.code().to_string());
     event.detail = Some(detail);
-    audit::append(&mut *db, audit::chain(), &event)
+    audit::append(&mut *db, &audit::chain(), &event)
         .await
         .map(|_| ())
         .map_err(|e| audit_failed(&e))

@@ -113,7 +113,7 @@ async fn answer_mw(State(gate): State<Gate>, req: Request, next: Next) -> Respon
             "method": method.as_str(),
         }));
         event.network_address = address;
-        if let Err(e) = audit::append(&gate.db, audit::chain(), &event).await {
+        if let Err(e) = audit::append(&gate.db, &audit::chain(), &event).await {
             crate::metrics::UNAUDITED_REFUSALS.inc();
             tracing::error!(error = %e, "a lockout could not be audited");
         }

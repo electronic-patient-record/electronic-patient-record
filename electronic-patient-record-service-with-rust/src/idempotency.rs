@@ -97,7 +97,7 @@ async fn audit_replay_mw(State(gate): State<Gate>, req: Request, next: Next) -> 
     let mut event = Event::new(Action::Read, agent);
     event.resource_ref = Some("IdempotentReplay".to_string());
     event.detail = Some(serde_json::json!({ "method": method, "path": path }));
-    if let Err(e) = audit::append(&gate.db, audit::chain(), &event).await {
+    if let Err(e) = audit::append(&gate.db, &audit::chain(), &event).await {
         tracing::error!(error = %e, "refusing to replay: it could not be audited");
         return ApiError::internal().into_response();
     }
