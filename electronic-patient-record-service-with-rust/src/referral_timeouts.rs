@@ -21,7 +21,6 @@
 
 use crate::referrals_store::Priority;
 use std::collections::BTreeMap;
-use std::sync::OnceLock;
 
 /// The longest period accepted, in days.
 pub const MAX_DAYS: u32 = 365;
@@ -53,8 +52,6 @@ pub fn word(p: Priority) -> &'static str {
         Priority::Stat => "stat",
     }
 }
-
-static CURRENT: OnceLock<Timeouts> = OnceLock::new();
 
 impl Timeouts {
     /// Parse the setting. Blank or absent is no timeouts.
@@ -132,14 +129,24 @@ impl Timeouts {
 /// As [`Timeouts::parse`].
 pub fn init() -> Result<(), String> {
     let parsed = Timeouts::parse(crate::runtime::setting("EPR_REFERRAL_TIMEOUTS").as_deref())?;
-    let _ = CURRENT.set(parsed);
+    let _ = crate::runtime::Runtime::current()
+        .referral_timeouts
+        .set(parsed);
     Ok(())
 }
 
-/// The periods [`init`] checked, or none when it has not run (a test that does not set them).
+/// The periods [`init`] checked for the current runtime. When it has not run (a test that boots no service),
+/// the runtime's own setting is read, and none when it is unset or wrong: the start-up check is what refuses a
+/// wrong one.
 #[must_use]
 pub fn current() -> Timeouts {
-    CURRENT.get().cloned().unwrap_or_default()
+    crate::runtime::Runtime::current()
+        .referral_timeouts
+        .get_or_init(|| {
+            Timeouts::parse(crate::runtime::setting("EPR_REFERRAL_TIMEOUTS").as_deref())
+                .unwrap_or_default()
+        })
+        .clone()
 }
 
 #[cfg(test)]

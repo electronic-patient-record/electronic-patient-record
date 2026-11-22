@@ -74,6 +74,8 @@ pub struct Runtime {
     pub(crate) chain: OnceLock<Arc<crate::audit::Chain>>,
     /// `EPR_AUDIT_SERVER_ADDRESS`, checked at start (`audit::init_server`).
     pub(crate) audit_server: OnceLock<Option<String>>,
+    /// `EPR_REFERRAL_TIMEOUTS`, checked at start (`referral_timeouts::init`).
+    pub(crate) referral_timeouts: OnceLock<crate::referral_timeouts::Timeouts>,
 }
 
 impl std::fmt::Debug for Runtime {
@@ -104,6 +106,7 @@ impl Runtime {
             settings,
             chain: OnceLock::new(),
             audit_server: OnceLock::new(),
+            referral_timeouts: OnceLock::new(),
         }
     }
 
@@ -217,5 +220,27 @@ mod tests {
         let first = Runtime::scope(keyed.clone(), async { crate::audit::chain() }).await;
         let second = Runtime::scope(keyed, async { crate::audit::chain() }).await;
         assert!(Arc::ptr_eq(&first, &second));
+    }
+
+    #[tokio::test]
+    async fn two_runtimes_in_one_program_have_their_own_referral_timeouts() {
+        let with = Arc::new(Runtime::with_settings(Settings::from_pairs(&[(
+            "EPR_REFERRAL_TIMEOUTS",
+            r#"{"no_response_days":{"urgent":2}}"#,
+        )])));
+        let without = Arc::new(Runtime::with_settings(Settings::from_pairs(&[])));
+        let (a, b) = tokio::join!(
+            Runtime::scope(with, async {
+                crate::referral_timeouts::current()
+                    .untimed_no_response()
+                    .len()
+            }),
+            Runtime::scope(without, async {
+                crate::referral_timeouts::current()
+                    .untimed_no_response()
+                    .len()
+            }),
+        );
+        assert_eq!((a, b), (3, 4), "one priority is timed in the first only");
     }
 }

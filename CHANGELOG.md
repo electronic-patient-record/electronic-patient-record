@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-22 - Referral timeouts move into the per-app runtime (QA-16 stage 2)
+
+- **Clinical risk:** none intended: the same periods are read from the same setting; only where they are kept changes.
+- **Changed:** `EPR_REFERRAL_TIMEOUTS` is held in `Runtime` instead of a process-wide `OnceLock`, so two apps in one program can time referrals differently; `referral_timeouts::current()` reads the runtime's setting when `init` has not run. Test `two_runtimes_in_one_program_have_their_own_referral_timeouts`.
+- **Not done / not verified:** the remaining statics (auth, site rules, feed health, ADT feed) and stage 3 (moving test files off `set_var`). CI not yet observed. Tests: lib and `http_referral_worklist` and `runtime_boot`; the full suite was not rerun for this item.
+
 ## 2026-11-22 - First arithmetic sites converted to the checked rules (QA-17)
 
 - **Clinical risk:** low, but touches what a clinician sees: an amendment's due time and overdue flag, a suspicion pathway's target days, small-number suppression totals and the late-entry check on an observation. Normal values give the same answers as before; only a date or count outside its type's range now differs, and then the answer is unknown (`None`, shown as null) instead of a panic or a clamped number. No hazard-log entry added; none of these ranges is reachable from valid data.
