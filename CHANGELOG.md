@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-22 - audit.rs under the arithmetic lints (QA-17)
+
+- **Clinical risk:** low, but it is the audit trail's verifier: no verdict changes for a database the service itself wrote. Differences: a row count that overflows `usize` (not reachable) is an error instead of `usize::MAX`; an archive anchor whose `first_id` is the smallest `i64` is reported `Broken` ("the anchor's first id is not valid") instead of overflowing. Hazard log not edited.
+- **Changed:** `audit.rs` denies the arithmetic lints for the module (RCA-ENF-3); `bump` counter with a test at `usize::MAX`; `valid_instant` slices with `get`.
+- **Not done / not verified:** the anchor-id case has no test of its own (it needs an archive row with a minimum id; none is built). Full suite on a fresh database: 857 passed, 6 failed (Java `fhir_validator`). CI not observed.
+
 ## 2026-11-22 - Every append-only store uses the checked next version (QA-17)
 
 - **Clinical risk:** none intended: the version written is the same as before for every reachable value; at `i32::MAX` an append now answers a 400-class `BadQuery` ("version: out of range") instead of overflowing.

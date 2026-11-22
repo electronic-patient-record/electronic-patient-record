@@ -10,6 +10,16 @@
 //! The table itself refuses `UPDATE`, `DELETE` and `TRUNCATE` (see the
 //! migration), so the chain is a second line of defence.
 
+// RCA-ENF-3: this module is converted, so the arithmetic lints are denied here; the rest of the crate follows.
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::default_numeric_fallback,
+    clippy::integer_division,
+    clippy::modulo_arithmetic,
+    clippy::as_conversions,
+    clippy::string_slice
+)]
+
 use crate::pool::Db;
 use integrity_mac::{KeyConfig, KeySet};
 use sha2::{Digest, Sha256};
@@ -311,6 +321,15 @@ impl std::fmt::Display for AuditError {
 impl std::error::Error for AuditError {}
 
 /// An audit failure from any displayable error, keeping only its text.
+/// Count one more row of a verification. A count that no longer fits is an error, never a held or wrapped value
+/// (RCA-AGG-3): the verdict would otherwise report fewer rows than were read.
+fn bump(counter: &mut usize) -> Result<(), AuditError> {
+    *counter = counter
+        .checked_add(1)
+        .ok_or_else(|| err("audit verification: row count overflows"))?;
+    Ok(())
+}
+
 fn err(e: impl std::fmt::Display) -> AuditError {
     AuditError(e.to_string())
 }
@@ -932,16 +951,15 @@ pub struct AuditRow {
 
 /// Whether `v` is `YYYY-MM-DD` or `YYYY-MM-DDTHH:MM:SSZ` and a real time to the database.
 async fn valid_instant(db: &PgPool, v: &str) -> bool {
-    let shaped = v.len() >= 10
-        && v.is_char_boundary(10)
-        && v[..10].bytes().enumerate().all(|(i, b)| {
+    let shaped = v.get(..10).is_some_and(|head| {
+        head.bytes().enumerate().all(|(i, b)| {
             if i == 4 || i == 7 {
                 b == b'-'
             } else {
                 b.is_ascii_digit()
             }
         })
-        && (v.len() == 10 || (v.as_bytes().get(10) == Some(&b'T') && v.ends_with('Z')));
+    }) && (v.len() == 10 || (v.as_bytes().get(10) == Some(&b'T') && v.ends_with('Z')));
     shaped
         && sqlx::query("SELECT $1::timestamptz AS t")
             .bind(v.to_string())
@@ -1205,7 +1223,7 @@ pub async fn verify_against(
             return Ok((verdict, head));
         }
         for r in &rows {
-            checked += 1;
+            bump(&mut checked)?;
             let id: i64 = r.try_get("id").map_err(err)?;
             last_id = id;
             if let Some(c) = checkpoint
@@ -1241,12 +1259,12 @@ pub async fn verify_against(
                 // The link to the previous row was already checked from the stored digests, so
                 // the scan goes on: a break further down is still found.
                 RowCheck::KeyNotHeld(key) => {
-                    unchecked += 1;
+                    bump(&mut unchecked)?;
                     first_unchecked.get_or_insert(id);
                     causes.insert(format!("key {key} is not held"));
                 }
                 RowCheck::SchemeUnknown(scheme) => {
-                    unchecked += 1;
+                    bump(&mut unchecked)?;
                     first_unchecked.get_or_insert(id);
                     causes.insert(format!("scheme {scheme} is not understood by this build"));
                 }
@@ -1340,7 +1358,10 @@ pub async fn verify_archive(db: &PgPool, chain: &Chain, batch: i64) -> Result<Ve
                 "the anchor's partition name is not a plain name".into(),
             ));
         }
-        let mut after = first_id - 1;
+        // An id before the first possible one is not an id (RCA-DECL-5): the anchor is broken, not repaired.
+        let Some(mut after) = first_id.checked_sub(1) else {
+            return Ok(broken("the anchor's first id is not valid".into()));
+        };
         let mut previous = first_prev.clone();
         let mut count: i64 = 0;
         let mut newest: Option<(i64, String)> = None;
@@ -1362,7 +1383,9 @@ pub async fn verify_archive(db: &PgPool, chain: &Chain, batch: i64) -> Result<Ve
                 break;
             }
             for r in &rows {
-                count += 1;
+                count = count
+                    .checked_add(1)
+                    .ok_or_else(|| err("audit verification: archived row count overflows"))?;
                 let id: i64 = r.try_get("id").map_err(err)?;
                 after = id;
                 let stored_prev: Option<String> = r.try_get("prev_digest").map_err(err)?;
@@ -1387,12 +1410,12 @@ pub async fn verify_archive(db: &PgPool, chain: &Chain, batch: i64) -> Result<Ve
                         });
                     }
                     RowCheck::KeyNotHeld(key) => {
-                        unchecked += 1;
+                        bump(&mut unchecked)?;
                         first_unchecked.get_or_insert(id);
                         causes.insert(format!("key {key} is not held"));
                     }
                     RowCheck::SchemeUnknown(scheme) => {
-                        unchecked += 1;
+                        bump(&mut unchecked)?;
                         first_unchecked.get_or_insert(id);
                         causes.insert(format!("scheme {scheme} is not understood by this build"));
                     }
@@ -1414,7 +1437,10 @@ pub async fn verify_archive(db: &PgPool, chain: &Chain, batch: i64) -> Result<Ve
                 ));
             }
         }
-        checked += usize::try_from(count).unwrap_or(usize::MAX);
+        checked = usize::try_from(count)
+            .ok()
+            .and_then(|c| checked.checked_add(c))
+            .ok_or_else(|| err("audit verification: checked row count overflows"))?;
         linked_to = Some(last_digest);
     }
     Ok(match first_unchecked {
@@ -1430,6 +1456,23 @@ pub async fn verify_archive(db: &PgPool, chain: &Chain, batch: i64) -> Result<Ve
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_row_count_that_no_longer_fits_is_an_error_not_a_held_value() {
+        let mut n = 0_usize;
+        bump(&mut n).unwrap();
+        assert_eq!(n, 1);
+        let mut full = usize::MAX;
+        assert_eq!(
+            bump(&mut full).unwrap_err().0,
+            "audit verification: row count overflows"
+        );
+        assert_eq!(
+            full,
+            usize::MAX,
+            "the count is not changed by a failed update"
+        );
+    }
+
     use super::*;
 
     const KEY: &str = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
@@ -1461,7 +1504,7 @@ mod tests {
         e.break_glass = true;
         assert_ne!(base, c.digest(None, "2026-01-01T00:00:00.000000Z", &e));
         let mut e = ev();
-        e.detail = Some(serde_json::json!({"k": 1}));
+        e.detail = Some(serde_json::json!({"k": 1_i32}));
         assert_ne!(base, c.digest(None, "2026-01-01T00:00:00.000000Z", &e));
     }
 
@@ -1537,11 +1580,11 @@ mod tests {
     #[test]
     fn the_request_id_is_added_to_the_detail_and_overwrites_a_handlers_claim() {
         let mut e = Event::new(Action::Read, "a".to_string());
-        e.detail = Some(serde_json::json!({"n": 1, "request_id": "forged"}));
+        e.detail = Some(serde_json::json!({"n": 1_i32, "request_id": "forged"}));
         let out = REQUEST_ID.sync_scope("req-1".to_string(), || with_request_id(&e));
         let d = out.detail.unwrap();
         assert_eq!(d["request_id"], "req-1");
-        assert_eq!(d["n"], 1);
+        assert_eq!(d["n"], 1_i32);
         let bare = Event::new(Action::Read, "a".to_string());
         let out = REQUEST_ID.sync_scope("req-2".to_string(), || with_request_id(&bare));
         assert_eq!(out.detail.unwrap()["request_id"], "req-2");
@@ -1552,10 +1595,10 @@ mod tests {
     #[test]
     fn the_request_actor_is_added_to_the_detail_and_overwrites_a_handlers_claim() {
         let mut e = ev();
-        e.detail = Some(serde_json::json!({"n": 1, "actor": {"roles": ["admin"]}}));
+        e.detail = Some(serde_json::json!({"n": 1_i32, "actor": {"roles": ["admin"]}}));
         let out = ACTOR.sync_scope(actor(), || with_actor(&e));
         let d = out.detail.unwrap();
-        assert_eq!(d["n"], 1);
+        assert_eq!(d["n"], 1_i32);
         assert_eq!(d["actor"]["roles"], serde_json::json!(["clinician"]));
         assert_eq!(
             d["actor"]["organisations"],
@@ -1582,7 +1625,7 @@ mod tests {
             permission: Some("could-not-ask:unconscious".into()),
         };
         let mut e = Event::new(Action::Read, "a");
-        e.detail = Some(serde_json::json!({ "interaction": "forged", "n": 1 }));
+        e.detail = Some(serde_json::json!({ "interaction": "forged", "n": 1_i32 }));
         let out = ORIGIN.sync_scope(origin, || {
             with_origin_and_server(&e, Some("https://e.example".into()))
         });
@@ -1591,7 +1634,7 @@ mod tests {
         assert_eq!(d["interaction"], "read", "a handler cannot write it");
         assert_eq!(d["server"], "https://e.example");
         assert_eq!(d["permission_basis"], "could-not-ask:unconscious");
-        assert_eq!(d["n"], 1);
+        assert_eq!(d["n"], 1_i32);
     }
 
     #[test]
