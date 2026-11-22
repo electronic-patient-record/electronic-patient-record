@@ -111,7 +111,7 @@ impl App {
         let runtime = ctx
             .shared_store
             .get_ref::<Arc<Runtime>>()
-            .map_or_else(|| Arc::new(Runtime::process()), |r| (*r).clone());
+            .map_or_else(Runtime::current, |r| (*r).clone());
         let router = router.layer(axum::middleware::from_fn_with_state(
             runtime,
             crate::runtime::scope_mw,
