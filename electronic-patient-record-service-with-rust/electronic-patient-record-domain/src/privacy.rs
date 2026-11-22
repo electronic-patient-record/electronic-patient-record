@@ -275,7 +275,8 @@ mod tests {
             .zip(&rows)
             .filter(|(_, r)| r.cell == Cell::Hidden)
             .map(|((_, n), _)| *n)
-            .sum();
+            .try_fold(0_u64, u64::checked_add)
+            .unwrap();
         assert!(hidden_sum >= 5, "{rows:?}");
         // 1 and 2 are small; together 3 < 5, so 7 is hidden as well.
         assert_eq!(shown(&rows), vec![None, None, None, Some(90)]);

@@ -241,7 +241,7 @@ pub fn changed(was: &Suspicion, now: &Suspicion) -> Vec<&'static str> {
 /// Why an amendment is refused, if it is: no reason, a reason too long, or nothing changed.
 #[must_use]
 pub fn amendment_refusal(was: &Suspicion, now: &Suspicion, reason: Option<&str>) -> Option<String> {
-    let reason = reason.map(str::trim).unwrap_or_default();
+    let reason = reason.map_or("", str::trim);
     if reason.is_empty() {
         return Some("an amendment needs a reason".into());
     }

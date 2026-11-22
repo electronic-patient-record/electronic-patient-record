@@ -413,7 +413,7 @@ impl Notice {
                 "refused",
                 vec![serde_json::json!({
                     "url": "ground",
-                    "valueCode": serde_json::to_value(ground).ok().and_then(|g| g.as_str().map(str::to_owned)).unwrap_or_default()
+                    "valueCode": serde_json::to_value(ground).ok().map_or_else(String::new, |g| g.as_str().map_or_else(String::new, str::to_owned))
                 })],
             ),
         };

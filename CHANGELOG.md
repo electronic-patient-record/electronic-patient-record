@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-22 - Checked-arithmetic enforcement: release overflow checks, banned methods, a grep gate, settings that fail loudly (QA-17)
+
+- **Clinical risk:** low, but one behaviour change: a malformed `EPR_BREAK_GLASS_REVIEW_HOURS` or `EPR_OBSERVATION_LATE_DAYS` (set to anything but a whole number in range, an empty value included) now stops the service at start instead of using 72 hours or 7 days silently (RCA-IN-4). Unset still means the default. No such setting is in the repository's compose or environment files.
+- **Changed:** `overflow-checks = true` in the release profiles (RCA-ENF-4); `clippy.toml` bans `Iterator::sum` and `product`, `Duration::from_secs_f*`, `Instant::duration_since`, `saturating_duration_since`, `Ord::clamp`, `Saturating` and `Wrapping`; the five `unwrap_or_default` and `sum` uses in the domain crate and tests that tripped it were rewritten; new gate `service-checked-arithmetic` in `ci.yml` and `ci-local.sh`; `break_glass::review_due_hours` and `observations_store::late_days_from` return `Result`, with `check_settings` called at start. Tests assert the error for each bad value.
+- **Not done / not verified:** `Option::unwrap_or_default` is not yet banned (51 sites, QA-17); the matcher has no `clippy.toml` (its float sums); four known hits of the grep gate remain, listed in the script with reasons; `arithmetic_side_effects` and the other RCA-ENF-1 lints are still not denied. Full suite on a fresh database: 854 passed, 6 failed (the Java `fhir_validator` tests). The gate script itself has no test of its own beyond a probe I ran by hand. CI not observed.
+
 ## 2026-11-22 - A date outside the calendar is refused, not guessed (QA-17, RCA-DECL-5)
 
 - **Clinical risk:** low: a reading whose limit date cannot be computed (an absurd late-entry setting or birth date) now gets a 422 `effective_at_out_of_range` instead of being treated as needing a reason or as before birth.

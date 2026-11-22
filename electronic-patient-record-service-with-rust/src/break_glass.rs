@@ -28,19 +28,39 @@ pub const GRANT_HOURS: i64 = 4;
 pub const DEFAULT_REVIEW_DUE_HOURS: i64 = 72;
 
 /// The hours a grant may wait for review: `EPR_BREAK_GLASS_REVIEW_HOURS` when it is a whole number from 1 to
-/// 8760, else [`DEFAULT_REVIEW_DUE_HOURS`].
-#[must_use]
-pub fn review_due_hours() -> i64 {
+/// 8760, [`DEFAULT_REVIEW_DUE_HOURS`] when it is not set.
+///
+/// # Errors
+///
+/// The text naming the setting when it is set to anything else, empty included (RCA-IN-3, RCA-IN-4).
+pub fn review_due_hours() -> Result<i64, String> {
     due_hours_from(crate::runtime::setting("EPR_BREAK_GLASS_REVIEW_HOURS").as_deref())
 }
 
-/// The review deadline in hours from a setting: a whole number from 1 to 8760 (a year), else the default. A bad value
-/// falls back rather than stopping the service.
-fn due_hours_from(value: Option<&str>) -> i64 {
-    value
-        .and_then(|v| v.trim().parse::<i64>().ok())
+/// Check `EPR_BREAK_GLASS_REVIEW_HOURS` at start: a setting that is wrong stops the service (RCA-IN-4).
+///
+/// # Errors
+///
+/// As [`review_due_hours`].
+pub fn check_settings() -> Result<(), String> {
+    review_due_hours().map(|_| ())
+}
+
+/// The review deadline in hours from a setting. Absent is the default (RCA-IN-3, declared in EC-11); a value
+/// that is set but is not a whole number from 1 to 8760 (a year) is an error, never the default.
+fn due_hours_from(value: Option<&str>) -> Result<i64, String> {
+    let Some(text) = value else {
+        return Ok(DEFAULT_REVIEW_DUE_HOURS); // EC-11: absent means the default
+    };
+    text.trim()
+        .parse::<i64>()
+        .ok()
         .filter(|h| (1..=8760).contains(h))
-        .unwrap_or(DEFAULT_REVIEW_DUE_HOURS)
+        .ok_or_else(|| {
+            format!(
+                "EPR_BREAK_GLASS_REVIEW_HOURS must be a whole number from 1 to 8760, not {text:?}"
+            )
+        })
 }
 
 /// The most grants a listing returns.
@@ -107,8 +127,9 @@ const TS: &str = "'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"'";
 
 /// The `SELECT` for a grant joined to its review, if any, with the expiry both as text and as a Unix second for the
 /// policy engine.
-fn select() -> String {
-    format!(
+fn select() -> Result<String, StoreError> {
+    let hours = review_due_hours().map_err(StoreError::Db)?;
+    Ok(format!(
         "SELECT g.grant_id::text AS id, g.patient_id::text AS patient_id, g.subject, g.reason,
                 to_char(g.granted_at AT TIME ZONE 'UTC', {TS}) AS granted_at,
                 to_char(g.expires_at AT TIME ZONE 'UTC', {TS}) AS expires_at,
@@ -118,8 +139,8 @@ fn select() -> String {
                 (r.grant_id IS NULL
                  AND g.granted_at < now() - make_interval(hours => {}::int)) AS overdue
          FROM break_glass_grants g LEFT JOIN break_glass_reviews r USING (grant_id)",
-        review_due_hours()
-    )
+        hours
+    ))
 }
 
 /// Read one row of [`select`] into a [`Grant`]; a row with a `reviewed_by` has a review, one without is unreviewed.
@@ -170,7 +191,7 @@ pub async fn active(
     let row = sqlx::query(AssertSqlSafe(format!(
         "{} WHERE g.patient_id = $1::uuid AND g.subject = $2 AND g.expires_at > now()
                  ORDER BY g.expires_at DESC LIMIT 1",
-        select()
+        select()?
     )))
     .bind(patient_id)
     .bind(subject)
@@ -233,7 +254,7 @@ pub async fn get(db: impl Into<Db<'_>>, id: &str) -> Result<Grant, StoreError> {
     let id = ids::uuid(id).ok_or(StoreError::NotFound)?;
     let row = sqlx::query(AssertSqlSafe(format!(
         "{} WHERE g.grant_id = $1::uuid",
-        select()
+        select()?
     )))
     .bind(id)
     .fetch_optional(&mut *db)
@@ -253,7 +274,7 @@ pub async fn unreviewed(db: impl Into<Db<'_>>) -> Result<crate::page::Page<Grant
     let db = &mut *conn;
     let rows = sqlx::query(AssertSqlSafe(format!(
         "{} WHERE r.grant_id IS NULL ORDER BY g.granted_at, g.grant_id LIMIT {}",
-        select(),
+        select()?,
         LIST_LIMIT + 1
     )))
     .fetch_all(&mut *db)
@@ -290,11 +311,11 @@ pub async fn count_unreviewed(db: impl Into<Db<'_>>) -> Result<i64, StoreError> 
 pub async fn count_overdue(db: impl Into<Db<'_>>) -> Result<i64, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
+    let hours = review_due_hours().map_err(StoreError::Db)?;
     let row = sqlx::query(AssertSqlSafe(format!(
                 "SELECT count(*) AS n FROM break_glass_grants g
                  LEFT JOIN break_glass_reviews r USING (grant_id)
-                 WHERE r.grant_id IS NULL AND g.granted_at < now() - make_interval(hours => {}::int)",
-                review_due_hours()
+                 WHERE r.grant_id IS NULL AND g.granted_at < now() - make_interval(hours => {hours}::int)"
             )))
 .fetch_optional(&mut *db)
         .await
@@ -355,14 +376,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_review_limit_is_a_whole_number_of_hours_or_the_default() {
-        assert_eq!(due_hours_from(None), DEFAULT_REVIEW_DUE_HOURS);
-        assert_eq!(due_hours_from(Some("24")), 24);
-        assert_eq!(due_hours_from(Some(" 48 ")), 48);
-        for bad in ["", "0", "-5", "8761", "2.5", "soon"] {
-            assert_eq!(due_hours_from(Some(bad)), DEFAULT_REVIEW_DUE_HOURS, "{bad}");
+    fn the_review_limit_is_a_whole_number_of_hours_when_set_and_the_default_only_when_absent() {
+        assert_eq!(due_hours_from(None), Ok(DEFAULT_REVIEW_DUE_HOURS));
+        assert_eq!(due_hours_from(Some("24")), Ok(24));
+        assert_eq!(due_hours_from(Some(" 48 ")), Ok(48));
+        assert_eq!(due_hours_from(Some("1")), Ok(1));
+        assert_eq!(due_hours_from(Some("8760")), Ok(8760));
+        for bad in ["", "0", "-5", "8761", "2.5", "soon", "99999999999999999999"] {
+            let e = due_hours_from(Some(bad)).unwrap_err();
+            assert!(
+                e.starts_with("EPR_BREAK_GLASS_REVIEW_HOURS must be"),
+                "{bad}: {e}"
+            );
         }
-        assert_eq!(due_hours_from(Some("1")), 1);
-        assert_eq!(due_hours_from(Some("8760")), 8760);
     }
 }

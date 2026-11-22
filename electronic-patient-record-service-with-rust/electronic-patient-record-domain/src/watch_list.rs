@@ -76,11 +76,7 @@ pub fn problems(e: &NewEntry, today: jiff::civil::Date) -> Vec<String> {
 #[must_use]
 pub fn end_problems(end_reason: Option<&str>) -> Vec<String> {
     let mut out = Vec::new();
-    reason(
-        &mut out,
-        "reason for ending",
-        end_reason.unwrap_or_default(),
-    );
+    reason(&mut out, "reason for ending", end_reason.unwrap_or(""));
     out
 }
 

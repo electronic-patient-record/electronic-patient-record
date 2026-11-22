@@ -113,6 +113,7 @@ jobs:
       # Each gate's one definition is its script, which scripts/ci-local.sh runs too (LC-3).
       - run: sh scripts/gates/service-fmt.sh
       - run: sh scripts/gates/service-clippy.sh
+      - run: sh scripts/gates/service-checked-arithmetic.sh
       # cargo-nextest (LC-8): the same 553 tests, about 25 s faster warm than `cargo test`; the script uses it.
       - uses: taiki-e/install-action@v2
         with:

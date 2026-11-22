@@ -397,7 +397,8 @@ fn national_number(seed: u64) -> String {
             .iter()
             .enumerate()
             .map(|(i, d)| d * (10 - i as u32))
-            .sum();
+            .try_fold(0_u32, u32::checked_add)
+            .unwrap();
         let check = match 11 - sum % 11 {
             11 => 0,
             10 => {

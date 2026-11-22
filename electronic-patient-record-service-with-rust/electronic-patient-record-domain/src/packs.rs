@@ -323,14 +323,13 @@ pub fn load(dir: &Path, enabled: &[String], winner: Option<&str>) -> Result<Rule
 /// The enabled pack ids from a setting: comma-separated, blanks ignored.
 #[must_use]
 pub fn parse_enabled(raw: Option<&str>) -> Vec<String> {
-    raw.map(|r| {
+    raw.map_or_else(Vec::new, |r| {
         r.split(',')
             .map(str::trim)
             .filter(|s| !s.is_empty())
             .map(str::to_string)
             .collect()
     })
-    .unwrap_or_default()
 }
 
 static RULES: OnceLock<RuleSet> = OnceLock::new();

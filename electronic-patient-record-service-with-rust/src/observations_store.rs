@@ -150,23 +150,31 @@ fn parse_effective(
 /// `EPR_OBSERVATION_LATE_DAYS` says otherwise. A placeholder, for a clinician to set.
 pub const LATE_REASON_DAYS: i64 = 7;
 
-/// `EPR_OBSERVATION_LATE_DAYS` as a number of days from 1 to 3650, or the default. A bad value is not a
-/// reason to refuse readings or to stop asking, so the default applies and the log says so.
-#[must_use]
-pub fn late_days_from(value: Option<&str>) -> i64 {
-    match value.map(str::trim).filter(|v| !v.is_empty()) {
-        None => LATE_REASON_DAYS,
-        Some(v) => match v.parse::<i64>() {
-            Ok(days) if (1..=3650).contains(&days) => days,
-            _ => {
-                tracing::warn!(
-                    value = v,
-                    "EPR_OBSERVATION_LATE_DAYS is not 1 to 3650: using the default"
-                );
-                LATE_REASON_DAYS
-            }
-        },
-    }
+/// `EPR_OBSERVATION_LATE_DAYS` as a number of days from 1 to 3650: [`LATE_REASON_DAYS`] when it is not set.
+///
+/// # Errors
+///
+/// The text naming the setting when it is set to anything else, empty included (RCA-IN-3, RCA-IN-4).
+pub fn late_days_from(value: Option<&str>) -> Result<i64, String> {
+    let Some(text) = value else {
+        return Ok(LATE_REASON_DAYS); // RC-6: absent means the default
+    };
+    text.trim()
+        .parse::<i64>()
+        .ok()
+        .filter(|d| (1..=3650).contains(d))
+        .ok_or_else(|| {
+            format!("EPR_OBSERVATION_LATE_DAYS must be a whole number from 1 to 3650, not {text:?}")
+        })
+}
+
+/// Check `EPR_OBSERVATION_LATE_DAYS` at start: a setting that is wrong stops the service (RCA-IN-4).
+///
+/// # Errors
+///
+/// As [`late_days_from`].
+pub fn check_settings() -> Result<(), String> {
+    late_days_from(crate::runtime::setting("EPR_OBSERVATION_LATE_DAYS").as_deref()).map(|_| ())
 }
 
 /// The start of a birth date (`YYYY`, `YYYY-MM` or `YYYY-MM-DD`) in UTC, or `None` if it cannot be read.
@@ -250,7 +258,8 @@ pub async fn timing_refusal(
         Err(StoreError::NotFound) => return Ok(None),
         Err(e) => return Err(e),
     };
-    let late_days = late_days_from(crate::runtime::setting("EPR_OBSERVATION_LATE_DAYS").as_deref());
+    let late_days = late_days_from(crate::runtime::setting("EPR_OBSERVATION_LATE_DAYS").as_deref())
+        .map_err(StoreError::Db)?;
     let coded = timing_problems(record, reason, birth_date.as_deref(), late_days, now);
     if coded.is_empty() {
         return Ok(None);
@@ -832,12 +841,17 @@ mod tests {
     }
 
     #[test]
-    fn the_late_days_setting_falls_back_to_the_default_when_it_cannot_be_used() {
-        assert_eq!(late_days_from(None), LATE_REASON_DAYS);
-        assert_eq!(late_days_from(Some("")), LATE_REASON_DAYS);
-        assert_eq!(late_days_from(Some("30")), 30);
-        for bad in ["0", "-1", "3651", "a week"] {
-            assert_eq!(late_days_from(Some(bad)), LATE_REASON_DAYS, "{bad}");
+    fn the_late_days_setting_is_a_number_when_set_and_the_default_only_when_absent() {
+        assert_eq!(late_days_from(None), Ok(LATE_REASON_DAYS));
+        assert_eq!(late_days_from(Some("30")), Ok(30));
+        assert_eq!(late_days_from(Some("1")), Ok(1));
+        assert_eq!(late_days_from(Some("3650")), Ok(3650));
+        for bad in ["", "0", "-1", "3651", "a week"] {
+            let e = late_days_from(Some(bad)).unwrap_err();
+            assert!(
+                e.starts_with("EPR_OBSERVATION_LATE_DAYS must be"),
+                "{bad}: {e}"
+            );
         }
     }
 
