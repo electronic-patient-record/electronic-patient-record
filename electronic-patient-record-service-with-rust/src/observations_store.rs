@@ -198,24 +198,34 @@ pub fn timing_problems(
     let Ok(at) = parse_effective(&record.effective_at, now) else {
         return problems;
     };
-    if birth_date
-        .and_then(birth_start)
-        .is_some_and(|born| crate::clock::sub_days(born, 1).is_none_or(|limit| at < limit))
-    {
-        problems.push((
-            "effective_at_before_birth",
-            "the measured time is before the patient's birth date".to_string(),
-        ));
+    // A limit that cannot be computed is a date outside the calendar: invalid data, so a refusal that says so
+    // (RCA-DECL-5), never a guessed verdict either way.
+    let out_of_range = (
+        "effective_at_out_of_range",
+        "a date in this reading is outside the range the record can hold".to_string(),
+    );
+    if let Some(born) = birth_date.and_then(birth_start) {
+        match crate::clock::sub_days(born, 1) {
+            Some(limit) if at < limit => problems.push((
+                "effective_at_before_birth",
+                "the measured time is before the patient's birth date".to_string(),
+            )),
+            Some(_) => {}
+            None => problems.push(out_of_range.clone()),
+        }
     }
-    if crate::clock::sub_days(now, late_days).is_none_or(|limit| at < limit)
-        && reason.is_none_or(|r| r.trim().is_empty())
-    {
-        problems.push((
-            "effective_at_reason_required",
-            format!(
-                "this reading is more than {late_days} days old: say why it is being entered now"
-            ),
-        ));
+    match crate::clock::sub_days(now, late_days) {
+        Some(limit) => {
+            if at < limit && reason.is_none_or(|r| r.trim().is_empty()) {
+                problems.push((
+                    "effective_at_reason_required",
+                    format!(
+                        "this reading is more than {late_days} days old: say why it is being entered now"
+                    ),
+                ));
+            }
+        }
+        None => problems.push(out_of_range),
     }
     problems
 }
@@ -800,6 +810,17 @@ mod tests {
             ["effective_at_before_birth"]
         );
         assert!(codes("1950-01-01T00:00:00Z", "not a date").is_empty());
+    }
+
+    #[test]
+    fn a_limit_outside_the_calendar_is_refused_as_invalid_not_guessed() {
+        let now = "2026-11-05T12:00:00Z".parse::<jiff::Timestamp>().unwrap();
+        let codes: Vec<_> =
+            timing_problems(&record("2026-11-05T11:00:00Z"), None, None, i64::MAX, now)
+                .into_iter()
+                .map(|(c, _)| c)
+                .collect();
+        assert_eq!(codes, ["effective_at_out_of_range"]);
     }
 
     #[test]

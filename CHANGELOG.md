@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-22 - A date outside the calendar is refused, not guessed (QA-17, RCA-DECL-5)
+
+- **Clinical risk:** low: a reading whose limit date cannot be computed (an absurd late-entry setting or birth date) now gets a 422 `effective_at_out_of_range` instead of being treated as needing a reason or as before birth.
+- **Changed:** `observations_store::timing_problems`; row in `spec/arithmetic-figures/index.md`; test `a_limit_outside_the_calendar_is_refused_as_invalid_not_guessed`.
+- **Not done / not verified:** other declared fallbacks (ARITH-1 to 3) were judged to be overflows of computed values, not invalid input, and kept. `late_days_from` still falls back to the default for a malformed `EPR_*` setting; that is a setting parse, not a declaration, and I left it for your decision. Only the lib tests for this module were run.
+
 ## 2026-11-22 - Referral timeouts move into the per-app runtime (QA-16 stage 2)
 
 - **Clinical risk:** none intended: the same periods are read from the same setting; only where they are kept changes.

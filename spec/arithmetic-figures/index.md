@@ -15,4 +15,4 @@ The declarations that [`../rust-checked-arithmetic/index.md`](../rust-checked-ar
 | A task or amendment due time (`clock::add_days`, `Request::due`) | the date is out of the calendar's range | `None`; `overdue` is `None` too, shown as unknown, never as "not overdue" |
 | A suspicion pathway's target due day (`pathways::plan`) | the date is out of range | no plan (`None`) |
 | The published total of a suppressed table (`privacy::suppress`) | the sum overflows `u64` | no total (`None`) |
-| An observation's late-entry and before-birth limits (`observations_store`) | the limit date is out of range | the check treats the reading as needing a reason, the cautious direction |
+| An observation's late-entry and before-birth limits (`observations_store::timing_problems`) | the limit date is out of the calendar's range (invalid data) | a refusal with code `effective_at_out_of_range`; no verdict is guessed either way (RCA-DECL-5) |
