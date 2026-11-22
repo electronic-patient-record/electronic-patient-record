@@ -1186,7 +1186,7 @@ async fn a_feeds_health_is_judged_from_the_database_and_a_change_is_stored_once(
         .await
         .unwrap();
     assert_eq!(a.state, State::Warning, "{a:?}");
-    let later = jiff::Timestamp::now() + electronic_patient_record::clock::days(2);
+    let later = jiff::Timestamp::now() + electronic_patient_record::clock::days(2).unwrap();
     let (a, changed) = feed_health::check(&db, &agent, later, &utc, &t)
         .await
         .unwrap();

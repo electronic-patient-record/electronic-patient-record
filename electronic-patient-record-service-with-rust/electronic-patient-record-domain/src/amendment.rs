@@ -213,22 +213,26 @@ impl Request {
         })
     }
 
-    /// The instant by which a decision is due: 60 days, 90 after the extension.
+    /// The instant by which a decision is due: 60 days, 90 after the extension. `None` when that instant is out of
+    /// range, which a stored receipt time in a sane year never gives.
     #[must_use]
-    pub fn due(&self) -> jiff::Timestamp {
-        let days = ACT_WITHIN_DAYS
-            + if self.extension.is_some() {
-                EXTENSION_DAYS
-            } else {
-                0
-            };
-        self.received_at + crate::clock::days(days)
+    pub fn due(&self) -> Option<jiff::Timestamp> {
+        let days = ACT_WITHIN_DAYS.checked_add(if self.extension.is_some() {
+            EXTENSION_DAYS
+        } else {
+            0
+        })?;
+        crate::clock::add_days(self.received_at, days)
     }
 
-    /// Whether it is undecided past its due time.
+    /// Whether it is undecided past its due time. `None` when the due time cannot be worked out: unknown is not
+    /// "not overdue".
     #[must_use]
-    pub fn overdue(&self, now: jiff::Timestamp) -> bool {
-        matches!(self.state, State::Requested) && now > self.due()
+    pub fn overdue(&self, now: jiff::Timestamp) -> Option<bool> {
+        if !matches!(self.state, State::Requested) {
+            return Some(false);
+        }
+        self.due().map(|due| now > due)
     }
 
     /// The request after `event`, or why not. The request is not changed.
@@ -583,9 +587,10 @@ mod tests {
     #[test]
     fn the_due_time_is_60_days_and_90_after_the_one_extension_which_needs_a_reason() {
         let r = open();
-        assert_eq!(r.due(), t(1) + crate::clock::days(60));
-        assert!(!r.overdue(t(1) + crate::clock::days(60)));
-        assert!(r.overdue(t(1) + crate::clock::days(61)));
+        let day = |n| crate::clock::add_days(t(1), n).unwrap();
+        assert_eq!(r.due(), Some(day(60)));
+        assert_eq!(r.overdue(day(60)), Some(false));
+        assert_eq!(r.overdue(day(61)), Some(true));
         assert_eq!(
             r.apply(Event::Extend { reason: " ".into() }),
             Err(Refusal::Blank("reason"))
@@ -595,8 +600,8 @@ mod tests {
                 reason: "records off site".into(),
             })
             .unwrap();
-        assert_eq!(e.due(), t(1) + crate::clock::days(90));
-        assert!(!e.overdue(t(1) + crate::clock::days(61)));
+        assert_eq!(e.due(), Some(day(90)));
+        assert_eq!(e.overdue(day(61)), Some(false));
         assert_eq!(
             e.apply(Event::Extend {
                 reason: "again".into()
@@ -604,11 +609,7 @@ mod tests {
             Err(Refusal::AlreadyExtended)
         );
         // A decided request is never overdue.
-        assert!(
-            !r.apply(deny())
-                .unwrap()
-                .overdue(t(1) + crate::clock::days(400))
-        );
+        assert_eq!(r.apply(deny()).unwrap().overdue(day(400)), Some(false));
     }
 
     #[test]

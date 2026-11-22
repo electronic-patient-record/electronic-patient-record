@@ -45,6 +45,7 @@ impl FixedClock {
             .0
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
+        // ARITH-1: a test clock moved past the representable range stays where it was (it is never read in production).
         *at = at.checked_add(by).unwrap_or(*at);
     }
 }
@@ -212,10 +213,23 @@ pub fn day_start_utc(day: jiff::civil::Date) -> Option<Timestamp> {
         .map(|z| z.timestamp())
 }
 
-/// A whole number of days as a duration (a day is 24 hours here: an instant has no calendar).
+/// A whole number of days as a duration (a day is 24 hours here: an instant has no calendar), or `None` when the
+/// duration does not fit (RCA-INT-1).
 #[must_use]
-pub fn days(n: i64) -> SignedDuration {
-    SignedDuration::from_hours(n.saturating_mul(24))
+pub fn days(n: i64) -> Option<SignedDuration> {
+    n.checked_mul(86_400).map(SignedDuration::from_secs)
+}
+
+/// `at` plus `n` days, or `None` when the result is out of range (RCA-TIME-3).
+#[must_use]
+pub fn add_days(at: Timestamp, n: i64) -> Option<Timestamp> {
+    at.checked_add(days(n)?).ok()
+}
+
+/// `at` minus `n` days, or `None` when the result is out of range (RCA-TIME-3).
+#[must_use]
+pub fn sub_days(at: Timestamp, n: i64) -> Option<Timestamp> {
+    at.checked_sub(days(n)?).ok()
 }
 
 #[cfg(test)]
@@ -273,6 +287,22 @@ mod tests {
             day_start_utc(parse_day("2026-11-17").unwrap()),
             parse_rfc3339("2026-11-17T00:00:00Z")
         );
-        assert_eq!(days(2), SignedDuration::from_hours(48));
+        assert_eq!(days(2), Some(SignedDuration::from_hours(48)));
+        assert_eq!(
+            days(i64::MAX),
+            None,
+            "the first overflow is None, not a clamp"
+        );
+        assert_eq!(
+            days(i64::MAX / 86_400),
+            Some(SignedDuration::from_secs(i64::MAX / 86_400 * 86_400))
+        );
+        let end = Timestamp::MAX;
+        assert_eq!(add_days(end, 1), None);
+        assert_eq!(sub_days(Timestamp::MIN, 1), None);
+        assert_eq!(
+            add_days(Timestamp::UNIX_EPOCH, 1).map(|t| t.as_second()),
+            Some(86_400)
+        );
     }
 }

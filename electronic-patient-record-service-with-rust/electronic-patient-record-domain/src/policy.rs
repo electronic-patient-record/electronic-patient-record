@@ -940,13 +940,14 @@ pub fn evaluate(request: &Request) -> Decision {
 /// How many labels the `Mask` obligations hide. [`evaluate`] uses it to prefer, among a subject's roles that allow the
 /// access, the decision that hides least.
 fn masked(obligations: &[Obligation]) -> usize {
+    // ARITH-2: a count too large for usize hides more than any other decision, so it sorts last.
     obligations
         .iter()
-        .map(|o| match o {
-            Obligation::Mask(labels) => labels.len(),
-            _ => 0,
+        .try_fold(0_usize, |acc, o| match o {
+            Obligation::Mask(labels) => acc.checked_add(labels.len()),
+            _ => Some(acc),
         })
-        .sum()
+        .unwrap_or(usize::MAX)
 }
 
 /// A refusal. `btg_offer` says break-the-glass could lift it.

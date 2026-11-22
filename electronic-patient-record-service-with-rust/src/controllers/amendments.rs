@@ -141,9 +141,17 @@ fn view(a: &StoredAmendment, now: jiff::Timestamp) -> serde_json::Value {
     crate::json::set(
         &mut v,
         "due",
-        crate::clock::rfc3339_secs(a.request.due()).into(),
+        a.request.due().map_or(serde_json::Value::Null, |due| {
+            crate::clock::rfc3339_secs(due).into()
+        }),
     );
-    crate::json::set(&mut v, "overdue", a.request.overdue(now).into());
+    crate::json::set(
+        &mut v,
+        "overdue",
+        a.request
+            .overdue(now)
+            .map_or(serde_json::Value::Null, Into::into),
+    );
     v
 }
 

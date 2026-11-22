@@ -475,19 +475,22 @@ pub fn plan(
     let targets = band.map_or(&p.targets, |b| &b.targets);
     let start = crate::site::day_in(&zone, clock_start);
     let today = crate::site::day_in(&zone, now);
+    // A due day out of the calendar's range is unknown, so the plan is unknown (`None`), never a clamped day.
     let targets = targets
         .iter()
         .map(|t| {
-            let due = start.saturating_add(jiff::Span::new().days(i64::from(t.days)));
-            Due {
+            let due = start
+                .checked_add(jiff::Span::new().days(i64::from(t.days)))
+                .ok()?;
+            Some(Due {
                 id: t.id.clone(),
                 text: t.text.clone(),
                 days: t.days,
                 due_on: due.to_string(),
                 overdue: today > due,
-            }
+            })
         })
-        .collect::<Vec<_>>();
+        .collect::<Option<Vec<_>>>()?;
     Some(Plan {
         pathway: p.id.clone(),
         version: p.version,

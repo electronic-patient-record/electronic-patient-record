@@ -173,7 +173,7 @@ mod tests {
             Err(Refused::Expired)
         );
         assert_eq!(
-            link.consume(t0() + crate::clock::days(9)),
+            link.consume(t0() + crate::clock::days(9).unwrap()),
             Err(Refused::Expired)
         );
         assert_eq!(link.consumed_at, None);
@@ -193,6 +193,9 @@ mod tests {
     fn a_spent_link_stays_used_after_its_time_passes() {
         let mut link = Link::new(&new_token(), t0() + jiff::SignedDuration::from_hours(1));
         link.consume(t0()).unwrap();
-        assert_eq!(link.view(t0() + crate::clock::days(1)), State::Used);
+        assert_eq!(
+            link.view(t0() + crate::clock::days(1).unwrap()),
+            State::Used
+        );
     }
 }

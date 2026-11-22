@@ -200,14 +200,16 @@ pub fn timing_problems(
     };
     if birth_date
         .and_then(birth_start)
-        .is_some_and(|born| at < born - crate::clock::days(1))
+        .is_some_and(|born| crate::clock::sub_days(born, 1).is_none_or(|limit| at < limit))
     {
         problems.push((
             "effective_at_before_birth",
             "the measured time is before the patient's birth date".to_string(),
         ));
     }
-    if at < now - crate::clock::days(late_days) && reason.is_none_or(|r| r.trim().is_empty()) {
+    if crate::clock::sub_days(now, late_days).is_none_or(|limit| at < limit)
+        && reason.is_none_or(|r| r.trim().is_empty())
+    {
         problems.push((
             "effective_at_reason_required",
             format!(

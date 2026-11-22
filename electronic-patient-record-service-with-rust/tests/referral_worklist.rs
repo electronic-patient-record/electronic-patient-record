@@ -318,7 +318,7 @@ async fn a_referral_that_has_gone_quiet_is_listed_only_for_a_priority_with_a_per
         .any(|(i, _)| *i == r.id)
     );
     // Old and unanswered: listed with a reason, but only where a period is set for its priority.
-    clock.advance(electronic_patient_record::clock::days(3));
+    clock.advance(electronic_patient_record::clock::days(3).unwrap());
     assert!(
         ids(&wl::list_at(&db, &sender, &routine_2, clock.now())
             .await
@@ -377,7 +377,7 @@ async fn a_referral_that_has_gone_quiet_is_listed_only_for_a_priority_with_a_per
         .iter()
         .any(|(i, _)| *i == r.id)
     );
-    clock.advance(electronic_patient_record::clock::days(6));
+    clock.advance(electronic_patient_record::clock::days(6).unwrap());
     assert!(
         ids(&wl::list_at(&db, &sender, &routine_2, clock.now())
             .await

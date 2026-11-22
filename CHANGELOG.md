@@ -2,10 +2,16 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-22 - First arithmetic sites converted to the checked rules (QA-17)
+
+- **Clinical risk:** low, but touches what a clinician sees: an amendment's due time and overdue flag, a suspicion pathway's target days, small-number suppression totals and the late-entry check on an observation. Normal values give the same answers as before; only a date or count outside its type's range now differs, and then the answer is unknown (`None`, shown as null) instead of a panic or a clamped number. No hazard-log entry added; none of these ranges is reachable from valid data.
+- **Changed:** `clock::days` returns `Option` (no `saturating_mul`) with `add_days` and `sub_days`; `Request::due` and `overdue` return `Option`, and `GET` amendment views show `due` and `overdue` as null when unknown; `pathways::plan` returns no plan when a due day is out of range; `privacy::suppress` publishes no total when the sum overflows; `policy::masked` and the hidden-count sum use `try_fold` with the fallbacks declared in the new `spec/arithmetic-figures/index.md` (ARITH-1 to ARITH-3). The earlier `spec/arithmetic/index.md` was replaced by the maintainer's `spec/rust-checked-arithmetic/`.
+- **Not done / not verified:** the other 150 or so sites the RCA-ENF-1 lints flag, and the lints themselves are not denied yet; see QA-17 in `tasks.md` for the counts. The two `wrapping_*` calls left are in test code (a fuzz generator), allowed by RCA-EXC-5. Edge tests were added for `clock` and the amendment due time only.
+
 ## 2026-11-22 - Spec: never unwrap a checked arithmetic result (QA-17)
 
 - **Clinical risk:** none: a specification.
-- **Added:** a section in `spec/arithmetic/index.md`: the result of a `checked_*` call is never unwrapped, `expect`ed, or defaulted with `unwrap_or(0)` or `unwrap_or_default()`; it is passed on with `?` or `ok_or`, or refused.
+- **Added:** a section in `spec/rust-checked-arithmetic/index.md`: the result of a `checked_*` call is never unwrapped, `expect`ed, or defaulted with `unwrap_or(0)` or `unwrap_or_default()`; it is passed on with `?` or `ok_or`, or refused.
 - **Not done / not verified:** `unwrap` and `expect` are already denied in production code by lint; `unwrap_or(0)` and `unwrap_or_default()` on a checked result are not, so nothing yet stops them but review. No code was searched for existing cases.
 
 ## 2026-11-22 - The audit chain and server address belong to the runtime (QA-16, stage 2, first static)
@@ -17,7 +23,7 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 ## 2026-11-22 - Spec: arithmetic must not panic or wrap (QA-17)
 
 - **Clinical risk:** none: a specification. No code changed.
-- **Added:** `spec/arithmetic/index.md`: use `checked_*` and return `None` (`255_u8.checked_add(1)` is `None`), with the casts, `wrapping_*`, `saturating_*`, sums, floats and time covered, and what a `None` means for a clinical value. Task QA-17.
+- **Added:** `spec/rust-checked-arithmetic/index.md`: use `checked_*` and return `None` (`255_u8.checked_add(1)` is `None`), with the casts, `wrapping_*`, `saturating_*`, sums, floats and time covered, and what a `None` means for a clinical value. Task QA-17.
 - **Not done / not verified:** nothing enforces it yet. The 94 sites clippy's `arithmetic_side_effects` flagged have not been triaged and the lint is not denied; the spec says so. The matcher crate is undecided.
 
 ## 2026-11-22 - No panic in production code, and a lint that keeps it so

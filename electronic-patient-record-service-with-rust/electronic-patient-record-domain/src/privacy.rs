@@ -52,12 +52,13 @@ pub fn suppress(counts: &[(String, u64)], k: u64, publish_total: bool) -> (Vec<R
     let mut hidden: Vec<bool> = counts.iter().map(|(_, n)| (1..k).contains(n)).collect();
     if publish_total {
         loop {
+            // ARITH-3: a sum of hidden counts too large for u64 is certainly at least `k`.
             let hidden_sum: u64 = counts
                 .iter()
                 .zip(&hidden)
                 .filter(|(_, h)| **h)
-                .map(|((_, n), _)| *n)
-                .sum();
+                .try_fold(0_u64, |acc, ((_, n), _)| acc.checked_add(*n))
+                .unwrap_or(u64::MAX);
             let any = hidden.iter().any(|h| *h);
             if !any || hidden_sum >= k {
                 break;
@@ -88,7 +89,14 @@ pub fn suppress(counts: &[(String, u64)], k: u64, publish_total: bool) -> (Vec<R
             cell: if h { Cell::Hidden } else { Cell::Shown(*n) },
         })
         .collect();
-    let total = publish_total.then(|| counts.iter().map(|(_, n)| *n).sum());
+    // A total too large for u64 is unknown (`None`), not a wrapped or capped number.
+    let total = publish_total
+        .then(|| {
+            counts
+                .iter()
+                .try_fold(0_u64, |acc, (_, n)| acc.checked_add(*n))
+        })
+        .flatten();
     (rows, total)
 }
 
