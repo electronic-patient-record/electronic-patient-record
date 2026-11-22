@@ -300,6 +300,7 @@ pub async fn advance(
     let mut logged = serde_json::to_value(&event).map_err(db_err)?;
     crate::json::set(&mut logged, "by", author.into());
     crate::json::set(&mut logged, "at", crate::clock::rfc3339_micros(now).into());
+    let new_version = crate::store::next_version(expected_version)?;
     let appended = crate::store::append_version(
         &mut *db,
         STORE,
@@ -311,7 +312,7 @@ pub async fn advance(
                 columns()
             )))
 .bind(was.id.clone())
-.bind(expected_version + 1)
+.bind(new_version)
 .bind(was.patient_id.clone())
 .bind(author)
 .bind(next.state.word())

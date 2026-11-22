@@ -293,6 +293,7 @@ pub async fn change(
         });
     }
     let next = adjustments::change(&was.adjustment, what, reason, today).map_err(refused)?;
+    let new_version = crate::store::next_version(expected_version)?;
     let appended = crate::store::append_version(
         &mut *db,
         STORE,
@@ -303,7 +304,7 @@ pub async fn change(
                  RETURNING {COLUMNS}"
         )))
         .bind(was.id.clone())
-        .bind(expected_version + 1)
+        .bind(new_version)
         .bind(was.patient_id.clone())
         .bind(author.to_string())
         .bind(next.status.word())

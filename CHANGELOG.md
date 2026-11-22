@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-22 - The last append-only stores and two catalogues use checked versions (QA-17)
+
+- **Clinical risk:** none intended: the version written or expected is unchanged for every reachable value. At `i32::MAX` an append answers `BadQuery` ("version: out of range"); a form or pathway file whose previous version cannot be incremented is refused at load.
+- **Changed:** `store::next_version` in `adjustments_store`, `amendments_store`, `hazard_store`, `observations_store` and `results_store`; `checked_add` in the domain's `assessments::parse` and `pathways::parse`.
+- **Not done / not verified:** those modules do not yet deny the arithmetic lints. The catalogue refusals are unreachable in a file that passed the earlier checks (each version must equal the previous plus one, from 1), so they have no test. Full suite on a fresh database: 858 passed, 6 failed (Java `fhir_validator`). CI not observed.
+
 ## 2026-11-22 - api_tokens_store, photos_store and task_reminders under the arithmetic lints (QA-17)
 
 - **Clinical risk:** none to a clinician's view; **security-relevant**: `api_tokens_store::system_time` turned a stored token time before 1970 or out of `SystemTime` range into the epoch (an expiry of 1970, so refused, but a `last_used_at` of 1970 invented); it is now an error when a token is read (RCA-IN-6). Reachable only by a corrupt `api_token_current` row.

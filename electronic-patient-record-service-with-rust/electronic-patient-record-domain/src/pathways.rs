@@ -276,7 +276,14 @@ pub fn parse(text: &str) -> Result<Vec<Pathway>, String> {
             .checked_sub(1)
             .and_then(|j| all.get(j))
             .filter(|q| q.id == p.id);
-        let expected = previous.map_or(1, |q| q.version + 1);
+        let expected = previous
+            .map_or(Some(1), |q| q.version.checked_add(1)) // the first version of a pathway is 1
+            .ok_or_else(|| {
+                format!(
+                    "suspicion pathways: {} v{}: the version is out of range",
+                    p.id, p.version
+                )
+            })?;
         if p.version != expected {
             return Err(format!(
                 "suspicion pathways: {} v{} should be version {expected}",

@@ -305,6 +305,7 @@ pub async fn update_with_rules(
     if let Some(r) = results::change_refusal(was.result.status, record.status, reason) {
         return Err(refused(r));
     }
+    let new_version = crate::store::next_version(expected_version)?;
     let appended = crate::store::append_version(
         &mut *db,
         STORE,
@@ -314,7 +315,7 @@ pub async fn update_with_rules(
              RETURNING {COLUMNS}"
         )))
         .bind(was.id.clone())
-        .bind(expected_version + 1)
+        .bind(new_version)
         .bind(was.patient_id.clone())
         .bind(author.to_string())
         .bind(record.status.word())

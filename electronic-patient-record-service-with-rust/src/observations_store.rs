@@ -600,6 +600,7 @@ pub async fn update(
         ));
     }
     // A concurrent writer took this version: the primary key refuses the second (CQ-12).
+    let new_version = crate::store::next_version(expected_version)?;
     let appended = crate::store::append_version(
         &mut *db,
         STORE,
@@ -611,7 +612,7 @@ pub async fn update(
                 columns()
             )))
 .bind(was.id.clone())
-.bind(expected_version + 1)
+.bind(new_version)
 .bind(was.patient_id.clone())
 .bind(author)
 .bind(reason.map(str::to_string))
