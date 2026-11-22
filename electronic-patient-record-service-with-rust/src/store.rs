@@ -19,6 +19,17 @@ pub(crate) fn db_err<E: std::fmt::Display + 'static>(store: &str, e: E) -> Store
     }
 }
 
+/// The version after `version`, for an append-only record. A record cannot reach `i32::MAX` versions, so a value this large is invalid data (RCA-DECL-5), never wrapped or held there.
+///
+/// # Errors
+///
+/// [`StoreError::BadQuery`] when `version` is the largest the column holds.
+pub fn next_version(version: i32) -> Result<i32, StoreError> {
+    version
+        .checked_add(1)
+        .ok_or_else(|| StoreError::BadQuery("version: out of range".into()))
+}
+
 /// Whether a database error is the database unable to serve for now rather than this request
 /// failing: a pool with no free or a closed connection, a lost connection, or a Postgres code for a
 /// read-only transaction (25006), too many connections (53300), a connection failure (08…) or an
@@ -101,6 +112,16 @@ pub(crate) async fn append_version(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn the_version_after_the_largest_is_an_error_not_a_wrap() {
+        assert_eq!(next_version(0).unwrap(), 1);
+        assert_eq!(next_version(i32::MAX - 1).unwrap(), i32::MAX);
+        assert!(matches!(
+            next_version(i32::MAX),
+            Err(StoreError::BadQuery(m)) if m == "version: out of range"
+        ));
+    }
+
     use super::*;
 
     #[test]

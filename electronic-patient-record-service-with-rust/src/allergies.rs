@@ -14,6 +14,16 @@
 //! Nothing is ever deleted: ending an allergy or marking it entered-in-error is a new version, and
 //! entered-in-error is final.
 
+// RCA-ENF-3: this module is converted, so the arithmetic lints are denied here; the rest of the crate follows.
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::default_numeric_fallback,
+    clippy::integer_division,
+    clippy::modulo_arithmetic,
+    clippy::as_conversions,
+    clippy::string_slice
+)]
+
 use crate::ids;
 use crate::links;
 use crate::patients_store::{self, StoreError};
@@ -241,9 +251,9 @@ pub fn summarise(allergies: &[StoredAllergy], statement: Option<&Assertion>) -> 
     if !active.is_empty() {
         // High criticality first, then not-assessed, then low or unstated; then by name.
         let rank = |c: Option<Criticality>| match c {
-            Some(Criticality::High) => 0,
-            Some(Criticality::UnableToAssess) => 1,
-            _ => 2,
+            Some(Criticality::High) => 0_u8,
+            Some(Criticality::UnableToAssess) => 1_u8,
+            _ => 2_u8,
         };
         active.sort_by(|a, b| {
             rank(a.allergy.criticality)
@@ -444,6 +454,7 @@ pub async fn update(
             "an allergy entered in error cannot be reopened: record a new one".into(),
         ));
     }
+    let next = crate::store::next_version(expected_version)?;
     // A concurrent writer took this version: the primary key refuses the second (CQ-12).
     let row = match crate::store::append_version(&mut *db, STORE, sqlx::query(AssertSqlSafe(format!(
                 "INSERT INTO allergy_versions (allergy_id, version, patient_id, author, reason, status, body)
@@ -451,7 +462,7 @@ pub async fn update(
                 columns()
             )))
 .bind(now.id.clone())
-.bind(expected_version + 1)
+.bind(next)
 .bind(now.patient_id.clone())
 .bind(author)
 .bind(reason.map(str::to_string))
@@ -516,7 +527,8 @@ pub async fn assert_none_known(
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
     let have = statement(&mut *db, patient_id).await?;
-    let current_version = have.as_ref().map_or(0, |a| a.version);
+    // No statement yet is version 0: the first one is version 1 (declared in the allergy spec).
+    let current_version = have.as_ref().map_or(0_i32, |a| a.version);
     if current_version != expected_version {
         return Err(StoreError::Conflict {
             current: current_version,
@@ -539,6 +551,7 @@ pub async fn assert_none_known(
         ));
     }
     let id = patients_store::current(&mut *db, patient_id).await?.id;
+    let next = crate::store::next_version(expected_version)?;
     // A concurrent writer took this version: the primary key refuses the second (CQ-12).
     let r = match crate::store::append_version(
         &mut *db,
@@ -548,7 +561,7 @@ pub async fn assert_none_known(
                  VALUES ($1::uuid, $2, $3, $4, $5) RETURNING version, author, {TS} AS at, kind"
         )))
         .bind(id)
-        .bind(expected_version + 1)
+        .bind(next)
         .bind(author)
         .bind(reason.map(str::to_string))
         .bind(if none_known {
@@ -563,7 +576,7 @@ pub async fn assert_none_known(
         crate::store::Appended::Taken => {
             let current = statement(&mut *db, patient_id)
                 .await?
-                .map_or(0, |a| a.version);
+                .map_or(0_i32, |a| a.version); // no statement: version 0, as above
             return Err(StoreError::Conflict { current });
         }
     };

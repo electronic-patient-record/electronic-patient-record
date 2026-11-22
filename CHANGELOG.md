@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-22 - allergies.rs under the arithmetic lints; a checked next version (QA-17)
+
+- **Clinical risk:** low, but the allergy record is clinical: no result changes except that an allergy or statement already at version `i32::MAX` now refuses an append (`StoreError::BadQuery`, "version: out of range") instead of overflowing; unreachable in practice. Hazard log not edited.
+- **Changed:** `allergies.rs` denies the arithmetic lints for the module (RCA-ENF-3); new `store::next_version` with a test at `i32::MAX - 1` and `i32::MAX`; the "no statement yet is version 0" fallback is written `0_i32` and commented (it is declared by the allergy spec's statement rules).
+- **Not done / not verified:** the other eight stores still write `expected_version + 1`. One full run had a failure in `every_alerted_role_sees_what_waits_and_nobody_else_does` that did not repeat alone or in a second full run on a fresh database (856 passed, 6 failed Java `fhir_validator`); cause not found. CI not observed.
+
 ## 2026-11-22 - consent.rs under the arithmetic lints (QA-17)
 
 - **Clinical risk:** low, but touches whether a consent is in force (`in_period`). No result is meant to change: the hand-written calendar arithmetic is replaced by `jiff` civil-day counting, and the end-of-day addition is checked. `day_start("9999-12-31")` still works (counting civil days, not a `Timestamp`, whose range ends a few hours earlier); the new test pins it. Hazard log not edited.
