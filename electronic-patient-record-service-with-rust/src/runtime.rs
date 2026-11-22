@@ -2,7 +2,7 @@
 //!
 //! A service used to read `std::env::var` wherever it needed a setting, so a test that wanted a different
 //! setting had to change the process environment, which every thread shares. Now a [`Runtime`] holds one
-//! service's settings, and [`current`] gives the one the running request belongs to:
+//! service's settings, and [`Runtime::current`] gives the one the running request belongs to:
 //!
 //! - inside a request, the runtime the app was booted with, put there by [`scope_mw`];
 //! - anywhere else (a job, the command line, a unit test that calls a function directly), the process
