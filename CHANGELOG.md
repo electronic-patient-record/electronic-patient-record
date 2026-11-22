@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-22 - Spec: never unwrap a checked arithmetic result (QA-17)
+
+- **Clinical risk:** none: a specification.
+- **Added:** a section in `spec/arithmetic/index.md`: the result of a `checked_*` call is never unwrapped, `expect`ed, or defaulted with `unwrap_or(0)` or `unwrap_or_default()`; it is passed on with `?` or `ok_or`, or refused.
+- **Not done / not verified:** `unwrap` and `expect` are already denied in production code by lint; `unwrap_or(0)` and `unwrap_or_default()` on a checked result are not, so nothing yet stops them but review. No code was searched for existing cases.
+
 ## 2026-11-22 - The audit chain and server address belong to the runtime (QA-16, stage 2, first static)
 
 - **Clinical risk:** none intended: the same chain is built from the same settings. `audit::chain()` now returns an `Arc<Chain>` (built once per runtime) instead of a `&'static`, so its callers pass `&audit::chain()`.

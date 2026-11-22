@@ -17,6 +17,23 @@ assert_eq!(i32::MIN.checked_abs(), None);         // there is no +2_147_483_648 
 assert_eq!(10_i32.checked_div(0), None);          // not a panic
 ```
 
+### Never unwrap a `checked_*`
+
+**You must not unwrap the result of a `checked_*` call.** `a.checked_add(b).unwrap()`, `.expect("fits")`, `.unwrap_or_default()` and `.unwrap_or(0)` all turn the `None` back into a panic or into a wrong number, which is the failure the function exists to report. The `None` is handled: with `?` in a function that returns `Option` or `Result`, with `ok_or(...)` or `ok_or_else(...)` to give it a reason, or with a `match` or `let ... else` that refuses.
+
+```rust
+// Not this: the panic (or the 0) is only moved to a different line.
+let total = a.checked_add(b).unwrap();
+let total = a.checked_add(b).unwrap_or(0);
+
+// This: the caller is told there is no result, and why.
+let total = a.checked_add(b).ok_or("the two lengths of stay do not fit in a u32")?;
+```
+
+- A comment such as "cannot overflow here" does not make an unwrap acceptable. If it cannot overflow, the reason is a type or a bound the compiler can see (a `u8` widened to `u32` with `u32::from`, a length already limited by a `min`), and then no `checked_*` is needed.
+- `unwrap_used` and `expect_used` are already denied in production code (the service's `[workspace.lints.clippy]`), so the first two forms fail the gate. `unwrap_or(0)` and `unwrap_or_default()` are not caught by that lint; review catches them, and QA-17 should add `clippy::manual_unwrap_or_default` and a search for `checked_.*unwrap_or` to the gate.
+- In a test, `unwrap` on a `checked_*` is allowed only where the test is about to prove the value fits; a test of the edge asserts the `None` instead.
+
 ### What is not allowed
 
 | Instead of | Because | Use |
