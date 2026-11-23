@@ -15,7 +15,7 @@ set -eu
 # sparse checkout and shallow list (it did, once, on 2026-11-23).
 unset $(git rev-parse --local-env-vars) 2>/dev/null || true
 
-LILY_COMMIT=787d93644014f8c6ee06183ef1ca4c6edd599f19
+LILY_COMMIT=5df76fa2a2618dbe0095e17f5f77d76489c4bf1f
 source="${LILY_SOURCE:-https://github.com/LilyDesignSystem/lily-design-system.git}"
 root="$(cd "$(dirname "$0")/.." && pwd)"
 # LILY_DIR is for scripts/test_fetch_lily.sh only.

@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-23 - The mobile apps' Lily pin moves to 5df76fa (494 commits)
+
+- **Clinical risk:** none: the pinned design-system source.
+- **Changed:** `LILY_COMMIT` in `scripts/fetch-lily.sh` from `787d936` to `5df76fa`. Between them Lily's Swift and Kotlin libraries changed only in their documentation (`AGENTS/`, `CONTRIBUTING.md`); the theme files gained a timing scale, which the apps do not use. No app code changed.
+- **Verified:** `mobile-swift-test.sh` (3 tests) and `mobile-kotlin-test.sh` (build successful) pass against the new commit.
+- **Not done / not verified:** the Simulator and debug-APK build gates were not run; the 494 commits were not read beyond the paths above; the apps do not yet use Lily's timing scale or reduced-motion rule, which is worth a task.
+
 ## 2026-11-23 - Lily npm packages for the clinician UI: headless 0.13, picker-bar 0.9, theme-picker 0.5, themes 0.8
 
 - **Clinical risk:** none: styling and picker packages.
