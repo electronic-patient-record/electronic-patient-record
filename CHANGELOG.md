@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-23 - cargo deny: RUSTSEC-2026-0594 (cookie) ignored until its fix leaves the cooldown
+
+- **Clinical risk:** none.
+- **Changed:** `deny.toml` ignores RUSTSEC-2026-0594 with a reason and an expiry (2026-12-07). `cookie` 0.18.2 is reached only through `axum-test` in dev-dependencies; the advisory needs `fork()` plus private cookies, and neither happens in the tests or the service. 0.18.3 fixes it and was published today, inside the 2-day cooldown.
+- **Not done / not verified:** the lock file is unchanged; update `cookie` after 2026-11-25 and delete the ignore. `cargo deny` was not run locally (CI is the check). The failure `override toolchain ... is not installed` in the same CI log is from the deny action's container and predates this; it does not fail the job.
+
 ## 2026-11-23 - Seven more test programs folded into `suite.rs` (LC-15)
 
 - **Clinical risk:** none: test tooling.
