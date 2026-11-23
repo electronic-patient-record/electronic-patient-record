@@ -387,7 +387,7 @@ pub async fn create(
         record,
         site_zone,
         now,
-        tasks_store::rules()?,
+        &tasks_store::rules()?,
     )
     .await
 }
@@ -675,7 +675,7 @@ async fn raise_for_change(
     if let Some((event, facts)) = event {
         tasks_store::raise(
             conn,
-            tasks_store::rules()?,
+            &tasks_store::rules()?,
             event,
             &facts,
             &now.patient_id,

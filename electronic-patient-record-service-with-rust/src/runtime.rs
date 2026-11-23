@@ -76,6 +76,12 @@ pub struct Runtime {
     pub(crate) audit_server: OnceLock<Option<String>>,
     /// `EPR_REFERRAL_TIMEOUTS`, checked at start (`referral_timeouts::init`).
     pub(crate) referral_timeouts: OnceLock<crate::referral_timeouts::Timeouts>,
+    /// The site's task rules file, read at start (`tasks_store::init_rules`); unset, the built-in catalogue runs.
+    pub(crate) site_rules: OnceLock<Arc<Vec<electronic_patient_record_domain::task_rules::Rule>>>,
+    /// The feed the listener serves and its thresholds, set when the health loop starts (`feed_health::run_loop`).
+    pub(crate) feed_health: OnceLock<(String, crate::feed_health::Thresholds)>,
+    /// The identity of the feed the listener serves, set when the listener starts (`adt_feed::set_configured`).
+    pub(crate) feed_identity: OnceLock<crate::adt_feed::FeedIdentity>,
 }
 
 impl std::fmt::Debug for Runtime {
@@ -107,6 +113,9 @@ impl Runtime {
             chain: OnceLock::new(),
             audit_server: OnceLock::new(),
             referral_timeouts: OnceLock::new(),
+            site_rules: OnceLock::new(),
+            feed_health: OnceLock::new(),
+            feed_identity: OnceLock::new(),
         }
     }
 
@@ -185,6 +194,19 @@ mod tests {
             }),
         );
         assert_eq!((ra.as_deref(), rb.as_deref()), (Some("a"), Some("b")));
+    }
+
+    #[test]
+    fn a_feed_is_configured_in_one_runtime_and_not_in_another() {
+        let (a, b) = (Runtime::process(), Runtime::process());
+        let thresholds = crate::feed_health::Thresholds::default();
+        assert!(a.feed_health.set(("a".into(), thresholds)).is_ok());
+        assert_eq!(
+            crate::feed_health::configured(&a).map(|f| f.0),
+            Some("a".to_string())
+        );
+        assert!(crate::feed_health::configured(&b).is_none());
+        assert!(crate::adt_feed::configured(&b).is_none());
     }
 
     #[test]

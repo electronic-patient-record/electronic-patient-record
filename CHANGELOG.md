@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-23 - The site task rules and the HL7 feed's identity and health live in the app's runtime (QA-16 stage 2)
+
+- **Clinical risk:** none intended: the same settings, read from the app's runtime instead of a process-wide cell. In a service booted the usual way there is one runtime, so nothing changes. Hazard log not edited.
+- **Changed:** `Runtime` gains `site_rules`, `feed_health` and `feed_identity`; the three statics (`tasks_store::SITE_RULES`, `feed_health::FEED`, `adt_feed::CONFIGURED`) are gone. `tasks_store::rules()` and `init_rules()` return `Rules` (the site's `Arc` or the catalogue), callers borrow it. `feed_health::configured(&Runtime)`, `adt_feed::configured(&Runtime)` return clones; `*_now()` read the request's runtime. `mllp::Running::start` and `feed_health::run_loop` take the runtime. New unit test: a feed is configured in one runtime and not in another.
+- **Not done / not verified:** `auth` and the domain crate's `site` and `permission` statics are still process-wide (see QA-16); the 32 test files still use `set_var`; `http_feed_health` is still its own test program. Full suite on a fresh database: all pass except the six Java `fhir_validator` tests (the health test failed once, fixed: its runtime lookup now falls back as the app does). Clippy all targets and the arithmetic gate pass. CI not observed.
+
 ## 2026-11-23 - The matcher's production code passes the checked-arithmetic lints; a gate and a `clippy.toml` keep it so (QA-17)
 
 - **Clinical risk:** low: patient matching scores. No score is meant to change; the arithmetic is the same operations in the same order. Behaviour that can differ: a weight configuration whose total is not finite is now refused (`InvalidWeight`; before, an infinite total would pass the `> 0` check); an exact tie between two given-name scores compares with `total_cmp`, which also separates `-0.0` from `0.0` (similarities are never negative). Hazard log not edited.

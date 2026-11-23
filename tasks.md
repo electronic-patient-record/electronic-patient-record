@@ -1684,6 +1684,12 @@ only; nothing here was taken from its code. Open questions OQ-TL1 (who approves 
   which changes the signatures of the auth and audit calls made from middleware that holds no context (the real
   cost); (3) implement `boot_test_with` and move the 32 test files over. Stage 1 alone does not make one test
   program possible.
+  **Stage 2 progress 2026-11-23:** in `Runtime` now: the audit chain and server address, `referral_timeouts`, the site
+  task rules (`tasks_store::rules()` returns `Rules`, the site's or the catalogue, not a `&'static`), the listener's
+  feed identity and the feed health feed (`Running::start` and `feed_health::run_loop` take the runtime, since a
+  spawned task has no task-local). **Still process-wide:** `auth` (verifier, Keycloak, `REQUIRE_AUTH`, token pool), and
+  the domain crate's `site::ZONE`, `site::HOLIDAYS` and `permission::REQUIRED`: the domain has no `Runtime`, so each
+  needs the value passed in or a trait. `tests/http_feed_health.rs` is still its own `[[test]]`.
 
 ## Dependency 2026-11-17 — axa 0.19
 

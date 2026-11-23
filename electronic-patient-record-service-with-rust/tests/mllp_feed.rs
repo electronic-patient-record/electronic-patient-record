@@ -1967,7 +1967,12 @@ async fn a_started_listener_serves_until_the_kept_one_is_stopped() {
     let addr = listener.local_addr().unwrap();
     let mut config = Config::local(addr);
     config.agent = FEED_AGENT.into();
-    mllp::keep(mllp::Running::start(listener, db.clone(), config));
+    mllp::keep(mllp::Running::start(
+        &electronic_patient_record::runtime::Runtime::current(),
+        listener,
+        db.clone(),
+        config,
+    ));
 
     let mut stream = TcpStream::connect(addr).await.unwrap();
     let message = adt(
