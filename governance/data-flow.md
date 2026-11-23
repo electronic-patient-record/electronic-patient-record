@@ -48,6 +48,22 @@ One short entry per row above. S spoofing, T tampering, R repudiation, I informa
 
 Not done: a ranking by likelihood and impact, a data flow diagram, and a review by a security engineer. The [hazard log](clinical-safety/hazard-log.csv) is the place for a gap that could harm a patient; this table is not.
 
+## The native apps (MP-11, DRAFT)
+
+A new flow: **in and out, a phone to `/api`** (the same requests and answers as the web UI, over HTTPS, with a bearer token; spec `mobile-apps` §2). And a new place data may rest: **the phone**. The design allows nothing of the record to rest there (spec §3 rule 5); the table is what could go wrong with that, read from the spec, with no app yet touching a record.
+
+| Where | Main threats | Already in place (by the spec; not built) | Gap or question |
+|---|---|---|---|
+| Phone to `/api` | S a stolen token; I traffic read in transit; T a changed request | HTTPS only (plain http for loopback in a debug build); the service's token checks and policies; a path outside `/api` refused before any request | A certificate pinning decision is not made; a debug build must not reach a real service |
+| The token on the phone | I a refresh token read by another app or from a backup; E a token used from another device | Access token in memory; refresh token in the Keychain or Keystore, this device only; no `offline_access` | Android backup exclusion and iOS backup behaviour not yet set or tested; revocation procedure not written (see the [MFA plan](mfa-plan.md)) |
+| Record data on screen | I a record seen by someone else: an unlocked phone put down, a shoulder, a screenshot, the app-switcher thumbnail | Idle lock; snapshot cover on iOS; `FLAG_SECURE` on Android | **iOS cannot block a screenshot.** A screenshot of a record is then a copy outside the system and the audit trail; H-061 records it |
+| Record data in the OS | I a notification, widget, Spotlight entry, clipboard, keyboard dictionary, log line or crash report holding record text | The spec forbids all of these; no response cache on disk | The clipboard and keyboard are not addressed in the spec; no check exists that a build respects any of this |
+| A lost or stolen phone | I everything above, for as long as the phone is unlocked or its token lives | Passcode and biometrics (device), idle lock (app), wipe if managed (OQ-MP1) | **Unmanaged devices cannot be wiped by the trust**; the report route and the owner of revocation are undefined |
+| A shared phone | R an action blamed on the wrong clinician; I one clinician reading another's session | One user per install | Shared ward devices are not designed (see the MFA plan) |
+| The build | S a fake app with the same sign-in; T a tampered build; supply chain in Lily and the Gradle and SwiftPM trees | Managed distribution recommended (OQ-MP3); Lily pinned to one commit | No signing, no release build, no dependency scanning for the apps (MP-12); Lily is not a published package |
+
+Not done: a ranking, a review by a security engineer, a test on a real device, and the answers to OQ-MP1 and OQ-MP3.
+
 ## Not checked
 
 - No network capture or running deployment was inspected; this is code and configuration reading only.

@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-23 - Threat model for a lost or shared phone (MP-11)
+
+- **Clinical risk:** none from code (documents only). H-061 is the hazard: its controls, evidence and residual text are updated; its status stays `open`, and it is not marked accepted or closed.
+- **Changed:** `governance/mfa-plan.md` gains "The native apps: a lost or shared phone" (a phone unlock is not the service's second factor; what a thief gets from a locked and an unlocked phone; the cost of a lost phone for a managed and for an owned device; no `offline_access`; no shared phones; distribution). `governance/data-flow.md` gains "The native apps" (a STRIDE table for the phone flow, the token, the screen, the OS, a lost or shared phone, the build).
+- **Not done / not verified:** OQ-MP1 and OQ-MP3 are not answered: the maintainer decides, and the text gives the consequence of each. Read from the spec only: no app signs in, stores a token or locks yet, so nothing here was tested, and no real device was tried. No security engineer or Clinical Safety Officer reviewed it.
+
 ## 2026-11-23 - The site task rules and the HL7 feed's identity and health live in the app's runtime (QA-16 stage 2)
 
 - **Clinical risk:** none intended: the same settings, read from the app's runtime instead of a process-wide cell. In a service booted the usual way there is one runtime, so nothing changes. Hazard log not edited.
