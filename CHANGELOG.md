@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-23 - Patient features for the mobile apps: prescriptions, appointments and referrals, health records, services (MP-13 to MP-16)
+
+- **Clinical risk:** none from code (documents only). New hazard **H-062** (a patient acts on a misread result, an incomplete medicines list, a wrongly cancelled appointment or an unmade repeat prescription), status `open`, severity 4, likelihood 3; not accepted or closed.
+- **Changed:** `spec/mobile-apps/index.md` gains §11 "Patient features": a table of the four groups against what the service has today, eleven rules (a patient client and the `patient-access` purpose; release rules; no silence read as "none"; a repeat prescription is a request, not an order; booking and cancelling through the booking system; messages never in a notification; the national register is the authority for a donation decision; a fixed emergency line; the never-copy rule holds for patients; a patient's phone is a personal device; words and access) and a build order, least risky first. OQ-MP5 is marked answered; OQ-MP6 (one app or two) and OQ-MP7 (which national services) are new. `tasks.md` gains MP-13 to MP-16, each naming the service route that does not exist yet.
+- **Not done / not verified:** **the service has no medicines, prescription, appointment, message or donation route, no patient client in Keycloak, and its results and allergies routes are staff routes**: none of the four groups can be built until those exist and are specified in the patient portal first. The service-today column was read from `openapi.json` and the controllers, not run. The NHS 111, organ donation and blood service names are one country's examples. No clinician, patient or Clinical Safety Officer has reviewed any of it. The never-copy rule applied to a patient's own record is the maintainer's literal instruction; I noted it as stricter than a national app and did not ask whether it was meant for patients.
+
 ## 2026-11-23 - Record text is never copied onto a personal device (mobile spec §6 rule 4)
 
 - **Clinical risk:** none from code (documents only). It narrows a disclosure path of H-061, which stays `open`.

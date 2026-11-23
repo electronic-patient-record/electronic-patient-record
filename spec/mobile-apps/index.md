@@ -193,10 +193,77 @@ the Gradle build: its versions follow Lily's at the pinned commit, and a bump on
 | OQ-MP2 | Claimed `https` redirect or a private-use scheme for sign-in? | Claimed `https` where the deployment can host `apple-app-site-association` and `assetlinks.json` |
 | OQ-MP3 | Distribution: the App Store and Google Play, Apple Business Manager and managed Google Play, or both? | Managed distribution; public stores only after a clinical safety case |
 | OQ-MP4 | Offline reading of the downtime snapshot on a phone (links OQ-5, OQ-MV1)? | Not until OQ-5 is answered; then read-only, encrypted, wiped at sign-out |
-| OQ-MP5 | Is a native app needed for patients (the patient portal) as well as for staff? | Staff first; the portal stays web until asked |
+| OQ-MP5 | Is a native app needed for patients (the patient portal) as well as for staff? | **Answered 2026-11-23 by the maintainer's instruction: yes, with the four feature groups of §11.** Open inside it: one app with two audiences or two apps (OQ-MP6) |
+| OQ-MP6 | One app that serves staff and patients (a role decides the screens), or a separate patient app? | Separate: a patient's sign-in, data, words and risks differ from a clinician's, and a staff build must not carry the patient features or the reverse |
+| OQ-MP7 | Which national services does the deployment link to or write to (NHS 111, an organ donation register, a blood service)? | A deployment pack names them; the app carries none by default (equity rule, [scope](../02-scope.md)) |
+
+## 11. Patient features (the maintainer's instruction of 2026-11-23)
+
+The native apps also serve **patients** (and proxies acting for them). The feature list is the one a national patient app
+offers; each group below says what the service has today, what it has not, and the rules that apply. Nothing in this
+section is built, and the names of national services are one country's examples, not the product's (a deployment pack
+names its own, OQ-MP7).
+
+| Group | What the patient does | The service today | Owner of the data |
+| --- | --- | --- | --- |
+| **Prescriptions** | Order and manage **repeat** prescriptions | **Nothing**: no medicines, medication request or prescription route exists | The prescribing system (not built here) |
+| **Appointments and referrals** | Book, view or cancel a GP appointment; check a waiting-list referral or a hospital appointment | Referrals are built (`/api/patients/{id}/referrals`, the worklist); **no appointment route exists**; waiting lists are display-only (PA-15) | A PAS or the booking system (PA-1); the referral is this record's |
+| **Health records** | View parts of the GP record: **test results, allergies, medicines**; receive **messages** from GP practices and hospitals | Results and allergies are built (staff routes); **no medicines list, no message route** | This record, under the portal's release rules ([patient portal](../patient-portal/index.md) R-RES) |
+| **Services and preferences** | NHS 111 guidance; record an **organ donation decision**; register to give blood | **Nothing** | National services (OQ-MP7) |
+
+### Rules
+
+1. **A patient is not a clinician.** A patient signs in to a patient client (`epr-patient-ios`, `epr-patient-android`, not
+   the staff clients), reads under the purpose `patient-access`, and sees only the records linked to the signed-in person,
+   or a proxy's in-scope ones (patient portal PA-5). Every view writes an audit row as an access by the patient or proxy
+   (R-RES-8). The staff routes are not called by a patient build, and a staff build does not carry these screens.
+2. **Release rules decide what appears.** A result shows only when the deployment's release rule has released it
+   (R-RES-1 to R-RES-8); a result no one has reviewed says "A clinician has not reviewed this result yet", and no screen
+   reads an unflagged result as normal (R-RES-4). A missing reference range says so; an absent value is "not available",
+   never `0` (§3 rule 1).
+3. **Medicines and allergies are not complete unless the record says so.** A medicines list shows its date and its source,
+   and an empty list says "No medicines are recorded", never "You take no medicines"; the allergy screen shows the
+   allergy statement (`/allergy-statement`) and never reads silence as "no allergies" (§3 rule 1, H-002 family).
+4. **Repeat prescriptions are a request, not an order.** The app **asks**; a prescriber or the practice approves. The
+   screen lists only medicines the record marks as repeat, shows what was last issued and when the next request is
+   allowed, and says plainly that the request is not yet approved and how long it usually takes **[deployer to
+   decide]**. It cannot request a medicine the patient types in, a dose change, or a controlled drug. A request that fails or times out is
+   never shown as sent. Duplicate taps do not send two requests (an idempotency key, as the service's writes use).
+5. **Booking and cancelling go through the booking system.** The portal owns clinical content; the PAS owns booking (PA-1).
+   Cancelling an appointment needs a confirmation that names the date, time, place and clinician, and an appointment
+   that cannot be cancelled online (too close, or a kind the pack excludes) says so and gives the practice's way. A
+   waiting-list screen shows a referral's state and dates as the record has them; it never estimates a wait the record
+   does not hold, and "no date yet" is not zero days.
+6. **Messages.** A message from a practice or hospital shows its sender, its date and whether it was read, and the app
+   shows no message text in a notification (§3 rule 5): the notification says only that there is something new. A
+   message that asks for urgent action is shown with the service's own words on what to do if worried, and the app
+   never claims a message was seen by the practice when it was not.
+7. **Organ donation and blood donation are not the record's.** The app **links to or writes to** the national register or
+   service the deployment names (OQ-MP7); it never keeps the decision as the authoritative copy, never shows a stale one
+   as current, and says when the register could not be reached. A decision that could not be sent is not shown as
+   recorded. Guidance such as NHS 111 is a link to the national service with the app's own words around it; the app does
+   not give clinical advice of its own.
+8. **Emergencies.** Every patient screen that shows symptoms, results or a message carries a fixed line on what to do in
+   an emergency (the deployment's number), outside the record's text and never behind a menu.
+9. **The never-copy rule holds for patients too.** Record text, including a patient's own results, is never copied onto the
+   device (§6 rule 4). A patient who wants a copy asks the web portal's record download (patient portal), which
+   has its own audit and release rules. This is stricter than a national patient app, and the maintainer decided it
+   for every device; it is noted here because it will surprise a patient.
+10. **A patient's phone is a personal device.** Device ownership rules 2 to 4 and 8 of §6 apply, so no real patient
+    reaches these screens until they are built and tested; proxies and children (adolescent-confidential items, R-PRX)
+    follow the portal's proxy rules, not an app-only rule.
+11. **Words and access.** The patient apps need the ten locales (§3 rule 7) and the plain-language standard of the web
+    portal; accessibility (§4) matters more here: a patient may be elderly, visually impaired or unwell.
+
+### Order
+
+Read before write, and the least risky first: **health records, read-only** (results, allergies; medicines and messages
+once their routes exist) → **referral and appointment viewing** → **services and preferences** (links) → **cancel an
+appointment** → **repeat prescription requests** (a write with clinical effect, last). Each needs a service route that
+does not exist today (the table above) and its spec in the patient portal first; the apps do not invent a route.
 
 ## 10. Not done, not verified
 
 No clinician, user or Clinical Safety Officer has looked at this. The 44 pt and 48 dp figures and the RFC 8252 advice are
 from the author's knowledge of those documents, not re-read for this page. Keycloak has no `epr-ios` or `epr-android`
-client yet. Tasks: `MP-1` to `MP-12` in [`tasks.md`](../../tasks.md).
+client yet, and no patient client (`epr-patient-ios`, `epr-patient-android`). Tasks: `MP-1` to `MP-16` in [`tasks.md`](../../tasks.md).
