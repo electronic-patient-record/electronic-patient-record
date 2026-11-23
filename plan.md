@@ -2250,7 +2250,7 @@ append and merge, hard deletes, ad hoc aggregation, `continueOnError` on record 
 
 Asked for on 2026-11-23: two major new subprojects, `electronic-patient-record-mobile-app-with-swift` (Swift, SwiftUI,
 Lily Design System for Swift) and `electronic-patient-record-mobile-app-with-kotlin` (Kotlin, Jetpack Compose, Lily
-Design System for Kotlin). Spec: [`spec/mobile-apps/index.md`](spec/mobile-apps/index.md). Tasks MP-1 to MP-12. Work is
+Design System for Kotlin). Spec: [`spec/mobile-apps/index.md`](spec/mobile-apps/index.md). Tasks MP-1 to MP-29. Work is
 on branch `mobile-apps` until the maintainer merges it.
 
 **What exists.** The web UI already has a viewport tag and the mobile viewability direction (§27, XP-1 to XP-4), not yet
@@ -2271,3 +2271,23 @@ reaches a phone), MP-5 (sign-in), MP-6, MP-7, MP-9, MP-8, MP-10, then MP-3 when 
 **Not done.** No clinician or user was asked; no device was tried; the platform figures (44 pt, 48 dp) and RFC 8252
 were not re-read for this section.
 
+**Patients and the further features (added 2026-11-23).** The maintainer asked for patient features (prescriptions,
+appointments and referrals, records, services) and then sent a list of twelve more (PROMs through a third party, usage
+monitoring, onboarding, notifications, vaccination appointments, a clearer results screen, secondary-care results,
+authorised access, a preferred pharmacy, a prescription barcode, prescription status, shared personal details and
+communications preferences). Specified in `spec/mobile-apps/index.md` §11 and §12; tasks MP-13 to MP-29; hazards H-062 and
+H-063.
+
+**Assessment.** The list is a national patient app's roadmap, and it is mostly **writes and notifications**, the two
+things this repository has not built: the service has no medicines, prescription, appointment, message or
+communications-preference route, no patient client, and an outbox with no real recipient. So the apps cannot lead; **the
+service and the patient portal spec come first**, and each feature waits for its route. Four of the twelve carry
+most of the risk: authorised access (abuse by a person who should not have access), the pharmacy and the barcode (a
+prescription going to, or collected by, the wrong person), and shared personal details (a wrong change spread across
+systems). Two touch privacy by design: usage monitoring (off until a DPIA) and PROMs (a third-party processor). The
+others are reading screens, where the danger is a layout that makes a result look normal.
+
+**Order.** Reading screens (onboarding, results layout, secondary-care results) with MP-13; monitoring after its DPIA;
+communications preferences with notifications; then vaccination, pharmacy, status and barcode behind MP-16; PROMs after
+the third-party review; authorised access and personal details last. **Not done:** no patient, clinician or Clinical
+Safety Officer was asked; the national app's current behaviour was taken from the feedback text, not checked.

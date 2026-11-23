@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-23 - Twelve more patient features for the mobile apps, assessed (MP-17 to MP-29)
+
+- **Clinical risk:** none from code (documents only). New hazard **H-063** (an action in the app reaches the wrong person or place: pharmacy, barcode, authorised access, personal details, analytics), status `open`, severity 5, likelihood 2; not accepted or closed.
+- **Changed:** `spec/mobile-apps/index.md` §12 (a table of the twelve items with an assessment each, ten rules, an order); the §2 rule on analytics now allows only the allow-listed navigation events of §12 rule 1; OQ-MP8 (a PROMs provider) and OQ-MP9 (identity assurance for authorised access) added; `tasks.md` MP-17 to MP-29; `plan.md` §39 gains the assessment and order.
+- **Not done / not verified:** nothing is built. Most of the list is writes and notifications, which the service does not have (no medicines, prescription, appointment, message, pharmacy, authorised-access-request or communications-preference route, no patient client, an outbox with no real recipient), so each feature waits for its route and its patient-portal spec. Promptly Health and the other named services were taken from the feedback text and not checked. The DPIA, record of processing and data-flow table are not yet updated for monitoring and PROMs (named as needs in MP-17 and MP-18). No patient, clinician or Clinical Safety Officer reviewed any of it.
+
 ## 2026-11-23 - Patient features for the mobile apps: prescriptions, appointments and referrals, health records, services (MP-13 to MP-16)
 
 - **Clinical risk:** none from code (documents only). New hazard **H-062** (a patient acts on a misread result, an incomplete medicines list, a wrongly cancelled appointment or an unmade repeat prescription), status `open`, severity 4, likelihood 3; not accepted or closed.

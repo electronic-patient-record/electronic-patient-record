@@ -44,7 +44,7 @@ Android app (Compose)┘
 - **Tokens.** The access token lives in memory only. The refresh token, if the realm issues one to these clients, is
   kept in the Keychain (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`, no iCloud sync) or encrypted with an Android
   Keystore key that cannot leave the device. A token never goes to `UserDefaults`, `SharedPreferences`, a file, a log
-  line, a crash report or an analytics event.
+  line, a crash report or an analytics event, except the allow-listed navigation events of §12 rule 1 once a DPIA covers them.
 - **Layers.** Each app has a **core** with no UI and no platform networking (Swift package target `EPRCore`, Kotlin JVM
   module `:core`), unit-tested on the build machine, and an **app** layer (SwiftUI views; Compose screens) that renders
   what the core decides. A rule that can be computed (request building, display text for an absent value, idle limits)
@@ -195,6 +195,8 @@ the Gradle build: its versions follow Lily's at the pinned commit, and a bump on
 | OQ-MP4 | Offline reading of the downtime snapshot on a phone (links OQ-5, OQ-MV1)? | Not until OQ-5 is answered; then read-only, encrypted, wiped at sign-out |
 | OQ-MP5 | Is a native app needed for patients (the patient portal) as well as for staff? | **Answered 2026-11-23 by the maintainer's instruction: yes, with the four feature groups of §11.** Open inside it: one app with two audiences or two apps (OQ-MP6) |
 | OQ-MP6 | One app that serves staff and patients (a role decides the screens), or a separate patient app? | Separate: a patient's sign-in, data, words and risks differ from a clinician's, and a staff build must not carry the patient features or the reverse |
+| OQ-MP8 | Is a third-party PROMs provider (Promptly Health or another) allowed to receive health data, and under what contract and hosting? | Not until a DPIA and a processor contract exist; the app talks only to the service, never to the provider directly |
+| OQ-MP9 | What identity assurance does authorised access need, and who verifies a requester (the practice, a national service, both)? | The practice or the national identity service verifies, never the app; trial only with a named group |
 | OQ-MP7 | Which national services does the deployment link to or write to (NHS 111, an organ donation register, a blood service)? | A deployment pack names them; the app carries none by default (equity rule, [scope](../02-scope.md)) |
 
 ## 11. Patient features (the maintainer's instruction of 2026-11-23)
@@ -262,8 +264,85 @@ once their routes exist) → **referral and appointment viewing** → **services
 appointment** → **repeat prescription requests** (a write with clinical effect, last). Each needs a service route that
 does not exist today (the table above) and its spec in the patient portal first; the apps do not invent a route.
 
+## 12. Further patient features (feedback of 2026-11-23)
+
+Twelve more items for the patient apps, from the maintainer's feedback. Each is assessed here for what it needs and what
+could go wrong; none is built, and several name services this repository does not have. Items the feedback calls
+"exploring" or "feasibility" are tasks to find out, not to build. Third-party and national names (Promptly Health, a
+prescription barcode scheme, a pharmacy directory, a vaccination register) are one deployment's examples (OQ-MP7).
+
+| # | Item | Assessment | Task |
+| --- | --- | --- | --- |
+| 1 | **PROMs** (patient-reported outcome measures) through an integration with Promptly Health | A **third-party processor** receives and returns health data: it needs a DPIA, a processor contract and a data-flow entry before any code. The service already stores completed assessments (WL-3, `assessments_store`), the natural home for a returned score. Who is **eligible** is decided by the service (a clinician or a rule), never by the app. A score is not a diagnosis | MP-17 |
+| 2 | **Monitoring** of how users navigate the app | Conflicts with §2 ("no analytics event"): that rule changes to "no event except the allow-listed navigation events of §12 rule 1". Highest privacy risk of the twelve if done carelessly; see §12 rule 1 | MP-18 |
+| 3 | **Onboarding** that says what the app can do | Low risk, high value. It must describe only what is switched on for this deployment and this user (a clinician build, a patient with no proxy), or it promises a feature that is not there | MP-19 |
+| 4 | **Notifications** for hospital appointments and waiting lists | Apple and Google carry every push: the payload and its metadata are seen by them. Content-free by §3 rule 5 and §11 rule 6; needs the communications preferences (item 12) and a PAS source (PA-1) | MP-20 |
+| 5 | **Vaccination appointments**: show, and notify | Needs a source (an immunisation register or the PAS) that this repository has not got; **explore first**. An appointment is not a vaccination record: the app shows what was booked, never "you are protected" | MP-21 |
+| 6 | **A clearer test results screen** | Safety-critical presentation: the layout may not make a result look more normal, or more alarming, than the record says. Refines MP-13 and R-RES-4; test it with patients and a clinician | MP-22 |
+| 7 | **More results: hospital-requested (secondary care)** | A hospital's result has a different requester and reviewer from the GP's; "a clinician has not reviewed this" is **whose** review? The results store already merges by provenance; the patient view must say who requested it and which organisation, and the release rule is per source | MP-23 |
+| 8 | **Authorised access**: request to manage someone else's care, with an improved authorisation process (a trial) | The most abusable item: a person who should not have access (coercive control, a family dispute) is the threat. Needs verified identity of both people, the subject's own consent or a lawful basis for those who cannot give it, a scope, an end date, adolescent-confidential items, and a way for the subject to see and end it. The service has proxy terms (`relationships`); the request flow is new. A trial needs its own safety case | MP-24 |
+| 9 | **Nominate or change a preferred pharmacy** | A write with clinical effect: a prescription goes to the nominated pharmacy, so a wrong or stale choice sends medicine to the wrong place. Needs a pharmacy directory (national service) and a route that tells the prescribing system | MP-25 |
+| 10 | **A prescription barcode** to collect from a pharmacy | A barcode is a **bearer credential**: anyone who scans it can collect. It is shown on demand after unlock, drawn in memory, never stored, shared or copied (§6 rule 4), hidden after a short time, and Android keeps `FLAG_SECURE` on it. The iOS screenshot gap (H-061) matters more here. Needs MP-16 first | MP-26 |
+| 11 | **Track a prescription's status** | A status comes from other systems and goes stale. Unknown is "status not available", never "being prepared"; every status shows when it was last updated; no estimate of when it will be ready. Needs MP-16 first | MP-27 |
+| 12 | **Personal details shared and updated across systems; communications preferences** | Both **explore** items. A patient-entered change to name, address or phone is a **claim** until verified, and a wrong address or name breaks matching (the matcher's identity rules, H-001 family) and spreads to every system that receives it; changes are new versions, never edits. Communications preferences decide whether a notification may be sent at all | MP-28, MP-29 |
+
+### Rules
+
+1. **Monitoring (item 2) is privacy-preserving or it is off.** First-party only: no third-party analytics or advertising SDK,
+   no session replay, no device fingerprint. An event is an **allow-listed screen or feature name** and a timestamp, with
+   a random install identifier that is reset on sign-out; never a patient or user identifier, a record value, a search
+   term, free text, a URL with an identifier, or a location. It is **off until a DPIA covers it** and the patient is told,
+   in plain words, with a switch that works (and a staff build follows the trust's policy). A count that could identify
+   a person (a screen only one patient used) is not reported. Crash reports follow the same rule and carry no record data
+   (§2). The monitoring is for the project's improvement; it never changes what a patient sees.
+2. **Onboarding (item 3)** is a short, skippable, translated sequence built from the list of features **enabled for this
+   deployment and user**, so it cannot describe a screen that is not there. It makes no clinical claim (for example "check
+   your results" says results appear when released, not that they are normal), and it repeats the emergency line (§11 rule 8).
+3. **Notifications (items 4, 5)** carry no record text, no name, no service or organisation name, and no result or
+   appointment detail: "You have something new in the app" (§11 rule 6), sent only to a patient whose preference allows it
+   (item 12). A push can be late, lost or dropped, so **the app never promises one**: the app says that notifications may
+   be delayed and that appointments and results are in the app. A cancelled or changed appointment is shown in the app
+   at the next open and is not left as a stale notification.
+4. **Results (items 6, 7)**: the layout shows, for each value, the number, the unit, the reference range or "No reference
+   range was sent", the lab's flag **in words and not by colour alone**, the date taken and released, who requested it
+   and which organisation, and whether a clinician has reviewed this version, in this order and at every text size. It
+   never shows a trend, a "normal" label, a traffic light or a plain-language interpretation the record does not hold.
+   A result from secondary care says who requested it and who reviews it **[deployer to decide the wording]**. No
+   screen ranks results by how worrying they look.
+5. **Authorised access (item 8)** is requested in the app and **granted outside it**: the app sends a request; the practice
+   or the service verifies both people to the deployment's assurance level (national identity proofing where there is
+   one) and decides; the subject is told (by a route the requester does not control) and can see and end it; the scope
+   and end date are shown to both; adolescent-confidential and sensitive items stay hidden (R-PRX). A request that is
+   refused says "not granted" and no more. The trial is limited (a named group, an end date, a review) and each
+   outcome is reported to the Clinical Safety Officer.
+6. **Pharmacy (item 9)**: the screen shows the current nominated pharmacy and **when it was set**, a change names the
+   pharmacy's name and address and asks for a confirmation, and says plainly that a prescription already sent goes
+   where it was sent. A change that did not reach the prescribing system is never shown as made.
+7. **Barcode and status (items 10, 11)** as in the table; the barcode screen also raises the screen brightness only while
+   it is shown, and is blanked in the switcher snapshot (§3 rule 5).
+8. **Personal details (item 12)**: until verified, a patient's change is held as a **request** shown to a member of staff
+   (the work queue), not applied; the app says "your change has been sent" and never "updated" until the record says so;
+   a change of name, date of birth or sex is **never** made from the app alone. Sharing across systems goes through the
+   service's outbound choke point (PA-13), which has no real recipient yet (the outbox's only sink is a log line).
+9. **Communications preferences (item 12)** are per channel (push, SMS, e-mail, letter) and per kind (appointments,
+   results, messages, reminders); a patient can always turn a kind off, except a message the law or clinical safety
+   requires, which the app says it cannot turn off and why. The default for a new patient is **off** for push until they
+   choose. A preference is a record in the service, not a phone setting, so it follows the patient to a new device.
+10. **A third-party processor (items 1, 2, 4)** appears in the DPIA, the record of processing and the data-flow table before
+    it is called, with the data it receives, where it is hosted and how it is deleted; a patient's data is never sent
+    to one by default.
+
+### Order and what comes first
+
+Cheap and safe first: **onboarding** (3) with the **results layout** (6) and **secondary-care results** (7), because
+they are the reading screens of MP-13. **Monitoring** (2) early, so later features are learned from, but only after its
+DPIA. Then **communications preferences** (12) and **notifications** (4), which need each other. **Vaccination**
+(5), **pharmacy** (9), **prescription status** (11) and **barcode** (10) follow the prescribing route of MP-16 and the
+pharmacy directory. **PROMs** (1) after the third-party review. **Authorised access** (8) and **personal details**
+(12) last: they need verified identity and the most review, and the feedback marks personal details as exploration.
+
 ## 10. Not done, not verified
 
 No clinician, user or Clinical Safety Officer has looked at this. The 44 pt and 48 dp figures and the RFC 8252 advice are
 from the author's knowledge of those documents, not re-read for this page. Keycloak has no `epr-ios` or `epr-android`
-client yet, and no patient client (`epr-patient-ios`, `epr-patient-android`). Tasks: `MP-1` to `MP-16` in [`tasks.md`](../../tasks.md).
+client yet, and no patient client (`epr-patient-ios`, `epr-patient-android`). Tasks: `MP-1` to `MP-29` in [`tasks.md`](../../tasks.md).
