@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-23 - One sweep: an unknown purpose of use is refused by every route that reads it (QA-15)
+
+- **Clinical risk:** none: a test.
+- **Changed:** new `tests/purpose_sweep.rs` (a module of `suite.rs`, database-gated) walks every path and method in the served `openapi.json` with `X-Purpose-Of-Use: curiosity`: no route may answer 5xx, and at least 40 must refuse it with 400 naming the header (44 do today). A route added later is swept without an edit.
+- **Not done / not verified:** the write routes answer 422 for the empty body before the guard runs, so only the read routes are covered; each write route needs a valid body to reach the guard. I did not re-run the coverage, so I cannot say how many lines this added.
+
 ## 2026-11-23 - Coverage measured at 95.16%; referral-queue refusals tested (QA-15)
 
 - **Clinical risk:** none: tests only.

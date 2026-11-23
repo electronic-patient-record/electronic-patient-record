@@ -85,6 +85,8 @@ mod patients_store;
 mod personal_data_inventory;
 #[path = "photos_store.rs"]
 mod photos_store;
+#[path = "purpose_sweep.rs"]
+mod purpose_sweep;
 #[path = "readiness.rs"]
 mod readiness;
 #[path = "referral_unmatched.rs"]
