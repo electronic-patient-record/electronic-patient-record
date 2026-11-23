@@ -646,7 +646,15 @@ fn count<T>(items: impl Iterator<Item = T>) -> f64 {
 /// because `Smith` is a prefix of it, while `Smith` still matches `Smith-Jones` (a name that lost
 /// or gained a part on marriage).
 fn compound_sim(x: &str, y: &str) -> f64 {
-    let (xs, ys): (Vec<&str>, Vec<&str>) = (x.split(' ').collect(), y.split(' ').collect());
+    // `split_whitespace` drops empty parts: an empty part has length 0, so its score would be 0/0, NaN. A name with
+    // no part at all is absent evidence, and absent evidence is never agreement.
+    let (xs, ys): (Vec<&str>, Vec<&str>) = (
+        x.split_whitespace().collect(),
+        y.split_whitespace().collect(),
+    );
+    if xs.is_empty() || ys.is_empty() {
+        return 0.0;
+    }
     let part = |a: &str, b: &str| {
         let (la, lb) = (count(a.chars()), count(b.chars()));
         strsim::jaro_winkler(a, b) * la.min(lb) / la.max(lb)
@@ -964,4 +972,28 @@ fn valid_numbers(p: &Patient, system: &str, valid: fn(&str) -> bool) -> Vec<Stri
         .filter(|i| i.system == system && valid(&i.value))
         .map(|i| canonical_identifier(&i.value))
         .collect()
+}
+
+#[cfg(test)]
+mod compound_tests {
+    use super::compound_sim;
+
+    #[test]
+    fn a_name_with_an_empty_part_is_never_nan() {
+        for (a, b) in [
+            ("", ""),
+            ("", "smith"),
+            ("smith", " "),
+            ("smith  jones", "smith jones"),
+            (" smith", "smith "),
+        ] {
+            let s = compound_sim(a, b);
+            assert!(s.is_finite() && (0.0..=1.0).contains(&s), "{a:?} {b:?} {s}");
+        }
+        assert!(
+            compound_sim("", "").total_cmp(&0.0).is_eq(),
+            "no name is no evidence"
+        );
+        assert!(compound_sim(" smith", "smith").total_cmp(&1.0).is_eq());
+    }
 }

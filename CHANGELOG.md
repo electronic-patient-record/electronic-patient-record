@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-23 - Matcher: a name with an empty part no longer scores NaN (QA-17)
+
+- **Clinical risk:** it could change a match score, so it is treated as clinical-adjacent. Before, a family name with an empty part (two spaces, a leading or trailing space) scored 0/0, NaN, for that part; `weighted` then failed its finite check or the score dropped out. Now empty parts are ignored, and a name with no part at all scores 0.0 (absent evidence, never agreement). Names of one part per word are unchanged. No hazard-log row was changed.
+- **Verified:** a new unit test; all matcher tests (126 integration, 7 unit) pass; clippy and the arithmetic gate are clean.
+- **Not done / not verified:** the names reaching this function are already folded and usable, so I found no input from the service that triggered it; this closes the gap in the function. The matcher version was not bumped or published, so the service (which uses the published matcher) does not have it yet.
+
 ## 2026-11-23 - The mobile apps' Lily pin moves to 5df76fa (494 commits)
 
 - **Clinical risk:** none: the pinned design-system source.
