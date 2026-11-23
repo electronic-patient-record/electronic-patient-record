@@ -189,11 +189,11 @@ fn cut(text: &str, max: usize) -> &str {
     if text.len() <= max {
         return text;
     }
-    let mut end = max;
-    while !text.is_char_boundary(end) {
-        end -= 1;
-    }
-    &text[..end]
+    // The longest prefix within `max` that ends on a character boundary (0 always is one).
+    (0..=max)
+        .rev()
+        .find_map(|end| text.get(..end))
+        .unwrap_or("")
 }
 
 /// Keep an inbound message that did not match, with the one `reason` it did not, and answer [`Filed::Queued`]

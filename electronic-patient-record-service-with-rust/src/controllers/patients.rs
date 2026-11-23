@@ -600,7 +600,7 @@ pub(super) async fn search_service(
                     .get(&s.id.to_lowercase())
                     .is_none_or(|v| v.consent != Consent::Deny)
             });
-            let hidden_by_consent = before - found.len();
+            let hidden_by_consent = before.abs_diff(found.len()); // only `retain`ed away, so never more than `before`
             // The criteria are demographics, so only which kinds were used and how many matched.
             let used: Vec<&str> = [
                 ("family", &query.family),

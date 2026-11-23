@@ -43,7 +43,7 @@ fn msh(segment: &str, sep: char) -> String {
         .split(sep)
         .enumerate()
         .map(|(i, f)| {
-            if i == 0 || f.is_empty() || MSH_KEPT.contains(&(i + 1)) {
+            if i == 0 || f.is_empty() || i.checked_add(1).is_some_and(|n| MSH_KEPT.contains(&n)) {
                 f
             } else {
                 MASK

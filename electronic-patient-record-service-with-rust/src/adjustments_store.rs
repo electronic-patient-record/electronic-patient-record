@@ -273,7 +273,10 @@ pub async fn current(
 ///
 /// [`StoreError::NotFound`], [`StoreError::Conflict`] (stale or racing version),
 /// [`StoreError::BadQuery`] (the rules refused the change).
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "RCA-EXC-6: a store call names each field of the record; one parameter struct for all is a wider change"
+)]
 pub async fn change(
     db: impl Into<Db<'_>>,
     patient_id: &str,

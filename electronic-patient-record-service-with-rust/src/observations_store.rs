@@ -137,7 +137,10 @@ fn parse_effective(
             "effective_at is before 1900".to_string(),
         ));
     }
-    if at > now + jiff::SignedDuration::from_mins(FUTURE_SKEW_MINUTES) {
+    if now
+        .checked_add(jiff::SignedDuration::from_mins(FUTURE_SKEW_MINUTES))
+        .is_ok_and(|limit| at > limit)
+    {
         return Err((
             "effective_at_future",
             format!("effective_at is more than {FUTURE_SKEW_MINUTES} minutes in the future"),
@@ -394,7 +397,10 @@ pub async fn create(
 /// # Errors
 ///
 /// As [`create`].
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "RCA-EXC-6: a store call names each field of the record; one parameter struct for all is a wider change"
+)]
 pub async fn create_with_rules(
     db: impl Into<Db<'_>>,
     patient_id: &str,
@@ -570,7 +576,10 @@ pub async fn history(
 ///
 /// [`StoreError::NotFound`], [`StoreError::Conflict`] (stale or racing version),
 /// [`StoreError::BadQuery`] (refused record, or reopening an entered-in-error observation).
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "RCA-EXC-6: a store call names each field of the record; one parameter struct for all is a wider change"
+)]
 pub async fn update(
     db: impl Into<Db<'_>>,
     patient_id: &str,

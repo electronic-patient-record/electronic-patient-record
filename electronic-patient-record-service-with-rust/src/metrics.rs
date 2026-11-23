@@ -316,7 +316,18 @@ fn observe_in(
     };
     let h = series.entry(key).or_default();
     inc(&mut h.count, HISTOGRAM_FIGURE)?;
-    h.sum += seconds;
+    // RCA-FLT-2: a sum that is not a finite number is not shown as one.
+    #[expect(
+        clippy::float_arithmetic,
+        reason = "RCA-FLT: a duration sum is a measurement, checked finite just below"
+    )]
+    let sum = h.sum + seconds;
+    if !sum.is_finite() {
+        return Err(Overflow {
+            figure: HISTOGRAM_FIGURE,
+        });
+    }
+    h.sum = sum;
     if let Some(slot) = BUCKETS
         .iter()
         .position(|b| seconds <= *b)

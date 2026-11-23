@@ -94,7 +94,7 @@ fn msh_first_component(text: &str, n: usize) -> Option<String> {
     let msh = text.split(['\r', '\n']).find(|l| l.starts_with("MSH"))?;
     let sep = msh.chars().nth(3)?;
     let component = msh.chars().nth(4).unwrap_or('^');
-    let field = msh.split(sep).nth(n - 1)?;
+    let field = msh.split(sep).nth(n.checked_sub(1)?)?;
     Some(
         field
             .split(component)

@@ -321,7 +321,10 @@ pub(super) async fn amend(
     .await
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "RCA-EXC-6: a store call names each field of the record; one parameter struct for all is a wider change"
+)]
 async fn finish(
     ctx: &AppContext,
     agent: &Agent,

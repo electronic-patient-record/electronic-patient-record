@@ -203,11 +203,11 @@ pub async fn record(db: impl Into<Db<'_>>, new: New<'_>) -> Result<Recorded, Sto
     let message = new.message;
     let mut text = message;
     if text.len() > MAX_MESSAGE {
-        let mut end = MAX_MESSAGE;
-        while !text.is_char_boundary(end) {
-            end -= 1;
-        }
-        text = &text[..end];
+        // The longest prefix within the limit that ends on a character boundary (0 always is one).
+        text = (0..=MAX_MESSAGE)
+            .rev()
+            .find_map(|end| text.get(..end))
+            .unwrap_or("");
     }
     sqlx::query(
         "SELECT pg_advisory_xact_lock(hashtextextended('feed_refusals:' || $1 || ':' || $2, 0))",

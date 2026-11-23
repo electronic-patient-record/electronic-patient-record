@@ -9,9 +9,8 @@ use sqlx::query::Query;
 
 /// A database failure in `store`, kept as text with the store's name so the log says where.
 pub(crate) fn db_err<E: std::fmt::Display + 'static>(store: &str, e: E) -> StoreError {
-    let unavailable = (&e as &dyn std::any::Any)
-        .downcast_ref::<sqlx::Error>()
-        .is_some_and(unavailable);
+    let any: &dyn std::any::Any = &e;
+    let unavailable = any.downcast_ref::<sqlx::Error>().is_some_and(unavailable);
     if unavailable {
         StoreError::Unavailable(format!("{store}: {e}"))
     } else {

@@ -282,7 +282,10 @@ async fn access_log(
     };
     let page = if csv { LOG_EXPORT } else { LOG_PAGE };
     // One more than a page, to know whether there is another.
-    let mut rows = match audit::patient_log(&ctx.pool(), &id, &agent.0, &filter, page + 1).await {
+    let Some(fetch) = page.checked_add(1) else {
+        return log_bad_request("the page size is out of range");
+    };
+    let mut rows = match audit::patient_log(&ctx.pool(), &id, &agent.0, &filter, fetch).await {
         Ok(r) => r,
         Err(audit::SearchError::BadQuery(m)) => return log_bad_request(&m),
         Err(audit::SearchError::Audit(e)) => return audit_failed(&e).into_response(),

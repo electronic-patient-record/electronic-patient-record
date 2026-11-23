@@ -21,7 +21,13 @@ pub fn valid_birth_date(d: &str) -> bool {
             let max = match m {
                 1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
                 4 | 6 | 9 | 11 => 30,
-                2 => 28 + u32::from(leap),
+                2 => {
+                    if leap {
+                        29_u32
+                    } else {
+                        28_u32
+                    }
+                }
                 _ => return false,
             };
             y >= 1800 && (1..=max).contains(&day)

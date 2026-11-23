@@ -198,10 +198,13 @@ pub fn problems(s: &Suspicion, now: jiff::Timestamp) -> Vec<String> {
     }
     match crate::clock::parse_rfc3339(&s.point_of_suspicion) {
         None => out.push("the point of suspicion must be an RFC 3339 time".into()),
-        Some(t) if t > now + jiff::SignedDuration::from_secs(SKEW_SECONDS) => {
-            out.push("the point of suspicion is in the future".into());
-        }
-        Some(_) => {}
+        Some(t) => match now.checked_add(jiff::SignedDuration::from_secs(SKEW_SECONDS)) {
+            Ok(limit) if t > limit => {
+                out.push("the point of suspicion is in the future".into());
+            }
+            Ok(_) => {}
+            Err(_) => out.push("the time now is outside the calendar".into()),
+        },
     }
     match (s.grounds.kind, &s.grounds.result_id) {
         (GroundsKind::Result, None) => {

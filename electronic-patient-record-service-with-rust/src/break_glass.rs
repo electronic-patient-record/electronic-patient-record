@@ -21,7 +21,7 @@ use sqlx::{AssertSqlSafe, Row};
 crate::store_errors!("break-glass");
 
 /// How long a grant lasts. Fixed: the clinician cannot choose a longer one.
-pub const GRANT_HOURS: i64 = 4;
+pub const GRANT_HOURS: i32 = 4;
 
 /// How long a grant may wait for its review before it is overdue (EC-11), when `EPR_BREAK_GLASS_REVIEW_HOURS`
 /// does not say otherwise. **A guess**: no policy has set it.
@@ -234,7 +234,7 @@ pub async fn open(
     .bind(patient.id.clone())
     .bind(subject)
     .bind(reason)
-    .bind(i32::try_from(GRANT_HOURS).unwrap_or(4))
+    .bind(GRANT_HOURS)
     .fetch_optional(&mut *db)
     .await
     .map_err(db_err)?

@@ -150,7 +150,7 @@ pub async fn run_loop(db: PgPool, archive_after_months: Option<u32>) {
                 tracing::debug!("audit maintenance skipped: another replica is running it")
             }
             Ok(Ran::Done { made, moved }) => {
-                if made > 0 {
+                if made > 0_i32 {
                     tracing::info!(made, "audit partitions made");
                 }
                 if !moved.is_empty() {

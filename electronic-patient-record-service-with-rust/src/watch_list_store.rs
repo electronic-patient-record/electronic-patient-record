@@ -217,7 +217,6 @@ async fn one(
 ///
 /// [`StoreError::NotFound`], [`StoreError::Conflict`] (stale or racing version),
 /// [`StoreError::BadQuery`] (no reason, or already ended).
-#[allow(clippy::too_many_arguments)]
 pub async fn end(
     db: impl Into<Db<'_>>,
     patient_id: &str,
@@ -339,7 +338,7 @@ async fn pointers(
     .fetch_all(&mut *db)
     .await
     .map_err(db_err)?;
-    let more = rows.len() as i64 > OWN_LIMIT;
+    let more = i64::try_from(rows.len()).map_or(true, |n| n > OWN_LIMIT);
     let pointers = rows
         .iter()
         .take(usize::try_from(OWN_LIMIT).unwrap_or(usize::MAX))

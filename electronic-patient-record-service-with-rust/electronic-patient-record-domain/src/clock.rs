@@ -73,15 +73,24 @@ pub fn rfc3339_secs(t: Timestamp) -> String {
     t.strftime("%Y-%m-%dT%H:%M:%SZ").to_string()
 }
 
+/// `n` divided by `unit` when it divides exactly, else `None`.
+fn exactly(n: i32, unit: i32) -> Option<i32> {
+    if n.checked_rem(unit)? == 0 {
+        n.checked_div(unit)
+    } else {
+        None
+    }
+}
+
 /// The fraction of a second as chrono wrote it: in groups of three digits, none when it is zero.
 fn fraction(t: Timestamp) -> String {
     let nanos = t.subsec_nanosecond();
     if nanos == 0 {
         String::new()
-    } else if nanos % 1_000_000 == 0 {
-        format!(".{:03}", nanos / 1_000_000)
-    } else if nanos % 1_000 == 0 {
-        format!(".{:06}", nanos / 1_000)
+    } else if let Some(millis) = exactly(nanos, 1_000_000_i32) {
+        format!(".{millis:03}")
+    } else if let Some(micros) = exactly(nanos, 1_000_i32) {
+        format!(".{micros:06}")
     } else {
         format!(".{nanos:09}")
     }

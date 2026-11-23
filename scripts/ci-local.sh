@@ -146,6 +146,7 @@ gate_script matcher-doc
 gate_script service-fmt
 gate_script service-clippy
 gate_script service-checked-arithmetic
+gate_script service-clippy-arithmetic
 gate_script service-test
 gate_script service-doc
 gate_script ui-lint

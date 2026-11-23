@@ -145,7 +145,7 @@ fn same_phone(code: u16, a: &str, b: &str) -> bool {
         .compare(&x, &y)
         .fields
         .iter()
-        .any(|f| f.field == "telecom" && f.similarity == Some(1.0))
+        .any(|f| f.field == "telecom" && f.similarity == Some(1.0_f64))
 }
 
 /// Two records alike in every way but their IHIs, compared with the rule on.

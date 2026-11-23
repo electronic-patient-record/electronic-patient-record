@@ -1193,7 +1193,7 @@ fn amendment_schemas() -> Value {
 /// The schemas for the hazard register: a hazard with its controls and evidence, the stored version, the create and step
 /// bodies and the list.
 fn hazard_schemas() -> Value {
-    let evidence = json!({"type": "array", "maxItems": 20, "items": {"$ref": "#/components/schemas/HazardEvidence"}});
+    let evidence = json!({"type": "array", "maxItems": 20_u32, "items": {"$ref": "#/components/schemas/HazardEvidence"}});
     json!({
         "CreateHazard": {
             "type": "object", "required": ["title", "severity", "likelihood"],
@@ -2626,7 +2626,7 @@ pub fn document_for(served: &[(String, String)]) -> Value {
             parameters.push(json!({
                 "name": "Idempotency-Key", "in": "header", "required": false,
                 "description": "1 to 128 letters, digits or . _ : -. A retry with the same key and the same request returns the first answer (header `Idempotent-Replayed: true`) and writes nothing; the same key for a different request is a 422; a key whose first request is unfinished is a 409. Only a success is kept; keys expire after 24 hours.",
-                "schema": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9._:-]+$"}
+                "schema": {"type": "string", "minLength": 1_u32, "maxLength": 128_u32, "pattern": "^[A-Za-z0-9._:-]+$"}
             }));
             op.insert("parameters".into(), Value::Array(parameters));
         }

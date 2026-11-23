@@ -200,7 +200,10 @@ pub async fn one(db: impl Into<Db<'_>>, task_id: &str) -> Result<Task, StoreErro
 /// # Errors
 ///
 /// [`StoreError::Db`]: the caller's transaction then rolls back with everything it holds.
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "RCA-EXC-6: a store call names each field of the record; one parameter struct for all is a wider change"
+)]
 pub async fn create_from_event(
     conn: &mut PgConnection,
     rules: &[Rule],
@@ -544,7 +547,7 @@ pub async fn for_team(db: impl Into<Db<'_>>, team: &str) -> Result<(Vec<Task>, b
     .fetch_all(&mut *conn)
     .await
     .map_err(db_err)?;
-    let more = rows.len() as i64 > TEAM_LIMIT;
+    let more = i64::try_from(rows.len()).map_or(true, |n| n > TEAM_LIMIT);
     let tasks = rows
         .iter()
         .take(usize::try_from(TEAM_LIMIT).unwrap_or(200))

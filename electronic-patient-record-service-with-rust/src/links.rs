@@ -35,6 +35,9 @@ const MERGE_LOCK: i64 = 0x4550_524d_4552_4745; // "EPRMERGE"
 /// the sixteenth record.
 const MAX_DEPTH: i32 = 16;
 
+/// The recursion stops below this depth, so a chain of [`MAX_DEPTH`] is still followed one step more to see it is too long.
+const DEPTH_BOUND: i32 = MAX_DEPTH + 1;
+
 /// A link as stored.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct StoredLink {
@@ -166,7 +169,7 @@ pub async fn merged_into(
              SELECT id::text AS id, depth FROM up ORDER BY depth DESC LIMIT 1",
     )
     .bind(start)
-    .bind(MAX_DEPTH + 1)
+    .bind(DEPTH_BOUND)
     .fetch_optional(&mut *db)
     .await
     .map_err(db_err)?;

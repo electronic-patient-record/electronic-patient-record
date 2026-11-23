@@ -155,7 +155,11 @@ pub fn validate(a: &Authority) -> Vec<String> {
     }
     if a.expires_at <= a.recorded_at {
         problems.push("the expiry must be after the time it is recorded".to_string());
-    } else if a.expires_at - a.recorded_at > MAX_TERM_SECS {
+    } else if a
+        .expires_at
+        .checked_sub(a.recorded_at)
+        .is_none_or(|term| term > MAX_TERM_SECS)
+    {
         problems.push("the expiry is further away than the longest term allowed".to_string());
     }
     if a.revoked_at.is_some_and(|r| r < a.recorded_at) {

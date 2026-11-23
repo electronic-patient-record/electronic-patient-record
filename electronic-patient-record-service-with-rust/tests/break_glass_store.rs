@@ -72,7 +72,7 @@ async fn a_grant_lasts_four_hours_and_asking_again_does_not_extend_it() {
     .unwrap();
     let left = g.expires_unix - now;
     assert!(
-        (GRANT_HOURS * 3600 - 60..=GRANT_HOURS * 3600).contains(&left),
+        (i64::from(GRANT_HOURS) * 3600 - 60..=i64::from(GRANT_HOURS) * 3600).contains(&left),
         "{left}"
     );
     assert_eq!(

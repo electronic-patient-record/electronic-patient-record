@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-23 - The service's production code passes the checked-arithmetic lints; a gate keeps it so (QA-17, RCA-ENF-1)
+
+- **Clinical risk:** low, spread over many modules; no result is meant to change on a working clock and valid data. Behaviour that can differ: a `Timestamp` sum out of range in the suspicion future check, the observation future check and the feed health hour window is now handled by a checked add (the suspicion check says "the time now is outside the calendar"; the feed health read fails with `StoreError::Db`); a team or watch list with more rows than fit `i64` counts as having more. Hazard log not edited.
+- **Changed:** the last 33 production sites: `clock::fraction` (`exactly` with `checked_rem` and `checked_div`), `dates`, `proxy` (term), `suspicion`, `packs`, `adt_feed`, `amendments_store`, `break_glass` (`GRANT_HOURS` is `i32`, no `unwrap_or(4)`), `me`, `patients`, `feed_queue` and `referral_unmatched` (the longest prefix on a character boundary, no loop and no slice), `fhir_patient` (`zip(1_usize..)`), `redact`, `links`, `observations_store`, `tasks_store`, `watch_list_store`, `store`, `openapi`; the 15 `#[allow(clippy::too_many_arguments)]` are `#[expect(.., reason = ..)]` and the five that were no longer needed are gone; the histogram sum is checked finite (RCA-FLT-2). New gate `service-clippy-arithmetic` (`scripts/gates/`, in `ci.yml` and `ci-local.sh`).
+- **Not done / not verified:** the lints are in a gate, not in `[workspace.lints]` as RCA-ENF-1 shows, because of tests (see QA-17); about 820 hits remain in tests and benchmarks, allowed by RCA-SCOPE-4; the matcher crate is not covered; the 15 remaining `expect` for `too_many_arguments` still want a parameter struct. Full suite on a fresh database: 864 passed, 6 failed (Java `fhir_validator`). CI not observed.
+
 ## 2026-11-23 - interop/hl7_adt.rs under the arithmetic lints (QA-17)
 
 - **Clinical risk:** none intended: the readers of an HL7 time offset and a birth date give the same results; the slicing and the offset arithmetic are now `get`, `split_at_checked`, `checked_mul` and `checked_add`. Hazard log not edited.

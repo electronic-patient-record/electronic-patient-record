@@ -244,16 +244,16 @@ pub fn from_fhir_json(text: &str) -> Result<FromFhir, Unreadable> {
         });
 
     let mut identifiers = Vec::new();
-    for (i, id) in raw
+    for (id, number) in raw
         .get("identifier")
         .and_then(Value::as_array)
         .into_iter()
         .flatten()
-        .enumerate()
+        .zip(1_usize..)
     {
         match (text_of(id, "system"), text_of(id, "value")) {
             (Some(system), Some(value)) => identifiers.push(Identifier { system, value }),
-            _ => problems.push(format!("identifier {} needs a system and a value", i + 1)),
+            _ => problems.push(format!("identifier {number} needs a system and a value")),
         }
     }
 
@@ -283,16 +283,16 @@ pub fn from_fhir_json(text: &str) -> Result<FromFhir, Unreadable> {
         });
 
     let mut telecom = Vec::new();
-    for (i, t) in raw
+    for (t, number) in raw
         .get("telecom")
         .and_then(Value::as_array)
         .into_iter()
         .flatten()
-        .enumerate()
+        .zip(1_usize..)
     {
         match (text_of(t, "system"), text_of(t, "value")) {
             (Some(system), Some(value)) => telecom.push(Telecom { system, value }),
-            _ => problems.push(format!("telecom {} needs a system and a value", i + 1)),
+            _ => problems.push(format!("telecom {number} needs a system and a value")),
         }
     }
 

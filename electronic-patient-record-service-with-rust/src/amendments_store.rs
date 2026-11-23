@@ -106,7 +106,10 @@ async fn target_version(
 ///
 /// [`StoreError::NotFound`] (no such patient or record), [`StoreError::BadQuery`] (a kind that cannot
 /// be amended, a version the record does not have, a blank text).
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "RCA-EXC-6: a store call names each field of the record; one parameter struct for all is a wider change"
+)]
 pub async fn open(
     db: impl Into<Db<'_>>,
     patient_id: &str,
@@ -121,7 +124,7 @@ pub async fn open(
     let db = &mut *conn;
     let patient = patients_store::current(&mut *db, patient_id).await?;
     let current = target_version(&mut *db, &patient.id, kind, target_id).await?;
-    if version < 1 || version > current {
+    if !(1_i32..=current).contains(&version) {
         return Err(StoreError::BadQuery(format!(
             "the record has no version {version}"
         )));
@@ -264,7 +267,6 @@ pub async fn notices_by_target(
 ///
 /// [`StoreError::NotFound`], [`StoreError::Conflict`] (stale or racing version),
 /// [`StoreError::BadQuery`] (the rule refused it, or an applied version the record does not have).
-#[allow(clippy::too_many_arguments)]
 pub async fn advance(
     db: impl Into<Db<'_>>,
     patient_id: &str,

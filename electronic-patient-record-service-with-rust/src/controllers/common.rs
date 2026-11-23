@@ -117,7 +117,10 @@ fn scope_of(resource: Resource) -> Option<Scope> {
 
 /// [`authorize`], for a route that is a narrower part of a resource than the resource itself (the photo
 /// and the access log are identity data to the policy, and their own scope to a proxy).
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "RCA-EXC-6: a store call names each field of the record; one parameter struct for all is a wider change"
+)]
 pub(super) async fn authorize_scoped(
     db: &PgPool,
     agent: &Agent,

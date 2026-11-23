@@ -341,7 +341,10 @@ pub async fn history(
     build(&rows, sent, now, outcome, in_error)
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "RCA-EXC-6: a store call names each field of the record; one parameter struct for all is a wider change"
+)]
 async fn insert(
     db: &mut sqlx::PgConnection,
     referral_id: &str,
@@ -401,7 +404,7 @@ pub async fn raise(
     check(&mut *db, patient_id, s, now).await?;
     match insert(&mut *db, &referral_id, 1, patient_id, author, None, None, s).await? {
         crate::store::Appended::Row(row) => row_to_stored(&row, None, sent, now),
-        crate::store::Appended::Taken => Err(StoreError::Conflict { current: 1 }),
+        crate::store::Appended::Taken => Err(StoreError::Conflict { current: 1_i32 }),
     }
 }
 
@@ -412,7 +415,10 @@ pub async fn raise(
 /// [`StoreError::NotFound`] (no such referral, or it carries no suspicion), [`StoreError::Conflict`]
 /// (stale or racing version), [`StoreError::BadQuery`] (refused: no reason, nothing changed, or the
 /// suspicion's own problems).
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "RCA-EXC-6: a store call names each field of the record; one parameter struct for all is a wider change"
+)]
 pub async fn amend(
     db: impl Into<Db<'_>>,
     patient_id: &str,
@@ -512,7 +518,7 @@ pub async fn carry(
             let sent = first_sent(&mut *db, &to, own).await?;
             row_to_stored(&row, None, sent, now).map(Some)
         }
-        crate::store::Appended::Taken => Err(StoreError::Conflict { current: 1 }),
+        crate::store::Appended::Taken => Err(StoreError::Conflict { current: 1_i32 }),
     }
 }
 
@@ -523,7 +529,6 @@ pub async fn carry(
 /// [`StoreError::NotFound`] (no such referral on this patient, or it carries no suspicion),
 /// [`StoreError::Conflict`] (a stale version), [`StoreError::BadQuery`] (the outcome was refused, or the
 /// suspicion has already ended).
-#[allow(clippy::too_many_arguments)]
 pub async fn end(
     db: impl Into<Db<'_>>,
     patient_id: &str,
@@ -590,7 +595,6 @@ pub async fn end(
 /// [`StoreError::NotFound`] (no such referral on this patient, or no suspicion),
 /// [`StoreError::Conflict`] (`seq` is not the current outcome; `current` is the current one's, 0 for
 /// none), [`StoreError::BadQuery`] (no reason, or one too long).
-#[allow(clippy::too_many_arguments)]
 pub async fn mark_outcome_in_error(
     db: impl Into<Db<'_>>,
     patient_id: &str,

@@ -94,7 +94,7 @@ pub fn parse(text: &str) -> Result<Vec<Form>, String> {
             .and_then(|j| forms.get(j))
             .filter(|p| p.id == f.id);
         let expected = previous
-            .map_or(Some(1), |p| p.version.checked_add(1)) // the first version of a form is 1
+            .map_or(Some(1_i32), |p| p.version.checked_add(1)) // the first version of a form is 1
             .ok_or_else(|| format!("assessment forms: {name}: the version is out of range"))?;
         if f.version != expected {
             return Err(format!(

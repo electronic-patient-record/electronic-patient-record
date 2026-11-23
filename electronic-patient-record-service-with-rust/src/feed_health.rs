@@ -284,6 +284,9 @@ pub async fn facts(
 ) -> Result<Facts, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
+    let hour_ago = now
+        .checked_sub(SignedDuration::from_hours(1))
+        .map_err(|_| StoreError::Db("the clock is outside the calendar".into()))?;
     let row = sqlx::query(
         "SELECT
            to_char((SELECT max(recorded_at) FROM audit_events WHERE agent = $1 AND resource_ref = 'Patient/hl7')
@@ -293,7 +296,7 @@ pub async fn facts(
              WHERE f.agent = $1 AND r.refusal_id IS NULL) AS open_refusals",
     )
     .bind(agent)
-    .bind(crate::clock::rfc3339_micros(now - SignedDuration::from_hours(1)))
+    .bind(crate::clock::rfc3339_micros(hour_ago))
     .fetch_one(&mut *db)
     .await
     .map_err(db_err)?;
