@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-23 - Provider features for the mobile apps: sign off results, warnings and adverse reactions, notes and tasks (MP-30 to MP-33)
+
+- **Clinical risk:** none from code (documents only). New hazard **H-064** (a wrong result, version or patient signed off on a phone, or a note or task written or shared wrongly), status `open`, severity 5, likelihood 3; not accepted or closed.
+- **Changed:** `spec/mobile-apps/index.md` §13 (a table of the three features against the service, eight rules, an order); OQ-MP10 (what the desktop shows as warnings), OQ-MP11 (sharing scope), OQ-MP12 (which result kinds may be signed off on a phone); `tasks.md` MP-30 to MP-33; `plan.md` §39.
+- **Not done / not verified:** nothing is built. The results and sign-off routes exist; the service has **no alerts or warnings route, no notes route, no manual task create or edit, no sharing model**. The desktop portal ("WCP") was not seen, so its content is a target to list (OQ-MP10), not a fact. Two choices are my proposals and need the maintainer's confirmation: drafts held in memory only (a lost half-written note is the cost), and break-glass staying on the web. No clinician or Clinical Safety Officer reviewed any of it.
+
 ## 2026-11-23 - Twelve more patient features for the mobile apps, assessed (MP-17 to MP-29)
 
 - **Clinical risk:** none from code (documents only). New hazard **H-063** (an action in the app reaches the wrong person or place: pharmacy, barcode, authorised access, personal details, analytics), status `open`, severity 5, likelihood 2; not accepted or closed.

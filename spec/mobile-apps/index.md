@@ -197,6 +197,9 @@ the Gradle build: its versions follow Lily's at the pinned commit, and a bump on
 | OQ-MP6 | One app that serves staff and patients (a role decides the screens), or a separate patient app? | Separate: a patient's sign-in, data, words and risks differ from a clinician's, and a staff build must not carry the patient features or the reverse |
 | OQ-MP8 | Is a third-party PROMs provider (Promptly Health or another) allowed to receive health data, and under what contract and hosting? | Not until a DPIA and a processor contract exist; the app talks only to the service, never to the provider directly |
 | OQ-MP9 | What identity assurance does authorised access need, and who verifies a requester (the practice, a national service, both)? | The practice or the national identity service verifies, never the app; trial only with a named group |
+| OQ-MP10 | What exactly does the WCP desktop show as warnings and adverse reactions, and which of it must the phone show? | A list from the deployment's clinical lead, kinds and fields; the phone shows no fewer kinds than the desktop for safety information |
+| OQ-MP11 | Who may a note or task be shared with, and may a phone share beyond the care team? | The care team and named roles the service's policy allows; no sharing outside the organisation |
+| OQ-MP12 | Which result kinds may be signed off on a phone? | The same as the web at first; the Clinical Safety Officer may exclude kinds (for example critical or imaging reports) |
 | OQ-MP7 | Which national services does the deployment link to or write to (NHS 111, an organ donation register, a blood service)? | A deployment pack names them; the app carries none by default (equity rule, [scope](../02-scope.md)) |
 
 ## 11. Patient features (the maintainer's instruction of 2026-11-23)
@@ -341,8 +344,73 @@ DPIA. Then **communications preferences** (12) and **notifications** (4), which 
 pharmacy directory. **PROMs** (1) after the third-party review. **Authorised access** (8) and **personal details**
 (12) last: they need verified identity and the most review, and the feedback marks personal details as exploration.
 
+## 13. Provider features (feedback of 2026-11-23)
+
+Three features for **staff** (clinicians looking after patients), from the maintainer's feedback. They are the staff build's
+core, and they are **clinical acts on a small screen**: the risk is a wrong patient, a wrong version, or a signature
+given without reading. "WCP" is the existing desktop clinical portal the feedback names; this repository has no copy of
+it, so its content is a target to be listed, not a fact (OQ-MP10).
+
+| # | Feature | The service today | Gap |
+| --- | --- | --- | --- |
+| 1 | **View and sign off test results** | Built: `GET /api/patients/{id}/results`, `…/results/{result_id}`, `POST …/results/{result_id}/sign-off` (a sign-off is of **one version** of a result) | None for the route; the app's screens and the step-up (rule 2) are new |
+| 2 | **View patient warnings and adverse reactions** that the desktop shows | Allergies and the allergy statement are built (`/allergies`, `/allergy-statement`); **no route for alerts or warnings** as a kind | An alerts or warnings route, and the list of what the desktop shows (OQ-MP10) |
+| 3 | **Add and edit notes and tasks** for the patients you look after, and **share** them with other app users | Tasks: rule-made tasks, a team list and `POST /api/tasks/{id}/close` are built; the **watch list** (`/api/watch-list`) is the nearest to "my patients"; amendments are corrections, not notes. **No route to write a note or to create, edit or share a task** | A notes route, manual task create and edit, a sharing model, and a definition of "patients you are looking after" |
+
+### Rules
+
+1. **The same facts as the desktop and the web UI.** A result, warning or adverse reaction on the phone says what the web UI
+   says for the same record, checked by a shared fixture (MP-8). Counts are never hidden (§3 rule 3). "No warnings
+   recorded" is not "none exist": a screen says whether the list was checked and when (§3 rule 1).
+2. **Signing off is a deliberate act.** The sign-off screen shows the **whole patient banner** (§3 rule 2), the test name, the
+   value, unit, range and the lab's flag in words (§12 rule 4), when it was taken and the **version** being signed. Then:
+   - it needs a **step-up**: the device's biometrics or passcode again, within a minute before the act, even when the
+     app is unlocked (MFA plan, "re-authentication for sensitive actions");
+   - the button is **not a swipe, not a long press and not a default**; it names the act ("Sign off this result for
+     Jane Doe") and sits away from the edge;
+   - **one result at a time**: no "sign all", no batch, no sign-off from a list row or a notification;
+   - it sends the version it showed. If the result changed since (a corrected version), the service refuses and the app
+     says "This result has changed. Review the new version." and signs nothing;
+   - a failed or timed-out request is **never shown as signed**; the app asks the service before it says so, and shows
+     who signed and when from the service's answer;
+   - **never offline and never queued**: no signature is stored on the device to send later;
+   - the app shows the button only to a role the service allows; the service decides, and a refusal is the app's own words
+     (§3 rule 4);
+   - results are listed oldest unreviewed first, with the count; the app **never ranks by how worrying a result
+     looks** and never marks one "normal".
+3. **Notes and tasks are record writes, append-only.** An edit is a **new version** with author and time; the earlier version
+   stays; nothing is deleted. Before a note or task is saved the **patient is confirmed** (the banner, whole) so it
+   cannot be written to the wrong person's record. A saved note or task appears only after the service answers.
+   - **Drafts** are held in memory only and discarded at sign-out, with a warning when the app locks that an unsaved draft
+     will be lost after the idle limit; an unsent draft is not written to the device (§3 rule 5, §6 rule 4). This costs a
+     clinician a half-written note, and that cost is accepted over a clinical text on a lost phone **[maintainer to
+     confirm]**.
+   - Note fields have autocorrect, prediction and learning off (§6 rule 4); dictation is allowed only if the platform's
+     dictation does not send text to a third party without the trust's agreement (not checked) **[open]**.
+   - A task has a team that is a role (OQ-TL3), a due date and a status; closing needs the service's answer; an overdue
+     task is overdue by the service's clock and not the phone's.
+4. **Sharing** is to a **named user or a team that is a role**, chosen from the service's directory, and only people with a
+   legitimate relationship to the patient (the care team, the watch list, or a role that may see the record), as the
+   service's policy decides. The app shows **who can see** a note or task before it is shared and afterwards, and the
+   service writes an audit row for the share and for each read. A user with no access to the patient cannot be chosen,
+   and an unshared note is visible to its author only.
+5. **Patients you look after** means a list the service gives (the watch list, a team's patients), never a list kept on the
+   phone. Looking at a patient outside that list is the web's **break-glass**, which is **not** on the mobile apps
+   in this version **[maintainer to confirm]**.
+6. **Notifications for staff** (a new result to review, a task assigned) are content-free (§12 rule 3): "You have something
+   new" and nothing about the patient or the result.
+7. **Audit.** Every view of a result, a warning or a note, every sign-off, note, task and share is audited by the service, the
+   same as from the web; the app sends its own name and version so an audit row can say which client acted.
+8. **The staff build carries no patient features and the patient build carries none of these** (OQ-MP6).
+
+### Order
+
+Read-only first: **results view** and **warnings and adverse reactions** (with MP-7 and MP-8), then **sign-off** (a write
+with clinical effect, after MP-5 sign-in and MP-6 the lock and the step-up), then **tasks** (close, then create and
+share), then **notes**. Each write waits for its route and for the entity spec to say who may do it.
+
 ## 10. Not done, not verified
 
 No clinician, user or Clinical Safety Officer has looked at this. The 44 pt and 48 dp figures and the RFC 8252 advice are
 from the author's knowledge of those documents, not re-read for this page. Keycloak has no `epr-ios` or `epr-android`
-client yet, and no patient client (`epr-patient-ios`, `epr-patient-android`). Tasks: `MP-1` to `MP-29` in [`tasks.md`](../../tasks.md).
+client yet, and no patient client (`epr-patient-ios`, `epr-patient-android`). Tasks: `MP-1` to `MP-33` in [`tasks.md`](../../tasks.md).

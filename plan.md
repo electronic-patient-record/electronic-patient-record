@@ -2250,7 +2250,7 @@ append and merge, hard deletes, ad hoc aggregation, `continueOnError` on record 
 
 Asked for on 2026-11-23: two major new subprojects, `electronic-patient-record-mobile-app-with-swift` (Swift, SwiftUI,
 Lily Design System for Swift) and `electronic-patient-record-mobile-app-with-kotlin` (Kotlin, Jetpack Compose, Lily
-Design System for Kotlin). Spec: [`spec/mobile-apps/index.md`](spec/mobile-apps/index.md). Tasks MP-1 to MP-29. Work is
+Design System for Kotlin). Spec: [`spec/mobile-apps/index.md`](spec/mobile-apps/index.md). Tasks MP-1 to MP-33. Work is
 on branch `mobile-apps` until the maintainer merges it.
 
 **What exists.** The web UI already has a viewport tag and the mobile viewability direction (§27, XP-1 to XP-4), not yet
@@ -2291,3 +2291,18 @@ others are reading screens, where the danger is a layout that makes a result loo
 communications preferences with notifications; then vaccination, pharmacy, status and barcode behind MP-16; PROMs after
 the third-party review; authorised access and personal details last. **Not done:** no patient, clinician or Clinical
 Safety Officer was asked; the national app's current behaviour was taken from the feedback text, not checked.
+
+**Provider features (added 2026-11-23).** The maintainer asked for three staff features: view and sign off test results on a
+mobile device, view the patient warnings and adverse reactions the desktop portal shows, and add and edit notes and tasks
+for patients one looks after, shared with other users of the app. Specified in `spec/mobile-apps/index.md` §13; tasks
+MP-30 to MP-33; hazard H-064.
+
+**Assessment.** The first is the nearest to ready: the results and sign-off routes exist and a sign-off is already of one
+version. It is also the riskiest to put on a phone, because a signature is a clinical act: the answer is a step-up,
+a whole banner, one result at a time, the version sent, nothing queued and nothing shown as signed until the service
+says so. The second needs a route the service lacks (alerts or warnings) and a list of what the desktop shows, which this
+repository does not have. The third is new writing: no notes route, no manual task create or edit, no sharing model.
+Notes also meet the never-copy rule and the no-draft-on-device rule, which costs clinicians a lost half-written note;
+that trade needs the maintainer's confirmation. Break-glass stays on the web. **Order:** read-only results and warnings
+(with MP-7 and MP-8), then sign-off, then tasks, then notes. **Not done:** no clinician was asked; the desktop portal was
+not seen; three open questions (OQ-MP10 to OQ-MP12) are the clinical lead's and the Clinical Safety Officer's.
