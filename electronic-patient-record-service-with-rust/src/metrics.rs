@@ -103,24 +103,32 @@ impl Counter {
 
 /// A value that can go down as well as up. Set by the loop that knows it; zero until the first set.
 #[derive(Debug, Default)]
-pub struct Gauge(AtomicU64);
+pub struct Gauge(AtomicU64, AtomicBool);
 
 impl Gauge {
-    /// A gauge at zero.
+    /// A gauge with no value yet: unknown, which is not zero (RCA-P-3, RCA-NONE-5).
     #[must_use]
     pub const fn new() -> Self {
-        Self(AtomicU64::new(0))
+        Self(AtomicU64::new(0), AtomicBool::new(false))
     }
 
     /// Replace the value.
     pub fn set(&self, value: u64) {
         self.0.store(value, Ordering::Relaxed);
+        self.1.store(true, Ordering::Relaxed);
     }
 
-    /// The current value.
+    /// The value could not be read or computed: the gauge shows no sample, not the last one and not zero.
+    pub fn set_unknown(&self) {
+        self.1.store(false, Ordering::Relaxed);
+    }
+
+    /// The current value, or `None` when it is unknown.
     #[must_use]
-    pub fn get(&self) -> u64 {
-        self.0.load(Ordering::Relaxed)
+    pub fn get(&self) -> Option<u64> {
+        self.1
+            .load(Ordering::Relaxed)
+            .then(|| self.0.load(Ordering::Relaxed))
     }
 }
 
@@ -462,16 +470,22 @@ pub fn render() -> Result<String, Overflow> {
     }
     let mut out = render_of(&all())?;
     for (name, help, gauge) in gauges() {
-        out.push_str(&format!(
-            "# HELP {name} {help}\n# TYPE {name} gauge\n{name} {}\n",
-            gauge.get()
-        ));
+        out.push_str(&render_gauge(name, help, gauge));
     }
     out.push_str(&render_feed());
     out.push_str(&render_feed_health());
     let series = REQUESTS.lock().unwrap_or_else(|e| e.into_inner());
     out.push_str(&render_histograms(&series)?);
     Ok(out)
+}
+
+/// A gauge in the text format. An unknown gauge has no sample line: absent, never `0` (RCA-NONE-5).
+fn render_gauge(name: &str, help: &str, gauge: &Gauge) -> String {
+    let mut out = format!("# HELP {name} {help}\n# TYPE {name} gauge\n");
+    if let Some(value) = gauge.get() {
+        out.push_str(&format!("{name} {value}\n"));
+    }
+    out
 }
 
 /// Counters in the text format, each with its `HELP` and `TYPE` lines.
@@ -548,6 +562,23 @@ mod tests {
             Overflow { figure: "x_total" }.to_string(),
             "x_total: the count no longer fits"
         );
+    }
+
+    #[test]
+    fn a_gauge_is_unknown_until_set_and_after_a_failed_read_and_never_zero_for_it() {
+        let g = Gauge::new();
+        assert_eq!(g.get(), None);
+        assert_eq!(
+            render_gauge("x", "An x.", &g),
+            "# HELP x An x.\n# TYPE x gauge\n",
+            "no sample, not 0"
+        );
+        g.set(0);
+        assert_eq!(g.get(), Some(0));
+        assert!(render_gauge("x", "An x.", &g).ends_with("x 0\n"));
+        g.set(7);
+        g.set_unknown();
+        assert_eq!(g.get(), None, "not the stale 7");
     }
 
     #[test]

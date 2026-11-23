@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-23 - Gauges are unknown, not zero; the committed OpenAPI document is current (QA-17, RCA-P-3)
+
+- **Clinical risk:** none: operator metrics only.
+- **Fixes my own miss:** `5daf958` added the `/metrics` 500 to the OpenAPI document without regenerating `openapi.json`, so the census test `the_committed_document_is_what_the_code_produces` failed on that commit (I ran the full suite just before adding the text). `openapi.json` is regenerated here: the diff is that one response and nothing else.
+- **Changed:** `Gauge` is unknown until set; an unknown gauge renders its `HELP` and `TYPE` lines and no sample, never `0`. `outbox::watch_depth` sets the pending and stuck gauges unknown when the depth cannot be read (it kept the stale value) or is negative (it set `0`); `outbox::depth` adds its three counts with `checked_add`. Test `a_gauge_is_unknown_until_set_and_after_a_failed_read_and_never_zero_for_it`.
+- **Not done / not verified:** a scraper now sees no sample for the outbox gauges before the first depth read and after a failed one (before: `0`): alerting rules that compare the gauge with a number should treat absence as unknown. `outbox.rs` still has `now()` reading a clock before 1970 as `0` and one out of range as `i64::MAX`. Full suite on a fresh database: all pass but the six Java `fhir_validator` tests, with `openapi.json` regenerated. CI not observed.
+
 ## 2026-11-22 - metrics.rs: a count that overflows is an error (QA-17, RCA-NONE-4)
 
 - **Clinical risk:** none: operator metrics only.

@@ -14265,6 +14265,9 @@
           "404": {
             "description": "Metrics are off (`EPR_METRICS` is not set). The body is empty."
           },
+          "500": {
+            "description": "A count no longer fits 64 bits (not reachable in practice: it takes 2^64 events). The text names the metric and shows no number, and the answer stays 500 until the process restarts, since the counts would be wrong (RCA-NONE-4)."
+          },
           "default": {
             "description": "Bodies are not described in this document; see spec/09-api-surface.md."
           }

@@ -519,7 +519,23 @@ pub async fn stop_kept() -> bool {
 /// [`StoreError::Db`] when the database fails.
 pub async fn depth(outbox: &Outbox) -> Result<(i64, i64), StoreError> {
     let stats = outbox.stats().await.map_err(db_err)?;
-    Ok((stats.pending + stats.claimed + stats.held, stats.failed))
+    let pending = stats
+        .pending
+        .checked_add(stats.claimed)
+        .and_then(|n| n.checked_add(stats.held))
+        .ok_or_else(|| StoreError::Db("outbox depth: the count overflows".into()))?;
+    Ok((pending, stats.failed))
+}
+
+/// Set a depth gauge from a database count. A negative count is corrupt data, so the gauge is unknown, not zero.
+fn set_gauge(gauge: &crate::metrics::Gauge, count: i64) {
+    match u64::try_from(count) {
+        Ok(n) => gauge.set(n),
+        Err(_) => {
+            gauge.set_unknown();
+            tracing::error!("outbox depth: a negative count");
+        }
+    }
 }
 
 /// Set the depth gauges every `every`, for ever.
@@ -530,10 +546,15 @@ pub async fn watch_depth(outbox: Outbox, every: Duration) {
         tick.tick().await;
         match depth(&outbox).await {
             Ok((pending, stuck)) => {
-                crate::metrics::OUTBOX_PENDING.set(u64::try_from(pending).unwrap_or(0));
-                crate::metrics::OUTBOX_STUCK.set(u64::try_from(stuck).unwrap_or(0));
+                set_gauge(&crate::metrics::OUTBOX_PENDING, pending);
+                set_gauge(&crate::metrics::OUTBOX_STUCK, stuck);
             }
-            Err(e) => tracing::error!(error = %e, "outbox depth failed"),
+            Err(e) => {
+                // The last depth is stale and zero is not the depth: show neither (RCA-P-3).
+                crate::metrics::OUTBOX_PENDING.set_unknown();
+                crate::metrics::OUTBOX_STUCK.set_unknown();
+                tracing::error!(error = %e, "outbox depth failed");
+            }
         }
     }
 }
