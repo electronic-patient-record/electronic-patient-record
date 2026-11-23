@@ -201,7 +201,18 @@ mod tests {
 
     #[tokio::test]
     async fn two_runtimes_in_one_program_build_their_own_audit_chain() {
-        let key = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"; // 32 bytes of hex, not a pattern
+        // 32 bytes of hex that are not a pattern, built here so no key-shaped text is in the source.
+        let key = {
+            use sha2::{Digest, Sha256};
+            Sha256::digest(b"runtime test key")
+                .iter()
+                .fold(String::new(), |mut hex, byte| {
+                    use std::fmt::Write as _;
+                    let _ = write!(hex, "{byte:02x}");
+                    hex
+                })
+        };
+        let key = key.as_str();
         let keyed = Arc::new(Runtime::with_settings(Settings::from_pairs(&[(
             "EPR_INTEGRITY_MAC_KEY",
             key,

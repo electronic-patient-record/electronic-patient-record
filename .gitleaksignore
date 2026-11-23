@@ -13,3 +13,8 @@ faa5d2f97efcedc9398b322e47ea7acbae55dd64:electronic-patient-record-service-with-
 # the same made-up value the audit chain's unit tests use. It keys nothing: no deployment has it. The benchmark now
 # builds its key at run time; the old line stays in history.
 218689dca226a59876abf91443170fc25eaa137b:electronic-patient-record-service-with-rust/benches/service.rs:generic-api-key:62
+
+# 2026-11-23: the runtime test in 5fce464 (src/runtime.rs) used SHA-256 of the word "test" as an audit key, the same
+# made-up value as the entry above. It keys nothing: no deployment has it. The test now builds its key at run time;
+# the old line stays in history.
+5fce464e1cf65d5f3074a456f4a2c4108befb09d:electronic-patient-record-service-with-rust/src/runtime.rs:generic-api-key:201

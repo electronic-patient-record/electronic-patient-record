@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-23 - The secret scan passes again; the one CI failure left is a dependency advisory (QA-16)
+
+- **Clinical risk:** none: a test and a scan allowlist.
+- **Found by looking at CI, which I had not done for the last pushes:** the `CI` workflow failed on every push since `5daf958` (and earlier, `5fce464`) on two jobs: **gitleaks** (full history) and **cargo deny** (service). Every other job passed, including the API clippy and database tests and the new gates. The gitleaks finding was my own: the runtime test in `5fce464` used SHA-256 of the word "test" as an audit key, flagged `generic-api-key` (the same made-up value as the benchmark entry already in `.gitleaksignore`). The test now builds its key at run time and the old line is in `.gitleaksignore` with a reason and a date. `gitleaks git` now reports no leaks.
+- **Not done / not verified:** **cargo deny still fails** on RUSTSEC-2026-0592, a stack overflow in `Url::origin()` on nested `blob:` URLs in `url` 2.5.8, reached through `axum-keycloak-auth` and `axum-test`; the fix is `url` 2.5.9. `cargo update -p url` does not take it because the maintainer's cargo config (`~/.cargo/config.toml`) sets `global-min-publish-age = "2 days"`, and 2.5.9 is newer. Left for the maintainer: wait, override the age for this one crate, or ignore the advisory in `deny.toml` with a reason (the service does not call `origin()` on request input). CI not re-observed after this change.
+
 ## 2026-11-23 - The service's production code passes the checked-arithmetic lints; a gate keeps it so (QA-17, RCA-ENF-1)
 
 - **Clinical risk:** low, spread over many modules; no result is meant to change on a working clock and valid data. Behaviour that can differ: a `Timestamp` sum out of range in the suspicion future check, the observation future check and the feed health hour window is now handled by a checked add (the suspicion check says "the time now is outside the calendar"; the feed health read fails with `StoreError::Db`); a team or watch list with more rows than fit `i64` counts as having more. Hazard log not edited.
