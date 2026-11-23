@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-23 - `url` 2.5.9 and `form_urlencoded` 1.2.3 (RUSTSEC-2026-0592)
+
+- **Clinical risk:** none: a dependency patch in the service lockfile.
+- **Changed:** `cargo update -p url --precise 2.5.9` at the maintainer's instruction to ignore the 2-day publish cooldown for this crate; `form_urlencoded` followed. `cargo deny check advisories` now passes.
+- **Not done / not verified:** clippy and the 331 unit tests pass; the database suite was not re-run; CI not observed. The cooldown in `~/.cargo/config.toml` is unchanged.
+
 ## 2026-11-23 - The secret scan passes again; the one CI failure left is a dependency advisory (QA-16)
 
 - **Clinical risk:** none: a test and a scan allowlist.
