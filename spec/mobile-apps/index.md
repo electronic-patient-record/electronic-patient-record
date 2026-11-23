@@ -125,9 +125,21 @@ build serves all four cases; an app never refuses to run because a device is unm
    connects again, which is why the idle limit and the realm's refresh-token lifetime stay short.
 4. **Nothing leaves the app's sandbox.** No record data in the share sheet, a notification, a widget, Spotlight, the
    Android recents thumbnail, a backup (iOS: excluded from iCloud and device backup; Android: `allowBackup="false"` and
-   `dataExtractionRules` excluding all domains) or a file the user can reach. A personal phone holds other apps, so the
-   clipboard and the keyboard's learned words are a risk the app cannot fully close; whether record text may be
-   copied is open (recorded in H-061).
+   `dataExtractionRules` excluding all domains) or a file the user can reach.
+   **Record text is never copied onto a personal device** (decided by the maintainer, 2026-11-23). The app cannot tell a
+   personal device from a managed one with certainty (rule 5), so the rule holds on every device and every build:
+   - no copy, cut, "look up", "translate", "share" or drag of record text: record text is drawn so the platform's text
+     selection is off (iOS: not selectable, no `UIPasteboard` write, `NSItemProvider` and drag interactions off; Android:
+     no `SelectionContainer`, no `ClipboardManager` write, `View.setLongClickable(false)` on record views);
+   - no export, print or save of record text or a record photograph to Files, Photos, the gallery, mail or another app;
+   - the app's own text fields (patient search) are not a way in: autocorrect, predictive text and learning are off for them
+     (iOS: `autocorrectionDisabled`, `textContentType` none, `keyboardType` `.asciiCapable` or `.default` with no
+     suggestions; Android: `textNoSuggestions`, `IME_FLAG_NO_PERSONALIZED_LEARNING`), and the field is cleared when
+     the app locks;
+   - a pasted value is accepted only into a search field, and never written back out.
+   Not preventable by the app, and stated so: a **screenshot or screen recording on iOS**, a **photograph of the
+   screen**, and a clinician **retyping** what they read. The rule closes what the app does; H-061 keeps the
+   rest as residual. Android's `FLAG_SECURE` blocks screenshots and recordings there (§3 rule 5).
 5. **Jailbreak and root detection is advice, not a control.** An app cannot reliably detect a compromised device. It may
    warn on the signs it can see; it never counts the absence of a sign as proof the device is sound.
 6. **Managed configuration is optional and can only tighten.** On a managed device the app reads the platform's managed
@@ -177,7 +189,7 @@ the Gradle build: its versions follow Lily's at the pinned commit, and a bump on
 
 | ID | Question | Recommendation |
 | --- | --- | --- |
-| OQ-MP1 | Who owns the devices: the trust (managed, MDM) or the clinician (bring your own)? It decides remote wipe, distribution and whether a lost-device threat is controlled by the trust | **Answered 2026-11-23 by the maintainer: both, on phones and tablets** (§6, Device ownership). Still open inside it: whether record text may be copied on a personal device, and which record kinds a personal device may hold |
+| OQ-MP1 | Who owns the devices: the trust (managed, MDM) or the clinician (bring your own)? It decides remote wipe, distribution and whether a lost-device threat is controlled by the trust | **Answered 2026-11-23 by the maintainer: both, on phones and tablets** (§6, Device ownership). Decided with it, 2026-11-23: record text is never copied onto a personal device (§6 rule 4). Still open: which record kinds a personal device may hold |
 | OQ-MP2 | Claimed `https` redirect or a private-use scheme for sign-in? | Claimed `https` where the deployment can host `apple-app-site-association` and `assetlinks.json` |
 | OQ-MP3 | Distribution: the App Store and Google Play, Apple Business Manager and managed Google Play, or both? | Managed distribution; public stores only after a clinical safety case |
 | OQ-MP4 | Offline reading of the downtime snapshot on a phone (links OQ-5, OQ-MV1)? | Not until OQ-5 is answered; then read-only, encrypted, wiped at sign-out |

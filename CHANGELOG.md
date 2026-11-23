@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-23 - Record text is never copied onto a personal device (mobile spec §6 rule 4)
+
+- **Clinical risk:** none from code (documents only). It narrows a disclosure path of H-061, which stays `open`.
+- **Changed:** `spec/mobile-apps/index.md` §6 rule 4 now forbids copy, cut, look up, share, drag, export, print and save of record text and record photographs, and keyboard learning in search fields, on every device and build (the app cannot tell a personal device from a managed one with certainty). OQ-MP1's open part is reduced to which record kinds a personal device may hold. H-061, the data-flow table and MP-6's acceptance follow.
+- **Not done / not verified:** nothing is built or tested; a screenshot or recording on iOS, a photograph of the screen and retyping cannot be prevented and stay as H-061's residual; whether the rule holds under every platform text component (selection of a screen reader's "read" action, Live Text on iOS) is not checked.
+
 ## 2026-11-23 - The mobile apps support managed and bring-your-own devices, phones and tablets (OQ-MP1)
 
 - **Clinical risk:** none from code (documents only). The decision raises H-061's exposure to personal phones: its residual text now says the personal-device controls are required and not built. Status stays `open`.
