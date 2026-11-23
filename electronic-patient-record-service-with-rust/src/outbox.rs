@@ -284,14 +284,9 @@ pub async fn decide(event: &Claimed, conn: &mut PgConnection) -> Result<Decision
     let verdict = consent_for(&mut *conn, &route)
         .await
         .map_err(|_| lookup_failed("consent"))?;
+    let at = now()?;
     Ok(
-        match permits(
-            &route.roles,
-            &route.resource,
-            &route.purpose,
-            verdict,
-            now(),
-        ) {
+        match permits(&route.roles, &route.resource, &route.purpose, verdict, at) {
             Ok(()) => Decision::Deliver,
             Err(reason) => Decision::refuse(reason),
         },
@@ -559,11 +554,18 @@ pub async fn watch_depth(outbox: Outbox, every: Duration) {
     }
 }
 
-/// The current time in whole seconds since the Unix epoch; a clock before 1970 reads as 0 and one beyond range saturates.
-fn now() -> i64 {
+/// The current time in whole seconds since the Unix epoch.
+///
+/// # Errors
+///
+/// A clock before 1970 or beyond `i64` seconds: a disclosure is decided against a consent's dates, so a time that is
+/// not the time is not guessed (RCA-TIME-5, RCA-P-3). The event is decided again later, never delivered unchecked.
+fn now() -> Result<i64, sqlx::Error> {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |d| i64::try_from(d.as_secs()).unwrap_or(i64::MAX))
+        .ok()
+        .and_then(|d| i64::try_from(d.as_secs()).ok())
+        .ok_or_else(|| lookup_failed("clock"))
 }
 
 /// The patient's consent for this recipient reading this kind of record.
@@ -585,7 +587,7 @@ async fn consent_for(conn: &mut PgConnection, route: &Route) -> Result<Consent, 
         purpose,
         resource,
         labels: BTreeSet::new(),
-        now: now(),
+        now: now().map_err(|e| StoreError::Db(e.to_string()))?,
     };
     Ok(active
         .get(&patient.to_lowercase())

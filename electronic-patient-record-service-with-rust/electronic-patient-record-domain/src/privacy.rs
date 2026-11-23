@@ -196,20 +196,22 @@ impl Budget {
 
     /// Ask for one table at `now`. A refused request is not counted, and a new window starts when the old
     /// one has ended.
-    pub fn ask(&mut self, now: i64) -> Allowance {
-        if now >= self.started + self.window {
+    ///
+    /// `None` when a time or a count does not fit: no answer is guessed, so no table is produced on it (RCA-P-3).
+    pub fn ask(&mut self, now: i64) -> Option<Allowance> {
+        if now >= self.started.checked_add(self.window)? {
             self.started = now;
             self.used = 0;
         }
         if self.used >= self.limit {
-            return Allowance::Refused {
-                retry_at: self.started + self.window,
-            };
+            return Some(Allowance::Refused {
+                retry_at: self.started.checked_add(self.window)?,
+            });
         }
-        self.used += 1;
-        Allowance::Allowed {
-            left: self.limit - self.used,
-        }
+        self.used = self.used.checked_add(1)?;
+        Some(Allowance::Allowed {
+            left: self.limit.checked_sub(self.used)?,
+        })
     }
 }
 
@@ -304,15 +306,19 @@ mod tests {
     #[test]
     fn a_budget_allows_its_limit_then_refuses_until_the_window_ends() {
         let mut b = Budget::new(2, 60, 1_000);
-        assert_eq!(b.ask(1_000), Allowance::Allowed { left: 1 });
-        assert_eq!(b.ask(1_010), Allowance::Allowed { left: 0 });
-        assert_eq!(b.ask(1_020), Allowance::Refused { retry_at: 1_060 });
+        assert_eq!(b.ask(1_000), Some(Allowance::Allowed { left: 1 }));
+        assert_eq!(b.ask(1_010), Some(Allowance::Allowed { left: 0 }));
+        assert_eq!(b.ask(1_020), Some(Allowance::Refused { retry_at: 1_060 }));
         assert_eq!(
             b.ask(1_059),
-            Allowance::Refused { retry_at: 1_060 },
+            Some(Allowance::Refused { retry_at: 1_060 }),
             "a refusal is not counted and does not move the window"
         );
-        assert_eq!(b.ask(1_060), Allowance::Allowed { left: 1 }, "a new window");
+        assert_eq!(
+            b.ask(1_060),
+            Some(Allowance::Allowed { left: 1 }),
+            "a new window"
+        );
     }
 
     fn filter(parts: &[(&str, &[&str])]) -> Filter {
@@ -430,9 +436,17 @@ mod tests {
     }
 
     #[test]
+    fn a_budget_whose_time_does_not_fit_gives_no_answer_not_a_wrapped_one() {
+        let mut b = Budget::new(1, 60, i64::MAX - 10);
+        assert_eq!(b.ask(0), None, "started plus window overflows");
+        let mut ok = Budget::new(1, 60, 0);
+        assert_eq!(ok.ask(5), Some(Allowance::Allowed { left: 0 }));
+    }
+
+    #[test]
     fn a_budget_of_zero_always_refuses() {
         let mut b = Budget::new(0, 60, 0);
-        assert!(matches!(b.ask(0), Allowance::Refused { .. }));
-        assert!(matches!(b.ask(10_000), Allowance::Refused { .. }));
+        assert!(matches!(b.ask(0), Some(Allowance::Refused { .. })));
+        assert!(matches!(b.ask(10_000), Some(Allowance::Refused { .. })));
     }
 }

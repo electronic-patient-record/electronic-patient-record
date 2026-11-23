@@ -162,6 +162,8 @@ pub enum Refusal {
     FromTheFuture,
     /// The Clinical Safety Officer recorded a control on this hazard, so cannot also retire it.
     RecordedTheControl,
+    /// A count (how many times a hazard was reopened) no longer fits. Not reachable: it takes `2^32` reopenings.
+    CountOverflows,
 }
 
 /// Trim `value` and refuse it if it is blank or longer than `max` characters.
@@ -219,10 +221,11 @@ impl Hazard {
         })
     }
 
-    /// `severity × likelihood`.
+    /// `severity × likelihood`, or `None` when the product does not fit (ratings are 1 to 5 when raised, but the
+    /// fields are public and a stored hazard is external data): never a wrapped score.
     #[must_use]
-    pub fn score(&self) -> u8 {
-        self.severity * self.likelihood
+    pub fn score(&self) -> Option<u8> {
+        self.severity.checked_mul(self.likelihood)
     }
 
     /// The hazard after `event`, or why it was refused.
@@ -291,7 +294,10 @@ impl Hazard {
                 next.note = None;
                 next.retired_by = None;
                 next.state = State::Open;
-                next.reopened += 1;
+                next.reopened = next
+                    .reopened
+                    .checked_add(1)
+                    .ok_or(Refusal::CountOverflows)?;
             }
         }
         Ok(next)
@@ -346,7 +352,7 @@ mod tests {
     fn a_hazard_is_raised_open_with_a_score() {
         let h = open();
         assert_eq!(h.state, State::Open);
-        assert_eq!(h.score(), 10);
+        assert_eq!(h.score(), Some(10));
         assert!(h.evidence.is_empty());
     }
 

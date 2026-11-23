@@ -69,6 +69,7 @@ fn refused(r: Refusal) -> StoreError {
         Refusal::RecordedTheControl => {
             "whoever recorded a control on this hazard cannot also retire it".to_string()
         }
+        Refusal::CountOverflows => "the reopened count could not be computed".to_string(),
     })
 }
 

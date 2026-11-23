@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-23 - No invented time for a disclosure; checked hazard score, reopen count and rate budget (QA-17)
+
+- **Clinical risk:** one clinical path: `outbox::now()` decided a disclosure's consent against a clock that read `0` before 1970 and `i64::MAX` out of range. It is now an error, so the event is decided again later and never delivered on a made-up time. Not reachable on a working clock. `Hazard::score` returns `Option<u8>` (a hazard's ratings are public fields, so a stored product could overflow `u8`), and reopening counts with `checked_add`. Hazard log not edited.
+- **Changed:** `outbox::now` returns a `Result` and both callers pass it on; `Hazard::score() -> Option<u8>`; new `Refusal::CountOverflows` (mapped to a 422 sentence in `hazard_store`); `Budget::ask -> Option<Allowance>`, `None` when a time or count does not fit. Tests: `a_budget_whose_time_does_not_fit_gives_no_answer_not_a_wrapped_one`, the existing score and budget tests updated.
+- **Not done / not verified:** `outbox::now` has no test (it reads the real clock), the reopen overflow has no test (it takes `2^32` reopenings), and `Budget` and `Hazard::score` have no production caller yet, only tests. `privacy.rs` and `hazard.rs` do not yet deny the arithmetic lints. Full suite on a fresh database: 862 passed, 6 failed (Java `fhir_validator`). CI not observed.
+
 ## 2026-11-23 - Gauges are unknown, not zero; the committed OpenAPI document is current (QA-17, RCA-P-3)
 
 - **Clinical risk:** none: operator metrics only.
