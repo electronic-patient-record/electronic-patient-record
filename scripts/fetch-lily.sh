@@ -10,10 +10,16 @@
 # When Lily publishes, this script goes (MP-3). See spec/mobile-apps/index.md §5.
 set -eu
 
+# A git hook (pre-push runs the gates) sets GIT_DIR and the like to this repository's own. Every git command below must act
+# on the Lily checkout only, so drop them: with GIT_DIR set, `git -C vendor/...` would change this repository's remote,
+# sparse checkout and shallow list (it did, once, on 2026-11-23).
+unset $(git rev-parse --local-env-vars) 2>/dev/null || true
+
 LILY_COMMIT=787d93644014f8c6ee06183ef1ca4c6edd599f19
 source="${LILY_SOURCE:-https://github.com/LilyDesignSystem/lily-design-system.git}"
 root="$(cd "$(dirname "$0")/.." && pwd)"
-dir="$root/vendor/lily-design-system"
+# LILY_DIR is for scripts/test_fetch_lily.sh only.
+dir="${LILY_DIR:-$root/vendor/lily-design-system}"
 
 if [ "$(git -C "$dir" rev-parse HEAD 2>/dev/null || true)" = "$LILY_COMMIT" ]; then
   echo "$dir"
@@ -24,6 +30,12 @@ if [ ! -d "$dir/.git" ]; then
   mkdir -p "$dir"
   git -C "$dir" init -q
   git -C "$dir" remote add origin "$source"
+fi
+# Never touch a repository other than the checkout's own.
+top="$(cd "$dir" && git rev-parse --show-toplevel 2>/dev/null || true)"
+if [ "$top" != "$(cd "$dir" && pwd -P)" ]; then
+  echo "fetch-lily: $dir is not its own git repository (git sees '$top'); refusing to change it" >&2
+  exit 1
 fi
 git -C "$dir" remote set-url origin "$source"
 git -C "$dir" sparse-checkout set --cone lily-design-system-swift lily-design-system-kotlin

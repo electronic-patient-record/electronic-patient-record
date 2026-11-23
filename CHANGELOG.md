@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-23 - Gates run from a git hook no longer act on this repository (branch `mobile-apps`)
+
+- **Clinical risk:** none: build scripts.
+- **Found:** the first push of `mobile-apps` ran the pre-push hook in a worktree. A hook runs with `GIT_DIR` naming this repository, and the gates inherited it. `scripts/fetch-lily.sh` (`git -C vendor/...`) then set `origin`'s fetch URL to Lily's, turned on sparse checkout for the worktree, fetched Lily's commit into this repository and marked it shallow. The existing `scripts/test_gate_record.sh` (`git init` of a throwaway repository) re-initialised this repository and set `core.bare=true`, which broke `git status` in every checkout. All of it was put back by hand: `core.bare=false`, the fetch URL `git@github.com:electronic-patient-record/electronic-patient-record.git` (as the main checkout's `FETCH_HEAD` recorded it), sparse checkout off, `extensions.worktreeConfig` removed, `.git/shallow` and the worktree's `FETCH_HEAD` deleted. The main checkout's work and commits were untouched.
+- **Changed:** `scripts/ci-local.sh`, `scripts/fetch-lily.sh` and `scripts/test_gate_record.sh` unset git's local environment variables (`git rev-parse --local-env-vars`) first, as `scripts/test_pre_push.sh` already did; `fetch-lily.sh` also refuses to change a directory that is not its own git repository. New `scripts/test_fetch_lily.sh`, run by the `docs-hooks` gate: with `GIT_DIR` naming another repository, the script leaves that repository's config, shallow list, `FETCH_HEAD` and sparse-checkout alone; it fails against the old script.
+- **Not done / not verified:** Lily's objects fetched into this repository's object store are unreachable and were left for `git gc` to prune, not removed by hand. Whether other gates misbehaved under the hook before 2026-11-23 is not known; pushes from the main checkout may not have shown it.
+
 ## 2026-11-23 - The mobile apps' gates in CI and ci-local.sh (MP-4; branch `mobile-apps`)
 
 - **Clinical risk:** none: build and test wiring.

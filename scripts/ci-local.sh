@@ -22,6 +22,10 @@
 # CodeQL, the secret scan, the coverage floor and the fresh clone stay on GitHub.
 set -u
 
+# Run from a git hook (pre-push), GIT_DIR and the like name this repository; a gate that makes a throwaway repository,
+# or works in another one, would act on this one instead (on 2026-11-23 a test's `git init` set core.bare=true here).
+unset $(git rev-parse --local-env-vars) 2>/dev/null || true
+
 root="$(cd "$(dirname "$0")/.." && pwd)"
 service="$root/electronic-patient-record-service-with-rust"
 matcher="$root/electronic-patient-record-matcher-with-rust"

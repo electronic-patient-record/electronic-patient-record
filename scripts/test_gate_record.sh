@@ -4,6 +4,8 @@
 # when changed, when moved to another commit, or when signed by a key not on the allowed list.
 set -eu
 unset EPR_CI_SIGNING_KEY EPR_CI_ALLOWED_SIGNERS 2>/dev/null || true
+# From a git hook, GIT_DIR names the real repository and `git init` below would re-initialise it.
+unset $(git rev-parse --local-env-vars) 2>/dev/null || true
 root="$(cd "$(dirname "$0")/.." && pwd)"
 script="$root/scripts/gate-record.sh"
 work="$(mktemp -d)"
