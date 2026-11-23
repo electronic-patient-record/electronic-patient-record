@@ -546,4 +546,15 @@ mod tests {
             assert!(bare.get("deceasedDateTime").is_none());
         }
     }
+    #[test]
+    fn a_name_address_or_given_of_the_wrong_shape_is_refused_not_read_as_empty() {
+        for text in [
+            r#"{"resourceType":"Patient","name":"x"}"#,
+            r#"{"resourceType":"Patient","address":{"postalCode":"1"}}"#,
+            r#"{"resourceType":"Patient","name":[{"family":"A","given":"b"}]}"#,
+            r#"{"resourceType":"Patient","name":[{"family":"A","given":["b",3]}]}"#,
+        ] {
+            assert!(from_fhir_json(text).is_err(), "{text}");
+        }
+    }
 }

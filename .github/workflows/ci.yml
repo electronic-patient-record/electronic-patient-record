@@ -91,6 +91,7 @@ jobs:
       # Each gate's one definition is its script, which scripts/ci-local.sh runs too (LC-3).
       - run: sh scripts/gates/matcher-fmt.sh
       - run: sh scripts/gates/matcher-clippy.sh
+      - run: sh scripts/gates/matcher-clippy-arithmetic.sh
       - run: sh scripts/gates/matcher-test.sh
       - run: sh scripts/gates/matcher-doc.sh
 

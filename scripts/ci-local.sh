@@ -141,6 +141,7 @@ fi
 
 gate_script matcher-fmt
 gate_script matcher-clippy
+gate_script matcher-clippy-arithmetic
 gate_script matcher-test
 gate_script matcher-doc
 gate_script service-fmt

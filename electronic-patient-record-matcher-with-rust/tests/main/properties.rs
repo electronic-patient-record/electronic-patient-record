@@ -279,7 +279,7 @@ fn a_shared_national_number_alone_goes_to_review() {
             names: if given.is_some() || family.is_some() {
                 vec![HumanName {
                     family: family.map(Into::into),
-                    given: given.map(|g| vec![g.into()]).unwrap_or_default(),
+                    given: given.map_or_else(Vec::new, |g| vec![g.into()]),
                 }]
             } else {
                 vec![]

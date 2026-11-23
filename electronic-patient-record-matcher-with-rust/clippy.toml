@@ -1,0 +1,14 @@
+# Checked arithmetic (spec/rust-checked-arithmetic, RCA-ENF-2). Floats are allowed here (scores and weights):
+# a sum goes through a fold and its result is checked finite (RCA-FLT-2), so `sum` and `product` are banned.
+disallowed-types = [
+  { path = "core::num::Saturating", reason = "RCA-INT-4: no saturation" },
+  { path = "core::num::Wrapping", reason = "RCA-INT-4: no wrapping" },
+]
+disallowed-methods = [
+  { path = "core::iter::Iterator::sum", reason = "RCA-AGG-1: use try_fold with checked_add (floats: fold, then is_finite)" },
+  { path = "core::iter::Iterator::product", reason = "RCA-AGG-1: use try_fold with checked_mul" },
+  { path = "core::time::Duration::from_secs_f64", reason = "RCA-TIME-2: use try_from_secs_f64" },
+  { path = "core::time::Duration::from_secs_f32", reason = "RCA-TIME-2: use try_from_secs_f32" },
+  { path = "core::option::Option::unwrap_or_default", reason = "RCA-P-3: an unknown is never a zero; say the empty value" },
+  { path = "core::cmp::Ord::clamp", reason = "RCA-INT-6, RCA-IN-2: an out-of-range value is an error, not a bound" },
+]

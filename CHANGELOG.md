@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-23 - The matcher's production code passes the checked-arithmetic lints; a gate and a `clippy.toml` keep it so (QA-17)
+
+- **Clinical risk:** low: patient matching scores. No score is meant to change; the arithmetic is the same operations in the same order. Behaviour that can differ: a weight configuration whose total is not finite is now refused (`InvalidWeight`; before, an infinite total would pass the `> 0` check); an exact tie between two given-name scores compares with `total_cmp`, which also separates `-0.0` from `0.0` (similarities are never negative). Hazard log not edited.
+- **Changed:** 27 sites in `engine.rs`, `ihi.rs`, `national_number.rs` and `normalize.rs`: typed float literals; `total` (a fold) replaces `Iterator::sum`; `count` counts as a float with no `as`; the IHI Luhn sum and the national number's modulus 11 use `try_fold`, `checked_mul`, `checked_rem` and `checked_sub`; the phone's leading `0` after the calling code is stripped with `strip_prefix`, not a byte slice; an unreadable number is `false` instead of an empty list read as a wrong length. New `clippy.toml` (the RCA-ENF-2 bans), new gate `matcher-clippy-arithmetic` in `ci.yml` and `ci-local.sh`. Three test and benchmark lines changed for the new bans.
+- **Also:** the "lenient input" in the QA-17 note was checked and is not so: the typed R4 parse already refuses a `name`, `address` or `given` of the wrong shape (new test), and `er7`'s `query` errors only for a malformed path, so `get` in `hl7_adt.rs` cannot hide sender data.
+- **Not done / not verified:** `compound_sim` still divides by a part length that is 0 for an empty part (`Smith  Jones`), giving NaN as before; I did not change it. The matcher's tests and benchmarks are not linted for arithmetic (RCA-SCOPE-4). Matcher tests: 126 passed; the service's tests were not re-run. CI not observed.
+
 ## 2026-11-23 - `url` 2.5.9 and `form_urlencoded` 1.2.3 (RUSTSEC-2026-0592)
 
 - **Clinical risk:** none: a dependency patch in the service lockfile.
