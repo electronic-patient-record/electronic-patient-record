@@ -260,6 +260,49 @@ async fn who_may_send_and_who_may_clear() {
         .await;
         assert_eq!(again.status_code(), StatusCode::CONFLICT);
 
+        // A clearance is a match or a dismissal and nothing else.
+        let r = clear(
+            queued[0].clone(),
+            json!({ "how": "forgotten", "reason": "x" }),
+        )
+        .await;
+        assert_eq!(
+            r.status_code(),
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "{}",
+            r.text()
+        );
+
+        // An unknown purpose of use is refused by every queue route, before anything is read or written.
+        let purpose = (
+            HeaderName::from_static("x-purpose-of-use"),
+            HeaderValue::from_static("curiosity"),
+        );
+        for (method, path) in [
+            ("get", "/api/referral-queue".to_string()),
+            ("get", "/api/referral-queue/count".to_string()),
+            ("get", format!("/api/referral-queue/{}", queued[0])),
+            ("post", format!("/api/referral-queue/{}/clear", queued[0])),
+        ] {
+            let req = if method == "get" {
+                server.get(&path)
+            } else {
+                server
+                    .post(&path)
+                    .json(&json!({ "how": "dismissed", "reason": "x" }))
+            };
+            let r = req
+                .add_header(ah.clone(), av.clone())
+                .add_header(purpose.0.clone(), purpose.1.clone())
+                .await;
+            assert_eq!(
+                r.status_code(),
+                StatusCode::BAD_REQUEST,
+                "{path}: {}",
+                r.text()
+            );
+        }
+
         // The audit rows name ids, kinds and states, never the text.
         let rows = sqlx::query(
             "SELECT detail::text AS d FROM audit_events_all

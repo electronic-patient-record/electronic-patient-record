@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-23 - Coverage measured at 95.16%; referral-queue refusals tested (QA-15)
+
+- **Clinical risk:** none: tests only.
+- **Measured:** `cargo llvm-cov` of the service, two passes like the database gate (normal tests, then the ignored ones one at a time on a fresh `*_test` database), tests and `target/` excluded, the Java validator and TLS cases skipped (the TLS ones cannot run under instrumentation): 25,397 of 26,688 lines, 95.16%. Lower than the 95.79% of 2026-11-21 because that run included the TLS cases. 1,291 lines are uncovered, spread over many files; the largest are `app.rs` (78), `controllers/fhir.rs` (65), `mllp.rs` (63), `adt_feed.rs` (53), `audit.rs` (46). Most are error branches that need an injected fault (a failing audit write, a failing pool).
+- **Changed:** `tests/http_referral_queue.rs` also checks that a clearance with an unknown `how` is refused (422) and that an unknown purpose of use is refused (400) by the listing, the count, one entry and the clearance.
+- **Not done / not verified:** the figure was taken before this test, which adds only a few of the 33 uncovered lines in that controller; 100% is far off and is not claimed. Running everything in one pass on one database fails (tests count rows left by others); the two-pass method is the one to keep.
+
 ## 2026-11-23 - Matcher: a name with an empty part no longer scores NaN (QA-17)
 
 - **Clinical risk:** it could change a match score, so it is treated as clinical-adjacent. Before, a family name with an empty part (two spaces, a leading or trailing space) scored 0/0, NaN, for that part; `weighted` then failed its finite check or the score dropped out. Now empty parts are ignored, and a name with no part at all scores 0.0 (absent evidence, never agreement). Names of one part per word are unchanged. No hazard-log row was changed.
