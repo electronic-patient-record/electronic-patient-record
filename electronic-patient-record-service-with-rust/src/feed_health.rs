@@ -24,7 +24,6 @@ use jiff::tz::TimeZone;
 use jiff::{SignedDuration, Timestamp};
 use serde::Serialize;
 use sqlx::{PgPool, Row};
-use std::sync::OnceLock;
 
 crate::store_errors!("feed health");
 
@@ -380,18 +379,26 @@ pub async fn check(
     Ok((judged, true))
 }
 
-/// The feed the listener serves, and its thresholds, set once at start-up when the listener is on.
-static FEED: OnceLock<(String, Thresholds)> = OnceLock::new();
-
-/// The configured feed, if the listener is on.
+/// The configured feed and its thresholds in `runtime`, if the listener is on.
 #[must_use]
-pub fn configured() -> Option<&'static (String, Thresholds)> {
-    FEED.get()
+pub fn configured(runtime: &crate::runtime::Runtime) -> Option<(String, Thresholds)> {
+    runtime.feed_health.get().cloned()
 }
 
-/// Judge the feed every minute, for as long as the service runs. Set once, when the listener starts.
-pub async fn run_loop(db: PgPool, agent: String, thresholds: Thresholds) {
-    let _ = FEED.set((agent.clone(), thresholds));
+/// The configured feed of the running request's runtime ([`configured`]).
+#[must_use]
+pub fn configured_now() -> Option<(String, Thresholds)> {
+    configured(&crate::runtime::Runtime::current())
+}
+
+/// Judge the feed every minute, for as long as the service runs. Records the feed in `runtime` first, once.
+pub async fn run_loop(
+    runtime: std::sync::Arc<crate::runtime::Runtime>,
+    db: PgPool,
+    agent: String,
+    thresholds: Thresholds,
+) {
+    let _ = runtime.feed_health.set((agent.clone(), thresholds));
     let mut every = tokio::time::interval(std::time::Duration::from_secs(60));
     loop {
         every.tick().await;

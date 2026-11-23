@@ -125,10 +125,14 @@ impl MatchConfig {
             w.telecom,
             w.death_date,
         ];
-        if weights.iter().any(|x| !x.is_finite() || *x < 0.0) {
+        if weights.iter().any(|x| !x.is_finite() || *x < 0.0_f64) {
             return Err(ConfigError::InvalidWeight);
         }
-        if weights.iter().sum::<f64>() <= 0.0 {
+        let weight_total = total(weights.iter().copied());
+        if !weight_total.is_finite() {
+            return Err(ConfigError::InvalidWeight);
+        }
+        if weight_total <= 0.0_f64 {
             return Err(ConfigError::NoWeight);
         }
         let thresholds = [
@@ -139,7 +143,7 @@ impl MatchConfig {
             self.min_birth_date_for_auto,
             self.min_evidence_weight,
         ];
-        if thresholds.iter().any(|x| !(0.0..=1.0).contains(x)) {
+        if thresholds.iter().any(|x| !(0.0_f64..=1.0_f64).contains(x)) {
             return Err(ConfigError::ThresholdOutOfRange);
         }
         if self.review_threshold > self.auto_link_threshold {
@@ -428,24 +432,27 @@ impl MatchingEngine {
 
         // Nearly every record has no date of death, so its absence is not missing evidence: it would
         // otherwise lower the share of evidence present for every pair.
-        let total: f64 = fields
-            .iter()
-            .filter(|f| f.field != "death_date" || f.similarity.is_some())
-            .map(|f| f.weight)
-            .sum();
-        let present: f64 = fields
-            .iter()
-            .filter(|f| f.similarity.is_some())
-            .map(|f| f.weight)
-            .sum();
-        let weighted: f64 = fields
-            .iter()
-            .filter_map(|f| f.similarity.map(|s| s * f.weight))
-            .sum();
-        let mut score = if present > 0.0 {
+        let total_weight = total(
+            fields
+                .iter()
+                .filter(|f| f.field != "death_date" || f.similarity.is_some())
+                .map(|f| f.weight),
+        );
+        let present = total(
+            fields
+                .iter()
+                .filter(|f| f.similarity.is_some())
+                .map(|f| f.weight),
+        );
+        let weighted = total(
+            fields
+                .iter()
+                .filter_map(|f| f.similarity.map(|s| s * f.weight)),
+        );
+        let mut score = if present > 0.0_f64 {
             weighted / present
         } else {
-            0.0
+            0.0_f64
         };
 
         let phonetic_match = phonetic_match(a, b);
@@ -491,7 +498,7 @@ impl MatchingEngine {
                 }
                 .to_string(),
             );
-            score = 1.0;
+            score = 1.0_f64;
             if dob_conflict {
                 conflicts.push(if national_shared {
                     ConflictCode::SameNationalNumberDifferentBirthDates
@@ -572,9 +579,9 @@ impl MatchingEngine {
                     // `John` and `John Paul` can be two people (twins, a father and son).
                     conflicts.push(ConflictCode::ExtraGivenName);
                 }
-                if present / total < c.min_evidence_weight {
+                if present / total_weight < c.min_evidence_weight {
                     conflicts.push(ConflictCode::EvidenceThin {
-                        percent_present: 100.0 * present / total,
+                        percent_present: 100.0_f64 * present / total_weight,
                     });
                 }
                 if !conflicts.is_empty() {
@@ -622,6 +629,17 @@ fn folded_name_sim(fx: &str, fy: &str) -> f64 {
     }
 }
 
+/// The sum of weights or similarities. Every term is finite and in range by construction (the
+/// configuration refuses a non-finite weight or a non-finite total, RCA-FLT-2), so the sum is finite.
+fn total(values: impl Iterator<Item = f64>) -> f64 {
+    values.fold(0.0_f64, |sum, value| sum + value)
+}
+
+/// How many items, as a float, counted one at a time: exact, with no `as` conversion (RCA-CONV).
+fn count<T>(items: impl Iterator<Item = T>) -> f64 {
+    items.fold(0.0_f64, |n, _| n + 1.0_f64)
+}
+
 /// A family name of several parts (`Smith-Jones`) against another name: each part of the shorter
 /// takes its best match among the parts of the longer, and the mean is kept. A part counts for a
 /// similar part only in proportion to their lengths, so `Smith-Jones` does not match `Smithson`
@@ -630,15 +648,16 @@ fn folded_name_sim(fx: &str, fy: &str) -> f64 {
 fn compound_sim(x: &str, y: &str) -> f64 {
     let (xs, ys): (Vec<&str>, Vec<&str>) = (x.split(' ').collect(), y.split(' ').collect());
     let part = |a: &str, b: &str| {
-        let (la, lb) = (a.chars().count() as f64, b.chars().count() as f64);
+        let (la, lb) = (count(a.chars()), count(b.chars()));
         strsim::jaro_winkler(a, b) * la.min(lb) / la.max(lb)
     };
     let mean = |short: &[&str], long: &[&str]| {
-        let total: f64 = short
-            .iter()
-            .map(|s| long.iter().map(|l| part(s, l)).fold(0.0, f64::max))
-            .sum();
-        total / short.len() as f64
+        let sum = total(
+            short
+                .iter()
+                .map(|s| long.iter().map(|l| part(s, l)).fold(0.0_f64, f64::max)),
+        );
+        sum / count(short.iter())
     };
     // With equal numbers of parts, both ways and the lower kept, so the order of the records
     // never raises the score.
@@ -785,7 +804,7 @@ fn given_similarity(a: &Patient, b: &Patient) -> Option<(f64, bool)> {
             };
             // The better pair wins; on a tie the one with nothing unmatched.
             best = match best {
-                Some((b, e)) if b > s || (b == s && !e) => Some((b, e)),
+                Some((b, e)) if b > s || (b.total_cmp(&s).is_eq() && !e) => Some((b, e)),
                 _ => Some((s, extra)),
             };
         }
@@ -807,15 +826,12 @@ const UNMATCHED_BELOW: f64 = 0.85;
 
 /// Each token of `short` takes its best match in `long`; the mean of those.
 fn given_average(short: &[String], long: &[String]) -> f64 {
-    let total: f64 = short
-        .iter()
-        .map(|s| {
-            long.iter()
-                .map(|l| given_token_sim(s, l))
-                .fold(0.0, f64::max)
-        })
-        .sum();
-    total / short.len() as f64
+    let sum = total(short.iter().map(|s| {
+        long.iter()
+            .map(|l| given_token_sim(s, l))
+            .fold(0.0_f64, f64::max)
+    }));
+    sum / count(short.iter())
 }
 
 fn full_date(p: &Patient) -> Option<PartialDate> {
@@ -880,7 +896,7 @@ fn typo(x: u16, y: u16, width: usize) -> f64 {
     let diff: Vec<usize> = (0..a.len()).filter(|&i| a[i] != b[i]).collect();
     let slip = match diff.as_slice() {
         [_] => true,
-        [i, j] => *j == i + 1 && a[*i] == b[*j] && a[*j] == b[*i],
+        [i, j] => i.checked_add(1) == Some(*j) && a[*i] == b[*j] && a[*j] == b[*i],
         _ => false,
     };
     if slip { 0.6 } else { 0.0 }

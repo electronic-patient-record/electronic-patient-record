@@ -204,7 +204,15 @@ pub async fn request(
     referral: &Referral,
     now: jiff::Timestamp,
 ) -> Result<StoredReferral, StoreError> {
-    request_with_rules(db, author, patient_id, referral, now, tasks_store::rules()?).await
+    request_with_rules(
+        db,
+        author,
+        patient_id,
+        referral,
+        now,
+        &tasks_store::rules()?,
+    )
+    .await
 }
 
 /// [`request`] under the given task rules instead of the service's: the same write, for a test of a rule.
@@ -499,7 +507,7 @@ pub async fn advance(
     match appended {
         crate::store::Appended::Row(row) => {
             let stored = row_to_referral(&row)?;
-            raise(&mut *db, tasks_store::rules()?, &stored).await?;
+            raise(&mut *db, &tasks_store::rules()?, &stored).await?;
             Ok(stored)
         }
         crate::store::Appended::Taken => {

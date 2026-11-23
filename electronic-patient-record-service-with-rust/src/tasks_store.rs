@@ -304,7 +304,24 @@ pub const RULES_FILE: &str = "EPR_TASK_RULES_FILE";
 /// The most bytes a site's rules file may hold: far more than tens of rules need.
 pub const MAX_RULES_FILE: u64 = 1_000_000;
 
-static SITE_RULES: std::sync::OnceLock<Vec<Rule>> = std::sync::OnceLock::new();
+/// The rules in force: the site's, kept in the runtime, or the built-in catalogue.
+pub enum Rules {
+    /// The site's rules file, read at start.
+    Site(std::sync::Arc<Vec<Rule>>),
+    /// The built-in catalogue.
+    Catalogue(&'static [Rule]),
+}
+
+impl std::ops::Deref for Rules {
+    type Target = [Rule];
+
+    fn deref(&self) -> &[Rule] {
+        match self {
+            Rules::Site(rules) => rules,
+            Rules::Catalogue(rules) => rules,
+        }
+    }
+}
 
 /// The rules that run in the service: the site's file ([`init_rules`]) when one is set, otherwise the built-in
 /// catalogue, every rule of which is a draft until approved (OQ-TL1). Only approved rules make tasks.
@@ -312,10 +329,12 @@ static SITE_RULES: std::sync::OnceLock<Vec<Rule>> = std::sync::OnceLock::new();
 /// # Errors
 ///
 /// [`StoreError::Db`] when the catalogue does not load (a test keeps it valid).
-pub fn rules() -> Result<&'static [Rule], StoreError> {
-    match SITE_RULES.get() {
-        Some(site) => Ok(site),
-        None => task_rules::catalogue().map_err(StoreError::Db),
+pub fn rules() -> Result<Rules, StoreError> {
+    match crate::runtime::Runtime::current().site_rules.get() {
+        Some(site) => Ok(Rules::Site(std::sync::Arc::clone(site))),
+        None => task_rules::catalogue()
+            .map(Rules::Catalogue)
+            .map_err(StoreError::Db),
     }
 }
 
@@ -352,20 +371,25 @@ pub fn load_rules(path: &std::path::Path) -> Result<Vec<Rule>, String> {
 /// # Errors
 ///
 /// [`load_rules`]' for a file; for the catalogue, a message when it does not load or names a team that is not a role.
-pub fn init_rules() -> Result<&'static [Rule], String> {
+pub fn init_rules() -> Result<Rules, String> {
     let setting = crate::runtime::setting(RULES_FILE);
     match setting.as_deref().map(str::trim).filter(|v| !v.is_empty()) {
         Some(path) => {
             let rules = load_rules(std::path::Path::new(path))?;
-            let _ = SITE_RULES.set(rules);
-            Ok(SITE_RULES.get().map_or(&[], Vec::as_slice))
+            let runtime = crate::runtime::Runtime::current();
+            let _ = runtime.site_rules.set(std::sync::Arc::new(rules));
+            runtime
+                .site_rules
+                .get()
+                .map(|site| Rules::Site(std::sync::Arc::clone(site)))
+                .ok_or_else(|| format!("{RULES_FILE}: the rules were not kept"))
         }
         None => {
             let rules = task_rules::catalogue()?;
             if let Some(problem) = team_problem(rules) {
                 return Err(problem);
             }
-            Ok(rules)
+            Ok(Rules::Catalogue(rules))
         }
     }
 }
@@ -760,7 +784,7 @@ late_reminder = "skip"
 
     #[test]
     fn every_built_in_rule_is_for_a_role_and_a_team_that_is_none_is_named() {
-        assert_eq!(team_problem(rules().unwrap()), None);
+        assert_eq!(team_problem(&rules().unwrap()), None);
         let mut odd = rules().unwrap().to_vec();
         odd[0].task.team = "ward-7".into();
         let p = team_problem(&odd).unwrap();

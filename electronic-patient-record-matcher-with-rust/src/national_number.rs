@@ -10,24 +10,34 @@ pub const NATIONAL_NUMBER_SYSTEM: &str = "https://fhir.nhs.uk/Id/nhs-number";
 /// digit. Every repeated-digit number passes modulus 11 and none is ever issued;
 /// systems use them as placeholders, so they must never decide a link.
 pub fn is_valid_national_number(value: &str) -> bool {
-    let digits: Vec<u32> = value
+    let Some(digits) = value
         .chars()
         .filter(|c| !c.is_whitespace() && *c != '-')
         .map(|c| c.to_digit(10))
-        .collect::<Option<Vec<_>>>()
-        .unwrap_or_default();
+        .collect::<Option<Vec<u32>>>()
+    else {
+        return false;
+    };
     if digits.len() != 10 || is_placeholder_national_number(value) {
         return false;
     }
-    let sum: u32 = digits[..9]
+    // The first nine digits weigh 10, 9, … 2.
+    let Some(sum) = digits[..9]
         .iter()
-        .enumerate()
-        .map(|(i, d)| d * (10 - i as u32))
-        .sum();
-    let check = match 11 - (sum % 11) {
-        11 => 0,
-        10 => return false,
-        n => n,
+        .zip((2_u32..=10).rev())
+        .try_fold(0_u32, |acc, (d, weight)| {
+            acc.checked_add(d.checked_mul(weight)?)
+        })
+    else {
+        return false;
+    };
+    let Some(remainder) = sum.checked_rem(11) else {
+        return false;
+    };
+    let check = match 11_u32.checked_sub(remainder) {
+        Some(11) => 0,
+        Some(10) | None => return false,
+        Some(n) => n,
     };
     check == digits[9]
 }

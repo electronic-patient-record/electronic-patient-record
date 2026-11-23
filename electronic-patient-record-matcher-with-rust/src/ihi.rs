@@ -4,31 +4,38 @@
 /// FHIR identifier system for the IHI.
 pub const IHI_SYSTEM: &str = "http://ns.electronichealth.net.au/id/hi/ihi/1.0";
 
+/// A Luhn digit doubled: a result over nine has nine taken off.
+fn doubled(digit: u32) -> Option<u32> {
+    let x = digit.checked_mul(2)?;
+    if x > 9 { x.checked_sub(9) } else { Some(x) }
+}
+
 /// True if `value` (spaces and hyphens allowed) is a well-formed IHI.
 pub fn is_valid_ihi(value: &str) -> bool {
-    let digits: Vec<u32> = value
+    let Some(digits) = value
         .chars()
         .filter(|c| !c.is_whitespace() && *c != '-')
         .map(|c| c.to_digit(10))
-        .collect::<Option<Vec<_>>>()
-        .unwrap_or_default();
+        .collect::<Option<Vec<u32>>>()
+    else {
+        return false;
+    };
     if digits.len() != 16 || digits[..6] != [8, 0, 0, 3, 6, 0] {
         return false;
     }
-    let sum: u32 = digits
+    let sum = digits
         .iter()
         .rev()
         .enumerate()
-        .map(|(i, d)| {
-            if i % 2 == 1 {
-                let x = d * 2;
-                if x > 9 { x - 9 } else { x }
-            } else {
+        .try_fold(0_u32, |acc, (i, d)| {
+            let term = if i.is_multiple_of(2) {
                 *d
-            }
-        })
-        .sum();
-    sum.is_multiple_of(10)
+            } else {
+                doubled(*d)?
+            };
+            acc.checked_add(term)
+        });
+    sum.is_some_and(|s| s.is_multiple_of(10))
 }
 
 #[cfg(test)]

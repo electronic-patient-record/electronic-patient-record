@@ -574,16 +574,24 @@ pub struct Running {
 impl Running {
     /// Start [`serve_until`].
     #[must_use]
-    pub fn start(listener: TcpListener, db: PgPool, config: Config) -> Self {
+    pub fn start(
+        runtime: &crate::runtime::Runtime,
+        listener: TcpListener,
+        db: PgPool,
+        config: Config,
+    ) -> Self {
         let (stop, stopped) = tokio::sync::watch::channel(false);
-        adt_feed::set_configured(FeedIdentity {
-            agent: config.agent.clone(),
-            peer: None,
-            peer_certificate: None,
-            kept_answer: config.kept_answer,
-            processing_id: config.processing_id,
-            rules: config.rules.clone(),
-        });
+        adt_feed::set_configured(
+            runtime,
+            FeedIdentity {
+                agent: config.agent.clone(),
+                peer: None,
+                peer_certificate: None,
+                kept_answer: config.kept_answer,
+                processing_id: config.processing_id,
+                rules: config.rules.clone(),
+            },
+        );
         let task = tokio::spawn(serve_until(listener, db, config, stopped));
         Running { stop, task }
     }

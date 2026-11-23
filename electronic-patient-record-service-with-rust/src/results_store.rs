@@ -119,7 +119,7 @@ pub async fn create(
     author: &str,
     record: &ResultRecord,
 ) -> Result<StoredResult, StoreError> {
-    create_with_rules(db, patient_id, author, record, tasks_store::rules()?).await
+    create_with_rules(db, patient_id, author, record, &tasks_store::rules()?).await
 }
 
 /// [`create`] under the given task rules instead of the service's: the same write, for a test of a rule.
@@ -271,7 +271,7 @@ pub async fn update(
         author,
         reason,
         record,
-        tasks_store::rules()?,
+        &tasks_store::rules()?,
     )
     .await
 }
@@ -460,7 +460,7 @@ pub async fn sign_off(
     if let Some(row) = inserted {
         tasks_store::raise(
             &mut *db,
-            tasks_store::rules()?,
+            &tasks_store::rules()?,
             Event::ResultSignedOff,
             &results::task_facts(&current.result),
             &current.patient_id,

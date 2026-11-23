@@ -291,13 +291,15 @@ impl App {
             );
             // The feed's health is judged every minute while it listens (IH-8). A bad threshold stops the start.
             let thresholds = crate::feed_health::Thresholds::from_env().map_err(Error::Message)?;
+            let runtime = Runtime::current();
             tokio::spawn(crate::feed_health::run_loop(
+                runtime.clone(),
                 ctx.pool(),
                 config.agent.clone(),
                 thresholds,
             ));
             // Kept so that `run` can drain it at shutdown (IH-7).
-            mllp::keep(mllp::Running::start(listener, ctx.pool(), config));
+            mllp::keep(mllp::Running::start(&runtime, listener, ctx.pool(), config));
         }
         // The outbox relay is off unless `EPR_OUTBOX_INTERVAL_SECS` is set (OS-3). Its only sink is the
         // log sink, which sends nothing; a real sink arrives with IO-6. A missing table, index or

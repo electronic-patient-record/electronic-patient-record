@@ -762,19 +762,23 @@ pub async fn dry_run(db: &PgPool, text: &str, who: &FeedIdentity) -> DryRun {
     }
 }
 
-/// The identity of the feed the service listens for, set when the listener starts; a dry run uses it, so it applies
+/// The identity of the feed the service listens for, kept in the runtime when the listener starts; a dry run uses it, so it applies
 /// the same rules (IH-11).
-static CONFIGURED: std::sync::OnceLock<FeedIdentity> = std::sync::OnceLock::new();
-
-/// Record the listening feed's identity (no peer). Set once.
-pub fn set_configured(who: FeedIdentity) {
-    let _ = CONFIGURED.set(who);
+/// Record the listening feed's identity (no peer) in `runtime`. Set once.
+pub fn set_configured(runtime: &crate::runtime::Runtime, who: FeedIdentity) {
+    let _ = runtime.feed_identity.set(who);
 }
 
-/// The listening feed's identity, if the listener is on.
+/// The listening feed's identity in `runtime`, if the listener is on.
 #[must_use]
-pub fn configured() -> Option<&'static FeedIdentity> {
-    CONFIGURED.get()
+pub fn configured(runtime: &crate::runtime::Runtime) -> Option<FeedIdentity> {
+    runtime.feed_identity.get().cloned()
+}
+
+/// The listening feed's identity in the running request's runtime ([`configured`]).
+#[must_use]
+pub fn configured_now() -> Option<FeedIdentity> {
+    configured(&crate::runtime::Runtime::current())
 }
 
 /// The trigger event (MSH-9.2) and control id (MSH-10) of a message, cleaned for the audit row, even

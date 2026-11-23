@@ -492,13 +492,13 @@ fn thin_evidence_reports_the_share_present_of_the_weight_counted() {
         .iter()
         .filter(|f| f.field != "death_date" || f.similarity.is_some())
         .map(|f| f.weight)
-        .sum();
+        .fold(0.0, |a, b| a + b);
     let present: f64 = r
         .fields
         .iter()
         .filter(|f| f.similarity.is_some())
         .map(|f| f.weight)
-        .sum();
+        .fold(0.0, |a, b| a + b);
     let percent = r
         .conflict_codes
         .iter()

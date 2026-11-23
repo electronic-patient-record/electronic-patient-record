@@ -104,9 +104,12 @@ pub fn normalize_phone(value: &str, default_code: u16) -> String {
             String::new()
         };
     };
-    let full = match full.strip_prefix(code.as_str()) {
-        Some(rest) if rest.starts_with('0') => format!("{code}{}", &rest[1..]),
-        _ => full,
+    let full = match full
+        .strip_prefix(code.as_str())
+        .and_then(|rest| rest.strip_prefix('0'))
+    {
+        Some(rest) => format!("{code}{rest}"),
+        None => full,
     };
     if full.len() >= MIN_PHONE_DIGITS {
         full

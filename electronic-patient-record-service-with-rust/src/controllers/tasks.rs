@@ -346,7 +346,7 @@ async fn dry_run(
         Err(e) => return failure(e),
     };
     let Some(planned) = task_rules::plan(
-        rules,
+        &rules,
         request.event,
         &request.facts,
         day,

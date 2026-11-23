@@ -196,8 +196,8 @@ async fn dry_run(
         processing_id: None,
         rules: crate::adt_feed::SenderRules::default(),
     };
-    let configured = crate::adt_feed::configured();
-    let who = configured.unwrap_or(&default_feed);
+    let configured = crate::adt_feed::configured_now();
+    let who = configured.as_ref().unwrap_or(&default_feed);
     let result = crate::adt_feed::dry_run(&ctx.pool(), &text, who).await;
     if let Err(r) = audit_resource(
         &ctx.pool(),
@@ -255,13 +255,13 @@ async fn health(
     let now = jiff::Timestamp::now();
     let zone = crate::site::zone();
     let mut feeds = Vec::new();
-    if let Some((sender, thresholds)) = crate::feed_health::configured() {
-        let facts = match crate::feed_health::facts(&ctx.pool(), sender, now).await {
+    if let Some((sender, thresholds)) = crate::feed_health::configured_now() {
+        let facts = match crate::feed_health::facts(&ctx.pool(), &sender, now).await {
             Ok(f) => f,
             Err(e) => return failure(e),
         };
-        let judged = crate::feed_health::assess(now, &zone, &facts, thresholds);
-        let since = match crate::feed_health::last_state(&ctx.pool(), sender).await {
+        let judged = crate::feed_health::assess(now, &zone, &facts, &thresholds);
+        let since = match crate::feed_health::last_state(&ctx.pool(), &sender).await {
             Ok(Some((state, at))) if state == judged.state => Some(at),
             Ok(_) => None,
             Err(e) => return failure(e),

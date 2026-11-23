@@ -27,14 +27,12 @@ fn patient(family: &str, given: &str, born: &str, national: Option<&str>) -> Pat
         }],
         birth_date: Some(born.to_string()),
         sex: Some(AdministrativeSex::Female),
-        identifiers: national
-            .map(|v| {
-                vec![Identifier {
-                    system: NATIONAL_NUMBER_SYSTEM.to_string(),
-                    value: v.to_string(),
-                }]
-            })
-            .unwrap_or_default(),
+        identifiers: national.map_or_else(Vec::new, |v| {
+            vec![Identifier {
+                system: NATIONAL_NUMBER_SYSTEM.to_string(),
+                value: v.to_string(),
+            }]
+        }),
         addresses: vec![Address {
             postal_code: Some("CF10 1AA".to_string()),
         }],
