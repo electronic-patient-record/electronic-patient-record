@@ -106,6 +106,43 @@ commit of its own that says what changed in Lily.
   SDK follow Lily's (37).
 - Phones and tablets, portrait and landscape. No watch, TV or desktop target.
 
+### Device ownership (decided by the maintainer, 2026-11-23; OQ-MP1)
+
+Both apps MUST support **managed devices** (issued and administered by the trust, under MDM) **and bring-your-own
+devices** (owned by the clinician), each on **phones and tablets** (iPhone and iPad; Android phones and tablets). One
+build serves all four cases; an app never refuses to run because a device is unmanaged.
+
+1. **The app carries its own controls.** Nothing in the contract may rely on an MDM being present. What the app must do
+   by itself, on every device, is in §2 and §3 and in rules 2 to 5 here. A managed device adds to these; it never
+   replaces one.
+2. **A device lock is required.** The app does not start a session unless the device has a passcode or biometric lock
+   (iOS: `LAContext` policy `deviceOwnerAuthentication` can be evaluated; Android: `KeyguardManager.isDeviceSecure`). If
+   the lock is removed while the app holds a refresh token, the next launch signs out and wipes.
+3. **An app-level wipe.** Signing out, an idle sign-out (§3 rule 6) and a refused refresh (the realm answers
+   `invalid_grant`, or a 401 follows a refresh) each delete the refresh token and the Keystore key that wraps it, and
+   drop every in-memory record. This is the control for a lost personal phone: the trust revokes the user's sessions
+   in Keycloak, and the app wipes itself the next time it reaches the service. It does not help a phone that never
+   connects again, which is why the idle limit and the realm's refresh-token lifetime stay short.
+4. **Nothing leaves the app's sandbox.** No record data in the share sheet, a notification, a widget, Spotlight, the
+   Android recents thumbnail, a backup (iOS: excluded from iCloud and device backup; Android: `allowBackup="false"` and
+   `dataExtractionRules` excluding all domains) or a file the user can reach. A personal phone holds other apps, so the
+   clipboard and the keyboard's learned words are a risk the app cannot fully close; whether record text may be
+   copied is open (recorded in H-061).
+5. **Jailbreak and root detection is advice, not a control.** An app cannot reliably detect a compromised device. It may
+   warn on the signs it can see; it never counts the absence of a sign as proof the device is sound.
+6. **Managed configuration is optional and can only tighten.** On a managed device the app reads the platform's managed
+   app configuration (iOS `com.apple.configuration.managed`; Android Enterprise managed configurations) for the service
+   base URL and a shorter idle limit. A managed value may shorten the idle limit and the absolute limit, never lengthen
+   them past §3 rule 6, and a managed base URL still has to be `https://` (§2).
+7. **Tablets.** Layouts adapt to the width; the banner rules (§3 rule 2) and the touch-target sizes (§4) hold at every
+   size and at split-screen and slide-over widths. A tablet is a personal device of one user in the same way as a
+   phone: a tablet shared between clinicians is not supported (one user per install, no fast user switch).
+8. **No real record data on a bring-your-own device until rules 2 to 4 are built and tested on a real device.** Until
+   then both apps show synthetic data only, on every device (§3 rule 8). Which kinds of device may hold which kind of
+   record (for example, no photographs on a personal phone) is open and goes with the clinical safety case.
+9. **Distribution (OQ-MP3) is separate.** Managed devices can take managed distribution; a bring-your-own device usually
+   takes the public stores, which is where OQ-MP3 and the fake-app risk are decided.
+
 ## 7. Built (scaffold, M0)
 
 Each app, the same in both:
@@ -140,7 +177,7 @@ the Gradle build: its versions follow Lily's at the pinned commit, and a bump on
 
 | ID | Question | Recommendation |
 | --- | --- | --- |
-| OQ-MP1 | Who owns the devices: the trust (managed, MDM) or the clinician (bring your own)? It decides remote wipe, distribution and whether a lost-device threat is controlled by the trust | Managed devices first; bring-your-own only with an app-level wipe and the MFA plan |
+| OQ-MP1 | Who owns the devices: the trust (managed, MDM) or the clinician (bring your own)? It decides remote wipe, distribution and whether a lost-device threat is controlled by the trust | **Answered 2026-11-23 by the maintainer: both, on phones and tablets** (§6, Device ownership). Still open inside it: whether record text may be copied on a personal device, and which record kinds a personal device may hold |
 | OQ-MP2 | Claimed `https` redirect or a private-use scheme for sign-in? | Claimed `https` where the deployment can host `apple-app-site-association` and `assetlinks.json` |
 | OQ-MP3 | Distribution: the App Store and Google Play, Apple Business Manager and managed Google Play, or both? | Managed distribution; public stores only after a clinical safety case |
 | OQ-MP4 | Offline reading of the downtime snapshot on a phone (links OQ-5, OQ-MV1)? | Not until OQ-5 is answered; then read-only, encrypted, wiped at sign-out |

@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-23 - The mobile apps support managed and bring-your-own devices, phones and tablets (OQ-MP1)
+
+- **Clinical risk:** none from code (documents only). The decision raises H-061's exposure to personal phones: its residual text now says the personal-device controls are required and not built. Status stays `open`.
+- **Changed:** `spec/mobile-apps/index.md` §6 gains "Device ownership" (the maintainer's decision of 2026-11-23, nine rules: no reliance on MDM, a device lock required, an app-level wipe, nothing in a backup or the sandbox's reach, root detection is advice, managed configuration can only tighten, tablets, no real record data on a personal device until built and tested, distribution separate); OQ-MP1 is marked answered; MP-6's acceptance adds the controls and a test on a real phone and tablet of each platform; the MFA plan and H-061 follow.
+- **Not done / not verified:** none of the rules is built; no device of any kind was tried; whether record text may be copied, and which record kinds a personal device may hold, are open; OQ-MP3 (distribution) is still open.
+
 ## 2026-11-23 - Threat model for a lost or shared phone (MP-11)
 
 - **Clinical risk:** none from code (documents only). H-061 is the hazard: its controls, evidence and residual text are updated; its status stays `open`, and it is not marked accepted or closed.
