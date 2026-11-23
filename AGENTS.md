@@ -1,12 +1,14 @@
 # AGENTS.md — Electronic Patient Record
 
-Entry point for AI coding agents at the repository root. Three projects live here; each has its own `AGENTS.md`.
+Entry point for AI coding agents at the repository root. Five projects live here; each has its own `AGENTS.md`.
 
 | Project | Directory | Guide |
 | --- | --- | --- |
 | Service (Axum and `axa`, REST + FHIR API, PostgreSQL) | `electronic-patient-record-service-with-rust` | [AGENTS.md](electronic-patient-record-service-with-rust/AGENTS.md) |
 | Matcher (pure Rust library, patient identity) | `electronic-patient-record-matcher-with-rust` | [AGENTS.md](electronic-patient-record-matcher-with-rust/AGENTS.md) |
 | Clinician UI (SvelteKit, Svelte 5, backend-for-frontend) | `electronic-patient-record-ui-with-svelte` | [AGENTS.md](electronic-patient-record-ui-with-svelte/AGENTS.md) |
+| iOS app (Swift, SwiftUI, Lily Design System for Swift; a scaffold) | `electronic-patient-record-mobile-app-with-swift` | [AGENTS.md](electronic-patient-record-mobile-app-with-swift/AGENTS.md) |
+| Android app (Kotlin, Jetpack Compose, Lily Design System for Kotlin; a scaffold) | `electronic-patient-record-mobile-app-with-kotlin` | [AGENTS.md](electronic-patient-record-mobile-app-with-kotlin/AGENTS.md) |
 
 Version 0.1.0. Rust 1.100.0 (pinned in `rust-toolchain.toml`; minimum supported 1.98 for the service, which axa 0.21 needs, and the matcher), Node 26, pnpm, Podman.
 **NOT FOR CLINICAL USE.** This is a scaffold (milestone M0): no clinical record exists yet.
@@ -36,6 +38,8 @@ RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --document-private-items --worksp
 #   DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test cargo test --test audit_immutable -- --ignored --test-threads=1
 # UI (another project may hold port 4173: use PW_PORT)
 cd electronic-patient-record-ui-with-svelte && pnpm run lint && pnpm run check && pnpm run check:tests && pnpm exec vitest run && PW_PORT=4183 CI=true pnpm exec playwright test
+# mobile apps (spec/mobile-apps): the pinned Lily checkout, then each app's tests and build (Xcode for iOS; a JDK and the Android SDK for Android)
+sh scripts/fetch-lily.sh && (cd electronic-patient-record-mobile-app-with-swift && swift test) && (cd electronic-patient-record-mobile-app-with-kotlin && ./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug)
 # load and benchmarks (spec/performance-testing.md): a release build on a scratch database; `--profile standard` to measure
 sh scripts/load/run-local.sh --profile smoke && (cd electronic-patient-record-matcher-with-rust && cargo bench --bench matcher -- --test)
 # docs

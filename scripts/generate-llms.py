@@ -17,7 +17,7 @@ NAME = "Electronic Patient Record"
 SUMMARY = (
     "Open-source electronic patient record software: a safe, append-only, audited longitudinal patient record "
     "with FHIR R4 as both data model and API, and explainable patient identity matching. A Rust matcher library, "
-    "a Rust service (Axum, PostgreSQL) and a SvelteKit 3 / Svelte 5 UI, specified in spec/. "
+    "a Rust service (Axum, PostgreSQL), a SvelteKit 3 / Svelte 5 UI, and scaffolds of iOS (SwiftUI) and Android (Jetpack Compose) apps, specified in spec/. "
     "Pre-release scaffold (milestone M0): NOT FOR CLINICAL USE; do not enter real patient data; no accreditation, "
     "certification or clinical validation is claimed."
 )
@@ -35,6 +35,8 @@ STACK = {
     "matcher": "Rust library (pure, deterministic, explainable identity matching), published as electronic-patient-record-matcher",
     "service": "Rust, Axum, axa and sqlx, PostgreSQL 18, REST and FHIR R4",
     "ui": "SvelteKit 3, Svelte 5 runes, backend-for-frontend proxy",
+    "ios": "Swift 6, SwiftUI, Lily Design System for Swift (a scaffold)",
+    "android": "Kotlin, Jetpack Compose, Lily Design System for Kotlin (a scaffold)",
 }
 
 # (section, [(title, path, description)])
@@ -74,6 +76,9 @@ SECTIONS = [
         ("Service spec", "electronic-patient-record-service-with-rust/spec/index.md", "What the service does, row by row."),
         ("UI AGENTS", "electronic-patient-record-ui-with-svelte/AGENTS.md", "Working in the SvelteKit UI."),
         ("UI spec", "electronic-patient-record-ui-with-svelte/spec/index.md", "What each page does."),
+        ("Mobile apps contract", "spec/mobile-apps/index.md", "What the iOS and Android apps share: direct /api calls, PKCE sign-in, nothing kept on the device."),
+        ("iOS app AGENTS", "electronic-patient-record-mobile-app-with-swift/AGENTS.md", "Working in the SwiftUI app."),
+        ("Android app AGENTS", "electronic-patient-record-mobile-app-with-kotlin/AGENTS.md", "Working in the Jetpack Compose app."),
     ]),
     ("Clinical safety and governance", [
         ("Hazard log", "governance/clinical-safety/hazard-log.csv", "The hazard log (never edit a status to accepted or closed)."),
@@ -98,6 +103,7 @@ COMMANDS = {
     "service": "cd electronic-patient-record-service-with-rust && cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test",
     "service database tests": "TEST_DB_PORT=5543 TEST_REDIS_PORT=6390 podman compose -f compose.test.yaml up -d --wait, then DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test cargo test -- --ignored --test-threads=1",
     "ui": "cd electronic-patient-record-ui-with-svelte && pnpm run check && pnpm exec vitest run && PW_PORT=4183 CI=true pnpm exec playwright test",
+    "mobile": "sh scripts/fetch-lily.sh && (cd electronic-patient-record-mobile-app-with-swift && swift test) && (cd electronic-patient-record-mobile-app-with-kotlin && ./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug)",
     "docs": "python3 scripts/check-links.py . && sh scripts/generate-status.sh --check && python3 scripts/generate-llms.py --check && python3 scripts/check-hazard-log.py",
 }
 

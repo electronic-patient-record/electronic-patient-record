@@ -31,6 +31,8 @@
 - [electronic-patient-record-service-with-rust/spec](../electronic-patient-record-service-with-rust/spec/index.md) — Axum and `axa` service: clinical record, FHIR R4 facade, audit, consent, access control
 - [electronic-patient-record-matcher-with-rust/spec](../electronic-patient-record-matcher-with-rust/spec/index.md) — pure library: patient identity matching (master patient index), explainable scores
 - [electronic-patient-record-ui-with-svelte/spec](../electronic-patient-record-ui-with-svelte/spec/index.md) — clinician and patient UI: SvelteKit 2, Svelte 5 runes, Lily widgets, BFF
+- [electronic-patient-record-mobile-app-with-swift/spec](../electronic-patient-record-mobile-app-with-swift/spec/index.md) — iOS app: Swift 6, SwiftUI, Lily Design System for Swift; a scaffold (MP)
+- [electronic-patient-record-mobile-app-with-kotlin/spec](../electronic-patient-record-mobile-app-with-kotlin/spec/index.md) — Android app: Kotlin, Jetpack Compose, Lily Design System for Kotlin; a scaffold (MP)
 
 ## Table of contents
 
@@ -97,6 +99,7 @@ Topics that span several numbered chapters and are kept whole:
   units, locales, regulation.
 - [Locales](locales.md) — `<language>-<region>` names, same rules as the
   project-portfolio-management repository.
+- [Native mobile apps](mobile-apps/index.md) — the contract the iOS and Android apps share: direct `/api` calls, PKCE sign-in, nothing kept on the device, the UI's safety rules; a scaffold (MP)
 - [Mobile viewability](mobile-viewability.md) — the record usable on a phone: reflow, touch targets, a banner that stays whole; a direction, nothing built (XP)
 - [Care settings and specialty views](care-settings.md) — acute, community and mental health on one record; specialty views such as renal as packs (XP)
 - [Pathway design](pathway-design.md) — clinicians design, review, publish and redesign care pathways (XP)

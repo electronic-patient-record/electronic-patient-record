@@ -28,3 +28,14 @@ chaos-report.json
 # cargo-mutants output (scripts/mutants.sh).
 mutants.out/
 mutants.out.old/
+
+# The pinned Lily Design System checkout (scripts/fetch-lily.sh) and mobile build state.
+vendor/
+.build/
+.swiftpm/
+xcuserdata/
+*.xcuserstate
+DerivedData/
+.gradle/
+.kotlin/
+local.properties

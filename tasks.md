@@ -27,6 +27,7 @@ IDs are grouped by prefix so they do not collide with the numbered build-out in
 | `OS-` | Ideas from other open-source EPR and EHR systems: engineering practice, capabilities, configuration (research 2026-10-30) | OS-9 first; the rest by milestone |
 | `XP-` | Mobile viewability, care settings, specialty views, clinician pathway design, privacy-preserving analysis (user request 2026-11-04) | XP-1 first; the rest in plan.md §27.3 order |
 | `LC-` | Local CI/CD: more of the checking on the author's machine, less waiting on GitHub (research 2026-11-04) | LC-1 first; the rest in plan.md §26.8 order |
+| `MP-` | Native mobile apps: iOS (Swift, SwiftUI) and Android (Kotlin, Jetpack Compose), both on Lily Design System (user request 2026-11-23) | MP-1 first; the rest in plan.md §39 order |
 
 Sizes: S ≈ one business day, M ≈ a few business days, L ≈ a business week or
 more.
@@ -1951,3 +1952,20 @@ Spec: [`spec/research-dataset/`](spec/research-dataset/index.md).
 - [ ] **RD-5 (S) — The personal-data inventory gains a research-release class.** **Acceptance:** the inventory test fails when a column has no release class.
 - [ ] **RD-6 (M) — Linkage-token specification.** Normalisation, field combinations, the two-key scheme and linkage-error reporting; no shared key made. **Acceptance:** a spec, and a test that a token made without the key matches nothing.
 - [ ] **RD-7 (S) — Governance pack.** Data access committee terms, project register, output-checking checklist and a patient notice. **Acceptance:** documents under `governance/`, marked unreviewed.
+
+## Native mobile apps (MP)
+
+Spec: [`spec/mobile-apps/`](spec/mobile-apps/index.md); plan.md §39. Subprojects `electronic-patient-record-mobile-app-with-swift` and `electronic-patient-record-mobile-app-with-kotlin`.
+
+- [x] **MP-1 (S) — Shared contract.** `spec/mobile-apps/index.md`, the two subprojects' `AGENTS.md` and `spec/index.md`, tasks and hazard H-061. **Acceptance:** linked from the root `AGENTS.md`, `spec/index.md` and `llms.txt`.
+- [x] **MP-2 (M) — Scaffolds that build and test.** Each app: a core with `ApiRequest`, `Patient` decoding and `Banner` text, each tested; one screen from Lily components; the gates in `spec/mobile-apps/index.md` §8. **Acceptance:** `swift test` and the simulator build pass; `./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug` passes.
+- [ ] **MP-3 (S) — Lily as a versioned dependency.** Replace the pinned clone (`scripts/fetch-lily.sh`) by the published SwiftPM package and Maven Central artefacts once Lily publishes them. **Acceptance:** no `vendor/` path in either build.
+- [ ] **MP-4 (S) — CI for the apps.** `scripts/ci-changes.sh` gains `swift` and `kotlin`; jobs on a `macos` runner and on `ubuntu-latest`; `ci-local.sh` gains the projects `swift` and `kotlin`. **Acceptance:** a change only to one app runs only that app's job, and `scripts/test_ci_changes.sh` covers it.
+- [ ] **MP-5 (M, clinical) — Sign-in.** Authorization code with PKCE through the system browser; Keycloak clients `epr-ios` and `epr-android`; refresh token in the Keychain or Keystore; sign-out ends the Keycloak session. Settle OQ-MP2. **Acceptance:** an end-to-end test against the realm in `operations/keycloak`; a test that no token reaches a log, a file outside the secure store or a crash report.
+- [ ] **MP-6 (S, clinical) — Idle lock and snapshot cover.** The rules in §3 items 5 and 6. **Acceptance:** core tests for the limits; a UI test that the switcher snapshot shows no record.
+- [ ] **MP-7 (M, clinical) — Patient search and banner.** `GET /api/patients` with the same three searches as the web UI; the banner never truncates at the largest text size on the smallest phone. **Acceptance:** UI tests at the largest Dynamic Type and font scale on the smallest supported screen.
+- [ ] **MP-8 (M, clinical) — Read-only patient record.** Allergies, alerts and vital signs, read-only, with counts never hidden (§3 item 3). **Acceptance:** the same synthetic patient shows the same facts as the web UI, checked by a shared fixture.
+- [ ] **MP-9 (S) — Words and locales.** A typed table per app with the UI's keys where the meaning is the same; a census test that the key sets agree. **Acceptance:** the census fails when a key is missing; Welsh marked unreviewed.
+- [ ] **MP-10 (M) — Accessibility audit.** VoiceOver, TalkBack, Switch Control and Access, largest text, 44 pt and 48 dp targets, by test and by hand on a real device. **Acceptance:** a written result per screen.
+- [ ] **MP-11 (S) — Threat model for a lost or shared device.** Settle OQ-MP1 and OQ-MP3 with the MFA plan and data flow. **Acceptance:** sections in `governance/mfa-plan.md` and `governance/data-flow.md`; H-061 updated.
+- [ ] **MP-12 (L) — Release builds, signing and distribution.** After OQ-MP3. **Acceptance:** a signed build installed through the chosen channel on one managed device of each platform.

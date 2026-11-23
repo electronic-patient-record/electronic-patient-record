@@ -1,0 +1,33 @@
+#!/bin/sh
+# Fetch the pinned commit of the Lily Design System monorepo into vendor/lily-design-system (MP-2, MP-3).
+#
+#   sh scripts/fetch-lily.sh          # clone or move to LILY_COMMIT; prints the directory
+#   LILY_SOURCE=~/git/lilydesignsystem/lily-design-system sh scripts/fetch-lily.sh   # from a local clone, faster
+#
+# Neither Lily's Swift package nor its Kotlin libraries are published yet (checked 2026-11-23), so the mobile apps build
+# against this one commit: the Swift package by path, the Kotlin build by includeBuild. Only the two directories the
+# apps need are checked out (sparse, depth 1). Moving the pin is a commit of its own that says what changed in Lily.
+# When Lily publishes, this script goes (MP-3). See spec/mobile-apps/index.md §5.
+set -eu
+
+LILY_COMMIT=787d93644014f8c6ee06183ef1ca4c6edd599f19
+source="${LILY_SOURCE:-https://github.com/LilyDesignSystem/lily-design-system.git}"
+root="$(cd "$(dirname "$0")/.." && pwd)"
+dir="$root/vendor/lily-design-system"
+
+if [ "$(git -C "$dir" rev-parse HEAD 2>/dev/null || true)" = "$LILY_COMMIT" ]; then
+  echo "$dir"
+  exit 0
+fi
+
+if [ ! -d "$dir/.git" ]; then
+  mkdir -p "$dir"
+  git -C "$dir" init -q
+  git -C "$dir" remote add origin "$source"
+fi
+git -C "$dir" remote set-url origin "$source"
+git -C "$dir" sparse-checkout set --cone lily-design-system-swift lily-design-system-kotlin
+git -C "$dir" fetch -q --depth 1 origin "$LILY_COMMIT"
+git -C "$dir" -c advice.detachedHead=false checkout -q "$LILY_COMMIT"
+test "$(git -C "$dir" rev-parse HEAD)" = "$LILY_COMMIT"
+echo "$dir"

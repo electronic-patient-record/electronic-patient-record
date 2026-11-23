@@ -1,0 +1,31 @@
+# Versions follow Lily's own build (vendor/lily-design-system/lily-design-system-kotlin/gradle/libs.versions.toml) at the
+# pinned commit, so the included build and this one agree on Kotlin, AGP and Compose.
+[versions]
+agp = "9.5.1"
+kotlin = "2.4.21"
+compose-bom = "2026.11.01"
+junit = "4.13.2"
+robolectric = "4.18.1"
+androidx-test-core = "1.7.0"
+kotlinx-serialization = "1.13.0"
+activity-compose = "1.13.0"
+lily = "0.1.0"
+
+[libraries]
+compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose-bom" }
+compose-foundation = { module = "androidx.compose.foundation:foundation" }
+compose-ui = { module = "androidx.compose.ui:ui" }
+compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
+compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
+activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity-compose" }
+junit = { module = "junit:junit", version.ref = "junit" }
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+androidx-test-core = { module = "androidx.test:core", version.ref = "androidx-test-core" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+lily-compose = { module = "io.github.lilydesignsystem:lily-compose", version.ref = "lily" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }

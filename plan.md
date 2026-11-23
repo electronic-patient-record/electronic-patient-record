@@ -2246,3 +2246,28 @@ actions can continue after one fails, and webhook secrets sit in readable config
 into DO-6 (TL-12); and keep whole-version updates, stating a maximum for every list (TL-13). Not adopted: implicit
 append and merge, hard deletes, ad hoc aggregation, `continueOnError` on record writes, readable secrets.
 
+## 39. Direction 2026-11-23: native mobile apps for iOS and Android
+
+Asked for on 2026-11-23: two major new subprojects, `electronic-patient-record-mobile-app-with-swift` (Swift, SwiftUI,
+Lily Design System for Swift) and `electronic-patient-record-mobile-app-with-kotlin` (Kotlin, Jetpack Compose, Lily
+Design System for Kotlin). Spec: [`spec/mobile-apps/index.md`](spec/mobile-apps/index.md). Tasks MP-1 to MP-12. Work is
+on branch `mobile-apps` until the maintainer merges it.
+
+**What exists.** The web UI already has a viewport tag and the mobile viewability direction (§27, XP-1 to XP-4), not yet
+done. Lily has a Swift package (`LilyCore`, `LilyUI`, iOS 18) and a Kotlin build (`lily-core`, `lily-compose`, minSdk 24,
+no Material) in its monorepo; neither is published (checked 2026-11-23). This machine has Xcode 27.2 (Swift 6.4.2), a JDK
+25 and an Android SDK with platform 37.2.
+
+**Assessment.** Native apps are worth having for managed devices, platform biometrics, the camera and the screen reader,
+but they are two more clients that can show a record differently from the web. The defence is the same as for the web
+UI: the service decides, the apps render; each app keeps its rules in a tested core with no UI; and the shared contract
+(`spec/mobile-apps`) restates the UI's safety rules (absent is not zero, a banner that never truncates, no record on the
+device beyond the session). XP-1 to XP-4 still come first for the web, because more staff will open a link than install
+an app.
+
+**Order.** MP-1 and MP-2 (contract and scaffolds), MP-4 (CI), MP-11 (lost-device threat model, before any record data
+reaches a phone), MP-5 (sign-in), MP-6, MP-7, MP-9, MP-8, MP-10, then MP-3 when Lily publishes and MP-12 after OQ-MP3.
+
+**Not done.** No clinician or user was asked; no device was tried; the platform figures (44 pt, 48 dp) and RFC 8252
+were not re-read for this section.
+
