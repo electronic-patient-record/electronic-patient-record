@@ -13,6 +13,16 @@
 //! Not here: a network listener (MLLP, OR-3), storing the patient, matching it to an existing one,
 //! or any segment other than `MSH`, `EVN` and `PID`.
 
+// RCA-ENF-3: this module is converted, so the arithmetic lints are denied here; the rest of the crate follows.
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::default_numeric_fallback,
+    clippy::integer_division,
+    clippy::modulo_arithmetic,
+    clippy::as_conversions,
+    clippy::string_slice
+)]
+
 use crate::death::Occurred;
 use crate::patients_store;
 use electronic_patient_record_matcher::{
@@ -42,6 +52,10 @@ pub struct Inbound {
     pub message_time: Option<jiff::Timestamp>,
 }
 
+/// Seconds in an hour and in a minute, for an offset.
+const SECONDS_PER_HOUR: i32 = 3600;
+const SECONDS_PER_MINUTE: i32 = 60;
+
 /// An HL7 v2 `DTM` to at least the minute (`YYYYMMDDHHMM[SS[.S…]][+/-ZZZZ]`) as a UTC time. A time with no offset is
 /// read as UTC: one sender's times compare with each other, which is all the feed asks of them. Anything shorter
 /// than a minute, or not a real time, is `None`.
@@ -49,7 +63,10 @@ pub struct Inbound {
 pub fn message_time(ts: &str) -> Option<jiff::Timestamp> {
     let ts = ts.trim();
     let (main, offset) = match ts.find(['+', '-']) {
-        Some(i) => (&ts[..i], Some(&ts[i..])),
+        Some(i) => {
+            let (main, offset) = ts.split_at_checked(i)?;
+            (main, Some(offset))
+        }
         None => (ts, None),
     };
     let main = main.split('.').next()?;
@@ -63,19 +80,22 @@ pub fn message_time(ts: &str) -> Option<jiff::Timestamp> {
     };
     let naive = jiff::civil::DateTime::strptime("%Y%m%d%H%M%S", &full).ok()?;
     let seconds = match offset {
-        None => 0,
+        None => 0_i32,
         Some(o) => {
-            let (sign, digits) = o.split_at(1);
+            let (sign, digits) = o.split_at_checked(1)?;
             if digits.len() != 4 || !digits.chars().all(|c| c.is_ascii_digit()) {
                 return None;
             }
-            let hours: i32 = digits[..2].parse().ok()?;
-            let minutes: i32 = digits[2..].parse().ok()?;
-            if hours > 14 || minutes > 59 {
+            let (hours, minutes) = digits.split_at_checked(2)?;
+            let hours: i32 = hours.parse().ok()?;
+            let minutes: i32 = minutes.parse().ok()?;
+            if hours > 14_i32 || minutes > 59_i32 {
                 return None;
             }
-            let s = hours * 3600 + minutes * 60;
-            if sign == "-" { -s } else { s }
+            let s = hours
+                .checked_mul(SECONDS_PER_HOUR)?
+                .checked_add(minutes.checked_mul(SECONDS_PER_MINUTE)?)?;
+            if sign == "-" { s.checked_neg()? } else { s }
         }
     };
     jiff::tz::Offset::from_seconds(seconds)
@@ -137,14 +157,15 @@ fn sex(code: &str) -> Option<AdministrativeSex> {
 /// `YYYY`, `YYYYMM` or `YYYYMMDD` (anything after, such as a time, is ignored) as ISO 8601.
 fn birth_date(ts: &str) -> Option<String> {
     let digits: String = ts.chars().take_while(char::is_ascii_digit).collect();
+    // The digits are ASCII, so `get` finds each part; `?` is for the compiler.
+    let year = digits.get(..4)?;
     match digits.len() {
         4 => Some(digits),
-        6 => Some(format!("{}-{}", &digits[..4], &digits[4..6])),
+        6 => Some(format!("{year}-{}", digits.get(4..6)?)),
         n if n >= 8 => Some(format!(
-            "{}-{}-{}",
-            &digits[..4],
-            &digits[4..6],
-            &digits[6..8]
+            "{year}-{}-{}",
+            digits.get(4..6)?,
+            digits.get(6..8)?
         )),
         _ => None,
     }
@@ -446,6 +467,44 @@ fn generic_nak(text: &str, note: &str, control_id: &str, timestamp: &str) -> Opt
 }
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_time_with_a_malformed_or_out_of_range_offset_is_no_time_and_the_edges_are_times() {
+        let at = |s: &str| message_time(s).map(|t| t.to_string());
+        assert_eq!(
+            at("20260101120000+1400").as_deref(),
+            Some("2025-12-31T22:00:00Z")
+        );
+        assert_eq!(
+            at("20260101120000-1400").as_deref(),
+            Some("2026-01-02T02:00:00Z")
+        );
+        assert_eq!(
+            at("20260101120000-0000").as_deref(),
+            Some("2026-01-01T12:00:00Z")
+        );
+        for bad in [
+            "20260101120000+1500",
+            "20260101120000+0960",
+            "20260101120000+",
+            "20260101120000+14",
+            "20260101120000+\u{0663}\u{0664}00",
+            "2026010112",
+            "\u{00e9}20260101120000",
+        ] {
+            assert_eq!(at(bad), None, "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn a_birth_date_of_five_or_seven_digits_is_none_and_longer_ones_are_cut_to_the_day() {
+        assert_eq!(birth_date("1980").as_deref(), Some("1980"));
+        assert_eq!(birth_date("198003").as_deref(), Some("1980-03"));
+        assert_eq!(birth_date("19800314123000").as_deref(), Some("1980-03-14"));
+        for bad in ["", "198", "19803", "1980031", "x1980"] {
+            assert_eq!(birth_date(bad), None, "{bad:?}");
+        }
+    }
+
     use super::*;
 
     const ADT: &str = "MSH|^~\\&|REG|CLINIC|EPR|HOSP|20261021090000||ADT^A28^ADT_A05|MSG1|P|2.5\r\

@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-23 - interop/hl7_adt.rs under the arithmetic lints (QA-17)
+
+- **Clinical risk:** none intended: the readers of an HL7 time offset and a birth date give the same results; the slicing and the offset arithmetic are now `get`, `split_at_checked`, `checked_mul` and `checked_add`. Hazard log not edited.
+- **Changed:** the module denies the arithmetic lints (RCA-ENF-3); two tests for the edges (`+1400`, `-1400`, `-0000`, an offset of `+1500`, `+0960`, lone `+`, non-ASCII digits, a multibyte first character; birth dates of 0, 3, 5 and 7 digits).
+- **Not done / not verified:** the module still discards a parser error with `.ok()` where it reads an unreadable path as empty (`get` helper, RCA-IN-6): a behaviour change that needs a specified answer first. Full suite on a fresh database: 864 passed, 6 failed (Java `fhir_validator`). CI not observed.
+
 ## 2026-11-23 - mllp.rs under the arithmetic lints; no invented clock for the feed's answer (QA-17)
 
 - **Clinical risk:** low, on the inbound HL7 feed: no result changes on a working clock. The ACK's timestamp came from a clock that read `0` before 1970 and `i64::MAX` out of range, and from a hand-written calendar. It is now `jiff`, and a clock outside `jiff`'s range (years -9999 to 9999) closes the connection with the frame unanswered, so the sender sends it again, instead of answering with a made-up time. Hazard log not edited.
