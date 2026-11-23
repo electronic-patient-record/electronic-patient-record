@@ -144,10 +144,6 @@ name = "runtime_boot"
 path = "tests/runtime_boot.rs"
 
 [[test]]
-name = "audit_immutable"
-path = "tests/audit_immutable.rs"
-
-[[test]]
 name = "audit_search_coverage"
 path = "tests/audit_search_coverage.rs"
 
@@ -162,10 +158,6 @@ path = "tests/chaos_api.rs"
 [[test]]
 name = "fhir_validator"
 path = "tests/fhir_validator.rs"
-
-[[test]]
-name = "hl7_samples"
-path = "tests/hl7_samples.rs"
 
 [[test]]
 name = "http_adjustments"
@@ -220,10 +212,6 @@ name = "http_idempotency_roles"
 path = "tests/http_idempotency_roles.rs"
 
 [[test]]
-name = "http_lockout"
-path = "tests/http_lockout.rs"
-
-[[test]]
 name = "http_observations"
 path = "tests/http_observations.rs"
 
@@ -242,10 +230,6 @@ path = "tests/http_permission_basis.rs"
 [[test]]
 name = "http_proxy_scopes"
 path = "tests/http_proxy_scopes.rs"
-
-[[test]]
-name = "http_rate_limit"
-path = "tests/http_rate_limit.rs"
 
 [[test]]
 name = "http_referral_queue"
@@ -280,16 +264,8 @@ name = "http_watch_list"
 path = "tests/http_watch_list.rs"
 
 [[test]]
-name = "metrics"
-path = "tests/metrics.rs"
-
-[[test]]
 name = "mllp_feed"
 path = "tests/mllp_feed.rs"
-
-[[test]]
-name = "openapi_census"
-path = "tests/openapi_census.rs"
 
 [[test]]
 name = "openapi_responses"
@@ -299,6 +275,3 @@ path = "tests/openapi_responses.rs"
 name = "openapi_responses_roles"
 path = "tests/openapi_responses_roles.rs"
 
-[[test]]
-name = "outbox_store"
-path = "tests/outbox_store.rs"

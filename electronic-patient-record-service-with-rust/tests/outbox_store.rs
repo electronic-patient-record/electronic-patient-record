@@ -11,7 +11,7 @@
 //!
 //! ```text
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test outbox_store -- --ignored --test-threads=1
+//!   cargo test --test suite outbox_store:: -- --ignored --test-threads=1
 //! ```
 
 use async_trait::async_trait;

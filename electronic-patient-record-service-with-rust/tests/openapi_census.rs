@@ -4,7 +4,7 @@
 //! that makes a secret holds a secret-named field (TL-11). Every array schema states its maximum
 //! (TL-13).
 //!
-//! To accept a deliberate change: `EPR_BLESS=1 cargo test --test openapi_census`, then review the diff.
+//! To accept a deliberate change: `EPR_BLESS=1 cargo test --test suite openapi_census::`, then review the diff.
 
 use electronic_patient_record::{auth, openapi, routes};
 use serde_json::Value;
@@ -20,11 +20,11 @@ fn the_committed_document_is_what_the_code_produces() {
         return;
     }
     let committed = fs::read_to_string(Path::new(FILE)).expect(
-        "openapi.json is missing: run `EPR_BLESS=1 cargo test --test openapi_census` and commit it",
+        "openapi.json is missing: run `EPR_BLESS=1 cargo test --test suite openapi_census::` and commit it",
     );
     assert!(
         committed == produced,
-        "openapi.json is stale: run `EPR_BLESS=1 cargo test --test openapi_census`, review and commit"
+        "openapi.json is stale: run `EPR_BLESS=1 cargo test --test suite openapi_census::`, review and commit"
     );
 }
 

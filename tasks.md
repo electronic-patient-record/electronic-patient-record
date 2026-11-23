@@ -40,7 +40,7 @@ Conventions:
 
 - Absent evidence is `null` with a reason (FHIR `dataAbsentReason`), never
   zero.
-- Every new endpoint is pinned in the OpenAPI document (`src/openapi.rs`, derived from the route table; refresh `openapi.json` with `EPR_BLESS=1 cargo test --test openapi_census`), and FHIR interactions are
+- Every new endpoint is pinned in the OpenAPI document (`src/openapi.rs`, derived from the route table; refresh `openapi.json` with `EPR_BLESS=1 cargo test --test suite openapi_census::`), and FHIR interactions are
   pinned in the CapabilityStatement.
 - Every read and write is audited.
 - People stay references.

@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-23 - Seven more test programs folded into `suite.rs` (LC-15)
+
+- **Clinical risk:** none: test tooling.
+- **Changed:** `audit_immutable`, `hl7_samples`, `http_lockout`, `http_rate_limit`, `metrics`, `openapi_census` and `outbox_store` are modules of `tests/suite.rs` now, not programs of their own: seven fewer builds and links (about 44 s each, per `spec/local-ci.md`, so up to about five minutes off a full rebuild; not re-timed). They set no environment and keep no process-wide state beyond the counters `metrics` already tolerates. The `--test <name>` commands in `README.md`, `AGENTS.md`, `tasks.md`, the sample README and the test headers are now `--test suite <name>::`. No test was changed or removed.
+- **Verified:** `cargo test --test suite` (100 passed, the rest ignored); the folded files' database tests (`audit_immutable`, `http_lockout`, `http_rate_limit`, `outbox_store`: 19 passed) on a local Postgres 18.
+- **Not done / not verified:** the 32 programs that call `set_var` and the few that hold process-wide state (`http_feed_health`, `runtime_boot`, `mllp_feed`, `audit_coverage` and others) are still their own programs; that needs QA-16 stage 3. The full database run and CI were not run after the fold.
+
 ## 2026-11-23 - cargo-nextest for the database tests: measured, opt-in (LC-8)
 
 - **Clinical risk:** none: test tooling.

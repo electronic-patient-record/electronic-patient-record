@@ -15,6 +15,8 @@ mod allergies_store;
 mod amendments_store;
 #[path = "audit_chain.rs"]
 mod audit_chain;
+#[path = "audit_immutable.rs"]
+mod audit_immutable;
 #[path = "audit_partitions.rs"]
 mod audit_partitions;
 #[path = "authz_audit.rs"]
@@ -47,6 +49,12 @@ mod fhir_census;
 mod grief_census;
 #[path = "hazards_store.rs"]
 mod hazards_store;
+#[path = "hl7_samples.rs"]
+mod hl7_samples;
+#[path = "http_lockout.rs"]
+mod http_lockout;
+#[path = "http_rate_limit.rs"]
+mod http_rate_limit;
 #[path = "keycloak_guard.rs"]
 mod keycloak_guard;
 #[path = "label_census.rs"]
@@ -55,12 +63,18 @@ mod label_census;
 mod licence_files;
 #[path = "links_store.rs"]
 mod links_store;
+#[path = "metrics.rs"]
+mod metrics;
 #[path = "migration_down.rs"]
 mod migration_down;
 #[path = "observations_store.rs"]
 mod observations_store;
+#[path = "openapi_census.rs"]
+mod openapi_census;
 #[path = "outbound_census.rs"]
 mod outbound_census;
+#[path = "outbox_store.rs"]
+mod outbox_store;
 #[path = "packs.rs"]
 mod packs;
 #[path = "pas_contract.rs"]
