@@ -117,6 +117,8 @@ CI's API job now uses `cargo nextest run` then `cargo test --doc`. `ci-local.sh`
 use them when `cargo-nextest` is installed, and plain `cargo test` when it is not. The matcher's CI job was not
 measured and is unchanged. Why the warm nextest build was faster is not known; one cold run showed no difference.
 
+**cargo-nextest for the database tests: measured 2026-11-23, not the default.** The 214 `#[ignore]` database tests, one at a time on one database (a fresh local Postgres 18, warm build): `cargo test` 50 s, nextest 109 s, all 214 passing in both. Nextest starts a process, and the test boots the app, for every test; `cargo test` shares them. So the database gate stays on `cargo test --test-threads=1`, and `EPR_DB_RUNNER=nextest` (with the `database` profile in the service's `.config/nextest.toml`, which keeps one test at a time) is there to try. What nextest would give is isolation: each test in its own process, so a test that sets a process-wide setting cannot reach another. That matters for folding the test programs together (LC-15, QA-16 stage 3): a file that calls `set_var` could join `suite.rs` under nextest and not under `cargo test`. Not measured: nextest with the database tests in parallel (they share one database, so that needs a database per test), and a cold run.
+
 **mold: not adopted.** In CI, warm, the mold variants built in 123 s on both runs, no faster than `cargo test` and
 slower than nextest alone; cold, mold took 325 s against 262 s. On macOS the system linker is used.
 

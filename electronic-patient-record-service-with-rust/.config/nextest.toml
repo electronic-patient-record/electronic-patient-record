@@ -1,0 +1,14 @@
+# cargo-nextest settings for the service (LC-8).
+#
+# The `database` profile is for the `#[ignore]` tests that need Postgres (`--run-ignored only`): they share one
+# database and ran one at a time under `--test-threads=1`, so every test is in a group of one. The default profile
+# (tests that need no database) is unchanged and runs in parallel.
+[test-groups]
+database = { max-threads = 1 }
+
+[profile.database]
+slow-timeout = { period = "60s", terminate-after = 5 }
+
+[[profile.database.overrides]]
+filter = 'all()'
+test-group = 'database'

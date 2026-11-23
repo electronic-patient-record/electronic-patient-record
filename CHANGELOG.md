@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-23 - cargo-nextest for the database tests: measured, opt-in (LC-8)
+
+- **Clinical risk:** none: test tooling.
+- **Changed:** `scripts/gates/service-database.sh` can run the database tests under nextest with `EPR_DB_RUNNER=nextest`, using a new `database` profile (one test at a time) in `electronic-patient-record-service-with-rust/.config/nextest.toml`. The default is unchanged (`cargo test --test-threads=1`).
+- **Measured, and why it is not the default:** 214 database tests on a fresh local Postgres 18: `cargo test` 50 s, nextest 109 s, all passing in both. Every nextest test pays for a new process and a new app boot. The same measurement also found the build, not the run, is the cost: after touching one file in `src/`, rebuilding every test program took 273 s, against 74 s to run everything. `spec/local-ci.md` already recorded about 44 s per test program and that mold was not faster, so the lever is folding programs together (LC-15).
+- **Not done / not verified:** no test program was folded; the `--timings` breakdown I tried to take failed (the report path was wrong) and was not retried; nextest with parallel database tests, and a cold run, were not measured; CI is unchanged and not observed.
+
 ## 2026-11-23 - Provider features for the mobile apps: sign off results, warnings and adverse reactions, notes and tasks (MP-30 to MP-33)
 
 - **Clinical risk:** none from code (documents only). New hazard **H-064** (a wrong result, version or patient signed off on a phone, or a note or task written or shared wrongly), status `open`, severity 5, likelihood 3; not accepted or closed.
