@@ -3,8 +3,10 @@
 #
 #   rust=true|false    the matcher, the service and everything that builds or tests them
 #   ui=true|false      the clinician UI
+#   swift=true|false   the iOS app (MP-4)
+#   kotlin=true|false  the Android app (MP-4)
 #
-# A path it does not know sets both, so a new kind of file runs everything until it is listed here. Documents set
+# A path it does not know sets all four, so a new kind of file runs everything until it is listed here. Documents set
 # neither, except the ones a project's tests read: those set that project. `scripts/test_ci_changes.sh` scans the
 # tests for files they read outside their own directory and fails if one would set nothing, so this list cannot
 # fall behind a new census test. The docs, secret-scan, toolchain and hazard-log jobs run on every push regardless,
@@ -12,6 +14,8 @@
 set -eu
 rust=false
 ui=false
+swift=false
+kotlin=false
 while IFS= read -r path; do
   [ -n "$path" ] || continue
   case "$path" in
@@ -43,13 +47,25 @@ while IFS= read -r path; do
       rust=true ;;
     electronic-patient-record-ui-with-svelte/*)
       ui=true ;;
+    # The mobile apps (spec/mobile-apps): each app's own files and gates; the pinned Lily checkout is both apps'.
+    electronic-patient-record-mobile-app-with-swift/* | scripts/gates/mobile-swift-*)
+      swift=true ;;
+    electronic-patient-record-mobile-app-with-kotlin/* | scripts/gates/mobile-kotlin-*)
+      kotlin=true ;;
+    scripts/fetch-lily.sh)
+      swift=true
+      kotlin=true ;;
     # Documents that no build or test reads: the docs job checks them.
     *.md | spec/* | agents/* | docs/* | locales/* | governance/* | llms.txt | llms.json | CITATION.cff | CODEOWNERS)
       ;;
     *)
       rust=true
-      ui=true ;;
+      ui=true
+      swift=true
+      kotlin=true ;;
   esac
 done
 echo "rust=$rust"
 echo "ui=$ui"
+echo "swift=$swift"
+echo "kotlin=$kotlin"

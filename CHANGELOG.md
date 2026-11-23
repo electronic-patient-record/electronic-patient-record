@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-23 - The mobile apps' gates in CI and ci-local.sh (MP-4; branch `mobile-apps`)
+
+- **Clinical risk:** none: build and test wiring.
+- **Added:** gate scripts `mobile-swift-test`, `mobile-swift-build`, `mobile-kotlin-test` and `mobile-kotlin-build`, each fetching the pinned Lily checkout first. `scripts/ci-changes.sh` answers `swift` and `kotlin` as well as `rust` and `ui` (an app's directory, its gate scripts, and `scripts/fetch-lily.sh` for both; an unknown file still runs everything). `ci.yml` has jobs `mobile-swift` (`macos-latest`) and `mobile-kotlin` (`ubuntu-latest`, Temurin 25), both under `ci-ok`. `ci-local.sh` knows the projects `swift` and `kotlin`: the tests in `--fast`, the builds in `--full`, and a SKIP with the reason on a machine without Xcode or without a JDK and the Android SDK. The pre-push hook adds `swift` or `kotlin` when the push touches that app, its gates or the Lily pin. Tests for each in `scripts/test_ci_changes.sh` and `scripts/test_pre_push.sh`.
+- **Verified:** all four gate scripts pass on this machine; `scripts/test_ci_changes.sh`, `scripts/test_pre_push.sh` and `check-gates` pass; the workflow parses as YAML.
+- **Not done / not verified:** the two CI jobs have not run on GitHub: whether `macos-latest`'s default Xcode builds Lily's Swift 6 package and whether the Android Gradle plugin installs platform 37.2 on the runner is unknown until the branch is pushed. No caching of SwiftPM, Gradle or the Lily checkout. Dependabot does not watch the Gradle build, on purpose (its versions follow Lily's). On a Linux machine a plain `ci-local.sh --fast` now exits 2 for the iOS gates' SKIP unless `EPR_CI_ALLOW_SKIP=1` or `EPR_CI_ONLY` leaves `swift` out.
+
 ## 2026-11-23 - iOS and Android app scaffolds on Lily Design System (MP-1, MP-2; branch `mobile-apps`)
 
 - **Clinical risk:** low now, real later: neither app reaches the service or shows a real record, but both show a patient banner (a synthetic drill patient). New hazard **H-061** (a phone shows the wrong patient, or keeps a record after it leaves the clinician's hands), `open`; the only control built is the banner text that keeps every part whole and says "not available" for an absent part.

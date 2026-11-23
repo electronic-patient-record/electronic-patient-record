@@ -38,8 +38,8 @@ RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --document-private-items --worksp
 #   DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test cargo test --test audit_immutable -- --ignored --test-threads=1
 # UI (another project may hold port 4173: use PW_PORT)
 cd electronic-patient-record-ui-with-svelte && pnpm run lint && pnpm run check && pnpm run check:tests && pnpm exec vitest run && PW_PORT=4183 CI=true pnpm exec playwright test
-# mobile apps (spec/mobile-apps): the pinned Lily checkout, then each app's tests and build (Xcode for iOS; a JDK and the Android SDK for Android)
-sh scripts/fetch-lily.sh && (cd electronic-patient-record-mobile-app-with-swift && swift test) && (cd electronic-patient-record-mobile-app-with-kotlin && ./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug)
+# mobile apps (spec/mobile-apps): each app's tests and build; each script fetches the pinned Lily checkout (Xcode for iOS; a JDK and the Android SDK for Android)
+sh scripts/gates/mobile-swift-test.sh && sh scripts/gates/mobile-swift-build.sh && sh scripts/gates/mobile-kotlin-test.sh && sh scripts/gates/mobile-kotlin-build.sh
 # load and benchmarks (spec/performance-testing.md): a release build on a scratch database; `--profile standard` to measure
 sh scripts/load/run-local.sh --profile smoke && (cd electronic-patient-record-matcher-with-rust && cargo bench --bench matcher -- --test)
 # docs

@@ -165,13 +165,15 @@ for the Clinical Safety Officer; until then it may not.
 
 ## CI runs only what a push needs (LC-7, built 2026-11-15)
 
-A `changes` job in `ci.yml` lists the files changed and runs `scripts/ci-changes.sh` on them, which answers two
-questions: does Rust need checking, and does the UI?
+A `changes` job in `ci.yml` lists the files changed and runs `scripts/ci-changes.sh` on them, which answers four
+questions: does Rust need checking, the UI, the iOS app, the Android app?
 
 | Job | Runs when |
 |---|---|
 | Matcher, API, API with Postgres, FHIR validator, cargo deny, coverage | Rust |
 | UI, pnpm audit | UI |
+| iOS app (`mobile-swift`, on `macos-latest`) | iOS app: its directory, its gate scripts, `scripts/fetch-lily.sh` (MP-4) |
+| Android app (`mobile-kotlin`) | Android app: its directory, its gate scripts, `scripts/fetch-lily.sh` (MP-4) |
 | Container images | Rust or UI |
 | CodeQL | per language: Rust or UI (a skipped language still starts a runner for a few seconds) |
 | Docs, secret scan, toolchain pin, hazard log, `ci-ok` | every push |
@@ -179,7 +181,12 @@ questions: does Rust need checking, and does the UI?
 Files in a project's directory need that project. The UI's `src/` needs Rust too, because the service's risk and grief
 censuses read it. Documents need neither, except the ones a project's tests read (`SECURITY.md`,
 `governance/personal-data-inventory.csv`, `governance/production-readiness.md`, `governance/translation-review.md`,
-`operations/keycloak/`). Any file the script does not know, such as a workflow or a script, needs both.
+`operations/keycloak/`). Any file the script does not know, such as a workflow or a script, needs all four.
+
+**Locally (MP-4).** `ci-local.sh` knows the projects `swift` and `kotlin`: `mobile-swift-test` and `mobile-kotlin-test` run
+in `--fast`, the two builds in `--full`. A machine without Xcode, or without a JDK and the Android SDK, shows those gates
+as SKIP with the reason, which fails the run as any skip does. The pre-push hook adds `swift` or `kotlin` when the push
+touches that app, its gate scripts or the Lily pin.
 
 **What a push is compared with.** For a push it is the last commit on the branch whose CI passed, not the commit
 before it: a newer push cancels a run in progress (20% of runs, LC-1), and comparing with the previous commit would

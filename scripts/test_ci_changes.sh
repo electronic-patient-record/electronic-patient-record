@@ -25,19 +25,25 @@ check() { # what, expected, paths...
   fi
 }
 
-check "nothing changed" "rust=false ui=false"
-check "documents only" "rust=false ui=false" tasks.md plan.md spec/16-open-questions.md governance/hazard-log/x.md \
+check "nothing changed" "rust=false ui=false swift=false kotlin=false"
+check "documents only" "rust=false ui=false swift=false kotlin=false" tasks.md plan.md spec/16-open-questions.md governance/hazard-log/x.md \
   locales/en-us/communications/github-discussions/general.txt llms.txt
-check "the hazard log alone" "rust=false ui=false" governance/clinical-safety/hazard-log.csv
-check "the matcher" "rust=true ui=false" electronic-patient-record-matcher-with-rust/src/lib.rs
-check "a service document" "rust=true ui=false" electronic-patient-record-service-with-rust/spec/index.md
-check "the UI's tests" "rust=false ui=true" electronic-patient-record-ui-with-svelte/tests/e2e/smoke.spec.ts
-check "the UI's source (read by the service's censuses)" "rust=true ui=true" \
+check "the hazard log alone" "rust=false ui=false swift=false kotlin=false" governance/clinical-safety/hazard-log.csv
+check "the matcher" "rust=true ui=false swift=false kotlin=false" electronic-patient-record-matcher-with-rust/src/lib.rs
+check "a service document" "rust=true ui=false swift=false kotlin=false" electronic-patient-record-service-with-rust/spec/index.md
+check "the UI's tests" "rust=false ui=true swift=false kotlin=false" electronic-patient-record-ui-with-svelte/tests/e2e/smoke.spec.ts
+check "the UI's source (read by the service's censuses)" "rust=true ui=true swift=false kotlin=false" \
   electronic-patient-record-ui-with-svelte/src/lib/strings.ts
-check "the workflow itself" "rust=true ui=true" .github/workflows/ci.yml
-check "a script" "rust=true ui=true" scripts/ci-local.sh
-check "an unknown file" "rust=true ui=true" something-new.yaml
-check "a document among code" "rust=true ui=false" README.md electronic-patient-record-service-with-rust/src/app.rs
+check "the workflow itself" "rust=true ui=true swift=true kotlin=true" .github/workflows/ci.yml
+check "a script" "rust=true ui=true swift=true kotlin=true" scripts/ci-local.sh
+check "an unknown file" "rust=true ui=true swift=true kotlin=true" something-new.yaml
+check "a document among code" "rust=true ui=false swift=false kotlin=false" README.md electronic-patient-record-service-with-rust/src/app.rs
+check "the iOS app" "rust=false ui=false swift=true kotlin=false" electronic-patient-record-mobile-app-with-swift/Sources/EPRCore/Banner.swift
+check "the Android app" "rust=false ui=false swift=false kotlin=true" electronic-patient-record-mobile-app-with-kotlin/app/build.gradle.kts
+check "an iOS gate" "rust=false ui=false swift=true kotlin=false" scripts/gates/mobile-swift-test.sh
+check "an Android gate" "rust=false ui=false swift=false kotlin=true" scripts/gates/mobile-kotlin-build.sh
+check "the Lily pin is both apps'" "rust=false ui=false swift=true kotlin=true" scripts/fetch-lily.sh
+check "the mobile contract is a document" "rust=false ui=false swift=false kotlin=false" spec/mobile-apps/index.md
 
 # The census: (project, path read) for every read outside the project's directory.
 reads="$(python3 - <<'EOF'

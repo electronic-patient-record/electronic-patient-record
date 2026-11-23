@@ -15,7 +15,7 @@
 # EPR_CI_KEEP_CACHE=1 to keep it. The database gates use a scratch database made for the run and dropped after:
 # on the server DB_URL names, if set, or in a throwaway Postgres 18 on a free port.
 #
-# EPR_CI_ONLY="matcher service ui docs" (any of the four, space-separated) runs only those projects' gates; the
+# EPR_CI_ONLY="matcher service ui swift kotlin docs" (any of the six, space-separated) runs only those projects' gates; the
 # others show in the table as "off", so a narrowed run never reads as a whole one. The pre-push hook sets it (LC-5).
 #
 # This proves the gates passed on this machine. It is not the CI run, and it does not replace it: cargo deny,
@@ -52,9 +52,9 @@ fi
 only="${EPR_CI_ONLY:-}"
 for project in $only; do
   case "$project" in
-    matcher | service | ui | docs) ;;
+    matcher | service | ui | swift | kotlin | docs) ;;
     *)
-      echo "EPR_CI_ONLY: unknown project '$project' (use matcher, service, ui, docs)" >&2
+      echo "EPR_CI_ONLY: unknown project '$project' (use matcher, service, ui, swift, kotlin, docs)" >&2
       exit 64
       ;;
   esac
@@ -65,6 +65,8 @@ project_of() { # gate name -> the project it checks
     matcher-* | coverage-matcher) echo matcher ;;
     service-* | scratch-* | fhir-* | container-api | coverage-service | rust-msrv) echo service ;;
     ui-* | container-ui) echo ui ;;
+    mobile-swift-*) echo swift ;;
+    mobile-kotlin-*) echo kotlin ;;
     *) echo docs ;;
   esac
 }
@@ -153,6 +155,25 @@ gate_script ui-lint
 gate_script ui-check
 gate_script ui-check-tests
 gate_script ui-unit
+
+# The mobile apps (spec/mobile-apps, MP-4): tests here, builds in --full. Each needs its platform's tools, so a machine
+# without them says SKIP and why. The iOS app needs Xcode (macOS); the Android app a JDK and the Android SDK.
+have_xcode() { command -v xcodebuild >/dev/null 2>&1 && xcodebuild -version >/dev/null 2>&1; }
+have_android() {
+  command -v java >/dev/null 2>&1 || return 1
+  [ -n "${ANDROID_HOME:-}" ] && [ -d "$ANDROID_HOME" ] && return 0
+  [ -d "$HOME/Library/Android/sdk" ] || [ -d "$HOME/Android/Sdk" ]
+}
+if [ "$mode" = "--list" ] || have_xcode; then
+  gate_script mobile-swift-test
+else
+  skip mobile-swift-test "Xcode is not installed (the iOS app builds on macOS only)"
+fi
+if [ "$mode" = "--list" ] || have_android; then
+  gate_script mobile-kotlin-test
+else
+  skip mobile-kotlin-test "no java on PATH, or no Android SDK (set ANDROID_HOME)"
+fi
 gate_script docs-links
 gate_script docs-status
 gate_script docs-llms
@@ -205,6 +226,17 @@ if [ "$mode" != "--fast" ]; then
     gate_script rust-msrv
   else
     skip rust-msrv "rustup is not installed"
+  fi
+
+  if [ "$mode" = "--list" ] || have_xcode; then
+    gate_script mobile-swift-build
+  else
+    skip mobile-swift-build "Xcode is not installed (the iOS app builds on macOS only)"
+  fi
+  if [ "$mode" = "--list" ] || have_android; then
+    gate_script mobile-kotlin-build
+  else
+    skip mobile-kotlin-build "no java on PATH, or no Android SDK (set ANDROID_HOME)"
   fi
 
   if [ "$mode" = "--list" ] || [ -d "$ui/node_modules/.bin" ]; then

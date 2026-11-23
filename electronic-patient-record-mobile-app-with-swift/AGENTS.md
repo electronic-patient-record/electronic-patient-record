@@ -16,5 +16,6 @@ Swift 6, SwiftUI, Lily Design System for Swift. iOS and iPadOS 18 or later. Read
   record is written to disk; synthetic data only, and a sample patient is a drill.
 - **Requests** go through `ApiRequest`: `/api/...` only, the version in `Accepts-version`, never `/api/v1`.
 - **Gates**: `swift test` (here), and `xcodebuild -project App/ElectronicPatientRecord.xcodeproj -scheme
-  ElectronicPatientRecord -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build`. Warnings are
-  errors in the app target. CI does not run them yet (MP-4).
+  ElectronicPatientRecord -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build`; both are
+  `sh ../scripts/gates/mobile-swift-test.sh` and `mobile-swift-build.sh`, run by `ci-local.sh` (project `swift`) and by
+  CI on macOS. Warnings are errors in the app target.

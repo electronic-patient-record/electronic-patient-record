@@ -16,5 +16,6 @@ Kotlin, Jetpack Compose, Lily Design System for Kotlin. Android 9 (API 28) or la
   `errors` list is shown from the API; nothing from the record is written to disk; `allowBackup` stays off; synthetic data
   only, and a sample patient is a drill.
 - **Requests** go through `ApiRequest`: `/api/...` only, the version in `Accepts-version`, never `/api/v1`.
-- **Gates**: `./gradlew :core:test :app:testDebugUnitTest` and `./gradlew :app:assembleDebug`. Kotlin warnings are
-  errors. A `JAVA_HOME` that does not name a JDK breaks the wrapper: unset it. CI does not run them yet (MP-4).
+- **Gates**: `./gradlew :core:test :app:testDebugUnitTest` and `./gradlew :app:assembleDebug`, as
+  `sh ../scripts/gates/mobile-kotlin-test.sh` and `mobile-kotlin-build.sh`, run by `ci-local.sh` (project `kotlin`) and
+  by CI. Kotlin warnings are errors. A `JAVA_HOME` that does not name a JDK breaks the wrapper: the gate scripts unset it.

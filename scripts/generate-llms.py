@@ -103,7 +103,7 @@ COMMANDS = {
     "service": "cd electronic-patient-record-service-with-rust && cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test",
     "service database tests": "TEST_DB_PORT=5543 TEST_REDIS_PORT=6390 podman compose -f compose.test.yaml up -d --wait, then DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test cargo test -- --ignored --test-threads=1",
     "ui": "cd electronic-patient-record-ui-with-svelte && pnpm run check && pnpm exec vitest run && PW_PORT=4183 CI=true pnpm exec playwright test",
-    "mobile": "sh scripts/fetch-lily.sh && (cd electronic-patient-record-mobile-app-with-swift && swift test) && (cd electronic-patient-record-mobile-app-with-kotlin && ./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug)",
+    "mobile": "sh scripts/gates/mobile-swift-test.sh && sh scripts/gates/mobile-swift-build.sh && sh scripts/gates/mobile-kotlin-test.sh && sh scripts/gates/mobile-kotlin-build.sh",
     "docs": "python3 scripts/check-links.py . && sh scripts/generate-status.sh --check && python3 scripts/generate-llms.py --check && python3 scripts/check-hazard-log.py",
 }
 

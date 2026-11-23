@@ -47,6 +47,8 @@ jobs:
     outputs:
       rust: ${{ steps.which.outputs.rust }}
       ui: ${{ steps.which.outputs.ui }}
+      swift: ${{ steps.which.outputs.swift }}
+      kotlin: ${{ steps.which.outputs.kotlin }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -72,7 +74,7 @@ jobs:
             sh scripts/ci-changes.sh < changed.txt | tee -a "$GITHUB_OUTPUT"
           else
             echo "No base commit to compare with ($EVENT): every job runs."
-            printf 'rust=true\nui=true\n' | tee -a "$GITHUB_OUTPUT"
+            printf 'rust=true\nui=true\nswift=true\nkotlin=true\n' | tee -a "$GITHUB_OUTPUT"
           fi
 
   matcher:
@@ -487,11 +489,39 @@ jobs:
       # Findings are redacted in the log. Accepted ones are listed, with a reason, in `.gitleaksignore`.
       - run: ./gitleaks git --redact --no-banner --exit-code 1 .
 
+  # The iOS app (spec/mobile-apps, MP-4): its tests and a Simulator build, on macOS with the runner's Xcode. Each gate
+  # script fetches the pinned Lily checkout first.
+  mobile-swift:
+    name: iOS app (tests, Simulator build)
+    needs: changes
+    if: needs.changes.outputs.swift == 'true'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: sh scripts/gates/mobile-swift-test.sh
+      - run: sh scripts/gates/mobile-swift-build.sh
+
+  # The Android app (spec/mobile-apps, MP-4): its tests (the core, and the screens under Robolectric) and a debug APK.
+  # The runner's Android SDK; the Android Gradle plugin installs a missing platform.
+  mobile-kotlin:
+    name: Android app (tests, debug build)
+    needs: changes
+    if: needs.changes.outputs.kotlin == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "25"
+      - run: sh scripts/gates/mobile-kotlin-test.sh
+      - run: sh scripts/gates/mobile-kotlin-build.sh
+
   ci-ok:
     name: ci-ok
     if: always()
     # A job the `changes` job left out is `skipped`, which passes; a failed `changes` fails this.
-    needs: [changes, matcher, api, msrv, api-db, fhir-validator, deny, coverage, codeql, pnpm-audit, secrets, ui, docs, hazard-log, hazard-signoff, container, fresh-clone, performance]
+    needs: [changes, matcher, api, msrv, api-db, fhir-validator, deny, coverage, codeql, pnpm-audit, secrets, ui, mobile-swift, mobile-kotlin, docs, hazard-log, hazard-signoff, container, fresh-clone, performance]
     runs-on: ubuntu-latest
     steps:
       - run: |

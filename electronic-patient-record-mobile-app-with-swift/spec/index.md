@@ -35,7 +35,8 @@ absent, a long name and identifier kept whole, alert order, the number grouping)
 
 ## 3. Not built, not verified
 
-No UI test reads the accessibility tree yet, and none runs on a simulator in a gate (MP-10). The banner was looked at by
+No UI test reads the accessibility tree yet, and none runs on a simulator in a gate (MP-10). The gates
+`mobile-swift-test` and `mobile-swift-build` run these in `ci-local.sh` and CI (MP-4). The banner was looked at by
 hand once on an iPhone 16e simulator (iOS 27.2) at the default and the largest accessibility text size: every line
 wrapped. Not tried on a device, with VoiceOver, on an iPad, in landscape, or in dark mode. The age, sex, photo,
 allergy, death and needs lines of the web banner are not here. Lily's plain styles are used, so the screen is unstyled.

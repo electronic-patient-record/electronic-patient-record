@@ -35,11 +35,13 @@ has() { printf '%s\n' "$changed" | grep -Eq "$1"; }
 
 projects=""
 if [ "$everything" = yes ]; then
-  projects="matcher service ui docs"
+  projects="matcher service ui swift kotlin docs"
 elif [ -n "$(printf '%s' "$changed" | tr -d '[:space:]')" ]; then
   has '^electronic-patient-record-matcher-with-rust/|^rust-toolchain\.toml$' && projects="$projects matcher"
   has '^electronic-patient-record-service-with-rust/|^rust-toolchain\.toml$' && projects="$projects service"
   has '^electronic-patient-record-ui-with-svelte/' && projects="$projects ui"
+  has '^electronic-patient-record-mobile-app-with-swift/|^scripts/fetch-lily\.sh$|^scripts/gates/mobile-swift-' && projects="$projects swift"
+  has '^electronic-patient-record-mobile-app-with-kotlin/|^scripts/fetch-lily\.sh$|^scripts/gates/mobile-kotlin-' && projects="$projects kotlin"
   projects="${projects# } docs"
   projects="${projects# }"
 fi
@@ -56,6 +58,8 @@ for project in $projects; do
     matcher) dir=electronic-patient-record-matcher-with-rust ;;
     service) dir=electronic-patient-record-service-with-rust ;;
     ui) dir=electronic-patient-record-ui-with-svelte ;;
+    swift) dir=electronic-patient-record-mobile-app-with-swift ;;
+    kotlin) dir=electronic-patient-record-mobile-app-with-kotlin ;;
     *) dir=. ;;
   esac
   [ -n "$(git status --porcelain --untracked-files=no -- "$dir")" ] && dirty="$dirty $project"

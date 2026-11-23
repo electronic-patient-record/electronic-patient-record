@@ -123,13 +123,18 @@ build, signing, distribution. Nothing has run on a real device.
 
 ## 8. Tests and gates
 
-| Check | Swift | Kotlin |
+| Gate | Swift | Kotlin |
 | --- | --- | --- |
-| Tests | `swift test` in the subproject (the core and the views, on macOS) | `./gradlew :core:test :app:testDebugUnitTest` (core, and Compose semantics under Robolectric) |
-| Build | `xcodebuild build` for the iOS Simulator, warnings as errors | `./gradlew :app:assembleDebug`, Kotlin warnings as errors |
+| `mobile-swift-test` (`--fast`) | `swift test` in the subproject (the core and the views, on macOS) | |
+| `mobile-swift-build` (`--full`) | `xcodebuild build` for the iOS Simulator, warnings as errors | |
+| `mobile-kotlin-test` (`--fast`) | | `./gradlew :core:test :app:testDebugUnitTest` (core, and Compose semantics under Robolectric) |
+| `mobile-kotlin-build` (`--full`) | | `./gradlew :app:assembleDebug`, Kotlin warnings as errors |
 
-The Swift gates need macOS and Xcode; the Kotlin gates need a JDK 17 or later and the Android SDK. Run
-`scripts/fetch-lily.sh` first. Neither GitHub CI nor `scripts/ci-local.sh` runs them yet (MP-4).
+Each is `sh scripts/gates/<gate>.sh`, which fetches the pinned Lily checkout first, run by `scripts/ci-local.sh` and by
+GitHub CI (MP-4). The Swift gates need macOS and Xcode: CI runs them on `macos-latest`, only when the iOS app, its
+gates or the Lily pin change. The Kotlin gates need a JDK 17 or later and the Android SDK: CI runs them on
+`ubuntu-latest` with Temurin 25, only when the Android app, its gates or the Lily pin change. Dependabot does not watch
+the Gradle build: its versions follow Lily's at the pinned commit, and a bump on its own would split the two builds.
 
 ## 9. Open questions
 

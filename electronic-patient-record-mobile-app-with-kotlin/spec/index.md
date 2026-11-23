@@ -37,6 +37,7 @@ ellipsis to the name: it failed, as it should.
 
 ## 3. Not built, not verified
 
-No instrumented test runs on an emulator in a gate (MP-10). Not tried on a device, with TalkBack, Switch Access, a
+No instrumented test runs on an emulator in a gate (MP-10). The gates `mobile-kotlin-test` and
+`mobile-kotlin-build` run these in `ci-local.sh` and CI (MP-4). Not tried on a device, with TalkBack, Switch Access, a
 tablet, landscape or dark mode. The age, sex, photo, allergy, death and needs lines of the web banner are not here.
 Lily is unstyled, so the screen is too.

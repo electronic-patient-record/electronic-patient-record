@@ -43,6 +43,9 @@ matcher="$(commit electronic-patient-record-matcher-with-rust/src/lib.rs matcher
 ui="$(commit electronic-patient-record-ui-with-svelte/src/app.ts ui)"
 service="$(commit electronic-patient-record-service-with-rust/src/app.rs service)"
 toolchain="$(commit rust-toolchain.toml toolchain)"
+swift="$(commit electronic-patient-record-mobile-app-with-swift/Package.swift swift)"
+kotlin="$(commit electronic-patient-record-mobile-app-with-kotlin/app/build.gradle.kts kotlin)"
+lily="$(commit scripts/fetch-lily.sh lily)"
 zero=0000000000000000000000000000000000000000
 
 projects() { # stdin lines for the hook
@@ -57,9 +60,12 @@ check "the toolchain pin is both Rust projects'" "matcher service docs" \
   "$(echo "refs/heads/main $toolchain refs/heads/main $service" | projects)"
 check "a new branch is compared with origin/main" "matcher service ui docs" \
   "$(echo "refs/heads/topic $toolchain refs/heads/topic $zero" | projects)"
+check "the iOS app" "swift docs" "$(echo "refs/heads/main $swift refs/heads/main $toolchain" | projects)"
+check "the Android app" "kotlin docs" "$(echo "refs/heads/main $kotlin refs/heads/main $swift" | projects)"
+check "the Lily pin is both apps'" "swift kotlin docs" "$(echo "refs/heads/main $lily refs/heads/main $kotlin" | projects)"
 check "a deleted branch checks nothing" "" "$(echo "(delete) $zero refs/heads/topic $service" | projects)"
 check "nothing new checks nothing" "" "$(echo "refs/heads/main $service refs/heads/main $service" | projects)"
-check "an unknown remote commit checks everything" "matcher service ui docs" \
+check "an unknown remote commit checks everything" "matcher service ui swift kotlin docs" \
   "$(echo "refs/heads/main $service refs/heads/main 1111111111111111111111111111111111111111" | projects)"
 check "two refs at once" "matcher service docs" \
   "$(printf '%s\n' "refs/heads/a $matcher refs/heads/a $docs" "refs/heads/b $service refs/heads/b $ui" | projects)"
@@ -67,8 +73,12 @@ check "two refs at once" "matcher service docs" \
 cd "$root"
 check "EPR_CI_ONLY narrows --list" "matcher-fmt matcher-clippy matcher-test matcher-doc matcher-bench coverage-matcher" \
   "$(EPR_CI_ONLY=matcher sh scripts/ci-local.sh --list | paste -sd' ' -)"
-check "EPR_CI_ONLY unset lists every project's gates" "matcher-fmt service-fmt ui-lint docs-links" \
-  "$(sh scripts/ci-local.sh --list | grep -E '^(matcher-fmt|service-fmt|ui-lint|docs-links)$' | paste -sd' ' -)"
+check "EPR_CI_ONLY unset lists every project's gates" "matcher-fmt service-fmt ui-lint mobile-swift-test mobile-kotlin-test docs-links" \
+  "$(sh scripts/ci-local.sh --list | grep -E '^(matcher-fmt|service-fmt|ui-lint|mobile-swift-test|mobile-kotlin-test|docs-links)$' | paste -sd' ' -)"
+check "EPR_CI_ONLY narrows --list to the iOS app" "mobile-swift-test mobile-swift-build" \
+  "$(EPR_CI_ONLY=swift sh scripts/ci-local.sh --list | paste -sd' ' -)"
+check "EPR_CI_ONLY narrows --list to the Android app" "mobile-kotlin-test mobile-kotlin-build" \
+  "$(EPR_CI_ONLY=kotlin sh scripts/ci-local.sh --list | paste -sd' ' -)"
 status=0
 EPR_CI_ONLY=bogus sh scripts/ci-local.sh --fast >/dev/null 2>&1 || status=$?
 check "an unknown project is refused" "64" "$status"
