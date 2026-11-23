@@ -24,6 +24,16 @@
 //! accept. A byte stream that does not start a frame with `<VT>`, a frame that never ends, a stray
 //! `<VT>` inside a frame and text that is not UTF-8 each close the connection: nothing is guessed.
 
+// RCA-ENF-3: this module is converted, so the arithmetic lints are denied here; the rest of the crate follows.
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::default_numeric_fallback,
+    clippy::integer_division,
+    clippy::modulo_arithmetic,
+    clippy::as_conversions,
+    clippy::string_slice
+)]
+
 use crate::adt_feed::{self, FeedIdentity, KeptAnswer, SenderRules};
 use sqlx::PgPool;
 use std::net::{IpAddr, SocketAddr};
@@ -60,7 +70,8 @@ pub enum FrameError {
 /// Wrap a message in an MLLP frame.
 #[must_use]
 pub fn frame(payload: &[u8]) -> Vec<u8> {
-    let mut out = Vec::with_capacity(payload.len() + 3);
+    // No `with_capacity(len + 3)`: the length is external, and the vector grows as it is filled.
+    let mut out = Vec::new();
     out.push(VT);
     out.extend_from_slice(payload);
     out.extend_from_slice(&[FS, CR]);
@@ -108,13 +119,17 @@ pub fn take_frame(buf: &mut Vec<u8>, max: usize) -> Result<Option<Vec<u8>>, Fram
             if body.get(..end).is_some_and(|head| head.contains(&VT)) {
                 return Err(FrameError::StrayStart);
             }
-            match body.get(end + 1) {
+            // `end` is a position in `body`, so these cannot fail; if they did, the frame is not valid.
+            let (Some(after_fs), Some(frame_len)) = (end.checked_add(1), end.checked_add(3)) else {
+                return Err(FrameError::BadEnd);
+            };
+            match body.get(after_fs) {
                 None => Ok(None), // the CR has not arrived yet
                 Some(&CR) => {
                     let Some(payload) = body.get(..end).map(<[u8]>::to_vec) else {
-                        return Err(FrameError::BadEnd); // not reachable: `end` is a position in `body`
+                        return Err(FrameError::BadEnd);
                     };
-                    buf.drain(..end + 3);
+                    buf.drain(..frame_len);
                     Ok(Some(payload))
                 }
                 Some(_) => Err(FrameError::BadEnd),
@@ -123,27 +138,12 @@ pub fn take_frame(buf: &mut Vec<u8>, max: usize) -> Result<Option<Vec<u8>>, Fram
     }
 }
 
-/// `YYYYMMDDHHMMSS` (UTC) for a unix time, as HL7 timestamps are written.
+/// `YYYYMMDDHHMMSS` (UTC) for a unix time, as HL7 timestamps are written. `None` for a time `jiff` cannot hold
+/// (years -9999 to 9999 only): there is no timestamp, and none is invented.
 #[must_use]
-pub fn hl7_timestamp(unix: i64) -> String {
-    let days = unix.div_euclid(86_400);
-    let secs = unix.rem_euclid(86_400);
-    // Howard Hinnant's civil_from_days.
-    let z = days + 719_468;
-    let era = z.div_euclid(146_097);
-    let doe = z.rem_euclid(146_097);
-    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = doy - (153 * mp + 2) / 5 + 1;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 };
-    let y = yoe + era * 400 + i64::from(m <= 2);
-    format!(
-        "{y:04}{m:02}{d:02}{:02}{:02}{:02}",
-        secs / 3600,
-        secs % 3600 / 60,
-        secs % 60
-    )
+pub fn hl7_timestamp(unix: i64) -> Option<String> {
+    let at = jiff::Timestamp::from_second(unix).ok()?;
+    Some(at.strftime("%Y%m%d%H%M%S").to_string())
 }
 
 /// The listener's settings.
@@ -434,10 +434,11 @@ fn is_loopback(ip: IpAddr) -> bool {
 static ACK_COUNTER: AtomicU64 = AtomicU64::new(1);
 
 /// The current time in whole seconds since the Unix epoch; a clock before 1970 reads as 0 and one beyond range saturates.
-fn now() -> i64 {
+fn now() -> Option<i64> {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |d| i64::try_from(d.as_secs()).unwrap_or(i64::MAX))
+        .ok()
+        .and_then(|d| i64::try_from(d.as_secs()).ok())
 }
 
 /// Serve connections until the task is dropped. Each connection runs in its own task.
@@ -561,6 +562,9 @@ pub fn certificate_name(
         .cloned()
 }
 
+/// How long [`Running::stop`] waits: [`STOP_WAIT`] and a second (RCA-EXC-1: a constant, evaluated at compile time).
+const STOP_BOUND: Duration = Duration::from_secs(STOP_WAIT.as_secs() + 1);
+
 /// A listener the service started, and how to stop it.
 pub struct Running {
     stop: tokio::sync::watch::Sender<bool>,
@@ -587,7 +591,7 @@ impl Running {
     /// Drain and stop: answers whether the listener ended within [`STOP_WAIT`] and a second.
     pub async fn stop(self) -> bool {
         let _ = self.stop.send(true);
-        tokio::time::timeout(STOP_WAIT + Duration::from_secs(1), self.task)
+        tokio::time::timeout(STOP_BOUND, self.task)
             .await
             .is_ok_and(|r| r.is_ok())
     }
@@ -655,7 +659,12 @@ async fn connection<S: AsyncRead + AsyncWrite + Unpin>(
                 return;
             };
             let id = format!("EPR{}", ACK_COUNTER.fetch_add(1, Ordering::Relaxed));
-            match adt_feed::process(db, &text, &who, &id, &hl7_timestamp(now())).await {
+            // A clock that is not a time is not guessed: the frame is left unanswered and the sender sends it again.
+            let Some(stamp) = now().and_then(hl7_timestamp) else {
+                tracing::error!(%peer, "the clock is outside the range of an HL7 timestamp; closing");
+                return;
+            };
+            match adt_feed::process(db, &text, &who, &id, &stamp).await {
                 Some(ack) => {
                     if stream.write_all(&frame(ack.as_bytes())).await.is_err() {
                         return;
@@ -764,10 +773,20 @@ mod tests {
 
     #[test]
     fn hl7_timestamps_are_utc_and_exact() {
-        assert_eq!(hl7_timestamp(0), "19700101000000");
-        assert_eq!(hl7_timestamp(951_782_400), "20000229000000"); // a leap day
-        assert_eq!(hl7_timestamp(1_792_573_212), "20261021090012");
-        assert_eq!(hl7_timestamp(86_399), "19700101235959");
+        assert_eq!(hl7_timestamp(0).as_deref(), Some("19700101000000"));
+        assert_eq!(
+            hl7_timestamp(951_782_400).as_deref(),
+            Some("20000229000000")
+        ); // a leap day
+        assert_eq!(
+            hl7_timestamp(1_792_573_212).as_deref(),
+            Some("20261021090012")
+        );
+        assert_eq!(hl7_timestamp(86_399).as_deref(), Some("19700101235959"));
+        assert_eq!(hl7_timestamp(-1).as_deref(), Some("19691231235959"));
+        // The ends of the calendar are a time or nothing, never a wrapped one.
+        assert_eq!(hl7_timestamp(i64::MAX), None);
+        assert_eq!(hl7_timestamp(i64::MIN), None);
     }
 
     fn env(pairs: &[(&str, &str)]) -> impl Fn(&str) -> Option<String> {

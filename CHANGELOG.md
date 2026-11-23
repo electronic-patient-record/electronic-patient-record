@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-23 - mllp.rs under the arithmetic lints; no invented clock for the feed's answer (QA-17)
+
+- **Clinical risk:** low, on the inbound HL7 feed: no result changes on a working clock. The ACK's timestamp came from a clock that read `0` before 1970 and `i64::MAX` out of range, and from a hand-written calendar. It is now `jiff`, and a clock outside `jiff`'s range (years -9999 to 9999) closes the connection with the frame unanswered, so the sender sends it again, instead of answering with a made-up time. Hazard log not edited.
+- **Changed:** `mllp.rs` denies the arithmetic lints for the module (RCA-ENF-3); `hl7_timestamp(i64) -> Option<String>`; `take_frame` checks `end + 1` and `end + 3`; `frame` grows its buffer instead of `with_capacity(len + 3)`; the stop wait is a compile-time constant. Tests: `hl7_timestamps_are_utc_and_exact` now covers `-1`, `i64::MAX` and `i64::MIN`.
+- **Not done / not verified:** the unreadable-clock close in the connection loop has no test (it needs a bad clock). The frame's overflow branches are unreachable (`end` is a position in the buffer). Full suite on a fresh database: 862 passed, 6 failed (Java `fhir_validator`). CI not observed.
+
 ## 2026-11-23 - No invented time for a disclosure; checked hazard score, reopen count and rate budget (QA-17)
 
 - **Clinical risk:** one clinical path: `outbox::now()` decided a disclosure's consent against a clock that read `0` before 1970 and `i64::MAX` out of range. It is now an error, so the event is decided again later and never delivered on a made-up time. Not reachable on a working clock. `Hazard::score` returns `Option<u8>` (a hazard's ratings are public fields, so a stored product could overflow `u8`), and reopening counts with `checked_add`. Hazard log not edited.
