@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-23 - Lily npm packages for the clinician UI: headless 0.13, picker-bar 0.9, theme-picker 0.5, themes 0.8
+
+- **Clinical risk:** none: styling and picker packages.
+- **Changed:** `@lilydesignsystem/svelte-headless` 0.9.0 to 0.13.0, `svelte-picker-bar` 0.6.0 to 0.9.0, `svelte-theme-picker` 0.4.0 to 0.5.0, `themes` 0.6.2 to 0.8.0, with the lock file. No source change was needed.
+- **Verified:** `pnpm run lint`, `check` (0 errors), `check:tests`, vitest, and all 248 Playwright tests pass.
+- **Not done / not verified:** I did not read Lily's release notes or compare the pages by eye; passing tests are the only evidence nothing moved. `axa` is already the latest (0.21.0, `axa-test` 0.12.0), so there was nothing to update there. The mobile apps' pinned Lily commit is a separate change.
+
 ## 2026-11-23 - cargo deny: RUSTSEC-2026-0594 (cookie) ignored until its fix leaves the cooldown
 
 - **Clinical risk:** none.
