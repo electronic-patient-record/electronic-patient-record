@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-11-24
+
+- **Fixed:** a family name with an empty part (two spaces, or a leading or trailing space) scored 0/0, NaN, for that part in the compound-name comparison. Empty parts are now ignored, and a name with no part at all scores 0.0: absent evidence is never agreement. Names of one part per word score as before.
+- **Changed:** the production code passes the checked-arithmetic lints (no `as` casts, no unchecked arithmetic, no float `==`), and `clippy.toml` bans `Iterator::sum`, `product`, `Option::unwrap_or_default`, `Ord::clamp` and the `Saturating` and `Wrapping` types. No rule changed.
+
 - **Added:** `benches/matcher.rs` (criterion 0.8, a dev dependency only): name folding, transliteration, Soundex, nicknames, partial dates, postcodes, phone numbers, the national number and IHI checks, one comparison in six shapes, and one record scored against 1, 50 and 1,000 candidates. `cargo bench --bench matcher -- --test` runs each once (the `matcher-bench` gate). No library code changed.
 - **Not done / not verified:** numbers are from one laptop run (`BENCHMARKS.md`); no stored baseline, so a regression shows only against criterion's last local run.
 
