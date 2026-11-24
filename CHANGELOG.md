@@ -9,6 +9,12 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - **Added later the same day:** a worked example from the All Wales Adult Inherited Metabolic Disease Service's support-groups page (about 60 signposts, no endorsement, no review date); it adds a type, an endorsement statement and a last-checked date to the directory entry.
 - **Not done / not verified:** only that one page was read (its linked sites and the Welsh version were not); no law checked, no customer, clinician, volunteer or patient asked; the five questions are the customer's to answer. Nothing built.
 
+## 2026-11-24 - Spec: the customer's answer to OQ-CF2 (only the offer)
+
+- **Changed:** OQ-CF2 records that the system holds only the offer; no membership, attendance or roster for any group. The support-groups spec drops the conditional wording that depended on it (a roster role, a staff-run roster, a controller decision). Volunteers need no role, since there is no roster.
+- **Clinical risk:** the disclosure surface is smaller (no member list exists to leak). No hazard-log row changed.
+- **Not done / not verified:** whether an offer record (the group, date, and the patient's answer) itself discloses a diagnosis to staff who can read the patient is still the label question OQ-CF5. OQ-CF3 to OQ-CF5 unanswered. Nothing built.
+
 ## 2026-11-24 - Spec: the customer's answer to OQ-CF1
 
 - **Changed:** OQ-CF1 records the answer (groups are run by patients, charities or hospital staff, on social media or not, local to global); `spec/support-groups/index.md` gets a section on what it implies (directory entry carries operator, where it meets and reach; only staff-run groups can be under the system's control; a social media group is never posted to or invited on a patient's behalf).

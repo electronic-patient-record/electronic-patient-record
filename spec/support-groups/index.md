@@ -4,7 +4,7 @@ A draft from the customer's request of 2026-11-24 ("a monthly cancer support com
 
 ## Related links
 
-[Survivor grief](../survivor-grief/index.md) (the same question for bereavement support: help from volunteers outside the health service), [Care settings](../care-settings.md) (section 4), [Protected information](../access-control/protected-information.md), [Roles and assignments](../access-control/roles-and-assignments.md), [Patient portal](../patient-portal/index.md), [Open questions](../16-open-questions.md) (OQ-CF1 to OQ-CF5).
+[Survivor grief](../survivor-grief/index.md) (the same question for bereavement support: help from volunteers outside the health service), [Care settings](../care-settings.md) (section 4), [Protected information](../access-control/protected-information.md), [Roles and assignments](../access-control/roles-and-assignments.md), [Patient portal](../patient-portal/index.md), [Open questions](../16-open-questions.md) (OQ-CF3 to OQ-CF5 (OQ-CF1 and OQ-CF2 answered)).
 
 ## What was asked, and what is not known
 
@@ -15,7 +15,7 @@ A customer wants the system to support groups tied to one condition, for example
 Groups are run by patients, by charities and by hospital staff; some live on social media networks; some are local, some regional, some global. What follows is my reasoning, not the customer's:
 
 - **One kind of entry cannot assume one kind of operator.** A directory entry carries who runs it (patients, charity, hospital staff, other) and where it meets (in person, online meeting, social media network), and its reach (local, regional, global). A group's reach decides whether a place or an area is shown.
-- **Only a hospital-run group can be in the system's control.** A staff-run group may hold a roster inside the organisation, which brings OQ-CF2 and the volunteer question; every other kind is outside it, so the default of an offer record, not membership, stands for them.
+- **Only a hospital-run group could have been in the system's control.** The customer then decided (OQ-CF2) that no group's roster is held, so the offer record stands for every kind, a staff-run group included; a staff-run group keeps its own roster outside this system.
 - **A social media group is public or semi-public and not under anyone's control here.** The system may show its name and link, never post, tag or invite on a patient's behalf, and the offer says the group is outside the health service and its members can see each other. Joining may reveal the condition to the person's own contacts (rule 1).
 - **A global or online group has no local safeguarding or venue.** The directory says so by type; it is the person's choice, not a referral by the service.
 - **The endorsement statement matters more.** The entry says whether the service endorses, does not endorse, or has not reviewed the group, as the Welsh page does, but with a date.
@@ -23,8 +23,8 @@ Groups are run by patients, by charities and by hospital staff; some live on soc
 ## Design rules (my reasoning)
 
 1. **Belonging to a condition group discloses the condition.** Membership of a cancer support group says the person has, or had, cancer, or cares for someone who does. It is protected information in the same way as a diagnosis, and a list of members is a list of diagnoses.
-2. **The default is a referral, not a membership.** The record holds that a clinician offered a group and what the patient said (accepted, declined, later), as a signposting entry with the group's name and contact details. The group's own attendance and notes stay with the group. This is the stance of [survivor grief](../survivor-grief/index.md): much support is outside the health service, with no EPR and no reply. Holding membership is a further step that needs a controller decision (OQ-CF2).
-3. **A volunteer is not staff.** A volunteer role, if one exists, grants no clinical read: no patient list, no record, no search. What a volunteer sees is only what the group itself holds. An actor with such a role may run a group's roster only if OQ-CF2 says the system holds one.
+2. **The default is a referral, not a membership.** The record holds that a clinician offered a group and what the patient said (accepted, declined, later), as a signposting entry with the group's name and contact details. The group's own attendance and notes stay with the group. This is the stance of [survivor grief](../survivor-grief/index.md): much support is outside the health service, with no EPR and no reply. The customer decided (OQ-CF2, 2026-11-24) that the system holds only the offer.
+3. **A volunteer is not staff.** A volunteer role, if one exists, grants no clinical read: no patient list, no record, no search. What a volunteer sees is only what the group itself holds. The system holds no roster, so no role is needed to run one (OQ-CF2).
 4. **The patient chooses; nothing is automatic.** An offer, a reminder or a contact from a group is sent only if the patient agreed, by the channel they chose, and with no condition named in a message that could be read by someone else (a phone's lock screen, a family member). No automatic referral from a diagnosis code, and no "patients like you" list.
 5. **A carer or family member is a person, not a patient.** A group may include relatives. The system holds nothing about a relative beyond what the patient says, in the "reported by the person" form of words; whether a relative may be recorded as a member at all is OQ-CF3.
 6. **A group is a directory entry, not a clinical service.** It carries a name, a type (see the worked example below), a condition it is for, a schedule (for example monthly), a place or link, who runs it, who vouched for it and when, and a contact. A directory entry is reviewed by a named person on a date, and an unreviewed entry is shown as such (never "approved by this project").
@@ -50,7 +50,7 @@ Read on 2026-11-24, in full, by an assistant fetching the page: [Support Groups 
 - **One entry is a service the board is trialling**, described as "a limited deployment" for people moving from children's to adult services. A group or service can therefore be in a pilot, and the directory should say so.
 - **The condition is an umbrella**: the page covers many conditions at once, and condition-specific groups sit beside umbrella bodies. This is relevant to [CF-4](../../tasks.md) (a multi-system genetic condition).
 
-What this changes in the draft: a directory entry gets a **type** (peer group, charity, umbrella, registry or research, public body), an **endorsement statement** (endorsed, not endorsed, or not reviewed) and a **last-checked date**; and the system never claims it checked an outside group's content. It does not change the rule that membership is not held by default (OQ-CF2 stays open).
+What this changes in the draft: a directory entry gets a **type** (peer group, charity, umbrella, registry or research, public body), an **endorsement statement** (endorsed, not endorsed, or not reviewed) and a **last-checked date**; and the system never claims it checked an outside group's content. It does not change the rule that membership is not held by default (decided by OQ-CF2).
 
 Source [CAVSG]: the page above, read 2026-11-24.
 
@@ -59,14 +59,14 @@ Source [CAVSG]: the page above, read 2026-11-24.
 | Id | Question |
 |---|---|
 | OQ-CF1 | **Answered 2026-11-24 by the customer:** various. Run by patients, charities or hospital staff; some run on social media networks; some local, some regional, some global. **Still open:** who refers into a group. |
-| OQ-CF2 | Does the system hold a group's membership or attendance, or only the offer? If it holds them, who is the controller, and is a volunteer allowed to use the system at all? |
+| OQ-CF2 | **Answered 2026-11-24 by the customer:** the system holds only the offer. No membership, no attendance, no roster, for any kind of group. |
 | OQ-CF3 | May a carer or relative be recorded as a member, and under whose consent? |
 | OQ-CF4 | Which channels may a group use to contact a person, and what may a message say? |
 | OQ-CF5 | Which condition labels are used, and does the label ever reach the patient's own device or a printed letter? |
 
 ## Tasks and acceptance
 
-`CF-1` is this page. A later build needs, before any code: answers to OQ-CF1 to OQ-CF5; a hazard-log row for disclosure of a diagnosis by a group list or a message (the Clinical Safety Officer sets its status); a test that a volunteer role reads no clinical data; a test that a message names no condition by default; and a review of the directory by a person who runs such a group.
+`CF-1` is this page. A later build needs, before any code: answers to OQ-CF3 to OQ-CF5 (OQ-CF1 and OQ-CF2 answered); a hazard-log row for disclosure of a diagnosis by a group list or a message (the Clinical Safety Officer sets its status); a test that a volunteer role reads no clinical data; a test that a message names no condition by default; and a review of the directory by a person who runs such a group.
 
 ## Not done, not verified
 
