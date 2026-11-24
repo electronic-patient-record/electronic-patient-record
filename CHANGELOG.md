@@ -9,6 +9,12 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - **Added later the same day:** a worked example from the All Wales Adult Inherited Metabolic Disease Service's support-groups page (about 60 signposts, no endorsement, no review date); it adds a type, an endorsement statement and a last-checked date to the directory entry.
 - **Not done / not verified:** only that one page was read (its linked sites and the Welsh version were not); no law checked, no customer, clinician, volunteer or patient asked; the five questions are the customer's to answer. Nothing built.
 
+## 2026-11-24 - Spec: prison health, a custodial care setting (CF-2)
+
+- **Added:** `spec/custodial-health/index.md` (a custodial profile; health information stays with the health team by default; movement, release hand-over, missed-care reasons) and OQ-CH1 to OQ-CH6; CF-2 in `tasks.md` is marked drafted.
+- **Clinical risk:** none changed (no behaviour). The page names two hazards that need hazard-log rows before any build (health information shown to non-health staff; a release with no hand-over); I did not add them, because there is no design to score yet.
+- **Not done / not verified:** no outside source read, no law checked, no customer, clinician or person who has been in custody asked; all nine points are my reasoning. Nothing built.
+
 ## 2026-11-24 - Spec: the customer's answer to OQ-CF4 (no channel; providers suggest)
 
 - **Changed:** OQ-CF4 records that a group has no channel in the app and any of the patient's providers may suggest a group and give the patient its name and contact information. Design rule 4 now says the system sends nothing about a group. This also answers who refers (a provider).

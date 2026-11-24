@@ -159,5 +159,11 @@
 | OQ-CF3 | **Customer answered 2026-11-24:** no; a carer or relative is not recorded as a member, because the groups are third-party. | customer |
 | OQ-CF4 | **Customer answered 2026-11-24:** none in the app; any of the patient's providers may suggest a group and give the patient its name and contact information. | customer |
 | OQ-CF5 | Which condition labels are used, and may one reach a patient's device or a printed letter? | customer, Clinical Safety Officer |
+| OQ-CH1 | Which country and statute, and which settings for prison health (prison only, or also police custody, immigration detention, secure youth settings, a hospital that treats people in custody)? See [custodial health](custodial-health/index.md). | customer |
+| OQ-CH2 | Who runs a custodial health service, and who is the controller and the processor of its record? | customer, legal |
+| OQ-CH3 | What may security and operational staff be told about a person's health, and who decides each item? | customer, Clinical Safety Officer |
+| OQ-CH4 | Does the health record stay with the person's own record when they leave custody, or is it a linked separate record? | customer |
+| OQ-CH5 | Which records do courts, police or investigators request, under what law, and who may release them? | customer, legal |
+| OQ-CH6 | Is there a national summary the receiving community team already reads, which the release hand-over should write to? | customer |
 
 No answers recorded yet, except where a row says decided or proposed.
