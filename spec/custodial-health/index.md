@@ -30,6 +30,17 @@ The scope is every custodial setting: prison, police custody, immigration detent
 - **Functional only means a list, not free text.** A function is a short fixed statement of what a person needs or cannot do ("needs a ground-floor cell", "cannot be handcuffed behind the back", "needs to carry an inhaler", "should not be moved without a nurse"). Each item is chosen from a reviewed list, has a date and an expiry, and carries no reason. A clinician approves each item (my proposal; OQ-CH3 still asks who decides). Those words are the **only** health content that leaves the health team, and a function that would hint at a diagnosis ("needs a dialysis machine") is reviewed before it goes on the list, because the function itself can disclose.
 - **Every function shown to a non-health person is audited**, with who saw it and when, in the same way as any disclosure.
 
+## The customer's answer to OQ-CH5 (2026-11-24): it varies
+
+Whether and how a record may be released to a court, the police or an investigator varies by jurisdiction, country, U.S. state, purpose and urgency, for example an imminent threat to wellbeing. My reasoning on what follows:
+
+- **The core holds no release rule and no default.** The rule is a **release table in the country (or state) pack**, keyed by jurisdiction, requester type, purpose and urgency. With no pack, the core **refuses** and says why; it never guesses a jurisdiction's law, and a record is never released because no rule forbade it.
+- **Every release has the same shape in the core, whatever the law:** who asked, under what basis (a named rule of the pack, or a named person's decision), what was released (the smallest part that meets the purpose), who released it, when, and that it was audited. A release with no basis recorded does not happen.
+- **Urgency is a path with a review, not a bypass.** An imminent threat to wellbeing may allow a release that the ordinary rule would not, as break-glass does for a read ([H-024](../../governance/clinical-safety/hazard-log.csv)): it is allowed where the pack says so, limited to what the threat needs, and **reviewed afterwards by a named person**, with the review overdue shown. "Urgent" is the requester's claim until the releaser accepts it, and a claim that is not accepted is recorded too.
+- **Purpose limits what is released.** A court order for one matter does not release the whole record; a safeguarding request does not release a mental-health note unless the pack says so. The core offers to release by section or label, not the whole, and says what it left out.
+- **A different state is a different pack, and a person who moves is under the rule where the record is held, not where they are.** Which of the two applies is a legal question for the pack (OQ-CH5 stays open for it); the core records both places.
+- **Immigration detention and police custody** are the settings where a request is likeliest to come from the party that holds the person (OQ-CH1 and the point above). The pack may forbid release to the custodian outright, and the core allows the pack to say so.
+
 ## What custody changes (my reasoning, to be checked with the customer)
 
 1. **The person is held, so the setting is a profile**: the rule of [care settings](../care-settings.md) rule 1 applies. One patient, one record; a custodial profile chooses the screens, forms and rules. A person who enters custody is not a new patient: their existing record and pathways continue.
@@ -60,12 +71,12 @@ The scope is every custodial setting: prison, police custody, immigration detent
 | OQ-CH2 | **Partly answered 2026-11-24 by the customer: various; government, police or private.** **Still open:** who is the controller and who the processor, for each. |
 | OQ-CH3 | **Partly answered 2026-11-24 by the customer: functional information only.** **Still open:** who decides each functional item (a clinician is my proposal). |
 | OQ-CH4 | Does the health record stay with the person's own record when they leave custody, or is it a separate record that is linked? |
-| OQ-CH5 | Which records are requested by courts, police or investigators, under what law, and who may release them? |
+| OQ-CH5 | **Partly answered 2026-11-24 by the customer: it varies by jurisdiction, country, U.S. state, purpose and urgency (for example an imminent threat to wellbeing).** **Still open:** which release rules each pack holds, and who may release. |
 | OQ-CH6 | Is there a national summary the receiving community team already reads, which the release hand-over should write to? |
 
 ## Tasks and acceptance
 
-`CF-2` is this page. A later build needs, before any code: answers to the country in OQ-CH1, the controller and processor in OQ-CH2, who decides a function in OQ-CH3, and OQ-CH4 to OQ-CH6; a hazard-log row for the disclosure of health information to non-health staff and for a release with no hand-over; a test that a custody role reads no clinical data beyond the listed functional needs; a review by a prison health clinician and by a person who has been in custody.
+`CF-2` is this page. A later build needs, before any code: answers to the country in OQ-CH1, the controller and processor in OQ-CH2, who decides a function in OQ-CH3, the release rules of each pack in OQ-CH5, and OQ-CH4 and OQ-CH6; a hazard-log row for the disclosure of health information to non-health staff and for a release with no hand-over; a test that a custody role reads no clinical data beyond the listed functional needs; a review by a prison health clinician and by a person who has been in custody.
 
 ## Not done, not verified
 

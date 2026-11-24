@@ -163,7 +163,7 @@
 | OQ-CH2 | **Customer answered in part 2026-11-24: various; government, police or private.** Still open: who is the controller and who the processor, for each. | customer, legal |
 | OQ-CH3 | **Customer answered in part 2026-11-24: functional information only.** Still open: who decides each functional item (a clinician is proposed). | customer, Clinical Safety Officer |
 | OQ-CH4 | Does the health record stay with the person's own record when they leave custody, or is it a linked separate record? | customer |
-| OQ-CH5 | Which records do courts, police or investigators request, under what law, and who may release them? | customer, legal |
+| OQ-CH5 | **Customer answered in part 2026-11-24: it varies by jurisdiction, country, U.S. state, purpose and urgency (for example an imminent threat to wellbeing).** Still open: the release rules each pack holds, and who may release. | customer, legal |
 | OQ-CH6 | Is there a national summary the receiving community team already reads, which the release hand-over should write to? | customer |
 
 No answers recorded yet, except where a row says decided or proposed.

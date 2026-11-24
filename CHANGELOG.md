@@ -9,6 +9,12 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - **Added later the same day:** a worked example from the All Wales Adult Inherited Metabolic Disease Service's support-groups page (about 60 signposts, no endorsement, no review date); it adds a type, an endorsement statement and a last-checked date to the directory entry.
 - **Not done / not verified:** only that one page was read (its linked sites and the Welsh version were not); no law checked, no customer, clinician, volunteer or patient asked; the five questions are the customer's to answer. Nothing built.
 
+## 2026-11-24 - Spec: the customer's answer to OQ-CH5 (release varies)
+
+- **Changed:** OQ-CH5 records that release of a record to a court, police or investigator varies by jurisdiction, country, U.S. state, purpose and urgency. The custodial-health spec now says the core holds no release rule and refuses without a pack; every release records its basis, extent, releaser and audit; an urgent release is allowed only where the pack says so and is reviewed afterwards; a release is by section, not the whole record.
+- **Clinical risk:** the urgent path is a disclosure without consent, so it needs a hazard-log row before any build (like H-024 for a read); I did not add one, since there is no design to score.
+- **Not done / not verified:** no law read for any jurisdiction; the release-table design is my reasoning, not a lawyer's. OQ-CH4 and OQ-CH6 unanswered. Nothing built.
+
 ## 2026-11-24 - Spec: the customer's answers to OQ-CH2 and OQ-CH3 (operators; functional only)
 
 - **Changed:** OQ-CH2 records that the service may be run by government, police or a private company; OQ-CH3 records that non-health staff are told functional information only. The custodial-health spec now separates the health record from the custodian's systems, adds an operator type beside the setting type, and defines a functional item as a short fixed statement from a reviewed list, with a date and expiry and no reason, approved by a clinician (my proposal).
