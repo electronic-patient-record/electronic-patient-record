@@ -1,6 +1,6 @@
 # Reads as at a time (EH-2)
 
-**Built 2026-11-24, service only**, for allergies (with their statement and banner), the problem list and family history. No screen. NOT FOR CLINICAL USE. Hazard H-068. The idea's source is openEHR's `version_at_time` ([lessons](../lessons/openehr-rust/index.md)).
+**Built 2026-11-24, service only**, for allergies (with their statement and banner), the problem list and relative history. No screen. NOT FOR CLINICAL USE. Hazard H-068. The idea's source is openEHR's `version_at_time` ([lessons](../lessons/openehr-rust/index.md)).
 
 ## What it answers
 
@@ -17,7 +17,7 @@
 ## Limits
 
 - **It is what was stored, not what was on a screen.** What a reader saw depends on the screen, a cache and the second (EH-10).
-- The time of a problem or family history version is the clock when the row was written, and it can be seen only after its transaction commits, a moment later. An allergy version's time is when its transaction **began** (`now()`), so a write in progress at the time asked may be included.
+- The time of a problem or relative history version is the clock when the row was written, and it can be seen only after its transaction commits, a moment later. An allergy version's time is when its transaction **began** (`now()`), so a write in progress at the time asked may be included.
 - Consent, relationships and the patient's identity are not given as at the time. A patient who exists now is enough; whether they were registered then is not asked.
 - Amendment notices are not part of the answer.
 - Observations, results, referrals, adjustments and the rest have no such read yet (EH-15).

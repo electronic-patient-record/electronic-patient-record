@@ -1502,25 +1502,6 @@
         ],
         "type": "object"
       },
-      "CreateFamilyHistoryRecord": {
-        "additionalProperties": false,
-        "properties": {
-          "reason": {
-            "maxLength": 500,
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "record": {
-            "$ref": "#/components/schemas/FamilyHistoryRecord"
-          }
-        },
-        "required": [
-          "record"
-        ],
-        "type": "object"
-      },
       "CreateHazard": {
         "description": "Raise a hazard. Refused (422) if the title is blank or longer than 200 characters, or a rating is outside 1 to 5.",
         "properties": {
@@ -1637,6 +1618,25 @@
         },
         "required": [
           "relationship"
+        ],
+        "type": "object"
+      },
+      "CreateRelativeHistoryRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "record": {
+            "$ref": "#/components/schemas/RelativeHistoryRecord"
+          }
+        },
+        "required": [
+          "record"
         ],
         "type": "object"
       },
@@ -2036,186 +2036,6 @@
           "status",
           "detail",
           "errors"
-        ],
-        "type": "object"
-      },
-      "FamilyHistoryAsAt": {
-        "description": "The list as it stood at `as_at`. It is not the record as it stands now.",
-        "properties": {
-          "as_at": {
-            "description": "UTC.",
-            "type": "string"
-          },
-          "entries": {
-            "items": {
-              "$ref": "#/components/schemas/StoredFamilyHistoryAsAt"
-            },
-            "maxItems": 1000,
-            "type": "array"
-          },
-          "read_at": {
-            "description": "UTC.",
-            "type": "string"
-          },
-          "summary": {
-            "additionalProperties": true,
-            "description": "`not-recorded` is unknown, never none.",
-            "properties": {
-              "state": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "state"
-            ],
-            "type": "object"
-          }
-        },
-        "required": [
-          "as_at",
-          "read_at",
-          "entries",
-          "summary"
-        ],
-        "type": "object"
-      },
-      "FamilyHistoryList": {
-        "description": "Every entry in every status, oldest first.",
-        "properties": {
-          "entries": {
-            "items": {
-              "$ref": "#/components/schemas/StoredFamilyHistory"
-            },
-            "maxItems": 1000,
-            "type": "array"
-          },
-          "summary": {
-            "additionalProperties": true,
-            "description": "`not-recorded` is unknown, never none.",
-            "properties": {
-              "state": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "state"
-            ],
-            "type": "object"
-          }
-        },
-        "required": [
-          "entries",
-          "summary"
-        ],
-        "type": "object"
-      },
-      "FamilyHistoryRecord": {
-        "additionalProperties": false,
-        "description": "A finding about a relative by blood. A relative is never named: there is no place for a name, a birth date or a note.",
-        "properties": {
-          "coding": {
-            "additionalProperties": false,
-            "properties": {
-              "code": {
-                "maxLength": 64,
-                "type": "string"
-              },
-              "system": {
-                "description": "A URI; a SNOMED CT code is checked.",
-                "maxLength": 200,
-                "type": "string"
-              }
-            },
-            "required": [
-              "system",
-              "code"
-            ],
-            "type": "object"
-          },
-          "condition": {
-            "maxLength": 120,
-            "minLength": 1,
-            "type": "string"
-          },
-          "member": {
-            "description": "Which one, when there can be several. Not for a mother, father or grandparent.",
-            "maximum": 20,
-            "minimum": 1,
-            "type": "integer"
-          },
-          "onset_age": {
-            "description": "Whole years. Only when they had it.",
-            "maximum": 130,
-            "minimum": 0,
-            "type": "integer"
-          },
-          "presence": {
-            "description": "`absent` and `unknown` are findings; an entry that is not there is neither.",
-            "enum": [
-              "present",
-              "absent",
-              "unknown"
-            ]
-          },
-          "relationship": {
-            "enum": [
-              "mother",
-              "father",
-              "sister",
-              "brother",
-              "half-sister",
-              "half-brother",
-              "daughter",
-              "son",
-              "maternal-grandmother",
-              "maternal-grandfather",
-              "paternal-grandmother",
-              "paternal-grandfather",
-              "maternal-aunt",
-              "maternal-uncle",
-              "paternal-aunt",
-              "paternal-uncle",
-              "cousin",
-              "unknown-relative"
-            ]
-          },
-          "source": {
-            "enum": [
-              "patient",
-              "acting-for-patient",
-              "genetics-service",
-              "professional"
-            ]
-          },
-          "status": {
-            "enum": [
-              "recorded",
-              "entered-in-error"
-            ]
-          }
-        },
-        "required": [
-          "relationship",
-          "condition",
-          "presence",
-          "source",
-          "status"
-        ],
-        "type": "object"
-      },
-      "FamilyHistoryVersions": {
-        "properties": {
-          "versions": {
-            "description": "Oldest first.",
-            "items": {
-              "$ref": "#/components/schemas/StoredFamilyHistory"
-            },
-            "maxItems": 1000,
-            "type": "array"
-          }
-        },
-        "required": [
-          "versions"
         ],
         "type": "object"
       },
@@ -4300,6 +4120,214 @@
         ],
         "type": "object"
       },
+      "RelativeHistoryAsAt": {
+        "description": "The list as it stood at `as_at`. It is not the record as it stands now.",
+        "properties": {
+          "as_at": {
+            "description": "UTC.",
+            "type": "string"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/StoredRelativeHistoryAsAt"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
+          "read_at": {
+            "description": "UTC.",
+            "type": "string"
+          },
+          "summary": {
+            "additionalProperties": true,
+            "description": "`not-recorded` is unknown, never none.",
+            "properties": {
+              "state": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "state"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "as_at",
+          "read_at",
+          "entries",
+          "summary"
+        ],
+        "type": "object"
+      },
+      "RelativeHistoryList": {
+        "description": "Every entry in every status, oldest first.",
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/StoredRelativeHistory"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
+          "summary": {
+            "additionalProperties": true,
+            "description": "`not-recorded` is unknown, never none.",
+            "properties": {
+              "state": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "state"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "entries",
+          "summary"
+        ],
+        "type": "object"
+      },
+      "RelativeHistoryRecord": {
+        "additionalProperties": false,
+        "description": "A finding about a relative, for an inherited or a shared risk. A relative is never named: there is no place for a name, a birth date or a note. The genetic, gestational and environment links are asked apart and none is guessed from another. A relative with none of the three is refused.",
+        "properties": {
+          "coding": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "maxLength": 64,
+                "type": "string"
+              },
+              "system": {
+                "description": "A URI; a SNOMED CT code is checked.",
+                "maxLength": 200,
+                "type": "string"
+              }
+            },
+            "required": [
+              "system",
+              "code"
+            ],
+            "type": "object"
+          },
+          "condition": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          },
+          "environment": {
+            "description": "When they lived in the same place, in the patient's life.",
+            "enum": [
+              "childhood",
+              "adulthood",
+              "both",
+              "never",
+              "unknown"
+            ]
+          },
+          "genetic": {
+            "description": "How they share genes. `none` (adoptive, step, foster, a partner, a surrogate) is never counted towards inherited risk; `unknown` was asked.",
+            "enum": [
+              "genetic-parent",
+              "full-sibling",
+              "half-sibling",
+              "identical-twin",
+              "fraternal-twin",
+              "genetic-child",
+              "grandparent",
+              "aunt-uncle",
+              "cousin",
+              "none",
+              "unknown"
+            ]
+          },
+          "gestational": {
+            "description": "Whether they carried the pregnancy the patient was born from. Required for a genetic-parent whose line is not paternal; refused for a twin, a child and a paternal genetic-parent.",
+            "enum": [
+              "yes",
+              "no",
+              "unknown"
+            ]
+          },
+          "line": {
+            "description": "Through which genetic parent. Required for genetic-parent, half-sibling, grandparent, aunt-uncle and cousin; refused for the rest.",
+            "enum": [
+              "maternal",
+              "paternal",
+              "unknown"
+            ]
+          },
+          "member": {
+            "description": "Which one, when there are several. A number and never a name.",
+            "maximum": 20,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "onset_age": {
+            "description": "Whole years. Only when they had it.",
+            "maximum": 130,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "presence": {
+            "description": "`absent` and `unknown` are findings; an entry that is not there is neither.",
+            "enum": [
+              "present",
+              "absent",
+              "unknown"
+            ]
+          },
+          "sex": {
+            "description": "At birth, where an inheritance depends on it. Absent means not stated.",
+            "enum": [
+              "female",
+              "male"
+            ]
+          },
+          "source": {
+            "enum": [
+              "patient",
+              "acting-for-patient",
+              "genetics-service",
+              "professional"
+            ]
+          },
+          "status": {
+            "enum": [
+              "recorded",
+              "entered-in-error"
+            ]
+          }
+        },
+        "required": [
+          "genetic",
+          "environment",
+          "condition",
+          "presence",
+          "source",
+          "status"
+        ],
+        "type": "object"
+      },
+      "RelativeHistoryVersions": {
+        "properties": {
+          "versions": {
+            "description": "Oldest first.",
+            "items": {
+              "$ref": "#/components/schemas/StoredRelativeHistory"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          }
+        },
+        "required": [
+          "versions"
+        ],
+        "type": "object"
+      },
       "ReportDeath": {
         "additionalProperties": false,
         "properties": {
@@ -4760,90 +4788,6 @@
         ],
         "type": "object"
       },
-      "StoredFamilyHistory": {
-        "properties": {
-          "author": {
-            "type": "string"
-          },
-          "id": {
-            "type": "string"
-          },
-          "patient_id": {
-            "type": "string"
-          },
-          "reason": {
-            "description": "Why this version was written; always there from version 2.",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "record": {
-            "$ref": "#/components/schemas/FamilyHistoryRecord"
-          },
-          "recorded_at": {
-            "description": "UTC.",
-            "type": "string"
-          },
-          "version": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id",
-          "patient_id",
-          "version",
-          "author",
-          "recorded_at",
-          "reason",
-          "record"
-        ],
-        "type": "object"
-      },
-      "StoredFamilyHistoryAsAt": {
-        "properties": {
-          "author": {
-            "type": "string"
-          },
-          "changed_since": {
-            "description": "A later version exists: this is no longer what the record says.",
-            "type": "boolean"
-          },
-          "id": {
-            "type": "string"
-          },
-          "patient_id": {
-            "type": "string"
-          },
-          "reason": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "record": {
-            "$ref": "#/components/schemas/FamilyHistoryRecord"
-          },
-          "recorded_at": {
-            "description": "UTC.",
-            "type": "string"
-          },
-          "version": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id",
-          "patient_id",
-          "version",
-          "author",
-          "recorded_at",
-          "reason",
-          "record",
-          "changed_since"
-        ],
-        "type": "object"
-      },
       "StoredHazard": {
         "properties": {
           "author": {
@@ -5162,6 +5106,90 @@
           "version",
           "author",
           "relationship"
+        ],
+        "type": "object"
+      },
+      "StoredRelativeHistory": {
+        "properties": {
+          "author": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "reason": {
+            "description": "Why this version was written; always there from version 2.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "record": {
+            "$ref": "#/components/schemas/RelativeHistoryRecord"
+          },
+          "recorded_at": {
+            "description": "UTC.",
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "patient_id",
+          "version",
+          "author",
+          "recorded_at",
+          "reason",
+          "record"
+        ],
+        "type": "object"
+      },
+      "StoredRelativeHistoryAsAt": {
+        "properties": {
+          "author": {
+            "type": "string"
+          },
+          "changed_since": {
+            "description": "A later version exists: this is no longer what the record says.",
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "record": {
+            "$ref": "#/components/schemas/RelativeHistoryRecord"
+          },
+          "recorded_at": {
+            "description": "UTC.",
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "patient_id",
+          "version",
+          "author",
+          "recorded_at",
+          "reason",
+          "record",
+          "changed_since"
         ],
         "type": "object"
       },
@@ -6379,28 +6407,6 @@
         ],
         "type": "object"
       },
-      "UpdateFamilyHistoryRecord": {
-        "additionalProperties": false,
-        "properties": {
-          "expected_version": {
-            "type": "integer"
-          },
-          "reason": {
-            "maxLength": 500,
-            "minLength": 1,
-            "type": "string"
-          },
-          "record": {
-            "$ref": "#/components/schemas/FamilyHistoryRecord"
-          }
-        },
-        "required": [
-          "record",
-          "expected_version",
-          "reason"
-        ],
-        "type": "object"
-      },
       "UpdateHazard": {
         "description": "One step on a hazard, on the version last seen. `control` needs `text`; `retire` needs `evidence` and `note` and is refused with 403 unless the token holds the clinical-safety-officer role (the body never says who); `reopen` needs `reason`. Other fields for the event are refused.",
         "properties": {
@@ -6526,6 +6532,28 @@
         "required": [
           "relationship",
           "expected_version"
+        ],
+        "type": "object"
+      },
+      "UpdateRelativeHistoryRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          },
+          "record": {
+            "$ref": "#/components/schemas/RelativeHistoryRecord"
+          }
+        },
+        "required": [
+          "record",
+          "expected_version",
+          "reason"
         ],
         "type": "object"
       },
@@ -10572,405 +10600,6 @@
         "x-epr-resource": "DeathAssertion"
       }
     },
-    "/api/patients/{id}/family-history": {
-      "get": {
-        "operationId": "getApiPatientsIdFamily-history",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FamilyHistoryList"
-                }
-              }
-            },
-            "description": "OK."
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            },
-            "description": "No valid token."
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            },
-            "description": "The policy engine refused the request; the refusal is audited."
-          },
-          "default": {
-            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "summary": "GET /api/patients/{id}/family-history",
-        "tags": [
-          "patients"
-        ],
-        "x-epr-action": "Read",
-        "x-epr-resource": "FamilyMemberHistory"
-      },
-      "post": {
-        "operationId": "postApiPatientsIdFamily-history",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "1 to 128 letters, digits or . _ : -. A retry with the same key and the same request returns the first answer (header `Idempotent-Replayed: true`) and writes nothing; the same key for a different request is a 422; a key whose first request is unfinished is a 409. Only a success is kept; keys expire after 24 hours.",
-            "in": "header",
-            "name": "Idempotency-Key",
-            "required": false,
-            "schema": {
-              "maxLength": 128,
-              "minLength": 1,
-              "pattern": "^[A-Za-z0-9._:-]+$",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateFamilyHistoryRecord"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StoredFamilyHistory"
-                }
-              }
-            },
-            "description": "The stored record."
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            },
-            "description": "No valid token."
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            },
-            "description": "The policy engine refused the request; the refusal is audited."
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorList"
-                }
-              }
-            },
-            "description": "The record was refused, one line per reason."
-          },
-          "default": {
-            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "summary": "POST /api/patients/{id}/family-history",
-        "tags": [
-          "patients"
-        ],
-        "x-epr-action": "Create",
-        "x-epr-resource": "FamilyMemberHistory"
-      }
-    },
-    "/api/patients/{id}/family-history/as-at": {
-      "get": {
-        "operationId": "getApiPatientsIdFamily-historyAs-at",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "time",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FamilyHistoryAsAt"
-                }
-              }
-            },
-            "description": "OK."
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            },
-            "description": "time is missing, is not an RFC 3339 time with an offset or Z, or is in the future."
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            },
-            "description": "No valid token."
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            },
-            "description": "The policy engine refused the request; the refusal is audited."
-          },
-          "default": {
-            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "summary": "GET /api/patients/{id}/family-history/as-at",
-        "tags": [
-          "patients"
-        ],
-        "x-epr-action": "Read",
-        "x-epr-resource": "FamilyMemberHistory"
-      }
-    },
-    "/api/patients/{id}/family-history/{entry_id}": {
-      "put": {
-        "operationId": "putApiPatientsIdFamily-historyEntry_id",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "entry_id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateFamilyHistoryRecord"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StoredFamilyHistory"
-                }
-              }
-            },
-            "description": "The stored record."
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            },
-            "description": "No valid token."
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            },
-            "description": "The policy engine refused the request; the refusal is audited."
-          },
-          "409": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VersionConflict"
-                }
-              }
-            },
-            "description": "A likely duplicate or a stale expected_version."
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorList"
-                }
-              }
-            },
-            "description": "The record was refused, one line per reason."
-          },
-          "default": {
-            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "summary": "PUT /api/patients/{id}/family-history/{entry_id}",
-        "tags": [
-          "patients"
-        ],
-        "x-epr-action": "Update",
-        "x-epr-resource": "FamilyMemberHistory"
-      }
-    },
-    "/api/patients/{id}/family-history/{entry_id}/versions": {
-      "get": {
-        "operationId": "getApiPatientsIdFamily-historyEntry_idVersions",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "entry_id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FamilyHistoryVersions"
-                }
-              }
-            },
-            "description": "OK."
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            },
-            "description": "No valid token."
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            },
-            "description": "The policy engine refused the request; the refusal is audited."
-          },
-          "default": {
-            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "summary": "GET /api/patients/{id}/family-history/{entry_id}/versions",
-        "tags": [
-          "patients"
-        ],
-        "x-epr-action": "Read",
-        "x-epr-resource": "FamilyMemberHistory"
-      }
-    },
     "/api/patients/{id}/links": {
       "get": {
         "operationId": "getApiPatientsIdLinks",
@@ -13243,6 +12872,405 @@
         ],
         "x-epr-action": "Update",
         "x-epr-resource": "CareRelationship"
+      }
+    },
+    "/api/patients/{id}/relative-history": {
+      "get": {
+        "operationId": "getApiPatientsIdRelative-history",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelativeHistoryList"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/patients/{id}/relative-history",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "RelativeHistory"
+      },
+      "post": {
+        "operationId": "postApiPatientsIdRelative-history",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "1 to 128 letters, digits or . _ : -. A retry with the same key and the same request returns the first answer (header `Idempotent-Replayed: true`) and writes nothing; the same key for a different request is a 422; a key whose first request is unfinished is a 409. Only a success is kept; keys expire after 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRelativeHistoryRecord"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredRelativeHistory"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/patients/{id}/relative-history",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Create",
+        "x-epr-resource": "RelativeHistory"
+      }
+    },
+    "/api/patients/{id}/relative-history/as-at": {
+      "get": {
+        "operationId": "getApiPatientsIdRelative-historyAs-at",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "time",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelativeHistoryAsAt"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "time is missing, is not an RFC 3339 time with an offset or Z, or is in the future."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/patients/{id}/relative-history/as-at",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "RelativeHistory"
+      }
+    },
+    "/api/patients/{id}/relative-history/{entry_id}": {
+      "put": {
+        "operationId": "putApiPatientsIdRelative-historyEntry_id",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRelativeHistoryRecord"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredRelativeHistory"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionConflict"
+                }
+              }
+            },
+            "description": "A likely duplicate or a stale expected_version."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "PUT /api/patients/{id}/relative-history/{entry_id}",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Update",
+        "x-epr-resource": "RelativeHistory"
+      }
+    },
+    "/api/patients/{id}/relative-history/{entry_id}/versions": {
+      "get": {
+        "operationId": "getApiPatientsIdRelative-historyEntry_idVersions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelativeHistoryVersions"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/patients/{id}/relative-history/{entry_id}/versions",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "RelativeHistory"
       }
     },
     "/api/patients/{id}/results": {

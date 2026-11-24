@@ -30,7 +30,6 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `break_glass_reviews` | `20261021000010_break_glass` | `grant_id` UUID, `reviewed_at` TIMESTAMPTZ, `reviewed_by` TEXT, `outcome` TEXT, `note` TEXT |
 | `consent_versions` | `20261021000003_consent_versions` | `consent_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `status` TEXT, `body` JSONB |
 | `death_assertion_versions` | `20261105000025_death_assertions` | `assertion_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `status` TEXT, `body` JSONB |
-| `family_history_versions` | `20261124000042_problems_family_history` | `entry_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `status` TEXT, `body` JSONB |
 | `feed_alarm_states` | `20261117000039_feed_alarm_states` | `seq` BIGSERIAL, `agent` TEXT, `state` TEXT, `reasons` JSONB, `recorded_at` TIMESTAMPTZ |
 | `feed_message_times` | `20261117000038_feed_message_times` | `agent` TEXT, `patient_id` UUID, `message_time` TIMESTAMPTZ, `control_id` TEXT, `recorded_at` TIMESTAMPTZ |
 | `feed_refusal_resolutions` | `20261021000009_feed_refusals` | `refusal_id` UUID, `resolved_at` TIMESTAMPTZ, `resolved_by` TEXT, `outcome` TEXT, `reason` TEXT |
@@ -51,6 +50,7 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `referral_unmatched_clearances` | `20261103000023_referral_unmatched` | `unmatched_id` UUID, `cleared_at` TIMESTAMPTZ, `cleared_by` TEXT, `how` TEXT, `referral_id` UUID, `reason` TEXT |
 | `referral_versions` | `20261102000022_referrals` | `referral_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `state` TEXT, `event` JSONB, `body` JSONB |
 | `relationship_versions` | `20261021000004_relationship_versions` | `relationship_id` UUID, `version` INTEGER, `patient_id` UUID, `subject` TEXT, `kind` TEXT, `status` TEXT, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `body` JSONB |
+| `relative_history_versions` | `20261124000043_relative_history` | `entry_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `status` TEXT, `body` JSONB |
 | `result_signoffs` | `20261109000029_results` | `signoff_id` UUID, `result_id` UUID, `result_version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `signed_by` TEXT |
 | `result_versions` | `20261109000029_results` | `result_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `status` TEXT, `reason` TEXT, `body` JSONB |
 | `task_reminder_decisions` | `20261117000040_tasks` | `task_id` UUID, `remind_on` DATE, `decision` TEXT, `reason` TEXT, `recorded_at` TIMESTAMPTZ |
@@ -71,7 +71,6 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `audit_events_all` | `20261031000019_audit_archive_view` |
 | `consent_current` | `20261021000003_consent_versions`, `20261021000011_current_views_seek` |
 | `death_assertion_current` | `20261105000025_death_assertions` |
-| `family_history_current` | `20261124000042_problems_family_history` |
 | `hazard_current` | `20261028000016_hazard_events` |
 | `observation_current` | `20261026000014_observations` |
 | `patient_current` | `20261021000002_patient_versions`, `20261021000012_patient_search_indexes`, `20261024000013_patient_drill` |
@@ -82,6 +81,7 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `referral_suspicion_current` | `20261109000031_referral_suspicions`, `20261109000032_suspicion_carried_from` |
 | `referral_suspicion_outcome_current` | `20261110000035_suspicion_outcome_errors` |
 | `relationship_current` | `20261021000004_relationship_versions`, `20261021000011_current_views_seek` |
+| `relative_history_current` | `20261124000043_relative_history` |
 | `result_current` | `20261109000029_results` |
 | `task_current` | `20261117000040_tasks` |
 | `watch_entry_current` | `20261109000034_watch_lists` |

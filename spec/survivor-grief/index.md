@@ -353,7 +353,7 @@ Open:
 | Observation model for an outcome | Eight vital signs only, each with one UCUM unit | A questionnaire or outcome model | `electronic-patient-record-domain/src/observations.rs`, service spec RC-6 |
 | Counsellor role | Eleven roles; `allied-health` is the nearest | A counsellor or volunteer role, a service limit | `electronic-patient-record-domain/src/policy.rs` |
 | Proxy view of a survivor's note | A proxy reads identity, allergies, photo, access log by scope; nothing else | Keep a bereavement note out of every scope | `electronic-patient-record-domain/src/proxy.rs`, service spec PA-5 |
-| Family or household view | None | **Keep it that way** | `tests/grief_census.rs` searches `src/routes.rs` for `family` and `household`; the four [family history](../family-history/index.md) paths are allowed by name (2026-11-24, not yet confirmed by the maintainer, OQ-EH5): one patient's record, no link to another person |
+| Family or household view | None | **Keep it that way** | `tests/grief_census.rs` searches `src/routes.rs` for `family` and `household`, with no exception (the maintainer, 2026-11-24, OQ-EH5). [Relative history](../relative-history/index.md) is one patient's record with no link to another person |
 | Third-party review of an export | No patient-copy export | A human review step | [data exchange](../data-exchange/index.md) |
 | Purpose of use | Seven purposes | Likely fits `treatment`; a voluntary service's use is unclear | `electronic-patient-record-domain/src/policy.rs`, `Purpose` |
 

@@ -142,8 +142,8 @@ async fn a_successful_read_of_a_patient_record_leaves_an_audit_row() {
                 serde_json::json!({ "title": "Asthma", "certainty": "confirmed", "status": "active" }),
             ),
             (
-                "family-history",
-                serde_json::json!({ "relationship": "mother", "condition": "Asthma",
+                "relative-history",
+                serde_json::json!({ "genetic": "full-sibling", "environment": "childhood", "condition": "Asthma",
                     "presence": "present", "source": "patient", "status": "recorded" }),
             ),
         ] {

@@ -192,7 +192,7 @@ async fn real_responses_validate_against_the_served_schemas() {
             &mut problems,
         );
 
-        // The problem list and family history: record, list, change, versions, and as at a time.
+        // The problem list and relative history: record, list, change, versions, and as at a time.
         for (path, id_name, record) in [
             (
                 "problems",
@@ -202,9 +202,10 @@ async fn real_responses_validate_against_the_served_schemas() {
                     "coding": { "system": "http://snomed.info/sct", "code": "22298006" } }),
             ),
             (
-                "family-history",
+                "relative-history",
                 "entry_id",
-                json!({ "relationship": "sister", "member": 2, "condition": "Asthma",
+                json!({ "genetic": "half-sibling", "line": "maternal", "environment": "never",
+                    "sex": "female", "member": 2, "condition": "Asthma",
                     "presence": "present", "onset_age": 12, "source": "patient", "status": "recorded" }),
             ),
         ] {

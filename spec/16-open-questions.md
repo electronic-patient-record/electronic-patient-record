@@ -165,10 +165,10 @@
 | OQ-CH4 | **Customer answered 2026-11-24: one patient record, and no separate custody record.** The custody health team writes into the person's own patient record. | customer |
 | OQ-CH5 | **Customer answered in part 2026-11-24: it varies by jurisdiction, country, U.S. state, purpose and urgency (for example an imminent threat to wellbeing).** Still open: the release rules each pack holds, and who may release. | customer, legal |
 | OQ-CH6 | **Customer answered 2026-11-24: it depends on the country.** A national summary is an export in the country pack, named there; with no pack nothing is sent. | customer |
-| OQ-EH1 | What does a patient or proxy see of the problem list and of family history, and when? Refused until decided. See [problem list](problem-list/index.md). | clinical lead, patients |
+| OQ-EH1 | What does a patient or proxy see of the problem list and of relative history, and when? Refused until decided. See [problem list](problem-list/index.md). | clinical lead, patients |
 | OQ-EH2 | Is there a "no known problems" statement, as for allergies, or is it unsafe? | clinical lead, Clinical Safety Officer |
 | OQ-EH3 | Does a confirmed suspicion (RS-3) propose a problem for a clinician to accept? | clinical lead |
-| OQ-EH4 | May a fact from a relative's own record be used in a patient's family history, with what consent? See [family history](family-history/index.md). | legal, clinical geneticist |
-| OQ-EH5 | Does the maintainer confirm that family history is not the family view that SG-2 refuses? | maintainer |
+| OQ-EH4 | May a fact from a relative's own record be used in a patient's relative history, with what consent? See [relative history](relative-history/index.md). | legal, clinical geneticist |
+| OQ-EH5 | **Answered 2026-11-24 by the maintainer:** relative history is kept, with the genetic, gestational and shared-environment links asked apart, and the guard against the word "family" continues. See [relative history](relative-history/index.md). | maintainer |
 
 No answers recorded yet, except where a row says decided or proposed.

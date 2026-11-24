@@ -419,7 +419,7 @@ fn entry_schemas(record: &str, stored: &str, list: &str) -> Value {
     out
 }
 
-/// A coded term as the problem list and family history take it.
+/// A coded term as the problem list and relative history take it.
 fn coding_schema() -> Value {
     json!({"type": "object", "required": ["system", "code"], "additionalProperties": false, "properties": {
         "system": {"type": "string", "maxLength": 200_u32, "description": "A URI; a SNOMED CT code is checked."},
@@ -451,28 +451,34 @@ fn problem_schemas() -> Value {
     out
 }
 
-/// Family history (EH-3).
-fn family_history_schemas() -> Value {
+/// Relative history (EH-3).
+fn relative_history_schemas() -> Value {
+    use crate::relative_history as relative;
     let mut out = entry_schemas(
-        "FamilyHistoryRecord",
-        "StoredFamilyHistory",
-        "FamilyHistory",
+        "RelativeHistoryRecord",
+        "StoredRelativeHistory",
+        "RelativeHistory",
     );
     crate::json::set(
         &mut out,
-        "FamilyHistoryRecord",
+        "RelativeHistoryRecord",
         json!({
-            "type": "object", "required": ["relationship", "condition", "presence", "source", "status"], "additionalProperties": false,
-            "description": "A finding about a relative by blood. A relative is never named: there is no place for a name, a birth date or a note.",
+            "type": "object", "additionalProperties": false,
+            "required": ["genetic", "environment", "condition", "presence", "source", "status"],
+            "description": "A finding about a relative, for an inherited or a shared risk. A relative is never named: there is no place for a name, a birth date or a note. The genetic, gestational and environment links are asked apart and none is guessed from another. A relative with none of the three is refused.",
             "properties": {
-                "relationship": {"enum": crate::family_history::Relationship::ALL},
-                "member": {"type": "integer", "minimum": 1_u32, "maximum": 20_u32, "description": "Which one, when there can be several. Not for a mother, father or grandparent."},
+                "genetic": {"enum": relative::GeneticLink::ALL, "description": "How they share genes. `none` (adoptive, step, foster, a partner, a surrogate) is never counted towards inherited risk; `unknown` was asked."},
+                "line": {"enum": relative::Line::ALL, "description": "Through which genetic parent. Required for genetic-parent, half-sibling, grandparent, aunt-uncle and cousin; refused for the rest."},
+                "gestational": {"enum": relative::Gestational::ALL, "description": "Whether they carried the pregnancy the patient was born from. Required for a genetic-parent whose line is not paternal; refused for a twin, a child and a paternal genetic-parent."},
+                "environment": {"enum": relative::Environment::ALL, "description": "When they lived in the same place, in the patient's life."},
+                "sex": {"enum": relative::Sex::ALL, "description": "At birth, where an inheritance depends on it. Absent means not stated."},
+                "member": {"type": "integer", "minimum": 1_u32, "maximum": 20_u32, "description": "Which one, when there are several. A number and never a name."},
                 "condition": {"type": "string", "minLength": 1_u32, "maxLength": 120_u32},
                 "coding": coding_schema(),
-                "presence": {"enum": crate::family_history::Presence::ALL, "description": "`absent` and `unknown` are findings; an entry that is not there is neither."},
+                "presence": {"enum": relative::Presence::ALL, "description": "`absent` and `unknown` are findings; an entry that is not there is neither."},
                 "onset_age": {"type": "integer", "minimum": 0_u32, "maximum": 130_u32, "description": "Whole years. Only when they had it."},
-                "source": {"enum": crate::family_history::Source::ALL},
-                "status": {"enum": crate::family_history::Status::ALL}
+                "source": {"enum": relative::Source::ALL},
+                "status": {"enum": relative::Status::ALL}
             }
         }),
     );
@@ -1927,7 +1933,7 @@ fn patient_schemas() -> Value {
         identity_schemas(),
         allergy_schemas(),
         problem_schemas(),
-        family_history_schemas(),
+        relative_history_schemas(),
         referral_schemas(),
         observation_schemas(),
         result_schemas(),
@@ -2026,18 +2032,18 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
     ),
     (
         "POST",
-        "/api/patients/{id}/family-history",
-        "CreateFamilyHistoryRecord",
+        "/api/patients/{id}/relative-history",
+        "CreateRelativeHistoryRecord",
         "201",
-        "StoredFamilyHistory",
+        "StoredRelativeHistory",
         "",
     ),
     (
         "PUT",
-        "/api/patients/{id}/family-history/{entry_id}",
-        "UpdateFamilyHistoryRecord",
+        "/api/patients/{id}/relative-history/{entry_id}",
+        "UpdateRelativeHistoryRecord",
         "200",
-        "StoredFamilyHistory",
+        "StoredRelativeHistory",
         "VersionConflict",
     ),
     (
@@ -2387,20 +2393,20 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
     ),
     (
         "GET",
-        "/api/patients/{id}/family-history",
-        "FamilyHistoryList",
+        "/api/patients/{id}/relative-history",
+        "RelativeHistoryList",
         &[],
     ),
     (
         "GET",
-        "/api/patients/{id}/family-history/as-at",
-        "FamilyHistoryAsAt",
+        "/api/patients/{id}/relative-history/as-at",
+        "RelativeHistoryAsAt",
         &["time"],
     ),
     (
         "GET",
-        "/api/patients/{id}/family-history/{entry_id}/versions",
-        "FamilyHistoryVersions",
+        "/api/patients/{id}/relative-history/{entry_id}/versions",
+        "RelativeHistoryVersions",
         &[],
     ),
     ("GET", "/api/patients/{id}/referrals", "ReferralList", &[]),
@@ -3429,14 +3435,14 @@ mod tests {
     }
 
     #[test]
-    fn the_problem_and_family_history_schemas_match_the_types() {
+    fn the_problem_and_relative_history_schemas_match_the_types() {
         use crate::coding::Coding;
         use crate::controllers::entries::{
             CreateRequest, EntriesAsAt, EntryList, UpdateRequest, VersionList,
         };
         use crate::entries_store::{Stored, StoredAt};
-        use crate::family_history as family;
         use crate::problem;
+        use crate::relative_history as relative;
         fn check<R: crate::entries_store::Entry>(record: R, name: &str, stored: &str, list: &str) {
             let schema = patient_schemas();
             let value = serde_json::to_value(&record).unwrap();
@@ -3528,19 +3534,23 @@ mod tests {
             "Problem",
         );
         check(
-            family::FamilyHistoryRecord {
-                relationship: family::Relationship::Sister,
+            relative::RelativeHistoryRecord {
+                genetic: relative::GeneticLink::GeneticParent,
+                line: Some(relative::Line::Maternal),
+                gestational: Some(relative::Gestational::Yes),
+                environment: relative::Environment::Childhood,
+                sex: Some(relative::Sex::Female),
                 member: Some(1),
                 condition: "c".into(),
                 coding: Some(coding),
-                presence: family::Presence::Present,
+                presence: relative::Presence::Present,
                 onset_age: Some(40),
-                source: family::Source::Patient,
-                status: family::Status::Recorded,
+                source: relative::Source::Patient,
+                status: relative::Status::Recorded,
             },
-            "FamilyHistoryRecord",
-            "StoredFamilyHistory",
-            "FamilyHistory",
+            "RelativeHistoryRecord",
+            "StoredRelativeHistory",
+            "RelativeHistory",
         );
         // The words are the ones serde writes, and the limits are the rules' own.
         let schema = patient_schemas();
@@ -3568,16 +3578,16 @@ mod tests {
             problem::SITE_LIMIT
         );
         assert_eq!(
-            limit("FamilyHistoryRecord", "condition", "maxLength"),
-            family::CONDITION_LIMIT
+            limit("RelativeHistoryRecord", "condition", "maxLength"),
+            relative::CONDITION_LIMIT
         );
         assert_eq!(
-            limit("FamilyHistoryRecord", "onset_age", "maximum"),
-            family::AGE_LIMIT
+            limit("RelativeHistoryRecord", "onset_age", "maximum"),
+            relative::AGE_LIMIT
         );
         assert_eq!(
-            limit("FamilyHistoryRecord", "member", "maximum"),
-            family::MEMBER_LIMIT
+            limit("RelativeHistoryRecord", "member", "maximum"),
+            relative::MEMBER_LIMIT
         );
         assert_eq!(
             limit("CreateProblemRecord", "reason", "maxLength"),
@@ -3591,7 +3601,7 @@ mod tests {
         for path in [
             "/api/patients/{id}/allergies/as-at",
             "/api/patients/{id}/problems/as-at",
-            "/api/patients/{id}/family-history/as-at",
+            "/api/patients/{id}/relative-history/as-at",
         ] {
             let get = &doc["paths"][path]["get"];
             let time = get["parameters"]

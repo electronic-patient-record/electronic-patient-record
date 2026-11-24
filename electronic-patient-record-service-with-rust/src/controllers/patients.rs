@@ -7,13 +7,13 @@ use super::common::{
 use crate::api_error::ApiError;
 use crate::audit::{self, Action, AuditError, Chain, Event};
 use crate::auth::Agent;
-use crate::family_history::FamilyHistoryRecord;
 use crate::links;
 use crate::patients_store::{self as store, Search, StoreError};
 use crate::policy::{self, Consent, Purpose, Resource, Subject};
 use crate::pool::Db;
 use crate::pool::Pool;
 use crate::problem::ProblemRecord;
+use crate::relative_history::RelativeHistoryRecord;
 use axa::extract::{Json, Path, Query};
 use axa::prelude::*;
 use axum::{
@@ -688,24 +688,24 @@ pub fn routes() -> Routes {
             get(super::entries::versions::<ProblemRecord>),
         )
         .add(
-            "/{id}/family-history",
-            get(super::entries::list::<FamilyHistoryRecord>),
+            "/{id}/relative-history",
+            get(super::entries::list::<RelativeHistoryRecord>),
         )
         .add(
-            "/{id}/family-history",
-            post(super::entries::create::<FamilyHistoryRecord>),
+            "/{id}/relative-history",
+            post(super::entries::create::<RelativeHistoryRecord>),
         )
         .add(
-            "/{id}/family-history/as-at",
-            get(super::entries::as_at::<FamilyHistoryRecord>),
+            "/{id}/relative-history/as-at",
+            get(super::entries::as_at::<RelativeHistoryRecord>),
         )
         .add(
-            "/{id}/family-history/{entry_id}",
-            put(super::entries::update::<FamilyHistoryRecord>),
+            "/{id}/relative-history/{entry_id}",
+            put(super::entries::update::<RelativeHistoryRecord>),
         )
         .add(
-            "/{id}/family-history/{entry_id}/versions",
-            get(super::entries::versions::<FamilyHistoryRecord>),
+            "/{id}/relative-history/{entry_id}/versions",
+            get(super::entries::versions::<RelativeHistoryRecord>),
         )
         .add("/{id}/referrals", get(super::referrals::list))
         .add("/{id}/referrals", post(super::referrals::create))

@@ -164,9 +164,9 @@ pub enum Resource {
     Encounter,
     /// FHIR `Condition`.
     Condition,
-    /// FHIR `FamilyMemberHistory` (EH-3, `entries_store.rs`). Separate from `Condition`, because an entry is about a
+    /// What is recorded about conditions in the patient's relatives (EH-3, `entries_store.rs`); FHIR `FamilyMemberHistory`. Separate from `Condition`, because an entry is about a
     /// relative: it is never read as the patient's own problem, and fewer roles read it.
-    FamilyMemberHistory,
+    RelativeHistory,
     /// FHIR `Observation`.
     Observation,
     /// A laboratory or imaging result and its sign-off (`results_store.rs`, OR-4 first slice, WL-1).
@@ -243,7 +243,7 @@ impl Resource {
         Resource::PatientIdentity,
         Resource::Encounter,
         Resource::Condition,
-        Resource::FamilyMemberHistory,
+        Resource::RelativeHistory,
         Resource::Observation,
         Resource::DiagnosticReport,
         Resource::QuestionnaireResponse,
@@ -278,7 +278,7 @@ impl Resource {
             Resource::PatientIdentity => "PatientIdentity",
             Resource::Encounter => "Encounter",
             Resource::Condition => "Condition",
-            Resource::FamilyMemberHistory => "FamilyMemberHistory",
+            Resource::RelativeHistory => "RelativeHistory",
             Resource::Observation => "Observation",
             Resource::DiagnosticReport => "DiagnosticReport",
             Resource::QuestionnaireResponse => "QuestionnaireResponse",
@@ -678,11 +678,10 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         Adjustment as Adjust, AllergyIntolerance as Allergy, Amendment, ApiToken as Tokens,
         AuditLog, BreakGlass as Glass, CareRelationship as Rel, Condition, Consent as Cons,
         DeathAssertion as Death, DeathReports as Deaths, DiagnosticReport as Results, Document,
-        Encounter, FamilyMemberHistory as Family, FeedQueue as Queue, Hazard,
-        MedicationRequest as Meds, Observation, OverdueReviews as Overdue,
-        OwnWatchList as OwnWatch, PatientIdentity as Identity, PatientLink as Link,
-        QuestionnaireResponse as Assess, Referral, ReferralQueue as RefQueue,
-        ReferralWorklist as Worklist, Tasks, WatchList as Watch,
+        Encounter, FeedQueue as Queue, Hazard, MedicationRequest as Meds, Observation,
+        OverdueReviews as Overdue, OwnWatchList as OwnWatch, PatientIdentity as Identity,
+        PatientLink as Link, QuestionnaireResponse as Assess, Referral, ReferralQueue as RefQueue,
+        ReferralWorklist as Worklist, RelativeHistory as Relatives, Tasks, WatchList as Watch,
     };
     match (role, resource) {
         // Clinicians: full clinical work, and register or correct identity.
@@ -691,11 +690,11 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
             &[Read, Search, Create, Update, Eie]
         }
         (Role::Clinician, Cons) => &[Read],
-        // Family history (EH-3, unreviewed): those who take a history record it; only a clinician retracts an entry.
+        // Relative history (EH-3, unreviewed): those who take a history record it; only a clinician retracts an entry.
         // A pharmacist does not need it, and a patient or proxy reads none until it is decided what may be shown of
         // facts about relatives.
-        (Role::Clinician, Family) => &[Read, Search, Create, Update, Eie],
-        (Role::Nurse | Role::AlliedHealth, Family) => &[Read, Search, Create, Update],
+        (Role::Clinician, Relatives) => &[Read, Search, Create, Update, Eie],
+        (Role::Nurse | Role::AlliedHealth, Relatives) => &[Read, Search, Create, Update],
         // Results (OR-4 first slice, WL-1, unreviewed): a clinician files, corrects and signs off (a
         // sign-off is an `Update`); a nurse, pharmacist or allied professional reads. No feed files them
         // yet (an integration has no care relationship), and a patient or proxy reads none until release

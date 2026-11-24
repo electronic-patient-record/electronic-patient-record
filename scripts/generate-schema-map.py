@@ -77,6 +77,8 @@ def generate():
         # A table a later migration drops is no longer in the schema.
         for m in re.finditer(r"DROP TABLE (?:IF EXISTS )?([a-z_][a-z0-9_]*)", re.sub(r"--[^\n]*", "", text)):
             tables.pop(m.group(1), None)
+        for m in re.finditer(r"DROP VIEW (?:IF EXISTS )?([a-z_][a-z0-9_]*)", re.sub(r"--[^\n]*", "", text)):
+            views.pop(m.group(1), None)
         for m in re.finditer(r"CREATE (?:OR REPLACE )?VIEW ([a-z_][a-z0-9_]*)", text):
             views.setdefault(m.group(1), [])
             if migration not in views[m.group(1)]:

@@ -204,7 +204,7 @@ async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_r
         })
         .await;
 
-        // The problem list and family history: record, then change.
+        // The problem list and relative history: record, then change.
         for (path, id_name, record) in [
             (
                 "problems",
@@ -212,9 +212,9 @@ async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_r
                 json!({ "title": "Asthma", "certainty": "confirmed", "status": "active" }),
             ),
             (
-                "family-history",
+                "relative-history",
                 "entry_id",
-                json!({ "relationship": "mother", "condition": "Asthma", "presence": "present",
+                json!({ "genetic": "full-sibling", "environment": "childhood", "condition": "Asthma", "presence": "present",
                         "source": "patient", "status": "recorded" }),
             ),
         ] {

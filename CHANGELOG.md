@@ -2,6 +2,15 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-24 - Relative history: three links asked apart, and no exception to the guard (EH-3, OQ-EH5)
+
+- **Clinical risk:** a relative who shares no genes can no longer be read as inherited risk. H-067 rewritten (still `open`, my scores): it now names the risk that an entry reveals an adoption, a donor, a surrogate or a parentage.
+- **Changed, on the maintainer's instruction:** the list of relatives became three questions: the genetic link (with its side), the gestational link, and the shared environment, none guessed from another; plus an optional sex at birth. "Family history" is now **relative history** in every path, resource, schema, table and module. The routes of the entry below (`/family-history`) are gone; they were a few hours old and unreleased.
+- **Guard:** `tests/grief_census.rs` is again exactly as it was, with no exception; `tests/relative_history_census.rs` (3 tests) extends the refusal of the word to every path, policy resource and schema name. The entry below says the guard was changed: no longer.
+- **Migration 43** replaces the table of migration 42 and refuses to run if it holds any entry, so nothing is removed. A development database with an old entry must be made again. `generate-schema-map.py` now reads `DROP VIEW`.
+- **Verified:** fmt, clippy, the normal pass (114 integration, 344 unit, 237 domain) and the database pass (228) on a fresh Postgres 18; migration 43 by hand on a database with an entry (refused, the row kept) and on an empty one.
+- **Not done / not verified:** no automated test of migration 43's refusal; no clinical geneticist has read the links; no code system was looked up; exposures on the patient's own record (EH-17) are not built; the gestational rules for mitochondrial donation and transgender parents were not worked through beyond reading `line` as egg or sperm.
+
 ## 2026-11-24 - Audit rows say the kind of a refusal, never its words (EH-16)
 
 - **Clinical risk:** none to care; a privacy fix. The words of a refusal can quote what was sent.

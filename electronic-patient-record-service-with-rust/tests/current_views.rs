@@ -40,8 +40,8 @@ const VIEWS: [(&str, &str, &str, &str); 9] = [
         "patient_id",
     ),
     (
-        "family_history_current",
-        "family_history_versions",
+        "relative_history_current",
+        "relative_history_versions",
         "entry_id",
         "patient_id",
     ),

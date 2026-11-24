@@ -1,4 +1,4 @@
-//! Problem list routes (EH-1), family history routes (EH-3), and the reads **as at a time** (EH-2). One set of handlers
+//! Problem list routes (EH-1), relative history routes (EH-3), and the reads **as at a time** (EH-2). One set of handlers
 //! serves both kinds of entry ([`Entry`]); the route decides which.
 //!
 //! - `GET  /api/patients/{id}/problems`: every problem in every status, oldest first, with what the list amounts to.
@@ -7,7 +7,7 @@
 //! - `PUT  /api/patients/{id}/problems/{problem_id}` `{record, expected_version, reason}`: change it, end it, or mark
 //!   it entered in error. A reason is required.
 //! - `GET  /api/patients/{id}/problems/{problem_id}/versions`: every version, oldest first.
-//! - the same five under `/api/patients/{id}/family-history`.
+//! - the same five under `/api/patients/{id}/relative-history`.
 //!
 //! This is clinical content, so the record-level decision applies in full: the role, a care relationship (or a
 //! break-the-glass grant, for a read), the purpose of use and the patient's consent. **It applies as it stands today**:

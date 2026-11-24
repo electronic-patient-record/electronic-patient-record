@@ -1,4 +1,4 @@
-//! DB-gated (EH-1, EH-2, EH-3): the problem list and family history are append-only versions, a cause stays sound, and
+//! DB-gated (EH-1, EH-2, EH-3): the problem list and relative history are append-only versions, a cause stays sound, and
 //! a read as at a time gives what the record held then, following the merges that stood then.
 //!
 //! ```text
@@ -9,10 +9,10 @@
 use electronic_patient_record::allergies::{self, AllergyRecord, Summary};
 use electronic_patient_record::clock;
 use electronic_patient_record::entries_store::{self as store, Change, Stored};
-use electronic_patient_record::family_history::FamilyHistoryRecord;
 use electronic_patient_record::links;
 use electronic_patient_record::patients_store::{self, StoreError};
 use electronic_patient_record::problem::{Certainty, ProblemRecord, Status};
+use electronic_patient_record::relative_history::RelativeHistoryRecord;
 use electronic_patient_record_matcher::{HumanName, Patient};
 use sqlx::{AssertSqlSafe, PgPool};
 
@@ -169,13 +169,13 @@ async fn the_database_refuses_to_change_or_remove_a_version() {
     let db = db().await;
     let p = patient(&db).await;
     add(&db, &p, &problem("Asthma", Status::Active)).await;
-    let entry: FamilyHistoryRecord = serde_json::from_value(serde_json::json!({
-        "relationship": "sister", "member": 1, "condition": "Asthma", "presence": "present",
+    let entry: RelativeHistoryRecord = serde_json::from_value(serde_json::json!({
+        "genetic": "full-sibling", "environment": "childhood", "member": 1, "condition": "Asthma", "presence": "present",
         "source": "patient", "status": "recorded"
     }))
     .unwrap();
     store::create(&db, &p, "dr-1", None, &entry).await.unwrap();
-    for table in ["problem_versions", "family_history_versions"] {
+    for table in ["problem_versions", "relative_history_versions"] {
         for sql in [
             format!("UPDATE {table} SET author = 'x' WHERE patient_id = '{p}'"),
             format!("DELETE FROM {table} WHERE patient_id = '{p}'"),

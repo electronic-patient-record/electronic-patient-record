@@ -2313,13 +2313,13 @@ Asked for on 2026-11-24: research the openEHR repository, assess and advise on i
 EHR capabilities, add them to the plan, tasks and spec, and implement. (The path first given, `~/git/open-ehr/open-ehr`,
 does not exist; the maintainer corrected it to `~/git/openehr-rust/openehr-rust`.) Spec:
 [`spec/lessons/openehr-rust/index.md`](spec/lessons/openehr-rust/index.md), with what was read and what was not. Tasks
-EH-1 to EH-16; open questions OQ-EH1 to OQ-EH5; hazards H-066 to H-068.
+EH-1 to EH-17; open questions OQ-EH1 to OQ-EH5; hazards H-066 to H-068.
 
 **Assessment.** The dependency question is as it was on 2026-10-21: no. The useful part is the model of what a record
-does. Against it this project had a sound store and little to put in it: no problem list, no family history, and
+does. Against it this project had a sound store and little to put in it: no problem list, no relative history, and
 append-only versions that no route could read as at a past time.
 
-**Built, service only:** the problem list (EH-1), reads as at a time (EH-2) and family history (EH-3). Chosen because the
+**Built, service only:** the problem list (EH-1), reads as at a time (EH-2) and relative history (EH-3). Chosen because the
 first is the centre of any health record and the rest of RC-5 leans on it, the second costs little since the data was
 there, and the third answers CF-4 in part. **Not built:** a screen for any of them, FHIR, medicines and immunisations.
 
@@ -2328,3 +2328,7 @@ and masking, which CF-2 waits for), EH-6, then EH-5 and EH-4 before orders or me
 
 **Not done.** No customer was asked which capabilities they want; the order is the author's. No clinician, geneticist or
 Clinical Safety Officer reviewed any rule.
+
+**Decided the same day (the maintainer).** Relative history asks the genetic, gestational and shared-environment links apart,
+and the guard against the word "family" continues with no exception: the feature was renamed and its table replaced
+while empty (migration 43 refuses to run if it is not).

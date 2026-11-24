@@ -109,7 +109,7 @@ Topics that span several numbered chapters and are kept whole:
 - [Other EPRs compared](epic/index.md) — public-source comparisons, one page each: [Epic](epic/index.md), [Oracle Health (Cerner)](oracle-cerner/index.md), [MEDITECH](meditech/index.md), [Nervecentre](nervecentre/index.md), [Alcidion](alcidion/index.md), [System C](system-c/index.md), [TPP SystmOne](tpp-system-one/index.md), [EMIS](emis/index.md), [Access Rio](access-rio/index.md), [Altera](altera/index.md), [InterSystems TrakCare](intersystems-trakcare/index.md), [Dedalus](dedalus/index.md) (VC, plan.md §28).
 - [Measuring clinical safety](clinical-safety/measurement.md) — measures by hazard class, what software cannot measure, the risks of measuring (SM, plan.md §29).
 - [openEHR and `openehr-rust`](lessons/openehr-rust/index.md) — what a health record does, by that model, that this one does not (EH, plan.md §40).
-- [Problem list](problem-list/index.md), [family history](family-history/index.md) and [reads as at a time](as-at/index.md) — built in the service only, unreviewed (EH-1 to EH-3).
+- [Problem list](problem-list/index.md), [relative history](relative-history/index.md) and [reads as at a time](as-at/index.md) — built in the service only, unreviewed (EH-1 to EH-3).
 - [Support groups](support-groups/index.md) and [custodial health](custodial-health/index.md) — customer feedback; nothing built (CF-1, CF-2).
 - [Maternity](maternity/index.md) — the pathway, two patients and one episode, hidden disclosures, build or integrate (MT).
 - [Manual steps](manual-steps/index.md) — how information changes when a person is in the middle (DX).

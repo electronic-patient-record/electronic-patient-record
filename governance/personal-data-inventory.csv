@@ -528,19 +528,19 @@ problem_current,author,staff-identifier,Who wrote the version,record
 problem_current,reason,free-text,Why the version was written as typed,record
 problem_current,status,none,State of the record,record
 problem_current,body,health,The problem as recorded,record
-family_history_versions,entry_id,none,Random record id,record
-family_history_versions,version,none,Version counter,record
-family_history_versions,patient_id,identifier,Links a record to the patient,record
-family_history_versions,recorded_at,none,When the version was written,record
-family_history_versions,author,staff-identifier,Who wrote the version,record
-family_history_versions,reason,free-text,Why the version was written as typed,record
-family_history_versions,status,none,State of the record,record
-family_history_versions,body,health,A finding about a relative as recorded; a relative is never named,record
-family_history_current,entry_id,none,Random record id,record
-family_history_current,version,none,Version counter,record
-family_history_current,patient_id,identifier,Links a record to the patient,record
-family_history_current,recorded_at,none,When the version was written,record
-family_history_current,author,staff-identifier,Who wrote the version,record
-family_history_current,reason,free-text,Why the version was written as typed,record
-family_history_current,status,none,State of the record,record
-family_history_current,body,health,A finding about a relative as recorded; a relative is never named,record
+relative_history_versions,entry_id,none,Random record id,record
+relative_history_versions,version,none,Version counter,record
+relative_history_versions,patient_id,identifier,Links a record to the patient,record
+relative_history_versions,recorded_at,none,When the version was written,record
+relative_history_versions,author,staff-identifier,Who wrote the version,record
+relative_history_versions,reason,free-text,Why the version was written as typed,record
+relative_history_versions,status,none,State of the record,record
+relative_history_versions,body,health,A finding about a relative as recorded; a relative is never named,record
+relative_history_current,entry_id,none,Random record id,record
+relative_history_current,version,none,Version counter,record
+relative_history_current,patient_id,identifier,Links a record to the patient,record
+relative_history_current,recorded_at,none,When the version was written,record
+relative_history_current,author,staff-identifier,Who wrote the version,record
+relative_history_current,reason,free-text,Why the version was written as typed,record
+relative_history_current,status,none,State of the record,record
+relative_history_current,body,health,A finding about a relative as recorded; a relative is never named,record

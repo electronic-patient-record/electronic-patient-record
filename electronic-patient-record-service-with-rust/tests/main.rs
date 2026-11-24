@@ -185,6 +185,8 @@ mod referral_worklist;
 mod referrals_store;
 #[path = "relationships_store.rs"]
 mod relationships_store;
+#[path = "relative_history_census.rs"]
+mod relative_history_census;
 #[path = "risk_field_census.rs"]
 mod risk_field_census;
 #[path = "route_census.rs"]

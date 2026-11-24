@@ -1,4 +1,4 @@
-//! The append-only store behind the problem list (EH-1) and family history (EH-3), and the read **as at a time** (EH-2).
+//! The append-only store behind the problem list (EH-1) and relative history (EH-3), and the read **as at a time** (EH-2).
 //! Both are the same shape (an entry with versions, each a whole record), so they share one store; what differs is an
 //! [`Entry`]: its table, its rules, and what its list amounts to.
 //!
@@ -16,7 +16,6 @@
     clippy::string_slice
 )]
 
-use crate::family_history::{self, FamilyHistoryRecord};
 use crate::ids;
 use crate::interop::terminology;
 use crate::links;
@@ -25,6 +24,7 @@ use crate::pg_time::PgTimestamp;
 use crate::policy::Resource;
 use crate::pool::Db;
 use crate::problem::{self, ProblemRecord};
+use crate::relative_history::{self, RelativeHistoryRecord};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use sqlx::postgres::PgRow;
 use sqlx::{AssertSqlSafe, PgConnection, Row};
@@ -125,19 +125,19 @@ impl Entry for ProblemRecord {
     }
 }
 
-impl Entry for FamilyHistoryRecord {
-    const STORE: &'static str = "family history";
-    const TABLE: &'static str = "family_history_versions";
-    const VIEW: &'static str = "family_history_current";
+impl Entry for RelativeHistoryRecord {
+    const STORE: &'static str = "relative history";
+    const TABLE: &'static str = "relative_history_versions";
+    const VIEW: &'static str = "relative_history_current";
     const ID: &'static str = "entry_id";
-    const RESOURCE: Resource = Resource::FamilyMemberHistory;
+    const RESOURCE: Resource = Resource::RelativeHistory;
 
     fn status(&self) -> &'static str {
         self.status.as_str()
     }
 
     fn set_status(&mut self, word: &str) -> bool {
-        let parsed = family_history::Status::parse(word);
+        let parsed = relative_history::Status::parse(word);
         if let Some(s) = parsed {
             self.status = s;
         }
@@ -145,23 +145,17 @@ impl Entry for FamilyHistoryRecord {
     }
 
     fn in_error(&self) -> bool {
-        self.status == family_history::Status::EnteredInError
+        self.status == relative_history::Status::EnteredInError
     }
 
     fn faults(&self) -> Vec<String> {
-        let mut out = family_history::validate(self);
+        let mut out = relative_history::validate(self);
         out.extend(coding_fault(self.coding.as_ref()));
         out
     }
 
-    /// `recorded` with a count, or `not-recorded`: an empty family history is unknown, never "nothing in the family".
     fn summary(all: &[Self]) -> serde_json::Value {
-        let standing = all.iter().filter(|r| !r.in_error()).count();
-        if standing == 0 {
-            serde_json::json!({ "state": "not-recorded" })
-        } else {
-            serde_json::json!({ "state": "recorded", "recorded": standing })
-        }
+        serde_json::json!(relative_history::summarise(all))
     }
 }
 
@@ -510,19 +504,21 @@ mod tests {
     }
 
     #[test]
-    fn an_empty_family_history_is_unknown() {
-        assert_eq!(FamilyHistoryRecord::summary(&[])["state"], "not-recorded");
-        let mut r: FamilyHistoryRecord = serde_json::from_value(serde_json::json!({
-            "relationship": "mother", "condition": "c", "presence": "absent",
-            "source": "patient", "status": "recorded"
+    fn the_stored_status_word_decides() {
+        let mut r: RelativeHistoryRecord = serde_json::from_value(serde_json::json!({
+            "genetic": "full-sibling", "environment": "childhood", "condition": "c",
+            "presence": "absent", "source": "patient", "status": "recorded"
         }))
         .unwrap();
         assert_eq!(
-            FamilyHistoryRecord::summary(&[r.clone()])["recorded"],
+            RelativeHistoryRecord::summary(&[r.clone()])["inherited"],
             1_i32
         );
         assert!(r.set_status("entered-in-error"));
         assert!(!r.set_status("active"));
-        assert_eq!(FamilyHistoryRecord::summary(&[r])["state"], "not-recorded");
+        assert_eq!(
+            RelativeHistoryRecord::summary(&[r])["state"],
+            "not-recorded"
+        );
     }
 }

@@ -1,5 +1,5 @@
 //! DB-gated, through the real router with login **on** (EH-1, EH-2, EH-3): who may record, read and retract a problem or
-//! a family history entry; that a patient and a proxy read none of either; that a read as at a time is decided by
+//! a relative history entry; that a patient and a proxy read none of either; that a read as at a time is decided by
 //! **today's** access; that a relative cannot be named; and that the audit trail never holds a title, a condition, a
 //! relative or a reason.
 //!
@@ -49,7 +49,7 @@ fn now() -> String {
 
 #[tokio::test]
 #[ignore = "needs Postgres: set DB_URL"]
-async fn who_may_record_read_and_retract_a_problem_or_a_family_history_entry() {
+async fn who_may_record_read_and_retract_a_problem_or_a_relative_history_entry() {
     let idp = TestIdp::start().await;
     let roles = [
         "clinical-admin",
@@ -166,16 +166,16 @@ async fn who_may_record_read_and_retract_a_problem_or_a_family_history_entry() {
                     "coding": { "system": "http://snomed.info/sct", "code": "22298006" } })
         };
         let relative = |status: &str| {
-            json!({ "relationship": "paternal-aunt", "member": 1, "condition": "SECRETcondition",
+            json!({ "genetic": "aunt-uncle", "line": "paternal", "environment": "never", "sex": "female", "member": 1, "condition": "SECRETcondition",
                     "presence": "present", "source": "patient", "status": status })
         };
         type Make<'a> = &'a dyn Fn(&str) -> Value;
         let kinds: [(&str, &str, &str, Make, StatusCode); 2] = [
             ("problems", "active", "Condition", &problem, StatusCode::OK),
             (
-                "family-history",
+                "relative-history",
                 "recorded",
-                "FamilyMemberHistory",
+                "RelativeHistory",
                 &relative,
                 StatusCode::FORBIDDEN,
             ),
@@ -280,7 +280,7 @@ async fn who_may_record_read_and_retract_a_problem_or_a_family_history_entry() {
             assert!(rows.len() > 8, "{kind}: {}", rows.len());
             for r in &rows {
                 let d: String = r.try_get::<Option<String>, _>("d").unwrap().unwrap_or_else(String::new);
-                for word in ["SECRET", "22298006", "aunt"] {
+                for word in ["SECRET", "22298006", "aunt", "paternal"] {
                     assert!(!d.contains(word), "{kind}: the audit trail holds {word}: {d}");
                 }
             }
@@ -292,7 +292,7 @@ async fn who_may_record_read_and_retract_a_problem_or_a_family_history_entry() {
         let (status, _) = call(
             "POST",
             &clinician,
-            format!("/api/patients/{pid}/family-history"),
+            format!("/api/patients/{pid}/relative-history"),
             json!({ "record": named }),
         )
         .await;
@@ -300,7 +300,7 @@ async fn who_may_record_read_and_retract_a_problem_or_a_family_history_entry() {
         let (_, text) = call(
             "GET",
             &clinician,
-            format!("/api/patients/{pid}/family-history"),
+            format!("/api/patients/{pid}/relative-history"),
             Value::Null,
         )
         .await;
