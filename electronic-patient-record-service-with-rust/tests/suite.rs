@@ -29,6 +29,8 @@ mod break_glass_store;
 mod consents_store;
 #[path = "current_views.rs"]
 mod current_views;
+#[path = "database_down_sweep.rs"]
+mod database_down_sweep;
 #[path = "db_commands.rs"]
 mod db_commands;
 #[path = "death_scenarios.rs"]

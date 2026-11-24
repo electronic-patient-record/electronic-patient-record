@@ -33,7 +33,11 @@ pub(super) fn purpose_of(headers: &HeaderMap) -> Result<Purpose, ApiError> {
 
 /// The answer when an access could not be audited: the real error is logged and the caller gets a plain 500, because
 /// the service never answers an access it could not record.
-pub(super) fn audit_failed(e: &AuditError) -> ApiError {
+pub(crate) fn audit_failed(e: &AuditError) -> ApiError {
+    if e.unavailable() {
+        tracing::warn!(error = %e, "refusing to answer: the access could not be audited, the database is unavailable");
+        return ApiError::from(&StoreError::Unavailable(e.to_string()));
+    }
     tracing::error!(error = %e, "refusing to answer: the access could not be audited");
     ApiError::internal()
 }
@@ -282,18 +286,28 @@ pub(super) async fn authorize_scoped(
     Err(refusal)
 }
 
-/// A connection that could not be had, as the same 500 as any database failure.
+/// A database failure at the start of a request: 503 when the database cannot serve for now (the rule the stores
+/// use, [`crate::store::unavailable`]), a plain 500 for anything else.
+fn db_failed(e: &sqlx::Error, what: &str) -> ApiError {
+    if crate::store::unavailable(e) {
+        tracing::warn!(error = %e, "{what}: the database is unavailable");
+        ApiError::from(&StoreError::Unavailable(format!("{what}: {e}")))
+    } else {
+        tracing::error!(error = %e, "{what}");
+        ApiError::internal()
+    }
+}
+
+/// A connection that could not be had: 503 if the database is unavailable, else the same 500 as any database failure.
 pub(super) fn acquire_failed(e: sqlx::Error) -> ApiError {
-    tracing::error!(error = %e, "could not get a database connection");
-    ApiError::internal()
+    db_failed(&e, "could not get a database connection")
 }
 
 /// Start the transaction a write and its audit row share (see [`audit::append`]).
 pub(super) async fn begin(db: &PgPool) -> Result<sqlx::Transaction<'static, Postgres>, ApiError> {
-    db.begin().await.map_err(|e| {
-        tracing::error!(error = %e, "could not start a transaction");
-        ApiError::internal()
-    })
+    db.begin()
+        .await
+        .map_err(|e| db_failed(&e, "could not start a transaction"))
 }
 
 /// Commit it. A failure means the write did not happen, so the request fails.

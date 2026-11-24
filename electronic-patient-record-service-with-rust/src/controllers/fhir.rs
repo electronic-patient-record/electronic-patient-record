@@ -594,6 +594,14 @@ async fn search_audit_events(
             fhir(StatusCode::OK, &bundle, None)
         }
         Err(Ok(message)) => outcome(StatusCode::BAD_REQUEST, "invalid", &message),
+        Err(Err(e)) if e.unavailable() => {
+            tracing::warn!(error = %e, "audit search: the database is unavailable");
+            outcome(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "transient",
+                "the service is temporarily unavailable; try again",
+            )
+        }
         Err(Err(e)) => {
             tracing::error!(error = %e, "audit search failed");
             outcome(

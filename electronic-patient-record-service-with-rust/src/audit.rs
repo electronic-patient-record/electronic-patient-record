@@ -310,7 +310,16 @@ pub fn chain() -> std::sync::Arc<Chain> {
 
 /// Why an audit operation failed.
 #[derive(Debug)]
-pub struct AuditError(pub String);
+pub struct AuditError(pub String, pub bool);
+
+impl AuditError {
+    /// Whether the database could not serve for now (the rule `store::unavailable` states), so the caller answers 503
+    /// rather than a plain 500.
+    #[must_use]
+    pub fn unavailable(&self) -> bool {
+        self.1
+    }
+}
 
 impl std::fmt::Display for AuditError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -330,8 +339,12 @@ fn bump(counter: &mut usize) -> Result<(), AuditError> {
     Ok(())
 }
 
-fn err(e: impl std::fmt::Display) -> AuditError {
-    AuditError(e.to_string())
+fn err<E: std::fmt::Display + 'static>(e: E) -> AuditError {
+    let any: &dyn std::any::Any = &e;
+    let unavailable = any
+        .downcast_ref::<sqlx::Error>()
+        .is_some_and(crate::store::unavailable);
+    AuditError(e.to_string(), unavailable)
 }
 
 /// Who the current request's caller is, for the audit trail: their roles and organisations.
@@ -598,7 +611,7 @@ async fn append_row(
     .fetch_optional(&mut *tx)
     .await
     .map_err(err)?
-    .ok_or_else(|| AuditError("no timestamp".into()))?
+    .ok_or_else(|| AuditError("no timestamp".into(), false))?
     .try_get("ts")
     .map_err(err)?;
     let digest = chain.digest(prev.as_deref(), &at, event);
@@ -625,7 +638,7 @@ async fn append_row(
     .fetch_optional(&mut *tx)
     .await
     .map_err(err)?
-    .ok_or_else(|| AuditError("insert returned no row".into()))?;
+    .ok_or_else(|| AuditError("insert returned no row".into(), false))?;
     let id: i64 = row.try_get("id").map_err(err)?;
     tx.commit().await.map_err(err)?;
     Ok(id)

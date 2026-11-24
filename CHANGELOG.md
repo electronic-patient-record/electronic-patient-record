@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-24 - With the database gone, the audit routes and `/api/feed/health` answer 503, not 500 (QA-15)
+
+- **Clinical risk:** none to what a clinician sees: only the status of an answer when the database cannot serve changes, from a plain 500 to the 503 `unavailable` every store already gave, so a client that retries on 503 now retries these too. Nothing is answered unaudited either way. No hazard-log row changed.
+- **Found by:** a new sweep, `tests/database_down_sweep.rs` (a module of `suite.rs`, database-gated): it closes the pool, then calls every path and method in the served `openapi.json`; none may answer 5xx other than 503, and at least 10 must answer 503.
+- **Changed:** `controllers/common.rs` `acquire_failed`, `begin` and `audit_failed` answer 503 when the error is one `store::unavailable` names (they were 500). `AuditError` now carries that flag (set in `audit::err` by the same rule), and `GET /api/audit`, `/api/audit/export`, `/api/audit/verify` use `audit_failed`; `/fhir/R4/AuditEvent` answers 503 with an `OperationOutcome` coded `transient`.
+- **Verified:** clippy and the arithmetic gate clean; all unit tests and all database tests pass (two passes, fresh database).
+- **Not done / not verified:** the sweep sends an empty JSON body, so a write route that rejects it with 422 before it touches the database is not tested for a lost database; each needs a valid body. `/api/audit` and its siblings may now log a warning, not an error, when the database is down: no alert was changed. Coverage was not re-measured.
+
 ## 2026-11-24 - A cut-short HL7 header reads as nothing (QA-15)
 
 - **Clinical risk:** none: a test of existing behaviour.

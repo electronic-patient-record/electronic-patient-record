@@ -227,10 +227,7 @@ async fn search(
         Err(Ok(message)) => {
             ApiError::new(StatusCode::BAD_REQUEST, message.to_string()).into_response()
         }
-        Err(Err(e)) => {
-            tracing::error!(error = %e, "audit search failed");
-            ApiError::internal().into_response()
-        }
+        Err(Err(e)) => super::common::audit_failed(&e).into_response(),
     }
 }
 
@@ -350,8 +347,7 @@ async fn export(
             return ApiError::new(StatusCode::BAD_REQUEST, m.to_string()).into_response();
         }
         Err(audit::SearchError::Audit(e)) => {
-            tracing::error!(error = %e, "audit export failed");
-            return ApiError::internal().into_response();
+            return super::common::audit_failed(&e).into_response();
         }
     };
     let page = usize::try_from(audit::EXPORT_LIMIT).unwrap_or(usize::MAX);
@@ -382,8 +378,7 @@ async fn export(
         "export": criteria.used(), "format": format, "rows": rows.len(), "truncated": more,
     }));
     if let Err(e) = audit::append(&ctx.pool(), &audit::chain(), &event).await {
-        tracing::error!(error = %e, "audit export could not be audited");
-        return ApiError::internal().into_response();
+        return super::common::audit_failed(&e).into_response();
     }
     let mut response = (StatusCode::OK, body).into_response();
     let h = response.headers_mut();
@@ -445,10 +440,7 @@ async fn verify(
     }
     match verify_audited(&ctx.pool(), &audit::chain(), &agent, checkpoint.as_ref()).await {
         Ok((status, body)) => (status, axum::Json(body)).into_response(),
-        Err(e) => {
-            tracing::error!(error = %e, "audit verification failed");
-            ApiError::internal().into_response()
-        }
+        Err(e) => super::common::audit_failed(&e).into_response(),
     }
 }
 
