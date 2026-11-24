@@ -1,5 +1,5 @@
 //! DB-gated, through the real router with login **on** (PX-2, H-048): the list across patients of needs whose
-//! date to check has passed. One test, because the token guard is configured once per process.
+//! date to check has passed. The app is booted with its own settings, so this file runs inside `suite.rs`.
 //!
 //! Covered: one overdue need shows and one in time does not, oldest date first; the item is a pointer with no
 //! code, note or reason; the count; the list names the owning role; only the on-duty clinician reads it (403 for
@@ -10,11 +10,11 @@
 //!
 //! ```text
 //! DB_URL=postgres://postgres:postgres@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test http_overdue_reviews -- --ignored --test-threads=1
+//!   cargo test --test suite http_overdue_reviews:: -- --ignored --test-threads=1
 //! ```
 
 use authentication_verifier::test_idp::{AUDIENCE, REALM, TestIdp};
-use axa_test::prelude::request;
+use axa_test::prelude::request_with;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use electronic_patient_record::app::App;
 use electronic_patient_record::pool::Pool;
@@ -53,14 +53,17 @@ async fn the_on_duty_clinician_alone_sees_what_is_overdue() {
         .iter()
         .map(|r| ((*r).to_string(), json!({ "role": [r] })))
         .collect();
-    // SAFETY: set before the app boots and before any other thread reads them; one test per process.
-    unsafe {
-        std::env::set_var("EPR_REQUIRE_AUTH", "true");
-        std::env::set_var("EPR_KEYCLOAK_URL", &idp.base_url);
-        std::env::set_var("EPR_KEYCLOAK_REALM", REALM);
-        std::env::set_var("EPR_KEYCLOAK_AUDIENCES", AUDIENCE);
-        std::env::set_var("EPR_KEYCLOAK_ROLE_MAP", map.to_string());
-    }
+    // This app's own settings: no process environment is written, so the file can join `suite.rs`.
+    let db_url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
+    let role_map = map.to_string();
+    let settings: Vec<(&str, &str)> = vec![
+        ("DB_URL", &db_url),
+        ("EPR_REQUIRE_AUTH", "true"),
+        ("EPR_KEYCLOAK_URL", &idp.base_url),
+        ("EPR_KEYCLOAK_REALM", REALM),
+        ("EPR_KEYCLOAK_AUDIENCES", AUDIENCE),
+        ("EPR_KEYCLOAK_ROLE_MAP", &role_map),
+    ];
     let token = |role: &str, n: u8| {
         idp.token(|c| {
             c["realm_access"] = json!({ "roles": [role] });
@@ -78,7 +81,7 @@ async fn the_on_duty_clinician_alone_sees_what_is_overdue() {
         bearer(&token("auditor", 15)),
     ];
 
-    request::<App, _, _>(|server, ctx| async move {
+    request_with::<App, _, _>(&settings, |server, ctx| async move {
         // A birth date of its own, so that a repeat run does not read as a likely duplicate.
         let n = nanos();
         let family = format!("overduereviews{n}");

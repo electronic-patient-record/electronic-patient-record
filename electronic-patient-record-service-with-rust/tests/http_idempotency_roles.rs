@@ -10,11 +10,11 @@
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test http_idempotency_roles -- --ignored --test-threads=1
+//!   cargo test --test suite http_idempotency_roles:: -- --ignored --test-threads=1
 //! ```
 
 use authentication_verifier::test_idp::{AUDIENCE, REALM, TestIdp};
-use axa_test::prelude::request;
+use axa_test::prelude::request_with;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use electronic_patient_record::app::App;
 use electronic_patient_record::pool::Pool;
@@ -47,14 +47,17 @@ fn unique(label: &str) -> String {
 async fn a_key_belongs_to_the_subject_that_sent_it() {
     let idp = TestIdp::start().await;
     let map: Value = json!({ "clinician": { "role": ["clinician"] } });
-    // SAFETY: set before the app boots and before any other thread reads them; one test per process.
-    unsafe {
-        std::env::set_var("EPR_REQUIRE_AUTH", "true");
-        std::env::set_var("EPR_KEYCLOAK_URL", &idp.base_url);
-        std::env::set_var("EPR_KEYCLOAK_REALM", REALM);
-        std::env::set_var("EPR_KEYCLOAK_AUDIENCES", AUDIENCE);
-        std::env::set_var("EPR_KEYCLOAK_ROLE_MAP", map.to_string());
-    }
+    // This app's own settings: no process environment is written, so the file can join `suite.rs`.
+    let db_url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
+    let role_map = map.to_string();
+    let settings: Vec<(&str, &str)> = vec![
+        ("DB_URL", &db_url),
+        ("EPR_REQUIRE_AUTH", "true"),
+        ("EPR_KEYCLOAK_URL", &idp.base_url),
+        ("EPR_KEYCLOAK_REALM", REALM),
+        ("EPR_KEYCLOAK_AUDIENCES", AUDIENCE),
+        ("EPR_KEYCLOAK_ROLE_MAP", &role_map),
+    ];
     let sub_a = "0c4f1e2a-0000-4000-8000-0000000000e1";
     let sub_b = "0c4f1e2a-0000-4000-8000-0000000000e2";
     let token = |sub: &str| {
@@ -65,7 +68,7 @@ async fn a_key_belongs_to_the_subject_that_sent_it() {
     };
     let (a, b) = (token(sub_a), token(sub_b));
 
-    request::<App, _, _>(|server, ctx| async move {
+    request_with::<App, _, _>(&settings, |server, ctx| async move {
         let (ah, av) = bearer(&a);
         let (bh, bv) = bearer(&b);
         let key = HeaderName::from_static("idempotency-key");

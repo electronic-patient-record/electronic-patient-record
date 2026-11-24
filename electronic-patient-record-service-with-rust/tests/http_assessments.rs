@@ -7,11 +7,11 @@
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test http_assessments -- --ignored --test-threads=1
+//!   cargo test --test suite http_assessments:: -- --ignored --test-threads=1
 //! ```
 
 use authentication_verifier::test_idp::{AUDIENCE, REALM, TestIdp};
-use axa_test::prelude::request;
+use axa_test::prelude::request_with;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use electronic_patient_record::app::App;
 use electronic_patient_record::pool::Pool;
@@ -52,14 +52,17 @@ async fn answers_keep_the_form_version_they_were_given_under() {
         .iter()
         .map(|r| ((*r).to_string(), json!({ "role": [r] })))
         .collect();
-    // SAFETY: set before the app boots and before any other thread reads them; one test per process.
-    unsafe {
-        std::env::set_var("EPR_REQUIRE_AUTH", "true");
-        std::env::set_var("EPR_KEYCLOAK_URL", &idp.base_url);
-        std::env::set_var("EPR_KEYCLOAK_REALM", REALM);
-        std::env::set_var("EPR_KEYCLOAK_AUDIENCES", AUDIENCE);
-        std::env::set_var("EPR_KEYCLOAK_ROLE_MAP", map.to_string());
-    }
+    // This app's own settings: no process environment is written, so the file can join `suite.rs`.
+    let db_url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
+    let role_map = map.to_string();
+    let settings: Vec<(&str, &str)> = vec![
+        ("DB_URL", &db_url),
+        ("EPR_REQUIRE_AUTH", "true"),
+        ("EPR_KEYCLOAK_URL", &idp.base_url),
+        ("EPR_KEYCLOAK_REALM", REALM),
+        ("EPR_KEYCLOAK_AUDIENCES", AUDIENCE),
+        ("EPR_KEYCLOAK_ROLE_MAP", &role_map),
+    ];
     let token = |role: &str, sub: &str| {
         idp.token(|c| {
             c["realm_access"] = json!({ "roles": [role] });
@@ -71,7 +74,7 @@ async fn answers_keep_the_form_version_they_were_given_under() {
     let nurse = token("nurse", NURSE);
     let receptionist = token("receptionist", "0c4f1e2a-0000-4000-8000-0000000000c8");
 
-    request::<App, _, _>(|server, ctx| async move {
+    request_with::<App, _, _>(&settings, |server, ctx| async move {
         let (ah, av) = bearer(&admin);
         let (nh, nv) = bearer(&nurse);
         let (rh, rv) = bearer(&receptionist);

@@ -164,64 +164,16 @@ name = "fhir_validator"
 path = "tests/fhir_validator.rs"
 
 [[test]]
-name = "http_adjustments"
-path = "tests/http_adjustments.rs"
-
-[[test]]
-name = "http_amendments"
-path = "tests/http_amendments.rs"
-
-[[test]]
-name = "http_assessments"
-path = "tests/http_assessments.rs"
-
-[[test]]
 name = "http_audit_refusal"
 path = "tests/http_audit_refusal.rs"
-
-[[test]]
-name = "http_audit_refusal_roles"
-path = "tests/http_audit_refusal_roles.rs"
-
-[[test]]
-name = "http_api_tokens"
-path = "tests/http_api_tokens.rs"
-
-[[test]]
-name = "http_tasks"
-path = "tests/http_tasks.rs"
 
 [[test]]
 name = "http_conflicts"
 path = "tests/http_conflicts.rs"
 
 [[test]]
-name = "http_death_reports"
-path = "tests/http_death_reports.rs"
-
-[[test]]
-name = "http_deaths"
-path = "tests/http_deaths.rs"
-
-[[test]]
-name = "http_hazards"
-path = "tests/http_hazards.rs"
-
-[[test]]
 name = "http_idempotency"
 path = "tests/http_idempotency.rs"
-
-[[test]]
-name = "http_idempotency_roles"
-path = "tests/http_idempotency_roles.rs"
-
-[[test]]
-name = "http_observations"
-path = "tests/http_observations.rs"
-
-[[test]]
-name = "http_overdue_reviews"
-path = "tests/http_overdue_reviews.rs"
 
 [[test]]
 name = "http_patients"
@@ -232,46 +184,10 @@ name = "http_permission_basis"
 path = "tests/http_permission_basis.rs"
 
 [[test]]
-name = "http_proxy_scopes"
-path = "tests/http_proxy_scopes.rs"
-
-[[test]]
-name = "http_referral_queue"
-path = "tests/http_referral_queue.rs"
-
-[[test]]
-name = "http_referral_worklist"
-path = "tests/http_referral_worklist.rs"
-
-[[test]]
-name = "http_referrals"
-path = "tests/http_referrals.rs"
-
-[[test]]
-name = "http_results"
-path = "tests/http_results.rs"
-
-[[test]]
-name = "http_roles"
-path = "tests/http_roles.rs"
-
-[[test]]
-name = "http_suspicions"
-path = "tests/http_suspicions.rs"
-
-[[test]]
-name = "http_watch_list"
-path = "tests/http_watch_list.rs"
-
-[[test]]
 name = "mllp_feed"
 path = "tests/mllp_feed.rs"
 
 [[test]]
 name = "openapi_responses"
 path = "tests/openapi_responses.rs"
-
-[[test]]
-name = "openapi_responses_roles"
-path = "tests/openapi_responses_roles.rs"
 

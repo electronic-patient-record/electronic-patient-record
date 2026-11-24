@@ -2,6 +2,15 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-24 - 21 more login-on test programs fold into `suite.rs` (QA-16 stage 3)
+
+- **Clinical risk:** none: tests only.
+- **Changed:** 21 test files (`http_adjustments`, `http_amendments`, `http_api_tokens`, `http_assessments`, `http_audit_refusal_roles`, `http_death_reports`, `http_deaths`, `http_hazards`, `http_idempotency_roles`, `http_observations`, `http_overdue_reviews`, `http_proxy_scopes`, `http_referral_queue`, `http_referral_worklist`, `http_referrals`, `http_results`, `http_roles`, `http_suspicions`, `http_tasks`, `http_watch_list`, `openapi_responses_roles`) boot with `request_with` and their own settings instead of `set_var`, and are modules of `suite.rs`. 16 test programs remain in `Cargo.toml` (it was 44).
+- **Found:** `http_referral_queue` passed its "at least 10 audit rows" check only because `chaos_api`, which runs earlier, left rows behind; on a fresh database it makes 8. It now counts the rows it adds (at least 8). No test was weakened otherwise.
+- **Measured:** after a one-line edit to `src/lib.rs`, rebuilding every test program took 28.7 s with the compile-cache wrapper off (8 s with it); the earlier figure was 273 s, taken another way (a cold rebuild of 44 programs), so this is an indication, not a like-for-like comparison.
+- **Verified:** clippy clean; the normal pass and the database pass (fresh database, pinned chaos seed) both pass.
+- **Not done / not verified:** 11 files still use `set_var` or hold process state (`audit_coverage`, `audit_search_coverage`, `balp_claim`, `chaos_api`, `chaos_roles`, `http_conflicts`, `http_audit_refusal`, `http_idempotency`, `http_patients`, `http_permission_basis`, `openapi_responses`, plus the standalone programs that hold state); two apps with different login settings in one process are tested together only through the suite's apps running in turn.
+
 ## 2026-11-24 - Login state moves into the app's runtime; the first login-on test file joins `suite.rs` (QA-16 stage 3)
 
 - **Clinical risk:** none to what a clinician sees; this changes where the login settings are held. Login still fails closed: before `auth::init` has run for an app, login is enforced for it.

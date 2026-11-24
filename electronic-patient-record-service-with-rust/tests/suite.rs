@@ -55,12 +55,52 @@ mod grief_census;
 mod hazards_store;
 #[path = "hl7_samples.rs"]
 mod hl7_samples;
+#[path = "http_adjustments.rs"]
+mod http_adjustments;
+#[path = "http_amendments.rs"]
+mod http_amendments;
+#[path = "http_api_tokens.rs"]
+mod http_api_tokens;
+#[path = "http_assessments.rs"]
+mod http_assessments;
+#[path = "http_audit_refusal_roles.rs"]
+mod http_audit_refusal_roles;
+#[path = "http_death_reports.rs"]
+mod http_death_reports;
+#[path = "http_deaths.rs"]
+mod http_deaths;
+#[path = "http_hazards.rs"]
+mod http_hazards;
+#[path = "http_idempotency_roles.rs"]
+mod http_idempotency_roles;
 #[path = "http_lockout.rs"]
 mod http_lockout;
+#[path = "http_observations.rs"]
+mod http_observations;
+#[path = "http_overdue_reviews.rs"]
+mod http_overdue_reviews;
+#[path = "http_proxy_scopes.rs"]
+mod http_proxy_scopes;
 #[path = "http_rate_limit.rs"]
 mod http_rate_limit;
+#[path = "http_referral_queue.rs"]
+mod http_referral_queue;
+#[path = "http_referral_worklist.rs"]
+mod http_referral_worklist;
+#[path = "http_referrals.rs"]
+mod http_referrals;
+#[path = "http_results.rs"]
+mod http_results;
 #[path = "http_role_views.rs"]
 mod http_role_views;
+#[path = "http_roles.rs"]
+mod http_roles;
+#[path = "http_suspicions.rs"]
+mod http_suspicions;
+#[path = "http_tasks.rs"]
+mod http_tasks;
+#[path = "http_watch_list.rs"]
+mod http_watch_list;
 #[path = "keycloak_guard.rs"]
 mod keycloak_guard;
 #[path = "label_census.rs"]
@@ -77,6 +117,8 @@ mod migration_down;
 mod observations_store;
 #[path = "openapi_census.rs"]
 mod openapi_census;
+#[path = "openapi_responses_roles.rs"]
+mod openapi_responses_roles;
 #[path = "outbound_census.rs"]
 mod outbound_census;
 #[path = "outbox_store.rs"]
