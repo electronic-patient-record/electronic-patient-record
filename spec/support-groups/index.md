@@ -10,6 +10,16 @@ A draft from the customer's request of 2026-11-24 ("a monthly cancer support com
 
 A customer wants the system to support groups tied to one condition, for example a monthly cancer support group run by volunteers. The request does not say whether the group is run by the health service or a charity, whether staff or patients refer people, whether the system should hold membership, or what volunteers may see. Those are questions to the customer (OQ-CF1), not assumptions to build on.
 
+## The customer's answer to OQ-CF1 (2026-11-24)
+
+Groups are run by patients, by charities and by hospital staff; some live on social media networks; some are local, some regional, some global. What follows is my reasoning, not the customer's:
+
+- **One kind of entry cannot assume one kind of operator.** A directory entry carries who runs it (patients, charity, hospital staff, other) and where it meets (in person, online meeting, social media network), and its reach (local, regional, global). A group's reach decides whether a place or an area is shown.
+- **Only a hospital-run group can be in the system's control.** A staff-run group may hold a roster inside the organisation, which brings OQ-CF2 and the volunteer question; every other kind is outside it, so the default of an offer record, not membership, stands for them.
+- **A social media group is public or semi-public and not under anyone's control here.** The system may show its name and link, never post, tag or invite on a patient's behalf, and the offer says the group is outside the health service and its members can see each other. Joining may reveal the condition to the person's own contacts (rule 1).
+- **A global or online group has no local safeguarding or venue.** The directory says so by type; it is the person's choice, not a referral by the service.
+- **The endorsement statement matters more.** The entry says whether the service endorses, does not endorse, or has not reviewed the group, as the Welsh page does, but with a date.
+
 ## Design rules (my reasoning)
 
 1. **Belonging to a condition group discloses the condition.** Membership of a cancer support group says the person has, or had, cancer, or cares for someone who does. It is protected information in the same way as a diagnosis, and a list of members is a list of diagnoses.
@@ -48,7 +58,7 @@ Source [CAVSG]: the page above, read 2026-11-24.
 
 | Id | Question |
 |---|---|
-| OQ-CF1 | Who runs the group (the service, a charity, the patients), and who refers into it? |
+| OQ-CF1 | **Answered 2026-11-24 by the customer:** various. Run by patients, charities or hospital staff; some run on social media networks; some local, some regional, some global. **Still open:** who refers into a group. |
 | OQ-CF2 | Does the system hold a group's membership or attendance, or only the offer? If it holds them, who is the controller, and is a volunteer allowed to use the system at all? |
 | OQ-CF3 | May a carer or relative be recorded as a member, and under whose consent? |
 | OQ-CF4 | Which channels may a group use to contact a person, and what may a message say? |

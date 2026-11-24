@@ -9,6 +9,11 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - **Added later the same day:** a worked example from the All Wales Adult Inherited Metabolic Disease Service's support-groups page (about 60 signposts, no endorsement, no review date); it adds a type, an endorsement statement and a last-checked date to the directory entry.
 - **Not done / not verified:** only that one page was read (its linked sites and the Welsh version were not); no law checked, no customer, clinician, volunteer or patient asked; the five questions are the customer's to answer. Nothing built.
 
+## 2026-11-24 - Spec: the customer's answer to OQ-CF1
+
+- **Changed:** OQ-CF1 records the answer (groups are run by patients, charities or hospital staff, on social media or not, local to global); `spec/support-groups/index.md` gets a section on what it implies (directory entry carries operator, where it meets and reach; only staff-run groups can be under the system's control; a social media group is never posted to or invited on a patient's behalf).
+- **Not done / not verified:** the implications are my reasoning, not reviewed; who refers into a group is still open; OQ-CF2 to OQ-CF5 unanswered. Nothing built.
+
 ## 2026-11-24 - Dependency: axa 0.23, axa-test 0.14; the service package includes `migrations/`
 
 - **Changed:** `axa` 0.21 to 0.23 and `axa-test` 0.12 to 0.14 (with axa-idempotency-key 0.3.0, axa-postgres-job-queue 0.7.0 and patch bumps). The one breaking change we hit: `Idempotency::ttl` returns a `Result`, so `idempotency::keys` returns `Result<Idempotency, ConfigError>` and boot fails with a message instead of panicking. Cooldown exception approved by the maintainer, applied to that one `cargo update` command only.
