@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-24 - The Creative Commons choice is CC-BY-SA-4.0, not CC-BY-NC-SA-4.0
+
+- **Clinical risk:** none: licensing.
+- **Changed:** `CC-BY-NC-SA-4.0` is replaced by `CC-BY-SA-4.0` in `LICENSE.md`, `LICENSES/` (`cc-by-nc-sa-4.0/` removed, `cc-by-sa-4.0/index.md` added, from the SPDX text of CC BY-SA 4.0), `spec/licenses/index.md`, `README.md`, `GOVERNANCE.md`, `CITATION.cff`, `plan.md`, the three `Cargo.toml` manifests, the domain crate's README, `package.json` and the `Containerfile` label. The sentences that said the licence forbids commercial use are rewritten: BY-SA allows commercial use, and says to share adaptations alike. The choice is still one of seven.
+- **Effect to know about:** anyone who took the code under the non-commercial option now has a licence that allows commercial use; the other six options are unchanged. Versions already published (the matcher 0.8.0 on crates.io) keep the licence string they were published with.
+- **Verified:** the licence-file test, the link check and `cargo deny check licenses` pass.
+- **Not done / not verified:** earlier CHANGELOG entries still name the old identifier, as they were true then; I did not check the SPDX text against the Creative Commons legal code by hand, and I am not a lawyer: this is a mechanical change that the project owner should review.
+
 ## 2026-11-24 - Major update: dependencies, `tests/main.rs`, `make test-benchmarks` and `make test-coverage`
 
 - **Clinical risk:** none: tooling, tests and lock files.

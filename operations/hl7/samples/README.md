@@ -17,7 +17,7 @@ published test value). One file per case, a segment a line; the sender and the t
 `{{control}}` and `{{mrn}}` are filled in by the sender (`scripts/hl7/send.mjs`): `{{control}}` with a new control id
 per send, `{{mrn}}` with the value given, or a new one. `tests/hl7_samples.rs` reads every file here, with fixed values
 for both, and compares the reader's acknowledgement byte for byte with `tests/golden/hl7-acks/<name>.ack`. A golden
-file is rewritten only by `EPR_BLESS=1 cargo test --test suite hl7_samples::`, and only when the change is meant: never to make
+file is rewritten only by `EPR_BLESS=1 cargo test --test main hl7_samples::`, and only when the change is meant: never to make
 a failing test pass.
 
 Every ADT sample is the same patient, so sent in order (register, update, admit, outpatient, update person, death) to one

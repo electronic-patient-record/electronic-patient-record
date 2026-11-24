@@ -53,6 +53,6 @@ Any of these, or contact us for custom terms. [`LICENSE.md`](LICENSE.md) explain
 
 * [MIT](LICENSES/mit/index.md) · [Apache-2.0](LICENSES/apache-2.0/index.md) · [BSD-3-Clause](LICENSES/bsd-3-clause/index.md) ·
   [GPL-2.0-only](LICENSES/gpl-2.0-only/index.md) · [GPL-3.0-only](LICENSES/gpl-3.0-only/index.md) ·
-  [OGL-UK-3.0](LICENSES/ogl-uk-3.0/index.md) · [CC-BY-NC-SA-4.0](LICENSES/cc-by-nc-sa-4.0/index.md)
+  [OGL-UK-3.0](LICENSES/ogl-uk-3.0/index.md) · [CC-BY-SA-4.0](LICENSES/cc-by-sa-4.0/index.md)
 
-SPDX expression: `MIT OR Apache-2.0 OR BSD-3-Clause OR GPL-2.0-only OR GPL-3.0-only OR OGL-UK-3.0 OR CC-BY-NC-SA-4.0`.
+SPDX expression: `MIT OR Apache-2.0 OR BSD-3-Clause OR GPL-2.0-only OR GPL-3.0-only OR OGL-UK-3.0 OR CC-BY-SA-4.0`.

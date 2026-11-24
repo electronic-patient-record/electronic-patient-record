@@ -43,7 +43,7 @@ electronic-patient-record/
 ├── plan.md  tasks.md  CHANGELOG.md  NEWS.md  RFC.md
 ├── CONTRIBUTING.md  GOVERNANCE.md  MAINTAINERS.md  SECURITY.md  CODEOWNERS
 ├── AI_STATEMENT.md  CITATION.cff  COMPARISONS.md  BENCHMARKS.md
-├── LICENSE.md  LICENSE/{MIT,Apache-2.0,BSD-3-Clause,GPL-2.0-only,GPL-3.0-only,OGL-UK-3.0,CC-BY-NC-SA-4.0}.txt
+├── LICENSE.md  LICENSE/{MIT,Apache-2.0,BSD-3-Clause,GPL-2.0-only,GPL-3.0-only,OGL-UK-3.0,CC-BY-SA-4.0}.txt
 ├── llms.txt  llms.json  lychee.toml  rust-toolchain.toml  compose.yaml
 ├── .github/{dependabot.yml, workflows/{ci,release,chaos}.yml}
 ├── agents/            shared agent guidance (spec-driven-development, testing, restful, models, matching, fhir)
@@ -83,7 +83,7 @@ safety incident.
 | Node / pkg | Node 26, pnpm |
 | Containers | Podman (`podman compose`) in docs and scripts; CI builds with Podman; images to GHCR on `v*.*.*` tag |
 | CI jobs | api, api-db, restore, matcher, deny (cargo-deny), ui, docs, container, zap (OWASP ZAP), fresh-clone, ci-ok; weekly chaos |
-| Licence | `MIT OR Apache-2.0 OR BSD-3-Clause OR GPL-2.0-only OR GPL-3.0-only OR OGL-UK-3.0 OR CC-BY-NC-SA-4.0` (same as the reference; see OQ-1) |
+| Licence | `MIT OR Apache-2.0 OR BSD-3-Clause OR GPL-2.0-only OR GPL-3.0-only OR OGL-UK-3.0 OR CC-BY-SA-4.0` (same as the reference; see OQ-1) |
 | Locales | ten locales, `<language>-<region>` names: `ar-001 cy-001 de-001 de-de en-001 es-001 fr-001 hi-001 zh-001 zh-cn` (the UI's `LOCALES`, copied from the reference) |
 
 ### 2.3 Working rules carried over
