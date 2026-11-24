@@ -102,8 +102,8 @@ async fn refused(
             resource: "Referral",
             patient_id: None,
         },
-        // A store message such as "version conflict" or "a referral that is declined cannot take Accept".
-        serde_json::json!({ "refused": e.to_string() }),
+        // The kind and not the words (EH-16).
+        serde_json::json!({ "refused": e.refusal_kind() }),
     )
     .await
     .err()

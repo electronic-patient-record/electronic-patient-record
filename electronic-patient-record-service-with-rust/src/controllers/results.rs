@@ -102,8 +102,8 @@ async fn refused(
             resource: RESOURCE,
             patient_id: None,
         },
-        // The store's words name a rule or a version, never a value.
-        serde_json::json!({ "refused": e.to_string() }),
+        // The kind and not the words (EH-16).
+        serde_json::json!({ "refused": e.refusal_kind() }),
     )
     .await
     .err()

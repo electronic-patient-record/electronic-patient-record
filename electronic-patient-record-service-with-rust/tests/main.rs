@@ -31,6 +31,8 @@ mod audit_immutable;
 mod audit_partitions;
 #[path = "audit_search_coverage.rs"]
 mod audit_search_coverage;
+#[path = "audit_words.rs"]
+mod audit_words;
 #[path = "authz_audit.rs"]
 mod authz_audit;
 #[path = "axa_defaults.rs"]

@@ -223,8 +223,8 @@ async fn write(
                         resource: "Patient/photo",
                         patient_id: None,
                     },
-                    // The refusal text names no image content.
-                    serde_json::json!({ "refused": e.to_string() }),
+                    // The kind and not the words (EH-16).
+                    serde_json::json!({ "refused": e.refusal_kind() }),
                 )
                 .await
             {

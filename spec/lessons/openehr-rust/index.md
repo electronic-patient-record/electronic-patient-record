@@ -40,7 +40,7 @@ Customers want more electronic health record (EHR) capabilities. openEHR is a sp
 
 ## Found in this repository while comparing
 
-- **A refused allergy put the SNOMED CT code it was sent into its audit row** (`controllers/allergies.rs`), against the module's own rule. Fixed on 2026-11-24 with a test that failed first. Ten other controllers also record the store's words for a refusal; whether any of them can quote content is not known (EH-16).
+- **A refused allergy put the SNOMED CT code it was sent into its audit row** (`controllers/allergies.rs`), against the module's own rule. Fixed on 2026-11-24 with a test that failed first. Fourteen other controllers recorded the store's words for a refusal too; all now record its kind (EH-16, done the same day).
 
 ## Not done, not verified
 

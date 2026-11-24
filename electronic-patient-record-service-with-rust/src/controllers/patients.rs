@@ -520,7 +520,7 @@ pub(super) async fn update_service(
                 4,
                 purpose,
                 None,
-                serde_json::json!({"refused": e.to_string()}),
+                serde_json::json!({ "refused": e.refusal_kind() }),
             )
             .await?;
             Err(ApiError::from(&e))

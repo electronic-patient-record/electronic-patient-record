@@ -179,7 +179,7 @@ async fn refused(
             resource: "Amendment",
             patient_id: None,
         },
-        serde_json::json!({ "refused": e.to_string() }),
+        serde_json::json!({ "refused": e.refusal_kind() }),
     )
     .await
     .err()

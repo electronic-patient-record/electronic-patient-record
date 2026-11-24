@@ -82,12 +82,12 @@ async fn refused(
     action: Action,
     e: &StoreError,
 ) -> Option<ApiError> {
-    let kind = match e {
-        StoreError::NotFound => "not_found",
-        StoreError::Conflict { .. } => "version_conflict",
-        StoreError::BadQuery(_) => "record_refused",
-        _ => return None,
-    };
+    if !matches!(
+        e,
+        StoreError::NotFound | StoreError::Conflict { .. } | StoreError::BadQuery(_)
+    ) {
+        return None;
+    }
     audit_resource(
         &ctx.pool(),
         agent,
@@ -99,7 +99,7 @@ async fn refused(
             patient_id: None,
         },
         // The kind and not the words: a refused SNOMED CT code is quoted in them.
-        serde_json::json!({ "refused": kind }),
+        serde_json::json!({ "refused": e.refusal_kind() }),
     )
     .await
     .err()

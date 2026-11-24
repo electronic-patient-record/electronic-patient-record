@@ -95,16 +95,6 @@ fn failure(e: StoreError) -> ApiError {
     }
 }
 
-/// The refusals that are audited, by kind only.
-fn kind_of(e: &StoreError) -> Option<&'static str> {
-    match e {
-        StoreError::NotFound => Some("not_found"),
-        StoreError::Conflict { .. } => Some("version_conflict"),
-        StoreError::BadQuery(_) => Some("record_refused"),
-        _ => None,
-    }
-}
-
 /// Who is asking, for what purpose, about which patient.
 struct Caller<'a> {
     ctx: &'a AppContext,
@@ -178,8 +168,10 @@ impl<'a> Caller<'a> {
 
     /// A store error as the answer, with its audit row first.
     async fn fail<R: Entry>(&self, action: Action, e: StoreError) -> ApiError {
-        if let Some(kind) = kind_of(&e)
-            && let Err(unaudited) = self.refused::<R>(action, kind).await
+        if matches!(
+            e,
+            StoreError::NotFound | StoreError::Conflict { .. } | StoreError::BadQuery(_)
+        ) && let Err(unaudited) = self.refused::<R>(action, e.refusal_kind()).await
         {
             return unaudited;
         }

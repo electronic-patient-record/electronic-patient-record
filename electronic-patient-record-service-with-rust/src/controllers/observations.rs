@@ -105,9 +105,8 @@ async fn refused(
             resource: "Observation",
             patient_id: None,
         },
-        // A store message such as "version conflict"; the validation text names a code, a unit or a
-        // field, never a measured value, so it is safe to keep.
-        serde_json::json!({ "refused": e.to_string() }),
+        // The kind and not the words (EH-16).
+        serde_json::json!({ "refused": e.refusal_kind() }),
     )
     .await
     .err()

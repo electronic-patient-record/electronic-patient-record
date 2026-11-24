@@ -60,6 +60,23 @@ pub enum StoreError {
     Unavailable(String),
 }
 
+impl StoreError {
+    /// The kind of a refusal, for its audit row (EH-16). The words are for the caller: they can quote what was sent, such
+    /// as a code or an identifier, and the trail must not.
+    #[must_use]
+    pub fn refusal_kind(&self) -> &'static str {
+        match self {
+            StoreError::NotFound => "not_found",
+            StoreError::Conflict { .. } => "version_conflict",
+            StoreError::BadQuery(_) => "record_refused",
+            StoreError::NotSamePerson { .. } => "not_same_person",
+            StoreError::TemporaryIdentityCleared => "temporary_identity_cleared",
+            StoreError::Db(_) => "database_error",
+            StoreError::Unavailable(_) => "database_unavailable",
+        }
+    }
+}
+
 impl std::fmt::Display for StoreError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

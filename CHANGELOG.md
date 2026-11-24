@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-24 - Audit rows say the kind of a refusal, never its words (EH-16)
+
+- **Clinical risk:** none to care; a privacy fix. The words of a refusal can quote what was sent.
+- **Changed:** every controller that audited `e.to_string()` for a refusal (14, and the allergy and entry routes) now audits `StoreError::refusal_kind()`. The entry below said ten; that count was cut short. An auditor loses the text, and the current version on a conflict.
+- **Added:** `tests/audit_words.rs` (3 tests): no controller may audit the words, and no kind holds them.
+- **Verified:** fmt, clippy, the normal pass and the database pass on a fresh Postgres 18.
+- **Not done / not verified:** rows already written keep their words (append-only); the feed, MLLP and store modules are outside the census; nobody who reads audit rows was asked whether the text was used.
+
 ## 2026-11-24 - Problem list, family history and reads as at a time, from openEHR (EH-1 to EH-3)
 
 - **Clinical risk:** new clinical content. Hazards H-066 (problem list), H-067 (family history) and H-068 (as-at reads) opened with the author's scores; nobody has reviewed them or the rules.

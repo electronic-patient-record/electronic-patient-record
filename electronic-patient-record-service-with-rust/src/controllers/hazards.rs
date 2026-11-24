@@ -219,7 +219,8 @@ pub(super) async fn create(
         }
         Err(e) => {
             let _ = tx.rollback().await;
-            if let Some(r) = refused(&ctx, &agent, purpose, Action::Create, &e.to_string()).await {
+            if let Some(r) = refused(&ctx, &agent, purpose, Action::Create, e.refusal_kind()).await
+            {
                 return r.into_response();
             }
             failure(e).into_response()
@@ -322,7 +323,7 @@ pub(super) async fn update(
                 e,
                 StoreError::NotFound | StoreError::Conflict { .. } | StoreError::BadQuery(_)
             ) && let Some(r) =
-                refused(&ctx, &agent, purpose, Action::Update, &e.to_string()).await
+                refused(&ctx, &agent, purpose, Action::Update, e.refusal_kind()).await
             {
                 return r.into_response();
             }
