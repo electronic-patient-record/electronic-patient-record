@@ -9,6 +9,11 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - **Added later the same day:** a worked example from the All Wales Adult Inherited Metabolic Disease Service's support-groups page (about 60 signposts, no endorsement, no review date); it adds a type, an endorsement statement and a last-checked date to the directory entry.
 - **Not done / not verified:** only that one page was read (its linked sites and the Welsh version were not); no law checked, no customer, clinician, volunteer or patient asked; the five questions are the customer's to answer. Nothing built.
 
+## 2026-11-24 - Hazard H-065: a relative's name in free text is a risk (CF-1)
+
+- **Clinical risk:** new hazard `H-065` (a support-group offer or note discloses a diagnosis or a relative's name), status `open`, severity 3 and likelihood 3 as the author's proposal; nobody has reviewed it and I set no accepted or closed status. The offer record is now specified as structured, with no free text and no person name.
+- **Not done / not verified:** no control is built; OQ-CF4 and OQ-CF5 undecided; the scoring is not clinician-reviewed.
+
 ## 2026-11-24 - Spec: the customer's answer to OQ-CF3 (no relatives as members)
 
 - **Changed:** OQ-CF3 records no: a carer or relative is not recorded as a member, because the groups are third-party. Design rule 5 of the support-groups spec now says so; a patient's remark that a relative will go stays a note in their own words and creates no person record.
