@@ -154,5 +154,10 @@
 | OQ-IH4 | What inactivity and refusal thresholds raise a feed alarm, for day, evening and weekend, and who is told? (IH-8) | deploying organisation |
 | OQ-IH5 | How long may `MSA-3` be (the hub uses 199 characters; HL7 v2.5.1 sets its own length)? (IH-2) | maintainer, from the standard |
 | OQ-IH6 | Should a per-sender strict mode refuse unknown and `Z` segments, as the hub does, or stay lenient? | maintainer with senders |
+| OQ-CF1 | Who runs a condition-specific support group (the service, a charity, the patients) and who refers into it? See [support groups](support-groups/index.md). | customer |
+| OQ-CF2 | Does the system hold a group's membership or attendance, or only the offer? Who is the controller, and may a volunteer use the system? | customer, legal |
+| OQ-CF3 | May a carer or relative be recorded as a group member, and under whose consent? | customer, legal |
+| OQ-CF4 | Which channels may a group use to contact a person, and what may a message say? | customer, patients |
+| OQ-CF5 | Which condition labels are used, and may one reach a patient's device or a printed letter? | customer, Clinical Safety Officer |
 
 No answers recorded yet, except where a row says decided or proposed.

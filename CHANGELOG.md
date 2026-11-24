@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-24 - Spec: condition-specific support groups (CF-1)
+
+- **Added:** `spec/support-groups/index.md` (design rules; a referral record, not a membership, by default; a volunteer role that grants no clinical read) and OQ-CF1 to OQ-CF5 in `spec/16-open-questions.md`; CF-1 in `tasks.md` is marked drafted.
+- **Clinical risk:** none changed (no behaviour). The page names a disclosure hazard (a group list or message reveals a diagnosis) that needs a hazard-log row before any build; I did not add one and set no status.
+- **Not done / not verified:** no outside source read, no law checked, no customer, clinician, volunteer or patient asked; the five questions are the customer's to answer. Nothing built.
+
 ## 2026-11-24 - Dependency: axa 0.23, axa-test 0.14; the service package includes `migrations/`
 
 - **Changed:** `axa` 0.21 to 0.23 and `axa-test` 0.12 to 0.14 (with axa-idempotency-key 0.3.0, axa-postgres-job-queue 0.7.0 and patch bumps). The one breaking change we hit: `Idempotency::ttl` returns a `Result`, so `idempotency::keys` returns `Result<Idempotency, ConfigError>` and boot fails with a message instead of panicking. Cooldown exception approved by the maintainer, applied to that one `cargo update` command only.
