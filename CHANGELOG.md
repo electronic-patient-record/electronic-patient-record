@@ -6,7 +6,8 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 
 - **Added:** `spec/support-groups/index.md` (design rules; a referral record, not a membership, by default; a volunteer role that grants no clinical read) and OQ-CF1 to OQ-CF5 in `spec/16-open-questions.md`; CF-1 in `tasks.md` is marked drafted.
 - **Clinical risk:** none changed (no behaviour). The page names a disclosure hazard (a group list or message reveals a diagnosis) that needs a hazard-log row before any build; I did not add one and set no status.
-- **Not done / not verified:** no outside source read, no law checked, no customer, clinician, volunteer or patient asked; the five questions are the customer's to answer. Nothing built.
+- **Added later the same day:** a worked example from the All Wales Adult Inherited Metabolic Disease Service's support-groups page (about 60 signposts, no endorsement, no review date); it adds a type, an endorsement statement and a last-checked date to the directory entry.
+- **Not done / not verified:** only that one page was read (its linked sites and the Welsh version were not); no law checked, no customer, clinician, volunteer or patient asked; the five questions are the customer's to answer. Nothing built.
 
 ## 2026-11-24 - Dependency: axa 0.23, axa-test 0.14; the service package includes `migrations/`
 

@@ -1,6 +1,6 @@
 # Condition-specific support groups (CF-1)
 
-A draft from the customer's request of 2026-11-24 ("a monthly cancer support community volunteer group") and this repository's own files. A proposal: nothing is built, no clinician, no volunteer group and no patient has reviewed it, no outside source was read for it, and it is NOT FOR CLINICAL USE. Statements marked "my reasoning" are the author's.
+A draft from the customer's request of 2026-11-24 ("a monthly cancer support community volunteer group") and this repository's own files. A proposal: nothing is built, no clinician, no volunteer group and no patient has reviewed it, one outside page was read (the worked example), no other source was, and it is NOT FOR CLINICAL USE. Statements marked "my reasoning" are the author's.
 
 ## Related links
 
@@ -17,7 +17,7 @@ A customer wants the system to support groups tied to one condition, for example
 3. **A volunteer is not staff.** A volunteer role, if one exists, grants no clinical read: no patient list, no record, no search. What a volunteer sees is only what the group itself holds. An actor with such a role may run a group's roster only if OQ-CF2 says the system holds one.
 4. **The patient chooses; nothing is automatic.** An offer, a reminder or a contact from a group is sent only if the patient agreed, by the channel they chose, and with no condition named in a message that could be read by someone else (a phone's lock screen, a family member). No automatic referral from a diagnosis code, and no "patients like you" list.
 5. **A carer or family member is a person, not a patient.** A group may include relatives. The system holds nothing about a relative beyond what the patient says, in the "reported by the person" form of words; whether a relative may be recorded as a member at all is OQ-CF3.
-6. **A group is a directory entry, not a clinical service.** It carries a name, a condition it is for, a schedule (for example monthly), a place or link, who runs it, who vouched for it and when, and a contact. A directory entry is reviewed by a named person on a date, and an unreviewed entry is shown as such (never "approved by this project").
+6. **A group is a directory entry, not a clinical service.** It carries a name, a type (see the worked example below), a condition it is for, a schedule (for example monthly), a place or link, who runs it, who vouched for it and when, and a contact. A directory entry is reviewed by a named person on a date, and an unreviewed entry is shown as such (never "approved by this project").
 7. **Support is not safety.** A group is not clinical cover. A person in crisis needs a clinical route, and the offer of a group never replaces it (survivor grief, hazard SG-1).
 
 ## What it could look like (not built)
@@ -28,6 +28,21 @@ A customer wants the system to support groups tied to one condition, for example
 | Offer record on a patient | Group, date offered, by whom, the patient's answer, and the channel the patient allowed | Attendance, what was said |
 | Patient portal view | The patient's own offers and a way to answer or withdraw | Other patients' data |
 | Reports | Counts of offers, takes-up and withdrawals, suppressed under a small-numbers rule (PA-7) | A person-level list of members |
+
+## A worked example from a real service: Wales' adult inherited metabolic disease service
+
+Read on 2026-11-24, in full, by an assistant fetching the page: [Support Groups and Organisations, All Wales Adult Inherited Metabolic Disease Service, Cardiff and Vale University Health Board](https://cavuhb.nhs.wales/our-services/all-wales-adult-inherited-metabolic-disease-service/information-for-patients/support-groups-and-organisations/) [CAVSG]. The Welsh-language version and the roughly 60 external sites it links to were not read. It is one page from one service, so it shows one practice, not the norm.
+
+- **It is a directory of signposts, not a membership.** About 60 entries; the service holds no list of who joins any of them. This supports design rule 2.
+- **The service disclaims responsibility.** It says it does not endorse any listed group, that the listings are "only provided as examples of where to look for information", and that the content of the external sites "rests entirely with the organisation running the website". It gives no statement on referral, confidentiality or data sharing, no named contact for the page, and no date of publication or review. Design rule 6 asks for more than this: a review date and a reviewer on each entry.
+- **The entries are of several kinds**, which the directory should not flatten: condition-specific charities and peer groups (for example one per metabolic condition); umbrella and rare-disease bodies; clinical, research and registry bodies; NHS and government bodies (wellbeing, benefits, student finance); and general carer and benefits charities. A "support group" in the customer's sense is only the first kind, so an entry needs a type.
+- **Contact details are rare.** Only one listing gives a phone number and an email; the rest are links. Opening hours and the Welsh, English and British Sign Language options apply to the health board, not to the groups.
+- **One entry is a service the board is trialling**, described as "a limited deployment" for people moving from children's to adult services. A group or service can therefore be in a pilot, and the directory should say so.
+- **The condition is an umbrella**: the page covers many conditions at once, and condition-specific groups sit beside umbrella bodies. This is relevant to [CF-4](../../tasks.md) (a multi-system genetic condition).
+
+What this changes in the draft: a directory entry gets a **type** (peer group, charity, umbrella, registry or research, public body), an **endorsement statement** (endorsed, not endorsed, or not reviewed) and a **last-checked date**; and the system never claims it checked an outside group's content. It does not change the rule that membership is not held by default (OQ-CF2 stays open).
+
+Source [CAVSG]: the page above, read 2026-11-24.
 
 ## Not decided: needs the customer
 
@@ -45,4 +60,4 @@ A customer wants the system to support groups tied to one condition, for example
 
 ## Not done, not verified
 
-No source outside this repository was read. No law was checked (the controller and consent questions differ by country, so they belong in a country pack, [equity rule](../02-scope.md)). No customer, clinician, volunteer or patient was asked. Nothing is built.
+One outside page was read, only its text: none of the groups it lists were opened. No law was checked (the controller and consent questions differ by country, so they belong in a country pack, [equity rule](../02-scope.md)). No customer, clinician, volunteer or patient was asked. Nothing is built.
