@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-24 - Coverage 95.45%; MLLP settings that cannot work are tested (QA-15)
+
+- **Clinical risk:** none: a test.
+- **Measured:** 25,473 of 26,688 lines, 95.45% (the `start` test took `app.rs` from 72.6% to 83.2%). Largest gaps now: `controllers/fhir.rs` (65 lines), `mllp.rs` (63), `adt_feed.rs` (53), `app.rs` (48), `audit.rs` (46).
+- **Changed:** a unit test in `src/mllp.rs`: half a TLS pair, a client CA with no server certificate, client names with no CA, a bad processing id (and P, T, D accepted), and a missing, empty or non-PEM certificate file are each refused with the setting named.
+- **Not done / not verified:** the TLS handshake paths (client certificate checks, key and certificate mismatch, accept errors, the stop timeout) stay uncovered here because TLS cases cannot run under LLVM instrumentation; they pass in the normal suite. Coverage was not re-measured after this test.
+
 ## 2026-11-24 - Coverage 95.31%; the real `start` command is tested with every optional part on (QA-15)
 
 - **Clinical risk:** none: a test.

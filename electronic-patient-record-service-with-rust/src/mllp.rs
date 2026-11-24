@@ -805,6 +805,80 @@ mod tests {
         move |k| map.get(k).cloned()
     }
 
+    /// A file in the temp directory holding `text`, removed when the test ends.
+    struct Temp(std::path::PathBuf);
+    impl Temp {
+        fn new(label: &str, text: &str) -> Self {
+            let path =
+                std::env::temp_dir().join(format!("epr_mllp_{}_{label}", std::process::id()));
+            std::fs::write(&path, text).unwrap();
+            Self(path)
+        }
+        fn path(&self) -> &str {
+            self.0.to_str().unwrap()
+        }
+    }
+    impl Drop for Temp {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_file(&self.0);
+        }
+    }
+
+    #[test]
+    fn settings_that_cannot_work_are_refused_with_the_setting_named() {
+        let bind = ("EPR_MLLP_BIND", "127.0.0.1:2575");
+        let refused = |extra: &[(&str, &str)], names: &str| {
+            let mut all = vec![bind];
+            all.extend_from_slice(extra);
+            let e = Config::from_lookup(env(&all)).unwrap_err();
+            assert!(e.contains(names), "{names}: {e}");
+        };
+        // Half a TLS pair, a client CA with no server certificate, and names with no CA to check them against.
+        refused(&[("EPR_MLLP_TLS_CERT_FILE", "/x")], "set both");
+        refused(&[("EPR_MLLP_TLS_KEY_FILE", "/x")], "set both");
+        refused(
+            &[("EPR_MLLP_TLS_CLIENT_CA_FILE", "/x")],
+            "EPR_MLLP_TLS_CLIENT_CA_FILE needs",
+        );
+        refused(
+            &[("EPR_MLLP_TLS_CLIENT_NAMES", "a.example")],
+            "EPR_MLLP_TLS_CLIENT_NAMES needs",
+        );
+        // The processing id is P, T or D.
+        for ok in ["P", "T", "D"] {
+            assert!(
+                Config::from_lookup(env(&[bind, ("EPR_MLLP_PROCESSING_ID", ok)]))
+                    .unwrap()
+                    .is_some()
+            );
+        }
+        refused(&[("EPR_MLLP_PROCESSING_ID", "X")], "EPR_MLLP_PROCESSING_ID");
+        // Files that are missing, empty, not PEM, or hold no key.
+        refused(
+            &[
+                ("EPR_MLLP_TLS_CERT_FILE", "/no/such/file.pem"),
+                ("EPR_MLLP_TLS_KEY_FILE", "/no/such/key.pem"),
+            ],
+            "EPR_MLLP_TLS_CERT_FILE",
+        );
+        let empty = Temp::new("empty", "");
+        refused(
+            &[
+                ("EPR_MLLP_TLS_CERT_FILE", empty.path()),
+                ("EPR_MLLP_TLS_KEY_FILE", empty.path()),
+            ],
+            "is empty",
+        );
+        let text = Temp::new("text", "this is not a certificate\n");
+        refused(
+            &[
+                ("EPR_MLLP_TLS_CERT_FILE", text.path()),
+                ("EPR_MLLP_TLS_KEY_FILE", text.path()),
+            ],
+            "holds no certificate",
+        );
+    }
+
     #[test]
     fn the_listener_is_off_unless_asked_for_and_never_open_to_the_world_by_accident() {
         assert!(Config::from_lookup(env(&[])).unwrap().is_none());
