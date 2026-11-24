@@ -82,6 +82,14 @@ pub struct Runtime {
     pub(crate) feed_health: OnceLock<(String, crate::feed_health::Thresholds)>,
     /// The identity of the feed the listener serves, set when the listener starts (`adt_feed::set_configured`).
     pub(crate) feed_identity: OnceLock<crate::adt_feed::FeedIdentity>,
+    /// The PASETO verifier, built at start (`auth::init`).
+    pub(crate) auth_verifier: OnceLock<authentication_verifier::Verifier>,
+    /// The Keycloak verifier, when `EPR_KEYCLOAK_URL` is set (`auth::init`).
+    pub(crate) auth_keycloak: OnceLock<authentication_verifier::keycloak::KeycloakVerifier>,
+    /// Whether login is required, decided at start (`auth::init`).
+    pub(crate) auth_require: OnceLock<bool>,
+    /// The database integration tokens sign in against (`auth::init_tokens`).
+    pub(crate) auth_token_db: OnceLock<sqlx::PgPool>,
 }
 
 impl std::fmt::Debug for Runtime {
@@ -116,6 +124,10 @@ impl Runtime {
             site_rules: OnceLock::new(),
             feed_health: OnceLock::new(),
             feed_identity: OnceLock::new(),
+            auth_verifier: OnceLock::new(),
+            auth_keycloak: OnceLock::new(),
+            auth_require: OnceLock::new(),
+            auth_token_db: OnceLock::new(),
         }
     }
 

@@ -21,9 +21,8 @@
 
 use crate::policy::Subject;
 use authentication_verifier::Verifier;
-use authentication_verifier::keycloak::{KeycloakSettings, KeycloakVerifier};
+use authentication_verifier::keycloak::KeycloakVerifier;
 use axum::http::{HeaderMap, StatusCode, header::AUTHORIZATION};
-use std::sync::OnceLock;
 
 const DEFAULT_ISSUER: &str = "authentication-service";
 const DEFAULT_AUDIENCE: &str = "electronic-patient-record";
@@ -36,17 +35,14 @@ pub struct Agent(pub String);
 /// The agent recorded when no token was required.
 pub const ANONYMOUS: &str = "anonymous";
 
-static VERIFIER: OnceLock<Verifier> = OnceLock::new();
-static KEYCLOAK: OnceLock<KeycloakVerifier> = OnceLock::new();
-static REQUIRE_AUTH: OnceLock<bool> = OnceLock::new();
-static TOKEN_DB: OnceLock<sqlx::PgPool> = OnceLock::new();
+use crate::runtime::Runtime;
 
 /// What every refused integration token is told: nothing about why (revoked, expired, unknown), which is logged.
 const TOKEN_REFUSED: &str = "the integration token was refused";
 
 /// Let integration tokens (TL-1) sign in, checked against `db`. Until this runs, every token is refused.
 pub fn init_tokens(db: sqlx::PgPool) {
-    let _ = TOKEN_DB.set(db);
+    let _ = Runtime::current().auth_token_db.set(db);
 }
 
 /// The agent an integration token acts as: `token:<name>`, so the audit trail names the token, never a person.
@@ -60,7 +56,8 @@ pub fn token_agent(name: &str) -> String {
 /// integrator role and only its scopes.
 async fn integration(token: &str) -> Result<(Agent, Subject), (StatusCode, String)> {
     let refused = || (StatusCode::UNAUTHORIZED, TOKEN_REFUSED.to_string());
-    let db = TOKEN_DB.get().ok_or_else(refused)?;
+    let runtime = Runtime::current();
+    let db = runtime.auth_token_db.get().ok_or_else(refused)?;
     let prefix = crate::api_tokens_store::prefix().ok_or_else(refused)?;
     let presented = axa::api_tokens::parse(token, &prefix).ok_or_else(refused)?;
     let (record, name) = match crate::api_tokens_store::record(db, presented.id()).await {
@@ -206,8 +203,9 @@ pub async fn init(production: bool, config_require_auth: Option<bool>) -> Result
         url.is_some(),
         keycloak,
     )?;
-    let _ = VERIFIER.set(verifier);
-    let _ = REQUIRE_AUTH.set(require);
+    let runtime = Runtime::current();
+    let _ = runtime.auth_verifier.set(verifier);
+    let _ = runtime.auth_require.set(require);
     Ok(())
 }
 
@@ -218,13 +216,18 @@ pub async fn init(production: bool, config_require_auth: Option<bool>) -> Result
 /// an error the service refuses to start on, because the operator asked for Keycloak and would
 /// otherwise get a service that quietly rejects everyone.
 fn init_keycloak() -> Result<bool, String> {
-    let Some(settings) = KeycloakSettings::from_env("EPR").map_err(|e| e.to_string())? else {
+    // Through this app's own settings, not the process environment (QA-16).
+    let Some(settings) = authentication_verifier::keycloak::settings_from_lookup("EPR", &|name| {
+        crate::runtime::setting(name)
+    })
+    .map_err(|e| e.to_string())?
+    else {
         return Ok(false);
     };
     let issuer = settings.expected_issuer();
     let verifier = KeycloakVerifier::new(settings).map_err(|e| e.to_string())?;
     tracing::info!(%issuer, "auth: Keycloak access tokens accepted");
-    let _ = KEYCLOAK.set(verifier);
+    let _ = Runtime::current().auth_keycloak.set(verifier);
     Ok(true)
 }
 
@@ -250,7 +253,11 @@ fn bearer_token(headers: &HeaderMap) -> Result<&str, (StatusCode, String)> {
 /// Whether login is enforced. Fails closed: before `init` has run, it is.
 #[must_use]
 pub fn authentication_enforced() -> bool {
-    REQUIRE_AUTH.get().copied().unwrap_or(true)
+    Runtime::current()
+        .auth_require
+        .get()
+        .copied()
+        .unwrap_or(true)
 }
 
 /// The decision: `Ok(agent)` lets the request through; `Err((401, why))` rejects.
@@ -323,14 +330,15 @@ pub async fn require_auth_mw(
     next: axum::middleware::Next,
 ) -> axum::response::Response {
     let path = req.uri().path().to_string();
-    let decision = match (REQUIRE_AUTH.get(), VERIFIER.get()) {
+    let runtime = Runtime::current();
+    let decision = match (runtime.auth_require.get(), runtime.auth_verifier.get()) {
         (Some(&require), Some(verifier)) => {
             authenticate(
                 require,
                 req.uri().path(),
                 req.headers(),
                 verifier,
-                KEYCLOAK.get(),
+                runtime.auth_keycloak.get(),
             )
             .await
         }

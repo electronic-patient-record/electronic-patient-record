@@ -59,6 +59,8 @@ mod hl7_samples;
 mod http_lockout;
 #[path = "http_rate_limit.rs"]
 mod http_rate_limit;
+#[path = "http_role_views.rs"]
+mod http_role_views;
 #[path = "keycloak_guard.rs"]
 mod keycloak_guard;
 #[path = "label_census.rs"]

@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-24 - Login state moves into the app's runtime; the first login-on test file joins `suite.rs` (QA-16 stage 3)
+
+- **Clinical risk:** none to what a clinician sees; this changes where the login settings are held. Login still fails closed: before `auth::init` has run for an app, login is enforced for it.
+- **Changed:** the four process-wide statics in `auth.rs` (the PASETO verifier, the Keycloak verifier, whether login is required, the integration-token database) are fields of `Runtime`, read with `Runtime::current()`. `init_keycloak` reads `EPR_KEYCLOAK_*` through the app's own settings (`settings_from_lookup`), no longer the process environment. A service booted the usual way uses the process runtime and behaves as before.
+- **Tests:** `tests/http_role_views.rs` now boots with `request_with` and its own settings instead of `set_var`, so it is a module of `suite.rs` (one program fewer to build and link).
+- **Verified:** clippy and the arithmetic gate clean; unit tests; every database test passes in both passes on a fresh database; the suite with the converted file passes.
+- **Not done / not verified:** about 30 test files still call `set_var` for the same settings and can be converted the same way (one at a time: each needs its `request` call and its settings block replaced); `site::ZONE`, `site::HOLIDAYS` and `permission::REQUIRED` in the domain crate are still process-wide; two apps with different login settings in one process were not tested together; spawned tasks outside a request see the process runtime, as with the other moved state. The build-time saving was not re-measured.
+
 ## 2026-11-24 - The chaos monkey also runs as every role (PA-12)
 
 - **Clinical risk:** none: a test.

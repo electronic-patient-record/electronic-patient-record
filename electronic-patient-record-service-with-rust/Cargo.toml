@@ -252,10 +252,6 @@ name = "http_results"
 path = "tests/http_results.rs"
 
 [[test]]
-name = "http_role_views"
-path = "tests/http_role_views.rs"
-
-[[test]]
 name = "http_roles"
 path = "tests/http_roles.rs"
 
