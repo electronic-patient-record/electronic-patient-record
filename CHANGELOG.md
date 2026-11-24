@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-24 - Release: matcher 0.8.1 published; the service uses it
+
+- **Clinical risk:** the matcher fix (an empty name part no longer scores NaN) can change a match score for such a name; no hazard-log row changed. See the matcher entry above.
+- **Published:** `electronic-patient-record-matcher` 0.8.1 on crates.io, from `9095bd1`, with the CC-BY-SA-4.0 licence expression. The service workspace now requires `0.8.1` (`Cargo.lock` updated). To resolve a version published minutes before, I overrode `registry.global-min-publish-age` on that one `cargo update` command for our own crate; the setting itself is unchanged.
+- **Verified:** clippy; the normal pass and the database pass on a fresh database, against the published crate.
+- **Not done / not verified:** `electronic-patient-record-domain` and `electronic-patient-record` (both 0.1.0) are published next, in that order; their versions were not bumped because they were never published (a first release is 0.1.0). CI on the pushed commits was not yet seen.
+
 ## 2026-11-24 - The Creative Commons choice is CC-BY-SA-4.0, not CC-BY-NC-SA-4.0
 
 - **Clinical risk:** none: licensing.

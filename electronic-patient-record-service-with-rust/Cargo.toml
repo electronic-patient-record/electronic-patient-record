@@ -48,7 +48,7 @@ jiff = { version = "1", default-features = false, features = ["std", "serde", "t
 tracing = { version = "0.1" }
 sha2 = "0.11"
 toml = "1"
-electronic-patient-record-matcher = "0.8.0"
+electronic-patient-record-matcher = "0.8.1"
 # The shared service plumbing.
 axa = { version = "0.21", features = ["api-tokens", "cursor-pagination", "idempotency", "outbox", "postgres-sqlx", "problem", "ratelimit"] }
 
