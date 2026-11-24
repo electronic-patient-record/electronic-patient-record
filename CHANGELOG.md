@@ -2,6 +2,16 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-24 - Problem list, family history and reads as at a time, from openEHR (EH-1 to EH-3)
+
+- **Clinical risk:** new clinical content. Hazards H-066 (problem list), H-067 (family history) and H-068 (as-at reads) opened with the author's scores; nobody has reviewed them or the rules.
+- **Added:** `spec/lessons/openehr-rust` (what `openehr-rust` at `320e1e84` was read for, and advice), plan.md §40, tasks EH-1 to EH-16 (prefix `EH`), OQ-EH1 to OQ-EH5, and `spec/problem-list`, `spec/family-history`, `spec/as-at`. In the service: 11 routes, one migration (two append-only tables), `entries_store.rs`, `controllers/entries.rs`, `links::linked_ids_at`, the policy resource `FamilyMemberHistory`; in the domain crate `problem.rs`, `family_history.rs`, `coding.rs` and `dates::partial_order`.
+- **Fixed:** a refused allergy wrote the SNOMED CT code it was sent into its audit row; it now records the kind of refusal. Rows written before this keep what they hold: the trail is append-only. Ten other controllers record the store's words and were not checked (EH-16).
+- **Changed, a guard:** `tests/grief_census.rs` refused any route with the word *family* (SG-2). It now allows the four family history paths by name, and a new test holds that an entry can reach no other person. Not confirmed by the maintainer (OQ-EH5).
+- **Version:** the domain crate is 0.2.0 (a new `Resource` variant). Not published; the service cannot be published until it is, since it now needs 0.2.0.
+- **Verified:** fmt, clippy `-D warnings`, rustdoc, the checked-arithmetic gate, the normal pass and the database pass on a fresh Postgres 18. Five deliberate breaks (no lock, today's merges, the exact time left out, patient access allowed, the reason in the audit row) and the audit leak each made a test fail.
+- **Not done / not verified:** no screen, no FHIR, no locales, no amendment requests on a problem (EH-15), so no user has these yet; medicines and immunisations; no openEHR specification or archetype was read and no conformance is claimed; no customer, clinician or geneticist was asked; the UI, container, load and mobile gates were not run.
+
 ## 2026-11-24 - Spec: condition-specific support groups (CF-1)
 
 - **Added:** `spec/support-groups/index.md` (design rules; a referral record, not a membership, by default; a volunteer role that grants no clinical read) and OQ-CF1 to OQ-CF5 in `spec/16-open-questions.md`; CF-1 in `tasks.md` is marked drafted.

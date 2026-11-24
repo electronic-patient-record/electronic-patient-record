@@ -192,6 +192,93 @@ async fn real_responses_validate_against_the_served_schemas() {
             &mut problems,
         );
 
+        // The problem list and family history: record, list, change, versions, and as at a time.
+        for (path, id_name, record) in [
+            (
+                "problems",
+                "problem_id",
+                json!({ "title": "Asthma", "certainty": "confirmed", "status": "active",
+                    "severity": "mild", "body_site": "both lungs", "onset": "2020-05",
+                    "coding": { "system": "http://snomed.info/sct", "code": "22298006" } }),
+            ),
+            (
+                "family-history",
+                "entry_id",
+                json!({ "relationship": "sister", "member": 2, "condition": "Asthma",
+                    "presence": "present", "onset_age": 12, "source": "patient", "status": "recorded" }),
+            ),
+        ] {
+            let route = format!("/api/patients/{{id}}/{path}");
+            let url = format!("/api/patients/{id}/{path}");
+            let one = format!("{route}/{{{id_name}}}");
+            let made = server
+                .post(&url)
+                .json(&json!({ "record": record, "reason": "r" }))
+                .await;
+            assert_eq!(made.status_code(), StatusCode::CREATED, "{}", made.text());
+            let made: Value = made.json();
+            let entry = made["id"].as_str().unwrap().to_string();
+            let mut seen = vec![(route.clone(), "post", StatusCode::CREATED, made)];
+            let changed = server
+                .put(&format!("{url}/{entry}"))
+                .json(&json!({ "record": record, "expected_version": 1, "reason": "r" }))
+                .await;
+            seen.push((one.clone(), "put", changed.status_code(), changed.json()));
+            let stale = server
+                .put(&format!("{url}/{entry}"))
+                .json(&json!({ "record": record, "expected_version": 1, "reason": "r" }))
+                .await;
+            assert_eq!(stale.status_code(), StatusCode::CONFLICT);
+            seen.push((one.clone(), "put", stale.status_code(), stale.json()));
+            let bare = server
+                .put(&format!("{url}/{entry}"))
+                .json(&json!({ "record": record, "expected_version": 2 }))
+                .await;
+            assert_eq!(bare.status_code(), StatusCode::UNPROCESSABLE_ENTITY);
+            seen.push((one.clone(), "put", bare.status_code(), bare.json()));
+            let now = electronic_patient_record::clock::rfc3339_micros(jiff::Timestamp::now());
+            for (at, template) in [
+                (url.clone(), route.clone()),
+                (format!("{url}/as-at?time={now}"), format!("{route}/as-at")),
+                (format!("{url}/{entry}/versions"), format!("{one}/versions")),
+            ] {
+                let r = server.get(&at).await;
+                assert_eq!(r.status_code(), StatusCode::OK, "{at}: {}", r.text());
+                seen.push((template, "get", r.status_code(), r.json()));
+            }
+            let no_time = server.get(&format!("{url}/as-at")).await;
+            assert_eq!(no_time.status_code(), StatusCode::BAD_REQUEST);
+            seen.push((
+                format!("{route}/as-at"),
+                "get",
+                no_time.status_code(),
+                no_time.json(),
+            ));
+            for (template, method, status, body) in seen {
+                expect(
+                    &format!("{path} {method} {status}"),
+                    &template,
+                    method,
+                    status,
+                    &body,
+                    &mut problems,
+                );
+            }
+        }
+        let now = electronic_patient_record::clock::rfc3339_micros(jiff::Timestamp::now());
+        let then = server
+            .get(&format!("/api/patients/{id}/allergies/as-at?time={now}"))
+            .await;
+        assert_eq!(then.status_code(), StatusCode::OK, "{}", then.text());
+        expect(
+            "allergies as at",
+            "/api/patients/{id}/allergies/as-at",
+            "get",
+            StatusCode::OK,
+            &then.json(),
+            &mut problems,
+        );
+
         // Allergy statement: refused while an allergy is active, so make a patient with none.
         let blocked = server
             .put(&format!("/api/patients/{id}/allergy-statement"))

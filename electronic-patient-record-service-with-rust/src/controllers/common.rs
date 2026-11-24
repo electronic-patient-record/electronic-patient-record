@@ -326,6 +326,31 @@ pub(super) fn time_now() -> i64 {
         .map_or(0, |d| i64::try_from(d.as_secs()).unwrap_or(i64::MAX))
 }
 
+/// The query of a read as at a time (EH-2).
+#[derive(Debug, serde::Deserialize)]
+pub(super) struct AsAtQuery {
+    /// The time, RFC 3339 with an offset or `Z`. Required.
+    pub time: Option<String>,
+}
+
+impl AsAtQuery {
+    /// The time asked for. Missing, unreadable or in the future is a 400: nobody can say what the record will hold, and
+    /// a default of now would pass for an answer about the past.
+    pub(super) fn instant(&self, now: jiff::Timestamp) -> Result<jiff::Timestamp, ApiError> {
+        let at = self
+            .time
+            .as_deref()
+            .and_then(crate::clock::parse_rfc3339)
+            .ok_or_else(|| {
+                ApiError::bad_request("time must be an RFC 3339 time with an offset or Z")
+            })?;
+        if at > now {
+            return Err(ApiError::bad_request("time is in the future"));
+        }
+        Ok(at)
+    }
+}
+
 /// What was accessed, for an audit row.
 pub(super) struct Access<'a> {
     pub action: Action,
@@ -359,4 +384,41 @@ pub(super) async fn audit_resource(
 /// A store error as its response ([`ApiError`]'s `From<&StoreError>`).
 pub(super) fn store_failure(e: &StoreError) -> Response {
     ApiError::from(e).into_response()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::AsAtQuery;
+    use axum::http::StatusCode;
+
+    #[test]
+    fn a_read_as_at_a_time_needs_a_real_past_time() {
+        let now: jiff::Timestamp = "2026-11-24T12:00:00Z".parse().unwrap();
+        let ask = |t: Option<&str>| {
+            AsAtQuery {
+                time: t.map(String::from),
+            }
+            .instant(now)
+        };
+        assert_eq!(ask(Some("2026-11-24T12:00:00Z")).unwrap(), now);
+        assert_eq!(
+            ask(Some("2026-11-24T13:00:00+01:00")).unwrap(),
+            now,
+            "an offset is read"
+        );
+        for bad in [
+            None,
+            Some(""),
+            Some("yesterday"),
+            Some("2026-11-24"),
+            Some("2026-11-24T12:00:00"),
+            Some("2026-11-24T12:00:01Z"),
+        ] {
+            assert_eq!(
+                ask(bad).unwrap_err().status(),
+                StatusCode::BAD_REQUEST,
+                "{bad:?}"
+            );
+        }
+    }
 }

@@ -6,7 +6,7 @@
 //!   cargo test --test main stored_words:: -- --ignored --test-threads=1
 //! ```
 //!
-//! Covered: referral states, allergy, consent, death assertion, adjustment and result statuses, suspicion outcome kinds and watch list entry statuses. Not covered: amendment states (a tagged
+//! Covered: referral states, allergy, problem, family history, consent, death assertion, adjustment and result statuses, suspicion outcome kinds and watch list entry statuses. Not covered: amendment states (a tagged
 //! enum with no list), observation statuses, queue kinds and clearances (private lists), and a
 //! variant left out of its `ALL` array (the compiler cannot see that).
 
@@ -14,7 +14,8 @@ use sqlx::{PgPool, Row};
 use std::collections::BTreeSet;
 
 use electronic_patient_record::{
-    adjustments, allergies, consent, death, referral, results, suspicion, watch_list,
+    adjustments, allergies, consent, death, family_history, problem, referral, results, suspicion,
+    watch_list,
 };
 
 async fn db() -> PgPool {
@@ -100,6 +101,23 @@ async fn stored_words_match_the_database_checks() {
         "allergy_versions",
         "status",
         allergies::Status::ALL.iter().map(|s| s.as_str()).collect(),
+    )
+    .await;
+    same(
+        &db,
+        "problem_versions",
+        "status",
+        problem::Status::ALL.iter().map(|s| s.as_str()).collect(),
+    )
+    .await;
+    same(
+        &db,
+        "family_history_versions",
+        "status",
+        family_history::Status::ALL
+            .iter()
+            .map(|s| s.as_str())
+            .collect(),
     )
     .await;
     same(

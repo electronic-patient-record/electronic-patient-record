@@ -2306,3 +2306,25 @@ Notes also meet the never-copy rule and the no-draft-on-device rule, which costs
 that trade needs the maintainer's confirmation. Break-glass stays on the web. **Order:** read-only results and warnings
 (with MP-7 and MP-8), then sign-off, then tasks, then notes. **Not done:** no clinician was asked; the desktop portal was
 not seen; three open questions (OQ-MP10 to OQ-MP12) are the clinical lead's and the Clinical Safety Officer's.
+
+## 40. Research pass 2026-11-24: openEHR and `openehr-rust`, then built
+
+Asked for on 2026-11-24: research the openEHR repository, assess and advise on ideas to add because customers want more
+EHR capabilities, add them to the plan, tasks and spec, and implement. (The path first given, `~/git/open-ehr/open-ehr`,
+does not exist; the maintainer corrected it to `~/git/openehr-rust/openehr-rust`.) Spec:
+[`spec/lessons/openehr-rust/index.md`](spec/lessons/openehr-rust/index.md), with what was read and what was not. Tasks
+EH-1 to EH-16; open questions OQ-EH1 to OQ-EH5; hazards H-066 to H-068.
+
+**Assessment.** The dependency question is as it was on 2026-10-21: no. The useful part is the model of what a record
+does. Against it this project had a sound store and little to put in it: no problem list, no family history, and
+append-only versions that no route could read as at a past time.
+
+**Built, service only:** the problem list (EH-1), reads as at a time (EH-2) and family history (EH-3). Chosen because the
+first is the centre of any health record and the rest of RC-5 leans on it, the second costs little since the data was
+there, and the third answers CF-4 in part. **Not built:** a screen for any of them, FHIR, medicines and immunisations.
+
+**Order after this.** EH-15 (the screens and FHIR, without which no user has the capability), then EH-7 and EH-8 (absence
+and masking, which CF-2 waits for), EH-6, then EH-5 and EH-4 before orders or medicines, then EH-9 with notes.
+
+**Not done.** No customer was asked which capabilities they want; the order is the author's. No clinician, geneticist or
+Clinical Safety Officer reviewed any rule.

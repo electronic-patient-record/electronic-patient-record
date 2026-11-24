@@ -61,6 +61,8 @@ mod destroy_refused;
 mod doc_census;
 #[path = "drill_records.rs"]
 mod drill_records;
+#[path = "entries_store.rs"]
+mod entries_store;
 #[path = "error_census.rs"]
 mod error_census;
 #[path = "fhir_audit_paging.rs"]
@@ -91,6 +93,8 @@ mod http_conflicts;
 mod http_death_reports;
 #[path = "http_deaths.rs"]
 mod http_deaths;
+#[path = "http_entries.rs"]
+mod http_entries;
 #[path = "http_feed_health.rs"]
 mod http_feed_health;
 #[path = "http_hazards.rs"]

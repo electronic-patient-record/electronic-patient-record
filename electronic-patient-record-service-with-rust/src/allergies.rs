@@ -477,6 +477,20 @@ pub async fn update(
     row_to_allergy(&row)
 }
 
+/// Read one statement row.
+///
+/// # Errors
+///
+/// [`StoreError::Db`] when a column is missing.
+fn row_to_assertion(r: &PgRow) -> Result<Assertion, StoreError> {
+    Ok(Assertion {
+        version: r.try_get("version").map_err(db_err)?,
+        author: r.try_get("author").map_err(db_err)?,
+        recorded_at: r.try_get("at").map_err(db_err)?,
+        no_known_allergies: r.try_get::<String, _>("kind").map_err(db_err)? == "no-known-allergies",
+    })
+}
+
 /// The patient's current "no known allergies" statement, if one was ever made.
 ///
 /// # Errors
@@ -497,16 +511,7 @@ pub async fn statement(
     .fetch_optional(&mut *db)
     .await
     .map_err(db_err)?;
-    row.map(|r| {
-        Ok(Assertion {
-            version: r.try_get("version").map_err(db_err)?,
-            author: r.try_get("author").map_err(db_err)?,
-            recorded_at: r.try_get("at").map_err(db_err)?,
-            no_known_allergies: r.try_get::<String, _>("kind").map_err(db_err)?
-                == "no-known-allergies",
-        })
-    })
-    .transpose()
+    row.map(|r| row_to_assertion(&r)).transpose()
 }
 
 /// State "no known allergies" (`true`) or withdraw that statement (`false`). `expected_version` is
@@ -586,6 +591,84 @@ pub async fn assert_none_known(
         recorded_at: r.try_get("at").map_err(db_err)?,
         no_known_allergies: none_known,
     })
+}
+
+/// An allergy as it stood at a past time.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct AllergyAt {
+    /// The version that was current then.
+    #[serde(flatten)]
+    pub stored: StoredAllergy,
+    /// Whether a later version has been written since, so that this is no longer what the record says.
+    pub changed_since: bool,
+}
+
+/// Every allergy as it stood at `at` (EH-2): for each, the latest version written by then, with those of the records
+/// that were merged into this one **then**. An allergy first recorded later is not there at all. The time of a version
+/// is when its transaction began, so a write in progress at `at` may be included.
+///
+/// # Errors
+///
+/// [`StoreError::NotFound`] (no such patient now).
+pub async fn list_at(
+    db: impl Into<Db<'_>>,
+    patient_id: &str,
+    at: jiff::Timestamp,
+) -> Result<Vec<AllergyAt>, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let patient = patients_store::current(&mut *db, patient_id).await?;
+    let linked = ids::uuids(&links::linked_ids_at(&mut *db, &patient.id, at).await?);
+    let rows = sqlx::query(AssertSqlSafe(format!(
+        "SELECT {}, EXISTS (
+                 SELECT 1 FROM allergy_versions n
+                 WHERE n.allergy_id = v.allergy_id AND n.version > v.version
+             ) AS changed_since
+             FROM (SELECT DISTINCT ON (allergy_id) * FROM allergy_versions
+                   WHERE patient_id = ANY($1::uuid[]) AND recorded_at <= $2
+                   ORDER BY allergy_id, version DESC) v
+             ORDER BY recorded_at, allergy_id",
+        columns()
+    )))
+    .bind(linked)
+    .bind(crate::pg_time::PgTimestamp(at))
+    .fetch_all(&mut *db)
+    .await
+    .map_err(db_err)?;
+    rows.iter()
+        .map(|row| {
+            Ok(AllergyAt {
+                changed_since: row.try_get("changed_since").map_err(db_err)?,
+                stored: row_to_allergy(row)?,
+            })
+        })
+        .collect()
+}
+
+/// The "no known allergies" statement as it stood at `at`, if one had been made by then.
+///
+/// # Errors
+///
+/// [`StoreError::NotFound`] (no such patient now).
+pub async fn statement_at(
+    db: impl Into<Db<'_>>,
+    patient_id: &str,
+    at: jiff::Timestamp,
+) -> Result<Option<Assertion>, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let patient = patients_store::current(&mut *db, patient_id).await?;
+    let row = sqlx::query(AssertSqlSafe(format!(
+        "SELECT version, author, {TS} AS at, kind FROM allergy_assertion_versions
+                 WHERE patient_id = $1::uuid AND recorded_at <= $2
+                 ORDER BY version DESC LIMIT 1"
+    )))
+    .bind(patient.id)
+    .bind(crate::pg_time::PgTimestamp(at))
+    .fetch_optional(&mut *db)
+    .await
+    .map_err(db_err)?;
+    row.map(|r| row_to_assertion(&r)).transpose()
 }
 
 /// The banner summary for a patient.

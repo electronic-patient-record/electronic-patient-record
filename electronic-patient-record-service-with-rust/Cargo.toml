@@ -55,7 +55,7 @@ axa = { version = "0.23", features = ["api-tokens", "cursor-pagination", "idempo
 [dependencies]
 axa = { workspace = true }
 # The domain rules: no database, no web (electronic-patient-record-domain/).
-electronic-patient-record-domain = { version = "0.1.0", path = "electronic-patient-record-domain" }
+electronic-patient-record-domain = { version = "0.2.0", path = "electronic-patient-record-domain" }
 serde = { workspace = true }
 serde_urlencoded = "0.7"
 uuid = { workspace = true }

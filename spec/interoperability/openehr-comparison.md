@@ -7,6 +7,8 @@ comparison of two designs by one hand, not an outside review. Nothing here is a 
 openEHR conformance: the crate states its own conformance gaps in its `spec/audit.md`, and I have
 not tested them.
 
+**Extended 2026-11-24** for 0.11: [openEHR and `openehr-rust`](../lessons/openehr-rust/index.md). The verdict below stands; three of its ideas were then built.
+
 ## Verdict
 
 **Do not depend on `openehr` now. Take six ideas from it.** The plan already says the same

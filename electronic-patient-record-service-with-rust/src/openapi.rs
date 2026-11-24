@@ -293,8 +293,190 @@ fn allergy_schemas() -> Value {
                 "summary": {"type": "object", "required": ["state"], "additionalProperties": true, "properties": {"state": {"type": "string"}}},
                 "amendment_notices": {"type": "object"}
             }
+        },
+        "AllergyAsAt": {
+            "type": "object",
+            "required": ["id", "patient_id", "version", "author", "recorded_at", "allergy", "changed_since"],
+            "properties": {
+                "id": {"type": "string"}, "patient_id": {"type": "string"},
+                "version": {"type": "integer"}, "author": {"type": "string"},
+                "recorded_at": {"type": "string", "description": "UTC."},
+                "allergy": {"$ref": "#/components/schemas/AllergyRecord"},
+                "changed_since": {"type": "boolean", "description": "A later version exists: this is no longer what the record says."}
+            }
+        },
+        "AllergiesAsAt": {
+            "type": "object", "required": ["as_at", "read_at", "allergies", "statement", "summary"],
+            "description": "The allergies, the no-known-allergies statement and the banner summary as they stood at `as_at`. It is not the record as it stands now.",
+            "properties": {
+                "as_at": {"type": "string", "description": "UTC."},
+                "read_at": {"type": "string", "description": "UTC."},
+                "allergies": {"type": "array", "items": {"$ref": "#/components/schemas/AllergyAsAt"}},
+                "statement": {"type": ["object", "null"]},
+                "summary": {"type": "object", "required": ["state"], "additionalProperties": true, "properties": {"state": {"type": "string"}}}
+            }
         }
     })
+}
+
+/// The list, as-at, version and write schemas of one kind of entry (`controllers/entries.rs`): `record` is the record's
+/// schema, `stored` a stored version, and `list` the prefix of the rest.
+fn entry_schemas(record: &str, stored: &str, list: &str) -> Value {
+    let reference = |name: &str| json!({"$ref": format!("#/components/schemas/{name}")});
+    let summary = json!({"type": "object", "required": ["state"], "additionalProperties": true,
+        "description": "`not-recorded` is unknown, never none.",
+        "properties": {"state": {"type": "string"}}});
+    let at = format!("{stored}AsAt");
+    let mut out = json!({});
+    crate::json::set(
+        &mut out,
+        stored,
+        json!({
+            "type": "object",
+            "required": ["id", "patient_id", "version", "author", "recorded_at", "reason", "record"],
+            "properties": {
+                "id": {"type": "string"}, "patient_id": {"type": "string"},
+                "version": {"type": "integer"}, "author": {"type": "string"},
+                "recorded_at": {"type": "string", "description": "UTC."},
+                "reason": {"type": ["string", "null"], "description": "Why this version was written; always there from version 2."},
+                "record": reference(record)
+            }
+        }),
+    );
+    crate::json::set(
+        &mut out,
+        &format!("Create{record}"),
+        json!({
+            "type": "object", "required": ["record"], "additionalProperties": false,
+            "properties": {
+                "record": reference(record),
+                "reason": {"type": ["string", "null"], "maxLength": 500_u32}
+            }
+        }),
+    );
+    crate::json::set(
+        &mut out,
+        &format!("Update{record}"),
+        json!({
+            "type": "object", "required": ["record", "expected_version", "reason"], "additionalProperties": false,
+            "properties": {
+                "record": reference(record),
+                "expected_version": {"type": "integer"},
+                "reason": {"type": "string", "minLength": 1_u32, "maxLength": 500_u32}
+            }
+        }),
+    );
+    crate::json::set(
+        &mut out,
+        &format!("{list}List"),
+        json!({
+            "type": "object", "required": ["entries", "summary"],
+            "description": "Every entry in every status, oldest first.",
+            "properties": {
+                "entries": {"type": "array", "items": reference(stored)},
+                "summary": summary.clone()
+            }
+        }),
+    );
+    crate::json::set(
+        &mut out,
+        &format!("{list}Versions"),
+        json!({
+            "type": "object", "required": ["versions"],
+            "properties": {"versions": {"type": "array", "description": "Oldest first.", "items": reference(stored)}}
+        }),
+    );
+    crate::json::set(
+        &mut out,
+        &at,
+        json!({
+            "type": "object",
+            "required": ["id", "patient_id", "version", "author", "recorded_at", "reason", "record", "changed_since"],
+            "properties": {
+                "id": {"type": "string"}, "patient_id": {"type": "string"},
+                "version": {"type": "integer"}, "author": {"type": "string"},
+                "recorded_at": {"type": "string", "description": "UTC."},
+                "reason": {"type": ["string", "null"]},
+                "record": reference(record),
+                "changed_since": {"type": "boolean", "description": "A later version exists: this is no longer what the record says."}
+            }
+        }),
+    );
+    crate::json::set(
+        &mut out,
+        &format!("{list}AsAt"),
+        json!({
+            "type": "object", "required": ["as_at", "read_at", "entries", "summary"],
+            "description": "The list as it stood at `as_at`. It is not the record as it stands now.",
+            "properties": {
+                "as_at": {"type": "string", "description": "UTC."},
+                "read_at": {"type": "string", "description": "UTC."},
+                "entries": {"type": "array", "items": reference(&at)},
+                "summary": summary
+            }
+        }),
+    );
+    out
+}
+
+/// A coded term as the problem list and family history take it.
+fn coding_schema() -> Value {
+    json!({"type": "object", "required": ["system", "code"], "additionalProperties": false, "properties": {
+        "system": {"type": "string", "maxLength": 200_u32, "description": "A URI; a SNOMED CT code is checked."},
+        "code": {"type": "string", "maxLength": 64_u32}}})
+}
+
+/// The problem list (EH-1).
+fn problem_schemas() -> Value {
+    let mut out = entry_schemas("ProblemRecord", "StoredProblem", "Problem");
+    crate::json::set(
+        &mut out,
+        "ProblemRecord",
+        json!({
+            "type": "object", "required": ["title", "certainty", "status"], "additionalProperties": false,
+            "description": "One problem as recorded. It belongs to the patient, not to a visit. An absent optional field means not stated.",
+            "properties": {
+                "title": {"type": "string", "minLength": 1_u32, "maxLength": 200_u32, "description": "In words; required."},
+                "coding": coding_schema(),
+                "certainty": {"enum": ["unconfirmed", "provisional", "differential", "confirmed", "refuted"], "description": "How sure the author was; never assumed. A refuted problem cannot be active or in remission."},
+                "status": {"enum": ["active", "remission", "inactive", "resolved", "entered-in-error"]},
+                "severity": {"enum": ["mild", "moderate", "severe"]},
+                "body_site": {"type": "string", "minLength": 1_u32, "maxLength": 200_u32},
+                "onset": {"type": "string", "description": "YYYY, YYYY-MM or YYYY-MM-DD; not in the future."},
+                "abated": {"type": "string", "description": "The same. Not for an active problem."},
+                "due_to": {"type": "string", "description": "The id of the problem that causes this one, on the same patient's list. Never itself, directly or through others, and never one entered in error."}
+            }
+        }),
+    );
+    out
+}
+
+/// Family history (EH-3).
+fn family_history_schemas() -> Value {
+    let mut out = entry_schemas(
+        "FamilyHistoryRecord",
+        "StoredFamilyHistory",
+        "FamilyHistory",
+    );
+    crate::json::set(
+        &mut out,
+        "FamilyHistoryRecord",
+        json!({
+            "type": "object", "required": ["relationship", "condition", "presence", "source", "status"], "additionalProperties": false,
+            "description": "A finding about a relative by blood. A relative is never named: there is no place for a name, a birth date or a note.",
+            "properties": {
+                "relationship": {"enum": crate::family_history::Relationship::ALL},
+                "member": {"type": "integer", "minimum": 1_u32, "maximum": 20_u32, "description": "Which one, when there can be several. Not for a mother, father or grandparent."},
+                "condition": {"type": "string", "minLength": 1_u32, "maxLength": 120_u32},
+                "coding": coding_schema(),
+                "presence": {"enum": crate::family_history::Presence::ALL, "description": "`absent` and `unknown` are findings; an entry that is not there is neither."},
+                "onset_age": {"type": "integer", "minimum": 0_u32, "maximum": 130_u32, "description": "Whole years. Only when they had it."},
+                "source": {"enum": crate::family_history::Source::ALL},
+                "status": {"enum": crate::family_history::Status::ALL}
+            }
+        }),
+    );
+    out
 }
 
 /// The schemas for referrals: the record, a stored version (with its `next` events), the send and step bodies, and the
@@ -1744,6 +1926,8 @@ fn patient_schemas() -> Value {
         amendment_schemas(),
         identity_schemas(),
         allergy_schemas(),
+        problem_schemas(),
+        family_history_schemas(),
         referral_schemas(),
         observation_schemas(),
         result_schemas(),
@@ -1822,6 +2006,38 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
         "CreateAllergyStatement",
         "200",
         "AllergyStatement",
+        "VersionConflict",
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/problems",
+        "CreateProblemRecord",
+        "201",
+        "StoredProblem",
+        "",
+    ),
+    (
+        "PUT",
+        "/api/patients/{id}/problems/{problem_id}",
+        "UpdateProblemRecord",
+        "200",
+        "StoredProblem",
+        "VersionConflict",
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/family-history",
+        "CreateFamilyHistoryRecord",
+        "201",
+        "StoredFamilyHistory",
+        "",
+    ),
+    (
+        "PUT",
+        "/api/patients/{id}/family-history/{entry_id}",
+        "UpdateFamilyHistoryRecord",
+        "200",
+        "StoredFamilyHistory",
         "VersionConflict",
     ),
     (
@@ -2150,6 +2366,43 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
 const READS: &[(&str, &str, &str, &[&str])] = &[
     ("GET", "/api/patients/{id}", "PatientView", &[]),
     ("GET", "/api/patients/{id}/allergies", "AllergyList", &[]),
+    (
+        "GET",
+        "/api/patients/{id}/allergies/as-at",
+        "AllergiesAsAt",
+        &["time"],
+    ),
+    ("GET", "/api/patients/{id}/problems", "ProblemList", &[]),
+    (
+        "GET",
+        "/api/patients/{id}/problems/as-at",
+        "ProblemAsAt",
+        &["time"],
+    ),
+    (
+        "GET",
+        "/api/patients/{id}/problems/{problem_id}/versions",
+        "ProblemVersions",
+        &[],
+    ),
+    (
+        "GET",
+        "/api/patients/{id}/family-history",
+        "FamilyHistoryList",
+        &[],
+    ),
+    (
+        "GET",
+        "/api/patients/{id}/family-history/as-at",
+        "FamilyHistoryAsAt",
+        &["time"],
+    ),
+    (
+        "GET",
+        "/api/patients/{id}/family-history/{entry_id}/versions",
+        "FamilyHistoryVersions",
+        &[],
+    ),
     ("GET", "/api/patients/{id}/referrals", "ReferralList", &[]),
     (
         "GET",
@@ -2560,8 +2813,16 @@ pub fn document_for(served: &[(String, String)]) -> Value {
                     "outcome" | "before" | "checkpoint_id" => json!({"type": "integer"}),
                     _ => json!({"type": "string"}),
                 };
+                // A read as at a time (EH-2) has no default: now would pass for an answer about the past.
+                let required = *name == "time";
+                if required {
+                    responses.insert(
+                        "400".into(),
+                        body_ref("time is missing, is not an RFC 3339 time with an offset or Z, or is in the future.", "Error"),
+                    );
+                }
                 parameters.push(
-                    json!({"name": name, "in": "query", "required": false, "schema": schema}),
+                    json!({"name": name, "in": "query", "required": required, "schema": schema}),
                 );
             }
             if !parameters.is_empty() {
@@ -3168,6 +3429,183 @@ mod tests {
     }
 
     #[test]
+    fn the_problem_and_family_history_schemas_match_the_types() {
+        use crate::coding::Coding;
+        use crate::controllers::entries::{
+            CreateRequest, EntriesAsAt, EntryList, UpdateRequest, VersionList,
+        };
+        use crate::entries_store::{Stored, StoredAt};
+        use crate::family_history as family;
+        use crate::problem;
+        fn check<R: crate::entries_store::Entry>(record: R, name: &str, stored: &str, list: &str) {
+            let schema = patient_schemas();
+            let value = serde_json::to_value(&record).unwrap();
+            assert_eq!(keys(&value), properties(name));
+            for key in schema[name]["required"].as_array().unwrap() {
+                assert!(value.get(key.as_str().unwrap()).is_some(), "{name} {key}");
+            }
+            let kept = Stored {
+                id: "i".into(),
+                patient_id: "p".into(),
+                version: 1,
+                author: "a".into(),
+                recorded_at: "t".into(),
+                reason: None,
+                record,
+            };
+            let at = StoredAt {
+                stored: kept.clone(),
+                changed_since: true,
+            };
+            assert_eq!(
+                keys(&serde_json::to_value(&kept).unwrap()),
+                properties(stored)
+            );
+            assert_eq!(
+                keys(&serde_json::to_value(&at).unwrap()),
+                properties(&format!("{stored}AsAt"))
+            );
+            let summary = serde_json::json!({ "state": "not-recorded" });
+            assert_eq!(
+                keys(
+                    &serde_json::to_value(EntryList {
+                        entries: vec![kept.clone()],
+                        summary: summary.clone()
+                    })
+                    .unwrap()
+                ),
+                properties(&format!("{list}List"))
+            );
+            assert_eq!(
+                keys(
+                    &serde_json::to_value(EntriesAsAt {
+                        as_at: "t".into(),
+                        read_at: "t".into(),
+                        entries: vec![at],
+                        summary
+                    })
+                    .unwrap()
+                ),
+                properties(&format!("{list}AsAt"))
+            );
+            assert_eq!(
+                keys(
+                    &serde_json::to_value(VersionList {
+                        versions: vec![kept]
+                    })
+                    .unwrap()
+                ),
+                properties(&format!("{list}Versions"))
+            );
+            assert!(
+                serde_json::from_value::<CreateRequest<R>>(serde_json::json!({"record": value}))
+                    .is_ok()
+            );
+            assert!(
+                serde_json::from_value::<UpdateRequest<R>>(serde_json::json!({"record": value}))
+                    .is_err(),
+                "a change names the version it was made from"
+            );
+        }
+        let coding = Coding {
+            system: "urn:x".into(),
+            code: "1".into(),
+        };
+        check(
+            problem::ProblemRecord {
+                title: "t".into(),
+                coding: Some(coding.clone()),
+                certainty: problem::Certainty::Confirmed,
+                status: problem::Status::Resolved,
+                severity: Some(problem::Severity::Mild),
+                body_site: Some("b".into()),
+                onset: Some("2020".into()),
+                abated: Some("2021".into()),
+                due_to: Some("id".into()),
+            },
+            "ProblemRecord",
+            "StoredProblem",
+            "Problem",
+        );
+        check(
+            family::FamilyHistoryRecord {
+                relationship: family::Relationship::Sister,
+                member: Some(1),
+                condition: "c".into(),
+                coding: Some(coding),
+                presence: family::Presence::Present,
+                onset_age: Some(40),
+                source: family::Source::Patient,
+                status: family::Status::Recorded,
+            },
+            "FamilyHistoryRecord",
+            "StoredFamilyHistory",
+            "FamilyHistory",
+        );
+        // The words are the ones serde writes, and the limits are the rules' own.
+        let schema = patient_schemas();
+        let words = |name: &str, field: &str| schema[name]["properties"][field]["enum"].clone();
+        assert_eq!(
+            words("ProblemRecord", "status"),
+            serde_json::json!(problem::Status::ALL)
+        );
+        assert_eq!(
+            words("ProblemRecord", "certainty"),
+            serde_json::json!(problem::Certainty::ALL)
+        );
+        assert_eq!(
+            words("ProblemRecord", "severity"),
+            serde_json::json!(problem::Severity::ALL)
+        );
+        let limit =
+            |name: &str, field: &str, key: &str| schema[name]["properties"][field][key].clone();
+        assert_eq!(
+            limit("ProblemRecord", "title", "maxLength"),
+            problem::TITLE_LIMIT
+        );
+        assert_eq!(
+            limit("ProblemRecord", "body_site", "maxLength"),
+            problem::SITE_LIMIT
+        );
+        assert_eq!(
+            limit("FamilyHistoryRecord", "condition", "maxLength"),
+            family::CONDITION_LIMIT
+        );
+        assert_eq!(
+            limit("FamilyHistoryRecord", "onset_age", "maximum"),
+            family::AGE_LIMIT
+        );
+        assert_eq!(
+            limit("FamilyHistoryRecord", "member", "maximum"),
+            family::MEMBER_LIMIT
+        );
+        assert_eq!(
+            limit("CreateProblemRecord", "reason", "maxLength"),
+            crate::entries_store::REASON_LIMIT
+        );
+    }
+
+    #[test]
+    fn a_read_as_at_a_time_requires_the_time() {
+        let doc = document();
+        for path in [
+            "/api/patients/{id}/allergies/as-at",
+            "/api/patients/{id}/problems/as-at",
+            "/api/patients/{id}/family-history/as-at",
+        ] {
+            let get = &doc["paths"][path]["get"];
+            let time = get["parameters"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|p| p["name"] == "time")
+                .expect("time is a parameter");
+            assert_eq!(time["required"], true, "{path}");
+            assert!(get["responses"]["400"].is_object(), "{path}");
+        }
+    }
+
+    #[test]
     fn the_allergy_statement_schemas_match_the_types() {
         use crate::allergies::Assertion;
         let value = serde_json::to_value(Assertion {
@@ -3214,6 +3652,45 @@ mod tests {
         assert_eq!(keys(&list), properties("AllergyList"));
         assert_eq!(list["summary"]["state"], "active");
         assert!(list["statement"].is_null());
+    }
+
+    #[test]
+    fn the_allergies_as_at_schema_names_the_fields_the_handler_sends() {
+        use crate::allergies::{AllergyAt, AllergyRecord, Status, StoredAllergy, Summary};
+        let at = AllergyAt {
+            stored: StoredAllergy {
+                id: "i".into(),
+                patient_id: "p".into(),
+                version: 1,
+                author: "a".into(),
+                recorded_at: "t".into(),
+                allergy: AllergyRecord {
+                    substance: "s".into(),
+                    coding: None,
+                    category: None,
+                    criticality: None,
+                    reaction: None,
+                    onset: None,
+                    status: Status::Active,
+                },
+            },
+            changed_since: false,
+        };
+        assert_eq!(
+            keys(&serde_json::to_value(&at).unwrap()),
+            properties("AllergyAsAt")
+        );
+        let list = crate::controllers::allergies::AllergiesAsAt {
+            as_at: "t".into(),
+            read_at: "t".into(),
+            allergies: vec![at],
+            statement: None,
+            summary: Summary::NotRecorded,
+        };
+        assert_eq!(
+            keys(&serde_json::to_value(&list).unwrap()),
+            properties("AllergiesAsAt")
+        );
     }
 
     #[test]

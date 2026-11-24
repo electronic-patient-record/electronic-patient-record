@@ -270,6 +270,48 @@ pub async fn linked_ids(
     Ok(ids)
 }
 
+/// [`linked_ids`] as it stood at `at`: the record itself and everything that was merged into it, directly or through a
+/// chain, by the link versions written by then (EH-2). A merge made later is not followed and one reversed later is.
+///
+/// # Errors
+///
+/// [`StoreError::Db`] on a database failure.
+pub async fn linked_ids_at(
+    db: impl Into<Db<'_>>,
+    patient_id: &str,
+    at: jiff::Timestamp,
+) -> Result<Vec<String>, StoreError> {
+    let mut conn = db.into().acquire().await.map_err(db_err)?;
+    let db = &mut *conn;
+    let mut ids_then = vec![patient_id.to_lowercase()];
+    let Some(target) = ids::uuid(patient_id) else {
+        return Ok(ids_then);
+    };
+    let rows = sqlx::query(
+        "WITH RECURSIVE then_links AS (
+                 SELECT DISTINCT ON (link_id) source_patient_id, target_patient_id, status
+                 FROM patient_link_versions WHERE recorded_at <= $2
+                 ORDER BY link_id, version DESC
+             ), src(id) AS (
+                 SELECT source_patient_id FROM then_links
+                 WHERE target_patient_id = $1::uuid AND status = 'active'
+               UNION
+                 SELECT l.source_patient_id FROM then_links l
+                 JOIN src ON l.target_patient_id = src.id WHERE l.status = 'active'
+             )
+             SELECT id::text AS id FROM src ORDER BY id",
+    )
+    .bind(target)
+    .bind(crate::pg_time::PgTimestamp(at))
+    .fetch_all(&mut *db)
+    .await
+    .map_err(db_err)?;
+    for r in &rows {
+        ids_then.push(r.try_get("id").map_err(db_err)?);
+    }
+    Ok(ids_then)
+}
+
 /// Every link in which the patient is the source or the target, newest first, every status.
 ///
 /// # Errors

@@ -36,9 +36,36 @@ pub fn valid_birth_date(d: &str) -> bool {
     }
 }
 
+/// How two partial dates (`YYYY`, `YYYY-MM` or `YYYY-MM-DD`, each already checked by [`valid_birth_date`]) are ordered,
+/// or `None` when that is not established: `2020` and `2020-05` may be either way round. A caller must not read `None`
+/// as equal, or as in order.
+#[must_use]
+pub fn partial_order(a: &str, b: &str) -> Option<std::cmp::Ordering> {
+    // Every part is zero-padded to a fixed width, so the first byte that differs decides.
+    for (x, y) in a.bytes().zip(b.bytes()) {
+        if x != y {
+            return Some(x.cmp(&y));
+        }
+    }
+    (a.len() == b.len()).then_some(std::cmp::Ordering::Equal)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn partial_dates_are_ordered_only_where_that_is_established() {
+        use std::cmp::Ordering::{Equal, Greater, Less};
+        assert_eq!(partial_order("2019", "2020"), Some(Less));
+        assert_eq!(partial_order("2020-05", "2019-12-31"), Some(Greater));
+        assert_eq!(partial_order("2020-05-17", "2020-05-17"), Some(Equal));
+        assert_eq!(partial_order("2020", "2020"), Some(Equal));
+        for (a, b) in [("2020", "2020-05"), ("2020-05-17", "2020-05")] {
+            assert_eq!(partial_order(a, b), None, "{a} {b}");
+            assert_eq!(partial_order(b, a), None, "{b} {a}");
+        }
+    }
 
     #[test]
     fn a_year_a_month_or_a_real_day_from_1800() {

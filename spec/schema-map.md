@@ -4,7 +4,7 @@ Every table and view the service's migrations create. **Generated** by [`scripts
 
 Not listed: tables made by a statement built at run time (the monthly `audit_events` partitions), and what a column means (the migrations carry few comments, so only the name and SQL type are shown). The clinical tables are append-only: a change is a new row, and triggers refuse `UPDATE`, `DELETE` and `TRUNCATE`.
 
-45 tables, 21 views.
+47 tables, 23 views.
 
 ## Tables
 
@@ -30,6 +30,7 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `break_glass_reviews` | `20261021000010_break_glass` | `grant_id` UUID, `reviewed_at` TIMESTAMPTZ, `reviewed_by` TEXT, `outcome` TEXT, `note` TEXT |
 | `consent_versions` | `20261021000003_consent_versions` | `consent_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `status` TEXT, `body` JSONB |
 | `death_assertion_versions` | `20261105000025_death_assertions` | `assertion_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `status` TEXT, `body` JSONB |
+| `family_history_versions` | `20261124000042_problems_family_history` | `entry_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `status` TEXT, `body` JSONB |
 | `feed_alarm_states` | `20261117000039_feed_alarm_states` | `seq` BIGSERIAL, `agent` TEXT, `state` TEXT, `reasons` JSONB, `recorded_at` TIMESTAMPTZ |
 | `feed_message_times` | `20261117000038_feed_message_times` | `agent` TEXT, `patient_id` UUID, `message_time` TIMESTAMPTZ, `control_id` TEXT, `recorded_at` TIMESTAMPTZ |
 | `feed_refusal_resolutions` | `20261021000009_feed_refusals` | `refusal_id` UUID, `resolved_at` TIMESTAMPTZ, `resolved_by` TEXT, `outcome` TEXT, `reason` TEXT |
@@ -41,6 +42,7 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `patient_link_versions` | `20261021000008_patient_links` | `link_id` UUID, `version` INTEGER, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `source_patient_id` UUID, `target_patient_id` UUID, `status` TEXT, `match_score` DOUBLE, `match_decision` TEXT |
 | `patient_photos` | `20261021000006_patient_photos` | `patient_id` UUID, `version` INTEGER, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `content_type` TEXT, `bytes` BYTEA, `sha256` TEXT |
 | `patient_versions` | `20261021000002_patient_versions` | `patient_id` UUID, `version` INTEGER, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `body` JSONB |
+| `problem_versions` | `20261124000042_problems_family_history` | `problem_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `status` TEXT, `body` JSONB |
 | `referral_acknowledgements` | `20261103000024_referral_acknowledgements` | `referral_id` UUID, `version` INTEGER, `acknowledged_at` TIMESTAMPTZ, `acknowledged_by` TEXT |
 | `referral_suspicion_outcome_errors` | `20261110000035_suspicion_outcome_errors` | `referral_id` UUID, `seq` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT |
 | `referral_suspicion_outcomes` | `20261109000033_suspicion_outcomes` | `referral_id` UUID, `suspicion_version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `kind` TEXT, `body` JSONB |
@@ -69,11 +71,13 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `audit_events_all` | `20261031000019_audit_archive_view` |
 | `consent_current` | `20261021000003_consent_versions`, `20261021000011_current_views_seek` |
 | `death_assertion_current` | `20261105000025_death_assertions` |
+| `family_history_current` | `20261124000042_problems_family_history` |
 | `hazard_current` | `20261028000016_hazard_events` |
 | `observation_current` | `20261026000014_observations` |
 | `patient_current` | `20261021000002_patient_versions`, `20261021000012_patient_search_indexes`, `20261024000013_patient_drill` |
 | `patient_link_current` | `20261021000008_patient_links`, `20261021000011_current_views_seek` |
 | `patient_photo_current` | `20261021000006_patient_photos` |
+| `problem_current` | `20261124000042_problems_family_history` |
 | `referral_current` | `20261102000022_referrals` |
 | `referral_suspicion_current` | `20261109000031_referral_suspicions`, `20261109000032_suspicion_carried_from` |
 | `referral_suspicion_outcome_current` | `20261110000035_suspicion_outcome_errors` |

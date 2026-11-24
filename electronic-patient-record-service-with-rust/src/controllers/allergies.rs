@@ -2,6 +2,7 @@
 //!
 //! - `GET  /api/patients/{id}/allergies`: every allergy (all statuses), the "no known allergies"
 //!   statement if any, and the banner `summary`.
+//! - `GET  /api/patients/{id}/allergies/as-at?time=`: the same as they stood at a past time (EH-2).
 //! - `POST /api/patients/{id}/allergies`: record one.
 //! - `PUT  /api/patients/{id}/allergies/{allergy_id}`: change it, end it, or mark it entered in error.
 //! - `PUT  /api/patients/{id}/allergy-statement`: state, or withdraw, "no known allergies".
@@ -12,7 +13,7 @@
 //! audit row are one transaction. The audit row records ids, versions and statuses, never the
 //! substance or the reaction.
 
-use super::common::{Access, audit_resource, authorize, begin, commit, purpose_of};
+use super::common::{Access, AsAtQuery, audit_resource, authorize, begin, commit, purpose_of};
 use crate::allergies::{self as store, AllergyRecord, Status};
 use crate::api_error::ApiError;
 use crate::audit::Action;
@@ -20,7 +21,7 @@ use crate::auth::Agent;
 use crate::patients_store::StoreError;
 use crate::policy::{self, Purpose, Resource, Subject};
 use crate::pool::Pool;
-use axa::extract::{Json, Path};
+use axa::extract::{Json, Path, Query};
 use axa::prelude::*;
 use axum::{
     Extension,
@@ -81,12 +82,12 @@ async fn refused(
     action: Action,
     e: &StoreError,
 ) -> Option<ApiError> {
-    if !matches!(
-        e,
-        StoreError::NotFound | StoreError::Conflict { .. } | StoreError::BadQuery(_)
-    ) {
-        return None;
-    }
+    let kind = match e {
+        StoreError::NotFound => "not_found",
+        StoreError::Conflict { .. } => "version_conflict",
+        StoreError::BadQuery(_) => "record_refused",
+        _ => return None,
+    };
     audit_resource(
         &ctx.pool(),
         agent,
@@ -97,8 +98,8 @@ async fn refused(
             resource: "AllergyIntolerance",
             patient_id: None,
         },
-        // The text names no substance: it is a store message such as "version conflict".
-        serde_json::json!({ "refused": e.to_string() }),
+        // The kind and not the words: a refused SNOMED CT code is quoted in them.
+        serde_json::json!({ "refused": kind }),
     )
     .await
     .err()
@@ -206,6 +207,85 @@ pub(super) async fn list(
         Ok(list) => Json(list).into_response(),
         Err(e) => e.into_response(),
     }
+}
+
+/// A patient's allergies, statement and banner summary as they stood at a past time.
+#[derive(Debug, Serialize)]
+pub struct AllergiesAsAt {
+    /// The time asked for (UTC).
+    pub as_at: String,
+    /// When this was read (UTC). It is not the record as it stands now.
+    pub read_at: String,
+    /// Every allergy that had been written by then, at its version of then.
+    pub allergies: Vec<store::AllergyAt>,
+    /// "No known allergies", when it had been stated.
+    pub statement: Option<store::Assertion>,
+    /// What the banner would have said then.
+    pub summary: store::Summary,
+}
+
+/// `GET /api/patients/{id}/allergies/as-at?time=`: what the record said about allergies at a past time, for example when
+/// a medicine was given. The access decision is today's; amendment notices are not part of it. Audited with the time.
+pub(super) async fn as_at(
+    State(ctx): State<AppContext>,
+    Extension(agent): Extension<Agent>,
+    Extension(subject): Extension<Subject>,
+    headers: HeaderMap,
+    Path(patient): Path<String>,
+    Query(query): Query<AsAtQuery>,
+) -> Response {
+    let read = async {
+        let purpose = purpose_of(&headers)?;
+        authorize(
+            &ctx.pool(),
+            &agent,
+            &subject,
+            Resource::AllergyIntolerance,
+            policy::Action::Read,
+            purpose,
+            Some(&patient),
+        )
+        .await?;
+        let now = jiff::Timestamp::now();
+        let at = query.instant(now)?;
+        let allergies = match store::list_at(&ctx.pool(), &patient, at).await {
+            Ok(all) => all,
+            Err(e) => {
+                if let Some(r) = refused(&ctx, &agent, purpose, Action::Read, &e).await {
+                    return Err(r);
+                }
+                return Err(failure(e));
+            }
+        };
+        let statement = store::statement_at(&ctx.pool(), &patient, at)
+            .await
+            .map_err(failure)?;
+        let then: Vec<store::StoredAllergy> = allergies.iter().map(|a| a.stored.clone()).collect();
+        let summary = store::summarise(&then, statement.as_ref());
+        let as_at = crate::clock::rfc3339_micros(at);
+        audit_resource(
+            &ctx.pool(),
+            &agent,
+            Access {
+                action: Action::Read,
+                outcome: 0,
+                purpose,
+                resource: "AllergyIntolerance",
+                patient_id: Some(&patient),
+            },
+            serde_json::json!({ "allergies": allergies.len(), "as_at": as_at }),
+        )
+        .await?;
+        Ok(Json(AllergiesAsAt {
+            as_at,
+            read_at: crate::clock::rfc3339_micros(now),
+            allergies,
+            statement,
+            summary,
+        })
+        .into_response())
+    };
+    read.await.unwrap_or_else(|e: ApiError| e.into_response())
 }
 
 /// `POST /api/patients/{id}/allergies`: record an allergy. 201 with the stored first version. The write and its audit

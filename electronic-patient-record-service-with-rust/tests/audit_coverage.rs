@@ -135,6 +135,33 @@ async fn a_successful_read_of_a_patient_record_leaves_an_audit_row() {
             .expect("referral id")
             .to_string();
 
+        let mut entries = Vec::new();
+        for (path, record) in [
+            (
+                "problems",
+                serde_json::json!({ "title": "Asthma", "certainty": "confirmed", "status": "active" }),
+            ),
+            (
+                "family-history",
+                serde_json::json!({ "relationship": "mother", "condition": "Asthma",
+                    "presence": "present", "source": "patient", "status": "recorded" }),
+            ),
+        ] {
+            let made = server
+                .post(&format!("/api/patients/{id}/{path}"))
+                .json(&serde_json::json!({ "record": record }))
+                .await;
+            assert_eq!(made.status_code(), StatusCode::CREATED, "{}", made.text());
+            entries.push(
+                made.json::<serde_json::Value>()["id"]
+                    .as_str()
+                    .expect("entry id")
+                    .to_string(),
+            );
+        }
+        // A time in the past, for the reads as at a time.
+        let time = electronic_patient_record::clock::rfc3339_micros(jiff::Timestamp::now());
+
         let mut unaudited = Vec::new();
         let mut seen = 0;
         for (method, template, _, _) in routes::TABLE {
@@ -148,9 +175,16 @@ async fn a_successful_read_of_a_patient_record_leaves_an_audit_row() {
                 template
                     .replace("{id}", &id)
                     .replace("{observation_id}", &observation_id)
+                    .replace("{problem_id}", &entries[0])
+                    .replace("{entry_id}", &entries[1])
                     .replace("{referral_id}", &referral_id)
             } else {
                 format!("{template}?patient={id}")
+            };
+            let path = if template.ends_with("/as-at") {
+                format!("{path}?time={time}")
+            } else {
+                path
             };
             assert!(
                 !path.contains('{'),

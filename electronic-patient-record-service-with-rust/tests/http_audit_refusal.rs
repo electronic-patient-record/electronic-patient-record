@@ -204,6 +204,50 @@ async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_r
         })
         .await;
 
+        // The problem list and family history: record, then change.
+        for (path, id_name, record) in [
+            (
+                "problems",
+                "problem_id",
+                json!({ "title": "Asthma", "certainty": "confirmed", "status": "active" }),
+            ),
+            (
+                "family-history",
+                "entry_id",
+                json!({ "relationship": "mother", "condition": "Asthma", "presence": "present",
+                        "source": "patient", "status": "recorded" }),
+            ),
+        ] {
+            refused_then_accepted(db, &format!("POST /api/patients/{{id}}/{path}"), || async {
+                let r = server
+                    .post(&format!("/api/patients/{id}/{path}"))
+                    .json(&json!({ "record": record }))
+                    .await;
+                (r.status_code(), r.text())
+            })
+            .await;
+            let listed = server
+                .get(&format!("/api/patients/{id}/{path}"))
+                .await
+                .json::<Value>();
+            let entry = listed["entries"][0]["id"]
+                .as_str()
+                .expect("an entry id")
+                .to_string();
+            refused_then_accepted(
+                db,
+                &format!("PUT /api/patients/{{id}}/{path}/{{{id_name}}}"),
+                || async {
+                    let r = server
+                        .put(&format!("/api/patients/{id}/{path}/{entry}"))
+                        .json(&json!({ "record": record, "expected_version": 1, "reason": "r" }))
+                        .await;
+                    (r.status_code(), r.text())
+                },
+            )
+            .await;
+        }
+
         // Referral: send, then step. Login is off, so the sender is the referrer and may ask to cancel.
         let referral = json!({
             "recipient": "Cardiology outpatients", "reason": "chest pain",

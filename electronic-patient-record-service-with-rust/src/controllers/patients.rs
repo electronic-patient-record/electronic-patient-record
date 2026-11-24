@@ -7,11 +7,13 @@ use super::common::{
 use crate::api_error::ApiError;
 use crate::audit::{self, Action, AuditError, Chain, Event};
 use crate::auth::Agent;
+use crate::family_history::FamilyHistoryRecord;
 use crate::links;
 use crate::patients_store::{self as store, Search, StoreError};
 use crate::policy::{self, Consent, Purpose, Resource, Subject};
 use crate::pool::Db;
 use crate::pool::Pool;
+use crate::problem::ProblemRecord;
 use axa::extract::{Json, Path, Query};
 use axa::prelude::*;
 use axum::{
@@ -667,6 +669,44 @@ pub fn routes() -> Routes {
             put(super::allergies::update),
         )
         .add("/{id}/allergy-statement", put(super::allergies::statement))
+        .add("/{id}/allergies/as-at", get(super::allergies::as_at))
+        .add("/{id}/problems", get(super::entries::list::<ProblemRecord>))
+        .add(
+            "/{id}/problems",
+            post(super::entries::create::<ProblemRecord>),
+        )
+        .add(
+            "/{id}/problems/as-at",
+            get(super::entries::as_at::<ProblemRecord>),
+        )
+        .add(
+            "/{id}/problems/{problem_id}",
+            put(super::entries::update::<ProblemRecord>),
+        )
+        .add(
+            "/{id}/problems/{problem_id}/versions",
+            get(super::entries::versions::<ProblemRecord>),
+        )
+        .add(
+            "/{id}/family-history",
+            get(super::entries::list::<FamilyHistoryRecord>),
+        )
+        .add(
+            "/{id}/family-history",
+            post(super::entries::create::<FamilyHistoryRecord>),
+        )
+        .add(
+            "/{id}/family-history/as-at",
+            get(super::entries::as_at::<FamilyHistoryRecord>),
+        )
+        .add(
+            "/{id}/family-history/{entry_id}",
+            put(super::entries::update::<FamilyHistoryRecord>),
+        )
+        .add(
+            "/{id}/family-history/{entry_id}/versions",
+            get(super::entries::versions::<FamilyHistoryRecord>),
+        )
         .add("/{id}/referrals", get(super::referrals::list))
         .add("/{id}/referrals", post(super::referrals::create))
         .add(

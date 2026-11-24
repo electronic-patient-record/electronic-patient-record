@@ -20,9 +20,9 @@ no network, database or compilation; counts are source lines, not test runs):
 | Service version | 0.1.0 | `version` in the service `Cargo.toml` |
 | Matcher version | 0.8.1 | `version` in the matcher `Cargo.toml` |
 | Front-end version | 0.1.0 | `version` in the front-end `package.json` |
-| Migrations | 41 | files named `*.sql` in `migrations` |
-| Route registrations | 105 | `.add(` calls in `src/controllers/*.rs` |
-| Service tests | 882, plus 226 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
+| Migrations | 42 | files named `*.sql` in `migrations` |
+| Route registrations | 116 | `.add(` calls in `src/controllers/*.rs` |
+| Service tests | 919, plus 234 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
 | Matcher tests | 133, plus 0 `#[ignore]`d | the same patterns in the matcher |
 | Front-end unit tests (vitest) | 387 | `it(` / `test(` lines in `tests/unit` |
 | Front-end end-to-end tests (Playwright) | 120 | `test(` lines in `tests/e2e` |
@@ -89,6 +89,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | TL | 6 | 9 |
 | MP | 3 | 30 |
 | CF | 0 | 4 |
-| **Total** | **135** | **452** |
+| EH | 0 | 16 |
+| **Total** | **135** | **468** |
 
 <!-- generated:end -->
