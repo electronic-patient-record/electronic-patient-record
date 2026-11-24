@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-24 - A cut-short HL7 header reads as nothing (QA-15)
+
+- **Clinical risk:** none: a test of existing behaviour.
+- **Changed:** a unit test in `src/adt_feed.rs`: `processing_id_of` and `msh_first_component` return `None` for an empty text, a text with no `MSH`, a header with no separator, a header that ends before the field, an empty field and field number 0, and read a present value.
+- **Not done / not verified:** the rest of `adt_feed.rs`'s uncovered lines (53, 5.2%) are database-failure branches (`temporary(...)`) and a few conflict and audit paths that need an injected fault; not touched. Coverage was not re-measured.
+
 ## 2026-11-24 - Coverage 95.45%; MLLP settings that cannot work are tested (QA-15)
 
 - **Clinical risk:** none: a test.

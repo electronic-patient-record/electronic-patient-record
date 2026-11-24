@@ -973,6 +973,25 @@ fn count(who: &FeedIdentity, text: &str, ack: Option<&str>) {
 mod tests {
     use super::*;
 
+    #[test]
+    fn a_header_that_is_cut_short_reads_as_nothing_not_as_a_guess() {
+        // MSH-11 is the 11th field; here the segment ends first, or has no separator at all.
+        assert_eq!(processing_id_of(""), None);
+        assert_eq!(processing_id_of("MSH"), None);
+        assert_eq!(processing_id_of("PID|1"), None);
+        assert_eq!(processing_id_of("MSH|^~\\&|a|b|c|d|e|f|g|h"), None);
+        assert_eq!(processing_id_of("MSH|^~\\&|a|b|c|d|e|f|g|h||"), None);
+        assert_eq!(processing_id_of("MSH|^~\\&|a|b|c|d|e|f|g|h|P|"), Some('P'));
+        // A field number of 0 names no field, and one past the end names none either.
+        assert_eq!(msh_first_component("MSH|^~\\&|a", 0), None);
+        assert_eq!(msh_first_component("MSH", 3), None);
+        assert_eq!(msh_first_component("MSH|^~\\&|a", 99), None);
+        assert_eq!(
+            msh_first_component("MSH|^~\\&|a^b", 3).as_deref(),
+            Some("a")
+        );
+    }
+
     fn feed(kept_answer: KeptAnswer) -> FeedIdentity {
         FeedIdentity {
             agent: "mllp:test".into(),
