@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-24 - Coverage 95.91%; FHIR `AuditEvent` paging tested (QA-15)
+
+- **Clinical risk:** none: a test of existing behaviour.
+- **Measured:** 25,690 of 26,786 lines, 95.91% (was 95.75%), same two-pass method.
+- **Changed:** a database test, `tests/fhir_audit_paging.rs` (a module of `suite.rs`): 57 audit rows are written for a unique agent; the search for it answers a full page of 50 and a `next` link that keeps `agent=` and adds `_before=`; following it gives the other 7 with no shared row and no further link; a misspelt parameter (`agnet`) is refused with 400.
+- **Not done / not verified:** the rest of `fhir.rs`'s 65 uncovered lines are conversions of stored records that cannot fail on valid data (`internal(...)`) and refusals on routes that need a role; not touched. Coverage was not re-measured after this test.
+
 ## 2026-11-24 - The database-gone sweep sends valid bodies, and 82 routes answer 503 (QA-15)
 
 - **Clinical risk:** none: a test.

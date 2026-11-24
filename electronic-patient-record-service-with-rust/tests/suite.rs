@@ -45,6 +45,8 @@ mod doc_census;
 mod drill_records;
 #[path = "error_census.rs"]
 mod error_census;
+#[path = "fhir_audit_paging.rs"]
+mod fhir_audit_paging;
 #[path = "fhir_census.rs"]
 mod fhir_census;
 #[path = "grief_census.rs"]
