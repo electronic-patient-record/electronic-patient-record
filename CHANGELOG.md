@@ -9,6 +9,12 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - **Added later the same day:** a worked example from the All Wales Adult Inherited Metabolic Disease Service's support-groups page (about 60 signposts, no endorsement, no review date); it adds a type, an endorsement statement and a last-checked date to the directory entry.
 - **Not done / not verified:** only that one page was read (its linked sites and the Welsh version were not); no law checked, no customer, clinician, volunteer or patient asked; the five questions are the customer's to answer. Nothing built.
 
+## 2026-11-24 - Spec: the customer's answer to OQ-CH4 (one record)
+
+- **Changed:** OQ-CH4 records one record: the custody health team writes into the person's own record. The custodial-health spec now says custody and everything written in it carry a label by default and are hidden from a reader with no need; after release the label stays unless a pack rule or the person lifts it, with a lift audited; non-health custodian staff neither read nor write; the release hand-over becomes a review of open items on the one record.
+- **Clinical risk:** one record exposes custody to every reader unless label masking works, and the service cannot do that yet (SE-4); a wrong or missing label is a hazard in both directions. The profile is not usable until masking is built and tested. No hazard-log row added yet (no design to score).
+- **Not done / not verified:** my earlier lean (a separate linked record) was not taken; the labelling design is my reasoning, not a clinician's or a lawyer's. Only OQ-CH6 is unanswered. Nothing built.
+
 ## 2026-11-24 - Spec: the customer's answer to OQ-CH5 (release varies)
 
 - **Changed:** OQ-CH5 records that release of a record to a court, police or investigator varies by jurisdiction, country, U.S. state, purpose and urgency. The custodial-health spec now says the core holds no release rule and refuses without a pack; every release records its basis, extent, releaser and audit; an urgent release is allowed only where the pack says so and is reviewed afterwards; a release is by section, not the whole record.
