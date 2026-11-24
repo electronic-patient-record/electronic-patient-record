@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-24 - The site's zone and holidays live in the app's runtime (QA-16 stage 3)
+
+- **Clinical risk:** none to what a clinician sees: the same settings are read and checked the same way (a zone that is not an IANA name still stops the service starting); they are kept per app instead of per process.
+- **Changed:** `site::init`, `holidays`, `time_zone`, `zone` and `today` moved from the domain crate to `src/site.rs`, reading `EPR_SITE_TIME_ZONE` and `EPR_SITE_HOLIDAYS` from the app's settings and holding the result in its `Runtime`; the domain keeps the parsing (`zone_from`, `holidays_from`) and `day_in`. `site::holidays()` returns an `Arc` now. A unit test boots two runtimes (London with a holiday, and a plain one) and checks each reads its own.
+- **Verified:** clippy, the arithmetic gate and the checked-arithmetic grep gate clean; both passes pass on a fresh database.
+- **Not done / not verified:** with this, the domain crate holds no process-wide setting; `task_reminders::run_loop` and other spawned tasks outside a request read the process runtime's zone, as with the other moved state (in production that is the app's own, as it is booted from the process environment); `mllp_feed` still builds its runtime by hand and stays its own program; a cold rebuild and parallel database tests were not tried.
+
 ## 2026-11-24 - No test calls `set_var`; the service's test programs go from 44 to 3 (QA-16 stage 3)
 
 - **Clinical risk:** none to what a clinician sees; the permission-basis setting is now held per app instead of per process, with the same parsing and the same safe default (an unusable value, read before start, means required).

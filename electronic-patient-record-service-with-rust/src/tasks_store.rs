@@ -447,7 +447,7 @@ pub async fn raise(
         patient_id,
         source,
         crate::site::today(),
-        crate::site::holidays(),
+        &crate::site::holidays(),
     )
     .await?;
     Ok(Raised { made, cancelled })

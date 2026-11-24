@@ -2,20 +2,16 @@
 //! (TL-3), the days that are not working days when a task's due day is counted.
 //!
 //! Set by `EPR_SITE_TIME_ZONE`, an IANA name such as `Europe/London`; unset or blank means `UTC`. A value
-//! that is not an IANA name stops the service starting ([`init`]): a typo that quietly fell back to UTC
+//! that is not an IANA name stops the service starting (the service's `site::init`): a typo that quietly fell back to UTC
 //! would show some patients' ages a day out near midnight, and nobody would know why. The zone is the
 //! site's, not the reader's: every clinician at the site sees the same age on the same day.
 
 use jiff::tz::TimeZone;
 use jiff::{Timestamp, civil::Date};
 use std::collections::BTreeSet;
-use std::sync::OnceLock;
 
 /// The zone when none is set.
 pub const DEFAULT_ZONE: &str = "UTC";
-
-static ZONE: OnceLock<String> = OnceLock::new();
-static HOLIDAYS: OnceLock<BTreeSet<Date>> = OnceLock::new();
 
 /// The most holidays the setting may list: about ten years of a site's calendar. A longer list is a mistake.
 pub const MAX_HOLIDAYS: usize = 200;
@@ -74,49 +70,10 @@ pub fn holidays_from(value: Option<&str>) -> Result<BTreeSet<Date>, String> {
     Ok(days)
 }
 
-/// Read and check `EPR_SITE_TIME_ZONE` and `EPR_SITE_HOLIDAYS` once, at start-up.
-///
-/// # Errors
-///
-/// As [`zone_from`] and [`holidays_from`].
-pub fn init() -> Result<(), String> {
-    let zone = zone_from(std::env::var("EPR_SITE_TIME_ZONE").ok().as_deref())?;
-    let holidays = holidays_from(std::env::var("EPR_SITE_HOLIDAYS").ok().as_deref())?;
-    let _ = ZONE.set(zone);
-    let _ = HOLIDAYS.set(holidays);
-    Ok(())
-}
-
-/// The site's holidays: the ones [`init`] checked, or none when it has not run (a test).
-#[must_use]
-pub fn holidays() -> &'static BTreeSet<Date> {
-    HOLIDAYS.get_or_init(BTreeSet::new)
-}
-
-/// The site's zone: the one [`init`] checked, or [`DEFAULT_ZONE`] when it has not run (a test).
-#[must_use]
-pub fn time_zone() -> String {
-    ZONE.get()
-        .cloned()
-        .unwrap_or_else(|| DEFAULT_ZONE.to_string())
-}
-
-/// The site's zone as a [`TimeZone`]: the one [`init`] checked, or UTC when it has not run (a test).
-#[must_use]
-pub fn zone() -> TimeZone {
-    TimeZone::get(&time_zone()).unwrap_or(TimeZone::UTC)
-}
-
 /// The calendar day `now` falls on in `zone`.
 #[must_use]
 pub fn day_in(zone: &TimeZone, now: Timestamp) -> Date {
     now.to_zoned_datetime(zone.clone()).date()
-}
-
-/// Today at the site: the day a "last day" or a due day is judged on, the same for every reader there.
-#[must_use]
-pub fn today() -> Date {
-    day_in(&zone(), Timestamp::now())
 }
 
 #[cfg(test)]
@@ -129,7 +86,6 @@ mod tests {
         assert_eq!(day_in(&TimeZone::UTC, late).to_string(), "2026-06-30");
         let london = TimeZone::get("Europe/London").unwrap();
         assert_eq!(day_in(&london, late).to_string(), "2026-07-01");
-        assert_eq!(zone(), TimeZone::UTC, "unset in a test: UTC");
     }
 
     #[test]

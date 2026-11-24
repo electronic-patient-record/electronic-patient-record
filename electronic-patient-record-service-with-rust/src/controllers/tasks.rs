@@ -350,7 +350,7 @@ async fn dry_run(
         request.event,
         &request.facts,
         day,
-        crate::site::holidays(),
+        &crate::site::holidays(),
     ) else {
         return ApiError::invalid(vec![
             "a due or reminder date would be outside the calendar for this day".to_string(),

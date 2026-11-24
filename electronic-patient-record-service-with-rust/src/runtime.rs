@@ -92,6 +92,10 @@ pub struct Runtime {
     pub(crate) auth_token_db: OnceLock<sqlx::PgPool>,
     /// Whether a permission basis is required for a clinical read (`permission::init`).
     pub(crate) permission_required: OnceLock<bool>,
+    /// The site's time zone, checked at start (`site::init`).
+    pub(crate) site_zone: OnceLock<String>,
+    /// The site's holidays, checked at start (`site::init`).
+    pub(crate) site_holidays: OnceLock<Arc<std::collections::BTreeSet<jiff::civil::Date>>>,
 }
 
 impl std::fmt::Debug for Runtime {
@@ -131,6 +135,8 @@ impl Runtime {
             auth_require: OnceLock::new(),
             auth_token_db: OnceLock::new(),
             permission_required: OnceLock::new(),
+            site_zone: OnceLock::new(),
+            site_holidays: OnceLock::new(),
         }
     }
 
