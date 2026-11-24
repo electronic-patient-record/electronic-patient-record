@@ -8,7 +8,17 @@ A draft from the customer's request of 2026-11-24 ("add capabilities for prison 
 
 ## What was asked, and what is not known
 
-A customer wants the system to support prison health. The request does not say which country or statute, whether the service is the prison's own, a contractor's, or a hospital that treats people who are in custody, or whether it covers prisons only or also police custody, immigration detention and secure youth settings. Those are questions to the customer (OQ-CH1), not assumptions.
+A customer wants the system to support prison health. The request did not say which country or statute, or who runs the service. The customer later said the scope is all custodial settings (OQ-CH1, below); the country is still unknown.
+
+## The customer's answer to OQ-CH1 (2026-11-24): all settings
+
+The scope is every custodial setting: prison, police custody, immigration detention, secure youth settings, and a hospital that treats people in custody. The country is not yet given. My reasoning on what follows:
+
+- **One profile with a setting type, not five profiles.** The nine points below apply to all, but the legal frame, the length of stay and the people held differ: police custody is hours, a prison is months or years, immigration detention has no fixed end, a secure youth setting holds children (consent, safeguarding and parental rights differ), and a hospital treating a person in custody is a visit with an escort. The profile carries a **setting type**, and rules that differ (consent, who may be told, how long a record is kept, who is the controller) attach to the type and the country pack.
+- **Short stays make the hand-over rule heavier.** A person held for hours may leave with no hand-over at all; the record then needs to say what was started and not finished.
+- **Children in secure youth settings** are a safeguarding case before they are a custody case; the child's record rules (consent, who may be told) come first, and no point on this page weakens them.
+- **A hospital treating a person in custody** is the case where the custodian is in the room: what the escort may hear, see or be told is point 2 and OQ-CH3 in its sharpest form.
+- **Immigration detention** is a place where a health record can be requested for an immigration decision. Whether it may be released is OQ-CH5 in its sharpest form, and the default is that it is not.
 
 ## What custody changes (my reasoning, to be checked with the customer)
 
@@ -36,7 +46,7 @@ A customer wants the system to support prison health. The request does not say w
 
 | Id | Question |
 |---|---|
-| OQ-CH1 | Which country and statute, and which settings (prison only, or also police custody, immigration detention, secure youth settings, a hospital that treats people in custody)? |
+| OQ-CH1 | **Partly answered 2026-11-24 by the customer: all of the settings** (prison, police custody, immigration detention, secure youth settings, and a hospital that treats people in custody). **Still open:** which country and statute. |
 | OQ-CH2 | Who runs the service (the prison, a contractor, the national health service, a hospital)? Who is the controller of the record, and who is the processor? |
 | OQ-CH3 | What may security and operational staff be told about a person's health, and who decides each item? |
 | OQ-CH4 | Does the health record stay with the person's own record when they leave custody, or is it a separate record that is linked? |
@@ -45,7 +55,7 @@ A customer wants the system to support prison health. The request does not say w
 
 ## Tasks and acceptance
 
-`CF-2` is this page. A later build needs, before any code: answers to OQ-CH1 to OQ-CH6; a hazard-log row for the disclosure of health information to non-health staff and for a release with no hand-over; a test that a custody role reads no clinical data beyond the listed functional needs; a review by a prison health clinician and by a person who has been in custody.
+`CF-2` is this page. A later build needs, before any code: answers to the country in OQ-CH1 and to OQ-CH2 to OQ-CH6; a hazard-log row for the disclosure of health information to non-health staff and for a release with no hand-over; a test that a custody role reads no clinical data beyond the listed functional needs; a review by a prison health clinician and by a person who has been in custody.
 
 ## Not done, not verified
 

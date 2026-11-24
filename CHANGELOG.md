@@ -9,6 +9,12 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - **Added later the same day:** a worked example from the All Wales Adult Inherited Metabolic Disease Service's support-groups page (about 60 signposts, no endorsement, no review date); it adds a type, an endorsement statement and a last-checked date to the directory entry.
 - **Not done / not verified:** only that one page was read (its linked sites and the Welsh version were not); no law checked, no customer, clinician, volunteer or patient asked; the five questions are the customer's to answer. Nothing built.
 
+## 2026-11-24 - Spec: the customer's answer to OQ-CH1 (all custodial settings)
+
+- **Changed:** OQ-CH1 records that the scope is every custodial setting; the country is still open. The custodial-health spec adds a setting type to the one profile and notes what differs for police custody, a secure youth setting, immigration detention and a hospital treating a person in custody.
+- **Clinical risk:** no behaviour changed; no hazard row added (nothing to score yet). The secure-youth and immigration-detention cases raise safeguarding and release-of-records questions that need a lawyer.
+- **Not done / not verified:** the per-setting differences are my reasoning, with no source. The country (and so the law) is unanswered. OQ-CH2 to OQ-CH6 unanswered. Nothing built.
+
 ## 2026-11-24 - Spec: prison health, a custodial care setting (CF-2)
 
 - **Added:** `spec/custodial-health/index.md` (a custodial profile; health information stays with the health team by default; movement, release hand-over, missed-care reasons) and OQ-CH1 to OQ-CH6; CF-2 in `tasks.md` is marked drafted.
