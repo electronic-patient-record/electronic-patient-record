@@ -43,7 +43,7 @@ Whether and how a record may be released to a court, the police or an investigat
 
 ## The customer's answer to OQ-CH4 (2026-11-24): one record
 
-The custody health team writes into the person's own record, not a separate linked one. (I had leaned towards a separate record; the customer chose otherwise, and this is the design.) My reasoning on what follows, because one record puts custody next to everything else:
+There is **one patient record**, and there is no custody record: the custody health team writes into the person's own patient record, not a separate or linked one. (I had leaned towards a separate record; the customer chose otherwise, and this is the design.) My reasoning on what follows, because one record puts custody next to everything else:
 
 - **Continuity is the gain**: a medicine, a result or a pathway started in custody is already in the record the community team reads on release, with no hand-over to lose. The release hand-over of point 5 becomes a **review of the open items on the one record**, which is complete by construction, and says so only for what is in it.
 - **The cost is that custody becomes visible to every reader of the record.** A person's employer-facing, housing-facing or family-facing readers (a GP receptionist, a new clinic) could see that the person was in custody. So the **fact of custody and everything written in custody carry a label** by default, and the masking of [protected information](../access-control/protected-information.md) (FR-4.3) hides them from a reader who has no need: a reader sees a gap marked "restricted", not the custody setting, the establishment or the dates. This is a precondition of the profile, and the service cannot yet do it (no record carries a label yet, SE-4).
@@ -81,7 +81,7 @@ The custody health team writes into the person's own record, not a separate link
 | OQ-CH1 | **Partly answered 2026-11-24 by the customer: all of the settings** (prison, police custody, immigration detention, secure youth settings, and a hospital that treats people in custody). **Still open:** which country and statute. |
 | OQ-CH2 | **Partly answered 2026-11-24 by the customer: various; government, police or private.** **Still open:** who is the controller and who the processor, for each. |
 | OQ-CH3 | **Partly answered 2026-11-24 by the customer: functional information only.** **Still open:** who decides each functional item (a clinician is my proposal). |
-| OQ-CH4 | **Answered 2026-11-24 by the customer: one record.** The custody health team writes into the person's own record. |
+| OQ-CH4 | **Answered 2026-11-24 by the customer: one patient record, and no separate custody record.** The custody health team writes into the person's own patient record. |
 | OQ-CH5 | **Partly answered 2026-11-24 by the customer: it varies by jurisdiction, country, U.S. state, purpose and urgency (for example an imminent threat to wellbeing).** **Still open:** which release rules each pack holds, and who may release. |
 | OQ-CH6 | Is there a national summary the receiving community team already reads, which the release hand-over should write to? |
 
