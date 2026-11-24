@@ -1761,6 +1761,7 @@ with criterion 0.8.2 (the latest); coverage used `cargo-llvm-cov`.
   `pg_isready` accepted `127.0.0.1:5543`, but bounded `psql` queries still did not return. A fresh isolated PostgreSQL
   18 container was started for another attempt, then removed before any coverage command ran. No source, test or
   coverage result changed in this final attempt.
+  **2026-11-24 measurement (two passes, private target dir, TLS and Java-validator cases skipped):** service 95.75 percent of lines (25,647 of 26,786), so the service is above the 95 percent target; the matcher was 97.5 or more. The 1,139 lines left are mostly branches that need a failed write or a failed audit (`fhir.rs` 65, `adt_feed.rs` 53, `app.rs` 48, `audit.rs` 44, `mllp.rs` 39 and TLS handshake paths). Added this round: a sweep of every route with the pool closed (found and fixed five routes that answered 500 instead of 503), a sweep with an unknown purpose, the real `start` command, and settings-error tests. **Not done:** the UI and the mobile apps were not measured here; the CI floors were not raised; 100 percent is not reached or promised.
 
 ## Dependency 2026-11-17 — picomatch ReDoS, no fix
 

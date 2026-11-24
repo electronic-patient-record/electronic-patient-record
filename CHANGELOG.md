@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-24 - Service coverage 95.75%: above the QA-15 target
+
+- **Clinical risk:** none: a measurement and a note.
+- **Measured:** 25,647 of 26,786 lines, 95.75% (was 95.45%; the database-gone sweep and the MLLP settings tests added 174 lines), two passes on a fresh database in a private target directory, TLS and Java-validator cases skipped. The earlier 40.7% was a broken run (two of my runs shared one build directory and the profile data was lost), not a measurement.
+- **Not done / not verified:** the CI coverage floors were not raised (QA-15 says to raise them only after CI passes the same commands); the UI and mobile apps were not measured; the 1,139 uncovered lines are listed in `tasks.md`.
+
 ## 2026-11-24 - With the database gone, the audit routes and `/api/feed/health` answer 503, not 500 (QA-15)
 
 - **Clinical risk:** none to what a clinician sees: only the status of an answer when the database cannot serve changes, from a plain 500 to the 503 `unavailable` every store already gave, so a client that retries on 503 now retries these too. Nothing is answered unaudited either way. No hazard-log row changed.
