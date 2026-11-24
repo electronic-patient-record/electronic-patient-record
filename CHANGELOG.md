@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-24 - `mllp_feed` joins `suite.rs`: the service has two test programs (QA-16 stage 3)
+
+- **Clinical risk:** none: a test file moved.
+- **Changed:** `tests/mllp_feed.rs` (about 2,000 lines, the MLLP feed's database tests) is a module of `suite.rs`. Its log capture is scoped to the test (`set_default`), so it does not disturb the others. `Cargo.toml` now lists `suite` and `fhir_validator` (which needs Java, run by its own CI job).
+- **Verified:** clippy clean; the database pass on a fresh database with the pinned chaos seed; the normal pass three times in a row.
+- **Not done / not verified:** the TLS cases run in the normal suite as before (they cannot run under LLVM instrumentation); the database tests still run one at a time on one database; a cold rebuild was not timed.
+
 ## 2026-11-24 - The site's zone and holidays live in the app's runtime (QA-16 stage 3)
 
 - **Clinical risk:** none to what a clinician sees: the same settings are read and checked the same way (a zone that is not an IANA name still stops the service starting); they are kept per app instead of per process.

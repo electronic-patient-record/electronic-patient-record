@@ -143,6 +143,8 @@ mod links_store;
 mod metrics;
 #[path = "migration_down.rs"]
 mod migration_down;
+#[path = "mllp_feed.rs"]
+mod mllp_feed;
 #[path = "observations_store.rs"]
 mod observations_store;
 #[path = "openapi_census.rs"]

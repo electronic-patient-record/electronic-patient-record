@@ -135,7 +135,3 @@ path = "tests/suite.rs"
 name = "fhir_validator"
 path = "tests/fhir_validator.rs"
 
-[[test]]
-name = "mllp_feed"
-path = "tests/mllp_feed.rs"
-
