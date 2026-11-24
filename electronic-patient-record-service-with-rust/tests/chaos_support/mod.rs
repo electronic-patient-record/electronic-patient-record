@@ -1,0 +1,318 @@
+//! The chaos monkey's engine, shared by `chaos_api` (login off) and `chaos_roles` (login on, a token per role).
+#![allow(dead_code)]
+
+use axum::http::{HeaderName, HeaderValue, Method, StatusCode};
+use electronic_patient_record::routes;
+use serde_json::{Value, json};
+
+/// xorshift64*: small, seedable, the same on every platform.
+pub struct Rng(u64);
+impl Rng {
+    pub fn next(&mut self) -> u64 {
+        let mut x = self.0;
+        x ^= x >> 12;
+        x ^= x << 25;
+        x ^= x >> 27;
+        self.0 = x;
+        x.wrapping_mul(0x2545_F491_4F6C_DD1D)
+    }
+    pub fn below(&mut self, n: usize) -> usize {
+        (self.next() % n as u64) as usize
+    }
+    pub fn pick<'a, T>(&mut self, xs: &'a [T]) -> &'a T {
+        &xs[self.below(xs.len())]
+    }
+    pub fn chance(&mut self, percent: u64) -> bool {
+        self.next() % 100 < percent
+    }
+}
+
+pub fn junk_string(r: &mut Rng) -> String {
+    let uuid = format!(
+        "{:08x}-{:04x}-4{:03x}-8{:03x}-{:012x}",
+        r.next() as u32,
+        r.next() as u16,
+        r.next() as u16 & 0xfff,
+        r.next() as u16 & 0xfff,
+        r.next() & 0xffff_ffff_ffff
+    );
+    let long = "A".repeat(2000 + r.below(5000));
+    r.pick(&[
+        uuid.clone(),
+        uuid,
+        "not-a-uuid".into(),
+        "../../etc/passwd".into(),
+        "\u{0}".into(),
+        "0".into(),
+        "-1".into(),
+        "9999999999999999999999".into(),
+        "💥🔥ñ\u{202e}rtl".into(),
+        "' OR '1'='1".into(),
+        "\"; DROP TABLE patients; --".into(),
+        "<script>alert(1)</script>".into(),
+        "{{7*7}}".into(),
+        "${jndi:ldap://x}".into(),
+        long,
+        "null".into(),
+        "true".into(),
+        " ".into(),
+    ])
+    .clone()
+}
+
+/// Field names the handlers read, so the monkey gets past the first validation line.
+const KEYS: &[&str] = &[
+    "patient",
+    "id",
+    "version",
+    "expected_version",
+    "reason",
+    "override_reason",
+    "purpose",
+    "code",
+    "value",
+    "unit",
+    "status",
+    "kind",
+    "ground",
+    "target",
+    "allergy",
+    "substance",
+    "category",
+    "criticality",
+    "observation",
+    "effective_at",
+    "range",
+    "low",
+    "high",
+    "absent_reason",
+    "names",
+    "family",
+    "given",
+    "birth_date",
+    "sex",
+    "identifiers",
+    "system",
+    "telecom",
+    "addresses",
+    "request",
+    "event",
+    "statement",
+    "disagreement",
+    "no_known_allergies",
+    "scope",
+    "granted",
+    "subject",
+    "relationship",
+    "until",
+    "limit",
+    "offset",
+    "q",
+    "from",
+    "to",
+];
+
+pub fn junk_value(r: &mut Rng, depth: u32) -> Value {
+    match r.below(if depth > 2 { 7 } else { 10 }) {
+        0 => Value::Null,
+        1 => json!(r.chance(50)),
+        2 => json!(r.next() as i64),
+        3 => json!(-(r.next() as i64 % 1000)),
+        4 => json!(f64::from_bits(r.next()).clamp(-1e300, 1e300)),
+        5 | 6 => Value::String(junk_string(r)),
+        7 => Value::Array((0..r.below(4)).map(|_| junk_value(r, depth + 1)).collect()),
+        _ => junk_object(r, depth + 1),
+    }
+}
+
+pub fn junk_object(r: &mut Rng, depth: u32) -> Value {
+    let mut m = serde_json::Map::new();
+    for _ in 0..r.below(7) {
+        let key = if r.chance(85) {
+            (*r.pick(KEYS)).to_string()
+        } else {
+            junk_string(r)
+        };
+        m.insert(key, junk_value(r, depth));
+    }
+    Value::Object(m)
+}
+
+/// Percent-encode everything but unreserved characters, so a hostile value reaches the handler as
+/// one path segment instead of breaking the URL.
+pub fn encode(s: &str) -> String {
+    s.bytes()
+        .map(|b| match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                (b as char).to_string()
+            }
+            _ => format!("%{b:02X}"),
+        })
+        .collect()
+}
+
+pub fn query(r: &mut Rng) -> String {
+    if r.chance(50) {
+        return String::new();
+    }
+    let n = 1 + r.below(3);
+    let pairs: Vec<String> = (0..n)
+        .map(|_| {
+            let k = if r.chance(70) {
+                (*r.pick(KEYS)).to_string()
+            } else {
+                junk_string(r)
+            };
+            format!("{}={}", encode(&k), encode(&junk_string(r)))
+        })
+        .collect();
+    format!("?{}", pairs.join("&"))
+}
+
+/// A response body must not show how the service is built.
+pub fn leaks(body: &str) -> Option<&'static str> {
+    [
+        ("panicked at", "a panic message"),
+        ("stack backtrace", "a backtrace"),
+        ("RUST_BACKTRACE", "a backtrace hint"),
+        ("SELECT ", "SQL text"),
+        ("INSERT INTO", "SQL text"),
+        ("sqlx", "a database driver name"),
+        ("SeaORM", "a database driver name"),
+        ("/src/", "a source path"),
+        ("/Users/", "a file path"),
+        ("/home/", "a file path"),
+    ]
+    .iter()
+    .find(|(needle, _)| body.contains(needle))
+    .map(|(_, what)| *what)
+}
+
+pub fn database_is_throwaway() {
+    let url = std::env::var("DB_URL").unwrap_or_default();
+    let name = url.rsplit('/').next().unwrap_or("");
+    assert!(
+        name.contains("test") || std::env::var("CI").is_ok(),
+        "the monkey writes whatever the API allows: run it on a database named like *_test (got {name:?})"
+    );
+}
+
+/// The seed (`EPR_CHAOS_SEED`, else the clock) and the length (`EPR_CHAOS_ITERATIONS`, default 2000).
+pub fn seed_and_iterations() -> (u64, usize) {
+    let seed: u64 = std::env::var("EPR_CHAOS_SEED")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or_else(|| {
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos() as u64
+                | 1
+        });
+    let iterations: usize = std::env::var("EPR_CHAOS_ITERATIONS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(2000);
+    println!("EPR_CHAOS_SEED={seed} EPR_CHAOS_ITERATIONS={iterations}");
+    (seed, iterations)
+}
+
+/// Every mounted route, as (method, path template).
+pub fn route_table() -> Vec<(Vec<Method>, String)> {
+    let table: Vec<(Vec<Method>, String)> = routes::mounted()
+        .into_iter()
+        .map(|(method, path)| {
+            let method = Method::from_bytes(method.as_bytes()).expect("a mounted method");
+            (vec![method], routes::normalise(&path))
+        })
+        .collect();
+    assert!(
+        table.len() >= 20,
+        "the monkey saw only {} routes",
+        table.len()
+    );
+    table
+}
+
+/// Hit `iterations` random requests; each carries one of `callers` (a header, or none). Returns the status counts
+/// and the bad answers (a 5xx other than 502/503/504, or a leak).
+pub async fn monkey(
+    server: &axa_test::TestServer,
+    seed: u64,
+    iterations: usize,
+    callers: &[Option<(HeaderName, HeaderValue)>],
+) -> (std::collections::BTreeMap<u16, usize>, Vec<String>) {
+    let table = route_table();
+    let mut r = Rng(seed);
+    let mut failures: Vec<String> = Vec::new();
+    let mut seen: std::collections::BTreeMap<u16, usize> = std::collections::BTreeMap::new();
+    for _ in 0..iterations {
+        let (methods, template) = r.pick(&table).clone();
+        let method = r.pick(&methods).clone();
+        let path: String = template
+            .split('/')
+            .map(|seg| {
+                if seg.starts_with('{') && seg.ends_with('}') {
+                    encode(&junk_string(&mut r))
+                } else {
+                    seg.to_string()
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("/");
+        let url = format!("{path}{}", query(&mut r));
+        let mut req = server.method(method.clone(), &url);
+        if let Some((h, v)) = r.pick(callers).clone() {
+            req = req.add_header(h, v);
+        }
+        let kind = r.below(5);
+        let sent = match kind {
+            0 => String::from("(no body)"),
+            1 => {
+                req = req
+                    .add_header(
+                        HeaderName::from_static("content-type"),
+                        HeaderValue::from_static("application/json"),
+                    )
+                    .bytes(b"{\"patient\": {".to_vec().into());
+                String::from("(malformed JSON)")
+            }
+            2 => {
+                req = req
+                    .add_header(
+                        HeaderName::from_static("content-type"),
+                        HeaderValue::from_static("text/plain"),
+                    )
+                    .text(junk_string(&mut r));
+                String::from("(wrong content type)")
+            }
+            _ => {
+                let body = junk_object(&mut r, 0);
+                let text = body.to_string();
+                req = req.json(&body);
+                text.chars().take(300).collect()
+            }
+        };
+        let res = req.await;
+        let status = res.status_code();
+        let text = res.text();
+        *seen.entry(status.as_u16()).or_default() += 1;
+        let bad_status = status.is_server_error()
+            && !matches!(
+                status,
+                StatusCode::BAD_GATEWAY
+                    | StatusCode::SERVICE_UNAVAILABLE
+                    | StatusCode::GATEWAY_TIMEOUT
+            );
+        let leaked = leaks(&text);
+        if bad_status || leaked.is_some() {
+            let short: String = text.chars().take(200).collect();
+            failures.push(format!(
+                "{method} {template} -> {status}{} | url {} | body {sent} | answer {short}",
+                leaked.map_or_else(String::new, |w| format!(" (leaks {w})")),
+                url.chars().take(200).collect::<String>()
+            ));
+        }
+    }
+    (seen, failures)
+}

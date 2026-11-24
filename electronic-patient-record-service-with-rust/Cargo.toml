@@ -156,6 +156,10 @@ name = "chaos_api"
 path = "tests/chaos_api.rs"
 
 [[test]]
+name = "chaos_roles"
+path = "tests/chaos_roles.rs"
+
+[[test]]
 name = "fhir_validator"
 path = "tests/fhir_validator.rs"
 
