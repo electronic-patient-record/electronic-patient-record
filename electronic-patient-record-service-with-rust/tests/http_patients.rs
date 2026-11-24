@@ -6,10 +6,10 @@
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test http_patients -- --ignored --test-threads=1
+//!   cargo test --test suite http_patients:: -- --ignored --test-threads=1
 //! ```
 
-use axa_test::prelude::request;
+use axa_test::prelude::request_with;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use electronic_patient_record::app::App;
 use electronic_patient_record::pool::Pool;
@@ -58,17 +58,21 @@ fn patient(family: &str, dob: &str) -> serde_json::Value {
     .unwrap()
 }
 
-/// Login off, set before the app boots (the guard reads it once).
-fn login_off() {
-    // SAFETY: set before any thread of this test reads it, and the suite runs single-threaded.
-    unsafe { std::env::set_var("EPR_REQUIRE_AUTH", "false") };
+/// This app's own settings: login off, no process environment written, so the file can join `suite.rs`.
+fn settings() -> Vec<(&'static str, &'static str)> {
+    // Leaked on purpose: a test process is short, and `request_with` wants settings that outlive the call.
+    let url: &'static str = Box::leak(
+        std::env::var("DB_URL")
+            .expect("DB_URL must be set for --ignored tests")
+            .into_boxed_str(),
+    );
+    vec![("DB_URL", url), ("EPR_REQUIRE_AUTH", "false")]
 }
 
 #[tokio::test]
 #[ignore = "needs Postgres: set DB_URL"]
 async fn a_likely_duplicate_is_409_with_candidates_and_an_override_needs_a_reason() {
-    login_off();
-    request::<App, _, _>(|server, _ctx| async move {
+    request_with::<App, _, _>(&settings(), |server, _ctx| async move {
         let family = tag("dup");
         let born = dob(0);
         let body = serde_json::json!({ "patient": patient(&family, &born) });
@@ -102,8 +106,7 @@ async fn a_likely_duplicate_is_409_with_candidates_and_an_override_needs_a_reaso
 #[tokio::test]
 #[ignore = "needs Postgres: set DB_URL"]
 async fn fhir_refusals_are_operation_outcomes_and_never_carry_candidates() {
-    login_off();
-    request::<App, _, _>(|server, _ctx| async move {
+    request_with::<App, _, _>(&settings(), |server, _ctx| async move {
         let family = tag("fhir");
         let created = server
             .post("/api/patients")
@@ -213,8 +216,7 @@ async fn fhir_refusals_are_operation_outcomes_and_never_carry_candidates() {
 #[tokio::test]
 #[ignore = "needs Postgres: set DB_URL"]
 async fn a_refused_patient_carries_an_error_code_for_each_problem() {
-    login_off();
-    request::<App, _, _>(|server, _ctx| async move {
+    request_with::<App, _, _>(&settings(), |server, _ctx| async move {
         let mut bad = patient(&tag("codes"), "1980-02-30");
         bad["names"][0]["family"] = serde_json::json!("  ");
         let response = server
@@ -235,8 +237,7 @@ async fn a_refused_patient_carries_an_error_code_for_each_problem() {
 #[tokio::test]
 #[ignore = "needs Postgres: set DB_URL"]
 async fn the_request_id_is_echoed_and_written_into_the_audit_row() {
-    login_off();
-    request::<App, _, _>(|server, ctx| async move {
+    request_with::<App, _, _>(&settings(), |server, ctx| async move {
         let family = tag("rid");
         let body = serde_json::json!({ "patient": patient(&family, &dob(31)) });
         // A caller's id is kept, minus characters outside `[\w-@]`. Unique per run: the database persists.
@@ -279,8 +280,7 @@ async fn the_request_id_is_echoed_and_written_into_the_audit_row() {
 #[tokio::test]
 #[ignore = "needs Postgres: set DB_URL"]
 async fn a_temporary_identity_stays_until_a_person_gives_a_reason() {
-    login_off();
-    request::<App, _, _>(|server, _ctx| async move {
+    request_with::<App, _, _>(&settings(), |server, _ctx| async move {
         let family = tag("Whisky");
         let born = dob(11);
         let mut body = patient(&family, &born);
@@ -360,8 +360,7 @@ async fn a_temporary_identity_stays_until_a_person_gives_a_reason() {
 #[tokio::test]
 #[ignore = "needs Postgres: set DB_URL"]
 async fn a_drill_registration_is_kept_apart_from_real_patients() {
-    login_off();
-    request::<App, _, _>(|server, _ctx| async move {
+    request_with::<App, _, _>(&settings(), |server, _ctx| async move {
         let family = tag("drill");
         let born = dob(7);
         let real = server
@@ -425,8 +424,7 @@ async fn a_drill_registration_is_kept_apart_from_real_patients() {
 #[tokio::test]
 #[ignore = "needs Postgres: set DB_URL"]
 async fn a_refusal_from_the_framework_is_a_problem_with_the_stacks_headers() {
-    login_off();
-    request::<App, _, _>(|server, _ctx| async move {
+    request_with::<App, _, _>(&settings(), |server, _ctx| async move {
         for (response, status) in [
             (
                 server.get("/api/no-such-thing").await,
@@ -464,8 +462,7 @@ async fn a_refusal_from_the_framework_is_a_problem_with_the_stacks_headers() {
 #[tokio::test]
 #[ignore = "needs Postgres: set DB_URL"]
 async fn a_bad_body_is_a_problem_that_says_what_was_wrong_and_quotes_nothing() {
-    login_off();
-    request::<App, _, _>(|server, _ctx| async move {
+    request_with::<App, _, _>(&settings(), |server, _ctx| async move {
         let secret = "SecretFamilyName";
         let json = HeaderValue::from_static("application/json");
         let cases = [

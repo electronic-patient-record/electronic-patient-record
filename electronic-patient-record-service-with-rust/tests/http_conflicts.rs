@@ -7,10 +7,10 @@
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test http_conflicts -- --ignored --test-threads=1
+//!   cargo test --test suite http_conflicts:: -- --ignored --test-threads=1
 //! ```
 
-use axa_test::prelude::request;
+use axa_test::prelude::request_with;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use electronic_patient_record::app::App;
 use electronic_patient_record_matcher::{HumanName, Patient};
@@ -55,11 +55,6 @@ fn patient(family: &str, seed: u128) -> Value {
     .unwrap()
 }
 
-fn login_off() {
-    // SAFETY: set before any thread of this test reads it, and the suite runs single-threaded.
-    unsafe { std::env::set_var("EPR_REQUIRE_AUTH", "false") };
-}
-
 fn conflict(body: &Value, current: i64) {
     assert_eq!(
         body,
@@ -73,11 +68,21 @@ fn conflict(body: &Value, current: i64) {
     );
 }
 
+/// This app's own settings: login off, no process environment written, so the file can join `suite.rs`.
+fn settings() -> Vec<(&'static str, &'static str)> {
+    // Leaked on purpose: a test process is short, and `request_with` wants settings that outlive the call.
+    let url: &'static str = Box::leak(
+        std::env::var("DB_URL")
+            .expect("DB_URL must be set for --ignored tests")
+            .into_boxed_str(),
+    );
+    vec![("DB_URL", url), ("EPR_REQUIRE_AUTH", "false")]
+}
+
 #[tokio::test]
 #[ignore = "needs Postgres: set DB_URL"]
 async fn stale_versions_are_409_with_the_current_version_and_bad_merges_are_422() {
-    login_off();
-    request::<App, _, _>(|server, _ctx| async move {
+    request_with::<App, _, _>(&settings(), |server, _ctx| async move {
         let mut ids = Vec::new();
         for seed in [0, 7_000_000] {
             let created = server

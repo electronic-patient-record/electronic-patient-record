@@ -19,8 +19,7 @@ use electronic_patient_record::app::App;
 use electronic_patient_record::pool::Pool;
 use serde_json::{Value, json};
 
-mod openapi_support;
-use openapi_support::{check, response_schema};
+use crate::openapi_support::{check, response_schema};
 
 fn bearer(token: &str) -> (HeaderName, HeaderValue) {
     (

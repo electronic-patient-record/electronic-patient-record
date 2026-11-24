@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-24 - Eight more test programs fold into `suite.rs`; `set_var` is left in three files (QA-16 stage 3)
+
+- **Clinical risk:** none: tests only.
+- **Changed:** `audit_coverage`, `audit_search_coverage`, `balp_claim`, `http_audit_refusal`, `http_conflicts`, `http_idempotency`, `http_patients` (8 tests) and `openapi_responses` boot with `request_with` and their own settings (login off, and for `balp_claim` the audit server address), and are modules of `suite.rs`. `audit_switch` and `openapi_support` are declared once in `suite.rs`. 8 test programs remain in `Cargo.toml` (it was 44 this morning).
+- **Found and fixed:** the two audit-refusal tests share a process-wide record of the routes they drive (`DRIVEN`); each now clears it before it starts, or the second reported the first's routes. `test_targets` now accepts a support directory (`dir/mod.rs`) in the suite.
+- **Verified:** clippy clean; the normal pass and the database pass (fresh database, pinned chaos seed) both pass.
+- **Not done / not verified:** `set_var` remains only in `chaos_api` and `chaos_roles` (they share `chaos_support` and the chaos census, and `chaos_roles` must be its own program for now) and `http_permission_basis` (it sets `EPR_REQUIRE_PERMISSION_BASIS`, which the domain crate's `permission::REQUIRED` reads once per process). `site::ZONE` and `site::HOLIDAYS` are still process-wide. Whether the suite's tests could run in parallel (they run one at a time) was not tried.
+
 ## 2026-11-24 - 21 more login-on test programs fold into `suite.rs` (QA-16 stage 3)
 
 - **Clinical risk:** none: tests only.

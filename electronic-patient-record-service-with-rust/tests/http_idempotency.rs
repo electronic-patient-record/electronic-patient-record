@@ -11,10 +11,10 @@
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test http_idempotency -- --ignored --test-threads=1
+//!   cargo test --test suite http_idempotency:: -- --ignored --test-threads=1
 //! ```
 
-use axa_test::prelude::request;
+use axa_test::prelude::request_with;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use electronic_patient_record::app::App;
 use electronic_patient_record::pool::Pool;
@@ -51,12 +51,21 @@ fn observation(value: f64) -> Value {
         "effective_at": "2026-10-26T09:30:00Z", "status": "final" }, "reason": "entered late" })
 }
 
+/// This app's own settings: login off, no process environment written, so the file can join `suite.rs`.
+fn settings() -> Vec<(&'static str, &'static str)> {
+    // Leaked on purpose: a test process is short, and `request_with` wants settings that outlive the call.
+    let url: &'static str = Box::leak(
+        std::env::var("DB_URL")
+            .expect("DB_URL must be set for --ignored tests")
+            .into_boxed_str(),
+    );
+    vec![("DB_URL", url), ("EPR_REQUIRE_AUTH", "false")]
+}
+
 #[tokio::test]
 #[ignore = "needs Postgres: set DB_URL"]
 async fn a_create_with_an_idempotency_key_runs_once() {
-    // SAFETY: set before the app boots; the suite runs single-threaded.
-    unsafe { std::env::set_var("EPR_REQUIRE_AUTH", "false") };
-    request::<App, _, _>(|server, ctx| async move {
+    request_with::<App, _, _>(&settings(), |server, ctx| async move {
         let family = letters("idem");
         let created = server
             .post("/api/patients")

@@ -37,7 +37,13 @@ fn every_test_file_is_in_the_suite_or_its_own_program_and_only_once() {
     let mut seen = BTreeSet::new();
     for f in in_suite.iter().chain(&own) {
         assert!(seen.insert(f.clone()), "{f} is listed twice");
-        assert!(files.contains(f), "{f} is listed but is not in tests/");
+        // A support module (`dir/mod.rs`) is a directory, not a test file: it only has to exist.
+        let exists = if f.ends_with("/mod.rs") {
+            root.join("tests").join(f).exists()
+        } else {
+            files.contains(f)
+        };
+        assert!(exists, "{f} is listed but is not in tests/");
     }
     let missing: Vec<&String> = files.difference(&seen).collect();
     assert!(

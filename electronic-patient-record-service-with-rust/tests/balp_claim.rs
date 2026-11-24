@@ -6,10 +6,10 @@
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test balp_claim -- --ignored --test-threads=1
+//!   cargo test --test suite balp_claim:: -- --ignored --test-threads=1
 //! ```
 
-use axa_test::prelude::request;
+use axa_test::prelude::request_with;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use electronic_patient_record::app::App;
 use electronic_patient_record::audit::AuditRow;
@@ -69,15 +69,25 @@ async fn row(db: &sqlx::PgPool, filter: &str, value: &str) -> AuditRow {
     }
 }
 
+/// This app's own settings: login off, no process environment written, so the file can join `suite.rs`.
+fn settings() -> Vec<(&'static str, &'static str)> {
+    // Leaked on purpose: a test process is short, and `request_with` wants settings that outlive the call.
+    let url: &'static str = Box::leak(
+        std::env::var("DB_URL")
+            .expect("DB_URL must be set for --ignored tests")
+            .into_boxed_str(),
+    );
+    vec![
+        ("DB_URL", url),
+        ("EPR_REQUIRE_AUTH", "false"),
+        ("EPR_AUDIT_SERVER_ADDRESS", SERVER),
+    ]
+}
+
 #[tokio::test]
 #[ignore = "needs Postgres: set DB_URL"]
 async fn a_registration_and_a_read_claim_their_profiles_and_a_search_does_not() {
-    // SAFETY: set before the service boots, and this binary's only test reads it.
-    unsafe {
-        std::env::set_var("EPR_REQUIRE_AUTH", "false");
-        std::env::set_var("EPR_AUDIT_SERVER_ADDRESS", SERVER);
-    }
-    request::<App, _, _>(|server, ctx| async move {
+    request_with::<App, _, _>(&settings(), |server, ctx| async move {
         let db = ctx.pool();
         let (family, birth_date) = unique();
         let created = server

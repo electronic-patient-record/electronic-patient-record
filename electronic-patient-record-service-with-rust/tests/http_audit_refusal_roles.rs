@@ -18,8 +18,7 @@ use electronic_patient_record::pool::Pool;
 use electronic_patient_record_matcher::{HumanName, Patient};
 use serde_json::{Value, json};
 
-mod audit_switch;
-use audit_switch::{DRIVEN, LOGIN_ON, install, refused_then_accepted, uninstall};
+use crate::audit_switch::{DRIVEN, LOGIN_ON, install, refused_then_accepted, uninstall};
 
 fn tag(label: &str) -> String {
     let mut n = std::time::SystemTime::now()
@@ -86,6 +85,8 @@ async fn break_glass_and_the_feed_queue_refuse_when_their_audit_row_cannot_be_wr
     let clinician = token("clinician", "0c4f1e2a-0000-4000-8000-0000000000c1");
     let auditor = token("auditor", "0c4f1e2a-0000-4000-8000-0000000000d1");
 
+    // Both audit-refusal tests share one process in `suite.rs`: this one records only what it drives.
+    DRIVEN.lock().unwrap().clear();
     request_with::<App, _, _>(&settings, |server, ctx| async move {
         let db = &ctx.pool();
         let (ah, av) = bearer(&admin);

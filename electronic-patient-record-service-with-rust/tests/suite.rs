@@ -7,6 +7,12 @@
 //!
 //! Run one file's tests with `cargo test --test suite <module>::`.
 
+// Shared by more than one file below, so declared once here.
+#[path = "audit_switch/mod.rs"]
+mod audit_switch;
+#[path = "openapi_support/mod.rs"]
+mod openapi_support;
+
 #[path = "advisory_expiry.rs"]
 mod advisory_expiry;
 #[path = "allergies_store.rs"]
@@ -15,14 +21,20 @@ mod allergies_store;
 mod amendments_store;
 #[path = "audit_chain.rs"]
 mod audit_chain;
+#[path = "audit_coverage.rs"]
+mod audit_coverage;
 #[path = "audit_immutable.rs"]
 mod audit_immutable;
 #[path = "audit_partitions.rs"]
 mod audit_partitions;
+#[path = "audit_search_coverage.rs"]
+mod audit_search_coverage;
 #[path = "authz_audit.rs"]
 mod authz_audit;
 #[path = "axa_defaults.rs"]
 mod axa_defaults;
+#[path = "balp_claim.rs"]
+mod balp_claim;
 #[path = "break_glass_store.rs"]
 mod break_glass_store;
 #[path = "consents_store.rs"]
@@ -63,14 +75,20 @@ mod http_amendments;
 mod http_api_tokens;
 #[path = "http_assessments.rs"]
 mod http_assessments;
+#[path = "http_audit_refusal.rs"]
+mod http_audit_refusal;
 #[path = "http_audit_refusal_roles.rs"]
 mod http_audit_refusal_roles;
+#[path = "http_conflicts.rs"]
+mod http_conflicts;
 #[path = "http_death_reports.rs"]
 mod http_death_reports;
 #[path = "http_deaths.rs"]
 mod http_deaths;
 #[path = "http_hazards.rs"]
 mod http_hazards;
+#[path = "http_idempotency.rs"]
+mod http_idempotency;
 #[path = "http_idempotency_roles.rs"]
 mod http_idempotency_roles;
 #[path = "http_lockout.rs"]
@@ -79,6 +97,8 @@ mod http_lockout;
 mod http_observations;
 #[path = "http_overdue_reviews.rs"]
 mod http_overdue_reviews;
+#[path = "http_patients.rs"]
+mod http_patients;
 #[path = "http_proxy_scopes.rs"]
 mod http_proxy_scopes;
 #[path = "http_rate_limit.rs"]
@@ -117,6 +137,8 @@ mod migration_down;
 mod observations_store;
 #[path = "openapi_census.rs"]
 mod openapi_census;
+#[path = "openapi_responses.rs"]
+mod openapi_responses;
 #[path = "openapi_responses_roles.rs"]
 mod openapi_responses_roles;
 #[path = "outbound_census.rs"]
