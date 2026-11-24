@@ -4,7 +4,7 @@
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test death_store -- --ignored --test-threads=1
+//!   cargo test --test suite death_store:: -- --ignored --test-threads=1
 //! ```
 use electronic_patient_record::death::{self, Actor, Answer, Occurred, Source, Status, Step};
 use electronic_patient_record::death_store as store;

@@ -9,7 +9,7 @@
 //!
 //! ```text
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test referrals_store -- --ignored --test-threads=1
+//!   cargo test --test suite referrals_store:: -- --ignored --test-threads=1
 //! ```
 use electronic_patient_record::patients_store::{self, StoreError};
 use electronic_patient_record::referral::{Actor, Event, State};

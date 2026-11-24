@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-24 - Test headers name the right command after the folding (LC-15)
+
+- **Clinical risk:** none: comments and a document.
+- **Changed:** 20 test files whose header said `cargo test --test <name>` (a program that no longer exists) now say `cargo test --test suite <name>::`; `spec/local-ci.md` counts two service test programs.
+- **Not done / not verified:** the commands in the headers were not each run; they follow the form the other folded files use, which was run.
+
 ## 2026-11-24 - `mllp_feed` joins `suite.rs`: the service has two test programs (QA-16 stage 3)
 
 - **Clinical risk:** none: a test file moved.

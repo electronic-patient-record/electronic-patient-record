@@ -4,7 +4,7 @@
 //!
 //! ```text
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test amendments_store -- --ignored --test-threads=1
+//!   cargo test --test suite amendments_store:: -- --ignored --test-threads=1
 //! ```
 use electronic_patient_record::amendment::{Event, Ground, Notice, State};
 use electronic_patient_record::amendments_store as store;

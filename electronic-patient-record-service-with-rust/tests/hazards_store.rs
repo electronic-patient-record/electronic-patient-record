@@ -4,7 +4,7 @@
 //!
 //! ```text
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test hazards_store -- --ignored --test-threads=1
+//!   cargo test --test suite hazards_store:: -- --ignored --test-threads=1
 //! ```
 use electronic_patient_record::hazard::{Actor, Event, Evidence, EvidenceKind, State};
 use electronic_patient_record::hazard_store as store;

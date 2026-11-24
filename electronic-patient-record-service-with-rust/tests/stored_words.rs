@@ -3,7 +3,7 @@
 //!
 //! ```text
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test stored_words -- --ignored --test-threads=1
+//!   cargo test --test suite stored_words:: -- --ignored --test-threads=1
 //! ```
 //!
 //! Covered: referral states, allergy, consent, death assertion, adjustment and result statuses, suspicion outcome kinds and watch list entry statuses. Not covered: amendment states (a tagged
