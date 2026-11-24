@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-24 - The database-gone sweep sends valid bodies, and 82 routes answer 503 (QA-15)
+
+- **Clinical risk:** none: a test.
+- **Changed:** `tests/database_down_sweep.rs` builds a body for each write route from its request schema in `openapi.json` (required fields only, the first enum value, format-shaped strings), so the body passes validation and the route reaches the closed database. With empty bodies few write routes got that far. Now 82 routes answer 503 (the floor is 60) and none answers another 5xx.
+- **Not done / not verified:** the bodies are only structurally valid, so a route whose rules refuse them (a date in the future, a missing relationship) still answers 4xx before the database; the sweep does not say which routes did not reach it. Coverage was not re-measured.
+
 ## 2026-11-24 - The outbound gate refuses a suspicion message that names no patient (QA-15)
 
 - **Clinical risk:** none: a test of existing behaviour (RS-4: a suspected condition reaches the patient only once the record says they were told).
