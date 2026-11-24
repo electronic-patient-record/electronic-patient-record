@@ -188,84 +188,15 @@ fn no_support_service_or_helpline_is_written_into_core_code() {
     );
 }
 
-/// The one use of the word allowed in the route table (EH-3, `spec/family-history/index.md`): what a patient's own
-/// record says about conditions in their relatives. It is not the family view SG-2 refuses: it sits under one patient,
-/// is decided by that patient's access alone, links to no other record and names nobody, which
-/// `a_family_history_entry_reaches_no_other_person` holds. Spelled in full, so that any other route still fails.
-const FAMILY_HISTORY: [&str; 5] = [
-    "\"/api/patients/{id}/family-history\"",
-    "\"/api/patients/{id}/family-history/as-at\"",
-    "\"/api/patients/{id}/family-history/{entry_id}\"",
-    "\"/api/patients/{id}/family-history/{entry_id}/versions\"",
-    "resource::familymemberhistory",
-];
-
 #[test]
 fn no_route_is_about_a_family_a_household_or_grief() {
-    let mut routes = read("src/routes.rs").to_lowercase();
-    for allowed in FAMILY_HISTORY {
-        assert!(routes.contains(allowed), "{allowed}: no longer needed");
-        routes = routes.replace(allowed, "");
-    }
+    let routes = read("src/routes.rs").to_lowercase();
     for word in ["family", "household", "bereav", "grief"] {
         assert!(
             !routes.contains(word),
             "{word}: access is per person (SG-2)"
         );
     }
-}
-
-/// What makes the exception above safe: an entry has nowhere to put another person, and nothing searches or lists
-/// entries across patients.
-#[test]
-fn a_family_history_entry_reaches_no_other_person() {
-    use electronic_patient_record::family_history::FamilyHistoryRecord;
-    use electronic_patient_record::policy::Resource;
-    let full = serde_json::json!({
-        "relationship": "sister", "member": 1, "condition": "c",
-        "coding": { "system": "urn:x", "code": "1" }, "presence": "present", "onset_age": 1,
-        "source": "patient", "status": "recorded"
-    });
-    let record: FamilyHistoryRecord = serde_json::from_value(full.clone()).unwrap();
-    // `full` is every field there is: a new one makes this fail until someone has looked at it here.
-    assert_eq!(serde_json::to_value(&record).unwrap(), full);
-    for field in [
-        "patient_id",
-        "relative_id",
-        "person",
-        "name",
-        "identifier",
-        "birth_date",
-        "note",
-    ] {
-        let mut linked = full.clone();
-        linked[field] = serde_json::json!("x");
-        assert!(
-            serde_json::from_value::<FamilyHistoryRecord>(linked).is_err(),
-            "{field}"
-        );
-    }
-    for (_, path, resource, _) in electronic_patient_record::routes::TABLE {
-        if *resource == Resource::FamilyMemberHistory {
-            assert!(
-                path.starts_with("/api/patients/{id}/family-history"),
-                "{path}: only under one patient"
-            );
-        }
-    }
-    // The table's only patient is the one whose record it is.
-    let migration = read("migrations/20261124000042_problems_family_history.sql");
-    let table = migration
-        .split("CREATE TABLE family_history_versions")
-        .nth(1)
-        .and_then(|t| t.split(");").next())
-        .expect("the table");
-    let uuids: Vec<&str> = table
-        .lines()
-        .filter(|l| l.contains(" UUID "))
-        .filter_map(|l| l.split_whitespace().next())
-        .collect();
-    assert_eq!(uuids, ["entry_id", "patient_id"]);
 }
 
 #[test]
