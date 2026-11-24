@@ -9,6 +9,11 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - **Added later the same day:** a worked example from the All Wales Adult Inherited Metabolic Disease Service's support-groups page (about 60 signposts, no endorsement, no review date); it adds a type, an endorsement statement and a last-checked date to the directory entry.
 - **Not done / not verified:** only that one page was read (its linked sites and the Welsh version were not); no law checked, no customer, clinician, volunteer or patient asked; the five questions are the customer's to answer. Nothing built.
 
+## 2026-11-24 - Spec: the customer's answer to OQ-CF3 (no relatives as members)
+
+- **Changed:** OQ-CF3 records no: a carer or relative is not recorded as a member, because the groups are third-party. Design rule 5 of the support-groups spec now says so; a patient's remark that a relative will go stays a note in their own words and creates no person record.
+- **Not done / not verified:** whether a relative's name in a free-text note is itself a risk was not examined. OQ-CF4 and OQ-CF5 unanswered. Nothing built.
+
 ## 2026-11-24 - Spec: the customer's answer to OQ-CF2 (only the offer)
 
 - **Changed:** OQ-CF2 records that the system holds only the offer; no membership, attendance or roster for any group. The support-groups spec drops the conditional wording that depended on it (a roster role, a staff-run roster, a controller decision). Volunteers need no role, since there is no roster.
