@@ -9,6 +9,12 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - **Added later the same day:** a worked example from the All Wales Adult Inherited Metabolic Disease Service's support-groups page (about 60 signposts, no endorsement, no review date); it adds a type, an endorsement statement and a last-checked date to the directory entry.
 - **Not done / not verified:** only that one page was read (its linked sites and the Welsh version were not); no law checked, no customer, clinician, volunteer or patient asked; the five questions are the customer's to answer. Nothing built.
 
+## 2026-11-24 - Spec: the customer's answer to OQ-CH6 (national summary depends on the country)
+
+- **Changed:** OQ-CH6 records that a national summary depends on the country. The custodial-health spec says the core writes the release review to the one patient record only; a national summary is an export in the country pack, subject to the release rules of OQ-CH5, with the custody label not carried into it unless the pack says so.
+- **Clinical risk:** an export carrying custody into a general practice's summary would defeat the label; covered by the rule above, but untested and unbuilt. No hazard-log row added yet.
+- **Not done / not verified:** no country's summary read. All six questions OQ-CH1 to OQ-CH6 now have a customer answer, but the country, the controller and processor, who decides a function and the release rules are still open inside them. Nothing built.
+
 ## 2026-11-24 - Spec: the customer's answer to OQ-CH4 (one record)
 
 - **Changed:** OQ-CH4 records one record: the custody health team writes into the person's own record. The custodial-health spec now says custody and everything written in it carry a label by default and are hidden from a reader with no need; after release the label stays unless a pack rule or the person lifts it, with a lift audited; non-health custodian staff neither read nor write; the release hand-over becomes a review of open items on the one record.

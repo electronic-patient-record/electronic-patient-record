@@ -164,6 +164,6 @@
 | OQ-CH3 | **Customer answered in part 2026-11-24: functional information only.** Still open: who decides each functional item (a clinician is proposed). | customer, Clinical Safety Officer |
 | OQ-CH4 | **Customer answered 2026-11-24: one patient record, and no separate custody record.** The custody health team writes into the person's own patient record. | customer |
 | OQ-CH5 | **Customer answered in part 2026-11-24: it varies by jurisdiction, country, U.S. state, purpose and urgency (for example an imminent threat to wellbeing).** Still open: the release rules each pack holds, and who may release. | customer, legal |
-| OQ-CH6 | Is there a national summary the receiving community team already reads, which the release hand-over should write to? | customer |
+| OQ-CH6 | **Customer answered 2026-11-24: it depends on the country.** A national summary is an export in the country pack, named there; with no pack nothing is sent. | customer |
 
 No answers recorded yet, except where a row says decided or proposed.

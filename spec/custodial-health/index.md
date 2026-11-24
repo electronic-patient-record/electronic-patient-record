@@ -52,6 +52,14 @@ There is **one patient record**, and there is no custody record: the custody hea
 - **An erroneous custody label, or a missing one, is a hazard in both directions**: a missing label shows custody to a reader who should not see it, and a label that hides a result a clinician needs (a pending result, a medicine) is a safety risk. A clinician who needs it opens it by break-glass, as in [H-024](../../governance/clinical-safety/hazard-log.csv), with the reason audited.
 - **The record is append-only as everywhere**: a custody entry cannot be removed after release, only labelled and, where the law allows, amended by a visible correction.
 
+## The customer's answer to OQ-CH6 (2026-11-24): it depends on the country
+
+Whether a national summary exists that the receiving community team reads depends on the country. My reasoning on what follows:
+
+- **The core writes the release review to the one patient record only** (OQ-CH4). A national summary is an **export in the country pack**: the pack names the summary, its format and its recipient, and maps the open items to it. With no pack, nothing is sent anywhere.
+- **The pack's export is a disclosure**, so it follows the release rules of OQ-CH5: a named basis, the smallest content, an audit row, and the custody label is **not** carried into the summary unless the pack says so, because a summary read by a general practice is exactly the reader the label hides custody from.
+- **A country with no national summary** relies on the one record and the receiving team's own access; the release review is then the hand-over, and a person with no registered community team is a named gap on it, not a blank.
+
 ## What custody changes (my reasoning, to be checked with the customer)
 
 1. **The person is held, so the setting is a profile**: the rule of [care settings](../care-settings.md) rule 1 applies. One patient, one record; a custodial profile chooses the screens, forms and rules. A person who enters custody is not a new patient: their existing record and pathways continue.
@@ -83,11 +91,11 @@ There is **one patient record**, and there is no custody record: the custody hea
 | OQ-CH3 | **Partly answered 2026-11-24 by the customer: functional information only.** **Still open:** who decides each functional item (a clinician is my proposal). |
 | OQ-CH4 | **Answered 2026-11-24 by the customer: one patient record, and no separate custody record.** The custody health team writes into the person's own patient record. |
 | OQ-CH5 | **Partly answered 2026-11-24 by the customer: it varies by jurisdiction, country, U.S. state, purpose and urgency (for example an imminent threat to wellbeing).** **Still open:** which release rules each pack holds, and who may release. |
-| OQ-CH6 | Is there a national summary the receiving community team already reads, which the release hand-over should write to? |
+| OQ-CH6 | **Answered 2026-11-24 by the customer: it depends on the country.** The release hand-over writes to a national summary only where the country's pack names one. |
 
 ## Tasks and acceptance
 
-`CF-2` is this page. A later build needs, before any code: answers to the country in OQ-CH1, the controller and processor in OQ-CH2, who decides a function in OQ-CH3, the release rules of each pack in OQ-CH5, and OQ-CH6; a hazard-log row for the disclosure of health information to non-health staff and for a release with no hand-over; a test that a custody role reads no clinical data beyond the listed functional needs; a review by a prison health clinician and by a person who has been in custody.
+`CF-2` is this page. A later build needs, before any code: answers to the country in OQ-CH1, the controller and processor in OQ-CH2, who decides a function in OQ-CH3, and the release rules of each pack in OQ-CH5; a hazard-log row for the disclosure of health information to non-health staff and for a release with no hand-over; a test that a custody role reads no clinical data beyond the listed functional needs; a review by a prison health clinician and by a person who has been in custody.
 
 ## Not done, not verified
 
