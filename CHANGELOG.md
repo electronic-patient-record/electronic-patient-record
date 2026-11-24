@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-24 - Coverage 95.31%; the real `start` command is tested with every optional part on (QA-15)
+
+- **Clinical risk:** none: a test.
+- **Measured:** 25,436 of 26,688 lines, 95.31% (was 95.16%; the referral-queue and purpose-sweep tests added 39 lines), same method as before.
+- **Changed:** new `tests/start_binary.rs` (a module of `suite.rs`, database-gated) runs the binary's `start` against a scratch database with the MLLP listener, the outbox relay, task reminders, the request limit and the lockout switched on in the child's environment only, waits for `/_health/ready` to answer 200, checks the MLLP port accepts, and sends SIGTERM, which must stop it within 30 s. `app.rs`'s start-up path (about 80 lines at 72.6%) ran only under the in-process test app before.
+- **Not done / not verified:** coverage was not re-measured after this test, so the gain is unknown; the optional parts are only checked to start, not to work (their own tests do that); no TLS, task-rule file, packs or permission-basis settings are switched on in it; the test needs a `kill` command (Unix).
+
 ## 2026-11-23 - One sweep: an unknown purpose of use is refused by every route that reads it (QA-15)
 
 - **Clinical risk:** none: a test.

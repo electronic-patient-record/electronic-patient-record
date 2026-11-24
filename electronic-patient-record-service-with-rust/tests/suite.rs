@@ -103,6 +103,8 @@ mod risk_field_census;
 mod route_census;
 #[path = "sql_census.rs"]
 mod sql_census;
+#[path = "start_binary.rs"]
+mod start_binary;
 #[path = "stored_words.rs"]
 mod stored_words;
 #[path = "support_only.rs"]
