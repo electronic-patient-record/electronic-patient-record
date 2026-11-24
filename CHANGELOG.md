@@ -2,6 +2,19 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-24 - Dependency: axa 0.23, axa-test 0.14; the service package includes `migrations/`
+
+- **Changed:** `axa` 0.21 to 0.23 and `axa-test` 0.12 to 0.14 (with axa-idempotency-key 0.3.0, axa-postgres-job-queue 0.7.0 and patch bumps). The one breaking change we hit: `Idempotency::ttl` returns a `Result`, so `idempotency::keys` returns `Result<Idempotency, ConfigError>` and boot fails with a message instead of panicking. Cooldown exception approved by the maintainer, applied to that one `cargo update` command only.
+- **Also:** `include` in the service `Cargo.toml` now lists `migrations/*.sql` (`sqlx::migrate!` embeds them), so the package verifies; `cargo publish --dry-run` passes.
+- **Verified:** fmt, clippy `-D warnings`, the normal pass (all green) and the database pass (220 tests, fresh database).
+- **Not done / not verified:** the axa 0.22 and 0.23 release notes were not read in full, so new features are not adopted; `cargo deny`, the UI and CI were not run. The service crate is still not published (the maintainer runs `cargo publish`).
+
+## 2026-11-24 - Backlog: customer feedback on groups, custodial and military health, multi-system genetic conditions
+
+- **Added:** tasks `CF-1` to `CF-4` and a section 4 in `spec/care-settings.md`; prefix `CF` in `scripts/generate-status.sh`.
+- **Clinical risk:** none yet; no behaviour changed. Each task is flagged clinical and will need a hazard-log row when it gets a design.
+- **Not done / not verified:** no code, no sources read, no clinician, prison or military health service, or patient group consulted. Brain-lung-thyroid syndrome is named as the customer wrote it; its coding was not looked up.
+
 ## 2026-11-24 - Release: matcher 0.8.1 published; the service uses it
 
 - **Clinical risk:** the matcher fix (an empty name part no longer scores NaN) can change a match score for such a name; no hazard-log row changed. See the matcher entry above.

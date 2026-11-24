@@ -88,6 +88,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | DEP | 0 | 2 |
 | TL | 6 | 9 |
 | MP | 3 | 30 |
-| **Total** | **135** | **448** |
+| CF | 0 | 4 |
+| **Total** | **135** | **452** |
 
 <!-- generated:end -->

@@ -41,6 +41,10 @@ From the sources read (UK Renal Registry material, a primary-care study), not fr
 - **A registry feed.** The UK Renal Registry receives electronic feeds from kidney centres; registration is triggered at the start of treatment or on an eGFR under 30 or an acute-kidney-injury flag from the laboratory. A renal pack would map to such a feed; which national registry applies is a country matter.
 - **Not sourced and left for a renal clinician:** vascular access, transplant, modality changes, the set of alerts, and what the summary page should lead with.
 
+## 4. Customer requests, not designed (2026-11-24)
+
+A customer asked for four things this document does not yet answer: condition-specific social groups (a monthly cancer support volunteer group); prison health; military health; and complex genetic conditions that affect several body systems, such as brain-lung-thyroid syndrome. They are tasks `CF-1` to `CF-4` in [tasks](../tasks.md). Prison and military health fit design rule 1 (a setting is a profile, with the legal frame as a pack); a multi-system genetic condition fits the specialty views of section 3 but needs a shared care plan across them; a support group raises a disclosure question, because belonging to it can reveal a diagnosis. None is built, sourced or reviewed.
+
 ## Not done, not verified
 
-No clinician reviewed any of this. The acute versus community comparison is the author's, supported only by examples. The ActCode values are to be checked. No renal system was examined. Tasks: `XP-5` to `XP-7`, `XP-10`, `XP-11`.
+No clinician reviewed any of this. The acute versus community comparison is the author's, supported only by examples. The ActCode values are to be checked. No renal system was examined. Section 4 is a list of requests, not a design. Tasks: `XP-5` to `XP-7`, `XP-10`, `XP-11`, `CF-1` to `CF-4`.
