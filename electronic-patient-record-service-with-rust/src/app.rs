@@ -363,7 +363,8 @@ impl App {
         }
         // Expired idempotency keys hold answers that can name a patient: remove them (OF-1).
         // A missing or out-of-date table stops the service here, not at its first keyed create.
-        let keys = crate::idempotency::keys(ctx.pool());
+        let keys = crate::idempotency::keys(ctx.pool())
+            .map_err(|e| Error::Message(format!("idempotency keys: {e}")))?;
         keys.check()
             .await
             .map_err(|e| Error::Message(format!("idempotency keys: {e}")))?;

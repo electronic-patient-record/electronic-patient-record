@@ -24,7 +24,7 @@
 use crate::api_error::ApiError;
 use crate::audit::{self, Action, Event};
 use crate::auth::Agent;
-use axa::idempotency::{Idempotency, REPLAYED, idempotent};
+use axa::idempotency::{ConfigError, Idempotency, REPLAYED, idempotent};
 use axum::{
     Router,
     extract::{Request, State},
@@ -55,15 +55,18 @@ pub fn covered(method: &Method, path: &str) -> bool {
 }
 
 /// The keys, in `db`, per token subject.
-#[must_use]
-pub fn keys(db: PgPool) -> Idempotency {
-    Idempotency::new(db, |req: &Request| {
+///
+/// # Errors
+///
+/// [`ConfigError`] when [`TTL`] is not a valid lifetime for a key (a mistake in code, found at boot).
+pub fn keys(db: PgPool) -> Result<Idempotency, ConfigError> {
+    Ok(Idempotency::new(db, |req: &Request| {
         req.extensions().get::<Agent>().map(|a| a.0.clone())
     })
     .only(covered)
-    .ttl(TTL)
+    .ttl(TTL)?
     .max_request_bytes(MAX_REQUEST)
-    .max_response_bytes(MAX_RESPONSE)
+    .max_response_bytes(MAX_RESPONSE))
 }
 
 /// The audit layer's state.
@@ -153,7 +156,7 @@ mod tests {
     async fn a_run_that_may_have_written_is_never_taken_over_while_its_key_lives() {
         // `axa-idempotency` holds a run's key for its whole `ttl` unless `rerun_abandoned_after` is set.
         let db = PgPool::connect_lazy("postgres://localhost/unused").unwrap();
-        let settings = format!("{:?}", keys(db));
+        let settings = format!("{:?}", keys(db).unwrap());
         assert!(
             settings.contains("rerun_abandoned_after: None"),
             "a retry must never run a write again: {settings}"
