@@ -1,4 +1,4 @@
-//! LC-15: with `autotests = false`, a test file that is neither a module of `suite.rs` nor a `[[test]]` in
+//! LC-15: with `autotests = false`, a test file that is neither a module of `main.rs` nor a `[[test]]` in
 //! `Cargo.toml` would never run, and nothing would say so. This census fails first.
 
 use std::collections::BTreeSet;
@@ -12,9 +12,9 @@ fn every_test_file_is_in_the_suite_or_its_own_program_and_only_once() {
         .map(|e| e.unwrap().path())
         .filter(|p| p.extension().is_some_and(|e| e == "rs"))
         .map(|p| p.file_name().unwrap().to_string_lossy().into_owned())
-        .filter(|f| f != "suite.rs")
+        .filter(|f| f != "main.rs")
         .collect();
-    let suite = std::fs::read_to_string(root.join("tests/suite.rs")).unwrap();
+    let suite = std::fs::read_to_string(root.join("tests/main.rs")).unwrap();
     let in_suite: Vec<String> = suite
         .lines()
         .filter_map(|l| {
@@ -32,7 +32,7 @@ fn every_test_file_is_in_the_suite_or_its_own_program_and_only_once() {
                 .strip_suffix('"')
                 .map(String::from)
         })
-        .filter(|f| f != "suite.rs")
+        .filter(|f| f != "main.rs")
         .collect();
     let mut seen = BTreeSet::new();
     for f in in_suite.iter().chain(&own) {
@@ -48,7 +48,7 @@ fn every_test_file_is_in_the_suite_or_its_own_program_and_only_once() {
     let missing: Vec<&String> = files.difference(&seen).collect();
     assert!(
         missing.is_empty(),
-        "never run: {missing:?}: add it to tests/suite.rs or a [[test]] in Cargo.toml"
+        "never run: {missing:?}: add it to tests/main.rs or a [[test]] in Cargo.toml"
     );
     assert!(
         manifest.contains("autotests = false"),

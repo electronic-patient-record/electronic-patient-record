@@ -7,7 +7,7 @@
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test suite http_conflicts:: -- --ignored --test-threads=1
+//!   cargo test --test main http_conflicts:: -- --ignored --test-threads=1
 //! ```
 
 use axa_test::prelude::request_with;
@@ -68,7 +68,7 @@ fn conflict(body: &Value, current: i64) {
     );
 }
 
-/// This app's own settings: login off, no process environment written, so the file can join `suite.rs`.
+/// This app's own settings: login off, no process environment written, so the file can join `main.rs`.
 fn settings() -> Vec<(&'static str, &'static str)> {
     // Leaked on purpose: a test process is short, and `request_with` wants settings that outlive the call.
     let url: &'static str = Box::leak(

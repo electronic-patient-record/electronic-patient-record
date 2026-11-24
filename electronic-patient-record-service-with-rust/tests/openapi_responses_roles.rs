@@ -9,7 +9,7 @@
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test suite openapi_responses_roles:: -- --ignored --test-threads=1
+//!   cargo test --test main openapi_responses_roles:: -- --ignored --test-threads=1
 //! ```
 
 use authentication_verifier::test_idp::{AUDIENCE, REALM, TestIdp};
@@ -58,7 +58,7 @@ async fn real_responses_of_the_role_gated_routes_validate_against_the_served_sch
         .iter()
         .map(|r| ((*r).to_string(), json!({ "role": [r] })))
         .collect();
-    // This app's own settings: no process environment is written, so the file can join `suite.rs`.
+    // This app's own settings: no process environment is written, so the file can join `main.rs`.
     let db_url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let role_map = map.to_string();
     let settings: Vec<(&str, &str)> = vec![

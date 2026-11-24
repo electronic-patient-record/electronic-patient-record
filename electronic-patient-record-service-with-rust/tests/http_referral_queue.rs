@@ -13,7 +13,7 @@
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test suite http_referral_queue:: -- --ignored --test-threads=1
+//!   cargo test --test main http_referral_queue:: -- --ignored --test-threads=1
 //! ```
 
 use authentication_verifier::test_idp::{AUDIENCE, REALM, TestIdp};
@@ -62,7 +62,7 @@ async fn who_may_send_and_who_may_clear() {
         .iter()
         .map(|r| ((*r).to_string(), json!({ "role": [r] })))
         .collect();
-    // This app's own settings: no process environment is written, so the file can join `suite.rs`.
+    // This app's own settings: no process environment is written, so the file can join `main.rs`.
     let db_url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let role_map = map.to_string();
     let settings: Vec<(&str, &str)> = vec![

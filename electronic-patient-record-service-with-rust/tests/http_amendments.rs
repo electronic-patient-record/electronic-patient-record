@@ -1,12 +1,12 @@
 //! DB-gated, through the real router with login **on** (RC-4): who may ask for a record to be amended and
 //! who may decide, that the requester is the token and never the body, that a patient cannot decide and a
 //! clinician cannot speak for the patient, that a stale version is 409, and that the audit trail never holds
-//! the request text or a reason. The app is booted with its own settings, so this file runs inside `suite.rs`.
+//! the request text or a reason. The app is booted with its own settings, so this file runs inside `main.rs`.
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test suite http_amendments:: -- --ignored --test-threads=1
+//!   cargo test --test main http_amendments:: -- --ignored --test-threads=1
 //! ```
 
 use authentication_verifier::test_idp::{AUDIENCE, REALM, TestIdp};
@@ -52,7 +52,7 @@ async fn who_may_ask_decide_and_withdraw() {
         .iter()
         .map(|r| ((*r).to_string(), json!({ "role": [r] })))
         .collect();
-    // This app's own settings: no process environment is written, so the file can join `suite.rs`.
+    // This app's own settings: no process environment is written, so the file can join `main.rs`.
     let db_url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let role_map = map.to_string();
     let settings: Vec<(&str, &str)> = vec![

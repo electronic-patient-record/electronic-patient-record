@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Measure test coverage with cargo-tarpaulin, as CI does, and fail under the floors set in the gate scripts. The
+# matcher gate needs nothing else; the service gate measures the tests that need no database (the database tests'
+# figure, by cargo-llvm-cov, is recorded in tasks.md QA-15). The one definition of each command is in scripts/gates/.
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+sh "${ROOT}/scripts/gates/coverage-matcher.sh"
+sh "${ROOT}/scripts/gates/coverage-service.sh"

@@ -10,7 +10,7 @@
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test suite http_audit_refusal:: -- --ignored --test-threads=1
+//!   cargo test --test main http_audit_refusal:: -- --ignored --test-threads=1
 //! ```
 
 use axa_test::prelude::request_with;
@@ -69,7 +69,7 @@ fn patient(family: &str, seed: u128) -> Value {
     .unwrap()
 }
 
-/// This app's own settings: login off, no process environment written, so the file can join `suite.rs`.
+/// This app's own settings: login off, no process environment written, so the file can join `main.rs`.
 fn settings() -> Vec<(&'static str, &'static str)> {
     // Leaked on purpose: a test process is short, and `request_with` wants settings that outlive the call.
     let url: &'static str = Box::leak(
@@ -83,7 +83,7 @@ fn settings() -> Vec<(&'static str, &'static str)> {
 #[tokio::test]
 #[ignore = "needs Postgres: set DB_URL"]
 async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_route() {
-    // Both audit-refusal tests share one process in `suite.rs`: this one records only what it drives.
+    // Both audit-refusal tests share one process in `main.rs`: this one records only what it drives.
     DRIVEN.lock().unwrap().clear();
     request_with::<App, _, _>(&settings(), |server, ctx| async move {
         let db = &ctx.pool();

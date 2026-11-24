@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Run every benchmark once, as the gates do (criterion `-- --test`: they check the benchmarks work, they measure
+# nothing worth keeping; see spec/performance-testing.md for real measurement). The one definition of each command
+# is in scripts/gates/, shared with CI and scripts/ci-local.sh.
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+sh "${ROOT}/scripts/gates/matcher-bench.sh"
+sh "${ROOT}/scripts/gates/service-bench.sh"

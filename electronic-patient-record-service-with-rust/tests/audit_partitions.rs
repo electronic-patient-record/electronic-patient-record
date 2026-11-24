@@ -4,7 +4,7 @@
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
 //! DB_URL=postgres://loco:loco@127.0.0.1:5543/electronic_patient_record_test \
-//!   cargo test --test suite audit_partitions:: -- --ignored --test-threads=1
+//!   cargo test --test main audit_partitions:: -- --ignored --test-threads=1
 //! ```
 
 use electronic_patient_record::audit::{self, Action, Chain, Event, Verdict};

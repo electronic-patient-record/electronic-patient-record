@@ -7,7 +7,7 @@
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test suite http_audit_refusal_roles:: -- --ignored --test-threads=1
+//!   cargo test --test main http_audit_refusal_roles:: -- --ignored --test-threads=1
 //! ```
 
 use authentication_verifier::test_idp::{AUDIENCE, REALM, TestIdp};
@@ -64,7 +64,7 @@ async fn break_glass_and_the_feed_queue_refuse_when_their_audit_row_cannot_be_wr
         .iter()
         .map(|r| ((*r).to_string(), json!({ "role": [r] })))
         .collect();
-    // This app's own settings: no process environment is written, so the file can join `suite.rs`.
+    // This app's own settings: no process environment is written, so the file can join `main.rs`.
     let db_url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let role_map = map.to_string();
     let settings: Vec<(&str, &str)> = vec![
@@ -85,7 +85,7 @@ async fn break_glass_and_the_feed_queue_refuse_when_their_audit_row_cannot_be_wr
     let clinician = token("clinician", "0c4f1e2a-0000-4000-8000-0000000000c1");
     let auditor = token("auditor", "0c4f1e2a-0000-4000-8000-0000000000d1");
 
-    // Both audit-refusal tests share one process in `suite.rs`: this one records only what it drives.
+    // Both audit-refusal tests share one process in `main.rs`: this one records only what it drives.
     DRIVEN.lock().unwrap().clear();
     request_with::<App, _, _>(&settings, |server, ctx| async move {
         let db = &ctx.pool();

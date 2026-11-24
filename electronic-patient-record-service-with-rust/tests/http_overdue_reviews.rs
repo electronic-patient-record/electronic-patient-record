@@ -1,5 +1,5 @@
 //! DB-gated, through the real router with login **on** (PX-2, H-048): the list across patients of needs whose
-//! date to check has passed. The app is booted with its own settings, so this file runs inside `suite.rs`.
+//! date to check has passed. The app is booted with its own settings, so this file runs inside `main.rs`.
 //!
 //! Covered: one overdue need shows and one in time does not, oldest date first; the item is a pointer with no
 //! code, note or reason; the count; the list names the owning role; only the on-duty clinician reads it (403 for
@@ -10,7 +10,7 @@
 //!
 //! ```text
 //! DB_URL=postgres://postgres:postgres@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test suite http_overdue_reviews:: -- --ignored --test-threads=1
+//!   cargo test --test main http_overdue_reviews:: -- --ignored --test-threads=1
 //! ```
 
 use authentication_verifier::test_idp::{AUDIENCE, REALM, TestIdp};
@@ -53,7 +53,7 @@ async fn the_on_duty_clinician_alone_sees_what_is_overdue() {
         .iter()
         .map(|r| ((*r).to_string(), json!({ "role": [r] })))
         .collect();
-    // This app's own settings: no process environment is written, so the file can join `suite.rs`.
+    // This app's own settings: no process environment is written, so the file can join `main.rs`.
     let db_url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let role_map = map.to_string();
     let settings: Vec<(&str, &str)> = vec![

@@ -16,7 +16,7 @@
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test suite chaos_api:: -- --ignored --test-threads=1 --nocapture
+//!   cargo test --test main chaos_api:: -- --ignored --test-threads=1 --nocapture
 //! ```
 
 use crate::chaos_support;

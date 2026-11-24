@@ -7,13 +7,13 @@
 //! - no stack trace, SQL text or file path in a response body.
 //!
 //! The gate, the role checks, consent and the relationship rules all run here, which they do not with login off.
-//! It boots with its own settings, so it runs inside `suite.rs`. It writes whatever the API allows, so it
+//! It boots with its own settings, so it runs inside `main.rs`. It writes whatever the API allows, so it
 //! refuses a database whose name has no "test" in it. `EPR_CHAOS_SEED` repeats a run; `EPR_CHAOS_ITERATIONS`
 //! (default 2000) sets its length.
 //!
 //! ```text
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test suite chaos_roles:: -- --ignored --test-threads=1 --nocapture
+//!   cargo test --test main chaos_roles:: -- --ignored --test-threads=1 --nocapture
 //! ```
 
 use crate::chaos_support;

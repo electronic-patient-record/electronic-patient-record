@@ -2,12 +2,12 @@
 //! record an adjustment, a patient, a proxy and an auditor have none of it, the author is the token, a
 //! stale version is 409, ending is final and stays in the history, an overdue review shows, the audit
 //! trail holds no code, note or reason, and the table refuses change. A patient reads and corrects their
-//! own needs and nobody else's, and a proxy reads only with the scope (PX-1). The app is booted with its own settings, so this file runs inside `suite.rs`.
+//! own needs and nobody else's, and a proxy reads only with the scope (PX-1). The app is booted with its own settings, so this file runs inside `main.rs`.
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test suite http_adjustments:: -- --ignored --test-threads=1
+//!   cargo test --test main http_adjustments:: -- --ignored --test-threads=1
 //! ```
 
 use authentication_verifier::test_idp::{AUDIENCE, REALM, TestIdp};
@@ -59,7 +59,7 @@ async fn who_may_record_review_and_end_an_adjustment() {
         .iter()
         .map(|r| ((*r).to_string(), json!({ "role": [r] })))
         .collect();
-    // This app's own settings: no process environment is written, so the file can join `suite.rs`.
+    // This app's own settings: no process environment is written, so the file can join `main.rs`.
     let db_url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let role_map = map.to_string();
     let settings: Vec<(&str, &str)> = vec![

@@ -5,7 +5,7 @@
 //!
 //! ```text
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test suite personal_data_inventory:: -- --ignored --test-threads=1
+//!   cargo test --test main personal_data_inventory:: -- --ignored --test-threads=1
 //! ```
 
 use sqlx::PgPool;

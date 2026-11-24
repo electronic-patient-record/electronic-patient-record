@@ -1,5 +1,5 @@
 //! DB-gated, through the real router with login **on** (CA-3, second slice): the referral routes and who
-//! may take which step. The app is booted with its own settings, so this file runs inside `suite.rs`.
+//! may take which step. The app is booted with its own settings, so this file runs inside `main.rs`.
 //!
 //! Covered: a clinician sends a referral; the sender cannot answer it (422); another clinician accepts;
 //! a stale version is a 409; a cancellation is only a request, needs a note, and only the other subject
@@ -12,7 +12,7 @@
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test suite http_referrals:: -- --ignored --test-threads=1
+//!   cargo test --test main http_referrals:: -- --ignored --test-threads=1
 //! ```
 
 use authentication_verifier::test_idp::{AUDIENCE, REALM, TestIdp};
@@ -61,7 +61,7 @@ async fn who_may_take_which_step() {
         .iter()
         .map(|r| ((*r).to_string(), json!({ "role": [r] })))
         .collect();
-    // This app's own settings: no process environment is written, so the file can join `suite.rs`.
+    // This app's own settings: no process environment is written, so the file can join `main.rs`.
     let db_url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let role_map = map.to_string();
     let settings: Vec<(&str, &str)> = vec![

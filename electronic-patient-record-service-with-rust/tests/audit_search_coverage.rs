@@ -12,7 +12,7 @@
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test suite audit_search_coverage:: -- --ignored --test-threads=1
+//!   cargo test --test main audit_search_coverage:: -- --ignored --test-threads=1
 //! ```
 
 use axa_test::prelude::request_with;
@@ -80,7 +80,7 @@ async fn audit_rows(db: &PgPool) -> i64 {
     row.try_get("n").expect("n")
 }
 
-/// This app's own settings: login off, no process environment written, so the file can join `suite.rs`.
+/// This app's own settings: login off, no process environment written, so the file can join `main.rs`.
 fn settings() -> Vec<(&'static str, &'static str)> {
     // Leaked on purpose: a test process is short, and `request_with` wants settings that outlive the call.
     let url: &'static str = Box::leak(

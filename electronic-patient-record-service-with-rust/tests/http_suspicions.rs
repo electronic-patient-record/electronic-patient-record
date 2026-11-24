@@ -3,12 +3,12 @@
 //! version; each version shown with what it changed and the pathway's priority and due days; a band that
 //! follows a result needs a result on this patient's record; a referral from another patient is a miss;
 //! reception and the patient-access purpose are refused; and nothing of the suspicion reaches the audit.
-//! The app is booted with its own settings, so this file runs inside `suite.rs`.
+//! The app is booted with its own settings, so this file runs inside `main.rs`.
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test suite http_suspicions:: -- --ignored --test-threads=1
+//!   cargo test --test main http_suspicions:: -- --ignored --test-threads=1
 //! ```
 
 use authentication_verifier::test_idp::{AUDIENCE, REALM, TestIdp};
@@ -85,7 +85,7 @@ async fn a_suspicion_keeps_its_point_of_suspicion_and_follows_its_pathway() {
         .iter()
         .map(|r| ((*r).to_string(), json!({ "role": [r] })))
         .collect();
-    // This app's own settings: no process environment is written, so the file can join `suite.rs`.
+    // This app's own settings: no process environment is written, so the file can join `main.rs`.
     let db_url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let role_map = map.to_string();
     let settings: Vec<(&str, &str)> = vec![

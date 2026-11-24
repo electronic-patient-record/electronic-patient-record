@@ -4,7 +4,7 @@
 //!
 //! ```text
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test suite db_commands -- --ignored --test-threads=1
+//!   cargo test --test main db_commands -- --ignored --test-threads=1
 //! ```
 
 use std::process::{Command, Output};

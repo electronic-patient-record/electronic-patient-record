@@ -1,12 +1,12 @@
 //! DB-gated, through the real router with login **on** (AS-17): only the Clinical Safety Officer retires a
 //! hazard, and only with evidence; the role is the token's, never the body's; any writer may reopen; a stale
 //! version is 409; a role with no business here is refused; and the audit trail holds the evidence hashes
-//! but never the free text. The app is booted with its own settings, so this file runs inside `suite.rs`.
+//! but never the free text. The app is booted with its own settings, so this file runs inside `main.rs`.
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test suite http_hazards:: -- --ignored --test-threads=1
+//!   cargo test --test main http_hazards:: -- --ignored --test-threads=1
 //! ```
 
 use authentication_verifier::test_idp::{AUDIENCE, REALM, TestIdp};
@@ -55,7 +55,7 @@ async fn only_the_clinical_safety_officer_retires_a_hazard_and_only_with_evidenc
         .iter()
         .map(|r| ((*r).to_string(), json!({ "role": [r] })))
         .collect();
-    // This app's own settings: no process environment is written, so the file can join `suite.rs`.
+    // This app's own settings: no process environment is written, so the file can join `main.rs`.
     let db_url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let role_map = map.to_string();
     let settings: Vec<(&str, &str)> = vec![

@@ -5,7 +5,7 @@
 //! (`cargo test --test <name>`) stays its own program, listed in `Cargo.toml`. `test_targets` checks that every file
 //! in `tests/` is one or the other.
 //!
-//! Run one file's tests with `cargo test --test suite <module>::`.
+//! Run one file's tests with `cargo test --test main <module>::`.
 
 // Shared by more than one file below, so declared once here.
 #[path = "audit_switch/mod.rs"]

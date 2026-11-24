@@ -3,7 +3,7 @@
 //!
 //! ```text
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test suite current_views:: -- --ignored --test-threads=1
+//!   cargo test --test main current_views:: -- --ignored --test-threads=1
 //! ```
 
 use sqlx::Row;

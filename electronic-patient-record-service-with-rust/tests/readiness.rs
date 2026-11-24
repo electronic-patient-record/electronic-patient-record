@@ -6,7 +6,7 @@
 //!
 //! ```text
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test suite readiness:: -- --ignored --test-threads=1
+//!   cargo test --test main readiness:: -- --ignored --test-threads=1
 //! ```
 
 use axa::config::{Config, Defaults};

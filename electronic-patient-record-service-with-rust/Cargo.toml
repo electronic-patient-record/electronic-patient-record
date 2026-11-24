@@ -124,10 +124,10 @@ inherits = "test"
 debug = "none"
 incremental = false
 
-# One program for the integration tests that share nothing process-wide (tests/suite.rs, LC-15).
+# One program for the integration tests that share nothing process-wide (tests/main.rs, LC-15).
 [[test]]
-name = "suite"
-path = "tests/suite.rs"
+name = "main"
+path = "tests/main.rs"
 
 # Each its own program: it sets the process environment (the auth settings), holds process-wide state, or a script or
 # a document runs it by name.

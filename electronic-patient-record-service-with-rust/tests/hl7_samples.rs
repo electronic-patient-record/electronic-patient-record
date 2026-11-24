@@ -60,7 +60,7 @@ fn every_sample_reads_and_is_answered_as_its_golden_file_says() {
             match fs::read_to_string(&file) {
                 Ok(expected) if expected == shown => {}
                 Ok(expected) => differ.push(format!("{name}:\n  expected {expected:?}\n  got      {shown:?}")),
-                Err(_) => differ.push(format!("{name}: no golden file; run EPR_BLESS=1 cargo test --test suite hl7_samples:: and review it")),
+                Err(_) => differ.push(format!("{name}: no golden file; run EPR_BLESS=1 cargo test --test main hl7_samples:: and review it")),
             }
         }
     }

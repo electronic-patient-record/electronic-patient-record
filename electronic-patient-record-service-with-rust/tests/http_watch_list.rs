@@ -2,12 +2,12 @@
 //! active entry per clinician and patient; only its owner ends it, with a reason; an ended or lapsed
 //! entry leaves the owner's list and stays on the patient's record; the owner's list carries no reason;
 //! a clinician without a care relationship, and reception, are refused; and no reason reaches the
-//! audit. The app is booted with its own settings, so this file runs inside `suite.rs`.
+//! audit. The app is booted with its own settings, so this file runs inside `main.rs`.
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test suite http_watch_list:: -- --ignored --test-threads=1
+//!   cargo test --test main http_watch_list:: -- --ignored --test-threads=1
 //! ```
 
 use authentication_verifier::test_idp::{AUDIENCE, REALM, TestIdp};
@@ -52,7 +52,7 @@ async fn a_watch_list_entry_has_a_reason_and_an_end_and_stays_in_the_history() {
         .iter()
         .map(|r| ((*r).to_string(), json!({ "role": [r] })))
         .collect();
-    // This app's own settings: no process environment is written, so the file can join `suite.rs`.
+    // This app's own settings: no process environment is written, so the file can join `main.rs`.
     let db_url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let role_map = map.to_string();
     let settings: Vec<(&str, &str)> = vec![

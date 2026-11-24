@@ -2,12 +2,12 @@
 //! a clinician's read of a patient's clinical content without a permission basis is refused and the
 //! refusal audited; with `asked-agreed` or `could-not-ask:<reason>` it is answered and every row of it
 //! carries the basis; an unknown basis is a 400, so typed words never reach the trail; and a read of
-//! identity, which is not clinical, needs none. The app is booted with its own settings, so this file runs inside `suite.rs`.
+//! identity, which is not clinical, needs none. The app is booted with its own settings, so this file runs inside `main.rs`.
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test suite http_permission_basis:: -- --ignored --test-threads=1
+//!   cargo test --test main http_permission_basis:: -- --ignored --test-threads=1
 //! ```
 
 use authentication_verifier::test_idp::{AUDIENCE, REALM, TestIdp};
@@ -59,7 +59,7 @@ async fn a_clinical_read_needs_a_basis_and_every_row_keeps_it() {
         .iter()
         .map(|r| ((*r).to_string(), json!({ "role": [r] })))
         .collect();
-    // This app's own settings: no process environment is written, so the file can join `suite.rs`.
+    // This app's own settings: no process environment is written, so the file can join `main.rs`.
     let db_url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
     let role_map = map.to_string();
     let settings: Vec<(&str, &str)> = vec![

@@ -2,6 +2,17 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-24 - Major update: dependencies, `tests/main.rs`, `make test-benchmarks` and `make test-coverage`
+
+- **Clinical risk:** none: tooling, tests and lock files.
+- **Changed:**
+  - The service's single test program is now `tests/main.rs` (target `main`, was `suite`): `cargo test --test main <module>::`. About 80 files were updated to say so; older CHANGELOG entries still say `suite`, as they were true then.
+  - `make test-benchmarks` (`bin/test-benchmarks`) and `make test-coverage` (`bin/test-coverage`) wrap the existing gate scripts (`matcher-bench`, `service-bench`, `coverage-matcher`, `coverage-service`), so each command is still defined once.
+  - Lock files: service and matcher `cargo update` (18 and 5 packages, among them `hl7-2` 0.3.3, `jiff` 1.0.2, `clap` 4.6.9, `serde_with` 3.25); UI: `svelte` 5.59.1, `@lilydesignsystem/svelte-headless` 0.13.1.
+  - The `mobile-apps` worktree and its local branch were removed (clean, merged into `main`); the Lily checkout in it is fetched again by `scripts/fetch-lily.sh`.
+- **Already as asked, so unchanged:** Rust 1.100.0 pinned with `clippy`, `llvm-tools`, `rustfmt`; `rust-version = "1.98"` (N-2); `[profile.dev]` and `[profile.mutants]` as listed; `chrono` is absent from production (one copy remains in the tests through `axum-test`, DEP-1), `aws-lc-rs` and `cron` are gone (`ring`, `croner`); no open Dependabot alerts; private vulnerability reporting is on; the agent files are all under 40 KB; there are no `*-skill` or `*.github.io` folders in this repository.
+- **Not done / not verified:** TypeScript 7.0.2 was tried and refused: SvelteKit needs the JavaScript compiler API (`typescript@^6`); `syncpack` 15.3.4 was not taken (inside the release-age window); `make test-benchmarks` took 7 minutes and only checks the benchmarks run; `make test-coverage` measured the matcher at 99.32% and the service's database-free tests at 38.26%, as designed (the full figure, 95.91%, is in tasks.md QA-15); containers belonging to other projects, and two defunct entries whose parent is not mine, were left alone.
+
 ## 2026-11-24 - Test headers name the right command after the folding (LC-15)
 
 - **Clinical risk:** none: comments and a document.

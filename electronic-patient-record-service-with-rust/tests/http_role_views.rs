@@ -1,12 +1,12 @@
 //! DB-gated, through the real router with login **on** (WL-7): a vaccinator, whose permissions come only
 //! from its view in `electronic-patient-record-domain/src/role_views.toml`, reads the patient's identity and allergies on REST and FHIR,
 //! and is refused their vital signs and results on both, and any write. The app is booted with its own settings (no process
-//! environment is written), so this file runs inside `suite.rs`.
+//! environment is written), so this file runs inside `main.rs`.
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test suite http_role_views:: -- --ignored --test-threads=1
+//!   cargo test --test main http_role_views:: -- --ignored --test-threads=1
 //! ```
 
 use authentication_verifier::test_idp::{AUDIENCE, REALM, TestIdp};
@@ -50,7 +50,7 @@ async fn a_vaccinator_reads_its_subset_and_nothing_else() {
         .iter()
         .map(|r| ((*r).to_string(), json!({ "role": [r] })))
         .collect();
-    // This app's own settings: no process environment is written, so the file can join `suite.rs`.
+    // This app's own settings: no process environment is written, so the file can join `main.rs`.
     let role_map = map.to_string();
     let settings: Vec<(&str, &str)> = vec![
         ("DB_URL", &db_url),
