@@ -4,10 +4,10 @@
 //!
 //! ```text
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test http_feed_health -- --ignored --test-threads=1
+//!   cargo test --test suite http_feed_health:: -- --ignored --test-threads=1
 //! ```
 
-use axa_test::prelude::request;
+use axa_test::prelude::request_with;
 use axum::http::StatusCode;
 use electronic_patient_record::app::App;
 use electronic_patient_record::feed_health::{self, Thresholds};
@@ -18,7 +18,9 @@ use serde_json::Value;
 #[tokio::test]
 #[ignore = "needs Postgres: set DB_URL"]
 async fn the_health_route_lists_no_feed_until_one_is_configured_and_then_judges_it() {
-    request::<App, _, _>(|server, ctx| async move {
+    let db_url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
+    let settings = [("DB_URL", db_url.as_str()), ("EPR_REQUIRE_AUTH", "false")];
+    request_with::<App, _, _>(&settings, |server, ctx| async move {
         let before = server.get("/api/feed/health").await;
         assert_eq!(before.status_code(), StatusCode::OK);
         let body: Value = before.json();

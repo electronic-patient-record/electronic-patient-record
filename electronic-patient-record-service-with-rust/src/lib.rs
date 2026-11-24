@@ -59,7 +59,7 @@ pub use electronic_patient_record_domain::page;
 pub use electronic_patient_record_domain::pas_suspicion;
 pub use electronic_patient_record_domain::pathways;
 pub mod patients_store;
-pub use electronic_patient_record_domain::permission;
+pub mod permission;
 pub mod pg_time;
 pub mod photos_store;
 pub use electronic_patient_record_domain::policy;

@@ -15,8 +15,6 @@
 //! audited. It is off by default: a basis is then kept when given and never asked for. Absence is
 //! never agreement: a row with no basis says nothing about permission.
 
-use std::sync::OnceLock;
-
 /// The request header.
 pub const HEADER: &str = "x-permission-basis";
 
@@ -102,25 +100,6 @@ pub fn parse_required(raw: Option<&str>) -> Result<bool, String> {
         Some("true" | "1") => Ok(true),
         Some(other) => Err(format!("{SETTING} must be true or false, not {other:?}")),
     }
-}
-
-static REQUIRED: OnceLock<bool> = OnceLock::new();
-
-/// Read [`SETTING`] once, at start-up.
-///
-/// # Errors
-///
-/// As [`parse_required`].
-pub fn init() -> Result<bool, String> {
-    let on = parse_required(std::env::var(SETTING).ok().as_deref())?;
-    let _ = REQUIRED.set(on);
-    Ok(on)
-}
-
-/// Whether a basis is required. Before [`init`] (tests that build no app), the environment is read.
-#[must_use]
-pub fn required() -> bool {
-    *REQUIRED.get_or_init(|| parse_required(std::env::var(SETTING).ok().as_deref()).unwrap_or(true))
 }
 
 #[cfg(test)]

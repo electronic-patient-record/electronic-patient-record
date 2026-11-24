@@ -2,16 +2,16 @@
 //! a clinician's read of a patient's clinical content without a permission basis is refused and the
 //! refusal audited; with `asked-agreed` or `could-not-ask:<reason>` it is answered and every row of it
 //! carries the basis; an unknown basis is a 400, so typed words never reach the trail; and a read of
-//! identity, which is not clinical, needs none. One test, because the settings are read once per process.
+//! identity, which is not clinical, needs none. The app is booted with its own settings, so this file runs inside `suite.rs`.
 //!
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test http_permission_basis -- --ignored --test-threads=1
+//!   cargo test --test suite http_permission_basis:: -- --ignored --test-threads=1
 //! ```
 
 use authentication_verifier::test_idp::{AUDIENCE, REALM, TestIdp};
-use axa_test::prelude::request;
+use axa_test::prelude::request_with;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use electronic_patient_record::app::App;
 use electronic_patient_record::pool::Pool;
@@ -59,15 +59,18 @@ async fn a_clinical_read_needs_a_basis_and_every_row_keeps_it() {
         .iter()
         .map(|r| ((*r).to_string(), json!({ "role": [r] })))
         .collect();
-    // SAFETY: set before the app boots and before any other thread reads them; one test per process.
-    unsafe {
-        std::env::set_var("EPR_REQUIRE_AUTH", "true");
-        std::env::set_var("EPR_REQUIRE_PERMISSION_BASIS", "true");
-        std::env::set_var("EPR_KEYCLOAK_URL", &idp.base_url);
-        std::env::set_var("EPR_KEYCLOAK_REALM", REALM);
-        std::env::set_var("EPR_KEYCLOAK_AUDIENCES", AUDIENCE);
-        std::env::set_var("EPR_KEYCLOAK_ROLE_MAP", map.to_string());
-    }
+    // This app's own settings: no process environment is written, so the file can join `suite.rs`.
+    let db_url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
+    let role_map = map.to_string();
+    let settings: Vec<(&str, &str)> = vec![
+        ("DB_URL", &db_url),
+        ("EPR_REQUIRE_AUTH", "true"),
+        ("EPR_REQUIRE_PERMISSION_BASIS", "true"),
+        ("EPR_KEYCLOAK_URL", &idp.base_url),
+        ("EPR_KEYCLOAK_REALM", REALM),
+        ("EPR_KEYCLOAK_AUDIENCES", AUDIENCE),
+        ("EPR_KEYCLOAK_ROLE_MAP", &role_map),
+    ];
     let token = |role: &str, sub: &str| {
         idp.token(|c| {
             c["realm_access"] = json!({ "roles": [role] });
@@ -78,7 +81,7 @@ async fn a_clinical_read_needs_a_basis_and_every_row_keeps_it() {
     let admin = token("clinical-admin", "0c4f1e2a-0000-4000-8000-0000000000b0");
     let clinician = token("clinician", CLINICIAN);
 
-    request::<App, _, _>(|server, ctx| async move {
+    request_with::<App, _, _>(&settings, |server, ctx| async move {
         let (ah, av) = bearer(&admin);
         let (ch, cv) = bearer(&clinician);
         let family = format!("perm{}", nanos());

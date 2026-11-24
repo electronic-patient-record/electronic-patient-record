@@ -90,6 +90,8 @@ pub struct Runtime {
     pub(crate) auth_require: OnceLock<bool>,
     /// The database integration tokens sign in against (`auth::init_tokens`).
     pub(crate) auth_token_db: OnceLock<sqlx::PgPool>,
+    /// Whether a permission basis is required for a clinical read (`permission::init`).
+    pub(crate) permission_required: OnceLock<bool>,
 }
 
 impl std::fmt::Debug for Runtime {
@@ -128,6 +130,7 @@ impl Runtime {
             auth_keycloak: OnceLock::new(),
             auth_require: OnceLock::new(),
             auth_token_db: OnceLock::new(),
+            permission_required: OnceLock::new(),
         }
     }
 

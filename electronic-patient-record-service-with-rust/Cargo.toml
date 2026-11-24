@@ -132,28 +132,8 @@ path = "tests/suite.rs"
 # Each its own program: it sets the process environment (the auth settings), holds process-wide state, or a script or
 # a document runs it by name.
 [[test]]
-name = "http_feed_health"
-path = "tests/http_feed_health.rs"
-
-[[test]]
-name = "runtime_boot"
-path = "tests/runtime_boot.rs"
-
-[[test]]
-name = "chaos_api"
-path = "tests/chaos_api.rs"
-
-[[test]]
-name = "chaos_roles"
-path = "tests/chaos_roles.rs"
-
-[[test]]
 name = "fhir_validator"
 path = "tests/fhir_validator.rs"
-
-[[test]]
-name = "http_permission_basis"
-path = "tests/http_permission_basis.rs"
 
 [[test]]
 name = "mllp_feed"

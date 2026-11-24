@@ -10,6 +10,8 @@
 // Shared by more than one file below, so declared once here.
 #[path = "audit_switch/mod.rs"]
 mod audit_switch;
+#[path = "chaos_support/mod.rs"]
+mod chaos_support;
 #[path = "openapi_support/mod.rs"]
 mod openapi_support;
 
@@ -37,6 +39,10 @@ mod axa_defaults;
 mod balp_claim;
 #[path = "break_glass_store.rs"]
 mod break_glass_store;
+#[path = "chaos_api.rs"]
+mod chaos_api;
+#[path = "chaos_roles.rs"]
+mod chaos_roles;
 #[path = "consents_store.rs"]
 mod consents_store;
 #[path = "current_views.rs"]
@@ -85,6 +91,8 @@ mod http_conflicts;
 mod http_death_reports;
 #[path = "http_deaths.rs"]
 mod http_deaths;
+#[path = "http_feed_health.rs"]
+mod http_feed_health;
 #[path = "http_hazards.rs"]
 mod http_hazards;
 #[path = "http_idempotency.rs"]
@@ -99,6 +107,8 @@ mod http_observations;
 mod http_overdue_reviews;
 #[path = "http_patients.rs"]
 mod http_patients;
+#[path = "http_permission_basis.rs"]
+mod http_permission_basis;
 #[path = "http_proxy_scopes.rs"]
 mod http_proxy_scopes;
 #[path = "http_rate_limit.rs"]
@@ -171,6 +181,8 @@ mod relationships_store;
 mod risk_field_census;
 #[path = "route_census.rs"]
 mod route_census;
+#[path = "runtime_boot.rs"]
+mod runtime_boot;
 #[path = "sql_census.rs"]
 mod sql_census;
 #[path = "start_binary.rs"]

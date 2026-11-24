@@ -44,9 +44,6 @@ MARKER = "RCA-IN-3: absent only"
 # a count that goes down must be lowered here, so the list only shrinks.
 SERVICE = "electronic-patient-record-service-with-rust/"
 KNOWN = {
-    SERVICE + "electronic-patient-record-domain/src/permission.rs": (
-        "RCA-ENF-7", 1, "`required()` reads a malformed setting as `true` before `init`; moves to the runtime with QA-16",
-    ),
     SERVICE + "src/authz.rs": ("RCA-ENF-7", 1, "an unreadable request-id header becomes empty, then a new id; to review"),
 }
 

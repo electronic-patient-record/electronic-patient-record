@@ -7,19 +7,18 @@
 //! - no stack trace, SQL text or file path in a response body.
 //!
 //! The gate, the role checks, consent and the relationship rules all run here, which they do not with login off.
-//! Its own program because the auth settings are read once per process. It writes whatever the API allows, so it
+//! It boots with its own settings, so it runs inside `suite.rs`. It writes whatever the API allows, so it
 //! refuses a database whose name has no "test" in it. `EPR_CHAOS_SEED` repeats a run; `EPR_CHAOS_ITERATIONS`
 //! (default 2000) sets its length.
 //!
 //! ```text
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test chaos_roles -- --ignored --test-threads=1 --nocapture
+//!   cargo test --test suite chaos_roles:: -- --ignored --test-threads=1 --nocapture
 //! ```
 
-mod chaos_support;
-
+use crate::chaos_support;
 use authentication_verifier::test_idp::{AUDIENCE, REALM, TestIdp};
-use axa_test::prelude::request;
+use axa_test::prelude::request_with;
 use axum::http::{HeaderName, HeaderValue};
 use electronic_patient_record::app::App;
 use electronic_patient_record_domain::policy::Role;
@@ -41,14 +40,17 @@ async fn no_route_panics_answers_500_or_leaks_internals_for_any_role() {
         .iter()
         .map(|r| (r.as_str().to_string(), json!({ "role": [r.as_str()] })))
         .collect();
-    // SAFETY: set before the app boots and before any other thread reads them; one test per process.
-    unsafe {
-        std::env::set_var("EPR_REQUIRE_AUTH", "true");
-        std::env::set_var("EPR_KEYCLOAK_URL", &idp.base_url);
-        std::env::set_var("EPR_KEYCLOAK_REALM", REALM);
-        std::env::set_var("EPR_KEYCLOAK_AUDIENCES", AUDIENCE);
-        std::env::set_var("EPR_KEYCLOAK_ROLE_MAP", map.to_string());
-    }
+    // This app's own settings: no process environment is written.
+    let db_url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
+    let role_map = map.to_string();
+    let settings: Vec<(&str, &str)> = vec![
+        ("DB_URL", &db_url),
+        ("EPR_REQUIRE_AUTH", "true"),
+        ("EPR_KEYCLOAK_URL", &idp.base_url),
+        ("EPR_KEYCLOAK_REALM", REALM),
+        ("EPR_KEYCLOAK_AUDIENCES", AUDIENCE),
+        ("EPR_KEYCLOAK_ROLE_MAP", &role_map),
+    ];
     let mut callers: Vec<Option<(HeaderName, HeaderValue)>> = vec![None, bearer("not-a-token")];
     for (n, role) in Role::ALL.iter().enumerate() {
         let token = idp.token(|c| {
@@ -58,7 +60,7 @@ async fn no_route_panics_answers_500_or_leaks_internals_for_any_role() {
         callers.push(bearer(&token));
     }
     let (seed, iterations) = chaos_support::seed_and_iterations();
-    request::<App, _, _>(move |server, _ctx| async move {
+    request_with::<App, _, _>(&settings, move |server, _ctx| async move {
         let (seen, failures) = chaos_support::monkey(&server, seed, iterations, &callers).await;
         println!("answers by status: {seen:?}");
         // Some requests must pass the gate and be answered by a handler, and some must be refused by it.

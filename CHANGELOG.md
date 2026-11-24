@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-24 - No test calls `set_var`; the service's test programs go from 44 to 3 (QA-16 stage 3)
+
+- **Clinical risk:** none to what a clinician sees; the permission-basis setting is now held per app instead of per process, with the same parsing and the same safe default (an unusable value, read before start, means required).
+- **Changed:** `permission::required()` and `init()` (the domain crate's process-wide `REQUIRED`) now live in the service (`src/permission.rs`), kept in the app's `Runtime`; the domain crate keeps the words and parsing. `chaos_api`, `chaos_roles`, `http_permission_basis`, `http_feed_health` and `runtime_boot` are modules of `suite.rs`; `chaos_support` is declared once there. `Cargo.toml` lists 3 programs: `suite`, `mllp_feed`, `fhir_validator` (needs Java).
+- **Measured:** a one-line edit to `src/lib.rs` and a rebuild of every test program, cache wrapper off: 26.3 s wall, 86.8 s CPU (28.7 s and 121.3 s with 16 programs earlier today). The wall-clock gain from the last 13 programs is about 9%: the link is not the main cost; the library rebuilt for each program is. `spec/local-ci.md` says so.
+- **Verified:** clippy and the arithmetic gate clean; both passes pass on a fresh database. `runtime_boot` runs two apps with different settings at once in the same process, and the suite boots many apps with different login settings in turn.
+- **Not done / not verified:** `site::ZONE` and `site::HOLIDAYS` (domain crate) are still process-wide; `mllp_feed` still builds its own runtime by hand and stays a program; the suite's database tests still run one at a time on one database; a cold rebuild was not timed.
+
 ## 2026-11-24 - Eight more test programs fold into `suite.rs`; `set_var` is left in three files (QA-16 stage 3)
 
 - **Clinical risk:** none: tests only.

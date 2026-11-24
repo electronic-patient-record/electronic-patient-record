@@ -4,7 +4,7 @@
 //!
 //! ```text
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test runtime_boot -- --ignored --test-threads=1
+//!   cargo test --test suite runtime_boot:: -- --ignored --test-threads=1
 //! ```
 
 use axa_test::prelude::request_with;

@@ -16,22 +16,21 @@
 //! ```text
 //! TEST_DB_PORT=5543 podman compose -f compose.test.yaml up -d --wait
 //! DB_URL=postgres://loco:loco@localhost:5543/electronic_patient_record_test \
-//!   cargo test --test chaos_api -- --ignored --test-threads=1 --nocapture
+//!   cargo test --test suite chaos_api:: -- --ignored --test-threads=1 --nocapture
 //! ```
 
-mod chaos_support;
-
-use axa_test::prelude::request;
+use crate::chaos_support;
+use axa_test::prelude::request_with;
 use electronic_patient_record::app::App;
 
 #[tokio::test]
 #[ignore = "needs Postgres: set DB_URL (a throwaway database)"]
 async fn no_route_panics_answers_500_or_leaks_internals_under_hostile_input() {
     chaos_support::database_is_throwaway();
-    // SAFETY: set before any thread of this test reads it, and the suite runs single-threaded.
-    unsafe { std::env::set_var("EPR_REQUIRE_AUTH", "false") };
+    let db_url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
+    let settings = [("DB_URL", db_url.as_str()), ("EPR_REQUIRE_AUTH", "false")];
     let (seed, iterations) = chaos_support::seed_and_iterations();
-    request::<App, _, _>(move |server, _ctx| async move {
+    request_with::<App, _, _>(&settings, move |server, _ctx| async move {
         let (seen, failures) = chaos_support::monkey(&server, seed, iterations, &[None]).await;
         println!("answers by status: {seen:?}");
         // A control: if every request were refused alike, the monkey would be testing the gate, not
