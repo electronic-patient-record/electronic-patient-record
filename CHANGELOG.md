@@ -9,6 +9,12 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - **Added later the same day:** a worked example from the All Wales Adult Inherited Metabolic Disease Service's support-groups page (about 60 signposts, no endorsement, no review date); it adds a type, an endorsement statement and a last-checked date to the directory entry.
 - **Not done / not verified:** only that one page was read (its linked sites and the Welsh version were not); no law checked, no customer, clinician, volunteer or patient asked; the five questions are the customer's to answer. Nothing built.
 
+## 2026-11-24 - Spec: the customer's answers to OQ-CH2 and OQ-CH3 (operators; functional only)
+
+- **Changed:** OQ-CH2 records that the service may be run by government, police or a private company; OQ-CH3 records that non-health staff are told functional information only. The custodial-health spec now separates the health record from the custodian's systems, adds an operator type beside the setting type, and defines a functional item as a short fixed statement from a reviewed list, with a date and expiry and no reason, approved by a clinician (my proposal).
+- **Clinical risk:** a function can itself disclose a diagnosis ("needs a dialysis machine"), so the list is reviewed; every disclosure to non-health staff is audited. No hazard-log row added yet (nothing to score).
+- **Not done / not verified:** controller and processor, the country, and who decides each function are open; the examples of functions are mine, not from a source; no custody, legal or clinical review. Nothing built.
+
 ## 2026-11-24 - Spec: the customer's answer to OQ-CH1 (all custodial settings)
 
 - **Changed:** OQ-CH1 records that the scope is every custodial setting; the country is still open. The custodial-health spec adds a setting type to the one profile and notes what differs for police custody, a secure youth setting, immigration detention and a hospital treating a person in custody.
