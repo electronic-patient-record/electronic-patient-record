@@ -9,6 +9,12 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - **Added later the same day:** a worked example from the All Wales Adult Inherited Metabolic Disease Service's support-groups page (about 60 signposts, no endorsement, no review date); it adds a type, an endorsement statement and a last-checked date to the directory entry.
 - **Not done / not verified:** only that one page was read (its linked sites and the Welsh version were not); no law checked, no customer, clinician, volunteer or patient asked; the five questions are the customer's to answer. Nothing built.
 
+## 2026-11-24 - Spec: the customer's answer to OQ-CF4 (no channel; providers suggest)
+
+- **Changed:** OQ-CF4 records that a group has no channel in the app and any of the patient's providers may suggest a group and give the patient its name and contact information. Design rule 4 now says the system sends nothing about a group. This also answers who refers (a provider).
+- **Clinical risk:** the outbound path to a third party is gone, which lowers the disclosure surface; the name-on-a-handout risk remains (H-065 not changed; its OQ-CF4 reference is now answered).
+- **Not done / not verified:** "any of the patient's providers" is read as "a provider with an active care relationship"; the customer has not confirmed that reading or which roles count. OQ-CF5 unanswered. Nothing built.
+
 ## 2026-11-24 - Hazard H-065: a relative's name in free text is a risk (CF-1)
 
 - **Clinical risk:** new hazard `H-065` (a support-group offer or note discloses a diagnosis or a relative's name), status `open`, severity 3 and likelihood 3 as the author's proposal; nobody has reviewed it and I set no accepted or closed status. The offer record is now specified as structured, with no free text and no person name.

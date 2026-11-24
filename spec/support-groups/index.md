@@ -4,7 +4,7 @@ A draft from the customer's request of 2026-11-24 ("a monthly cancer support com
 
 ## Related links
 
-[Survivor grief](../survivor-grief/index.md) (the same question for bereavement support: help from volunteers outside the health service), [Care settings](../care-settings.md) (section 4), [Protected information](../access-control/protected-information.md), [Roles and assignments](../access-control/roles-and-assignments.md), [Patient portal](../patient-portal/index.md), [Open questions](../16-open-questions.md) (OQ-CF4 and OQ-CF5 (OQ-CF1 to OQ-CF3 answered)).
+[Survivor grief](../survivor-grief/index.md) (the same question for bereavement support: help from volunteers outside the health service), [Care settings](../care-settings.md) (section 4), [Protected information](../access-control/protected-information.md), [Roles and assignments](../access-control/roles-and-assignments.md), [Patient portal](../patient-portal/index.md), [Open questions](../16-open-questions.md) (OQ-CF5 (OQ-CF1 to OQ-CF4 answered)).
 
 ## What was asked, and what is not known
 
@@ -20,12 +20,23 @@ Groups are run by patients, by charities and by hospital staff; some live on soc
 - **A global or online group has no local safeguarding or venue.** The directory says so by type; it is the person's choice, not a referral by the service.
 - **The endorsement statement matters more.** The entry says whether the service endorses, does not endorse, or has not reviewed the group, as the Welsh page does, but with a date.
 
+## The customer's answer to OQ-CF4 (2026-11-24)
+
+A group has **no channel in the app**: it cannot message, notify or contact a patient through the system. Instead, **any of the patient's providers may suggest a group and give the patient its name and contact information.** My reasoning on what follows:
+
+- **The contact goes from the patient to the group.** The patient receives the name and contact details and decides whether to get in touch. The system never passes the patient's details to a group, so there is no outbound data to a third party and nothing to consent to sharing.
+- **Who may suggest.** "Any of the patient's providers" means a clinician or other provider with an active care relationship to that patient (the care-team relationship the service already checks), not any user. Whether every provider role counts, including the ones that cannot read clinical data, is not stated: I assume a role needs the same read the service already requires, and the customer should confirm.
+- **This answers part of OQ-CF1:** the referrer is a provider, and a patient may also find a group themselves (the system holds nothing then).
+- **What reaches the patient is the name and contact information**, shown or printed. A group name can be the condition itself, so what that handout or screen looks like is exactly OQ-CF5; it cannot be closed until then.
+- **The offer record stays structured** (design rule 5 and H-065): the group from the directory, the date, the provider who suggested it, and the patient's answer from a fixed list. The contact information comes from the directory entry, not from free text on the record.
+- **No notification or reminder from the system** about a group: it would be a channel. A reminder is the patient's own, outside the system.
+
 ## Design rules (my reasoning)
 
 1. **Belonging to a condition group discloses the condition.** Membership of a cancer support group says the person has, or had, cancer, or cares for someone who does. It is protected information in the same way as a diagnosis, and a list of members is a list of diagnoses.
 2. **The default is a referral, not a membership.** The record holds that a clinician offered a group and what the patient said (accepted, declined, later), as a signposting entry with the group's name and contact details. The group's own attendance and notes stay with the group. This is the stance of [survivor grief](../survivor-grief/index.md): much support is outside the health service, with no EPR and no reply. The customer decided (OQ-CF2, 2026-11-24) that the system holds only the offer.
 3. **A volunteer is not staff.** A volunteer role, if one exists, grants no clinical read: no patient list, no record, no search. What a volunteer sees is only what the group itself holds. The system holds no roster, so no role is needed to run one (OQ-CF2).
-4. **The patient chooses; nothing is automatic.** An offer, a reminder or a contact from a group is sent only if the patient agreed, by the channel they chose, and with no condition named in a message that could be read by someone else (a phone's lock screen, a family member). No automatic referral from a diagnosis code, and no "patients like you" list.
+4. **The patient chooses; nothing is automatic.** The system sends no message, reminder or contact about a group, and a group has no channel in the app (OQ-CF4). A provider suggests and hands over the name and contact information; the patient decides. No automatic referral from a diagnosis code, and no "patients like you" list.
 5. **A carer or family member is not recorded as a member.** The customer decided (OQ-CF3, 2026-11-24): no, because the groups are third-party, and the system holds no membership at all (OQ-CF2). A group may welcome relatives; the system does not record that. If the patient says a relative will go, the system does **not** keep it: a relative's name in free text is a risk (the customer, 2026-11-24, [H-065](../../governance/clinical-safety/hazard-log.csv)), because it records a person who has not agreed and may be read by anyone who reads the note. The offer record is therefore **structured**: the group, the date, who offered it, and the patient's answer from a fixed list, with no free text and no name of any person.
 6. **A group is a directory entry, not a clinical service.** It carries a name, a type (see the worked example below), a condition it is for, a schedule (for example monthly), a place or link, who runs it, who vouched for it and when, and a contact. A directory entry is reviewed by a named person on a date, and an unreviewed entry is shown as such (never "approved by this project").
 7. **Support is not safety.** A group is not clinical cover. A person in crisis needs a clinical route, and the offer of a group never replaces it (survivor grief, hazard SG-1).
@@ -61,12 +72,12 @@ Source [CAVSG]: the page above, read 2026-11-24.
 | OQ-CF1 | **Answered 2026-11-24 by the customer:** various. Run by patients, charities or hospital staff; some run on social media networks; some local, some regional, some global. **Still open:** who refers into a group. |
 | OQ-CF2 | **Answered 2026-11-24 by the customer:** the system holds only the offer. No membership, no attendance, no roster, for any kind of group. |
 | OQ-CF3 | **Answered 2026-11-24 by the customer:** no. A carer or relative is not recorded as a member, because the groups are third-party. |
-| OQ-CF4 | Which channels may a group use to contact a person, and what may a message say? |
+| OQ-CF4 | **Answered 2026-11-24 by the customer:** a group has no channel in the app. Any of the patient's providers may suggest a group and give the patient its name and contact information. |
 | OQ-CF5 | Which condition labels are used, and does the label ever reach the patient's own device or a printed letter? |
 
 ## Tasks and acceptance
 
-`CF-1` is this page. A later build needs, before any code: answers to OQ-CF4 and OQ-CF5 (OQ-CF1 to OQ-CF3 answered); hazard H-065 (disclosure of a diagnosis or a relative's name by an offer, a note or a message; opened 2026-11-24, status set only by the Clinical Safety Officer); a test that a volunteer role reads no clinical data; a test that a message names no condition by default; and a review of the directory by a person who runs such a group.
+`CF-1` is this page. A later build needs, before any code: answers to OQ-CF5 (OQ-CF1 to OQ-CF4 answered); hazard H-065 (disclosure of a diagnosis or a relative's name by an offer, a note or a message; opened 2026-11-24, status set only by the Clinical Safety Officer); a test that a volunteer role reads no clinical data; a test that a message names no condition by default; and a review of the directory by a person who runs such a group.
 
 ## Not done, not verified
 

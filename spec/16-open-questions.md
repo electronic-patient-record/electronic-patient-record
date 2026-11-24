@@ -157,7 +157,7 @@
 | OQ-CF1 | **Customer answered 2026-11-24:** run by patients, charities or hospital staff, on social media or not, local, regional or global. Still open: who refers into a group. See [support groups](support-groups/index.md). | customer |
 | OQ-CF2 | **Customer answered 2026-11-24:** the system holds only the offer, never membership or attendance. | customer |
 | OQ-CF3 | **Customer answered 2026-11-24:** no; a carer or relative is not recorded as a member, because the groups are third-party. | customer |
-| OQ-CF4 | Which channels may a group use to contact a person, and what may a message say? | customer, patients |
+| OQ-CF4 | **Customer answered 2026-11-24:** none in the app; any of the patient's providers may suggest a group and give the patient its name and contact information. | customer |
 | OQ-CF5 | Which condition labels are used, and may one reach a patient's device or a printed letter? | customer, Clinical Safety Officer |
 
 No answers recorded yet, except where a row says decided or proposed.
