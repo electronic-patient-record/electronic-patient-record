@@ -839,3 +839,27 @@ async fn keeping_a_second_relay_stops_the_first_and_stop_kept_stops_the_second()
     assert!(outbox::stop_kept().await, "the kept relay stops in time");
     assert!(outbox::stop_kept().await, "nothing kept is a clean stop");
 }
+
+/// A message that names a suspected condition and is for the patient, but names no patient, has no record to check
+/// "told" against: refused, never delivered (RS-4).
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn a_suspicion_message_for_the_patient_that_names_no_patient_is_refused() {
+    let db = db().await;
+    let recipient = format!("sink-{}", nanos());
+    let payload = serde_json::json!({"n": 7});
+    let mut e = event(&recipient, None, &payload);
+    e.roles = &[Role::Patient];
+    e.names_suspicion_of = Some("0c4f1e2a-0000-4000-8000-0000000000cc");
+    let id = enqueue(&db, e).await;
+
+    let (all, calls) = sinks(&recipient, false);
+    let relay = Relay::start(all).await;
+    assert_eq!(wait_for(&db, &id, "refused", 1).await, 1);
+    relay.stop().await;
+    assert_eq!(calls.load(Ordering::SeqCst), 0);
+    assert_eq!(
+        refusal_reasons(&db, &id).await,
+        vec!["suspicion-without-patient".to_string()]
+    );
+}

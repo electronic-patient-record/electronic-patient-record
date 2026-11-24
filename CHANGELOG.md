@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-24 - The outbound gate refuses a suspicion message that names no patient (QA-15)
+
+- **Clinical risk:** none: a test of existing behaviour (RS-4: a suspected condition reaches the patient only once the record says they were told).
+- **Changed:** a database test in `tests/outbox_store.rs`: an event for the patient role that names a suspected condition but no patient is refused with the reason `suspicion-without-patient` and never delivered.
+- **Not done / not verified:** the other uncovered `outbox.rs` lines are failed lookups, a foreign payload (`not-an-epr-event`: it needs a row written outside `enqueue`) and the relay's stop and depth error paths; not touched. Coverage was not re-measured.
+
 ## 2026-11-24 - Service coverage 95.75%: above the QA-15 target
 
 - **Clinical risk:** none: a measurement and a note.
