@@ -7,7 +7,7 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 - **Clinical risk:** none: a test.
 - **Changed:** the monkey's engine is now `tests/chaos_support/mod.rs`; `tests/chaos_api.rs` (login off) uses it unchanged in behaviour (its random sequence differs by one draw per request, so a seed no longer repeats the old run). New `tests/chaos_roles.rs` (its own program: the auth settings are read once) boots with login on and sends each hostile request with a token for one of the 17 roles, no token, or a garbage token; no panic, no 5xx other than 502/503/504, no leaked trace, SQL or path. It is listed in `Cargo.toml`, so the database gate runs it with the pinned seed.
 - **Verified:** 2,000 requests on seed 20261028 and 15,000 on seeds 1, 7 and 424242: no bad answer. One 15,000-request run on 424242 failed after 5 s with no output captured and passed on four reruns; I could not reproduce it.
-- **Not done / not verified:** about two thirds of the answers as a role are 403, so the handlers behind the gate are reached less often than with login off; no planted-panic check was run on the role variant; the monkey still never sends a literal `%`. Coverage was not re-measured.
+- **Not done / not verified:** about two thirds of the answers as a role are 403, so the handlers behind the gate are reached less often than with login off; the monkey still never sends a literal `%`. A planted panic in `GET /api/me/patients` failed the role sweep at once (reverted, not committed). Coverage was not re-measured.
 
 ## 2026-11-24 - Coverage 95.91%; FHIR `AuditEvent` paging tested (QA-15)
 
