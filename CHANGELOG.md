@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - A pack of rules on refusing treatment, and a refusal of treatment, as libraries (RF-3, RF-4)
+
+- **Clinical risk:** none yet; nothing calls either and no hazard row changes. Both will need rows with the first code that stores or shows one.
+- **Decided by the maintainer:** build everything now (the recommendation was foundations only); England and Wales first (OQ-RF8); an advance decision is shown through a refusal of disclosure and the patient is told (OQ-RF2); OQ-PI2 and OQ-PI5 become settings (OQ-DR1).
+- **Added:** `refusal_rules.rs`: closed lists, a source for every rule, what is absent is not established, an unreviewed pack says so, an age group only when it is certain. The author's pack for England and Wales, **which no lawyer or clinician has reviewed**. `treatment_refusal.rs`: the record, its states, what a place's form still lacks, what a withdrawal that was heard makes of it. **No function answers whether someone may be treated, whether a refusal is valid, or whether a person can decide.**
+- **Verified:** 15 tests of the two. **Not done / not verified:** nothing stores, serves or shows one; no merge rule; no screen.
+
 ## 2026-11-25 - Refusing treatment and refusing disclosure, by country; tenant settings, cases and schemas proposed (RF, DR)
 
 - **Clinical risk:** none by itself; nothing is built and no hazard row changes. Each page names candidates.

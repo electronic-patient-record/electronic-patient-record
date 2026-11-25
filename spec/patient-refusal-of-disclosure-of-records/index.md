@@ -197,7 +197,7 @@ Tasks DR-1 to DR-12 in [tasks](../../tasks.md). Nothing is started.
 
 Summarised as OQ-DR1 to OQ-DR8 in [open questions](../16-open-questions.md).
 
-1. Do OQ-PI5 and OQ-PI2 become pack settings, with today's answers as the defaults where the place allows? Recommendation: yes. (OQ-DR1)
+1. Do OQ-PI5 and OQ-PI2 become pack settings, with today's answers as the defaults where the place allows? **Answered 2026-11-25 by the maintainer: yes.** (OQ-DR1)
 2. Which places are first? (OQ-DR2)
 3. Where the pack is missing or past its review, does the service start? Recommendation: start only in a sandbox without one; past its date, warn on each screen that uses a rule. (OQ-DR3)
 4. May a patient close emergency access too, where the law does not say? Recommendation: yes, after being told what it can cost. (OQ-DR4)

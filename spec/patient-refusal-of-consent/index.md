@@ -1,6 +1,6 @@
 # A patient's refusal of consent
 
-Researched 2026-11-25 from public sources and from this repository. **A proposal: nothing here is built, and no lawyer, clinician, Clinical Safety Officer, data protection officer, patient or person who has made an advance decision has reviewed it. It is not legal advice.** It separates two refusals that are easily taken for one, checks what the law was said to be, and says what this software should hold, show and never decide.
+Researched 2026-11-25 from public sources and from this repository. **Two pure libraries are built (`refusal_rules.rs`, `treatment_refusal.rs`, with an unreviewed pack for England and Wales) and nothing calls them; the rest is a proposal. No lawyer, clinician, Clinical Safety Officer, data protection officer, patient or person who has made an advance decision has reviewed it. It is not legal advice.** It separates two refusals that are easily taken for one, checks what the law was said to be, and says what this software should hold, show and never decide.
 
 Related: [life-or-limb emergencies](../access-control/index.md#life-or-limb-emergencies) (FR-4.6), [masking](../access-control/masking.md), [suicide watch](../suicide-watch/index.md), [care homes](../care-homes/index.md), [custodial health](../custodial-health/index.md), [order entry](../order-entry/index.md), tasks EC-5 and EC-6.
 
@@ -130,7 +130,7 @@ One deployment serves one tenant today (QA-12, SE-5), so a tenant's settings are
 
 | Group | Setting | Values | When absent |
 |---|---|---|---|
-| Pack | `id`, `place`, `law_as_of`, `lawyer`, `clinician`, `reviewed_on`, `review_due` | Words and dates | **The service does not start with a pack that names no reviewer, outside a sandbox** |
+| Pack | `id`, `place`, `law_as_of`, `lawyer`, `clinician`, `reviewed_on`, `review_due` | Words and dates | A pack with no named reviewer loads, and **every screen and answer that shows a rule from it says "unreviewed"** (the maintainer's decision of 2026-11-25 to build first) |
 | Ages | `adult`, `young_person_from`, `advance_from` | Whole years, each with its source | Everyone's age is "not known" to the rules |
 | Adult | `capable_refusal` | `holds`, `holds-with-process` (who), `unsettled`, `not-established` | `not-established` |
 | Cannot decide | `emergency_threats` | Which of the threats the rule names | None are named |
@@ -226,9 +226,9 @@ Tasks RF-1 to RF-12 in [tasks](../../tasks.md). Nothing is started. **RF-1 and a
 Summarised as OQ-RF1 to OQ-RF9 in [open questions](../16-open-questions.md).
 
 1. Does FR-4.6 cover a refusal of disclosure by someone who can be asked? Recommendation: no. (OQ-RF1)
-2. May an advance decision be shown to someone about to treat, though the patient refused disclosure of the rest? Recommendation: yes, and tell the patient when it is recorded. (OQ-RF2)
+2. May an advance decision be shown to someone about to treat, though the patient refused disclosure of the rest? **Answered 2026-11-25 by the maintainer: yes, and tell the patient when it is recorded.** (OQ-RF2)
 3. Does the first deployment hold advance decisions, or show where another system holds them? Two copies can disagree. (OQ-RF3)
-4. Who may record a withdrawal that they were told of, and does it take effect at once? Recommendation: any treating clinician, at once, shown as spoken. (OQ-RF4)
+4. Who may record a withdrawal that they were told of, and does it take effect at once? Recommendation: any treating clinician, at once, shown as heard; whether it ends the refusal is the place's rule. (OQ-RF4)
 5. Under 18: what is shown of a competent young person's refusal, and to whom? (OQ-RF5)
 6. Which people are asked before a build: people who have made an advance decision, people who refuse blood, people with fluctuating capacity, families, emergency clinicians? (OQ-RF6)
 7. Who signs a country pack, and what happens when its review date passes: warn, or refuse to start? Recommendation: warn on every screen that shows a rule. (OQ-RF7)

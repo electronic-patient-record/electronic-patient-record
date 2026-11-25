@@ -1,0 +1,85 @@
+# What the law of England and Wales is recorded as saying about refusing treatment (RF-3, OQ-RF8). The author's reading on
+# 2026-11-25, from the pages named. NOBODY HAS REVIEWED IT: no lawyer and no clinician is named below, so every rule is
+# shown as unreviewed. Not legal advice. A rule that is not here is not established, and is not to be guessed.
+
+[pack]
+id = "england-wales"
+place = "England and Wales"
+law_as_of = "2026-11-25"
+
+[[rule]]
+key = "adult-age"
+value = 18
+source = "Mental Capacity Act 2005 s.24(1), advance decisions: https://www.legislation.gov.uk/ukpga/2005/9/section/24"
+note = "From 16 a person is presumed able to consent. A refusal under 18 may be overruled, which is why 18 is used here."
+
+[[rule]]
+key = "young-person-age"
+value = 16
+source = "Consent to treatment, children and young people: https://www.nhs.uk/conditions/consent-to-treatment/children/"
+note = "Under 16 it turns on competence and not on an age. No age here says that someone can or cannot decide."
+
+[[rule]]
+key = "advance-age"
+value = 18
+source = "Mental Capacity Act 2005 s.24(1): https://www.legislation.gov.uk/ukpga/2005/9/section/24"
+
+[[rule]]
+key = "capable-refusal"
+value = "holds"
+source = "Consent to treatment: https://www.nhs.uk/conditions/consent-to-treatment/"
+note = "For an adult who can decide, even if it would result in their death. Treatment for mental disorder under the Mental Health Act is apart."
+
+[[rule]]
+key = "emergency-threats"
+value = ["life", "serious-deterioration"]
+source = "Mental Capacity Act 2005 s.26(5): https://www.legislation.gov.uk/ukpga/2005/9/section/26"
+note = "The words of s.26(5), for what may be done while a court is asked. Limb is not named there."
+
+[[rule]]
+key = "emergency-yields-to"
+value = "in-form-only"
+source = "Mental Capacity Act 2005 s.5(4) and s.24 to 26: https://www.legislation.gov.uk/ukpga/2005/9/section/5"
+note = "An advance decision that is not in form is still a past wish to be considered, s.4(6)."
+
+[[rule]]
+key = "advance-force"
+value = "binding-in-form"
+source = "Mental Capacity Act 2005 s.26(2): https://www.legislation.gov.uk/ukpga/2005/9/section/26"
+note = "A person who treats is liable only if satisfied that a valid and applicable one exists."
+
+[[rule]]
+key = "advance-form"
+value = ["written", "signed", "witnessed", "life-at-risk-words"]
+source = "Mental Capacity Act 2005 s.25(5) and (6): https://www.legislation.gov.uk/ukpga/2005/9/section/25"
+note = "These are for life-sustaining treatment. Other refusals need no form in the sections read."
+
+[[rule]]
+key = "withdrawal-spoken"
+value = "ends-it"
+source = "Mental Capacity Act 2005 s.24(3) and (4): https://www.legislation.gov.uk/ukpga/2005/9/section/24"
+note = "At any time when the person has capacity to do so. It need not be in writing."
+
+[[rule]]
+key = "withdrawal-written"
+value = "ends-it"
+source = "Mental Capacity Act 2005 s.24(3): https://www.legislation.gov.uk/ukpga/2005/9/section/24"
+note = "At any time when the person has capacity to do so."
+
+[[rule]]
+key = "doubt"
+value = "ask-a-court"
+source = "Mental Capacity Act 2005 s.26(5): https://www.legislation.gov.uk/ukpga/2005/9/section/26"
+note = "Life-sustaining treatment, and what prevents serious deterioration, may be given while the court is asked."
+
+[[rule]]
+key = "minor-override"
+value = ["court"]
+source = "E & F [2021] EWCA Civ 1888, a summary: https://www.39essex.com/our-thinking/cases/ak-case-1-e-f-minors-blood-transfusion-2021-ewca-civ-1888/"
+note = "From a summary of the case. Whether a parent may also overrule was not established."
+
+[[rule]]
+key = "detention-reaches-unrelated"
+value = "no"
+source = "Consent to treatment: https://www.nhs.uk/conditions/consent-to-treatment/"
+note = "Treatment for an unrelated physical condition still requires consent, or best interests where the person cannot decide."
