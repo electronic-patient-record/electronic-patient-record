@@ -61,7 +61,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | DX | 0 | 10 |
 | PM | 0 | 5 |
 | TO | 0 | 9 |
-| QA | 6 | 11 |
+| QA | 7 | 10 |
 | RA | 0 | 7 |
 | PI | 2 | 7 |
 | HM | 0 | 5 |
@@ -93,6 +93,6 @@ no network, database or compilation; counts are source lines, not test runs):
 | EH | 2 | 15 |
 | AG | 1 | 12 |
 | DM | 0 | 5 |
-| **Total** | **146** | **478** |
+| **Total** | **147** | **477** |
 
 <!-- generated:end -->

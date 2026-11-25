@@ -44,7 +44,7 @@ repositories read the same way.
 3. [Stakeholders and Users](03-stakeholders-and-users.md) — clinicians, nurses, pharmacists, receptionists, patients and proxies, clinical safety officer, Caldicott guardian / privacy officer, integrators
 4. [Glossary](04-glossary.md) — EPR vs EHR vs EMR, encounter, episode, problem, CPOE, CDS, MPI, break-the-glass, legitimate relationship
 5. [Domain Model](05-domain-model.md) — canonical `Patient` (matcher crate), clinical resources mapped one-to-one to FHIR R4 / UK Core / US Core, versioning, provenance
-6. [Functional Requirements](06-functional-requirements.md) — FR-n, grouped by module (§6.1 identity … §6.14 reporting)
+6. [Functional Requirements](06-functional-requirements.md) ([tests behind each](requirements-trace.md), generated) — FR-n, grouped by module (§6.1 identity … §6.14 reporting)
 7. [Non-Functional Requirements](07-non-functional-requirements.md) — safety, security, performance, availability, accessibility (WCAG 2.2 AA), i18n, observability
 8. [Architecture](08-architecture.md) — trio composition, FHIR facade, event outbox, search, terminology service, SMART on FHIR, CDS Hooks
 9. [API Surface](09-api-surface.md) — native REST (`/api/…`) and FHIR R4 (`/fhir/R4/…`), CapabilityStatement, SMART well-known, Bulk Data `$export`

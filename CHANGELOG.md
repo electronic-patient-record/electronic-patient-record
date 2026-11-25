@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - Each functional requirement names its tests, or shows that it has none (QA-1)
+
+- **Clinical risk:** none to behaviour.
+- **Added:** `governance/requirements-trace.csv` and the generated `spec/requirements-trace.md`: 27 of 55 requirements name at least one test, 28 none; and in words what is lacking. In the docs-status gate: a requirement with no row, a row with no requirement, a test that does not exist or a stale page fails.
+- **Corrected:** the requirements page said that at M0 none was met but FR-1.1 in part.
+- **Not done / not verified:** the author chose the tests and wrote what is lacking; a named test is not proof that a requirement is met; no one reviewed it.
+
 ## 2026-11-25 - The screens no longer say "Automatic link" (AG-13)
 
 - **Clinical risk:** H-001 (a control added; status and score not). The duplicate and comparison screens showed "Automatic link" for a decision on which nothing acts, and which for a name and a birth date may not be one. They say "Very alike. A person must decide".

@@ -1,7 +1,8 @@
 ## 6. Functional Requirements
 
-Requirement IDs `FR-n.m` map to tasks in [`../tasks.md`](../tasks.md). Status is in [14](14-implementation-status.md);
-at M0 none is met except FR-1.1 in part.
+Requirement IDs `FR-n.m` map to tasks in [`../tasks.md`](../tasks.md). Status is in [14](14-implementation-status.md).
+The tests behind each, and what each lacks, are in the generated [trace](requirements-trace.md); a requirement with a
+test is not for that reason met, and most are met in part or not at all.
 
 ### 6.1 Identity (ID-, M1)
 FR-1.1 Compare two patients with an explainable score (partly built). FR-1.2 Warn of likely duplicates at

@@ -1376,7 +1376,7 @@ Ranked in plan.md §29. Nothing here is built. Specs: `spec/clinical-safety/meas
 
 Ranked in plan.md §30. Nothing here is built. Pages: `docs/<attribute>/index.md`.
 
-- [ ] **QA-1 (S) — Requirement-to-test trace.** A table generated from FR ids, extending `scripts/generate-status.sh`. **Acceptance:** generated and checked in the docs job; untraced rows shown.
+- [x] **QA-1 (S) — Requirement-to-test trace.** A table generated from FR ids, extending `scripts/generate-status.sh`. **Acceptance:** generated and checked in the docs job; untraced rows shown. **Done 2026-11-25:** [the trace](spec/requirements-trace.md), by a script of its own in the docs-status gate; 27 of 55 requirements name a test.
 - [ ] **QA-2 (S) — Mutation runs on the safety code.** Consent, policy and audit refusal, by hand, per release, survivors recorded (extends CQ-30; the weekly run stays declined, PR-8). **Acceptance:** a first recorded run.
 - [ ] **QA-3 (S) — Scheduled audit verification.** Run `GET /api/audit/verify` daily, alert on 409 or 424, record the result. **Acceptance:** a runbook and a planted failure.
 - [ ] **QA-4 (S) — Draft retention periods.** Per class from England's health Records Management Code, labelled unreviewed, as a starting point for a controller; no period is set today. **Acceptance:** draft figures in `governance/retention-schedule.md`, each marked unreviewed.
