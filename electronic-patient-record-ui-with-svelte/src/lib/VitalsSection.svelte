@@ -372,27 +372,37 @@
       {#if showTrend}
         <p>{TEXT.vitalTrendNote}</p>
         {#each trendList as t (t.code)}
-          <table>
+          <!-- The roles are kept when the layout is not a table (XP-2, `app.css`). -->
+          <!-- svelte-ignore a11y_no_redundant_roles -->
+          <table class="stack" role="table">
             <caption>{t.name}</caption>
-            <thead>
-              <tr>
-                <th scope="col">{TEXT.vitalTrendTime}</th>
-                <th scope="col">{TEXT.vitalTrendWritten}</th>
-                <th scope="col">{TEXT.vitalTrendValue}</th>
-                <th scope="col">{TEXT.vitalTrendWhere}</th>
+            <thead role="rowgroup">
+              <tr role="row">
+                <th scope="col" role="columnheader">{TEXT.vitalTrendTime}</th>
+                <th scope="col" role="columnheader">
+                  {TEXT.vitalTrendWritten}
+                </th>
+                <th scope="col" role="columnheader">{TEXT.vitalTrendValue}</th>
+                <th scope="col" role="columnheader">{TEXT.vitalTrendWhere}</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody role="rowgroup">
               {#each t.rows as o (o.id)}
-                <tr>
-                  <td>
+                <tr role="row">
+                  <td role="cell" data-label={TEXT.vitalTrendTime}>
                     <time datetime={o.effective_at}>
                       {siteWhenText(o.effective_at, siteZone)}
                     </time>
                   </td>
-                  <td>{writtenText(o, siteZone)}</td>
-                  <td>{valueText(o)}</td>
-                  <td>{assessmentText(o)}</td>
+                  <td role="cell" data-label={TEXT.vitalTrendWritten}>
+                    {writtenText(o, siteZone)}
+                  </td>
+                  <td role="cell" data-label={TEXT.vitalTrendValue}>
+                    {valueText(o)}
+                  </td>
+                  <td role="cell" data-label={TEXT.vitalTrendWhere}>
+                    {assessmentText(o)}
+                  </td>
                 </tr>
               {/each}
             </tbody>

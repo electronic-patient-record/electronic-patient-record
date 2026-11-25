@@ -84,28 +84,36 @@
     {#if found.length === 0}
       <p>{TEXT.noResults}</p>
     {:else}
-      <table>
-        <thead>
-          <tr>
-            <th>{TEXT.family} / {TEXT.given}</th>
-            <th>{TEXT.birthDate}</th>
-            <th>{TEXT.nationalNumber}</th>
-            <th></th>
+      <!-- The roles are kept when the layout is not a table (XP-2, `app.css`). -->
+      <!-- svelte-ignore a11y_no_redundant_roles -->
+      <table class="stack" role="table">
+        <thead role="rowgroup">
+          <tr role="row">
+            <th scope="col" role="columnheader">
+              {TEXT.family} / {TEXT.given}
+            </th>
+            <th scope="col" role="columnheader">{TEXT.birthDate}</th>
+            <th scope="col" role="columnheader">{TEXT.nationalNumber}</th>
+            <th scope="col" role="columnheader"></th>
           </tr>
         </thead>
-        <tbody>
+        <tbody role="rowgroup">
           {#each found as s (s.id)}
             {@const f = patientToForm(s.patient)}
-            <tr>
-              <td>
+            <tr role="row">
+              <td role="cell" data-label={`${TEXT.family} / ${TEXT.given}`}>
                 {label(s)}
                 {#if f.temporaryIdentity}
                   <strong>({TEXT.temporaryIdentity})</strong>
                 {/if}
               </td>
-              <td>{f.birthDate || TEXT.notAvailable}</td>
-              <td>{f.nationalNumber || TEXT.notAvailable}</td>
-              <td>
+              <td role="cell" data-label={TEXT.birthDate}>
+                {f.birthDate || TEXT.notAvailable}
+              </td>
+              <td role="cell" data-label={TEXT.nationalNumber}>
+                {f.nationalNumber || TEXT.notAvailable}
+              </td>
+              <td role="cell">
                 <a href={localizePath(`/patients/${s.id}`, locale)}>
                   {TEXT.open}<span class="sr-only"> {label(s)}</span>
                 </a>

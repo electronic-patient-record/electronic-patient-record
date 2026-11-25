@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - Nothing scrolls sideways on a phone, and links are big enough to press (XP-2, in part)
+
+- **Clinical risk:** how results, comparisons, possible duplicates and the vital signs trend look on a window under 640 px wide: cards, with the same values in the same order, each saying what it is. On a wider window nothing changed but taller link targets. No hazard changes.
+- **Added:** wherever a browser test runs axe, the page is also looked at 320 px wide, in CI: no sideways scrolling, and no link on its own, button or summary under 24 px high.
+- **Verified:** 256 desktop browser tests, light and dark; a table that is not stacked, a message that does not wrap and a link without its padding each fail one. 254 of 256 pass on the two emulated phones. **Not done / not verified:** selects are 23 px in WebKit; a real phone; a screen reader on a card; widths between 320 and 640 px.
+
 ## 2026-11-25 - The small screen's strip is shorter, and what it takes is said as measured (XP-3)
 
 - **Clinical risk:** as the entry below; the notices (a drill, a death, a temporary identity, a merge) are now on one line of the strip, each still in words.

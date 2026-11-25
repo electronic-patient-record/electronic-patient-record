@@ -152,20 +152,24 @@
                 </li>{/each}
             </ul>
           {/if}
-          <table>
-            <thead>
-              <tr>
-                <th>{TEXT.field}</th>
-                <th>{TEXT.entered}</th>
-                <th>{TEXT.existing}</th>
+          <!-- The roles are kept when the layout is not a table (XP-2, `app.css`). -->
+          <!-- svelte-ignore a11y_no_redundant_roles -->
+          <table class="stack" role="table">
+            <thead role="rowgroup">
+              <tr role="row">
+                <th scope="col" role="columnheader">{TEXT.field}</th>
+                <th scope="col" role="columnheader">{TEXT.entered}</th>
+                <th scope="col" role="columnheader">{TEXT.existing}</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody role="rowgroup">
               {#each comparisonRows(submitted, c.existing.patient) as row (row.field)}
-                <tr>
-                  <th scope="row">{fieldName(row.field)}</th>
-                  <td>{shown(row.entered)}</td>
-                  <td>
+                <tr role="row">
+                  <th scope="row" role="rowheader">{fieldName(row.field)}</th>
+                  <td role="cell" data-label={TEXT.entered}>
+                    {shown(row.entered)}
+                  </td>
+                  <td role="cell" data-label={TEXT.existing}>
                     {shown(row.existing)}
                     {#if row.same}<span class="same">
                         ({TEXT.sameValue})

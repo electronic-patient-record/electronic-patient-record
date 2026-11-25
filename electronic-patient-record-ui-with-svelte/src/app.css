@@ -55,6 +55,8 @@ body {
 }
 a {
   color: var(--accent);
+  /* A target at least 24 px high (WCAG 2.5.8). On inline text, padding above and below moves nothing. */
+  padding-block: 0.25rem;
 }
 :focus-visible {
   outline: 3px solid var(--accent);
@@ -151,6 +153,7 @@ td {
 select,
 textarea {
   font: inherit;
+  min-height: 1.75rem;
   padding: 0.4rem;
   width: 100%;
   box-sizing: border-box;
@@ -325,4 +328,48 @@ footer.site {
 .table-scroll {
   overflow-x: auto;
   max-width: 100%;
+}
+/* A message as received wraps, whatever it holds (XP-2). */
+pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+/* On a narrow window a table of records is a list of cards: a row is a card, and each cell says what it is (XP-2). The
+   same cells in the same order, and the head is still there for a screen reader. `role` is on each element, since some
+   browsers drop a table's meaning when its layout changes. */
+@media (max-width: 40rem) {
+  table.stack,
+  table.stack tbody,
+  table.stack tr,
+  table.stack td,
+  table.stack tbody th {
+    display: block;
+  }
+  table.stack thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  table.stack caption {
+    display: block;
+    text-align: start;
+  }
+  table.stack tr {
+    margin-block-end: 0.75rem;
+    border: 1px solid var(--border);
+  }
+  table.stack td,
+  table.stack tbody th {
+    border: 0;
+    overflow-wrap: anywhere;
+  }
+  table.stack td[data-label]::before {
+    content: attr(data-label) ": ";
+    /* With nothing for a screen reader, which has the column's head already. */
+    content: attr(data-label) ": " / "";
+    font-weight: 600;
+  }
 }

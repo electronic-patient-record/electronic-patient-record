@@ -129,20 +129,29 @@
           </li>{/each}
       </ul>
     {/if}
-    <table>
-      <thead>
-        <tr><th>{TEXT.field}</th><th>{TEXT.similarity}</th><th></th></tr>
+    <!-- The roles are kept when the layout is not a table (XP-2, `app.css`). -->
+    <!-- svelte-ignore a11y_no_redundant_roles -->
+    <table class="stack" role="table">
+      <thead role="rowgroup">
+        <tr role="row">
+          <th scope="col" role="columnheader">{TEXT.field}</th><th
+            scope="col"
+            role="columnheader"
+          >
+            {TEXT.similarity}
+          </th><th scope="col" role="columnheader"></th>
+        </tr>
       </thead>
-      <tbody>
+      <tbody role="rowgroup">
         {#each result.fields as f (f.field)}
-          <tr>
-            <td>{f.field}</td>
-            <td>
+          <tr role="row">
+            <td role="cell" data-label={TEXT.field}>{f.field}</td>
+            <td role="cell" data-label={TEXT.similarity}>
               {f.similarity === null
                 ? TEXT.notAvailable
                 : f.similarity.toFixed(2)}
             </td>
-            <td>{f.note}</td>
+            <td role="cell">{f.note}</td>
           </tr>
         {/each}
       </tbody>

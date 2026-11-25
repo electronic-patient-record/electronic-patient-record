@@ -51,6 +51,60 @@ const stubAllergies = (
       : route.fallback(),
   );
 
+// XP-2: wherever a test looks with axe, the page is also looked at 320 CSS px wide (WCAG 1.4.10): it does not scroll
+// sideways, and no link or button is under 24 px high (2.5.8), but a link inside a sentence.
+async function reflow(page: Page) {
+  const size = page.viewportSize();
+  await page.setViewportSize({ width: 320, height: 640 });
+  const found = await page.evaluate(() => {
+    const doc = document.documentElement;
+    const wide = [...document.body.querySelectorAll("*")]
+      .filter((e) => {
+        const r = e.getBoundingClientRect();
+        return (
+          r.width > 0 &&
+          r.right > doc.clientWidth + 1 &&
+          !e.closest(".table-scroll, .sr-only, thead")
+        );
+      })
+      .map((e) => e.outerHTML.slice(0, 80));
+    const low = [...document.querySelectorAll("a[href], button, summary")]
+      .filter((e) => {
+        const r = e.getBoundingClientRect();
+        const sentence =
+          e.tagName === "A" &&
+          [...(e.parentElement?.childNodes ?? [])].some(
+            (n) =>
+              n.nodeType === Node.TEXT_NODE &&
+              (n.textContent ?? "").trim().length > 3,
+          );
+        return (
+          r.width > 0 &&
+          r.height > 1 &&
+          r.height < 24 &&
+          !sentence &&
+          !e.closest(".sr-only")
+        );
+      })
+      .map(
+        (e) =>
+          `${e.outerHTML.slice(0, 80)} ${e.getBoundingClientRect().height}`,
+      );
+    return {
+      // The number, since text that sticks out of its box sticks no box out; and the boxes that do, to say where.
+      sideways: Math.max(0, doc.scrollWidth - doc.clientWidth - 1),
+      boxes: doc.scrollWidth - doc.clientWidth > 1 ? wide.slice(0, 5) : [],
+      low: low.slice(0, 5),
+    };
+  });
+  if (size) await page.setViewportSize(size);
+  expect(found, `${page.url()} at 320 px`).toEqual({
+    sideways: 0,
+    boxes: [],
+    low: [],
+  });
+}
+
 async function axe(page: Page) {
   const { title, project } = test.info();
   await mobileAudit(page, title, project.name);
@@ -58,6 +112,7 @@ async function axe(page: Page) {
     .withTags(["wcag2a", "wcag2aa", "wcag22aa"])
     .analyze();
   expect(r.violations).toEqual([]);
+  await reflow(page);
 }
 
 test("an empty search sends nothing and says why", async ({ page }) => {
@@ -5344,3 +5399,38 @@ for (const [what, record, items, most] of [
     await expect(banner).toBeInViewport();
   });
 }
+
+test("on a narrow window a search result is a card that says what each value is, in the same order", async ({
+  page,
+}) => {
+  await page.route("**/api/proxy/api/patients?**", (route) =>
+    json(route, 200, { results: [ANN], limit: 50 }),
+  );
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.goto("/en-001/patients");
+  await page.getByLabel("Family name").fill("Smi");
+  await page.getByRole("button", { name: "Search" }).click();
+  const row = page.getByRole("row").nth(1);
+  const cells = row.getByRole("cell");
+  // Still a table, and a cell's name is its value alone: the column's head is there for a screen reader.
+  await expect(page.getByRole("columnheader")).toHaveCount(4);
+  await expect(cells).toHaveCount(4);
+  await expect(cells.nth(1)).toHaveAccessibleName("1980-03-14");
+  const seen = await cells.evaluateAll((all) =>
+    all.map((e) => ({
+      label: getComputedStyle(e, "::before").content,
+      top: Math.round(e.getBoundingClientRect().top),
+    })),
+  );
+  expect(seen[0]?.label).toContain("Family name");
+  expect(seen[1]?.label).toContain("Birth date");
+  expect(seen[2]?.label).toContain("National health number");
+  expect(seen.map((s) => s.top)).toEqual(
+    [...seen.map((s) => s.top)].sort((a, b) => a - b),
+  );
+  expect(new Set(seen.map((s) => s.top)).size).toBe(4);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  expect(
+    await cells.nth(1).evaluate((e) => getComputedStyle(e, "::before").content),
+  ).toBe("none");
+});

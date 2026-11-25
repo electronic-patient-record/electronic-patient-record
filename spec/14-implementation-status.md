@@ -25,7 +25,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | Service tests | 987, plus 251 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
 | Matcher tests | 133, plus 0 `#[ignore]`d | the same patterns in the matcher |
 | Front-end unit tests (vitest) | 397 | `it(` / `test(` lines in `tests/unit` |
-| Front-end end-to-end tests (Playwright) | 122 | `test(` lines in `tests/e2e` |
+| Front-end end-to-end tests (Playwright) | 123 | `test(` lines in `tests/e2e` |
 | Hazards | 70, of which 49 open and 0 accepted or closed; 35 name a test | `scripts/check-hazard-log.py --counts` |
 | Locales | 10 | entries of `LOCALES` in `src/lib/locales.ts` |
 
