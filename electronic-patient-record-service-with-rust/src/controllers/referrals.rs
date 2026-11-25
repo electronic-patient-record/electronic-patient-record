@@ -35,6 +35,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 
 /// Send a referral.
 #[derive(Debug, Deserialize)]
@@ -112,10 +113,24 @@ async fn refused(
     .err()
 }
 
-/// What this reader may have. Why an appointment was missed ("Not brought by the person who brings them") is left out for
-/// a patient and a proxy, since a proxy may be that person, until it is decided who may see it (OQ-XP1).
-fn for_reader(purpose: Purpose, mut referrals: Vec<StoredReferral>) -> Vec<StoredReferral> {
-    if purpose == Purpose::PatientAccess {
+/// Whether this reader may have why an appointment was missed (OQ-XP1, decided 2026-11-25): the care team, and the patient
+/// for their own. So not a proxy, who may be the person who did not bring them, and not someone reading in an emergency
+/// with no relationship. "The care team" is a treating relationship: the care team's, or an active encounter's.
+async fn sees_reasons(db: &PgPool, agent: &Agent, patient: &str) -> Result<bool, ApiError> {
+    if !crate::auth::authentication_enforced() {
+        return Ok(true);
+    }
+    // No scope is asked for, so a proxy has no relationship here.
+    let now = super::common::time_now();
+    let relationship = crate::relationships::lookup(db, patient, &agent.0, now, None)
+        .await
+        .map_err(|e| ApiError::from(&e))?;
+    Ok(relationship.treating() || relationship == policy::Relationship::SelfPatient)
+}
+
+/// The referrals as this reader may have them ([`sees_reasons`]).
+fn for_reader(reasons: bool, mut referrals: Vec<StoredReferral>) -> Vec<StoredReferral> {
+    if !reasons {
         for r in &mut referrals {
             if let Some(event) = r.last_event.as_object_mut() {
                 event.remove("missed");
@@ -153,6 +168,10 @@ pub(super) async fn list(
     {
         return r.into_response();
     }
+    let reasons = match sees_reasons(&ctx.pool(), &agent, &patient).await {
+        Ok(seen) => seen,
+        Err(r) => return r.into_response(),
+    };
     let referrals = match store::for_patient(&ctx.pool(), &patient).await {
         Ok(r) => r,
         Err(e) => return failure(e).into_response(),
@@ -174,7 +193,7 @@ pub(super) async fn list(
     {
         return r.into_response();
     }
-    let referrals = for_reader(purpose, referrals);
+    let referrals = for_reader(reasons, referrals);
     Json(ReferralList { referrals }).into_response()
 }
 
@@ -205,6 +224,10 @@ pub(super) async fn history(
     {
         return r.into_response();
     }
+    let reasons = match sees_reasons(&ctx.pool(), &agent, &patient).await {
+        Ok(seen) => seen,
+        Err(r) => return r.into_response(),
+    };
     let versions = match store::history(&ctx.pool(), &referral_id).await {
         // A referral id from another patient's record is a miss, never a disclosure.
         Ok(v) if v.first().is_some_and(|f| f.patient_id == patient) => v,
@@ -232,7 +255,7 @@ pub(super) async fn history(
     {
         return r.into_response();
     }
-    let versions = for_reader(purpose, versions);
+    let versions = for_reader(reasons, versions);
     Json(ReferralHistory { versions }).into_response()
 }
 

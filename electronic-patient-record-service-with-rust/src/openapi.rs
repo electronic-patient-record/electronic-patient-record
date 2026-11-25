@@ -575,7 +575,7 @@ fn referral_schemas() -> Value {
                 "patient_id": {"type": "string"},
                 "state": {"enum": ["requested","accepted","declined","appointment-booked","no-show","interim-report","completed","cancel-requested","cancelled","information-requested","deferred","redirected"]},
                 "referral": {"$ref": "#/components/schemas/ReferralRecord"},
-                "last_event": {"type": "object", "description": "The event, who sent it, in which role, when, and the note. For a missed appointment also `missed`, the reason's code and its words as they were; absent on one recorded before 2026-11-25, when none was asked for."},
+                "last_event": {"type": "object", "description": "The event, who sent it, in which role, when, and the note. For a missed appointment also `missed`, the reason's code and its words as they were, for the care team and the patient and for no other reader; absent on one recorded before 2026-11-25, when none was asked for."},
                 "next": {"type": "array", "description": "What the state table allows next; empty in an end state.", "items": {"type": "object", "required": ["event", "by", "needs_note"], "properties": {
                     "event": {"type": "string"}, "by": {"enum": ["referrer", "recipient"]}, "needs_note": {"type": "boolean"},
                     "reasons": {"type": "array", "maxItems": crate::missed::MOST, "description": "Only for record-no-show: the deployment's reasons, one of which must be given. `unknown` is always one.",

@@ -5202,7 +5202,7 @@
             "type": "string"
           },
           "last_event": {
-            "description": "The event, who sent it, in which role, when, and the note. For a missed appointment also `missed`, the reason's code and its words as they were; absent on one recorded before 2026-11-25, when none was asked for.",
+            "description": "The event, who sent it, in which role, when, and the note. For a missed appointment also `missed`, the reason's code and its words as they were, for the care team and the patient and for no other reader; absent on one recorded before 2026-11-25, when none was asked for.",
             "type": "object"
           },
           "next": {

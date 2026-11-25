@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - Why an appointment was missed is seen by the care team and the patient (OQ-XP1)
+
+- **Clinical risk:** H-071 (controls, evidence and residual changed; status and score not). Decided by the maintainer. A patient now sees their own; someone reading in an emergency with no relationship no longer does.
+- **Corrected:** this changelog and a message said that a proxy could read a referral, and so the reason. A proxy reads no referral: there is no such scope. One added later would still not give the reason.
+- **Verified:** the care team, the patient, a proxy and a clinician in an emergency, through the router; the rule removed, and the patient left out, each fail it. The normal and database passes on a fresh Postgres 18; every docs gate. **Not done / not verified:** "the care team" is taken to be any treating relationship, an active encounter's included; no screen shows the patient their referrals.
+
 ## 2026-11-25 - The service uses matcher 0.9.0: no pair may be linked automatically without a verified identifier (AG-13)
 
 - **Clinical risk:** H-001 (controls, evidence and residual changed; status and score not). A pair that shares no verified identifier is at most "ask a person". Registration and the HL7 feed refuse a likely duplicate as before; a merge by a person is allowed as before, and is recorded as `review` where it was `auto_link`.

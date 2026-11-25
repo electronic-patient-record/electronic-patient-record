@@ -75,7 +75,7 @@ Decided by the maintainer (OQ-XP1): there are many reasons, the list is the tena
 - **A message does not say why**, so one that reports a missed appointment gives `unknown`.
 - **One recorded before this has no reason**, which is not `unknown`: the screen says that it was not recorded and does not mean the person chose not to come.
 - **Who was at fault is not asked**, and no count or rule is made of it.
-- **A reason can be sensitive** ("Scared of treatment", "Not brought by the person who brings them"). It is in the referral's history and nowhere else: not in an audit row, a task, a metric or a log, and it is **left out for a patient and a proxy**, since a proxy may be the person who did not bring them. Staff who read the referral read it. Who should is not decided.
+- **A reason can be sensitive** ("Scared of treatment", "Not brought by the person who brings them"). It is in the referral's history and nowhere else: not in an audit row, a task, a metric or a log. **The care team and the patient themselves see it** (decided 2026-11-25): anyone with a treating relationship, the care team's or an active encounter's; not a proxy, who reads no referral today and may be the person who did not bring them; and not someone reading in an emergency with no relationship. The list of reasons on offer is the same for everyone and is not withheld.
 - The words are the tenant's, in the tenant's language; they are not translated.
 
 ## Not done, not verified

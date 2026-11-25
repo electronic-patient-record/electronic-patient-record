@@ -296,14 +296,14 @@ async fn who_may_take_which_step() {
     .await;
 }
 
-/// XP-15: a deployment's own reasons, as long a list as it likes. One is required; its words reach the clinician and not
-/// the patient, an audit row or a task.
+/// XP-15: a deployment's own reasons, as long a list as it likes. One is required; its words reach the care team and the
+/// patient, and not a proxy, someone in an emergency with no relationship, an audit row or a task.
 #[tokio::test]
 #[ignore = "needs Postgres: set DB_URL"]
-async fn a_deployments_own_reasons_are_offered_and_kept_from_the_patient_and_the_audit() {
+async fn a_deployments_own_reasons_reach_the_care_team_and_the_patient_and_nobody_else() {
     const WORDS: &str = "Scared of treatment, quokka";
     let idp = TestIdp::start().await;
-    let map: Value = ["clinical-admin", "clinician", "patient"]
+    let map: Value = ["clinical-admin", "clinician", "patient", "proxy"]
         .iter()
         .map(|r| ((*r).to_string(), json!({ "role": [r] })))
         .collect();
@@ -340,11 +340,16 @@ async fn a_deployments_own_reasons_are_offered_and_kept_from_the_patient_and_the
     const DOCTOR: &str = "0c4f1e2a-0000-4000-8000-0000000000e1";
     const CLINIC: &str = "0c4f1e2a-0000-4000-8000-0000000000e2";
     const SELF: &str = "0c4f1e2a-0000-4000-8000-0000000000e3";
+    const PROXY: &str = "0c4f1e2a-0000-4000-8000-0000000000e4";
     let admin = token("clinical-admin", "0c4f1e2a-0000-4000-8000-0000000000e0");
     let (doctor, clinic, own) = (
         token("clinician", DOCTOR),
         token("clinician", CLINIC),
         token("patient", SELF),
+    );
+    let (proxy, stranger) = (
+        token("proxy", PROXY),
+        token("clinician", "0c4f1e2a-0000-4000-8000-0000000000e5"),
     );
     request_with::<App, _, _>(&settings, |server, ctx| async move {
         let family = format!("missed{}", nanos());
@@ -364,6 +369,21 @@ async fn a_deployments_own_reasons_are_offered_and_kept_from_the_patient_and_the
                 .await;
             assert_eq!(rel.status_code(), StatusCode::CREATED, "{}", rel.text());
         }
+        let expires = i64::try_from(nanos() / 1_000_000_000).unwrap() + 3600;
+        let rel = server
+            .post(&format!("/api/patients/{pid}/relationships"))
+            .add_header(admin.0.clone(), admin.1.clone())
+            .json(&json!({ "relationship": { "subject": PROXY, "kind": "proxy", "status": "active",
+                "proxy": { "basis": "patient-request", "scopes": ["identity"], "expires_at": expires } },
+                "reason": "test" }))
+            .await;
+        assert_eq!(rel.status_code(), StatusCode::CREATED, "{}", rel.text());
+        let glass = server
+            .post(&format!("/api/patients/{pid}/break-glass"))
+            .add_header(stranger.0.clone(), stranger.1.clone())
+            .json(&json!({ "reason": "collapsed" }))
+            .await;
+        assert_eq!(glass.status_code(), StatusCode::CREATED, "{}", glass.text());
         let base = format!("/api/patients/{pid}/referrals");
         let sent = server
             .post(&base)
@@ -413,8 +433,24 @@ async fn a_deployments_own_reasons_are_offered_and_kept_from_the_patient_and_the
         for url in [base.clone(), format!("{base}/{rid}")] {
             let seen = read(&doctor, "treatment", url.clone()).await;
             assert!(seen.contains("\"code\":\"scared\""), "{seen}");
-            let theirs = read(&own, "patient-access", url).await;
-            assert!(theirs.contains("no-show") && !theirs.contains("\"missed\""), "{theirs}");
+            let theirs = read(&own, "patient-access", url.clone()).await;
+            assert!(theirs.contains("\"code\":\"scared\""), "their own: {theirs}");
+            // A proxy reads no referral: there is no such scope.
+            let refused = server
+                .get(&url)
+                .add_header(proxy.0.clone(), proxy.1.clone())
+                .add_header(
+                    HeaderName::from_static("x-purpose-of-use"),
+                    HeaderValue::from_static("patient-access"),
+                )
+                .await;
+            assert_eq!(refused.status_code(), StatusCode::FORBIDDEN, "{}", refused.text());
+            // The list on offer is the same for everyone; what was recorded is not there.
+            let emergency = read(&stranger, "treatment", url).await;
+            assert!(
+                emergency.contains("no-show") && !emergency.contains("\"missed\":{"),
+                "in an emergency: {emergency}"
+            );
         }
         let rows = sqlx::query("SELECT detail::text AS d FROM audit_events WHERE patient_ref = $1")
             .bind(format!("Patient/{pid}"))
