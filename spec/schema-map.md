@@ -74,7 +74,7 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `death_assertion_current` | `20261105000025_death_assertions` |
 | `hazard_current` | `20261028000016_hazard_events` |
 | `observation_current` | `20261026000014_observations` |
-| `patient_current` | `20261021000002_patient_versions`, `20261021000012_patient_search_indexes`, `20261024000013_patient_drill` |
+| `patient_current` | `20261021000002_patient_versions`, `20261021000012_patient_search_indexes`, `20261024000013_patient_drill`, `20261125000046_name_keys` |
 | `patient_link_current` | `20261021000008_patient_links`, `20261021000011_current_views_seek` |
 | `patient_photo_current` | `20261021000006_patient_photos` |
 | `problem_current` | `20261124000042_problems_family_history` |

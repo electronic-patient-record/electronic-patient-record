@@ -560,3 +560,9 @@ typing_current,author,staff-identifier,Who wrote the version,record
 typing_current,reason,free-text,Why the version was written as typed,record
 typing_current,status,none,State of the record,record
 typing_current,body,health,A laboratory report of a blood group or HLA type or antibody as recorded; genetic data,record
+patient_versions,id_keys,identifier,Identifiers folded for lookup,record
+patient_versions,family_name_keys,identifier,Family names folded for lookup,record
+patient_versions,given_name_keys,identifier,Given names folded for lookup,record
+patient_current,id_keys,identifier,Identifiers folded for lookup,record
+patient_current,family_name_keys,identifier,Family names folded for lookup,record
+patient_current,given_name_keys,identifier,Given names folded for lookup,record

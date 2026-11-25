@@ -376,10 +376,19 @@ pub fn identifier_key(system: &str, value: &str) -> String {
     format!("{system}|{value}")
 }
 
-/// Current patients that share an identifier ([`identifier_key`]), a birth date or a family name (case-insensitive,
-/// exact) with `patient`: the pool the matcher then scores. A pair sharing none of these is not
-/// compared, so a duplicate with a misspelt name, a different birth date and no common identifier
-/// is **not** found. At most [`CANDIDATE_LIMIT`], strongest first; see [`candidates_ranked`].
+/// A birth date with its day and month the other way round, when that is a date too and another one (AG-12).
+fn transposed(birth: &str) -> Option<String> {
+    let mut parts = birth.split('-');
+    let (year, month, day) = (parts.next()?, parts.next()?, parts.next()?);
+    let other = format!("{year}-{day}-{month}");
+    (parts.next().is_none() && other != birth && valid_birth_date(&other)).then_some(other)
+}
+
+/// Current patients that share an identifier ([`identifier_key`]), a birth date or a family name (without case,
+/// accents, spaces or hyphens; or one part of a double name) with `patient`, or have their names or the day and month of
+/// their birth date the other way round: the pool the matcher then scores. A pair sharing none of these is not compared, so
+/// a duplicate with a misspelt name, a birth date that is otherwise different and no common identifier is **not** found
+/// (`spec/patient-identity/candidate-recall.md`). At most [`CANDIDATE_LIMIT`], strongest first; see [`candidates_ranked`].
 ///
 /// # Errors
 ///
@@ -395,7 +404,8 @@ pub async fn candidates(
 
 /// [`candidates`], and whether more matched than [`CANDIDATE_LIMIT`] (CQ-36). When the list is cut,
 /// the strongest evidence is kept: a shared identifier first, then the same family name and birth
-/// date together, then a birth date alone, then a family name alone. Within a rank, patient id.
+/// date together, then a birth date alone, then a family name with the day and month swapped, then the names swapped, then
+/// a family name alone, then a swapped date alone. Within a rank, patient id.
 ///
 /// # Errors
 ///
@@ -427,33 +437,46 @@ pub async fn candidates_in(
         .iter()
         .map(|i| identifier_key(&i.system, &i.value))
         .collect();
-    let families: Vec<String> = patient
-        .names
-        .iter()
-        .filter_map(|n| n.family.as_deref())
-        .map(|f| f.trim().to_lowercase())
-        .filter(|f| !f.is_empty())
-        .collect();
-    if identifiers.is_empty() && families.is_empty() && patient.birth_date.is_none() {
+    let asked = serde_json::to_value(patient).map_err(db_err)?;
+    let named = patient.names.iter().any(|n| {
+        n.family.as_deref().is_some_and(|f| !f.trim().is_empty())
+            || n.given.iter().any(|g| !g.trim().is_empty())
+    });
+    if identifiers.is_empty() && !named && patient.birth_date.is_none() {
         return Ok((Vec::new(), false));
     }
-    let by_identifier = "(identifier_keys(body) && $1::text[])";
+    let swapped_date = patient.birth_date.as_deref().and_then(transposed);
+    // The names are folded by the database on both sides (migration 46): here for what is asked, once, and in the stored
+    // columns for what is there. Each of these may only widen the list: the
+    // matcher judges, and the strongest evidence comes first in case the list is cut.
+    let keys = sqlx::query("SELECT family_keys($1) AS family, given_keys($1) AS given")
+        .bind(asked)
+        .fetch_one(&mut *db)
+        .await
+        .map_err(db_err)?;
+    let family: Vec<String> = keys.try_get("family").map_err(db_err)?;
+    let given: Vec<String> = keys.try_get("given").map_err(db_err)?;
+    let by_identifier = "(id_keys && $1::text[])";
     let by_birth = "($2::text IS NOT NULL AND body->>'birth_date' = $2)";
-    let by_family = "EXISTS (SELECT 1 FROM jsonb_array_elements(body->'names') n
-                             WHERE lower(trim(n->>'family')) = ANY($3::text[]))";
+    let by_swapped_date = "($3::text IS NOT NULL AND body->>'birth_date' = $3)";
+    let by_family = "(family_name_keys && $4::text[])";
+    let by_swapped_names = "(family_name_keys && $5::text[] AND given_name_keys && $4::text[])";
     let rows = sqlx::query(AssertSqlSafe(format!(
         "SELECT {COLUMNS} FROM patient_current
-                 WHERE ({by_identifier} OR {by_birth} OR {by_family})
-                   AND drill = $4
+                 WHERE ({by_identifier} OR {by_birth} OR {by_family} OR {by_swapped_date} OR {by_swapped_names})
+                   AND drill = $6
                    AND {NOT_MERGED_AWAY}
-                 ORDER BY {by_identifier} DESC, ({by_birth} AND {by_family}) DESC,
-                          {by_birth} DESC, {by_family} DESC, patient_id
+                 ORDER BY {by_identifier} DESC, ({by_birth} AND {by_family}) DESC, {by_birth} DESC,
+                          ({by_swapped_date} AND {by_family}) DESC, {by_swapped_names} DESC,
+                          {by_family} DESC, patient_id
                  LIMIT {}",
         CANDIDATE_LIMIT + 1
     )))
     .bind(identifiers)
     .bind(patient.birth_date.clone())
-    .bind(families)
+    .bind(swapped_date)
+    .bind(family)
+    .bind(given)
     .bind(drill)
     .fetch_all(&mut *db)
     .await
@@ -533,7 +556,7 @@ pub async fn search(db: &PgPool, q: &Search) -> Result<Vec<Stored>, StoreError> 
                          SELECT 1 FROM jsonb_array_elements(body->'names') n
                          WHERE lower(n->>'family') LIKE lower($1) ESCAPE '\\'))
                    AND ($2::text IS NULL OR body->>'birth_date' = $2)
-                   AND ($3::text[] IS NULL OR identifier_keys(body) @> $3::text[])
+                   AND ($3::text[] IS NULL OR id_keys @> $3::text[])
                    AND drill = $4
                    AND {NOT_MERGED_AWAY}
                  ORDER BY lower(body->'names'->0->>'family'), patient_id
@@ -553,6 +576,22 @@ pub async fn search(db: &PgPool, q: &Search) -> Result<Vec<Stored>, StoreError> 
 mod tests {
     use super::*;
     use electronic_patient_record_matcher::{HumanName, Identifier};
+
+    #[test]
+    fn a_birth_date_is_transposed_only_to_another_real_date() {
+        assert_eq!(transposed("1984-03-07").as_deref(), Some("1984-07-03"));
+        for none in [
+            "1984-03-13",
+            "1984-03-03",
+            "1984",
+            "1984-03",
+            "",
+            "1984-03-07-1",
+            "soon",
+        ] {
+            assert_eq!(transposed(none), None, "{none}");
+        }
+    }
 
     fn patient(family: &str, dob: Option<&str>) -> Patient {
         Patient {

@@ -169,3 +169,117 @@ async fn a_number_is_found_however_it_was_typed_and_kept_as_it_was() {
         .unwrap();
     assert!(found.is_empty());
 }
+
+/// AG-12. The fold chooses whom the matcher compares and nothing else: it may only bring more records in.
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn names_are_folded_by_case_accent_space_and_hyphen_and_by_nothing_else() {
+    let db = db().await;
+    let key = async |name: &str| {
+        sqlx::query_scalar::<_, String>("SELECT name_key($1)")
+            .bind(name)
+            .fetch_one(&db)
+            .await
+            .unwrap()
+    };
+    for (a, b) in [
+        ("M\u{fc}ller", "MULLER"),
+        ("Mu\u{308}ller", "m\u{fc}ller"),
+        ("O\u{2019}Brien", "o'brien"),
+        ("Smith-Jones", "Smith Jones"),
+        ("Smith\u{a0}Jones", "SMITHJONES"),
+        ("\u{141}ukasz", "Lukasz"),
+        ("S\u{f8}rensen", "Sorensen"),
+        ("\u{110}\u{1ed7}", "Do"),
+        ("Stra\u{df}e", "STRASSE"),
+        ("\u{c6}r\u{f8}", "Aero"),
+    ] {
+        assert_eq!(key(a).await, key(b).await, "{a} {b}");
+    }
+    // Another name is another key, and another script is kept, not guessed at.
+    for (a, b) in [
+        ("Smith", "Smyth"),
+        ("Jon", "Jan"),
+        ("\u{428}\u{435}\u{432}", "Shev"),
+        ("Li", "Lee"),
+    ] {
+        assert_ne!(key(a).await, key(b).await, "{a} {b}");
+    }
+    for none in ["", " ", "-", "'"] {
+        assert_eq!(key(none).await, "", "{none:?}");
+    }
+    let keys = async |function: &str, body: serde_json::Value| {
+        let sql = format!("SELECT {function}($1)");
+        sqlx::query_scalar::<_, Vec<String>>(sqlx::AssertSqlSafe(sql))
+            .bind(body)
+            .fetch_one(&db)
+            .await
+            .unwrap()
+    };
+    let names = |family: &str, given: &str| serde_json::json!({ "names": [{ "family": family, "given": [given, "Second"] }] });
+    // Each long part of a double name, and the whole; a short part (`da`, `van`) is not a name by itself.
+    assert_eq!(
+        keys("family_keys", names("Garc\u{ed}a-L\u{f3}pez", "Ana")).await,
+        ["garcia", "garcialopez", "lopez"]
+    );
+    assert_eq!(
+        keys("family_keys", names("van der Berg", "Jan")).await,
+        ["berg", "vanderberg"]
+    );
+    assert_eq!(
+        keys("given_keys", names("X", "Ana")).await,
+        ["ana"],
+        "the first given name"
+    );
+    for nothing in [
+        serde_json::json!({}),
+        serde_json::json!({ "names": null }),
+        names(" ", ""),
+    ] {
+        assert!(
+            keys("family_keys", nothing.clone()).await.is_empty(),
+            "{nothing}"
+        );
+        assert!(
+            keys("given_keys", nothing.clone()).await.is_empty(),
+            "{nothing}"
+        );
+    }
+}
+
+/// The keys are the database's, made from what was recorded, and follow each new version.
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn a_changed_name_is_found_by_the_new_one_and_not_by_the_old() {
+    let db = db().await;
+    let old = format!("Vorher{}", stamp());
+    let new = format!("Nachher{}", stamp());
+    let named = |family: &str| Patient {
+        names: vec![HumanName {
+            family: Some(family.into()),
+            given: vec!["K".into()],
+        }],
+        ..Default::default()
+    };
+    let stored = patients_store::create(&db, "t", None, &named(&old))
+        .await
+        .unwrap();
+    patients_store::update(&db, &stored.id, 1, "t", Some("married"), &named(&new))
+        .await
+        .unwrap();
+    for (family, seen) in [(&new, true), (&old, false)] {
+        let found = patients_store::candidates(&db, &named(&family.to_uppercase()))
+            .await
+            .unwrap();
+        assert_eq!(found.iter().any(|f| f.id == stored.id), seen, "{family}");
+    }
+    // Nobody can write a key by hand.
+    let e = sqlx::raw_sql(
+        "INSERT INTO patient_versions (patient_id, version, author, body, id_keys)
+         VALUES (gen_random_uuid(), 1, 't', '{}', ARRAY['x'])",
+    )
+    .execute(&db)
+    .await
+    .unwrap_err();
+    assert!(e.to_string().contains("non-DEFAULT value"), "{e}");
+}

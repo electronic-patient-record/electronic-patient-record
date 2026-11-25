@@ -116,7 +116,7 @@ fn same_person() -> Vec<Case> {
             "misspelt, and day and month swapped",
             n("Svensson", "Erik", b),
             n("Svenson", "Erik", Some("1984-07-03")),
-            false,
+            true,
             Review,
         ),
         (
@@ -151,7 +151,7 @@ fn same_person() -> Vec<Case> {
             "accent lost, and only a birth year known",
             n("G\u{f3}mez", "Luc\u{ed}a", Some("1990-10-10")),
             n("Gomez", "Lucia", Some("1990")),
-            false,
+            true,
             Review,
         ),
         (
@@ -165,7 +165,7 @@ fn same_person() -> Vec<Case> {
             "another script, and day and month swapped",
             n("Мельник", "Андрій", Some("1979-04-11")),
             n("Melnyk", "Andriy", Some("1979-11-04")),
-            false,
+            true,
             NonMatch,
         ),
         (
@@ -179,7 +179,7 @@ fn same_person() -> Vec<Case> {
             "family and given name swapped, and day and month swapped",
             n("Tran", "Van", Some("1988-06-09")),
             n("Van", "Tran", Some("1988-09-06")),
-            false,
+            true,
             Review,
         ),
         (
@@ -193,14 +193,14 @@ fn same_person() -> Vec<Case> {
             "half of a double family name, and year one out",
             n("Costa Silva", "Rui", Some("1969-12-01")),
             n("Costa", "Rui", Some("1968-12-01")),
-            false,
+            true,
             Review,
         ),
         (
             "hyphen against space, and only a birth year known",
             n("Smith-Jones", "Ella", Some("2001-08-08")),
             n("Smith Jones", "Ella", Some("2001")),
-            false,
+            true,
             Review,
         ),
         (
@@ -290,7 +290,7 @@ async fn which_kinds_of_duplicate_are_retrieved_and_which_are_never_looked_at() 
         "the table has changed:\n{}",
         wrong.join("\n")
     );
-    assert_eq!((cases.len(), retrieved, lost), (19, 10, 7));
+    assert_eq!((cases.len(), retrieved, lost), (19, 16, 2));
     s.finish().await;
 }
 

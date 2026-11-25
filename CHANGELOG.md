@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - The duplicate check looks wider, and is faster (AG-12, second slice)
+
+- **Clinical risk:** H-002. 16 of 19 synthetic kinds of duplicate are now retrieved, where 10 were; of the 3 missed the matcher would have sent 2 to a person.
+- **Changed:** the family name is compared without case, accents, spaces, hyphens and apostrophes, and by each part of a double name of four letters or more; the names, and the day and month of the birth date, the other way round. Only whom the matcher compares: it decides as before. **More registrations and feed messages may be held as possible duplicates.**
+- **Migration 46** adds three columns to `patient_versions` that the database makes from the body, so it rewrites the table once and holds it meanwhile (about 3 seconds for 50,000 rows). No recorded value changes: a checksum over 50,000 rows was the same before and after, and the table still refuses changes. PostgreSQL 17 or later and a UTF-8 database.
+- **Verified:** `tests/identifier_keys.rs` (2 more), the pinned table, the timings on 50,000 rows, a dump and a restore; clippy, rustdoc, Rust 1.98, the normal pass, the database pass (243) on a fresh Postgres 18, every docs gate. **Not done / not verified:** the timings are one run on one machine, not the load harness; how many more registrations are held was not measured; a name that sounds alike and a birth year alone are not looked by.
+
 ## 2026-11-25 - A national number is found however it was typed (AG-12, first slice)
 
 - **Clinical risk:** H-002. `943 476 5919` did not find `9434765919`: not at registration, so a duplicate could be made; not in search; and not in the HL7 feed, which then took a known patient for a new one.
