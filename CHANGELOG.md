@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - A critical correction after sign-off reopens review (audit finding 1, AG-1)
+
+- **Clinical risk:** H-050 and H-059, controls added, nothing accepted. An abnormal result signed and then corrected to critical left no task: signing cancelled it, and abnormal to critical was "no change".
+- **Fixed:** see AG-1 in `tasks.md`. Found beyond the audit: a signature racing a correction cancelled the new version's task; a lock on the result and the task's version now stop that.
+- **Changed:** a result corrected after a signature raises `result-filed` whatever it now says, so a site rule without conditions on that event makes a task for it. Tasks carry `source.version` (absent on older tasks).
+- **Verified:** 3 database tests that failed first, 1 domain test. **Not done / not verified:** no covering recipient, acknowledgement or escalation (OQ-AG1); no rule is approved, so a running service makes no task; no clinician reviewed it.
+
 ## 2026-11-24 - Relative history: three links asked apart, and no exception to the guard (EH-3, OQ-EH5)
 
 - **Clinical risk:** a relative who shares no genes can no longer be read as inherited risk. H-067 rewritten (still `open`, my scores): it now names the risk that an entry reveals an adoption, a donor, a surrogate or a parentage.

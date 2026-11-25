@@ -399,7 +399,7 @@ mod tests {
         let typo = BTreeMap::from([("abnromal".to_string(), "true".to_string())]);
         let p = fact_problems(Event::ResultFiled, &typo);
         assert!(
-            p[0].contains("abnromal") && p[0].contains("abnormal, test"),
+            p[0].contains("abnromal") && p[0].contains("abnormal, critical, after_sign_off, test"),
             "{p:?}"
         );
         let long = BTreeMap::from([("test".to_string(), "x".repeat(MAX_FACT + 1))]);

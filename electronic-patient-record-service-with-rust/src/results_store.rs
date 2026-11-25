@@ -160,63 +160,75 @@ pub async fn create_with_rules(
             &mut *db,
             rules,
             Event::ResultFiled,
-            &results::task_facts(&stored.result),
+            &results::with_sign_off(&stored.result, false),
             &stored.patient_id,
-            &source(&stored.id),
+            &source(&stored.id, stored.version),
         )
         .await?;
     }
     Ok(stored)
 }
 
-/// The task event a later version raises (TL-3), on the writer's connection: entered in error raises
-/// `result-entered-in-error` with the facts as they were, so the tasks the result made can be cancelled; an amended or
-/// corrected version flagged abnormal where the last was not raises `result-filed`, so a second abnormal version makes
-/// no second task.
+/// The task event a later version raises (TL-3), on the writer's connection. Entered in error raises
+/// `result-entered-in-error` with the facts as they were, so the tasks the result made can be cancelled. A version that
+/// stands raises `result-filed` again when it is abnormal or critical, or when an earlier version had been signed off
+/// ([`results::raises_again`]): the signature met the obligation of the version it named and no later one (H-050). A
+/// rule whose task for this result is still open makes no second.
 async fn raise_for_change(
     conn: &mut sqlx::PgConnection,
     rules: &[Rule],
     was: &StoredResult,
     now: &StoredResult,
 ) -> Result<(), StoreError> {
-    let abnormal = |r: &ResultRecord| {
-        results::task_facts(r).get("abnormal").map(String::as_str) == Some("true")
-    };
-    let event = if now.result.status == Status::EnteredInError
-        && was.result.status != Status::EnteredInError
-    {
-        Some((
-            Event::ResultEnteredInError,
-            results::task_facts(&was.result),
-        ))
-    } else if now.result.status != Status::EnteredInError
-        && abnormal(&now.result)
-        && !abnormal(&was.result)
-    {
-        Some((Event::ResultFiled, results::task_facts(&now.result)))
-    } else {
-        None
-    };
-    if let Some((event, facts)) = event {
-        tasks_store::raise(
-            conn,
-            rules,
-            event,
-            &facts,
-            &now.patient_id,
-            &source(&now.id),
-        )
-        .await?;
+    let source = source(&now.id, now.version);
+    if now.result.status == Status::EnteredInError {
+        if was.result.status != Status::EnteredInError {
+            let facts = results::task_facts(&was.result);
+            let event = Event::ResultEnteredInError;
+            tasks_store::raise(conn, rules, event, &facts, &now.patient_id, &source).await?;
+        }
+        return Ok(());
+    }
+    let signed: bool = sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM result_signoffs WHERE result_id = $1::uuid)",
+    )
+    .bind(&now.id)
+    .fetch_one(&mut *conn)
+    .await
+    .map_err(db_err)?;
+    if results::raises_again(&now.result, signed) {
+        let open = tasks_store::open_rules(&mut *conn, &now.patient_id, &source).await?;
+        let due: Vec<Rule> = rules
+            .iter()
+            .filter(|r| !open.contains(&r.id))
+            .cloned()
+            .collect();
+        let facts = results::with_sign_off(&now.result, signed);
+        let event = Event::ResultFiled;
+        tasks_store::raise(conn, &due, event, &facts, &now.patient_id, &source).await?;
     }
     Ok(())
 }
 
-/// The task source for a result.
-fn source(result_id: &str) -> Source {
+/// The task source for a version of a result.
+fn source(result_id: &str, version: i32) -> Source {
     Source {
         kind: "result".into(),
         id: result_id.to_string(),
+        version: Some(version),
     }
+}
+
+/// One writer at a time on one result, until the caller's transaction ends, so that a signature and a correction that
+/// race are one after the other: a signature then never reads a version that is no longer current. With no transaction
+/// it holds nothing.
+async fn lock(conn: &mut sqlx::PgConnection, result_id: &str) -> Result<(), StoreError> {
+    sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))")
+        .bind(format!("result:{}", result_id.to_lowercase()))
+        .execute(conn)
+        .await
+        .map(|_| ())
+        .map_err(db_err)
 }
 
 /// One result's current version, on this patient or a record merged into it.
@@ -248,7 +260,8 @@ pub async fn current(
 
 /// Append the next version of a result: amended, corrected, final after preliminary, or entered in
 /// error. Any sign-off stays on the version it named, so the result reads as changed since sign-off. Entered in error
-/// raises `result-entered-in-error` (TL-3); a version flagged abnormal where the last was not raises `result-filed`.
+/// raises `result-entered-in-error` (TL-3); a version that is abnormal, or that follows a signature, raises `result-filed`.
+/// Call it in a transaction: it then holds the result against a signature that races it.
 ///
 /// # Errors
 ///
@@ -298,6 +311,7 @@ pub async fn update_with_rules(
     check(record)?;
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
+    lock(&mut *db, result_id).await?;
     let was = current(&mut *db, patient_id, result_id).await?;
     if was.version != expected_version {
         return Err(StoreError::Conflict {
@@ -421,7 +435,8 @@ pub async fn list(db: impl Into<Db<'_>>, patient_id: &str) -> Result<Vec<ResultV
 /// Sign off `version` of a result. Only the current version can be signed: an older one is a
 /// [`StoreError::Conflict`] naming the current, because the signer has not seen the change. Signing a
 /// version that is already signed returns that sign-off and `false`. A new sign-off raises `result-signed-off` (TL-3),
-/// which cancels the result's open tasks whose rule says so, on the same connection.
+/// which cancels the result's open tasks whose rule says so, on the same connection, and never one raised by a later
+/// version. Call it in a transaction, as [`update`].
 ///
 /// # Errors
 ///
@@ -435,6 +450,7 @@ pub async fn sign_off(
 ) -> Result<(StoredSignOff, bool), StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
+    lock(&mut *db, result_id).await?;
     let current = current(&mut *db, patient_id, result_id).await?;
     if current.version != version {
         return Err(StoreError::Conflict {
@@ -464,7 +480,7 @@ pub async fn sign_off(
             Event::ResultSignedOff,
             &results::task_facts(&current.result),
             &current.patient_id,
-            &source(&current.id),
+            &source(&current.id, version),
         )
         .await?;
         return Ok((row_to_sign_off(&row)?, true));

@@ -5993,6 +5993,10 @@
                   "observation",
                   "referral"
                 ]
+              },
+              "version": {
+                "description": "A result's version that raised the event. A signature of an earlier version does not meet this task. Absent for the others, and on a task made before this was kept.",
+                "type": "integer"
               }
             },
             "required": [
@@ -6276,6 +6280,10 @@
                   "observation",
                   "referral"
                 ]
+              },
+              "version": {
+                "description": "A result's version that raised the event. A signature of an earlier version does not meet this task. Absent for the others, and on a task made before this was kept.",
+                "type": "integer"
               }
             },
             "required": [

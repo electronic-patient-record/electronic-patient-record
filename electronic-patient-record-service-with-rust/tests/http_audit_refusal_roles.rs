@@ -160,6 +160,7 @@ late_reminder = "skip"
             &electronic_patient_record::tasks_store::Source {
                 kind: "result".into(),
                 id: tag("auditresult"),
+                version: None,
             },
             jiff::civil::date(2026, 11, 18),
             &std::collections::BTreeSet::new(),

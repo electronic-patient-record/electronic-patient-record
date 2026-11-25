@@ -284,6 +284,7 @@ async fn raise(
         &Source {
             kind: "referral".into(),
             id: stored.id.clone(),
+            version: None,
         },
     )
     .await

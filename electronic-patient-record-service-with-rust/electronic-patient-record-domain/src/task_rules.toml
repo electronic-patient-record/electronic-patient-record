@@ -9,7 +9,8 @@
 # - a rule creates a task and nothing else: the only action is [rule.task], and any other key is refused;
 # - versions of one rule run 1, 2, 3 ... and none is removed, because a stored task names its rule version;
 # - approved_by and approved_on are both given (a YYYY-MM-DD day) or both empty;
-# - a condition names a fact its event carries (result-filed: abnormal, test; observation-out-of-range: code, flag;
+# - a condition names a fact its event carries (result-filed: abnormal, critical,
+#   after_sign_off, test; observation-out-of-range: code, flag;
 #   referral-stepped: state, priority; ...) and at least one value;
 # - due_working_days is 0 to 60 working days on the site calendar (no weekends, no site holidays);
 # - reminders are distinct working days before the due day, at most five, none beyond the due period;

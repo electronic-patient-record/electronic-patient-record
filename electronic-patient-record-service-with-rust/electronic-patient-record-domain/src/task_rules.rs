@@ -82,7 +82,7 @@ impl Event {
     pub fn facts(self) -> &'static [&'static str] {
         match self {
             Event::ResultFiled | Event::ResultSignedOff | Event::ResultEnteredInError => {
-                &["abnormal", "test"]
+                &["abnormal", "critical", "after_sign_off", "test"]
             }
             Event::ObservationOutOfRange | Event::ObservationEnteredInError => &["code", "flag"],
             Event::ReferralStepped => &["state", "priority"],
@@ -545,7 +545,8 @@ late_reminder = "send-once"
         )
         .unwrap_err();
         assert!(
-            e.contains("carries no fact abnormall") && e.contains("abnormal, test"),
+            e.contains("carries no fact abnormall")
+                && e.contains("abnormal, critical, after_sign_off, test"),
             "{e}"
         );
         assert!(parse(&GOOD.replace("any_of = [\"true\"]", "any_of = []"), "t").is_err());

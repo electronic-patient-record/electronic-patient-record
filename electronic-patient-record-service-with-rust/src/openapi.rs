@@ -931,7 +931,8 @@ fn task_schema_list(event: &Value) -> Value {
                 "reminders": {"type": "array", "items": {"type": "string"}},
                 "late_reminder": {"enum": ["send-once", "skip"]},
                 "source": {"type": "object", "required": ["kind", "id"], "properties": {
-                    "kind": {"enum": ["result", "observation", "referral"]}, "id": {"type": "string"}}},
+                    "kind": {"enum": ["result", "observation", "referral"]}, "id": {"type": "string"},
+                    "version": {"type": "integer", "description": "A result's version that raised the event. A signature of an earlier version does not meet this task. Absent for the others, and on a task made before this was kept."}}},
                 "author": {"type": "string", "description": "rule:<id>@<version>, or the person who closed it."},
                 "recorded_at": {"type": "string", "description": "UTC."},
                 "close_reason": {"type": ["string", "null"]},

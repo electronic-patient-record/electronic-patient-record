@@ -117,6 +117,7 @@ async fn only_an_approved_rule_makes_a_task_with_an_audit_row_and_a_rollback_lea
     let source = Source {
         kind: "result".into(),
         id: format!("r-{}", stamp()),
+        version: None,
     };
     let none = BTreeSet::new();
 
@@ -179,6 +180,7 @@ async fn only_an_approved_rule_makes_a_task_with_an_audit_row_and_a_rollback_lea
     let other = Source {
         kind: "result".into(),
         id: format!("r-{}", stamp()),
+        version: None,
     };
     assert!(
         store::create_from_event(
@@ -209,10 +211,12 @@ async fn an_event_cancels_only_its_own_sources_open_tasks_and_says_so() {
     let mine = Source {
         kind: "result".into(),
         id: format!("mine-{}", stamp()),
+        version: None,
     };
     let other = Source {
         kind: "result".into(),
         id: format!("other-{}", stamp()),
+        version: None,
     };
     let mut conn = db.acquire().await.unwrap();
     let mut tx = conn.begin().await.unwrap();
@@ -264,6 +268,7 @@ async fn a_person_closes_a_task_with_a_reason_at_the_version_read_once() {
     let source = Source {
         kind: "result".into(),
         id: format!("r-{}", stamp()),
+        version: None,
     };
     let mut conn = db.acquire().await.unwrap();
     let mut tx = conn.begin().await.unwrap();
@@ -349,6 +354,7 @@ async fn each_reminder_is_decided_once_and_a_late_one_follows_its_rule() {
     let source = Source {
         kind: "result".into(),
         id: format!("r-{}", stamp()),
+        version: None,
     };
     let mut conn = db.acquire().await.unwrap();
     let mut tx = conn.begin().await.unwrap();
@@ -782,6 +788,7 @@ async fn the_sender_decides_a_due_reminder_once_and_the_list_shows_the_day() {
         &Source {
             kind: "result".into(),
             id: format!("r-{}", stamp()),
+            version: None,
         },
         d("2026-11-20"),
         &BTreeSet::new(),
@@ -1044,4 +1051,203 @@ late_reminder = "skip"
     let mut rules_made: Vec<&str> = made.iter().map(|t| t.rule.as_str()).collect();
     rules_made.sort_unstable();
     assert_eq!(rules_made, ["tl14-a-first", "tl14-b-second"]);
+}
+
+/// A rule for `team` on abnormal results, approved, cancelled by a signature or an error.
+fn review_rule(team: &str, fact: &str) -> Vec<task_rules::Rule> {
+    task_rules::parse(
+        &format!(
+            r#"
+[[rule]]
+id = "review"
+version = 1
+title = "Review"
+approved_by = "A Clinician"
+approved_on = "2026-11-18"
+event = "result-filed"
+cancel_on = ["result-signed-off", "result-entered-in-error"]
+[[rule.when]]
+fact = "{fact}"
+any_of = ["true"]
+[rule.task]
+team = "{team}"
+title = "Review the result"
+due_working_days = 1
+late_reminder = "send-once"
+"#
+        ),
+        "test",
+    )
+    .unwrap()
+}
+
+async fn open_tasks(db: &PgPool, team: &str) -> Vec<store::Task> {
+    store::for_team(db, team).await.unwrap().0
+}
+
+/// File `interpretation` as the next version of `id`, in a transaction as the route does.
+async fn correct(
+    db: &PgPool,
+    p: &str,
+    id: &str,
+    version: i32,
+    interpretation: Option<Interpretation>,
+    rules: &[task_rules::Rule],
+) -> Result<(), StoreError> {
+    let mut tx = db.begin().await.unwrap();
+    results_store::update_with_rules(
+        &mut *tx,
+        p,
+        id,
+        version,
+        "lab-1",
+        Some("corrected by the laboratory"),
+        &result(interpretation, ResultStatus::Corrected),
+        rules,
+    )
+    .await?;
+    tx.commit().await.unwrap();
+    Ok(())
+}
+
+async fn sign(db: &PgPool, p: &str, id: &str, version: i32) -> Result<bool, StoreError> {
+    let mut tx = db.begin().await.unwrap();
+    let (_, new) = results_store::sign_off(&mut *tx, p, id, version, "dr-1").await?;
+    tx.commit().await.unwrap();
+    Ok(new)
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn a_correction_to_critical_after_sign_off_opens_one_obligation_for_the_new_version() {
+    let db = db().await;
+    let team = format!("team-{}", stamp());
+    let rules = review_rule(&team, "abnormal");
+    let p = patient(&db).await;
+    let filed = results_store::create_with_rules(
+        &db,
+        &p,
+        "lab-1",
+        &result(Some(Interpretation::Abnormal), ResultStatus::Final),
+        &rules,
+    )
+    .await
+    .unwrap();
+    assert!(sign(&db, &p, &filed.id, 1).await.unwrap());
+    assert!(
+        open_tasks(&db, &team).await.is_empty(),
+        "signing met the first obligation"
+    );
+    let critical = Some(Interpretation::Critical);
+    correct(&db, &p, &filed.id, 1, critical, &rules)
+        .await
+        .unwrap();
+    let open = open_tasks(&db, &team).await;
+    assert_eq!(
+        open.len(),
+        1,
+        "the clinician covering the next shift has it"
+    );
+    assert_eq!(open[0].source.version, Some(2));
+
+    // A replay of the correction makes no second, and the old signature cannot be used again.
+    assert!(matches!(
+        correct(&db, &p, &filed.id, 1, critical, &rules).await,
+        Err(StoreError::Conflict { current: 2 })
+    ));
+    assert!(matches!(
+        sign(&db, &p, &filed.id, 1).await,
+        Err(StoreError::Conflict { current: 2 })
+    ));
+    assert_eq!(open_tasks(&db, &team).await, open);
+    // The earlier signature stays visible, on the version it named.
+    let view = results_store::list(&db, &p).await.unwrap().remove(0);
+    assert_eq!(view.last_sign_off.unwrap().version, 1);
+    assert_eq!(view.signed_version.unwrap().version, 1);
+
+    // Still critical and corrected again while the obligation is open: one, not two.
+    correct(&db, &p, &filed.id, 2, critical, &rules)
+        .await
+        .unwrap();
+    assert_eq!(open_tasks(&db, &team).await.len(), 1);
+    // Signing the version now current meets it.
+    assert!(sign(&db, &p, &filed.id, 3).await.unwrap());
+    assert!(open_tasks(&db, &team).await.is_empty());
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn the_critical_flag_and_a_change_after_sign_off_are_facts_a_rule_can_name() {
+    let db = db().await;
+    let p = patient(&db).await;
+    // Abnormal, then critical while unsigned: a rule on `critical` fires though `abnormal` was already true.
+    let team = format!("critical-{}", stamp());
+    let rules = review_rule(&team, "critical");
+    let filed = results_store::create_with_rules(
+        &db,
+        &p,
+        "lab-1",
+        &result(Some(Interpretation::Abnormal), ResultStatus::Final),
+        &rules,
+    )
+    .await
+    .unwrap();
+    assert!(open_tasks(&db, &team).await.is_empty());
+    let critical = Some(Interpretation::Critical);
+    correct(&db, &p, &filed.id, 1, critical, &rules)
+        .await
+        .unwrap();
+    assert_eq!(open_tasks(&db, &team).await.len(), 1);
+
+    // Signed as abnormal and corrected to normal, or to no flag: the treatment it started may be wrong.
+    for corrected in [Some(Interpretation::Normal), None] {
+        let team = format!("after-{}", stamp());
+        let rules = review_rule(&team, "after_sign_off");
+        let filed = results_store::create_with_rules(
+            &db,
+            &p,
+            "lab-1",
+            &result(Some(Interpretation::Abnormal), ResultStatus::Final),
+            &rules,
+        )
+        .await
+        .unwrap();
+        assert!(open_tasks(&db, &team).await.is_empty());
+        sign(&db, &p, &filed.id, 1).await.unwrap();
+        correct(&db, &p, &filed.id, 1, corrected, &rules)
+            .await
+            .unwrap();
+        assert_eq!(open_tasks(&db, &team).await.len(), 1, "{corrected:?}");
+    }
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn a_signature_racing_a_correction_never_cancels_the_new_versions_obligation() {
+    let db = db().await;
+    for _ in 0..12 {
+        let team = format!("race-{}", stamp());
+        let rules = review_rule(&team, "abnormal");
+        let p = patient(&db).await;
+        let filed = results_store::create_with_rules(
+            &db,
+            &p,
+            "lab-1",
+            &result(Some(Interpretation::Abnormal), ResultStatus::Final),
+            &rules,
+        )
+        .await
+        .unwrap();
+        let critical = Some(Interpretation::Critical);
+        let (_, corrected) = tokio::join!(
+            sign(&db, &p, &filed.id, 1),
+            correct(&db, &p, &filed.id, 1, critical, &rules)
+        );
+        corrected.unwrap();
+        assert_eq!(
+            open_tasks(&db, &team).await.len(),
+            1,
+            "version 2 is unsigned"
+        );
+    }
 }

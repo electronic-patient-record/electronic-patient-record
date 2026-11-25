@@ -35,6 +35,10 @@ pub struct Source {
     pub kind: String,
     /// Its id.
     pub id: String,
+    /// The version of the record that raised the event, where the record has versions a person signs (a result): what a
+    /// signature may satisfy. Absent on a task made before this was kept.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<i32>,
 }
 
 /// What a version stores.
@@ -453,8 +457,35 @@ pub async fn raise(
     Ok(Raised { made, cancelled })
 }
 
+/// The rules with an open task from `source` (its version aside), so that a source that raises its event again makes no
+/// second task for an obligation that is still open.
+///
+/// # Errors
+///
+/// [`StoreError::Db`], [`StoreError::NotFound`] (a patient id that is not a UUID).
+pub async fn open_rules(
+    conn: &mut PgConnection,
+    patient_id: &str,
+    source: &Source,
+) -> Result<BTreeSet<String>, StoreError> {
+    let patient = ids::uuid(patient_id).ok_or(StoreError::NotFound)?;
+    let rows: Vec<String> = sqlx::query_scalar(
+        "SELECT DISTINCT rule_id FROM task_current
+         WHERE patient_id = $1::uuid AND status = 'open'
+           AND body->'source'->>'kind' = $2 AND body->'source'->>'id' = $3",
+    )
+    .bind(patient)
+    .bind(&source.kind)
+    .bind(&source.id)
+    .fetch_all(conn)
+    .await
+    .map_err(db_err)?;
+    Ok(rows.into_iter().collect())
+}
+
 /// Cancel the open tasks from `source` whose rule is cancelled by `event`, in the caller's transaction, each with an
-/// audit row naming the event. Returns what was cancelled.
+/// audit row naming the event. A source with a version cancels no task raised by a later version of it: a signature is
+/// of one version. Returns what was cancelled.
 ///
 /// # Errors
 ///
@@ -471,12 +502,15 @@ pub async fn cancel_for_event(
          WHERE patient_id = $1::uuid AND status = 'open'
            AND body->'source'->>'kind' = $2 AND body->'source'->>'id' = $3
            AND body->'cancel_on' ? $4
+           AND ($5::int IS NULL OR body->'source'->>'version' IS NULL
+                OR (body->'source'->>'version')::int <= $5)
          ORDER BY task_id"
     )))
     .bind(patient)
     .bind(&source.kind)
     .bind(&source.id)
     .bind(event.word())
+    .bind(source.version)
     .fetch_all(&mut *conn)
     .await
     .map_err(db_err)?;

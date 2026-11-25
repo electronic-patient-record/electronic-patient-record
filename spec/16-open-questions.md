@@ -170,5 +170,6 @@
 | OQ-EH3 | Does a confirmed suspicion (RS-3) propose a problem for a clinician to accept? | clinical lead |
 | OQ-EH4 | May a fact from a relative's own record be used in a patient's relative history, with what consent? See [relative history](relative-history/index.md). | legal, clinical geneticist |
 | OQ-EH5 | **Answered 2026-11-24 by the maintainer:** relative history is kept, with the genetic, gestational and shared-environment links asked apart, and the guard against the word "family" continues. See [relative history](relative-history/index.md). | maintainer |
+| OQ-AG1 | Who is accountable for a critical result, who covers them, how long may it wait unacknowledged, and how does it reach a person out of hours and after discharge? (AG-1, OR-4, IW-5) | laboratory, clinical lead, Clinical Safety Officer |
 
 No answers recorded yet, except where a row says decided or proposed.

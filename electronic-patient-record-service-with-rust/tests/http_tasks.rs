@@ -128,7 +128,7 @@ late_reminder = "skip"
             Event::ResultFiled,
             &BTreeMap::new(),
             &pid,
-            &Source { kind: "result".into(), id: format!("r-{}", stamp()) },
+            &Source { kind: "result".into(), id: format!("r-{}", stamp()), version: None },
             jiff::civil::date(2026, 11, 18),
             &BTreeSet::new(),
         )

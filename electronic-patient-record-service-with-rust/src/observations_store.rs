@@ -462,6 +462,7 @@ fn source(observation_id: &str) -> Source {
     Source {
         kind: "observation".into(),
         id: observation_id.to_string(),
+        version: None,
     }
 }
 

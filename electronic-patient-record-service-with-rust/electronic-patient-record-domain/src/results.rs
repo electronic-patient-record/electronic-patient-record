@@ -175,14 +175,38 @@ pub fn problems(r: &ResultRecord) -> Vec<Refusal> {
 /// The facts a result's task events carry (TL-3): `test`, the test's name as reported, and `abnormal`, `true` when the
 /// reporting service flagged the value abnormal or critical and `false` when it flagged it normal. With no flag there is
 /// no `abnormal` fact, never `false`: a rule on `abnormal` then does not match, and silence is not read as normal.
+/// `critical` keeps the service's own distinction, under the same rule, so that abnormal and critical are never one thing
+/// to a rule. `after_sign_off` is added by the store, which knows the signatures ([`with_sign_off`]).
 #[must_use]
 pub fn task_facts(record: &ResultRecord) -> BTreeMap<String, String> {
     let mut facts = BTreeMap::from([("test".to_string(), record.test.clone())]);
     if let Some(i) = record.interpretation {
         let abnormal = matches!(i, Interpretation::Abnormal | Interpretation::Critical);
         facts.insert("abnormal".to_string(), abnormal.to_string());
+        let critical = i == Interpretation::Critical;
+        facts.insert("critical".to_string(), critical.to_string());
     }
     facts
+}
+
+/// [`task_facts`] with `after_sign_off`: whether an earlier version had been signed off, so that what its signer acted
+/// on may no longer be what the result says.
+#[must_use]
+pub fn with_sign_off(record: &ResultRecord, after_sign_off: bool) -> BTreeMap<String, String> {
+    let mut facts = task_facts(record);
+    facts.insert("after_sign_off".to_string(), after_sign_off.to_string());
+    facts
+}
+
+/// Whether a later version that stands is filed again as news (TL-3): it is abnormal or critical, or an earlier version
+/// was signed off, whatever it says now. A rule then decides, and an open task for the same result is not made twice.
+#[must_use]
+pub fn raises_again(now: &ResultRecord, after_sign_off: bool) -> bool {
+    let abnormal = matches!(
+        now.interpretation,
+        Some(Interpretation::Abnormal | Interpretation::Critical)
+    );
+    now.status != Status::EnteredInError && (abnormal || after_sign_off)
 }
 
 /// Whether a first version may have this status.
@@ -338,17 +362,47 @@ mod tests {
         let f = task_facts(&r);
         assert_eq!(f.get("test").map(String::as_str), Some("Serum potassium"));
         assert!(!f.contains_key("abnormal"), "no flag is no fact, not false");
-        for (i, want) in [
-            (Interpretation::Normal, "false"),
-            (Interpretation::Abnormal, "true"),
-            (Interpretation::Critical, "true"),
+        assert!(!f.contains_key("critical"), "nor is it not critical");
+        for (i, want, critical) in [
+            (Interpretation::Normal, "false", "false"),
+            (Interpretation::Abnormal, "true", "false"),
+            (Interpretation::Critical, "true", "true"),
         ] {
             r.interpretation = Some(i);
-            assert_eq!(
-                task_facts(&r).get("abnormal").map(String::as_str),
-                Some(want)
-            );
+            let f = task_facts(&r);
+            assert_eq!(f.get("abnormal").map(String::as_str), Some(want));
+            assert_eq!(f.get("critical").map(String::as_str), Some(critical));
         }
+        for after in [true, false] {
+            let f = with_sign_off(&r, after);
+            assert_eq!(
+                f.get("after_sign_off").map(String::as_str),
+                Some(if after { "true" } else { "false" })
+            );
+            for fact in f.keys() {
+                assert!(
+                    crate::task_rules::Event::ResultFiled
+                        .facts()
+                        .contains(&fact.as_str())
+                );
+            }
+        }
+        // What is filed again: anything abnormal, and anything after a signature, unless it is in error.
+        for (i, after, again) in [
+            (Some(Interpretation::Critical), false, true),
+            (Some(Interpretation::Abnormal), false, true),
+            (Some(Interpretation::Normal), false, false),
+            (None, false, false),
+            (Some(Interpretation::Normal), true, true),
+            (None, true, true),
+        ] {
+            r.interpretation = i;
+            r.status = Status::Corrected;
+            assert_eq!(raises_again(&r, after), again, "{i:?} {after}");
+            r.status = Status::EnteredInError;
+            assert!(!raises_again(&r, after), "{i:?} {after} in error");
+        }
+        r.status = Status::Final;
         for fact in task_facts(&r).keys() {
             assert!(
                 crate::task_rules::Event::ResultFiled
