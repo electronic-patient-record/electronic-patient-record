@@ -90,5 +90,6 @@ pub mod suspicions_store;
 pub mod task_reminders;
 pub mod tasks_store;
 pub mod terminology;
+pub use electronic_patient_record_domain::typing;
 pub use electronic_patient_record_domain::watch_list;
 pub mod watch_list_store;

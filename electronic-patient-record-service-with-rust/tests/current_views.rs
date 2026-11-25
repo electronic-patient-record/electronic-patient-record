@@ -20,7 +20,7 @@ async fn db() -> PgPool {
 }
 
 /// (view, versions table, record key, the patient column a page filters on)
-const VIEWS: [(&str, &str, &str, &str); 9] = [
+const VIEWS: [(&str, &str, &str, &str); 10] = [
     (
         "consent_current",
         "consent_versions",
@@ -43,6 +43,12 @@ const VIEWS: [(&str, &str, &str, &str); 9] = [
         "relative_history_current",
         "relative_history_versions",
         "entry_id",
+        "patient_id",
+    ),
+    (
+        "typing_current",
+        "typing_versions",
+        "typing_id",
         "patient_id",
     ),
     (

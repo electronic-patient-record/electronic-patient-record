@@ -2044,3 +2044,13 @@ From an audit of `main` at `576eca7f` the maintainer supplied (`docs/audits/gpt-
 - [ ] **AG-9 (M) — Governance documents catch up.** The risk plan says there is no clinical content and names no Clinical Safety Officer; the readiness page shows 55 hazards and there are 68; 61 name no test in the checker's format. **Not started**; a named officer and an intended use for one site are the maintainer's.
 - [ ] **AG-10 (M) — A downtime and restore exercise, and headroom at the advisory lock.** AS-7, CA-7, PC-3 and the benchmark's 84% of busy sessions waiting on a lock. **Not started**; needs a site.
 - [ ] **AG-11 (L) — One result, end to end, with synthetic patients.** The audit's first clinical simulation: filing, correction, handover, escalation and telling the patient. **Needs first:** AG-1's unbuilt parts and clinicians. **Not started.**
+
+## Customer request 2026-11-24 — information for matching donors (DM)
+
+[Spec](spec/donor-matching/index.md). The record keeps what laboratories report and never matches.
+
+- [ ] **DM-1 (M, clinical) — Compatibility typing reports.** **Landed 2026-11-25, service only, unreviewed** (H-069): ABO, RhD, HLA, red cell and HLA antibodies and CMV, each with its laboratory, sample and collection time; agreement of separately collected samples, never a group; no donor, recipient, crossmatch or match, held by a test; a clinician keeps, a nurse reads, nobody else. **Acceptance:** a transfusion and a histocompatibility scientist have read the rules; OQ-DM1 answered. **Left open.**
+- [ ] **DM-2 (L, clinical) — Reports from the laboratory, not typed.** **Needs first:** OQ-DM3, OR-3. **Acceptance:** a report arrives with its sample and cannot be changed by hand; a typed one is told apart from it; codes checked against a pinned edition. **Not started.**
+- [ ] **DM-3 (M, clinical) — A screen, and special transfusion requirements.** **Needs first:** DM-1's reviews. **Acceptance:** `disagree` cannot be missed; nothing on it can be read as the group to issue; reactions and special requirements have a place. **Not started.**
+- [ ] **DM-4 (S, explore) — Donation itself.** A patient's decision to donate belongs to a national register (`spec/mobile-apps` §11, BV-14). **Acceptance:** a note on what, if anything, the record shows, and how it cannot go stale. **Not started.**
+- [ ] **DM-5 (S, explore) — Liver, heart, lung, cornea and tissue.** Not researched. **Acceptance:** what each needs, sourced. **Not started.**

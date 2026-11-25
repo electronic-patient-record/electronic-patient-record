@@ -314,6 +314,36 @@ pub const TABLE: &[(&str, &str, Resource, Action)] = &[
         Action::Read,
     ),
     (
+        "GET",
+        "/api/patients/{id}/compatibility-typing",
+        Resource::CompatibilityTyping,
+        Action::Read,
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/compatibility-typing",
+        Resource::CompatibilityTyping,
+        Action::Create,
+    ),
+    (
+        "GET",
+        "/api/patients/{id}/compatibility-typing/as-at",
+        Resource::CompatibilityTyping,
+        Action::Read,
+    ),
+    (
+        "PUT",
+        "/api/patients/{id}/compatibility-typing/{typing_id}",
+        Resource::CompatibilityTyping,
+        Action::Update,
+    ),
+    (
+        "GET",
+        "/api/patients/{id}/compatibility-typing/{typing_id}/versions",
+        Resource::CompatibilityTyping,
+        Action::Read,
+    ),
+    (
         "POST",
         "/api/referral-messages",
         Resource::ReferralQueue,

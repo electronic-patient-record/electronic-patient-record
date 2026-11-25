@@ -2332,3 +2332,12 @@ Clinical Safety Officer reviewed any rule.
 **Decided the same day (the maintainer).** Relative history asks the genetic, gestational and shared-environment links apart,
 and the guard against the word "family" continues with no exception: the feature was renamed and its table replaced
 while empty (migration 43 refuses to run if it is not).
+
+## 41. Customer request 2026-11-24: information for matching donors, and an audit
+
+**Donors.** Asked for on 2026-11-24; spec [`spec/donor-matching`](spec/donor-matching/index.md), tasks DM-1 to DM-5. The
+record keeps reports of typing and says whether separately collected samples agree; matching stays with laboratories,
+registries and transplant teams, because a wrong blood group kills and a record that said "compatible" would be believed.
+
+**Audit.** The maintainer supplied an audit of `576eca7f` on 2026-11-25. Its first increment (findings 1 to 6) was built
+the same day: tasks AG-1 to AG-6. The rest, AG-7 to AG-11, needs clinicians, a site or a decision.

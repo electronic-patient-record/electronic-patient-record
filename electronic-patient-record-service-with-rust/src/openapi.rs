@@ -485,6 +485,49 @@ fn relative_history_schemas() -> Value {
     out
 }
 
+/// Compatibility typing (DM-1).
+fn typing_schemas() -> Value {
+    use crate::typing;
+    let mut out = entry_schemas("TypingRecord", "StoredTyping", "Typing");
+    let antibodies = |kind: &str| {
+        json!({"type": "object", "additionalProperties": false, "required": ["kind", "result"], "properties": {
+            "kind": {"const": kind}, "result": {"enum": typing::Detection::ALL},
+            "specificities": {"type": "array", "maxItems": 100_u32, "items": {"type": "string", "minLength": 1_u32, "maxLength": 80_u32},
+                "description": "As reported. Only when detected."}}})
+    };
+    crate::json::set(
+        &mut out,
+        "TypingRecord",
+        json!({
+            "type": "object", "additionalProperties": false,
+            "required": ["finding", "laboratory", "sample", "collected_at", "status"],
+            "description": "What a laboratory reported. It never says what a person's group is, and nothing matches two people: compatibility is decided by a transfusion or histocompatibility laboratory on its own samples.",
+            "properties": {
+                "finding": {"oneOf": [
+                    {"type": "object", "additionalProperties": false, "required": ["kind", "group"], "properties": {
+                        "kind": {"const": "abo"}, "group": {"enum": typing::Abo::ALL}}},
+                    {"type": "object", "additionalProperties": false, "required": ["kind", "rhd"], "properties": {
+                        "kind": {"const": "rhd"}, "rhd": {"enum": typing::RhD::ALL}}},
+                    {"type": "object", "additionalProperties": false, "required": ["kind", "locus", "alleles", "release"], "properties": {
+                        "kind": {"const": "hla"}, "locus": {"enum": typing::Locus::ALL},
+                        "alleles": {"type": "array", "minItems": 1_u32, "maxItems": 2_u32, "items": {"type": "string"},
+                            "description": "The fields without the gene (02:01). One is one seen, never two the same."},
+                        "release": {"type": "string", "minLength": 1_u32, "maxLength": 80_u32, "description": "Of the HLA database the names are from."}}},
+                    antibodies("red-cell-antibody"),
+                    antibodies("hla-antibody"),
+                    {"type": "object", "additionalProperties": false, "required": ["kind", "result"], "properties": {
+                        "kind": {"const": "cmv-igg"}, "result": {"enum": typing::Detection::ALL}}}
+                ]},
+                "laboratory": {"type": "string", "minLength": 1_u32, "maxLength": 80_u32},
+                "sample": {"type": "string", "minLength": 1_u32, "maxLength": 80_u32, "description": "The laboratory's number."},
+                "collected_at": {"type": "string", "description": "RFC 3339; when the sample was taken. Two samples are separate only when these differ."},
+                "status": {"enum": typing::Status::ALL}
+            }
+        }),
+    );
+    out
+}
+
 /// The schemas for referrals: the record, a stored version (with its `next` events), the send and step bodies, and the
 /// list and history. The state and event words are checked against `State::ALL` and `Event::ALL` by a unit test.
 fn referral_schemas() -> Value {
@@ -1935,6 +1978,7 @@ fn patient_schemas() -> Value {
         allergy_schemas(),
         problem_schemas(),
         relative_history_schemas(),
+        typing_schemas(),
         referral_schemas(),
         observation_schemas(),
         result_schemas(),
@@ -2045,6 +2089,22 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
         "UpdateRelativeHistoryRecord",
         "200",
         "StoredRelativeHistory",
+        "VersionConflict",
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/compatibility-typing",
+        "CreateTypingRecord",
+        "201",
+        "StoredTyping",
+        "",
+    ),
+    (
+        "PUT",
+        "/api/patients/{id}/compatibility-typing/{typing_id}",
+        "UpdateTypingRecord",
+        "200",
+        "StoredTyping",
         "VersionConflict",
     ),
     (
@@ -2408,6 +2468,24 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
         "GET",
         "/api/patients/{id}/relative-history/{entry_id}/versions",
         "RelativeHistoryVersions",
+        &[],
+    ),
+    (
+        "GET",
+        "/api/patients/{id}/compatibility-typing",
+        "TypingList",
+        &[],
+    ),
+    (
+        "GET",
+        "/api/patients/{id}/compatibility-typing/as-at",
+        "TypingAsAt",
+        &["time"],
+    ),
+    (
+        "GET",
+        "/api/patients/{id}/compatibility-typing/{typing_id}/versions",
+        "TypingVersions",
         &[],
     ),
     ("GET", "/api/patients/{id}/referrals", "ReferralList", &[]),
@@ -3553,6 +3631,24 @@ mod tests {
             "StoredRelativeHistory",
             "RelativeHistory",
         );
+        check(
+            crate::typing::TypingRecord {
+                finding: crate::typing::Finding::Abo {
+                    group: crate::typing::Abo::O,
+                },
+                laboratory: "l".into(),
+                sample: "s".into(),
+                collected_at: "t".into(),
+                status: crate::typing::Status::Reported,
+            },
+            "TypingRecord",
+            "StoredTyping",
+            "Typing",
+        );
+        assert_eq!(
+            patient_schemas()["TypingRecord"]["properties"]["laboratory"]["maxLength"],
+            crate::typing::TEXT_LIMIT
+        );
         // The words are the ones serde writes, and the limits are the rules' own.
         let schema = patient_schemas();
         let words = |name: &str, field: &str| schema[name]["properties"][field]["enum"].clone();
@@ -3603,6 +3699,7 @@ mod tests {
             "/api/patients/{id}/allergies/as-at",
             "/api/patients/{id}/problems/as-at",
             "/api/patients/{id}/relative-history/as-at",
+            "/api/patients/{id}/compatibility-typing/as-at",
         ] {
             let get = &doc["paths"][path]["get"];
             let time = get["parameters"]

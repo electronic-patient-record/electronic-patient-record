@@ -146,6 +146,11 @@ async fn a_successful_read_of_a_patient_record_leaves_an_audit_row() {
                 serde_json::json!({ "genetic": "full-sibling", "environment": "childhood", "condition": "Asthma",
                     "presence": "present", "source": "patient", "status": "recorded" }),
             ),
+            (
+                "compatibility-typing",
+                serde_json::json!({ "finding": { "kind": "abo", "group": "o" }, "laboratory": "Lab", "sample": "S1",
+                        "collected_at": "2026-11-20T09:00:00Z", "status": "reported" }),
+            ),
         ] {
             let made = server
                 .post(&format!("/api/patients/{id}/{path}"))
@@ -177,6 +182,7 @@ async fn a_successful_read_of_a_patient_record_leaves_an_audit_row() {
                     .replace("{observation_id}", &observation_id)
                     .replace("{problem_id}", &entries[0])
                     .replace("{entry_id}", &entries[1])
+                    .replace("{typing_id}", &entries[2])
                     .replace("{referral_id}", &referral_id)
             } else {
                 format!("{template}?patient={id}")

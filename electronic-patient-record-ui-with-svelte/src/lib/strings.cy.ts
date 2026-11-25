@@ -1198,6 +1198,7 @@ export const CY: Strings = {
     problems: "Problemau a diagnosisau",
     results: "Canlyniadau a'u cymeradwyo",
     relatives: "Cyflyrau mewn perthnasau",
+    typing: "Adroddiadau grŵp gwaed a theipio meinwe",
   },
   summaryNotKept: "Heb eu cadw yn y system hon",
   summaryNotKeptNote:

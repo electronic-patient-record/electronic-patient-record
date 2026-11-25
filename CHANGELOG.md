@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - Information for matching donors: typing reports, never a match (DM-1)
+
+- **Clinical risk:** new clinical content. H-069 opened with the author's scores; nobody has reviewed it.
+- **Added:** `spec/donor-matching` (what blood, marrow and kidney matching need, from search summaries), tasks DM-1 to DM-5 (prefix `DM`), OQ-DM1 to OQ-DM5, plan.md §41; five routes under `/api/patients/{id}/compatibility-typing`, migration 44, the resource `CompatibilityTyping`, and `typing.rs` in the domain crate. The summary screen names it among what it does not show.
+- **Decided by me, not confirmed:** to keep reports and build no matching, and to show typing to clinicians and nurses only.
+- **Verified:** clippy, the normal pass and the database pass (234) on a fresh Postgres 18; vitest, svelte-check and lint for the UI. **Not done / not verified:** no guideline read in full; no laboratory feed, screen or FHIR; no code system; liver, heart, lung and cornea not researched; no transfusion or histocompatibility scientist asked.
+
 ## 2026-11-25 - A merged chart is audited as the chart that was opened (audit finding 6, AG-6)
 
 - **Clinical risk:** H-013 (the patient's access log misleads). The patient named in the audit row was the one of the first row returned, so a list whose newest row came from a merged-in record was missing from the survivor's log.

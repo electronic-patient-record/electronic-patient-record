@@ -50,6 +50,17 @@ const OUTPUT: &[(&str, &str, Label)] = &[
         "/api/patients/{id}/relative-history/{entry_id}/versions",
         NotApplied,
     ),
+    ("GET", "/api/patients/{id}/compatibility-typing", NotApplied),
+    (
+        "GET",
+        "/api/patients/{id}/compatibility-typing/as-at",
+        NotApplied,
+    ),
+    (
+        "GET",
+        "/api/patients/{id}/compatibility-typing/{typing_id}/versions",
+        NotApplied,
+    ),
     ("GET", "/api/patients/{id}/observations", NotApplied),
     ("GET", "/api/patients/{id}/results", NotApplied),
     ("GET", "/api/patients/{id}/assessments", NotApplied),

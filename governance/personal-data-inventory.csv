@@ -544,3 +544,19 @@ relative_history_current,author,staff-identifier,Who wrote the version,record
 relative_history_current,reason,free-text,Why the version was written as typed,record
 relative_history_current,status,none,State of the record,record
 relative_history_current,body,health,A finding about a relative as recorded; a relative is never named,record
+typing_versions,typing_id,none,Random record id,record
+typing_versions,version,none,Version counter,record
+typing_versions,patient_id,identifier,Links a record to the patient,record
+typing_versions,recorded_at,none,When the version was written,record
+typing_versions,author,staff-identifier,Who wrote the version,record
+typing_versions,reason,free-text,Why the version was written as typed,record
+typing_versions,status,none,State of the record,record
+typing_versions,body,health,A laboratory report of a blood group or HLA type or antibody as recorded; genetic data,record
+typing_current,typing_id,none,Random record id,record
+typing_current,version,none,Version counter,record
+typing_current,patient_id,identifier,Links a record to the patient,record
+typing_current,recorded_at,none,When the version was written,record
+typing_current,author,staff-identifier,Who wrote the version,record
+typing_current,reason,free-text,Why the version was written as typed,record
+typing_current,status,none,State of the record,record
+typing_current,body,health,A laboratory report of a blood group or HLA type or antibody as recorded; genetic data,record

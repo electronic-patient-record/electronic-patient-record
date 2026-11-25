@@ -217,6 +217,12 @@ async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_r
                 json!({ "genetic": "full-sibling", "environment": "childhood", "condition": "Asthma", "presence": "present",
                         "source": "patient", "status": "recorded" }),
             ),
+            (
+                "compatibility-typing",
+                "typing_id",
+                json!({ "finding": { "kind": "abo", "group": "o" }, "laboratory": "Lab", "sample": "S1",
+                        "collected_at": "2026-11-20T09:00:00Z", "status": "reported" }),
+            ),
         ] {
             refused_then_accepted(db, &format!("POST /api/patients/{{id}}/{path}"), || async {
                 let r = server

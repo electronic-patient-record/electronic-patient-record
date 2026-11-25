@@ -1,4 +1,4 @@
-//! The append-only store behind the problem list (EH-1) and relative history (EH-3), and the read **as at a time** (EH-2).
+//! The append-only store behind the problem list (EH-1), relative history (EH-3) and compatibility typing (DM-1), and the read **as at a time** (EH-2).
 //! Both are the same shape (an entry with versions, each a whole record), so they share one store; what differs is an
 //! [`Entry`]: its table, its rules, and what its list amounts to.
 //!
@@ -25,6 +25,7 @@ use crate::policy::Resource;
 use crate::pool::Db;
 use crate::problem::{self, ProblemRecord};
 use crate::relative_history::{self, RelativeHistoryRecord};
+use crate::typing::{self, TypingRecord};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use sqlx::postgres::PgRow;
 use sqlx::{AssertSqlSafe, PgConnection, Row};
@@ -156,6 +157,38 @@ impl Entry for RelativeHistoryRecord {
 
     fn summary(all: &[Self]) -> serde_json::Value {
         serde_json::json!(relative_history::summarise(all))
+    }
+}
+
+impl Entry for TypingRecord {
+    const STORE: &'static str = "compatibility typing";
+    const TABLE: &'static str = "typing_versions";
+    const VIEW: &'static str = "typing_current";
+    const ID: &'static str = "typing_id";
+    const RESOURCE: Resource = Resource::CompatibilityTyping;
+
+    fn status(&self) -> &'static str {
+        self.status.as_str()
+    }
+
+    fn set_status(&mut self, word: &str) -> bool {
+        let parsed = typing::Status::parse(word);
+        if let Some(s) = parsed {
+            self.status = s;
+        }
+        parsed.is_some()
+    }
+
+    fn in_error(&self) -> bool {
+        self.status == typing::Status::EnteredInError
+    }
+
+    fn faults(&self) -> Vec<String> {
+        typing::validate(self, jiff::Timestamp::now())
+    }
+
+    fn summary(all: &[Self]) -> serde_json::Value {
+        serde_json::json!(typing::summarise(all))
     }
 }
 

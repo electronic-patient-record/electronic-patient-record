@@ -4,7 +4,7 @@ Every table and view the service's migrations create. **Generated** by [`scripts
 
 Not listed: tables made by a statement built at run time (the monthly `audit_events` partitions), and what a column means (the migrations carry few comments, so only the name and SQL type are shown). The clinical tables are append-only: a change is a new row, and triggers refuse `UPDATE`, `DELETE` and `TRUNCATE`.
 
-47 tables, 23 views.
+48 tables, 24 views.
 
 ## Tables
 
@@ -56,6 +56,7 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `task_reminder_decisions` | `20261117000040_tasks` | `task_id` UUID, `remind_on` DATE, `decision` TEXT, `reason` TEXT, `recorded_at` TIMESTAMPTZ |
 | `task_reminder_runs` | `20261117000040_tasks` | `ran_on` DATE, `recorded_at` TIMESTAMPTZ |
 | `task_versions` | `20261117000040_tasks` | `task_id` UUID, `version` INTEGER, `patient_id` UUID, `rule_id` TEXT, `rule_version` INTEGER, `team` TEXT, `recorded_at` TIMESTAMPTZ, `author` TEXT, `status` TEXT, `due_on` DATE, `body` JSONB |
+| `typing_versions` | `20261125000044_compatibility_typing` | `typing_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `status` TEXT, `body` JSONB |
 | `watch_entry_versions` | `20261109000034_watch_lists` | `entry_id` UUID, `version` INTEGER, `owner` TEXT, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `status` TEXT, `body` JSONB |
 
 ## Views
@@ -84,4 +85,5 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `relative_history_current` | `20261124000043_relative_history` |
 | `result_current` | `20261109000029_results` |
 | `task_current` | `20261117000040_tasks` |
+| `typing_current` | `20261125000044_compatibility_typing` |
 | `watch_entry_current` | `20261109000034_watch_lists` |

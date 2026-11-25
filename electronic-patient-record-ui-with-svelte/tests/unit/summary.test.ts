@@ -73,6 +73,7 @@ describe("what the summary says it does not show (AG-5)", () => {
     problems: "problems",
     results: "results",
     relatives: "relative-history",
+    typing: "compatibility-typing",
   } as const;
   const NOT_KEPT = {
     medications: ["medications", "prescriptions", "medication-requests"],

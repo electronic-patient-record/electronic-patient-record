@@ -137,6 +137,8 @@ mod http_roles;
 mod http_suspicions;
 #[path = "http_tasks.rs"]
 mod http_tasks;
+#[path = "http_typing.rs"]
+mod http_typing;
 #[path = "http_watch_list.rs"]
 mod http_watch_list;
 #[path = "keycloak_guard.rs"]

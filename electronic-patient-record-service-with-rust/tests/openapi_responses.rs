@@ -208,6 +208,13 @@ async fn real_responses_validate_against_the_served_schemas() {
                     "sex": "female", "member": 2, "condition": "Asthma",
                     "presence": "present", "onset_age": 12, "source": "patient", "status": "recorded" }),
             ),
+            (
+                "compatibility-typing",
+                "typing_id",
+                json!({ "finding": { "kind": "hla", "locus": "DRB1", "alleles": ["15:01", "04:01"], "release": "3.60.0" },
+                    "laboratory": "Histocompatibility laboratory", "sample": "S1",
+                    "collected_at": "2026-11-20T09:00:00Z", "status": "reported" }),
+            ),
         ] {
             let route = format!("/api/patients/{{id}}/{path}");
             let url = format!("/api/patients/{id}/{path}");

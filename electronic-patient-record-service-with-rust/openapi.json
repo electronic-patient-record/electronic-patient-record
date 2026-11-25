@@ -1652,6 +1652,25 @@
         ],
         "type": "object"
       },
+      "CreateTypingRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "record": {
+            "$ref": "#/components/schemas/TypingRecord"
+          }
+        },
+        "required": [
+          "record"
+        ],
+        "type": "object"
+      },
       "DeathAnswer": {
         "description": "`not-known-to-have-died` never means the person is known to be living.",
         "properties": {
@@ -5320,6 +5339,90 @@
         ],
         "type": "object"
       },
+      "StoredTyping": {
+        "properties": {
+          "author": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "reason": {
+            "description": "Why this version was written; always there from version 2.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "record": {
+            "$ref": "#/components/schemas/TypingRecord"
+          },
+          "recorded_at": {
+            "description": "UTC.",
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "patient_id",
+          "version",
+          "author",
+          "recorded_at",
+          "reason",
+          "record"
+        ],
+        "type": "object"
+      },
+      "StoredTypingAsAt": {
+        "properties": {
+          "author": {
+            "type": "string"
+          },
+          "changed_since": {
+            "description": "A later version exists: this is no longer what the record says.",
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "record": {
+            "$ref": "#/components/schemas/TypingRecord"
+          },
+          "recorded_at": {
+            "description": "UTC.",
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "patient_id",
+          "version",
+          "author",
+          "recorded_at",
+          "reason",
+          "record",
+          "changed_since"
+        ],
+        "type": "object"
+      },
       "Suspicion": {
         "additionalProperties": false,
         "description": "What the referrer suspects, under a pathway version from the pathway catalogue (`suspicion_pathways.toml`). The whole suspicion is sent every time.",
@@ -6332,6 +6435,297 @@
         ],
         "type": "object"
       },
+      "TypingAsAt": {
+        "description": "The list as it stood at `as_at`. It is not the record as it stands now.",
+        "properties": {
+          "as_at": {
+            "description": "UTC.",
+            "type": "string"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/StoredTypingAsAt"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
+          "read_at": {
+            "description": "UTC.",
+            "type": "string"
+          },
+          "summary": {
+            "additionalProperties": true,
+            "description": "`not-recorded` is unknown, never none.",
+            "properties": {
+              "state": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "state"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "as_at",
+          "read_at",
+          "entries",
+          "summary"
+        ],
+        "type": "object"
+      },
+      "TypingList": {
+        "description": "Every entry in every status, oldest first.",
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/StoredTyping"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
+          "summary": {
+            "additionalProperties": true,
+            "description": "`not-recorded` is unknown, never none.",
+            "properties": {
+              "state": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "state"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "entries",
+          "summary"
+        ],
+        "type": "object"
+      },
+      "TypingRecord": {
+        "additionalProperties": false,
+        "description": "What a laboratory reported. It never says what a person's group is, and nothing matches two people: compatibility is decided by a transfusion or histocompatibility laboratory on its own samples.",
+        "properties": {
+          "collected_at": {
+            "description": "RFC 3339; when the sample was taken. Two samples are separate only when these differ.",
+            "type": "string"
+          },
+          "finding": {
+            "oneOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "group": {
+                    "enum": [
+                      "o",
+                      "a",
+                      "b",
+                      "ab"
+                    ]
+                  },
+                  "kind": {
+                    "const": "abo"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "group"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "const": "rhd"
+                  },
+                  "rhd": {
+                    "enum": [
+                      "positive",
+                      "negative",
+                      "variant"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind",
+                  "rhd"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "alleles": {
+                    "description": "The fields without the gene (02:01). One is one seen, never two the same.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "maxItems": 2,
+                    "minItems": 1,
+                    "type": "array"
+                  },
+                  "kind": {
+                    "const": "hla"
+                  },
+                  "locus": {
+                    "enum": [
+                      "A",
+                      "B",
+                      "C",
+                      "DRB1",
+                      "DRB3",
+                      "DRB4",
+                      "DRB5",
+                      "DQA1",
+                      "DQB1",
+                      "DPA1",
+                      "DPB1"
+                    ]
+                  },
+                  "release": {
+                    "description": "Of the HLA database the names are from.",
+                    "maxLength": 80,
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "locus",
+                  "alleles",
+                  "release"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "const": "red-cell-antibody"
+                  },
+                  "result": {
+                    "enum": [
+                      "detected",
+                      "not-detected",
+                      "indeterminate"
+                    ]
+                  },
+                  "specificities": {
+                    "description": "As reported. Only when detected.",
+                    "items": {
+                      "maxLength": 80,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "result"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "const": "hla-antibody"
+                  },
+                  "result": {
+                    "enum": [
+                      "detected",
+                      "not-detected",
+                      "indeterminate"
+                    ]
+                  },
+                  "specificities": {
+                    "description": "As reported. Only when detected.",
+                    "items": {
+                      "maxLength": 80,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "result"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "const": "cmv-igg"
+                  },
+                  "result": {
+                    "enum": [
+                      "detected",
+                      "not-detected",
+                      "indeterminate"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind",
+                  "result"
+                ],
+                "type": "object"
+              }
+            ]
+          },
+          "laboratory": {
+            "maxLength": 80,
+            "minLength": 1,
+            "type": "string"
+          },
+          "sample": {
+            "description": "The laboratory's number.",
+            "maxLength": 80,
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "reported",
+              "entered-in-error"
+            ]
+          }
+        },
+        "required": [
+          "finding",
+          "laboratory",
+          "sample",
+          "collected_at",
+          "status"
+        ],
+        "type": "object"
+      },
+      "TypingVersions": {
+        "properties": {
+          "versions": {
+            "description": "Oldest first.",
+            "items": {
+              "$ref": "#/components/schemas/StoredTyping"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          }
+        },
+        "required": [
+          "versions"
+        ],
+        "type": "object"
+      },
       "UpdateAllergy": {
         "properties": {
           "allergy": {
@@ -6580,6 +6974,28 @@
         },
         "required": [
           "result",
+          "expected_version",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "UpdateTypingRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          },
+          "record": {
+            "$ref": "#/components/schemas/TypingRecord"
+          }
+        },
+        "required": [
+          "record",
           "expected_version",
           "reason"
         ],
@@ -10043,6 +10459,405 @@
         ],
         "x-epr-action": "Create",
         "x-epr-resource": "BreakGlass"
+      }
+    },
+    "/api/patients/{id}/compatibility-typing": {
+      "get": {
+        "operationId": "getApiPatientsIdCompatibility-typing",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TypingList"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/patients/{id}/compatibility-typing",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "CompatibilityTyping"
+      },
+      "post": {
+        "operationId": "postApiPatientsIdCompatibility-typing",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "1 to 128 letters, digits or . _ : -. A retry with the same key and the same request returns the first answer (header `Idempotent-Replayed: true`) and writes nothing; the same key for a different request is a 422; a key whose first request is unfinished is a 409. Only a success is kept; keys expire after 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTypingRecord"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredTyping"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/patients/{id}/compatibility-typing",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Create",
+        "x-epr-resource": "CompatibilityTyping"
+      }
+    },
+    "/api/patients/{id}/compatibility-typing/as-at": {
+      "get": {
+        "operationId": "getApiPatientsIdCompatibility-typingAs-at",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "time",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TypingAsAt"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "time is missing, is not an RFC 3339 time with an offset or Z, or is in the future."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/patients/{id}/compatibility-typing/as-at",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "CompatibilityTyping"
+      }
+    },
+    "/api/patients/{id}/compatibility-typing/{typing_id}": {
+      "put": {
+        "operationId": "putApiPatientsIdCompatibility-typingTyping_id",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "typing_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTypingRecord"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredTyping"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionConflict"
+                }
+              }
+            },
+            "description": "A likely duplicate or a stale expected_version."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "PUT /api/patients/{id}/compatibility-typing/{typing_id}",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Update",
+        "x-epr-resource": "CompatibilityTyping"
+      }
+    },
+    "/api/patients/{id}/compatibility-typing/{typing_id}/versions": {
+      "get": {
+        "operationId": "getApiPatientsIdCompatibility-typingTyping_idVersions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "typing_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TypingVersions"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/patients/{id}/compatibility-typing/{typing_id}/versions",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "CompatibilityTyping"
       }
     },
     "/api/patients/{id}/consents": {

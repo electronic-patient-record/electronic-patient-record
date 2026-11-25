@@ -167,6 +167,9 @@ pub enum Resource {
     /// What is recorded about conditions in the patient's relatives (EH-3, `entries_store.rs`); FHIR `FamilyMemberHistory`. Separate from `Condition`, because an entry is about a
     /// relative: it is never read as the patient's own problem, and fewer roles read it.
     RelativeHistory,
+    /// What laboratories reported that bears on giving or receiving blood, a kidney or marrow (DM-1, `entries_store.rs`).
+    /// Separate from `DiagnosticReport`, because an HLA type can show that two people are not related as they believe.
+    CompatibilityTyping,
     /// FHIR `Observation`.
     Observation,
     /// A laboratory or imaging result and its sign-off (`results_store.rs`, OR-4 first slice, WL-1).
@@ -239,11 +242,12 @@ pub enum Resource {
 
 impl Resource {
     /// Every resource kind, in a fixed order.
-    pub const ALL: [Resource; 29] = [
+    pub const ALL: [Resource; 30] = [
         Resource::PatientIdentity,
         Resource::Encounter,
         Resource::Condition,
         Resource::RelativeHistory,
+        Resource::CompatibilityTyping,
         Resource::Observation,
         Resource::DiagnosticReport,
         Resource::QuestionnaireResponse,
@@ -279,6 +283,7 @@ impl Resource {
             Resource::Encounter => "Encounter",
             Resource::Condition => "Condition",
             Resource::RelativeHistory => "RelativeHistory",
+            Resource::CompatibilityTyping => "CompatibilityTyping",
             Resource::Observation => "Observation",
             Resource::DiagnosticReport => "DiagnosticReport",
             Resource::QuestionnaireResponse => "QuestionnaireResponse",
@@ -676,11 +681,12 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
     use Action::{Create, Export, MarkEnteredInError as Eie, Read, Search, Update};
     use Resource::{
         Adjustment as Adjust, AllergyIntolerance as Allergy, Amendment, ApiToken as Tokens,
-        AuditLog, BreakGlass as Glass, CareRelationship as Rel, Condition, Consent as Cons,
-        DeathAssertion as Death, DeathReports as Deaths, DiagnosticReport as Results, Document,
-        Encounter, FeedQueue as Queue, Hazard, MedicationRequest as Meds, Observation,
-        OverdueReviews as Overdue, OwnWatchList as OwnWatch, PatientIdentity as Identity,
-        PatientLink as Link, QuestionnaireResponse as Assess, Referral, ReferralQueue as RefQueue,
+        AuditLog, BreakGlass as Glass, CareRelationship as Rel, CompatibilityTyping as Typing,
+        Condition, Consent as Cons, DeathAssertion as Death, DeathReports as Deaths,
+        DiagnosticReport as Results, Document, Encounter, FeedQueue as Queue, Hazard,
+        MedicationRequest as Meds, Observation, OverdueReviews as Overdue,
+        OwnWatchList as OwnWatch, PatientIdentity as Identity, PatientLink as Link,
+        QuestionnaireResponse as Assess, Referral, ReferralQueue as RefQueue,
         ReferralWorklist as Worklist, RelativeHistory as Relatives, Tasks, WatchList as Watch,
     };
     match (role, resource) {
@@ -694,6 +700,10 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         // A pharmacist does not need it, and a patient or proxy reads none until it is decided what may be shown of
         // facts about relatives.
         (Role::Clinician, Relatives) => &[Read, Search, Create, Update, Eie],
+        // Compatibility typing (DM-1, unreviewed): a clinician keeps the reports and a nurse reads them. Nobody else: a
+        // type can show who is and is not related, and no patient view exists.
+        (Role::Clinician, Typing) => &[Read, Search, Create, Update, Eie],
+        (Role::Nurse, Typing) => &[Read, Search],
         (Role::Nurse | Role::AlliedHealth, Relatives) => &[Read, Search, Create, Update],
         // Results (OR-4 first slice, WL-1, unreviewed): a clinician files, corrects and signs off (a
         // sign-off is an `Update`); a nurse, pharmacist or allied professional reads. No feed files them
@@ -1515,8 +1525,8 @@ mod tests {
                 }
             }
         }
-        // 17 roles × 29 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
-        assert_eq!(cells, 17 * 29 * 6 * 8 * 5 * 3 * 7 * 2);
+        // 17 roles × 30 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
+        assert_eq!(cells, 17 * 30 * 6 * 8 * 5 * 3 * 7 * 2);
         assert!(allows > 0);
     }
 

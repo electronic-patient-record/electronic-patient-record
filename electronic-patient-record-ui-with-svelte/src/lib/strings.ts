@@ -1141,6 +1141,7 @@ export const STRINGS = {
     problems: "Problems and diagnoses",
     results: "Results and their sign-off",
     relatives: "Conditions in relatives",
+    typing: "Blood group and tissue typing reports",
   },
   summaryNotKept: "Not kept in this system",
   summaryNotKeptNote:

@@ -14,6 +14,7 @@ use crate::pool::Db;
 use crate::pool::Pool;
 use crate::problem::ProblemRecord;
 use crate::relative_history::RelativeHistoryRecord;
+use crate::typing::TypingRecord;
 use axa::extract::{Json, Path, Query};
 use axa::prelude::*;
 use axum::{
@@ -706,6 +707,26 @@ pub fn routes() -> Routes {
         .add(
             "/{id}/relative-history/{entry_id}/versions",
             get(super::entries::versions::<RelativeHistoryRecord>),
+        )
+        .add(
+            "/{id}/compatibility-typing",
+            get(super::entries::list::<TypingRecord>),
+        )
+        .add(
+            "/{id}/compatibility-typing",
+            post(super::entries::create::<TypingRecord>),
+        )
+        .add(
+            "/{id}/compatibility-typing/as-at",
+            get(super::entries::as_at::<TypingRecord>),
+        )
+        .add(
+            "/{id}/compatibility-typing/{typing_id}",
+            put(super::entries::update::<TypingRecord>),
+        )
+        .add(
+            "/{id}/compatibility-typing/{typing_id}/versions",
+            get(super::entries::versions::<TypingRecord>),
         )
         .add("/{id}/referrals", get(super::referrals::list))
         .add("/{id}/referrals", post(super::referrals::create))

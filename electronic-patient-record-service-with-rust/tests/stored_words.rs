@@ -15,7 +15,7 @@ use std::collections::BTreeSet;
 
 use electronic_patient_record::{
     adjustments, allergies, consent, death, problem, referral, relative_history, results,
-    suspicion, watch_list,
+    suspicion, typing, watch_list,
 };
 
 async fn db() -> PgPool {
@@ -118,6 +118,13 @@ async fn stored_words_match_the_database_checks() {
             .iter()
             .map(|s| s.as_str())
             .collect(),
+    )
+    .await;
+    same(
+        &db,
+        "typing_versions",
+        "status",
+        typing::Status::ALL.iter().map(|s| s.as_str()).collect(),
     )
     .await;
     same(
