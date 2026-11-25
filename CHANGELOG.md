@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - Start refuses a database that the build was not made for (H-074)
+
+- **Clinical risk:** H-074 is new and `open`, with the author's proposed score. Found after labels were stored: production does not migrate at start, so an older build could be started on a newer database and would show every labelled entry.
+- **Changed:** `start` stops, with the reason, when the database has a migration the build does not know, or lacks one it has. `EPR_START_ON_NEWER_DATABASE=true` starts on a newer one, with a warning. **A release that adds a migration can no longer be undone by starting the one before it without that setting.**
+- **Verified:** the real binary on a database never migrated, migrated, and with a migration it does not know, with the setting right and wrong. The normal and database passes; every docs gate. **Not done / not verified:** builds before this one do not check, and a running server is not stopped by a migration.
+
 ## 2026-11-25 - Security labels are stored, and masking is wired, for problems, relative history and typing (EH-8, SE-4)
 
 - **Clinical risk:** H-007 (controls, evidence and residual; it said that the hazard is latent, and it is not now), H-072 and H-073 new and `open`, with the author's proposed scores. The Clinical Safety Officer is asked to assess all three.

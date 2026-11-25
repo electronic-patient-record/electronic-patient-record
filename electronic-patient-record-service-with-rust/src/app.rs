@@ -208,6 +208,9 @@ impl App {
         }
         match cli.command {
             Command::Start { .. } => {
+                crate::schema_match::check(&ctx.pool())
+                    .await
+                    .map_err(Error::Message)?;
                 let router = Self::router(&ctx).await?;
                 let served = server::serve(router, &ctx.config.server).await;
                 // Requests have finished; now the MLLP listener finishes the messages it holds (IH-7), and then

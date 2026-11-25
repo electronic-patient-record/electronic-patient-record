@@ -33,7 +33,7 @@ Nothing is removed: who added, who lifted, on whose decision and why stay, and a
 | `summary` | `partial: true`, and `not-stated` for a state or an agreement of blood groups that a withheld entry could change. A disagreement that is seen is still said |
 | The audit row | Counts of what was shown, and `withheld` when any were. A change of labels says that they changed and not which |
 | Screens, FHIR, exports, the outbox, analytics | Nothing of these three lists reaches them. `tests/label_census.rs` fails when a label or the masking reaches another file |
-| Time taken | Not measured |
+| Time taken | Measured once 2026-11-25 in the store, a debug build on a busy laptop, the best of 15: 1,000 problems took 8 ms with none labelled and 15 ms with all; 100 took 1 ms and 2 ms. **So a long list that takes longer can tell that much is labelled.** Nobody who is not told the count reads these lists today. A hidden id and one that is not there do the same work |
 | A retried write (`Idempotency-Key`) | Answers with what the writer was answered at first, if the entry has been labelled since. Not changed |
 
 ## What is needed before real use

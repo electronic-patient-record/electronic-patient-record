@@ -22,11 +22,11 @@ no network, database or compilation; counts are source lines, not test runs):
 | Front-end version | 0.1.0 | `version` in the front-end `package.json` |
 | Migrations | 47 | files named `*.sql` in `migrations` |
 | Route registrations | 127 | `.add(` calls in `src/controllers/*.rs` |
-| Service tests | 1028, plus 275 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
+| Service tests | 1030, plus 276 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
 | Matcher tests | 136, plus 0 `#[ignore]`d | the same patterns in the matcher |
 | Front-end unit tests (vitest) | 399 | `it(` / `test(` lines in `tests/unit` |
 | Front-end end-to-end tests (Playwright) | 124 | `test(` lines in `tests/e2e` |
-| Hazards | 73, of which 52 open and 0 accepted or closed; 42 name a test | `scripts/check-hazard-log.py --counts` |
+| Hazards | 74, of which 53 open and 0 accepted or closed; 43 name a test | `scripts/check-hazard-log.py --counts` |
 | Locales | 10 | entries of `LOCALES` in `src/lib/locales.ts` |
 
 **Task boxes in [`tasks.md`](../tasks.md)** (ticked / open, by prefix):

@@ -40,6 +40,111 @@ fn status(port: u16, path: &str) -> Option<String> {
     out.lines().next().map(String::from)
 }
 
+/// Start on `database` without migrating, and say whether it became ready. If not, what it said as it ended.
+async fn starts_on(database: &str, allow_newer: Option<&str>) -> Result<(), String> {
+    let port = free_port();
+    let mut command = Command::new(BINARY);
+    command
+        .args([
+            "start",
+            "--binding",
+            "127.0.0.1",
+            "--port",
+            &port.to_string(),
+        ])
+        .env_clear()
+        .env("APP_ENV", "test")
+        .env("DB_URL", database)
+        .env("DB_AUTO_MIGRATE", "false")
+        .env("EPR_REQUIRE_AUTH", "false")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    if let Some(value) = allow_newer {
+        command.env("EPR_START_ON_NEWER_DATABASE", value);
+    }
+    if let Some(profile) = std::env::var_os("LLVM_PROFILE_FILE") {
+        command.env("LLVM_PROFILE_FILE", profile);
+    }
+    let mut child = command.spawn().expect("the binary starts");
+    let deadline = Instant::now() + Duration::from_secs(60);
+    let mut ready = false;
+    while Instant::now() < deadline && child.try_wait().unwrap().is_none() {
+        if status(port, "/_health/ready").is_some_and(|s| s.contains("200")) {
+            ready = true;
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(200)).await;
+    }
+    let _ = child.kill();
+    let out = child.wait_with_output().unwrap();
+    if ready {
+        return Ok(());
+    }
+    Err(format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    ))
+}
+
+/// H-074: production does not migrate at start, so a build could be started on a database it was not made for.
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn start_refuses_a_database_it_was_not_made_for() {
+    let url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
+    let (base, _) = url.rsplit_once('/').expect("a database URL");
+    let name = format!("epr_schema_{}", std::process::id());
+    let admin = PgPool::connect(&url).await.expect("connect admin");
+    let drop = format!("DROP DATABASE IF EXISTS {name} WITH (FORCE)");
+    for sql in [drop.clone(), format!("CREATE DATABASE {name}")] {
+        sqlx::raw_sql(AssertSqlSafe(sql))
+            .execute(&admin)
+            .await
+            .unwrap();
+    }
+    let scratch = format!("{base}/{name}");
+    let empty = starts_on(&scratch, Some("true")).await;
+    let db = PgPool::connect(&scratch).await.unwrap();
+    electronic_patient_record::MIGRATOR.run(&db).await.unwrap();
+    let same = starts_on(&scratch, None).await;
+    sqlx::raw_sql(
+        "INSERT INTO _sqlx_migrations (version, description, success, checksum, execution_time)
+         VALUES (99990101000000, 'from a newer build', true, '', 0)",
+    )
+    .execute(&db)
+    .await
+    .unwrap();
+    let newer = starts_on(&scratch, None).await;
+    let allowed = starts_on(&scratch, Some("true")).await;
+    let wrong = starts_on(&scratch, Some("yes")).await;
+    db.close().await;
+    sqlx::raw_sql(AssertSqlSafe(drop))
+        .execute(&admin)
+        .await
+        .unwrap();
+
+    assert!(
+        empty
+            .as_ref()
+            .is_err_and(|e| e.contains("older than this build")),
+        "{empty:?}"
+    );
+    assert_eq!(same, Ok(()));
+    assert!(
+        newer
+            .as_ref()
+            .is_err_and(|e| e.contains("newer than this build")),
+        "{newer:?}"
+    );
+    assert_eq!(allowed, Ok(()));
+    assert!(
+        wrong
+            .as_ref()
+            .is_err_and(|e| e.contains("must be true or false")),
+        "{wrong:?}"
+    );
+}
+
 #[tokio::test]
 #[ignore = "needs Postgres: set DB_URL"]
 async fn start_serves_with_every_optional_part_on_and_stops_on_sigterm() {

@@ -87,6 +87,7 @@ pub use electronic_patient_record_domain::results;
 pub mod results_store;
 pub use electronic_patient_record_domain::role_views;
 pub mod routes;
+pub mod schema_match;
 pub mod site;
 pub mod store;
 pub use electronic_patient_record_domain::suspicion;
