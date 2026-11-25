@@ -42,3 +42,4 @@ DerivedData/
 .gradle/
 .kotlin/
 local.properties
+.vibe/
