@@ -452,6 +452,21 @@ fn problem_schemas() -> Value {
             }
         }),
     );
+    let ids = || json!({"type": "array", "items": {"type": "string"}});
+    let causes = json!({
+        "type": "object", "required": ["groups", "cause_not_on_list", "cause_refuted"], "additionalProperties": false,
+        "description": "How the problems are joined by the causes people recorded. A problem in no group has no recorded link, which is not the same as no link.",
+        "properties": {
+            "groups": {"type": "array", "items": {"type": "object", "required": ["cause", "effects"], "additionalProperties": false,
+                "properties": {"cause": {"type": "string", "description": "The problem at the top."}, "effects": ids()}}},
+            "cause_not_on_list": {"type": "array", "items": {"type": "string"}, "description": "Their cause does not stand on this list, as after an unmerge."},
+            "cause_refuted": {"type": "array", "items": {"type": "string"}, "description": "Their own cause is refuted: the reason recorded for them may no longer hold."}
+        }
+    });
+    for list in ["ProblemList", "ProblemAsAt"] {
+        let path = [list, "properties", "summary", "properties", "causes"];
+        crate::json::set_at(&mut out, &path, causes.clone());
+    }
     out
 }
 

@@ -173,6 +173,12 @@
 | OQ-MS6 | Who sees that a person is a veteran, and is it the person's choice? | customer |
 | OQ-MS7 | Is there an exposure record to read from, or must this hold one? | customer |
 | OQ-MS8 | Are reservists, dependants, cadets, contractors and allied personnel in scope? | customer |
+| OQ-GC1 | Multi-system genetic conditions: which setting, country, ages and teams, and who coordinates today? See [multi-system conditions](multi-system-conditions/index.md). | customer |
+| OQ-GC2 | When a problem's cause is refuted or is not on the list, should someone be told, and who? | clinical lead, Clinical Safety Officer |
+| OQ-GC3 | May a problem name the result that supports it, and what happens when the result is read again? | clinical geneticist |
+| OQ-GC4 | Who may read a genetic result or cause: every treating team, or fewer? | customer, Clinical Safety Officer |
+| OQ-GC5 | What is kept for a person who does not wish to know? | clinical geneticist, country pack |
+| OQ-GC6 | Which code systems for rare conditions, under which licences? | customer |
 | OQ-EH1 | What does a patient or proxy see of the problem list and of relative history, and when? Refused until decided. See [problem list](problem-list/index.md). | clinical lead, patients |
 | OQ-EH2 | Is there a "no known problems" statement, as for allergies, or is it unsafe? | clinical lead, Clinical Safety Officer |
 | OQ-EH3 | Does a confirmed suspicion (RS-3) propose a problem for a clinician to accept? | clinical lead |

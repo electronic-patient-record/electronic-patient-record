@@ -3429,6 +3429,59 @@
             "additionalProperties": true,
             "description": "`not-recorded` is unknown, never none.",
             "properties": {
+              "causes": {
+                "additionalProperties": false,
+                "description": "How the problems are joined by the causes people recorded. A problem in no group has no recorded link, which is not the same as no link.",
+                "properties": {
+                  "cause_not_on_list": {
+                    "description": "Their cause does not stand on this list, as after an unmerge.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "maxItems": 1000,
+                    "type": "array"
+                  },
+                  "cause_refuted": {
+                    "description": "Their own cause is refuted: the reason recorded for them may no longer hold.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "maxItems": 1000,
+                    "type": "array"
+                  },
+                  "groups": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "cause": {
+                          "description": "The problem at the top.",
+                          "type": "string"
+                        },
+                        "effects": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "maxItems": 1000,
+                          "type": "array"
+                        }
+                      },
+                      "required": [
+                        "cause",
+                        "effects"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 1000,
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "groups",
+                  "cause_not_on_list",
+                  "cause_refuted"
+                ],
+                "type": "object"
+              },
               "state": {
                 "type": "string"
               }
@@ -3463,6 +3516,59 @@
             "additionalProperties": true,
             "description": "`not-recorded` is unknown, never none.",
             "properties": {
+              "causes": {
+                "additionalProperties": false,
+                "description": "How the problems are joined by the causes people recorded. A problem in no group has no recorded link, which is not the same as no link.",
+                "properties": {
+                  "cause_not_on_list": {
+                    "description": "Their cause does not stand on this list, as after an unmerge.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "maxItems": 1000,
+                    "type": "array"
+                  },
+                  "cause_refuted": {
+                    "description": "Their own cause is refuted: the reason recorded for them may no longer hold.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "maxItems": 1000,
+                    "type": "array"
+                  },
+                  "groups": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "cause": {
+                          "description": "The problem at the top.",
+                          "type": "string"
+                        },
+                        "effects": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "maxItems": 1000,
+                          "type": "array"
+                        }
+                      },
+                      "required": [
+                        "cause",
+                        "effects"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 1000,
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "groups",
+                  "cause_not_on_list",
+                  "cause_refuted"
+                ],
+                "type": "object"
+              },
               "state": {
                 "type": "string"
               }

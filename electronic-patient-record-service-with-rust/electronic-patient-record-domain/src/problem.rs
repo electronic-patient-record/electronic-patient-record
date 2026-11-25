@@ -214,6 +214,8 @@ pub struct Link {
     pub id: String,
     /// Whether it stands (it is not entered in error).
     pub standing: bool,
+    /// Whether it is thought not to be so ([`Certainty::Refuted`]).
+    pub refuted: bool,
     /// The cause it names.
     pub due_to: Option<String>,
 }
@@ -261,6 +263,70 @@ pub fn named_as_cause(id: &str, list: &[Link]) -> usize {
                     .is_some_and(|c| c.eq_ignore_ascii_case(id))
         })
         .count()
+}
+
+/// Problems that share one cause.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CauseGroup {
+    /// The problem at the top: it names no cause that is on the list.
+    pub cause: String,
+    /// Every problem that comes from it, directly or through others, in the list's order.
+    pub effects: Vec<String>,
+}
+
+/// How the problems on a list are joined by their causes. It is only what people recorded: nothing is worked out from a
+/// code or a title, and a problem in no group has no recorded link, which is not the same as no link.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Causes {
+    /// One for each problem that causes others and is not itself caused by one on the list.
+    pub groups: Vec<CauseGroup>,
+    /// Problems whose cause does not stand on this list (two records were unmerged after it was named).
+    pub cause_not_on_list: Vec<String>,
+    /// Problems whose own cause is refuted: the reason recorded for them may no longer hold.
+    pub cause_refuted: Vec<String>,
+}
+
+/// The causes on a list. `list` is the current version of every problem of the patient, in the order shown. Entered in
+/// error is left out. Ids are compared without regard to case.
+#[must_use]
+pub fn causes(list: &[Link]) -> Causes {
+    let find = |wanted: &str| {
+        list.iter()
+            .find(|l| l.standing && l.id.eq_ignore_ascii_case(wanted))
+    };
+    let mut out = Causes::default();
+    for effect in list.iter().filter(|l| l.standing) {
+        let Some(named) = effect.due_to.as_deref() else {
+            continue;
+        };
+        let Some(cause) = find(named) else {
+            out.cause_not_on_list.push(effect.id.clone());
+            continue;
+        };
+        if cause.refuted {
+            out.cause_refuted.push(effect.id.clone());
+        }
+        // To the top. `seen` ends the walk if a loop is stored, which the rules refuse.
+        let mut seen = BTreeSet::from([effect.id.to_ascii_lowercase()]);
+        let mut top = cause;
+        while seen.insert(top.id.to_ascii_lowercase()) {
+            match top.due_to.as_deref().and_then(find) {
+                Some(above) => top = above,
+                None => break,
+            }
+        }
+        if top.id == effect.id {
+            continue;
+        }
+        match out.groups.iter_mut().find(|g| g.cause == top.id) {
+            Some(group) => group.effects.push(effect.id.clone()),
+            None => out.groups.push(CauseGroup {
+                cause: top.id.clone(),
+                effects: vec![effect.id.clone()],
+            }),
+        }
+    }
+    out
 }
 
 /// What the list amounts to. There is no "none": an empty list is unknown.
@@ -336,8 +402,77 @@ mod tests {
         Link {
             id: id.into(),
             standing,
+            refuted: false,
             due_to: due_to.map(String::from),
         }
+    }
+
+    #[test]
+    fn problems_are_grouped_under_the_top_cause_they_come_from() {
+        let groups = |list: &[Link]| {
+            causes(list)
+                .groups
+                .into_iter()
+                .map(|g| (g.cause, g.effects.join(" ")))
+                .collect::<Vec<_>>()
+        };
+        // a <- b <- c, a <- d (named in capitals), e alone, f -> g apart.
+        let list = [
+            link("c", true, Some("b")),
+            link("a", true, None),
+            link("b", true, Some("a")),
+            link("d", true, Some("A")),
+            link("e", true, None),
+            link("f", true, Some("g")),
+            link("g", true, None),
+        ];
+        assert_eq!(
+            groups(&list),
+            [("a".into(), "c b d".into()), ("g".into(), "f".into())]
+        );
+        assert_eq!(causes(&[]), Causes::default());
+        assert_eq!(causes(&[link("e", true, None)]), Causes::default());
+        // One entered in error is in no group.
+        assert_eq!(
+            groups(&[link("a", true, None), link("b", false, Some("a"))]),
+            []
+        );
+        // A loop that should not be there ends.
+        let loops = causes(&[
+            link("a", true, Some("b")),
+            link("b", true, Some("a")),
+            link("c", true, Some("a")),
+        ]);
+        assert!(loops.cause_not_on_list.is_empty());
+        assert!(
+            loops.groups.iter().all(|g| !g.effects.contains(&g.cause)),
+            "{loops:?}"
+        );
+    }
+
+    #[test]
+    fn a_cause_that_is_missing_or_refuted_is_said() {
+        let gone = causes(&[
+            link("b", true, Some("a")),
+            link("c", true, Some("b")),
+            link("x", false, None),
+            link("y", true, Some("x")),
+        ]);
+        assert_eq!(gone.cause_not_on_list, ["b", "y"]);
+        // c's own cause is there, and it is the top of what can be seen.
+        assert_eq!(gone.groups.len(), 1);
+        assert_eq!(gone.groups[0].cause, "b");
+        let refuted = Link {
+            refuted: true,
+            ..link("a", true, None)
+        };
+        let list = [
+            refuted,
+            link("b", true, Some("a")),
+            link("c", true, Some("b")),
+        ];
+        assert_eq!(causes(&list).cause_refuted, ["b"], "only its own effects");
+        assert_eq!(causes(&list).groups[0].effects, ["b", "c"]);
     }
 
     #[test]

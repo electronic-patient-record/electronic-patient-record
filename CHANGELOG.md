@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - Problems are grouped by their recorded cause; a draft spec for multi-system conditions (CF-4)
+
+- **Clinical risk:** the problem list's answer says more (H-066, controls and residual changed; status and score not). It could be read as every effect of a cause, or no group as no link; no screen shows it yet.
+- **Added:** `summary.causes` on the problem list, now and as at a time: groups under the top cause, problems whose cause is not on the list (after an unmerge this was silent), and problems whose own cause is refuted. `spec/multi-system-conditions/index.md`, which holds no clinical content, and OQ-GC1 to OQ-GC6.
+- **Verified:** 2 domain tests and 1 database test with a merge, a refutation and an unmerge; the normal and database passes on a fresh Postgres 18; every docs gate. **Not done / not verified:** no screen, no FHIR, no notice to anyone; the worked example is a clinician's and is empty; every source in the draft was seen in search summaries only.
+
 ## 2026-11-25 - A draft spec for military health (CF-3)
 
 - **Clinical risk:** none; nothing is built. The draft names five hazards that a build must log first.

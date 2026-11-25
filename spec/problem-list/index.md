@@ -11,10 +11,11 @@
 5. **Dates are as precise as they are known** (`YYYY`, `YYYY-MM`, `YYYY-MM-DD`). One in the future is refused. An end before the start is refused only when that is certain: 2020 against 2020-05 is accepted. An active problem has no end.
 6. **A problem may name its cause** (`due_to`), another standing problem of the same patient. Never itself, directly or through others. A problem that others name cannot be marked entered in error until they no longer do. One writer at a time holds the list while these are checked. This is for one condition with effects in several organs (CF-4), and it says nothing about genetics.
 7. **Every change is a new version with a reason.** A whole record is sent each time, with the version it was made from.
-8. **An empty list is `not-recorded`, never none.** There is no "no known problems" statement (OQ-EH2). The summary keeps confirmed and unconfirmed active problems apart.
-9. **There is no note field.** A note has its own author, time and signature (CN-1).
-10. **A patient and a proxy read none yet** (OQ-EH1), as for a suspicion: a list can hold a diagnosis the patient has not been told.
-11. **The audit row** holds ids, versions, statuses and counts, never a title, a code or a reason.
+8. **The summary groups problems by their recorded cause** (`causes`, 2026-11-25, CF-4): each top cause with every problem that comes from it, directly or through others; `cause_not_on_list`, whose cause does not stand on this list, as after an unmerge; and `cause_refuted`, whose own cause is refuted. Nothing is worked out from a title or a code, and a problem in no group has no recorded link, which is not the same as no link. A refuted cause is said and not refused: the effect may be real whatever its cause.
+9. **An empty list is `not-recorded`, never none.** There is no "no known problems" statement (OQ-EH2). The summary keeps confirmed and unconfirmed active problems apart.
+10. **There is no note field.** A note has its own author, time and signature (CN-1).
+11. **A patient and a proxy read none yet** (OQ-EH1), as for a suspicion: a list can hold a diagnosis the patient has not been told.
+12. **The audit row** holds ids, versions, statuses and counts, never a title, a code or a reason.
 
 ## Routes
 
@@ -28,5 +29,5 @@
 ## Not done
 
 - The screen, the patient summary section and the ten locales (EH-15); FHIR `Condition` (EH-15); a lookup of codes; ordering by importance; duplicates of one condition are not found; amendment requests (RC-4) cannot name a problem.
-- **After an unmerge a cause may be on the other record**: the id is then not on this list. Nothing reports it.
+- **After an unmerge a cause may be on the other record**: the list says so (rule 8), no screen shows it and nobody is told (OQ-GC2).
 - A title is free text and can hold anything, including another person's name.

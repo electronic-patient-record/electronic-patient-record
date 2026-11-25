@@ -59,13 +59,23 @@ pub trait Entry: Clone + Serialize + DeserializeOwned + Send + Sync + 'static {
         Vec::new()
     }
     /// What a list amounts to, as JSON with a `state`.
-    fn summary(all: &[Self]) -> serde_json::Value;
+    fn summary(all: &[&Stored<Self>]) -> serde_json::Value;
 }
 
 /// A coding whose SNOMED CT identifier, if it claims to be one, is not one. The words do not quote it.
 fn coding_fault(c: Option<&crate::coding::Coding>) -> Option<String> {
     c.filter(|c| terminology::validate_coding(&c.system, &c.code).is_err())
         .map(|_| "the code is not a SNOMED CT concept identifier".to_string())
+}
+
+/// What the cause rules need of a stored problem.
+fn problem_link(s: &Stored<ProblemRecord>) -> problem::Link {
+    problem::Link {
+        id: s.id.clone(),
+        standing: !s.record.in_error(),
+        refuted: s.record.certainty == problem::Certainty::Refuted,
+        due_to: s.record.due_to.clone(),
+    }
 }
 
 impl Entry for ProblemRecord {
@@ -98,14 +108,7 @@ impl Entry for ProblemRecord {
     }
 
     fn faults_in(&self, own: Option<&str>, all: &[Stored<Self>]) -> Vec<String> {
-        let links: Vec<problem::Link> = all
-            .iter()
-            .map(|s| problem::Link {
-                id: s.id.clone(),
-                standing: !s.record.in_error(),
-                due_to: s.record.due_to.clone(),
-            })
-            .collect();
+        let links: Vec<problem::Link> = all.iter().map(problem_link).collect();
         let mut out = Vec::new();
         if self.in_error() {
             // Its own cause no longer matters; what names it as a cause does.
@@ -121,8 +124,15 @@ impl Entry for ProblemRecord {
         out
     }
 
-    fn summary(all: &[Self]) -> serde_json::Value {
-        serde_json::json!(problem::summarise(all))
+    fn summary(all: &[&Stored<Self>]) -> serde_json::Value {
+        let links: Vec<problem::Link> = all.iter().map(|s| problem_link(s)).collect();
+        let mut out = serde_json::json!(problem::summarise(all.iter().map(|s| &s.record)));
+        crate::json::set(
+            &mut out,
+            "causes",
+            serde_json::json!(problem::causes(&links)),
+        );
+        out
     }
 }
 
@@ -155,8 +165,8 @@ impl Entry for RelativeHistoryRecord {
         out
     }
 
-    fn summary(all: &[Self]) -> serde_json::Value {
-        serde_json::json!(relative_history::summarise(all))
+    fn summary(all: &[&Stored<Self>]) -> serde_json::Value {
+        serde_json::json!(relative_history::summarise(all.iter().map(|s| &s.record)))
     }
 }
 
@@ -187,8 +197,8 @@ impl Entry for TypingRecord {
         typing::validate(self, jiff::Timestamp::now())
     }
 
-    fn summary(all: &[Self]) -> serde_json::Value {
-        serde_json::json!(typing::summarise(all))
+    fn summary(all: &[&Stored<Self>]) -> serde_json::Value {
+        serde_json::json!(typing::summarise(all.iter().map(|s| &s.record)))
     }
 }
 
@@ -543,14 +553,23 @@ mod tests {
             "presence": "absent", "source": "patient", "status": "recorded"
         }))
         .unwrap();
+        let stored = |record: &RelativeHistoryRecord| Stored {
+            id: "e".into(),
+            patient_id: "p".into(),
+            version: 1,
+            author: "a".into(),
+            recorded_at: "t".into(),
+            reason: None,
+            record: record.clone(),
+        };
         assert_eq!(
-            RelativeHistoryRecord::summary(&[r.clone()])["inherited"],
+            RelativeHistoryRecord::summary(&[&stored(&r)])["inherited"],
             1_i32
         );
         assert!(r.set_status("entered-in-error"));
         assert!(!r.set_status("active"));
         assert_eq!(
-            RelativeHistoryRecord::summary(&[r])["state"],
+            RelativeHistoryRecord::summary(&[&stored(&r)])["state"],
             "not-recorded"
         );
     }

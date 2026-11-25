@@ -112,6 +112,7 @@ Topics that span several numbered chapters and are kept whole:
 - [Problem list](problem-list/index.md), [relative history](relative-history/index.md) and [reads as at a time](as-at/index.md) — built in the service only, unreviewed (EH-1 to EH-3).
 - [Donor matching](donor-matching/index.md) — what laboratories report about blood groups, HLA types and antibodies; kept, never matched (DM-1, service only, unreviewed).
 - [Support groups](support-groups/index.md), [custodial health](custodial-health/index.md) and [military health](military-health/index.md) — customer feedback; nothing built (CF-1 to CF-3).
+- [Multi-system genetic conditions](multi-system-conditions/index.md) — customer feedback; problems grouped by their cause, in the service only, the rest a proposal (CF-4).
 - [Maternity](maternity/index.md) — the pathway, two patients and one episode, hidden disclosures, build or integrate (MT).
 - [Manual steps](manual-steps/index.md) — how information changes when a person is in the middle (DX).
 - [Data exchange](data-exchange/index.md) — getting data in and out: migration, import runs, `$export`, patient copies (DX).

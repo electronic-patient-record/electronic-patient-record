@@ -8,7 +8,7 @@
 
 use electronic_patient_record::allergies::{self, AllergyRecord, Summary};
 use electronic_patient_record::clock;
-use electronic_patient_record::entries_store::{self as store, Change, Stored};
+use electronic_patient_record::entries_store::{self as store, Change, Entry, Stored};
 use electronic_patient_record::links;
 use electronic_patient_record::patients_store::{self, StoreError};
 use electronic_patient_record::problem::{Certainty, ProblemRecord, Status};
@@ -384,6 +384,48 @@ async fn as_at_a_time_follows_the_merges_that_stood_then() {
         ["On the survivor", "On the other"],
         "what a reader saw while they were merged"
     );
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn a_cause_left_on_the_other_record_by_an_unmerge_is_said_and_a_refuted_one_too() {
+    let db = db().await;
+    let (kept, gone) = (patient(&db).await, patient(&db).await);
+    let causes = async |p: &str| {
+        let all = store::list::<ProblemRecord>(&db, p).await.unwrap();
+        ProblemRecord::summary(&all.iter().collect::<Vec<_>>())["causes"].clone()
+    };
+    let syndrome = add(&db, &gone, &problem("Syndrome", Status::Active)).await;
+    links::merge(&db, &kept, &gone, "admin", "same person")
+        .await
+        .unwrap();
+    let lung = add(&db, &kept, &caused("Lung disease", &syndrome.id)).await;
+    let joined = serde_json::json!({
+        "groups": [{"cause": syndrome.id, "effects": [lung.id]}],
+        "cause_not_on_list": [], "cause_refuted": []
+    });
+    assert_eq!(causes(&kept).await, joined);
+
+    let refuted = ProblemRecord {
+        certainty: Certainty::Refuted,
+        ..problem("Syndrome", Status::Inactive)
+    };
+    store::update(&db, &kept, &syndrome.id, change(1, &refuted))
+        .await
+        .unwrap();
+    assert_eq!(
+        causes(&kept).await["cause_refuted"],
+        serde_json::json!([lung.id])
+    );
+
+    links::unmerge(&db, &kept, &gone, "admin", "different people")
+        .await
+        .unwrap();
+    assert_eq!(
+        causes(&kept).await,
+        serde_json::json!({"groups": [], "cause_not_on_list": [lung.id], "cause_refuted": []})
+    );
+    assert_eq!(causes(&gone).await["groups"], serde_json::json!([]));
 }
 
 #[tokio::test]

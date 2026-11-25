@@ -217,8 +217,7 @@ pub(super) async fn list<R: Entry>(
             Ok(all) => all,
             Err(e) => return Err(caller.fail::<R>(Action::Read, e).await),
         };
-        let records: Vec<R> = entries.iter().map(|s| s.record.clone()).collect();
-        let summary = R::summary(&records);
+        let summary = R::summary(&entries.iter().collect::<Vec<_>>());
         caller
             .read::<R>(with_records(
                 serde_json::json!({ "entries": entries.len(), "summary": summary.get("state") }),
@@ -249,7 +248,7 @@ pub(super) async fn as_at<R: Entry>(
             Ok(all) => all,
             Err(e) => return Err(caller.fail::<R>(Action::Read, e).await),
         };
-        let records: Vec<R> = entries.iter().map(|s| s.stored.record.clone()).collect();
+        let summary = R::summary(&entries.iter().map(|s| &s.stored).collect::<Vec<_>>());
         let as_at = crate::clock::rfc3339_micros(at);
         caller
             .read::<R>(with_records(
@@ -263,7 +262,7 @@ pub(super) async fn as_at<R: Entry>(
             left_out: LEFT_OUT,
             as_at,
             read_at: crate::clock::rfc3339_micros(now),
-            summary: R::summary(&records),
+            summary,
             entries,
         })
         .into_response())
