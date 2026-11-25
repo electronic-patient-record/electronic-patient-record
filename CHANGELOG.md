@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - The service uses matcher 0.9.0: no pair may be linked automatically without a verified identifier (AG-13)
+
+- **Clinical risk:** H-001 (controls, evidence and residual changed; status and score not). A pair that shares no verified identifier is at most "ask a person". Registration and the HL7 feed refuse a likely duplicate as before; a merge by a person is allowed as before, and is recorded as `review` where it was `auto_link`.
+- **Changed:** the matcher to 0.9.0, published minutes or hours before, with the maintainer's approval of an exception to the two-day cooldown for this crate; one `cargo update` was run with the age set to 0, and the setting is unchanged. One package in the lock file.
+- **Changed:** eight tests that pinned the old decisions: the list of known wrong pairs is gone and no pair of two people may be a link; no row of the shared-place table is one; four rows of the recall table are Review.
+- **Verified:** the normal and database passes on a fresh Postgres 18; every docs gate. Built in a folder of its own without the shared cache, because the machine was overloaded. **Not done / not verified:** more pairs go to a person, and how many was not measured.
+
 ## 2026-11-25 - Coverage reports are no longer tracked
 
 - **Clinical risk:** none.

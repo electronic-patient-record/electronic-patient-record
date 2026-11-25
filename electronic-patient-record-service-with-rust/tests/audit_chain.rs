@@ -228,7 +228,7 @@ async fn comparing_patients_writes_an_audit_row_without_the_demographics() {
     let result = compare_audited(&s.db, &chain, &Agent("user-42".into()), &request)
         .await
         .unwrap();
-    assert_eq!(serde_json::to_value(result.decision).unwrap(), "auto_link");
+    assert_eq!(serde_json::to_value(result.decision).unwrap(), "review");
 
     let row = sqlx::query("SELECT action::text AS action, agent, resource_ref, detail::text AS detail FROM audit_events")
 .fetch_optional(&s.db)

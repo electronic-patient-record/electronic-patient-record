@@ -1199,9 +1199,9 @@ dependencies = [
 
 [[package]]
 name = "electronic-patient-record-matcher"
-version = "0.8.1"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "daf3f85fbd558fc36cc978f3759571b6c57f5f04aeaef6f892596db634781183"
+checksum = "a30f54fb90bb7887a15edb57f9099a476b5aff311b81d42804f730707e7a75a9"
 dependencies = [
  "serde",
  "serde_json",

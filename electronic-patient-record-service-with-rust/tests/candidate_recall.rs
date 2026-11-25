@@ -80,7 +80,7 @@ fn person(family: &str, given: &str, birth: Option<&str>, number: Option<&str>) 
 type Case = (&'static str, Patient, Patient, bool, Decision);
 
 fn same_person() -> Vec<Case> {
-    use Decision::{AutoLink, NonMatch, Review};
+    use Decision::{NonMatch, Review};
     let b = Some("1984-03-07");
     let n = |family, given, birth| person(family, given, birth, None);
     vec![
@@ -89,14 +89,14 @@ fn same_person() -> Vec<Case> {
             n("Okafor", "Adaeze", b),
             n("Okafor", "Adaeze", b),
             true,
-            AutoLink,
+            Review,
         ),
         (
             "family name misspelt",
             n("Lindqvist", "Maja", b),
             n("Lindquist", "Maja", b),
             true,
-            AutoLink,
+            Review,
         ),
         (
             "family name changed",
@@ -145,7 +145,7 @@ fn same_person() -> Vec<Case> {
             n("M\u{fc}ller", "J\u{fc}rgen", b),
             n("Muller", "Jurgen", b),
             true,
-            AutoLink,
+            Review,
         ),
         (
             "accent lost, and only a birth year known",
@@ -187,7 +187,7 @@ fn same_person() -> Vec<Case> {
             n("Garcia Lopez", "Ana", b),
             n("Garcia", "Ana", b),
             true,
-            AutoLink,
+            Review,
         ),
         (
             "half of a double family name, and year one out",
@@ -294,13 +294,10 @@ async fn which_kinds_of_duplicate_are_retrieved_and_which_are_never_looked_at() 
     s.finish().await;
 }
 
-/// Pairs of two people that the matcher, today, would let be linked automatically (AG-13, OQ-AG8). Nothing in the service
-/// links by itself (below), but the screen shows the decision and the matcher is a library others may use. A pair leaves
-/// this list when the matcher is changed, and one may not join it.
-const KNOWN_WRONG: [&str; 1] = ["twins, one letter apart"];
-
+/// No pair of two people may be offered as a link (AG-13, OQ-AG8). Until matcher 0.9.0 "twins, one letter apart" was.
+/// Nothing in the service links by itself (below), but the matcher is a library others may use.
 #[test]
-fn the_pairs_of_two_people_that_the_matcher_would_link_are_the_known_ones() {
+fn the_matcher_would_link_no_pair_of_two_people() {
     let engine = MatchingEngine::default();
     let mut linked = Vec::new();
     for (what, a, b) in different_people() {
@@ -310,10 +307,10 @@ fn the_pairs_of_two_people_that_the_matcher_would_link_are_the_known_ones() {
             linked.push(what);
         }
     }
-    assert_eq!(linked, KNOWN_WRONG);
+    assert!(linked.is_empty(), "{linked:?}");
 }
 
-/// What keeps the list above from harm: no code of the service acts on `AutoLink`. Only a merge, which a person asks for
+/// And if one were: no code of the service acts on `AutoLink`. Only a merge, which a person asks for
 /// with a reason, reads it, and only to record what the matcher said.
 #[test]
 fn nothing_in_the_service_links_two_records_by_itself() {

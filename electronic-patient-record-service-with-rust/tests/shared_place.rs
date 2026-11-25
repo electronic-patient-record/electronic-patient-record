@@ -132,17 +132,18 @@ fn decisions(engine: &MatchingEngine, a: &Patient, b: &Patient) -> String {
         .collect()
 }
 
-/// `n` not a match, `R` to a person, `A` the matcher would link. Pinned as it is, wrong ones included.
+/// `n` not a match, `R` to a person, `A` the matcher would link. Since matcher 0.9.0 (AG-13) none is `A`: no pair here has a
+/// verified identifier. Before it, a postcode alone turned "ask a person" into "link" for the two pairs of like names, and
+/// three pairs were `A` with nothing shared.
 const PINNED: [(&str, &str); 14] = [
-    // Two people with one birth date, and nothing else, reach the review list by living in one place.
+    // Two people with one birth date, and nothing else, reach the review list by living in one place: work, not harm.
     ("one birth date and nothing else", "nnnR"),
     (
         "one family name, given names unlike, one birth date",
         "nRRR",
     ),
-    // A postcode alone turns "ask a person" into "link" (OQ-AG8).
-    ("names alike, one birth date: Reed and Reid", "RAAA"),
-    ("names alike, one birth date: Hanson and Harrison", "RAAA"),
+    ("names alike, one birth date: Reed and Reid", "RRRR"),
+    ("names alike, one birth date: Hanson and Harrison", "RRRR"),
     ("nothing else in common", "nnnn"),
     ("one name, births far apart", "nnnn"),
     ("one name, births a year apart", "RRRR"),
@@ -150,12 +151,11 @@ const PINNED: [(&str, &str); 14] = [
     ("one name, day and month the other way", "RRRR"),
     ("one name, one birth year only", "RRRR"),
     ("one name, no birth date on one", "RRRR"),
-    // Linked with nothing shared: the open question is not about places (OQ-AG8).
-    ("one name and one birth date", "AAAA"),
-    ("one family name, given names alike, one birth date", "AAAA"),
+    ("one name and one birth date", "RRRR"),
+    ("one family name, given names alike, one birth date", "RRRR"),
     (
         "one letter apart in the family name, one birth date",
-        "AAAA",
+        "RRRR",
     ),
 ];
 

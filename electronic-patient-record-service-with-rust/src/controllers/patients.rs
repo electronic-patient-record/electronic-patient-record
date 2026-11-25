@@ -899,6 +899,14 @@ mod tests {
         let new = p("Smith", "John", "1980-03-14");
         let found = likely_duplicates(&new, vec![stored("a", new.clone())]);
         assert_eq!(found.len(), 1);
+        // With no identifier in common, a person decides however alike (AG-13); with one, it is as strong as can be.
+        assert_eq!(found[0].result.decision, Decision::Review);
+        let mut numbered = new;
+        numbered.identifiers = vec![Identifier {
+            system: NATIONAL_NUMBER_SYSTEM.into(),
+            value: "9434765919".into(),
+        }];
+        let found = likely_duplicates(&numbered, vec![stored("a", numbered.clone())]);
         assert_eq!(found[0].result.decision, Decision::AutoLink);
     }
 }

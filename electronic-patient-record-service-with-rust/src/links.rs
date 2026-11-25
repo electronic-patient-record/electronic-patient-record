@@ -587,7 +587,7 @@ mod tests {
     }
 
     /// The acceptance test for TT-1: a temporary name in the safer format, and an estimated birth
-    /// date. Without the flag the pair links itself, so the flag is what prevents it.
+    /// date. With an identifier in common and without the flag the pair would be linked, so the flag is what prevents it.
     #[test]
     fn a_safe_format_temporary_name_with_an_estimated_date_never_links_itself() {
         let unknown = |temporary_identity| Patient {
@@ -597,6 +597,10 @@ mod tests {
             }],
             birth_date: Some("1980-01-01".into()),
             temporary_identity,
+            identifiers: vec![Identifier {
+                system: NATIONAL_NUMBER_SYSTEM.into(),
+                value: "9434765919".into(),
+            }],
             ..Default::default()
         };
         let engine = crate::packs::engine();
@@ -629,6 +633,6 @@ mod tests {
             ..real.clone()
         };
         assert!(judge(&held, &real).is_err());
-        assert_eq!(judge(&real, &real).unwrap().1, "auto_link");
+        assert_eq!(judge(&real, &real).unwrap().1, "review");
     }
 }
