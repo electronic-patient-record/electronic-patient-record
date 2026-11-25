@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - The rules of masking, as a library nothing calls (EH-8, first slice)
+
+- **Clinical risk:** none to behaviour; nothing calls it and no record carries a label. The design names the hazards a build must log.
+- **Added:** `masking.rs`: whole entries withheld, a count and never what, fails closed, a short list is never "none", a shown problem does not point at a withheld one, and a writer does not remove a cause they could not see. `spec/access-control/masking.md`, with the places where a list's other answers would tell. OQ-PI7.
+- **Corrected:** the protected information page said the service can mask a labelled record: the engine decides it and no route does it. The custodial draft said a clinician opens a labelled entry by break-glass: break-glass never unmasks a label (OQ-PI2).
+- **Changed:** the label census leaves `masking.rs` out of its search for a mask, and in its place fails if anything in the service calls it.
+- **Verified:** 6 tests, one comparing answers for every role and label with the hidden entry changed; four wrong versions of the code were each caught. **Not done / not verified:** no store, route, screen or FHIR; the database pass was not run, as no store changed; no one reviewed the rules.
+
 ## 2026-11-25 - Problems are grouped by their recorded cause; a draft spec for multi-system conditions (CF-4)
 
 - **Clinical risk:** the problem list's answer says more (H-066, controls and residual changed; status and score not). It could be read as every effect of a cause, or no group as no link; no screen shows it yet.

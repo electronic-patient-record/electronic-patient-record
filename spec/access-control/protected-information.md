@@ -8,7 +8,7 @@ Related: [Roles and assignments](roles-and-assignments.md) (the companion page: 
 
 Some information harms a person if the wrong person learns it, and the harm can be violence, loss of work, loss of housing or of a child, or a person staying away from care. The wrong person is often not a stranger: it may be a partner reading the patient portal, a parent, a colleague on the ward or a clerk printing a letter. So a control on the screen is not enough. Most of the routes out of a record are not screens.
 
-The service can already mask a labelled record. It cannot yet do most of what this page lists, and no clinical record carries a label yet (SE-4).
+The policy engine can decide that a labelled record is masked, the rules of masking are a library nothing calls ([masking](masking.md)), and no route masks. It cannot yet do most of what this page lists, and no clinical record carries a label yet (SE-4).
 
 ## A defect found in this pass, now fixed: `ETH` means substance use, not ethnicity
 

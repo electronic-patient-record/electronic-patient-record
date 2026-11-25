@@ -232,6 +232,8 @@ fn no_route_acts_on_a_mask_yet() {
                 dirs.push(path);
             } else if path.extension().is_some_and(|e| e == "rs")
                 && !path.ends_with("electronic-patient-record-domain/src/policy.rs")
+                // The rules of masking (EH-8); the next assertion says that nothing calls them.
+                && !path.ends_with("electronic-patient-record-domain/src/masking.rs")
             {
                 files.push(path);
             }
@@ -244,6 +246,11 @@ fn no_route_acts_on_a_mask_yet() {
         assert!(
             !code.contains("Obligation::Mask"),
             "{}: a route masks now: update this census",
+            path.display()
+        );
+        assert!(
+            !code.contains("masking::") && !code.contains("domain::masking"),
+            "{}: masking is called now: update this census",
             path.display()
         );
     }

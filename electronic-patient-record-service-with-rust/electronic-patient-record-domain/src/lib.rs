@@ -23,6 +23,7 @@ pub mod gate;
 pub mod hazard;
 pub mod ids;
 pub mod link_token;
+pub mod masking;
 pub mod observations;
 pub mod packs;
 pub mod page;
