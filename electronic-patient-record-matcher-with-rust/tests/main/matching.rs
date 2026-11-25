@@ -50,14 +50,13 @@ fn national_number_check_digit() {
 }
 
 #[test]
-fn identical_records_auto_link() {
+fn identical_records_with_no_identifier_go_to_review_and_nothing_else_stands_in_the_way() {
     let e = MatchingEngine::default();
     let a = with_postcode(patient("Smith", &["John"], "1980-03-14", M), "AB1 2CD");
     let b = with_postcode(patient("Smith", &["John"], "1980-03-14", M), "ab12cd");
     let r = e.compare(&a, &b);
-    assert_eq!(r.decision, Decision::AutoLink, "{r:?}");
+    assert!(crate::only_an_identifier_is_missing(&r), "{r:?}");
     assert!(r.score > 0.99);
-    assert!(r.conflicts.is_empty());
 }
 
 #[test]

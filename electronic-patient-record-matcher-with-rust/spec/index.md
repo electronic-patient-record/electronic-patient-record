@@ -58,7 +58,7 @@ and `field_below_minimum` name a `GuardField`; `field_below_minimum` gives the s
 `evidence_thin` gives the percentage present). A client translates the code, not the text. The field names in
 `FieldScore.field` are already stable snake_case identifiers and stay strings.
 
-Decision: `auto_link_threshold` 0.92, `review_threshold` 0.75, else `NonMatch`. **These are unvalidated starting
+Decision: `auto_link_threshold` 0.92, `review_threshold` 0.75, else `NonMatch`. **`AutoLink` needs a verified identifier that both records carry (§4), since 0.9.0:** a pair that reaches the threshold and passes every guard without one is `Review` with the conflict `no_shared_identifier`, whatever the configuration. Decided 2026-11-25: a name and a birth date alone are never enough (twins can differ by a letter), and neither are a postcode and a telephone number, which everyone in one prison, hostel or barracks shares. The threshold and the guards still say what else stands in the way. **These are unvalidated starting
 values** (ID-1 asks for a 200-pair labelled corpus before they are trusted).
 
 ## 4. Deterministic identifiers
@@ -81,7 +81,7 @@ values** (ID-1 asks for a 200-pair labelled corpus before they are trusted).
   Luhn check digit) is a deterministic key only when `MatchConfig::use_ihi` is true (default false). It then behaves
   as the national health number does (same guards, conflicts `different_ihis`, `same_ihi_different_birth_dates`,
   `same_ihi_different_names`, basis "shared verified IHI"). A clash on either number gives `NonMatch`.
-- Other identifiers (MRN) do not decide a match yet.
+- Other identifiers (MRN) do not decide a match yet, and so do not allow an automatic link.
 
 ## 5. Known gaps
 

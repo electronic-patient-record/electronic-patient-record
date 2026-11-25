@@ -33,14 +33,16 @@ fn with_national_number(mut p: Patient) -> Patient {
 }
 
 #[test]
-fn without_the_flag_these_records_would_auto_link() {
+fn without_the_flag_these_records_would_auto_link_on_an_identifier() {
     let r =
         MatchingEngine::default().compare(&real("Whisky", "Foxtrot"), &real("Whisky", "Foxtrot"));
-    assert_eq!(
-        r.decision,
-        Decision::AutoLink,
-        "the hazard this flag exists for"
+    // Until 0.9.0 this pair would have been linked, the hazard this flag exists for; now only an identifier stands between.
+    assert!(crate::only_an_identifier_is_missing(&r), "{r:?}");
+    let r = MatchingEngine::default().compare(
+        &with_national_number(real("Whisky", "Foxtrot")),
+        &with_national_number(real("Whisky", "Foxtrot")),
     );
+    assert_eq!(r.decision, Decision::AutoLink, "with one, they link");
 }
 
 #[test]

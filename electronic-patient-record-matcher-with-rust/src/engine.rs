@@ -217,6 +217,8 @@ pub enum ConflictCode {
     },
     /// A record's identity is temporary, so its names and birth date were not used as evidence.
     TemporaryIdentity,
+    /// The records share no verified identifier, so names, dates, addresses and telephone numbers are all there is.
+    NoSharedIdentifier,
     /// Less of the total field weight is present than `min_evidence_weight`.
     EvidenceThin {
         /// The share of the total field weight that is present, as a percentage.
@@ -254,6 +256,9 @@ impl ConflictCode {
             ),
             Self::TemporaryIdentity => {
                 "a temporary identity's names and birth date are not evidence".into()
+            }
+            Self::NoSharedIdentifier => {
+                "no verified identifier is shared, so a person must decide".into()
             }
             Self::EvidenceThin { percent_present } => {
                 format!("only {percent_present:.0}% of the evidence is present")
@@ -584,9 +589,10 @@ impl MatchingEngine {
                         percent_present: 100.0_f64 * present / total_weight,
                     });
                 }
-                if !conflicts.is_empty() {
-                    decision = Decision::Review;
-                }
+                // Nothing but a verified identifier both records carry is enough (OQ-AG8): twins can differ by a letter,
+                // and everyone in one prison, hostel or barracks shares a postcode and a telephone number.
+                conflicts.push(ConflictCode::NoSharedIdentifier);
+                decision = Decision::Review;
             }
         }
 

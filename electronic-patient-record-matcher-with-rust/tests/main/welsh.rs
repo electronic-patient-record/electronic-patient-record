@@ -46,7 +46,7 @@ fn a_welsh_name_with_its_diacritics_matches_itself_fully() {
         &person("Gwŷn", &["Siân", "Mêr"]),
         &person("Gwŷn", &["Siân", "Mêr"]),
     );
-    assert_eq!(r.decision, Decision::AutoLink);
+    assert!(crate::only_an_identifier_is_missing(&r), "{r:?}");
     assert_eq!(sim(&r, "family_name"), Some(1.0));
     assert_eq!(sim(&r, "given_name"), Some(1.0));
     assert!(!r.phonetic_match, "an identical spelling is not news");
@@ -68,7 +68,7 @@ fn a_name_keyed_without_its_circumflex_or_diaeresis_matches_by_transliteration()
             &person(written.0, &[written.1]),
             &person(keyed.0, &[keyed.1]),
         );
-        assert_eq!(r.decision, Decision::AutoLink, "{written:?} / {keyed:?}");
+        assert!(crate::only_an_identifier_is_missing(&r), "{r:?}");
         assert_eq!(sim(&r, "family_name"), Some(1.0), "{written:?}");
         assert_eq!(sim(&r, "given_name"), Some(1.0), "{written:?}");
         assert!(r.phonetic_match, "{written:?}: spelled differently");
@@ -86,7 +86,7 @@ fn a_patronymic_particle_is_a_part_of_the_family_name_that_may_be_gained_or_lost
     ] {
         let r = compare(&person(with, &["Nia"]), &person(without, &["Nia"]));
         assert_eq!(sim(&r, "family_name"), Some(1.0), "{with}");
-        assert_eq!(r.decision, Decision::AutoLink, "{with}");
+        assert!(crate::only_an_identifier_is_missing(&r), "{r:?}");
     }
 }
 
@@ -131,7 +131,7 @@ fn a_double_barrelled_welsh_family_name_matches_with_or_without_the_hyphen_or_a_
     for (a, b) in [("Wyn Jones", "Wyn-Jones"), ("Jones-Williams", "Williams")] {
         let r = compare(&person(a, &["Rhian"]), &person(b, &["Rhian"]));
         assert_eq!(sim(&r, "family_name"), Some(1.0), "{a} / {b}");
-        assert_eq!(r.decision, Decision::AutoLink, "{a} / {b}");
+        assert!(crate::only_an_identifier_is_missing(&r), "{r:?}");
     }
 }
 
@@ -151,5 +151,5 @@ fn a_welsh_postcode_is_compared_as_folded_text_and_an_address_line_takes_no_part
     );
     assert_eq!(sim(&r, "postal_code"), Some(0.0));
     // A different postcode lowers the score and blocks nothing: people move.
-    assert_eq!(r.decision, Decision::AutoLink);
+    assert!(crate::only_an_identifier_is_missing(&r), "{r:?}");
 }

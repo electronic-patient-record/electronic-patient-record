@@ -253,7 +253,7 @@ fn the_evidence_floor_blocks_an_auto_link_below_it_and_not_at_it() {
     assert!(low.conflicts.iter().any(|c| c.contains("of the evidence")));
     // 0.75 of 1.5 (exact in binary) is exactly half, which is enough.
     let at = MatchingEngine::new(config(0.25, 0.25)).compare(&a, &b);
-    assert_eq!(at.decision, Decision::AutoLink, "{at:?}");
+    assert!(crate::only_an_identifier_is_missing(&at), "{at:?}");
 }
 
 #[test]
@@ -266,7 +266,7 @@ fn a_similarity_exactly_at_a_guard_minimum_is_enough() {
     };
     let a = full("Smith", "Ann", "1980-03-14");
     let m = MatchingEngine::new(config).compare(&a, &a.clone());
-    assert_eq!(m.decision, Decision::AutoLink, "{m:?}");
+    assert!(crate::only_an_identifier_is_missing(&m), "{m:?}");
     let blocked = MatchingEngine::new(MatchConfig {
         min_birth_date_for_auto: 1.0,
         ..Default::default()
@@ -364,7 +364,7 @@ fn a_date_of_death_is_weak_evidence_and_never_enough_alone() {
     assert_eq!(field(&far), Some(0.0));
     assert!(far.score < same.score);
     // A disagreement alone blocks nothing, and is a small fall.
-    assert!(far.conflicts.is_empty(), "{:?}", far.conflicts);
+    assert!(crate::only_an_identifier_is_missing(&far), "{far:?}");
     assert!(none.score - far.score < 0.1);
 
     // Nothing else in common: a shared date of death is not a match.

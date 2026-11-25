@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - The matcher offers no automatic link without a verified identifier (AG-13, OQ-AG8; matcher 0.9.0, not published)
+
+- **Clinical risk:** H-001 (controls, evidence and residual changed; status and score not). In the matcher's source, a pair with no verified identifier in common is at most Review, whatever the configuration. **The service is unchanged**: it uses the published 0.8.1.
+- **Changed:** twelve of the matcher's tests expected a link on a name and a birth date. Each was about another rule, and now says that the identifier is the one thing missing.
+- **Verified:** every pair of 140 invented people of one place, under the default configuration and with every threshold and guard at its lowest; a shared valid number still links, and a mistyped, placeholder or local one does not; the matcher's tests, lints, documentation and benchmark smoke run. **Not done / not verified:** publishing 0.9.0, the maintainer's; more pairs go to a person, and how many was not measured.
+
 ## 2026-11-25 - On a small screen every high-risk allergy is named (OQ-XP2)
 
 - **Clinical risk:** H-070 (controls, evidence and residual changed; status and score not). The strip could count a high-risk allergy among the `+n` when several did not fit; it now names every one, however many, and counts only the rest. The maintainer decided that what is life-critical and the identifier stay in sight.

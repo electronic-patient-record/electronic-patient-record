@@ -59,7 +59,7 @@ On 50,000 synthetic patients, one machine, one run each, warm: a family name of 
 1. ~~Compare identifiers by what they mean and not by how they were typed~~: done (AG-12, migration 45), for national numbers only.
 2. ~~Retrieve by a folded family name and by the names swapped, and by a birth date with its day and month swapped~~: done (AG-12, migration 46).
 3. Retrieve by a name that sounds alike, and by the year when only a year is known (AG-12): both widen the list much more, so they need a measured cost and a site's own frequencies.
-4. Require an **identifier** before any automatic decision (AG-13, OQ-AG8): the matcher's, and a clinical safety decision. An earlier version of this page said "an identifier or an address"; an address or a telephone number is not enough, as the next section shows.
+4. Require an **identifier** before any automatic decision (AG-13, OQ-AG8): **decided 2026-11-25 (no), and built in matcher 0.9.0, not published**, so the tables here, measured on 0.8.1, still stand for the service. An earlier version of this page said "an identifier or an address"; an address or a telephone number is not enough, as the next section shows.
 5. A site's own evaluation, with adjudicated pairs and denominators, before any of this is believed (AG-8, ID-1).
 
 ## A place that many people share (XP-5, 2026-11-25)

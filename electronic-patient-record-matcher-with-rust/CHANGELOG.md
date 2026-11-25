@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.9.0] - not published
+
+- **Breaking:** `AutoLink` needs a verified identifier that both records carry (a national health number, or an IHI where that is on). Before this, a family name, a given name and a birth date were enough, twins one letter apart included, and a shared postcode or telephone number could tip a pair over. Such a pair is now `Review`, with the new conflict code `no_shared_identifier` last. No configuration turns this off. An exhaustive match on `ConflictCode` needs the new variant.
+- **Unchanged:** every score, `NonMatch`, what a shared number decides, and the other conflicts.
+- **Not done / not verified:** no site's own data; more pairs go to a person, and how many was not measured; the service uses 0.8.1 until this is published.
+
 ## [0.8.1] - 2026-11-24
 
 - **Fixed:** a family name with an empty part (two spaces, or a leading or trailing space) scored 0/0, NaN, for that part in the compound-name comparison. Empty parts are now ignored, and a name with no part at all scores 0.0: absent evidence is never agreement. Names of one part per word score as before.

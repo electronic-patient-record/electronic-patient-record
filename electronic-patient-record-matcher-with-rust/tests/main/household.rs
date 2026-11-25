@@ -66,10 +66,10 @@ fn a_household_cannot_lift_relatives_out_of_non_match() {
 }
 
 #[test]
-fn the_same_person_still_auto_links_and_scores_one() {
+fn the_same_person_lacks_only_an_identifier_and_scores_one() {
     let a = person("Ada", Some("LS1 4AB"), &[("phone", "07700 900123")]);
     let r = MatchingEngine::default().compare(&a, &a.clone());
-    assert_eq!(r.decision, Decision::AutoLink, "{r:?}");
+    assert!(crate::only_an_identifier_is_missing(&r), "{r:?}");
     assert!(r.score > 0.99);
 }
 

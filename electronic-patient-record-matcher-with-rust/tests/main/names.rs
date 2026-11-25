@@ -61,7 +61,7 @@ fn decide(a: &Patient, b: &Patient) -> MatchResult {
 #[test]
 fn john_and_john_paul_are_reviewed_never_linked_automatically() {
     let same = decide(&person("Smith", &["John"]), &person("Smith", &["John"]));
-    assert_eq!(same.decision, Decision::AutoLink);
+    assert!(crate::only_an_identifier_is_missing(&same), "{same:?}");
     let extra = decide(
         &person("Smith", &["John"]),
         &person("Smith", &["John", "Paul"]),
@@ -83,11 +83,13 @@ fn a_middle_name_that_is_on_both_records_or_is_an_initial_of_one_is_not_a_confli
         &person("Smith", &["John", "Paul"]),
         &person("Smith", &["John", "Paul"]),
     );
-    assert_eq!(both.decision, Decision::AutoLink);
+    assert!(crate::only_an_identifier_is_missing(&both), "{both:?}");
     let initial = decide(
         &person("Smith", &["John", "P"]),
         &person("Smith", &["John", "Paul"]),
     );
-    assert!(initial.conflicts.is_empty(), "{:?}", initial.conflicts);
-    assert_eq!(initial.decision, Decision::AutoLink);
+    assert!(
+        crate::only_an_identifier_is_missing(&initial),
+        "{initial:?}"
+    );
 }
