@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - A permission does not follow a merge (OQ-AG14)
+
+- **Clinical risk:** H-006 (controls, evidence and residual changed; status and score not). A permission on a record merged into another counted there and could not be withdrawn there. It no longer counts, and an unmerge gives the record its own back; refusals follow as before. Decided by the maintainer.
+- **Verified:** a merge, a permission given again and an unmerge, which fails without the rule; a domain test, an unreadable refusal included; the normal and database passes on a fresh Postgres 18; every docs gate. **Not done / not verified:** a merged-in refusal is not in the surviving record's list, so it is withdrawn on the record it is on; nothing tells a person at a merge that permissions were left behind.
+
 ## 2026-11-25 - Why an appointment was missed is seen by the care team and the patient (OQ-XP1)
 
 - **Clinical risk:** H-071 (controls, evidence and residual changed; status and score not). Decided by the maintainer. A patient now sees their own; someone reading in an emergency with no relationship no longer does.

@@ -376,6 +376,87 @@ async fn consents_for_many_patients_match_one_at_a_time() {
     );
 }
 
+/// OQ-AG14: a permission on a record merged into another does not count there, where nobody could withdraw it; the
+/// refusals beside it do, and an unmerge gives the record its own back.
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn a_permission_does_not_follow_a_merge_and_a_refusal_does() {
+    let db = db().await;
+    let family = format!(
+        "Zzpermit{}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    );
+    let (kept, gone) = (alike(&db, &family).await, alike(&db, &family).await);
+    let said = |effect, purpose: &str| Provision {
+        effect,
+        actors: vec![],
+        purposes: vec![purpose.into()],
+        resources: vec![],
+        labels: vec![],
+        period: None,
+    };
+    let both = ConsentRecord {
+        provisions: vec![
+            said(Effect::Permit, "treatment"),
+            said(Effect::Deny, "research"),
+        ],
+        ..deny_research()
+    };
+    let permit = ConsentRecord {
+        provisions: vec![said(Effect::Permit, "operations")],
+        ..deny_research()
+    };
+    for c in [&both, &permit] {
+        store::create(&db, &gone, "t", None, c).await.unwrap();
+    }
+    let verdict = async |id: &str, purpose| {
+        let active = store::active_with_merged(&db, &[id.to_string()])
+            .await
+            .unwrap();
+        let list = active
+            .get(&id.to_lowercase())
+            .cloned()
+            .unwrap_or_else(Vec::new);
+        consent::decide(
+            list.iter().map(|c| (c.id.as_str(), &c.consent)),
+            &ctx(purpose),
+        )
+        .consent
+    };
+    assert_eq!(
+        verdict(&gone, Purpose::Treatment).await,
+        policy::Consent::Permit
+    );
+    merge(&db, &kept, &gone).await;
+    for (purpose, expected) in [
+        (Purpose::Treatment, policy::Consent::NotRecorded),
+        (Purpose::Operations, policy::Consent::NotRecorded),
+        (Purpose::Research, policy::Consent::Deny),
+    ] {
+        assert_eq!(verdict(&kept, purpose).await, expected, "{purpose:?}");
+    }
+    // Given again on the record that stands, it counts, and is in its list.
+    store::create(&db, &kept, "t", None, &permit).await.unwrap();
+    assert_eq!(
+        verdict(&kept, Purpose::Operations).await,
+        policy::Consent::Permit
+    );
+    electronic_patient_record::links::unmerge(&db, &kept, &gone, "admin", "different people")
+        .await
+        .unwrap();
+    assert_eq!(
+        verdict(&gone, Purpose::Treatment).await,
+        policy::Consent::Permit
+    );
+    assert_eq!(
+        verdict(&kept, Purpose::Research).await,
+        policy::Consent::NotRecorded
+    );
+}
+
 /// CQ-12: as for patients, a lost race for a consent version is a conflict, not a database error.
 #[tokio::test]
 #[ignore = "needs Postgres: set DB_URL"]

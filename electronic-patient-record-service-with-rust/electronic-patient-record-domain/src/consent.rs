@@ -280,6 +280,27 @@ pub struct Verdict {
     pub from_merged: Vec<String>,
 }
 
+/// What of a consent follows the person when the record it is on is merged into another: its refusals, and no permission
+/// (OQ-AG14, decided 2026-11-25). A person's refusal does not lapse because two records were joined; a permission is asked
+/// for again on the record that stands, where it can be withdrawn. `None` when it refuses nothing.
+#[must_use]
+pub fn refusals(record: &ConsentRecord) -> Option<ConsentRecord> {
+    let kept = ConsentRecord {
+        provisions: record
+            .provisions
+            .iter()
+            .filter(|p| p.effect == Effect::Deny)
+            .cloned()
+            .collect(),
+        ..record.clone()
+    };
+    // An opt-out carries no provisions of its own, and is a refusal.
+    effective(&kept)
+        .iter()
+        .any(|p| p.effect == Effect::Deny)
+        .then_some(kept)
+}
+
 /// Whether two records say the same thing, whatever their status: withdrawing one would leave the other in force. The
 /// order of the provisions, and of the words in a list, does not matter, nor does a word said twice.
 #[must_use]
@@ -436,6 +457,34 @@ mod tests {
     fn verdict(records: &[ConsentRecord], ctx: &Context) -> policy::Consent {
         let ids: Vec<String> = (0..records.len()).map(|i| format!("c{i}")).collect();
         decide(ids.iter().map(String::as_str).zip(records), ctx).consent
+    }
+
+    #[test]
+    fn only_refusals_follow_a_merge() {
+        let mixed = record(vec![
+            provision(Effect::Permit),
+            provision(Effect::Deny),
+            provision(Effect::Permit),
+        ]);
+        let kept = refusals(&mixed).unwrap();
+        assert_eq!(kept.provisions, [provision(Effect::Deny)]);
+        assert_eq!((kept.kind, kept.status), (mixed.kind, mixed.status));
+        assert_eq!(verdict(&[kept], &ctx()), policy::Consent::Deny);
+        assert_eq!(refusals(&record(vec![provision(Effect::Permit)])), None);
+        let opt_out = ConsentRecord {
+            kind: Kind::NationalDataOptOut,
+            ..record(vec![])
+        };
+        assert_eq!(refusals(&opt_out), Some(opt_out.clone()));
+        // A refusal that cannot be read still withholds.
+        let unreadable = record(vec![Provision {
+            actors: vec!["no-such-role".into()],
+            ..provision(Effect::Deny)
+        }]);
+        assert_eq!(
+            verdict(&[refusals(&unreadable).unwrap()], &ctx()),
+            policy::Consent::Deny
+        );
     }
 
     #[test]

@@ -197,7 +197,7 @@
 | OQ-AG6 | After a mistaken merge is reversed, does each person see in their own log that their record was read through the other chart, without seeing the other person? (AG-6) | privacy lead |
 | OQ-AG7 | Is the exact set of versions served to each reader kept, for incident review, and where, given that audit writes already wait on one lock? (AG-7, EH-10) | maintainer, privacy lead, operations |
 | OQ-AG8 | **Answered 2026-11-25 by the maintainer: no.** A name and a birth date alone are never enough for the matcher to say a pair may be linked automatically. Taken to mean that an identifier is needed, because an address or a telephone number is shared by everyone in one place ([measured](patient-identity/candidate-recall.md)). (AG-13) | answered; the Clinical Safety Officer has not reviewed it |
-| OQ-AG14 | Does a permission recorded on a record merged into another count for the person? Today it does, as a refusal does, and it is not in the surviving record's list, so it cannot be withdrawn there. Recommendation: only refusals follow a merge; a permission is asked for again. | maintainer, data protection officer |
+| OQ-AG14 | **Answered 2026-11-25 by the maintainer: no.** Only refusals follow a merge; a permission is asked for again on the record that stands. Built the same day. | answered; no data protection officer has reviewed it |
 | OQ-DM1 | For donor matching, what is needed: the patient's own reports, a referral to a registry, or a workflow? See [donor matching](donor-matching/index.md). | customer |
 | OQ-DM2 | What does a patient see of their own typing, and what are they told beforehand? | transplant team, patients, privacy lead |
 | OQ-DM3 | Which laboratory system and registry, in what format? | customer, laboratory |

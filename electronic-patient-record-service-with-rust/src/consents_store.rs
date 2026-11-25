@@ -167,8 +167,9 @@ pub async fn active_for(
     Ok(by_patient)
 }
 
-/// The active consents that apply to each of `patient_ids`: its own and those of every record merged
-/// into it (a person's refusal does not lapse because two records were joined). Two queries however
+/// The active consents that apply to each of `patient_ids`: its own, and the **refusals** of every record merged
+/// into it ([`consent::refusals`]: a refusal does not lapse because two records were joined, and a permission does not
+/// follow). Two queries however
 /// many patients (CQ-10). A patient with neither has no entry; one with merged-in records but no
 /// consent has an empty entry. Keys are lower case.
 ///
@@ -197,7 +198,12 @@ pub async fn active_with_merged(
         }
         let mut list: Vec<_> = own.into_iter().flatten().collect();
         for source in merged.into_iter().flatten() {
-            list.extend(consents.get(source).into_iter().flatten().cloned());
+            list.extend(consents.get(source).into_iter().flatten().filter_map(|c| {
+                consent::refusals(&c.consent).map(|consent| StoredConsent {
+                    consent,
+                    ..c.clone()
+                })
+            }));
         }
         out.insert(id.clone(), list);
     }
