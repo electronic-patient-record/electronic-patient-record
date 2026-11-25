@@ -45,6 +45,8 @@ Nothing is removed: who added, who lifted, on whose decision and why stay, and a
 
 Then: a screen that says what is withheld and lets a clinician label (none shows these lists today); results, observations, allergies and the rest, where a hidden allergy is the hardest case; the label for a stay in custody, which needs a record of custody.
 
+**By place.** What a viewer may be told, and whether an emergency beats a refusal, differ by law: see [refusal of disclosure](../patient-refusal-of-disclosure-of-records/index.md). The rules above are one setting of it (OQ-DR1).
+
 ## Not done, not verified
 
 No screen and no FHIR. Someone who adds a substance-use label cannot then see the entry without the patient's consent or break-glass, and cannot lift it. A patient's refusal of consent that names a label withholds in an emergency too (OQ-PI8). Someone reading in an emergency is told the count, as the care team is. Nobody is asked to review a label. Observations, results and allergies have no rule for what points at a withheld entry. A viewer with several roles has the best of them, as in the policy engine. One gap in an emergency: a reader on the team who may see every known label without break-glass (the patient having permitted substance-use content) is still refused an entry whose code cannot be read, since the engine then has nothing to use the grant for.

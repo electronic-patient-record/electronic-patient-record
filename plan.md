@@ -2341,3 +2341,45 @@ registries and transplant teams, because a wrong blood group kills and a record 
 
 **Audit.** The maintainer supplied an audit of `576eca7f` on 2026-11-25. Its first increment (findings 1 to 6) was built
 the same day: tasks AG-1 to AG-6. The rest, AG-7 to AG-11, needs clinicians, a site or a decision.
+
+## 42. Research pass 2026-11-25: refusing treatment, and refusing disclosure, by country
+
+Asked for on 2026-11-25, twice: research patient refusal in several major countries, for treatment and then for disclosure
+of records; add it to the plan, tasks and spec; make the settings configurable for each tenant; make the screens and data
+handle the cases (adult or child, conscious or unconscious, life or limb); and ask questions. Specs:
+[`spec/patient-refusal-of-consent`](spec/patient-refusal-of-consent/index.md) with [a table by place](spec/patient-refusal-of-consent/countries.md), and
+[`spec/patient-refusal-of-disclosure-of-records`](spec/patient-refusal-of-disclosure-of-records/index.md). Tasks RF-1 to RF-12 and DR-1 to DR-12; open questions OQ-RF1
+to OQ-RF9 and OQ-DR1 to OQ-DR8. **Design only: nothing is built, and nothing is reviewed.**
+
+**Assessment.** Two refusals were being taken for one. A refusal of treatment is not held here at all; a refusal of disclosure is,
+for a role, purpose, kind or label, and not for a person, an organisation or one entry. The places read disagree on every
+point that software would want to fix: whether a capable refusal holds (most say yes; Israel has a process against it,
+France treats the first unforeseen emergency apart, Brazil and Saudi Arabia conflict, many were not established); whether
+it is withdrawn by word of mouth; from what age; whether a clinician may know that something is hidden; and whether an
+emergency opens it. So the rules are a tenant's settings from a pack that a named lawyer and clinician have signed, and
+"unsettled" and "not established" are values.
+
+**What it changed.** Four things written the same day were wrong or too narrow: that an emergency never overrides a capable
+refusal; what the Strasbourg case decided; that a withdrawal by word of mouth always ends a refusal; and the recommendation on
+OQ-PI8. Two decisions of the maintainer (OQ-PI2, OQ-PI5) would not be lawful everywhere, so they should become settings
+(OQ-DR1).
+
+| Rank | Idea | Why | Risk |
+|---|---|---|---|
+| 1 | Say which refusal, everywhere (RF-2) | Cheapest; every screen that says "consent" | None |
+| 2 | Break-glass asks: can they be asked, what is at stake (RF-6, PI-10) | Every place that has a rule turns on one of them | A prompt clicked through |
+| 3 | The rules file and its loader, with no rule in it (RF-3, DR-3) | Everything else reads it | A loader that fails open |
+| 4 | Hold a refusal of treatment (RF-4, RF-5) | The largest gap | A wrong one kills |
+| 5 | The emergency sheet (RF-7) | Useless if not found in seconds | Read as advice |
+| 6 | Refuse a person, a unit, an entry (DR-4) | Most asked for, least possible today | Inference |
+| 7 | What the reader is told, by setting (DR-5) | Law in some places | Hidden and needed (H-072) |
+| 8 | Young people and parents (DR-8) | Differs most | A birthday |
+| 9 | What a refusal does not stop (DR-9) | Hardly anyone tells the patient | Wrong law |
+
+**Order.** RF-1 and DR-1 (people and decisions), RF-2, RF-3 with DR-3, RF-6, then the two stores apart. No screen that shows a rule before a pack
+has been signed. **Risks.** A pack that goes stale; a tenant that edits law to suit itself; a screen that is believed;
+one page of research taken for advice.
+
+**Not done.** No lawyer, clinician, patient, young person, parent or privacy officer was asked. Case law was hardly read. About
+thirty places by automated readers; many official sites refused them and were left alone. No code, schema or screen was
+made or tried. True tenancy (SE-5) is not built, so a tenant is a deployment.

@@ -2137,6 +2137,36 @@ From an audit by another model, `docs/audits/mistral-medium-3-5-high/index.md`, 
 - [ ] **QI-79 (M) — Implement automated code reviews (DX-007).** Why: Bot reviews for common issues. **State:** nothing. **Acceptance:** Review bot commenting on PRs.
 - [ ] **QI-80 (S) — Add documentation preview (DX-008).** Why: Preview docs before merging. **State:** nothing. **Acceptance:** Docs site deployed on PRs.
 
+## Research 2026-11-25 — refusing treatment (RF) and refusing disclosure (DR)
+
+Ranked in plan.md §42. Specs: [treatment](spec/patient-refusal-of-consent/index.md), [by place](spec/patient-refusal-of-consent/countries.md), [disclosure](spec/patient-refusal-of-disclosure-of-records/index.md). **Nothing here is built.** RF-1 and DR-1 come first: no screen shows a rule before a pack is signed.
+
+- [ ] **RF-1 (S, decision, clinical) — Who signs, and which place first.** A lawyer, a clinician and the Clinical Safety Officer by name for one place; OQ-RF1, OQ-RF7, OQ-RF8, OQ-RF9, OQ-PI8. **Acceptance:** recorded decisions.
+- [ ] **RF-2 (S, clinical) — Say which refusal.** "Refusal of treatment" and "refusal of disclosure" in the glossary, the API descriptions and each screen that says consent. **Acceptance:** a census of the words.
+- [ ] **RF-3 (M, clinical) — The rules file and its loader.** `EPR_REFUSAL_RULES_FILE`, closed lists, a source for every setting, a reviewer and a date; a contradiction, an unknown value or a missing source stops the start; no file is no rule. **Acceptance:** each fault in the spec's table refused by a test; the invariants cannot be set; the rule in force is shown with its place, date and reviewer.
+- [ ] **RF-4 (M, clinical) — A refusal of treatment, as a pure library.** The fields and states of the spec, what its form still lacks, and no function that answers "may I treat?". **Acceptance:** the spec's cases as tests; "not known" never decides.
+- [ ] **RF-5 (M, clinical) — Its store and API.** Append-only; a merge and an unmerge stop for each; a temporary identity is kept apart; a withdrawal that was heard. **Acceptance:** a test for each candidate hazard that can have one; hazard rows with the first code.
+- [ ] **RF-6 (S, clinical) — Break-glass asks whether they can be asked, and what is at stake.** With PI-10. Each answer is required and is somebody's word. **Acceptance:** the grant and its review hold them; nothing is worked out from a diagnosis, an age or a word.
+- [ ] **RF-7 (M, clinical) — The emergency sheet and the banner words.** Found in seconds, printable, in the downtime extract; unreadable louder than empty. **Acceptance:** timed with clinicians; screen reader, 400%, each language by a speaker.
+- [ ] **RF-8 (M, clinical) — Whether a person can decide this, now.** Its own record with no score: conscious, communicates, decides, help given, about what, by whom; shown with its age, never copied forward. **Acceptance:** the fluctuating, intubated, interpreted and disputed cases.
+- [ ] **RF-9 (M, clinical) — Who speaks.** Attorney, guardian, parents apart, court, relative with no power, nobody; paper seen or not. **Acceptance:** two parents who disagree are two entries; a power not seen is not a power.
+- [ ] **RF-10 (S, clinical) — Asking now, and leaving against advice.** One record shape with EC-6: offered, explained, refused, accepted, may change their mind, in private or with whom. **Acceptance:** the US rule's items and a place's own are covered by the pack.
+- [ ] **RF-11 (M, clinical) — The interruption on an order.** Once, never a block, the answer kept. **Needs first:** orders. **Acceptance:** rates of each answer are measurable.
+- [ ] **RF-12 (L, with people) — Consult before a build.** Those OQ-RF6 names. **Acceptance:** a dated record of who, and what changed.
+
+- [ ] **DR-1 (S, decision) — Do OQ-PI2 and OQ-PI5 become settings?** And OQ-DR2 to OQ-DR8. **Acceptance:** recorded decisions; a data protection officer by name.
+- [ ] **DR-2 (S) — A refusal on today's consent says whether it holds in an emergency, and whether it was made in private.** Optional fields, no change in effect. **Acceptance:** old records read as "not said"; nothing decides on it yet.
+- [ ] **DR-3 (M) — The disclosure rules file and its loader.** `EPR_DISCLOSURE_RULES_FILE`, with RF-3's head and checks. **Acceptance:** each contradiction in the spec refused; a past decision names the version that stood.
+- [ ] **DR-4 (M, clinical) — Refuse a person, a unit, an organisation, an entry, a visit.** **Acceptance:** the one refused is not told; nothing shown to them differs; the only one on duty is a named case.
+- [ ] **DR-5 (M, clinical) — What the reader is told, by setting.** None, existence or count. **Acceptance:** with none, the answer, its size and its time do not depend on what is hidden, as far as a test can show.
+- [ ] **DR-6 (M, clinical) — What is linked is hidden together.** Result, order, medicine, letter, appointment, message, search, count, suggestion, printout. **Acceptance:** the label census, extended to refusals.
+- [ ] **DR-7 (M, clinical) — The emergency, by setting.** Whether it beats a refusal, who, again sign-in, hours, notice; a patient may close it. With RF-6. **Acceptance:** one test for each place's row that a pack would use.
+- [ ] **DR-8 (M, clinical) — Young people and parents.** Ages and kinds by pack; a birthday, a merge and a new proxy never show what was hidden. **Acceptance:** tests at each edge; separated parents; a child in care.
+- [ ] **DR-9 (M) — What a refusal does not stop.** The place's list, told before choosing; compelled disclosures as their own record, with whether the patient was told or why not. **Acceptance:** none is automatic.
+- [ ] **DR-10 (S) — A declined refusal.** Who, why, told when, how to complain. Only where the pack's model allows it. **Acceptance:** impossible under `binds`.
+- [ ] **DR-11 (M) — It travels.** Referral, transfer, FHIR `Consent`, export, change of provider, death. **Acceptance:** a receiver that cannot honour it is said to the patient.
+- [ ] **DR-12 (L, with people) — Consult before a build.** Those OQ-DR8 names. **Acceptance:** a dated record of who, and what changed.
+
 ## Customer request 2026-11-24 — information for matching donors (DM)
 
 [Spec](spec/donor-matching/index.md). The record keeps what laboratories report and never matches.

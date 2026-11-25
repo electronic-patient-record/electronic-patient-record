@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - Refusing treatment and refusing disclosure, by country; tenant settings, cases and schemas proposed (RF, DR)
+
+- **Clinical risk:** none by itself; nothing is built and no hazard row changes. Each page names candidates.
+- **Added:** `spec/patient-refusal-of-consent/countries.md`; settings, cases, schemas and screens on that page; `spec/patient-refusal-of-disclosure-of-records/index.md`; plan.md section 42; tasks RF-1 to RF-12 and DR-1 to DR-12; OQ-RF7 to OQ-RF9 and OQ-DR1 to OQ-DR8.
+- **Corrected, from the page of the same day:** that an emergency never overrides a capable refusal; what Pindo Mulla decided; that a spoken withdrawal always ends a refusal.
+- **Found:** OQ-PI2 and OQ-PI5, as decided, would not be allowed in some places read. No tenant is in one.
+- **Not done / not verified:** no code, schema or screen. Automated readers, about thirty places, hardly any case law; many official sites refused them and were not read. No lawyer, clinician, data protection officer or patient has reviewed any of it.
+
 ## 2026-11-25 - The two audits are tasks, and their files are deleted (QI, AG-14 to AG-16)
 
 - **Clinical risk:** none by itself; no hazard row changes.

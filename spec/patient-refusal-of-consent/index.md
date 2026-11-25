@@ -7,7 +7,7 @@ Related: [life-or-limb emergencies](../access-control/index.md#life-or-limb-emer
 ## The short answer
 
 1. **Two refusals.** A refusal of **treatment** ("do not give me blood") and a refusal of **disclosure** ("do not show my record"). The brief is about the first. The consent records built here are about the second.
-2. **An emergency does not override a capable adult's refusal of treatment**, in England and Wales, and by the sources read in Ontario and before the European Court of Human Rights. It changes what may be done when the person **cannot decide** and no refusal that holds is known.
+2. **An emergency does not override a capable adult's refusal of treatment in most places read, and not in all** ([by place](countries.md)). Israel has a process that can; France treats the first unforeseen emergency apart; Brazil and Saudi Arabia contradict themselves; in many the point was not found. So it is **a setting of the tenant's, from a reviewed pack**, and "the law here is unsettled" is one of its values.
 3. **For disclosure the published rule has the same shape.** The UK doctors' regulator: where a patient objects to information being shared for their own care, do not disclose it unless it is justified in the public interest or is of overall benefit to a patient who **lacks capacity** [GMC].
 4. **So the question is not "is it an emergency?" but "can this person be asked, now?"** The software cannot answer that. A clinician can, and has to say so.
 5. **This software keeps no refusal of treatment at all today.** That is the larger gap.
@@ -28,7 +28,7 @@ Related: [life-or-limb emergencies](../access-control/index.md#life-or-limb-emer
 
 | Claim in the brief | Found | Verdict |
 |---|---|---|
-| A life-or-limb emergency does not override a refusal by an adult with capacity | A capable adult's refusal "must be respected", "even if refusing treatment would result in their death" [NHS]. An adult with capacity may refuse though it leads to death: Re B (2002) [REB] (secondary). Ontario: a refusal on a card bound the doctor when the patient was unconscious, Malette v Shulman (1990) [MAL] (secondary). Strasbourg: blood given in emergency surgery despite her refusal was a violation, Pindo Mulla v Spain (2024) [PM] (secondary) | Right for England and Wales on the sources read |
+| A life-or-limb emergency does not override a refusal by an adult with capacity | A capable adult's refusal "must be respected", "even if refusing treatment would result in their death" [NHS]. An adult with capacity may refuse though it leads to death: Re B (2002) [REB] (secondary). Ontario: a refusal on a card bound the doctor when the patient was unconscious, Malette v Shulman (1990) [MAL] (secondary). Strasbourg: Pindo Mulla v Spain (2024) [PM], read on a copy: a competent adult may refuse though it is fatal; the refusal must be known, clear and current; staff must try to dispel doubt; **failing that, protecting life should prevail**. The violation lay in how her known wishes were documented and passed on | Right for England and Wales on the sources read |
 | "including in the UK" | The Mental Capacity Act is England and Wales. Scotland has its own Act; **in Northern Ireland the 2016 Act is in force only in part**, and what governs advance decisions there was not established [NI] | Too broad |
 | Without consent only when the person lacks capacity and care is urgent | Emergency treatment goes ahead for someone who "needs emergency treatment to save their life, but they're incapacitated", explained afterwards [NHS]. Outside that: treatment for mental disorder under the Mental Health Act s.63 [MHA], and children | Right for adults and physical care |
 | Capacity is to understand, retain, weigh and communicate | Section 3(1)(a) to (d): understand, retain, "use or weigh", communicate. **It is presumed (s.1(2)), about this matter at this time (s.2(1)), and not lost "merely because he makes an unwise decision" (s.1(4))** [MCA] | Right, with three parts left out that matter most |
@@ -66,7 +66,7 @@ OQ-PI8 asks whether a life-or-limb emergency lifts a patient's refusal of **disc
 | Not known | Any | It holds |
 | A child | Any | Not decided here: competence, parents and law differ by place |
 
-Until it is decided, nothing changes: **break-glass lifts no refusal**, which is the safer side for the refusal and the less safe for the patient who would have agreed. Both are hazards. FR-4.6 ("emergencies that are life-or-limb threatening override **normal** access restrictions") is read here as not covering a refusal by someone who can be asked; whether the maintainer meant that is OQ-RF1.
+**By place this differs**: see [refusal of disclosure](../patient-refusal-of-disclosure-of-records/index.md), where the table above becomes the default of a setting and not the rule. Until it is decided, nothing changes: **break-glass lifts no refusal**, which is the safer side for the refusal and the less safe for the patient who would have agreed. Both are hazards. FR-4.6 ("emergencies that are life-or-limb threatening override **normal** access restrictions") is read here as not covering a refusal by someone who can be asked; whether the maintainer meant that is OQ-RF1.
 
 ## Rules proposed
 
@@ -77,12 +77,112 @@ Until it is decided, nothing changes: **break-glass lifts no refusal**, which is
 5. **It is not hidden by a refusal of disclosure, nor by a label, from someone about to treat.** Only the words needed: the treatment, the condition, the date, where the paper is. The reason may be private. This is an exception to masking that the patient is told of when it is recorded.
 6. **Absent is not "no refusal".** "None recorded here" is what is known. Papers are in wallets, homes and other systems.
 7. **Never a block.** A refusal does not stop an order. It interrupts once, names the refusal, and asks for what the clinician found: withdrawn, not satisfied that it applies, does not cover this, agreed now. The answer is kept.
-8. **Withdrawal is easy and at once**, by word of mouth, by anyone who heard it, and shown as that. Adding one is careful; ending one is not.
+8. **A withdrawal that was heard is recorded at once and shown as heard**, by whom and how. Whether it ends the refusal is the place's rule: some take it by word of mouth, some only in writing. Until it is settled the refusal is shown as **doubted**, never as gone and never as untouched.
 9. **It goes stale honestly.** The date it was made and last confirmed are beside it. The software does not expire it.
 10. **Doubt is a state, with a reason**, and not a yes or a no.
 11. **A refusal now is recorded as care:** what was offered, what was refused, the risks explained, by whom, and that the person may change their mind. The US emergency rule asks for a description of what was refused and reasonable steps for a written refusal [EMTALA].
 12. **Nobody is pressed.** No screen words a refusal as a problem to solve. It does not reduce other care, and it is not shown to those who do not need it.
 13. **Coercion both ways.** A refusal, or its withdrawal, may be somebody else's. Who was in the room is recordable, and the entry can be kept from a proxy.
+
+## Cases the record and the screens must tell apart
+
+The facts are recorded by a person, each with who and when, and **"not known" is always a value and never a default that decides**. The software works out one of them: whether the age passes a tenant's threshold, from a birth date that is known.
+
+| Axis | Values | Why not fewer |
+|---|---|---|
+| Age | adult, young person, child, **not known** | The ages are the tenant's. An estimated birth date is not known |
+| Conscious | yes, fluctuating, no, not known | Consciousness is not capacity |
+| Can communicate | yes, with help (language, sign, eye gaze, speech aid), no, not known | Someone intubated or speaking another language may decide perfectly well |
+| Can decide **this, now** | yes, with support, fluctuating, no, **doubted or disputed**, not assessed | Only a person says. It is about one decision at one time, and an old answer is shown with its age |
+| Threat | to life, to limb or organ, to an unborn child, serious deterioration, severe pain, to another person, none, not known | Laws name different ones. Some cover only life |
+| Time | now, hours, can wait, not known | Whether a court, a committee or a relative can be reached |
+| Refusal | said now; advance, in the place's form; advance, not in its form or not seen; by a representative; by a parent; carried (a card, a band); reported by another; **none recorded** | They differ in force |
+| Clear | clear, doubted (why), conflicting, does not cover this | |
+| Withdrawal | none, heard (how), written, by conduct | |
+| Who speaks | the person, attorney or agent, guardian or court, parent (one, both, in dispute), relative with no power, nobody reached | |
+| Legal setting | ordinary, psychiatric detention, custody, child in care, court order | |
+| Identity | certain, temporary, **a card found with a person of unknown identity** | A refusal may be another person's |
+| Pregnant | yes, no, not known, **not asked because the place's rule does not turn on it** | Held only where the pack says that it matters |
+
+**Examples a test must hold,** each with what the screen says and does not:
+
+| Case | Shown | Never |
+|---|---|---|
+| Adult, awake, deciding, refuses blood; life at stake | The refusal, what was explained, "ask again if things change" | A way to mark them as lacking capacity because they refused |
+| The same, limb at stake | The same, with the threat as limb | A lower standard of asking |
+| Unconscious adult, advance refusal, form seen, covers this | The words, the form's facts, where the paper is, the pack's rule | "Valid", "binding", "do not treat" |
+| Unconscious, a photograph of an undated card, identity temporary | "A card was found. Whose it is and when it was made are not known" | Filing it as the person's refusal |
+| Awake, intubated, writes "no" | Can communicate with help; who helped | "Unable to consent" from the tube |
+| Fluctuating: refused clearly at 09:00, confused at 11:00 | Both, with times | The later one alone |
+| Drunk and refusing | Not assessed, until someone assesses | A rule on alcohol |
+| 15, refuses; parents agree | Each voice apart; the pack's rule on who may decide | One "consent" field |
+| 8, both parents refuse blood, life at stake | The emergency rule of the pack; whom to call; that it was called | A parental refusal shown as the patient's |
+| Parents disagree | Both | The one at the bedside |
+| Detained for mental illness, refuses surgery | The pack's note that detention does or does not reach this, or that it is not established | "Detained: consent not needed" |
+| Attorney refuses, paper not seen | Reported, not seen | An attorney's power assumed |
+| Advance refusal, then accepted blood last year | Both: conduct since is shown | A newer form hiding it, or the other way |
+| Refused disclosure of the record, has an advance refusal | The advance refusal to someone about to treat (OQ-RF2) | Nothing |
+| Law unsettled here | "The rule here is unsettled", with the pack's two sources | A choice made by the software |
+
+## Settings of the tenant
+
+One deployment serves one tenant today (QA-12, SE-5), so a tenant's settings are a file the deployment names, as for [missed-appointment reasons](../care-settings.md): proposed `EPR_REFUSAL_RULES_FILE`, TOML, read once at start. With true tenancy the same file is held per tenant, versioned and append-only.
+
+| Group | Setting | Values | When absent |
+|---|---|---|---|
+| Pack | `id`, `place`, `law_as_of`, `lawyer`, `clinician`, `reviewed_on`, `review_due` | Words and dates | **The service does not start with a pack that names no reviewer, outside a sandbox** |
+| Ages | `adult`, `young_person_from`, `advance_from` | Whole years, each with its source | Everyone's age is "not known" to the rules |
+| Adult | `capable_refusal` | `holds`, `holds-with-process` (who), `unsettled`, `not-established` | `not-established` |
+| Cannot decide | `emergency_threats` | Which of the threats the rule names | None are named |
+| | `yields_to` | `any-known`, `in-form-only`, `not-stated` | `not-stated` |
+| Advance | `force`, `forms_needed`, `covers`, `limits` (terminal, imminent death, pregnancy), `expires_after`, `registry` | Lists | Nothing is said of force |
+| Withdrawal | `spoken`, `written`, `conduct`, `witnesses` | `ends-it`, `raises-doubt` | `raises-doubt` |
+| Doubt | `doubt` | `life-prevails`, `does-not-apply`, `ask` (whom) | Says that the rule is not recorded |
+| Speaks | `order` of representatives, what each may refuse | List | Nobody is shown as having power |
+| Children | `override_by`, `two_doctors`, `notify` | List | Says that the rule is not recorded |
+| Detention | `reaches_unrelated_physical` | `yes`, `no`, `not-established` | `not-established` |
+| Record | `refusal_needs` (written, witnesses, languages), `lapses_after` | List | The fields are asked and not required |
+| Contacts | Who to call: lawyer, ethics, court, safeguarding, blood-refusal liaison | By role, with hours | Shown as not set |
+
+**Not settings, for any tenant:** no capacity worked out by software; no "valid"; nothing blocked; nothing deleted; "none recorded" never "none"; every act audited; unknown stays unknown; both the refusal and what was done are kept. **A pack may add a question or a notice; it may not remove one of these.** A pack that contradicts itself, names a value not listed, or has a setting without a source does not load, and the service says why and does not start.
+
+**A pack says what the rule is; it does not say what to do.** It is shown as "recorded rule for {place}, as of {date}, reviewed by {name}", beside the facts.
+
+## Schemas, proposed
+
+Append-only versions, as every clinical list here. JSON of a refusal:
+
+```json
+{
+  "kind": "spoken-now | advance | order | representative | parent | carried | reported",
+  "treatment": { "words": "…", "coding": null },
+  "accepts_instead": "…",
+  "circumstances": "…",
+  "applies_if_life_at_risk": "yes | no | not-stated",
+  "form": { "written": "yes|no|not-known", "signed": "…", "witnessed": "…", "seen": "original|copy|not-seen", "where": "…" },
+  "made_on": "2026-03 | null", "confirmed_on": "… | null",
+  "said_by": { "who": "patient | attorney | guardian | parent | relative | other", "power_seen": "yes|no|not-applicable" },
+  "identity": "certain | temporary | not-known",
+  "state": "stands | doubted | withdrawn | entered-in-error",
+  "doubt": "… required when doubted",
+  "withdrawal": { "how": "spoken|written|conduct", "heard_by": "…", "when": "…" },
+  "keep_from": ["proxy"]
+}
+```
+
+A judgement of whether a person can decide is its own record: `about` (the decision), `at`, `conscious`, `communicates`, `decides`, `help_given`, `because` (words), `by`. It has no score. It goes out of date on the screen by its age and is never copied forward.
+
+A grant of break-glass (PI-10) gains: `threat`, `time`, `can_be_asked` (`yes`, `no`, `not-known`), `asked_and_said`, each required, so that "cannot be asked" is somebody's word. Tables: `treatment_refusal_versions`, `decision_ability_versions`, and columns on `break_glass_grants`. A merge of two patients stops for each refusal and asks (H-020).
+
+## Screens, proposed
+
+1. **The banner** says "Refusal of treatment recorded: blood products" and not "has an advance decision". Words only from the record. Colour is not the only sign.
+2. **The emergency sheet**, one key away: what is refused and accepted, for whom and in what state, when confirmed, who heard what, where the paper is, the place's rule and its date, whom to call. Large type, printable, readable on a phone and offline in the downtime extract.
+3. **Recording one** asks one thing at a time, starts with the person's own words, and lets "not known" be chosen everywhere in one step. It can be finished later. It shows what the place's form would still need.
+4. **The interruption** on an order that the words may cover: once, with "withdrawn now", "not satisfied that it applies (why)", "does not cover this", "agreed now", "not mine to decide: call". Never a block.
+5. **Asking now:** explained what, in which language, with whose help, refused what, accepted what, may change their mind, in private or with whom.
+6. **States:** loading, could not be read ("**treat as not known, not as none**"), restricted, none recorded, recorded. The unreadable state is louder than the empty one.
+7. Tested with a screen reader, at 400%, in each interface language by a speaker, in the dark, with gloves, and against the clock.
 
 ## What to hold, proposed
 
@@ -119,21 +219,11 @@ For the Clinical Safety Officer. None is added to the log: nothing is built.
 
 ## Order of work, proposed
 
-| Step | What | Acceptance |
-|---|---|---|
-| RF-1 | Decide OQ-RF1 and OQ-PI8 | A recorded decision, with a lawyer's view |
-| RF-2 | Words: "refusal of treatment" and "refusal of disclosure" in the glossary and wherever consent is named | A census of screens and API words |
-| RF-3 (M, clinical) | A pure library for a recorded refusal of treatment: the fields, states and what is missing; no "valid" | Domain tests; no function answers "may I treat?" |
-| RF-4 (M, clinical) | The store and API, with a merge that asks | Tests for each hazard that has one |
-| RF-5 (M, clinical) | The emergency view and banner | Tested with clinicians against time |
-| RF-6 (S, clinical) | Break-glass asks whether the patient can be asked (with PI-10) | The grant and its review hold it |
-| RF-7 (S, clinical) | Refusal now, and leaving against advice (EC-6) | One record shape for both |
-
-Order entry does not exist, so rule 7 waits for it.
+Tasks RF-1 to RF-12 in [tasks](../../tasks.md). Nothing is started. **RF-1 and a named lawyer and clinician come before any code that a clinician could see.**
 
 ## Open questions
 
-Summarised as OQ-RF1 to OQ-RF6 in [open questions](../16-open-questions.md).
+Summarised as OQ-RF1 to OQ-RF9 in [open questions](../16-open-questions.md).
 
 1. Does FR-4.6 cover a refusal of disclosure by someone who can be asked? Recommendation: no. (OQ-RF1)
 2. May an advance decision be shown to someone about to treat, though the patient refused disclosure of the rest? Recommendation: yes, and tell the patient when it is recorded. (OQ-RF2)
@@ -141,6 +231,9 @@ Summarised as OQ-RF1 to OQ-RF6 in [open questions](../16-open-questions.md).
 4. Who may record a withdrawal that they were told of, and does it take effect at once? Recommendation: any treating clinician, at once, shown as spoken. (OQ-RF4)
 5. Under 18: what is shown of a competent young person's refusal, and to whom? (OQ-RF5)
 6. Which people are asked before a build: people who have made an advance decision, people who refuse blood, people with fluctuating capacity, families, emergency clinicians? (OQ-RF6)
+7. Who signs a country pack, and what happens when its review date passes: warn, or refuse to start? Recommendation: warn on every screen that shows a rule. (OQ-RF7)
+8. Which place is first? A pack for a place nobody will deploy in is work that goes stale. (OQ-RF8)
+9. Where the law is unsettled, may a tenant choose a rule for itself? Recommendation: no; it may name whom to call. (OQ-RF9)
 
 ## Not done, not verified
 
@@ -148,7 +241,7 @@ Summarised as OQ-RF1 to OQ-RF6 in [open questions](../16-open-questions.md).
 - Re T, Re MB, Hunter and New England v A, the Mental Health Act 2025's dates, section 25(2) to (4) of the 2005 Act, the code of practice, the law on attorneys and courts, and any case after 2024 were not read.
 - The Mental Capacity Act sections, Mental Health Act s.63, the Scottish section 47, HIPAA 164.522, 42 CFR 2.51, 42 CFR 489.24 and the GDPR article were read at their source, or at a published copy of it. The EMTALA page notes that the paragraph's record-keeping waits for an approval that was not checked.
 - One figure found and not used as fact: a US study is reported to find capacity documented in 22 per cent of charts of refused emergency care (search extract).
-- Scotland, Northern Ireland, Wales's own policy, and every other country need their own lawyer.
+- **Thirty-odd places were read for [the table](countries.md), by four automated readers working apart, and checked against each other only where they overlapped.** Each needs its own lawyer.
 
 ## Sources
 
