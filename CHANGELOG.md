@@ -2,10 +2,15 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - Question and task ids are checked to be unique
+
+- **Corrected:** the military health questions and the order questions had taken ids already used (`OQ-MS1` to `OQ-MS5` are manual steps; `OQ-OS1` to `OQ-OS4` are rate limits, policy as data, SAST and tracing). They are now `OQ-MF1` to `OQ-MF8` and `OQ-OX1` to `OQ-OX4`. The commits that added them (`816d00c4`, `a3162794`) say the old ids.
+- **Added:** `scripts/check-ids.py`, in the docs-links gate: a repeated id in the questions table or in `tasks.md` fails. On the revision before this one it names those nine and no other. **Not done:** an id used only in a page is not checked.
+
 ## 2026-11-25 - One state table for every order, as a library nothing calls (EH-4)
 
 - **Clinical risk:** none to behaviour; nothing calls it and no order is stored.
-- **Added:** `order.rs` and `spec/order-entry/state-table.md`: what the orderer wants and what the filler has got to move apart; asking is checked, and that something was done is never refused and is flagged; a cancel of a sent order is a request; an order's own words never change. OQ-OS1 to OQ-OS4.
+- **Added:** `order.rs` and `spec/order-entry/state-table.md`: what the orderer wants and what the filler has got to move apart; asking is checked, and that something was done is never refused and is flagged; a cancel of a sent order is a request; an order's own words never change. OQ-OX1 to OQ-OX4.
 - **Changed:** two rules of the order entry proposal that said otherwise (a replaced order was revoked at once, and a transition not in the table was always refused).
 - **Verified:** 11 tests over every state, stage and step, with the allowed steps written out again by hand; four wrong versions of the table were each caught. **Not done / not verified:** no clinician, pharmacist or laboratory reviewed it; no store, route or screen; the database pass was not run, as no store changed; referrals keep their own table.
 
@@ -26,7 +31,7 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 ## 2026-11-25 - A draft spec for military health (CF-3)
 
 - **Clinical risk:** none; nothing is built. The draft names five hazards that a build must log first.
-- **Added:** `spec/military-health/index.md`: what service changes, what is shared with custody and what is not, and eight questions for the customer (OQ-MS1 to OQ-MS8).
+- **Added:** `spec/military-health/index.md`: what service changes, what is shared with custody and what is not, and eight questions for the customer (OQ-MF1 to OQ-MF8).
 - **Not done / not verified:** four sources, two countries: one read in part, two through an agent's excerpts and one through search summaries only, because the military sites could not be reached; an amendment of 19 November 2026 to the United States rule was seen but not read. The customer's answers about custody are not taken as answers here. No one was asked.
 
 ## 2026-11-25 - A change lists the hazards whose evidence it touches (PR-2, last slice)

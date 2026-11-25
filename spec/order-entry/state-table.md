@@ -49,10 +49,10 @@ Flags: `done-before-signed`, `done-while-on-hold`, `done-after-cancel-asked`, `d
 
 | Id | Question | Who |
 |---|---|---|
-| OQ-OS1 | Who sees each flag, how soon, and who answers when the orderer has left? | clinical lead, Clinical Safety Officer |
-| OQ-OS2 | Is a spoken order done before it was signed ever "wanted", and how long may it wait for a signature? | clinical lead, pharmacist |
-| OQ-OS3 | May an order end by time alone (a course that is over, a test nobody took)? There is no `expired` here: an order whose time passed is **overdue**, which is worked out and not a state. | clinical lead, pharmacist |
-| OQ-OS4 | Does a referral move to this table (PC-5)? Its no-show, information and redirect steps have no place here. | maintainer |
+| OQ-OX1 | Who sees each flag, how soon, and who answers when the orderer has left? | clinical lead, Clinical Safety Officer |
+| OQ-OX2 | Is a spoken order done before it was signed ever "wanted", and how long may it wait for a signature? | clinical lead, pharmacist |
+| OQ-OX3 | May an order end by time alone (a course that is over, a test nobody took)? There is no `expired` here: an order whose time passed is **overdue**, which is worked out and not a state. | clinical lead, pharmacist |
+| OQ-OX4 | Does a referral move to this table (PC-5)? Its no-show, information and redirect steps have no place here. | maintainer |
 
 ## Not done, not verified
 

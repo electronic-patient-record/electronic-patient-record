@@ -3,3 +3,4 @@
 set -eu
 cd "$(dirname "$0")/../.."
 python3 scripts/check-links.py .
+python3 scripts/check-ids.py .

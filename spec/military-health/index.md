@@ -4,11 +4,11 @@ A draft from the customer's request of 2026-11-24 ("add capabilities for … mil
 
 ## Related links
 
-[Custodial health](../custodial-health/index.md) (CF-2, the other profile where a person's keeper or employer is close to the record), [Care settings](../care-settings.md) (a setting is a profile, not a fork; section 4), [Protected information](../access-control/protected-information.md), [Patient identity](../patient-identity/index.md), [Reads as at a time](../as-at/index.md), [Open questions](../16-open-questions.md) (OQ-MS1 to OQ-MS8), [Scope and the equity rule](../02-scope.md).
+[Custodial health](../custodial-health/index.md) (CF-2, the other profile where a person's keeper or employer is close to the record), [Care settings](../care-settings.md) (a setting is a profile, not a fork; section 4), [Protected information](../access-control/protected-information.md), [Patient identity](../patient-identity/index.md), [Reads as at a time](../as-at/index.md), [Open questions](../16-open-questions.md) (OQ-MF1 to OQ-MF8), [Scope and the equity rule](../02-scope.md).
 
 ## What was asked, and what is not known
 
-A customer wants the system to support military health. The request did not say which country, which service, whether the customer is a defence medical service, a civilian provider that treats serving people, or a veterans' service. Those are three different products (OQ-MS1). This page is written so that each could use part of it.
+A customer wants the system to support military health. The request did not say which country, which service, whether the customer is a defence medical service, a civilian provider that treats serving people, or a veterans' service. Those are three different products (OQ-MF1). This page is written so that each could use part of it.
 
 ## What the sources say
 
@@ -31,7 +31,7 @@ What these share, by my reasoning: the **receiving** side starts the transfer, s
 4. **Seeking care is not an event a commander sees.** An appointment, a place or a clinic name can disclose as much as a note. A mental-health appointment in a duty roster is the plain case.
 5. **The record is made where there may be no network.** A deployed clinic may be offline for weeks, and the same person may be treated by an ally. Entries arrive late and out of order, so each carries when it happened, when it was recorded and when it arrived; a read says how recent its sources are ([as at a time](../as-at/index.md), [mobile viewability](../mobile-viewability.md)). A late entry never silently changes what was shown: it is a new version.
 6. **Identity may be hidden on purpose.** A person may be treated under a protected or temporary identity, or unconscious with a tag. It must resolve to one person later without showing the real name to a reader who may not see it. The temporary identities the record has today (a tag that survives a read and a write) are a start, not this.
-7. **Place can be secret.** A location, a unit or a date can be classified while the injury is not. The clinical fact is kept and the place is withheld **with a marker that it is withheld**, never left blank, so a later clinician knows there is something to ask about. **The core is not a classified system** and must not hold classified text (OQ-MS5).
+7. **Place can be secret.** A location, a unit or a date can be classified while the injury is not. The clinical fact is kept and the place is withheld **with a marker that it is withheld**, never left blank, so a later clinician knows there is something to ask about. **The core is not a classified system** and must not hold classified text (OQ-MF5).
 8. **An exposure is evidence about a place.** Four things stay apart: a documented measurement above a threshold, a location-based possibility, a self-report, and nothing known. **No record is not "not exposed"** (the repository's rule: absent evidence is null with a reason). An exposure is never turned into a diagnosis, nor a missing one into a reason to refuse a claim.
 9. **Leaving is a hand-over, not an end.** The person is the same patient before, during and after service. A release review of open items (medicines, referrals, results not seen, open exposures) is done before the date, and says what it could not see. If the next provider is on another system it is an export the pack names, and the hand-over is **sent, not left for the person to carry**, where the law allows that.
 10. **Veteran status is the person's to tell.** It is asked, with the answers yes, no, prefers not to say and not asked kept apart, and shown only to those who need it. It is not inferred from an old address, a service number or a deployment. A reservist is both: serving and civilian, with two providers, at the same time.
@@ -49,7 +49,7 @@ The acceptance asks for one design where the sources allow. My reasoning; the cu
 | Who is kept out | The organisation that holds or employs the person has no clinical role | Officers, police | Commanders, and colleagues who are also clinicians |
 | What may leave | A reviewed functional list, dated, expiring, no reason | Cell, handcuffs, escort | Duty, deployment, equipment |
 | Release rules | A table in the pack; with none, refuse; audited; an urgent release is reviewed | Courts, police | Command authority, investigators, an ally |
-| Hidden by label | The **fact** of the setting is itself protected | The fact of custody | Not decided: for a veteran the fact is often useful, and for some it is dangerous (OQ-MS6) |
+| Hidden by label | The **fact** of the setting is itself protected | The fact of custody | Not decided: for a veteran the fact is often useful, and for some it is dangerous (OQ-MF6) |
 | Hand-over | A review of open items, complete or saying it is not | Release, transfer at short notice | Discharge on a known date, or a return to reserve |
 | Not shared | | Escort, in-possession medicines, missed care | Classified places, exposures, protected identity, allies |
 
@@ -69,18 +69,18 @@ The acceptance asks for one design where the sources allow. My reasoning; the cu
 
 | Id | Question |
 |---|---|
-| OQ-MS1 | Which country, and which of the three: a defence medical service, a civilian provider that treats serving people, or a veterans' service? |
-| OQ-MS2 | Is there one record through service and after it (as the customer chose for custody), or a defence record and a civilian record with a hand-over? Who is the controller of each? |
-| OQ-MS3 | What may a commander be told, by which rule, and who decides? Is a functional statement with no diagnosis enough, as in custody? |
-| OQ-MS4 | Must it work deployed and offline, and for how long? |
-| OQ-MS5 | Will any information be classified? My recommendation is that the system **never** holds it, and holds only a marker that something is withheld. |
-| OQ-MS6 | Who sees that a person is a veteran, and is it the person's choice? |
-| OQ-MS7 | Does an exposure record already exist to read from, or must this hold one? If both, whose word wins? (My reasoning: neither; both are shown, with their sources.) |
-| OQ-MS8 | Are reservists, dependants, cadets, contractors and allied personnel in scope? |
+| OQ-MF1 | Which country, and which of the three: a defence medical service, a civilian provider that treats serving people, or a veterans' service? |
+| OQ-MF2 | Is there one record through service and after it (as the customer chose for custody), or a defence record and a civilian record with a hand-over? Who is the controller of each? |
+| OQ-MF3 | What may a commander be told, by which rule, and who decides? Is a functional statement with no diagnosis enough, as in custody? |
+| OQ-MF4 | Must it work deployed and offline, and for how long? |
+| OQ-MF5 | Will any information be classified? My recommendation is that the system **never** holds it, and holds only a marker that something is withheld. |
+| OQ-MF6 | Who sees that a person is a veteran, and is it the person's choice? |
+| OQ-MF7 | Does an exposure record already exist to read from, or must this hold one? If both, whose word wins? (My reasoning: neither; both are shown, with their sources.) |
+| OQ-MF8 | Are reservists, dependants, cadets, contractors and allied personnel in scope? |
 
 ## Tasks and acceptance
 
-`CF-3` is this page. A later build needs, before any code: answers to OQ-MS1 to OQ-MS3; the primary text of the rules for the customer's country; hazard-log rows for a disclosure to command, for care not sought because of it, for a missing exposure read as none, for a late deployed entry, and for a hand-over not received; a test that a command role reads no clinical data; and review by a military clinician, a serving person and a veteran.
+`CF-3` is this page. A later build needs, before any code: answers to OQ-MF1 to OQ-MF3; the primary text of the rules for the customer's country; hazard-log rows for a disclosure to command, for care not sought because of it, for a missing exposure read as none, for a late deployed entry, and for a hand-over not received; a test that a command role reads no clinical data; and review by a military clinician, a serving person and a veteran.
 
 ## Not done, not verified
 
