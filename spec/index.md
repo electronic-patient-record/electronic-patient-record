@@ -131,6 +131,7 @@ Topics that span several numbered chapters and are kept whole:
 - [Reasonable adjustments and communication needs](reasonable-adjustments/index.md): what a person needs in order to use care
 - [Clinical workflows](clinical-workflows/index.md) — admission, transfer, ward round and handover, discharge, then the clinic visit; encounters as events on a pathway (IW).
 - [Scheduling](scheduling/index.md) — clinic templates, staff booking, the follow-up-due list, cancellations, DNA and "was not brought", reminders (SC).
+- [Licenses](licenses/index.md) — the licence options and the SPDX expression.
 - [Clinical documentation](clinical-documentation/index.md) — progress notes, co-signature, copy-forward provenance, AI-drafted content, discharge summaries and letters (CN).
 - [Order entry](order-entry/index.md) — lab and other orders, order sets, checks at ordering, results back to the orderer, wrong-patient guards (OE).
 - [Nursing flowsheets](nursing-flowsheets/index.md) — the observations grid, NEWS2 and escalation, fluid balance, assessments, the ward list (NF).
