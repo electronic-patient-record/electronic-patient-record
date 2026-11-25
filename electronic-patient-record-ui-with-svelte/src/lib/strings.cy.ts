@@ -627,6 +627,11 @@ export const CY: Strings = {
   vitalRange: "Ystod a roddwyd:",
   vitalPickOne: "Dewiswch arwydd hanfodol.",
   vitalTimeInvalid: "Rhowch ddyddiad ac amser go iawn.",
+  vitalTimeSkipped:
+    "Ni ddigwyddodd yr amser hwnnw: aeth y clociau ymlaen. Rhowch amser arall.",
+  vitalTimeRepeated:
+    "Digwyddodd yr amser hwnnw ddwywaith: aeth y clociau yn ôl. Dewiswch pa un.",
+  vitalTimeWhich: "Pa un o'r ddau amser",
   vitalReasonNeeded: "Dywedwch pam nad oes gwerth.",
   vitalValueInvalid: "Rhowch y gwerth fel rhif.",
   vitalRangeInvalid:
@@ -1186,14 +1191,20 @@ export const CY: Strings = {
   summaryVitalsNotShown:
     "Nid yw arwyddion hanfodol yn cael eu dangos i'ch rôl na'ch pwrpas.",
   summaryVitalsFailed: "Nid oedd modd llwytho arwyddion hanfodol.",
-  summaryNotBuilt: "Heb ei adeiladu yn y system hon eto",
-  summaryNotBuiltNote:
-    "Nid oes dim yn cael ei gadw ar gyfer y rhain. Nid yw hyn yn golygu nad oes dim i'w gofnodi.",
-  summaryNotBuiltItems: {
-    problems: "Problemau",
+  summaryElsewhere: "Heb eu dangos ar y crynodeb hwn",
+  summaryElsewhereNote:
+    "Gall y system hon gadw'r rhain ac nid yw'r crynodeb hwn yn eu dangos. Efallai fod rhai wedi'u cofnodi ar gyfer y claf hwn. Nid oes sgrin yn eu dangos eto: gofynnwch i'r tîm cyfrifol cyn dibynnu ar nad oes rhai.",
+  summaryElsewhereItems: {
+    problems: "Problemau a diagnosisau",
+    results: "Canlyniadau a'u cymeradwyo",
+    relatives: "Cyflyrau mewn perthnasau",
+  },
+  summaryNotKept: "Heb eu cadw yn y system hon",
+  summaryNotKeptNote:
+    "Nid oes lle i'r rhain yn y system hon. Chwiliwch amdanynt yn rhywle arall: nid yw hyn yn golygu nad oes rhai.",
+  summaryNotKeptItems: {
     medications: "Meddyginiaethau gweithredol",
     immunisations: "Imiwneiddiadau",
-    results: "Canlyniadau diweddar",
     appointments: "Apwyntiadau i ddod",
   },
 

@@ -295,16 +295,27 @@ function zoneOffsetMs(zone: string, atUtcMs: number): number {
   return asUtc - Math.floor(atUtcMs / 1000) * 1000;
 }
 
+/** What a wall-clock time in a zone is: nothing, one instant, none (the clock skipped it), or two (it repeated it). */
+export type WallTimes =
+  | { kind: "invalid" }
+  | { kind: "skipped" }
+  | { kind: "one"; at: string }
+  | { kind: "repeated"; choices: { at: string; offset: string }[] };
+
+function offsetText(ms: number): string {
+  const minutes = Math.abs(Math.round(ms / 60_000));
+  const two = (n: number) => String(n).padStart(2, "0");
+  return `UTC${ms < 0 ? "-" : "+"}${two(Math.floor(minutes / 60))}:${two(minutes % 60)}`;
+}
+
 /**
- * A wall-clock time ("2026-10-26T09:30", as a datetime-local box gives it) in `zone`, as an RFC 3339
- * UTC instant. Null when it is not a real time or the zone is unknown. A time the zone skips (the
- * hour a clock goes forward) is read as the same wall time an hour **earlier** (02:30 that does not
- * exist becomes 01:30 standard time), and a time it repeats (the hour a clock goes back) as the first
- * of the two. Both are arbitrary but fixed, and the server's 5-minute future limit still applies.
+ * The instants a wall-clock time ("2026-10-26T09:30", as a datetime-local box gives it) names in `zone`, as RFC 3339 in
+ * UTC. Nothing is chosen for the reader (AG-4): a time the zone skips (the hour a clock goes forward) names none, and one
+ * it repeats (the hour a clock goes back) names two, earlier first, each with its offset.
  */
-export function wallTimeToUtc(wall: string, zone: string): string | null {
+export function wallTimes(wall: string, zone: string): WallTimes {
   const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(wall.trim());
-  if (!m) return null;
+  if (!m) return { kind: "invalid" };
   const [y, mo, d, h, mi] = m.slice(1).map(Number) as [
     number,
     number,
@@ -320,17 +331,42 @@ export function wallTimeToUtc(wall: string, zone: string): string | null {
     probe.getUTCHours() !== h ||
     probe.getUTCMinutes() !== mi
   ) {
-    return null;
+    return { kind: "invalid" };
   }
   try {
-    const guess = probe.getTime();
-    // The offset at the guess, then at the answer it gives: they differ only across a clock change.
-    let utc = guess - zoneOffsetMs(zone, guess);
-    utc = guess - zoneOffsetMs(zone, utc);
-    return new Date(utc).toISOString().replace(/\.\d{3}Z$/, "Z");
+    const asUtc = probe.getTime();
+    const day = 86_400_000;
+    // Every offset the zone has within a day of it: an instant is real if its own offset gives this wall time back.
+    const offsets = new Set(
+      [-day, 0, day].map((by) => zoneOffsetMs(zone, asUtc + by)),
+    );
+    const choices = [...offsets]
+      .map((offset) => ({ utc: asUtc - offset, offset }))
+      .filter((c) => zoneOffsetMs(zone, c.utc) === c.offset)
+      .sort((a, b) => a.utc - b.utc)
+      .map((c) => ({
+        at: new Date(c.utc).toISOString().replace(/\.\d{3}Z$/, "Z"),
+        offset: offsetText(c.offset),
+      }));
+    const [first] = choices;
+    if (!first) return { kind: "skipped" };
+    return choices.length === 1
+      ? { kind: "one", at: first.at }
+      : { kind: "repeated", choices };
   } catch {
-    return null;
+    return { kind: "invalid" };
   }
+}
+
+/** An instant and the wall time the form shows for it. */
+export interface KeptInstant {
+  at: string;
+  measuredAt: string;
+}
+
+/** The instant a form starts from. While its wall time is not edited, the instant is sent back exactly (AG-4). */
+export function keepInstant(at: string, zone: string): KeptInstant {
+  return { at, measuredAt: nowInZone(new Date(at), zone) };
 }
 
 /** Now as the site's wall-clock "YYYY-MM-DDTHH:mm", for the form's default. */
@@ -365,6 +401,28 @@ export interface VitalForm {
   /** Wall time in the site's zone. */
   measuredAt: string;
   siteZone: string;
+  /** What the form started from: sent as it is while `measuredAt` is not edited. */
+  kept?: KeptInstant | null;
+  /** The instant chosen for a wall time the clock repeats. */
+  instant?: string;
+}
+
+/** The measured instant the form names, or the sentence saying what to fix. */
+function measuredInstant(f: VitalForm): { at: string } | { problem: string } {
+  if (f.kept && f.kept.measuredAt === f.measuredAt) return { at: f.kept.at };
+  const times = wallTimes(f.measuredAt, f.siteZone);
+  switch (times.kind) {
+    case "invalid":
+      return { problem: TEXT.vitalTimeInvalid };
+    case "skipped":
+      return { problem: TEXT.vitalTimeSkipped };
+    case "one":
+      return { at: times.at };
+    case "repeated": {
+      const chosen = times.choices.find((c) => c.at === f.instant);
+      return chosen ? { at: chosen.at } : { problem: TEXT.vitalTimeRepeated };
+    }
+  }
 }
 
 /** The request body for the form, or the sentence saying what to fix. Nothing is sent as 0 by default. */
@@ -375,11 +433,11 @@ export function formToRequest(
   | { ok: false; problem: string } {
   const vital = VITALS.find((v) => v.key === f.vital);
   if (!vital) return { ok: false, problem: TEXT.vitalPickOne };
-  const at = wallTimeToUtc(f.measuredAt, f.siteZone);
-  if (at === null) return { ok: false, problem: TEXT.vitalTimeInvalid };
+  const measured = measuredInstant(f);
+  if ("problem" in measured) return { ok: false, problem: measured.problem };
   const record: Record<string, unknown> = {
     code: vital.loinc,
-    effective_at: at,
+    effective_at: measured.at,
     status: "final",
   };
   if (f.noValue) {

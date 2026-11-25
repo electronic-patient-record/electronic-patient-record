@@ -8,18 +8,20 @@
     VITALS,
     enteredInErrorRecord,
     formToRequest,
+    keepInstant,
+    type KeptInstant,
     loadHistory,
     type ObservationVersion,
     loadObservations,
     noticeText,
     type Notice,
-    nowInZone,
     rangeText,
     trends,
     unitLabel,
     valueText,
     assessmentText,
     vitalName,
+    wallTimes,
     type AbsentReason,
     type StoredObservation,
     type VitalKey,
@@ -47,6 +49,24 @@
   let low = $state("");
   let high = $state("");
   let measuredAt = $state("");
+  // The instant the form started from: sent back exactly unless the time is edited (AG-4, H-034).
+  let kept = $state<KeptInstant | null>(null);
+  let instant = $state("");
+  function startAt(at: string) {
+    const from = keepInstant(at, siteZone);
+    kept = from;
+    measuredAt = from.measuredAt;
+    instant = "";
+  }
+  /** Now, to the minute: a new entry claims no seconds. */
+  const thisMinute = () =>
+    new Date(Math.floor(Date.now() / 60_000) * 60_000).toISOString();
+  // The two instants of a time the clock repeats, once the time is edited to one.
+  const choices = $derived.by(() => {
+    if (kept?.measuredAt === measuredAt) return [];
+    const times = wallTimes(measuredAt, siteZone);
+    return times.kind === "repeated" ? times.choices : [];
+  });
   let why = $state("");
 
   // The entry being corrected: the form is loaded from it and submits a new version of it.
@@ -100,7 +120,7 @@
     rows = [];
     notices = {};
     histories = {};
-    measuredAt = nowInZone(new Date(), siteZone);
+    startAt(thisMinute());
     void load();
   });
 
@@ -153,7 +173,7 @@
     absentReason = o.absent_reason ?? "";
     low = o.range?.low != null ? String(o.range.low) : "";
     high = o.range?.high != null ? String(o.range.high) : "";
-    measuredAt = nowInZone(new Date(o.effective_at), siteZone);
+    startAt(o.effective_at);
     why = "";
   }
 
@@ -162,7 +182,7 @@
     value = low = high = why = "";
     noValue = false;
     absentReason = "";
-    measuredAt = nowInZone(new Date(), siteZone);
+    startAt(thisMinute());
   }
 
   async function recordNow() {
@@ -176,6 +196,8 @@
       high,
       measuredAt,
       siteZone,
+      kept,
+      instant,
     });
     if (!built.ok) {
       message = built.problem;
@@ -213,7 +235,7 @@
       value = low = high = why = "";
       noValue = false;
       absentReason = "";
-      measuredAt = nowInZone(new Date(), siteZone);
+      startAt(thisMinute());
       await load();
     } else if (res.status === 409) {
       message = TEXT.vitalConflict;
@@ -453,6 +475,15 @@
         bind:value={measuredAt}
         required
       />
+      {#if choices.length}
+        <label for="vs-instant">{TEXT.vitalTimeWhich}</label>
+        <select id="vs-instant" bind:value={instant} required>
+          <option value=""></option>
+          {#each choices as c (c.at)}
+            <option value={c.at}>{measuredAt.slice(11)} ({c.offset})</option>
+          {/each}
+        </select>
+      {/if}
       <label for="vs-low">{TEXT.vitalRangeLow}</label>
       <input
         id="vs-low"

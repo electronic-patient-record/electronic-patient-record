@@ -3618,6 +3618,8 @@ test("correcting a vital loads it into the form, needs a reason, and sends a new
     version: 1,
     value: 172,
     critical: { low: 40, high: 150 },
+    // Seconds and a fraction: a correction of the value must not move or round the time (AG-4).
+    effective_at: "2026-10-26T13:30:45.123456Z",
   });
   let rows: unknown[] = [mine];
   const sent: Json[] = [];
@@ -3656,7 +3658,7 @@ test("correcting a vital loads it into the form, needs a reason, and sends a new
       value: 72,
       unit: "/min",
       critical: { low: 40, high: 150 },
-      effective_at: "2026-10-26T13:30:00Z",
+      effective_at: "2026-10-26T13:30:45.123456Z",
       status: "final",
     },
     expected_version: 1,
@@ -3666,6 +3668,56 @@ test("correcting a vital loads it into the form, needs a reason, and sends a new
   await expect(
     section.getByRole("button", { name: "Record vital sign" }),
   ).toBeVisible();
+});
+
+test("editing a time the clock skips is refused, and one it repeats asks which", async ({
+  page,
+}) => {
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, { ...ANN, site_time_zone: "Europe/London" }),
+  );
+  const sent: Json[] = [];
+  const mine = OBS({
+    id: "o-3",
+    version: 1,
+    value: 72,
+    effective_at: "2026-10-25T01:30:45.000000Z",
+  });
+  await page.route("**/api/proxy/api/patients/*/observations/o-3", (route) => {
+    sent.push(route.request().postDataJSON());
+    return json(route, 200, mine);
+  });
+  await page.route("**/api/proxy/api/patients/*/observations", (route) =>
+    json(route, 200, { observations: [mine] }),
+  );
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  const section = page.getByRole("region", { name: "Vital signs" });
+  const save = section.getByRole("button", { name: "Save correction" });
+  const at = section.getByLabel("Measured at (site time, Europe/London)");
+  const which = section.getByLabel("Which of the two times");
+  await section.getByRole("button", { name: "Correct", exact: true }).click();
+  await section
+    .getByLabel("Reason for this entry (needed for an old reading)")
+    .fill("wrong time");
+  // Not edited: the second 01:30 is kept, and nothing is asked.
+  await expect(at).toHaveValue("2026-10-25T01:30");
+  await expect(which).toHaveCount(0);
+  await at.fill("2026-03-29T01:30");
+  await save.click();
+  await expect(section.getByText(/That time did not happen/)).toBeVisible();
+  expect(sent).toHaveLength(0);
+  await at.fill("2026-10-25T01:45");
+  await expect(which).toBeVisible();
+  await axe(page);
+  await which.selectOption({ label: "01:45 (UTC+01:00)" });
+  await save.click();
+  await expect(
+    section.getByText("Correction saved as a new version."),
+  ).toBeVisible();
+  expect((sent[0] as { observation: Json }).observation).toMatchObject({
+    effective_at: "2026-10-25T00:45:00Z",
+  });
 });
 
 test("a vital's history lists every version with its reason, keeps a retracted value visible, and says when it cannot be shown", async ({
@@ -3816,7 +3868,7 @@ test("the vital signs trend lists every standing reading per vital, newest first
   await expect(section.getByRole("table")).toHaveCount(0);
 });
 
-test("the summary shows the allergies, the latest reading of each vital with its notice, and says what is not built", async ({
+test("the summary shows the allergies, the latest reading of each vital with its notice, and says what it does not show", async ({
   page,
 }) => {
   await stubAllergies(page);
@@ -3865,14 +3917,17 @@ test("the summary shows the allergies, the latest reading of each vital with its
   await expect(
     page.getByRole("region", { name: "Allergies and intolerances" }),
   ).toBeVisible();
-  const todo = page.getByRole("region", {
-    name: "Not built in this system yet",
+  // What the system can hold and this page does not show is never called absent (AG-5).
+  const elsewhere = page.getByRole("region", {
+    name: "Not shown on this summary",
   });
-  await expect(todo).toContainText("Problems");
-  await expect(todo).toContainText("Active medications");
-  await expect(todo).toContainText(
-    "This does not mean there is nothing to record.",
-  );
+  for (const name of ["Problems and diagnoses", "Results and their sign-off"])
+    await expect(elsewhere).toContainText(name);
+  await expect(elsewhere).toContainText("Some may be recorded");
+  const notKept = page.getByRole("region", { name: "Not kept in this system" });
+  await expect(notKept).toContainText("Active medications");
+  await expect(notKept).not.toContainText("Results");
+  await expect(page.getByText(/Nothing is held/)).toHaveCount(0);
   await axe(page);
 });
 

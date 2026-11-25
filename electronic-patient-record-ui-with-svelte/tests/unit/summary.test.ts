@@ -1,4 +1,6 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { STRINGS } from "../../src/lib/strings";
 import { latestReadings } from "../../src/lib/summary";
 import type { StoredObservation } from "../../src/lib/vitals";
 
@@ -56,5 +58,50 @@ describe("latestReadings", () => {
 
   it("is empty with no readings", () => {
     expect(latestReadings([])).toEqual([]);
+  });
+});
+
+// AG-5: the summary said results and problems were "not built" and that "nothing is held for these", when the service
+// stored both. The two lists are held to the service's own route table, so that a section cannot go stale in silence.
+describe("what the summary says it does not show (AG-5)", () => {
+  const routes = readFileSync(
+    "../electronic-patient-record-service-with-rust/src/routes.rs",
+    "utf8",
+  );
+  const route = (name: string) => `"/api/patients/{id}/${name}"`;
+  const HELD = {
+    problems: "problems",
+    results: "results",
+    relatives: "relative-history",
+  } as const;
+  const NOT_KEPT = {
+    medications: ["medications", "prescriptions", "medication-requests"],
+    immunisations: ["immunisations", "immunizations", "vaccinations"],
+    appointments: ["appointments"],
+  } as const;
+  it("names as held only what a route of the service holds, and all it lists", () => {
+    expect(Object.keys(STRINGS.summaryElsewhereItems).sort()).toEqual(
+      Object.keys(HELD).sort(),
+    );
+    for (const path of Object.values(HELD)) {
+      expect(routes, path).toContain(route(path));
+    }
+  });
+  it("names as not kept only what no route of the service holds", () => {
+    expect(Object.keys(STRINGS.summaryNotKeptItems).sort()).toEqual(
+      Object.keys(NOT_KEPT).sort(),
+    );
+    for (const path of Object.values(NOT_KEPT).flat()) {
+      expect(routes, path).not.toContain(route(path));
+    }
+  });
+  it("never says that nothing is held", () => {
+    for (const words of [
+      STRINGS.summaryElsewhereNote,
+      STRINGS.summaryNotKeptNote,
+    ]) {
+      expect(words.toLowerCase()).not.toContain("nothing is held");
+    }
+    expect(STRINGS.summaryElsewhereNote).toContain("can hold");
   });
 });

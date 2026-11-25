@@ -587,6 +587,11 @@ export const STRINGS = {
   vitalRange: "Range given:",
   vitalPickOne: "Choose a vital sign.",
   vitalTimeInvalid: "Give a real date and time.",
+  vitalTimeSkipped:
+    "That time did not happen: the clocks went forward. Give another time.",
+  vitalTimeRepeated:
+    "That time happened twice: the clocks went back. Choose which.",
+  vitalTimeWhich: "Which of the two times",
   vitalReasonNeeded: "Say why there is no value.",
   vitalValueInvalid: "Give the value as a number.",
   vitalRangeInvalid:
@@ -1129,14 +1134,20 @@ export const STRINGS = {
     "No vital signs recorded in this system. This does not mean none were taken.",
   summaryVitalsNotShown: "Vital signs are not shown for your role or purpose.",
   summaryVitalsFailed: "Vital signs could not be loaded.",
-  summaryNotBuilt: "Not built in this system yet",
-  summaryNotBuiltNote:
-    "Nothing is held for these. This does not mean there is nothing to record.",
-  summaryNotBuiltItems: {
-    problems: "Problems",
+  summaryElsewhere: "Not shown on this summary",
+  summaryElsewhereNote:
+    "This system can hold these and this summary does not show them. Some may be recorded for this patient. No screen shows them yet: ask the team responsible before you rely on there being none.",
+  summaryElsewhereItems: {
+    problems: "Problems and diagnoses",
+    results: "Results and their sign-off",
+    relatives: "Conditions in relatives",
+  },
+  summaryNotKept: "Not kept in this system",
+  summaryNotKeptNote:
+    "This system has no place for these. Look for them elsewhere: this does not mean there are none.",
+  summaryNotKeptItems: {
     medications: "Active medications",
     immunisations: "Immunisations",
-    results: "Recent results",
     appointments: "Upcoming appointments",
   },
 

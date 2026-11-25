@@ -160,11 +160,23 @@
     {/if}
   </section>
 
-  <section aria-labelledby="sum-todo-h">
-    <h2 id="sum-todo-h">{TEXT.summaryNotBuilt}</h2>
-    <p>{TEXT.summaryNotBuiltNote}</p>
+  <!-- Two lists, because they say different things (AG-5): what the system can hold and this page does not show, and
+       what it has no place for. `tests/unit/summary.test.ts` holds each to the service's routes. -->
+  <section aria-labelledby="sum-elsewhere-h">
+    <h2 id="sum-elsewhere-h">{TEXT.summaryElsewhere}</h2>
+    <p>{TEXT.summaryElsewhereNote}</p>
     <ul>
-      {#each Object.values(TEXT.summaryNotBuiltItems) as name (name)}
+      {#each Object.values(TEXT.summaryElsewhereItems) as name (name)}
+        <li>{name}</li>
+      {/each}
+    </ul>
+  </section>
+
+  <section aria-labelledby="sum-notkept-h">
+    <h2 id="sum-notkept-h">{TEXT.summaryNotKept}</h2>
+    <p>{TEXT.summaryNotKeptNote}</p>
+    <ul>
+      {#each Object.values(TEXT.summaryNotKeptItems) as name (name)}
         <li>{name}</li>
       {/each}
     </ul>

@@ -4,6 +4,7 @@ import {
   assessmentText,
   enteredInErrorRecord,
   formToRequest,
+  keepInstant,
   noticeText,
   nowInZone,
   parseNumber,
@@ -16,11 +17,12 @@ import {
   lateByMinutes,
   LATE_AFTER_MINUTES,
   vitalName,
-  wallTimeToUtc,
+  wallTimes,
   type Notice,
   type StoredObservation,
   type VitalForm,
 } from "../../src/lib/vitals";
+import { STRINGS as STRINGS_EN } from "../../src/lib/strings";
 
 const base: StoredObservation = {
   id: "o1",
@@ -172,44 +174,75 @@ describe("where a value sits (H-034: never normal unless the API computed it fro
 
 describe("the measured time is the site's wall clock, sent as UTC", () => {
   it("converts New York time, in summer and winter", () => {
-    expect(wallTimeToUtc("2026-10-26T09:30", "America/New_York")).toBe(
-      "2026-10-26T13:30:00Z",
-    );
-    expect(wallTimeToUtc("2026-12-01T09:30", "America/New_York")).toBe(
-      "2026-12-01T14:30:00Z",
-    );
-    expect(wallTimeToUtc("2026-10-26T09:30", "UTC")).toBe(
-      "2026-10-26T09:30:00Z",
-    );
-    expect(wallTimeToUtc("2026-10-26T09:30", "Pacific/Auckland")).toBe(
-      "2026-10-25T20:30:00Z",
-    );
+    expect(wallTimes("2026-10-26T09:30", "America/New_York")).toEqual({
+      kind: "one",
+      at: "2026-10-26T13:30:00Z",
+    });
+    expect(wallTimes("2026-12-01T09:30", "America/New_York")).toEqual({
+      kind: "one",
+      at: "2026-12-01T14:30:00Z",
+    });
+    expect(wallTimes("2026-10-26T09:30", "UTC")).toEqual({
+      kind: "one",
+      at: "2026-10-26T09:30:00Z",
+    });
+    expect(wallTimes("2026-10-26T09:30", "Pacific/Auckland")).toEqual({
+      kind: "one",
+      at: "2026-10-25T20:30:00Z",
+    });
   });
   it("is exact on either side of a clock change", () => {
     // New York went forward at 02:00 EST on 2026-03-08: 01:59 is EST, 03:00 is EDT.
-    expect(wallTimeToUtc("2026-03-08T01:59", "America/New_York")).toBe(
-      "2026-03-08T06:59:00Z",
-    );
-    expect(wallTimeToUtc("2026-03-08T03:00", "America/New_York")).toBe(
-      "2026-03-08T07:00:00Z",
-    );
+    expect(wallTimes("2026-03-08T01:59", "America/New_York")).toEqual({
+      kind: "one",
+      at: "2026-03-08T06:59:00Z",
+    });
+    expect(wallTimes("2026-03-08T03:00", "America/New_York")).toEqual({
+      kind: "one",
+      at: "2026-03-08T07:00:00Z",
+    });
     // It went back at 02:00 EDT on 2026-11-01: 00:59 is EDT, 02:00 is EST.
-    expect(wallTimeToUtc("2026-11-01T00:59", "America/New_York")).toBe(
-      "2026-11-01T04:59:00Z",
-    );
-    expect(wallTimeToUtc("2026-11-01T02:00", "America/New_York")).toBe(
-      "2026-11-01T07:00:00Z",
-    );
+    expect(wallTimes("2026-11-01T00:59", "America/New_York")).toEqual({
+      kind: "one",
+      at: "2026-11-01T04:59:00Z",
+    });
+    expect(wallTimes("2026-11-01T02:00", "America/New_York")).toEqual({
+      kind: "one",
+      at: "2026-11-01T07:00:00Z",
+    });
   });
-  it("reads the skipped hour as an hour earlier and the repeated hour as the first of two", () => {
-    expect(wallTimeToUtc("2026-03-08T02:30", "America/New_York")).toBe(
-      "2026-03-08T06:30:00Z",
+  it("says a skipped time is skipped and gives both instants of a repeated one (AG-4)", () => {
+    expect(wallTimes("2026-03-08T02:30", "America/New_York")).toEqual({
+      kind: "skipped",
+    });
+    // The audit's: London went forward at 01:00 on 2026-03-29, and back at 02:00 on 2026-10-25.
+    expect(wallTimes("2026-03-29T01:30", "Europe/London")).toEqual({
+      kind: "skipped",
+    });
+    expect(wallTimes("2026-10-25T01:30", "Europe/London")).toEqual({
+      kind: "repeated",
+      choices: [
+        { at: "2026-10-25T00:30:00Z", offset: "UTC+01:00" },
+        { at: "2026-10-25T01:30:00Z", offset: "UTC+00:00" },
+      ],
+    });
+    expect(wallTimes("2026-11-01T01:30", "America/New_York")).toEqual({
+      kind: "repeated",
+      choices: [
+        { at: "2026-11-01T05:30:00Z", offset: "UTC-04:00" },
+        { at: "2026-11-01T06:30:00Z", offset: "UTC-05:00" },
+      ],
+    });
+    // A change of half an hour (Lord Howe Island), and a zone west of the date line.
+    expect(wallTimes("2026-04-05T01:45", "Australia/Lord_Howe").kind).toBe(
+      "repeated",
     );
-    expect(wallTimeToUtc("2026-11-01T01:30", "America/New_York")).toBe(
-      "2026-11-01T05:30:00Z",
-    );
+    expect(wallTimes("2026-10-26T09:30", "Pacific/Auckland")).toEqual({
+      kind: "one",
+      at: "2026-10-25T20:30:00Z",
+    });
   });
-  it("gives null for anything that is not a real time or zone", () => {
+  it("says invalid for anything that is not a real time or zone", () => {
     for (const bad of [
       "",
       "2026-10-26",
@@ -219,15 +252,63 @@ describe("the measured time is the site's wall clock, sent as UTC", () => {
       "2026-13-01T09:30",
       "soon",
     ]) {
-      expect(wallTimeToUtc(bad, "UTC"), bad).toBeNull();
+      expect(wallTimes(bad, "UTC"), bad).toEqual({ kind: "invalid" });
     }
-    expect(wallTimeToUtc("2026-10-26T09:30", "Not/AZone")).toBeNull();
+    expect(wallTimes("2026-10-26T09:30", "Not/AZone")).toEqual({
+      kind: "invalid",
+    });
   });
   it("shows now on the site's clock for the form's default", () => {
     const at = new Date("2026-10-26T13:30:45Z");
     expect(nowInZone(at, "America/New_York")).toBe("2026-10-26T09:30");
     expect(nowInZone(at, "UTC")).toBe("2026-10-26T13:30");
     expect(nowInZone(at, "Pacific/Auckland")).toBe("2026-10-27T02:30");
+  });
+});
+
+describe("the measured time of a correction (AG-4, H-034)", () => {
+  const london = { ...form, siteZone: "Europe/London" };
+  const sent = (f: VitalForm) => {
+    const r = formToRequest(f);
+    return r.ok ? r.record.effective_at : r.problem;
+  };
+  it("sends the stored instant back, to its last digit, when the time is not edited", () => {
+    for (const at of [
+      "2026-10-25T00:30:45.000000Z", // the first 01:30 of the autumn hour
+      "2026-10-25T01:30:45.000000Z", // the second
+      "2026-03-29T01:00:00.000000Z", // the spring gap's far side
+      "2026-06-01T09:30:59.123456Z", // an ordinary day, with a fraction
+    ]) {
+      const kept = keepInstant(at, "Europe/London");
+      expect(
+        sent({ ...london, measuredAt: kept.measuredAt, kept, value: "73" }),
+      ).toBe(at);
+    }
+  });
+  it("uses an edited time, and the old instant never comes back for it", () => {
+    const kept = keepInstant("2026-06-01T09:30:45.5Z", "Europe/London");
+    expect(sent({ ...london, measuredAt: "2026-06-01T10:31", kept })).toBe(
+      "2026-06-01T09:31:00Z",
+    );
+  });
+  it("refuses a skipped time and asks which of a repeated one", () => {
+    expect(sent({ ...london, measuredAt: "2026-03-29T01:30" })).toBe(
+      STRINGS_EN.vitalTimeSkipped,
+    );
+    const repeated = { ...london, measuredAt: "2026-10-25T01:30" };
+    expect(sent(repeated)).toBe(STRINGS_EN.vitalTimeRepeated);
+    for (const at of ["2026-10-25T00:30:00Z", "2026-10-25T01:30:00Z"]) {
+      expect(sent({ ...repeated, instant: at })).toBe(at);
+    }
+    // A choice left from another time is not used.
+    expect(sent({ ...repeated, instant: "2026-11-01T05:30:00Z" })).toBe(
+      STRINGS_EN.vitalTimeRepeated,
+    );
+  });
+  it("keeps the default time of a new entry unambiguous in the repeated hour", () => {
+    const now = "2026-10-25T01:30:45.000Z";
+    const kept = keepInstant(now, "Europe/London");
+    expect(sent({ ...london, measuredAt: kept.measuredAt, kept })).toBe(now);
   });
 });
 

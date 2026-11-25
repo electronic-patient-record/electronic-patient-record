@@ -2,6 +2,18 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - The summary never says stored information does not exist (audit finding 5, AG-5)
+
+- **Clinical risk:** H-066. The summary listed "Recent results" and "Problems" as "Not built in this system yet", "Nothing is held for these", while the service stored both. It was my omission when the problem list landed on 2026-11-24; results had been wrong since 2026-11-09.
+- **Changed:** English and (machine-written) Welsh words, and two lists in place of one.
+- **Verified:** vitest (the guard fails when a held section is listed as not kept), svelte-check, lint, Playwright with axe in both themes. **Not done / not verified:** see AG-5; no user was asked.
+
+## 2026-11-25 - Correcting a vital sign does not move its time (audit finding 4, AG-4)
+
+- **Clinical risk:** H-034. A correction of the value alone turned the instant into a wall time to the minute and back: it dropped the seconds always, and moved the second reading of the autumn hour by an hour. A time in the spring gap was read as another.
+- **Changed:** `wallTimeToUtc`, which chose for the reader, is replaced by `wallTimes`, which says none, one or two. A unit test that required the old choices was replaced.
+- **Verified:** vitest (8 tests failed first), svelte-check, lint, and the affected Playwright tests in both themes with axe. **Not done / not verified:** see AG-4; **a reading moved by an earlier correction keeps the moved time**, and its earlier version shows the true one in its history.
+
 ## 2026-11-25 - An unverified allergy code is withheld from FHIR (audit finding 3, AG-3)
 
 - **Clinical risk:** H-022. The export sent whatever code was recorded, though only its shape is checked: a test and a validator fixture sent "Penicillin" with the code for myocardial infarction.
