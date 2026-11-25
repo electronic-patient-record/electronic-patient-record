@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - On a small screen the patient banner no longer covers the page (XP-3)
+
+- **Clinical risk:** what stays in sight changes on a window under 640 px wide or 480 px high (H-070: controls, evidence and residual changed; status and score not). The banner scrolls away and a strip stays with identity, safety notices and allergies. Needs, the photo, sex and age are no longer always in sight there. On a larger window nothing changed. **Not reviewed by any clinician** (OQ-XP2).
+- **Added:** the strip; a long list of allergies is cut to what fits with the number left out, high-risk ones first. What gets the focus or is jumped to stops below the strip.
+- **Verified:** a browser test at three small sizes with an ordinary and a crowded record, in light and dark, in Chromium and on the two emulated phones (WebKit included): it fails when the banner stays, when the strip scrolls away, and without the space left for a jump. 251 of 254 tests pass on the phones (the feed queue, and two that look like limits of WebKit, do not); the desktop run passes. **Not done / not verified:** a real phone, a tablet, a zoomed desktop; a crowded banner just above the limits; the sideways scrolling and small targets of XP-1 (XP-2).
+
 ## 2026-11-25 - The interface measured on two phones (XP-1)
 
 - **Clinical risk:** H-070 is added `open`: on a phone the patient banner takes most of the screen (41 to 97 %) and can cover "Save changes"; at 400 % zoom on a desktop it must be worse, which was not measured. Nothing is changed by this entry.

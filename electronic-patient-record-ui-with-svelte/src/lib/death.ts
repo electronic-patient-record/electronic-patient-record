@@ -105,7 +105,8 @@ export async function loadAssertions(patientId: string): Promise<{
 export type BannerDeath =
   | { kind: "none" }
   | { kind: "unknown"; text: string }
-  | { kind: "asserted"; text: string };
+  // `head` is the statement alone, for the strip of a small screen.
+  | { kind: "asserted"; head: string; text: string };
 
 /**
  * The banner's line. Nothing while loading, or when the page did not ask (a patient's own view);
@@ -126,6 +127,7 @@ export function bannerDeath(load: DeathLoad | null): BannerDeath {
   const differ = a.dates_differ ? ` ${TEXT.bannerDeathDatesDiffer}` : "";
   return {
     kind: "asserted",
+    head,
     text: `${head} ${date}${differ} ${TEXT.bannerDeathHeld}`,
   };
 }

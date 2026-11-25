@@ -9,7 +9,11 @@
     nationalNumberDisplay,
     type Stored,
   } from "./patient.js";
-  import { bannerAllergies, type AllergyLoad } from "./allergies.js";
+  import {
+    bannerAllergies,
+    stripAllergies,
+    type AllergyLoad,
+  } from "./allergies.js";
   import { fetchBlob } from "./api.js";
   import { bannerDeath, type DeathLoad } from "./death.js";
   import { bannerAdjustments, type AdjustmentLoad } from "./adjustments.js";
@@ -68,6 +72,32 @@
       stale = true;
       if (url) URL.revokeObjectURL(url);
     };
+  });
+
+  // A small or zoomed screen has no room for the whole banner to stay (H-070): the banner scrolls with the page and
+  // this strip stays: whose record it is, what it must not be taken for, and allergies. Hidden from a screen reader,
+  // which has the banner itself; and not shown at all on a large screen, where the banner stays.
+  const firstSentence = (text: string) => text.split(/[.。।]\s/)[0] ?? text;
+  const strip = $derived({
+    allergies: stripAllergies(allergies, stored.site_time_zone),
+    flags: [
+      ...(stored.drill ? [firstSentence(TEXT.bannerDrill)] : []),
+      ...(deathLine.kind === "asserted" ? [deathLine.head] : []),
+      ...(deathLine.kind === "unknown" ? [deathLine.text] : []),
+      ...(stored.patient.temporary_identity
+        ? [firstSentence(TEXT.bannerTemporaryIdentity)]
+        : []),
+      ...(stored.replaced_by ? [firstSentence(TEXT.bannerMerged)] : []),
+    ],
+  });
+
+  // How tall the strip is, for what is jumped to or gets the focus to stop below it (`app.css`). Through the style
+  // object and not a `style` attribute, which the CSP forbids.
+  let stripHeight = $state(0);
+  $effect(() => {
+    const root = document.documentElement.style;
+    root.setProperty("--strip-height", `${stripHeight}px`);
+    return () => root.removeProperty("--strip-height");
   });
 
   const p = $derived(stored.patient);
@@ -145,3 +175,21 @@
     {TEXT.bannerAllergies}: {allergyLine.text}
   </p>
 </section>
+
+<div class="banner-strip" aria-hidden="true" bind:offsetHeight={stripHeight}>
+  {#each strip.flags as flag (flag)}
+    <p class="flag">{flag}</p>
+  {/each}
+  <p>
+    <strong>{name || TEXT.notAvailable}</strong>
+    · {p.birth_date ?? TEXT.bannerNoBirthDate}
+    · {national
+      ? nationalNumberDisplay(national)
+      : other
+        ? `${other.system} ${other.value}`
+        : TEXT.bannerNone}
+  </p>
+  <p class="allergies" class:high={strip.allergies.high}>
+    {TEXT.bannerAllergies}: {strip.allergies.text}
+  </p>
+</div>

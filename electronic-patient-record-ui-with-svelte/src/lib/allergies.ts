@@ -104,6 +104,49 @@ const riskWords = (): Record<string, string> => ({
   "unable-to-assess": TEXT.allergyRiskUnassessed,
 });
 
+/** One active allergy in words, with its risk when one was stated. */
+function itemWords(i: {
+  substance: string;
+  criticality?: string | null;
+}): string {
+  const risk = i.criticality ? riskWords()[i.criticality] : undefined;
+  return risk ? `${i.substance} (${risk})` : i.substance;
+}
+
+/** The longest list of allergies the strip of a small screen gives in full, in characters. */
+export const STRIP_ALLERGIES = 60;
+
+/**
+ * The allergy line for the strip that stays in sight on a small screen (XP-3). Everything but a long list of active
+ * allergies is the banner's own words: "not recorded" and "not shown to you" are never shortened. Of a long list it
+ * gives what fits, in the list's order (high-risk ones first), and how many more there are as `+n`. Never fewer without
+ * the number.
+ */
+export function stripAllergies(
+  load: AllergyLoad | null,
+  siteZone?: string,
+): { text: string; high: boolean } {
+  const line = bannerAllergies(load, siteZone);
+  const summary = load?.status === 200 ? load.data?.summary : undefined;
+  if (summary?.state !== "active" || line.text.length <= STRIP_ALLERGIES) {
+    return line;
+  }
+  const all = summary.items.map((i) => itemWords(i));
+  let shown = 0;
+  let length = 0;
+  while (shown < all.length) {
+    const next = length + (all[shown]?.length ?? 0) + 2;
+    if (next > STRIP_ALLERGIES) break;
+    length = next;
+    shown += 1;
+  }
+  // One that is too long by itself is still given: a number alone names nothing.
+  shown = Math.max(shown, 1);
+  const more = all.length - shown;
+  const text = all.slice(0, shown).join(", ");
+  return { text: more > 0 ? `${text}, +${more}` : text, high: line.high };
+}
+
 /** The banner's allergy line, and whether it carries a high-risk allergy (shown more strongly). */
 export function bannerAllergies(
   load: AllergyLoad | null,
@@ -123,12 +166,7 @@ export function bannerAllergies(
   switch (s.state) {
     case "active":
       return {
-        text: s.items
-          .map((i) => {
-            const risk = i.criticality ? riskWords()[i.criticality] : undefined;
-            return risk ? `${i.substance} (${risk})` : i.substance;
-          })
-          .join(", "),
+        text: s.items.map((i) => itemWords(i)).join(", "),
         high: s.items.some((i) => i.criticality === "high"),
       };
     case "no-known":

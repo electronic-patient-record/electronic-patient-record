@@ -43,8 +43,9 @@ const asserted = (confirmed: boolean): DeathLoad => ({
 describe("PatientBanner (CQ-35, ID-7)", () => {
   it("says who this is: family name in capitals, given name", () => {
     show();
-    expect(screen.getByText(/RIVERS/)).toBeTruthy();
-    expect(screen.getByText(/Morgan/)).toBeTruthy();
+    // The banner, and not the strip of a small screen, which a screen reader is not given (XP-3).
+    const name = screen.getByRole("heading", { name: /RIVERS/ });
+    expect(name.textContent).toMatch(/Morgan/);
   });
 
   it("never reads as no allergies while they are unknown", () => {

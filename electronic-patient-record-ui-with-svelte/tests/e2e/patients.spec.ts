@@ -1505,9 +1505,11 @@ test("a failed look at a death is said, not read as nothing reported", async ({
   );
   await page.goto("/en-001/patients/p-1");
   await expect(
-    page.getByText(
-      "Could not check whether this person has been reported as having died.",
-    ),
+    page
+      .getByRole("region", { name: "Patient banner" })
+      .getByText(
+        "Could not check whether this person has been reported as having died.",
+      ),
   ).toBeVisible();
 });
 
@@ -5192,3 +5194,134 @@ test.describe("zoom and text spacing", () => {
     expect(scroll).toBeLessThanOrEqual(client + 1);
   });
 });
+
+// XP-3, H-070: on a small or zoomed screen the banner scrolls with the page, so that it does not cover it, and a strip
+// with the identity and the allergies stays. On a large screen the banner itself stays and there is no strip.
+const CROWDED = {
+  ...ANN,
+  drill: true,
+  patient: {
+    ...ANN.patient,
+    names: [
+      {
+        family: "Featherstonehaugh-Cholmondeley-Wriothesley",
+        given: ["Wilhelmina", "Alexandrina", "Ermintrude"],
+      },
+    ],
+    temporary_identity: true,
+  },
+};
+const MANY = [
+  "Penicillin",
+  "Latex",
+  "Trimethoprim",
+  "Peanut",
+  "Adhesive dressings",
+  "Chlorhexidine",
+  "Ibuprofen",
+  "Iodinated contrast",
+].map((substance, i) => ({ substance, criticality: i < 2 ? "high" : null }));
+
+for (const [what, record, items, most] of [
+  ["an ordinary record", ANN, MANY.slice(0, 2), 25],
+  ["a crowded record", CROWDED, MANY, 45],
+] as const) {
+  test(`a small screen keeps identity and allergies in sight and the page usable: ${what}`, async ({
+    page,
+  }) => {
+    await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+      json(route, 200, record),
+    );
+    await stubAllergies(page, {
+      allergies: [],
+      statement: null,
+      summary: { state: "active", items },
+    });
+    const banner = page.getByRole("region", { name: "Patient banner" });
+    const strip = page.locator(".banner-strip");
+    // A phone, an iPhone SE, a phone on its side; the share of the height the strip may take.
+    for (const [width, height, share] of [
+      [320, 640, most],
+      [320, 568, most],
+      [640, 320, most],
+    ] as const) {
+      await page.setViewportSize({ width, height });
+      await page.goto(`/en-001/patients/${ANN.id}`);
+      await expect(strip).toContainText("Allergies: Penicillin (high risk)");
+      await page.evaluate(() =>
+        window.scrollTo(0, document.documentElement.scrollHeight),
+      );
+      const size = `${width} by ${height}`;
+      await expect(banner, size).not.toBeInViewport();
+      const box = await strip.boundingBox();
+      expect(box?.y, `${size}: the strip is in sight`).toBe(0);
+      expect(
+        Math.round((100 * (box?.height ?? Infinity)) / height),
+        `${size}: percent of the height`,
+      ).toBeLessThanOrEqual(share);
+      // Whole: every letter of the name, the birth date and the number, and nothing cut.
+      const name = record.patient.names[0];
+      for (const words of [
+        `${name?.family.toUpperCase()}, ${name?.given.join(" ")}`,
+        "1980-03-14",
+        "943 476 5919",
+        ...(items.length > 2 ? ["+5", "DRILL", "TEMPORARY IDENTITY"] : []),
+      ]) {
+        await expect(strip, size).toContainText(words);
+      }
+      expect(
+        await strip.evaluate((e) =>
+          [e, ...e.querySelectorAll("*")].some(
+            (x) =>
+              x.scrollWidth > x.clientWidth + 1 &&
+              getComputedStyle(x).display !== "inline",
+          ),
+        ),
+        `${size}: cut off`,
+      ).toBe(false);
+      // The last control and the form's button can be pressed, and a focused field is not under the strip.
+      await page.getByRole("button", { name: "Save changes" }).click({
+        trial: true,
+      });
+      const field = page.getByLabel("Family name").first();
+      await field.focus();
+      // Polled: WebKit scrolls to what has the focus a moment later.
+      await expect
+        .poll(
+          () =>
+            field.evaluate((e) => {
+              const s = document.querySelector(".banner-strip");
+              const at = e.getBoundingClientRect();
+              return (
+                at.top >= (s?.getBoundingClientRect().bottom ?? 0) - 1 &&
+                at.top < window.innerHeight
+              );
+            }),
+          { message: `${size}: the focused field is in sight`, timeout: 3000 },
+        )
+        .toBe(true);
+      // A heading that is jumped to (a link to the needs section does) is not under the strip either.
+      const clear = await page.evaluate(() => {
+        const heading = document.getElementById("adjustments-h");
+        heading?.scrollIntoView({ block: "start" });
+        const strip = document.querySelector(".banner-strip");
+        return (
+          (heading?.getBoundingClientRect().top ?? -1) -
+          (strip?.getBoundingClientRect().bottom ?? 0)
+        );
+      });
+      expect(
+        clear,
+        `${size}: px between the strip and a heading`,
+      ).toBeGreaterThanOrEqual(0);
+    }
+    await axe(page);
+
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await expect(strip).toBeHidden();
+    await page.evaluate(() =>
+      window.scrollTo(0, document.documentElement.scrollHeight),
+    );
+    await expect(banner).toBeInViewport();
+  });
+}

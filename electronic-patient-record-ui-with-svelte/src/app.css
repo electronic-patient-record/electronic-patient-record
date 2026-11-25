@@ -233,6 +233,49 @@ small {
   font-weight: 600;
 }
 
+/* The strip that stays when the banner does not (XP-3, H-070). Its words wrap and are never cut. */
+.banner-strip {
+  display: none;
+}
+@media (max-width: 40rem), (max-height: 30rem) {
+  .banner {
+    position: static;
+  }
+  .banner-strip {
+    display: block;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    margin: 0 0 1rem;
+    padding: 0.25rem 0.5rem;
+    border: 2px solid var(--fg);
+    border-radius: 0.25rem;
+    background: var(--bg);
+    font-size: 0.875rem;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
+  .banner-strip p {
+    margin: 0;
+  }
+  .banner-strip .allergies {
+    font-weight: 600;
+  }
+  .banner-strip .allergies.high,
+  .banner-strip .flag {
+    padding-inline-start: 0.5rem;
+    border-inline-start: 4px solid var(--warn-border);
+    background: var(--warn-bg);
+  }
+  .banner-strip .flag {
+    font-weight: 700;
+  }
+  /* What gets the focus, or is jumped to, is not left under the strip. */
+  html {
+    scroll-padding-top: calc(var(--strip-height, 0px) + 0.5rem);
+  }
+}
+
 dt {
   font-weight: 600;
   margin-top: 0.5rem;

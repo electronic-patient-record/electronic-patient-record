@@ -24,9 +24,9 @@ no network, database or compilation; counts are source lines, not test runs):
 | Route registrations | 121 | `.add(` calls in `src/controllers/*.rs` |
 | Service tests | 987, plus 251 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
 | Matcher tests | 133, plus 0 `#[ignore]`d | the same patterns in the matcher |
-| Front-end unit tests (vitest) | 394 | `it(` / `test(` lines in `tests/unit` |
-| Front-end end-to-end tests (Playwright) | 121 | `test(` lines in `tests/e2e` |
-| Hazards | 70, of which 49 open and 0 accepted or closed; 34 name a test | `scripts/check-hazard-log.py --counts` |
+| Front-end unit tests (vitest) | 397 | `it(` / `test(` lines in `tests/unit` |
+| Front-end end-to-end tests (Playwright) | 122 | `test(` lines in `tests/e2e` |
+| Hazards | 70, of which 49 open and 0 accepted or closed; 35 name a test | `scripts/check-hazard-log.py --counts` |
 | Locales | 10 | entries of `LOCALES` in `src/lib/locales.ts` |
 
 **Task boxes in [`tasks.md`](../tasks.md)** (ticked / open, by prefix):
@@ -54,7 +54,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | PC | 1 | 8 |
 | PR | 7 | 2 |
 | LC | 10 | 6 |
-| XP | 2 | 14 |
+| XP | 3 | 13 |
 | VC | 0 | 12 |
 | SM | 0 | 5 |
 | MT | 0 | 4 |
@@ -93,6 +93,6 @@ no network, database or compilation; counts are source lines, not test runs):
 | EH | 2 | 15 |
 | AG | 1 | 12 |
 | DM | 0 | 5 |
-| **Total** | **144** | **480** |
+| **Total** | **145** | **479** |
 
 <!-- generated:end -->

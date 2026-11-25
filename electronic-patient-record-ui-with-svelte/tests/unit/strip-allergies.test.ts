@@ -1,0 +1,61 @@
+import { describe, expect, it } from "vitest";
+import {
+  type AllergyLoad,
+  bannerAllergies,
+  STRIP_ALLERGIES,
+  stripAllergies,
+} from "../../src/lib/allergies";
+
+const load = (names: string[], high = 0): AllergyLoad =>
+  ({
+    status: 200,
+    data: {
+      allergies: [],
+      statement: null,
+      summary: {
+        state: "active",
+        items: names.map((substance, i) => ({
+          substance,
+          criticality: i < high ? "high" : null,
+        })),
+      },
+    },
+  }) as unknown as AllergyLoad;
+
+describe("stripAllergies (XP-3)", () => {
+  it("is the banner's own words for anything but a long list", () => {
+    const other = (summary: unknown, status = 200): AllergyLoad =>
+      ({
+        status,
+        data:
+          status === 200 ? { allergies: [], statement: null, summary } : null,
+      }) as unknown as AllergyLoad;
+    for (const l of [
+      null,
+      other(null, 403),
+      other(null, 500),
+      other({ state: "not-recorded" }),
+      other({ state: "none-active", inactive: 3 }),
+      other({ state: "no-known", asserted_at: "2026-10-21T09:00:00Z" }),
+      load(["Penicillin", "Latex"], 1),
+    ]) {
+      expect(stripAllergies(l, "UTC")).toEqual(bannerAllergies(l, "UTC"));
+    }
+  });
+
+  it("gives what fits of a long list, and always the number left out", () => {
+    const names = [...Array(9).keys()].map((i) => `Substance ${i}`);
+    const { text, high } = stripAllergies(load(names, 1));
+    expect(high).toBe(true);
+    expect(text.startsWith("Substance 0 (high risk), Substance 1")).toBe(true);
+    const shown = text.split(", ").length - 1;
+    expect(text.endsWith(`+${9 - shown}`)).toBe(true);
+    expect(text.length).toBeLessThanOrEqual(STRIP_ALLERGIES + 6);
+  });
+
+  it("names one that is too long by itself, and the number after it", () => {
+    const long = "x".repeat(100);
+    expect(stripAllergies(load([long, "Latex"])).text).toBe(`${long}, +1`);
+    expect(stripAllergies(load([long])).text).toBe(long);
+  });
+});

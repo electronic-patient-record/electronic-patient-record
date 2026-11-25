@@ -29,6 +29,8 @@ Add Playwright projects for a phone (for example `Pixel 7`) and a small iPhone; 
 
 The interface's own browser tests run on two phones (`playwright.mobile.config.ts`: a Pixel 7 at 320 by 640 in Chromium, an iPhone SE at 320 by 568 in WebKit), and each place where a test runs axe is also measured (`tests/e2e/mobile.ts`). 83 places on each phone, in populated screens with invented records; 246 of 250 tests pass. **Not a gate and not in CI** until XP-2 passes.
 
+**Since then (XP-3, the same day):** the first row is answered by the strip below; the rest stand (XP-2).
+
 | What | Where | Measured | Reason |
 |---|---|---|---|
 | **The banner covers the page** (H-070) | Every patient page, 53 places on each phone | It stays at the top and takes **41 to 86 % of the phone's height (median 65) and 50 to 97 % of the iPhone SE's (median 73)**. On the iPhone SE "Save changes" is under it and cannot be pressed | Sticky, and as tall as its content: identity, allergies, needs, notices. A desktop at 400 % zoom is about 320 by 256, so it must be worse there; that was not measured. It meets rule 3 below and breaks the page |
@@ -41,6 +43,12 @@ The interface's own browser tests run on two phones (`playwright.mobile.config.t
 
 **Nothing was cut off in the banner** at 320 px in any place, and it was in sight at the end of every page but a patient's own record. Axe found nothing at 320 px in any place. Not seen: the pages no test opens, landscape, a tablet, a real device, a screen reader on a phone, and a long name or a long list of allergies, which make the banner taller.
 
+## The strip (XP-3, 2026-11-25, unreviewed)
+
+On a window under 640 px wide or 480 px high the banner scrolls with the page, and a strip stays at the top: the name, birth date and an identifier (the national number, or the other one) whole and never cut; in words, a drill, a reported or confirmed death, a failed look for one, a temporary identity or a merge; and the allergies. A long list of active allergies is cut to what fits 60 characters, high-risk ones first, with the number left out (`Penicillin (high risk), Latex (high risk), Trimethoprim, +5`); "not recorded", "not shown to you" and "could not be loaded" are never shortened. What gets the focus or is jumped to stops below it. A screen reader is given the banner and not the strip. On a larger window nothing changed. Rule 3 above is met for the strip and not for the whole banner, and **which allergies must stay in sight is not agreed** (OQ-XP2). On an iPhone SE "Save changes" can be pressed again.
+
+Measured at 320 by 640, 320 by 568 and 640 by 320: at most 25 % of the height for an ordinary record, and at most 45 % for a crowded one (a long name, 8 allergies, a drill and a temporary identity).
+
 ## Not done, not verified
 
-No screen was changed and no real phone was used (section above: emulated), and the 24 px and 320 px values come from secondary summaries of WCAG 2.2, to be checked against the W3C pages. Tasks: `XP-1` to `XP-4`.
+One screen was changed (the strip) and no real phone was used (emulated), and the 24 px and 320 px values come from secondary summaries of WCAG 2.2, to be checked against the W3C pages. Tasks: `XP-1` to `XP-4`.

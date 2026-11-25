@@ -132,6 +132,8 @@ describe("theme contrast", () => {
       "a drill, a death or a temporary identity, in words (role=alert)",
     ".banner .allergies.high":
       "each high-risk allergy says '(high risk)' in words",
+    ".banner-strip .allergies.high,\n  .banner-strip .flag":
+      "the same words, and a drill, a death, a temporary identity or a merge in words",
   };
 
   it("every rule coloured as a warning is listed with the words that carry its meaning", () => {
