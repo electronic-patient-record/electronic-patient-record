@@ -184,6 +184,7 @@
 | OQ-OX2 | How long may an order done before it was signed wait for a signature? | clinical lead, pharmacist |
 | OQ-OX3 | May an order end by time alone? | clinical lead, pharmacist |
 | OQ-OX4 | Does a referral move to the order state table (PC-5)? | maintainer |
+| OQ-XP1 | Which reasons may a missed appointment have (did not come, not brought, not escorted, not told, unable), and is one required? See [care settings](care-settings.md) section 5. | clinical lead, Clinical Safety Officer |
 | OQ-EH1 | What does a patient or proxy see of the problem list and of relative history, and when? Refused until decided. See [problem list](problem-list/index.md). | clinical lead, patients |
 | OQ-EH2 | Is there a "no known problems" statement, as for allergies, or is it unsafe? | clinical lead, Clinical Safety Officer |
 | OQ-EH3 | Does a confirmed suspicion (RS-3) propose a problem for a clinician to accept? | clinical lead |

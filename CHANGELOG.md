@@ -2,11 +2,18 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - Where this project assumes a hospital (XP-5)
+
+- **Clinical risk:** none to behaviour; nothing was changed. One finding is clinical: a referral's `no-show` is shown as "Missed the appointment" with no reason, which is untrue of a person who was not brought or not escorted (XP-15, OQ-XP1).
+- **Added:** section 5 of [care settings](spec/care-settings.md): ten places in the code, and five pages of the specification.
+- **Corrected:** the AG-3 entry said 3 unit tests; they were 2 new and one extended.
+- **Not done / not verified:** one reading by words and by the main lists; the mobile apps and translated words were not read; whether a shared postcode changes a match was not measured.
+
 ## 2026-11-25 - A receiver can learn over FHIR that an allergy or a vital sign was a mistake (AG-3)
 
 - **Clinical risk:** a FHIR answer that did not exist (H-022, controls and residual changed; status and score not). Before this, a system that had taken an allergy could not learn that it was entered in error. A careless reader is given nothing to show: no substance, reaction, code, value or time.
 - **Added:** `AllergyIntolerance?patient=&verification-status=entered-in-error` and `Observation?patient=&status=entered-in-error`, in R4 and R5, through the same gate, consent and audit. Only those entered in error are returned, with a warning that it is not the patient's list. The plain search is unchanged. Any other value is a 400 and never ignored.
-- **Verified:** 3 unit tests, and an HTTP test that records an allergy, retracts it and asks in both releases; the normal and database passes on a fresh Postgres 18; every docs gate. Two samples are added to the HL7 validator test, which was run here and first refused the vital sign, as its LOINC code called for a time and a value: it now has none. **Not done / not verified:** nothing tells a receiver that does not ask; one taken under another record before an unmerge is not among them; no receiving system was tried; results, problems and the rest are not in FHIR.
+- **Verified:** 2 new unit tests and one extended, and an HTTP test that records an allergy, retracts it and asks in both releases; the normal and database passes on a fresh Postgres 18; every docs gate. Two samples are added to the HL7 validator test, which was run here and first refused the vital sign, as its LOINC code called for a time and a value: it now has none. **Not done / not verified:** nothing tells a receiver that does not ask; one taken under another record before an unmerge is not among them; no receiving system was tried; results, problems and the rest are not in FHIR.
 
 ## 2026-11-25 - Question and task ids are checked to be unique
 

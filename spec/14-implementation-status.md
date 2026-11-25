@@ -54,7 +54,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | PC | 1 | 8 |
 | PR | 7 | 2 |
 | LC | 10 | 6 |
-| XP | 0 | 14 |
+| XP | 1 | 14 |
 | VC | 0 | 12 |
 | SM | 0 | 5 |
 | MT | 0 | 4 |
@@ -93,6 +93,6 @@ no network, database or compilation; counts are source lines, not test runs):
 | EH | 2 | 15 |
 | AG | 1 | 12 |
 | DM | 0 | 5 |
-| **Total** | **140** | **482** |
+| **Total** | **141** | **482** |
 
 <!-- generated:end -->
