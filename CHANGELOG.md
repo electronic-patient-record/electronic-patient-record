@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - A patient's refusal of consent, researched (OQ-PI8, RF)
+
+- **Clinical risk:** none; nothing is built and no hazard row changes. The page names ten candidates.
+- **Added:** `spec/patient-refusal-of-consent/index.md`: refusing treatment and refusing disclosure kept apart, the brief's claims checked, rules and fields proposed, OQ-RF1 to OQ-RF6.
+- **Corrected:** the recommendation on OQ-PI8 was too wide. It did not ask whether the patient can be asked. Nothing in the code followed it: break-glass lifts no refusal.
+- **Found:** no refusal of treatment is held anywhere in this software, and a refusal of disclosure could hide an advance decision once one is.
+- **Not done / not verified:** the regulator's pages, the judgments, one treaty and one national page refused automated reading; what is said of them is from search extracts or other sites. No lawyer, clinician or patient has reviewed it.
+
 ## 2026-11-25 - `ring` stays for now (OQ-PQ2)
 
 - **Clinical risk:** none. The maintainer answered "not yet" to replacing `ring` with `aws-lc-rs`; recorded, and no post-quantum step is started.
