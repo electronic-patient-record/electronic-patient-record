@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - Coverage reports are no longer tracked
+
+- **Clinical risk:** none.
+- **Removed:** `lcov.info` of the matcher and of the service, which are generated and hold paths of the machine they were made on; the name, and `*.profraw`, are ignored. CI makes its own and uploads it as before.
+- **Not done:** the files are still in the history, and the matcher's is in the published package 0.8.1 (0.9.0 has none).
+
 ## 2026-11-25 - A consent in force is recorded once, so that withdrawing it withdraws it
 
 - **Clinical risk:** H-006 (controls, evidence and residual changed; status and score not). Two identical consents could stand, and withdrawing one left the other. Today a permission only decides a label that no record carries, so the harm was to come; a refusal left standing kept a person from care they had agreed to.

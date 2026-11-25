@@ -9,6 +9,9 @@ dist/
 .vite/
 __pycache__/
 *.pyc
+# Coverage, with paths of the machine it was made on.
+lcov.info
+*.profraw
 
 # Local environment and secrets (examples stay tracked).
 .env
