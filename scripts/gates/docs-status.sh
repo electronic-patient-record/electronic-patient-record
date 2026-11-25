@@ -4,3 +4,4 @@ set -eu
 cd "$(dirname "$0")/../.."
 sh scripts/generate-status.sh --check
 python3 scripts/generate-requirements-trace.py --check
+python3 scripts/generate-measures.py --check

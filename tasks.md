@@ -1338,8 +1338,8 @@ Ranked in plan.md §28. Nothing here is built. Specs: `spec/<vendor>/index.md`, 
 
 Ranked in plan.md §29. Nothing here is built. Specs: `spec/clinical-safety/measurement.md`, `spec/maternity/`, `spec/manual-steps/`, `spec/data-exchange/`, `spec/data-quality/`, `spec/productivity-measurement/`, `spec/training/`, `spec/training-overlay/`.
 
-- [ ] **SM-1 (S) — A measure per hazard.** Add a `measure` column to the hazard log and a report of hazards without one. **Acceptance:** `scripts/check-hazard-log.py --report` lists them; no hazard status changes.
-- [ ] **SM-2 (S) — A measures registry.** One entry per measure: definition, numerator, denominator, owner, review cadence, the hazards it serves. **Acceptance:** a page under `spec/clinical-safety/`.
+- [x] **SM-1 (S) — A measure per hazard.** **Done 2026-11-25, without the column:** the registry names the hazards, so that they are in one place. `--report` lists 30 hazards with no measure. Asked for: add a `measure` column to the hazard log and a report of hazards without one. **Acceptance:** `scripts/check-hazard-log.py --report` lists them; no hazard status changes.
+- [x] **SM-2 (S) — A measures registry.** **Done 2026-11-25:** [measures](spec/clinical-safety/measures.md), 17, none computed whole and none reviewed. One entry per measure: definition, numerator, denominator, owner, review cadence, the hazards it serves. **Acceptance:** a page under `spec/clinical-safety/`.
 - [ ] **SM-3 (M, clinical) — Identity measures.** Queue age, merge and unmerge rate, duplicates, computed from what exists. **Acceptance:** a report on synthetic data, "no data" shown as such.
 - [ ] **SM-4 (M, clinical) — An unsafe case pack.** Fixed wrong-patient, allergy and lost-referral scenarios run in CI and at each deployment, with a stored score. **Acceptance:** the pack runs in CI.
 - [ ] **SM-5 (S) — A planted failure per measure.** Break the control and show that the measure moves. **Acceptance:** one test per computed measure.

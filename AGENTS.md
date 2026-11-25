@@ -22,7 +22,7 @@ Version 0.1.0. Rust 1.100.0 (pinned in `rust-toolchain.toml`; minimum supported 
    verified. Never weaken a guard or a census test to get green; fix the cause or record why.
 4. **Clinical risk.** If a change could alter what a clinician sees, decides or signs, say so and update `governance/clinical-safety/hazard-log.csv` (task AS-1) in the same commit; a `clinical-impact` PR without that change fails CI. Never set a hazard to `accepted` or `closed`: only the Clinical Safety Officer does. When unsure, treat it as clinical.
 5. **Run the gates before pushing** (below), and `sh scripts/generate-status.sh` after adding tests or ticking tasks, and
-   `python3 scripts/generate-llms.py` after adding or moving a document it lists (`llms.txt`, `llms.json`), or the docs job fails; `python3 scripts/generate-schema-map.py` after a migration adds a table or view (`spec/schema-map.md`); `python3 scripts/generate-requirements-trace.py` after changing a functional requirement or `governance/requirements-trace.csv`.
+   `python3 scripts/generate-llms.py` after adding or moving a document it lists (`llms.txt`, `llms.json`), or the docs job fails; `python3 scripts/generate-schema-map.py` after a migration adds a table or view (`spec/schema-map.md`); `python3 scripts/generate-requirements-trace.py` after changing a functional requirement or `governance/requirements-trace.csv`; `python3 scripts/generate-measures.py` after adding a hazard or changing `governance/clinical-safety/measures.csv`.
 
 ## Gates
 

@@ -13,7 +13,8 @@ Clinical Safety Officer, OQ-2) may set those, so an automated change cannot clos
 An evidence entry may be `path::test_name`: the control then names the test that proves it, and the check
 fails when the file or the test function is missing (renaming a named test fails it). A hazard that is not `open`
 must name at least one (PR-2, 2026-11-25): a control nobody can point to a test for is not in place. `--report` lists
-the open hazards that name none; that is a report, not a failure.
+the open hazards that name none, and the hazards that no measure serves (SM-1, governance/clinical-safety/measures.csv);
+that is a report, not a failure.
 
 `--counts` prints `<hazards> <open> <accepted or closed> <naming a test>` and nothing else, for the generated status
 block (scripts/generate-status.sh), so that no document keeps a count by hand (AG-9).
@@ -40,6 +41,7 @@ COLUMNS = ["id", "title", "hazard", "cause", "effect", "severity", "likelihood",
            "controls", "evidence", "residual", "status", "reviewed_by", "added"]
 STATUSES = {"open", "controlled-unreviewed", "accepted", "closed"}
 LOG = os.path.join("governance", "clinical-safety", "hazard-log.csv")
+MEASURES = os.path.join("governance", "clinical-safety", "measures.csv")
 REVIEWERS = os.path.join("governance", "clinical-safety", "reviewers.txt")
 SIGNED_OFF = {"accepted", "closed"}
 
@@ -74,6 +76,12 @@ def without_a_named_test(rows):
     """Ids of hazards whose evidence names no test, split into those with controls in place and the rest."""
     bare = [r for r in rows if not named_tests(r)]
     return ([r["id"] for r in bare if r["status"] != "open"], [r["id"] for r in bare if r["status"] == "open"])
+
+
+def without_a_measure(rows, measures):
+    """Ids of hazards that no row of the measures registry serves."""
+    served = {h.strip() for m in measures for h in m["hazards"].split(";")}
+    return [r["id"] for r in rows if r["id"] not in served]
 
 
 def counts(rows):
@@ -250,6 +258,9 @@ def main(argv):
     if report:
         print(f"no named test, controls in place ({len(controlled)}): {', '.join(controlled) or 'none'}")
         print(f"no named test, still open ({len(still_open)}): {', '.join(still_open) or 'none'}")
+        with open(os.path.join(root, MEASURES), newline="", encoding="utf-8") as f:
+            bare = without_a_measure(rows, list(csv.DictReader(f)))
+        print(f"no measure ({len(bare)}): {', '.join(bare) or 'none'}")
     open_n = sum(r["status"] == "open" for r in rows)
     print(f"hazard log ok: {len(rows)} hazards, {open_n} open, none accepted or closed without a reviewer")
     return 0

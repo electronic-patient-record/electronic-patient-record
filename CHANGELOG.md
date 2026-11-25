@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - A registry of safety measures, and the hazards that have none (SM-1, SM-2)
+
+- **Clinical risk:** none by itself; no hazard row, status or score changed. A measure is a proposal and sets no status.
+- **Added:** `governance/clinical-safety/measures.csv` (17 measures) and the page made from it, `spec/clinical-safety/measures.md`. A check fails when a measure names a table, route, metric or hazard that is not there, or lacks a denominator, an owner or its limits. `scripts/check-hazard-log.py --report` lists the hazards with no measure: 30 of 74.
+- **Differs from the task:** no `measure` column in the hazard log. The registry names the hazards, so that the two cannot disagree.
+- **Verified:** the script's own planted failures and every docs gate. **Not done / not verified:** no measure is computed whole (seven have a count or a metric today); no threshold; no Clinical Safety Officer has reviewed one.
+
 ## 2026-11-25 - What every role may do is a file to review (SE-1)
 
 - **Clinical risk:** none. No permission changed; H-007 and H-024 rest on this table, which nobody has reviewed.

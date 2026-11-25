@@ -69,6 +69,8 @@ Every measure is computed from tables the service already has or will have (audi
 
 **Rates need denominators.** Each row above states both parts or is a count whose denominator the reviewer must name. Counts from one small site are shown with their numerator and denominator, never as a bare percentage, and never compared across sites without risk adjustment. Small numbers are read as a list of cases, not a trend.
 
+**The registry (SM-2) is built:** [measures](measures.md), from `governance/clinical-safety/measures.csv`, with what the service already gives of each and the hazards that have none. Where it and the table above differ, the registry is newer.
+
 ## Linking measures to the hazard log
 
 1. **Each hazard names at least one measure and one test.** PR-2 already checks that a control naming `path::test_name` points at a real test; only H-044 names tests so far [`tasks.md`](../../tasks.md). A proposed extension: a `measure` column with a measure id, and a check that every active hazard has one (a report first, as PR-2 did).
