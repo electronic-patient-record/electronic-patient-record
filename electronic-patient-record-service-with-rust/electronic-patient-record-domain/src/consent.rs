@@ -794,6 +794,16 @@ mod tests {
 
         let many = record(vec![provision(Effect::Deny); MAX_PROVISIONS + 1]);
         assert_eq!(validate(&many).len(), 1);
+        // The limit itself is allowed, and so is a period of one day.
+        assert!(validate(&record(vec![provision(Effect::Deny); MAX_PROVISIONS])).is_empty());
+        let one_day = ConsentRecord {
+            period: Some(Period {
+                start: Some("2026-01-01".into()),
+                end: Some("2026-01-01".into()),
+            }),
+            ..record(vec![provision(Effect::Deny)])
+        };
+        assert!(validate(&one_day).is_empty());
     }
 
     #[test]

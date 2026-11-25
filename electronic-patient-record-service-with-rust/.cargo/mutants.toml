@@ -4,6 +4,8 @@
 examine_globs = [
     "electronic-patient-record-domain/src/consent.rs",        # who may see what (SE-2; H-005)
     "electronic-patient-record-domain/src/policy.rs",         # the role and resource table (SE-1)
+    "electronic-patient-record-domain/src/masking.rs",        # what a label withholds (EH-8; H-007, H-072)
+    "electronic-patient-record-domain/src/labelling.rs",      # who adds and lifts a label (OQ-PI7; H-073)
     "src/authz.rs",          # the gate in front of every route
     "electronic-patient-record-domain/src/permission.rs",
     "src/break_glass.rs",    # emergency access (SE-3; H-008, H-024)

@@ -68,3 +68,22 @@ tests only (`--lib`): the integration tests need Postgres.
 **Not finished.** The first run was interrupted after 159 mutants (40 caught, 43 missed, 28 unviable, 48 timed out on a
 machine at a load average near 100); many of its misses are in `audit.rs`, whose behaviour the database tests pin, not
 the unit tests. Nothing from it is acted on. A full run, and the judging of each miss, is still to do.
+
+## Who sees what: policy, consent, masking, labelling (2026-11-25, QA-2)
+
+The four files of the domain crate that decide who sees what, with that crate's own tests: **321 mutants, 276 caught, 31
+unviable, none timed out, 14 missed.** Tests were written for all 14 the same day, and a second run of the 42 mutants in
+those functions caught 40 and found 2 unviable: **none is left.**
+
+| Where | Missed | What the tests lacked |
+|---|---|---|
+| `policy.rs`, which of a reader's roles decides | 7 | No reader whose second role hides less than the first, and none with two roles that hide as much |
+| `masking.rs`, whether the access is flagged | 2 | Every list had two entries shown by break-the-glass, so either one carried the flag |
+| `labelling.rs`, a refusal's words and the longest reason | 3 | The words were never read; a reason of exactly the limit |
+| `consent.rs`, the limit and a period | 2 | Exactly 50 provisions; a period of one day |
+
+The role table's deleted arms, about 60 misses in the run of 17 November, are all caught now, by `access_table.csv`.
+
+**Not run:** `authz.rs`, `audit.rs` and the rest of the service's examined files, which is the other half of QA-2. The run
+took two hours on a busy machine. The shared compiler cache here stands in for `cc` and for the test runner as well as for
+`rustc`, and hung it twice; the run that finished bypassed all three.

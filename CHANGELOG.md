@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - Mutation run on who sees what: fourteen faults no test noticed, all caught now (QA-2)
+
+- **Clinical risk:** none; tests only. The controls of H-005, H-006, H-007 and H-024 rest on these four files.
+- **Found:** of 321 small faults in `policy.rs`, `consent.rs`, `masking.rs` and `labelling.rs`, no test noticed 14. The one that mattered most: which of a reader's roles decides what is hidden was not tested with a second role that hides less.
+- **Added:** four tests and two cases. `masking.rs` and `labelling.rs` join the files examined by default.
+- **Verified:** a second run of the 42 mutants in those functions: 40 caught, 2 unviable, none missed. **Not done / not verified:** the audit half of QA-2; the whole 321 were not run again.
+
 ## 2026-11-25 - Post-quantum cryptography, researched (SE-12)
 
 - **Clinical risk:** none; nothing is built and no hazard row changes. The page names candidates.

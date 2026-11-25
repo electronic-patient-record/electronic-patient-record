@@ -346,6 +346,17 @@ mod tests {
             lift(&h, &doctor("b"), Label::Hiv, Basis::Clinical, "r"),
             Err(Refusal::NotThere)
         );
+        let longest = "x".repeat(REASON_LIMIT);
+        assert!(
+            lift(
+                &h,
+                &doctor("b"),
+                Label::Psychiatry,
+                Basis::Clinical,
+                &longest
+            )
+            .is_ok()
+        );
         let lifted = lift(
             &h,
             &doctor("b"),
@@ -391,6 +402,28 @@ mod tests {
         assert_eq!(h.len(), 3);
         let back: Vec<Act> = serde_json::from_value(serde_json::to_value(&h).unwrap()).unwrap();
         assert_eq!(back, h);
+    }
+
+    #[test]
+    fn each_refusal_says_something_else_and_names_no_label() {
+        let said: BTreeSet<&str> = [
+            Refusal::NotTreating,
+            Refusal::NotTheirs,
+            Refusal::AlreadyThere,
+            Refusal::NotThere,
+            Refusal::Own,
+            Refusal::Custody,
+            Refusal::Reason,
+        ]
+        .map(Refusal::message)
+        .into();
+        assert_eq!(said.len(), 7);
+        for words in said {
+            assert!(words.contains("label"), "{words}");
+            for label in Label::ALL {
+                assert!(!words.split(' ').any(|w| w == label.code()), "{words}");
+            }
+        }
     }
 
     #[test]

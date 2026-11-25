@@ -485,6 +485,35 @@ mod tests {
         assert!(seen(Relationship::None, 0).shown.is_empty());
     }
 
+    /// Each way an entry is shown by break-the-glass flags the access by itself, whatever comes after it in the list.
+    #[test]
+    fn one_entry_shown_by_break_the_glass_flags_the_access() {
+        let plain = entry("a", &[], "Asthma", None);
+        for labels in [&["V"][..], &["no-such-label"]] {
+            for list in [
+                vec![entry("b", labels, "Secret", None), plain.clone()],
+                vec![plain.clone(), entry("b", labels, "Secret", None)],
+            ] {
+                let m = mask(
+                    list,
+                    |e| e.id.as_str(),
+                    |e| Labels::read(e.labels.iter().copied()),
+                    decide_with(
+                        Role::Nurse,
+                        Relationship::CareTeam,
+                        Some(BreakGlass {
+                            reason: "collapsed".into(),
+                            expires_at: 1,
+                        }),
+                    ),
+                    true,
+                );
+                assert_eq!(m.shown.len(), 2);
+                assert!(m.by_emergency, "{labels:?}");
+            }
+        }
+    }
+
     #[test]
     fn a_shown_problem_does_not_point_at_a_withheld_one() {
         let list = [

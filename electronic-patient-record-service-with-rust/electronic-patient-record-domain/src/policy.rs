@@ -1440,6 +1440,35 @@ mod tests {
         assert_eq!(evaluate(&r), Decision::Allow(vec![Obligation::Audit]));
     }
 
+    /// Of a reader's roles, the one that hides least decides; among equals, the first.
+    #[test]
+    fn the_role_that_hides_least_decides() {
+        let hidden = |roles: &[Role], labels: &[Label]| {
+            let mut r = request(roles[0], Resource::Condition, Action::Read);
+            r.subject = subject(roles);
+            r.labels = labels.iter().copied().collect();
+            let Decision::Allow(o) = evaluate(&r) else {
+                panic!("should allow");
+            };
+            o.into_iter()
+                .find_map(|x| match x {
+                    Obligation::Mask(l) => Some(l),
+                    _ => None,
+                })
+                .unwrap_or_else(BTreeSet::new)
+        };
+        let (pharmacist, allied) = (Role::Pharmacist, Role::AlliedHealth);
+        assert!(pharmacist < allied, "the order they are asked in");
+        // A pharmacist sees HIV and not PSY; allied health sees PSY and not HIV.
+        let both = [pharmacist, allied];
+        for (label, sees) in [(Label::Psychiatry, allied), (Label::Hiv, pharmacist)] {
+            assert!(hidden(&[sees], &[label]).is_empty());
+            assert!(hidden(&both, &[label]).is_empty(), "{label:?}");
+        }
+        let two = [Label::Psychiatry, Label::Hiv];
+        assert_eq!(hidden(&both, &two), BTreeSet::from([Label::Psychiatry]));
+    }
+
     #[test]
     fn patient_and_proxy_work_only_through_their_own_relationship() {
         let mut r = request(Role::Patient, Resource::Observation, Action::Read);
