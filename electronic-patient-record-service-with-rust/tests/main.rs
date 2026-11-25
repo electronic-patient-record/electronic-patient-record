@@ -43,6 +43,8 @@ mod axa_defaults;
 mod balp_claim;
 #[path = "break_glass_store.rs"]
 mod break_glass_store;
+#[path = "candidate_recall.rs"]
+mod candidate_recall;
 #[path = "chaos_api.rs"]
 mod chaos_api;
 #[path = "chaos_roles.rs"]

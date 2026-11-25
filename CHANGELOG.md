@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - What registration can find, measured (AG-8, in part)
+
+- **Clinical risk:** H-001. Two things were found and neither is fixed: the duplicate check never looks at 10 of 19 synthetic kinds of duplicate, 8 of which the matcher would have sent to a person; and the matcher says `AutoLink` for twins whose given names differ by one letter. Nothing in the service links by itself.
+- **Added:** `tests/candidate_recall.rs` (4), which pins both, and that no code of the service acts on `AutoLink`; `spec/patient-identity/candidate-recall.md`; tasks AG-12 and AG-13; OQ-AG8.
+- **Verified:** the tests on a fresh Postgres 18. **Not done / not verified:** synthetic cases invented by the author, with no frequencies and no adjudication; the matcher is unchanged, because its rules are published and the change is a safety decision (OQ-AG8).
+
 ## 2026-11-25 - Migration 43's refusal has a test
 
 - **Added:** `tests/migration_relative_history.rs` (2, Postgres): migration 43 refuses while the old table holds an entry and changes nothing, and replaces an empty one with both tables still append-only. The entry for EH-3 below said there was none.
