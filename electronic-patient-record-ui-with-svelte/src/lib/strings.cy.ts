@@ -343,6 +343,11 @@ export const CY: Strings = {
   referralChanged:
     "Newidiwyd yr atgyfeiriad hwn gan rywun arall. Mae wedi'i ail-lwytho; gwiriwch ef a rhowch gynnig arall arni.",
   referralNote: "Nodyn (angenrheidiol ar gyfer y cam hwn)",
+  referralMissedWhy: "Pam na chafodd ei fynychu (angenrheidiol)",
+  referralMissedChoose: "Dewiswch reswm",
+  referralMissedReason: "Pam: {reason}",
+  referralMissedNotRecorded:
+    "Pam: heb ei gofnodi. Nid yw hyn yn golygu bod y person wedi dewis peidio â dod.",
   referralProvisional:
     "Mae enw'r cyflwr hwn dros dro ac nid yw wedi'i wirio yn erbyn safon.",
   referralBy: "anfonwyd gan y {by}",
@@ -357,7 +362,7 @@ export const CY: Strings = {
     accepted: "Derbyniwyd",
     declined: "Gwrthodwyd",
     "appointment-booked": "Apwyntiad wedi'i drefnu",
-    "no-show": "Methodd yr apwyntiad",
+    "no-show": "Apwyntiad heb ei fynychu",
     "interim-report": "Anfonwyd adroddiad interim",
     completed: "Cwblhawyd, canlyniad wedi dod i law",
     "cancel-requested": "Gofynnwyd am ganslo, heb ei gadarnhau eto",

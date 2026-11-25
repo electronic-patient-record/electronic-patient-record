@@ -296,7 +296,8 @@ async fn a_suspicion_keeps_its_point_of_suspicion_and_follows_its_pathway() {
                 let r = server
                     .post(&format!("/api/patients/{pid}/referrals/{rid}/events"))
                     .add_header(th, tv)
-                    .json(&json!({ "event": event, "expected_version": version, "note": note }))
+                    .json(&json!({ "event": event, "expected_version": version, "note": note,
+                                    "reason": (event == "record-no-show").then_some("unknown") }))
                     .await;
                 assert_eq!(r.status_code(), StatusCode::OK, "{event}: {}", r.text());
             }

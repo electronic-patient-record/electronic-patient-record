@@ -308,6 +308,11 @@ export const STRINGS = {
   referralChanged:
     "This referral was changed by someone else. It has been reloaded; check it and try again.",
   referralNote: "Note (needed for this step)",
+  referralMissedWhy: "Why it was not attended (needed)",
+  referralMissedChoose: "Choose a reason",
+  referralMissedReason: "Why: {reason}",
+  referralMissedNotRecorded:
+    "Why: not recorded. This does not mean the person chose not to come.",
   referralProvisional:
     "This state's name is provisional and has not been checked against a standard.",
   referralBy: "sent by the {by}",
@@ -322,7 +327,7 @@ export const STRINGS = {
     accepted: "Accepted",
     declined: "Declined",
     "appointment-booked": "Appointment booked",
-    "no-show": "Missed the appointment",
+    "no-show": "Appointment not attended",
     "interim-report": "Interim report sent",
     completed: "Completed, outcome received",
     "cancel-requested": "Cancellation requested, not yet confirmed",

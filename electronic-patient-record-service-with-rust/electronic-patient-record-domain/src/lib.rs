@@ -24,6 +24,7 @@ pub mod hazard;
 pub mod ids;
 pub mod link_token;
 pub mod masking;
+pub mod missed;
 pub mod observations;
 pub mod order;
 pub mod packs;

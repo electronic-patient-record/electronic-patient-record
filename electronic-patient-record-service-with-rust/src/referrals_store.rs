@@ -10,6 +10,7 @@
 //! this is called.
 
 use crate::ids;
+use crate::missed;
 use crate::patients_store::StoreError;
 use crate::pool::Db;
 use crate::referral::{self, Actor, Event, State};
@@ -68,12 +69,15 @@ pub struct NextEvent {
     pub by: &'static str,
     /// Whether it must come with a note.
     pub needs_note: bool,
+    /// For a missed appointment: the reasons, one of which must be given (XP-15). Left out for every other event.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub reasons: Vec<missed::Given>,
 }
 
 /// The events [`referral::next`] allows from `state`, in the order of [`Event::ALL`]. Read from the table
 /// itself, so a screen never carries its own copy.
 #[must_use]
-pub fn allowed_events(state: State) -> Vec<NextEvent> {
+pub fn allowed_events(state: State, reasons: &[missed::Reason]) -> Vec<NextEvent> {
     Event::ALL
         .into_iter()
         .filter(|e| referral::next(state, *e).is_ok())
@@ -84,6 +88,11 @@ pub fn allowed_events(state: State) -> Vec<NextEvent> {
                 Actor::Recipient => "recipient",
             },
             needs_note: needs_note(e),
+            reasons: if e == Event::RecordNoShow {
+                missed::offered(reasons)
+            } else {
+                Vec::new()
+            },
         })
         .collect()
 }
@@ -138,7 +147,10 @@ fn row_to_referral(row: &PgRow) -> Result<StoredReferral, StoreError> {
         recorded_at: row.try_get("at").map_err(db_err)?,
         patient_id: row.try_get("patient_id").map_err(db_err)?,
         state: state_value,
-        next: allowed_events(state_value),
+        next: allowed_events(
+            state_value,
+            &crate::missed_reasons::list().map_err(StoreError::Db)?,
+        ),
         referral: serde_json::from_value(body).map_err(db_err)?,
         last_event: row.try_get("event").map_err(db_err)?,
     })
@@ -427,6 +439,8 @@ pub struct Step<'a> {
     pub event: Event,
     /// Why or what, for the events that [`needs_note`].
     pub note: Option<&'a str>,
+    /// Why an appointment was missed: a code of the deployment's list, for that event and no other (XP-15).
+    pub missed: Option<&'a str>,
 }
 
 /// Apply a [`Step`] to a referral and append the result as the next version.
@@ -453,6 +467,7 @@ pub async fn advance(
         by,
         event,
         note,
+        missed: why,
     } = step;
     let was = current(&mut *db, referral_id).await?;
     if was.version != expected_version {
@@ -479,12 +494,31 @@ pub async fn advance(
         (false, _) => {}
     }
     let state = referral::next(was.state, event).map_err(|r| refuse(r.to_string()))?;
+    // After the table, so that a step it does not allow is refused as that, and not for a reason it did not give.
+    let why = match (event, why.map(str::trim).filter(|w| !w.is_empty())) {
+        (Event::RecordNoShow, None) => {
+            return Err(refuse(
+                "a missed appointment needs a reason; it may be unknown",
+            ));
+        }
+        (Event::RecordNoShow, Some(code)) => {
+            let list = crate::missed_reasons::list().map_err(StoreError::Db)?;
+            Some(missed::given(&list, code).ok_or_else(|| {
+                refuse(
+                    "the reason is not one of this deployment's reasons for a missed appointment",
+                )
+            })?)
+        }
+        (_, Some(_)) => return Err(refuse("only a missed appointment has such a reason")),
+        (_, None) => None,
+    };
     let logged = serde_json::json!({
         "event": event.as_str(),
         "by": by,
         "role": match actor { Actor::Referrer => "referrer", Actor::Recipient => "recipient" },
         "at": crate::clock::rfc3339_micros(now),
         "note": note.map(str::trim).filter(|n| !n.is_empty()),
+        "missed": why,
     });
     let new_version = crate::store::next_version(expected_version)?;
     let appended = crate::store::append_version(
@@ -525,7 +559,7 @@ mod tests {
     #[test]
     fn the_allowed_events_are_the_state_tables() {
         for state in State::ALL {
-            let listed: Vec<&str> = allowed_events(state).iter().map(|n| n.event).collect();
+            let listed: Vec<&str> = allowed_events(state, &[]).iter().map(|n| n.event).collect();
             let table: Vec<&str> = Event::ALL
                 .into_iter()
                 .filter(|e| referral::next(state, *e).is_ok())
@@ -534,7 +568,7 @@ mod tests {
             assert_eq!(listed, table, "{state:?}");
             assert_eq!(listed.is_empty(), state.is_end(), "{state:?}");
         }
-        let requested = allowed_events(State::Requested);
+        let requested = allowed_events(State::Requested, &[]);
         assert!(
             requested
                 .iter()
@@ -545,6 +579,21 @@ mod tests {
                 .iter()
                 .any(|n| n.event == "request-cancel" && n.by == "referrer" && n.needs_note)
         );
+    }
+
+    #[test]
+    fn only_a_missed_appointment_carries_reasons_and_they_are_the_lists() {
+        let list = missed::built_in().unwrap();
+        for state in State::ALL {
+            for n in allowed_events(state, list) {
+                let expected = if n.event == "record-no-show" {
+                    missed::offered(list)
+                } else {
+                    Vec::new()
+                };
+                assert_eq!(n.reasons, expected, "{state:?} {}", n.event);
+            }
+        }
     }
 
     fn referral() -> Referral {

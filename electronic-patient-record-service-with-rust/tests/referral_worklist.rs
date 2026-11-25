@@ -96,6 +96,7 @@ async fn step(
             by,
             event,
             note,
+            missed: None,
         },
         jiff::Timestamp::now(),
     )

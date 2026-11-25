@@ -53,7 +53,7 @@ Read: the code for the words ward, bed, admission, admit, discharge, inpatient, 
 
 | Where | What it assumes | Who it does not fit | What would help |
 |---|---|---|---|
-| **Referral state `no-show`**, shown as "Missed the appointment", recorded **with no note or reason** (`referrals_store.rs` `needs_note`) | That the patient could have come and did not | A person in custody who was not escorted, a child or a care-home resident who was not brought, a serving person who was deployed, a person with no transport. The record then says something about them that is not so | `XP-15`: a reason, chosen, with "not brought" apart from "did not come" |
+| **Referral state `no-show`**, shown as "Missed the appointment", recorded **with no note or reason** (`referrals_store.rs` `needs_note`) | That the patient could have come and did not | A person in custody who was not escorted, a child or a care-home resident who was not brought, a serving person who was deployed, a person with no transport. The record then says something about them that is not so | `XP-15`, **built 2026-11-25**: a reason, required and chosen, with "not brought" apart from "did not come"; the screen says "Appointment not attended" |
 | Care relationship `active-encounter` (`relationships.rs`) | That there is an encounter. There is none: the word is typed by an administrator, nothing starts or ends it | Community teams, whose relationship is a caseload over months | `CA-1`, `CA-2`; a caseload as a relationship of its own (`XP-6`) |
 | Roles (`policy.rs`): clinician, nurse, pharmacist, allied health | Four kinds of professional and their hospital work | A social worker, care coordinator, peer worker, community support worker, approved mental-health professional, prison health worker: each must be given a role with more or less than they need | [Roles and assignments](access-control/roles-and-assignments.md); not decided |
 | Break-the-glass: 4 hours, fixed (`break_glass.rs`) | An emergency that ends within a shift, with someone else to review it | A lone clinician on a ship or a remote clinic, where the reviewer may be the same person (who is refused) or days away | A note in `military-health` point 5; not decided |
@@ -65,6 +65,18 @@ Read: the code for the words ward, bed, admission, admit, discharge, inpatient, 
 | Task teams: the only team a built-in rule names is `clinician` (`task_rules.toml`) | One team that is always there | A caseload with a named coordinator | `CA-2`, `XP-6` |
 
 In the **specifications**: [scope](02-scope.md) puts outpatient care first and then the inpatient core, and has a bed board and no caseload; community and mental health are on this page only. [Order entry](order-entry/index.md) takes inpatient laboratory orders first. [Medication administration](medication-administration/index.md) and [nursing flowsheets](nursing-flowsheets/index.md) are written for a ward round. [Clinical workflows](clinical-workflows/index.md) is the most acute page. [5.2.1](05-domain-model.md) is free of it, and says a pathway outlives a discharge.
+
+## 6. Why an appointment was not attended (XP-15, 2026-11-25, unreviewed)
+
+Decided by the maintainer (OQ-XP1): there are many reasons, the list is the tenant's and may be long, one is required, and it may be "Unknown".
+
+- **The list** is the built-in one (`missed_reasons.toml` in the domain crate, the author's draft) or the file `EPR_MISSED_REASONS_FILE` names, which **replaces** it: `[[reason]]` with a `code` (kept, never reused), `words` (shown, up to 120 characters) and `retired = true` for one no longer offered. At most 500. `unknown` must be in it. It is read at start, and one that is wrong stops the service, naming the setting and the file. A deployment serves one tenant (QA-12), so this is the tenant's list.
+- **A referral's `record-no-show` must give a `reason`**, a code of `next[].reasons`; without one, or with one that is not offered, it is refused (422). No other event may give one. The code is stored **with the words it had then**.
+- **A message does not say why**, so one that reports a missed appointment gives `unknown`.
+- **One recorded before this has no reason**, which is not `unknown`: the screen says that it was not recorded and does not mean the person chose not to come.
+- **Who was at fault is not asked**, and no count or rule is made of it.
+- **A reason can be sensitive** ("Scared of treatment", "Not brought by the person who brings them"). It is in the referral's history and nowhere else: not in an audit row, a task, a metric or a log, and it is **left out for a patient and a proxy**, since a proxy may be the person who did not bring them. Staff who read the referral read it. Who should is not decided.
+- The words are the tenant's, in the tenant's language; they are not translated.
 
 ## Not done, not verified
 

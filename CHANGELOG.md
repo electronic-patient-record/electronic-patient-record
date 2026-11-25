@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - A missed appointment says why (XP-15, OQ-XP1)
+
+- **Clinical risk:** H-071 is added `open`. The screen no longer says "Missed the appointment" but "Appointment not attended", and why; a person who was not brought or escorted is no longer recorded as having missed it.
+- **Breaking for a caller:** `record-no-show` on a referral must now give `reason`, and is refused (422) without one. The OpenAPI check does not see this, since the field is optional for the other events.
+- **Added:** the built-in list and `EPR_MISSED_REASONS_FILE`, a deployment's own of up to 500; `next[].reasons`; `last_event.missed`; the choice on the screen, in English and Welsh (machine-written, unreviewed). A message that reports a missed appointment gives `unknown`.
+- **Verified:** 4 domain tests, 2 of the store, 1 of a message, 1 through the router with a list of 302 (kept from the patient and from every audit row), 1 browser test with axe and at 320 px; the normal and database passes on a fresh Postgres 18; every UI and docs gate. **Not done / not verified:** who may see a sensitive reason is not decided; the built-in list is the author's; nobody reviewed the words; the mobile apps were not looked at.
+
 ## 2026-11-25 - An allergy of unknown risk is always named on a small screen (OQ-XP2); matcher 0.9.0 published
 
 - **Clinical risk:** H-070 (controls, evidence and residual changed; status and score not). The strip now counts only allergies recorded as low risk; one whose risk was not stated or not assessed is named, as the maintainer decided.

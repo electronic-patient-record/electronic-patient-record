@@ -304,6 +304,8 @@ pub async fn file(
             by: inbound.agent,
             event,
             note: inbound.note,
+            // A message does not say why, and a missed appointment must have a reason.
+            missed: (event == Event::RecordNoShow).then_some(crate::missed::UNKNOWN),
         },
         now,
     )

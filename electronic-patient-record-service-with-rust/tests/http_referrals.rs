@@ -295,3 +295,140 @@ async fn who_may_take_which_step() {
     })
     .await;
 }
+
+/// XP-15: a deployment's own reasons, as long a list as it likes. One is required; its words reach the clinician and not
+/// the patient, an audit row or a task.
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn a_deployments_own_reasons_are_offered_and_kept_from_the_patient_and_the_audit() {
+    const WORDS: &str = "Scared of treatment, quokka";
+    let idp = TestIdp::start().await;
+    let map: Value = ["clinical-admin", "clinician", "patient"]
+        .iter()
+        .map(|r| ((*r).to_string(), json!({ "role": [r] })))
+        .collect();
+    let dir = std::env::temp_dir().join(format!("epr-reasons-{}", nanos()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let file = dir.join("reasons.toml");
+    let mut list = format!(
+        "[[reason]]\ncode = \"unknown\"\nwords = \"Unknown\"\n[[reason]]\ncode = \"scared\"\nwords = \"{WORDS}\"\n"
+    );
+    for i in 0..300 {
+        list.push_str(&format!(
+            "[[reason]]\ncode = \"r-{i}\"\nwords = \"Reason {i}\"\n"
+        ));
+    }
+    std::fs::write(&file, list).unwrap();
+    let file = file.to_str().unwrap().to_string();
+    let db_url = std::env::var("DB_URL").expect("DB_URL must be set for --ignored tests");
+    let role_map = map.to_string();
+    let settings: Vec<(&str, &str)> = vec![
+        ("DB_URL", &db_url),
+        ("EPR_REQUIRE_AUTH", "true"),
+        ("EPR_KEYCLOAK_URL", &idp.base_url),
+        ("EPR_KEYCLOAK_REALM", REALM),
+        ("EPR_KEYCLOAK_AUDIENCES", AUDIENCE),
+        ("EPR_KEYCLOAK_ROLE_MAP", &role_map),
+        ("EPR_MISSED_REASONS_FILE", &file),
+    ];
+    let token = |role: &str, sub: &str| {
+        bearer(&idp.token(|c| {
+            c["realm_access"] = json!({ "roles": [role] });
+            c["sub"] = json!(sub);
+        }))
+    };
+    const DOCTOR: &str = "0c4f1e2a-0000-4000-8000-0000000000e1";
+    const CLINIC: &str = "0c4f1e2a-0000-4000-8000-0000000000e2";
+    const SELF: &str = "0c4f1e2a-0000-4000-8000-0000000000e3";
+    let admin = token("clinical-admin", "0c4f1e2a-0000-4000-8000-0000000000e0");
+    let (doctor, clinic, own) = (
+        token("clinician", DOCTOR),
+        token("clinician", CLINIC),
+        token("patient", SELF),
+    );
+    request_with::<App, _, _>(&settings, |server, ctx| async move {
+        let family = format!("missed{}", nanos());
+        let made = server
+            .post("/api/patients")
+            .add_header(admin.0.clone(), admin.1.clone())
+            .json(&json!({ "patient": { "names": [{ "family": family, "given": [family] }], "birth_date": dob() },
+                           "override_reason": "test setup" }))
+            .await;
+        assert_eq!(made.status_code(), StatusCode::CREATED, "{}", made.text());
+        let pid = made.json::<Value>()["id"].as_str().unwrap().to_string();
+        for (subject, kind) in [(DOCTOR, "care-team"), (CLINIC, "care-team"), (SELF, "self")] {
+            let rel = server
+                .post(&format!("/api/patients/{pid}/relationships"))
+                .add_header(admin.0.clone(), admin.1.clone())
+                .json(&json!({ "relationship": { "subject": subject, "kind": kind, "status": "active" }, "reason": "test" }))
+                .await;
+            assert_eq!(rel.status_code(), StatusCode::CREATED, "{}", rel.text());
+        }
+        let base = format!("/api/patients/{pid}/referrals");
+        let sent = server
+            .post(&base)
+            .add_header(doctor.0.clone(), doctor.1.clone())
+            .json(&json!({ "referral": { "recipient": "Clinic", "reason": "r", "question": "q", "priority": "routine" } }))
+            .await;
+        assert_eq!(sent.status_code(), StatusCode::CREATED, "{}", sent.text());
+        let rid = sent.json::<Value>()["id"].as_str().unwrap().to_string();
+        let step = async |event: &str, version: i32, reason: Value| {
+            let r = server
+                .post(&format!("{base}/{rid}/events"))
+                .add_header(clinic.0.clone(), clinic.1.clone())
+                .json(&json!({ "event": event, "expected_version": version, "reason": reason }))
+                .await;
+            (r.status_code(), r.text())
+        };
+        assert_eq!(step("accept", 1, Value::Null).await.0, StatusCode::OK);
+        let (status, text) = step("book", 2, Value::Null).await;
+        assert_eq!(status, StatusCode::OK, "{text}");
+        let booked: Value = serde_json::from_str(&text).unwrap();
+        let next = booked["next"].as_array().unwrap();
+        let offered = next.iter().find(|n| n["event"] == "record-no-show").unwrap();
+        assert_eq!(offered["reasons"].as_array().unwrap().len(), 302);
+        assert_eq!(offered["reasons"][1], json!({ "code": "scared", "words": WORDS }));
+        assert!(next.iter().all(|n| n["event"] == "record-no-show" || n.get("reasons").is_none()));
+        // Required; and the built-in list is not in force.
+        for reason in [Value::Null, json!(""), json!("not-brought")] {
+            let (status, text) = step("record-no-show", 3, reason).await;
+            assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{text}");
+        }
+        let (status, text) = step("record-no-show", 3, json!("scared")).await;
+        assert_eq!(status, StatusCode::OK, "{text}");
+        assert!(text.contains(WORDS));
+
+        let read = async |who: &(HeaderName, HeaderValue), purpose: &'static str, url: String| {
+            let r = server
+                .get(&url)
+                .add_header(who.0.clone(), who.1.clone())
+                .add_header(
+                    HeaderName::from_static("x-purpose-of-use"),
+                    HeaderValue::from_static(purpose),
+                )
+                .await;
+            assert_eq!(r.status_code(), StatusCode::OK, "{url}: {}", r.text());
+            r.text()
+        };
+        for url in [base.clone(), format!("{base}/{rid}")] {
+            let seen = read(&doctor, "treatment", url.clone()).await;
+            assert!(seen.contains("\"code\":\"scared\""), "{seen}");
+            let theirs = read(&own, "patient-access", url).await;
+            assert!(theirs.contains("no-show") && !theirs.contains("\"missed\""), "{theirs}");
+        }
+        let rows = sqlx::query("SELECT detail::text AS d FROM audit_events WHERE patient_ref = $1")
+            .bind(format!("Patient/{pid}"))
+            .fetch_all(&ctx.pool())
+            .await
+            .unwrap();
+        assert!(rows.len() > 5);
+        for row in rows {
+            let d: Option<String> = row.try_get("d").unwrap();
+            if let Some(d) = d {
+                assert!(!d.contains("scared") && !d.contains("quokka"), "{d}");
+            }
+        }
+    })
+    .await;
+    std::fs::remove_dir_all(&dir).unwrap();
+}

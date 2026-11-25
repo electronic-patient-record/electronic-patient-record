@@ -78,6 +78,8 @@ pub struct Runtime {
     pub(crate) referral_timeouts: OnceLock<crate::referral_timeouts::Timeouts>,
     /// The site's task rules file, read at start (`tasks_store::init_rules`); unset, the built-in catalogue runs.
     pub(crate) site_rules: OnceLock<Arc<Vec<electronic_patient_record_domain::task_rules::Rule>>>,
+    /// The deployment's reasons for a missed appointment, read at start (`missed_reasons::init`); unset, the built-in list.
+    pub(crate) missed_reasons: OnceLock<Arc<Vec<electronic_patient_record_domain::missed::Reason>>>,
     /// The feed the listener serves and its thresholds, set when the health loop starts (`feed_health::run_loop`).
     pub(crate) feed_health: OnceLock<(String, crate::feed_health::Thresholds)>,
     /// The identity of the feed the listener serves, set when the listener starts (`adt_feed::set_configured`).
@@ -128,6 +130,7 @@ impl Runtime {
             audit_server: OnceLock::new(),
             referral_timeouts: OnceLock::new(),
             site_rules: OnceLock::new(),
+            missed_reasons: OnceLock::new(),
             feed_health: OnceLock::new(),
             feed_identity: OnceLock::new(),
             auth_verifier: OnceLock::new(),

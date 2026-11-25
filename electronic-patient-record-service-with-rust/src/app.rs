@@ -269,6 +269,9 @@ impl App {
             },
             "task rules loaded"
         );
+        // The reasons for a missed appointment (XP-15): the deployment's file or the built-in list.
+        let reasons = crate::missed_reasons::init().map_err(Error::Message)?;
+        tracing::info!(reasons = reasons.len(), "missed appointment reasons loaded");
         crate::audit::init_server().map_err(Error::Message)?;
         // The referral timeouts (PC-3): a setting that is wrong stops the service rather than switching one off.
         crate::referral_timeouts::init().map_err(Error::Message)?;

@@ -575,9 +575,11 @@ fn referral_schemas() -> Value {
                 "patient_id": {"type": "string"},
                 "state": {"enum": ["requested","accepted","declined","appointment-booked","no-show","interim-report","completed","cancel-requested","cancelled","information-requested","deferred","redirected"]},
                 "referral": {"$ref": "#/components/schemas/ReferralRecord"},
-                "last_event": {"type": "object", "description": "The event, who sent it, in which role, when, and the note."},
+                "last_event": {"type": "object", "description": "The event, who sent it, in which role, when, and the note. For a missed appointment also `missed`, the reason's code and its words as they were; absent on one recorded before 2026-11-25, when none was asked for."},
                 "next": {"type": "array", "description": "What the state table allows next; empty in an end state.", "items": {"type": "object", "required": ["event", "by", "needs_note"], "properties": {
-                    "event": {"type": "string"}, "by": {"enum": ["referrer", "recipient"]}, "needs_note": {"type": "boolean"}}}}
+                    "event": {"type": "string"}, "by": {"enum": ["referrer", "recipient"]}, "needs_note": {"type": "boolean"},
+                    "reasons": {"type": "array", "maxItems": crate::missed::MOST, "description": "Only for record-no-show: the deployment's reasons, one of which must be given. `unknown` is always one.",
+                        "items": {"type": "object", "required": ["code", "words"], "properties": {"code": {"type": "string"}, "words": {"type": "string"}}}}}}}
             }
         },
         "CreateReferral": {
@@ -586,11 +588,12 @@ fn referral_schemas() -> Value {
         },
         "ReferralEvent": {
             "type": "object", "required": ["event", "expected_version"],
-            "description": "The next step. The sender of the referral acts as the referrer; any other subject with the permission acts as the recipient (OQ-PC2, assumed). Refused with 422 when the state table does not allow the event, the role is wrong, or a needed note is missing.",
+            "description": "The next step. The sender of the referral acts as the referrer; any other subject with the permission acts as the recipient (OQ-PC2, assumed). Refused with 422 when the state table does not allow the event, the role is wrong, a needed note is missing, or a missed appointment has no reason or one that is not offered.",
             "properties": {
                 "event": {"enum": ["accept","decline","book","record-no-show","interim-note","outcome","request-cancel","confirm-cancel","request-information","provide-information","defer","resume","redirect"]},
                 "expected_version": {"type": "integer"},
-                "note": {"type": ["string", "null"]}
+                "note": {"type": ["string", "null"]},
+                "reason": {"type": ["string", "null"], "maxLength": crate::missed::CODE_LIMIT, "description": "For record-no-show, why: a code of next[].reasons. Required for it, and refused for every other event."}
             }
         },
         "ReferralList": {

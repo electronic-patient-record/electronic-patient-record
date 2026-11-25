@@ -892,6 +892,7 @@ async fn an_urgent_referral_makes_its_task_and_closing_the_referral_cancels_it()
                 by: "cardiology-1",
                 event,
                 note: None,
+                missed: None,
             },
             now,
         )
@@ -912,6 +913,7 @@ async fn an_urgent_referral_makes_its_task_and_closing_the_referral_cancels_it()
             by: "cardiology-1",
             event: ReferralEvent::Outcome,
             note: Some("Stable angina; started on treatment"),
+            missed: None,
         },
         now,
     )

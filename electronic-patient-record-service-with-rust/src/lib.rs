@@ -51,6 +51,8 @@ pub mod links;
 pub mod list_limits;
 pub mod lockout;
 pub mod metrics;
+pub use electronic_patient_record_domain::missed;
+pub mod missed_reasons;
 pub mod mllp;
 pub use electronic_patient_record_domain::observations;
 pub mod observations_store;

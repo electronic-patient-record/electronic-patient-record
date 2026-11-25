@@ -53,6 +53,9 @@ pub struct EventRequest {
     /// Why or what, for the events that need one.
     #[serde(default)]
     pub note: Option<String>,
+    /// For `record-no-show`, why: a code of `next[].reasons`. Required for it, and refused for every other event.
+    #[serde(default)]
+    pub reason: Option<String>,
 }
 
 /// A patient's referrals.
@@ -109,6 +112,19 @@ async fn refused(
     .err()
 }
 
+/// What this reader may have. Why an appointment was missed ("Not brought by the person who brings them") is left out for
+/// a patient and a proxy, since a proxy may be that person, until it is decided who may see it (OQ-XP1).
+fn for_reader(purpose: Purpose, mut referrals: Vec<StoredReferral>) -> Vec<StoredReferral> {
+    if purpose == Purpose::PatientAccess {
+        for r in &mut referrals {
+            if let Some(event) = r.last_event.as_object_mut() {
+                event.remove("missed");
+            }
+        }
+    }
+    referrals
+}
+
 /// `GET /api/patients/{id}/referrals`: the patient's referrals, current version of each, newest first.
 ///
 /// Authorised as a read of `Referral` for the patient (role, care relationship, purpose, consent), and audited with
@@ -158,6 +174,7 @@ pub(super) async fn list(
     {
         return r.into_response();
     }
+    let referrals = for_reader(purpose, referrals);
     Json(ReferralList { referrals }).into_response()
 }
 
@@ -215,6 +232,7 @@ pub(super) async fn history(
     {
         return r.into_response();
     }
+    let versions = for_reader(purpose, versions);
     Json(ReferralHistory { versions }).into_response()
 }
 
@@ -453,6 +471,7 @@ async fn step(
             by,
             event,
             note: request.note.as_deref(),
+            missed: request.reason.as_deref(),
         },
         jiff::Timestamp::now(),
     )

@@ -4132,6 +4132,98 @@ test("a clinician sends a referral and takes a step; the service's list of next 
   await expect(page.getByRole("button", { name: /^Accept/ })).toHaveCount(0);
 });
 
+test("a missed appointment needs a reason from the deployment's list, and says which; an old one says none was recorded", async ({
+  page,
+}) => {
+  const sent: unknown[] = [];
+  const R = (id: string, state: string, over: object) => ({
+    id,
+    version: 3,
+    author: "dr",
+    recorded_at: "2026-10-21T09:00:00.000000Z",
+    patient_id: ANN.id,
+    state,
+    referral: {
+      recipient: id,
+      reason: "r",
+      question: "q",
+      priority: "routine",
+    },
+    next: [],
+    ...over,
+  });
+  const offered = {
+    next: [
+      {
+        event: "record-no-show",
+        by: "recipient",
+        needs_note: false,
+        reasons: [
+          { code: "unknown", words: "Unknown" },
+          { code: "no-car", words: "Unable to drive to <b>hospital</b> $&" },
+        ],
+      },
+    ],
+  };
+  let list = [
+    R("Cardiology", "appointment-booked", offered),
+    R("Dermatology", "no-show", { last_event: { event: "record-no-show" } }),
+  ];
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, ANN),
+  );
+  await page.route("**/api/proxy/api/patients/*/referrals", (route) =>
+    json(route, 200, { referrals: list }),
+  );
+  await page.route(
+    "**/api/proxy/api/patients/*/referrals/*/events",
+    (route) => {
+      sent.push(route.request().postDataJSON());
+      list = [
+        R("Cardiology", "no-show", {
+          last_event: {
+            missed: {
+              code: "no-car",
+              words: "Unable to drive to <b>hospital</b> $&",
+            },
+          },
+        }),
+      ];
+      return json(route, 200, list[0]);
+    },
+  );
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  const section = page.getByRole("region", { name: "Referrals" });
+  await expect(
+    section.getByText("This does not mean the person chose not to come"),
+  ).toBeVisible();
+  await expect(section).toContainText("Appointment not attended");
+
+  // Nothing is chosen beforehand, nothing is sent without a choice, and no note is asked for.
+  await section.getByRole("button", { name: /^Record missed/ }).click();
+  const choice = section.getByLabel("Why it was not attended (needed)");
+  await expect(choice).toHaveValue("");
+  await expect(section.getByLabel("Note (needed for this step)")).toHaveCount(
+    0,
+  );
+  const record = section.getByRole("button", {
+    name: "Record missed appointment",
+    exact: true,
+  });
+  await record.click();
+  expect(sent).toHaveLength(0);
+  await axe(page);
+  await choice.selectOption("no-car");
+  await record.click();
+  await expect(
+    section.getByText("Why: Unable to drive to <b>hospital</b> $&"),
+  ).toBeVisible();
+  expect(sent).toEqual([
+    { event: "record-no-show", expected_version: 3, reason: "no-car" },
+  ]);
+});
+
 test("a referral shows its suspicion: draft pathway, not told, due days, overdue, open until an outcome", async ({
   page,
 }) => {

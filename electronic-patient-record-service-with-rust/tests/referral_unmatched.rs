@@ -95,6 +95,42 @@ fn queued(filed: Filed) -> queue::Entry {
     }
 }
 
+/// XP-15: a message does not say why, so a missed appointment it reports has the reason `unknown`.
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn a_message_that_says_the_patient_did_not_attend_gives_the_reason_unknown() {
+    let db = db().await;
+    let r = referral(&db).await;
+    for (version, event) in [(1, Event::Accept), (2, Event::Book)] {
+        store::advance(
+            &db,
+            &r.id,
+            version,
+            Step {
+                actor: Actor::Recipient,
+                by: "clinic-feed",
+                event,
+                note: None,
+                missed: None,
+            },
+            jiff::Timestamp::now(),
+        )
+        .await
+        .unwrap();
+    }
+    let filed = queue::file(
+        &db,
+        inbound(Some(&r.id), Some("record-no-show"), None),
+        jiff::Timestamp::now(),
+    )
+    .await
+    .unwrap();
+    let Filed::Moved { referral } = filed else {
+        panic!("{filed:?}");
+    };
+    assert_eq!(referral.last_event["missed"]["code"], "unknown");
+}
+
 #[tokio::test]
 #[ignore = "needs Postgres: set DB_URL"]
 async fn a_message_with_a_known_id_moves_the_referral() {
@@ -109,6 +145,7 @@ async fn a_message_with_a_known_id_moves_the_referral() {
             by: "clinic-feed",
             event: Event::Accept,
             note: None,
+            missed: None,
         },
         jiff::Timestamp::now(),
     )
@@ -153,6 +190,7 @@ async fn a_message_that_does_not_match_is_queued_with_a_reason_and_changes_nothi
                 by: "dr-1",
                 event: Event::RequestCancel,
                 note: Some("not needed"),
+                missed: None,
             },
             jiff::Timestamp::now(),
         )
@@ -167,6 +205,7 @@ async fn a_message_that_does_not_match_is_queued_with_a_reason_and_changes_nothi
                 by: "clinic-feed",
                 event: Event::ConfirmCancel,
                 note: None,
+                missed: None,
             },
             jiff::Timestamp::now(),
         )
@@ -229,6 +268,7 @@ async fn a_message_that_does_not_match_is_queued_with_a_reason_and_changes_nothi
             by: "clinic-feed",
             event: Event::Accept,
             note: None,
+            missed: None,
         },
         jiff::Timestamp::now(),
     )

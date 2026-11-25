@@ -1,0 +1,48 @@
+# Why an appointment was not attended (XP-15): the built-in list, used where a deployment names none of its own
+# (`EPR_MISSED_REASONS_FILE`, the same shape, which replaces this one). A draft by the author; no clinician, patient or
+# booking clerk has reviewed it. A code is stored and never reused; the words shown then are stored beside it.
+# `unknown` is in every list. A reason no longer offered is kept with `retired = true`.
+
+[[reason]]
+code = "unknown"
+words = "Unknown"
+
+[[reason]]
+code = "did-not-come"
+words = "Did not come, and gave no reason"
+
+[[reason]]
+code = "not-brought"
+words = "Not brought by the person who brings them"
+
+[[reason]]
+code = "not-escorted"
+words = "Not escorted"
+
+[[reason]]
+code = "not-told"
+words = "Not told, or told the wrong time or place"
+
+[[reason]]
+code = "unable-to-travel"
+words = "Unable to travel"
+
+[[reason]]
+code = "unwell"
+words = "Too unwell to come"
+
+[[reason]]
+code = "afraid"
+words = "Afraid of the treatment or the place"
+
+[[reason]]
+code = "cost"
+words = "Could not afford to come"
+
+[[reason]]
+code = "caring-or-work"
+words = "Caring for someone, or at work"
+
+[[reason]]
+code = "other"
+words = "Another reason"

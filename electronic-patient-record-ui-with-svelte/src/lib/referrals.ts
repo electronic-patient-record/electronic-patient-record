@@ -24,6 +24,8 @@ export interface NextEvent {
   event: string;
   by: "referrer" | "recipient";
   needs_note: boolean;
+  /** For a missed appointment: the deployment's reasons, one of which must be given (XP-15). */
+  reasons?: { code: string; words: string }[];
 }
 
 export interface StoredReferral {
@@ -39,6 +41,8 @@ export interface StoredReferral {
     question: string;
     priority: Priority;
   };
+  /** What happened last. `missed` is why an appointment was missed; absent on one recorded before it was asked for. */
+  last_event?: { missed?: { code: string; words: string } | null };
   next: NextEvent[];
 }
 

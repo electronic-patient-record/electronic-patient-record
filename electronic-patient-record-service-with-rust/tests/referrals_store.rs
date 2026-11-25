@@ -73,7 +73,106 @@ fn step(actor: Actor, event: Event, note: Option<&'static str>) -> Step<'static>
         },
         event,
         note,
+        missed: None,
     }
+}
+
+fn missed(why: Option<&'static str>) -> Step<'static> {
+    Step {
+        missed: why,
+        ..step(Actor::Recipient, Event::RecordNoShow, None)
+    }
+}
+
+/// XP-15: a missed appointment has a reason of the list, kept with the words it had; nothing else has one.
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn a_missed_appointment_needs_a_reason_and_keeps_its_words() {
+    let db = db().await;
+    let p = patient(&db).await;
+    let now = jiff::Timestamp::now();
+    let r = store::request(&db, "dr-1", &p, &referral(), now)
+        .await
+        .unwrap();
+    let go = async |version, s| store::advance(&db, &r.id, version, s, now).await;
+    go(1, step(Actor::Recipient, Event::Accept, None))
+        .await
+        .unwrap();
+    // Not allowed here, and refused as that and not for want of a reason.
+    match go(2, missed(None)).await {
+        Err(StoreError::BadQuery(m)) => assert!(m.contains("cannot take"), "{m}"),
+        other => panic!("{other:?}"),
+    }
+    let booked = go(2, step(Actor::Recipient, Event::Book, None))
+        .await
+        .unwrap();
+    let offered = booked
+        .next
+        .iter()
+        .find(|n| n.event == "record-no-show")
+        .unwrap();
+    assert!(offered.reasons.iter().any(|g| g.code == "unknown"));
+    for (why, says) in [
+        (None, "needs a reason"),
+        (Some("  "), "needs a reason"),
+        (Some("no-such-reason"), "not one of"),
+        (Some("Unknown"), "not one of"),
+    ] {
+        match go(3, missed(why)).await {
+            Err(StoreError::BadQuery(m)) => {
+                assert!(m.contains(says), "{why:?}: {m}");
+                assert!(!m.contains("no-such-reason"), "not quoted: {m}");
+            }
+            other => panic!("{why:?}: {other:?}"),
+        }
+    }
+    let with_reason = Step {
+        missed: Some("unknown"),
+        ..step(Actor::Referrer, Event::RequestCancel, Some("why"))
+    };
+    // Only a missed appointment has one.
+    let other = store::request(&db, "dr-1", &p, &referral(), now)
+        .await
+        .unwrap();
+    match store::advance(&db, &other.id, 1, with_reason, now).await {
+        Err(StoreError::BadQuery(m)) => assert!(m.contains("only a missed"), "{m}"),
+        o => panic!("{o:?}"),
+    }
+    let gone = go(3, missed(Some("not-brought"))).await.unwrap();
+    assert_eq!(gone.state, State::NoShow);
+    assert_eq!(
+        gone.last_event["missed"],
+        serde_json::json!({"code": "not-brought", "words": "Not brought by the person who brings them"})
+    );
+    let again = go(4, step(Actor::Recipient, Event::Book, None))
+        .await
+        .unwrap();
+    assert!(again.last_event["missed"].is_null());
+}
+
+/// One recorded before a reason was asked for says nothing, which is not "unknown" and not the patient's choice.
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn an_old_missed_appointment_has_no_reason() {
+    let db = db().await;
+    let p = patient(&db).await;
+    let now = jiff::Timestamp::now();
+    let r = store::request(&db, "dr-1", &p, &referral(), now)
+        .await
+        .unwrap();
+    sqlx::query(
+        "INSERT INTO referral_versions (referral_id, version, patient_id, author, state, event, body)
+         SELECT referral_id, 2, patient_id, 'clinic-1', 'no-show',
+                '{\"event\": \"record-no-show\", \"by\": \"clinic-1\", \"note\": null}'::jsonb, body
+         FROM referral_versions WHERE referral_id = $1::uuid",
+    )
+    .bind(r.id.clone())
+    .execute(&db)
+    .await
+    .unwrap();
+    let old = store::current(&db, &r.id).await.unwrap();
+    assert_eq!(old.state, State::NoShow);
+    assert!(old.last_event.get("missed").is_none());
 }
 
 #[tokio::test]

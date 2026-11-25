@@ -37,6 +37,8 @@
   // The one step being filled in, on one referral.
   let open = $state<{ id: string; next: NextEvent } | null>(null);
   let note = $state("");
+  // Why an appointment was missed: nothing is chosen for the person who records it.
+  let why = $state("");
 
   // A late answer for the patient the page has moved away from is dropped.
   let ticket = 0;
@@ -105,8 +107,9 @@
   function start(r: StoredReferral, next: NextEvent) {
     message = null;
     note = "";
-    // A step with no note is sent at once; one that needs a note opens its field first.
-    if (next.needs_note) open = { id: r.id, next };
+    why = "";
+    // A step with no note and no reason is sent at once; one that needs either opens its field first.
+    if (next.needs_note || next.reasons?.length) open = { id: r.id, next };
     else void step(r, next);
   }
 
@@ -120,6 +123,7 @@
           event: next.event,
           expected_version: r.version,
           note: next.needs_note ? note.trim() : undefined,
+          reason: next.reasons?.length ? why : undefined,
         },
       );
       await settle(res, TEXT.referralStepDone);
@@ -151,6 +155,16 @@
             {#if PROVISIONAL.includes(r.state)}
               <p role="note">{TEXT.referralProvisional}</p>
             {/if}
+            {#if r.state === "no-show"}
+              <p>
+                {r.last_event?.missed
+                  ? TEXT.referralMissedReason.replace(
+                      "{reason}",
+                      () => r.last_event?.missed?.words ?? "",
+                    )
+                  : TEXT.referralMissedNotRecorded}
+              </p>
+            {/if}
             <p>{TEXT.referralReason}: {r.referral.reason}</p>
             <p>{TEXT.referralQuestion}: {r.referral.question}</p>
             <SuspicionView {patientId} referralId={r.id} {siteZone} />
@@ -173,14 +187,25 @@
                   if (open) void step(r, open.next);
                 }}
               >
-                <label for="ref-note-{r.id}">{TEXT.referralNote}</label>
-                <input
-                  id="ref-note-{r.id}"
-                  bind:value={note}
-                  required
-                  maxlength="2000"
-                  autocomplete="off"
-                />
+                {#if open.next.reasons?.length}
+                  <label for="ref-why-{r.id}">{TEXT.referralMissedWhy}</label>
+                  <select id="ref-why-{r.id}" bind:value={why} required>
+                    <option value="">{TEXT.referralMissedChoose}</option>
+                    {#each open.next.reasons as given (given.code)}
+                      <option value={given.code}>{given.words}</option>
+                    {/each}
+                  </select>
+                {/if}
+                {#if open.next.needs_note}
+                  <label for="ref-note-{r.id}">{TEXT.referralNote}</label>
+                  <input
+                    id="ref-note-{r.id}"
+                    bind:value={note}
+                    required
+                    maxlength="2000"
+                    autocomplete="off"
+                  />
+                {/if}
                 <button disabled={busy.on} type="submit">
                   {TEXT.referralEvents[
                     open.next.event as keyof typeof TEXT.referralEvents
