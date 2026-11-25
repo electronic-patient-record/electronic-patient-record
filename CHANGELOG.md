@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - Post-quantum cryptography, researched (SE-12)
+
+- **Clinical risk:** none; nothing is built and no hazard row changes. The page names candidates.
+- **Added:** `spec/post-quantum-cryptography/index.md`: the brief's claims checked against their sources, what cryptography this project uses, what is at risk, rules proposed and an order of work. OQ-PQ1 to OQ-PQ5.
+- **Found:** no connection that the Rust service makes or accepts can use a post-quantum key exchange today, since it builds TLS on `ring`. Several of the brief's "mandates" are guidance, bind others, or (the US contractor rule) are not made yet.
+- **Not done / not verified:** no code and no measurement. The EU roadmap PDF, the PCI standard, OMB M-26-15, the FIPS texts and the GitHub attestation algorithm were not read. No cryptographer, security officer or lawyer has reviewed it.
+
 ## 2026-11-25 - A registry of safety measures, and the hazards that have none (SM-1, SM-2)
 
 - **Clinical risk:** none by itself; no hazard row, status or score changed. A measure is a proposal and sets no status.

@@ -737,6 +737,7 @@ confirms it before anything depends on it.
 - [ ] **SE-12 (S then M) — Post-quantum readiness.** A crypto inventory (audit MAC, PASETO, TLS, at-rest keys) and an
   algorithm identifier on every signed or MACed artefact, so it can be migrated later, following the NCSC 2028/2031/2035 timeline.
   **Acceptance:** the inventory is in `spec/`, and the audit chain verifies across an algorithm change in a test.
+  **Researched 2026-11-25:** [post-quantum cryptography](spec/post-quantum-cryptography/index.md) has the inventory, as read from the code, and an order of work (PQ-1 to PQ-10). Nothing is built.
 - [ ] **RC-11 (M) — Patient-generated and device observations.** **Clinical.** Readings from the portal or a device
   gateway are tagged by source. They stay out of flowsheets and early-warning scores until a clinician accepts them.
   **Acceptance:** an unaccepted reading never changes NEWS2 (test).
