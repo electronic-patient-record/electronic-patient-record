@@ -4,7 +4,10 @@
 # The real run (a badly formatted Rust file stopped before the push) is in spec/local-ci.md, done by hand.
 set -eu
 # It runs inside the hook too (as the docs-hooks gate), where git and the hook have set these.
-unset EPR_CI_ONLY EPR_PRE_PUSH_DRY_RUN GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE 2>/dev/null || true
+unset EPR_CI_ONLY EPR_PRE_PUSH_DRY_RUN 2>/dev/null || true
+# Every variable that names a repository, so that `git config` below cannot reach the real one. This test's name and
+# unsigned commits were found in the real settings on 2026-11-25; how they got there was not reproduced.
+unset $(git rev-parse --local-env-vars) 2>/dev/null || true
 root="$(cd "$(dirname "$0")/.." && pwd)"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
@@ -22,6 +25,8 @@ check() { # what, expected, actual
 repo="$work/repo"
 git init -q -b main "$repo"
 cd "$repo"
+# Nothing below may reach another repository's settings.
+[ "$(git rev-parse --absolute-git-dir)" = "$(pwd -P)/.git" ] || { echo "not in the throwaway repository" >&2; exit 1; }
 git config user.email test@example.invalid
 git config user.name test
 git config commit.gpgsign false

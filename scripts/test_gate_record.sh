@@ -26,6 +26,8 @@ export EPR_CI_SIGNING_KEY="$work/key" EPR_CI_ALLOWED_SIGNERS="$work/allowed_sign
 repo="$work/repo"
 git init -q -b main "$repo"
 cd "$repo"
+# Nothing below may reach another repository's settings.
+[ "$(git rev-parse --absolute-git-dir)" = "$(pwd -P)/.git" ] || { echo "not in the throwaway repository" >&2; exit 1; }
 git config user.email test@example.invalid
 git config user.name test
 git config commit.gpgsign false
