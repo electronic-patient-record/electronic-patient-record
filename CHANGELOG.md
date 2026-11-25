@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - The two audits are tasks, and their files are deleted (QI, AG-14 to AG-16)
+
+- **Clinical risk:** none by itself; no hazard row changes.
+- **Moved:** the 80 items of the generic audit are QI-1 to QI-80, each with its own id and its state as read in the repository: 9 were there, 2 conflict with a rule here (migrations have no down file; a release is fixed forward), 71 are open. The clinical audit was already AG-1 to AG-11; three of its items had not been moved and are AG-14 to AG-16.
+- **Deleted:** `docs/audits/`, at the maintainer's word. The generic one is in git history (`a9c39633`); the clinical one was never in the repository.
+- **Not done / not verified:** the states were read and not run; the audits' own figures were not checked. The clinical audit's narrative and measurements are not kept here, only what they ask for.
+
 ## 2026-11-25 - A patient's refusal of consent, researched (OQ-PI8, RF)
 
 - **Clinical risk:** none; nothing is built and no hazard row changes. The page names ten candidates.

@@ -91,8 +91,9 @@ no network, database or compilation; counts are source lines, not test runs):
 | MP | 3 | 30 |
 | CF | 0 | 4 |
 | EH | 2 | 15 |
-| AG | 2 | 11 |
+| AG | 2 | 14 |
+| QI | 9 | 71 |
 | DM | 0 | 5 |
-| **Total** | **151** | **474** |
+| **Total** | **160** | **548** |
 
 <!-- generated:end -->
