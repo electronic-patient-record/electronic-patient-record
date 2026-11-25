@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - One person has one relationship of a kind with a patient, so that ending it ends the access
+
+- **Clinical risk:** H-011 (controls, evidence and residual changed; status and score not). A relationship could be recorded twice, and ending one left the other: a proxy whose access was ended could keep it.
+- **Fixed:** a second standing relationship of the same person and kind is refused, also for two administrators at one moment and when an ended one is brought back. One whose period or proxy terms are over, or whose period does not overlap, is not in the way; another kind is not the same relationship. To widen a proxy's scopes, change the standing one.
+- **Changed for a caller:** a relationship the writer can fix is refused with 422 and the reason, as other records are, where it was 400. One HTTP test recorded a second proxy to widen its scopes; it now changes the first.
+- **Verified:** 3 tests that failed before; the normal and database passes on a fresh Postgres 18; every docs gate. **Not done / not verified:** relationships already doubled stand until each is ended, and nothing lists them; a person with two logins is two people here.
+
 ## 2026-11-25 - Each functional requirement names its tests, or shows that it has none (QA-1)
 
 - **Clinical risk:** none to behaviour.

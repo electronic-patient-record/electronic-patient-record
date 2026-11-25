@@ -26,7 +26,7 @@ use crate::pool::Db;
 use crate::proxy::{self, Scope, Terms};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgRow;
-use sqlx::{AssertSqlSafe, PgPool, Row};
+use sqlx::{AssertSqlSafe, Connection, PgConnection, PgPool, Row};
 
 crate::store_errors!("relationships");
 
@@ -189,6 +189,81 @@ fn proxy_allows(r: &RelationshipRecord, scope: Option<Scope>, now: i64) -> bool 
     }
 }
 
+/// Whether two active relationships of one person and kind could both be in force at some moment from `now` on. One whose
+/// period is over, or whose proxy terms have run out, is not in the way though nobody ended it. A date that cannot be
+/// read may be any date, so it overlaps.
+#[must_use]
+pub fn overlap(a: &RelationshipRecord, b: &RelationshipRecord, now: i64) -> bool {
+    let days = |r: &RelationshipRecord| -> Option<(Option<i64>, Option<i64>)> {
+        let Some(p) = &r.period else {
+            return Some((None, None));
+        };
+        let read = |d: &Option<String>| match d {
+            None => Some(None),
+            Some(d) => crate::consent::day_start(d).map(Some),
+        };
+        Some((read(&p.start)?, read(&p.end)?))
+    };
+    let over = |r: &RelationshipRecord| {
+        r.proxy.as_ref().is_some_and(|t| t.expires_at <= now)
+            || r.period.as_ref().is_some_and(|p| {
+                // Only an end that is past is over; a start to come is not.
+                p.end.is_some()
+                    && in_period(
+                        Some(&Period {
+                            start: None,
+                            end: p.end.clone(),
+                        }),
+                        now,
+                    ) == Some(false)
+            })
+    };
+    if over(a) || over(b) {
+        return false;
+    }
+    match (days(a), days(b)) {
+        (Some((a_start, a_end)), Some((b_start, b_end))) => {
+            let before = |end: Option<i64>, start: Option<i64>| matches!((end, start), (Some(e), Some(s)) if e < s);
+            !before(a_end, b_start) && !before(b_end, a_start)
+        }
+        _ => true,
+    }
+}
+
+/// Refuse a relationship that would stand beside another of the same person and kind: ending one would leave the other,
+/// and so the access. `own` is the one being changed.
+async fn refuse_second(
+    db: &mut PgConnection,
+    patient_id: &str,
+    own: Option<&str>,
+    record: &RelationshipRecord,
+) -> Result<(), StoreError> {
+    if record.status != Status::Active {
+        return Ok(());
+    }
+    let rows = sqlx::query(AssertSqlSafe(format!(
+        "SELECT {COLUMNS} FROM relationship_current
+             WHERE patient_id = $1::uuid AND subject = $2 AND kind = $3 AND status = 'active'"
+    )))
+    .bind(patient_id.to_string())
+    .bind(record.subject.clone())
+    .bind(record.kind.as_str())
+    .fetch_all(&mut *db)
+    .await
+    .map_err(db_err)?;
+    let now = jiff::Timestamp::now().as_second();
+    for row in &rows {
+        let other = row_to_stored(row)?;
+        if own != Some(other.id.as_str()) && overlap(&other.relationship, record, now) {
+            return Err(StoreError::BadQuery(
+                "this person already has this relationship with the patient: change or end that one"
+                    .into(),
+            ));
+        }
+    }
+    Ok(())
+}
+
 /// A relationship as stored.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct StoredRelationship {
@@ -227,7 +302,8 @@ fn row_to_stored(row: &PgRow) -> Result<StoredRelationship, StoreError> {
 ///
 /// # Errors
 ///
-/// [`StoreError::NotFound`] when the patient does not exist.
+/// [`StoreError::NotFound`] when the patient does not exist; [`StoreError::BadQuery`] when the person has this
+/// relationship already ([`overlap`]), also for two writers at one moment.
 pub async fn create(
     db: impl Into<Db<'_>>,
     patient_id: &str,
@@ -236,8 +312,11 @@ pub async fn create(
     record: &RelationshipRecord,
 ) -> Result<StoredRelationship, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
-    let db = &mut *conn;
-    let patient = patients_store::current(&mut *db, patient_id).await?;
+    let patient = patients_store::current(&mut *conn, patient_id).await?;
+    let mut tx = conn.begin().await.map_err(db_err)?;
+    crate::store::one_at_a_time(&mut tx, STORE, &patient.id).await?;
+    let db = &mut *tx;
+    refuse_second(&mut *db, &patient.id, None, record).await?;
     let row = sqlx::query(AssertSqlSafe(format!(
                 "INSERT INTO relationship_versions
                    (relationship_id, version, patient_id, subject, kind, status, author, reason, body)
@@ -254,7 +333,9 @@ pub async fn create(
     .await
     .map_err(db_err)?
     .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
-    row_to_stored(&row)
+    let stored = row_to_stored(&row)?;
+    tx.commit().await.map_err(db_err)?;
+    Ok(stored)
 }
 
 /// The current version of each relationship of a patient, ended ones included.
@@ -322,7 +403,9 @@ pub async fn update(
     record: &RelationshipRecord,
 ) -> Result<StoredRelationship, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
-    let db = &mut *conn;
+    let mut tx = conn.begin().await.map_err(db_err)?;
+    crate::store::one_at_a_time(&mut tx, STORE, &patient_id.to_ascii_lowercase()).await?;
+    let db = &mut *tx;
     let now = current(&mut *db, patient_id, id).await?;
     if now.version != expected_version {
         return Err(StoreError::Conflict {
@@ -334,6 +417,7 @@ pub async fn update(
             "the subject and kind cannot change: end this relationship and record another".into(),
         ));
     }
+    refuse_second(&mut *db, &now.patient_id, Some(&now.id), record).await?;
     let new_version = crate::store::next_version(expected_version)?;
     // A concurrent writer took this version: the primary key refuses the second (CQ-12).
     let row = match crate::store::append_version(&mut *db, STORE, sqlx::query(AssertSqlSafe(format!(
@@ -356,7 +440,9 @@ pub async fn update(
             return Err(StoreError::Conflict { current });
         }
     };
-    row_to_stored(&row)
+    let stored = row_to_stored(&row)?;
+    tx.commit().await.map_err(db_err)?;
+    Ok(stored)
 }
 
 /// The relationship `subject` has to a patient now: the strongest one in force. A proxy has none

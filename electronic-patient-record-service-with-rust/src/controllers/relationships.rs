@@ -83,7 +83,11 @@ async fn refused(
     {
         return r.into_response();
     }
-    store_failure(e)
+    match e {
+        // What the writer can fix is said as every other refused record is, so the screen shows it.
+        StoreError::BadQuery(m) => ApiError::invalid(vec![m.clone()]).into_response(),
+        other => store_failure(other),
+    }
 }
 
 /// `POST /api/patients/{id}/relationships`: record who is on the care team, or who is the patient or their proxy.

@@ -306,3 +306,157 @@ async fn own_patients_lists_self_and_proxy_in_force_and_nothing_else() {
             .is_empty()
     );
 }
+
+/// Ending one of two would leave the other standing: a proxy whose access was ended would keep it.
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn one_relationship_at_a_time_so_that_ending_it_ends_it() {
+    let db = db().await;
+    let p = patient(&db).await;
+    let now = jiff::Timestamp::now().as_second();
+    let proxy = |expires_at| RelationshipRecord {
+        proxy: Some(Terms {
+            basis: Basis::PatientRequest,
+            scopes: [Scope::Identity].into(),
+            expires_at,
+        }),
+        ..rec("erin", Kind::Proxy, Status::Active)
+    };
+    let year = 365 * 86_400;
+    let first = store::create(&db, &p, "admin", None, &proxy(now + year / 2))
+        .await
+        .unwrap();
+    for again in [proxy(now + year / 2), proxy(now + year / 4)] {
+        match store::create(&db, &p, "admin", None, &again).await {
+            Err(StoreError::BadQuery(m)) => {
+                assert!(m.contains("already has") && !m.contains("erin"), "{m}");
+            }
+            other => panic!("{other:?}"),
+        }
+    }
+    // Another kind, another person and another patient are not the same relationship.
+    for (who, kind) in [("erin", Kind::CareTeam), ("frank", Kind::CareTeam)] {
+        store::create(&db, &p, "admin", None, &rec(who, kind, Status::Active))
+            .await
+            .unwrap();
+    }
+    let q = patient(&db).await;
+    store::create(&db, &q, "admin", None, &proxy(now + year / 2))
+        .await
+        .unwrap();
+    // Ended: the access is gone, and a new one may be recorded.
+    let ended = RelationshipRecord {
+        status: Status::Ended,
+        ..proxy(now + year / 2)
+    };
+    store::update(&db, &p, &first.id, 1, "admin", Some("asked"), &ended)
+        .await
+        .unwrap();
+    assert_eq!(
+        store::lookup(&db, &p, "erin", now, Some(Scope::Identity))
+            .await
+            .unwrap(),
+        Relationship::CareTeam
+    );
+    let second = store::create(&db, &p, "admin", None, &proxy(now + year / 2))
+        .await
+        .unwrap();
+    // The ended one cannot be brought back beside it.
+    match store::update(
+        &db,
+        &p,
+        &first.id,
+        2,
+        "admin",
+        Some("back"),
+        &proxy(now + year / 2),
+    )
+    .await
+    {
+        Err(StoreError::BadQuery(m)) => assert!(m.contains("already has"), "{m}"),
+        other => panic!("{other:?}"),
+    }
+    // The standing one may change its own terms.
+    store::update(
+        &db,
+        &p,
+        &second.id,
+        1,
+        "admin",
+        Some("longer"),
+        &proxy(now + year / 3),
+    )
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn one_that_is_over_or_does_not_overlap_is_not_in_the_way() {
+    use electronic_patient_record::consent::Period;
+    let db = db().await;
+    let p = patient(&db).await;
+    let on = |start: Option<&str>, end: Option<&str>| RelationshipRecord {
+        period: Some(Period {
+            start: start.map(String::from),
+            end: end.map(String::from),
+        }),
+        ..rec("gina", Kind::ActiveEncounter, Status::Active)
+    };
+    let make = async |r: RelationshipRecord| store::create(&db, &p, "admin", None, &r).await;
+    // Over, though nobody ended it.
+    make(on(Some("2001-01-01"), Some("2001-01-31")))
+        .await
+        .unwrap();
+    make(on(Some("2090-01-01"), Some("2090-01-31")))
+        .await
+        .unwrap();
+    make(on(Some("2090-02-01"), None)).await.unwrap();
+    make(on(None, Some("2089-12-31"))).await.unwrap();
+    for (start, end) in [
+        (Some("2090-01-31"), Some("2090-01-31")),
+        (Some("2091-01-01"), None),
+        (None, None),
+        (None, Some("2090-01-01")),
+    ] {
+        match make(on(start, end)).await {
+            Err(StoreError::BadQuery(m)) => assert!(m.contains("already has"), "{m}"),
+            other => panic!("{start:?} {end:?}: {other:?}"),
+        }
+    }
+    // A proxy whose terms have run out is over too.
+    let now = jiff::Timestamp::now().as_second();
+    let proxy = |expires_at| RelationshipRecord {
+        proxy: Some(Terms {
+            basis: Basis::PatientRequest,
+            scopes: [Scope::Identity].into(),
+            expires_at,
+        }),
+        ..rec("hugo", Kind::Proxy, Status::Active)
+    };
+    make(proxy(now - 60)).await.unwrap();
+    make(proxy(now + 86_400)).await.unwrap();
+}
+
+/// Two administrators at one moment.
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn two_people_at_one_moment_record_one_relationship() {
+    let db = db().await;
+    let p = patient(&db).await;
+    let r = rec("iris", Kind::CareTeam, Status::Active);
+    let mut first = db.begin().await.unwrap();
+    store::create(&mut *first, &p, "admin-1", None, &r)
+        .await
+        .unwrap();
+    let (other, at, same) = (db.clone(), p.clone(), r.clone());
+    let second =
+        tokio::spawn(async move { store::create(&other, &at, "admin-2", None, &same).await });
+    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    assert!(!second.is_finished(), "it waits for the first");
+    first.commit().await.unwrap();
+    assert!(matches!(
+        second.await.unwrap(),
+        Err(StoreError::BadQuery(_))
+    ));
+}

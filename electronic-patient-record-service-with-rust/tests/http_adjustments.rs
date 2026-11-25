@@ -358,8 +358,20 @@ async fn who_may_record_review_and_end_an_adjustment() {
             own_get(proxy.clone(), path.clone()).await.status_code(),
             StatusCode::FORBIDDEN
         );
-        let related = scoped(json!(["adjustments"])).await;
-        assert_eq!(related.status_code(), StatusCode::CREATED, "{}", related.text());
+        // A second one beside it is refused (ending one would leave the other); its own terms are changed instead.
+        let first: Value = related.json();
+        let second = scoped(json!(["adjustments"])).await;
+        assert_eq!(second.status_code(), StatusCode::UNPROCESSABLE_ENTITY, "{}", second.text());
+        assert!(second.text().contains("already has this relationship"), "{}", second.text());
+        let mut wider = first["relationship"].clone();
+        wider["proxy"]["scopes"] = json!(["adjustments"]);
+        let (h, v) = bearer(&admin);
+        let changed = server
+            .put(&format!("/api/patients/{id}/relationships/{}", first["id"].as_str().unwrap()))
+            .add_header(h, v)
+            .json(&json!({ "relationship": wider, "expected_version": 1, "reason": "seen" }))
+            .await;
+        assert_eq!(changed.status_code(), StatusCode::OK, "{}", changed.text());
         let read = own_get(proxy.clone(), path.clone()).await;
         assert_eq!(read.status_code(), StatusCode::OK, "{}", read.text());
         let refused = own_post(proxy.clone(), json!({ "code": "braille", "reason": "x" })).await;
