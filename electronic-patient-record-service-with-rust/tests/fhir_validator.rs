@@ -97,9 +97,10 @@ fn allergy(status: Status) -> StoredAllergy {
         recorded_at: "2026-10-21T09:30:00.123456Z".into(),
         allergy: AllergyRecord {
             substance: "Penicillin".into(),
+            // A code is withheld from the export (AG-3); the note that says so is what the validator sees.
             coding: Some(Coding {
                 system: "http://snomed.info/sct".into(),
-                code: "22298006".into(),
+                code: "764146007".into(),
             }),
             category: Some(Category::Medication),
             criticality: Some(Criticality::High),

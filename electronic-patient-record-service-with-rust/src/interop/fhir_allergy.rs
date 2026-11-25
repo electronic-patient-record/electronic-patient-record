@@ -6,7 +6,9 @@
 //! What is *not* said is as deliberate as what is. The service records neither whether an
 //! allergy is confirmed nor whether it is an allergy or an intolerance, so `verificationStatus`
 //! and `type` are left out rather than guessed. A criticality nobody stated is left out, never
-//! `low`. An allergy entered in error is not exported at all: it never happened.
+//! `low`. An allergy entered in error is not exported at all: it never happened. **A recorded code is withheld**: its
+//! shape is checked and its meaning is not, so it goes out as a note that says so and never as a `coding` (AG-3). A
+//! receiver that indexes only codes then finds none, which the note cannot help (OQ-AG3).
 //!
 //! "No known allergies" is exported as the SNOMED CT concept `716186003`, and only while the
 //! summary says it still holds ([`crate::allergies::Summary::NoKnown`]).
@@ -18,6 +20,9 @@ use serde_json::{Value, json};
 
 /// SNOMED CT: |No known allergy|.
 pub const NO_KNOWN_ALLERGY: &str = "716186003";
+
+/// What a reader of the export is told when a code was recorded and is withheld (AG-3).
+pub const UNVERIFIED_CODE: &str = "A code was recorded with this allergy. It has not been checked against the words and is not exported.";
 
 const CLINICAL_STATUS: &str = "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical";
 const VERIFICATION_STATUS: &str =
@@ -82,14 +87,9 @@ pub fn to_fhir(
         Status::Inactive => "inactive",
         Status::EnteredInError => return Ok(None),
     };
-    let mut code = json!({ "text": a.substance });
-    if let Some(c) = &a.coding {
-        crate::json::set(
-            &mut code,
-            "coding",
-            json!([{ "system": c.system, "code": c.code }]),
-        );
-    }
+    // The words only. A code is checked for its shape and never against the words, and a system that indexes it would
+    // act on it: so it is withheld from every export until a pinned terminology can say what it means (AG-3, RC-7).
+    let code = json!({ "text": a.substance });
     let mut out = json!({
         "resourceType": "AllergyIntolerance",
         "id": stored.id,
@@ -116,15 +116,15 @@ pub fn to_fhir(
         );
     }
     // A reader of the export is told the record is disputed, in the same words as a reader of the page.
-    if !notices.is_empty() {
-        crate::json::set(
-            &mut out,
-            "note",
-            notices
-                .iter()
-                .map(crate::amendment::Notice::fhir_annotation)
-                .collect(),
-        );
+    let mut notes: Vec<Value> = notices
+        .iter()
+        .map(crate::amendment::Notice::fhir_annotation)
+        .collect();
+    if a.coding.is_some() {
+        notes.push(json!({ "text": UNVERIFIED_CODE }));
+    }
+    if !notes.is_empty() {
+        crate::json::set(&mut out, "note", Value::Array(notes));
     }
     parse(out).map(Some)
 }
@@ -168,10 +168,7 @@ mod tests {
             recorded_at: "2026-10-21T09:30:00.123456Z".into(),
             allergy: AllergyRecord {
                 substance: "Penicillin".into(),
-                coding: Some(Coding {
-                    system: "http://snomed.info/sct".into(),
-                    code: "22298006".into(),
-                }),
+                coding: None,
                 category: Some(Category::Medication),
                 criticality: Some(Criticality::High),
                 reaction: Some("Hives".into()),
@@ -197,10 +194,47 @@ mod tests {
         assert_eq!(j["criticality"], "high");
         assert_eq!(j["category"][0], "medication");
         assert_eq!(j["code"]["text"], "Penicillin");
-        assert_eq!(j["code"]["coding"][0]["code"], "22298006");
+        assert!(j["code"].get("coding").is_none() && j.get("note").is_none());
         assert_eq!(j["patient"]["reference"], "Patient/P1");
         assert_eq!(j["onsetDateTime"], "2019-04");
         assert_eq!(j["reaction"][0]["manifestation"][0]["text"], "Hives");
+    }
+
+    /// The audit's negative case (AG-3), kept on purpose: the words say penicillin and the code says myocardial
+    /// infarction. The shape check passes it, so the export must not.
+    #[tokio::test]
+    async fn a_code_that_means_something_else_never_leaves_beside_the_words() {
+        use crate::terminology::{FIXTURE_VERSION, Fixture, SNOMED, TerminologyService};
+        let mut s = stored(Status::Active);
+        s.allergy.coding = Some(Coding {
+            system: SNOMED.into(),
+            code: "22298006".into(),
+        });
+        assert!(
+            crate::allergies::validate(&s.allergy).is_empty(),
+            "the input check is of shape only"
+        );
+        let meant = Fixture
+            .validate_code(
+                SNOMED,
+                Some(FIXTURE_VERSION),
+                "22298006",
+                Some(&s.allergy.substance),
+            )
+            .await
+            .unwrap();
+        assert!(!meant.result, "a terminology that holds it says so");
+        let j = json_of(&to_fhir(&s, "P1", &[]).unwrap().unwrap());
+        assert_eq!(j["code"]["text"], "Penicillin", "the reporter's words stay");
+        assert!(!j.to_string().contains("22298006"), "{j}");
+        assert_eq!(j["note"][0]["text"], UNVERIFIED_CODE);
+        // A note about a dispute is kept beside it.
+        let j = json_of(
+            &to_fhir(&s, "P1", &[crate::amendment::Notice::Pending])
+                .unwrap()
+                .unwrap(),
+        );
+        assert_eq!(j["note"].as_array().unwrap().len(), 2);
     }
 
     #[test]

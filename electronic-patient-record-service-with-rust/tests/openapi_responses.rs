@@ -197,8 +197,8 @@ async fn real_responses_validate_against_the_served_schemas() {
             (
                 "problems",
                 "problem_id",
-                json!({ "title": "Asthma", "certainty": "confirmed", "status": "active",
-                    "severity": "mild", "body_site": "both lungs", "onset": "2020-05",
+                json!({ "title": "Myocardial infarction", "certainty": "confirmed", "status": "active",
+                    "severity": "mild", "body_site": "heart", "onset": "2020-05",
                     "coding": { "system": "http://snomed.info/sct", "code": "22298006" } }),
             ),
             (

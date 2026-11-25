@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - An unverified allergy code is withheld from FHIR (audit finding 3, AG-3)
+
+- **Clinical risk:** H-022. The export sent whatever code was recorded, though only its shape is checked: a test and a validator fixture sent "Penicillin" with the code for myocardial infarction.
+- **Changed:** the FHIR allergy export sends the words and withholds the code, with a note. **This removes the code from every allergy a FHIR client reads**, because nothing here can verify one yet; a receiver that reads only codes finds none (OQ-AG3).
+- **Verified:** 1 unit test that failed first. **Not done / not verified:** no pharmacist, terminology edition or receiving system; the external FHIR validator was not run here (CI runs it); the REST answer still shows the code to a person. The substance code in the validator fixture was not checked by anyone and no longer leaves.
+
 ## 2026-11-25 - An empty reference range is never normal; a crossed critical limit is said (audit finding 2, AG-2)
 
 - **Clinical risk:** H-034. A heart rate of 130 with an empty reference range was flagged normal and exported to FHIR as `N`; one above a critical limit of 120 with no reference range had no flag and raised no event.
