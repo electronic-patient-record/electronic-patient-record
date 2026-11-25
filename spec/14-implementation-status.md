@@ -26,7 +26,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | Matcher tests | 133, plus 0 `#[ignore]`d | the same patterns in the matcher |
 | Front-end unit tests (vitest) | 394 | `it(` / `test(` lines in `tests/unit` |
 | Front-end end-to-end tests (Playwright) | 121 | `test(` lines in `tests/e2e` |
-| Hazards | 69, of which 48 open and 0 accepted or closed; 18 name a test | `scripts/check-hazard-log.py --counts` |
+| Hazards | 69, of which 48 open and 0 accepted or closed; 34 name a test | `scripts/check-hazard-log.py --counts` |
 | Locales | 10 | entries of `LOCALES` in `src/lib/locales.ts` |
 
 **Task boxes in [`tasks.md`](../tasks.md)** (ticked / open, by prefix):

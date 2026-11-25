@@ -10,8 +10,9 @@ exist, and that no hazard is `accepted` or `closed` without a named reviewer. On
 Clinical Safety Officer, OQ-2) may set those, so an automated change cannot close a hazard.
 
 An evidence entry may be `path::test_name`: the control then names the test that proves it, and the check
-fails when the file or the test function is missing (renaming a named test fails it). `--report` lists
-the hazards that name no test yet; that is a report, not a failure, until the log has named them (PR-2).
+fails when the file or the test function is missing (renaming a named test fails it). A hazard that is not `open`
+must name at least one (PR-2, 2026-11-25): a control nobody can point to a test for is not in place. `--report` lists
+the open hazards that name none; that is a report, not a failure.
 
 `--counts` prints `<hazards> <open> <accepted or closed> <naming a test>` and nothing else, for the generated status
 block (scripts/generate-status.sh), so that no document keeps a count by hand (AG-9).
@@ -111,6 +112,8 @@ def problems(rows, header, root):
             found.append(f"{where}: {r['status']} needs reviewed_by (a named person)")
         if r["status"] == "controlled-unreviewed" and not r["controls"].strip():
             found.append(f"{where}: controlled-unreviewed needs controls")
+        if r["status"] != "open" and not named_tests(r):
+            found.append(f"{where}: {r['status']} needs a named test in evidence (path::test_name)")
         for entry in split_evidence(r["evidence"]):
             path, _, name = entry.partition("::")
             if not os.path.exists(os.path.join(root, path)):

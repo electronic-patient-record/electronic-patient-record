@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - A hazard that is not open must name a test (PR-2, second slice)
+
+- **Clinical risk:** the hazard log's evidence column only: 16 hazards with controls in place now name the tests behind them. No status, score or wording changed (compared column by column with the previous revision).
+- **Changed:** `check-hazard-log.py` fails when a hazard that is not `open` names no test. One of its own tests used such a row and now names a test.
+- **Verified:** the checker's tests (1 new) and every docs gate. **Not done / not verified:** I chose the tests by reading their names and the controls; a named test shows that a test exists and is not proof of the whole control, and many of these hazards have controls no named test covers (the UI's, above all); the pull-request hint is not built; 35 open hazards name none; no Clinical Safety Officer looked at the choice.
+
 ## 2026-11-25 - The duplicate check looks wider, and is faster (AG-12, second slice)
 
 - **Clinical risk:** H-002. 16 of 19 synthetic kinds of duplicate are now retrieved, where 10 were; of the 3 missed the matcher would have sent 2 to a person.

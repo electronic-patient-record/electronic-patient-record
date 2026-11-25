@@ -30,6 +30,15 @@ class HazardLog(unittest.TestCase):
                 row(id="H-003", status="closed", reviewed_by="A"), row(id="H-004", evidence="b.md; a.rs::t; c.rs::u")]
         self.assertEqual(chk.counts(rows), (4, 2, 1, 2))
 
+    def test_a_hazard_that_is_not_open_must_name_a_test(self):
+        for status, who in (("controlled-unreviewed", ""), ("accepted", "A"), ("closed", "A")):
+            bare = row(status=status, reviewed_by=who)
+            self.assertTrue(any("named test" in p for p in self.check(bare)), status)
+            named = row(status=status, reviewed_by=who,
+                        evidence="scripts/test_check_hazard_log.py::test_a_good_row_passes")
+            self.assertEqual(self.check(named), [], status)
+        self.assertEqual(self.check(row()), [])
+
     def test_a_good_row_passes(self):
         self.assertEqual(self.check(row()), [])
 
@@ -46,7 +55,8 @@ class HazardLog(unittest.TestCase):
     def test_nobody_can_close_or_accept_without_a_named_reviewer(self):
         for status in ("accepted", "closed"):
             self.assertTrue(any("reviewed_by" in p for p in self.check(row(status=status))))
-            self.assertEqual(self.check(row(status=status, reviewed_by="A. Person")), [])
+            named = "scripts/test_check_hazard_log.py::test_a_good_row_passes"
+            self.assertEqual(self.check(row(status=status, reviewed_by="A. Person", evidence=named)), [])
 
     def test_controlled_needs_controls_and_unknown_status_is_refused(self):
         self.assertTrue(self.check(row(status="controlled-unreviewed", controls="")))
