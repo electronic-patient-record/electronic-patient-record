@@ -53,6 +53,25 @@ describe("stripAllergies (XP-3)", () => {
     expect(text.length).toBeLessThanOrEqual(STRIP_ALLERGIES + 6);
   });
 
+  it("names every high-risk allergy, however many, and counts only the rest", () => {
+    const names = [...Array(12).keys()].map((i) => `Substance number ${i}`);
+    const { text, high } = stripAllergies(load(names, 9));
+    expect(high).toBe(true);
+    for (const n of names.slice(0, 9)) {
+      expect(text).toContain(`${n} (high risk)`);
+    }
+    expect(text.endsWith(", +3")).toBe(true);
+    // Wherever it is in the list.
+    const last = load(names);
+    const items = (
+      last.data?.summary as { items: { criticality: string | null }[] }
+    ).items;
+    if (items[11]) items[11].criticality = "high";
+    expect(stripAllergies(last).text).toMatch(
+      /^Substance number 11 \(high risk\), .*\+\d+$/,
+    );
+  });
+
   it("names one that is too long by itself, and the number after it", () => {
     const long = "x".repeat(100);
     expect(stripAllergies(load([long, "Latex"])).text).toBe(`${long}, +1`);

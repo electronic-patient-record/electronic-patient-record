@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - On a small screen every high-risk allergy is named (OQ-XP2)
+
+- **Clinical risk:** H-070 (controls, evidence and residual changed; status and score not). The strip could count a high-risk allergy among the `+n` when several did not fit; it now names every one, however many, and counts only the rest. The maintainer decided that what is life-critical and the identifier stay in sight.
+- **Recorded:** the maintainer's answers of today to OQ-XP2; OQ-XP1 (many reasons for a missed appointment, configurable by tenant); and OQ-AG8 (no).
+- **Verified:** a unit test with nine high-risk allergies and one last in the list; every UI gate. **Not done / not verified:** it goes by the recorded risk: one not stated, or one whose reaction text says anaphylaxis, can be left to the number; many high-risk allergies make the strip taller than was tested; no clinician reviewed it.
+
 ## 2026-11-25 - Two people at one moment: a suspicion ended while it is amended, and a need recorded twice
 
 - **Clinical risk:** H-054 and H-048 (controls and evidence added; status and score not). Before this, a suspicion could be amended in the moment another person ended it, so that its outcome was of another version than the one standing; and one need recorded by two people at once was stored twice, so that ending it left one.

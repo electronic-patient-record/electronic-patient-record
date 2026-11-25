@@ -113,14 +113,17 @@ function itemWords(i: {
   return risk ? `${i.substance} (${risk})` : i.substance;
 }
 
-/** The longest list of allergies the strip of a small screen gives in full, in characters. */
+/** How long a list of allergies on the strip of a small screen may be before those not marked high risk are counted. */
 export const STRIP_ALLERGIES = 60;
 
 /**
- * The allergy line for the strip that stays in sight on a small screen (XP-3). Everything but a long list of active
- * allergies is the banner's own words: "not recorded" and "not shown to you" are never shortened. Of a long list it
- * gives what fits, in the list's order (high-risk ones first), and how many more there are as `+n`. Never fewer without
- * the number.
+ * The allergy line for the strip that stays in sight on a small screen (XP-3). What is life-critical stays (the
+ * customer's answer to OQ-XP2): **every allergy marked high risk is named, however many there are**. Of the rest it
+ * gives what fits, in the list's order, and how many more there are as `+n`; never fewer without the number. The words
+ * for "not recorded", "not shown to you" and a failed look are the banner's own and are never shortened.
+ *
+ * It goes by the recorded risk alone. An allergy whose risk was not stated may be life-threatening too, and the text of a
+ * reaction ("anaphylaxis") is not read: that is for whoever records it to say.
  */
 export function stripAllergies(
   load: AllergyLoad | null,
@@ -131,19 +134,22 @@ export function stripAllergies(
   if (summary?.state !== "active" || line.text.length <= STRIP_ALLERGIES) {
     return line;
   }
-  const all = summary.items.map((i) => itemWords(i));
-  let shown = 0;
-  let length = 0;
-  while (shown < all.length) {
-    const next = length + (all[shown]?.length ?? 0) + 2;
-    if (next > STRIP_ALLERGIES) break;
-    length = next;
-    shown += 1;
+  const critical = summary.items.filter((i) => i.criticality === "high");
+  const rest = summary.items.filter((i) => i.criticality !== "high");
+  const shown = critical.map((i) => itemWords(i));
+  for (const item of rest) {
+    const words = itemWords(item);
+    // One that is too long by itself is still given: a number alone names nothing.
+    if (
+      shown.length > 0 &&
+      [...shown, words].join(", ").length > STRIP_ALLERGIES
+    ) {
+      break;
+    }
+    shown.push(words);
   }
-  // One that is too long by itself is still given: a number alone names nothing.
-  shown = Math.max(shown, 1);
-  const more = all.length - shown;
-  const text = all.slice(0, shown).join(", ");
+  const more = summary.items.length - shown.length;
+  const text = shown.join(", ");
   return { text: more > 0 ? `${text}, +${more}` : text, high: line.high };
 }
 
