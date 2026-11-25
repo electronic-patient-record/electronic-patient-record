@@ -187,6 +187,44 @@ async fn a_grant_ends_at_four_hours_to_the_microsecond_and_is_overdue_just_after
     assert!(!overdue_at(due + moment).await);
 }
 
+/// Two requests at one moment, as from a double press: the second waits for the first and is given its grant. Each pair
+/// of person and patient waits only for itself.
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn two_requests_at_one_moment_open_one_grant() {
+    let db = db().await;
+    let (p, who) = (patient(&db).await, unique("dr"));
+    let mut first = db.begin().await.unwrap();
+    let (g, created) = glass::open(&mut *first, &p, &who, "collapsed")
+        .await
+        .unwrap();
+    assert!(created);
+    let (other, at, name) = (db.clone(), p.clone(), who.clone());
+    let second = tokio::spawn(async move {
+        let mut tx = other.begin().await.unwrap();
+        let got = glass::open(&mut *tx, &at, &name, "collapsed")
+            .await
+            .unwrap();
+        tx.commit().await.unwrap();
+        got
+    });
+    // Someone else, for the same patient, does not wait for it.
+    let (_, theirs) = tokio::time::timeout(
+        std::time::Duration::from_secs(5),
+        glass::open(&db, &p, &unique("other"), "collapsed"),
+    )
+    .await
+    .expect("another person does not wait")
+    .unwrap();
+    assert!(theirs);
+    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    assert!(!second.is_finished(), "it waits for the first");
+    first.commit().await.unwrap();
+    let (again, created) = second.await.unwrap();
+    assert!(!created);
+    assert_eq!(again.id, g.id);
+}
+
 #[tokio::test]
 #[ignore = "needs Postgres: set DB_URL"]
 async fn a_grant_needs_a_reason_and_a_patient() {

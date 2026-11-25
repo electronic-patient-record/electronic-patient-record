@@ -16,7 +16,7 @@ use crate::patients_store::{self, StoreError};
 use crate::pool::Db;
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgRow;
-use sqlx::{AssertSqlSafe, Row};
+use sqlx::{AssertSqlSafe, Connection, Row};
 
 crate::store_errors!("break-glass");
 
@@ -263,7 +263,17 @@ pub async fn open_at(
         ));
     }
     let patient = patients_store::current(&mut *db, patient_id).await?;
+    // Two requests at one moment would each find no grant and make one. The lock is the transaction's, so the second
+    // waits until the first is committed, in the caller's transaction when there is one, and then finds its grant.
+    let mut tx = db.begin().await.map_err(db_err)?;
+    let db = &mut *tx;
+    sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))")
+        .bind(format!("break-glass:{}:{subject}", patient.id))
+        .execute(&mut *db)
+        .await
+        .map_err(db_err)?;
     if let Some(existing) = active_at(&mut *db, &patient.id, subject, at).await? {
+        tx.commit().await.map_err(db_err)?;
         return Ok((existing, false));
     }
     let now = time(at);
@@ -281,7 +291,9 @@ pub async fn open_at(
     .map_err(db_err)?
     .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
     let id: String = row.try_get("id").map_err(db_err)?;
-    Ok((get_at(&mut *db, &id, at).await?, true))
+    let grant = get_at(&mut *db, &id, at).await?;
+    tx.commit().await.map_err(db_err)?;
+    Ok((grant, true))
 }
 
 /// One grant, reviewed or not.

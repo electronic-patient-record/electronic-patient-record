@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - Two requests at one moment open one emergency grant
+
+- **Clinical risk:** H-024 (a control and a test added; status and score not). Before this, two requests at the same instant for one person and patient, as from a double press, each opened a grant: two to review, and an end a moment later than it should be.
+- **Fixed:** the second request waits for the first to be committed and is given its grant. Another person, or another patient, does not wait.
+- **Verified:** a test that failed before the fix; the normal and database passes on a fresh Postgres 18; every docs gate. **Not done / not verified:** grants already doubled in a database stay as they are, each with its review.
+
 ## 2026-11-25 - The edges of emergency access are tested by moving the clock (PR-5)
 
 - **Clinical risk:** none to behaviour: the service still asks the database for the time, so that replicas whose clocks differ agree on when a grant ends. H-024 names the new test; nothing else of it changed.
