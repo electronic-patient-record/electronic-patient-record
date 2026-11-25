@@ -1,0 +1,188 @@
+role,kind,of,may
+clinician,break-glass,,yes
+clinician,purpose,treatment,yes
+clinician,purpose,emergency,yes
+clinician,purpose,operations,yes
+clinician,label,R,unmasked
+clinician,label,V,unmasked
+clinician,label,PSY,unmasked
+clinician,label,HIV,unmasked
+clinician,label,SUD,unmasked
+clinician,label,ETH,unmasked
+clinician,resource,PatientIdentity,create read search update
+clinician,clinical,Encounter,create entered-in-error read search update
+clinician,clinical,Condition,create entered-in-error read search update
+clinician,clinical,RelativeHistory,create entered-in-error read search update
+clinician,clinical,CompatibilityTyping,create entered-in-error read search update
+clinician,clinical,Observation,create entered-in-error read search update
+clinician,clinical,DiagnosticReport,create entered-in-error read search update
+clinician,clinical,QuestionnaireResponse,create read search
+clinician,clinical,MedicationRequest,create entered-in-error read search update
+clinician,clinical,Amendment,read search update
+clinician,resource,Adjustment,create read search update
+clinician,resource,DeathAssertion,create read search update
+clinician,resource,DeathReports,search
+clinician,clinical,AllergyIntolerance,create entered-in-error read search update
+clinician,clinical,Document,create entered-in-error read search update
+clinician,resource,Consent,read
+clinician,resource,PatientLink,read
+clinician,resource,BreakGlass,create
+clinician,resource,Hazard,create read search update
+clinician,clinical,Referral,create read search update
+clinician,resource,ReferralWorklist,search update
+clinician,clinical,WatchList,create read search update
+clinician,resource,OwnWatchList,search
+clinician,resource,Tasks,read search update
+nurse,break-glass,,yes
+nurse,purpose,treatment,yes
+nurse,purpose,emergency,yes
+nurse,purpose,operations,yes
+nurse,label,R,unmasked
+nurse,label,PSY,unmasked
+nurse,label,HIV,unmasked
+nurse,resource,PatientIdentity,read search
+nurse,clinical,Encounter,create read search update
+nurse,clinical,Condition,create read search update
+nurse,clinical,RelativeHistory,create read search update
+nurse,clinical,CompatibilityTyping,read search
+nurse,clinical,Observation,create read search update
+nurse,clinical,DiagnosticReport,read search
+nurse,clinical,QuestionnaireResponse,create read search
+nurse,clinical,MedicationRequest,read search
+nurse,resource,Adjustment,create read search update
+nurse,resource,DeathAssertion,create read search update
+nurse,resource,DeathReports,search
+nurse,clinical,AllergyIntolerance,create read search update
+nurse,clinical,Document,create read search update
+nurse,resource,Consent,read
+nurse,resource,BreakGlass,create
+nurse,clinical,Referral,create read search update
+nurse,resource,ReferralWorklist,search update
+nurse,clinical,WatchList,create read search update
+nurse,resource,OwnWatchList,search
+nurse,resource,Tasks,search update
+pharmacist,break-glass,,yes
+pharmacist,purpose,treatment,yes
+pharmacist,purpose,emergency,yes
+pharmacist,purpose,operations,yes
+pharmacist,label,R,unmasked
+pharmacist,label,HIV,unmasked
+pharmacist,resource,PatientIdentity,read search
+pharmacist,clinical,Condition,read search
+pharmacist,clinical,Observation,read search
+pharmacist,clinical,DiagnosticReport,read search
+pharmacist,clinical,QuestionnaireResponse,read search
+pharmacist,clinical,MedicationRequest,read search update
+pharmacist,resource,Adjustment,create read search update
+pharmacist,resource,DeathAssertion,create read
+pharmacist,clinical,AllergyIntolerance,read search
+pharmacist,resource,BreakGlass,create
+pharmacist,resource,Tasks,search update
+allied-health,break-glass,,yes
+allied-health,purpose,treatment,yes
+allied-health,purpose,emergency,yes
+allied-health,purpose,operations,yes
+allied-health,label,R,unmasked
+allied-health,label,PSY,unmasked
+allied-health,resource,PatientIdentity,read search
+allied-health,clinical,Encounter,create read search update
+allied-health,clinical,Condition,create read search update
+allied-health,clinical,RelativeHistory,create read search update
+allied-health,clinical,Observation,create read search update
+allied-health,clinical,DiagnosticReport,read search
+allied-health,clinical,QuestionnaireResponse,create read search
+allied-health,resource,Adjustment,create read search update
+allied-health,resource,DeathAssertion,create read
+allied-health,clinical,Document,create read search update
+allied-health,resource,BreakGlass,create
+allied-health,clinical,Referral,create read search update
+allied-health,resource,ReferralWorklist,search update
+allied-health,clinical,WatchList,create read search update
+allied-health,resource,OwnWatchList,search
+allied-health,resource,Tasks,search update
+receptionist,purpose,treatment,yes
+receptionist,purpose,operations,yes
+receptionist,resource,PatientIdentity,create read search update
+receptionist,resource,Adjustment,create read search update
+receptionist,resource,DeathAssertion,create read
+receptionist,resource,Tasks,search update
+clinical-admin,purpose,treatment,yes
+clinical-admin,purpose,operations,yes
+clinical-admin,resource,PatientIdentity,create read search update
+clinical-admin,resource,Adjustment,create read search update
+clinical-admin,resource,DeathAssertion,create read
+clinical-admin,resource,DeathReports,search
+clinical-admin,resource,Consent,create read search update
+clinical-admin,resource,CareRelationship,create read search update
+clinical-admin,resource,PatientLink,create read search update
+clinical-admin,resource,FeedQueue,read search update
+clinical-admin,resource,ReferralQueue,read search update
+clinical-admin,resource,Tasks,search update
+clinical-admin,resource,ApiToken,create read search update
+patient,purpose,patient-access,yes
+patient,label,R,unmasked
+patient,label,V,unmasked
+patient,label,PSY,unmasked
+patient,label,HIV,unmasked
+patient,label,SUD,unmasked
+patient,label,ETH,unmasked
+patient,resource,PatientIdentity,read
+patient,clinical,Encounter,read search
+patient,clinical,Condition,read search
+patient,clinical,Observation,read search
+patient,clinical,MedicationRequest,read search
+patient,clinical,Amendment,create read search update
+patient,resource,Adjustment,create read search update
+patient,clinical,AllergyIntolerance,read search
+patient,clinical,Document,read search
+patient,resource,Consent,create read search update
+patient,resource,AuditLog,read search
+patient,clinical,Referral,read search
+proxy,purpose,patient-access,yes
+proxy,resource,PatientIdentity,read
+proxy,clinical,Encounter,read search
+proxy,clinical,Condition,read search
+proxy,clinical,Observation,read search
+proxy,clinical,MedicationRequest,read search
+proxy,resource,Adjustment,read search
+proxy,clinical,AllergyIntolerance,read search
+proxy,clinical,Document,read search
+proxy,clinical,Referral,read search
+auditor,purpose,audit,yes
+auditor,resource,AuditLog,export read search
+auditor,resource,BreakGlass,read search update
+auditor,resource,Hazard,read search
+integrator,purpose,treatment,yes
+integrator,purpose,operations,yes
+integrator,resource,PatientIdentity,create search update
+integrator,resource,DeathAssertion,create
+integrator,resource,ReferralQueue,create
+clinical-safety-officer,purpose,operations,yes
+clinical-safety-officer,resource,Hazard,create read search update
+clinical-safety-officer,resource,Tasks,read
+on-duty-clinician,purpose,treatment,yes
+on-duty-clinician,purpose,emergency,yes
+on-duty-clinician,purpose,operations,yes
+on-duty-clinician,resource,Adjustment,create read search update
+on-duty-clinician,resource,DeathAssertion,create read search update
+on-duty-clinician,resource,DeathReports,search
+on-duty-clinician,resource,OverdueReviews,search
+on-duty-clinician,resource,Tasks,read search update
+medical-devices-safety-officer,safety-officer,,yes
+medical-devices-safety-officer,purpose,operations,yes
+medical-devices-safety-officer,resource,Hazard,create read search
+medication-safety-officer,safety-officer,,yes
+medication-safety-officer,purpose,operations,yes
+medication-safety-officer,resource,Hazard,create read search
+patient-safety-officer,safety-officer,,yes
+patient-safety-officer,purpose,operations,yes
+patient-safety-officer,resource,Hazard,create read search
+medical-incident-officer,safety-officer,,yes
+medical-incident-officer,purpose,operations,yes
+medical-incident-officer,resource,Hazard,create read search
+vaccinator,views-only,,yes
+vaccinator,purpose,treatment,yes
+vaccinator,purpose,operations,yes
+vaccinator,resource,PatientIdentity,read search
+vaccinator,clinical,MedicationRequest,read search
+vaccinator,clinical,AllergyIntolerance,read search

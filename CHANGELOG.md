@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - What every role may do is a file to review (SE-1)
+
+- **Clinical risk:** none. No permission changed; H-007 and H-024 rest on this table, which nobody has reviewed.
+- **Added:** `access_table.csv`, 187 lines: what the policy engine allows each role, with its purposes and the labels it sees. A test fails when the code and the file differ, so that a change of permission shows in a diff.
+- **Verified:** the domain tests and the docs gates. **Not done / not verified:** no clinician, privacy officer or Clinical Safety Officer has read it.
+
 ## 2026-11-25 - Start refuses a database that the build was not made for (H-074)
 
 - **Clinical risk:** H-074 is new and `open`, with the author's proposed score. Found after labels were stored: production does not migrate at start, so an older build could be started on a newer database and would show every labelled entry.

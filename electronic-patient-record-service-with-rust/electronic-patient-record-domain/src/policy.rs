@@ -1272,6 +1272,76 @@ mod tests {
         );
     }
 
+    /// What every role may do, as a person can read it: `role,kind,of,may`. What is not there is not allowed.
+    fn access_table() -> String {
+        let mut out = String::from("role,kind,of,may\n");
+        let mut row = |role: Role, kind: &str, of: &str, may: &str| {
+            out.push_str(&format!("{},{kind},{of},{may}\n", role.as_str()));
+        };
+        for role in Role::ALL {
+            if role.treats() {
+                row(role, "break-glass", "", "yes");
+            }
+            if role.safety_officer() {
+                row(role, "safety-officer", "", "yes");
+            }
+            if role.viewed() {
+                row(role, "views-only", "", "yes");
+            }
+            for purpose in [
+                Purpose::Treatment,
+                Purpose::Emergency,
+                Purpose::Operations,
+                Purpose::Payment,
+                Purpose::Research,
+                Purpose::PatientAccess,
+                Purpose::Audit,
+            ] {
+                assert_eq!(Purpose::parse(purpose.code()), Some(purpose));
+                if purpose_fits(role, purpose) {
+                    row(role, "purpose", purpose.code(), "yes");
+                }
+            }
+            for label in Label::ALL {
+                if label.unmasked_for().contains(&role) {
+                    row(role, "label", label.code(), "unmasked");
+                }
+            }
+            for resource in Resource::ALL {
+                let mut may: Vec<&str> = permitted_actions(role, resource)
+                    .iter()
+                    .map(|a| a.name())
+                    .collect();
+                may.sort_unstable();
+                if !may.is_empty() {
+                    let kind = if resource.clinical() {
+                        "clinical"
+                    } else {
+                        "resource"
+                    };
+                    row(role, kind, resource.name(), &may.join(" "));
+                }
+            }
+        }
+        out
+    }
+
+    /// Who may do what is in a file that a person can review and a change shows in. To change it on purpose:
+    /// `EPR_BLESS=1 cargo test -p electronic-patient-record-domain access_table`, and read the difference.
+    #[test]
+    fn what_every_role_may_do_is_the_committed_access_table() {
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/src/access_table.csv");
+        let now = access_table();
+        if std::env::var_os("EPR_BLESS").is_some() {
+            std::fs::write(path, &now).unwrap();
+        }
+        let committed = std::fs::read_to_string(path).unwrap();
+        for (line, (a, b)) in committed.lines().zip(now.lines()).enumerate() {
+            assert_eq!(a, b, "access_table.csv line {}", line + 1);
+        }
+        assert_eq!(committed.lines().count(), now.lines().count());
+    }
+
     #[test]
     fn break_glass_lifts_only_the_relationship_and_only_while_it_lasts() {
         let mut r = request(Role::Clinician, Resource::Condition, Action::Read);
