@@ -2631,6 +2631,138 @@
         ],
         "type": "object"
       },
+      "LabelActs": {
+        "properties": {
+          "acts": {
+            "description": "Oldest first.",
+            "items": {
+              "properties": {
+                "act": {
+                  "enum": [
+                    "added",
+                    "lifted"
+                  ]
+                },
+                "basis": {
+                  "enum": [
+                    "clinical",
+                    "patient-asked",
+                    "custody"
+                  ]
+                },
+                "by": {
+                  "description": "Null when the service added it.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "label": {
+                  "type": "string"
+                },
+                "reason": {
+                  "description": "Why it was lifted.",
+                  "type": "string"
+                },
+                "recorded_at": {
+                  "description": "UTC.",
+                  "type": "string"
+                },
+                "seq": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "seq",
+                "recorded_at",
+                "act",
+                "label",
+                "by",
+                "basis"
+              ],
+              "type": "object"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          }
+        },
+        "required": [
+          "acts"
+        ],
+        "type": "object"
+      },
+      "LabelChange": {
+        "description": "Add or lift a security label. A clinician who treats the patient adds one; another lifts it, with a reason.",
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "act": {
+                "const": "add"
+              },
+              "basis": {
+                "enum": [
+                  "clinical",
+                  "patient-asked"
+                ]
+              },
+              "label": {
+                "enum": [
+                  "R",
+                  "V",
+                  "PSY",
+                  "HIV",
+                  "SUD",
+                  "ETH"
+                ]
+              }
+            },
+            "required": [
+              "act",
+              "label",
+              "basis"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "act": {
+                "const": "lift"
+              },
+              "basis": {
+                "enum": [
+                  "clinical",
+                  "patient-asked"
+                ]
+              },
+              "label": {
+                "enum": [
+                  "R",
+                  "V",
+                  "PSY",
+                  "HIV",
+                  "SUD",
+                  "ETH"
+                ]
+              },
+              "reason": {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "act",
+              "label",
+              "basis",
+              "reason"
+            ],
+            "type": "object"
+          }
+        ]
+      },
       "LinkRequest": {
         "description": "Merge, or unmerge, another record with the one in the path (which survives). The reason is the provenance of the change and is required. A refusal is a 422 ErrorList that may also carry `refusal` (a stable code), `refusal_into` and `conflict_codes`.",
         "properties": {
@@ -3400,6 +3532,14 @@
             "const": "reconstruction-of-stored-versions",
             "description": "Rebuilt from the versions that were stored. Not what anyone was shown: never use it to say what a clinician saw."
           },
+          "completeness": {
+            "description": "`partial`: entries with a security label are withheld from this reader, `withheld` of them. `unstated`: this reader is not told whether any are. Only `whole` is all there is.",
+            "enum": [
+              "whole",
+              "partial",
+              "unstated"
+            ]
+          },
           "entries": {
             "items": {
               "$ref": "#/components/schemas/StoredProblemAsAt"
@@ -3427,7 +3567,7 @@
           },
           "summary": {
             "additionalProperties": true,
-            "description": "`not-recorded` is unknown, never none.",
+            "description": "`not-recorded` is unknown, never none. With `partial`, entries may be withheld from this reader, and what one of them could change is `not-stated`.",
             "properties": {
               "causes": {
                 "additionalProperties": false,
@@ -3482,6 +3622,9 @@
                 ],
                 "type": "object"
               },
+              "partial": {
+                "const": true
+              },
               "state": {
                 "type": "string"
               }
@@ -3490,6 +3633,11 @@
               "state"
             ],
             "type": "object"
+          },
+          "withheld": {
+            "description": "With `partial`: how many. Never which.",
+            "minimum": 1,
+            "type": "integer"
           }
         },
         "required": [
@@ -3498,13 +3646,22 @@
           "as_at",
           "read_at",
           "entries",
+          "completeness",
           "summary"
         ],
         "type": "object"
       },
       "ProblemList": {
-        "description": "Every entry in every status, oldest first.",
+        "description": "Every entry in every status that this reader may see, oldest first.",
         "properties": {
+          "completeness": {
+            "description": "`partial`: entries with a security label are withheld from this reader, `withheld` of them. `unstated`: this reader is not told whether any are. Only `whole` is all there is.",
+            "enum": [
+              "whole",
+              "partial",
+              "unstated"
+            ]
+          },
           "entries": {
             "items": {
               "$ref": "#/components/schemas/StoredProblem"
@@ -3514,7 +3671,7 @@
           },
           "summary": {
             "additionalProperties": true,
-            "description": "`not-recorded` is unknown, never none.",
+            "description": "`not-recorded` is unknown, never none. With `partial`, entries may be withheld from this reader, and what one of them could change is `not-stated`.",
             "properties": {
               "causes": {
                 "additionalProperties": false,
@@ -3569,6 +3726,9 @@
                 ],
                 "type": "object"
               },
+              "partial": {
+                "const": true
+              },
               "state": {
                 "type": "string"
               }
@@ -3577,10 +3737,16 @@
               "state"
             ],
             "type": "object"
+          },
+          "withheld": {
+            "description": "With `partial`: how many. Never which.",
+            "minimum": 1,
+            "type": "integer"
           }
         },
         "required": [
           "entries",
+          "completeness",
           "summary"
         ],
         "type": "object"
@@ -4304,6 +4470,14 @@
             "const": "reconstruction-of-stored-versions",
             "description": "Rebuilt from the versions that were stored. Not what anyone was shown: never use it to say what a clinician saw."
           },
+          "completeness": {
+            "description": "`partial`: entries with a security label are withheld from this reader, `withheld` of them. `unstated`: this reader is not told whether any are. Only `whole` is all there is.",
+            "enum": [
+              "whole",
+              "partial",
+              "unstated"
+            ]
+          },
           "entries": {
             "items": {
               "$ref": "#/components/schemas/StoredRelativeHistoryAsAt"
@@ -4331,8 +4505,11 @@
           },
           "summary": {
             "additionalProperties": true,
-            "description": "`not-recorded` is unknown, never none.",
+            "description": "`not-recorded` is unknown, never none. With `partial`, entries may be withheld from this reader, and what one of them could change is `not-stated`.",
             "properties": {
+              "partial": {
+                "const": true
+              },
               "state": {
                 "type": "string"
               }
@@ -4341,6 +4518,11 @@
               "state"
             ],
             "type": "object"
+          },
+          "withheld": {
+            "description": "With `partial`: how many. Never which.",
+            "minimum": 1,
+            "type": "integer"
           }
         },
         "required": [
@@ -4349,13 +4531,22 @@
           "as_at",
           "read_at",
           "entries",
+          "completeness",
           "summary"
         ],
         "type": "object"
       },
       "RelativeHistoryList": {
-        "description": "Every entry in every status, oldest first.",
+        "description": "Every entry in every status that this reader may see, oldest first.",
         "properties": {
+          "completeness": {
+            "description": "`partial`: entries with a security label are withheld from this reader, `withheld` of them. `unstated`: this reader is not told whether any are. Only `whole` is all there is.",
+            "enum": [
+              "whole",
+              "partial",
+              "unstated"
+            ]
+          },
           "entries": {
             "items": {
               "$ref": "#/components/schemas/StoredRelativeHistory"
@@ -4365,8 +4556,11 @@
           },
           "summary": {
             "additionalProperties": true,
-            "description": "`not-recorded` is unknown, never none.",
+            "description": "`not-recorded` is unknown, never none. With `partial`, entries may be withheld from this reader, and what one of them could change is `not-stated`.",
             "properties": {
+              "partial": {
+                "const": true
+              },
               "state": {
                 "type": "string"
               }
@@ -4375,10 +4569,16 @@
               "state"
             ],
             "type": "object"
+          },
+          "withheld": {
+            "description": "With `partial`: how many. Never which.",
+            "minimum": 1,
+            "type": "integer"
           }
         },
         "required": [
           "entries",
+          "completeness",
           "summary"
         ],
         "type": "object"
@@ -5115,6 +5315,14 @@
           "id": {
             "type": "string"
           },
+          "labels": {
+            "description": "The entry's security labels now, by code, whichever version this is.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
           "patient_id": {
             "type": "string"
           },
@@ -5143,6 +5351,7 @@
           "author",
           "recorded_at",
           "reason",
+          "labels",
           "record"
         ],
         "type": "object"
@@ -5158,6 +5367,14 @@
           },
           "id": {
             "type": "string"
+          },
+          "labels": {
+            "description": "The entry's security labels now, by code, whichever version this is.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "type": "array"
           },
           "patient_id": {
             "type": "string"
@@ -5186,6 +5403,7 @@
           "author",
           "recorded_at",
           "reason",
+          "labels",
           "record",
           "changed_since"
         ],
@@ -5330,6 +5548,14 @@
           "id": {
             "type": "string"
           },
+          "labels": {
+            "description": "The entry's security labels now, by code, whichever version this is.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
           "patient_id": {
             "type": "string"
           },
@@ -5358,6 +5584,7 @@
           "author",
           "recorded_at",
           "reason",
+          "labels",
           "record"
         ],
         "type": "object"
@@ -5373,6 +5600,14 @@
           },
           "id": {
             "type": "string"
+          },
+          "labels": {
+            "description": "The entry's security labels now, by code, whichever version this is.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "type": "array"
           },
           "patient_id": {
             "type": "string"
@@ -5401,6 +5636,7 @@
           "author",
           "recorded_at",
           "reason",
+          "labels",
           "record",
           "changed_since"
         ],
@@ -5541,6 +5777,14 @@
           "id": {
             "type": "string"
           },
+          "labels": {
+            "description": "The entry's security labels now, by code, whichever version this is.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
           "patient_id": {
             "type": "string"
           },
@@ -5569,6 +5813,7 @@
           "author",
           "recorded_at",
           "reason",
+          "labels",
           "record"
         ],
         "type": "object"
@@ -5584,6 +5829,14 @@
           },
           "id": {
             "type": "string"
+          },
+          "labels": {
+            "description": "The entry's security labels now, by code, whichever version this is.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "type": "array"
           },
           "patient_id": {
             "type": "string"
@@ -5612,6 +5865,7 @@
           "author",
           "recorded_at",
           "reason",
+          "labels",
           "record",
           "changed_since"
         ],
@@ -6640,6 +6894,14 @@
             "const": "reconstruction-of-stored-versions",
             "description": "Rebuilt from the versions that were stored. Not what anyone was shown: never use it to say what a clinician saw."
           },
+          "completeness": {
+            "description": "`partial`: entries with a security label are withheld from this reader, `withheld` of them. `unstated`: this reader is not told whether any are. Only `whole` is all there is.",
+            "enum": [
+              "whole",
+              "partial",
+              "unstated"
+            ]
+          },
           "entries": {
             "items": {
               "$ref": "#/components/schemas/StoredTypingAsAt"
@@ -6667,8 +6929,11 @@
           },
           "summary": {
             "additionalProperties": true,
-            "description": "`not-recorded` is unknown, never none.",
+            "description": "`not-recorded` is unknown, never none. With `partial`, entries may be withheld from this reader, and what one of them could change is `not-stated`.",
             "properties": {
+              "partial": {
+                "const": true
+              },
               "state": {
                 "type": "string"
               }
@@ -6677,6 +6942,11 @@
               "state"
             ],
             "type": "object"
+          },
+          "withheld": {
+            "description": "With `partial`: how many. Never which.",
+            "minimum": 1,
+            "type": "integer"
           }
         },
         "required": [
@@ -6685,13 +6955,22 @@
           "as_at",
           "read_at",
           "entries",
+          "completeness",
           "summary"
         ],
         "type": "object"
       },
       "TypingList": {
-        "description": "Every entry in every status, oldest first.",
+        "description": "Every entry in every status that this reader may see, oldest first.",
         "properties": {
+          "completeness": {
+            "description": "`partial`: entries with a security label are withheld from this reader, `withheld` of them. `unstated`: this reader is not told whether any are. Only `whole` is all there is.",
+            "enum": [
+              "whole",
+              "partial",
+              "unstated"
+            ]
+          },
           "entries": {
             "items": {
               "$ref": "#/components/schemas/StoredTyping"
@@ -6701,8 +6980,11 @@
           },
           "summary": {
             "additionalProperties": true,
-            "description": "`not-recorded` is unknown, never none.",
+            "description": "`not-recorded` is unknown, never none. With `partial`, entries may be withheld from this reader, and what one of them could change is `not-stated`.",
             "properties": {
+              "partial": {
+                "const": true
+              },
               "state": {
                 "type": "string"
               }
@@ -6711,10 +6993,16 @@
               "state"
             ],
             "type": "object"
+          },
+          "withheld": {
+            "description": "With `partial`: how many. Never which.",
+            "minimum": 1,
+            "type": "integer"
           }
         },
         "required": [
           "entries",
+          "completeness",
           "summary"
         ],
         "type": "object"
@@ -11005,6 +11293,184 @@
         "x-epr-resource": "CompatibilityTyping"
       }
     },
+    "/api/patients/{id}/compatibility-typing/{typing_id}/labels": {
+      "get": {
+        "operationId": "getApiPatientsIdCompatibility-typingTyping_idLabels",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "typing_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabelActs"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/patients/{id}/compatibility-typing/{typing_id}/labels",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "CompatibilityTyping"
+      },
+      "post": {
+        "operationId": "postApiPatientsIdCompatibility-typingTyping_idLabels",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "typing_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "1 to 128 letters, digits or . _ : -. A retry with the same key and the same request returns the first answer (header `Idempotent-Replayed: true`) and writes nothing; the same key for a different request is a 422; a key whose first request is unfinished is a 409. Only a success is kept; keys expire after 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LabelChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabelChange"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "A likely duplicate or a stale expected_version."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/patients/{id}/compatibility-typing/{typing_id}/labels",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Update",
+        "x-epr-resource": "CompatibilityTyping"
+      }
+    },
     "/api/patients/{id}/compatibility-typing/{typing_id}/versions": {
       "get": {
         "operationId": "getApiPatientsIdCompatibility-typingTyping_idVersions",
@@ -12762,6 +13228,184 @@
         "x-epr-resource": "Condition"
       }
     },
+    "/api/patients/{id}/problems/{problem_id}/labels": {
+      "get": {
+        "operationId": "getApiPatientsIdProblemsProblem_idLabels",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "problem_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabelActs"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/patients/{id}/problems/{problem_id}/labels",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "Condition"
+      },
+      "post": {
+        "operationId": "postApiPatientsIdProblemsProblem_idLabels",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "problem_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "1 to 128 letters, digits or . _ : -. A retry with the same key and the same request returns the first answer (header `Idempotent-Replayed: true`) and writes nothing; the same key for a different request is a 422; a key whose first request is unfinished is a 409. Only a success is kept; keys expire after 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LabelChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabelChange"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "A likely duplicate or a stale expected_version."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/patients/{id}/problems/{problem_id}/labels",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Update",
+        "x-epr-resource": "Condition"
+      }
+    },
     "/api/patients/{id}/problems/{problem_id}/versions": {
       "get": {
         "operationId": "getApiPatientsIdProblemsProblem_idVersions",
@@ -14234,6 +14878,184 @@
           }
         ],
         "summary": "PUT /api/patients/{id}/relative-history/{entry_id}",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Update",
+        "x-epr-resource": "RelativeHistory"
+      }
+    },
+    "/api/patients/{id}/relative-history/{entry_id}/labels": {
+      "get": {
+        "operationId": "getApiPatientsIdRelative-historyEntry_idLabels",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabelActs"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/patients/{id}/relative-history/{entry_id}/labels",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "RelativeHistory"
+      },
+      "post": {
+        "operationId": "postApiPatientsIdRelative-historyEntry_idLabels",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "1 to 128 letters, digits or . _ : -. A retry with the same key and the same request returns the first answer (header `Idempotent-Replayed: true`) and writes nothing; the same key for a different request is a 422; a key whose first request is unfinished is a 409. Only a success is kept; keys expire after 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LabelChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabelChange"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "A likely duplicate or a stale expected_version."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/patients/{id}/relative-history/{entry_id}/labels",
         "tags": [
           "patients"
         ],

@@ -285,6 +285,18 @@ pub const TABLE: &[(&str, &str, Resource, Action)] = &[
     ),
     (
         "GET",
+        "/api/patients/{id}/problems/{problem_id}/labels",
+        Resource::Condition,
+        Action::Read,
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/problems/{problem_id}/labels",
+        Resource::Condition,
+        Action::Update,
+    ),
+    (
+        "GET",
         "/api/patients/{id}/relative-history",
         Resource::RelativeHistory,
         Action::Read,
@@ -315,6 +327,18 @@ pub const TABLE: &[(&str, &str, Resource, Action)] = &[
     ),
     (
         "GET",
+        "/api/patients/{id}/relative-history/{entry_id}/labels",
+        Resource::RelativeHistory,
+        Action::Read,
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/relative-history/{entry_id}/labels",
+        Resource::RelativeHistory,
+        Action::Update,
+    ),
+    (
+        "GET",
         "/api/patients/{id}/compatibility-typing",
         Resource::CompatibilityTyping,
         Action::Read,
@@ -342,6 +366,18 @@ pub const TABLE: &[(&str, &str, Resource, Action)] = &[
         "/api/patients/{id}/compatibility-typing/{typing_id}/versions",
         Resource::CompatibilityTyping,
         Action::Read,
+    ),
+    (
+        "GET",
+        "/api/patients/{id}/compatibility-typing/{typing_id}/labels",
+        Resource::CompatibilityTyping,
+        Action::Read,
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/compatibility-typing/{typing_id}/labels",
+        Resource::CompatibilityTyping,
+        Action::Update,
     ),
     (
         "POST",

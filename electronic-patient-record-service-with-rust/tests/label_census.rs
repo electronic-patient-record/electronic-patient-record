@@ -1,25 +1,23 @@
 //! Label census (PI-7): every route that gives something out states what it does with a security label.
-//! A new output route fails here until it is listed. The answer today is plain: **no route applies a
-//! label.** A record cannot carry one, `authorize` always asks with none, and nothing acts on the policy
-//! engine's `Mask` obligation. So a route with patient data is listed as [`Label::NotApplied`], which is a
-//! gap and not a safe state, and the two tests at the end fail on the day that changes, so that each route
-//! has to be looked at again.
-//!
-//! When labels are real, the protected information spec asks more than this: a test on every route that a
-//! labelled record does not appear. A table cannot show that.
+//! A new output route fails here until it is listed. **Three lists apply labels** (problems, relative history and typing,
+//! EH-8), and only their entries can carry one; `http_entry_labels.rs` shows on each of their routes that a labelled entry
+//! does not appear. Every other route with patient data is [`Label::NotApplied`], which is a gap: before anything else
+//! can carry a label, its routes have to be looked at again. The tests at the end fail when masking reaches another file.
 
 use electronic_patient_record::routes;
 
 /// What a route does with a security label.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Label {
-    /// It gives out patient data and applies no label (the gap).
+    /// It gives out patient data and applies no label (the gap). Nothing it gives out carries one.
     NotApplied,
+    /// An entry whose labels the reader may not see is withheld (EH-8).
+    Withheld,
     /// It gives out no patient data, so there is nothing to label.
     NoPatientData(&'static str),
 }
 
-use Label::{NoPatientData, NotApplied};
+use Label::{NoPatientData, NotApplied, Withheld};
 
 /// Every route that gives something out, as spelled in `routes::TABLE`.
 const OUTPUT: &[(&str, &str, Label)] = &[
@@ -32,34 +30,45 @@ const OUTPUT: &[(&str, &str, Label)] = &[
     ("GET", "/api/patients/{id}/relationships", NotApplied),
     ("GET", "/api/patients/{id}/allergies", NotApplied),
     ("GET", "/api/patients/{id}/allergies/as-at", NotApplied),
-    ("GET", "/api/patients/{id}/problems", NotApplied),
-    ("GET", "/api/patients/{id}/problems/as-at", NotApplied),
+    ("GET", "/api/patients/{id}/problems", Withheld),
+    ("GET", "/api/patients/{id}/problems/as-at", Withheld),
     (
         "GET",
         "/api/patients/{id}/problems/{problem_id}/versions",
-        NotApplied,
+        Withheld,
     ),
-    ("GET", "/api/patients/{id}/relative-history", NotApplied),
     (
         "GET",
-        "/api/patients/{id}/relative-history/as-at",
-        NotApplied,
+        "/api/patients/{id}/problems/{problem_id}/labels",
+        Withheld,
     ),
+    ("GET", "/api/patients/{id}/relative-history", Withheld),
+    ("GET", "/api/patients/{id}/relative-history/as-at", Withheld),
     (
         "GET",
         "/api/patients/{id}/relative-history/{entry_id}/versions",
-        NotApplied,
+        Withheld,
     ),
-    ("GET", "/api/patients/{id}/compatibility-typing", NotApplied),
+    (
+        "GET",
+        "/api/patients/{id}/relative-history/{entry_id}/labels",
+        Withheld,
+    ),
+    ("GET", "/api/patients/{id}/compatibility-typing", Withheld),
     (
         "GET",
         "/api/patients/{id}/compatibility-typing/as-at",
-        NotApplied,
+        Withheld,
     ),
     (
         "GET",
         "/api/patients/{id}/compatibility-typing/{typing_id}/versions",
-        NotApplied,
+        Withheld,
+    ),
+    (
+        "GET",
+        "/api/patients/{id}/compatibility-typing/{typing_id}/labels",
+        Withheld,
     ),
     ("GET", "/api/patients/{id}/observations", NotApplied),
     ("GET", "/api/patients/{id}/results", NotApplied),
@@ -202,23 +211,51 @@ fn every_output_route_states_its_label_behaviour() {
     );
 }
 
-/// When a real label reaches the decision, this fails: look at every `NotApplied` above.
+/// The decision for a whole list is asked with no labels; the one for each entry of the three lists with its own. A second
+/// place that asks with labels, or a list read with nothing withheld, has to be looked at here.
 #[test]
-fn the_decision_is_still_asked_with_no_labels() {
+fn only_the_three_lists_ask_the_decision_with_labels() {
     let common = source("src/controllers/common.rs");
-    // The consent lookup and the record decision.
     assert_eq!(
         common
             .matches("labels: std::collections::BTreeSet::new(),")
             .count(),
         2,
-        "labels reach the decision now: revisit every route in this census"
+        "labels reach the decision for a whole list now: revisit every route in this census"
+    );
+    assert_eq!(common.matches("fn decide(").count(), 1);
+    let handlers = source("src/controllers/entries.rs");
+    assert!(
+        !handlers.contains("Viewer::"),
+        "a handler makes its own viewer"
+    );
+    assert_eq!(
+        handlers.matches("caller.decider.viewer()").count(),
+        handlers.matches("Caller::gate::<R>(").count(),
+        "each handler reads for its caller"
+    );
+    assert_eq!(
+        handlers.matches("caller.decider.note(&viewer)").count(),
+        handlers.matches("Caller::gate::<R>(").count(),
+        "each handler flags what break-the-glass showed"
     );
 }
 
-/// When a route acts on a mask, this fails: that route is no longer `NotApplied`.
+/// Where labels and masking are, for the three lists. Another file here means other routes to look at.
+const MASKING: [&str; 7] = [
+    // Re-exports the modules.
+    "electronic-patient-record-service-with-rust/src/lib.rs",
+    "electronic-patient-record-domain/src/masking.rs",
+    "electronic-patient-record-domain/src/labelling.rs",
+    "electronic-patient-record-service-with-rust/src/entry_labels.rs",
+    "electronic-patient-record-service-with-rust/src/entries_store.rs",
+    "src/controllers/entries.rs",
+    "src/controllers/common.rs",
+];
+
+/// When another route acts on a mask, this fails: that route is no longer `NotApplied`.
 #[test]
-fn no_route_acts_on_a_mask_yet() {
+fn nothing_else_masks_or_labels() {
     let mut files = Vec::new();
     let service = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let mut dirs = vec![
@@ -232,8 +269,7 @@ fn no_route_acts_on_a_mask_yet() {
                 dirs.push(path);
             } else if path.extension().is_some_and(|e| e == "rs")
                 && !path.ends_with("electronic-patient-record-domain/src/policy.rs")
-                // The rules of masking (EH-8); the next assertion says that nothing calls them.
-                && !path.ends_with("electronic-patient-record-domain/src/masking.rs")
+                && !MASKING.iter().any(|allowed| path.ends_with(allowed))
             {
                 files.push(path);
             }
@@ -245,8 +281,10 @@ fn no_route_acts_on_a_mask_yet() {
         let code = text.split("#[cfg(test)]").next().unwrap();
         // Nor adds or lifts a label (OQ-PI7): one that hides nothing would be trusted.
         assert!(
-            !code.contains("labelling::"),
-            "{}: labels are added now: update this census, and mask with them",
+            !code.contains("labelling::{")
+                && !code.contains("labelling::add")
+                && !code.contains("labelling::lift"),
+            "{}: labels are added here too: update this census, and mask with them",
             path.display()
         );
         assert!(
@@ -256,7 +294,7 @@ fn no_route_acts_on_a_mask_yet() {
         );
         assert!(
             !code.contains("masking::") && !code.contains("domain::masking"),
-            "{}: masking is called now: update this census",
+            "{}: masking is called here too: update this census",
             path.display()
         );
     }

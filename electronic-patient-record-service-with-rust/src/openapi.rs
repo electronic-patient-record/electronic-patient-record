@@ -326,8 +326,12 @@ fn allergy_schemas() -> Value {
 fn entry_schemas(record: &str, stored: &str, list: &str) -> Value {
     let reference = |name: &str| json!({"$ref": format!("#/components/schemas/{name}")});
     let summary = json!({"type": "object", "required": ["state"], "additionalProperties": true,
-        "description": "`not-recorded` is unknown, never none.",
-        "properties": {"state": {"type": "string"}}});
+        "description": "`not-recorded` is unknown, never none. With `partial`, entries may be withheld from this reader, and what one of them could change is `not-stated`.",
+        "properties": {"state": {"type": "string"}, "partial": {"const": true}}});
+    let completeness = json!({"enum": ["whole", "partial", "unstated"],
+        "description": "`partial`: entries with a security label are withheld from this reader, `withheld` of them. `unstated`: this reader is not told whether any are. Only `whole` is all there is."});
+    let withheld = json!({"type": "integer", "minimum": 1_u32, "description": "With `partial`: how many. Never which."});
+    let labels = json!({"type": "array", "items": {"type": "string"}, "description": "The entry's security labels now, by code, whichever version this is."});
     let at = format!("{stored}AsAt");
     let mut out = json!({});
     crate::json::set(
@@ -335,12 +339,13 @@ fn entry_schemas(record: &str, stored: &str, list: &str) -> Value {
         stored,
         json!({
             "type": "object",
-            "required": ["id", "patient_id", "version", "author", "recorded_at", "reason", "record"],
+            "required": ["id", "patient_id", "version", "author", "recorded_at", "reason", "labels", "record"],
             "properties": {
                 "id": {"type": "string"}, "patient_id": {"type": "string"},
                 "version": {"type": "integer"}, "author": {"type": "string"},
                 "recorded_at": {"type": "string", "description": "UTC."},
                 "reason": {"type": ["string", "null"], "description": "Why this version was written; always there from version 2."},
+                "labels": labels.clone(),
                 "record": reference(record)
             }
         }),
@@ -372,10 +377,12 @@ fn entry_schemas(record: &str, stored: &str, list: &str) -> Value {
         &mut out,
         &format!("{list}List"),
         json!({
-            "type": "object", "required": ["entries", "summary"],
-            "description": "Every entry in every status, oldest first.",
+            "type": "object", "required": ["entries", "completeness", "summary"],
+            "description": "Every entry in every status that this reader may see, oldest first.",
             "properties": {
                 "entries": {"type": "array", "items": reference(stored)},
+                "completeness": completeness.clone(),
+                "withheld": withheld.clone(),
                 "summary": summary.clone()
             }
         }),
@@ -393,12 +400,13 @@ fn entry_schemas(record: &str, stored: &str, list: &str) -> Value {
         &at,
         json!({
             "type": "object",
-            "required": ["id", "patient_id", "version", "author", "recorded_at", "reason", "record", "changed_since"],
+            "required": ["id", "patient_id", "version", "author", "recorded_at", "reason", "labels", "record", "changed_since"],
             "properties": {
                 "id": {"type": "string"}, "patient_id": {"type": "string"},
                 "version": {"type": "integer"}, "author": {"type": "string"},
                 "recorded_at": {"type": "string", "description": "UTC."},
                 "reason": {"type": ["string", "null"]},
+                "labels": labels,
                 "record": reference(record),
                 "changed_since": {"type": "boolean", "description": "A later version exists: this is no longer what the record says."}
             }
@@ -408,7 +416,7 @@ fn entry_schemas(record: &str, stored: &str, list: &str) -> Value {
         &mut out,
         &format!("{list}AsAt"),
         json!({
-            "type": "object", "required": ["basis", "left_out", "as_at", "read_at", "entries", "summary"],
+            "type": "object", "required": ["basis", "left_out", "as_at", "read_at", "entries", "completeness", "summary"],
             "description": "The list as it stood at `as_at`. It is not the record as it stands now.",
             "properties": {
                 "basis": {"const": crate::controllers::RECONSTRUCTION, "description": "Rebuilt from the versions that were stored. Not what anyone was shown: never use it to say what a clinician saw."},
@@ -416,11 +424,60 @@ fn entry_schemas(record: &str, stored: &str, list: &str) -> Value {
                 "as_at": {"type": "string", "description": "UTC."},
                 "read_at": {"type": "string", "description": "UTC."},
                 "entries": {"type": "array", "items": reference(&at)},
+                "completeness": completeness,
+                "withheld": withheld,
                 "summary": summary
             }
         }),
     );
     out
+}
+
+/// The labels of an entry, and a change to them (OQ-PI7).
+fn label_schemas() -> Value {
+    use crate::labelling::Basis;
+    use crate::labelling::REASON_LIMIT;
+    let codes: Vec<&str> = crate::policy::Label::ALL.iter().map(|l| l.code()).collect();
+    let by_people: Vec<&str> = Basis::ALL
+        .into_iter()
+        .filter(|b| *b != Basis::Custody)
+        .map(Basis::word)
+        .collect();
+    let reason = json!({"type": "string", "minLength": 1_u32, "maxLength": REASON_LIMIT});
+    let change = |act: &str| {
+        let mut out = json!({"type": "object", "additionalProperties": false, "required": ["act", "label", "basis"],
+            "properties": {"act": {"const": act}, "label": {"enum": codes}, "basis": {"enum": by_people}}});
+        if act == "lift" {
+            crate::json::set(
+                &mut out,
+                "required",
+                json!(["act", "label", "basis", "reason"]),
+            );
+            crate::json::set_at(&mut out, &["properties", "reason"], reason.clone());
+        }
+        out
+    };
+    json!({
+        "LabelChange": {
+            "description": "Add or lift a security label. A clinician who treats the patient adds one; another lifts it, with a reason.",
+            "oneOf": [change("add"), change("lift")]
+        },
+        "LabelActs": {
+            "type": "object", "required": ["acts"],
+            "properties": {"acts": {"type": "array", "description": "Oldest first.", "items": {
+                "type": "object", "required": ["seq", "recorded_at", "act", "label", "by", "basis"],
+                "properties": {
+                    "seq": {"type": "integer", "minimum": 1_u32},
+                    "recorded_at": {"type": "string", "description": "UTC."},
+                    "act": {"enum": ["added", "lifted"]},
+                    "label": {"type": "string"},
+                    "by": {"type": ["string", "null"], "description": "Null when the service added it."},
+                    "basis": {"enum": Basis::ALL},
+                    "reason": {"type": "string", "description": "Why it was lifted."}
+                }
+            }}}
+        }
+    })
 }
 
 /// A coded term as the problem list and relative history take it.
@@ -1998,6 +2055,7 @@ fn patient_schemas() -> Value {
         amendment_schemas(),
         identity_schemas(),
         allergy_schemas(),
+        label_schemas(),
         problem_schemas(),
         relative_history_schemas(),
         typing_schemas(),
@@ -2099,6 +2157,14 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
     ),
     (
         "POST",
+        "/api/patients/{id}/problems/{problem_id}/labels",
+        "LabelChange",
+        "200",
+        "LabelChange",
+        "Error",
+    ),
+    (
+        "POST",
         "/api/patients/{id}/relative-history",
         "CreateRelativeHistoryRecord",
         "201",
@@ -2115,6 +2181,14 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
     ),
     (
         "POST",
+        "/api/patients/{id}/relative-history/{entry_id}/labels",
+        "LabelChange",
+        "200",
+        "LabelChange",
+        "Error",
+    ),
+    (
+        "POST",
         "/api/patients/{id}/compatibility-typing",
         "CreateTypingRecord",
         "201",
@@ -2128,6 +2202,14 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
         "200",
         "StoredTyping",
         "VersionConflict",
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/compatibility-typing/{typing_id}/labels",
+        "LabelChange",
+        "200",
+        "LabelChange",
+        "Error",
     ),
     (
         "POST",
@@ -2476,6 +2558,12 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
     ),
     (
         "GET",
+        "/api/patients/{id}/problems/{problem_id}/labels",
+        "LabelActs",
+        &[],
+    ),
+    (
+        "GET",
         "/api/patients/{id}/relative-history",
         "RelativeHistoryList",
         &[],
@@ -2494,6 +2582,12 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
     ),
     (
         "GET",
+        "/api/patients/{id}/relative-history/{entry_id}/labels",
+        "LabelActs",
+        &[],
+    ),
+    (
+        "GET",
         "/api/patients/{id}/compatibility-typing",
         "TypingList",
         &[],
@@ -2508,6 +2602,12 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
         "GET",
         "/api/patients/{id}/compatibility-typing/{typing_id}/versions",
         "TypingVersions",
+        &[],
+    ),
+    (
+        "GET",
+        "/api/patients/{id}/compatibility-typing/{typing_id}/labels",
+        "LabelActs",
         &[],
     ),
     ("GET", "/api/patients/{id}/referrals", "ReferralList", &[]),
@@ -3558,6 +3658,7 @@ mod tests {
                 author: "a".into(),
                 recorded_at: "t".into(),
                 reason: None,
+                labels: vec!["R".into()],
                 record,
             };
             let at = StoredAt {
@@ -3577,6 +3678,7 @@ mod tests {
                 keys(
                     &serde_json::to_value(EntryList {
                         entries: vec![kept.clone()],
+                        completeness: crate::masking::Completeness::Partial { withheld: 1 },
                         summary: summary.clone()
                     })
                     .unwrap()
@@ -3591,6 +3693,7 @@ mod tests {
                         as_at: "t".into(),
                         read_at: "t".into(),
                         entries: vec![at],
+                        completeness: crate::masking::Completeness::Partial { withheld: 1 },
                         summary
                     })
                     .unwrap()

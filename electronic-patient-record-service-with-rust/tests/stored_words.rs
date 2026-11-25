@@ -210,6 +210,12 @@ fn columns() -> Vec<(&'static str, Words)> {
             "outbox_attempts.outcome",
             NotOurs("the outbox before axa's; nothing writes it"),
         ),
+        ("entry_labels.act", Literal("entry_labels.rs")),
+        (
+            "entry_labels.basis",
+            Code(words!(epr::labelling::Basis: Clinical, PatientAsked, Custody)),
+        ),
+        ("entry_labels.kind", Literal("entries_store.rs")),
         ("patient_link_versions.status", Literal("links.rs")),
         ("patient_photos.content_type", Literal("photos_store.rs")),
         (

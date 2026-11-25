@@ -1,6 +1,5 @@
 //! Who puts a security label on an entry and who lifts it (OQ-PI7, decided 2026-11-25; `spec/access-control/masking.md`).
-//! It is pure. **Nothing calls it and no record carries a label**: a label that hides nothing would be trusted and should
-//! not be, so none is stored before the masking is wired.
+//! It is pure; `entry_labels.rs` in the service keeps what it returns, for the problem list, relative history and typing.
 //!
 //! - **A treating clinician adds one**, on their own judgement or because the patient asked.
 //! - **Another clinician who treats the patient lifts it**, with a reason. Never the one who added it.
@@ -37,6 +36,27 @@ pub enum Basis {
     PatientAsked,
     /// A stay in custody: the service's own, and the only one.
     Custody,
+}
+
+impl Basis {
+    /// Every basis.
+    pub const ALL: [Basis; 3] = [Basis::Clinical, Basis::PatientAsked, Basis::Custody];
+
+    /// As stored and as sent.
+    #[must_use]
+    pub fn word(self) -> &'static str {
+        match self {
+            Basis::Clinical => "clinical",
+            Basis::PatientAsked => "patient-asked",
+            Basis::Custody => "custody",
+        }
+    }
+
+    /// Read what [`Basis::word`] writes, and nothing else.
+    #[must_use]
+    pub fn parse(word: &str) -> Option<Basis> {
+        Basis::ALL.into_iter().find(|b| b.word() == word)
+    }
 }
 
 /// Who acts.
@@ -371,6 +391,15 @@ mod tests {
         assert_eq!(h.len(), 3);
         let back: Vec<Act> = serde_json::from_value(serde_json::to_value(&h).unwrap()).unwrap();
         assert_eq!(back, h);
+    }
+
+    #[test]
+    fn the_words_of_a_basis_are_the_ones_it_is_sent_as() {
+        for b in Basis::ALL {
+            assert_eq!(Basis::parse(b.word()), Some(b));
+            assert_eq!(serde_json::json!(b), b.word());
+        }
+        assert_eq!(Basis::parse("Clinical"), None);
     }
 
     #[test]

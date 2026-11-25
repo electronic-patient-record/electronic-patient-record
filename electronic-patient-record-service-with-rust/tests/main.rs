@@ -73,6 +73,8 @@ mod doc_census;
 mod drill_records;
 #[path = "entries_store.rs"]
 mod entries_store;
+#[path = "entry_labels_store.rs"]
+mod entry_labels_store;
 #[path = "error_census.rs"]
 mod error_census;
 #[path = "fhir_audit_paging.rs"]
@@ -105,6 +107,8 @@ mod http_death_reports;
 mod http_deaths;
 #[path = "http_entries.rs"]
 mod http_entries;
+#[path = "http_entry_labels.rs"]
+mod http_entry_labels;
 #[path = "http_feed_health.rs"]
 mod http_feed_health;
 #[path = "http_hazards.rs"]

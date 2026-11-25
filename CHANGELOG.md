@@ -2,6 +2,16 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - Security labels are stored, and masking is wired, for problems, relative history and typing (EH-8, SE-4)
+
+- **Clinical risk:** H-007 (controls, evidence and residual; it said that the hazard is latent, and it is not now), H-072 and H-073 new and `open`, with the author's proposed scores. The Clinical Safety Officer is asked to assess all three.
+- **Added:** migration `20261125000047_entry_labels` (append-only), and on each of the three lists `GET` and `POST …/{id}/labels`: a treating clinician adds a label, another lifts it with a reason (OQ-PI7).
+- **Changed:** an entry whose labels the reader may not see is not there for them, in the list, as at a time, its versions, its labels, a refusal's words or a version number. A list has `completeness`, and each entry its `labels`. A summary that a withheld entry could change is `not-stated`, agreement of blood groups included. A writer who was shown no cause does not remove a hidden one.
+- **Changed:** a break-glass grant is looked up for a reader on the team too, shows everything, and is flagged only when it showed something. A consent that names a label decides for the entries with it.
+- **Changed:** `tests/label_census.rs` lists these routes as withholding, and fails when labels or masking reach another file.
+- **Behaviour to know:** a retraction that only a hidden effect would stop is allowed; that effect is then listed for those who see it. A clinician who adds a substance-use label cannot see the entry after it without the patient's consent or break-glass.
+- **Verified:** two tests through the router with login on, seven of the store, the censuses; eleven faults put in by hand, all caught (two only after a test was added). The normal and database passes on a fresh Postgres 18; every docs gate. **Not done / not verified:** no screen shows these lists, so none shows or sets a label; no other record can carry one; the time a masked list takes was not measured; no clinician, lawyer, data protection officer or Clinical Safety Officer has reviewed it.
+
 ## 2026-11-25 - Masking decided: break-glass shows everything, only the care team is told a count, and who labels; life-or-limb emergencies (OQ-PI2, OQ-PI5, OQ-PI7, FR-4.6)
 
 - **Clinical risk:** H-007 and H-024 (controls, evidence and residual changed; statuses and scores not: the Clinical Safety Officer is asked to re-assess both). **Nothing a user sees changes today:** no record carries a label, so the engine's new rule has nothing to show.

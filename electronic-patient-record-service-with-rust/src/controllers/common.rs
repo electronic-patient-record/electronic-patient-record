@@ -119,6 +119,135 @@ fn scope_of(resource: Resource) -> Option<Scope> {
     }
 }
 
+/// The record decision for each entry of a list (EH-8): what [`authorize`] decides for the list, asked again with an entry's
+/// labels. Loaded once, after [`authorize`]. A failed lookup fails the request.
+pub(super) struct Decider {
+    enforced: bool,
+    agent: String,
+    subject: Subject,
+    resource: Resource,
+    purpose: Purpose,
+    relationship: Relationship,
+    consents: Vec<consents_store::StoredConsent>,
+    grant: Option<crate::break_glass::Grant>,
+    now: i64,
+}
+
+impl Decider {
+    /// What the decision needs. The grant is looked up for a reader with a relationship too: it shows them what a label
+    /// hides.
+    pub(super) async fn load(
+        db: &PgPool,
+        agent: &Agent,
+        subject: &Subject,
+        resource: Resource,
+        purpose: Purpose,
+        patient: &str,
+    ) -> Result<Decider, ApiError> {
+        let mut decider = Decider {
+            enforced: auth::authentication_enforced(),
+            agent: agent.0.clone(),
+            subject: subject.clone(),
+            resource,
+            purpose,
+            relationship: Relationship::None,
+            consents: Vec::new(),
+            grant: None,
+            now: time_now(),
+        };
+        if !decider.enforced {
+            return Ok(decider);
+        }
+        let failed = |e: StoreError| ApiError::from(&e);
+        decider.relationship =
+            relationships::lookup(db, patient, &agent.0, decider.now, scope_of(resource))
+                .await
+                .map_err(failed)?;
+        decider.consents = consents_store::active_with_merged(db, &[patient.to_string()])
+            .await
+            .map_err(failed)?
+            .remove(&patient.to_lowercase())
+            .into_iter()
+            .flatten()
+            .collect();
+        if subject.roles.iter().any(|r| r.treats()) {
+            decider.grant = crate::break_glass::active(db, patient, &agent.0)
+                .await
+                .map_err(failed)?;
+        }
+        Ok(decider)
+    }
+
+    /// The decision to read an entry with these labels. With login off (development only) everything is shown.
+    pub(super) fn decide(
+        &self,
+        labels: std::collections::BTreeSet<policy::Label>,
+    ) -> policy::Decision {
+        if !self.enforced {
+            return policy::Decision::Allow(vec![policy::Obligation::Audit]);
+        }
+        let ctx = consent::Context {
+            roles: self.subject.roles.clone(),
+            purpose: self.purpose,
+            resource: self.resource,
+            labels: labels.clone(),
+            now: self.now,
+        };
+        let consent = consent::decide(
+            self.consents.iter().map(|c| (c.id.as_str(), &c.consent)),
+            &ctx,
+        )
+        .consent;
+        policy::evaluate(&policy::Request {
+            subject: self.subject.clone(),
+            resource: self.resource,
+            action: policy::Action::Read,
+            labels,
+            relationship: self.relationship,
+            purpose: self.purpose,
+            consent,
+            break_glass: self.grant.as_ref().map(|g| policy::BreakGlass {
+                reason: g.reason.clone(),
+                expires_at: g.expires_unix,
+            }),
+            now: self.now,
+        })
+    }
+
+    /// Who the read is for. Staff who treat the patient are told how many entries are withheld, and so is someone reading
+    /// in an emergency, who may be shown all of them.
+    pub(super) fn viewer(&self) -> crate::entries_store::Viewer<'_> {
+        let told = !self.enforced
+            || crate::masking::told(&self.subject.roles, self.relationship)
+            || crate::masking::emergency(&self.decide(std::collections::BTreeSet::new()));
+        crate::entries_store::Viewer::new(|labels| self.decide(labels), told)
+    }
+
+    /// Flag every audit row of this request from here, if the viewer was shown anything only because of break-the-glass.
+    pub(super) fn note(&self, viewer: &crate::entries_store::Viewer<'_>) {
+        if let Some(grant) = self.grant.as_ref().filter(|_| viewer.by_emergency()) {
+            audit::note_break_glass(&grant.id);
+        }
+    }
+
+    /// Who adds or lifts a label. With login off, a clinician on the team.
+    pub(super) fn actor(&self) -> crate::labelling::Actor {
+        let (roles, relationship) = if self.enforced {
+            (self.subject.roles.clone(), self.relationship)
+        } else {
+            (
+                std::collections::BTreeSet::from([policy::Role::Clinician]),
+                Relationship::CareTeam,
+            )
+        };
+        crate::labelling::Actor::Person {
+            subject: self.agent.clone(),
+            roles,
+            relationship,
+        }
+    }
+}
+
 /// [`authorize`], for a route that is a narrower part of a resource than the resource itself (the photo
 /// and the access log are identity data to the policy, and their own scope to a proxy).
 #[expect(

@@ -91,9 +91,9 @@ A label only works where something checks it. Each route is a place that must be
 | --- | --- | --- |
 | Labels | Six: `R`, `V`, `PSY`, `HIV`, `SUD`, `ETH` | None for `STD`, `SEX`, `SDV`, `VIO`, `GENDER`, `ADOL`, `GDIS`, `EMP`, `CEL`, location |
 | Unmasking | A role list per label, then consent; break-glass shows everything (2026-11-25, OQ-PI2) | Unreviewed. No relationship or service test: a clinician in any team unmasks `HIV` |
-| Records with labels | None: nothing stores a label on clinical content | SE-4 |
-| Who applies a label | Nobody; no route. Who may is decided and is a library (OQ-PI7) | No rule for sensitive by default but custody, no steward |
-| The mask | Tells the care team how many, and anyone else nothing (OQ-PI5); a library | Not wired |
+| Records with labels | Problems, relative history and typing (`entry_labels`, 2026-11-25) | Everything else: SE-4 |
+| Who applies a label | A treating clinician, by a route; another lifts it (OQ-PI7) | No rule for sensitive by default but custody, no steward |
+| The mask | Tells the care team how many, and anyone else nothing (OQ-PI5) | Three lists only; no screen |
 | Proxy | A role with scopes | No hidden-from list; no rule for a young person; no coercion route |
 | Alias, no-information | None | The directory, search and banner all show the patient |
 | Name and gender history | None | Old-name suppression; matcher behaviour across a deliberate break |

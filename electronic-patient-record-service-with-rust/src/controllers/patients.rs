@@ -689,6 +689,14 @@ pub fn routes() -> Routes {
             get(super::entries::versions::<ProblemRecord>),
         )
         .add(
+            "/{id}/problems/{problem_id}/labels",
+            get(super::entries::labels::<ProblemRecord>),
+        )
+        .add(
+            "/{id}/problems/{problem_id}/labels",
+            post(super::entries::relabel::<ProblemRecord>),
+        )
+        .add(
             "/{id}/relative-history",
             get(super::entries::list::<RelativeHistoryRecord>),
         )
@@ -709,6 +717,14 @@ pub fn routes() -> Routes {
             get(super::entries::versions::<RelativeHistoryRecord>),
         )
         .add(
+            "/{id}/relative-history/{entry_id}/labels",
+            get(super::entries::labels::<RelativeHistoryRecord>),
+        )
+        .add(
+            "/{id}/relative-history/{entry_id}/labels",
+            post(super::entries::relabel::<RelativeHistoryRecord>),
+        )
+        .add(
             "/{id}/compatibility-typing",
             get(super::entries::list::<TypingRecord>),
         )
@@ -727,6 +743,14 @@ pub fn routes() -> Routes {
         .add(
             "/{id}/compatibility-typing/{typing_id}/versions",
             get(super::entries::versions::<TypingRecord>),
+        )
+        .add(
+            "/{id}/compatibility-typing/{typing_id}/labels",
+            get(super::entries::labels::<TypingRecord>),
+        )
+        .add(
+            "/{id}/compatibility-typing/{typing_id}/labels",
+            post(super::entries::relabel::<TypingRecord>),
         )
         .add("/{id}/referrals", get(super::referrals::list))
         .add("/{id}/referrals", post(super::referrals::create))

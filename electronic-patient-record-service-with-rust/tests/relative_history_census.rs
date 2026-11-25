@@ -65,7 +65,7 @@ fn nothing_lists_entries_across_patients() {
             );
         }
     }
-    assert_eq!(seen, 5);
+    assert_eq!(seen, 7);
     // The table's only patient is the one whose record it is.
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("migrations/20261124000043_relative_history.sql");

@@ -552,6 +552,16 @@ typing_versions,author,staff-identifier,Who wrote the version,record
 typing_versions,reason,free-text,Why the version was written as typed,record
 typing_versions,status,none,State of the record,record
 typing_versions,body,health,A laboratory report of a blood group or HLA type or antibody as recorded; genetic data,record
+entry_labels,kind,none,Which list the entry is on,record
+entry_labels,entry_id,none,Random record id,record
+entry_labels,seq,none,Counter,record
+entry_labels,patient_id,identifier,Links a label to the patient,record
+entry_labels,recorded_at,none,When the label was added or lifted,record
+entry_labels,act,none,Added or lifted,record
+entry_labels,label,health,A security label; it says what kind of thing the entry is (HIV or psychiatry or substance use),record
+entry_labels,author,staff-identifier,Who added or lifted it,record
+entry_labels,basis,health,On whose decision; custody says that the person was in custody,record
+entry_labels,reason,free-text,Why it was lifted as typed,record
 typing_current,typing_id,none,Random record id,record
 typing_current,version,none,Version counter,record
 typing_current,patient_id,identifier,Links a record to the patient,record

@@ -45,6 +45,11 @@ async fn patient(db: &PgPool) -> String {
     patients_store::create(db, "t", None, &p).await.unwrap().id
 }
 
+/// Someone from whom nothing is withheld: what a label withholds is `entry_labels_store.rs`.
+fn all() -> store::Viewer<'static> {
+    store::Viewer::everything()
+}
+
 fn problem(title: &str, status: Status) -> ProblemRecord {
     ProblemRecord {
         title: title.into(),
@@ -76,7 +81,9 @@ fn change<'a>(version: i32, record: &'a ProblemRecord) -> Change<'a, ProblemReco
 }
 
 async fn add(db: &PgPool, p: &str, record: &ProblemRecord) -> Stored<ProblemRecord> {
-    store::create(db, p, "dr-1", None, record).await.unwrap()
+    store::create(db, p, "dr-1", None, record, &all())
+        .await
+        .unwrap()
 }
 
 fn refused<T: std::fmt::Debug>(result: Result<T, StoreError>, says: &str) {
@@ -117,21 +124,22 @@ async fn a_problem_is_versioned_with_a_reason_and_a_mistake_is_final() {
                 reason: None,
                 ..change(1, &resolved)
             },
+            &all(),
         )
         .await,
         "a reason is required",
     );
     assert!(matches!(
-        store::update(&db, &p, &v1.id, change(7, &resolved)).await,
+        store::update(&db, &p, &v1.id, change(7, &resolved), &all()).await,
         Err(StoreError::Conflict { current: 1 })
     ));
-    let v2 = store::update(&db, &p, &v1.id, change(1, &resolved))
+    let v2 = store::update(&db, &p, &v1.id, change(1, &resolved), &all())
         .await
         .unwrap();
     assert_eq!((v2.version, v2.author.as_str()), (2, "dr-2"));
     assert!(when(&v2) > when(&v1), "a later version has a later time");
 
-    let history = store::history::<ProblemRecord>(&db, &p, &v1.id)
+    let history = store::history::<ProblemRecord>(&db, &p, &v1.id, &all())
         .await
         .unwrap();
     assert_eq!(
@@ -147,18 +155,18 @@ async fn a_problem_is_versioned_with_a_reason_and_a_mistake_is_final() {
 
     let mistake = problem("Asthma", Status::EnteredInError);
     refused(
-        store::create(&db, &p, "dr-1", None, &mistake).await,
+        store::create(&db, &p, "dr-1", None, &mistake, &all()).await,
         "cannot start as entered in error",
     );
-    store::update(&db, &p, &v1.id, change(2, &mistake))
+    store::update(&db, &p, &v1.id, change(2, &mistake), &all())
         .await
         .unwrap();
     refused(
-        store::update(&db, &p, &v1.id, change(3, &resolved)).await,
+        store::update(&db, &p, &v1.id, change(3, &resolved), &all()).await,
         "is final",
     );
     refused(
-        store::update(&db, &p, &v1.id, change(3, &mistake)).await,
+        store::update(&db, &p, &v1.id, change(3, &mistake), &all()).await,
         "is final",
     );
 }
@@ -174,7 +182,9 @@ async fn the_database_refuses_to_change_or_remove_a_version() {
         "source": "patient", "status": "recorded"
     }))
     .unwrap();
-    store::create(&db, &p, "dr-1", None, &entry).await.unwrap();
+    store::create(&db, &p, "dr-1", None, &entry, &all())
+        .await
+        .unwrap();
     for table in ["problem_versions", "relative_history_versions"] {
         for sql in [
             format!("UPDATE {table} SET author = 'x' WHERE patient_id = '{p}'"),
@@ -202,7 +212,7 @@ async fn a_cause_is_on_the_same_list_never_loops_and_cannot_be_retracted_from_un
     let elsewhere = add(&db, &other, &problem("Asthma", Status::Active)).await;
 
     refused(
-        store::create(&db, &p, "dr-1", None, &caused("X", &elsewhere.id)).await,
+        store::create(&db, &p, "dr-1", None, &caused("X", &elsewhere.id), &all()).await,
         "no problem on this patient's list",
     );
     refused(
@@ -211,6 +221,7 @@ async fn a_cause_is_on_the_same_list_never_loops_and_cannot_be_retracted_from_un
             &p,
             &syndrome.id,
             change(1, &caused("Syndrome", &lung.id)),
+            &all(),
         )
         .await,
         "through others, its own cause",
@@ -221,6 +232,7 @@ async fn a_cause_is_on_the_same_list_never_loops_and_cannot_be_retracted_from_un
             &p,
             &syndrome.id,
             change(1, &caused("Syndrome", &syndrome.id.to_uppercase())),
+            &all(),
         )
         .await,
         "its own cause",
@@ -228,20 +240,20 @@ async fn a_cause_is_on_the_same_list_never_loops_and_cannot_be_retracted_from_un
     // Two problems name it, so it cannot be retracted until they do not.
     let mistake = problem("Syndrome", Status::EnteredInError);
     refused(
-        store::update(&db, &p, &syndrome.id, change(1, &mistake)).await,
+        store::update(&db, &p, &syndrome.id, change(1, &mistake), &all()).await,
         "2 problem(s) name this as their cause",
     );
     for effect in [&lung, &thyroid] {
         let alone = problem(&effect.record.title, Status::Active);
-        store::update(&db, &p, &effect.id, change(1, &alone))
+        store::update(&db, &p, &effect.id, change(1, &alone), &all())
             .await
             .unwrap();
     }
-    store::update(&db, &p, &syndrome.id, change(1, &mistake))
+    store::update(&db, &p, &syndrome.id, change(1, &mistake), &all())
         .await
         .unwrap();
     refused(
-        store::create(&db, &p, "dr-1", None, &caused("Y", &syndrome.id)).await,
+        store::create(&db, &p, "dr-1", None, &caused("Y", &syndrome.id), &all()).await,
         "entered in error",
     );
 }
@@ -259,7 +271,7 @@ async fn two_writers_cannot_together_make_a_loop() {
             let (db, p) = (db.clone(), p.clone());
             async move {
                 let mut tx = db.begin().await.unwrap();
-                let r = store::update(&mut *tx, &p, &id, change(1, &record)).await;
+                let r = store::update(&mut *tx, &p, &id, change(1, &record), &all()).await;
                 match r {
                     Ok(_) => tx.commit().await.is_ok(),
                     Err(StoreError::BadQuery(_)) => false,
@@ -284,14 +296,16 @@ async fn a_list_as_at_a_time_is_what_the_record_held_then() {
         &p,
         &v1.id,
         change(1, &problem("Asthma", Status::EnteredInError)),
+        &all(),
     )
     .await
     .unwrap();
 
     let at = async |t| {
-        store::list_at::<ProblemRecord>(&db, &p, t)
+        store::list_at::<ProblemRecord>(&db, &p, t, &all())
             .await
             .unwrap()
+            .entries
             .into_iter()
             .map(|s| (s.stored.record.title, s.stored.version, s.changed_since))
             .collect::<Vec<_>>()
@@ -316,7 +330,8 @@ async fn a_list_as_at_a_time_is_what_the_record_held_then() {
         store::list_at::<ProblemRecord>(
             &db,
             "00000000-0000-4000-8000-000000000000",
-            jiff::Timestamp::now()
+            jiff::Timestamp::now(),
+            &all()
         )
         .await,
         Err(StoreError::NotFound)
@@ -353,9 +368,10 @@ async fn as_at_a_time_follows_the_merges_that_stood_then() {
     let merged_at = clock::parse_rfc3339(&merge.recorded_at).unwrap();
 
     let titles = async |t| {
-        store::list_at::<ProblemRecord>(&db, &kept, t)
+        store::list_at::<ProblemRecord>(&db, &kept, t, &all())
             .await
             .unwrap()
+            .entries
             .into_iter()
             .map(|s| s.stored.record.title)
             .collect::<Vec<_>>()
@@ -392,7 +408,10 @@ async fn a_cause_left_on_the_other_record_by_an_unmerge_is_said_and_a_refuted_on
     let db = db().await;
     let (kept, gone) = (patient(&db).await, patient(&db).await);
     let causes = async |p: &str| {
-        let all = store::list::<ProblemRecord>(&db, p).await.unwrap();
+        let all = store::list::<ProblemRecord>(&db, p, &all())
+            .await
+            .unwrap()
+            .entries;
         ProblemRecord::summary(&all.iter().collect::<Vec<_>>())["causes"].clone()
     };
     let syndrome = add(&db, &gone, &problem("Syndrome", Status::Active)).await;
@@ -410,7 +429,7 @@ async fn a_cause_left_on_the_other_record_by_an_unmerge_is_said_and_a_refuted_on
         certainty: Certainty::Refuted,
         ..problem("Syndrome", Status::Inactive)
     };
-    store::update(&db, &kept, &syndrome.id, change(1, &refuted))
+    store::update(&db, &kept, &syndrome.id, change(1, &refuted), &all())
         .await
         .unwrap();
     assert_eq!(
@@ -496,7 +515,7 @@ async fn a_write_in_progress_at_the_time_is_included_though_nobody_could_see_it(
     let before_any_write = jiff::Timestamp::now();
     tokio::time::sleep(std::time::Duration::from_millis(40)).await;
     let correction = problem("Asthma, corrected", Status::Active);
-    store::update(&mut *tx, &p, &kept.id, change(1, &correction))
+    store::update(&mut *tx, &p, &kept.id, change(1, &correction), &all())
         .await
         .unwrap();
     let record = AllergyRecord {
@@ -514,13 +533,19 @@ async fn a_write_in_progress_at_the_time_is_included_though_nobody_could_see_it(
     tokio::time::sleep(std::time::Duration::from_millis(40)).await;
     let written_not_committed = jiff::Timestamp::now();
     // What a reader saw at that moment: the old problem, and no allergy.
-    let seen = store::list::<ProblemRecord>(&db, &p).await.unwrap();
+    let seen = store::list::<ProblemRecord>(&db, &p, &all())
+        .await
+        .unwrap()
+        .entries;
     assert_eq!(seen[0].record.title, "Asthma");
     assert!(allergies::list(&db, &p).await.unwrap().is_empty());
     tx.commit().await.unwrap();
 
     let title = async |t| {
-        store::list_at::<ProblemRecord>(&db, &p, t).await.unwrap()[0]
+        store::list_at::<ProblemRecord>(&db, &p, t, &all())
+            .await
+            .unwrap()
+            .entries[0]
             .stored
             .record
             .title

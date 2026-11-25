@@ -252,6 +252,18 @@ async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_r
                 },
             )
             .await;
+            refused_then_accepted(
+                db,
+                &format!("POST /api/patients/{{id}}/{path}/{{{id_name}}}/labels"),
+                || async {
+                    let r = server
+                        .post(&format!("/api/patients/{id}/{path}/{entry}/labels"))
+                        .json(&json!({ "act": "add", "label": "R", "basis": "clinical" }))
+                        .await;
+                    (r.status_code(), r.text())
+                },
+            )
+            .await;
         }
 
         // Referral: send, then step. Login is off, so the sender is the referrer and may ask to cancel.

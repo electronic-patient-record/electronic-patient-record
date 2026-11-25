@@ -1,6 +1,6 @@
 # Masking (EH-8, the design for SE-4)
 
-**The rules are built as two pure libraries 2026-11-25 (`masking.rs`, `labelling.rs`); nothing calls them, no record carries a label, and no route masks.** No clinician, Clinical Safety Officer, data protection officer or person with a protected record has reviewed this. NOT FOR CLINICAL USE. The idea's source is [openEHR and `openehr-rust`](../lessons/openehr-rust/index.md) (replace, keep the answer valid, count, never say what, fail closed); the rest is the author's reasoning. Companion: [Protected information](protected-information.md), which lists the routes by which a record leaks.
+**Built 2026-11-25 for three lists: problems, relative history and compatibility typing.** The rules are two pure libraries (`masking.rs`, `labelling.rs`); `entries_store.rs` applies them, so that no handler reads a list without a viewer; labels are in the append-only table `entry_labels`. **Nothing else can carry a label, and no screen shows or sets one.** No clinician, Clinical Safety Officer, data protection officer or person with a protected record has reviewed this. NOT FOR CLINICAL USE. The idea's source is [openEHR and `openehr-rust`](../lessons/openehr-rust/index.md) (replace, keep the answer valid, count, never say what, fail closed); the rest is the author's reasoning. Companion: [Protected information](protected-information.md), which lists the routes by which a record leaks.
 
 ## Rules
 
@@ -23,27 +23,28 @@
 
 Nothing is removed: who added, who lifted, on whose decision and why stay, and a label may be added again. A code this version does not know is kept, so it withholds and is not lost. Two things here are the author's reading of the decision: that "a named person" who lifts is a treating clinician, and that custody is `R`.
 
-## Where a list's other answers would tell (to be done with the wiring, each with a test)
+## Where a list's other answers would tell
 
-| Place | What it would tell |
+| Place | What is done |
 |---|---|
-| A refusal: "due_to names no problem on this list", "2 problem(s) name this as their cause" | That an id exists, or how many hidden problems name this one. The refusal must be the same as for an id that is not there; the count must be of what the writer sees, and a retraction that a hidden effect stops needs another answer |
-| A version number, a 409, a 404 | A hidden entry must answer as one that does not exist |
-| `…/versions` and `as-at` | A label applies to the entry at every version, by its **newest** label: a label added later hides the past, and a lift shows it |
-| The audit row and the patient's access log | Counts of entries read must be of what was shown, with the number withheld kept for the auditor |
-| Screens, FHIR, exports, the outbox, the as-at reads, analytics | As the [leakage routes](protected-information.md); `tests/label_census.rs` lists each |
-| Time taken | A list read that decides each entry takes longer with more of them. Not measured |
+| A refusal ("due_to names no problem on this list", "2 problem(s) name this as their cause") | The rules are judged on what the writer sees, so the words are the same as for an id that is not there and the count is of what they see. **So a retraction that only a hidden effect would stop is allowed**, and the effect is then in `cause_not_on_list` for whoever sees it. A loop through a hidden problem is not refused either; the walk ends at a loop |
+| A version number, a 409, a 404 | A hidden entry answers 404, with a stale version too |
+| `…/versions`, `…/labels` and `as-at` | By the entry's labels **now**, at every version and as at any time: a label added later hides the past, and a lift shows it |
+| `summary` | `partial: true`, and `not-stated` for a state or an agreement of blood groups that a withheld entry could change. A disagreement that is seen is still said |
+| The audit row | Counts of what was shown, and `withheld` when any were. A change of labels says that they changed and not which |
+| Screens, FHIR, exports, the outbox, analytics | Nothing of these three lists reaches them. `tests/label_census.rs` fails when a label or the masking reaches another file |
+| Time taken | Not measured |
+| A retried write (`Idempotency-Key`) | Answers with what the writer was answered at first, if the entry has been labelled since. Not changed |
 
-## What is needed before it is wired
+## What is needed before real use
 
 | Needed | Who |
 |---|---|
 | A review of the three decisions of 2026-11-25 (OQ-PI2, OQ-PI5, OQ-PI7) | Clinical Safety Officer, data protection officer, clinical advisers |
 | The role lists for each label, which are the author's draft | Clinical Safety Officer, privacy officer |
-| Hazard rows: a fact hidden when it was needed, a partial list read as whole, a label missing, a label lost in an output | with the first code that stores a label |
 
-Then, in order: the grant looked up for a reader with a relationship too (`controllers/common.rs` looks only for one without, which is all that matters while nothing is labelled); a label column on the three entry tables, written only by a role that may; masking in `entries_store.rs` so that no handler can read a list without it; the places above; the census turned from gaps into tests; then results, observations, allergies and the rest, where a hidden allergy is the hardest case.
+Then: a screen that says what is withheld and lets a clinician label (none shows these lists today); results, observations, allergies and the rest, where a hidden allergy is the hardest case; the label for a stay in custody, which needs a record of custody.
 
 ## Not done, not verified
 
-No store, route, screen or FHIR. The test of rule 2 covers the problem list's summary and groups, and not an HTTP answer. Relative history, typing, observations, results and allergies have no rule for what points at a withheld entry. A viewer with several roles has the best of them, as in the policy engine. One gap in an emergency: a reader on the team who may see every known label without break-glass (the patient having permitted substance-use content) is still refused an entry whose code cannot be read, since the engine then has nothing to use the grant for.
+No screen and no FHIR. Someone who adds a substance-use label cannot then see the entry without the patient's consent or break-glass, and cannot lift it. A patient's refusal of consent that names a label withholds in an emergency too (OQ-PI8). Someone reading in an emergency is told the count, as the care team is. Nobody is asked to review a label. Observations, results and allergies have no rule for what points at a withheld entry. A viewer with several roles has the best of them, as in the policy engine. One gap in an emergency: a reader on the team who may see every known label without break-glass (the patient having permitted substance-use content) is still refused an entry whose code cannot be read, since the engine then has nothing to use the grant for.

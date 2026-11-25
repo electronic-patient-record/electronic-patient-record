@@ -244,9 +244,36 @@ async fn real_responses_validate_against_the_served_schemas() {
                 .await;
             assert_eq!(bare.status_code(), StatusCode::UNPROCESSABLE_ENTITY);
             seen.push((one.clone(), "put", bare.status_code(), bare.json()));
+            // Added, added again, lifted by the one who added it, and not a label.
+            for (body, status) in [
+                (
+                    json!({ "act": "add", "label": "R", "basis": "clinical" }),
+                    StatusCode::OK,
+                ),
+                (
+                    json!({ "act": "add", "label": "R", "basis": "patient-asked" }),
+                    StatusCode::CONFLICT,
+                ),
+                (
+                    json!({ "act": "lift", "label": "R", "basis": "clinical", "reason": "r" }),
+                    StatusCode::FORBIDDEN,
+                ),
+                (
+                    json!({ "act": "add", "label": "r", "basis": "clinical" }),
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                ),
+            ] {
+                let r = server
+                    .post(&format!("{url}/{entry}/labels"))
+                    .json(&body)
+                    .await;
+                assert_eq!(r.status_code(), status, "{}", r.text());
+                seen.push((format!("{one}/labels"), "post", status, r.json()));
+            }
             let now = electronic_patient_record::clock::rfc3339_micros(jiff::Timestamp::now());
             for (at, template) in [
                 (url.clone(), route.clone()),
+                (format!("{url}/{entry}/labels"), format!("{one}/labels")),
                 (format!("{url}/as-at?time={now}"), format!("{route}/as-at")),
                 (format!("{url}/{entry}/versions"), format!("{one}/versions")),
             ] {

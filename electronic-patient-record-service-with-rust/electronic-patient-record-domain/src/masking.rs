@@ -1,5 +1,5 @@
 //! Masking (EH-8, the design for SE-4; `spec/access-control/masking.md`): what a list of labelled entries becomes for one
-//! viewer, with no database. **Nothing calls it yet and no record carries a label.**
+//! viewer, with no database. `entries_store.rs` calls it for the problem list, relative history and typing; nothing else does.
 //!
 //! - **A whole entry is withheld, never a part.** A title with its code removed still tells.
 //! - **It counts for the care team, and never says what** (OQ-PI5, decided 2026-11-25). For anyone else, a patient and a
@@ -58,7 +58,8 @@ pub fn shows(decision: &Decision) -> bool {
 }
 
 /// Whether a decision rests on break-the-glass.
-fn emergency(decision: &Decision) -> bool {
+#[must_use]
+pub fn emergency(decision: &Decision) -> bool {
     matches!(decision, Decision::Allow(o) if o.iter().any(|o| matches!(o, Obligation::BreakTheGlass(_))))
 }
 
@@ -94,6 +95,8 @@ pub struct Masked<T> {
     pub completeness: Completeness,
     /// The ids withheld, in lower case. **Never in an answer.**
     pub withheld_ids: BTreeSet<String>,
+    /// Whether any entry is shown only because of break-the-glass, so that the access is flagged.
+    pub by_emergency: bool,
 }
 
 /// Withhold from `entries` what the viewer may not see. `decide` is asked once for each entry whose labels can be read, with
@@ -110,12 +113,19 @@ pub fn mask<T>(
     let mut shown = Vec::new();
     // One for each entry, so that several versions of one entry are counted apart.
     let mut hidden = Vec::new();
+    let mut by_emergency = false;
     for entry in entries {
         let seen = match labels(&entry) {
-            Labels::Known(set) => shows(&decide(set)),
+            Labels::Known(set) => {
+                let decision = decide(set);
+                by_emergency |= emergency(&decision);
+                shows(&decision)
+            }
             Labels::Unreadable => {
                 let decision = decide(BTreeSet::from(Label::ALL));
-                shows(&decision) && emergency(&decision)
+                let shown = shows(&decision) && emergency(&decision);
+                by_emergency |= shown;
+                shown
             }
         };
         if seen {
@@ -132,6 +142,7 @@ pub fn mask<T>(
             withheld => Completeness::Partial { withheld },
         },
         withheld_ids: hidden.into_iter().collect(),
+        by_emergency,
     }
 }
 
@@ -466,9 +477,11 @@ mod tests {
             let m = seen(relationship, 1);
             assert_eq!(m.shown, list, "{relationship:?}");
             assert_eq!(m.completeness, Completeness::Whole);
+            assert!(m.by_emergency);
         }
         // When the grant has ended they are withheld again.
         assert_eq!(seen(Relationship::CareTeam, 0).shown, list[..1]);
+        assert!(!seen(Relationship::CareTeam, 0).by_emergency);
         assert!(seen(Relationship::None, 0).shown.is_empty());
     }
 
