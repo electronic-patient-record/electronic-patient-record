@@ -59,5 +59,27 @@ On 50,000 synthetic patients, one machine, one run each, warm: a family name of 
 1. ~~Compare identifiers by what they mean and not by how they were typed~~: done (AG-12, migration 45), for national numbers only.
 2. ~~Retrieve by a folded family name and by the names swapped, and by a birth date with its day and month swapped~~: done (AG-12, migration 46).
 3. Retrieve by a name that sounds alike, and by the year when only a year is known (AG-12): both widen the list much more, so they need a measured cost and a site's own frequencies.
-4. Require an identifier or an address before any automatic decision (AG-13, OQ-AG8): the matcher's, and a clinical safety decision.
+4. Require an **identifier** before any automatic decision (AG-13, OQ-AG8): the matcher's, and a clinical safety decision. An earlier version of this page said "an identifier or an address"; an address or a telephone number is not enough, as the next section shows.
 5. A site's own evaluation, with adjudicated pairs and denominators, before any of this is believed (AG-8, ID-1).
+
+## A place that many people share (XP-5, 2026-11-25)
+
+A prison, a barracks, a hostel or a care home puts one postcode, and often one telephone number, on everybody's record, and the matcher counts each as evidence about one person. `tests/shared_place.rs` compares invented pairs of **two people** four ways and pins the decision: `n` not a match, `R` to a person, `A` the matcher would link.
+
+| Pair, two people each | Nothing shared | Postcode | Telephone | Both |
+|---|---|---|---|---|
+| One birth date and nothing else (Okafor, Nowak) | n | n | n | **R** |
+| One family name and one birth date, given names unlike | n | **R** | **R** | **R** |
+| Like names, one birth date: Hassan Reed, Hussain Reid | R | **A** | **A** | **A** |
+| Like names, one birth date: Martin Hanson, Marie Harrison | R | **A** | **A** | **A** |
+| One name, birth dates apart by a digit, a year, or day and month | R | R | R | R |
+| One name, birth dates far apart | n | n | n | n |
+| One name and one birth date | A | A | A | A |
+| One letter apart in one name, one birth date | A | A | A | A |
+
+- **A shared postcode alone turns "ask a person" into "link".** In a search of 63 family and 51 given names, chosen by the author, 14 pairs of people were tipped; each shares a birth date. The two above are pinned.
+- **It also makes work.** Two people with one birth date and no name in common reach the list for a person when postcode and telephone are shared. My arithmetic, not a measure: with 1,000 people in one place and birth dates spread evenly over 50 years, about one newcomer in 18 shares a birth date with someone there.
+- **An administrative sex was left out of every pair.** Where both records carry one and they differ, the score falls; that was not measured.
+- Nothing in the service links by itself, so the harm today is a screen that says a pair may be linked, and work.
+
+**What would help:** no automatic decision without an identifier (OQ-AG8). Then a postcode or telephone number known to belong to a place (a list the site keeps) counts for nothing: a rule of the matcher, and a site's list, not built. Not a list the system guesses from how many share it: that would take evidence from a large household too.

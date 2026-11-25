@@ -203,6 +203,8 @@ mod risk_field_census;
 mod route_census;
 #[path = "runtime_boot.rs"]
 mod runtime_boot;
+#[path = "shared_place.rs"]
+mod shared_place;
 #[path = "sql_census.rs"]
 mod sql_census;
 #[path = "start_binary.rs"]

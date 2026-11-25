@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - What a shared postcode or telephone does to a comparison of two people (XP-5)
+
+- **Clinical risk:** none to behaviour; the matcher is as it was. H-001's residual and evidence now say what was found (status and score not).
+- **Found:** a postcode that many people share turns some pairs of two people from Review to AutoLink by itself, and two people with one birth date and no name in common reach Review when they share a postcode and a telephone. Nothing in the service acts on AutoLink.
+- **Corrected:** the recall page recommended "an identifier or an address" before an automatic decision; an address is not enough. OQ-AG8 and AG-13 say so, and XP-16 is added.
+- **Added:** `tests/shared_place.rs`, 14 invented pairs, each compared four ways and pinned, wrong ones included.
+- **Verified:** that test; the search that found the tipped pairs was run once and is not kept. **Not done / not verified:** invented names, no frequencies, no administrative sex on any pair, no site's own data; no rule was changed.
+
 ## 2026-11-25 - Where this project assumes a hospital (XP-5)
 
 - **Clinical risk:** none to behaviour; nothing was changed. One finding is clinical: a referral's `no-show` is shown as "Missed the appointment" with no reason, which is untrue of a person who was not brought or not escorted (XP-15, OQ-XP1).
