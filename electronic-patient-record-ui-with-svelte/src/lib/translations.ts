@@ -300,6 +300,7 @@ export const CONFLICT_KEYS = [
   "fieldUnavailable",
   "fieldBelowMinimum",
   "evidenceThin",
+  "noSharedIdentifier",
   "temporaryIdentity",
   "givenName",
   "familyName",
@@ -323,6 +324,8 @@ export const CONFLICT_ENGLISH: ConflictWords = {
   fieldUnavailable: "{field} not available to confirm the link",
   fieldBelowMinimum: "{field} similarity {similarity} below {minimum}",
   evidenceThin: "only {percent}% of the evidence is present",
+  noSharedIdentifier:
+    "no verified identifier is shared, so a person must decide",
   temporaryIdentity:
     "a temporary identity's names and birth date are not evidence",
   givenName: "given name",
@@ -348,6 +351,8 @@ const conflict_de: ConflictWords = {
   fieldUnavailable: "{field} nicht verfügbar, um die Verknüpfung zu bestätigen",
   fieldBelowMinimum: "{field}: Ähnlichkeit {similarity} unter {minimum}",
   evidenceThin: "nur {percent} % der Hinweise sind vorhanden",
+  noSharedIdentifier:
+    "keine geprüfte Kennung stimmt überein, daher muss eine Person entscheiden",
   temporaryIdentity:
     "Namen und Geburtsdatum einer vorläufigen Identität sind kein Nachweis",
   givenName: "Vorname",
@@ -372,6 +377,8 @@ const conflict_es: ConflictWords = {
   fieldUnavailable: "{field} no disponible para confirmar el vínculo",
   fieldBelowMinimum: "{field}: similitud {similarity} por debajo de {minimum}",
   evidenceThin: "solo el {percent} % de la evidencia está presente",
+  noSharedIdentifier:
+    "no se comparte ningún identificador verificado, por lo que debe decidir una persona",
   temporaryIdentity:
     "los nombres y la fecha de nacimiento de una identidad temporal no son prueba",
   givenName: "nombre de pila",
@@ -396,6 +403,8 @@ const conflict_fr: ConflictWords = {
   fieldUnavailable: "{field} non disponible pour confirmer le lien",
   fieldBelowMinimum: "{field} : similarité {similarity} inférieure à {minimum}",
   evidenceThin: "seulement {percent} % des éléments sont présents",
+  noSharedIdentifier:
+    "aucun identifiant vérifié n'est commun, une personne doit donc décider",
   temporaryIdentity:
     "les noms et la date de naissance d'une identité temporaire ne constituent pas une preuve",
   givenName: "prénom",
@@ -417,6 +426,7 @@ const conflict_zh: ConflictWords = {
   fieldUnavailable: "{field}不可用,无法确认关联",
   fieldBelowMinimum: "{field}相似度 {similarity} 低于 {minimum}",
   evidenceThin: "仅有 {percent}% 的证据",
+  noSharedIdentifier: "没有共同的已核实标识符，因此必须由人来决定",
   temporaryIdentity: "临时身份的姓名和出生日期不作为证据",
   givenName: "名",
   familyName: "姓",
@@ -438,6 +448,8 @@ const conflict_hi: ConflictWords = {
   fieldUnavailable: "लिंक की पुष्टि के लिए {field} उपलब्ध नहीं है",
   fieldBelowMinimum: "{field} समानता {similarity}, {minimum} से कम",
   evidenceThin: "केवल {percent}% प्रमाण मौजूद हैं",
+  noSharedIdentifier:
+    "कोई सत्यापित पहचानकर्ता साझा नहीं है, इसलिए किसी व्यक्ति को निर्णय लेना होगा",
   temporaryIdentity: "अस्थायी पहचान के नाम और जन्म तिथि प्रमाण नहीं हैं",
   givenName: "पहला नाम",
   familyName: "अंतिम नाम",
@@ -459,6 +471,7 @@ const conflict_ar: ConflictWords = {
   fieldUnavailable: "{field} غير متوفر لتأكيد الربط",
   fieldBelowMinimum: "{field}: التشابه {similarity} أقل من {minimum}",
   evidenceThin: "تتوفر {percent}% فقط من الأدلة",
+  noSharedIdentifier: "لا يوجد معرّف مشترك تم التحقق منه، لذا يجب أن يقرر شخص",
   temporaryIdentity: "أسماء الهوية المؤقتة وتاريخ ميلادها ليست دليلًا",
   givenName: "الاسم الأول",
   familyName: "اسم العائلة",
@@ -481,6 +494,8 @@ const conflict_cy: ConflictWords = {
   fieldUnavailable: "nid yw {field} ar gael i gadarnhau'r cyswllt",
   fieldBelowMinimum: "{field}: tebygrwydd {similarity} o dan {minimum}",
   evidenceThin: "dim ond {percent}% o'r dystiolaeth sy'n bresennol",
+  noSharedIdentifier:
+    "nid oes dynodydd wedi'i ddilysu yn gyffredin, felly rhaid i berson benderfynu",
   temporaryIdentity:
     "nid yw enwau a dyddiad geni hunaniaeth dros dro yn dystiolaeth",
   givenName: "enw cyntaf",

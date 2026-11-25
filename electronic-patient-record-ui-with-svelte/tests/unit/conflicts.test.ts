@@ -9,7 +9,7 @@ import {
 } from "../../src/lib/conflicts";
 import { LOCALES } from "../../src/lib/locales";
 
-// The twelve codes, with the exact English the matcher (0.5.0) writes for each beside them.
+// Every code, with the exact English the matcher writes for each beside it.
 const CODES: [ConflictCode, string][] = [
   [
     { code: "different_national_numbers" },
@@ -56,6 +56,11 @@ const CODES: [ConflictCode, string][] = [
     { code: "evidence_thin", percent_present: 40 },
     "only 40% of the evidence is present",
   ],
+  // Matcher 0.9.0 (AG-13).
+  [
+    { code: "no_shared_identifier" },
+    "no verified identifier is shared, so a person must decide",
+  ],
 ];
 
 describe("conflict codes in every locale (CQ-38; translations machine-written, unreviewed)", () => {
@@ -64,7 +69,7 @@ describe("conflict codes in every locale (CQ-38; translations machine-written, u
       expect(conflictText(code, "en-001")).toBe(english);
   });
   for (const locale of LOCALES.filter((l) => l !== "en-001")) {
-    it(`${locale}: each of the twelve codes has a sentence of its own, with its numbers`, () => {
+    it(`${locale}: each code has a sentence of its own, with its numbers`, () => {
       const seen = new Set<string>();
       for (const [code, english] of CODES) {
         const t = conflictText(code, locale);

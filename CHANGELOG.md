@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - The screens no longer say "Automatic link" (AG-13)
+
+- **Clinical risk:** H-001 (a control added; status and score not). The duplicate and comparison screens showed "Automatic link" for a decision on which nothing acts, and which for a name and a birth date may not be one. They say "Very alike. A person must decide".
+- **Added:** the words for the matcher's new conflict `no_shared_identifier` in every locale, ready for 0.9.0. Machine-written, unreviewed.
+- **Verified:** every UI gate. **Not done / not verified:** the API's word is still `auto_link`; the mobile apps were not looked at.
+
 ## 2026-11-25 - A missed appointment says why (XP-15, OQ-XP1)
 
 - **Clinical risk:** H-071 is added `open`. The screen no longer says "Missed the appointment" but "Appointment not attended", and why; a person who was not brought or escorted is no longer recorded as having missed it.

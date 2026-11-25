@@ -29,6 +29,7 @@ export type ConflictCode =
     }
   | { code: "evidence_thin"; percent_present: number }
   | { code: "temporary_identity" }
+  | { code: "no_shared_identifier" }
   | { code: string; [more: string]: unknown };
 
 const FIELD: Record<string, keyof ConflictWords> = {
@@ -87,6 +88,8 @@ export function conflictText(c: ConflictCode, locale: Locale): string | null {
     }
     case "temporary_identity":
       return w.temporaryIdentity;
+    case "no_shared_identifier":
+      return w.noSharedIdentifier;
     case "evidence_thin": {
       const p = num(c.percent_present, 0);
       return p ? w.evidenceThin.replace("{percent}", p) : null;

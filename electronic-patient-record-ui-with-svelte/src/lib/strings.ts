@@ -1160,7 +1160,8 @@ export const STRINGS = {
   signOut: "Sign out",
   signedInAs: "Signed in as",
   decisions: {
-    auto_link: "Automatic link",
+    // Nothing links two records by itself (AG-13): the word says what a person still has to do.
+    auto_link: "Very alike. A person must decide",
     review: "Needs human review",
     non_match: "Not the same person",
   },

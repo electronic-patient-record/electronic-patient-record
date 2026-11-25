@@ -256,7 +256,10 @@ test("a possible duplicate is shown side by side and needs a reason to override"
       name: "This patient may already be registered",
     }),
   ).toBeVisible();
-  await expect(page.getByText("Automatic link")).toBeVisible();
+  await expect(
+    page.getByText("Very alike. A person must decide"),
+  ).toBeVisible();
+  await expect(page.getByText(/automatic/i)).toHaveCount(0);
   await expect(page.getByText("same national health number")).toBeVisible();
   const table = page.getByRole("table");
   await expect(

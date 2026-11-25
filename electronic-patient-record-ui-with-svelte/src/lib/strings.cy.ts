@@ -1217,7 +1217,7 @@ export const CY: Strings = {
   signOut: "Allgofnodi",
   signedInAs: "Wedi mewngofnodi fel",
   decisions: {
-    auto_link: "Cysylltiad awtomatig",
+    auto_link: "Tebyg iawn. Rhaid i berson benderfynu",
     review: "Angen adolygiad gan berson",
     non_match: "Nid yr un person",
   },
