@@ -115,7 +115,7 @@ No hazard row changes with this page: nothing is built. Candidates for the Clini
 
 ## Order of work, proposed
 
-Each is small unless marked. None is started. SE-12 is the parent and keeps its acceptance.
+Each is small unless marked. None is started, and **PQ-3 is not to be started yet** (the maintainer, 2026-11-25, OQ-PQ2). SE-12 is the parent and keeps its acceptance.
 
 | Step | What | Acceptance | By |
 |---|---|---|---|
@@ -143,7 +143,7 @@ The product cannot do these: certificates and their authority; the proxy; disks,
 Summarised as OQ-PQ1 to OQ-PQ5 in [open questions](../16-open-questions.md).
 
 1. Which country's dates does the first deployment work to, and does its contract say so? (OQ-PQ1)
-2. May `aws-lc-rs` replace `ring`: the licence, the build, and the targets of a small site? Recommendation: yes, after PQ-2 shows the need. (OQ-PQ2)
+2. May `aws-lc-rs` replace `ring`: the licence, the build, and the targets of a small site? **Answered 2026-11-25 by the maintainer: not yet.** No step is started without their word. (OQ-PQ2)
 3. Is the hybrid required or only preferred, and from when may a connection without it be refused? Recommendation: preferred, and refused only where a deployment says so. (OQ-PQ3)
 4. Does PASETO stay, with no post-quantum version, or do tokens move to a standard that has one? Recommendation: wait; nothing is lost by waiting for signatures. (OQ-PQ4)
 5. Who reviews this: is there a cryptographer, and who is the security officer? (OQ-PQ5)

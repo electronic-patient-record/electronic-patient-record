@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - `ring` stays for now (OQ-PQ2)
+
+- **Clinical risk:** none. The maintainer answered "not yet" to replacing `ring` with `aws-lc-rs`; recorded, and no post-quantum step is started.
+- **Not done / not verified:** nothing is built or measured, as before.
+
 ## 2026-11-25 - Mutation run on who sees what: fourteen faults no test noticed, all caught now (QA-2)
 
 - **Clinical risk:** none; tests only. The controls of H-005, H-006, H-007 and H-024 rest on these four files.
