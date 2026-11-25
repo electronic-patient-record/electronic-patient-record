@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - A draft spec for military health (CF-3)
+
+- **Clinical risk:** none; nothing is built. The draft names five hazards that a build must log first.
+- **Added:** `spec/military-health/index.md`: what service changes, what is shared with custody and what is not, and eight questions for the customer (OQ-MS1 to OQ-MS8).
+- **Not done / not verified:** four sources, two countries: one read in part, two through an agent's excerpts and one through search summaries only, because the military sites could not be reached; an amendment of 19 November 2026 to the United States rule was seen but not read. The customer's answers about custody are not taken as answers here. No one was asked.
+
 ## 2026-11-25 - A change lists the hazards whose evidence it touches (PR-2, last slice)
 
 - **Clinical risk:** none to behaviour. A hint for the Clinical Safety Officer; it decides nothing and fails nothing by what it lists.

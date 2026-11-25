@@ -165,6 +165,14 @@
 | OQ-CH4 | **Customer answered 2026-11-24: one patient record, and no separate custody record.** The custody health team writes into the person's own patient record. | customer |
 | OQ-CH5 | **Customer answered in part 2026-11-24: it varies by jurisdiction, country, U.S. state, purpose and urgency (for example an imminent threat to wellbeing).** Still open: the release rules each pack holds, and who may release. | customer, legal |
 | OQ-CH6 | **Customer answered 2026-11-24: it depends on the country.** A national summary is an export in the country pack, named there; with no pack nothing is sent. | customer |
+| OQ-MS1 | Which country, and is the customer a defence medical service, a civilian provider that treats serving people, or a veterans' service? See [military health](military-health/index.md). | customer |
+| OQ-MS2 | One record through service and after it, or a defence record and a civilian record with a hand-over? Who is the controller? | customer |
+| OQ-MS3 | What may a commander be told, by which rule, and who decides? | customer, Clinical Safety Officer |
+| OQ-MS4 | Must it work deployed and offline, and for how long? | customer |
+| OQ-MS5 | Will any information be classified? Recommended: the system never holds it, only a marker that something is withheld. | customer |
+| OQ-MS6 | Who sees that a person is a veteran, and is it the person's choice? | customer |
+| OQ-MS7 | Is there an exposure record to read from, or must this hold one? | customer |
+| OQ-MS8 | Are reservists, dependants, cadets, contractors and allied personnel in scope? | customer |
 | OQ-EH1 | What does a patient or proxy see of the problem list and of relative history, and when? Refused until decided. See [problem list](problem-list/index.md). | clinical lead, patients |
 | OQ-EH2 | Is there a "no known problems" statement, as for allergies, or is it unsafe? | clinical lead, Clinical Safety Officer |
 | OQ-EH3 | Does a confirmed suspicion (RS-3) propose a problem for a clinician to accept? | clinical lead |
