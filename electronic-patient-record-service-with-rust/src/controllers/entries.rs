@@ -17,7 +17,8 @@
 //! statuses, counts and the time asked for, never a title, a condition, a code, a relative or a reason.
 
 use super::common::{
-    Access, AsAtQuery, audit_resource, authorize, begin, commit, purpose_of, with_records,
+    Access, AsAtQuery, LEFT_OUT, RECONSTRUCTION, audit_resource, authorize, begin, commit,
+    purpose_of, with_records,
 };
 use crate::api_error::ApiError;
 use crate::audit::Action;
@@ -71,6 +72,10 @@ pub struct EntryList<R> {
 /// A patient's entries as they stood at a past time.
 #[derive(Debug, Serialize)]
 pub struct EntriesAsAt<R> {
+    /// What this is: rebuilt from stored versions, never what was shown (AG-7).
+    pub basis: &'static str,
+    /// What it leaves out.
+    pub left_out: [&'static str; 5],
     /// The time asked for (UTC).
     pub as_at: String,
     /// When this was read (UTC). It is not the record as it stands now.
@@ -254,6 +259,8 @@ pub(super) async fn as_at<R: Entry>(
             ))
             .await?;
         Ok(Json(EntriesAsAt {
+            basis: RECONSTRUCTION,
+            left_out: LEFT_OUT,
             as_at,
             read_at: crate::clock::rfc3339_micros(now),
             summary: R::summary(&records),

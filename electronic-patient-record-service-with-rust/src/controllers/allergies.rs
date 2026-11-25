@@ -14,7 +14,8 @@
 //! substance or the reaction.
 
 use super::common::{
-    Access, AsAtQuery, audit_resource, authorize, begin, commit, purpose_of, with_records,
+    Access, AsAtQuery, LEFT_OUT, RECONSTRUCTION, audit_resource, authorize, begin, commit,
+    purpose_of, with_records,
 };
 use crate::allergies::{self as store, AllergyRecord, Status};
 use crate::api_error::ApiError;
@@ -217,6 +218,10 @@ pub(super) async fn list(
 /// A patient's allergies, statement and banner summary as they stood at a past time.
 #[derive(Debug, Serialize)]
 pub struct AllergiesAsAt {
+    /// What this is: rebuilt from stored versions, never what was shown (AG-7).
+    pub basis: &'static str,
+    /// What it leaves out.
+    pub left_out: [&'static str; 5],
     /// The time asked for (UTC).
     pub as_at: String,
     /// When this was read (UTC). It is not the record as it stands now.
@@ -286,6 +291,8 @@ pub(super) async fn as_at(
         )
         .await?;
         Ok(Json(AllergiesAsAt {
+            basis: RECONSTRUCTION,
+            left_out: LEFT_OUT,
             as_at,
             read_at: crate::clock::rfc3339_micros(now),
             allergies,

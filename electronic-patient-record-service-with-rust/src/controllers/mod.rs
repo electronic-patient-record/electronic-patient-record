@@ -30,6 +30,8 @@ pub mod suspicions;
 pub mod tasks;
 pub mod watch_list;
 
+pub(crate) use common::{LEFT_OUT, RECONSTRUCTION};
+
 use axa::routes::AppRoutes;
 
 /// Every group of routes the service serves, the health routes first. `App::routes` and the route census

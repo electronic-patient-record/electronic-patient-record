@@ -230,6 +230,24 @@
             "description": "UTC.",
             "type": "string"
           },
+          "basis": {
+            "const": "reconstruction-of-stored-versions",
+            "description": "Rebuilt from the versions that were stored. Not what anyone was shown: never use it to say what a clinician saw."
+          },
+          "left_out": {
+            "description": "What could have changed what was seen, and is not here.",
+            "items": {
+              "enum": [
+                "amendment-notices",
+                "access-rules-at-the-time",
+                "patient-identity-at-the-time",
+                "what-a-screen-showed",
+                "whether-a-write-in-progress-had-finished"
+              ]
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
           "read_at": {
             "description": "UTC.",
             "type": "string"
@@ -254,6 +272,8 @@
           }
         },
         "required": [
+          "basis",
+          "left_out",
           "as_at",
           "read_at",
           "allergies",
@@ -3376,9 +3396,27 @@
             "description": "UTC.",
             "type": "string"
           },
+          "basis": {
+            "const": "reconstruction-of-stored-versions",
+            "description": "Rebuilt from the versions that were stored. Not what anyone was shown: never use it to say what a clinician saw."
+          },
           "entries": {
             "items": {
               "$ref": "#/components/schemas/StoredProblemAsAt"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
+          "left_out": {
+            "description": "What could have changed what was seen, and is not here.",
+            "items": {
+              "enum": [
+                "amendment-notices",
+                "access-rules-at-the-time",
+                "patient-identity-at-the-time",
+                "what-a-screen-showed",
+                "whether-a-write-in-progress-had-finished"
+              ]
             },
             "maxItems": 1000,
             "type": "array"
@@ -3402,6 +3440,8 @@
           }
         },
         "required": [
+          "basis",
+          "left_out",
           "as_at",
           "read_at",
           "entries",
@@ -4146,9 +4186,27 @@
             "description": "UTC.",
             "type": "string"
           },
+          "basis": {
+            "const": "reconstruction-of-stored-versions",
+            "description": "Rebuilt from the versions that were stored. Not what anyone was shown: never use it to say what a clinician saw."
+          },
           "entries": {
             "items": {
               "$ref": "#/components/schemas/StoredRelativeHistoryAsAt"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
+          "left_out": {
+            "description": "What could have changed what was seen, and is not here.",
+            "items": {
+              "enum": [
+                "amendment-notices",
+                "access-rules-at-the-time",
+                "patient-identity-at-the-time",
+                "what-a-screen-showed",
+                "whether-a-write-in-progress-had-finished"
+              ]
             },
             "maxItems": 1000,
             "type": "array"
@@ -4172,6 +4230,8 @@
           }
         },
         "required": [
+          "basis",
+          "left_out",
           "as_at",
           "read_at",
           "entries",
@@ -6442,9 +6502,27 @@
             "description": "UTC.",
             "type": "string"
           },
+          "basis": {
+            "const": "reconstruction-of-stored-versions",
+            "description": "Rebuilt from the versions that were stored. Not what anyone was shown: never use it to say what a clinician saw."
+          },
           "entries": {
             "items": {
               "$ref": "#/components/schemas/StoredTypingAsAt"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
+          "left_out": {
+            "description": "What could have changed what was seen, and is not here.",
+            "items": {
+              "enum": [
+                "amendment-notices",
+                "access-rules-at-the-time",
+                "patient-identity-at-the-time",
+                "what-a-screen-showed",
+                "whether-a-write-in-progress-had-finished"
+              ]
             },
             "maxItems": 1000,
             "type": "array"
@@ -6468,6 +6546,8 @@
           }
         },
         "required": [
+          "basis",
+          "left_out",
           "as_at",
           "read_at",
           "entries",

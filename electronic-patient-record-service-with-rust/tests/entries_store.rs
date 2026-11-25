@@ -436,3 +436,69 @@ async fn the_allergies_as_at_a_time_keep_their_statement_and_banner() {
     assert!(then[0].changed_since);
     assert_eq!(then[0].stored.allergy.status, allergies::Status::Active);
 }
+
+/// AG-7. A limit, held so that nobody mistakes it for a promise: a version's time is when it was **written**, and nobody
+/// else could see it until its transaction committed. An as-at answer for a moment in between includes a version that no
+/// reader had. The answer says so (`left_out`), and an allergy's window is wider, from when its transaction began.
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn a_write_in_progress_at_the_time_is_included_though_nobody_could_see_it() {
+    let db = db().await;
+    let p = patient(&db).await;
+    let kept = add(&db, &p, &problem("Asthma", Status::Active)).await;
+
+    let mut tx = db.begin().await.unwrap();
+    // The transaction has begun and nothing is written: the allergy will carry this time and the problem will not.
+    sqlx::query("SELECT now()").execute(&mut *tx).await.unwrap();
+    tokio::time::sleep(std::time::Duration::from_millis(40)).await;
+    let before_any_write = jiff::Timestamp::now();
+    tokio::time::sleep(std::time::Duration::from_millis(40)).await;
+    let correction = problem("Asthma, corrected", Status::Active);
+    store::update(&mut *tx, &p, &kept.id, change(1, &correction))
+        .await
+        .unwrap();
+    let record = AllergyRecord {
+        substance: "Latex".into(),
+        coding: None,
+        category: None,
+        criticality: None,
+        reaction: None,
+        onset: None,
+        status: allergies::Status::Active,
+    };
+    allergies::create(&mut *tx, &p, "nurse-1", None, &record)
+        .await
+        .unwrap();
+    tokio::time::sleep(std::time::Duration::from_millis(40)).await;
+    let written_not_committed = jiff::Timestamp::now();
+    // What a reader saw at that moment: the old problem, and no allergy.
+    let seen = store::list::<ProblemRecord>(&db, &p).await.unwrap();
+    assert_eq!(seen[0].record.title, "Asthma");
+    assert!(allergies::list(&db, &p).await.unwrap().is_empty());
+    tx.commit().await.unwrap();
+
+    let title = async |t| {
+        store::list_at::<ProblemRecord>(&db, &p, t).await.unwrap()[0]
+            .stored
+            .record
+            .title
+            .clone()
+    };
+    let allergy_count = async |t| allergies::list_at(&db, &p, t).await.unwrap().len();
+    assert_eq!(
+        title(before_any_write).await,
+        "Asthma",
+        "before it was written"
+    );
+    assert_eq!(
+        allergy_count(before_any_write).await,
+        1,
+        "the allergy's time is when its transaction began"
+    );
+    assert_eq!(
+        title(written_not_committed).await,
+        "Asthma, corrected",
+        "stored, and seen by nobody"
+    );
+    assert_eq!(allergy_count(written_not_committed).await, 1);
+}

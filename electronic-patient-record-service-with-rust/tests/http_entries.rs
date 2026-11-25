@@ -333,6 +333,51 @@ async fn who_may_record_read_and_retract_a_problem_or_a_relative_history_entry()
             assert!(!d.contains("764146008"), "a code in the audit trail: {d}");
         }
 
+        // AG-7: an answer as at a time says what it is and what it leaves out. A pending amendment is one such thing: the
+        // list of now tells of it, and the reconstruction does not, and says that it does not.
+        let (status, text) = call(
+            "POST",
+            &clinician,
+            format!("/api/patients/{pid}/allergies"),
+            json!({ "allergy": { "substance": "Latex", "status": "active" } }),
+        )
+        .await;
+        assert_eq!(status, StatusCode::CREATED, "{text}");
+        let made: Value = serde_json::from_str(&text).unwrap();
+        let (h, v) = bearer(&patient);
+        let asked = server
+            .post(&format!("/api/patients/{pid}/amendments"))
+            .add_header(h, v)
+            .add_header(
+                HeaderName::from_static("x-purpose-of-use"),
+                HeaderValue::from_static("patient-access"),
+            )
+            .json(&json!({ "kind": "AllergyIntolerance", "target_id": made["id"], "version": 1,
+                           "text": "I am not allergic to this" }))
+            .await;
+        assert_eq!(asked.status_code(), StatusCode::CREATED, "{}", asked.text());
+        let (_, now_text) = call("GET", &clinician, format!("/api/patients/{pid}/allergies"), Value::Null).await;
+        let current: Value = serde_json::from_str(&now_text).unwrap();
+        let id = made["id"].as_str().unwrap();
+        assert_eq!(current["amendment_notices"][id][0]["notice"], "pending");
+        for path in ["allergies", "problems", "relative-history"] {
+            let (status, text) = call(
+                "GET",
+                &clinician,
+                format!("/api/patients/{pid}/{path}/as-at?time={}", now()),
+                Value::Null,
+            )
+            .await;
+            assert_eq!(status, StatusCode::OK, "{text}");
+            let then: Value = serde_json::from_str(&text).unwrap();
+            assert_eq!(then["basis"], "reconstruction-of-stored-versions", "{path}");
+            let left_out = then["left_out"].as_array().unwrap();
+            for what in ["amendment-notices", "what-a-screen-showed", "whether-a-write-in-progress-had-finished"] {
+                assert!(left_out.contains(&json!(what)), "{path}: {what}");
+            }
+            assert!(!text.contains("pending"), "{path}");
+        }
+
         // The patient still reads their own allergies, as at a past time too; a proxy by its scope.
         for token in [&patient, &proxy] {
             assert_eq!(

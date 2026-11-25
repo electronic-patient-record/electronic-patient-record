@@ -174,6 +174,7 @@
 | OQ-AG2 | Is a crossed critical limit said when the sender gave no reference range, as built, and what should an uncrossed one say? (AG-2) | clinical lead, Clinical Safety Officer |
 | OQ-AG3 | Is an allergy with no code safer for a receiver than one with an unverified code, as built, or should it go out marked unverified; and how does a receiver learn that an allergy it holds was entered in error? (AG-3) | pharmacist, receiving partner, Clinical Safety Officer |
 | OQ-AG6 | After a mistaken merge is reversed, does each person see in their own log that their record was read through the other chart, without seeing the other person? (AG-6) | privacy lead |
+| OQ-AG7 | Is the exact set of versions served to each reader kept, for incident review, and where, given that audit writes already wait on one lock? (AG-7, EH-10) | maintainer, privacy lead, operations |
 | OQ-DM1 | For donor matching, what is needed: the patient's own reports, a referral to a registry, or a workflow? See [donor matching](donor-matching/index.md). | customer |
 | OQ-DM2 | What does a patient see of their own typing, and what are they told beforehand? | transplant team, patients, privacy lead |
 | OQ-DM3 | Which laboratory system and registry, in what format? | customer, laboratory |

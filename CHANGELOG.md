@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - An answer as at a time says it is a reconstruction (AG-7, in part)
+
+- **Clinical risk:** H-068. Nothing in an as-at answer said that it is rebuilt from stored versions and not what anyone was shown.
+- **Added:** `basis` and `left_out` in the three kinds of answer, and in the OpenAPI document; two tests that hold the limits the audit named (a write in progress; a pending amendment).
+- **Verified:** clippy, the normal pass and the database pass (235) on a fresh Postgres 18, every docs gate. **Not done / not verified:** what was served to each reader is not kept (OQ-AG7); no screen; no clinician or investigator asked.
+
 ## 2026-11-25 - Governance documents catch up with the record (AG-9, in part)
 
 - **Clinical risk:** the hazard log names more tests; no status, score or wording of a hazard changed.

@@ -326,6 +326,19 @@ pub(super) fn time_now() -> i64 {
         .map_or(0, |d| i64::try_from(d.as_secs()).unwrap_or(i64::MAX))
 }
 
+/// What an answer as at a time is (AG-7), in every such answer: rebuilt from the versions that were stored, and not what
+/// anyone was shown.
+pub(crate) const RECONSTRUCTION: &str = "reconstruction-of-stored-versions";
+
+/// What a reconstruction leaves out (AG-7), each a thing that could have changed what a clinician saw at the time.
+pub(crate) const LEFT_OUT: [&str; 5] = [
+    "amendment-notices",
+    "access-rules-at-the-time",
+    "patient-identity-at-the-time",
+    "what-a-screen-showed",
+    "whether-a-write-in-progress-had-finished",
+];
+
 /// The query of a read as at a time (EH-2).
 #[derive(Debug, serde::Deserialize)]
 pub(super) struct AsAtQuery {

@@ -306,9 +306,11 @@ fn allergy_schemas() -> Value {
             }
         },
         "AllergiesAsAt": {
-            "type": "object", "required": ["as_at", "read_at", "allergies", "statement", "summary"],
+            "type": "object", "required": ["basis", "left_out", "as_at", "read_at", "allergies", "statement", "summary"],
             "description": "The allergies, the no-known-allergies statement and the banner summary as they stood at `as_at`. It is not the record as it stands now.",
             "properties": {
+                "basis": {"const": crate::controllers::RECONSTRUCTION, "description": "Rebuilt from the versions that were stored. Not what anyone was shown: never use it to say what a clinician saw."},
+                "left_out": {"type": "array", "items": {"enum": crate::controllers::LEFT_OUT}, "description": "What could have changed what was seen, and is not here."},
                 "as_at": {"type": "string", "description": "UTC."},
                 "read_at": {"type": "string", "description": "UTC."},
                 "allergies": {"type": "array", "items": {"$ref": "#/components/schemas/AllergyAsAt"}},
@@ -406,9 +408,11 @@ fn entry_schemas(record: &str, stored: &str, list: &str) -> Value {
         &mut out,
         &format!("{list}AsAt"),
         json!({
-            "type": "object", "required": ["as_at", "read_at", "entries", "summary"],
+            "type": "object", "required": ["basis", "left_out", "as_at", "read_at", "entries", "summary"],
             "description": "The list as it stood at `as_at`. It is not the record as it stands now.",
             "properties": {
+                "basis": {"const": crate::controllers::RECONSTRUCTION, "description": "Rebuilt from the versions that were stored. Not what anyone was shown: never use it to say what a clinician saw."},
+                "left_out": {"type": "array", "items": {"enum": crate::controllers::LEFT_OUT}, "description": "What could have changed what was seen, and is not here."},
                 "as_at": {"type": "string", "description": "UTC."},
                 "read_at": {"type": "string", "description": "UTC."},
                 "entries": {"type": "array", "items": reference(&at)},
@@ -3564,6 +3568,8 @@ mod tests {
             assert_eq!(
                 keys(
                     &serde_json::to_value(EntriesAsAt {
+                        basis: crate::controllers::RECONSTRUCTION,
+                        left_out: crate::controllers::LEFT_OUT,
                         as_at: "t".into(),
                         read_at: "t".into(),
                         entries: vec![at],
@@ -3789,6 +3795,8 @@ mod tests {
             properties("AllergyAsAt")
         );
         let list = crate::controllers::allergies::AllergiesAsAt {
+            basis: crate::controllers::RECONSTRUCTION,
+            left_out: crate::controllers::LEFT_OUT,
             as_at: "t".into(),
             read_at: "t".into(),
             allergies: vec![at],
