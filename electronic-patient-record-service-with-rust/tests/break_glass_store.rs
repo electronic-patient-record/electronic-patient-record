@@ -124,6 +124,69 @@ async fn an_expired_grant_is_not_active_and_a_new_one_can_be_opened() {
     assert!(created);
 }
 
+/// PR-5: the edges of the four hours and of the review limit, by moving the clock and not by writing rows in the past.
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn a_grant_ends_at_four_hours_to_the_microsecond_and_is_overdue_just_after_the_limit() {
+    use electronic_patient_record::clock::{Clock, FixedClock};
+    use jiff::SignedDuration;
+    let db = db().await;
+    let (p, who) = (patient(&db).await, unique("dr"));
+    // A time of its own: the rows of other tests are near the real one.
+    let clock = FixedClock::new("2031-05-06T07:08:09.123456Z".parse().unwrap());
+    let moment = SignedDuration::from_micros(1);
+    let start = clock.now();
+    let (g, created) = glass::open_at(&db, &p, &who, "collapsed", Some(clock.now()))
+        .await
+        .unwrap();
+    assert!(created);
+    assert_eq!(g.granted_at, "2031-05-06T07:08:09.123456Z");
+    assert_eq!(g.expires_at, "2031-05-06T11:08:09.123456Z");
+
+    clock.advance(SignedDuration::from_hours(i64::from(GRANT_HOURS)) - moment);
+    let held = glass::active_at(&db, &p, &who, Some(clock.now()))
+        .await
+        .unwrap()
+        .expect("still held a microsecond before the end");
+    assert_eq!(held.id, g.id);
+    // Asking again at the last moment gives the same end.
+    let (again, created) = glass::open_at(&db, &p, &who, "again", Some(clock.now()))
+        .await
+        .unwrap();
+    assert!(!created);
+    assert_eq!(again.expires_at, g.expires_at);
+
+    clock.advance(moment);
+    assert!(
+        glass::active_at(&db, &p, &who, Some(clock.now()))
+            .await
+            .unwrap()
+            .is_none(),
+        "over at four hours exactly"
+    );
+    let (next, created) = glass::open_at(&db, &p, &who, "another", Some(clock.now()))
+        .await
+        .unwrap();
+    assert!(created);
+    assert_ne!(next.id, g.id);
+
+    // The review: due at the limit, overdue only after it, and no longer once reviewed.
+    let due = start + SignedDuration::from_hours(glass::DEFAULT_REVIEW_DUE_HOURS);
+    let overdue_at = async |t| glass::get_at(&db, &g.id, Some(t)).await.unwrap().overdue;
+    assert!(!overdue_at(due).await, "at the limit");
+    assert!(overdue_at(due + moment).await, "a microsecond after it");
+    let counted = async |t| glass::count_overdue_at(&db, Some(t)).await.unwrap();
+    assert_eq!(counted(due + moment).await, counted(due).await + 1);
+    let listed = glass::unreviewed_at(&db, Some(due + moment)).await.unwrap();
+    if let Some(found) = listed.iter().find(|x| x.id == g.id) {
+        assert!(found.overdue);
+    }
+    glass::review(&db, &g.id, "auditor", Outcome::Appropriate, "emergency")
+        .await
+        .unwrap();
+    assert!(!overdue_at(due + moment).await);
+}
+
 #[tokio::test]
 #[ignore = "needs Postgres: set DB_URL"]
 async fn a_grant_needs_a_reason_and_a_patient() {

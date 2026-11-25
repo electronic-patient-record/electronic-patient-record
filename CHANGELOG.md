@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - The edges of emergency access are tested by moving the clock (PR-5)
+
+- **Clinical risk:** none to behaviour: the service still asks the database for the time, so that replicas whose clocks differ agree on when a grant ends. H-024 names the new test; nothing else of it changed.
+- **Added:** `_at` forms of the break-glass reads and writes, for a test to give the time. The four hours end at four hours exactly, asking at the last microsecond does not extend them, and a grant is overdue a microsecond after the limit and not at it.
+- **Verified:** the new test; three wrong versions of the edges were each caught; the normal and database passes on a fresh Postgres 18; every docs gate. **Not done / not verified:** by reading and not by a test, two requests that open a grant at the same instant still make two, and the later end counts, as before.
+
 ## 2026-11-25 - Nothing scrolls sideways on a phone, and links are big enough to press (XP-2, in part)
 
 - **Clinical risk:** how results, comparisons, possible duplicates and the vital signs trend look on a window under 640 px wide: cards, with the same values in the same order, each saying what it is. On a wider window nothing changed but taller link targets. No hazard changes.

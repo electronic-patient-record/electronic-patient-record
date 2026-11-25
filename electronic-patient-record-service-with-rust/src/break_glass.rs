@@ -125,9 +125,19 @@ impl Outcome {
 
 const TS: &str = "'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"'";
 
+/// The time as SQL: the database's own when `at` is `None`, which is what the service always asks for, so that several
+/// replicas whose clocks differ agree on when a grant ends. A test gives the time instead of writing a row in the past
+/// (PR-5).
+fn time(at: Option<jiff::Timestamp>) -> String {
+    at.map_or_else(
+        || "now()".to_string(),
+        |t| format!("'{}'::timestamptz", crate::clock::rfc3339_micros(t)),
+    )
+}
+
 /// The `SELECT` for a grant joined to its review, if any, with the expiry both as text and as a Unix second for the
 /// policy engine.
-fn select() -> Result<String, StoreError> {
+fn select(at: Option<jiff::Timestamp>) -> Result<String, StoreError> {
     let hours = review_due_hours().map_err(StoreError::Db)?;
     Ok(format!(
         "SELECT g.grant_id::text AS id, g.patient_id::text AS patient_id, g.subject, g.reason,
@@ -137,9 +147,9 @@ fn select() -> Result<String, StoreError> {
                 r.reviewed_by, r.outcome, r.note,
                 to_char(r.reviewed_at AT TIME ZONE 'UTC', {TS}) AS reviewed_at,
                 (r.grant_id IS NULL
-                 AND g.granted_at < now() - make_interval(hours => {}::int)) AS overdue
+                 AND g.granted_at < {} - make_interval(hours => {hours}::int)) AS overdue
          FROM break_glass_grants g LEFT JOIN break_glass_reviews r USING (grant_id)",
-        hours
+        time(at)
     ))
 }
 
@@ -183,15 +193,30 @@ pub async fn active(
     patient_id: &str,
     subject: &str,
 ) -> Result<Option<Grant>, StoreError> {
+    active_at(db, patient_id, subject, None).await
+}
+
+/// [`active`] at a time; `None` is now, by the database.
+///
+/// # Errors
+///
+/// [`StoreError::Db`].
+pub async fn active_at(
+    db: impl Into<Db<'_>>,
+    patient_id: &str,
+    subject: &str,
+    at: Option<jiff::Timestamp>,
+) -> Result<Option<Grant>, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
     let Some(patient_id) = ids::uuid(patient_id) else {
         return Ok(None);
     };
     let row = sqlx::query(AssertSqlSafe(format!(
-        "{} WHERE g.patient_id = $1::uuid AND g.subject = $2 AND g.expires_at > now()
+        "{} WHERE g.patient_id = $1::uuid AND g.subject = $2 AND g.expires_at > {}
                  ORDER BY g.expires_at DESC LIMIT 1",
-        select()?
+        select(at)?,
+        time(at)
     )))
     .bind(patient_id)
     .bind(subject)
@@ -214,6 +239,21 @@ pub async fn open(
     subject: &str,
     reason: &str,
 ) -> Result<(Grant, bool), StoreError> {
+    open_at(db, patient_id, subject, reason, None).await
+}
+
+/// [`open`] at a time; `None` is now, by the database.
+///
+/// # Errors
+///
+/// As [`open`].
+pub async fn open_at(
+    db: impl Into<Db<'_>>,
+    patient_id: &str,
+    subject: &str,
+    reason: &str,
+    at: Option<jiff::Timestamp>,
+) -> Result<(Grant, bool), StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
     let reason = reason.trim();
@@ -223,14 +263,15 @@ pub async fn open(
         ));
     }
     let patient = patients_store::current(&mut *db, patient_id).await?;
-    if let Some(existing) = active(&mut *db, &patient.id, subject).await? {
+    if let Some(existing) = active_at(&mut *db, &patient.id, subject, at).await? {
         return Ok((existing, false));
     }
-    let row = sqlx::query(
-        "INSERT INTO break_glass_grants (patient_id, subject, reason, expires_at)
-             VALUES ($1::uuid, $2, $3, now() + make_interval(hours => $4::int))
-             RETURNING grant_id::text AS id",
-    )
+    let now = time(at);
+    let row = sqlx::query(AssertSqlSafe(format!(
+        "INSERT INTO break_glass_grants (patient_id, subject, reason, granted_at, expires_at)
+             VALUES ($1::uuid, $2, $3, {now}, {now} + make_interval(hours => $4::int))
+             RETURNING grant_id::text AS id"
+    )))
     .bind(patient.id.clone())
     .bind(subject)
     .bind(reason)
@@ -240,7 +281,7 @@ pub async fn open(
     .map_err(db_err)?
     .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
     let id: String = row.try_get("id").map_err(db_err)?;
-    Ok((get(&mut *db, &id).await?, true))
+    Ok((get_at(&mut *db, &id, at).await?, true))
 }
 
 /// One grant, reviewed or not.
@@ -249,12 +290,25 @@ pub async fn open(
 ///
 /// [`StoreError::NotFound`] (also for an id that is not a UUID).
 pub async fn get(db: impl Into<Db<'_>>, id: &str) -> Result<Grant, StoreError> {
+    get_at(db, id, None).await
+}
+
+/// [`get`] at a time, which decides whether it is overdue; `None` is now, by the database.
+///
+/// # Errors
+///
+/// As [`get`].
+pub async fn get_at(
+    db: impl Into<Db<'_>>,
+    id: &str,
+    at: Option<jiff::Timestamp>,
+) -> Result<Grant, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
     let id = ids::uuid(id).ok_or(StoreError::NotFound)?;
     let row = sqlx::query(AssertSqlSafe(format!(
         "{} WHERE g.grant_id = $1::uuid",
-        select()?
+        select(at)?
     )))
     .bind(id)
     .fetch_optional(&mut *db)
@@ -270,11 +324,23 @@ pub async fn get(db: impl Into<Db<'_>>, id: &str) -> Result<Grant, StoreError> {
 ///
 /// [`StoreError::Db`].
 pub async fn unreviewed(db: impl Into<Db<'_>>) -> Result<crate::page::Page<Grant>, StoreError> {
+    unreviewed_at(db, None).await
+}
+
+/// [`unreviewed`] at a time, which decides what is overdue; `None` is now, by the database.
+///
+/// # Errors
+///
+/// [`StoreError::Db`].
+pub async fn unreviewed_at(
+    db: impl Into<Db<'_>>,
+    at: Option<jiff::Timestamp>,
+) -> Result<crate::page::Page<Grant>, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
     let rows = sqlx::query(AssertSqlSafe(format!(
         "{} WHERE r.grant_id IS NULL ORDER BY g.granted_at, g.grant_id LIMIT {}",
-        select()?,
+        select(at)?,
         LIST_LIMIT + 1
     )))
     .fetch_all(&mut *db)
@@ -309,13 +375,26 @@ pub async fn count_unreviewed(db: impl Into<Db<'_>>) -> Result<i64, StoreError> 
 ///
 /// [`StoreError::Db`].
 pub async fn count_overdue(db: impl Into<Db<'_>>) -> Result<i64, StoreError> {
+    count_overdue_at(db, None).await
+}
+
+/// [`count_overdue`] at a time; `None` is now, by the database.
+///
+/// # Errors
+///
+/// [`StoreError::Db`].
+pub async fn count_overdue_at(
+    db: impl Into<Db<'_>>,
+    at: Option<jiff::Timestamp>,
+) -> Result<i64, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
     let hours = review_due_hours().map_err(StoreError::Db)?;
     let row = sqlx::query(AssertSqlSafe(format!(
                 "SELECT count(*) AS n FROM break_glass_grants g
                  LEFT JOIN break_glass_reviews r USING (grant_id)
-                 WHERE r.grant_id IS NULL AND g.granted_at < now() - make_interval(hours => {hours}::int)"
+                 WHERE r.grant_id IS NULL AND g.granted_at < {} - make_interval(hours => {hours}::int)",
+                time(at)
             )))
 .fetch_optional(&mut *db)
         .await
