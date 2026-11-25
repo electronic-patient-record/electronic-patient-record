@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - A change to the service's routes runs the UI's tests
+
+- **Fixed:** `summary.test.ts` (AG-5) reads `src/routes.rs`, and `scripts/ci-changes.sh` did not run the UI for it, so the docs job failed on `01bab239`: a gate I had not run before pushing with `--no-verify`.
+- **Verified:** every `scripts/gates/docs-*` gate passes locally. **Not done / not verified:** the Android job on `01bab239` failed to download a jar from Maven Central; not fixed here, the next run shows whether it was transient.
+
 ## 2026-11-25 - Information for matching donors: typing reports, never a match (DM-1)
 
 - **Clinical risk:** new clinical content. H-069 opened with the author's scores; nobody has reviewed it.

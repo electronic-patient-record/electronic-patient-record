@@ -39,6 +39,10 @@ while IFS= read -r path; do
     electronic-patient-record-service-with-rust/electronic-patient-record-domain/src/adjustments.rs)
       rust=true
       ui=true ;;
+    # Read by the UI's tests (summary.test.ts holds what the summary says it does not show to the service's routes).
+    electronic-patient-record-service-with-rust/src/routes.rs)
+      rust=true
+      ui=true ;;
     electronic-patient-record-matcher-with-rust/* | electronic-patient-record-service-with-rust/*)
       rust=true ;;
     # The service's census tests read the UI's source (risk_field_census, grief_census), so that runs both.
