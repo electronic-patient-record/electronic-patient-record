@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - Two people at one moment: a suspicion ended while it is amended, and a need recorded twice
+
+- **Clinical risk:** H-054 and H-048 (controls and evidence added; status and score not). Before this, a suspicion could be amended in the moment another person ended it, so that its outcome was of another version than the one standing; and one need recorded by two people at once was stored twice, so that ending it left one.
+- **Fixed:** an amendment, an outcome and the withdrawal of an outcome take turns on the referral; needs take turns on the patient. `store::one_at_a_time` is used by these and by the emergency grant.
+- **Verified:** `tests/races.rs` (3), two of which failed before; the normal and database passes on a fresh Postgres 18; every docs gate. **Not done / not verified:** found by reading the stores that check and then write and have no lock; other rules were read and not tested (a statement of no known allergies against an allergy in the same moment is safe by its summary, where an active allergy outranks the statement; two reports of one death are both kept, as they are meant to be). Two outcomes one after the other in the moment between a check and a write were possible by reading, and not shown by a test. A need stored twice before this stays twice.
+
 ## 2026-11-25 - cookie 0.18.3; the ignore for RUSTSEC-2026-0594 is gone
 
 - **Clinical risk:** none; `cookie` is reached only through the tests' `axum-test`.

@@ -14,7 +14,7 @@ use crate::patients_store::{self, StoreError};
 use crate::pool::Db;
 use serde::Serialize;
 use sqlx::postgres::PgRow;
-use sqlx::{AssertSqlSafe, Row};
+use sqlx::{AssertSqlSafe, Connection, Row};
 
 crate::store_errors!("adjustments");
 
@@ -197,8 +197,8 @@ pub async fn overdue_count(
     row.try_get("n").map_err(db_err)
 }
 
-/// Store a new adjustment at version 1. The same need twice while the first stands is refused. Two
-/// writers at the same moment can both pass this check; the second is a duplicate a person can end.
+/// Store a new adjustment at version 1. The same need twice while the first stands is refused, also for two writers at
+/// one moment: they take turns on the patient.
 ///
 /// # Errors
 ///
@@ -211,7 +211,10 @@ pub async fn record(
     today: jiff::civil::Date,
 ) -> Result<StoredAdjustment, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
-    let db = &mut *conn;
+    let patient = patients_store::current(&mut *conn, patient_id).await?;
+    let mut tx = conn.begin().await.map_err(db_err)?;
+    crate::store::one_at_a_time(&mut tx, STORE, &patient.id).await?;
+    let db = &mut *tx;
     let standing = list(&mut *db, patient_id, today).await?;
     let repeated = standing.iter().any(|s| {
         s.adjustment.status == adjustments::Status::Active
@@ -221,7 +224,6 @@ pub async fn record(
     if repeated {
         return Err(refused(Refusal::AlreadyActive));
     }
-    let patient = patients_store::current(&mut *db, patient_id).await?;
     let row = sqlx::query(AssertSqlSafe(format!(
         "INSERT INTO adjustment_versions
                    (adjustment_id, version, patient_id, author, status, body)
@@ -236,7 +238,9 @@ pub async fn record(
     .await
     .map_err(db_err)?
     .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
-    row_to_stored(&row, today)
+    let stored = row_to_stored(&row, today)?;
+    tx.commit().await.map_err(db_err)?;
+    Ok(stored)
 }
 
 /// One adjustment's current version.

@@ -13,7 +13,7 @@ use crate::referrals_store;
 use crate::suspicion::{self, Outcome, Suspicion};
 use serde::Serialize;
 use sqlx::postgres::PgRow;
-use sqlx::{AssertSqlSafe, Row};
+use sqlx::{AssertSqlSafe, Connection, Row};
 
 crate::store_errors!("suspicions");
 
@@ -430,9 +430,13 @@ pub async fn amend(
     now: jiff::Timestamp,
 ) -> Result<StoredSuspicion, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
-    let db = &mut *conn;
-    let own = referral_sent(&mut *db, patient_id, referral_id).await?;
+    let own = referral_sent(&mut conn, patient_id, referral_id).await?;
     let referral_id = ids::uuid(referral_id).ok_or(StoreError::NotFound)?;
+    // An amendment, an outcome and its withdrawal take turns on the referral, so that none passes on what another is
+    // about to change.
+    let mut tx = conn.begin().await.map_err(db_err)?;
+    crate::store::one_at_a_time(&mut tx, STORE, &referral_id).await?;
+    let db = &mut *tx;
     let sent = first_sent(&mut *db, &referral_id, own).await?;
     if outcome_of(&mut *db, &referral_id).await?.is_some() {
         return Err(refuse("the suspicion has an outcome and cannot be amended"));
@@ -467,7 +471,11 @@ pub async fn amend(
     )
     .await?
     {
-        crate::store::Appended::Row(row) => row_to_stored(&row, Some(&was.suspicion), sent, now),
+        crate::store::Appended::Row(row) => {
+            let stored = row_to_stored(&row, Some(&was.suspicion), sent, now)?;
+            tx.commit().await.map_err(db_err)?;
+            Ok(stored)
+        }
         crate::store::Appended::Taken => {
             let current = rows(&mut *db, &referral_id)
                 .await?
@@ -543,9 +551,13 @@ pub async fn end(
         return Err(refuse(problems.join("; ")));
     }
     let mut conn = db.into().acquire().await.map_err(db_err)?;
-    let db = &mut *conn;
-    let own = referral_sent(&mut *db, patient_id, referral_id).await?;
+    let own = referral_sent(&mut conn, patient_id, referral_id).await?;
     let referral_id = ids::uuid(referral_id).ok_or(StoreError::NotFound)?;
+    // An amendment, an outcome and its withdrawal take turns on the referral, so that none passes on what another is
+    // about to change.
+    let mut tx = conn.begin().await.map_err(db_err)?;
+    crate::store::one_at_a_time(&mut tx, STORE, &referral_id).await?;
+    let db = &mut *tx;
     let rows_now = rows(&mut *db, &referral_id).await?;
     let current: i32 = rows_now
         .last()
@@ -584,7 +596,9 @@ pub async fn end(
     let sent = first_sent(&mut *db, &referral_id, own).await?;
     let ended = outcome_of(&mut *db, &referral_id).await?;
     let in_error = outcomes_in_error(&mut *db, &referral_id).await?;
-    build(&rows_now, sent, now, ended, in_error)
+    let history = build(&rows_now, sent, now, ended, in_error)?;
+    tx.commit().await.map_err(db_err)?;
+    Ok(history)
 }
 
 /// Mark a suspicion's current outcome entered in error (RS-7): the suspicion is open again, may be
@@ -612,9 +626,13 @@ pub async fn mark_outcome_in_error(
         return Err(refuse("the reason is too long"));
     }
     let mut conn = db.into().acquire().await.map_err(db_err)?;
-    let db = &mut *conn;
-    let own = referral_sent(&mut *db, patient_id, referral_id).await?;
+    let own = referral_sent(&mut conn, patient_id, referral_id).await?;
     let referral_id = ids::uuid(referral_id).ok_or(StoreError::NotFound)?;
+    // An amendment, an outcome and its withdrawal take turns on the referral, so that none passes on what another is
+    // about to change.
+    let mut tx = conn.begin().await.map_err(db_err)?;
+    crate::store::one_at_a_time(&mut tx, STORE, &referral_id).await?;
+    let db = &mut *tx;
     let rows_now = rows(&mut *db, &referral_id).await?;
     if rows_now.is_empty() {
         return Err(StoreError::NotFound);
@@ -645,7 +663,9 @@ pub async fn mark_outcome_in_error(
     }
     let sent = first_sent(&mut *db, &referral_id, own).await?;
     let in_error = outcomes_in_error(&mut *db, &referral_id).await?;
-    build(&rows_now, sent, now, None, in_error)
+    let history = build(&rows_now, sent, now, None, in_error)?;
+    tx.commit().await.map_err(db_err)?;
+    Ok(history)
 }
 
 /// Whether the record says the patient was told of a referral's suspected condition (RS-4): `None` when

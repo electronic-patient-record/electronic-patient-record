@@ -70,6 +70,26 @@ pub(crate) enum Appended {
     Taken,
 }
 
+/// One writer at a time on `key`, until `tx` ends, or the transaction it is in: for a rule that looks at what is stored
+/// and then writes, which two writers at one moment would otherwise both pass. The second waits, and then sees what the
+/// first stored.
+///
+/// # Errors
+///
+/// [`StoreError::Db`], naming `store`.
+pub(crate) async fn one_at_a_time(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    store: &str,
+    key: &str,
+) -> Result<(), StoreError> {
+    sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))")
+        .bind(format!("{store}:{key}"))
+        .execute(&mut **tx)
+        .await
+        .map(|_| ())
+        .map_err(|e| db_err(store, e))
+}
+
 /// Run `insert` (an `INSERT … RETURNING` of the next version) in a savepoint. A failed statement
 /// aborts a Postgres transaction, so only the savepoint is rolled back and the caller's transaction,
 /// if any, can still read the version that won. The caller turns [`Appended::Taken`] into its own

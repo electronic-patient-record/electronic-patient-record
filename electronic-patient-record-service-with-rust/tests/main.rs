@@ -189,6 +189,8 @@ mod personal_data_inventory;
 mod photos_store;
 #[path = "purpose_sweep.rs"]
 mod purpose_sweep;
+#[path = "races.rs"]
+mod races;
 #[path = "readiness.rs"]
 mod readiness;
 #[path = "referral_unmatched.rs"]

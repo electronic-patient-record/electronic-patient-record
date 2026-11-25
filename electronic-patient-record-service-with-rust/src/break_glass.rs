@@ -266,12 +266,9 @@ pub async fn open_at(
     // Two requests at one moment would each find no grant and make one. The lock is the transaction's, so the second
     // waits until the first is committed, in the caller's transaction when there is one, and then finds its grant.
     let mut tx = db.begin().await.map_err(db_err)?;
+    crate::store::one_at_a_time(&mut tx, "break-glass", &format!("{}:{subject}", patient.id))
+        .await?;
     let db = &mut *tx;
-    sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))")
-        .bind(format!("break-glass:{}:{subject}", patient.id))
-        .execute(&mut *db)
-        .await
-        .map_err(db_err)?;
     if let Some(existing) = active_at(&mut *db, &patient.id, subject, at).await? {
         tx.commit().await.map_err(db_err)?;
         return Ok((existing, false));
