@@ -372,6 +372,15 @@ async fn a_published_head_catches_removed_newest_rows_and_a_rewritten_head() {
     let (status, body) = verify_audited(&s.db, &chain, &who, None).await.unwrap();
     assert_eq!(status, StatusCode::OK);
     let head: Head = serde_json::from_value(body["head"].clone()).unwrap();
+    // Checked against the very newest row, with nothing written since: it is not missing.
+    let (_, newest) = verify_against(&s.db, &chain, 100, None).await.unwrap();
+    let newest = newest.unwrap();
+    for batch in [1, 100] {
+        let (v, _) = verify_against(&s.db, &chain, batch, Some(&newest))
+            .await
+            .unwrap();
+        assert!(matches!(v, Verdict::Intact { .. }), "{v:?}");
+    }
     assert_eq!(head.id, ids[4]);
     assert_eq!(body["checkpoint_confirmed"], false);
     assert_eq!(body["archive_rows"], 0, "nothing archived");

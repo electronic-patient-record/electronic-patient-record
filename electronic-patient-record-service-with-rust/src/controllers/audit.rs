@@ -552,6 +552,29 @@ mod tests {
             (q.action.as_deref(), q.after.as_deref()),
             (Some("R"), Some("2026-10-01"))
         );
+        // Each key is read into its own criterion, and the search's own audit row names the ones used.
+        let text = [
+            "agent", "patient", "action", "purpose", "from", "to", "after", "through",
+        ];
+        let all = audit::AuditQuery::from_pairs(&pairs(&text.map(|k| (k, k)))).unwrap();
+        let read = [
+            &all.agent,
+            &all.patient,
+            &all.action,
+            &all.purpose,
+            &all.from,
+            &all.to,
+            &all.after,
+            &all.through,
+        ];
+        assert_eq!(read.map(|v| v.as_deref()), text.map(Some));
+        assert_eq!(all.used(), text);
+        assert_eq!(
+            q.used(),
+            ["action", "outcome", "break_glass", "after", "before"]
+        );
+        let none = audit::AuditQuery::from_pairs(&pairs(&[("break_glass", "")])).unwrap();
+        assert_eq!(none.break_glass, None);
         // An empty form field is no criterion; a bad value names its key.
         let blank =
             audit::AuditQuery::from_pairs(&pairs(&[("outcome", ""), ("before", "")])).unwrap();

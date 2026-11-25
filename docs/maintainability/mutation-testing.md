@@ -84,6 +84,18 @@ those functions caught 40 and found 2 unviable: **none is left.**
 
 The role table's deleted arms, about 60 misses in the run of 17 November, are all caught now, by `access_table.csv`.
 
-**Not run:** `authz.rs`, `audit.rs` and the rest of the service's examined files, which is the other half of QA-2. The run
+**Not run in that run:** `authz.rs` and `audit.rs` (below), and the rest of the service's examined files. The run
 took two hours on a busy machine. The shared compiler cache here stands in for `cc` and for the test runner as well as for
 `rustc`, and hung it twice; the run that finished bypassed all three.
+
+## The audit trail and the gate (2026-11-25, QA-2)
+
+`authz.rs` and `audit.rs`, with the unit tests and the audit, gate and role tests on a real Postgres, its database made again
+before each mutant: **186 mutants, 138 caught, 28 unviable, none timed out, 20 missed**, all in `audit.rs`. Tests were
+written the same day for 19. **A second run was stopped by a reboot: 5 of the 20 are confirmed caught, and the rest
+were not run again.**
+
+Worth saying: nothing tested that an export reads one row more than it returns (without it a cut-short export would look
+whole), that a chain holding a "create" row verifies, that a check against the very newest row does not call it missing, or
+that an archived partition's name is refused before it reaches SQL. Left: `chain`, where the missed fault only drops the
+warning that the chain has no key.

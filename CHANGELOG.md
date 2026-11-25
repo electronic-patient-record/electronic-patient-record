@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - Mutation run on the audit trail and the gate (QA-2)
+
+- **Clinical risk:** none; tests, and two small functions taken out of longer ones with no change in effect. H-009 and H-010 rest on these files.
+- **Found:** of 186 small faults no test noticed 20, all in `audit.rs`; tests now for 19. The last only drops a log warning.
+- **Verified:** the new tests pass with a Postgres. **Not done / not verified:** a reboot stopped the second run: 5 of the 20 are confirmed caught. The whole database pass was not run on this commit; CI runs it.
+
 ## 2026-11-25 - A pack of rules on refusing treatment, and a refusal of treatment, as libraries (RF-3, RF-4)
 
 - **Clinical risk:** none yet; nothing calls either and no hazard row changes. Both will need rows with the first code that stores or shows one.

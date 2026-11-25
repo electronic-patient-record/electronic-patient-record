@@ -1016,13 +1016,17 @@ pub async fn search(db: &PgPool, q: &AuditQuery) -> Result<Vec<AuditRow>, Search
 /// The most rows an export returns (one more is read to know there is another page).
 pub const EXPORT_LIMIT: i64 = 10_000;
 
+/// The rows an export reads: one more than it returns, which is how the caller is told that there are more. Without it a
+/// cut-short export would look complete.
+const EXPORT_READ: i64 = EXPORT_LIMIT + 1;
+
 /// [`search`] for an export: up to [`EXPORT_LIMIT`] + 1 rows, with the digests.
 ///
 /// # Errors
 ///
 /// As [`search`].
 pub async fn export(db: &PgPool, q: &AuditQuery) -> Result<Vec<AuditRow>, SearchError> {
-    search_with(db, q, EXPORT_LIMIT + 1, true).await
+    search_with(db, q, EXPORT_READ, true).await
 }
 
 /// The search behind [`search`] and [`export`]: validate the criteria (an unknown `action` or `outcome` is a
@@ -1303,17 +1307,29 @@ pub async fn verify_against(
     }
 }
 
-/// The event a stored row records, for recomputing its digest.
-fn event_from_row(r: &PgRow) -> Result<Event, AuditError> {
-    let action = match r.try_get::<String, _>("action").map_err(err)?.as_str() {
+/// The action a stored letter names.
+fn action_of(letter: &str) -> Action {
+    match letter {
         "C" => Action::Create,
         "R" => Action::Read,
         "U" => Action::Update,
         "D" => Action::Delete,
         _ => Action::Execute,
-    };
+    }
+}
+
+/// Whether an archived partition's name may stand in SQL: lower-case letters, digits and underscores, and something.
+fn plain_name(partition: &str) -> bool {
+    !partition.is_empty()
+        && partition
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
+}
+
+/// The event a stored row records, for recomputing its digest.
+fn event_from_row(r: &PgRow) -> Result<Event, AuditError> {
     Ok(Event {
-        action,
+        action: action_of(r.try_get::<String, _>("action").map_err(err)?.as_str()),
         outcome: r.try_get("outcome").map_err(err)?,
         agent: r.try_get("agent").map_err(err)?,
         patient_ref: r.try_get("patient_ref").map_err(err)?,
@@ -1362,11 +1378,7 @@ pub async fn verify_archive(db: &PgPool, chain: &Chain, batch: i64) -> Result<Ve
             return Ok(broken("does not link to the previous anchor".into()));
         }
         // The name came from our own anchors, but it is still a name in SQL: refuse anything else.
-        if partition.is_empty()
-            || !partition
-                .chars()
-                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
-        {
+        if !plain_name(&partition) {
             return Ok(broken(
                 "the anchor's partition name is not a plain name".into(),
             ));
@@ -1660,6 +1672,70 @@ mod tests {
     }
 
     #[test]
+    fn every_stored_letter_is_read_as_the_action_that_wrote_it() {
+        for action in [
+            Action::Create,
+            Action::Read,
+            Action::Update,
+            Action::Delete,
+            Action::Execute,
+        ] {
+            assert_eq!(action_of(action.code()), action);
+        }
+    }
+
+    #[test]
+    fn an_anchors_partition_name_is_plain_or_never_reaches_sql() {
+        assert!(plain_name("audit_events_2026_10"));
+        for bad in ["", "a b", "a\"", "a;drop", "A", "a.b", "a-b", "é"] {
+            assert!(!plain_name(bad), "{bad}");
+        }
+    }
+
+    #[test]
+    fn an_export_reads_one_row_more_than_it_returns() {
+        assert_eq!((EXPORT_LIMIT, EXPORT_READ), (10_000, 10_001));
+    }
+
+    #[test]
+    fn an_audit_failure_says_what_failed_and_whether_to_try_again() {
+        let away = AuditError("no connection".into(), true);
+        assert!(away.unavailable());
+        assert_eq!(away.to_string(), "audit failed: no connection");
+        assert!(!AuditError("bad row".into(), false).unavailable());
+    }
+
+    /// A stored digest with half of a key's name or half of a digest names no key: it does not match, and is not excused
+    /// as a key that is not held.
+    #[test]
+    fn half_a_keyed_digest_is_a_mismatch() {
+        let event = ev();
+        let at = "2026-11-25T00:00:00.000000Z";
+        for half in [":ab", "k1:", ":"] {
+            assert!(
+                matches!(
+                    Chain::unkeyed().check(half, None, at, &event),
+                    RowCheck::Mismatch
+                ),
+                "{half}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn a_server_address_that_is_wrong_stops_the_start() {
+        use crate::runtime::{Runtime, Settings};
+        for (value, good) in [("https://epr.example", true), ("ftp://epr.example", false)] {
+            let runtime = Arc::new(Runtime::with_settings(Settings::from_pairs(&[(
+                "EPR_AUDIT_SERVER_ADDRESS",
+                value,
+            )])));
+            let started = Runtime::scope(runtime, async { init_server() }).await;
+            assert_eq!(started.is_ok(), good, "{value}");
+        }
+    }
+
+    #[test]
     fn the_server_address_is_blank_or_a_plain_http_url() {
         assert_eq!(server_from(None), Ok(None));
         assert_eq!(server_from(Some("  ")), Ok(None));
@@ -1671,6 +1747,8 @@ mod tests {
             "epr.example.org",
             "ftp://e.example",
             "https://u:p@e.example",
+            "https://u@e.example",
+            "https://:p@e.example",
         ] {
             let e = server_from(Some(bad)).unwrap_err();
             assert!(
