@@ -6,7 +6,11 @@ import {
   stripAllergies,
 } from "../../src/lib/allergies";
 
-const load = (names: string[], high = 0): AllergyLoad =>
+const load = (
+  names: string[],
+  high = 0,
+  rest: string | null = "low",
+): AllergyLoad =>
   ({
     status: 200,
     data: {
@@ -16,7 +20,7 @@ const load = (names: string[], high = 0): AllergyLoad =>
         state: "active",
         items: names.map((substance, i) => ({
           substance,
-          criticality: i < high ? "high" : null,
+          criticality: i < high ? "high" : rest,
         })),
       },
     },
@@ -53,7 +57,7 @@ describe("stripAllergies (XP-3)", () => {
     expect(text.length).toBeLessThanOrEqual(STRIP_ALLERGIES + 6);
   });
 
-  it("names every high-risk allergy, however many, and counts only the rest", () => {
+  it("names every high-risk allergy, however many, and counts only low-risk ones", () => {
     const names = [...Array(12).keys()].map((i) => `Substance number ${i}`);
     const { text, high } = stripAllergies(load(names, 9));
     expect(high).toBe(true);
@@ -74,7 +78,33 @@ describe("stripAllergies (XP-3)", () => {
 
   it("names one that is too long by itself, and the number after it", () => {
     const long = "x".repeat(100);
-    expect(stripAllergies(load([long, "Latex"])).text).toBe(`${long}, +1`);
-    expect(stripAllergies(load([long])).text).toBe(long);
+    expect(stripAllergies(load([long, "Latex"])).text).toBe(
+      `${long} (low risk), +1`,
+    );
+    expect(stripAllergies(load([long])).text).toBe(`${long} (low risk)`);
+  });
+
+  it("names every allergy whose risk is not known, since that is not low", () => {
+    const names = [...Array(12).keys()].map((i) => `Substance number ${i}`);
+    for (const unknown of [
+      null,
+      "unable-to-assess",
+      "a-word-it-does-not-know",
+    ]) {
+      const { text } = stripAllergies(load(names, 1, unknown));
+      for (const n of names) expect(text, String(unknown)).toContain(n);
+      expect(text, String(unknown)).not.toMatch(/\+\d+$/);
+    }
+    // High-risk ones first, then the unknown, then what fits of the low.
+    const mixed = load(["Low", "Unstated", "High"]);
+    const items = (
+      mixed.data?.summary as {
+        items: { substance: string; criticality: string | null }[];
+      }
+    ).items;
+    if (items[1]) items[1].criticality = null;
+    if (items[2]) items[2].criticality = "high";
+    if (items[0]) items[0].substance = "Low".repeat(30);
+    expect(stripAllergies(mixed).text).toBe("High (high risk), Unstated, +1");
   });
 });

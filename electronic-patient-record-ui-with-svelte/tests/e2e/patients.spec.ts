@@ -5275,12 +5275,22 @@ const MANY = [
   "Chlorhexidine",
   "Ibuprofen",
   "Iodinated contrast",
-].map((substance, i) => ({ substance, criticality: i < 2 ? "high" : null }));
+].map((substance, i) => ({
+  substance,
+  // Two high, one whose risk was not stated (named as the high ones are), and the rest low.
+  criticality: i < 2 ? "high" : i === 2 ? null : "low",
+}));
+// The longest strip: no risk was stated for any, so every one is named.
+const UNSTATED = MANY.map(({ substance }) => ({
+  substance,
+  criticality: substance === "Penicillin" ? "high" : null,
+}));
 
 for (const [what, record, items, most] of [
   ["an ordinary record", ANN, MANY.slice(0, 2), 25],
   // Fonts differ between machines by a line or two, so the limit leaves room: what it holds is half of the screen.
   ["a crowded record", CROWDED, MANY, 50],
+  ["a crowded record with no risk stated", CROWDED, UNSTATED, 60],
 ] as const) {
   test(`a small screen keeps identity and allergies in sight and the page usable: ${what}`, async ({
     page,
@@ -5338,8 +5348,9 @@ for (const [what, record, items, most] of [
         "1980-03-14",
         "943 476 5919",
         ...(items.length > 2
-          ? ["+5", "DRILL", "REPORTED as having died", "TEMPORARY IDENTITY"]
+          ? ["DRILL", "REPORTED as having died", "TEMPORARY IDENTITY"]
           : []),
+        ...(items === MANY ? ["+5"] : items.map((i) => i.substance)),
       ]) {
         await expect(strip, size).toContainText(words);
       }

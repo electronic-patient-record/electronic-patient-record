@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - An allergy of unknown risk is always named on a small screen (OQ-XP2); matcher 0.9.0 published
+
+- **Clinical risk:** H-070 (controls, evidence and residual changed; status and score not). The strip now counts only allergies recorded as low risk; one whose risk was not stated or not assessed is named, as the maintainer decided.
+- **Published:** `electronic-patient-record-matcher` 0.9.0 on crates.io, from `37cb6eb2`, approved by the maintainer. Its package no longer holds `lcov.info`, a coverage report with local paths, which 0.8.1 holds and this repository still does. **The service still uses 0.8.1**: 0.9.0 is inside the two-day cooldown, and no exception was given.
+- **Recorded:** the maintainer's answers to OQ-XP1: a reason for a missed appointment is required and may be "Unknown", and the list is the tenant's.
+- **Verified:** 2 unit tests changed and 1 new; 258 browser tests; every docs gate. **Not done / not verified:** the longest strip was 41 % of a screen here, and the test allows 60, as fonts differ; no clinician reviewed it.
+
 ## 2026-11-25 - The matcher offers no automatic link without a verified identifier (AG-13, OQ-AG8; matcher 0.9.0, not published)
 
 - **Clinical risk:** H-001 (controls, evidence and residual changed; status and score not). In the matcher's source, a pair with no verified identifier in common is at most Review, whatever the configuration. **The service is unchanged**: it uses the published 0.8.1.
