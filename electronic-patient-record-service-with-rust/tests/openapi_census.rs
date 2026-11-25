@@ -4,7 +4,9 @@
 //! that makes a secret holds a secret-named field (TL-11). Every array schema states its maximum
 //! (TL-13).
 //!
-//! To accept a deliberate change: `EPR_BLESS=1 cargo test --test main openapi_census::`, then review the diff.
+//! To accept a deliberate change: `EPR_BLESS=1 cargo test --test main openapi_census::`, then review the diff. A change
+//! that would break a caller (QA-7, `openapi_breaks`) is listed and refused; when it is meant, `EPR_BLESS=break`, and say
+//! so in the changelog.
 
 use electronic_patient_record::{auth, openapi, routes};
 use serde_json::Value;
@@ -15,16 +17,27 @@ const FILE: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/openapi.json");
 #[test]
 fn the_committed_document_is_what_the_code_produces() {
     let produced = openapi::rendered();
-    if std::env::var("EPR_BLESS").as_deref() == Ok("1") {
+    let committed = fs::read_to_string(Path::new(FILE));
+    let broken = committed.as_deref().map_or_else(
+        |_| Vec::new(),
+        |text| {
+            let old: Value = serde_json::from_str(text).expect("openapi.json is JSON");
+            crate::openapi_breaks::breaks(&old, &openapi::document())
+        },
+    );
+    let bless = std::env::var("EPR_BLESS").unwrap_or_default();
+    if bless == "break" || (bless == "1" && broken.is_empty()) {
         fs::write(FILE, &produced).expect("write openapi.json");
         return;
     }
-    let committed = fs::read_to_string(Path::new(FILE)).expect(
-        "openapi.json is missing: run `EPR_BLESS=1 cargo test --test main openapi_census::` and commit it",
+    assert!(
+        broken.is_empty(),
+        "this would break a caller. If it is meant, `EPR_BLESS=break`, and say so in CHANGELOG.md:\n{}",
+        broken.join("\n")
     );
     assert!(
-        committed == produced,
-        "openapi.json is stale: run `EPR_BLESS=1 cargo test --test main openapi_census::`, review and commit"
+        committed.is_ok_and(|text| text == produced),
+        "openapi.json is missing or stale: run `EPR_BLESS=1 cargo test --test main openapi_census::`, review and commit"
     );
 }
 

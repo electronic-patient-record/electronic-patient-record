@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - A change that would break a caller of the API is refused (QA-7)
+
+- **Clinical risk:** none to behaviour. A screen or another system that stops understanding an answer is a clinical risk, and this is a guard against it.
+- **Added:** `tests/openapi_breaks.rs`, in the document's freshness test: what a caller sends may only widen, and what a caller gets may only be promised more firmly. `EPR_BLESS=1` refuses a break and lists it; `EPR_BLESS=break` accepts one that is meant.
+- **Verified:** 19 planted breaks and 11 changes that only add; a field made required in the source was refused and the committed copy left alone; three earlier documents (from 2026-11-23 to 25) show no break against today's. **Not done / not verified:** it sees only what the document says, so not a new refusal, a narrower role, a changed meaning, or a body it does not describe (FHIR and others); a hand-edited `openapi.json` is stale and fails, but one edited to match a break is not noticed.
+
 ## 2026-11-25 - Nothing about a person reaches a log line, held by a test (QA-5)
 
 - **Clinical risk:** none; a test only.
