@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - Migration 43's refusal has a test
+
+- **Added:** `tests/migration_relative_history.rs` (2, Postgres): migration 43 refuses while the old table holds an entry and changes nothing, and replaces an empty one with both tables still append-only. The entry for EH-3 below said there was none.
+- **Verified:** the refusal test fails when the guard is removed from the migration. **Not done / not verified:** no other migration has such a test; none drops a clinical table.
+
 ## 2026-11-25 - An answer as at a time says it is a reconstruction (AG-7, in part)
 
 - **Clinical risk:** H-068. Nothing in an as-at answer said that it is rebuilt from stored versions and not what anyone was shown.

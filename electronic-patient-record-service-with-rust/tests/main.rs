@@ -153,6 +153,8 @@ mod links_store;
 mod metrics;
 #[path = "migration_down.rs"]
 mod migration_down;
+#[path = "migration_relative_history.rs"]
+mod migration_relative_history;
 #[path = "mllp_feed.rs"]
 mod mllp_feed;
 #[path = "observations_store.rs"]
