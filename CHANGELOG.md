@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - Governance documents catch up with the record (AG-9, in part)
+
+- **Clinical risk:** the hazard log names more tests; no status, score or wording of a hazard changed.
+- **Fixed:** the risk management plan said the software holds no clinical content; the readiness checklist, and the UI page that copies it, said 55 hazards and that only H-044 names a test. The counts are now generated into the status block.
+- **Verified:** the checker's tests (1 new), vitest, and every docs gate. **Not done / not verified:** no Clinical Safety Officer is named and nobody reviewed the plan; a named test shows that a test exists, not that it proves the control.
+
 ## 2026-11-25 - A change to the service's routes runs the UI's tests
 
 - **Fixed:** `summary.test.ts` (AG-5) reads `src/routes.rs`, and `scripts/ci-changes.sh` did not run the UI for it, so the docs job failed on `01bab239`: a gate I had not run before pushing with `--no-verify`.

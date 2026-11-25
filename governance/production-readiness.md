@@ -6,8 +6,8 @@ The column "What exists today" says what exists, which is not the same as done. 
 
 | Area | Question | Evidence needed | What exists today | Estimate |
 |---|---|---|---|---|
-| Safety | Is each hazard reviewed, and is every open one accepted or closed by the Clinical Safety Officer? | `hazard-log.csv` statuses and `reviewers.txt` | 55 hazards on 2026-11-09, 34 open, none accepted or closed; no reviewer is named | 5% |
-| Safety | Does each control name a test that still exists? | `scripts/check-hazard-log.py --report` | Named for H-044 only | 5% |
+| Safety | Is each hazard reviewed, and is every open one accepted or closed by the Clinical Safety Officer? | `hazard-log.csv` statuses and `reviewers.txt` | None is accepted or closed and no reviewer is named; the counts are in the generated status | 5% |
+| Safety | Does each control name a test that still exists? | `scripts/check-hazard-log.py --report` | Some do; the count is in the generated status | 5% |
 | Privacy | DPIA signed, retention periods set, data-subject routes tested | [dpia](dpia.md), [retention](retention-schedule.md) | Drafts; the periods are not set | 15% |
 | Identity | Second factor required for staff | [mfa-plan](mfa-plan.md) | Not enforced or checked | 10% |
 | Transport | TLS everywhere, including in front of MLLP, and `DB_URL` sets `sslmode` to `require`, `verify-ca` or `verify-full` | A scan of the deployed endpoints; `axa` refuses to start in production without `sslmode`, unless the address is on the same machine or `DB_ALLOW_INSECURE=true` | Not built here; MLLP is plaintext | 20% |

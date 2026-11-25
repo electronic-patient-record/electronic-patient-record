@@ -45,6 +45,7 @@ generate() {
   vitest=$(count_ts '^[[:space:]]*(it|test)(\.each)?[(`]' "$UI/tests/unit")
   playwright=$(count_ts '^[[:space:]]*test(\.each)?\(' "$UI/tests/e2e")
   locales=$(awk '/^export const LOCALES = \[/{f=1;next} f&&/\] as const/{exit} f&&/"/{n++} END{print n+0}' "$UI/src/lib/locales.ts")
+  set -- $(python3 scripts/check-hazard-log.py --counts .)
   ui_version=$(sed -n 's/^  "version": *"\([^"]*\)".*/\1/p' "$UI/package.json" | sed -n 1p)
 
   echo "$START"
@@ -64,6 +65,7 @@ generate() {
   echo "| Matcher tests | $mat_tests, plus $mat_ignored \`#[ignore]\`d | the same patterns in the matcher |"
   echo "| Front-end unit tests (vitest) | $vitest | \`it(\` / \`test(\` lines in \`tests/unit\` |"
   echo "| Front-end end-to-end tests (Playwright) | $playwright | \`test(\` lines in \`tests/e2e\` |"
+  echo "| Hazards | $1, of which $2 open and $3 accepted or closed; $4 name a test | \`scripts/check-hazard-log.py --counts\` |"
   echo "| Locales | $locales | entries of \`LOCALES\` in \`src/lib/locales.ts\` |"
   echo
   echo "**Task boxes in [\`tasks.md\`](../tasks.md)** (ticked / open, by prefix):"

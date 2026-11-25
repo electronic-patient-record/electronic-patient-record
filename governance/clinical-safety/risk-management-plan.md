@@ -7,7 +7,10 @@ question OQ-2); until one is, nothing in this folder can be accepted or closed.
 ## What this plan covers
 
 The software in this repository, version 0.1.0, which is a scaffold (**not for clinical use**). Today it holds patient
-identity, consent, care relationships, an audit trail and a clinician and patient interface. It holds no clinical content.
+identity, consent, care relationships, an audit trail and a clinician and patient interface, and clinical content: allergies,
+vital signs, results and their sign-off, problems, relative history, compatibility typing, assessments, referrals and
+suspicions, adjustments and reports of a death. **All of it is for synthetic patients only.** (This said "no clinical
+content" until 2026-11-25; the audit of that day found it.) What is built is in [the service's specification](../../electronic-patient-record-service-with-rust/spec/index.md).
 
 ## Roles
 

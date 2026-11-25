@@ -34,14 +34,14 @@ export const PRODUCTION_STEPS: readonly ProductionStep[] = [
     question:
       "Is each hazard reviewed, and is every open one accepted or closed by the Clinical Safety Officer?",
     today:
-      "55 hazards on 2026-11-09, 34 open, none accepted or closed; no reviewer is named",
+      "None is accepted or closed and no reviewer is named; the counts are in the generated status",
     estimate: 5,
     why: "The hazard log exists and is kept with the code, but no Clinical Safety Officer is named, so no hazard can be accepted or closed.",
   },
   {
     area: "Safety",
     question: "Does each control name a test that still exists?",
-    today: "Named for H-044 only",
+    today: "Some do; the count is in the generated status",
     estimate: 5,
     why: "The check exists; one hazard of 55 uses it.",
   },

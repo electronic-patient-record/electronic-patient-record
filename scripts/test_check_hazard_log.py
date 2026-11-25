@@ -25,6 +25,11 @@ class HazardLog(unittest.TestCase):
     def test_the_real_log_passes(self):
         self.assertEqual(chk.main(["x", ROOT]), 0)
 
+    def test_the_counts_are_of_status_and_named_tests(self):
+        rows = [row(), row(id="H-002", status="controlled-unreviewed", evidence="a.rs::t"),
+                row(id="H-003", status="closed", reviewed_by="A"), row(id="H-004", evidence="b.md; a.rs::t; c.rs::u")]
+        self.assertEqual(chk.counts(rows), (4, 2, 1, 2))
+
     def test_a_good_row_passes(self):
         self.assertEqual(self.check(row()), [])
 

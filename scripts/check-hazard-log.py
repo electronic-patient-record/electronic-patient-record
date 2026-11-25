@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check the clinical hazard log (task AS-1): governance/clinical-safety/hazard-log.csv.
 
-Usage: python3 scripts/check-hazard-log.py [--report] [repo-root]
+Usage: python3 scripts/check-hazard-log.py [--report | --counts] [repo-root]
        python3 scripts/check-hazard-log.py --base <git-ref> --author <login> [repo-root]
 
 It checks the shape, not the clinical judgement: the columns, unique ids, severity and likelihood in
@@ -12,6 +12,9 @@ Clinical Safety Officer, OQ-2) may set those, so an automated change cannot clos
 An evidence entry may be `path::test_name`: the control then names the test that proves it, and the check
 fails when the file or the test function is missing (renaming a named test fails it). `--report` lists
 the hazards that name no test yet; that is a report, not a failure, until the log has named them (PR-2).
+
+`--counts` prints `<hazards> <open> <accepted or closed> <naming a test>` and nothing else, for the generated status
+block (scripts/generate-status.sh), so that no document keeps a count by hand (AG-9).
 
 With `--base` it also compares the log with that revision (CQ-21). A change that moves a hazard into
 `accepted` or `closed`, adds one in either status, or changes `reviewed_by` fails unless `--author`
@@ -64,6 +67,12 @@ def without_a_named_test(rows):
     """Ids of hazards whose evidence names no test, split into those with controls in place and the rest."""
     bare = [r for r in rows if not named_tests(r)]
     return ([r["id"] for r in bare if r["status"] != "open"], [r["id"] for r in bare if r["status"] == "open"])
+
+
+def counts(rows):
+    """How many hazards there are, are open, are accepted or closed, and name a test."""
+    return (len(rows), sum(r["status"] == "open" for r in rows),
+            sum(r["status"] in SIGNED_OFF for r in rows), sum(bool(named_tests(r)) for r in rows))
 
 
 def problems(rows, header, root):
@@ -151,11 +160,13 @@ def read_rows(text):
 def main(argv):
     args = argv[1:]
     base_ref = author = None
-    report = False
+    report = only_counts = False
     while args and args[0].startswith("--"):
         flag = args.pop(0)
         if flag == "--report":
             report = True
+        elif flag == "--counts":
+            only_counts = True
         elif flag == "--base" and args:
             base_ref = args.pop(0)
         elif flag == "--author" and args:
@@ -169,6 +180,9 @@ def main(argv):
     root = args[0] if args else "."
     with open(os.path.join(root, LOG), newline="", encoding="utf-8") as f:
         header, rows = read_rows(f.read())
+    if only_counts:
+        print(*counts(rows))
+        return 0
     found = problems(rows, header, root)
     if base_ref is not None:
         base_text = git_show(root, base_ref, LOG)
