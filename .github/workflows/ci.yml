@@ -340,6 +340,11 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
           AUTHOR: ${{ github.event.pull_request.user.login }}
         run: python3 scripts/check-hazard-log.py --base "origin/$BASE_REF" --author "$AUTHOR"
+      # A hint in the job's summary, not a decision (PR-2).
+      - if: ${{ !cancelled() }}
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: python3 scripts/check-hazard-log.py --touched "origin/$BASE_REF" >> "$GITHUB_STEP_SUMMARY"
 
   container:
     name: Container images build (Podman)

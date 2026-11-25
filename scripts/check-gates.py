@@ -28,6 +28,8 @@ NOT_GATES = {
     ("secrets", "./gitleaks git"): "GitHub only: the secret scan of the full history",
     ("hazard-log", "sh scripts/check-clinical-impact.sh"): "GitHub only: reads the pull request's label",
     ("hazard-signoff", "python3 scripts/check-hazard-log.py --base"): "GitHub only: reads the pull request's author",
+    ("hazard-signoff", "python3 scripts/check-hazard-log.py --touched"): "not a gate: a hint in the job's summary, which "
+                                                                        "fails nothing by what it lists (PR-2)",
     ("ci-ok", "echo '${{ toJSON(needs) }}'"): "GitHub only: the aggregate of the jobs",
     ("fresh-clone", 'want="$(sed'): "GitHub only: compares the pin with CI's own toolchain",
     ("pnpm-audit", "pnpm audit"): "GitHub only: needs the advisory service; not a local gate",

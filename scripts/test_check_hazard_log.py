@@ -77,6 +77,20 @@ class HazardLog(unittest.TestCase):
         still_open = row(id="H-003")
         self.assertEqual(chk.without_a_named_test([named, bare, still_open]), (["H-002"], ["H-003"]))
 
+    def test_a_touched_hazard_is_one_whose_evidence_names_a_changed_file(self):
+        rows = [row(evidence="a.rs; b/c.rs::t"), row(id="H-002", evidence="d/"), row(id="H-003", evidence="e.rs")]
+        ids = lambda changed, base=(): [h[0] for h in chk.touched(list(base), rows, changed)]
+        self.assertEqual(ids({"b/c.rs", "d/x.rs"}), ["H-001", "H-002"])
+        self.assertEqual(ids({"b/c.rs.bak", "dd/x.rs", chk.LOG}), [])
+        # A change that drops its own mention is still listed, from the base.
+        self.assertEqual(ids({"gone.rs"}, [row(id="H-003", evidence="gone.rs")]), ["H-003"])
+        self.assertIn("None.", chk.touched_report([]))
+        self.assertIn("**H-001** (open) t: `a.rs`", chk.touched_report(chk.touched([], rows, {"a.rs"})))
+
+    def test_a_revision_git_does_not_have_is_an_error_and_not_none(self):
+        self.assertEqual(chk.main(["x", "--touched", "no-such-revision", ROOT]), 2)
+        self.assertEqual(chk.main(["x", "--touched", "HEAD", ROOT]), 0)
+
     def test_wrong_columns_are_caught(self):
         self.assertTrue(chk.problems([], ["id"], ROOT))
 

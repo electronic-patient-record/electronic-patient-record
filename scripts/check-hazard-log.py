@@ -3,6 +3,7 @@
 
 Usage: python3 scripts/check-hazard-log.py [--report | --counts] [repo-root]
        python3 scripts/check-hazard-log.py --base <git-ref> --author <login> [repo-root]
+       python3 scripts/check-hazard-log.py --touched <git-ref> [repo-root]
 
 It checks the shape, not the clinical judgement: the columns, unique ids, severity and likelihood in
 1..5 with score = severity x likelihood, a known status, an ISO `added` date, evidence paths that
@@ -21,6 +22,11 @@ With `--base` it also compares the log with that revision (CQ-21). A change that
 `accepted` or `closed`, adds one in either status, or changes `reviewed_by` fails unless `--author`
 is listed in the reviewer allow-list AS IT IS IN THE BASE revision (so a change cannot add its own
 author). No row may be removed. The list is empty until a Clinical Safety Officer is named.
+
+`--touched` prints, as Markdown, each hazard whose evidence names a file this branch changed since it left that
+revision, reading the evidence at both ends so that a change cannot drop its own mention (PR-2). It is a hint for the
+Clinical Safety Officer and not a decision, so it never fails because of what it lists; it fails (exit 2) when git
+cannot say what changed, so that "none" always means none.
 """
 import csv
 import datetime
@@ -155,6 +161,39 @@ def git_show(root, ref, path):
         return None
 
 
+def changed_paths(root, ref):
+    """What changed since this branch left `ref`, both names of a rename, or None when git cannot say."""
+    try:
+        out = subprocess.run(["git", "-C", root, "diff", "--name-only", "--no-renames", "-z", f"{ref}...HEAD"],
+                             check=True, capture_output=True, text=True).stdout
+    except subprocess.CalledProcessError:
+        return None
+    return {p for p in out.split("\0") if p}
+
+
+def touched(base_rows, head_rows, changed):
+    """`(id, status, title, paths)` for each hazard whose evidence, at either end, names a changed file or a
+    directory above one, in the log's order. The log itself is evidence of nothing and is left out."""
+    paths, latest = {}, {}
+    for r in [*base_rows, *head_rows]:
+        latest[r["id"]] = r
+        for entry in split_evidence(r["evidence"]):
+            named = entry.partition("::")[0].rstrip("/")
+            hits = {c for c in changed if c != LOG and (c == named or c.startswith(named + "/"))}
+            if hits:
+                paths.setdefault(r["id"], set()).update(hits)
+    return [(i, r["status"], r["title"], sorted(paths[i])) for i, r in latest.items() if i in paths]
+
+
+def touched_report(hits):
+    lines = ["### Hazards whose evidence this change touches", "",
+             "A hint for the Clinical Safety Officer, not a decision: the files below are named as evidence.", ""]
+    if not hits:
+        return "\n".join([*lines, "None."])
+    return "\n".join(lines + [f"- **{i}** ({status}) {title}: {', '.join(f'`{p}`' for p in paths)}"
+                              for i, status, title, paths in hits])
+
+
 def read_rows(text):
     reader = csv.DictReader(io.StringIO(text))
     return reader.fieldnames, list(reader)
@@ -162,7 +201,7 @@ def read_rows(text):
 
 def main(argv):
     args = argv[1:]
-    base_ref = author = None
+    base_ref = author = touched_ref = None
     report = only_counts = False
     while args and args[0].startswith("--"):
         flag = args.pop(0)
@@ -172,6 +211,8 @@ def main(argv):
             only_counts = True
         elif flag == "--base" and args:
             base_ref = args.pop(0)
+        elif flag == "--touched" and args:
+            touched_ref = args.pop(0)
         elif flag == "--author" and args:
             author = args.pop(0)
         else:
@@ -185,6 +226,14 @@ def main(argv):
         header, rows = read_rows(f.read())
     if only_counts:
         print(*counts(rows))
+        return 0
+    if touched_ref is not None:
+        changed = changed_paths(root, touched_ref)
+        if changed is None:
+            print(f"git cannot compare with {touched_ref}", file=sys.stderr)
+            return 2
+        base_text = git_show(root, touched_ref, LOG)
+        print(touched_report(touched(read_rows(base_text)[1] if base_text else [], rows, changed)))
         return 0
     found = problems(rows, header, root)
     if base_ref is not None:

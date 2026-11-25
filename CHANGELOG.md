@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - A change lists the hazards whose evidence it touches (PR-2, last slice)
+
+- **Clinical risk:** none to behaviour. A hint for the Clinical Safety Officer; it decides nothing and fails nothing by what it lists.
+- **Added:** `check-hazard-log.py --touched <git-ref>` reads the evidence at both ends, so a change cannot drop its own mention, and writes to the summary of the pull request's sign-off job. When git cannot compare it fails, so "None." means none.
+- **Verified:** 2 new tests, every docs gate, and run by hand against earlier commits of this branch. **Not done / not verified:** the workflow step has not run, as work here is pushed to main and not through pull requests, so for those pushes the hint is only what a person runs by hand; a hazard whose evidence does not name a file is not listed when that file changes.
+
 ## 2026-11-25 - Every list of words the database enforces is checked against the code (PR-3)
 
 - **Clinical risk:** none to behaviour; a word added to one side only now fails.
