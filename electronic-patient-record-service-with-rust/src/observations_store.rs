@@ -83,6 +83,18 @@ pub struct ObservationRecord {
 }
 
 impl ObservationRecord {
+    /// The record as it is kept: a range with no bounds is absent (AG-2), never an empty object that could be read as
+    /// a range every value is within. Not refused, so that an old record that has one can still be corrected or marked
+    /// entered in error by a client that sends back what it read.
+    #[must_use]
+    pub fn kept(&self) -> ObservationRecord {
+        ObservationRecord {
+            range: observations::bounded(self.range),
+            critical: observations::bounded(self.critical),
+            ..self.clone()
+        }
+    }
+
     /// The measurement, for the rules in [`crate::observations`].
     #[must_use]
     pub fn observation(&self) -> Observation {
@@ -436,7 +448,7 @@ pub async fn create_with_rules(
 .bind(record.status.as_str())
 .bind(effective)
 .bind(site_zone)
-.bind(serde_json::to_value(record).map_err(db_err)?)
+.bind(serde_json::to_value(record.kept()).map_err(db_err)?)
 .fetch_optional(&mut *db)
         .await
         .map_err(db_err)?
@@ -592,6 +604,42 @@ pub async fn update(
     site_zone: &str,
     now: jiff::Timestamp,
 ) -> Result<StoredObservation, StoreError> {
+    update_with_rules(
+        db,
+        patient_id,
+        observation_id,
+        expected_version,
+        author,
+        reason,
+        record,
+        site_zone,
+        now,
+        &tasks_store::rules()?,
+    )
+    .await
+}
+
+/// [`update`] under the given task rules instead of the service's: the same write, for a test of a rule.
+///
+/// # Errors
+///
+/// As [`update`].
+#[expect(
+    clippy::too_many_arguments,
+    reason = "RCA-EXC-6: a store call names each field of the record; one parameter struct for all is a wider change"
+)]
+pub async fn update_with_rules(
+    db: impl Into<Db<'_>>,
+    patient_id: &str,
+    observation_id: &str,
+    expected_version: i32,
+    author: &str,
+    reason: Option<&str>,
+    record: &ObservationRecord,
+    site_zone: &str,
+    now: jiff::Timestamp,
+    rules: &[Rule],
+) -> Result<StoredObservation, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
     if let Some(e) = bad(record, now) {
@@ -629,13 +677,13 @@ pub async fn update(
 .bind(record.status.as_str())
 .bind(effective)
 .bind(site_zone)
-.bind(serde_json::to_value(record).map_err(db_err)?),
+.bind(serde_json::to_value(record.kept()).map_err(db_err)?),
     )
     .await?;
     match appended {
         crate::store::Appended::Row(row) => {
             let stored = row_to_observation(&row)?;
-            raise_for_change(&mut *db, &was, &stored).await?;
+            raise_for_change(&mut *db, rules, &was, &stored).await?;
             Ok(stored)
         }
         crate::store::Appended::Taken => {
@@ -647,42 +695,35 @@ pub async fn update(
 
 /// The task event a new version raises (TL-3), on the writer's connection: entered in error raises
 /// `observation-entered-in-error` with the facts as they were, so the tasks the value made can be cancelled; a version
-/// out of range where the last was not raises `observation-out-of-range`, so a correction into range and back, or a
-/// second save of the same abnormal value, makes no second task.
+/// out of range whose flag is not the one the last version had raises `observation-out-of-range`, so that high to
+/// critically high is news (AG-2) and a second save of the same flag is not. A rule whose task for this observation is
+/// still open makes no second.
 async fn raise_for_change(
     conn: &mut sqlx::PgConnection,
+    rules: &[Rule],
     was: &StoredObservation,
     now: &StoredObservation,
 ) -> Result<(), StoreError> {
     let (before, after) = (was.record.observation(), now.record.observation());
-    let event = if now.record.status == Status::EnteredInError
-        && was.record.status != Status::EnteredInError
+    let source = source(&now.id);
+    if now.record.status == Status::EnteredInError {
+        if was.record.status != Status::EnteredInError {
+            let facts = observations::task_facts(&before);
+            let event = Event::ObservationEnteredInError;
+            tasks_store::raise(conn, rules, event, &facts, &now.patient_id, &source).await?;
+        }
+    } else if observations::out_of_range(&after)
+        && observations::flag(&after) != observations::flag(&before)
     {
-        Some((
-            Event::ObservationEnteredInError,
-            observations::task_facts(&before),
-        ))
-    } else if now.record.status == Status::Final
-        && observations::out_of_range(&after)
-        && !observations::out_of_range(&before)
-    {
-        Some((
-            Event::ObservationOutOfRange,
-            observations::task_facts(&after),
-        ))
-    } else {
-        None
-    };
-    if let Some((event, facts)) = event {
-        tasks_store::raise(
-            conn,
-            &tasks_store::rules()?,
-            event,
-            &facts,
-            &now.patient_id,
-            &source(&now.id),
-        )
-        .await?;
+        let open = tasks_store::open_rules(&mut *conn, &now.patient_id, &source).await?;
+        let due: Vec<Rule> = rules
+            .iter()
+            .filter(|r| !open.contains(&r.id))
+            .cloned()
+            .collect();
+        let facts = observations::task_facts(&after);
+        let event = Event::ObservationOutOfRange;
+        tasks_store::raise(conn, &due, event, &facts, &now.patient_id, &source).await?;
     }
     Ok(())
 }

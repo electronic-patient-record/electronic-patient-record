@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - An empty reference range is never normal; a crossed critical limit is said (audit finding 2, AG-2)
+
+- **Clinical risk:** H-034. A heart rate of 130 with an empty reference range was flagged normal and exported to FHIR as `N`; one above a critical limit of 120 with no reference range had no flag and raised no event.
+- **Fixed:** see AG-2 in `tasks.md`. A unit test that required "a critical range alone flags nothing" was replaced: the audit and its maintainer ask for the other reading, and it awaits a clinical owner (OQ-AG2).
+- **Found beyond the audit:** high corrected to critically high raised no event; it does now.
+- **Verified:** 2 domain tests and 1 database test; the domain tests failed first. **Not done / not verified:** no clinical owner was asked; a one-sided range still gives normal on its open side.
+
 ## 2026-11-25 - A critical correction after sign-off reopens review (audit finding 1, AG-1)
 
 - **Clinical risk:** H-050 and H-059, controls added, nothing accepted. An abnormal result signed and then corrected to critical left no task: signing cancelled it, and abnormal to critical was "no change".

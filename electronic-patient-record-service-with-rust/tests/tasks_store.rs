@@ -645,6 +645,161 @@ async fn an_out_of_range_observation_makes_its_task_and_entered_in_error_cancels
     );
 }
 
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn an_observation_made_critical_is_news_and_an_empty_range_is_never_kept() {
+    let db = db().await;
+    let team = format!("team-{}", stamp());
+    let rules = task_rules::parse(
+        &format!(
+            r#"
+[[rule]]
+id = "critical-observation"
+version = 1
+title = "Act"
+approved_by = "A Clinician"
+approved_on = "2026-11-18"
+event = "observation-out-of-range"
+cancel_on = ["observation-entered-in-error"]
+[[rule.when]]
+fact = "flag"
+any_of = ["critical-high"]
+[rule.task]
+team = "{team}"
+title = "Act on the observation"
+due_working_days = 0
+late_reminder = "send-once"
+"#
+        ),
+        "test",
+    )
+    .unwrap();
+    let p = patient(&db).await;
+    let now: jiff::Timestamp = "2026-11-18T09:00:00Z".parse().unwrap();
+    let with = |v: f64, range: Option<Range>, critical: Option<Range>| ObservationRecord {
+        range,
+        critical,
+        ..heart_rate(v, ObservationStatus::Final)
+    };
+    let upper = |v: f64| {
+        Some(Range {
+            low: None,
+            high: Some(v),
+        })
+    };
+    let empty = Some(Range {
+        low: None,
+        high: None,
+    });
+    // High and not critical, then corrected to critically high: one task, though it was out of range already.
+    let o = observations_store::create_with_rules(
+        &db,
+        &p,
+        "nurse-1",
+        None,
+        &with(130.0, upper(100.0), upper(140.0)),
+        "UTC",
+        now,
+        &rules,
+    )
+    .await
+    .unwrap();
+    assert!(open_tasks(&db, &team).await.is_empty());
+    for (version, v) in [(1, 150.0), (2, 155.0)] {
+        observations_store::update_with_rules(
+            &db,
+            &p,
+            &o.id,
+            version,
+            "nurse-1",
+            Some("misread"),
+            &with(v, upper(100.0), upper(140.0)),
+            "UTC",
+            now,
+            &rules,
+        )
+        .await
+        .unwrap();
+        assert_eq!(open_tasks(&db, &team).await.len(), 1, "{v}");
+    }
+    // A critical limit alone, crossed (the audit's case): a task.
+    observations_store::create_with_rules(
+        &db,
+        &p,
+        "nurse-1",
+        None,
+        &with(130.0, None, upper(120.0)),
+        "UTC",
+        now,
+        &rules,
+    )
+    .await
+    .unwrap();
+    assert_eq!(open_tasks(&db, &team).await.len(), 2);
+    // An empty range is kept as absent, and says nothing.
+    let bare = observations_store::create(
+        &db,
+        &p,
+        "nurse-1",
+        None,
+        &with(130.0, empty, empty),
+        "UTC",
+        now,
+    )
+    .await
+    .unwrap();
+    assert_eq!((bare.record.range, bare.record.critical), (None, None));
+    assert_eq!(bare.flag, None);
+    let stored: serde_json::Value =
+        sqlx::query_scalar("SELECT body FROM observation_versions WHERE observation_id = $1::uuid")
+            .bind(&bare.id)
+            .fetch_one(&db)
+            .await
+            .unwrap();
+    assert!(stored.get("range").is_none() && stored.get("critical").is_none());
+    // One kept before this was so (the trigger refuses an edit, so it is written as it then was): read as not assessed.
+    let old: String = sqlx::query_scalar(
+        "INSERT INTO observation_versions (observation_id, version, patient_id, author, status, effective_at, site_zone, body)
+         SELECT gen_random_uuid(), 1, patient_id, author, status, effective_at, site_zone, body || '{\"range\": {}}'
+         FROM observation_versions WHERE observation_id = $1::uuid RETURNING observation_id::text",
+    )
+    .bind(&bare.id)
+    .fetch_one(&db)
+    .await
+    .unwrap();
+    let read = observations_store::list(&db, &p)
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|x| x.id == old)
+        .unwrap();
+    assert_eq!(read.flag, None, "never normal");
+    let fhir = electronic_patient_record::interop::fhir_observation::to_fhir(&read, &p, &[])
+        .unwrap()
+        .unwrap();
+    let j = serde_json::to_value(&fhir).unwrap();
+    assert!(
+        j.get("interpretation").is_none() && j.get("referenceRange").is_none(),
+        "{j}"
+    );
+    // It can still be marked in error by a client that sends back what it read.
+    let mut retract = read.record.clone();
+    retract.status = ObservationStatus::EnteredInError;
+    observations_store::update(
+        &db,
+        &p,
+        &old,
+        1,
+        "dr-1",
+        Some("mistake"),
+        &retract,
+        "UTC",
+        now,
+    )
+    .await
+    .unwrap();
+}
+
 fn referral_rules(team: &str) -> Vec<task_rules::Rule> {
     task_rules::parse(
         &format!(

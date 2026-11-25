@@ -16,8 +16,9 @@
 //! - **Implausible values are refused**, not flagged (a systolic pressure of 3 is a slip of the keys). The
 //!   bounds in [`SUPPORTED`] are wide guesses at what is physically possible, **not clinical limits**.
 //! - **The range is the sender's.** No table of normal values is held, so with no range the flag is `None`
-//!   ("not assessed"), never "normal". A value on the edge of a range is normal; only strictly outside is
-//!   low or high, and strictly outside the critical range is critical.
+//!   ("not assessed"), never "normal", and a range with neither bound is no range. A value on the edge of a range is
+//!   normal; only strictly outside is low or high, and strictly outside the critical range is critical, with or
+//!   without a reference range (AG-2, a first draft: OQ-AG2).
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -188,6 +189,12 @@ pub fn task_facts(o: &Observation) -> BTreeMap<String, String> {
     facts
 }
 
+/// `r`, unless it has neither bound: a range with no bounds is no range (AG-2), so it is kept as absent.
+#[must_use]
+pub fn bounded(r: Option<Range>) -> Option<Range> {
+    r.filter(|r| r.low.is_some() || r.high.is_some())
+}
+
 /// Whether a bound is absent or a finite number (not infinity or NaN).
 fn finite(x: Option<f64>) -> bool {
     x.is_none_or(f64::is_finite)
@@ -293,17 +300,15 @@ pub fn validate(o: &Observation) -> Vec<(&'static str, String)> {
     problems
 }
 
-/// Where the value sits, or `None` when it cannot be said: no value, a value that is not finite, no
-/// reference range, or a range that [`validate`] would refuse. `None` means "not assessed", never normal.
+/// Where the value sits, or `None` when it cannot be said: no value, a value that is not finite, no reference range to
+/// judge it by, or a range that [`validate`] would refuse. `None` means "not assessed", never normal. A range with no
+/// bounds is no range ([`bounded`]). A crossed critical limit is the sender's own and is said whether or not there is a
+/// usable reference range (AG-2); a critical limit that is not crossed says nothing about normal.
 #[must_use]
 pub fn flag(o: &Observation) -> Option<Flag> {
     let v = o.value.filter(|v| v.is_finite())?;
-    let r = o.range.as_ref()?;
-    if range_problem("reference", r).is_some() {
-        return None;
-    }
-    if let Some(c) = &o.critical {
-        if range_problem("critical", c).is_some() {
+    if let Some(c) = bounded(o.critical) {
+        if range_problem("critical", &c).is_some() {
             return None;
         }
         if c.low.is_some_and(|l| v < l) {
@@ -313,6 +318,7 @@ pub fn flag(o: &Observation) -> Option<Flag> {
             return Some(Flag::CriticalHigh);
         }
     }
+    let r = bounded(o.range).filter(|r| range_problem("reference", r).is_none())?;
     if r.low.is_some_and(|l| v < l) {
         return Some(Flag::Low);
     }
@@ -590,13 +596,76 @@ mod tests {
     }
 
     #[test]
-    fn a_critical_range_without_a_reference_range_flags_nothing() {
-        let mut o = heart(10.0);
+    fn a_crossed_critical_limit_is_said_with_no_reference_range_and_nothing_else_is() {
+        // AG-2: the sender's own limit was crossed, so it is said; where the value sits otherwise is not known.
+        for (v, want) in [
+            (10.0, Some(Flag::CriticalLow)),
+            (40.0, None),
+            (70.0, None),
+            (140.0, None),
+            (141.0, Some(Flag::CriticalHigh)),
+        ] {
+            let mut o = heart(v);
+            o.critical = Some(Range {
+                low: Some(40.0),
+                high: Some(140.0),
+            });
+            assert_eq!(flag(&o), want, "{v}");
+            assert_eq!(out_of_range(&o), want.is_some(), "{v}");
+        }
+        // One critical limit, as in the audit: 130 against an upper 120.
+        let mut o = heart(130.0);
         o.critical = Some(Range {
-            low: Some(40.0),
-            high: Some(140.0),
+            low: None,
+            high: Some(120.0),
         });
+        assert_eq!(flag(&o), Some(Flag::CriticalHigh));
+        // A reference range that makes no sense does not hide a crossed critical limit, and is never normal.
+        o.range = Some(Range {
+            low: Some(100.0),
+            high: Some(60.0),
+        });
+        assert_eq!(flag(&o), Some(Flag::CriticalHigh));
+        o.value = Some(80.0);
         assert_eq!(flag(&o), None);
+    }
+
+    #[test]
+    fn a_range_with_no_bounds_is_no_range_and_never_gives_normal() {
+        let empty = Some(Range {
+            low: None,
+            high: None,
+        });
+        for (range, critical) in [(empty, None), (None, empty), (empty, empty)] {
+            let mut o = heart(130.0);
+            o.range = range;
+            o.critical = critical;
+            assert_eq!(flag(&o), None, "{range:?} {critical:?}");
+            assert!(!out_of_range(&o));
+            assert!(!task_facts(&o).contains_key("flag"));
+        }
+        // An empty critical range changes nothing about a usable reference range, and the reverse.
+        let mut o = heart(130.0);
+        o.range = Some(Range {
+            low: None,
+            high: Some(100.0),
+        });
+        o.critical = empty;
+        assert_eq!(flag(&o), Some(Flag::High));
+        o.range = empty;
+        o.critical = Some(Range {
+            low: None,
+            high: Some(120.0),
+        });
+        assert_eq!(flag(&o), Some(Flag::CriticalHigh));
+        // It is stored as absent.
+        assert_eq!(bounded(empty), None);
+        let one = Some(Range {
+            low: Some(1.0),
+            high: None,
+        });
+        assert_eq!(bounded(one), one);
+        assert_eq!(bounded(None), None);
     }
 
     #[test]
