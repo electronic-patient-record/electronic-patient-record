@@ -243,6 +243,12 @@ fn no_route_acts_on_a_mask_yet() {
         let text = std::fs::read_to_string(&path).unwrap();
         // A unit test may look at a decision; only the code that serves a route counts.
         let code = text.split("#[cfg(test)]").next().unwrap();
+        // Nor adds or lifts a label (OQ-PI7): one that hides nothing would be trusted.
+        assert!(
+            !code.contains("labelling::"),
+            "{}: labels are added now: update this census, and mask with them",
+            path.display()
+        );
         assert!(
             !code.contains("Obligation::Mask"),
             "{}: a route masks now: update this census",

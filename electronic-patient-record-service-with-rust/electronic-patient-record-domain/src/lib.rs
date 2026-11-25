@@ -22,6 +22,7 @@ pub mod death;
 pub mod gate;
 pub mod hazard;
 pub mod ids;
+pub mod labelling;
 pub mod link_token;
 pub mod masking;
 pub mod missed;

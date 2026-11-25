@@ -18,9 +18,10 @@
 //! * There is no delete action: the clinical record is append-only. Withdrawing an entry is
 //!   [`Action::MarkEnteredInError`].
 //! * Every allow carries [`Obligation::Audit`].
-//! * Break-the-glass lifts only the missing care relationship, only for reads, only for a
-//!   treating role. It never overrides a consent refusal and never unmasks a security label.
-//! * A subject sees a labelled record unmasked only if its role is on that label's list; otherwise
+//! * Break-the-glass lifts a missing care relationship and every security label (OQ-PI2, decided 2026-11-25), only for
+//!   reads and not an export, only for a treating role, and is always flagged for review. It never overrides a consent
+//!   refusal (OQ-PI8).
+//! * Without it a subject sees a labelled record unmasked only if its role is on that label's list; otherwise
 //!   the decision is an allow with [`Obligation::Mask`] naming the labels to hide.
 //!
 //! **The permission table, the label lists and the purpose rules below are a first draft by an
@@ -957,17 +958,22 @@ pub fn evaluate(request: &Request) -> Decision {
     })
 }
 
-/// How many labels the `Mask` obligations hide. [`evaluate`] uses it to prefer, among a subject's roles that allow the
-/// access, the decision that hides least.
-fn masked(obligations: &[Obligation]) -> usize {
+/// How many labels the `Mask` obligations hide, and whether break-the-glass was needed. [`evaluate`] uses it to prefer,
+/// among a subject's roles that allow the access, the decision that hides least, and among those one that needs no
+/// break-the-glass.
+fn masked(obligations: &[Obligation]) -> (usize, bool) {
     // ARITH-2: a count too large for usize hides more than any other decision, so it sorts last.
-    obligations
+    let hidden = obligations
         .iter()
         .try_fold(0_usize, |acc, o| match o {
             Obligation::Mask(labels) => acc.checked_add(labels.len()),
             _ => Some(acc),
         })
-        .unwrap_or(usize::MAX)
+        .unwrap_or(usize::MAX);
+    let glass = obligations
+        .iter()
+        .any(|o| matches!(o, Obligation::BreakTheGlass(_)));
+    (hidden, glass)
 }
 
 /// A refusal. `btg_offer` says break-the-glass could lift it.
@@ -979,7 +985,8 @@ fn deny(reason: DenyReason, btg_offer: bool) -> Decision {
 /// role; a patient or proxy acts only through their own relationship; a refused consent stops every disclosure to
 /// anyone but the patient, and break-the-glass does not lift it; clinical content needs a care relationship, or an
 /// unexpired break-the-glass grant with a reason for a treating role reading it; then security labels the role may not
-/// see become a `Mask` obligation (substance-use records also need the patient's consent). Every allow carries `Audit`.
+/// see become a `Mask` obligation (substance-use records also need the patient's consent), unless there is such a grant,
+/// which shows them. Every allow carries `Audit`, and one that a grant was needed for says so.
 fn evaluate_role(role: Role, r: &Request) -> Decision {
     if !permitted(role, r.resource).contains(&r.action) {
         return deny(DenyReason::NotPermitted, false);
@@ -1008,19 +1015,20 @@ fn evaluate_role(role: Role, r: &Request) -> Decision {
 
     let mut obligations = vec![Obligation::Audit];
 
+    // What a grant may lift, and a grant that lifts it now.
+    let btg_eligible =
+        r.resource.clinical() && role.treats() && r.action.reads() && r.action != Action::Export;
+    let grant = r.break_glass.as_ref().filter(|grant| {
+        btg_eligible && !grant.reason.trim().is_empty() && grant.expires_at > r.now
+    });
+    let mut glass = false;
+
     // Clinical content needs a care relationship (or break-the-glass for a treating role).
     if r.resource.clinical() && own.is_none() && !r.relationship.treating() {
-        let btg_eligible = role.treats() && r.action.reads() && r.action != Action::Export;
-        if !btg_eligible {
-            return deny(DenyReason::NoRelationship, false);
+        if grant.is_none() {
+            return deny(DenyReason::NoRelationship, btg_eligible);
         }
-        match &r.break_glass {
-            Some(grant) if !grant.reason.trim().is_empty() && grant.expires_at > r.now => {
-                obligations.push(Obligation::BreakTheGlass(grant.reason.trim().to_string()));
-                obligations.push(Obligation::NotifyPrivacyOfficer);
-            }
-            _ => return deny(DenyReason::NoRelationship, true),
-        }
+        glass = true;
     }
 
     // Labels: hide what this role may not see. Substance-use records also need the patient's
@@ -1038,9 +1046,17 @@ fn evaluate_role(role: Role, r: &Request) -> Decision {
                 !listed || part2
             })
             .collect();
-        if !hidden.is_empty() {
+        // In an emergency everything is shown, to someone with a relationship as to someone without: a colleague on the
+        // team does not see less than a stranger.
+        if !hidden.is_empty() && grant.is_some() {
+            glass = true;
+        } else if !hidden.is_empty() {
             obligations.push(Obligation::Mask(hidden));
         }
+    }
+    if let Some(grant) = grant.filter(|_| glass) {
+        obligations.push(Obligation::BreakTheGlass(grant.reason.trim().to_string()));
+        obligations.push(Obligation::NotifyPrivacyOfficer);
     }
     Decision::Allow(obligations)
 }
@@ -1281,7 +1297,7 @@ mod tests {
     }
 
     #[test]
-    fn break_glass_does_not_override_a_consent_refusal_or_unmask_a_label() {
+    fn break_glass_shows_a_labelled_record_and_does_not_override_a_consent_refusal() {
         let grant = Some(BreakGlass {
             reason: "emergency".into(),
             expires_at: 9_999,
@@ -1298,14 +1314,33 @@ mod tests {
             }
         );
 
+        // Every label, for someone with no relationship and for someone on the team (OQ-PI2), and it is flagged.
+        for relationship in [Relationship::None, Relationship::CareTeam] {
+            let mut r = request(Role::Nurse, Resource::Condition, Action::Read);
+            r.relationship = relationship;
+            r.break_glass = grant.clone();
+            r.labels = BTreeSet::from(Label::ALL);
+            let Decision::Allow(o) = evaluate(&r) else {
+                panic!("should allow");
+            };
+            assert!(!o.iter().any(|x| matches!(x, Obligation::Mask(_))));
+            assert!(o.contains(&Obligation::BreakTheGlass("emergency".into())));
+            assert!(o.contains(&Obligation::NotifyPrivacyOfficer));
+            // Ended, it lifts nothing.
+            r.now = 9_999;
+            if let Decision::Allow(o) = evaluate(&r) {
+                assert!(o.iter().any(
+                    |x| matches!(x, Obligation::Mask(l) if l.contains(&Label::VeryRestricted))
+                ));
+            }
+        }
+
+        // It is not used, or flagged, where nothing is hidden: one of the reader's roles sees the label.
         let mut r = request(Role::Nurse, Resource::Condition, Action::Read);
-        r.relationship = Relationship::None;
+        r.subject = subject(&[Role::Nurse, Role::Clinician]);
         r.break_glass = grant;
         r.labels = BTreeSet::from([Label::VeryRestricted]);
-        let Decision::Allow(o) = evaluate(&r) else {
-            panic!("should allow");
-        };
-        assert!(o.contains(&Obligation::Mask(BTreeSet::from([Label::VeryRestricted]))));
+        assert_eq!(evaluate(&r), Decision::Allow(vec![Obligation::Audit]));
     }
 
     #[test]
@@ -1474,13 +1509,23 @@ mod tests {
                                             );
                                             assert!(grant.is_some(), "{at}");
                                         }
-                                        // Break-glass is flagged on the audit row whenever it was needed.
+                                        // Break-glass is flagged on the audit row whenever it was needed: for
+                                        // the relationship, or for a label that would be hidden.
+                                        let hidden = labels.iter().any(|l| {
+                                            !l.unmasked_for().contains(&role)
+                                                || (*l == Label::SubstanceUse
+                                                    && role != Role::Patient
+                                                    && consent != Consent::Permit)
+                                        });
+                                        let lifts = grant.is_some()
+                                            && resource.clinical()
+                                            && role.treats()
+                                            && action.reads()
+                                            && action != Action::Export;
                                         assert_eq!(
                                             o.iter()
                                                 .any(|x| matches!(x, Obligation::BreakTheGlass(_))),
-                                            resource.clinical()
-                                                && !matches!(role, Role::Patient | Role::Proxy)
-                                                && !relationship.treating(),
+                                            lifts && (!relationship.treating() || hidden),
                                             "{at}"
                                         );
                                         // Every label the role is not listed for is masked on a read, and
@@ -1496,7 +1541,7 @@ mod tests {
                                         for label in labels {
                                             let listed = label.unmasked_for().contains(&role);
                                             if action.reads() && !listed {
-                                                assert!(masked.contains(label), "{at}");
+                                                assert_eq!(masked.contains(label), !lifts, "{at}");
                                             }
                                             if !action.reads() {
                                                 assert!(masked.is_empty(), "{at}");

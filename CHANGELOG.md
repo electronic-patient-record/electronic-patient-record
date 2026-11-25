@@ -2,6 +2,16 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - Masking decided: break-glass shows everything, only the care team is told a count, and who labels; life-or-limb emergencies (OQ-PI2, OQ-PI5, OQ-PI7, FR-4.6)
+
+- **Clinical risk:** H-007 and H-024 (controls, evidence and residual changed; statuses and scores not: the Clinical Safety Officer is asked to re-assess both). **Nothing a user sees changes today:** no record carries a label, so the engine's new rule has nothing to show.
+- **Added to the spec:** FR-4.6, "emergencies that are life-or-limb threatening override normal access restrictions", with a table of each restriction and whether break-glass lifts it today. A refusal of consent is not lifted, and whether it should be is asked (OQ-PI8). PI-10: a grant does not say whether a life or a limb is at risk.
+- **Changed:** in the policy engine a break-glass grant shows labelled entries, substance use included, to a treating role reading clinical content, on the team or not, and the access is flagged. Among a reader's roles, one that needs no grant is preferred, so that it is not flagged for nothing. In the masking library a viewer outside the care team is told `unstated`, whether or not anything is withheld.
+- **Added:** `labelling.rs`, who adds and who lifts a label. The label for custody is lifted only because the patient asked, as the custody page already said.
+- **Changed:** `tests/label_census.rs` also fails on the day any code adds or lifts a label.
+- **Found:** the survivor-grief page says break-glass must not reach its notes, which the decision contradicts. Written there; not resolved.
+- **Verified:** unit tests and the whole-matrix test; seven faults put in by hand, six caught (one of them only after a test was added). The seventh, letting a grant cover an export, changed no test, since no treating role may export clinical content. The normal and database passes on a fresh Postgres 18; every docs gate. **Not done / not verified:** no store, route or screen; three readings of the decisions are the author's (who the care team is, who lifts, and that custody is `R`); a reader on the team with every known label allowed is still refused an entry whose code cannot be read; no clinician, lawyer, survivor or Clinical Safety Officer has reviewed any of it.
+
 ## 2026-11-25 - A permission does not follow a merge (OQ-AG14)
 
 - **Clinical risk:** H-006 (controls, evidence and residual changed; status and score not). A permission on a record merged into another counted there and could not be withdrawn there. It no longer counts, and an unmerge gives the record its own back; refusals follow as before. Decided by the maintainer.

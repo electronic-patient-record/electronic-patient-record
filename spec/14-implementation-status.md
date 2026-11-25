@@ -22,11 +22,11 @@ no network, database or compilation; counts are source lines, not test runs):
 | Front-end version | 0.1.0 | `version` in the front-end `package.json` |
 | Migrations | 46 | files named `*.sql` in `migrations` |
 | Route registrations | 121 | `.add(` calls in `src/controllers/*.rs` |
-| Service tests | 1010, plus 266 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
+| Service tests | 1018, plus 266 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
 | Matcher tests | 136, plus 0 `#[ignore]`d | the same patterns in the matcher |
 | Front-end unit tests (vitest) | 399 | `it(` / `test(` lines in `tests/unit` |
 | Front-end end-to-end tests (Playwright) | 124 | `test(` lines in `tests/e2e` |
-| Hazards | 71, of which 50 open and 0 accepted or closed; 39 name a test | `scripts/check-hazard-log.py --counts` |
+| Hazards | 71, of which 50 open and 0 accepted or closed; 40 name a test | `scripts/check-hazard-log.py --counts` |
 | Locales | 10 | entries of `LOCALES` in `src/lib/locales.ts` |
 
 **Task boxes in [`tasks.md`](../tasks.md)** (ticked / open, by prefix):
@@ -63,7 +63,7 @@ no network, database or compilation; counts are source lines, not test runs):
 | TO | 0 | 9 |
 | QA | 7 | 10 |
 | RA | 0 | 7 |
-| PI | 2 | 7 |
+| PI | 3 | 7 |
 | HM | 0 | 5 |
 | VW | 0 | 6 |
 | BV | 5 | 4 |
@@ -93,6 +93,6 @@ no network, database or compilation; counts are source lines, not test runs):
 | EH | 2 | 15 |
 | AG | 2 | 11 |
 | DM | 0 | 5 |
-| **Total** | **148** | **476** |
+| **Total** | **149** | **476** |
 
 <!-- generated:end -->

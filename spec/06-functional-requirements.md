@@ -18,7 +18,8 @@ Entered-in-error and amendment. FR-3.4 Terminology service. FR-3.5 Patient summa
 
 ### 6.4 Security (SE-, M3)
 FR-4.1 RBAC + ABAC + consent on every read. FR-4.2 Break-the-glass. FR-4.3 Label masking. FR-4.4 Multi-tenancy with
-row-level security. FR-4.5 Patient access log.
+row-level security. FR-4.5 Patient access log. FR-4.6 Emergencies that are life-or-limb threatening override normal access restrictions
+([what that covers, and what is built](access-control/index.md#life-or-limb-emergencies)).
 
 ### 6.5 Documentation (DO-, M4)
 FR-5.1 Notes with addenda and co-sign. FR-5.2 Copy-forward provenance. FR-5.3 Structured forms. FR-5.4 Flowsheets and

@@ -249,8 +249,8 @@ Open:
 | Timers and loop-back | Built for referrals: configured periods, no default, a worklist | Not generalised; pathway not built | `referral_timeouts.rs`, spec [5.2.1](../05-domain-model.md) |
 | Roles | Eleven: clinician, nurse, pharmacist, allied-health, receptionist, clinical-admin, patient, proxy, auditor, integrator, clinical-safety-officer | **No healthcare support worker or observer, though they do most of this work.** No bank, agency or visiting-observer shape | `policy.rs` `Role` |
 | Mental health label | `PSY`: unmasked for clinician, nurse, allied health, patient | Pharmacist masked; a proxy sees the mask; nothing carries a label yet (SE-4) | `policy.rs` `unmasked_for` |
-| Emergency access | Break-glass lifts only a missing relationship; never a label | A safety plan under a label stays hidden in an emergency | `break_glass.rs`, `policy.rs` |
-| Mask | Says "restricted information exists" | Reveals existence to a proxy | `policy.rs` `Obligation::Mask` |
+| Emergency access | Break-glass lifts a missing relationship and, in the engine, every label (OQ-PI2) | Nothing carries a label yet | `break_glass.rs`, `policy.rs` |
+| Mask | Tells the care team how many, and anyone else nothing (OQ-PI5) | A library nothing calls | `policy.rs` `Obligation::Mask` |
 | Proxy | Scoped, dated, revocable authority | No hidden-from list; no young-person rule | `proxy.rs` |
 | Sharing decision log | Consent records and permits exist | No per-occasion disclosure record | `consent.rs` |
 | Amendment | Patient route for `Observation` and `AllergyIntolerance` | No route for narrative or a plan, as those do not exist | `service spec` RC-4, `amendment.rs` |
@@ -270,7 +270,7 @@ For the Clinical Safety Officer. None is accepted, and none is added to the [haz
 - SW-3 A back-filled entry displays as contemporaneous, because the screen shows the claimed time only.
 - SW-4 No one holds the observation: a break, a handover or an unfilled shift leaves a gap that the screen does not show.
 - SW-5 An order lapses unreviewed, or a restrictive order continues with no review.
-- SW-6 A person at risk arrives in another department and the plan or order is hidden by a label, and break-glass does not unmask it (the reverse of H-007).
+- SW-6 A person at risk arrives in another department and the plan or order is hidden by a label, and nobody opens break-glass, which would show it (the reverse of H-007).
 - SW-7 A flag, a plan or a family note is exposed through a portal, proxy, letter, text or banner to a partner, parent or employer.
 - SW-8 A permanent flag stigmatises and changes care, or physical symptoms are read as mental health (the second is my reasoning).
 - SW-9 Ending a flag or order is read as "safe" and support stops, in the period when evidence suggests risk stays raised.
@@ -297,7 +297,7 @@ Proposals only. None is to be built before clinicians, observers and people with
 4. **A short observer view** on a phone, for one patient: the plan, what helps, the next check, take over and hand over.
 5. **A census test for risk words.** Built (SW-1): `electronic-patient-record-service-with-rust/tests/risk_field_census.rs` fails if a `risk_level`-shaped field appears in the core; a pack that adds one must declare it. It sees field names only: it cannot stop a score written in free text or held under another name.
 6. **A safety plan owned by the person**, versioned, printable, with a recipient list the person controls.
-7. **An emergency rule for a safety fact** with [OQ-PI2](../16-open-questions.md): what break-glass shows of a plan.
+7. **An emergency rule for a safety fact** with [OQ-PI2](../16-open-questions.md): what break-glass shows of a plan: everything (decided 2026-11-25).
 8. **Follow-up as a pathway step** with an owner and a loop-back, reusing the referral pattern.
 9. **A support worker and a visiting observer role** ([roles](../access-control/roles-and-assignments.md)), with a time-boxed relationship.
 10. **A sharing log and an involve/do-not-involve statement.**

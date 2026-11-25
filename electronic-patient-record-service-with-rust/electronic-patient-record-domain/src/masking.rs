@@ -2,15 +2,14 @@
 //! viewer, with no database. **Nothing calls it yet and no record carries a label.**
 //!
 //! - **A whole entry is withheld, never a part.** A title with its code removed still tells.
-//! - **It counts and never says what.** The answer for a viewer is the same whatever the withheld entries say: only how
-//!   many there are can differ ([`Masked`]).
+//! - **It counts for the care team, and never says what** (OQ-PI5, decided 2026-11-25). For anyone else, a patient and a
+//!   proxy among them, the answer is the same whether or not anything is withheld ([`told`]).
 //! - **It fails closed.** Labels that cannot be read, and a decision that is not a plain allow, withhold the entry.
+//!   Break-the-glass shows everything, those included (OQ-PI2).
 //! - **The answer stays valid.** An empty or short list that has something withheld is [`Completeness::Partial`] and
-//!   never "none", and a shown problem does not point at a withheld one ([`show_problem`]).
+//!   never "none"; one that may have is [`Completeness::Unstated`], which is not "none" either; and a shown problem does not point at a withheld one ([`show_problem`]).
 //! - **A write does not undo what the writer could not see** ([`keep_withheld_cause`]): a whole record is sent each time,
 //!   so someone who was shown no cause would otherwise remove it.
-//!
-//! Whether a viewer may be told even the count is not decided for a patient or a proxy (OQ-PI5); these lists refuse them.
 
 #![deny(
     clippy::arithmetic_side_effects,
@@ -21,7 +20,7 @@
     clippy::string_slice
 )]
 
-use crate::policy::{Decision, Label, Obligation};
+use crate::policy::{Decision, Label, Obligation, Relationship, Role};
 use crate::problem::ProblemRecord;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
@@ -31,7 +30,7 @@ use std::collections::BTreeSet;
 pub enum Labels {
     /// Every code is a label this version of the service knows. None is an empty set.
     Known(BTreeSet<Label>),
-    /// At least one is not. It may be the strictest of all, so the entry is withheld from everyone.
+    /// At least one is not. It may be the strictest of all, so the entry is withheld from everyone but in an emergency.
     Unreadable,
 }
 
@@ -58,6 +57,18 @@ pub fn shows(decision: &Decision) -> bool {
     }
 }
 
+/// Whether a decision rests on break-the-glass.
+fn emergency(decision: &Decision) -> bool {
+    matches!(decision, Decision::Allow(o) if o.iter().any(|o| matches!(o, Obligation::BreakTheGlass(_))))
+}
+
+/// Whether a viewer is told how many entries are withheld: staff who treat the patient. Not a patient or a proxy, who may
+/// be watched while they read, whatever other role they hold; and nobody without a treating relationship.
+#[must_use]
+pub fn told(roles: &BTreeSet<Role>, relationship: Relationship) -> bool {
+    relationship.treating() && roles.iter().any(|r| r.treats())
+}
+
 /// Whether a list is all there is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "completeness", rename_all = "kebab-case")]
@@ -69,6 +80,8 @@ pub enum Completeness {
         /// How many. Never which, or of what kind.
         withheld: usize,
     },
+    /// This viewer is not told, and is given this whether or not anything was withheld. An empty list is not "none".
+    Unstated,
 }
 
 /// A list as one viewer may have it. The withheld entries are gone; only their number and ids are kept, and the ids are for
@@ -84,13 +97,15 @@ pub struct Masked<T> {
 }
 
 /// Withhold from `entries` what the viewer may not see. `decide` is asked once for each entry whose labels can be read, with
-/// those labels, and is the record decision ([`crate::policy::evaluate`]) for this viewer.
+/// those labels, and is the record decision ([`crate::policy::evaluate`]) for this viewer. One whose labels cannot be read
+/// is asked about with every label, and is shown only when the answer rests on break-the-glass. `told` is [`told`]'s.
 #[must_use]
 pub fn mask<T>(
     entries: impl IntoIterator<Item = T>,
     id: impl Fn(&T) -> &str,
     labels: impl Fn(&T) -> Labels,
     decide: impl Fn(BTreeSet<Label>) -> Decision,
+    told: bool,
 ) -> Masked<T> {
     let mut shown = Vec::new();
     // One for each entry, so that several versions of one entry are counted apart.
@@ -98,7 +113,10 @@ pub fn mask<T>(
     for entry in entries {
         let seen = match labels(&entry) {
             Labels::Known(set) => shows(&decide(set)),
-            Labels::Unreadable => false,
+            Labels::Unreadable => {
+                let decision = decide(BTreeSet::from(Label::ALL));
+                shows(&decision) && emergency(&decision)
+            }
         };
         if seen {
             shown.push(entry);
@@ -109,6 +127,7 @@ pub fn mask<T>(
     Masked {
         shown,
         completeness: match hidden.len() {
+            _ if !told => Completeness::Unstated,
             0 => Completeness::Whole,
             withheld => Completeness::Partial { withheld },
         },
@@ -146,7 +165,7 @@ pub fn keep_withheld_cause(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::policy::{Action, Consent, Purpose, Relationship, Request, Resource, Role, Subject};
+    use crate::policy::{Action, BreakGlass, Consent, Purpose, Request, Resource, Subject};
     use crate::problem::{self, Certainty, Link, Status};
 
     #[derive(Debug, Clone, PartialEq)]
@@ -175,6 +194,14 @@ mod tests {
     }
 
     fn decide(role: Role) -> impl Fn(BTreeSet<Label>) -> Decision {
+        decide_with(role, Relationship::CareTeam, None)
+    }
+
+    fn decide_with(
+        role: Role,
+        relationship: Relationship,
+        break_glass: Option<BreakGlass>,
+    ) -> impl Fn(BTreeSet<Label>) -> Decision {
         move |labels| {
             crate::policy::evaluate(&Request {
                 subject: Subject {
@@ -184,10 +211,10 @@ mod tests {
                 resource: Resource::Condition,
                 action: Action::Read,
                 labels,
-                relationship: Relationship::CareTeam,
+                relationship,
                 purpose: Purpose::Treatment,
                 consent: Consent::NotRecorded,
-                break_glass: None,
+                break_glass: break_glass.clone(),
                 now: 0,
             })
         }
@@ -199,12 +226,16 @@ mod tests {
             |e| e.id.as_str(),
             |e| Labels::read(e.labels.iter().copied()),
             decide(role),
+            true,
         )
     }
 
     /// Everything a viewer would be given, as text.
     fn answer(role: Role, entries: &[Entry]) -> String {
-        let m = masked(role, entries);
+        answer_of(masked(role, entries))
+    }
+
+    fn answer_of(m: Masked<Entry>) -> String {
         let shown: Vec<(String, ProblemRecord)> = m
             .shown
             .iter()
@@ -249,6 +280,15 @@ mod tests {
             for role in Role::ALL {
                 assert!(masked(role, &one).shown.is_empty(), "{role:?} {codes:?}");
             }
+            // Nor does someone who may see every label this version knows: the patient, reading their own.
+            let own = mask(
+                one.to_vec(),
+                |e| e.id.as_str(),
+                |e| Labels::read(e.labels.iter().copied()),
+                |_| Decision::Allow(vec![Obligation::Audit]),
+                false,
+            );
+            assert!(own.shown.is_empty(), "{codes:?}");
         }
     }
 
@@ -338,6 +378,98 @@ mod tests {
         }
         // Not an empty loop: six labels and seventeen roles, most of which see none of them.
         assert!(compared > 60, "{compared}");
+    }
+
+    #[test]
+    fn only_staff_who_treat_the_patient_are_told_how_many() {
+        for role in Role::ALL {
+            for relationship in [
+                Relationship::None,
+                Relationship::CareTeam,
+                Relationship::ActiveEncounter,
+                Relationship::SelfPatient,
+                Relationship::Proxy,
+            ] {
+                let may = role.treats() && relationship.treating();
+                assert_eq!(told(&BTreeSet::from([role]), relationship), may);
+                if matches!(role, Role::Patient | Role::Proxy) {
+                    assert!(!told(&BTreeSet::from([role]), relationship), "{role:?}");
+                }
+            }
+        }
+        // A clinician reading their own record, or a relative's, is a patient or a proxy there.
+        let both = BTreeSet::from([Role::Clinician, Role::Patient, Role::Proxy]);
+        assert!(!told(&both, Relationship::SelfPatient));
+        assert!(!told(&both, Relationship::Proxy));
+    }
+
+    /// For someone who is not told, the answer is the same with none, one or two withheld, and is not "whole".
+    #[test]
+    fn someone_not_told_cannot_tell_that_anything_is_withheld() {
+        let none = vec![entry("a", &[], "Asthma", None)];
+        let mut one = none.clone();
+        one.push(entry("b", &["V"], "Secret", None));
+        let mut two = one.clone();
+        two[0].record.due_to = Some("b".into());
+        two.push(entry("c", &["no-such-label"], "Secret", Some("a")));
+        for role in [Role::Proxy, Role::Nurse] {
+            let seen = |list: &[Entry]| {
+                answer_of(mask(
+                    list.to_vec(),
+                    |e| e.id.as_str(),
+                    |e| Labels::read(e.labels.iter().copied()),
+                    // What the role may see is the engine's; this test is of what it is told.
+                    |labels| {
+                        if labels.is_empty() {
+                            Decision::Allow(vec![Obligation::Audit])
+                        } else {
+                            decide(role)(labels)
+                        }
+                    },
+                    false,
+                ))
+            };
+            let first = seen(&none);
+            assert!(
+                first.contains("unstated") && first.contains("Asthma"),
+                "{first}"
+            );
+            assert_eq!(first, seen(&one));
+            assert_eq!(first, seen(&two));
+        }
+    }
+
+    #[test]
+    fn break_the_glass_shows_everything_labels_that_cannot_be_read_included() {
+        let list = [
+            entry("a", &[], "Asthma", None),
+            entry("b", &["V", "SUD", "HIV"], "Secret", Some("a")),
+            entry("c", &["no-such-label"], "Newer", None),
+        ];
+        let seen = |relationship, expires_at| {
+            mask(
+                list.to_vec(),
+                |e| e.id.as_str(),
+                |e| Labels::read(e.labels.iter().copied()),
+                decide_with(
+                    Role::Nurse,
+                    relationship,
+                    Some(BreakGlass {
+                        reason: "collapsed".into(),
+                        expires_at,
+                    }),
+                ),
+                true,
+            )
+        };
+        for relationship in [Relationship::None, Relationship::CareTeam] {
+            let m = seen(relationship, 1);
+            assert_eq!(m.shown, list, "{relationship:?}");
+            assert_eq!(m.completeness, Completeness::Whole);
+        }
+        // When the grant has ended they are withheld again.
+        assert_eq!(seen(Relationship::CareTeam, 0).shown, list[..1]);
+        assert!(seen(Relationship::None, 0).shown.is_empty());
     }
 
     #[test]

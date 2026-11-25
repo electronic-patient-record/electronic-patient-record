@@ -227,7 +227,7 @@ Link: [protected information](../access-control/protected-information.md), inclu
 | Labels | Six: `R`, `V`, `PSY`, `HIV`, `SUD`, `ETH` | No `SDV`, `VIO`, `PSYTHPN`; `ETH` defect (H-045) | `policy.rs` `Label` |
 | Label on records | None (SE-4) | Nothing is masked in practice | [protected information](../access-control/protected-information.md) |
 | Fine-grained survivor control | Consent permits by role, purpose, label and time; refusals respected | Named-person access; relationship test on labels | `consent.rs`, `policy.rs` |
-| Break-glass | Does not unmask a label | A safety fact in a labelled note stays hidden | `break_glass.rs` |
+| Break-glass | Shows everything, in the engine (OQ-PI2) | Nothing carries a label yet | `break_glass.rs` |
 | Therapy note class, audience | None | All of it | grep of `src` |
 | Disclosure request log | Audit logs access; nothing logs a police request | All of it | `audit.rs` (by name), grep of `src` |
 | Third-party mark, serious-harm review | None | All of it | grep of `src` |
@@ -286,7 +286,7 @@ Proposals only.
 ## Open questions
 
 1. Should the record hold a survivor's narrative at all, or only a pointer to where it was told?
-2. What may a survivor have restricted from an emergency clinician? See OQ-PI2.
+2. What may a survivor have restricted from an emergency clinician? By OQ-PI2 (answered 2026-11-25) nothing on their record; survivors have not been asked.
 3. Does the English position allow a therapy-note class like the US one? Who decides its default audience?
 4. Which staff may see a "safe summary"? Is it a clinical fact, or a person's preference?
 5. How should a note, once written, respond to a survivor's wish to withdraw it, in a record with no delete path? Restriction is the only tool; is it enough?

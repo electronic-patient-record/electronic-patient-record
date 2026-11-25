@@ -90,10 +90,10 @@ A label only works where something checks it. Each route is a place that must be
 | Need | This project today | Gap |
 | --- | --- | --- |
 | Labels | Six: `R`, `V`, `PSY`, `HIV`, `SUD`, `ETH` | None for `STD`, `SEX`, `SDV`, `VIO`, `GENDER`, `ADOL`, `GDIS`, `EMP`, `CEL`, location |
-| Unmasking | A role list per label, then consent; break-glass never unmasks a label | Unreviewed. No relationship or service test: a clinician in any team unmasks `HIV` |
+| Unmasking | A role list per label, then consent; break-glass shows everything (2026-11-25, OQ-PI2) | Unreviewed. No relationship or service test: a clinician in any team unmasks `HIV` |
 | Records with labels | None: nothing stores a label on clinical content | SE-4 |
-| Who applies a label | Nobody; no route | No rule for sensitive by default, no steward, no lift process |
-| The mask | Shows "restricted information exists" | Reveals existence to a proxy or a partner reading along |
+| Who applies a label | Nobody; no route. Who may is decided and is a library (OQ-PI7) | No rule for sensitive by default but custody, no steward |
+| The mask | Tells the care team how many, and anyone else nothing (OQ-PI5); a library | Not wired |
 | Proxy | A role with scopes | No hidden-from list; no rule for a young person; no coercion route |
 | Alias, no-information | None | The directory, search and banner all show the patient |
 | Name and gender history | None | Old-name suppression; matcher behaviour across a deliberate break |
@@ -107,7 +107,7 @@ For the Clinical Safety Officer; none is accepted or closed by this page. H-045 
 
 1. **A label misread between systems** (H-045, controlled, unreviewed). `ETH` was read as ethnicity, not substance use. The same risk applies to any code added later.
 2. **A safeguarding or domestic-abuse entry reaches the abuser** through a portal, a proxy view, a letter or a text.
-3. **A masked fact is needed in an emergency.** An HIV medicine, an interaction or a safeguarding alert is hidden, and break-glass does not unmask a label. This is the reverse of H-007 and at least as serious.
+3. **A masked fact is needed in an emergency.** An HIV medicine, an interaction or a safeguarding alert is hidden. Break-glass shows it by the decision of 2026-11-25, once masking is wired; a reader who does not know that anything is hidden may not open it. This is the reverse of H-007 and at least as serious.
 4. **A former name or gender is shown or searchable**, in the UI, a letter, an audit view or an export.
 5. **The old and new records are linked or matched**, disclosing a protected fact; or they are never linked, and an allergy is lost.
 6. **Screening or a reference range follows the marker**, not the physiology.
@@ -130,7 +130,7 @@ For the Clinical Safety Officer; none is accepted or closed by this page. H-045 
 9. **Proxy rules with dates and hidden-from lists**: a parent's proxy narrows as a child grows, by a setting in the pack; a young person can be asked; a coercion flag ends proxy access in a way that doesn't announce why.
 10. **A route census.** In the manner of the existing census tests: every output route has a test that a labelled record does not appear in it. Add a new route, and the census fails until it names its label behaviour. **Built as a first slice (PI-7):** `tests/label_census.rs` lists every output route and what it does with a label. Today no route applies one: 34 give out patient data with no label applied, and two more tests fail on the day that changes. The test that a labelled record does not appear waits for labelled records.
 11. **A neutral envelope.** Letters, texts and portal notices use a neutral sender and no specialty for labelled pathways.
-12. **An emergency rule.** Decide with clinicians what break-glass shows of a labelled record: at least the safety fact (a drug, an interaction), not the narrative. Today it shows neither.
+12. **An emergency rule.** Decide with clinicians what break-glass shows of a labelled record: at least the safety fact (a drug, an interaction), not the narrative. **Decided 2026-11-25: everything** (OQ-PI2).
 13. **Protected-record audit.** Audit views of a protected record require a named role and are themselves reviewed.
 14. **Measure it.** Label coverage against the sensitive-by-default list, and time to lift ([measuring clinical safety](../clinical-safety/measurement.md)), with planted failures.
 
@@ -139,10 +139,10 @@ For the Clinical Safety Officer; none is accepted or closed by this page. H-045 
 Summarised as OQ-PI1 to OQ-PI6 in [open questions](../16-open-questions.md).
 
 1. Decided: no ethnicity label (OQ-PI1).
-2. What does break-glass show of a labelled record? Today, nothing; is that safe? (OQ-PI2)
+2. Decided: break-glass shows everything (OQ-PI2).
 3. Does s.22 of the Gender Recognition Act, with its orders, allow a clinician to see gender history for care, and what does that mean outside the UK? (OQ-PI3)
 4. Is a deliberate break between old and new records ever bridged, and who decides? (OQ-PI4)
-5. Should a mask say anything at all? "Restricted information exists" helps a clinician and harms a person being watched: does it differ by viewer? (OQ-PI5)
+5. Decided: the care team is told how many, and anyone else nothing (OQ-PI5).
 6. Which of these people are consulted before a build, and how: people living with HIV, trans patients, survivors, young people? (OQ-PI6)
 7. Do labels follow the patient across tenants or countries, where the rules differ?
 8. Who is the steward in a small clinic?

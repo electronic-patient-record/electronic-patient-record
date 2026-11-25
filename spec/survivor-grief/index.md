@@ -175,7 +175,7 @@ Further needs:
 **What this project would need (my reasoning).**
 - Default: **a counsellor's notes are not in the shared record.** The shared record holds that a person is under a named service, with dates and a contact, if they agreed. Some people will not want even that.
 - If a service uses this EPR, its notes are a separate class, under a label, reachable by that service only. `PSY` exists, but today it unmasks for clinician, nurse, allied health and patient, in any team, so it is **not** a counsellor's confidence. `PSYTHPN` is listed in [protected information](../access-control/protected-information.md) and is not in the code.
-- Break-glass must not reach these notes, which matches the rule that it never unmasks a label. Yet a safety fact must be findable. This is the tension in protected-information hazard 3.
+- This page says that break-glass must not reach these notes. **That conflicts with the decision of 2026-11-25 that break-glass shows everything (OQ-PI2)**, so a label does not do it; notes that must stay out of reach would need to be kept outside the patient's record, which is not decided. And a safety fact must be findable. This is the tension in protected-information hazard 3.
 - Labels exist in `policy.rs`, but no clinical record carries one, and masking is not built (SE-4). **So no counselling note should be stored until SE-4 exists.**
 - The audit row holds ids and versions, as elsewhere, never content. A service name in a patient-visible access log can disclose counselling ([protected information](../access-control/protected-information.md)).
 - Immediate online release of a counsellor's formulation to a portal may hurt, and a partner may read it. The route needs a decision.

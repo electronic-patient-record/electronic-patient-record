@@ -16,6 +16,7 @@ FR-4.2,electronic-patient-record-service-with-rust/tests/break_glass_store.rs::a
 FR-4.3,electronic-patient-record-service-with-rust/electronic-patient-record-domain/src/masking.rs::what_is_withheld_changes_nothing_in_the_answer,A library nothing calls; no record carries a label
 FR-4.4,,
 FR-4.5,electronic-patient-record-service-with-rust/tests/audit_chain.rs::the_patient_log_is_one_patients_rows_newest_first_in_pages_without_detail,
+FR-4.6,electronic-patient-record-service-with-rust/electronic-patient-record-domain/src/policy.rs::break_glass_shows_a_labelled_record_and_does_not_override_a_consent_refusal; electronic-patient-record-service-with-rust/electronic-patient-record-domain/src/masking.rs::break_the_glass_shows_everything_labels_that_cannot_be_read_included,"In part: no record carries a label, a refusal of consent is not lifted (OQ-PI8), and nothing asks whether a life or a limb is at risk"
 FR-5.1,,
 FR-5.2,,
 FR-5.3,electronic-patient-record-service-with-rust/tests/http_assessments.rs::answers_keep_the_form_version_they_were_given_under,"One example form, which is not a clinical tool"
