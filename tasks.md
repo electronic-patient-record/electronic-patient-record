@@ -1256,7 +1256,7 @@ Ranked in plan.md §25. Each item was checked against this repository's code; a 
   `scripts/check-hazard-log.py` fails when the file or the function does not exist. First as a report listing every hazard with no named
   test, then as a failure for hazards marked mitigated. A change to a file a hazard names lists that hazard in the pull request (a hint for
   the Clinical Safety Officer, not a decision). **Acceptance:** renaming a named test fails the check; the report lists the rest.
-- [ ] **PR-3 (S) — Stored words checked against the database.** *(First slice 2026-11-04: referral states, allergy and consent statuses, `tests/stored_words.rs`; amendment, observation and queue words not yet.)* A database-gated test reads each `CHECK (… IN (…))` list from the catalogue
+- [x] **PR-3 (S) — Stored words checked against the database.** *(First slice 2026-11-04. **Done 2026-11-25:** `tests/stored_words.rs` reads every list the database enforces, 33 of them, and each is compared with the code's words, or listed with the reason it is not: five, axa's own tables, a number, and a table nothing writes. A list nobody listed fails, and an enum spelled out there stops compiling when a variant is added.)* A database-gated test reads each `CHECK (… IN (…))` list from the catalogue
   and compares it with the code's list: referral states, queue kinds and clearances, and the existing allergy, observation and amendment
   states. **Acceptance:** adding a word to `State` without the migration fails the test, and the reverse.
 - [x] **PR-4 (S) — One replica runs a background job.** *(Built 2026-11-04; checked first, see CHANGELOG.)* First **check** whether two replicas running `audit_retention::run_loop` at once make

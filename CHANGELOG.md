@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - Every list of words the database enforces is checked against the code (PR-3)
+
+- **Clinical risk:** none to behaviour; a word added to one side only now fails.
+- **Changed:** `tests/stored_words.rs` compared 11 lists that it named; it now reads all 33 from the catalogue, so a new `CHECK` fails until someone has looked at it. Five are not compared, each with its reason. Five are written as literals in the code, and only that each database word appears in the file is checked.
+- **Verified:** each way to fail was tried: a word in the database only, a list nobody listed, a variant in the code only (it does not compile). The normal and database passes on a fresh Postgres 18, every docs gate. **Not done / not verified:** for the five literal lists, a word in the code and not in the database is not caught here (the database refuses it when written).
+
 ## 2026-11-25 - A hazard that is not open must name a test (PR-2, second slice)
 
 - **Clinical risk:** the hazard log's evidence column only: 16 hazards with controls in place now name the tests behind them. No status, score or wording changed (compared column by column with the previous revision).
