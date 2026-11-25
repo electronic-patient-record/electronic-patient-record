@@ -47,7 +47,7 @@ The interface's own browser tests run on two phones (`playwright.mobile.config.t
 
 On a window under 640 px wide or 480 px high the banner scrolls with the page, and a strip stays at the top: the name, birth date and an identifier (the national number, or the other one) whole and never cut; in words, a drill, a reported or confirmed death, a failed look for one, a temporary identity or a merge; and the allergies. A long list of active allergies is cut to what fits 60 characters, high-risk ones first, with the number left out (`Penicillin (high risk), Latex (high risk), Trimethoprim, +5`); "not recorded", "not shown to you" and "could not be loaded" are never shortened. What gets the focus or is jumped to stops below it. A screen reader is given the banner and not the strip. On a larger window nothing changed. Rule 3 above is met for the strip and not for the whole banner, and **which allergies must stay in sight is not agreed** (OQ-XP2). On an iPhone SE "Save changes" can be pressed again.
 
-Measured at 320 by 640, 320 by 568 and 640 by 320: at most 25 % of the height for an ordinary record, and at most 45 % for a crowded one (a long name, 8 allergies, a drill and a temporary identity).
+Measured at 320 by 640, 320 by 568 and 640 by 320 on one machine: 13 to 15 % of the height for an ordinary record, and 30 to 34 % for a crowded one (a long name, 8 allergies, a drill, a reported death and a temporary identity). **Fonts differ between machines**: on CI's the crowded strip was 47 % before the notices were put on one line, so the test allows 25 and 50 %, and a real phone may differ again.
 
 ## Not done, not verified
 

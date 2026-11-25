@@ -5224,13 +5224,30 @@ const MANY = [
 
 for (const [what, record, items, most] of [
   ["an ordinary record", ANN, MANY.slice(0, 2), 25],
-  ["a crowded record", CROWDED, MANY, 45],
+  // Fonts differ between machines by a line or two, so the limit leaves room: what it holds is half of the screen.
+  ["a crowded record", CROWDED, MANY, 50],
 ] as const) {
   test(`a small screen keeps identity and allergies in sight and the page usable: ${what}`, async ({
     page,
   }) => {
     await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
       json(route, 200, record),
+    );
+    await page.route("**/api/proxy/api/patients/*/death", (route) =>
+      json(
+        route,
+        200,
+        items.length > 2
+          ? {
+              answer: "asserted",
+              status: "reported",
+              confirmed: false,
+              occurred: "2026-10-12",
+              dates_differ: false,
+              holds_contact: true,
+            }
+          : { answer: "not-asserted", reason: "no assertion stands" },
+      ),
     );
     await stubAllergies(page, {
       allergies: [],
@@ -5265,7 +5282,9 @@ for (const [what, record, items, most] of [
         `${name?.family.toUpperCase()}, ${name?.given.join(" ")}`,
         "1980-03-14",
         "943 476 5919",
-        ...(items.length > 2 ? ["+5", "DRILL", "TEMPORARY IDENTITY"] : []),
+        ...(items.length > 2
+          ? ["+5", "DRILL", "REPORTED as having died", "TEMPORARY IDENTITY"]
+          : []),
       ]) {
         await expect(strip, size).toContainText(words);
       }

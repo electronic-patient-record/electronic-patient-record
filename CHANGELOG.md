@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - The small screen's strip is shorter, and what it takes is said as measured (XP-3)
+
+- **Clinical risk:** as the entry below; the notices (a drill, a death, a temporary identity, a merge) are now on one line of the strip, each still in words.
+- **Fixed:** CI failed on `d92b325c`: with its fonts the crowded strip was 47 % of a screen, against a limit of 45 that had been set on one machine. The claim "at most 45 %" was wrong. The strip is shorter, the test allows 25 and 50 %, and the pages say what was measured and that fonts change it. The test also left the look for a death to fail, which put a line in every strip; it now answers.
+
 ## 2026-11-25 - On a small screen the patient banner no longer covers the page (XP-3)
 
 - **Clinical risk:** what stays in sight changes on a window under 640 px wide or 480 px high (H-070: controls, evidence and residual changed; status and score not). The banner scrolls away and a strip stays with identity, safety notices and allergies. Needs, the photo, sex and age are no longer always in sight there. On a larger window nothing changed. **Not reviewed by any clinician** (OQ-XP2).

@@ -177,9 +177,9 @@
 </section>
 
 <div class="banner-strip" aria-hidden="true" bind:offsetHeight={stripHeight}>
-  {#each strip.flags as flag (flag)}
-    <p class="flag">{flag}</p>
-  {/each}
+  {#if strip.flags.length > 0}
+    <p class="flag">{strip.flags.join(" · ")}</p>
+  {/if}
   <p>
     <strong>{name || TEXT.notAvailable}</strong>
     · {p.birth_date ?? TEXT.bannerNoBirthDate}
