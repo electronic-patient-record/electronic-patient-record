@@ -12,6 +12,8 @@
 mod audit_switch;
 #[path = "chaos_support/mod.rs"]
 mod chaos_support;
+#[path = "http_log_privacy.rs"]
+mod http_log_privacy;
 #[path = "openapi_support/mod.rs"]
 mod openapi_support;
 

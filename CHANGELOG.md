@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - Nothing about a person reaches a log line, held by a test (QA-5)
+
+- **Clinical risk:** none; a test only.
+- **Added:** `tests/http_log_privacy.rs`: one marked patient is registered, found by each criterion, read in three forms, recorded about, and refused in eight ways, with every log level captured. No line held a name, number, birth date, postcode, telephone, free text or the record's id. Request lines carry the route's template and not the address.
+- **Verified:** a planted line with the search's parameters fails it; three runs; the normal and database passes; every docs gate. **Not done / not verified:** lines written by a background task, or only when the database or the identity provider fails; the routes it does not call; the interface's own logs; a proxy's or container's access log.
+
 ## 2026-11-25 - What a shared postcode or telephone does to a comparison of two people (XP-5)
 
 - **Clinical risk:** none to behaviour; the matcher is as it was. H-001's residual and evidence now say what was found (status and score not).
