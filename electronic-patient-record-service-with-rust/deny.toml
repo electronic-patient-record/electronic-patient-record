@@ -19,10 +19,6 @@ ignore = [
     # builds uses it (DEP-1); it is left only in the tests, through axa-test's axum-test and its expect-json. Delete
     # this when they drop it. expires 2027-02-17
     { id = "RUSTSEC-2026-0543", reason = "chrono unmaintained; only in dev-dependencies (axum-test's expect-json); DEP-1" },
-    # 2026-11-23: cookie 0.18.2 repeats private-cookie nonces in a process that forks. It is only in the tests (axum-test),
-    # which do not fork and set no private cookies. 0.18.3 fixes it and was published the same day, inside the 2-day
-    # cooldown; take it with `cargo update -p cookie` when the cooldown ends (2026-11-25) and delete this. expires 2026-12-07
-    { id = "RUSTSEC-2026-0594", reason = "cookie private-cookie nonces after fork; only in dev-dependencies (axum-test); fixed in 0.18.3, inside the cooldown" },
 ]
 
 [licenses]

@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - cookie 0.18.3; the ignore for RUSTSEC-2026-0594 is gone
+
+- **Clinical risk:** none; `cookie` is reached only through the tests' `axum-test`.
+- **Changed:** `cargo update -p cookie` once the two-day cooldown had ended, with no exception to it; one package in the lock file. The ignore in `deny.toml` (it was to expire 2026-12-07) is deleted.
+- **Verified:** `cargo deny check` with the ignore gone; the normal and database passes. **Not done / not verified:** RUSTSEC-2026-0543 (chrono, tests only) is still ignored until 2027-02-17.
+
 ## 2026-11-25 - Two requests at one moment open one emergency grant
 
 - **Clinical risk:** H-024 (a control and a test added; status and score not). Before this, two requests at the same instant for one person and patient, as from a double press, each opened a grant: two to review, and an end a moment later than it should be.
