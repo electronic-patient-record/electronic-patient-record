@@ -60,8 +60,8 @@ Medication orders (after EM-2 and RC-10, not in the first slice): dose, route, f
 Each is a testable sentence.
 
 1. An order is stored as append-only versions; a database trigger refuses `UPDATE`, `DELETE` and `TRUNCATE`.
-2. An order's states are `draft`, `active` (signed), `on-hold`, `completed`, `revoked` and `entered-in-error`; a transition not in the state table is refused.
-3. A signed order cannot be edited; a change is a new order whose `replaces` names the old one, and the old one is revoked in the same transaction.
+2. An order's states are `draft`, `active` (signed), `on-hold`, `completed`, `cancel-requested`, `revoked` and `entered-in-error`; a transition not in the [state table](state-table.md) is refused, except that something was done, which is kept and flagged.
+3. A signed order cannot be edited; a change is a new order whose `replaces` names the old one, and the old one is revoked in the same transaction if it was not sent, and asked to be cancelled if it was ([state table](state-table.md) rule 6).
 4. Signing names the version signed and the patient id; a mismatch with the session's patient is 409.
 5. Sign requires identity re-entry when the user's last patient switch was within the configured seconds; without it the sign is refused.
 6. Applying an order set creates draft orders only; none is signed automatically.

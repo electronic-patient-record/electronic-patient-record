@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - One state table for every order, as a library nothing calls (EH-4)
+
+- **Clinical risk:** none to behaviour; nothing calls it and no order is stored.
+- **Added:** `order.rs` and `spec/order-entry/state-table.md`: what the orderer wants and what the filler has got to move apart; asking is checked, and that something was done is never refused and is flagged; a cancel of a sent order is a request; an order's own words never change. OQ-OS1 to OQ-OS4.
+- **Changed:** two rules of the order entry proposal that said otherwise (a replaced order was revoked at once, and a transition not in the table was always refused).
+- **Verified:** 11 tests over every state, stage and step, with the allowed steps written out again by hand; four wrong versions of the table were each caught. **Not done / not verified:** no clinician, pharmacist or laboratory reviewed it; no store, route or screen; the database pass was not run, as no store changed; referrals keep their own table.
+
 ## 2026-11-25 - The rules of masking, as a library nothing calls (EH-8, first slice)
 
 - **Clinical risk:** none to behaviour; nothing calls it and no record carries a label. The design names the hazards a build must log.

@@ -180,6 +180,10 @@
 | OQ-GC4 | Who may read a genetic result or cause: every treating team, or fewer? | customer, Clinical Safety Officer |
 | OQ-GC5 | What is kept for a person who does not wish to know? | clinical geneticist, country pack |
 | OQ-GC6 | Which code systems for rare conditions, under which licences? | customer |
+| OQ-OS1 | Who sees an order's flag (done after a cancel, for example), how soon, and who answers when the orderer has left? See [state table](order-entry/state-table.md). | clinical lead, Clinical Safety Officer |
+| OQ-OS2 | How long may an order done before it was signed wait for a signature? | clinical lead, pharmacist |
+| OQ-OS3 | May an order end by time alone? | clinical lead, pharmacist |
+| OQ-OS4 | Does a referral move to the order state table (PC-5)? | maintainer |
 | OQ-EH1 | What does a patient or proxy see of the problem list and of relative history, and when? Refused until decided. See [problem list](problem-list/index.md). | clinical lead, patients |
 | OQ-EH2 | Is there a "no known problems" statement, as for allergies, or is it unsafe? | clinical lead, Clinical Safety Officer |
 | OQ-EH3 | Does a confirmed suspicion (RS-3) propose a problem for a clinician to accept? | clinical lead |
