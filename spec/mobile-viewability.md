@@ -25,6 +25,22 @@ community, home-visit and mental-health staff, and clinicians on call, work from
 
 Add Playwright projects for a phone (for example `Pixel 7`) and a small iPhone; run `axe` and a "no horizontal scroll at 320 px" check on the banner, patient list, record page and referral screens; fail on a truncated banner. Real-device checks by hand before any release, since an emulator does not show a real touch keyboard or a notch.
 
+## What breaks at 320 px (XP-1, measured 2026-11-25)
+
+The interface's own browser tests run on two phones (`playwright.mobile.config.ts`: a Pixel 7 at 320 by 640 in Chromium, an iPhone SE at 320 by 568 in WebKit), and each place where a test runs axe is also measured (`tests/e2e/mobile.ts`). 83 places on each phone, in populated screens with invented records; 246 of 250 tests pass. **Not a gate and not in CI** until XP-2 passes.
+
+| What | Where | Measured | Reason |
+|---|---|---|---|
+| **The banner covers the page** (H-070) | Every patient page, 53 places on each phone | It stays at the top and takes **41 to 86 % of the phone's height (median 65) and 50 to 97 % of the iPhone SE's (median 73)**. On the iPhone SE "Save changes" is under it and cannot be pressed | Sticky, and as tall as its content: identity, allergies, needs, notices. A desktop at 400 % zoom is about 320 by 256, so it must be worse there; that was not measured. It meets rule 3 below and breaks the page |
+| Sideways scrolling | Vital signs trend on the patient page | 43 px | A table of four columns with no reflow |
+| Sideways scrolling | Feed queue, with a message open | 131 px; on the Pixel "Close this entry" cannot be pressed | The message as received does not wrap |
+| Sideways scrolling | Patient search results | 6 px | A table of results |
+| Small targets | "Back to search", "Open the summary", "Open the patient", "Back to the patient", "Open" in results, "Privacy" | 18 or 19 px high | Links on a line of their own with no padding. WCAG 2.5.8 allows a smaller target with space around it, which was not worked out |
+| Small targets | Every select, in WebKit only | 23 px high | The browser's own size |
+| Not a fault of the page, or not known | Forced colours; the photo upload's size, in WebKit | 2 tests fail | WebKit has no `forced-color-adjust`; the photo's bytes are not given to the test by that browser (believed, not checked on a phone) |
+
+**Nothing was cut off in the banner** at 320 px in any place, and it was in sight at the end of every page but a patient's own record. Axe found nothing at 320 px in any place. Not seen: the pages no test opens, landscape, a tablet, a real device, a screen reader on a phone, and a long name or a long list of allergies, which make the banner taller.
+
 ## Not done, not verified
 
-No screen was changed, no phone was used, and the 24 px and 320 px values come from secondary summaries of WCAG 2.2, to be checked against the W3C pages. Tasks: `XP-1` to `XP-4`.
+No screen was changed and no real phone was used (section above: emulated), and the 24 px and 320 px values come from secondary summaries of WCAG 2.2, to be checked against the W3C pages. Tasks: `XP-1` to `XP-4`.

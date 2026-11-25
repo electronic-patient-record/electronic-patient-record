@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - The interface measured on two phones (XP-1)
+
+- **Clinical risk:** H-070 is added `open`: on a phone the patient banner takes most of the screen (41 to 97 %) and can cover "Save changes"; at 400 % zoom on a desktop it must be worse, which was not measured. Nothing is changed by this entry.
+- **Added:** `playwright.mobile.config.ts` and `tests/e2e/mobile.ts`, off unless asked for; the list of what breaks in [mobile viewability](spec/mobile-viewability.md).
+- **Verified:** 246 of 250 tests pass on the two phones; the four that do not are in the list. **Not done / not verified:** emulated phones; pages no test opens; landscape, tablets, real devices and screen readers on a phone; whether a small target has enough space around it.
+
 ## 2026-11-25 - A change that would break a caller of the API is refused (QA-7)
 
 - **Clinical risk:** none to behaviour. A screen or another system that stops understanding an answer is a clinical risk, and this is a guard against it.

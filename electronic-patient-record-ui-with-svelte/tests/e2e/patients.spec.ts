@@ -2,6 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import type { Page, Route } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import type { Json } from "./json";
+import { mobileAudit } from "./mobile";
 import { NATIONAL_NUMBER_SYSTEM } from "../../src/lib/patient";
 
 const NATIONAL = NATIONAL_NUMBER_SYSTEM;
@@ -51,6 +52,8 @@ const stubAllergies = (
   );
 
 async function axe(page: Page) {
+  const { title, project } = test.info();
+  await mobileAudit(page, title, project.name);
   const r = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag22aa"])
     .analyze();
