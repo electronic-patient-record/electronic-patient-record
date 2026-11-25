@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - A national number is found however it was typed (AG-12, first slice)
+
+- **Clinical risk:** H-002. `943 476 5919` did not find `9434765919`: not at registration, so a duplicate could be made; not in search; and not in the HL7 feed, which then took a known patient for a new one.
+- **Fixed:** `patients_store::identifier_key`, and in the database `identifier_key` and `identifier_keys` with a GIN index (migration 45), which replaces the index on the raw JSON. Only the two national number systems; any other identifier is still exact. What was typed is kept.
+- **Verified:** `tests/identifier_keys.rs` (3), with the two keys compared on every white space character; the index is used; clippy, rustdoc, Rust 1.98, the normal pass, the database pass on a fresh Postgres 18, every docs gate. **Not done / not verified:** no feed message was sent end to end with a spaced number (the feed uses the search that is tested); the index was not timed on the load data, and building it rewrites nothing but reads every version of every patient; records already duplicated are not found or merged.
+
 ## 2026-11-25 - What registration can find, measured (AG-8, in part)
 
 - **Clinical risk:** H-001. Two things were found and neither is fixed: the duplicate check never looks at 10 of 19 synthetic kinds of duplicate, 8 of which the matcher would have sent to a person; and the matcher says `AutoLink` for twins whose given names differ by one letter. Nothing in the service links by itself.

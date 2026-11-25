@@ -214,7 +214,7 @@ fn same_person() -> Vec<Case> {
             "same number written with spaces, and all else different",
             person("Rees", "Mair", Some("1939-09-09"), Some("9434765870")),
             person("Parry", "Mairwen", Some("1938-08-08"), Some("943 476 5870")),
-            false,
+            true,
             Review,
         ),
     ]
@@ -290,7 +290,7 @@ async fn which_kinds_of_duplicate_are_retrieved_and_which_are_never_looked_at() 
         "the table has changed:\n{}",
         wrong.join("\n")
     );
-    assert_eq!((cases.len(), retrieved, lost), (19, 9, 8));
+    assert_eq!((cases.len(), retrieved, lost), (19, 10, 7));
     s.finish().await;
 }
 

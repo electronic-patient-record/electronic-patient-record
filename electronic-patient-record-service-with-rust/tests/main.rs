@@ -143,6 +143,8 @@ mod http_tasks;
 mod http_typing;
 #[path = "http_watch_list.rs"]
 mod http_watch_list;
+#[path = "identifier_keys.rs"]
+mod identifier_keys;
 #[path = "keycloak_guard.rs"]
 mod keycloak_guard;
 #[path = "label_census.rs"]

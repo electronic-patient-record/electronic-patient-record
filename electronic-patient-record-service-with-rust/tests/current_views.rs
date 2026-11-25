@@ -176,8 +176,8 @@ async fn patient_search_by_identifier_or_birth_date_uses_an_index() {
     let db = db().await;
     for (index, filter) in [
         (
-            "patient_versions_identifiers",
-            r#"body->'identifiers' @> '[{"system":"https://fhir.nhs.uk/Id/nhs-number","value":"9434765919"}]'::jsonb"#,
+            "patient_versions_identifier_keys",
+            "identifier_keys(body) @> ARRAY['https://fhir.nhs.uk/Id/nhs-number|9434765919']",
         ),
         (
             "patient_versions_birth_date",

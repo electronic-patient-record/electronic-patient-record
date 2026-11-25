@@ -4,7 +4,7 @@ Measured 2026-11-25 by [`tests/candidate_recall.rs`](../../electronic-patient-re
 
 ## How a duplicate is looked for
 
-The database retrieves at most 200 current patients that share an identifier, a birth date or a family name with the new registration, exactly. Only those reach the matcher. **A true duplicate outside that set is missed whatever the matcher would have said.**
+The database retrieves at most 200 current patients that share an identifier, a birth date or a family name with the new registration, exactly (a national number without its spaces and hyphens). Only those reach the matcher. **A true duplicate outside that set is missed whatever the matcher would have said.**
 
 ## Two registrations of one person
 
@@ -28,9 +28,9 @@ The database retrieves at most 200 current patients that share an identifier, a 
 | half of a double family name, and year one out | **no** | Review |
 | hyphen against space, and only a birth year known | **no** | Review |
 | same number, all else different | yes | Review |
-| same number written with spaces, and all else different | **no** | Review |
+| same number written with spaces, and all else different | yes (since 2026-11-25) | Review |
 
-**9 of 19 kinds are retrieved. Of the 10 that are not, the matcher would have sent 8 to a person.** One difference is usually survived; two at once usually are not. The last row is a defect and not a limit: the two numbers are one number, the matcher reads them so, and the query compares them as text. Another script is missed even when retrieved, since nothing transliterates it well enough to score.
+**10 of 19 kinds are retrieved. Of the 9 that are not, the matcher would have sent 7 to a person.** One difference is usually survived; two at once usually are not. The last row was a defect and is fixed (AG-12): registration, search and the HL7 feed compared identifiers as text, so one number typed two ways was two. Another script is missed even when retrieved, since nothing transliterates it well enough to score.
 
 ## A common family name
 
@@ -50,7 +50,7 @@ With 300 people of one family name, a duplicate that shares **only the name** ha
 
 ## What would help, in order
 
-1. Compare identifiers by what they mean and not by how they were typed (AG-12): small, and a defect.
+1. ~~Compare identifiers by what they mean and not by how they were typed~~: done (AG-12, migration 45), for national numbers only.
 2. Retrieve by a folded family name (accents, hyphens, spaces) and by the given name in the family's place (AG-12).
 3. Retrieve by a birth date with its day and month swapped, and by the year when only a year is known (AG-12), and measure what it costs.
 4. Require an identifier or an address before any automatic decision (AG-13, OQ-AG8): the matcher's, and a clinical safety decision.

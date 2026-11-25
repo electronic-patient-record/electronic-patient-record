@@ -357,7 +357,26 @@ pub async fn update(
 /// The most candidates fetched for a duplicate check.
 pub const CANDIDATE_LIMIT: i64 = 200;
 
-/// Current patients that share an identifier, a birth date or a family name (case-insensitive,
+/// The key an identifier is looked up by (AG-12): `system|value`, with the whitespace and hyphens taken out of a national
+/// number, as the matcher reads one, and any other value as it was typed. Migration 45's `identifier_key` makes the same
+/// key from what is stored.
+#[must_use]
+pub fn identifier_key(system: &str, value: &str) -> String {
+    let national = [
+        electronic_patient_record_matcher::NATIONAL_NUMBER_SYSTEM,
+        electronic_patient_record_matcher::IHI_SYSTEM,
+    ];
+    if !national.contains(&system) {
+        return format!("{system}|{value}");
+    }
+    let value: String = value
+        .chars()
+        .filter(|c| !c.is_whitespace() && *c != '-')
+        .collect();
+    format!("{system}|{value}")
+}
+
+/// Current patients that share an identifier ([`identifier_key`]), a birth date or a family name (case-insensitive,
 /// exact) with `patient`: the pool the matcher then scores. A pair sharing none of these is not
 /// compared, so a duplicate with a misspelt name, a different birth date and no common identifier
 /// is **not** found. At most [`CANDIDATE_LIMIT`], strongest first; see [`candidates_ranked`].
@@ -403,10 +422,10 @@ pub async fn candidates_in(
 ) -> Result<(Vec<Stored>, bool), StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let db = &mut *conn;
-    let identifiers: Vec<serde_json::Value> = patient
+    let identifiers: Vec<String> = patient
         .identifiers
         .iter()
-        .map(|i| serde_json::json!({ "system": i.system, "value": i.value }))
+        .map(|i| identifier_key(&i.system, &i.value))
         .collect();
     let families: Vec<String> = patient
         .names
@@ -418,8 +437,7 @@ pub async fn candidates_in(
     if identifiers.is_empty() && families.is_empty() && patient.birth_date.is_none() {
         return Ok((Vec::new(), false));
     }
-    let by_identifier = "EXISTS (SELECT 1 FROM jsonb_array_elements($1::jsonb) i
-                                 WHERE body->'identifiers' @> jsonb_build_array(i))";
+    let by_identifier = "(identifier_keys(body) && $1::text[])";
     let by_birth = "($2::text IS NOT NULL AND body->>'birth_date' = $2)";
     let by_family = "EXISTS (SELECT 1 FROM jsonb_array_elements(body->'names') n
                              WHERE lower(trim(n->>'family')) = ANY($3::text[]))";
@@ -433,7 +451,7 @@ pub async fn candidates_in(
                  LIMIT {}",
         CANDIDATE_LIMIT + 1
     )))
-    .bind(serde_json::Value::Array(identifiers))
+    .bind(identifiers)
     .bind(patient.birth_date.clone())
     .bind(families)
     .bind(drill)
@@ -506,7 +524,7 @@ pub async fn search(db: &PgPool, q: &Search) -> Result<Vec<Stored>, StoreError> 
                 .split_once('|')
                 .filter(|(a, b)| !a.is_empty() && !b.is_empty())
                 .ok_or_else(|| StoreError::BadQuery("identifier must be system|value".into()))?;
-            Some(serde_json::json!([{ "system": system, "value": value }]))
+            Some(vec![identifier_key(system, value)])
         }
     };
     let rows = sqlx::query(AssertSqlSafe(format!(
@@ -515,7 +533,7 @@ pub async fn search(db: &PgPool, q: &Search) -> Result<Vec<Stored>, StoreError> 
                          SELECT 1 FROM jsonb_array_elements(body->'names') n
                          WHERE lower(n->>'family') LIKE lower($1) ESCAPE '\\'))
                    AND ($2::text IS NULL OR body->>'birth_date' = $2)
-                   AND ($3::jsonb IS NULL OR body->'identifiers' @> $3::jsonb)
+                   AND ($3::text[] IS NULL OR identifier_keys(body) @> $3::text[])
                    AND drill = $4
                    AND {NOT_MERGED_AWAY}
                  ORDER BY lower(body->'names'->0->>'family'), patient_id

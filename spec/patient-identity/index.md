@@ -1,6 +1,6 @@
 # Patient identity
 
-**Measured 2026-11-25:** [what registration can find](candidate-recall.md) — 9 of 19 synthetic kinds of duplicate are retrieved, and one pair of twins is offered as an automatic link.
+**Measured 2026-11-25:** [what registration can find](candidate-recall.md) — 10 of 19 synthetic kinds of duplicate are retrieved, and one pair of twins is offered as an automatic link.
 
 Explainable weighted matching, deterministic national-health-number rule, refusals for missing evidence, twins and differing verified numbers; registration-time duplicate prevention; reversible merge with `Patient.link` and provenance; FHIR `$match`. Tasks ID-1 to ID-7. **Built today: the matcher and the compare endpoint.** See [matcher spec](../../electronic-patient-record-matcher-with-rust/spec/index.md).
 
