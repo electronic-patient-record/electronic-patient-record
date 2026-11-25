@@ -270,22 +270,27 @@ async fn refused(
     action: Action,
     e: &StoreError,
 ) -> Response {
-    if matches!(e, StoreError::NotFound | StoreError::Conflict { .. })
-        && let Err(r) = audit_resource(
-            &ctx.pool(),
-            agent,
-            Access {
-                action,
-                outcome: 4,
-                purpose,
-                resource: "Consent",
-                patient_id: None,
-            },
-            serde_json::json!({ "refused": e.refusal_kind() }),
-        )
-        .await
+    if matches!(
+        e,
+        StoreError::NotFound | StoreError::Conflict { .. } | StoreError::BadQuery(_)
+    ) && let Err(r) = audit_resource(
+        &ctx.pool(),
+        agent,
+        Access {
+            action,
+            outcome: 4,
+            purpose,
+            resource: "Consent",
+            patient_id: None,
+        },
+        serde_json::json!({ "refused": e.refusal_kind() }),
+    )
+    .await
     {
         return r.into_response();
     }
-    store_failure(e)
+    match e {
+        StoreError::BadQuery(m) => invalid(std::slice::from_ref(m)),
+        other => store_failure(other),
+    }
 }

@@ -405,3 +405,76 @@ async fn a_lost_race_for_a_consent_version_is_a_conflict() {
         "a lost race is a conflict"
     );
 }
+
+/// Withdrawing one of two that say the same would leave the other permitting.
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn one_consent_that_says_a_thing_at_a_time_so_that_withdrawing_it_withdraws_it() {
+    let db = db().await;
+    let pid = patient(&db).await;
+    let permit = ConsentRecord {
+        provisions: vec![Provision {
+            effect: Effect::Permit,
+            actors: vec!["nurse".into(), "clinician".into()],
+            purposes: vec!["research".into()],
+            resources: vec![],
+            labels: vec![],
+            period: None,
+        }],
+        ..deny_research()
+    };
+    let mut reordered = permit.clone();
+    reordered.provisions[0].actors.reverse();
+    let first = store::create(&db, &pid, "admin", None, &permit)
+        .await
+        .unwrap();
+    match store::create(&db, &pid, "admin", None, &reordered).await {
+        Err(StoreError::BadQuery(m)) => assert!(m.contains("already recorded"), "{m}"),
+        other => panic!("{other:?}"),
+    }
+    // One that says something else, and another patient's, are their own.
+    store::create(&db, &pid, "admin", None, &deny_research())
+        .await
+        .unwrap();
+    store::create(&db, &patient(&db).await, "admin", None, &permit)
+        .await
+        .unwrap();
+    let withdrawn = ConsentRecord {
+        status: Status::Inactive,
+        ..permit.clone()
+    };
+    store::update(&db, &pid, &first.id, 1, "admin", Some("asked"), &withdrawn)
+        .await
+        .unwrap();
+    // Given again, it is a new one, and the old one cannot be brought back beside it.
+    store::create(&db, &pid, "admin", None, &reordered)
+        .await
+        .unwrap();
+    match store::update(&db, &pid, &first.id, 2, "admin", Some("back"), &permit).await {
+        Err(StoreError::BadQuery(m)) => assert!(m.contains("already recorded"), "{m}"),
+        other => panic!("{other:?}"),
+    }
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn two_people_at_one_moment_record_one_consent() {
+    let db = db().await;
+    let pid = patient(&db).await;
+    let mut first = db.begin().await.unwrap();
+    store::create(&mut *first, &pid, "admin-1", None, &deny_research())
+        .await
+        .unwrap();
+    let (other, at) = (db.clone(), pid.clone());
+    let second =
+        tokio::spawn(
+            async move { store::create(&other, &at, "admin-2", None, &deny_research()).await },
+        );
+    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    assert!(!second.is_finished(), "it waits for the first");
+    first.commit().await.unwrap();
+    assert!(matches!(
+        second.await.unwrap(),
+        Err(StoreError::BadQuery(_))
+    ));
+}

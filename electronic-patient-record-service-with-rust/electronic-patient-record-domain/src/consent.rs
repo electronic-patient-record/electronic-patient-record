@@ -280,6 +280,37 @@ pub struct Verdict {
     pub from_merged: Vec<String>,
 }
 
+/// Whether two records say the same thing, whatever their status: withdrawing one would leave the other in force. The
+/// order of the provisions, and of the words in a list, does not matter, nor does a word said twice.
+#[must_use]
+pub fn same(a: &ConsentRecord, b: &ConsentRecord) -> bool {
+    fn words(all: &[String]) -> BTreeSet<&str> {
+        all.iter().map(String::as_str).collect()
+    }
+    fn days(p: Option<&Period>) -> (Option<&str>, Option<&str>) {
+        p.map_or((None, None), |p| (p.start.as_deref(), p.end.as_deref()))
+    }
+    let says = |r: &'_ ConsentRecord| -> BTreeSet<String> {
+        r.provisions
+            .iter()
+            .map(|p| {
+                format!(
+                    "{:?}",
+                    (
+                        p.effect,
+                        words(&p.actors),
+                        words(&p.purposes),
+                        words(&p.resources),
+                        words(&p.labels),
+                        days(p.period.as_ref()),
+                    )
+                )
+            })
+            .collect()
+    };
+    a.kind == b.kind && days(a.period.as_ref()) == days(b.period.as_ref()) && says(a) == says(b)
+}
+
 /// Whether one provision matches the disclosure. `None` when the provision does not parse.
 fn matches(p: &Provision, ctx: &Context) -> Option<bool> {
     if !in_period(p.period.as_ref(), ctx.now)? {
@@ -405,6 +436,57 @@ mod tests {
     fn verdict(records: &[ConsentRecord], ctx: &Context) -> policy::Consent {
         let ids: Vec<String> = (0..records.len()).map(|i| format!("c{i}")).collect();
         decide(ids.iter().map(String::as_str).zip(records), ctx).consent
+    }
+
+    #[test]
+    fn the_same_consent_is_the_same_however_it_is_written() {
+        let listed = |actors: &[&str]| Provision {
+            actors: actors.iter().map(|a| (*a).to_string()).collect(),
+            ..provision(Effect::Permit)
+        };
+        let a = record(vec![
+            listed(&["nurse", "clinician"]),
+            provision(Effect::Deny),
+        ]);
+        let b = record(vec![
+            provision(Effect::Deny),
+            listed(&["clinician", "nurse", "nurse"]),
+        ]);
+        assert!(same(&a, &b));
+        let withdrawn = ConsentRecord {
+            status: Status::Inactive,
+            ..b.clone()
+        };
+        assert!(same(&a, &withdrawn), "the status is not what it says");
+        // An empty period is no period.
+        let dated = |period| ConsentRecord {
+            period,
+            ..a.clone()
+        };
+        assert!(same(&a, &dated(Some(Period::default()))));
+        for other in [
+            dated(Some(Period {
+                start: None,
+                end: Some("2026-12-01".into()),
+            })),
+            record(vec![listed(&["nurse"]), provision(Effect::Deny)]),
+            record(vec![listed(&["nurse", "clinician"])]),
+            ConsentRecord {
+                kind: Kind::NationalDataOptOut,
+                ..a.clone()
+            },
+        ] {
+            assert!(!same(&a, &other), "{other:?}");
+        }
+        // A list moved from one field to another is another provision.
+        let purposes = Provision {
+            purposes: vec!["nurse".into()],
+            ..provision(Effect::Permit)
+        };
+        assert!(!same(
+            &record(vec![listed(&["nurse"])]),
+            &record(vec![purposes])
+        ));
     }
 
     #[test]

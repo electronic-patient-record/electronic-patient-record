@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - A consent in force is recorded once, so that withdrawing it withdraws it
+
+- **Clinical risk:** H-006 (controls, evidence and residual changed; status and score not). Two identical consents could stand, and withdrawing one left the other. Today a permission only decides a label that no record carries, so the harm was to come; a refusal left standing kept a person from care they had agreed to.
+- **Fixed:** a consent that says what another in force says, however its lists are ordered, is refused with 422 and the reason, also for two writers at one moment and when a withdrawn one is brought back.
+- **Found, not fixed:** a permission on a record merged into this one still counts after the same one here is withdrawn, and is not in this record's list. Whether a merged-in permission should count at all is a decision (OQ-AG14).
+- **Verified:** 2 store tests that fail without the rule, and 1 domain test; the normal and database passes on a fresh Postgres 18; every docs gate. **Not done / not verified:** consents that overlap and are not the same are allowed, as they mean different things; consents already doubled stand until each is withdrawn.
+
 ## 2026-11-25 - One person has one relationship of a kind with a patient, so that ending it ends the access
 
 - **Clinical risk:** H-011 (controls, evidence and residual changed; status and score not). A relationship could be recorded twice, and ending one left the other: a proxy whose access was ended could keep it.

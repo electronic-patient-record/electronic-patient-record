@@ -4,13 +4,13 @@
 //! `expected_version`, or a concurrent writer that got there first, is a
 //! [`StoreError::Conflict`]. Only the *current* version of each consent counts for a decision.
 
-use crate::consent::ConsentRecord;
+use crate::consent::{self, ConsentRecord, Status};
 use crate::ids;
 use crate::patients_store::{self, StoreError};
 use crate::pool::Db;
 use serde::Serialize;
 use sqlx::postgres::PgRow;
-use sqlx::{AssertSqlSafe, PgPool, Row};
+use sqlx::{AssertSqlSafe, Connection, PgConnection, PgPool, Row};
 use std::collections::HashMap;
 
 crate::store_errors!("consents");
@@ -49,12 +49,36 @@ fn row_to_stored(row: &PgRow) -> Result<StoredConsent, StoreError> {
     })
 }
 
+/// Refuse a consent that says what another active one of the patient says: withdrawing one would leave the other. `own` is
+/// the one being changed.
+async fn refuse_second(
+    db: &mut PgConnection,
+    patient_id: &str,
+    own: Option<&str>,
+    record: &ConsentRecord,
+) -> Result<(), StoreError> {
+    if record.status != Status::Active {
+        return Ok(());
+    }
+    let standing = active_for(&mut *db, &[patient_id.to_string()]).await?;
+    let again = standing
+        .values()
+        .flatten()
+        .any(|c| own != Some(c.id.as_str()) && consent::same(&c.consent, record));
+    if again {
+        return Err(StoreError::BadQuery(
+            "this consent is already recorded and in force: change or withdraw that one".into(),
+        ));
+    }
+    Ok(())
+}
+
 /// Record a new consent for a patient, at version 1.
 ///
 /// # Errors
 ///
-/// [`StoreError::NotFound`] when the patient does not exist; [`StoreError::Db`] when the insert
-/// fails.
+/// [`StoreError::NotFound`] when the patient does not exist; [`StoreError::BadQuery`] when an active one says the same
+/// ([`consent::same`]), also for two writers at one moment; [`StoreError::Db`] when the insert fails.
 pub async fn create(
     db: impl Into<Db<'_>>,
     patient_id: &str,
@@ -63,8 +87,11 @@ pub async fn create(
     record: &ConsentRecord,
 ) -> Result<StoredConsent, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
-    let db = &mut *conn;
-    let patient = patients_store::current(&mut *db, patient_id).await?;
+    let patient = patients_store::current(&mut *conn, patient_id).await?;
+    let mut tx = conn.begin().await.map_err(db_err)?;
+    crate::store::one_at_a_time(&mut tx, STORE, &patient.id).await?;
+    let db = &mut *tx;
+    refuse_second(&mut *db, &patient.id, None, record).await?;
     let row = sqlx::query(AssertSqlSafe(format!(
         "INSERT INTO consent_versions
                    (consent_id, version, patient_id, author, reason, status, body)
@@ -79,7 +106,9 @@ pub async fn create(
     .await
     .map_err(db_err)?
     .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
-    row_to_stored(&row)
+    let stored = row_to_stored(&row)?;
+    tx.commit().await.map_err(db_err)?;
+    Ok(stored)
 }
 
 /// The current version of every consent of a patient, withdrawn ones included, oldest first.
@@ -222,13 +251,16 @@ pub async fn update(
     record: &ConsentRecord,
 ) -> Result<StoredConsent, StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
-    let db = &mut *conn;
+    let mut tx = conn.begin().await.map_err(db_err)?;
+    crate::store::one_at_a_time(&mut tx, STORE, &patient_id.to_ascii_lowercase()).await?;
+    let db = &mut *tx;
     let now = current(&mut *db, patient_id, consent_id).await?;
     if now.version != expected_version {
         return Err(StoreError::Conflict {
             current: now.version,
         });
     }
+    refuse_second(&mut *db, &now.patient_id, Some(&now.id), record).await?;
     // A concurrent writer took this version: the primary key refuses the second (CQ-12).
     let new_version = crate::store::next_version(expected_version)?;
     let row = match crate::store::append_version(
@@ -255,5 +287,7 @@ pub async fn update(
             return Err(StoreError::Conflict { current });
         }
     };
-    row_to_stored(&row)
+    let stored = row_to_stored(&row)?;
+    tx.commit().await.map_err(db_err)?;
+    Ok(stored)
 }
