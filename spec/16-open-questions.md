@@ -173,5 +173,6 @@
 | OQ-AG1 | Who is accountable for a critical result, who covers them, how long may it wait unacknowledged, and how does it reach a person out of hours and after discharge? (AG-1, OR-4, IW-5) | laboratory, clinical lead, Clinical Safety Officer |
 | OQ-AG2 | Is a crossed critical limit said when the sender gave no reference range, as built, and what should an uncrossed one say? (AG-2) | clinical lead, Clinical Safety Officer |
 | OQ-AG3 | Is an allergy with no code safer for a receiver than one with an unverified code, as built, or should it go out marked unverified; and how does a receiver learn that an allergy it holds was entered in error? (AG-3) | pharmacist, receiving partner, Clinical Safety Officer |
+| OQ-AG6 | After a mistaken merge is reversed, does each person see in their own log that their record was read through the other chart, without seeing the other person? (AG-6) | privacy lead |
 
 No answers recorded yet, except where a row says decided or proposed.

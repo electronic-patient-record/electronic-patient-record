@@ -14,7 +14,7 @@
 //!
 //! A refused record is 422 `{errors, error_codes}` and the refusal is audited like any other.
 
-use super::common::{Access, audit_resource, authorize, begin, commit, purpose_of};
+use super::common::{Access, audit_resource, authorize, begin, commit, purpose_of, with_records};
 use crate::api_error::ApiError;
 use crate::audit::Action;
 use crate::auth::Agent;
@@ -141,7 +141,6 @@ pub(super) async fn list_service(
         }
     };
     // Audit before the clinical content leaves.
-    let patient_id = all.first().map(|o| o.patient_id.clone());
     audit_resource(
         &ctx.pool(),
         agent,
@@ -150,9 +149,13 @@ pub(super) async fn list_service(
             outcome: 0,
             purpose,
             resource: "Observation",
-            patient_id: patient_id.as_deref().or(Some(patient)),
+            patient_id: Some(patient),
         },
-        serde_json::json!({ "observations": all.len() }),
+        with_records(
+            serde_json::json!({ "observations": all.len() }),
+            patient,
+            all.iter().map(|o| o.patient_id.as_str()),
+        ),
     )
     .await?;
     let amendment_notices =
@@ -216,7 +219,6 @@ pub(super) async fn versions(
             return failure(e).into_response();
         }
     };
-    let patient_id = all.first().map(|v| v.stored.patient_id.clone());
     if let Err(r) = audit_resource(
         &ctx.pool(),
         &agent,
@@ -225,9 +227,13 @@ pub(super) async fn versions(
             outcome: 0,
             purpose,
             resource: "Observation",
-            patient_id: patient_id.as_deref().or(Some(&patient)),
+            patient_id: Some(&patient),
         },
-        serde_json::json!({ "observation": observation_id, "versions": all.len() }),
+        with_records(
+            serde_json::json!({ "observation": observation_id, "versions": all.len() }),
+            &patient,
+            all.iter().map(|v| v.stored.patient_id.as_str()),
+        ),
     )
     .await
     {
@@ -429,13 +435,17 @@ pub(super) async fn update(
                     outcome: 0,
                     purpose,
                     resource: "Observation",
-                    patient_id: Some(&stored.patient_id),
+                    patient_id: Some(&patient),
                 },
-                serde_json::json!({
-                    "observation": stored.id,
-                    "version": stored.version,
-                    "status": stored.record.status.as_str(),
-                }),
+                with_records(
+                    serde_json::json!({
+                        "observation": stored.id,
+                        "version": stored.version,
+                        "status": stored.record.status.as_str(),
+                    }),
+                    &patient,
+                    [stored.patient_id.as_str()],
+                ),
             )
             .await
             {

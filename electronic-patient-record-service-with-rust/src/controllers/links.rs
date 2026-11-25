@@ -219,7 +219,7 @@ pub(super) async fn list(
                     outcome: 0,
                     purpose,
                     resource: "PatientLink",
-                    patient_id: links.first().map(|l| l.target.as_str()).or(Some(&patient)),
+                    patient_id: Some(&patient),
                 },
                 serde_json::json!({ "links": links.len() }),
             )

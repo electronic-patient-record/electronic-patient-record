@@ -21,6 +21,8 @@ mod advisory_expiry;
 mod allergies_store;
 #[path = "amendments_store.rs"]
 mod amendments_store;
+#[path = "audit_attribution.rs"]
+mod audit_attribution;
 #[path = "audit_chain.rs"]
 mod audit_chain;
 #[path = "audit_coverage.rs"]

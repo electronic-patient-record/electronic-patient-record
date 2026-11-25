@@ -13,7 +13,7 @@
 //! `disagree`) need the patient role. A write and its audit row are one transaction; the audit row holds
 //! ids, kinds, versions and states, never the request text, a reason or a statement.
 
-use super::common::{Access, audit_resource, authorize, begin, commit, purpose_of};
+use super::common::{Access, audit_resource, authorize, begin, commit, purpose_of, with_records};
 use crate::amendment::{Event, Ground};
 use crate::amendments_store::{self as store, StoredAmendment};
 use crate::api_error::ApiError;
@@ -221,7 +221,6 @@ pub(super) async fn list(
         }
     };
     // Audit before the content leaves.
-    let patient_id = all.first().map(|a| a.patient_id.clone());
     if let Err(r) = audit_resource(
         &ctx.pool(),
         &agent,
@@ -230,9 +229,13 @@ pub(super) async fn list(
             outcome: 0,
             purpose,
             resource: "Amendment",
-            patient_id: patient_id.as_deref().or(Some(&patient)),
+            patient_id: Some(&patient),
         },
-        serde_json::json!({ "amendments": all.len() }),
+        with_records(
+            serde_json::json!({ "amendments": all.len() }),
+            &patient,
+            all.iter().map(|a| a.patient_id.as_str()),
+        ),
     )
     .await
     {
@@ -383,13 +386,17 @@ pub(super) async fn update(
                     outcome: 0,
                     purpose,
                     resource: "Amendment",
-                    patient_id: Some(&stored.patient_id),
+                    patient_id: Some(&patient),
                 },
-                serde_json::json!({
-                    "amendment": stored.id,
-                    "version": stored.version,
-                    "state": stored.request.state.word(),
-                }),
+                with_records(
+                    serde_json::json!({
+                        "amendment": stored.id,
+                        "version": stored.version,
+                        "state": stored.request.state.word(),
+                    }),
+                    &patient,
+                    [stored.patient_id.as_str()],
+                ),
             )
             .await
             {

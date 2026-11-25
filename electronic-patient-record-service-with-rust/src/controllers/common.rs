@@ -360,6 +360,25 @@ pub(super) struct Access<'a> {
     pub patient_id: Option<&'a str>,
 }
 
+/// `detail` with `records`: the records merged into the opened chart that contributed to the access, when any did, in
+/// order and once each (AG-6). The audit row is about the chart that was **opened**; these say whose rows were in it, for
+/// an authorised investigation, and are not in the patient-facing log.
+pub(super) fn with_records<'a>(
+    mut detail: serde_json::Value,
+    opened: &str,
+    contributing: impl IntoIterator<Item = &'a str>,
+) -> serde_json::Value {
+    let others: std::collections::BTreeSet<String> = contributing
+        .into_iter()
+        .filter(|id| !id.eq_ignore_ascii_case(opened))
+        .map(str::to_lowercase)
+        .collect();
+    if !others.is_empty() {
+        crate::json::set(&mut detail, "records", serde_json::json!(others));
+    }
+    detail
+}
+
 /// Write the audit row for an access. Never put demographics or consent content in `detail`.
 pub(super) async fn audit_resource(
     db: impl Into<Db<'_>>,
@@ -388,8 +407,19 @@ pub(super) fn store_failure(e: &StoreError) -> Response {
 
 #[cfg(test)]
 mod tests {
-    use super::AsAtQuery;
+    use super::{AsAtQuery, with_records};
     use axum::http::StatusCode;
+
+    #[test]
+    fn the_records_behind_a_chart_are_named_once_and_never_the_chart_itself() {
+        let detail = || serde_json::json!({ "n": 3 });
+        assert_eq!(with_records(detail(), "A", ["a", "A"]), detail());
+        assert_eq!(with_records(detail(), "a", []), detail());
+        assert_eq!(
+            with_records(detail(), "a", ["C", "a", "b", "c"]),
+            serde_json::json!({ "n": 3, "records": ["b", "c"] })
+        );
+    }
 
     #[test]
     fn a_read_as_at_a_time_needs_a_real_past_time() {

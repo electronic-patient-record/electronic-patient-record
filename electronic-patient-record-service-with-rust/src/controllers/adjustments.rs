@@ -14,7 +14,7 @@
 //! acting is the token, never the body.** A write and its audit row are one transaction; the audit row
 //! holds ids, versions and statuses, never a code, a note or a reason.
 
-use super::common::{Access, audit_resource, authorize, begin, commit, purpose_of};
+use super::common::{Access, audit_resource, authorize, begin, commit, purpose_of, with_records};
 use crate::adjustments::{self, Change};
 use crate::adjustments_store::{self as store, StoredAdjustment};
 use crate::api_error::ApiError;
@@ -154,7 +154,11 @@ pub(super) async fn list_service(
             resource: "Adjustment",
             patient_id: Some(patient),
         },
-        serde_json::json!({ "adjustments": adjustments.len() }),
+        with_records(
+            serde_json::json!({ "adjustments": adjustments.len() }),
+            patient,
+            adjustments.iter().map(|a| a.patient_id.as_str()),
+        ),
     )
     .await?;
     Ok(AdjustmentList { adjustments })
@@ -313,13 +317,17 @@ pub(super) async fn update(
                     outcome: 0,
                     purpose,
                     resource: "Adjustment",
-                    patient_id: Some(&stored.patient_id),
+                    patient_id: Some(&patient),
                 },
-                serde_json::json!({
-                    "adjustment": stored.id,
-                    "version": stored.version,
-                    "status": stored.adjustment.status.word(),
-                }),
+                with_records(
+                    serde_json::json!({
+                        "adjustment": stored.id,
+                        "version": stored.version,
+                        "status": stored.adjustment.status.word(),
+                    }),
+                    &patient,
+                    [stored.patient_id.as_str()],
+                ),
             )
             .await
             {

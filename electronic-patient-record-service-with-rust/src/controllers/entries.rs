@@ -16,7 +16,9 @@
 //! (OQ-EH1), as for a suspicion. A write and its audit row are one transaction. The audit row records ids, versions,
 //! statuses, counts and the time asked for, never a title, a condition, a code, a relative or a reason.
 
-use super::common::{Access, AsAtQuery, audit_resource, authorize, begin, commit, purpose_of};
+use super::common::{
+    Access, AsAtQuery, audit_resource, authorize, begin, commit, purpose_of, with_records,
+};
 use crate::api_error::ApiError;
 use crate::audit::Action;
 use crate::auth::Agent;
@@ -213,9 +215,11 @@ pub(super) async fn list<R: Entry>(
         let records: Vec<R> = entries.iter().map(|s| s.record.clone()).collect();
         let summary = R::summary(&records);
         caller
-            .read::<R>(
+            .read::<R>(with_records(
                 serde_json::json!({ "entries": entries.len(), "summary": summary.get("state") }),
-            )
+                &patient,
+                entries.iter().map(|e| e.patient_id.as_str()),
+            ))
             .await?;
         Ok(Json(EntryList { entries, summary }).into_response())
     };
@@ -243,7 +247,11 @@ pub(super) async fn as_at<R: Entry>(
         let records: Vec<R> = entries.iter().map(|s| s.stored.record.clone()).collect();
         let as_at = crate::clock::rfc3339_micros(at);
         caller
-            .read::<R>(serde_json::json!({ "entries": entries.len(), "as_at": as_at }))
+            .read::<R>(with_records(
+                serde_json::json!({ "entries": entries.len(), "as_at": as_at }),
+                &patient,
+                entries.iter().map(|e| e.stored.patient_id.as_str()),
+            ))
             .await?;
         Ok(Json(EntriesAsAt {
             as_at,
@@ -273,7 +281,11 @@ pub(super) async fn versions<R: Entry>(
         };
         let id = versions.first().map(|v| v.id.clone());
         caller
-            .read::<R>(serde_json::json!({ "entry": id, "versions": versions.len() }))
+            .read::<R>(with_records(
+                serde_json::json!({ "entry": id, "versions": versions.len() }),
+                &patient,
+                versions.iter().map(|v| v.patient_id.as_str()),
+            ))
             .await?;
         Ok(Json(VersionList { versions }).into_response())
     };
@@ -302,13 +314,17 @@ async fn written<R: Entry>(
             outcome: 0,
             purpose: caller.purpose,
             resource: R::RESOURCE.name(),
-            patient_id: Some(&stored.patient_id),
+            patient_id: Some(caller.patient),
         },
-        serde_json::json!({
-            "entry": stored.id,
-            "version": stored.version,
-            "status": stored.record.status(),
-        }),
+        with_records(
+            serde_json::json!({
+                "entry": stored.id,
+                "version": stored.version,
+                "status": stored.record.status(),
+            }),
+            caller.patient,
+            [stored.patient_id.as_str()],
+        ),
     )
     .await?;
     commit(tx).await?;

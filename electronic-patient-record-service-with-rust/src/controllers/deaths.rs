@@ -14,7 +14,7 @@
 //! none of these. **Who is acting is the token, never the body.** A write and its audit row are one
 //! transaction; the audit row holds ids, versions and statuses, never a reason or a date.
 
-use super::common::{Access, audit_resource, authorize, begin, commit, purpose_of};
+use super::common::{Access, audit_resource, authorize, begin, commit, purpose_of, with_records};
 use crate::api_error::ApiError;
 use crate::audit::Action;
 use crate::auth::{self, Agent};
@@ -457,13 +457,17 @@ pub(super) async fn update(
                     outcome: 0,
                     purpose,
                     resource: "DeathAssertion",
-                    patient_id: Some(&stored.patient_id),
+                    patient_id: Some(&patient),
                 },
-                serde_json::json!({
-                    "assertion": stored.id,
-                    "version": stored.version,
-                    "status": stored.assertion.status.word(),
-                }),
+                with_records(
+                    serde_json::json!({
+                        "assertion": stored.id,
+                        "version": stored.version,
+                        "status": stored.assertion.status.word(),
+                    }),
+                    &patient,
+                    [stored.patient_id.as_str()],
+                ),
             )
             .await
             {

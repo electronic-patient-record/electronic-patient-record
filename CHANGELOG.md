@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-25 - A merged chart is audited as the chart that was opened (audit finding 6, AG-6)
+
+- **Clinical risk:** H-013 (the patient's access log misleads). The patient named in the audit row was the one of the first row returned, so a list whose newest row came from a merged-in record was missing from the survivor's log.
+- **Fixed:** see AG-6. Found beyond the audit: the same for amendments, one observation's history, the list of links (which named the other end), and every change to an entry written on a merged-in record.
+- **Added:** `detail.records`, the contributing records, for auditors. Tasks AG-7 to AG-11 hold the rest of the audit.
+- **Verified:** 1 database test that failed first, 1 unit test; the normal pass and the database pass (233) on a fresh Postgres 18. **Not done / not verified:** earlier rows keep their patient; OQ-AG6.
+
 ## 2026-11-25 - The summary never says stored information does not exist (audit finding 5, AG-5)
 
 - **Clinical risk:** H-066. The summary listed "Recent results" and "Problems" as "Not built in this system yet", "Nothing is held for these", while the service stored both. It was my omission when the problem list landed on 2026-11-24; results had been wrong since 2026-11-09.

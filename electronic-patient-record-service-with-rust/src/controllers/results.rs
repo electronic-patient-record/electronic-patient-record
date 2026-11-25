@@ -13,7 +13,7 @@
 //! purpose and the patient's consent all apply. A write and its audit row are one transaction; the row
 //! holds ids, versions, statuses and counts, never a test name, value, unit or range.
 
-use super::common::{Access, audit_resource, authorize, begin, commit, purpose_of};
+use super::common::{Access, audit_resource, authorize, begin, commit, purpose_of, with_records};
 use crate::api_error::ApiError;
 use crate::audit::Action;
 use crate::auth::Agent;
@@ -162,7 +162,11 @@ pub(super) async fn list(
             resource: RESOURCE,
             patient_id: Some(&patient),
         },
-        serde_json::json!({ "results": all.len(), "to_sign": open }),
+        with_records(
+            serde_json::json!({ "results": all.len(), "to_sign": open }),
+            &patient,
+            all.iter().map(|r| r.current.patient_id.as_str()),
+        ),
     )
     .await
     {
@@ -293,13 +297,17 @@ pub(super) async fn update(
                     outcome: 0,
                     purpose,
                     resource: RESOURCE,
-                    patient_id: Some(&stored.patient_id),
+                    patient_id: Some(&patient),
                 },
-                serde_json::json!({
-                    "result": stored.id,
-                    "version": stored.version,
-                    "status": stored.result.status.word(),
-                }),
+                with_records(
+                    serde_json::json!({
+                        "result": stored.id,
+                        "version": stored.version,
+                        "status": stored.result.status.word(),
+                    }),
+                    &patient,
+                    [stored.patient_id.as_str()],
+                ),
             )
             .await
             {

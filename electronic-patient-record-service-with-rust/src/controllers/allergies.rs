@@ -13,7 +13,9 @@
 //! audit row are one transaction. The audit row records ids, versions and statuses, never the
 //! substance or the reaction.
 
-use super::common::{Access, AsAtQuery, audit_resource, authorize, begin, commit, purpose_of};
+use super::common::{
+    Access, AsAtQuery, audit_resource, authorize, begin, commit, purpose_of, with_records,
+};
 use crate::allergies::{self as store, AllergyRecord, Status};
 use crate::api_error::ApiError;
 use crate::audit::Action;
@@ -165,7 +167,6 @@ pub(super) async fn list_service(
         .ok()
         .and_then(|v| v.get("state").cloned());
     // Audit before the clinical content leaves.
-    let patient_id = all.first().map(|a| a.patient_id.clone());
     audit_resource(
         &ctx.pool(),
         agent,
@@ -174,9 +175,13 @@ pub(super) async fn list_service(
             outcome: 0,
             purpose,
             resource: "AllergyIntolerance",
-            patient_id: patient_id.as_deref().or(Some(patient)),
+            patient_id: Some(patient),
         },
-        serde_json::json!({ "allergies": all.len(), "summary": state }),
+        with_records(
+            serde_json::json!({ "allergies": all.len(), "summary": state }),
+            patient,
+            all.iter().map(|a| a.patient_id.as_str()),
+        ),
     )
     .await?;
     let amendment_notices =
@@ -273,7 +278,11 @@ pub(super) async fn as_at(
                 resource: "AllergyIntolerance",
                 patient_id: Some(&patient),
             },
-            serde_json::json!({ "allergies": allergies.len(), "as_at": as_at }),
+            with_records(
+                serde_json::json!({ "allergies": allergies.len(), "as_at": as_at }),
+                &patient,
+                allergies.iter().map(|a| a.stored.patient_id.as_str()),
+            ),
         )
         .await?;
         Ok(Json(AllergiesAsAt {
@@ -423,13 +432,17 @@ pub(super) async fn update(
                     outcome: 0,
                     purpose,
                     resource: "AllergyIntolerance",
-                    patient_id: Some(&stored.patient_id),
+                    patient_id: Some(&patient),
                 },
-                serde_json::json!({
-                    "allergy": stored.id,
-                    "version": stored.version,
-                    "status": stored.allergy.status.as_str(),
-                }),
+                with_records(
+                    serde_json::json!({
+                        "allergy": stored.id,
+                        "version": stored.version,
+                        "status": stored.allergy.status.as_str(),
+                    }),
+                    &patient,
+                    [stored.patient_id.as_str()],
+                ),
             )
             .await
             {

@@ -9,7 +9,7 @@
 //! apply. The write and its audit row are one transaction; the row holds ids and the form version, never
 //! an answer or a reason.
 
-use super::common::{Access, audit_resource, authorize, begin, commit, purpose_of};
+use super::common::{Access, audit_resource, authorize, begin, commit, purpose_of, with_records};
 use crate::api_error::ApiError;
 use crate::assessments::{self, AssessmentRecord, Form};
 use crate::assessments_store as store;
@@ -129,7 +129,11 @@ pub(super) async fn list(
             resource: RESOURCE,
             patient_id: Some(&patient),
         },
-        serde_json::json!({ "assessments": all.len() }),
+        with_records(
+            serde_json::json!({ "assessments": all.len() }),
+            &patient,
+            all.iter().map(|a| a.patient_id.as_str()),
+        ),
     )
     .await
     {
