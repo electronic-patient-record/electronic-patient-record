@@ -168,6 +168,18 @@ fn resources() -> Vec<(&'static str, Value)> {
             .unwrap()
             .unwrap(),
     );
+    let allergy_retracted = value(
+        &fhir_allergy::retracted_to_fhir(&allergy(Status::EnteredInError), PATIENT)
+            .unwrap()
+            .unwrap(),
+    );
+    let mut mistaken = observation(Some(130.0));
+    mistaken.record.status = ObsStatus::EnteredInError;
+    let vital_retracted = value(
+        &fhir_observation::retracted_to_fhir(&mistaken, PATIENT)
+            .unwrap()
+            .unwrap(),
+    );
     let mut drill_record = patient();
     drill_record.drill = true;
     let drill = value(&fhir_patient::to_fhir(&drill_record).unwrap());
@@ -226,6 +238,8 @@ fn resources() -> Vec<(&'static str, Value)> {
         ("observation-declined", declined),
         ("observation-disputed", vital_disputed),
         ("allergy-disputed", allergy_disputed),
+        ("allergy-retracted", allergy_retracted),
+        ("observation-retracted", vital_retracted),
         ("patient-searchset", bundle),
     ]
 }

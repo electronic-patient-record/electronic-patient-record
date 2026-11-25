@@ -6,7 +6,8 @@
 //! What is *not* said is as deliberate as what is. The service records neither whether an
 //! allergy is confirmed nor whether it is an allergy or an intolerance, so `verificationStatus`
 //! and `type` are left out rather than guessed. A criticality nobody stated is left out, never
-//! `low`. An allergy entered in error is not exported at all: it never happened. **A recorded code is withheld**: its
+//! `low`. An allergy entered in error is not exported with the rest: it never happened. A receiver that took it before
+//! can ask for those alone, and is told only that they are withdrawn ([`retracted_to_fhir`]). **A recorded code is withheld**: its
 //! shape is checked and its meaning is not, so it goes out as a note that says so and never as a `coding` (AG-3). A
 //! receiver that indexes only codes then finds none, which the note cannot help (OQ-AG3).
 //!
@@ -127,6 +128,34 @@ pub fn to_fhir(
         crate::json::set(&mut out, "note", Value::Array(notes));
     }
     parse(out).map(Some)
+}
+
+/// One allergy that was entered in error, for a receiver that asks for those (AG-3): that this id is withdrawn, at which
+/// version and when, and nothing else. The substance and the reaction are left out, because a reader that ignores
+/// `verificationStatus` would show them as an allergy; a receiver that has the original knows it by its id. There is no
+/// `clinicalStatus`: R4 forbids one here (`ait-2`).
+///
+/// Returns `Ok(None)` for an allergy that stands.
+///
+/// # Errors
+///
+/// A message when the typed model refuses the result.
+pub fn retracted_to_fhir(
+    stored: &StoredAllergy,
+    patient: &str,
+) -> Result<Option<Resource>, String> {
+    if stored.allergy.status != Status::EnteredInError {
+        return Ok(None);
+    }
+    parse(json!({
+        "resourceType": "AllergyIntolerance",
+        "id": stored.id,
+        "meta": { "versionId": stored.version.to_string() },
+        "verificationStatus": status_coding(VERIFICATION_STATUS, "entered-in-error"),
+        "patient": { "reference": format!("Patient/{patient}") },
+        "recordedDate": stored.recorded_at,
+    }))
+    .map(Some)
 }
 
 /// The statement "no known allergies" as an `AllergyIntolerance`. Call it only while the summary
@@ -281,6 +310,37 @@ mod tests {
                 .unwrap()
                 .is_none()
         );
+    }
+
+    #[test]
+    fn a_retracted_allergy_says_only_that_it_is_withdrawn() {
+        for standing in [Status::Active, Status::Inactive] {
+            assert!(
+                retracted_to_fhir(&stored(standing), "P1")
+                    .unwrap()
+                    .is_none()
+            );
+        }
+        let j = json_of(
+            &retracted_to_fhir(&stored(Status::EnteredInError), "P1")
+                .unwrap()
+                .unwrap(),
+        );
+        assert_eq!(
+            j["verificationStatus"]["coding"][0]["code"],
+            "entered-in-error"
+        );
+        assert_eq!(j["meta"]["versionId"], "2");
+        assert_eq!(j["patient"]["reference"], "Patient/P1");
+        let keys: Vec<&str> = j.as_object().unwrap().keys().map(String::as_str).collect();
+        assert_eq!(
+            keys.len(),
+            6,
+            "nothing a careless reader could show: {keys:?}"
+        );
+        for words in ["Penicillin", "Hives", "clinicalStatus", "high"] {
+            assert!(!j.to_string().contains(words), "{words}: {j}");
+        }
     }
 
     #[test]

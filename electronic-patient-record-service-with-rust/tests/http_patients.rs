@@ -191,6 +191,61 @@ async fn fhir_refusals_are_operation_outcomes_and_never_carry_candidates() {
             .await;
         assert_eq!(counted.status_code(), StatusCode::OK);
 
+        // What was entered in error is asked for by name (AG-3): it is not in the plain list, and is in both releases.
+        let words = tag("substance");
+        let allergy = |status: &str| serde_json::json!({ "substance": words, "status": status });
+        let made = server
+            .post(&format!("/api/patients/{id}/allergies"))
+            .json(&serde_json::json!({ "allergy": allergy("active") }))
+            .await;
+        assert_eq!(made.status_code(), StatusCode::CREATED, "{}", made.text());
+        let allergy_id = made.json::<serde_json::Value>()["id"]
+            .as_str()
+            .expect("id")
+            .to_string();
+        let retracted_url = |r: &str| {
+            format!("/fhir/{r}/AllergyIntolerance?patient={id}&verification-status=entered-in-error")
+        };
+        let before = server.get(&retracted_url("R4")).await.text();
+        assert!(!before.contains(&allergy_id), "it stands: {before}");
+        let mistake = server
+            .put(&format!("/api/patients/{id}/allergies/{allergy_id}"))
+            .json(&serde_json::json!({
+                "allergy": allergy("entered-in-error"), "expected_version": 1, "reason": "wrong patient"
+            }))
+            .await;
+        assert_eq!(mistake.status_code(), StatusCode::OK, "{}", mistake.text());
+        for release in ["R4", "R5"] {
+            let plain = server
+                .get(&format!("/fhir/{release}/AllergyIntolerance?patient={id}"))
+                .await
+                .text();
+            assert!(!plain.contains(&allergy_id), "{release}: {plain}");
+            let asked = server.get(&retracted_url(release)).await;
+            assert_eq!(asked.status_code(), StatusCode::OK, "{release}: {}", asked.text());
+            let body: serde_json::Value = asked.json();
+            let sent = &body["entry"][0]["resource"];
+            assert_eq!(sent["id"], allergy_id, "{release}: {body}");
+            assert_eq!(sent["meta"]["versionId"], "2");
+            assert_eq!(
+                sent["verificationStatus"]["coding"][0]["code"],
+                "entered-in-error"
+            );
+            assert!(!body.to_string().contains(&words), "{release}: {body}");
+            let vitals = server
+                .get(&format!(
+                    "/fhir/{release}/Observation?patient={id}&status=entered-in-error"
+                ))
+                .await;
+            assert_eq!(vitals.status_code(), StatusCode::OK, "{}", vitals.text());
+        }
+        let other = server
+            .get(&format!(
+                "/fhir/R4/AllergyIntolerance?patient={id}&verification-status=confirmed"
+            ))
+            .await;
+        assert_eq!(other.status_code(), StatusCode::BAD_REQUEST);
+
         // A duplicate through FHIR: 409, an OperationOutcome, no candidates.
         let mut dup = resource.clone();
         dup.as_object_mut().unwrap().remove("id");

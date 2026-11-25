@@ -640,6 +640,90 @@ fn notices_of(
     )
 }
 
+/// Whether a search asks for the records entered in error, and nothing else (AG-3): `name` is `entered-in-error`, alone or
+/// with the code system `system` before a `|`. Any other value is refused and never ignored: a search for `confirmed` that
+/// returned everything would look filtered and not be.
+fn wants_retracted(
+    params: &HashMap<String, String>,
+    name: &str,
+    system: &str,
+) -> Result<bool, String> {
+    let Some(value) = params.get(name) else {
+        return Ok(false);
+    };
+    let code = value
+        .strip_prefix(system)
+        .and_then(|rest| rest.strip_prefix('|'))
+        .unwrap_or(value);
+    if code == "entered-in-error" {
+        Ok(true)
+    } else {
+        Err(format!(
+            "the only value of {name} that is supported is entered-in-error"
+        ))
+    }
+}
+
+/// A `searchset` of what was entered in error, for a receiver to take out of its own record. It always carries a warning:
+/// it is not the patient's list, and an empty one says nothing about what they have.
+fn retracted_bundle(
+    kind: &str,
+    what: &str,
+    found: Vec<(String, fhir::r4::resources::Resource)>,
+) -> serde_json::Value {
+    let mut entries: Vec<serde_json::Value> = found
+        .into_iter()
+        .map(|(id, resource)| {
+            serde_json::json!({
+                "fullUrl": format!("{BASE}/{kind}/{id}"),
+                "resource": resource,
+                "search": { "mode": "match" },
+            })
+        })
+        .collect();
+    entries.push(serde_json::json!({
+        "resource": {
+            "resourceType": "OperationOutcome",
+            "issue": [{
+                "severity": "warning",
+                "code": "incomplete",
+                "diagnostics": format!("Only {what} entered in error, for a receiver to withdraw. This is not a list of what the patient has, and says nothing about what the patient does not have."),
+            }],
+        },
+        "search": { "mode": "outcome" },
+    }));
+    serde_json::json!({
+        "resourceType": "Bundle",
+        "type": "searchset",
+        "entry": entries,
+    })
+}
+
+/// The allergies entered in error ([`retracted_bundle`]).
+fn retracted_allergies(patient: &str, all: &[StoredAllergy]) -> Result<serde_json::Value, String> {
+    let mut found = Vec::new();
+    for a in all {
+        if let Some(r) = fhir_allergy::retracted_to_fhir(a, patient)? {
+            found.push((a.id.clone(), r));
+        }
+    }
+    Ok(retracted_bundle("AllergyIntolerance", "allergies", found))
+}
+
+/// The observations entered in error ([`retracted_bundle`]).
+fn retracted_observations(
+    patient: &str,
+    all: &[StoredObservation],
+) -> Result<serde_json::Value, String> {
+    let mut found = Vec::new();
+    for o in all {
+        if let Some(r) = fhir_observation::retracted_to_fhir(o, patient)? {
+            found.push((o.id.clone(), r));
+        }
+    }
+    Ok(retracted_bundle("Observation", "vital signs", found))
+}
+
 /// A `searchset` of the patient's allergies, built from the JSON handler's answer.
 fn allergy_bundle(patient: &str, body: &serde_json::Value) -> Result<serde_json::Value, String> {
     let notices = notices_of(body.get("amendment_notices"))?;
@@ -699,9 +783,17 @@ pub(super) async fn search_allergies(
     headers: HeaderMap,
     Query(params): Query<HashMap<String, String>>,
 ) -> Response {
-    if let Err(m) = refuse_unknown(&params, &["patient"]) {
-        return outcome(StatusCode::BAD_REQUEST, "not-supported", &m);
-    }
+    let retracted =
+        match refuse_unknown(&params, &["patient", "verification-status"]).and_then(|()| {
+            wants_retracted(
+                &params,
+                "verification-status",
+                "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification",
+            )
+        }) {
+            Ok(retracted) => retracted,
+            Err(m) => return outcome(StatusCode::BAD_REQUEST, "not-supported", &m),
+        };
     let Some(patient) = params
         .get("patient")
         .map(|p| p.strip_prefix("Patient/").unwrap_or(p).to_string())
@@ -731,7 +823,12 @@ pub(super) async fn search_allergies(
     let Ok(body) = serde_json::to_value(&list) else {
         return internal("an allergy list that cannot be written");
     };
-    match allergy_bundle(&patient, &body) {
+    let bundle = if retracted {
+        retracted_allergies(&patient, &list.allergies)
+    } else {
+        allergy_bundle(&patient, &body)
+    };
+    match bundle {
         Ok(b) => fhir(StatusCode::OK, &b, None),
         Err(e) => internal(&e),
     }
@@ -862,9 +959,12 @@ pub(super) async fn search_observations(
     headers: HeaderMap,
     Query(params): Query<HashMap<String, String>>,
 ) -> Response {
-    if let Err(m) = refuse_unknown(&params, &["patient"]) {
-        return outcome(StatusCode::BAD_REQUEST, "not-supported", &m);
-    }
+    let retracted = match refuse_unknown(&params, &["patient", "status"])
+        .and_then(|()| wants_retracted(&params, "status", "http://hl7.org/fhir/observation-status"))
+    {
+        Ok(retracted) => retracted,
+        Err(m) => return outcome(StatusCode::BAD_REQUEST, "not-supported", &m),
+    };
     let Some(patient) = params
         .get("patient")
         .map(|p| p.strip_prefix("Patient/").unwrap_or(p).to_string())
@@ -890,7 +990,12 @@ pub(super) async fn search_observations(
                 return refusal(&e, false);
             }
         };
-    match observation_bundle(&patient, &list.observations, &list.amendment_notices) {
+    let bundle = if retracted {
+        retracted_observations(&patient, &list.observations)
+    } else {
+        observation_bundle(&patient, &list.observations, &list.amendment_notices)
+    };
+    match bundle {
         Ok(b) => fhir(StatusCode::OK, &b, None),
         Err(e) => internal(&e),
     }
@@ -960,15 +1065,17 @@ fn resource_notes(kind: &str) -> serde_json::Value {
             ],
         }),
         "AllergyIntolerance" => serde_json::json!({
-            "documentation": "Search by patient only; read-only. Allergies entered in error are not returned. A result with no allergy in it is never a statement that there are none: it carries an OperationOutcome saying so, unless a clinician has stated no known allergies. verificationStatus and type are not recorded, so are not returned.",
+            "documentation": "Search by patient only; read-only. Allergies entered in error are not returned, unless verification-status=entered-in-error asks for those alone: each then says only that it is withdrawn. A result with no allergy in it is never a statement that there are none: it carries an OperationOutcome saying so, unless a clinician has stated no known allergies. verificationStatus and type are not recorded, so are not returned.",
             "searchParam": [
                 { "name": "patient", "type": "reference", "documentation": "required" },
+                { "name": "verification-status", "type": "token", "documentation": "entered-in-error only" },
             ],
         }),
         "Observation" => serde_json::json!({
-            "documentation": "Vital signs only; search by patient only; read-only. Observations entered in error are not returned. A result with no observation is never a normal reading: it carries an OperationOutcome saying so. The critical range is not returned, and a flag the service could not compute is no interpretation, never normal.",
+            "documentation": "Vital signs only; search by patient only; read-only. Observations entered in error are not returned, unless status=entered-in-error asks for those alone: each then says only that it is withdrawn. A result with no observation is never a normal reading: it carries an OperationOutcome saying so. The critical range is not returned, and a flag the service could not compute is no interpretation, never normal.",
             "searchParam": [
                 { "name": "patient", "type": "reference", "documentation": "required" },
+                { "name": "status", "type": "token", "documentation": "entered-in-error only" },
             ],
         }),
         "Flag" => serde_json::json!({
@@ -1149,6 +1256,42 @@ mod tests {
                 vec![("OperationOutcome".to_string(), "outcome".to_string())]
             );
             assert!(b.to_string().contains("does not mean"));
+        }
+    }
+
+    #[test]
+    fn what_was_entered_in_error_is_sent_alone_and_never_reads_as_the_list() {
+        use crate::observations_store::Status;
+        let all = [
+            observation(Status::Final),
+            observation(Status::EnteredInError),
+        ];
+        let b = retracted_observations("P1", &all).unwrap();
+        let outcome = ("OperationOutcome".to_string(), "outcome".to_string());
+        assert_eq!(
+            kinds(&b),
+            vec![
+                ("Observation".to_string(), "match".to_string()),
+                outcome.clone()
+            ]
+        );
+        let sent = &b["entry"][0]["resource"];
+        assert_eq!(sent["status"], "entered-in-error");
+        assert!(
+            sent.get("valueQuantity").is_none() && sent.get("effectiveDateTime").is_none(),
+            "{sent}"
+        );
+        assert_eq!(
+            sent["code"],
+            serde_json::json!({ "text": "Entered in error" })
+        );
+        for (nothing, kind) in [
+            (retracted_observations("P1", &all[..1]).unwrap(), "vital"),
+            (retracted_allergies("P1", &[]).unwrap(), "allergies"),
+        ] {
+            assert_eq!(kinds(&nothing), vec![outcome.clone()]);
+            assert!(nothing.to_string().contains(kind));
+            assert!(nothing.to_string().contains("says nothing about"));
         }
     }
 
@@ -1527,9 +1670,28 @@ mod tests {
         }
         assert!(search_from(&one("_count", "5")).is_ok());
 
-        // AllergyIntolerance and Observation: patient only.
-        assert_eq!(stated("AllergyIntolerance"), set(&["patient"]));
-        assert_eq!(stated("Observation"), set(&["patient"]));
+        // AllergyIntolerance and Observation: the patient, and those entered in error (AG-3), which is the only value.
+        for (kind, name) in [
+            ("AllergyIntolerance", "verification-status"),
+            ("Observation", "status"),
+        ] {
+            assert_eq!(stated(kind), set(&["patient", name]));
+            let wants = |v: &str| wants_retracted(&one(name, v), name, "http://x/y");
+            assert_eq!(wants_retracted(&HashMap::new(), name, "x"), Ok(false));
+            assert_eq!(wants("entered-in-error"), Ok(true));
+            assert_eq!(wants("http://x/y|entered-in-error"), Ok(true));
+            for other in [
+                "",
+                "confirmed",
+                "final",
+                "confirmed,entered-in-error",
+                "http://z|entered-in-error",
+                "|entered-in-error",
+                "Entered-in-error",
+            ] {
+                assert!(wants(other).is_err(), "{name}={other}");
+            }
+        }
         assert_eq!(stated("Flag"), set(&["patient"]));
 
         // AuditEvent: each stated parameter is accepted; common FHIR ones that are not stated are refused.

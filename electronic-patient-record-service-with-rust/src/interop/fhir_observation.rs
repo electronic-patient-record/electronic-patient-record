@@ -1,7 +1,7 @@
 //! The service's observations (vital signs) as FHIR R4 `Observation` (crate `fhir`, R4 model).
 //!
-//! One direction only, like the allergy mapping. An observation entered in error is not exported:
-//! it never happened. A missing value is `dataAbsentReason`, never a quantity of zero. The flag is
+//! One direction only, like the allergy mapping. An observation entered in error is not exported with the rest:
+//! it never happened; a receiver that took it before can ask for those alone ([`retracted_to_fhir`]). A missing value is `dataAbsentReason`, never a quantity of zero. The flag is
 //! the one computed when read ([`crate::observations::flag`]) and goes out as `interpretation`;
 //! no flag, no `interpretation`. The critical range has no element in `Observation`, so it is not
 //! exported (its effect survives as the `LL`/`HH` interpretation).
@@ -76,6 +76,34 @@ fn parse(json: Value) -> Result<Resource, String> {
     } else {
         Err(format!("the FHIR model rejects the result: {issues:?}"))
     }
+}
+
+/// One observation that was entered in error, for a receiver that asks for those (AG-3): that this id is withdrawn, at
+/// which version and when. No value, time or flag. R4 requires a `code`, so it says in words what this is: with the LOINC
+/// code it would have to meet the vital signs profile, and so state a time and a value, or why there is none.
+///
+/// Returns `Ok(None)` for an observation that stands.
+///
+/// # Errors
+///
+/// A message when the typed model refuses the result.
+pub fn retracted_to_fhir(
+    stored: &StoredObservation,
+    patient: &str,
+) -> Result<Option<Resource>, String> {
+    if stored.record.status != Status::EnteredInError {
+        return Ok(None);
+    }
+    parse(json!({
+        "resourceType": "Observation",
+        "id": stored.id,
+        "meta": { "versionId": stored.version.to_string() },
+        "status": "entered-in-error",
+        "code": { "text": "Entered in error" },
+        "subject": { "reference": format!("Patient/{patient}") },
+        "issued": stored.recorded_at,
+    }))
+    .map(Some)
 }
 
 /// One stored observation as an `Observation` for `patient` (the record the caller asked about: an
