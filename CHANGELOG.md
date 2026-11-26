@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-26 - A declined refusal of disclosure, as a library (DR-10)
+
+- **Clinical risk:** none yet: nothing stores or shows one, and no hazard row changes.
+- **Added:** `declined_refusal.rs` in the domain crate: who declined it, the ground and why in the patient's words, when and how they were told, how to complain. **Impossible under `binds`** (the default), with no pack, and for a strength this version cannot read.
+- **Verified:** 2 tests. **Not done / not verified:** no store, API or screen; the grounds are the author's three, reviewed by no lawyer or data protection officer.
+
 ## 2026-11-26 - Who speaks for a person, as a library (RF-9)
 
 - **Clinical risk:** none yet: nothing stores or shows one, and no hazard row changes.

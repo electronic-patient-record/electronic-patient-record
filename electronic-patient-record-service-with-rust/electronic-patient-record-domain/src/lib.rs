@@ -21,6 +21,7 @@ pub mod consent;
 pub mod dates;
 pub mod death;
 pub mod decision_ability;
+pub mod declined_refusal;
 pub mod disclosure_rules;
 pub mod emergency;
 pub mod gate;
