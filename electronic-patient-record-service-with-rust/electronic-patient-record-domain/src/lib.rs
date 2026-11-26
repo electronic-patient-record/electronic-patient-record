@@ -52,3 +52,4 @@ pub mod task_rules;
 pub mod treatment_refusal;
 pub mod typing;
 pub mod watch_list;
+pub mod who_speaks;

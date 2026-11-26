@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-26 - Who speaks for a person, as a library (RF-9)
+
+- **Clinical risk:** none yet: nothing stores or shows one, and no hazard row changes.
+- **Added:** `who_speaks.rs` in the domain crate: one entry per person (two parents are two), with the paper seen or not and by whom, and one view per decision. A power nobody saw is listed as claimed and is not a power; only powers seen can disagree; a relative's word is shown and is never a power; "nobody" is an answer, and beside a speaker a contradiction. **Nothing decides who wins.**
+- **Verified:** 5 tests, including the two acceptance cases. **Not done / not verified:** no store, API or screen; who may hold which power is the author's reading of the spec, reviewed by no lawyer.
+
 ## 2026-11-26 - Asking now, and leaving against advice, as a library (RF-10)
 
 - **Clinical risk:** none yet: nothing stores or shows a record, and no hazard row changes.
