@@ -147,6 +147,8 @@ mod http_roles;
 mod http_suspicions;
 #[path = "http_tasks.rs"]
 mod http_tasks;
+#[path = "http_treatment_refusals.rs"]
+mod http_treatment_refusals;
 #[path = "http_typing.rs"]
 mod http_typing;
 #[path = "http_watch_list.rs"]

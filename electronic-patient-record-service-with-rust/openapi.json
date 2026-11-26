@@ -1672,6 +1672,23 @@
         ],
         "type": "object"
       },
+      "CreateTreatmentRefusal": {
+        "properties": {
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "refusal": {
+            "$ref": "#/components/schemas/TreatmentRefusalRecord"
+          }
+        },
+        "required": [
+          "refusal"
+        ],
+        "type": "object"
+      },
       "CreateTypingRecord": {
         "additionalProperties": false,
         "properties": {
@@ -2768,6 +2785,14 @@
         "properties": {
           "reason": {
             "type": "string"
+          },
+          "refusals_seen": {
+            "description": "The ids of the refusals of treatment that a person looked at (RF-5). A merge needs every refusal of the record merged away, and an unmerge every refusal recorded on the survivor since the merge; one not named is a 422 with refusal `refusals_not_seen` and the ids in `refusals_unseen`. The ids say that a refusal exists and nothing of what it refuses.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "type": "array"
           },
           "source": {
             "description": "The record merged away, or to be separated again.",
@@ -5769,6 +5794,33 @@
         ],
         "type": "object"
       },
+      "StoredTreatmentRefusal": {
+        "properties": {
+          "author": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "refusal": {
+            "$ref": "#/components/schemas/TreatmentRefusalRecord"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "patient_id",
+          "version",
+          "author",
+          "refusal"
+        ],
+        "type": "object"
+      },
       "StoredTyping": {
         "properties": {
           "author": {
@@ -6883,6 +6935,257 @@
         ],
         "type": "object"
       },
+      "TreatmentRefusalList": {
+        "description": "Refusals recorded on the record and on records merged into it, with a summary. none-recorded is what this record knows and never none.",
+        "properties": {
+          "refusals": {
+            "items": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/StoredTreatmentRefusal"
+                }
+              ],
+              "properties": {
+                "from_merged_record": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "from_merged_record"
+              ]
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
+          "summary": {
+            "properties": {
+              "doubted": {
+                "type": "integer"
+              },
+              "identity_uncertain": {
+                "type": "integer"
+              },
+              "stands": {
+                "type": "integer"
+              },
+              "state": {
+                "enum": [
+                  "recorded",
+                  "all-withdrawn",
+                  "none-recorded"
+                ]
+              },
+              "withdrawn": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "state"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "refusals",
+          "summary"
+        ],
+        "type": "object"
+      },
+      "TreatmentRefusalRecord": {
+        "description": "A refusal of treatment, as recorded. Nothing here says whether a person may be treated or whether a refusal is valid; not known is always a value and never decides. Who said it is kept apart from whom it is about. A withdrawal that was heard is kept as heard and ends a refusal only where a rule in force says so: no rule is loaded, so it is recorded as doubted.",
+        "properties": {
+          "accepts": {
+            "maxLength": 500,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "circumstances": {
+            "maxLength": 500,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "coding": {
+            "description": "A code for it, if one was chosen. The words are what is shown.",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "confirmed_on": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "doubt": {
+            "description": "Required when doubted.",
+            "maxLength": 500,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "form": {
+            "properties": {
+              "kept": {
+                "maxLength": 500,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "seen": {
+                "enum": [
+                  "original",
+                  "copy",
+                  "not-seen"
+                ]
+              },
+              "signed": {
+                "enum": [
+                  "yes",
+                  "no",
+                  "not-known"
+                ]
+              },
+              "witnessed": {
+                "enum": [
+                  "yes",
+                  "no",
+                  "not-known"
+                ]
+              },
+              "witnesses": {
+                "minimum": 1,
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "written": {
+                "enum": [
+                  "yes",
+                  "no",
+                  "not-known"
+                ]
+              }
+            },
+            "required": [
+              "written",
+              "signed",
+              "witnessed",
+              "seen"
+            ],
+            "type": "object"
+          },
+          "identity": {
+            "description": "Whether the person it is recorded on is certainly the person it is about.",
+            "enum": [
+              "certain",
+              "uncertain"
+            ]
+          },
+          "if_life_at_risk": {
+            "enum": [
+              "yes",
+              "no",
+              "not-stated"
+            ]
+          },
+          "kind": {
+            "enum": [
+              "spoken-now",
+              "advance",
+              "order",
+              "representative",
+              "parent",
+              "carried",
+              "reported"
+            ]
+          },
+          "made_on": {
+            "description": "YYYY, YYYY-MM or YYYY-MM-DD. Absent is not known.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "power_seen": {
+            "description": "Required for a representative or a parent, and refused otherwise.",
+            "enum": [
+              "yes",
+              "no",
+              "not-known",
+              null
+            ]
+          },
+          "said_by": {
+            "enum": [
+              "patient",
+              "attorney",
+              "guardian",
+              "parent",
+              "relative",
+              "clinician",
+              "other"
+            ]
+          },
+          "state": {
+            "enum": [
+              "stands",
+              "doubted",
+              "withdrawn",
+              "entered-in-error"
+            ]
+          },
+          "treatment": {
+            "description": "What is refused, in the person's words where they are known.",
+            "maxLength": 500,
+            "type": "string"
+          },
+          "withdrawal": {
+            "properties": {
+              "at": {
+                "description": "RFC 3339.",
+                "type": "string"
+              },
+              "how": {
+                "enum": [
+                  "spoken",
+                  "written",
+                  "conduct"
+                ]
+              },
+              "noticed_by": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "how",
+              "noticed_by",
+              "at"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "treatment",
+          "if_life_at_risk",
+          "form",
+          "said_by",
+          "identity",
+          "state"
+        ],
+        "type": "object"
+      },
       "TypingAsAt": {
         "description": "The list as it stood at `as_at`. It is not the record as it stands now.",
         "properties": {
@@ -7478,6 +7781,27 @@
           "result",
           "expected_version",
           "reason"
+        ],
+        "type": "object"
+      },
+      "UpdateTreatmentRefusal": {
+        "properties": {
+          "expected_version": {
+            "type": "integer"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "refusal": {
+            "$ref": "#/components/schemas/TreatmentRefusalRecord"
+          }
+        },
+        "required": [
+          "refusal",
+          "expected_version"
         ],
         "type": "object"
       },
@@ -15492,6 +15816,257 @@
         ],
         "x-epr-action": "Update",
         "x-epr-resource": "DiagnosticReport"
+      }
+    },
+    "/api/patients/{id}/treatment-refusals": {
+      "get": {
+        "operationId": "getApiPatientsIdTreatment-refusals",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TreatmentRefusalList"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/patients/{id}/treatment-refusals",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "TreatmentRefusal"
+      },
+      "post": {
+        "operationId": "postApiPatientsIdTreatment-refusals",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "1 to 128 letters, digits or . _ : -. A retry with the same key and the same request returns the first answer (header `Idempotent-Replayed: true`) and writes nothing; the same key for a different request is a 422; a key whose first request is unfinished is a 409. Only a success is kept; keys expire after 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTreatmentRefusal"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredTreatmentRefusal"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/patients/{id}/treatment-refusals",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Create",
+        "x-epr-resource": "TreatmentRefusal"
+      }
+    },
+    "/api/patients/{id}/treatment-refusals/{refusal_id}": {
+      "put": {
+        "operationId": "putApiPatientsIdTreatment-refusalsRefusal_id",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "refusal_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTreatmentRefusal"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredTreatmentRefusal"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionConflict"
+                }
+              }
+            },
+            "description": "A likely duplicate or a stale expected_version."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "PUT /api/patients/{id}/treatment-refusals/{refusal_id}",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Update",
+        "x-epr-resource": "TreatmentRefusal"
       }
     },
     "/api/patients/{id}/unmerge": {

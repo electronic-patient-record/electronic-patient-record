@@ -219,7 +219,7 @@ For the Clinical Safety Officer. None is added to the log: nothing is built.
 
 ## Order of work, proposed
 
-Tasks RF-1 to RF-12 in [tasks](../../tasks.md). Nothing is started. **RF-1 and a named lawyer and clinician come before any code that a clinician could see.**
+Tasks RF-1 to RF-12 in [tasks](../../tasks.md). **RF-3, RF-4 and RF-5 are built (the rules and the record as libraries, and the store and API with a merge that asks, 2026-11-26); nothing a clinician sees is.** The table is `treatment_refusal_versions` and the routes are `/api/patients/{id}/treatment-refusals`; a merge or an unmerge names each refusal in `refusals_seen`. **RF-1 and a named lawyer and clinician come before any code that a clinician could see.**
 
 ## Open questions
 

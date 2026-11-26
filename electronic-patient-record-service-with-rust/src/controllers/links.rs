@@ -30,6 +30,10 @@ pub struct LinkRequest {
     pub source: String,
     /// Why. Required: it is the provenance of the change.
     pub reason: String,
+    /// The ids of the refusals of treatment that a person looked at (RF-5). A merge needs every refusal of the record
+    /// merged away, and an unmerge every refusal recorded on the survivor since the merge; one not named stops it.
+    #[serde(default)]
+    pub refusals_seen: Vec<String>,
 }
 
 /// A store error as a response: a refused merge is a 422 that also carries the machine-readable `refusal` code (and
@@ -88,6 +92,55 @@ async fn change(
         Ok(t) => t,
         Err(r) => return r.into_response(),
     };
+    // A refusal of treatment is never carried across, or left behind, unseen: a person is asked about each one.
+    let unseen = if merging {
+        crate::treatment_refusals_store::unseen_on_merge(
+            &mut *tx,
+            &request.source,
+            &request.refusals_seen,
+        )
+        .await
+    } else {
+        crate::treatment_refusals_store::unseen_on_unmerge(
+            &mut *tx,
+            target,
+            &request.source,
+            &request.refusals_seen,
+        )
+        .await
+    };
+    match unseen {
+        Ok(ids) if ids.is_empty() => {}
+        Ok(ids) => {
+            let _ = tx.rollback().await;
+            if let Err(r) = audit_resource(
+                &ctx.pool(),
+                agent,
+                Access {
+                    action,
+                    outcome: 4,
+                    purpose,
+                    resource: "PatientLink",
+                    patient_id: None,
+                },
+                serde_json::json!({ "refused": "refusals_not_seen", "refusals": ids.len() }),
+            )
+            .await
+            {
+                return r.into_response();
+            }
+            return ApiError::invalid(vec![
+                "a refusal of treatment has not been looked at: name each in refusals_seen once a person has".to_string(),
+            ])
+            .with("refusal", "refusals_not_seen")
+            .with("refusals_unseen", ids)
+            .into_response();
+        }
+        Err(e) => {
+            let _ = tx.rollback().await;
+            return failure(e);
+        }
+    }
     let done = if merging {
         store::merge(&mut *tx, target, &request.source, &agent.0, &request.reason).await
     } else {

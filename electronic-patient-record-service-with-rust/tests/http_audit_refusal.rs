@@ -777,6 +777,42 @@ async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_r
         )
         .await;
 
+        // Refusal of treatment create and update (RF-5).
+        let refusal = json!({ "kind": "spoken-now", "treatment": "blood products", "if_life_at_risk": "not-stated",
+            "form": { "written": "no", "signed": "no", "witnessed": "no", "seen": "not-seen" },
+            "said_by": "patient", "identity": "certain", "state": "stands" });
+        refused_then_accepted(db, "POST /api/patients/{id}/treatment-refusals", || async {
+            let r = server
+                .post(&format!("/api/patients/{id}/treatment-refusals"))
+                .json(&json!({ "refusal": refusal }))
+                .await;
+            (r.status_code(), r.text())
+        })
+        .await;
+        let refusals = server
+            .get(&format!("/api/patients/{id}/treatment-refusals"))
+            .await
+            .json::<Value>();
+        let refusal_id = refusals["refusals"][0]["id"]
+            .as_str()
+            .expect("a refusal id")
+            .to_string();
+        let doubted = json!({ "kind": "spoken-now", "treatment": "blood products", "if_life_at_risk": "not-stated",
+            "form": { "written": "no", "signed": "no", "witnessed": "no", "seen": "not-seen" },
+            "said_by": "patient", "identity": "certain", "state": "doubted", "doubt": "said while in pain" });
+        refused_then_accepted(
+            db,
+            "PUT /api/patients/{id}/treatment-refusals/{refusal_id}",
+            || async {
+                let r = server
+                    .put(&format!("/api/patients/{id}/treatment-refusals/{refusal_id}"))
+                    .json(&json!({ "refusal": doubted, "expected_version": 1 }))
+                    .await;
+                (r.status_code(), r.text())
+            },
+        )
+        .await;
+
         // Relationship create and update.
         let rel = json!({ "subject": "nurse-1", "kind": "care-team", "status": "active" });
         refused_then_accepted(db, "POST /api/patients/{id}/relationships", || async {

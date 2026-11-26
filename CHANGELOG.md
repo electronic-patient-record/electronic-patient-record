@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-26 - A refusal of treatment is stored and served; a merge asks about each one (RF-5)
+
+- **Clinical risk:** yes. New hazards H-075 (a merge joins two people and one has the other's refusal), H-076 ("none recorded" read as "none"), H-077 (a withdrawal lost, or taken to end a refusal with no rule) and H-078 (an order or another person's word shown as the patient's own), all `open`, severity and likelihood the author's proposal. None is accepted or closed.
+- **Added:** migration `20261126000048` (`treatment_refusal_versions`, append-only, and `treatment_refusal_current`); `treatment_refusals_store.rs`; `POST`/`GET` `/api/patients/{id}/treatment-refusals` and `PUT …/{refusal_id}` (a new version each time; stale version 409; entered in error is a state and ends changes); a `TreatmentRefusal` resource in the permission table (clinician: all; nurse and allied health: no entered-in-error; pharmacist: read; **a patient and a proxy read none yet**). The list carries a summary that says `none-recorded`, `recorded` or `all-withdrawn`, and the refusals of a record merged in, marked `from_merged_record`. Audit rows hold ids, version, kind and state, never what is refused.
+- **Merge:** `POST …/merge` and `…/unmerge` take `refusals_seen`. A merge needs every refusal of the record merged away that is not entered in error, and an unmerge every one recorded on the survivor since the merge; one not named is a 422 with `refusal: refusals_not_seen` and the ids. The ids say a refusal exists and nothing of what it refuses, and an administrator, who may merge, cannot read them: a person has to be asked.
+- **Withdrawal:** the service loads no rule pack, so a withdrawal that was heard is stored as `doubted`, and `withdrawn` with a withdrawal is a 422 (`after_withdrawal` with no pack).
+- **Verified:** the domain and service tests, and the database tests with a throwaway Postgres 18: the new file `http_treatment_refusals.rs` (2 tests), the route, label, audit-failure, stored-word, inventory and OpenAPI censuses. **Not done / not verified:** no screen, banner or emergency sheet (RF-7); no break-glass question (RF-6); the pack is not read by the service (RF-3 is a library); a `Patient`'s own access and the downtime extract do not hold refusals; no FHIR `Consent` export; the three `metrics::` tests fail when the ignored and ordinary tests run in one ordered pass (`--include-ignored`) and pass alone and in the plain `cargo test` run; I did not check whether they did so before this change; the whole database pass and the Java validator job were not run here. Nobody has reviewed the permission table or the hazards.
+
 ## 2026-11-25 - Mutation run on the audit trail and the gate (QA-2)
 
 - **Clinical risk:** none; tests, and two small functions taken out of longer ones with no change in effect. H-009 and H-010 rest on these files.

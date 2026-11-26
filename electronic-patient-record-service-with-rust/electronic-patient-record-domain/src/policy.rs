@@ -171,6 +171,9 @@ pub enum Resource {
     /// What laboratories reported that bears on giving or receiving blood, a kidney or marrow (DM-1, `entries_store.rs`).
     /// Separate from `DiagnosticReport`, because an HLA type can show that two people are not related as they believe.
     CompatibilityTyping,
+    /// A refusal of treatment, as recorded (RF-5, `treatment_refusals_store.rs`). Not `Consent`, which is a refusal of
+    /// disclosure (RF-2). Clinical: it says what a person will not accept, and it is read by those who treat.
+    TreatmentRefusal,
     /// FHIR `Observation`.
     Observation,
     /// A laboratory or imaging result and its sign-off (`results_store.rs`, OR-4 first slice, WL-1).
@@ -243,12 +246,13 @@ pub enum Resource {
 
 impl Resource {
     /// Every resource kind, in a fixed order.
-    pub const ALL: [Resource; 30] = [
+    pub const ALL: [Resource; 31] = [
         Resource::PatientIdentity,
         Resource::Encounter,
         Resource::Condition,
         Resource::RelativeHistory,
         Resource::CompatibilityTyping,
+        Resource::TreatmentRefusal,
         Resource::Observation,
         Resource::DiagnosticReport,
         Resource::QuestionnaireResponse,
@@ -285,6 +289,7 @@ impl Resource {
             Resource::Condition => "Condition",
             Resource::RelativeHistory => "RelativeHistory",
             Resource::CompatibilityTyping => "CompatibilityTyping",
+            Resource::TreatmentRefusal => "TreatmentRefusal",
             Resource::Observation => "Observation",
             Resource::DiagnosticReport => "DiagnosticReport",
             Resource::QuestionnaireResponse => "QuestionnaireResponse",
@@ -688,7 +693,8 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         MedicationRequest as Meds, Observation, OverdueReviews as Overdue,
         OwnWatchList as OwnWatch, PatientIdentity as Identity, PatientLink as Link,
         QuestionnaireResponse as Assess, Referral, ReferralQueue as RefQueue,
-        ReferralWorklist as Worklist, RelativeHistory as Relatives, Tasks, WatchList as Watch,
+        ReferralWorklist as Worklist, RelativeHistory as Relatives, Tasks,
+        TreatmentRefusal as Refusal, WatchList as Watch,
     };
     match (role, resource) {
         // Clinicians: full clinical work, and register or correct identity.
@@ -706,6 +712,12 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         (Role::Clinician, Typing) => &[Read, Search, Create, Update, Eie],
         (Role::Nurse, Typing) => &[Read, Search],
         (Role::Nurse | Role::AlliedHealth, Relatives) => &[Read, Search, Create, Update],
+        // Refusals of treatment (RF-5, unreviewed): those who treat record and read them, because a person says "no" to
+        // whoever is there; only a clinician marks one entered in error. A pharmacist reads. A patient and a proxy read none
+        // until it is decided what they are shown (RF-7), and an administrator has no care relationship.
+        (Role::Clinician, Refusal) => &[Read, Search, Create, Update, Eie],
+        (Role::Nurse | Role::AlliedHealth, Refusal) => &[Read, Search, Create, Update],
+        (Role::Pharmacist, Refusal) => &[Read, Search],
         // Results (OR-4 first slice, WL-1, unreviewed): a clinician files, corrects and signs off (a
         // sign-off is an `Update`); a nurse, pharmacist or allied professional reads. No feed files them
         // yet (an integration has no care relationship), and a patient or proxy reads none until release
@@ -1669,8 +1681,8 @@ mod tests {
                 }
             }
         }
-        // 17 roles × 30 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
-        assert_eq!(cells, 17 * 30 * 6 * 8 * 5 * 3 * 7 * 2);
+        // 17 roles × 31 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
+        assert_eq!(cells, 17 * 31 * 6 * 8 * 5 * 3 * 7 * 2);
         assert!(allows > 0);
     }
 

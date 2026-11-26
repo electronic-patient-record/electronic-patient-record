@@ -1292,6 +1292,70 @@ fn consent_schemas() -> Value {
     })
 }
 
+/// The schemas for refusals of treatment (RF-5): the record, the stored version, the bodies and the list with its summary.
+/// This is not `ConsentRecord`, which is a refusal of disclosure.
+fn treatment_refusal_schemas() -> Value {
+    let known = json!({"enum": ["yes", "no", "not-known"]});
+    json!({
+        "TreatmentRefusalRecord": {
+            "type": "object",
+            "required": ["kind", "treatment", "if_life_at_risk", "form", "said_by", "identity", "state"],
+            "description": "A refusal of treatment, as recorded. Nothing here says whether a person may be treated or whether a refusal is valid; not known is always a value and never decides. Who said it is kept apart from whom it is about. A withdrawal that was heard is kept as heard and ends a refusal only where a rule in force says so: no rule is loaded, so it is recorded as doubted.",
+            "properties": {
+                "kind": {"enum": ["spoken-now", "advance", "order", "representative", "parent", "carried", "reported"]},
+                "treatment": {"type": "string", "maxLength": 500, "description": "What is refused, in the person's words where they are known."},
+                "coding": {"type": ["object", "null"], "description": "A code for it, if one was chosen. The words are what is shown."},
+                "accepts": {"type": ["string", "null"], "maxLength": 500},
+                "circumstances": {"type": ["string", "null"], "maxLength": 500},
+                "if_life_at_risk": {"enum": ["yes", "no", "not-stated"]},
+                "form": {"type": "object", "required": ["written", "signed", "witnessed", "seen"], "properties": {
+                    "written": known, "signed": known, "witnessed": known,
+                    "witnesses": {"type": ["integer", "null"], "minimum": 1},
+                    "seen": {"enum": ["original", "copy", "not-seen"]},
+                    "kept": {"type": ["string", "null"], "maxLength": 500}}},
+                "made_on": {"type": ["string", "null"], "description": "YYYY, YYYY-MM or YYYY-MM-DD. Absent is not known."},
+                "confirmed_on": {"type": ["string", "null"]},
+                "said_by": {"enum": ["patient", "attorney", "guardian", "parent", "relative", "clinician", "other"]},
+                "power_seen": {"enum": ["yes", "no", "not-known", null], "description": "Required for a representative or a parent, and refused otherwise."},
+                "identity": {"enum": ["certain", "uncertain"], "description": "Whether the person it is recorded on is certainly the person it is about."},
+                "state": {"enum": ["stands", "doubted", "withdrawn", "entered-in-error"]},
+                "doubt": {"type": ["string", "null"], "maxLength": 500, "description": "Required when doubted."},
+                "withdrawal": {"type": ["object", "null"], "required": ["how", "noticed_by", "at"], "properties": {
+                    "how": {"enum": ["spoken", "written", "conduct"]},
+                    "noticed_by": {"type": "string"}, "at": {"type": "string", "description": "RFC 3339."}}}
+            }
+        },
+        "StoredTreatmentRefusal": {
+            "type": "object", "required": ["id", "patient_id", "version", "author", "refusal"],
+            "properties": {
+                "id": {"type": "string"}, "patient_id": {"type": "string"},
+                "version": {"type": "integer"}, "author": {"type": "string"},
+                "refusal": {"$ref": "#/components/schemas/TreatmentRefusalRecord"}
+            }
+        },
+        "CreateTreatmentRefusal": {
+            "type": "object", "required": ["refusal"],
+            "properties": {"refusal": {"$ref": "#/components/schemas/TreatmentRefusalRecord"}, "reason": {"type": ["string", "null"]}}
+        },
+        "UpdateTreatmentRefusal": {
+            "type": "object", "required": ["refusal", "expected_version"],
+            "properties": {"refusal": {"$ref": "#/components/schemas/TreatmentRefusalRecord"},
+                "expected_version": {"type": "integer"}, "reason": {"type": ["string", "null"]}}
+        },
+        "TreatmentRefusalList": {
+            "type": "object", "required": ["refusals", "summary"],
+            "description": "Refusals recorded on the record and on records merged into it, with a summary. none-recorded is what this record knows and never none.",
+            "properties": {
+                "refusals": {"type": "array", "items": {"allOf": [{"$ref": "#/components/schemas/StoredTreatmentRefusal"}], "properties": {"from_merged_record": {"type": "boolean"}}, "required": ["from_merged_record"]}},
+                "summary": {"type": "object", "required": ["state"], "properties": {
+                    "state": {"enum": ["recorded", "all-withdrawn", "none-recorded"]},
+                    "stands": {"type": "integer"}, "doubted": {"type": "integer"}, "identity_uncertain": {"type": "integer"},
+                    "withdrawn": {"type": "integer"}}}
+            }
+        }
+    })
+}
+
 /// The schemas for care relationships: the record (with a proxy's terms), the stored version, the bodies and the list.
 fn relationship_schemas() -> Value {
     json!({
@@ -2014,7 +2078,8 @@ fn link_schemas() -> Value {
             "description": "Merge, or unmerge, another record with the one in the path (which survives). The reason is the provenance of the change and is required. A refusal is a 422 ErrorList that may also carry `refusal` (a stable code), `refusal_into` and `conflict_codes`.",
             "properties": {
                 "source": {"type": "string", "description": "The record merged away, or to be separated again."},
-                "reason": {"type": "string"}
+                "reason": {"type": "string"},
+                "refusals_seen": {"type": "array", "items": {"type": "string"}, "description": "The ids of the refusals of treatment that a person looked at (RF-5). A merge needs every refusal of the record merged away, and an unmerge every refusal recorded on the survivor since the merge; one not named is a 422 with refusal `refusals_not_seen` and the ids in `refusals_unseen`. The ids say that a refusal exists and nothing of what it refuses."}
             }
         },
         "PatientLink": {
@@ -2069,6 +2134,7 @@ fn patient_schemas() -> Value {
         task_schemas(),
         api_token_schemas(),
         consent_schemas(),
+        treatment_refusal_schemas(),
         relationship_schemas(),
     ] {
         all.extend(
@@ -2337,6 +2403,22 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
         "UpdateConsent",
         "200",
         "StoredConsent",
+        "VersionConflict",
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/treatment-refusals",
+        "CreateTreatmentRefusal",
+        "201",
+        "StoredTreatmentRefusal",
+        "",
+    ),
+    (
+        "PUT",
+        "/api/patients/{id}/treatment-refusals/{refusal_id}",
+        "UpdateTreatmentRefusal",
+        "200",
+        "StoredTreatmentRefusal",
         "VersionConflict",
     ),
     (
@@ -2618,6 +2700,12 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
         &[],
     ),
     ("GET", "/api/patients/{id}/consents", "ConsentList", &[]),
+    (
+        "GET",
+        "/api/patients/{id}/treatment-refusals",
+        "TreatmentRefusalList",
+        &[],
+    ),
     ("GET", "/api/patients/{id}/amendments", "AmendmentList", &[]),
     (
         "GET",

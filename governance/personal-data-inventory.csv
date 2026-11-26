@@ -576,3 +576,23 @@ patient_versions,given_name_keys,identifier,Given names folded for lookup,record
 patient_current,id_keys,identifier,Identifiers folded for lookup,record
 patient_current,family_name_keys,identifier,Family names folded for lookup,record
 patient_current,given_name_keys,identifier,Given names folded for lookup,record
+treatment_refusal_versions,refusal_id,none,Random record id,record
+treatment_refusal_versions,version,none,Version counter,record
+treatment_refusal_versions,patient_id,identifier,Links a record to the patient,record
+treatment_refusal_versions,recorded_at,none,When the version was written,record
+treatment_refusal_versions,author,staff-identifier,Who wrote the version,record
+treatment_refusal_versions,reason,free-text,Why the version was written as typed,record
+treatment_refusal_versions,state,none,Where the refusal stands,record
+treatment_refusal_versions,kind,none,What kind of refusal it is,record
+treatment_refusal_versions,identity,none,Whether the person it is recorded on is certainly the person it is about,record
+treatment_refusal_versions,body,health,A refusal of treatment as recorded: what is refused and accepted and in what circumstances; who said it; a withdrawal that was heard,record
+treatment_refusal_current,refusal_id,none,Random record id,record
+treatment_refusal_current,version,none,Version counter,record
+treatment_refusal_current,patient_id,identifier,Links a record to the patient,record
+treatment_refusal_current,recorded_at,none,When the version was written,record
+treatment_refusal_current,author,staff-identifier,Who wrote the version,record
+treatment_refusal_current,reason,free-text,Why the version was written as typed,record
+treatment_refusal_current,state,none,Where the refusal stands,record
+treatment_refusal_current,kind,none,What kind of refusal it is,record
+treatment_refusal_current,identity,none,Whether the person it is recorded on is certainly the person it is about,record
+treatment_refusal_current,body,health,A refusal of treatment as recorded (the current version),record

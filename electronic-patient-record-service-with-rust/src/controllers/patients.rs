@@ -829,6 +829,18 @@ pub fn routes() -> Routes {
         .add("/{id}/consents", post(super::consents::create))
         .add("/{id}/consents", get(super::consents::list))
         .add("/{id}/consents/{consent_id}", put(super::consents::update))
+        .add(
+            "/{id}/treatment-refusals",
+            post(super::treatment_refusals::create),
+        )
+        .add(
+            "/{id}/treatment-refusals",
+            get(super::treatment_refusals::list),
+        )
+        .add(
+            "/{id}/treatment-refusals/{refusal_id}",
+            put(super::treatment_refusals::update),
+        )
         .add("/{id}/relationships", post(super::relationships::create))
         .add("/{id}/relationships", get(super::relationships::list))
         .add(

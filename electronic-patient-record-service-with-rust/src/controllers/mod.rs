@@ -28,6 +28,7 @@ pub mod relationships;
 pub mod results;
 pub mod suspicions;
 pub mod tasks;
+pub mod treatment_refusals;
 pub mod watch_list;
 
 pub(crate) use common::{LEFT_OUT, RECONSTRUCTION};
