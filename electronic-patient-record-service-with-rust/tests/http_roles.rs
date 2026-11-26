@@ -183,8 +183,19 @@ async fn roles_consent_and_break_glass_through_the_router() {
         let blank = server
             .post(&grant)
             .add_header(ch.clone(), cv.clone())
-            .json(&json!({ "reason": " " }))
+            .json(&json!({ "reason": " ", "emergency": { "threat": "life", "time_to_harm": "minutes", "can_be_asked": "no" } }))
             .await;
+        // A reason with no answers about the emergency opens nothing (RF-6, PI-10): each is somebody's word.
+        let unanswered = server
+            .post(&grant)
+            .add_header(ch.clone(), cv.clone())
+            .json(&json!({ "reason": "collapsed in the street" }))
+            .await;
+        assert!(
+            unanswered.status_code().is_client_error(),
+            "{}",
+            unanswered.text()
+        );
         assert_eq!(
             blank.status_code(),
             StatusCode::UNPROCESSABLE_ENTITY,
@@ -194,7 +205,7 @@ async fn roles_consent_and_break_glass_through_the_router() {
         let opened = server
             .post(&grant)
             .add_header(ch.clone(), cv.clone())
-            .json(&json!({ "reason": "collapsed in the street" }))
+            .json(&json!({ "reason": "collapsed in the street", "emergency": { "threat": "life", "time_to_harm": "minutes", "can_be_asked": "no" } }))
             .await;
         assert_eq!(
             opened.status_code(),
@@ -206,7 +217,7 @@ async fn roles_consent_and_break_glass_through_the_router() {
         let repeat = server
             .post(&grant)
             .add_header(ch.clone(), cv.clone())
-            .json(&json!({ "reason": "collapsed in the street" }))
+            .json(&json!({ "reason": "collapsed in the street", "emergency": { "threat": "life", "time_to_harm": "minutes", "can_be_asked": "no" } }))
             .await;
         assert_eq!(
             repeat.status_code(),

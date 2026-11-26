@@ -7,6 +7,8 @@
 // that a clinician reads before acting: treat it as unsafe to rely on until then.
 //
 // For the reviewer, the wording least sure of:
+//   - the break-glass questions (2026-11-26, RF-6): "Aelod" for a limb at risk, "Gellir" / "Na ellir" as yes and no to
+//     "can the patient be asked", and "Dim un" for neither.
 //   - "clinigwr" for clinician; "clinigwr ar ddyletswydd" for on-duty clinician.
 //   - "rhif iechyd cenedlaethol" for national health number (the conflict words in `translations.ts` say the same).
 //   - vital signs ("arwyddion hanfodol"), "dirlawnder ocsigen", "cyfradd anadlu", "systolig",
@@ -742,7 +744,33 @@ export const CY: Strings = {
   glassReason: "Rheswm dros fynediad brys (angenrheidiol)",
   glassAck: "Rwy'n deall bod hyn yn cael ei gofnodi a'i adolygu",
   glassOpen: "Agor mynediad brys am 4 awr",
-  glassNeeded: "Rhowch reswm a thiciwch y blwch i agor mynediad brys.",
+  glassNeeded:
+    "Rhowch reswm, atebwch bob cwestiwn a thiciwch y blwch i agor mynediad brys.",
+  glassThreat:
+    "Beth sydd mewn perygl os na fydd neb yn darllen y cofnod nawr? (angenrheidiol)",
+  glassThreats: {
+    life: "Bywyd",
+    limb: "Aelod, neu swyddogaeth yr un mor ddifrifol",
+    neither: "Dim un",
+    "not-known": "Ddim yn hysbys",
+  },
+  glassTime: "Pa mor fuan y byddai niwed yn dod? (angenrheidiol)",
+  glassTimes: {
+    minutes: "O fewn munudau",
+    hours: "O fewn oriau",
+    days: "O fewn dyddiau neu fwy",
+    "not-known": "Ddim yn hysbys",
+  },
+  glassAsk: "A ellir gofyn i'r claf nawr? (angenrheidiol)",
+  glassAsks: {
+    yes: "Gellir, a gofynnais iddynt",
+    no: "Na ellir",
+    "not-known": "Ddim yn hysbys",
+  },
+  glassSaid: "Beth ddywedodd y claf (angenrheidiol)",
+  glassAnswers: "Beth ddywedodd y sawl a'i hagorodd",
+  glassNotAsked: "Ni ofynnwyd: agorwyd cyn i'r cwestiynau hyn fodoli.",
+  glassPatientSaid: "Dywedodd y claf",
   glassOpened: "Mae mynediad brys ar agor tan {until}.",
   glassReviewTitle: "Adolygiadau o fynediad brys",
   glassReviewIntro:

@@ -179,7 +179,7 @@ late_reminder = "skip"
             let r = server
                 .post(&format!("/api/patients/{pid}/break-glass"))
                 .add_header(ch.clone(), cv.clone())
-                .json(&json!({ "reason": "collapsed in the street" }))
+                .json(&json!({ "reason": "collapsed in the street", "emergency": { "threat": "life", "time_to_harm": "minutes", "can_be_asked": "no" } }))
                 .await;
             let text = r.text();
             if r.status_code().is_success() {

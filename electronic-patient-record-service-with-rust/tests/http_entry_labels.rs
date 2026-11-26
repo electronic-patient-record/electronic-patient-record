@@ -108,7 +108,7 @@ async fn a_labelled_entry_does_not_appear_and_who_may_label_and_what_break_the_g
             assert_eq!(status, StatusCode::CREATED, "{text}");
         }
         for token in [&urgent, &stranger] {
-            let (status, text) = call("POST", token, format!("/api/patients/{pid}/break-glass"), json!({ "reason": "collapsed" })).await;
+            let (status, text) = call("POST", token, format!("/api/patients/{pid}/break-glass"), json!({ "reason": "collapsed", "emergency": { "threat": "life", "time_to_harm": "minutes", "can_be_asked": "no" } })).await;
             assert_eq!(status, StatusCode::CREATED, "{text}");
         }
         let kinds = [
@@ -329,7 +329,7 @@ async fn a_consent_that_names_a_label_decides_for_the_entries_that_carry_it() {
             "POST",
             &urgent,
             format!("/api/patients/{pid}/break-glass"),
-            json!({ "reason": "collapsed" }),
+            json!({ "reason": "collapsed", "emergency": { "threat": "life", "time_to_harm": "minutes", "can_be_asked": "no" } }),
         )
         .await;
         assert_eq!(status, StatusCode::CREATED, "{text}");

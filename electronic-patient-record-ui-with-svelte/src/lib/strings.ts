@@ -698,7 +698,32 @@ export const STRINGS = {
   glassReason: "Reason for emergency access (required)",
   glassAck: "I understand this is recorded and reviewed",
   glassOpen: "Open emergency access for 4 hours",
-  glassNeeded: "Give a reason and tick the box to open emergency access.",
+  glassNeeded:
+    "Give a reason, answer each question and tick the box to open emergency access.",
+  glassThreat: "What is at risk if nobody reads the record now? (required)",
+  glassThreats: {
+    life: "A life",
+    limb: "A limb, or a function as serious",
+    neither: "Neither",
+    "not-known": "Not known",
+  },
+  glassTime: "How soon would harm come? (required)",
+  glassTimes: {
+    minutes: "Within minutes",
+    hours: "Within hours",
+    days: "Within days or longer",
+    "not-known": "Not known",
+  },
+  glassAsk: "Can the patient be asked now? (required)",
+  glassAsks: {
+    yes: "Yes, and I asked them",
+    no: "No",
+    "not-known": "Not known",
+  },
+  glassSaid: "What the patient said (required)",
+  glassAnswers: "What the person who opened it said",
+  glassNotAsked: "Not asked: opened before these questions existed.",
+  glassPatientSaid: "The patient said",
   glassOpened: "Emergency access is open until {until}.",
   glassReviewTitle: "Emergency access reviews",
   glassReviewIntro:

@@ -596,3 +596,7 @@ treatment_refusal_current,state,none,Where the refusal stands,record
 treatment_refusal_current,kind,none,What kind of refusal it is,record
 treatment_refusal_current,identity,none,Whether the person it is recorded on is certainly the person it is about,record
 treatment_refusal_current,body,health,A refusal of treatment as recorded (the current version),record
+break_glass_grants,threat,health,What the opener said is at risk: a life or a limb or neither or not known,record
+break_glass_grants,time_to_harm,health,How soon the opener said harm would come,record
+break_glass_grants,can_be_asked,health,Whether the opener said the patient could be asked,record
+break_glass_grants,asked_and_said,free-text,What the patient said when asked as typed by the opener,record

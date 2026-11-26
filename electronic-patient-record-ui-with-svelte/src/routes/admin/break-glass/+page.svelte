@@ -9,6 +9,13 @@
     patient_id: string;
     subject: string;
     reason: string;
+    /** The opener's answers (RF-6, PI-10). Null for a grant opened before they were asked; absent from an older API. */
+    emergency?: {
+      threat: "life" | "limb" | "neither" | "not-known";
+      time_to_harm: "minutes" | "hours" | "days" | "not-known";
+      can_be_asked: "yes" | "no" | "not-known";
+      asked_and_said: string | null;
+    } | null;
     granted_at: string;
     expires_at: string;
     /** Unreviewed for longer than the service's limit. Absent from an older API: not overdue. */
@@ -99,6 +106,22 @@
           · {TEXT.glassUntil}
           {siteWhenText(g.expires_at, siteZone)}
           <p>{TEXT.glassWhy}: {g.reason}</p>
+          {#if g.emergency}
+            <dl aria-label={TEXT.glassAnswers}>
+              <dt>{TEXT.glassThreat}</dt>
+              <dd>{TEXT.glassThreats[g.emergency.threat]}</dd>
+              <dt>{TEXT.glassTime}</dt>
+              <dd>{TEXT.glassTimes[g.emergency.time_to_harm]}</dd>
+              <dt>{TEXT.glassAsk}</dt>
+              <dd>{TEXT.glassAsks[g.emergency.can_be_asked]}</dd>
+              {#if g.emergency.asked_and_said}
+                <dt>{TEXT.glassPatientSaid}</dt>
+                <dd>{g.emergency.asked_and_said}</dd>
+              {/if}
+            </dl>
+          {:else}
+            <p>{TEXT.glassNotAsked}</p>
+          {/if}
           <button type="button" onclick={() => (open = g.id)}>
             {TEXT.glassReview}
           </button>

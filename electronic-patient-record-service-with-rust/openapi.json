@@ -1112,8 +1112,64 @@
         ],
         "type": "object"
       },
+      "BreakGlassEmergency": {
+        "description": "What the person who opens break-the-glass says (RF-6, PI-10): each answer is their word, and not-known is an answer. Nothing is worked out from a diagnosis, an age or the reason. What a grant lifts does not depend on these yet (OQ-PI8).",
+        "properties": {
+          "asked_and_said": {
+            "description": "What the patient said. Required when they can be asked, and refused otherwise.",
+            "maxLength": 500,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "can_be_asked": {
+            "description": "Whether the patient can be asked now.",
+            "enum": [
+              "yes",
+              "no",
+              "not-known"
+            ]
+          },
+          "threat": {
+            "description": "What is at risk if nobody reads the record now.",
+            "enum": [
+              "life",
+              "limb",
+              "neither",
+              "not-known"
+            ]
+          },
+          "time_to_harm": {
+            "description": "How soon harm would come.",
+            "enum": [
+              "minutes",
+              "hours",
+              "days",
+              "not-known"
+            ]
+          }
+        },
+        "required": [
+          "threat",
+          "time_to_harm",
+          "can_be_asked"
+        ],
+        "type": "object"
+      },
       "BreakGlassGrant": {
         "properties": {
+          "emergency": {
+            "description": "Null for a grant opened before the answers were asked: not asked, never no emergency.",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BreakGlassEmergency"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "expires_at": {
             "description": "UTC.",
             "type": "string"
@@ -1148,6 +1204,7 @@
           "patient_id",
           "subject",
           "reason",
+          "emergency",
           "granted_at",
           "expires_at",
           "review",
@@ -3047,14 +3104,18 @@
         "type": "object"
       },
       "OpenBreakGlass": {
-        "description": "Declare an emergency to read a record without a relationship. The reason is required; a blank one is refused (422). Asking again while a grant is open answers 200 with the same grant and does not extend it.",
+        "description": "Declare an emergency to read a record without a relationship. The reason and the answers are required; a blank reason, or an answer that does not fit, is refused (422). Asking again while a grant is open answers 200 with the same grant, answers included, and does not extend it.",
         "properties": {
+          "emergency": {
+            "$ref": "#/components/schemas/BreakGlassEmergency"
+          },
           "reason": {
             "type": "string"
           }
         },
         "required": [
-          "reason"
+          "reason",
+          "emergency"
         ],
         "type": "object"
       },

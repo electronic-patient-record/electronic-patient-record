@@ -1197,6 +1197,11 @@ test("break-the-glass: refused with an offer, opened with a reason, read and aud
     (
       await call(clinician, "POST", `/api/patients/${id}/break-glass`, {
         reason: "  ",
+        emergency: {
+          threat: "life",
+          time_to_harm: "minutes",
+          can_be_asked: "no",
+        },
       })
     ).status,
   ).toBe(422);
@@ -1204,6 +1209,11 @@ test("break-the-glass: refused with an offer, opened with a reason, read and aud
     (
       await call(admin, "POST", `/api/patients/${id}/break-glass`, {
         reason: "curious",
+        emergency: {
+          threat: "life",
+          time_to_harm: "minutes",
+          can_be_asked: "no",
+        },
       })
     ).status,
   ).toBe(403);
@@ -1211,6 +1221,11 @@ test("break-the-glass: refused with an offer, opened with a reason, read and aud
     (
       await call(auditor, "POST", `/api/patients/${id}/break-glass`, {
         reason: "curious",
+        emergency: {
+          threat: "life",
+          time_to_harm: "minutes",
+          can_be_asked: "no",
+        },
       })
     ).status,
   ).toBe(403);
@@ -1221,6 +1236,11 @@ test("break-the-glass: refused with an offer, opened with a reason, read and aud
     `/api/patients/${id}/break-glass`,
     {
       reason: "collapsed in the corridor",
+      emergency: {
+        threat: "life",
+        time_to_harm: "minutes",
+        can_be_asked: "no",
+      },
     },
   );
   expect(opened.status).toBe(201);
@@ -1232,7 +1252,14 @@ test("break-the-glass: refused with an offer, opened with a reason, read and aud
     clinician,
     "POST",
     `/api/patients/${id}/break-glass`,
-    { reason: "again" },
+    {
+      reason: "again",
+      emergency: {
+        threat: "life",
+        time_to_harm: "minutes",
+        can_be_asked: "no",
+      },
+    },
   );
   expect(again.status).toBe(200);
   expect(again.body.id).toBe(opened.body.id);
@@ -1405,6 +1432,11 @@ test("break-the-glass does not override a patient's refusal of consent", async (
     (
       await call(clinician, "POST", `/api/patients/${id}/break-glass`, {
         reason: "emergency",
+        emergency: {
+          threat: "life",
+          time_to_harm: "minutes",
+          can_be_asked: "no",
+        },
       })
     ).status,
   ).toBe(201);

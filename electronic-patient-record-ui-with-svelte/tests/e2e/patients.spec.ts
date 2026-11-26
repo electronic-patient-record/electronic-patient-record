@@ -1624,6 +1624,16 @@ test("the break-the-glass review list marks a grant that has waited too long", a
     patient_id: ANN.id,
     subject: "dr-who",
     reason: "collapsed",
+    // The first holds the opener's answers (RF-6); the second was opened before they were asked.
+    emergency:
+      id === "a"
+        ? {
+            threat: "limb",
+            time_to_harm: "hours",
+            can_be_asked: "yes",
+            asked_and_said: "said to go ahead",
+          }
+        : null,
     granted_at: "2026-10-20T10:00:00.000000Z",
     expires_at: "2026-10-20T14:00:00.000000Z",
     ...(overdue === undefined ? {} : { overdue }),
@@ -1640,6 +1650,10 @@ test("the break-the-glass review list marks a grant that has waited too long", a
   await expect(items.nth(0)).toContainText("OVERDUE FOR REVIEW");
   await expect(items.nth(1)).not.toContainText("OVERDUE");
   await expect(items.nth(2)).not.toContainText("OVERDUE");
+  await expect(items.nth(0)).toContainText("A limb, or a function as serious");
+  await expect(items.nth(0)).toContainText("Within hours");
+  await expect(items.nth(0)).toContainText("said to go ahead");
+  await expect(items.nth(1)).toContainText("Not asked");
   await axe(page);
 });
 
@@ -2616,15 +2630,46 @@ test("emergency access is offered only when the API offers it, needs a reason an
   // Neither a reason alone nor a tick alone sends anything.
   await page.getByLabel(/^Reason for emergency access/).fill("collapsed");
   await page.getByRole("button", { name: /Open emergency access/ }).click();
-  await expect(page.getByText(/Give a reason and tick the box/)).toBeVisible();
+  await expect(
+    page.getByText(/Give a reason, answer each question/),
+  ).toBeVisible();
   expect(sent).toHaveLength(0);
 
   await page.getByLabel("I understand this is recorded and reviewed").check();
+  // A reason and a tick with no answers about the emergency still send nothing (RF-6, PI-10).
+  await page.getByRole("button", { name: /Open emergency access/ }).click();
+  await expect(page.getByText(/answer each question/)).toBeVisible();
+  expect(sent).toHaveLength(0);
+  const asked = (legend: RegExp) => page.getByRole("group", { name: legend });
+  await asked(/What is at risk/)
+    .getByLabel("A life")
+    .check();
+  await asked(/How soon/)
+    .getByLabel("Within minutes")
+    .check();
+  // "Yes" asks what the patient said, and the form waits for it.
+  await asked(/Can the patient be asked/)
+    .getByLabel("Yes, and I asked them")
+    .check();
+  await page.getByRole("button", { name: /Open emergency access/ }).click();
+  expect(sent).toHaveLength(0);
+  await page.getByLabel(/^What the patient said/).fill("go ahead");
+  await axe(page);
   await page.getByRole("button", { name: /Open emergency access/ }).click();
   await expect(
     page.getByText("Emergency access is open until 2026-10-21 13:00 UTC."),
   ).toBeVisible();
-  expect(sent).toEqual([{ reason: "collapsed" }]);
+  expect(sent).toEqual([
+    {
+      reason: "collapsed",
+      emergency: {
+        threat: "life",
+        time_to_harm: "minutes",
+        can_be_asked: "yes",
+        asked_and_said: "go ahead",
+      },
+    },
+  ]);
   // The page read again under the grant, and the banner now shows the allergy.
   await expect(
     page.getByRole("region", { name: "Patient banner" }),
@@ -3096,6 +3141,9 @@ test("two clicks at once on open emergency access, and on record the review, sen
   });
   await page.goto(`/en-001/patients/${ANN.id}`);
   await page.getByLabel(/^Reason for emergency access/).fill("collapsed");
+  await page.getByLabel("A life").check();
+  await page.getByLabel("Within minutes").check();
+  await page.getByLabel("No", { exact: true }).check();
   await page.getByLabel("I understand this is recorded and reviewed").check();
   await click2(page.getByRole("button", { name: /Open emergency access/ }));
   await expect(

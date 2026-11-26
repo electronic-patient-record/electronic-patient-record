@@ -33,6 +33,9 @@ use serde::Deserialize;
 pub struct OpenRequest {
     /// Why. Required.
     pub reason: String,
+    /// What is at risk, how soon, whether the patient can be asked and what they said (RF-6, PI-10). Required: each
+    /// answer is the opener's word, and "not known" is one.
+    pub emergency: crate::emergency::Emergency,
 }
 
 /// Review a grant.
@@ -88,7 +91,15 @@ async fn open(
         Ok(t) => t,
         Err(r) => return r.into_response(),
     };
-    match store::open(&mut *tx, &patient, &agent.0, &request.reason).await {
+    match store::open(
+        &mut *tx,
+        &patient,
+        &agent.0,
+        &request.reason,
+        &request.emergency,
+    )
+    .await
+    {
         Ok((grant, created)) => {
             // The opening of a grant is itself break-glass access: flag its row.
             audit::note_break_glass(&grant.id);

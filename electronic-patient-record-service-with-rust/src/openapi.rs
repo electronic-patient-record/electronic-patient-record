@@ -2017,9 +2017,19 @@ fn audit_schemas() -> Value {
 fn break_glass_schemas() -> Value {
     json!({
         "OpenBreakGlass": {
-            "type": "object", "required": ["reason"],
-            "description": "Declare an emergency to read a record without a relationship. The reason is required; a blank one is refused (422). Asking again while a grant is open answers 200 with the same grant and does not extend it.",
-            "properties": {"reason": {"type": "string"}}
+            "type": "object", "required": ["reason", "emergency"],
+            "description": "Declare an emergency to read a record without a relationship. The reason and the answers are required; a blank reason, or an answer that does not fit, is refused (422). Asking again while a grant is open answers 200 with the same grant, answers included, and does not extend it.",
+            "properties": {"reason": {"type": "string"}, "emergency": {"$ref": "#/components/schemas/BreakGlassEmergency"}}
+        },
+        "BreakGlassEmergency": {
+            "type": "object", "required": ["threat", "time_to_harm", "can_be_asked"],
+            "description": "What the person who opens break-the-glass says (RF-6, PI-10): each answer is their word, and not-known is an answer. Nothing is worked out from a diagnosis, an age or the reason. What a grant lifts does not depend on these yet (OQ-PI8).",
+            "properties": {
+                "threat": {"enum": ["life", "limb", "neither", "not-known"], "description": "What is at risk if nobody reads the record now."},
+                "time_to_harm": {"enum": ["minutes", "hours", "days", "not-known"], "description": "How soon harm would come."},
+                "can_be_asked": {"enum": ["yes", "no", "not-known"], "description": "Whether the patient can be asked now."},
+                "asked_and_said": {"type": ["string", "null"], "maxLength": 500, "description": "What the patient said. Required when they can be asked, and refused otherwise."}
+            }
         },
         "ReviewBreakGlass": {
             "type": "object", "required": ["outcome", "note"],
@@ -2041,12 +2051,13 @@ fn break_glass_schemas() -> Value {
         },
         "BreakGlassGrant": {
             "type": "object",
-            "required": ["id", "patient_id", "subject", "reason", "granted_at", "expires_at", "review", "overdue"],
+            "required": ["id", "patient_id", "subject", "reason", "emergency", "granted_at", "expires_at", "review", "overdue"],
             "properties": {
                 "id": {"type": "string"},
                 "patient_id": {"type": "string"},
                 "subject": {"type": "string", "description": "The token subject who opened it."},
                 "reason": {"type": "string"},
+                "emergency": {"oneOf": [{"$ref": "#/components/schemas/BreakGlassEmergency"}, {"type": "null"}], "description": "Null for a grant opened before the answers were asked: not asked, never no emergency."},
                 "granted_at": {"type": "string", "description": "UTC."},
                 "expires_at": {"type": "string", "description": "UTC."},
                 "review": {"$ref": "#/components/schemas/BreakGlassReview"},
@@ -4648,6 +4659,7 @@ mod tests {
             patient_id: "p".into(),
             subject: "s".into(),
             reason: "r".into(),
+            emergency: None,
             granted_at: "t".into(),
             expires_at: "t".into(),
             expires_unix: 0,

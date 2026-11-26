@@ -9,6 +9,7 @@
 //! ```
 
 use electronic_patient_record::break_glass::{self as glass, GRANT_HOURS, Outcome};
+use electronic_patient_record::emergency::{CanBeAsked, Emergency, Threat, TimeToHarm};
 use electronic_patient_record::patients_store::{self, StoreError};
 use electronic_patient_record_matcher::{HumanName, Patient};
 use sqlx::{AssertSqlSafe, PgPool, Row};
@@ -21,6 +22,16 @@ async fn db() -> PgPool {
         .await
         .expect("migrate");
     db
+}
+
+/// The answers of a grant where nobody could ask the patient.
+fn emergency() -> Emergency {
+    Emergency {
+        threat: Threat::Life,
+        time_to_harm: TimeToHarm::Minutes,
+        can_be_asked: CanBeAsked::No,
+        asked_and_said: None,
+    }
 }
 
 fn unique(label: &str) -> String {
@@ -57,7 +68,7 @@ async fn a_grant_lasts_four_hours_and_asking_again_does_not_extend_it() {
     let (p, who) = (patient(&db).await, unique("dr"));
     assert!(glass::active(&db, &p, &who).await.unwrap().is_none());
 
-    let (g, created) = glass::open(&db, &p, &who, "  collapsed in the corridor ")
+    let (g, created) = glass::open(&db, &p, &who, "  collapsed in the corridor ", &emergency())
         .await
         .unwrap();
     assert!(created);
@@ -81,7 +92,7 @@ async fn a_grant_lasts_four_hours_and_asking_again_does_not_extend_it() {
     );
 
     // Again: the same grant, same end time.
-    let (again, created) = glass::open(&db, &p, &who, "a different reason")
+    let (again, created) = glass::open(&db, &p, &who, "a different reason", &emergency())
         .await
         .unwrap();
     assert!(!created);
@@ -120,7 +131,9 @@ async fn an_expired_grant_is_not_active_and_a_new_one_can_be_opened() {
     .await
     .unwrap();
     assert!(glass::active(&db, &p, &who).await.unwrap().is_none());
-    let (_, created) = glass::open(&db, &p, &who, "new emergency").await.unwrap();
+    let (_, created) = glass::open(&db, &p, &who, "new emergency", &emergency())
+        .await
+        .unwrap();
     assert!(created);
 }
 
@@ -136,7 +149,7 @@ async fn a_grant_ends_at_four_hours_to_the_microsecond_and_is_overdue_just_after
     let clock = FixedClock::new("2031-05-06T07:08:09.123456Z".parse().unwrap());
     let moment = SignedDuration::from_micros(1);
     let start = clock.now();
-    let (g, created) = glass::open_at(&db, &p, &who, "collapsed", Some(clock.now()))
+    let (g, created) = glass::open_at(&db, &p, &who, "collapsed", &emergency(), Some(clock.now()))
         .await
         .unwrap();
     assert!(created);
@@ -150,7 +163,7 @@ async fn a_grant_ends_at_four_hours_to_the_microsecond_and_is_overdue_just_after
         .expect("still held a microsecond before the end");
     assert_eq!(held.id, g.id);
     // Asking again at the last moment gives the same end.
-    let (again, created) = glass::open_at(&db, &p, &who, "again", Some(clock.now()))
+    let (again, created) = glass::open_at(&db, &p, &who, "again", &emergency(), Some(clock.now()))
         .await
         .unwrap();
     assert!(!created);
@@ -164,7 +177,7 @@ async fn a_grant_ends_at_four_hours_to_the_microsecond_and_is_overdue_just_after
             .is_none(),
         "over at four hours exactly"
     );
-    let (next, created) = glass::open_at(&db, &p, &who, "another", Some(clock.now()))
+    let (next, created) = glass::open_at(&db, &p, &who, "another", &emergency(), Some(clock.now()))
         .await
         .unwrap();
     assert!(created);
@@ -195,14 +208,14 @@ async fn two_requests_at_one_moment_open_one_grant() {
     let db = db().await;
     let (p, who) = (patient(&db).await, unique("dr"));
     let mut first = db.begin().await.unwrap();
-    let (g, created) = glass::open(&mut *first, &p, &who, "collapsed")
+    let (g, created) = glass::open(&mut *first, &p, &who, "collapsed", &emergency())
         .await
         .unwrap();
     assert!(created);
     let (other, at, name) = (db.clone(), p.clone(), who.clone());
     let second = tokio::spawn(async move {
         let mut tx = other.begin().await.unwrap();
-        let got = glass::open(&mut *tx, &at, &name, "collapsed")
+        let got = glass::open(&mut *tx, &at, &name, "collapsed", &emergency())
             .await
             .unwrap();
         tx.commit().await.unwrap();
@@ -211,7 +224,7 @@ async fn two_requests_at_one_moment_open_one_grant() {
     // Someone else, for the same patient, does not wait for it.
     let (_, theirs) = tokio::time::timeout(
         std::time::Duration::from_secs(5),
-        glass::open(&db, &p, &unique("other"), "collapsed"),
+        glass::open(&db, &p, &unique("other"), "collapsed", &emergency()),
     )
     .await
     .expect("another person does not wait")
@@ -233,16 +246,22 @@ async fn a_grant_needs_a_reason_and_a_patient() {
     for bad in ["", "   ", &"x".repeat(501), "line\u{0}break"] {
         assert!(
             matches!(
-                glass::open(&db, &p, &who, bad).await,
+                glass::open(&db, &p, &who, bad, &emergency()).await,
                 Err(StoreError::BadQuery(_))
             ),
             "{bad:?}"
         );
     }
     assert_eq!(
-        glass::open(&db, "00000000-0000-4000-8000-000000000000", &who, "why")
-            .await
-            .map(|_| ()),
+        glass::open(
+            &db,
+            "00000000-0000-4000-8000-000000000000",
+            &who,
+            "why",
+            &emergency()
+        )
+        .await
+        .map(|_| ()),
         Err(StoreError::NotFound)
     );
     assert!(glass::active(&db, &p, &who).await.unwrap().is_none());
@@ -254,7 +273,9 @@ async fn a_grant_waits_for_review_by_someone_else_and_is_reviewed_once() {
     let db = db().await;
     let (p, who, auditor) = (patient(&db).await, unique("dr"), unique("auditor"));
     let waiting = glass::count_unreviewed(&db).await.unwrap();
-    let (g, _) = glass::open(&db, &p, &who, "emergency").await.unwrap();
+    let (g, _) = glass::open(&db, &p, &who, "emergency", &emergency())
+        .await
+        .unwrap();
     assert_eq!(glass::count_unreviewed(&db).await.unwrap(), waiting + 1);
     assert!(
         glass::unreviewed(&db)
@@ -309,7 +330,9 @@ async fn a_grant_waits_for_review_by_someone_else_and_is_reviewed_once() {
 async fn grants_and_reviews_cannot_be_changed_or_removed() {
     let db = db().await;
     let (p, who) = (patient(&db).await, unique("dr"));
-    let (g, _) = glass::open(&db, &p, &who, "emergency").await.unwrap();
+    let (g, _) = glass::open(&db, &p, &who, "emergency", &emergency())
+        .await
+        .unwrap();
     glass::review(&db, &g.id, "auditor", Outcome::Appropriate, "fine")
         .await
         .unwrap();
@@ -368,7 +391,7 @@ async fn a_grant_unreviewed_for_longer_than_the_limit_is_overdue_until_it_is_rev
     let before = glass::count_overdue(&db).await.unwrap();
 
     // Inside the limit: waiting, not overdue.
-    let (fresh, _) = glass::open(&db, &p, &unique("dr"), "collapsed")
+    let (fresh, _) = glass::open(&db, &p, &unique("dr"), "collapsed", &emergency())
         .await
         .unwrap();
     // Just inside, and well outside.
@@ -422,4 +445,71 @@ async fn a_review_list_longer_than_the_list_limit_says_it_was_cut_short() {
         "{open} are unreviewed but the list does not say it is cut"
     );
     txn.rollback().await.unwrap();
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn a_grant_holds_the_openers_answers_and_one_from_before_they_were_asked_says_so() {
+    let db = db().await;
+    let p = patient(&db).await;
+    // What the patient said is kept, trimmed, when they could be asked; asking again changes none of it.
+    let asked = Emergency {
+        threat: Threat::Limb,
+        time_to_harm: TimeToHarm::Hours,
+        can_be_asked: CanBeAsked::Yes,
+        asked_and_said: Some("  said to go ahead  ".into()),
+    };
+    let who = unique("dr");
+    let (g, _) = glass::open(&db, &p, &who, "crush injury", &asked)
+        .await
+        .unwrap();
+    let held = g.emergency.clone().expect("the answers are held");
+    assert_eq!(held.threat, Threat::Limb);
+    assert_eq!(held.asked_and_said.as_deref(), Some("said to go ahead"));
+    let (again, created) = glass::open(&db, &p, &who, "again", &emergency())
+        .await
+        .unwrap();
+    assert!(!created);
+    assert_eq!(again.emergency, g.emergency);
+    // The review reads them.
+    assert_eq!(glass::get(&db, &g.id).await.unwrap().emergency, g.emergency);
+
+    // An answer that does not fit is refused, and nothing is written.
+    let said_but_unasked = Emergency {
+        asked_and_said: Some("x".into()),
+        ..emergency()
+    };
+    assert!(matches!(
+        glass::open(&db, &p, &unique("dr"), "why", &said_but_unasked).await,
+        Err(StoreError::BadQuery(_))
+    ));
+    let unsaid = Emergency {
+        can_be_asked: CanBeAsked::Yes,
+        ..emergency()
+    };
+    assert!(matches!(
+        glass::open(&db, &p, &unique("dr"), "why", &unsaid).await,
+        Err(StoreError::BadQuery(_))
+    ));
+
+    // The database refuses half an answer, and a grant from before the question reads as not asked.
+    let half = sqlx::query(
+        "INSERT INTO break_glass_grants (patient_id, subject, reason, expires_at, threat)
+             VALUES ($1::uuid, 'x', 'r', now() + interval '1 hour', 'life')",
+    )
+    .bind(&p)
+    .execute(&db)
+    .await;
+    assert!(half.is_err(), "a threat with no other answer was stored");
+    let old: String = sqlx::query(
+        "INSERT INTO break_glass_grants (patient_id, subject, reason, expires_at)
+             VALUES ($1::uuid, $2, 'before RF-6', now() + interval '1 hour') RETURNING grant_id::text AS id",
+    )
+    .bind(&p)
+    .bind(unique("old"))
+    .fetch_one(&db)
+    .await
+    .unwrap()
+    .get("id");
+    assert_eq!(glass::get(&db, &old).await.unwrap().emergency, None);
 }

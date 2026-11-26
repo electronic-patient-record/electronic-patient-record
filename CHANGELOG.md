@@ -2,6 +2,14 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-26 - Break-the-glass asks what is at risk, how soon, and whether the patient can be asked (RF-6, PI-10)
+
+- **Clinical risk:** yes. The emergency form now asks more of a clinician, and a reviewer reads more. New hazard H-079 (an answer about an emergency is wrong, guessed or read as more than it is), `open`, severity and likelihood the author's proposal.
+- **Changed, and it breaks a caller:** `POST /api/patients/{id}/break-glass` needs `emergency` (`threat`, `time_to_harm`, `can_be_asked`, and `asked_and_said` exactly when the patient could be asked). A body without it is refused. The UI, the tests and the Keycloak end-to-end test send it. `openapi.json` re-blessed with `EPR_BLESS=break`.
+- **Added:** `emergency.rs` in the domain crate; migration `20261126000049` (four columns on `break_glass_grants` with a check that the answers come together, and that what was said is there exactly when the patient could be asked); `Grant.emergency`, `null` for a grant from before; three radio groups and a field on the form, with nothing chosen beforehand; the answers on the review screen, or "Not asked". English and Welsh words; **the Welsh is machine-written and not reviewed.**
+- **Not changed:** what a grant lifts. The answers decide nothing until OQ-PI8 is decided, and the audit row does not carry them.
+- **Verified:** fmt, clippy, the domain and service tests, the database tests on a throwaway Postgres 18, UI lint, type checks, vitest (441) and Playwright (260). **Not done / not verified:** the Keycloak end-to-end suite was edited and not run here; no clinician has seen or timed the form; the words of the questions are the author's; a test for each row of the access-control table waits for OQ-PI8.
+
 ## 2026-11-26 - Refusals of treatment: no refusal arrives unseen during a merge; tests that broke on a kept database (RF-5)
 
 - **Clinical risk:** yes, H-075: a refusal recorded on the record merged away while the merge was asking about its refusals was carried across unseen. Recording a refusal, and the merge and unmerge checks, now take one lock per record, so the check sees every refusal or the write waits for the merge. No hazard row changes; H-075's evidence is the same test.

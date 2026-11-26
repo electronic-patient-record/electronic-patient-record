@@ -22,6 +22,6 @@ RBAC roles (clinician, nurse, pharmacist, allied health, receptionist, clinical 
 | A role that reads no clinical content (reception, an auditor, an integrator), a token's scope, the purpose of use | No |
 | Writing, and exporting | No |
 
-**What the service does not know:** the reason is free text, and nothing asks whether a life or a limb is at risk, so a grant for any other reason lifts as much (PI-10).
+**What a grant holds (RF-6, PI-10, 2026-11-26):** the reason, and four answers, each the opener's word: what is at risk (`life`, `limb`, `neither`, `not-known`), how soon harm would come (`minutes`, `hours`, `days`, `not-known`), whether the patient can be asked now (`yes`, `no`, `not-known`), and what the patient said when they could. The review shows them. **What a grant lifts does not depend on them yet**: a grant that says `neither` lifts as much as one that says `life`, until OQ-PI8 is decided. Nothing is worked out from a diagnosis, an age or the reason.
 
 Planned; nothing here is built yet unless stated. Source: [`../../plan.md`](../../plan.md).

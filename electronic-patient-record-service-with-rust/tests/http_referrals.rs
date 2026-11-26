@@ -381,7 +381,7 @@ async fn a_deployments_own_reasons_reach_the_care_team_and_the_patient_and_nobod
         let glass = server
             .post(&format!("/api/patients/{pid}/break-glass"))
             .add_header(stranger.0.clone(), stranger.1.clone())
-            .json(&json!({ "reason": "collapsed" }))
+            .json(&json!({ "reason": "collapsed", "emergency": { "threat": "life", "time_to_harm": "minutes", "can_be_asked": "no" } }))
             .await;
         assert_eq!(glass.status_code(), StatusCode::CREATED, "{}", glass.text());
         let base = format!("/api/patients/{pid}/referrals");

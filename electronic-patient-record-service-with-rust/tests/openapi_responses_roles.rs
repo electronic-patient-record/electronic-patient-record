@@ -282,7 +282,7 @@ async fn real_responses_of_the_role_gated_routes_validate_against_the_served_sch
         let blank = server
             .post(&glass)
             .add_header(ch.clone(), cv.clone())
-            .json(&json!({ "reason": " " }))
+            .json(&json!({ "reason": " ", "emergency": { "threat": "life", "time_to_harm": "minutes", "can_be_asked": "no" } }))
             .await;
         assert_eq!(
             blank.status_code(),
@@ -300,7 +300,7 @@ async fn real_responses_of_the_role_gated_routes_validate_against_the_served_sch
         let opened = server
             .post(&glass)
             .add_header(ch.clone(), cv.clone())
-            .json(&json!({ "reason": "collapsed in the street" }))
+            .json(&json!({ "reason": "collapsed in the street", "emergency": { "threat": "life", "time_to_harm": "minutes", "can_be_asked": "no" } }))
             .await;
         assert_eq!(
             opened.status_code(),
@@ -319,7 +319,7 @@ async fn real_responses_of_the_role_gated_routes_validate_against_the_served_sch
         let again = server
             .post(&glass)
             .add_header(ch.clone(), cv.clone())
-            .json(&json!({ "reason": "collapsed in the street" }))
+            .json(&json!({ "reason": "collapsed in the street", "emergency": { "threat": "life", "time_to_harm": "minutes", "can_be_asked": "no" } }))
             .await;
         assert_eq!(again.status_code(), StatusCode::OK, "{}", again.text());
         expect(

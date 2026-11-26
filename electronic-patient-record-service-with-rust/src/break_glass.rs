@@ -11,6 +11,7 @@
 //! There is no real-time notification to a privacy officer: nothing here can send one. The unreviewed
 //! queue and its count are what exists.
 
+use crate::emergency::{self, CanBeAsked, Emergency, Threat, TimeToHarm};
 use crate::ids;
 use crate::patients_store::{self, StoreError};
 use crate::pool::Db;
@@ -77,6 +78,9 @@ pub struct Grant {
     pub subject: String,
     /// The reason they gave.
     pub reason: String,
+    /// What they said about the emergency (RF-6, PI-10). `None` for a grant opened before it was asked: "not asked",
+    /// never "no emergency".
+    pub emergency: Option<Emergency>,
     /// When (UTC).
     pub granted_at: String,
     /// When it ends (UTC).
@@ -141,6 +145,7 @@ fn select(at: Option<jiff::Timestamp>) -> Result<String, StoreError> {
     let hours = review_due_hours().map_err(StoreError::Db)?;
     Ok(format!(
         "SELECT g.grant_id::text AS id, g.patient_id::text AS patient_id, g.subject, g.reason,
+                g.threat, g.time_to_harm, g.can_be_asked, g.asked_and_said,
                 to_char(g.granted_at AT TIME ZONE 'UTC', {TS}) AS granted_at,
                 to_char(g.expires_at AT TIME ZONE 'UTC', {TS}) AS expires_at,
                 floor(extract(epoch FROM g.expires_at))::bigint AS expires_unix,
@@ -175,12 +180,37 @@ fn to_grant(row: &PgRow) -> Result<Grant, StoreError> {
         patient_id: get("patient_id")?,
         subject: get("subject")?,
         reason: get("reason")?,
+        emergency: emergency_of(row)?,
         granted_at: get("granted_at")?,
         expires_at: get("expires_at")?,
         expires_unix: row.try_get("expires_unix").map_err(db_err)?,
         review,
         overdue: row.try_get("overdue").map_err(db_err)?,
     })
+}
+
+/// The answers of a row, or `None` for a grant opened before they were asked. A stored word this build does not know is an
+/// error, never a guess.
+///
+/// # Errors
+///
+/// [`StoreError::Db`] when a column is missing or holds a word this build does not know.
+fn emergency_of(row: &PgRow) -> Result<Option<Emergency>, StoreError> {
+    let word = |c: &str| row.try_get::<Option<String>, _>(c).map_err(db_err);
+    let (Some(threat), Some(time), Some(asked)) = (
+        word("threat")?,
+        word("time_to_harm")?,
+        word("can_be_asked")?,
+    ) else {
+        return Ok(None);
+    };
+    let unknown = |c: &str| StoreError::Db(format!("an unknown word in break_glass_grants.{c}"));
+    Ok(Some(Emergency {
+        threat: Threat::parse(&threat).ok_or_else(|| unknown("threat"))?,
+        time_to_harm: TimeToHarm::parse(&time).ok_or_else(|| unknown("time_to_harm"))?,
+        can_be_asked: CanBeAsked::parse(&asked).ok_or_else(|| unknown("can_be_asked"))?,
+        asked_and_said: word("asked_and_said")?,
+    }))
 }
 
 /// The grant `subject` holds on `patient_id` right now, if any (the latest to expire).
@@ -226,20 +256,21 @@ pub async fn active_at(
     row.as_ref().map(to_grant).transpose()
 }
 
-/// Open a grant. A subject that already holds one on this patient gets that one back, unchanged:
-/// asking again does not extend it.
+/// Open a grant, with the opener's answers about the emergency. A subject that already holds one on this patient gets
+/// that one back, unchanged, answers included: asking again does not extend it or change what was said.
 ///
 /// # Errors
 ///
-/// [`StoreError::NotFound`] (no such patient), [`StoreError::BadQuery`] (blank or over-long reason),
-/// [`StoreError::Db`].
+/// [`StoreError::NotFound`] (no such patient), [`StoreError::BadQuery`] (blank or over-long reason, or answers that
+/// [`emergency::validate`] refuses), [`StoreError::Db`].
 pub async fn open(
     db: impl Into<Db<'_>>,
     patient_id: &str,
     subject: &str,
     reason: &str,
+    emergency: &Emergency,
 ) -> Result<(Grant, bool), StoreError> {
-    open_at(db, patient_id, subject, reason, None).await
+    open_at(db, patient_id, subject, reason, emergency, None).await
 }
 
 /// [`open`] at a time; `None` is now, by the database.
@@ -252,6 +283,7 @@ pub async fn open_at(
     patient_id: &str,
     subject: &str,
     reason: &str,
+    emergency: &Emergency,
     at: Option<jiff::Timestamp>,
 ) -> Result<(Grant, bool), StoreError> {
     let mut conn = db.into().acquire().await.map_err(db_err)?;
@@ -261,6 +293,9 @@ pub async fn open_at(
         return Err(StoreError::BadQuery(
             "a reason of 1 to 500 characters is required".into(),
         ));
+    }
+    if let Some(problem) = emergency::validate(emergency).into_iter().next() {
+        return Err(StoreError::BadQuery(problem));
     }
     let patient = patients_store::current(&mut *db, patient_id).await?;
     // Two requests at one moment would each find no grant and make one. The lock is the transaction's, so the second
@@ -275,14 +310,19 @@ pub async fn open_at(
     }
     let now = time(at);
     let row = sqlx::query(AssertSqlSafe(format!(
-        "INSERT INTO break_glass_grants (patient_id, subject, reason, granted_at, expires_at)
-             VALUES ($1::uuid, $2, $3, {now}, {now} + make_interval(hours => $4::int))
+        "INSERT INTO break_glass_grants
+                 (patient_id, subject, reason, granted_at, expires_at, threat, time_to_harm, can_be_asked, asked_and_said)
+             VALUES ($1::uuid, $2, $3, {now}, {now} + make_interval(hours => $4::int), $5, $6, $7, $8)
              RETURNING grant_id::text AS id"
     )))
     .bind(patient.id.clone())
     .bind(subject)
     .bind(reason)
     .bind(GRANT_HOURS)
+    .bind(emergency.threat.as_str())
+    .bind(emergency.time_to_harm.as_str())
+    .bind(emergency.can_be_asked.as_str())
+    .bind(emergency.asked_and_said.as_deref().map(str::trim))
     .fetch_optional(&mut *db)
     .await
     .map_err(db_err)?

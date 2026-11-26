@@ -36,6 +36,7 @@ pub mod controllers;
 pub mod treatment_refusals_store;
 pub use electronic_patient_record_domain::dates;
 pub use electronic_patient_record_domain::death;
+pub use electronic_patient_record_domain::emergency;
 pub mod death_store;
 pub mod dependencies;
 pub mod entries_store;
