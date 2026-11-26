@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-26 - Whether a person can decide this, now, as a library (RF-8, first slice)
+
+- **Clinical risk:** none yet: nothing stores, serves or shows a judgement, and no hazard row changes. The first code that stores or shows one needs its rows.
+- **Added:** `decision_ability.rs` in the domain crate. A judgement is about one decision at one time, by someone named, with reasons in words: conscious, how they communicate (by other means is not "no"), what was concluded, and the help given first (empty is "none recorded"). **No score, no verdict, no function that answers whether a person has capacity**, and none that copies a judgement forward. `about_this` lists the judgements about a decision, newest first, unmerged; `disputed` says when two people's latest views differ ("not known" takes no side); `gaps` names what is not recorded and refuses nothing; `age_minutes` is for a screen.
+- **Verified:** 6 tests: the fluctuating, intubated, interpreted and disputed cases, the required fields, and that a score is refused. **Not done / not verified:** no store, API or screen; the fields are the author's reading of the spec and of the Mental Capacity Act 2005 s.1(3), and no clinician or lawyer has reviewed them.
+
 ## 2026-11-26 - A refusal of disclosure says whether it holds in an emergency, and whether it was made in private (DR-2)
 
 - **Clinical risk:** none in effect: the verdict is the same whatever the two say (a test checks it), and break-the-glass still never lifts a refusal (OQ-PI8). They are stored and served, and shown nowhere. No hazard row changes.

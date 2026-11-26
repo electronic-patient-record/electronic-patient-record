@@ -19,6 +19,7 @@ pub mod coding;
 pub mod consent;
 pub mod dates;
 pub mod death;
+pub mod decision_ability;
 pub mod emergency;
 pub mod gate;
 pub mod hazard;
