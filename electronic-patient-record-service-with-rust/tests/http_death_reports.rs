@@ -87,7 +87,9 @@ async fn every_alerted_role_sees_what_waits_and_nobody_else_does() {
             .post("/api/patients")
             .add_header(admin.0.clone(), admin.1.clone())
             .json(&json!({ "patient": {
-                "names": [{ "family": family, "given": [family] }], "birth_date": "1931-02-03" } }))
+                "names": [{ "family": family, "given": [family] }], "birth_date": "1931-02-03" },
+                // Setup: a database kept from an earlier run holds a record like this one, which would be a 409.
+                "override_reason": "test setup; earlier runs may have left a similar record" }))
             .await;
         assert_eq!(made.status_code(), StatusCode::CREATED, "{}", made.text());
         let pid = made.json::<Value>()["id"].as_str().unwrap().to_string();

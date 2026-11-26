@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-26 - Refusals of treatment: no refusal arrives unseen during a merge; tests that broke on a kept database (RF-5)
+
+- **Clinical risk:** yes, H-075: a refusal recorded on the record merged away while the merge was asking about its refusals was carried across unseen. Recording a refusal, and the merge and unmerge checks, now take one lock per record, so the check sees every refusal or the write waits for the merge. No hazard row changes; H-075's evidence is the same test.
+- **Changed:** the list of refusals and the records merged into it is two queries however long the chain (it was one per merged record); the list item is a typed `Listed` (it was an edited JSON value, with a silent empty value on error); the stored kind and identity are `Kind::as_str` and `IdentityOf::as_str` (it was a serde round trip that could fail).
+- **Tests:** the role rules through login (a nurse records and doubts, cannot mark one entered in error, a clinician can; an administrator and a pharmacist off the team read none), the schemas against the types, and the withdrawal rule without a database. `tests/metrics.rs` is its own program again: it needs a process where `auth::init` never ran, and in `main` three of its tests failed whenever ignored tests ran first. `http_death_reports` and `openapi_responses_roles` failed on a database kept from an earlier run (a similar record; an oldest-first page of 50); they now give an override reason and read the refusal by its id.
+- **Verified:** fmt, clippy, docs, the domain and service tests, and every database test on a throwaway Postgres 18, twice on the same database. **Not done / not verified:** the lock is not tested by two writers at once; `http_overdue_reviews` failed once in a full run and passed alone, not looked into (its list is also an oldest-first page of 50); the Java validator job was not run; coverage was not measured.
+
 ## 2026-11-26 - A refusal of treatment is stored and served; a merge asks about each one (RF-5)
 
 - **Clinical risk:** yes. New hazards H-075 (a merge joins two people and one has the other's refusal), H-076 ("none recorded" read as "none"), H-077 (a withdrawal lost, or taken to end a refusal with no rule) and H-078 (an order or another person's word shown as the patient's own), all `open`, severity and likelihood the author's proposal. None is accepted or closed.

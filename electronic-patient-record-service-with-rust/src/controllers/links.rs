@@ -95,14 +95,14 @@ async fn change(
     // A refusal of treatment is never carried across, or left behind, unseen: a person is asked about each one.
     let unseen = if merging {
         crate::treatment_refusals_store::unseen_on_merge(
-            &mut *tx,
+            &mut tx,
             &request.source,
             &request.refusals_seen,
         )
         .await
     } else {
         crate::treatment_refusals_store::unseen_on_unmerge(
-            &mut *tx,
+            &mut tx,
             target,
             &request.source,
             &request.refusals_seen,

@@ -4144,6 +4144,113 @@ mod tests {
     }
 
     #[test]
+    fn the_treatment_refusal_schemas_match_the_types() {
+        use crate::controllers::treatment_refusals::{CreateRequest, Listed, UpdateRequest};
+        use crate::treatment_refusal::{
+            Form, How, IdentityOf, Kind, Known, LifeAtRisk, RefusalRecord, Seen, Speaker, State,
+            Summary, Withdrawal,
+        };
+        use crate::treatment_refusals_store::StoredRefusal;
+        let schema = patient_schemas();
+        // Every optional field filled, so that every key the type can write is compared.
+        let record = RefusalRecord {
+            kind: Kind::Representative,
+            treatment: "blood".into(),
+            coding: None,
+            accepts: Some("albumin".into()),
+            circumstances: Some("surgery".into()),
+            if_life_at_risk: LifeAtRisk::Yes,
+            form: Form {
+                written: Known::Yes,
+                signed: Known::Yes,
+                witnessed: Known::Yes,
+                witnesses: Some(2),
+                seen: Seen::Original,
+                kept: Some("the ward safe".into()),
+            },
+            made_on: Some("2026".into()),
+            confirmed_on: Some("2026-02".into()),
+            said_by: Speaker::Attorney,
+            power_seen: Some(Known::Yes),
+            identity: IdentityOf::Certain,
+            state: State::Doubted,
+            doubt: Some("d".into()),
+            withdrawal: Some(Withdrawal {
+                how: How::Written,
+                noticed_by: "n".into(),
+                at: "2026-01-01T00:00:00Z".into(),
+            }),
+        };
+        let mut value = serde_json::to_value(&record).unwrap();
+        // `coding` is skipped when absent; the schema states it.
+        value["coding"] = Value::Null;
+        assert_eq!(keys(&value), properties("TreatmentRefusalRecord"));
+        let props = &schema["TreatmentRefusalRecord"]["properties"];
+        let inner = |field: &str| -> std::collections::BTreeSet<String> {
+            props[field]["properties"]
+                .as_object()
+                .unwrap()
+                .keys()
+                .cloned()
+                .collect()
+        };
+        assert_eq!(keys(&value["form"]), inner("form"));
+        assert_eq!(keys(&value["withdrawal"]), inner("withdrawal"));
+        assert_eq!(enum_words(&props["kind"]), said(&Kind::ALL));
+        assert_eq!(enum_words(&props["state"]), said(&State::ALL));
+        assert_eq!(enum_words(&props["identity"]), said(&IdentityOf::ALL));
+        let stored = StoredRefusal {
+            id: "r".into(),
+            patient_id: "p".into(),
+            version: 1,
+            author: "a".into(),
+            refusal: record.clone(),
+        };
+        assert_eq!(
+            keys(&serde_json::to_value(&stored).unwrap()),
+            properties("StoredTreatmentRefusal")
+        );
+        let listed = serde_json::to_value(Listed {
+            stored: &stored,
+            from_merged_record: false,
+        })
+        .unwrap();
+        let mut item = properties("StoredTreatmentRefusal");
+        item.insert("from_merged_record".into());
+        assert_eq!(keys(&listed), item);
+        // Each summary state the schema names is one the type writes, with its counts.
+        let summary = &schema["TreatmentRefusalList"]["properties"]["summary"]["properties"];
+        let counts: std::collections::BTreeSet<String> =
+            summary.as_object().unwrap().keys().cloned().collect();
+        let mut written = std::collections::BTreeSet::new();
+        for s in [
+            Summary::Recorded {
+                stands: 1,
+                doubted: 0,
+                identity_uncertain: 0,
+            },
+            Summary::AllWithdrawn { withdrawn: 1 },
+            Summary::NoneRecorded,
+        ] {
+            written.extend(keys(&serde_json::to_value(s).unwrap()));
+        }
+        assert_eq!(written, counts);
+        assert!(
+            serde_json::from_value::<CreateRequest>(
+                serde_json::json!({ "refusal": serde_json::to_value(&record).unwrap() })
+            )
+            .is_ok()
+        );
+        assert!(
+            serde_json::from_value::<UpdateRequest>(
+                serde_json::json!({ "refusal": serde_json::to_value(&record).unwrap() })
+            )
+            .is_err(),
+            "an update without expected_version is refused"
+        );
+    }
+
+    #[test]
     fn the_consent_schemas_match_the_types() {
         use crate::consent::{ConsentRecord, Effect, Kind, Period, Provision, Status};
         use crate::consents_store::StoredConsent;

@@ -630,7 +630,13 @@ async fn real_responses_of_the_role_gated_routes_validate_against_the_served_sch
         let listed = server.get(queue).add_header(mh.clone(), mv.clone()).await;
         assert_eq!(listed.status_code(), StatusCode::OK, "{}", listed.text());
         expect("feed list", queue, "get", StatusCode::OK, &listed.json());
-        assert!(listed.text().contains(&control), "the new refusal is open");
+        // The list is oldest first and holds 50; on a database kept from earlier runs the new one is read by its id.
+        let one = server
+            .get(&format!("{queue}/{stored}"))
+            .add_header(mh.clone(), mv.clone())
+            .await;
+        assert_eq!(one.status_code(), StatusCode::OK, "{}", one.text());
+        assert!(one.text().contains(&control), "the new refusal is open");
         assert!(
             !listed.text().contains("MSH|"),
             "a listing never carries the message"

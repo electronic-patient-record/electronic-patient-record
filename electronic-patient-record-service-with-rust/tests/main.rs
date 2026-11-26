@@ -163,8 +163,6 @@ mod label_census;
 mod licence_files;
 #[path = "links_store.rs"]
 mod links_store;
-#[path = "metrics.rs"]
-mod metrics;
 #[path = "migration_down.rs"]
 mod migration_down;
 #[path = "migration_relative_history.rs"]

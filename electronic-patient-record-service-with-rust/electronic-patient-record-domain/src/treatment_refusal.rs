@@ -46,6 +46,33 @@ pub enum Kind {
     Reported,
 }
 
+impl Kind {
+    /// Every kind (the stored words are checked against the database, PR-3).
+    pub const ALL: [Kind; 7] = [
+        Kind::SpokenNow,
+        Kind::Advance,
+        Kind::Order,
+        Kind::Representative,
+        Kind::Parent,
+        Kind::Carried,
+        Kind::Reported,
+    ];
+
+    /// The stored word, as serde writes it.
+    #[must_use]
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Kind::SpokenNow => "spoken-now",
+            Kind::Advance => "advance",
+            Kind::Order => "order",
+            Kind::Representative => "representative",
+            Kind::Parent => "parent",
+            Kind::Carried => "carried",
+            Kind::Reported => "reported",
+        }
+    }
+}
+
 /// Yes, no, or it is not known.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -130,6 +157,20 @@ pub enum IdentityOf {
     Certain,
     /// The record's identity is temporary, or the card may be another person's.
     Uncertain,
+}
+
+impl IdentityOf {
+    /// Both values (the stored words are checked against the database, PR-3).
+    pub const ALL: [IdentityOf; 2] = [IdentityOf::Certain, IdentityOf::Uncertain];
+
+    /// The stored word, as serde writes it.
+    #[must_use]
+    pub fn as_str(self) -> &'static str {
+        match self {
+            IdentityOf::Certain => "certain",
+            IdentityOf::Uncertain => "uncertain",
+        }
+    }
 }
 
 /// How it was withdrawn.
@@ -709,5 +750,15 @@ mod tests {
             assert_eq!(serde_json::json!(s), s.as_str());
         }
         assert_eq!(State::parse("valid"), None);
+    }
+
+    #[test]
+    fn the_stored_words_of_a_kind_and_an_identity_are_the_serde_words() {
+        for k in Kind::ALL {
+            assert_eq!(serde_json::json!(k), k.as_str());
+        }
+        for i in IdentityOf::ALL {
+            assert_eq!(serde_json::json!(i), i.as_str());
+        }
     }
 }

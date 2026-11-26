@@ -21,7 +21,7 @@ use axum::{
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// A new refusal of treatment.
 #[derive(Debug, Deserialize)]
@@ -45,6 +45,16 @@ pub struct UpdateRequest {
     pub reason: Option<String>,
 }
 
+/// One refusal in a list: the stored version, and whether it is recorded on another record that was merged into this one.
+#[derive(Debug, Serialize)]
+pub struct Listed<'a> {
+    /// The refusal.
+    #[serde(flatten)]
+    pub stored: &'a store::StoredRefusal,
+    /// True when it is recorded on a record merged into this one: another record's, shown here.
+    pub from_merged_record: bool,
+}
+
 fn invalid(problems: &[String]) -> Response {
     ApiError::invalid(problems.to_vec()).into_response()
 }
@@ -61,7 +71,7 @@ fn detail(stored: &store::StoredRefusal) -> serde_json::Value {
         "refusal": stored.id,
         "version": stored.version,
         "state": stored.refusal.state.as_str(),
-        "kind": serde_json::to_value(stored.refusal.kind).unwrap_or_default(),
+        "kind": stored.refusal.kind.as_str(),
     })
 }
 
@@ -186,17 +196,11 @@ pub(super) async fn list(
                 return r.into_response();
             }
             let summary = treatment_refusal::summarise(found.iter().map(|s| &s.refusal));
-            let refusals: Vec<serde_json::Value> = found
+            let refusals: Vec<Listed<'_>> = found
                 .iter()
-                .map(|s| {
-                    let mut v = serde_json::to_value(s).unwrap_or_default();
-                    if let Some(o) = v.as_object_mut() {
-                        o.insert(
-                            "from_merged_record".into(),
-                            (s.patient_id != known.id).into(),
-                        );
-                    }
-                    v
+                .map(|stored| Listed {
+                    stored,
+                    from_merged_record: stored.patient_id != known.id,
                 })
                 .collect();
             Json(serde_json::json!({ "refusals": refusals, "summary": summary })).into_response()

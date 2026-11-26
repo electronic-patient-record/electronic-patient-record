@@ -135,3 +135,9 @@ path = "tests/main.rs"
 name = "fhir_validator"
 path = "tests/fhir_validator.rs"
 
+# It needs a process in which `auth::init` never ran (a route is then refused unaudited, 503). In `main`, any test that
+# boots the app runs it first, so with `--include-ignored` three of its tests failed.
+[[test]]
+name = "metrics"
+path = "tests/metrics.rs"
+

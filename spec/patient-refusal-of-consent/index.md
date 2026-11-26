@@ -150,7 +150,7 @@ One deployment serves one tenant today (QA-12, SE-5), so a tenant's settings are
 
 ## Schemas, proposed
 
-Append-only versions, as every clinical list here. JSON of a refusal:
+Append-only versions, as every clinical list here. **As built (RF-5), the names differ from this proposal:** `treatment` is words and `coding` is beside it, `accepts`, `if_life_at_risk`, `form.kept`, `said_by` and `power_seen` are flat fields, `identity` is `certain` or `uncertain`, `withdrawal.noticed_by` and `withdrawal.at`, and there is no `keep_from`. The served schema is `TreatmentRefusalRecord` in [`openapi.json`](../../electronic-patient-record-service-with-rust/openapi.json). JSON of a refusal, as proposed:
 
 ```json
 {

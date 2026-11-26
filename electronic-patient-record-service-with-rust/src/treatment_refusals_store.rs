@@ -16,7 +16,7 @@ use crate::pool::Db;
 use crate::treatment_refusal::{self, RefusalRecord, State};
 use serde::Serialize;
 use sqlx::postgres::PgRow;
-use sqlx::{AssertSqlSafe, Connection, PgPool, Row};
+use sqlx::{AssertSqlSafe, Connection, PgPool, Postgres, Row, Transaction};
 
 crate::store_errors!("treatment_refusals");
 
@@ -52,14 +52,6 @@ fn row_to_stored(row: &PgRow) -> Result<StoredRefusal, StoreError> {
     })
 }
 
-/// The words of a unit variant, as serde writes them.
-fn word<T: Serialize>(value: &T) -> Result<String, StoreError> {
-    match serde_json::to_value(value).map_err(db_err)? {
-        serde_json::Value::String(s) => Ok(s),
-        _ => Err(StoreError::Db("a stored word was not a word".into())),
-    }
-}
-
 /// A withdrawal that was heard ends a refusal only where a rule in force says so ([`treatment_refusal::after_withdrawal`]).
 /// No rule is loaded by the service yet, so a refusal is never stored as withdrawn.
 fn check_withdrawal(record: &RefusalRecord) -> Result<(), StoreError> {
@@ -93,6 +85,10 @@ pub async fn create(
     }
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let patient = patients_store::current(&mut *conn, patient_id).await?;
+    let mut tx = conn.begin().await.map_err(db_err)?;
+    // The same key as [`update`] and the merge checks: a merge that is asking about this record's refusals waits for
+    // this one, or this one waits for the merge.
+    crate::store::one_at_a_time(&mut tx, STORE, &patient.id).await?;
     let row = sqlx::query(AssertSqlSafe(format!(
         "INSERT INTO treatment_refusal_versions
                    (refusal_id, version, patient_id, author, reason, state, kind, identity, body)
@@ -102,14 +98,16 @@ pub async fn create(
     .bind(author)
     .bind(reason.map(str::to_string))
     .bind(record.state.as_str())
-    .bind(word(&record.kind)?)
-    .bind(word(&record.identity)?)
+    .bind(record.kind.as_str())
+    .bind(record.identity.as_str())
     .bind(serde_json::to_value(record).map_err(db_err)?)
-    .fetch_optional(&mut *conn)
+    .fetch_optional(&mut *tx)
     .await
     .map_err(db_err)?
     .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
-    row_to_stored(&row)
+    let stored = row_to_stored(&row)?;
+    tx.commit().await.map_err(db_err)?;
+    Ok(stored)
 }
 
 /// The current version of every refusal recorded on a patient record, those entered in error and withdrawn included,
@@ -143,11 +141,23 @@ pub async fn list_with_merged(
     db: &PgPool,
     patient_id: &str,
 ) -> Result<Vec<StoredRefusal>, StoreError> {
-    let mut all = list(db, patient_id).await?;
-    for source in crate::links::sources_of(db, patient_id).await? {
-        all.extend(list(db, &source).await?);
-    }
-    Ok(all)
+    let Some(own) = ids::uuid(patient_id) else {
+        return Ok(Vec::new());
+    };
+    let mut records = crate::links::sources_of(db, &own).await?;
+    records.push(own.clone());
+    // Two queries however long the chain of merges: the record's own first, then the others', each oldest first.
+    let rows = sqlx::query(AssertSqlSafe(format!(
+        "SELECT {COLUMNS} FROM treatment_refusal_current
+                 WHERE patient_id = ANY($1::uuid[])
+                 ORDER BY patient_id <> $2::uuid, recorded_at, refusal_id"
+    )))
+    .bind(records)
+    .bind(own)
+    .fetch_all(db)
+    .await
+    .map_err(db_err)?;
+    rows.iter().map(row_to_stored).collect()
 }
 
 /// The current version of one refusal of one patient record.
@@ -224,8 +234,8 @@ pub async fn update(
         .bind(author)
         .bind(reason.map(str::to_string))
         .bind(record.state.as_str())
-        .bind(word(&record.kind)?)
-        .bind(word(&record.identity)?)
+        .bind(record.kind.as_str())
+        .bind(record.identity.as_str())
         .bind(serde_json::to_value(record).map_err(db_err)?),
     )
     .await?
@@ -249,14 +259,15 @@ pub async fn update(
 ///
 /// [`StoreError::Db`] on a database failure.
 pub async fn unseen_on_merge(
-    db: impl Into<Db<'_>>,
+    tx: &mut Transaction<'_, Postgres>,
     source: &str,
     seen: &[String],
 ) -> Result<Vec<String>, StoreError> {
-    let mut conn = db.into().acquire().await.map_err(db_err)?;
     let Some(source) = ids::uuid(source) else {
         return Ok(Vec::new());
     };
+    // Until the merge ends, no refusal can be recorded on the record merged away, so none arrives after this answer.
+    crate::store::one_at_a_time(tx, STORE, &source).await?;
     let seen = ids::uuids(seen);
     let rows = sqlx::query(
         "SELECT refusal_id::text AS id FROM treatment_refusal_current
@@ -265,7 +276,7 @@ pub async fn unseen_on_merge(
     )
     .bind(source)
     .bind(seen)
-    .fetch_all(&mut *conn)
+    .fetch_all(&mut **tx)
     .await
     .map_err(db_err)?;
     rows.iter()
@@ -281,15 +292,16 @@ pub async fn unseen_on_merge(
 ///
 /// [`StoreError::Db`] on a database failure.
 pub async fn unseen_on_unmerge(
-    db: impl Into<Db<'_>>,
+    tx: &mut Transaction<'_, Postgres>,
     target: &str,
     source: &str,
     seen: &[String],
 ) -> Result<Vec<String>, StoreError> {
-    let mut conn = db.into().acquire().await.map_err(db_err)?;
     let (Some(target), Some(source)) = (ids::uuid(target), ids::uuid(source)) else {
         return Ok(Vec::new());
     };
+    // Until the unmerge ends, no refusal can be recorded on the survivor, so none arrives after this answer.
+    crate::store::one_at_a_time(tx, STORE, &target).await?;
     let seen = ids::uuids(seen);
     let rows = sqlx::query(
         "SELECT c.refusal_id::text AS id FROM treatment_refusal_current c
@@ -304,10 +316,64 @@ pub async fn unseen_on_unmerge(
     .bind(target)
     .bind(source)
     .bind(seen)
-    .fetch_all(&mut *conn)
+    .fetch_all(&mut **tx)
     .await
     .map_err(db_err)?;
     rows.iter()
         .map(|r| r.try_get("id").map_err(db_err))
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::treatment_refusal::{
+        Form, How, IdentityOf, Kind, Known, LifeAtRisk, Seen, Speaker, Withdrawal,
+    };
+
+    fn heard(state: State) -> RefusalRecord {
+        RefusalRecord {
+            kind: Kind::SpokenNow,
+            treatment: "blood".into(),
+            coding: None,
+            accepts: None,
+            circumstances: None,
+            if_life_at_risk: LifeAtRisk::NotStated,
+            form: Form {
+                written: Known::No,
+                signed: Known::No,
+                witnessed: Known::No,
+                witnesses: None,
+                seen: Seen::NotSeen,
+                kept: None,
+            },
+            made_on: None,
+            confirmed_on: None,
+            said_by: Speaker::Patient,
+            power_seen: None,
+            identity: IdentityOf::Certain,
+            state,
+            doubt: None,
+            withdrawal: Some(Withdrawal {
+                how: How::Spoken,
+                noticed_by: "a nurse".into(),
+                at: "2026-01-01T10:00:00Z".into(),
+            }),
+        }
+    }
+
+    #[test]
+    fn with_no_rule_a_withdrawal_that_was_heard_is_doubted_and_never_ends_a_refusal() {
+        assert!(matches!(
+            check_withdrawal(&heard(State::Withdrawn)),
+            Err(StoreError::BadQuery(m)) if m == WITHDRAWN_NEEDS_A_RULE
+        ));
+        for state in [State::Doubted, State::EnteredInError] {
+            assert!(check_withdrawal(&heard(state)).is_ok(), "{state:?}");
+        }
+        // With no withdrawal there is nothing to check (`validate` refuses withdrawn without one).
+        let mut none = heard(State::Withdrawn);
+        none.withdrawal = None;
+        assert!(check_withdrawal(&none).is_ok());
+    }
 }
