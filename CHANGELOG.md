@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-26 - The disclosure rules file and its loader (DR-3, in part)
+
+- **Clinical risk:** none in effect: nothing reads the pack to decide a read, and no hazard row changes. A pack that does not load now stops the start, which is an outage for a deployer who sets one wrongly; the message says why.
+- **Added:** `disclosure_rules.rs` (domain): RF-3's head with a data protection officer, 25 closed keys from the spec's table with the spec's default for each (`Setting::Default`, said as one) or none (`NotSet`); a source for every setting; the invariants have no key; four contradictions refused, defaults included (the spec's: `emergency-beats-refusal = yes` with `patient-may-close-emergency = yes`, and `flag = none` with a notice at once; the author's: `emergency-exists = no` with another emergency setting, and `opt-in` with `duty`); `Pack::version`, the id, the day of the law and a hash of the text. `disclosure_pack.rs` (service): `EPR_DISCLOSURE_RULES_FILE`, checked at start.
+- **Verified:** 8 tests; fmt, clippy, docs, the service and domain tests. **Not done / not verified:** eight of the spec's settings need structure and are not keys; no pack ships for any place; no lawyer or data protection officer has read the keys or the defaults; nothing records the version with a decision yet.
+
 ## 2026-11-26 - Judgements of whether a person can decide are stored and served (RF-8)
 
 - **Clinical risk:** yes. New hazard H-080 (a judgement read as more than it is), `open`, severity and likelihood the author's proposal.

@@ -222,7 +222,7 @@ pub enum AgeGroup {
 }
 
 /// Text that is there, not too long, with no space around it and no control character.
-fn text(name: &str, what: &str, value: &str) -> Result<(), String> {
+pub(crate) fn text(name: &str, what: &str, value: &str) -> Result<(), String> {
     let plain = !value.trim().is_empty()
         && value.trim() == value
         && value.chars().count() <= TEXT_LIMIT
@@ -236,7 +236,7 @@ fn text(name: &str, what: &str, value: &str) -> Result<(), String> {
     }
 }
 
-fn day(name: &str, what: &str, value: &str) -> Result<(), String> {
+pub(crate) fn day(name: &str, what: &str, value: &str) -> Result<(), String> {
     match crate::clock::parse_day(value) {
         Some(_) => Ok(()),
         None => Err(format!("{name}: {what} must be a day, YYYY-MM-DD")),

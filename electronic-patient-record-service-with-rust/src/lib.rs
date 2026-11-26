@@ -41,6 +41,8 @@ pub mod decision_ability_store;
 pub use electronic_patient_record_domain::emergency;
 pub mod death_store;
 pub mod dependencies;
+pub use electronic_patient_record_domain::disclosure_rules;
+pub mod disclosure_pack;
 pub mod entries_store;
 pub mod entry_labels;
 pub mod feed_health;
