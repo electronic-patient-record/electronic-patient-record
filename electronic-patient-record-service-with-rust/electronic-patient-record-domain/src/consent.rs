@@ -92,6 +92,34 @@ pub enum Kind {
     NationalDataOptOut,
 }
 
+/// What a refusal says about an emergency (DR-2). **Nothing decides on it yet**: break-the-glass never lifts a refusal
+/// (OQ-PI8), whatever this says. A record from before it was asked reads as [`InEmergency::NotSaid`].
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum InEmergency {
+    /// The patient said it holds in an emergency too.
+    Holds,
+    /// The patient said it does not hold in an emergency.
+    DoesNotHold,
+    /// It was not said, or not asked.
+    #[default]
+    NotSaid,
+}
+
+/// Whether a refusal was made in private (DR-2): a person beside the patient may be the one it is against. A record from
+/// before it was asked reads as [`InPrivate::NotSaid`].
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum InPrivate {
+    /// It was.
+    Yes,
+    /// It was not.
+    No,
+    /// It was not said, or not asked.
+    #[default]
+    NotSaid,
+}
+
 /// A date range, both ends optional and inclusive, as `YYYY-MM-DD` (UTC).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Period {
@@ -139,6 +167,12 @@ pub struct ConsentRecord {
     /// When the consent as a whole applies.
     #[serde(default)]
     pub period: Option<Period>,
+    /// For a refusal: whether it holds in an emergency (DR-2). Decides nothing yet.
+    #[serde(default)]
+    pub in_emergency: InEmergency,
+    /// For a refusal: whether it was made in private (DR-2). Decides nothing.
+    #[serde(default)]
+    pub in_private: InPrivate,
 }
 
 /// Unix seconds at 00:00 UTC on a real `YYYY-MM-DD` date, else `None`.
@@ -193,6 +227,14 @@ pub fn validate(record: &ConsentRecord) -> Vec<String> {
             );
         }
         _ => {}
+    }
+    // The two DR-2 answers are about a refusal: a record that refuses nothing says neither.
+    if (record.in_emergency != InEmergency::NotSaid || record.in_private != InPrivate::NotSaid)
+        && refusals(record).is_none()
+    {
+        problems.push(
+            "in_emergency and in_private are for a consent that refuses something".to_string(),
+        );
     }
     if record.provisions.len() > MAX_PROVISIONS {
         problems.push(format!("at most {MAX_PROVISIONS} provisions"));
@@ -451,7 +493,68 @@ mod tests {
             status: Status::Active,
             provisions,
             period: None,
+            in_emergency: InEmergency::NotSaid,
+            in_private: InPrivate::NotSaid,
         }
+    }
+
+    #[test]
+    fn a_refusal_says_whether_it_holds_in_an_emergency_and_an_old_one_reads_as_not_said() {
+        // A body stored before DR-2 has neither field.
+        let old: ConsentRecord = serde_json::from_value(serde_json::json!({
+            "status": "active", "provisions": [{ "effect": "deny" }]
+        }))
+        .unwrap();
+        assert_eq!(old.in_emergency, InEmergency::NotSaid);
+        assert_eq!(old.in_private, InPrivate::NotSaid);
+        let said = serde_json::to_value(&old).unwrap();
+        assert_eq!(said["in_emergency"], "not-said");
+        assert_eq!(said["in_private"], "not-said");
+
+        let deny = Provision {
+            effect: Effect::Deny,
+            actors: vec![],
+            purposes: vec![],
+            resources: vec![],
+            labels: vec![],
+            period: None,
+        };
+        let refusal = ConsentRecord {
+            in_emergency: InEmergency::Holds,
+            in_private: InPrivate::Yes,
+            ..record(vec![deny.clone()])
+        };
+        assert!(validate(&refusal).is_empty());
+        // Two that differ only in these are the same refusal: one recorded twice.
+        assert!(same(&refusal, &record(vec![deny.clone()])));
+        // A merge carries them with the refusal.
+        assert_eq!(refusals(&refusal).unwrap().in_emergency, InEmergency::Holds);
+        // A permit refuses nothing, so it says neither.
+        let permit = ConsentRecord {
+            in_emergency: InEmergency::DoesNotHold,
+            ..record(vec![Provision {
+                effect: Effect::Permit,
+                ..deny
+            }])
+        };
+        assert_eq!(validate(&permit).len(), 1);
+        // Nothing decides on it: the verdict is the same either way.
+        let mut ctx = ctx();
+        ctx.purpose = Purpose::Emergency;
+        assert_eq!(
+            verdict(std::slice::from_ref(&refusal), &ctx),
+            verdict(
+                &[record(vec![Provision {
+                    effect: Effect::Deny,
+                    actors: vec![],
+                    purposes: vec![],
+                    resources: vec![],
+                    labels: vec![],
+                    period: None
+                }])],
+                &ctx
+            )
+        );
     }
 
     fn verdict(records: &[ConsentRecord], ctx: &Context) -> policy::Consent {
@@ -733,6 +836,8 @@ mod tests {
             status: Status::Active,
             provisions: vec![],
             period: None,
+            in_emergency: InEmergency::NotSaid,
+            in_private: InPrivate::NotSaid,
         };
         let mut research = ctx();
         research.purpose = Purpose::Research;

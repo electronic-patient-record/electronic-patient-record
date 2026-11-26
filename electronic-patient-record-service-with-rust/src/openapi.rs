@@ -1265,7 +1265,9 @@ fn consent_schemas() -> Value {
                     "effect": {"enum": ["permit", "deny"]},
                     "actors": {"type": "array", "items": {"type": "string"}}, "purposes": {"type": "array", "items": {"type": "string"}}, "resources": {"type": "array", "items": {"type": "string"}}, "labels": {"type": "array", "items": {"type": "string"}},
                     "period": {"type": ["object", "null"], "properties": {"start": {"type": ["string", "null"]}, "end": {"type": ["string", "null"]}}, "description": "YYYY-MM-DD (UTC), both ends optional and inclusive."}}, "description": "An empty list means any."}},
-                "period": {"type": ["object", "null"], "properties": {"start": {"type": ["string", "null"]}, "end": {"type": ["string", "null"]}}, "description": "YYYY-MM-DD (UTC), both ends optional and inclusive."}
+                "period": {"type": ["object", "null"], "properties": {"start": {"type": ["string", "null"]}, "end": {"type": ["string", "null"]}}, "description": "YYYY-MM-DD (UTC), both ends optional and inclusive."},
+                "in_emergency": {"enum": ["holds", "does-not-hold", "not-said"], "description": "For a refusal: whether the patient said it holds in an emergency (DR-2). Optional; not-said when absent, as for every record from before. Decides nothing yet: break-the-glass never lifts a refusal (OQ-PI8)."},
+                "in_private": {"enum": ["yes", "no", "not-said"], "description": "For a refusal: whether it was made in private (DR-2). Optional; not-said when absent. Decides nothing."}
             }
         },
         "StoredConsent": {
@@ -4282,9 +4284,25 @@ mod tests {
                 period: Some(period.clone()),
             }],
             period: Some(period),
+            in_emergency: crate::consent::InEmergency::Holds,
+            in_private: crate::consent::InPrivate::NotSaid,
         };
         let value = serde_json::to_value(&record).unwrap();
         assert_eq!(keys(&value), properties("ConsentRecord"));
+        let props = &schema["ConsentRecord"]["properties"];
+        use crate::consent::{InEmergency, InPrivate};
+        assert_eq!(
+            enum_words(&props["in_emergency"]),
+            said(&[
+                InEmergency::Holds,
+                InEmergency::DoesNotHold,
+                InEmergency::NotSaid
+            ])
+        );
+        assert_eq!(
+            enum_words(&props["in_private"]),
+            said(&[InPrivate::Yes, InPrivate::No, InPrivate::NotSaid])
+        );
         let provision = &schema["ConsentRecord"]["properties"]["provisions"]["items"];
         let provision_keys: std::collections::BTreeSet<String> = provision["properties"]
             .as_object()

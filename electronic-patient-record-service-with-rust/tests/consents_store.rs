@@ -56,6 +56,8 @@ fn deny_research() -> ConsentRecord {
             period: None,
         }],
         period: None,
+        in_emergency: consent::InEmergency::NotSaid,
+        in_private: consent::InPrivate::NotSaid,
     }
 }
 
@@ -558,4 +560,34 @@ async fn two_people_at_one_moment_record_one_consent() {
         second.await.unwrap(),
         Err(StoreError::BadQuery(_))
     ));
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn a_refusal_keeps_what_it_says_of_an_emergency_and_an_old_body_reads_as_not_said() {
+    let db = db().await;
+    let p = patient(&db).await;
+    let said = ConsentRecord {
+        in_emergency: consent::InEmergency::DoesNotHold,
+        in_private: consent::InPrivate::Yes,
+        ..deny_research()
+    };
+    let stored = store::create(&db, &p, "admin", None, &said).await.unwrap();
+    let back = store::current(&db, &p, &stored.id).await.unwrap();
+    assert_eq!(back.consent.in_emergency, consent::InEmergency::DoesNotHold);
+    assert_eq!(back.consent.in_private, consent::InPrivate::Yes);
+    // A body written before DR-2, with neither field, reads as not said.
+    let old = sqlx::query(
+        "INSERT INTO consent_versions (consent_id, version, patient_id, author, status, body)
+             VALUES (gen_random_uuid(), 1, $1::uuid, 'old', 'inactive', $2) RETURNING consent_id::text AS id",
+    )
+    .bind(&p)
+    .bind(serde_json::json!({ "status": "inactive", "provisions": [{ "effect": "deny" }] }))
+    .fetch_one(&db)
+    .await
+    .unwrap();
+    let id: String = old.get("id");
+    let old = store::current(&db, &p, &id).await.unwrap();
+    assert_eq!(old.consent.in_emergency, consent::InEmergency::NotSaid);
+    assert_eq!(old.consent.in_private, consent::InPrivate::NotSaid);
 }

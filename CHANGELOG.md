@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-26 - A refusal of disclosure says whether it holds in an emergency, and whether it was made in private (DR-2)
+
+- **Clinical risk:** none in effect: the verdict is the same whatever the two say (a test checks it), and break-the-glass still never lifts a refusal (OQ-PI8). They are stored and served, and shown nowhere. No hazard row changes.
+- **Added:** `in_emergency` (`holds`, `does-not-hold`, `not-said`) and `in_private` (`yes`, `no`, `not-said`) on `ConsentRecord`, both optional. A consent that refuses nothing is refused (422) if it says either. A record from before reads as `not-said`; two refusals that differ only in these are the same refusal; a merge carries them with the refusal. `openapi.json` blessed (an added optional field, not a break).
+- **Verified:** fmt, clippy, the domain and service tests, every database test on a throwaway Postgres 18. **Not done / not verified:** the UI does not ask or show them; no FHIR `Consent` carries them; whether they will ever decide anything is OQ-PI8 and the disclosure pack (DR-3).
+
 ## 2026-11-26 - Break-the-glass asks what is at risk, how soon, and whether the patient can be asked (RF-6, PI-10)
 
 - **Clinical risk:** yes. The emergency form now asks more of a clinician, and a reviewer reads more. New hazard H-079 (an answer about an emergency is wrong, guessed or read as more than it is), `open`, severity and likelihood the author's proposal.

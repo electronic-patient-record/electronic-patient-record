@@ -272,6 +272,8 @@ async fn a_patients_refusal_stops_the_delivery_and_is_audited_once() {
                 period: None,
             }],
             period: None,
+            in_emergency: electronic_patient_record::consent::InEmergency::NotSaid,
+            in_private: electronic_patient_record::consent::InPrivate::NotSaid,
         },
     )
     .await

@@ -1372,6 +1372,22 @@
       "ConsentRecord": {
         "description": "Provisions are required for a general consent and none for a national-data-opt-out. The opt-out is held by this service only; no national check is built.",
         "properties": {
+          "in_emergency": {
+            "description": "For a refusal: whether the patient said it holds in an emergency (DR-2). Optional; not-said when absent, as for every record from before. Decides nothing yet: break-the-glass never lifts a refusal (OQ-PI8).",
+            "enum": [
+              "holds",
+              "does-not-hold",
+              "not-said"
+            ]
+          },
+          "in_private": {
+            "description": "For a refusal: whether it was made in private (DR-2). Optional; not-said when absent. Decides nothing.",
+            "enum": [
+              "yes",
+              "no",
+              "not-said"
+            ]
+          },
           "kind": {
             "enum": [
               "general",

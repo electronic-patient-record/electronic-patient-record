@@ -107,7 +107,7 @@ A whole record; a kind; one entry; one visit; a period; a named person; a profes
 | From whom | everyone, a person, a role, a unit, an organisation, a place, family, a parent, an employer |
 | What | all, a kind, an entry, a visit, a period, the future |
 | For what | care here, care elsewhere, emergency care, research, planning, registry, teaching, insurer |
-| In an emergency | holds, does not hold, **not said** |
+| In an emergency | holds, does not hold, **not said**. **Built 2026-11-26 (DR-2)** as `in_emergency` on a consent, with `in_private` beside it; nothing decides on either yet |
 | State | asked for, in force, declined (by whom, why, told when), changed, withdrawn, in force by law only in part |
 | Compelled | none; by court, statute or duty, with what was given, to whom, and whether the patient was told, or why not yet |
 
