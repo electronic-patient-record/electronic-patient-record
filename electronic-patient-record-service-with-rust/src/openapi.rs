@@ -4362,7 +4362,7 @@ mod tests {
         let said = |name: &str| {
             schema[name]["description"]
                 .as_str()
-                .unwrap_or_default()
+                .expect("a description")
                 .to_lowercase()
         };
         assert!(said("ConsentRecord").contains("refusal of disclosure"));
