@@ -1,4 +1,6 @@
-# A patient's refusal of consent
+# A patient's refusal of treatment
+
+The folder keeps its first name, `patient-refusal-of-consent`, so that links hold. This page is about refusing **treatment**; refusing that a record be shown is [refusal of disclosure](../patient-refusal-of-disclosure-of-records/index.md) (RF-2).
 
 Researched 2026-11-25 from public sources and from this repository. **Two pure libraries are built (`refusal_rules.rs`, `treatment_refusal.rs`, with an unreviewed pack for England and Wales) and nothing calls them; the rest is a proposal. No lawyer, clinician, Clinical Safety Officer, data protection officer, patient or person who has made an advance decision has reviewed it. It is not legal advice.** It separates two refusals that are easily taken for one, checks what the law was said to be, and says what this software should hold, show and never decide.
 

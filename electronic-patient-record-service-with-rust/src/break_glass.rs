@@ -3,7 +3,7 @@
 //!
 //! What a grant lifts, and what it does not, is decided by the policy engine (`policy.rs`): it lifts
 //! the missing care relationship and every security label (OQ-PI2; no record carries one), only for reads of clinical
-//! content, only for a treating role, and not while it has expired. It does **not** lift a patient's refusal of consent
+//! content, only for a treating role, and not while it has expired. It does **not** lift a patient's refusal of disclosure
 //! (OQ-PI8). Every row the audit trail writes while a request is served under a grant carries the
 //! break-glass flag and the grant's id, and every grant waits in a review queue until someone other than
 //! the person who opened it records whether it was appropriate.

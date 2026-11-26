@@ -12,6 +12,9 @@
   person with two records.
 - **Legitimate relationship**: the clinician is on the patient's care team (the basis for access).
 - **Break-the-glass**: emergency override of access control with a mandatory reason, alert and review.
+- **Refusal of treatment**: a person's "no" to a treatment: said now, made in advance, by someone who may decide for them, or reported ([refusal of treatment](patient-refusal-of-consent/index.md)). Stored as `TreatmentRefusal`. It says nothing about who may read the record.
+- **Refusal of disclosure**: a person's "no" to their record, or part of it, being shown to someone ([refusal of disclosure](patient-refusal-of-disclosure-of-records/index.md)). Stored as a `Consent` with a deny provision, or a national data opt-out. It says nothing about which treatment they accept.
+- **Consent** (alone): avoided wherever it could mean either; a screen, a route and an API description say which of the two refusals it means (RF-2).
 - **Entered-in-error**: a record withdrawn from default views but kept in history; the only form of "delete".
 - **Closed loop**: an order or referral tracked until its result or outcome is received and acknowledged.
 - **FHIR**: HL7 Fast Healthcare Interoperability Resources. **SMART**: app launch and OAuth profile for FHIR.

@@ -1,6 +1,6 @@
 # Refusing treatment: what was read, by place
 
-Read 2026-11-25 for [a patient's refusal of consent](index.md). **Not legal advice, not complete, and reviewed by nobody. A pack is not made from this page without a lawyer of that place.** **P** read in the official text; **P-copy** the text on another host or an older version; **S** a summary or a search extract; **NE** not established. Section numbers are the statute's. Where a site refused automated reading it was left alone.
+Read 2026-11-25 for [a patient's refusal of treatment](index.md). **Not legal advice, not complete, and reviewed by nobody. A pack is not made from this page without a lawyer of that place.** **P** read in the official text; **P-copy** the text on another host or an older version; **S** a summary or a search extract; **NE** not established. Section numbers are the statute's. Where a site refused automated reading it was left alone.
 
 ## The differences that decide the settings
 

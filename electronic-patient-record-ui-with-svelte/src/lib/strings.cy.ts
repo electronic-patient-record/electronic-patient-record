@@ -7,6 +7,7 @@
 // that a clinician reads before acting: treat it as unsafe to rely on until then.
 //
 // For the reviewer, the wording least sure of:
+//   - "gwrthod datgelu" for a refusal of disclosure, kept apart from a refusal of treatment (2026-11-26, RF-2).
 //   - the break-glass questions (2026-11-26, RF-6): "Aelod" for a limb at risk, "Gellir" / "Na ellir" as yes and no to
 //     "can the patient be asked", and "Dim un" for neither.
 //   - "clinigwr" for clinician; "clinigwr ar ddyletswydd" for on-duty clinician.
@@ -740,7 +741,7 @@ export const CY: Strings = {
     "Newidiodd yr alergedd hwn yn y cyfamser. Ail-lwythwyd y rhestr.",
   glassTitle: "Mynediad brys",
   glassIntro:
-    "Nid oes gennych berthynas gofal â'r claf hwn, felly nid yw eu gwybodaeth glinigol yn cael ei dangos. Mewn argyfwng gallwch ei hagor am 4 awr. Rhaid i chi roi rheswm. Caiff ei gofnodi, gall y claf weld iddo ddigwydd, ac mae rhywun arall yn ei adolygu. Mae gwrthodiad caniatâd gan y claf yn dal i fod yn berthnasol.",
+    "Nid oes gennych berthynas gofal â'r claf hwn, felly nid yw eu gwybodaeth glinigol yn cael ei dangos. Mewn argyfwng gallwch ei hagor am 4 awr. Rhaid i chi roi rheswm. Caiff ei gofnodi, gall y claf weld iddo ddigwydd, ac mae rhywun arall yn ei adolygu. Mae gwrthodiad y claf i ddangos ei gofnod (gwrthod datgelu) yn dal i fod yn berthnasol.",
   glassReason: "Rheswm dros fynediad brys (angenrheidiol)",
   glassAck: "Rwy'n deall bod hyn yn cael ei gofnodi a'i adolygu",
   glassOpen: "Agor mynediad brys am 4 awr",

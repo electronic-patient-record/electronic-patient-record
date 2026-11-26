@@ -1379,7 +1379,7 @@ test("break-the-glass: refused with an offer, opened with a reason, read and aud
 });
 
 // A grant lifts the missing care relationship and nothing else: the patient's refusal still holds.
-test("break-the-glass does not override a patient's refusal of consent", async () => {
+test("break-the-glass does not override a patient's refusal of disclosure", async () => {
   test.skip(!ADMIN, "set EPR_E2E_ADMIN_USERNAME");
   const admin = await devToken(ADMIN);
   const clinician = await devToken(USERNAME);

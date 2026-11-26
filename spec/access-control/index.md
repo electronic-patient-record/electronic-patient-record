@@ -17,7 +17,7 @@ RBAC roles (clinician, nurse, pharmacist, allied health, receptionist, clinical 
 | No care relationship | Yes, for a treating role reading clinical content |
 | A security label, one this version cannot read included (OQ-PI2) | Yes, for a treating role, on the team or not. Three lists can carry a label: problems, relative history and typing |
 | Substance-use content without the patient's consent (`SUD`) | Yes, as above. No lawyer has reviewed it against 42 CFR Part 2 |
-| The patient's refusal of consent | **No.** Whether a refusal is a normal access restriction is not decided (OQ-PI8); see [a patient's refusal of consent](../patient-refusal-of-consent/index.md) |
+| The patient's refusal of disclosure | **No.** Whether a refusal is a normal access restriction is not decided (OQ-PI8); see [refusal of disclosure](../patient-refusal-of-disclosure-of-records/index.md), and for a refusal of treatment, [refusal of treatment](../patient-refusal-of-consent/index.md) |
 | Why an appointment was missed | No: the care team and the patient (OQ-XP1). It is of no use in an emergency |
 | A role that reads no clinical content (reception, an auditor, an integrator), a token's scope, the purpose of use | No |
 | Writing, and exporting | No |

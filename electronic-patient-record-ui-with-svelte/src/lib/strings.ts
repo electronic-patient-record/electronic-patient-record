@@ -694,7 +694,7 @@ export const STRINGS = {
   allergyChanged: "This allergy changed meanwhile. The list was reloaded.",
   glassTitle: "Emergency access",
   glassIntro:
-    "You have no care relationship with this patient, so their clinical information is not shown. In an emergency you can open it for 4 hours. You must give a reason. It is recorded, the patient can see that it happened, and someone else reviews it. A patient's refusal of consent still applies.",
+    "You have no care relationship with this patient, so their clinical information is not shown. In an emergency you can open it for 4 hours. You must give a reason. It is recorded, the patient can see that it happened, and someone else reviews it. A patient's refusal to have their record shown (a refusal of disclosure) still applies.",
   glassReason: "Reason for emergency access (required)",
   glassAck: "I understand this is recorded and reviewed",
   glassOpen: "Open emergency access for 4 hours",

@@ -113,7 +113,7 @@ Topics that span several numbered chapters and are kept whole:
 - [Donor matching](donor-matching/index.md) — what laboratories report about blood groups, HLA types and antibodies; kept, never matched (DM-1, service only, unreviewed).
 - [Support groups](support-groups/index.md), [custodial health](custodial-health/index.md) and [military health](military-health/index.md) — customer feedback; nothing built (CF-1 to CF-3).
 - [Multi-system genetic conditions](multi-system-conditions/index.md) — customer feedback; problems grouped by their cause, in the service only, the rest a proposal (CF-4).
-- [A patient's refusal of consent](patient-refusal-of-consent/index.md) — refusing treatment: [the law as read in some thirty places](patient-refusal-of-consent/countries.md), tenant settings, the cases, what to hold and never decide; nothing built (RF).
+- [A patient's refusal of treatment](patient-refusal-of-consent/index.md) — refusing treatment: [the law as read in some thirty places](patient-refusal-of-consent/countries.md), tenant settings, the cases, what to hold and never decide; nothing built (RF).
 - [A patient's refusal of disclosure of records](patient-refusal-of-disclosure-of-records/index.md) — what differs by place, tenant settings, cases and schemas; consent by role, purpose, kind and label is built, the rest is not (DR).
 - [Post-quantum cryptography](post-quantum-cryptography/index.md) — the rules checked at their sources, what cryptography is used, and an order of work; nothing built (SE-12).
 - [Maternity](maternity/index.md) — the pathway, two patients and one episode, hidden disclosures, build or integrate (MT).

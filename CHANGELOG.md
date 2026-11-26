@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-26 - Say which refusal: of treatment, or of disclosure (RF-2)
+
+- **Clinical risk:** yes, small: the emergency screen now says "A patient's refusal to have their record shown (a refusal of disclosure) still applies" where it said "refusal of consent", which a clinician could read as a refusal of treatment. No hazard row changes; the words serve H-006 and H-075.
+- **Added:** glossary entries for both; a census of the API (no "refusal of consent", "consent refusal", "refused consent" or "refuses consent"; `ConsentRecord` says it is a refusal of disclosure and not of treatment, and `TreatmentRefusalRecord` the reverse) and of the screens' words (English, and the Welsh "gwrthodiad caniatâd").
+- **Changed:** the spec page on refusing treatment is titled so; the access-control table names a refusal of disclosure and links to its page; a code comment and a test name.
+- **Verified:** the two censuses, UI lint, type checks, vitest and the emergency Playwright test; the service tests. **Not done / not verified:** the folder keeps its name `patient-refusal-of-consent`; H-006's title is not changed (the Clinical Safety Officer's); the new Welsh words are machine-written and not reviewed; code comments elsewhere that say "refused consent" for a refusal of disclosure were not all changed.
+
 ## 2026-11-26 - The disclosure rules file and its loader (DR-3, in part)
 
 - **Clinical risk:** none in effect: nothing reads the pack to decide a read, and no hazard row changes. A pack that does not load now stops the start, which is an outage for a deployer who sets one wrongly; the message says why.

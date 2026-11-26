@@ -1257,7 +1257,7 @@ fn consent_schemas() -> Value {
     json!({
         "ConsentRecord": {
             "type": "object", "required": ["status"],
-            "description": "Provisions are required for a general consent and none for a national-data-opt-out. The opt-out is held by this service only; no national check is built.",
+            "description": "A refusal of disclosure, or a permission: who may read what. Not a refusal of treatment, which is a TreatmentRefusalRecord. Provisions are required for a general consent and none for a national-data-opt-out. The opt-out is held by this service only; no national check is built.",
             "properties": {
                 "kind": {"enum": ["general", "national-data-opt-out"]},
                 "status": {"enum": ["active", "inactive", "entered-in-error"]},
@@ -1302,7 +1302,7 @@ fn treatment_refusal_schemas() -> Value {
         "TreatmentRefusalRecord": {
             "type": "object",
             "required": ["kind", "treatment", "if_life_at_risk", "form", "said_by", "identity", "state"],
-            "description": "A refusal of treatment, as recorded. Nothing here says whether a person may be treated or whether a refusal is valid; not known is always a value and never decides. Who said it is kept apart from whom it is about. A withdrawal that was heard is kept as heard and ends a refusal only where a rule in force says so: no rule is loaded, so it is recorded as doubted.",
+            "description": "A refusal of treatment, as recorded. Not a refusal of disclosure, which is a ConsentRecord with a deny provision. Nothing here says whether a person may be treated or whether a refusal is valid; not known is always a value and never decides. Who said it is kept apart from whom it is about. A withdrawal that was heard is kept as heard and ends a refusal only where a rule in force says so: no rule is loaded, so it is recorded as doubted.",
             "properties": {
                 "kind": {"enum": ["spoken-now", "advance", "order", "representative", "parent", "carried", "reported"]},
                 "treatment": {"type": "string", "maxLength": 500, "description": "What is refused, in the person's words where they are known."},
@@ -4340,6 +4340,35 @@ mod tests {
             .is_err(),
             "an update without expected_version is refused"
         );
+    }
+
+    /// RF-2: the API says which refusal it means. The words that could mean either are not used, and each record says which
+    /// it is and which it is not.
+    #[test]
+    fn the_api_says_which_refusal_and_never_a_refusal_of_consent() {
+        let text = document().to_string().to_lowercase();
+        for ambiguous in [
+            "refusal of consent",
+            "consent refusal",
+            "refused consent",
+            "refuses consent",
+        ] {
+            assert!(
+                !text.contains(ambiguous),
+                "the API says {ambiguous:?}: say which refusal"
+            );
+        }
+        let schema = patient_schemas();
+        let said = |name: &str| {
+            schema[name]["description"]
+                .as_str()
+                .unwrap_or_default()
+                .to_lowercase()
+        };
+        assert!(said("ConsentRecord").contains("refusal of disclosure"));
+        assert!(said("ConsentRecord").contains("not a refusal of treatment"));
+        assert!(said("TreatmentRefusalRecord").contains("refusal of treatment"));
+        assert!(said("TreatmentRefusalRecord").contains("not a refusal of disclosure"));
     }
 
     #[test]

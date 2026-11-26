@@ -168,3 +168,15 @@ describe("a component in each locale", () => {
     expect(container.textContent).toContain(STRINGS.bannerNoBirthDate);
   });
 });
+
+// RF-2: a screen says which refusal it means. "Refusal of consent" could be a refusal of treatment or of disclosure.
+describe("which refusal", () => {
+  it("no English word says a refusal of consent, and no Welsh one says gwrthodiad caniatâd", () => {
+    const ambiguous =
+      /refusal of consent|consent refusal|refused consent|refuses consent/i;
+    for (const [key, value] of leaves(ENGLISH))
+      expect(String(value), key).not.toMatch(ambiguous);
+    for (const [key, value] of leaves(CY))
+      expect(String(value), key).not.toMatch(/gwrthodiad caniatâd/i);
+  });
+});
