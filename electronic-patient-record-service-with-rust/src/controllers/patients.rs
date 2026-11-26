@@ -841,6 +841,15 @@ pub fn routes() -> Routes {
             "/{id}/treatment-refusals/{refusal_id}",
             put(super::treatment_refusals::update),
         )
+        .add(
+            "/{id}/decision-ability",
+            post(super::decision_ability::create),
+        )
+        .add("/{id}/decision-ability", get(super::decision_ability::list))
+        .add(
+            "/{id}/decision-ability/{judgement_id}/entered-in-error",
+            post(super::decision_ability::entered_in_error),
+        )
         .add("/{id}/relationships", post(super::relationships::create))
         .add("/{id}/relationships", get(super::relationships::list))
         .add(

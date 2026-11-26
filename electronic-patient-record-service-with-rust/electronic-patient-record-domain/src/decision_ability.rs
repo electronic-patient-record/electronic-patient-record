@@ -80,6 +80,51 @@ pub enum Help {
     Other,
 }
 
+/// Where a stored judgement stands. A judgement is never changed: a new view is a new judgement.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum State {
+    /// As recorded.
+    Recorded,
+    /// Recorded by mistake (on the wrong person, or never made). It stays, and counts for nothing.
+    EnteredInError,
+}
+
+impl State {
+    /// Both states (the stored words are checked against the database, PR-3).
+    pub const ALL: [State; 2] = [State::Recorded, State::EnteredInError];
+
+    /// The stored word.
+    #[must_use]
+    pub fn as_str(self) -> &'static str {
+        match self {
+            State::Recorded => "recorded",
+            State::EnteredInError => "entered-in-error",
+        }
+    }
+
+    /// Read what [`State::as_str`] writes, and nothing else.
+    #[must_use]
+    pub fn parse(word: &str) -> Option<State> {
+        State::ALL.into_iter().find(|s| s.as_str() == word)
+    }
+}
+
+impl Decides {
+    /// Every value (the stored words are checked against the database, PR-3).
+    pub const ALL: [Decides; 3] = [Decides::Can, Decides::Cannot, Decides::NotKnown];
+
+    /// The stored word, as serde writes it.
+    #[must_use]
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Decides::Can => "can",
+            Decides::Cannot => "cannot",
+            Decides::NotKnown => "not-known",
+        }
+    }
+}
+
 /// One judgement.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -330,6 +375,18 @@ mod tests {
             gaps(&unknown),
             vec!["whether they were conscious is not known"]
         );
+    }
+
+    #[test]
+    fn stored_words_are_the_serde_words() {
+        for s in State::ALL {
+            assert_eq!(serde_json::json!(s), s.as_str());
+            assert_eq!(State::parse(s.as_str()), Some(s));
+        }
+        for d in Decides::ALL {
+            assert_eq!(serde_json::json!(d), d.as_str());
+        }
+        assert_eq!(State::parse("valid"), None);
     }
 
     #[test]

@@ -10,6 +10,7 @@ pub mod break_glass;
 mod common;
 pub mod consents;
 pub mod deaths;
+pub mod decision_ability;
 pub mod entries;
 pub mod feed;
 pub mod fhir;

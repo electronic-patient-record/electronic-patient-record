@@ -813,6 +813,40 @@ async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_r
         )
         .await;
 
+        // A judgement of whether a person can decide, and marking it entered in error (RF-8).
+        let judgement = json!({ "about": "whether to accept blood", "at": "2026-01-01T10:00:00Z",
+            "conscious": "yes", "communicates": "speaks", "decides": "can", "because": "explained it back", "by": "Dr A" });
+        refused_then_accepted(db, "POST /api/patients/{id}/decision-ability", || async {
+            let r = server
+                .post(&format!("/api/patients/{id}/decision-ability"))
+                .json(&json!({ "judgement": judgement }))
+                .await;
+            (r.status_code(), r.text())
+        })
+        .await;
+        let judgements = server
+            .get(&format!("/api/patients/{id}/decision-ability"))
+            .await
+            .json::<Value>();
+        let judgement_id = judgements["judgements"][0]["id"]
+            .as_str()
+            .expect("a judgement id")
+            .to_string();
+        refused_then_accepted(
+            db,
+            "POST /api/patients/{id}/decision-ability/{judgement_id}/entered-in-error",
+            || async {
+                let r = server
+                    .post(&format!(
+                        "/api/patients/{id}/decision-ability/{judgement_id}/entered-in-error"
+                    ))
+                    .json(&json!({ "expected_version": 1, "reason": "wrong patient" }))
+                    .await;
+                (r.status_code(), r.text())
+            },
+        )
+        .await;
+
         // Relationship create and update.
         let rel = json!({ "subject": "nurse-1", "kind": "care-team", "status": "active" });
         refused_then_accepted(db, "POST /api/patients/{id}/relationships", || async {

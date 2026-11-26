@@ -174,6 +174,9 @@ pub enum Resource {
     /// A refusal of treatment, as recorded (RF-5, `treatment_refusals_store.rs`). Not `Consent`, which is a refusal of
     /// disclosure (RF-2). Clinical: it says what a person will not accept, and it is read by those who treat.
     TreatmentRefusal,
+    /// Judgements of whether a person can make one decision, now (RF-8, `decision_ability_store.rs`). Clinical, and not
+    /// a verdict: each is one person's judgement about one decision at one time.
+    DecisionAbility,
     /// FHIR `Observation`.
     Observation,
     /// A laboratory or imaging result and its sign-off (`results_store.rs`, OR-4 first slice, WL-1).
@@ -246,13 +249,14 @@ pub enum Resource {
 
 impl Resource {
     /// Every resource kind, in a fixed order.
-    pub const ALL: [Resource; 31] = [
+    pub const ALL: [Resource; 32] = [
         Resource::PatientIdentity,
         Resource::Encounter,
         Resource::Condition,
         Resource::RelativeHistory,
         Resource::CompatibilityTyping,
         Resource::TreatmentRefusal,
+        Resource::DecisionAbility,
         Resource::Observation,
         Resource::DiagnosticReport,
         Resource::QuestionnaireResponse,
@@ -290,6 +294,7 @@ impl Resource {
             Resource::RelativeHistory => "RelativeHistory",
             Resource::CompatibilityTyping => "CompatibilityTyping",
             Resource::TreatmentRefusal => "TreatmentRefusal",
+            Resource::DecisionAbility => "DecisionAbility",
             Resource::Observation => "Observation",
             Resource::DiagnosticReport => "DiagnosticReport",
             Resource::QuestionnaireResponse => "QuestionnaireResponse",
@@ -689,10 +694,10 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         Adjustment as Adjust, AllergyIntolerance as Allergy, Amendment, ApiToken as Tokens,
         AuditLog, BreakGlass as Glass, CareRelationship as Rel, CompatibilityTyping as Typing,
         Condition, Consent as Cons, DeathAssertion as Death, DeathReports as Deaths,
-        DiagnosticReport as Results, Document, Encounter, FeedQueue as Queue, Hazard,
-        MedicationRequest as Meds, Observation, OverdueReviews as Overdue,
-        OwnWatchList as OwnWatch, PatientIdentity as Identity, PatientLink as Link,
-        QuestionnaireResponse as Assess, Referral, ReferralQueue as RefQueue,
+        DecisionAbility as Ability, DiagnosticReport as Results, Document, Encounter,
+        FeedQueue as Queue, Hazard, MedicationRequest as Meds, Observation,
+        OverdueReviews as Overdue, OwnWatchList as OwnWatch, PatientIdentity as Identity,
+        PatientLink as Link, QuestionnaireResponse as Assess, Referral, ReferralQueue as RefQueue,
         ReferralWorklist as Worklist, RelativeHistory as Relatives, Tasks,
         TreatmentRefusal as Refusal, WatchList as Watch,
     };
@@ -718,6 +723,11 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         (Role::Clinician, Refusal) => &[Read, Search, Create, Update, Eie],
         (Role::Nurse | Role::AlliedHealth, Refusal) => &[Read, Search, Create, Update],
         (Role::Pharmacist, Refusal) => &[Read, Search],
+        // Whether a person can decide (RF-8, unreviewed): those who treat record a judgement and read them; only a
+        // clinician marks one entered in error; a pharmacist reads. A judgement is never changed, so there is no Update.
+        (Role::Clinician, Ability) => &[Read, Search, Create, Eie],
+        (Role::Nurse | Role::AlliedHealth, Ability) => &[Read, Search, Create],
+        (Role::Pharmacist, Ability) => &[Read, Search],
         // Results (OR-4 first slice, WL-1, unreviewed): a clinician files, corrects and signs off (a
         // sign-off is an `Update`); a nurse, pharmacist or allied professional reads. No feed files them
         // yet (an integration has no care relationship), and a patient or proxy reads none until release
@@ -1681,8 +1691,8 @@ mod tests {
                 }
             }
         }
-        // 17 roles × 31 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
-        assert_eq!(cells, 17 * 31 * 6 * 8 * 5 * 3 * 7 * 2);
+        // 17 roles × 32 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
+        assert_eq!(cells, 17 * 32 * 6 * 8 * 5 * 3 * 7 * 2);
         assert!(allows > 0);
     }
 

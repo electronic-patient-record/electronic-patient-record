@@ -105,6 +105,8 @@ mod http_conflicts;
 mod http_death_reports;
 #[path = "http_deaths.rs"]
 mod http_deaths;
+#[path = "http_decision_ability.rs"]
+mod http_decision_ability;
 #[path = "http_entries.rs"]
 mod http_entries;
 #[path = "http_entry_labels.rs"]

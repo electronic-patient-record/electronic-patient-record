@@ -1358,6 +1358,62 @@ fn treatment_refusal_schemas() -> Value {
     })
 }
 
+/// The schemas for judgements of whether a person can make one decision now (RF-8): the judgement, the stored version,
+/// the bodies and the list.
+fn decision_ability_schemas() -> Value {
+    let known = json!({"enum": ["yes", "no", "not-known"]});
+    json!({
+        "Judgement": {
+            "type": "object",
+            "required": ["about", "at", "conscious", "communicates", "decides", "because", "by"],
+            "description": "One person's judgement of whether a person can make one decision, at one time. No score and no verdict: nothing in the service answers whether a person has capacity, and a judgement is never copied forward or changed.",
+            "properties": {
+                "about": {"type": "string", "maxLength": 500, "description": "The decision, in words."},
+                "at": {"type": "string", "description": "When it was made (RFC 3339), not in the future."},
+                "conscious": known,
+                "communicates": {"enum": ["speaks", "other-means", "no", "not-known"], "description": "other-means (writing, a board, blinking) is not no."},
+                "decides": {"enum": ["can", "cannot", "not-known"], "description": "What the judge concluded about this one decision, now."},
+                "help_given": {"type": "array", "maxItems": 7, "items": {"enum": ["interpreter", "communication-aid", "time", "place", "supporter", "information", "other"]}, "description": "What help was given first. Empty is none recorded, never none needed."},
+                "help_words": {"type": ["string", "null"], "maxLength": 500, "description": "Required when help_given holds other."},
+                "because": {"type": "string", "maxLength": 500},
+                "by": {"type": "string", "maxLength": 500, "description": "Who judged, in words: a name and a role."}
+            }
+        },
+        "StoredJudgement": {
+            "type": "object", "required": ["id", "patient_id", "version", "author", "state", "reason", "judgement"],
+            "properties": {
+                "id": {"type": "string"}, "patient_id": {"type": "string"},
+                "version": {"type": "integer", "description": "1 when recorded; 2 when marked entered in error."},
+                "author": {"type": "string"},
+                "state": {"enum": ["recorded", "entered-in-error"]},
+                "reason": {"type": ["string", "null"], "description": "Why it was marked entered in error."},
+                "judgement": {"$ref": "#/components/schemas/Judgement"}
+            }
+        },
+        "CreateJudgement": {
+            "type": "object", "required": ["judgement"],
+            "properties": {"judgement": {"$ref": "#/components/schemas/Judgement"}}
+        },
+        "MarkJudgementInError": {
+            "type": "object", "required": ["expected_version", "reason"],
+            "properties": {"expected_version": {"type": "integer"}, "reason": {"type": "string", "maxLength": 500}}
+        },
+        "JudgementList": {
+            "type": "object", "required": ["judgements", "disputed"],
+            "description": "Every judgement on the record and on records merged into it, newest first, as made.",
+            "properties": {
+                "judgements": {"type": "array", "items": {"allOf": [{"$ref": "#/components/schemas/StoredJudgement"}],
+                    "required": ["age_minutes", "gaps", "from_merged_record"],
+                    "properties": {
+                        "age_minutes": {"type": ["integer", "null"], "description": "Whole minutes since it was made: a judgement goes out of date by its age."},
+                        "gaps": {"type": "array", "maxItems": 3, "items": {"type": "string"}, "description": "What it does not record. Not a verdict."},
+                        "from_merged_record": {"type": "boolean"}}}},
+                "disputed": {"type": "array", "items": {"type": "string"}, "description": "The decisions on which the latest views of two people differ."}
+            }
+        }
+    })
+}
+
 /// The schemas for care relationships: the record (with a proxy's terms), the stored version, the bodies and the list.
 fn relationship_schemas() -> Value {
     json!({
@@ -2148,6 +2204,7 @@ fn patient_schemas() -> Value {
         api_token_schemas(),
         consent_schemas(),
         treatment_refusal_schemas(),
+        decision_ability_schemas(),
         relationship_schemas(),
     ] {
         all.extend(
@@ -2416,6 +2473,22 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
         "UpdateConsent",
         "200",
         "StoredConsent",
+        "VersionConflict",
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/decision-ability",
+        "CreateJudgement",
+        "201",
+        "StoredJudgement",
+        "",
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/decision-ability/{judgement_id}/entered-in-error",
+        "MarkJudgementInError",
+        "200",
+        "StoredJudgement",
         "VersionConflict",
     ),
     (
@@ -2717,6 +2790,12 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
         "GET",
         "/api/patients/{id}/treatment-refusals",
         "TreatmentRefusalList",
+        &[],
+    ),
+    (
+        "GET",
+        "/api/patients/{id}/decision-ability",
+        "JudgementList",
         &[],
     ),
     ("GET", "/api/patients/{id}/amendments", "AmendmentList", &[]),

@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-26 - Judgements of whether a person can decide are stored and served (RF-8)
+
+- **Clinical risk:** yes. New hazard H-080 (a judgement read as more than it is), `open`, severity and likelihood the author's proposal.
+- **Added:** migration `20261126000050` (`decision_ability_versions`, append-only, and `decision_ability_current`); `decision_ability_store.rs`; `POST`/`GET /api/patients/{id}/decision-ability` and `POST …/{judgement_id}/entered-in-error`. A judgement is never changed, so there is no `PUT`; entered in error needs a reason and the current version, and the judgement stays. The list is newest first (by when it was made, read as a time), each with `age_minutes`, `gaps` and `from_merged_record`, and `disputed` names the decisions on which two people's latest views differ. A `DecisionAbility` resource: clinician records, reads and marks entered in error; nurse and allied health record and read; pharmacist reads; a patient, a proxy and an administrator read none. Audit rows hold ids, version and state only.
+- **Verified:** fmt, clippy, the domain and service tests, every database test on a throwaway Postgres 18 (2 new: the flow and the roles through login), and the route, label, audit-failure, stored-word, inventory and OpenAPI censuses. **Not done / not verified:** no screen; a merge does not ask about judgements; no lawyer or clinician has reviewed the fields or the permission table.
+
 ## 2026-11-26 - Whether a person can decide this, now, as a library (RF-8, first slice)
 
 - **Clinical risk:** none yet: nothing stores, serves or shows a judgement, and no hazard row changes. The first code that stores or shows one needs its rows.

@@ -4,7 +4,7 @@ Every table and view the service's migrations create. **Generated** by [`scripts
 
 Not listed: tables made by a statement built at run time (the monthly `audit_events` partitions), and what a column means (the migrations carry few comments, so only the name and SQL type are shown). The clinical tables are append-only: a change is a new row, and triggers refuse `UPDATE`, `DELETE` and `TRUNCATE`.
 
-50 tables, 25 views.
+51 tables, 26 views.
 
 ## Tables
 
@@ -30,6 +30,7 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `break_glass_reviews` | `20261021000010_break_glass` | `grant_id` UUID, `reviewed_at` TIMESTAMPTZ, `reviewed_by` TEXT, `outcome` TEXT, `note` TEXT |
 | `consent_versions` | `20261021000003_consent_versions` | `consent_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `status` TEXT, `body` JSONB |
 | `death_assertion_versions` | `20261105000025_death_assertions` | `assertion_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `status` TEXT, `body` JSONB |
+| `decision_ability_versions` | `20261126000050_decision_ability` | `judgement_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `state` TEXT, `decides` TEXT, `body` JSONB |
 | `entry_labels` | `20261125000047_entry_labels` | `kind` TEXT, `entry_id` UUID, `seq` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `act` TEXT, `label` TEXT, `author` TEXT, `basis` TEXT, `reason` TEXT |
 | `feed_alarm_states` | `20261117000039_feed_alarm_states` | `seq` BIGSERIAL, `agent` TEXT, `state` TEXT, `reasons` JSONB, `recorded_at` TIMESTAMPTZ |
 | `feed_message_times` | `20261117000038_feed_message_times` | `agent` TEXT, `patient_id` UUID, `message_time` TIMESTAMPTZ, `control_id` TEXT, `recorded_at` TIMESTAMPTZ |
@@ -74,6 +75,7 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `audit_events_all` | `20261031000019_audit_archive_view` |
 | `consent_current` | `20261021000003_consent_versions`, `20261021000011_current_views_seek` |
 | `death_assertion_current` | `20261105000025_death_assertions` |
+| `decision_ability_current` | `20261126000050_decision_ability` |
 | `hazard_current` | `20261028000016_hazard_events` |
 | `observation_current` | `20261026000014_observations` |
 | `patient_current` | `20261021000002_patient_versions`, `20261021000012_patient_search_indexes`, `20261024000013_patient_drill`, `20261125000046_name_keys` |

@@ -20,13 +20,13 @@ no network, database or compilation; counts are source lines, not test runs):
 | Service version | 0.1.0 | `version` in the service `Cargo.toml` |
 | Matcher version | 0.9.0 | `version` in the matcher `Cargo.toml` |
 | Front-end version | 0.1.0 | `version` in the front-end `package.json` |
-| Migrations | 49 | files named `*.sql` in `migrations` |
-| Route registrations | 130 | `.add(` calls in `src/controllers/*.rs` |
-| Service tests | 1074, plus 281 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
+| Migrations | 50 | files named `*.sql` in `migrations` |
+| Route registrations | 133 | `.add(` calls in `src/controllers/*.rs` |
+| Service tests | 1077, plus 283 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
 | Matcher tests | 136, plus 0 `#[ignore]`d | the same patterns in the matcher |
 | Front-end unit tests (vitest) | 399 | `it(` / `test(` lines in `tests/unit` |
 | Front-end end-to-end tests (Playwright) | 124 | `test(` lines in `tests/e2e` |
-| Hazards | 79, of which 58 open and 0 accepted or closed; 48 name a test | `scripts/check-hazard-log.py --counts` |
+| Hazards | 80, of which 59 open and 0 accepted or closed; 49 name a test | `scripts/check-hazard-log.py --counts` |
 | Locales | 10 | entries of `LOCALES` in `src/lib/locales.ts` |
 
 **Task boxes in [`tasks.md`](../tasks.md)** (ticked / open, by prefix):

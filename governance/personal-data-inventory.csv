@@ -600,3 +600,21 @@ break_glass_grants,threat,health,What the opener said is at risk: a life or a li
 break_glass_grants,time_to_harm,health,How soon the opener said harm would come,record
 break_glass_grants,can_be_asked,health,Whether the opener said the patient could be asked,record
 break_glass_grants,asked_and_said,free-text,What the patient said when asked as typed by the opener,record
+decision_ability_versions,judgement_id,none,Random record id,record
+decision_ability_versions,version,none,Version counter,record
+decision_ability_versions,patient_id,identifier,Links a record to the patient,record
+decision_ability_versions,recorded_at,none,When the version was written,record
+decision_ability_versions,author,staff-identifier,Who wrote the version,record
+decision_ability_versions,reason,free-text,Why it was marked entered in error as typed,record
+decision_ability_versions,state,none,Recorded or entered in error,record
+decision_ability_versions,decides,health,What the judge concluded about one decision,record
+decision_ability_versions,body,health,A judgement of whether the person could make one decision: how they communicated; the help given; the reasons; who judged,record
+decision_ability_current,judgement_id,none,Random record id,record
+decision_ability_current,version,none,Version counter,record
+decision_ability_current,patient_id,identifier,Links a record to the patient,record
+decision_ability_current,recorded_at,none,When the version was written,record
+decision_ability_current,author,staff-identifier,Who wrote the version,record
+decision_ability_current,reason,free-text,Why it was marked entered in error as typed,record
+decision_ability_current,state,none,Recorded or entered in error,record
+decision_ability_current,decides,health,What the judge concluded about one decision,record
+decision_ability_current,body,health,A judgement of whether the person could make one decision: how they communicated; the help given; the reasons; who judged,record
