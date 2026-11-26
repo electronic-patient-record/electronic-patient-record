@@ -124,7 +124,17 @@ const KEYS: &[(&str, Takes)] = &[
     ),
     (
         "refusal-record",
-        Takes::Any(&["written", "signed", "witnessed", "risks-explained"]),
+        Takes::Any(&[
+            "written",
+            "signed",
+            "witnessed",
+            "described",
+            "risks-explained",
+            "benefits-explained",
+            "alternatives-explained",
+            "may-change-mind",
+            "in-private",
+        ]),
     ),
 ];
 

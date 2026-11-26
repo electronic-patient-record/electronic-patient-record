@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-26 - Asking now, and leaving against advice, as a library (RF-10)
+
+- **Clinical risk:** none yet: nothing stores or shows a record, and no hazard row changes.
+- **Added:** `asking_now.rs` in the domain crate, one record shape for refusing now and for leaving against advice; `pack_gaps` lists what the place's `refusal-record` rule asks for that the record does not show as done, and "not known" is never done. The pack key takes five more words (`described`, `benefits-explained`, `alternatives-explained`, `may-change-mind`, `in-private`); the England and Wales pack sets none, and the test says so.
+- **Verified:** 4 tests (leaving against advice with an interpreter; the US rule's items as the spec reads 42 CFR 489.24(d)(3); a place's own; what does not fit). **Not done / not verified:** no store, API or screen; nobody has read the US rule's mapping against the regulation's text.
+
 ## 2026-11-26 - Say which refusal: of treatment, or of disclosure (RF-2)
 
 - **Clinical risk:** yes, small: the emergency screen now says "A patient's refusal to have their record shown (a refusal of disclosure) still applies" where it said "refusal of consent", which a clinician could read as a refusal of treatment. No hazard row changes; the words serve H-006 and H-075.
