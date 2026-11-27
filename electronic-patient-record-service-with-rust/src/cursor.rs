@@ -26,15 +26,14 @@ pub const SEARCH_LIMITS: CursorLimits = CursorLimits {
 pub const SEARCH_MAX_SCAN: u64 = 500;
 
 fn from_hex(text: &str) -> Option<Vec<u8>> {
-    let text = text.trim();
-    if !text.len().is_multiple_of(2) {
-        return None;
-    }
-    (0..text.len())
-        .step_by(2)
-        .map(|i| {
-            text.get(i..i + 2)
-                .and_then(|pair| u8::from_str_radix(pair, 16).ok())
+    text.trim()
+        .as_bytes()
+        .chunks(2)
+        .map(|pair| {
+            std::str::from_utf8(pair)
+                .ok()
+                .filter(|p| p.len() == 2)
+                .and_then(|p| u8::from_str_radix(p, 16).ok())
         })
         .collect()
 }
@@ -50,13 +49,13 @@ pub fn key_from(text: &str) -> Result<CursorKey, String> {
         .map_err(|e| format!("{SETTING}: {e}; give at least {MIN_KEY_LEN} bytes as hex"))
 }
 
-/// A key for this process alone, from two random UUIDs (32 bytes, 244 random bits).
-static PROCESS_KEY: LazyLock<CursorKey> = LazyLock::new(|| {
+/// A key for this process alone, from two random UUIDs (32 bytes, 244 random bits). `None` only if 32 bytes were ever
+/// too short for a key, which [`MIN_KEY_LEN`] says they are not.
+static PROCESS_KEY: LazyLock<Option<CursorKey>> = LazyLock::new(|| {
     let mut bytes = Vec::with_capacity(32);
     bytes.extend_from_slice(uuid::Uuid::new_v4().as_bytes());
     bytes.extend_from_slice(uuid::Uuid::new_v4().as_bytes());
-    #[allow(clippy::expect_used)]
-    CursorKey::new(&bytes).expect("32 bytes is a cursor key")
+    CursorKey::new(&bytes).ok()
 });
 
 /// The key in force: `EPR_CURSOR_KEY`, or the process's own.
@@ -67,7 +66,9 @@ static PROCESS_KEY: LazyLock<CursorKey> = LazyLock::new(|| {
 pub fn key() -> Result<CursorKey, String> {
     match crate::runtime::setting(SETTING) {
         Some(text) => key_from(&text),
-        None => Ok(PROCESS_KEY.clone()),
+        None => PROCESS_KEY
+            .clone()
+            .ok_or_else(|| "no cursor key could be made for this process".to_string()),
     }
 }
 
