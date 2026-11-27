@@ -231,7 +231,10 @@ fn refuse_unknown(params: &HashMap<String, String>, known: &[&str]) -> Result<()
 /// (`refuse_unknown`). A date prefix other than `eq` is refused rather than treated as exact.
 fn search_from(params: &HashMap<String, String>) -> Result<Search, String> {
     // `cursor` is this server's own: the next page of a search, from the `next` link it gave.
-    refuse_unknown(params, &["family", "birthdate", "identifier", "cursor"])?;
+    refuse_unknown(
+        params,
+        &["family", "birthdate", "identifier", "cursor", "limit"],
+    )?;
     let birth_date = match params.get("birthdate") {
         None => None,
         Some(v) => {
@@ -249,6 +252,49 @@ fn search_from(params: &HashMap<String, String>) -> Result<Search, String> {
         // The FHIR facade shows real patients only (EC-10).
         drill: false,
     })
+}
+
+/// The request's URI with FHIR's `_count` said as the page's `limit`, which is what `CursorPage` reads; the next link then
+/// carries `limit`. A `_count` over the search limit is held to it, as FHIR lets a server return fewer; `_count=0` (a count
+/// alone), a `_count` that is not a number, and `_count` beside `limit` are refused.
+fn with_count(uri: &axum::http::Uri) -> Result<axum::http::Uri, String> {
+    let Some(query) = uri.query() else {
+        return Ok(uri.clone());
+    };
+    let parts: Vec<&str> = query.split('&').filter(|p| !p.is_empty()).collect();
+    let key = |p: &str| p.split_once('=').map_or(p, |(k, _)| k).to_string();
+    let counts: Vec<&str> = parts
+        .iter()
+        .copied()
+        .filter(|p| key(p) == "_count")
+        .collect();
+    let Some(count) = counts.first() else {
+        return Ok(uri.clone());
+    };
+    if counts.len() > 1 || parts.iter().any(|p| key(p) == "limit") {
+        return Err("give _count once, and not beside limit".into());
+    }
+    let n: u64 = count
+        .split_once('=')
+        .and_then(|(_, v)| v.parse().ok())
+        .ok_or("_count must be a whole number")?;
+    if n == 0 {
+        return Err("_count=0 (a count alone) is not supported".into());
+    }
+    let n = n.min(crate::cursor::SEARCH_LIMITS.max_limit);
+    let rewritten: Vec<String> = parts
+        .iter()
+        .map(|p| {
+            if key(p) == "_count" {
+                format!("limit={n}")
+            } else {
+                (*p).to_string()
+            }
+        })
+        .collect();
+    format!("{}?{}", uri.path(), rewritten.join("&"))
+        .parse()
+        .map_err(|_| "the query could not be read".to_string())
 }
 
 /// The path in a `Link: <path>; rel="next"` that `CursorPage` wrote, for `Bundle.link`.
@@ -405,6 +451,10 @@ pub(super) async fn search_patients(
 ) -> Response {
     let search = match search_from(&params) {
         Ok(s) => s,
+        Err(m) => return outcome(StatusCode::BAD_REQUEST, "not-supported", &m),
+    };
+    let uri = match with_count(&uri) {
+        Ok(u) => u,
         Err(m) => return outcome(StatusCode::BAD_REQUEST, "not-supported", &m),
     };
     // One page, filled past what a refusal of disclosure hides, with the next page as `Bundle.link`.
@@ -1078,7 +1128,7 @@ const NOTED_TYPES: [&str; 5] = [
 fn resource_notes(kind: &str) -> serde_json::Value {
     match kind {
         "Patient" => serde_json::json!({
-            "documentation": "A search answers a page of up to 50, filled past patients whose refusal of disclosure hides them from the caller. When more may follow, Bundle.link next carries a cursor that holds only for the same caller and purpose of use; total is given only for a whole list on one page.",
+            "documentation": "A search answers a page of up to 50 (_count asks for fewer; more is held to 50; _count=0 is not supported), filled past patients whose refusal of disclosure hides them from the caller. When more may follow, Bundle.link next carries a cursor that holds only for the same caller and purpose of use; total is given only for a whole list on one page.",
             "versioning": "versioned",
             "updateCreate": false,
             "conditionalCreate": false,
@@ -1453,6 +1503,33 @@ mod tests {
                 search_from(&p(&[("birthdate", &format!("{prefix}1980-01-01"))])).is_err(),
                 "{prefix}"
             );
+        }
+    }
+
+    #[test]
+    fn count_is_the_pages_limit_held_to_the_search_limit() {
+        let read = |s: &str| with_count(&s.parse().unwrap()).map(|u| u.to_string());
+        assert_eq!(
+            read("/fhir/R4/Patient?family=S").unwrap(),
+            "/fhir/R4/Patient?family=S"
+        );
+        assert_eq!(read("/fhir/R4/Patient").unwrap(), "/fhir/R4/Patient");
+        assert_eq!(
+            read("/fhir/R4/Patient?family=S&_count=10").unwrap(),
+            "/fhir/R4/Patient?family=S&limit=10"
+        );
+        assert_eq!(
+            read("/fhir/R4/Patient?_count=500&family=S").unwrap(),
+            "/fhir/R4/Patient?limit=50&family=S"
+        );
+        for bad in [
+            "/fhir/R4/Patient?family=S&_count=0",
+            "/fhir/R4/Patient?family=S&_count=ten",
+            "/fhir/R4/Patient?family=S&_count=-1",
+            "/fhir/R4/Patient?family=S&_count=5&limit=5",
+            "/fhir/R4/Patient?family=S&_count=5&_count=6",
+        ] {
+            assert!(read(bad).is_err(), "{bad}");
         }
     }
 

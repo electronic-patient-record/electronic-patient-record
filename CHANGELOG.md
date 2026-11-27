@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-27 - FHIR Patient search reads _count
+
+- **Clinical risk:** none: the same patients, in pages of the size asked.
+- **Changed:** `_count` was accepted and ignored; it is now the page's size (1 to 50, a larger one held to 50, as FHIR lets a server return fewer), and the next link carries it as `limit`, which the route now accepts too. `_count=0` (a count alone), a `_count` that is not a whole number, two of them, or one beside `limit` is a 400 `OperationOutcome`.
+- **Verified:** a unit test of the rewriting; the database test (20 a page over two pages, in R4 and R5; `_count=0` refused); every service and database test; `ci-local.sh --fast`. **Not done:** the Java FHIR validator was not run.
+
 ## 2026-11-27 - The checked-arithmetic gate reads this tree only
 
 - **Clinical risk:** none.

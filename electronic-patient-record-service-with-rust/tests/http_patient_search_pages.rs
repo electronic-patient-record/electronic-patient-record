@@ -152,6 +152,19 @@ async fn a_search_page_is_filled_past_who_is_hidden_and_its_next_link_is_the_cal
             assert_eq!(made.status_code(), StatusCode::CREATED, "{}", made.text());
         }
         for release in ["R4", "R5"] {
+            // _count is the page's size, and its next link carries it.
+            let small = call(&doctor, format!("/fhir/{release}/Patient?family={many}&_count=20"), None).await;
+            assert_eq!(small.status_code(), StatusCode::OK, "{release}: {}", small.text());
+            let body = small.json::<Value>();
+            assert_eq!(body["entry"].as_array().unwrap().len(), 20, "{release}");
+            let next = body["link"].as_array().unwrap().iter().find(|l| l["relation"] == "next").expect("next");
+            let url = next["url"].as_str().unwrap().to_string();
+            assert!(url.contains("limit=20&cursor="), "{url}");
+            let page2 = call(&doctor, url, None).await.json::<Value>();
+            assert_eq!(page2["entry"].as_array().unwrap().len(), 20, "{release}");
+            let zero = call(&doctor, format!("/fhir/{release}/Patient?family={many}&_count=0"), None).await;
+            assert_eq!(zero.status_code(), StatusCode::BAD_REQUEST, "{release}");
+
             let first = call(&doctor, format!("/fhir/{release}/Patient?family={many}"), None).await;
             assert_eq!(first.status_code(), StatusCode::OK, "{release}: {}", first.text());
             let body = first.json::<Value>();
