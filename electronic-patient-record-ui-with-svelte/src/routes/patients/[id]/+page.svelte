@@ -8,6 +8,7 @@
   import WatchListSection from "#lib/WatchListSection.svelte";
   import RefusalSection from "#lib/RefusalSection.svelte";
   import AskingNowSection from "#lib/AskingNowSection.svelte";
+  import DecisionAbilitySection from "#lib/DecisionAbilitySection.svelte";
   import BreakGlassSection from "#lib/BreakGlassSection.svelte";
   import { siteWhenText } from "#lib/access-log.js";
   import { loadAllergies, type AllergyLoad } from "#lib/allergies.js";
@@ -432,6 +433,7 @@
       />
     {/if}
     <AskingNowSection patientId={stored.id} />
+    <DecisionAbilitySection patientId={stored.id} />
     {#if allergies?.status === 200 && allergies.data}
       <AllergySection
         patientId={stored.id}

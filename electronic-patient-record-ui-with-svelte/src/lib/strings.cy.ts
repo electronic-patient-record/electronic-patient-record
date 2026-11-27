@@ -1123,6 +1123,53 @@ export const CY: Strings = {
   unmergeRefusals:
     "Cofnodwyd {n} gwrthodiad triniaeth ar y cofnod hwn ers yr uno. Cyn gwahanu'r cofnodion, rhaid i glinigwr edrych ar bob un: gall unrhyw un fod yn eiddo i'r person arall.",
   mergeRefusalsLooked: "Mae clinigwr wedi edrych ar bob un ohonynt",
+  daTitle: "A allant wneud y penderfyniad hwn, nawr",
+  daIntro:
+    "Barn un person yw pob barn, am un penderfyniad, ar un adeg. Nid oes sgôr na dyfarniad; mae barn yn mynd yn hen, felly dangosir ei hoed, ac mae barn newydd yn farn newydd. Geiriad heb ei adolygu.",
+  daUnreadable:
+    "Ni ellid darllen y barnau hyn. Nid yw hyn yn golygu nad oes rhai.",
+  daDisputed: "Mae barnau diweddaraf dau berson yn wahanol am: {about}",
+  daRecord: "Cofnodi barn",
+  daAbout: "Y penderfyniad dan sylw",
+  daAt: "Pryd y'i gwnaed",
+  daConscious: "Yn ymwybodol",
+  daCommunicates: "Sut roeddent yn cyfathrebu",
+  daCommunicatesWords: {
+    speaks: "Drwy siarad",
+    "other-means": "Drwy ffyrdd eraill",
+    no: "Ddim o gwbl",
+    "not-known": "Ddim yn hysbys",
+  },
+  daHelp:
+    "Cymorth a roddwyd yn gyntaf (dim wedi'i dicio yw dim wedi'i gofnodi)",
+  daHelpWordsOf: {
+    interpreter: "Cyfieithydd",
+    "communication-aid": "Cymorth cyfathrebu",
+    time: "Mwy o amser, neu amser arall",
+    place: "Lle tawelach",
+    supporter: "Rhywun y maent yn ymddiried ynddo, neu eiriolwr",
+    information: "Gwybodaeth ar ffurf arall",
+    other: "Rhywbeth arall",
+  },
+  daHelpWords:
+    "Y cymorth, mewn geiriau (angenrheidiol ar gyfer rhywbeth arall)",
+  daDecides: "Beth a gasglodd y beirniad",
+  daDecidesWords: {
+    can: "Gall wneud y penderfyniad hwn nawr",
+    cannot: "Ni all wneud y penderfyniad hwn nawr",
+    "not-known": "Methu dweud",
+  },
+  daBecause: "Pam",
+  daBy: "Pwy a farnodd: enw a rôl",
+  daSave: "Cofnodi'r farn",
+  daAgeMinutes: "{n} munud oed",
+  daAgeHours: "{n} awr oed",
+  daAgeDays: "{n} diwrnod oed",
+  daAgeUnknown: "oed ddim yn hysbys",
+  daGapNoHelp: "Ni chofnodir unrhyw gymorth cyn barn na allant benderfynu.",
+  daGapNoAid:
+    "Maent yn cyfathrebu drwy ffyrdd eraill ac ni chofnodir cymorth cyfathrebu.",
+  daGapConscious: "Nid yw'n hysbys a oeddent yn ymwybodol.",
   anTitle: "Gofynnwyd nawr, neu'n gadael yn groes i gyngor",
   anIntro:
     "Beth a gynigiwyd ac a esboniwyd, a beth a wrthododd neu a dderbyniodd y person, fel y gofynnwyd iddynt nawr. Geiriad heb ei adolygu. Nid oes dim yma'n dweud a yw gwrthodiad yn sefyll; cofnodir gwrthodiad triniaeth i'w gadw uchod.",

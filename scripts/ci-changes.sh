@@ -39,6 +39,10 @@ while IFS= read -r path; do
     electronic-patient-record-service-with-rust/electronic-patient-record-domain/src/adjustments.rs)
       rust=true
       ui=true ;;
+    # Read by the UI's tests (decision-ability.test.ts keeps the UI's gap words equal to the service's).
+    electronic-patient-record-service-with-rust/electronic-patient-record-domain/src/decision_ability.rs)
+      rust=true
+      ui=true ;;
     # Read by the UI's tests (summary.test.ts holds what the summary says it does not show to the service's routes).
     electronic-patient-record-service-with-rust/src/routes.rs)
       rust=true

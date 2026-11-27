@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-27 - Whether they can make this decision, now, on the patient page (RF-8, unreviewed)
+
+- **Clinical risk:** yes, H-080. The judgements of whether a person can make one decision get a screen. A role the API lets read them sees each one with its decision, what the judge concluded, its age in words, who judged and why, and what it does not record (in the page's language). When the latest views of two people about one decision differ, the page says so and takes no side; there is no score and no verdict. The form names each unanswered question and asks for the help in words when "something else" is ticked; a judgement is never changed, and "Entered in error" asks why. H-080's evidence and residual updated: nothing marks a judgement too old to rely on.
+- **Added:** `src/lib/decision-ability.ts` translates the service's fixed gap words, and a unit test reads the domain crate's source so a new gap cannot come through in English unnoticed; `scripts/ci-changes.sh` runs the UI's tests when that source changes.
+- **Verified:** UI lint, type checks, vitest (1 new file), Playwright (280, 1 new: age, gaps, dispute, axe, the unanswered named, the exact body), `ci-local.sh --fast`. **Not done:** a clinician's review of the fields; how old is too old is not decided; the Welsh is machine-written.
+
 ## 2026-11-27 - Asking now, and leaving against advice, on the patient page (RF-10, unreviewed)
 
 - **Clinical risk:** yes, H-081. The record of asking now (RF-10, with EC-6) gets a screen. A role the API lets read these records sees, on the patient page, each record with what was offered, refused and accepted, when and by whom, whether the person left against advice, and whether it is on a merged record. It also sees how many records say the person left against advice. "None recorded here" is shown for an empty list, and a list that could not be read says so in bold. The form asks every yes-or-no with "not known" as an answer and names the unanswered ones before anything is sent; one button marks the rest not known. A record is never changed; "Entered in error" asks why, and the API lets only a clinician do it. H-081's evidence and residual updated: that button makes "not known" by habit quicker, as on the refusal form.

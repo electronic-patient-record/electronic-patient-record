@@ -1068,6 +1068,52 @@ export const STRINGS = {
   unmergeRefusals:
     "{n} refusal(s) of treatment were recorded on this record since the merge. Before the records are separated, a clinician must look at each: any may be the other person's.",
   mergeRefusalsLooked: "A clinician has looked at each of them",
+  daTitle: "Whether they can make this decision, now",
+  daIntro:
+    "Each judgement is one person's, about one decision, at one time. There is no score and no verdict; a judgement goes out of date, so its age is shown, and a new view is a new judgement. Unreviewed wording.",
+  daUnreadable:
+    "These judgements could not be read. This does not mean there are none.",
+  daDisputed: "The latest views of two people differ about: {about}",
+  daRecord: "Record a judgement",
+  daAbout: "The decision it is about",
+  daAt: "When it was made",
+  daConscious: "Conscious",
+  daCommunicates: "How they communicated",
+  daCommunicatesWords: {
+    speaks: "By speech",
+    "other-means": "By other means",
+    no: "Not at all",
+    "not-known": "Not known",
+  },
+  daHelp: "Help given first (none ticked means none recorded)",
+  daHelpWordsOf: {
+    interpreter: "An interpreter",
+    "communication-aid": "A communication aid",
+    time: "More time, or another time",
+    place: "A quieter place",
+    supporter: "Someone they trust, or an advocate",
+    information: "Information in another form",
+    other: "Something else",
+  },
+  daHelpWords: "The help, in words (required for something else)",
+  daDecides: "What the judge concluded",
+  daDecidesWords: {
+    can: "Can make this decision now",
+    cannot: "Cannot make this decision now",
+    "not-known": "Could not tell",
+  },
+  daBecause: "Why",
+  daBy: "Who judged: a name and a role",
+  daSave: "Record the judgement",
+  daAgeMinutes: "{n} min old",
+  daAgeHours: "{n} h old",
+  daAgeDays: "{n} days old",
+  daAgeUnknown: "age not known",
+  daGapNoHelp:
+    "No help is recorded before a judgement that they cannot decide.",
+  daGapNoAid:
+    "They communicate by other means and no communication aid is recorded.",
+  daGapConscious: "Whether they were conscious is not known.",
   anTitle: "Asked now, or leaving against advice",
   anIntro:
     "What was offered and explained, and what the person refused or accepted, as they were asked now. Unreviewed wording. Nothing here says whether a refusal stands; a refusal of treatment to keep is recorded above.",

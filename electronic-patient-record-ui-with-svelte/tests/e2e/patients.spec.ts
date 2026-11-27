@@ -2926,6 +2926,115 @@ test("a record merged away says so everywhere and cannot be edited; the survivin
   await axe(page);
 });
 
+test("judgements of whether they can decide show their age, gaps and a dispute, and a new one names what is missing", async ({
+  page,
+}) => {
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, ANN),
+  );
+  const posts: Json[] = [];
+  const judgement = (by: string, decides: string) => ({
+    about: "whether to accept blood",
+    at: "2026-11-27T09:00:00Z",
+    conscious: "not-known",
+    communicates: "other-means",
+    decides,
+    help_given: [],
+    because: "could not retain the information",
+    by,
+  });
+  await page.route(
+    "**/api/proxy/api/patients/*/decision-ability**",
+    (route) => {
+      if (route.request().method() === "POST") {
+        posts.push(route.request().postDataJSON());
+        return json(route, 201, { id: "j3", version: 1 });
+      }
+      return json(route, 200, {
+        judgements: [
+          {
+            id: "j1",
+            version: 1,
+            state: "recorded",
+            judgement: judgement("Dr A, registrar", "cannot"),
+            age_minutes: 150,
+            gaps: [
+              "no help is recorded before a judgement that they cannot decide",
+              "whether they were conscious is not known",
+            ],
+            from_merged_record: false,
+          },
+          {
+            id: "j2",
+            version: 1,
+            state: "recorded",
+            judgement: judgement("Nurse B", "can"),
+            age_minutes: 20,
+            gaps: [],
+            from_merged_record: false,
+          },
+        ],
+        disputed: ["whether to accept blood"],
+      });
+    },
+  );
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  const section = page.getByRole("region", {
+    name: "Whether they can make this decision, now",
+  });
+  await expect(section).toContainText(
+    "The latest views of two people differ about: whether to accept blood",
+  );
+  const first = section
+    .getByRole("listitem")
+    .filter({ hasText: "Dr A" })
+    .first();
+  await expect(first).toContainText("2 h old");
+  await expect(first).toContainText(
+    "No help is recorded before a judgement that they cannot decide.",
+  );
+  await expect(
+    section.getByRole("listitem").filter({ hasText: "Nurse B" }).first(),
+  ).toContainText("20 min old");
+  await axe(page);
+
+  await section
+    .getByLabel("The decision it is about")
+    .fill("whether to accept blood");
+  await section.getByLabel("When it was made").fill("2026-11-27T11:00");
+  await section.getByLabel("Conscious").selectOption("yes");
+  await section.getByLabel("How they communicated").selectOption("other-means");
+  await section.getByRole("checkbox", { name: "A communication aid" }).check();
+  await section.getByRole("checkbox", { name: "Something else" }).check();
+  await section.getByLabel("What the judge concluded").selectOption("can");
+  await section
+    .getByLabel("Why", { exact: true })
+    .fill("used a letter board to weigh it");
+  await section.getByLabel(/^Who judged/).fill("Dr C, consultant");
+  await section.getByRole("button", { name: "Record the judgement" }).click();
+  // "Something else" needs the help in words.
+  await expect(section.getByRole("status")).toContainText("The help, in words");
+  expect(posts).toHaveLength(0);
+  await section
+    .getByLabel(/^The help, in words/)
+    .fill("asked again after a rest");
+  await section.getByRole("button", { name: "Record the judgement" }).click();
+  await expect(section.getByRole("status")).toHaveText("Recorded.");
+  expect(posts[0]).toEqual({
+    judgement: {
+      about: "whether to accept blood",
+      at: new Date("2026-11-27T11:00").toISOString(),
+      conscious: "yes",
+      communicates: "other-means",
+      decides: "can",
+      help_given: ["communication-aid", "other"],
+      help_words: "asked again after a rest",
+      because: "used a letter board to weigh it",
+      by: "Dr C, consultant",
+    },
+  });
+});
+
 test("asking now is recorded with every question answered or not known, listed, and marked entered in error with why", async ({
   page,
 }) => {
