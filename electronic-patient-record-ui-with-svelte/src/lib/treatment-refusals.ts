@@ -8,6 +8,8 @@ import { TEXT } from "./i18n.js";
 /** One refusal as the API lists it: only what the banner needs. */
 export interface ListedRefusal {
   id: string;
+  /** The version on screen, for a change (a 409 when another came first). */
+  version?: number;
   from_merged_record: boolean;
   refusal: {
     treatment: string;

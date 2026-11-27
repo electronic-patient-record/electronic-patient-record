@@ -423,8 +423,12 @@
         )}
       </p>
     {/if}
-    {#if refusals?.status === 200}
-      <RefusalSection patientId={stored.id} onchange={reloadRefusals} />
+    {#if refusals?.status === 200 && refusals.data}
+      <RefusalSection
+        patientId={stored.id}
+        data={refusals.data}
+        onchange={reloadRefusals}
+      />
     {/if}
     {#if allergies?.status === 200 && allergies.data}
       <AllergySection

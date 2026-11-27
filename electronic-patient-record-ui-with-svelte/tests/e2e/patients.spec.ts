@@ -497,6 +497,125 @@ test("a refusal of treatment is recorded from the person's words, with not known
   ).toContainText("blood products");
 });
 
+test("a refusal on record is doubted, a withdrawal heard is kept as doubted, and each change says why", async ({
+  page,
+}) => {
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, ANN),
+  );
+  const onRecord = {
+    id: "r1",
+    version: 1,
+    from_merged_record: false,
+    refusal: {
+      kind: "spoken-now",
+      treatment: "blood products",
+      if_life_at_risk: "not-stated",
+      form: { written: "no", signed: "no", witnessed: "no", seen: "not-seen" },
+      said_by: "patient",
+      identity: "certain",
+      state: "stands",
+    },
+  };
+  const puts: Json[] = [];
+  const answers = [200, 200, 409, 403];
+  await page.route(
+    "**/api/proxy/api/patients/*/treatment-refusals**",
+    (route) => {
+      if (route.request().method() === "PUT") {
+        puts.push(route.request().postDataJSON());
+        const status = answers[puts.length - 1]!;
+        return json(
+          route,
+          status,
+          status === 200
+            ? { id: "r1", version: puts.length + 1 }
+            : { detail: "x" },
+        );
+      }
+      return json(route, 200, {
+        summary: { state: "recorded" },
+        refusals: [onRecord],
+      });
+    },
+  );
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  const section = page.getByRole("region", {
+    name: "Record a refusal of treatment",
+  });
+  const item = section
+    .getByRole("listitem")
+    .filter({ hasText: "blood products" });
+  await expect(item).toContainText("Stands");
+
+  // A doubt needs why, and is the whole record with the doubt, from the version on screen.
+  await item.getByRole("button", { name: "Doubt it" }).click();
+  await item.getByRole("button", { name: "Save the change" }).click();
+  await expect(section.getByRole("status")).toHaveText(
+    "Say why: it is kept with the new version.",
+  );
+  expect(puts).toHaveLength(0);
+  await item.getByLabel(/^Why it is doubted/).fill("said while in pain");
+  await axe(page);
+  await item.getByRole("button", { name: "Save the change" }).click();
+  await expect(section.getByRole("status")).toHaveText("Recorded.");
+  expect(puts[0]).toEqual({
+    refusal: {
+      ...onRecord.refusal,
+      state: "doubted",
+      doubt: "said while in pain",
+    },
+    expected_version: 1,
+    reason: "said while in pain",
+  });
+
+  // A withdrawal heard is kept as heard, and doubted: no rule in force ends a refusal.
+  await item.getByRole("button", { name: "A withdrawal was heard" }).click();
+  await item.getByRole("button", { name: "Save the change" }).click();
+  await expect(section.getByRole("status")).toHaveText(
+    "Say who heard it and when.",
+  );
+  await item.getByLabel(/^Who heard, read or saw it/).fill("the night nurse");
+  await item.getByLabel(/^When/).fill("2026-11-26T22:15");
+  await item.getByRole("button", { name: "Save the change" }).click();
+  await expect(section.getByRole("status")).toHaveText("Recorded.");
+  const heard = puts[1] as unknown as {
+    refusal: {
+      state: string;
+      doubt: string;
+      withdrawal: { how: string; noticed_by: string; at: string };
+    };
+  };
+  expect(heard.refusal.state).toBe("doubted");
+  expect(heard.refusal.doubt).toMatch(
+    /No rule in force says it ends the refusal/,
+  );
+  expect(heard.refusal.withdrawal.how).toBe("spoken");
+  expect(heard.refusal.withdrawal.noticed_by).toBe("the night nurse");
+  expect(new Date(heard.refusal.withdrawal.at).toString()).not.toBe(
+    "Invalid Date",
+  );
+
+  // Someone else first: said, and the list reloaded.
+  await item.getByRole("button", { name: "Doubt it" }).click();
+  await item.getByLabel(/^Why it is doubted/).fill("again");
+  await item.getByRole("button", { name: "Save the change" }).click();
+  await expect(section.getByRole("status")).toHaveText(
+    "Someone changed this meanwhile. The list was reloaded.",
+  );
+
+  // Entered in error by a role that may not: the API's refusal is said.
+  await item.getByRole("button", { name: "Entered in error" }).click();
+  await item.getByLabel(/^Why it was entered in error/).fill("wrong patient");
+  await item.getByRole("button", { name: "Save the change" }).click();
+  await expect(section.getByRole("status")).toHaveText(
+    "Your role does not allow this.",
+  );
+  expect(
+    (puts[3] as unknown as { refusal: { state: string } }).refusal.state,
+  ).toBe("entered-in-error");
+});
+
 test("a search with no match says so; a refusal is announced", async ({
   page,
 }) => {

@@ -6,15 +6,24 @@
   // Shown only to a role that may read refusals; the API refuses one that may not record.
   import { call, commonProblem } from "./api.js";
   import { newIdempotencyKey } from "./idempotency.js";
-  import type { Kind, Known, SaidBy } from "./treatment-refusals.js";
+  import type {
+    Kind,
+    Known,
+    ListedRefusal,
+    RefusalData,
+    SaidBy,
+  } from "./treatment-refusals.js";
   import { TEXT } from "./i18n.js";
 
   const busy = new Busy();
   let {
     patientId,
+    data,
     onchange,
   }: {
     patientId: string;
+    // The refusals on record, as the banner read them.
+    data: RefusalData;
     // Called after a refusal is recorded, so the page reloads the banner.
     onchange: () => void | Promise<void>;
   } = $props();
@@ -59,6 +68,79 @@
   let idempotencyKey = newIdempotencyKey();
 
   const needsPower = $derived(kind === "representative" || kind === "parent");
+
+  // A change to one on record (a doubt, a withdrawal heard, entered in error): always a new version, with why.
+  const open = $derived(
+    data.refusals.filter(
+      (r) => r.refusal.state === "stands" || r.refusal.state === "doubted",
+    ),
+  );
+  let changing = $state<string | null>(null);
+  let action = $state<"doubt" | "withdrawal" | "error">("doubt");
+  let why = $state("");
+  let how = $state<"spoken" | "written" | "conduct">("spoken");
+  let noticedBy = $state("");
+  let heardAt = $state("");
+
+  function startChange(r: ListedRefusal, a: typeof action) {
+    changing = r.id;
+    action = a;
+    why = a === "withdrawal" ? TEXT.rfWithdrawalWhy : "";
+    noticedBy = heardAt = "";
+    message = null;
+  }
+
+  async function change(event: SubmitEvent, r: ListedRefusal) {
+    event.preventDefault();
+    await busy.run(() => changeNow(r));
+  }
+
+  async function changeNow(r: ListedRefusal) {
+    message = null;
+    if (!why.trim()) {
+      message = TEXT.rfWhyNeeded;
+      return;
+    }
+    const base = r.refusal as Record<string, unknown>;
+    let next: Record<string, unknown>;
+    if (action === "doubt") {
+      next = { ...base, state: "doubted", doubt: why.trim() };
+    } else if (action === "withdrawal") {
+      const at = heardAt ? new Date(heardAt) : null;
+      if (!noticedBy.trim() || !at || Number.isNaN(at.getTime())) {
+        message = TEXT.rfWithdrawalNeeded;
+        return;
+      }
+      // Kept as heard; no rule in force says it ends the refusal, so it is doubted (RF-5).
+      next = {
+        ...base,
+        state: "doubted",
+        doubt: why.trim(),
+        withdrawal: { how, noticed_by: noticedBy.trim(), at: at.toISOString() },
+      };
+    } else {
+      next = { ...base, state: "entered-in-error" };
+    }
+    const res = await call(
+      "PUT",
+      `/api/patients/${patientId}/treatment-refusals/${r.id}`,
+      { refusal: next, expected_version: r.version ?? 1, reason: why.trim() },
+    );
+    const common = commonProblem(res.status);
+    const body = res.body as { errors?: string[] } | null;
+    if (common) message = TEXT[common];
+    else if (res.status === 200) {
+      changing = null;
+      message = TEXT.rfSaved;
+      await onchange();
+    } else if (res.status === 409) {
+      changing = null;
+      message = TEXT.rfChanged;
+      await onchange();
+    } else if (res.status === 422 && body?.errors)
+      message = body.errors.join(" ");
+    else message = TEXT.error;
+  }
 
   function notKnownForTheRest() {
     if (lifeAtRisk === "") lifeAtRisk = "not-stated";
@@ -148,6 +230,60 @@
 <section aria-labelledby="refusals-h">
   <h2 id="refusals-h">{TEXT.rfTitle}</h2>
   <p role="note">{TEXT.rfIntro}</p>
+  {#if open.length > 0}
+    <h3>{TEXT.rfOnRecord}</h3>
+    <ul>
+      {#each open as r (r.id)}
+        <li>
+          <strong>{r.refusal.treatment}</strong>
+          · {(TEXT.emStates as Record<string, string>)[r.refusal.state]}
+          {#if r.from_merged_record}· {TEXT.refusalFromMerged}{/if}
+          <button type="button" onclick={() => startChange(r, "doubt")}>
+            {TEXT.rfDoubt}
+          </button>
+          <button type="button" onclick={() => startChange(r, "withdrawal")}>
+            {TEXT.rfHeard}
+          </button>
+          <button type="button" onclick={() => startChange(r, "error")}>
+            {TEXT.rfError}
+          </button>
+          {#if changing === r.id}
+            <form onsubmit={(e) => change(e, r)}>
+              {#if action === "withdrawal"}
+                <label for="rf-how">{TEXT.rfHow}</label>
+                <select id="rf-how" bind:value={how}>
+                  {#each ["spoken", "written", "conduct"] as h (h)}<option
+                      value={h}
+                    >
+                      {(TEXT.emHow as Record<string, string>)[h]}
+                    </option>{/each}
+                </select>
+                <label for="rf-noticed">{TEXT.rfNoticedBy}</label>
+                <input
+                  id="rf-noticed"
+                  bind:value={noticedBy}
+                  autocomplete="off"
+                />
+                <label for="rf-at">{TEXT.rfHeardAt}</label>
+                <input id="rf-at" type="datetime-local" bind:value={heardAt} />
+              {/if}
+              <label for="rf-why">
+                {action === "error" ? TEXT.rfErrorWhy : TEXT.rfDoubtWhy}
+              </label>
+              <input id="rf-why" bind:value={why} autocomplete="off" />
+              <button type="submit" disabled={busy.on}>
+                {TEXT.rfSaveChange}
+              </button>
+              <button type="button" onclick={() => (changing = null)}>
+                {TEXT.rfCancel}
+              </button>
+            </form>
+          {/if}
+        </li>
+      {/each}
+    </ul>
+  {/if}
+  <h3>{TEXT.rfNew}</h3>
   <form onsubmit={record}>
     <label for="rf-what">{TEXT.rfWhat}</label>
     <input id="rf-what" bind:value={treatment} autocomplete="off" />

@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-27 - Doubting a refusal of treatment, and a withdrawal heard, from the patient page (RF-7, unreviewed)
+
+- **Clinical risk:** yes, H-077 (a withdrawal lost, or taken to end a refusal with no rule): the screen now records a withdrawal that was heard, kept as heard and as doubted, never as ending the refusal. No row changes.
+- **Added:** in `RefusalSection.svelte`, the refusals that stand or are doubted, each with "Doubt it", "A withdrawal was heard" (how, who heard it, when) and "Entered in error". Each is the whole record with the change, from the version on screen, with why (required); a 409 says someone changed it and reloads; the API's refusal of a role is said (entered in error is a clinician's). A withdrawal's doubt starts with "No rule in force says it ends the refusal, so it is doubted until a clinician looks." English and Welsh; the Welsh is machine-written.
+- **Verified:** UI lint, type checks, vitest, Playwright (270, 1 new: why required, the exact body of a doubt, a withdrawal heard as doubted with who and when, a 409, a 403), `ci-local.sh --fast`. **Not done / not verified:** a doubted refusal cannot be set to stand again from the screen; nothing asks a clinician to look at a doubted one; no clinician has used it.
+
 ## 2026-11-27 - Recording a refusal of treatment from the patient page (RF-7, unreviewed)
 
 - **Clinical risk:** yes: a clinician records what a person refuses. H-076 and H-078 are what it serves; no row changes. **The wording is the author's and unreviewed**, and the form says so.
