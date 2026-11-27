@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-27 - Who speaks for them, on the patient page (RF-9, unreviewed)
+
+- **Clinical risk:** yes, H-083. Who speaks for the person gets a screen. A role the API lets read the entries sees each one: who they are and their name; a power seen, with which paper and who saw it, apart from one only claimed ("not a power"); a relative or friend with no power, whose word is a source; what the paper says it covers; and their view on each decision. The page says so where powers that were seen disagree about a decision, and where "nobody" is recorded beside someone who speaks. It does not decide who wins. The form asks for the paper for a role that can hold a power ("not seen" is an answer), and who saw it when it was seen; each view needs a decision and what they say. "Entered in error" is a new version with why. H-083's evidence and residual updated: entries are listed in the order recorded, which a reader may take for an order of who decides.
+- **Verified:** UI lint, type checks, vitest, Playwright (282, 1 new: two parents who disagree, a claimed power, a relative, axe, the unanswered named, the exact POST and PUT bodies), `ci-local.sh --fast`. **Not done:** what a power covers is not checked against the decision; a place's order of who may speak is not read from a pack; no lawyer or clinician has reviewed it; the Welsh is machine-written.
+
 ## 2026-11-27 - Whether they can make this decision, now, on the patient page (RF-8, unreviewed)
 
 - **Clinical risk:** yes, H-080. The judgements of whether a person can make one decision get a screen. A role the API lets read them sees each one with its decision, what the judge concluded, its age in words, who judged and why, and what it does not record (in the page's language). When the latest views of two people about one decision differ, the page says so and takes no side; there is no score and no verdict. The form names each unanswered question and asks for the help in words when "something else" is ticked; a judgement is never changed, and "Entered in error" asks why. H-080's evidence and residual updated: nothing marks a judgement too old to rely on.

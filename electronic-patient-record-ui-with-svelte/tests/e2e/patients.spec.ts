@@ -2926,6 +2926,125 @@ test("a record merged away says so everywhere and cannot be edited; the survivin
   await axe(page);
 });
 
+test("who speaks shows a power seen apart from one claimed, says where powers disagree, and records a parent with a view", async ({
+  page,
+}) => {
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, ANN),
+  );
+  const sent: { method: string; body: Json }[] = [];
+  const entry = (id: string, speaker: Record<string, unknown>) => ({
+    id,
+    version: 1,
+    state: "stands",
+    speaker: { views: [], ...speaker },
+    from_merged_record: false,
+  });
+  await page.route("**/api/proxy/api/patients/*/speakers**", (route) => {
+    const method = route.request().method();
+    if (method !== "GET") {
+      sent.push({ method, body: route.request().postDataJSON() });
+      return json(route, method === "POST" ? 201 : 200, {
+        id: "s9",
+        version: 2,
+      });
+    }
+    return json(route, 200, {
+      speakers: [
+        entry("s1", {
+          role: "parent",
+          name: "Mother",
+          paper: "original",
+          seen_by: "Nurse B",
+          views: [{ about: "surgery", says: "agrees" }],
+        }),
+        entry("s2", {
+          role: "parent",
+          name: "Father",
+          paper: "copy",
+          seen_by: "Nurse B",
+          views: [{ about: "surgery", says: "refuses" }],
+        }),
+        entry("s3", { role: "attorney", name: "Mr D", paper: "not-seen" }),
+        entry("s4", { role: "relative", name: "Aunt E" }),
+      ],
+      summary: {
+        powers_seen: ["s1", "s2"],
+        claimed_not_seen: ["s3"],
+        without_power: ["s4"],
+        nobody_recorded: false,
+        contradicts: false,
+        powers_disagree: ["surgery"],
+      },
+    });
+  });
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  const section = page.getByRole("region", { name: "Who speaks for them" });
+  await expect(section).toContainText(
+    "Powers that were seen disagree about: surgery",
+  );
+  const item = (who: string) =>
+    section.getByRole("listitem").filter({ hasText: who }).first();
+  await expect(item("Mother")).toContainText(
+    "power seen (the original) by Nurse B",
+  );
+  await expect(item("Father")).toContainText("surgery: refuses");
+  await expect(item("Mr D")).toContainText(
+    "power claimed, not seen: not a power",
+  );
+  await expect(item("Aunt E")).toContainText(
+    "no power: their word is a source",
+  );
+  await axe(page);
+
+  await section.getByLabel("Who they are").selectOption("parent");
+  await section.getByLabel("Their name").fill("Stepfather");
+  await section
+    .getByRole("button", { name: "Add their view on a decision" })
+    .click();
+  await section.getByRole("button", { name: "Record who speaks" }).click();
+  // A role that can hold a power needs its paper, not-seen being an answer; each view needs both halves.
+  await expect(section.getByRole("status")).toContainText(
+    "The paper that gives the power",
+  );
+  await expect(section.getByRole("status")).toContainText("The decision");
+  expect(sent).toHaveLength(0);
+  await section
+    .getByLabel("The paper that gives the power")
+    .selectOption("not-seen");
+  await section.getByLabel("The decision").fill("surgery");
+  await section.getByLabel("What they say").selectOption("undecided");
+  await section.getByRole("button", { name: "Record who speaks" }).click();
+  await expect(section.getByRole("status")).toHaveText("Recorded.");
+  expect(sent[0]).toEqual({
+    method: "POST",
+    body: {
+      speaker: {
+        role: "parent",
+        name: "Stepfather",
+        paper: "not-seen",
+        views: [{ about: "surgery", says: "undecided" }],
+      },
+    },
+  });
+  await item("Aunt E")
+    .getByRole("button", { name: "Entered in error" })
+    .click();
+  await section
+    .getByLabel(/^Why it was entered in error/)
+    .fill("not a relative");
+  await section.getByRole("button", { name: "Save the change" }).click();
+  expect(sent[1]).toEqual({
+    method: "PUT",
+    body: {
+      speaker: { role: "relative", name: "Aunt E", views: [] },
+      expected_version: 1,
+      state: "entered-in-error",
+      reason: "not a relative",
+    },
+  });
+});
+
 test("judgements of whether they can decide show their age, gaps and a dispute, and a new one names what is missing", async ({
   page,
 }) => {

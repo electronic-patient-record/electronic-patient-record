@@ -1123,6 +1123,48 @@ export const CY: Strings = {
   unmergeRefusals:
     "Cofnodwyd {n} gwrthodiad triniaeth ar y cofnod hwn ers yr uno. Cyn gwahanu'r cofnodion, rhaid i glinigwr edrych ar bob un: gall unrhyw un fod yn eiddo i'r person arall.",
   mergeRefusalsLooked: "Mae clinigwr wedi edrych ar bob un ohonynt",
+  wsTitle: "Pwy sy'n siarad ar eu rhan",
+  wsIntro:
+    "Pwy sy'n siarad dros y person pan na allant, ar gyfer penderfyniad. Nid oes dim yma'n penderfynu pwy sy'n ennill: dangosir pŵer fel un dim ond pan welodd rhywun ei bapur, ac mae gair perthynas yn ffynhonnell. Geiriad heb ei adolygu.",
+  wsUnreadable:
+    "Ni ellid darllen y cofnodion hyn. Nid yw hyn yn golygu nad oes rhai.",
+  wsContradicts:
+    "Cofnodir nad oes neb yn siarad ar eu rhan, wrth ochr rhywun sy'n gwneud: edrychwch ar bob cofnod.",
+  wsDisagree: "Mae pwerau a welwyd yn anghytuno am: {about}",
+  wsRecord: "Cofnodi pwy sy'n siarad",
+  wsRole: "Pwy ydynt",
+  wsRoleWords: {
+    attorney: "Atwrnai",
+    guardian: "Gwarcheidwad neu ddirprwy",
+    court: "Llys",
+    parent: "Rhiant",
+    relative: "Perthynas neu ffrind heb bŵer",
+    nobody: "Does neb yn siarad ar eu rhan",
+  },
+  wsName: "Eu henw",
+  wsPaper: "Y papur sy'n rhoi'r pŵer",
+  wsPaperWords: {
+    original: "y gwreiddiol",
+    copy: "copi",
+    register: "y gofrestr",
+    "not-seen": "heb ei weld",
+  },
+  wsSeen: "pŵer wedi'i weld ({paper}) gan {by}",
+  wsClaimed: "pŵer a hawliwyd, heb ei weld: nid yw'n bŵer",
+  wsNoPower: "dim pŵer: mae eu gair yn ffynhonnell",
+  wsSeenBy: "Pwy a welodd y papur: enw a rôl",
+  wsCoversLabel: "Beth mae'r papur yn dweud ei fod yn ei gwmpasu (dewisol)",
+  wsCovers: "yn cwmpasu",
+  wsView: "Eu barn {n}",
+  wsAbout: "Y penderfyniad",
+  wsSays: "Beth maent yn ei ddweud",
+  wsSaysWords: {
+    agrees: "yn cytuno",
+    refuses: "yn gwrthod",
+    undecided: "heb benderfynu",
+  },
+  wsAddView: "Ychwanegu eu barn ar benderfyniad",
+  wsSave: "Cofnodi pwy sy'n siarad",
   daTitle: "A allant wneud y penderfyniad hwn, nawr",
   daIntro:
     "Barn un person yw pob barn, am un penderfyniad, ar un adeg. Nid oes sgôr na dyfarniad; mae barn yn mynd yn hen, felly dangosir ei hoed, ac mae barn newydd yn farn newydd. Geiriad heb ei adolygu.",
