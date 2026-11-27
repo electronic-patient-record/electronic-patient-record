@@ -2926,6 +2926,56 @@ test("a record merged away says so everywhere and cannot be edited; the survivin
   await axe(page);
 });
 
+test("a merge stopped for refusals of treatment says how many, and goes on only once a clinician has looked at each", async ({
+  page,
+}) => {
+  const OLD = "44444444-4444-4444-8444-444444444444";
+  const sent: Json[] = [];
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, { ...ANN, replaced_by: null, replaces: [] }),
+  );
+  await page.route(`**/api/proxy/api/patients/${ANN.id}/merge`, (route) => {
+    const body = route.request().postDataJSON();
+    sent.push(body);
+    if (!body.refusals_seen) {
+      return json(route, 422, {
+        errors: ["a refusal of treatment has not been looked at"],
+        refusal: "refusals_not_seen",
+        refusals_unseen: ["r-1", "r-2"],
+      });
+    }
+    return json(route, 201, { id: "l1", version: 1, status: "active" });
+  });
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  await page.getByLabel(/^Id of the record/).fill(OLD);
+  await page
+    .getByLabel(/^Why are these the same person/)
+    .fill("duplicate registration");
+  await page
+    .getByRole("button", { name: "Merge into this record" })
+    .first()
+    .click();
+  const stop = page
+    .getByRole("alert")
+    .filter({ hasText: "refusal(s) of treatment" });
+  await expect(stop).toContainText("holds 2 refusal(s) of treatment");
+  await expect(stop).toContainText("ask a clinician");
+  const again = stop.getByRole("button", { name: "Merge into this record" });
+  await expect(again).toBeDisabled();
+  await axe(page);
+  await stop.getByLabel("A clinician has looked at each of them").check();
+  await again.click();
+  await expect(
+    page.getByText("Records merged into this one").or(page.getByRole("status")),
+  ).toBeVisible();
+  expect(sent[1]).toEqual({
+    source: OLD,
+    reason: "duplicate registration",
+    refusals_seen: ["r-1", "r-2"],
+  });
+});
+
 test("merging and unmerging send the reason, show the server's refusal, and reload", async ({
   page,
 }) => {

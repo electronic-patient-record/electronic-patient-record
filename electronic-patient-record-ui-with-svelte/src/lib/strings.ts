@@ -1062,6 +1062,11 @@ export const STRINGS = {
   photoPick: "Choose a file first.",
   photoTooBig: "That file is larger than 512 KiB.",
   photoWrongType: "The photo must be a PNG or a JPEG.",
+  mergeRefusals:
+    "The record to merge away holds {n} refusal(s) of treatment. Before they are shown with this one, a clinician must look at each: they may be another person's. You cannot read them; ask a clinician.",
+  unmergeRefusals:
+    "{n} refusal(s) of treatment were recorded on this record since the merge. Before the records are separated, a clinician must look at each: any may be the other person's.",
+  mergeRefusalsLooked: "A clinician has looked at each of them",
   rfOnRecord: "On record",
   rfStands: "It stands after all",
   rfStandsWhy: "Why the doubt is resolved (required)",

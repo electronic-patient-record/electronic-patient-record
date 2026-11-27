@@ -1117,6 +1117,11 @@ export const CY: Strings = {
   photoPick: "Dewiswch ffeil yn gyntaf.",
   photoTooBig: "Mae'r ffeil honno'n fwy na 512 KiB.",
   photoWrongType: "Rhaid i'r llun fod yn PNG neu'n JPEG.",
+  mergeRefusals:
+    "Mae'r cofnod i'w uno i ffwrdd yn dal {n} gwrthodiad triniaeth. Cyn iddynt gael eu dangos gyda'r un hwn, rhaid i glinigwr edrych ar bob un: gallant fod yn eiddo i berson arall. Ni allwch eu darllen; gofynnwch i glinigwr.",
+  unmergeRefusals:
+    "Cofnodwyd {n} gwrthodiad triniaeth ar y cofnod hwn ers yr uno. Cyn gwahanu'r cofnodion, rhaid i glinigwr edrych ar bob un: gall unrhyw un fod yn eiddo i'r person arall.",
+  mergeRefusalsLooked: "Mae clinigwr wedi edrych ar bob un ohonynt",
   rfOnRecord: "Ar gofnod",
   rfStands: "Mae'n sefyll wedi'r cyfan",
   rfStandsWhy: "Pam y datryswyd yr amheuaeth (angenrheidiol)",

@@ -24,6 +24,15 @@
 
   let source = $state("");
   let why = $state("");
+  // A merge or an unmerge the API stopped for refusals of treatment not yet looked at (RF-5): their ids, never their
+  // words (an administrator may not read them), and the request to send again once a person has looked at each.
+  let unseen = $state<{
+    path: "merge" | "unmerge";
+    sourceId: string;
+    done: string;
+    ids: string[];
+  } | null>(null);
+  let looked = $state(false);
   let message = $state<string | null>(null);
   let busy = $state(false);
 
@@ -31,6 +40,7 @@
     path: "merge" | "unmerge",
     sourceId: string,
     done: string,
+    refusalsSeen: string[] = [],
   ) {
     if (busy) return;
     message = null;
@@ -46,9 +56,11 @@
         conflict_codes?: ConflictCode[];
         refusal?: string;
         refusal_into?: string;
+        refusals_unseen?: string[];
       }>("POST", `/api/patients/${patientId}/${path}`, {
         source: sourceId.trim(),
         reason: why.trim(),
+        ...(refusalsSeen.length > 0 ? { refusals_seen: refusalsSeen } : {}),
       });
     } finally {
       busy = false;
@@ -58,9 +70,15 @@
     else if (res.status === 200 || res.status === 201) {
       message = done;
       source = why = "";
+      unseen = null;
+      looked = false;
       await onchange();
     } else if (res.status === 404) message = TEXT.notFound;
-    else if (res.status === 422 && res.body?.errors) {
+    else if (res.status === 422 && res.body?.refusal === "refusals_not_seen") {
+      unseen = { path, sourceId, done, ids: res.body.refusals_unseen ?? [] };
+      looked = false;
+      message = null;
+    } else if (res.status === 422 && res.body?.errors) {
       const locale = page.data.locale ?? DEFAULT_LOCALE;
       message =
         notSamePersonText(res.body.conflict_codes, locale) ??
@@ -101,5 +119,28 @@
   >
     {TEXT.mergeDo}
   </button>
+  {#if unseen}
+    <div role="alert">
+      <p>
+        {(unseen.path === "merge"
+          ? TEXT.mergeRefusals
+          : TEXT.unmergeRefusals
+        ).replace("{n}", String(unseen.ids.length))}
+      </p>
+      <label>
+        <input type="checkbox" bind:checked={looked} />
+        {TEXT.mergeRefusalsLooked}
+      </label>
+      <button
+        type="button"
+        disabled={busy || !looked}
+        onclick={() =>
+          unseen &&
+          void send(unseen.path, unseen.sourceId, unseen.done, unseen.ids)}
+      >
+        {unseen.path === "merge" ? TEXT.mergeDo : TEXT.mergeUndo}
+      </button>
+    </div>
+  {/if}
   {#if message}<p role="status">{message}</p>{/if}
 </section>
