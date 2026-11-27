@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-27 - The checked-arithmetic gate reads this tree only
+
+- **Clinical risk:** none.
+- **Fixed:** `scripts/check-checked-arithmetic.py` walked `.claude/`, where agent worktrees keep other checkouts of this repository, so `ci-local.sh --fast` failed on code that is not this tree's (an old worktree's `authz.rs`). `.claude` is skipped, as `target` and `node_modules` are. CI never had the directory, so it is unchanged.
+- **Verified:** the script exits 0, and `ci-local.sh --fast` passes every gate. **Not done:** the other scripts that walk the tree were not checked for the same, beyond `check-links.py` passing.
+
 ## 2026-11-27 - FHIR Patient search pages with Bundle.link next (R4 and R5)
 
 - **Clinical risk:** yes, small, H-006: an outside system reading FHIR can now reach patients past the first 50, a page at a time, filled past those a refusal of disclosure hides. No hazard row changes.

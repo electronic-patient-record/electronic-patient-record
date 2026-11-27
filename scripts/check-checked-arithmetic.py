@@ -17,7 +17,8 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SKIP_DIRS = {"target", "node_modules", ".git", "tests", "benches", "examples", "fuzz", "locales"}
+# `.claude` holds agent worktrees (other checkouts of this repository) and settings: never this tree's code.
+SKIP_DIRS = {"target", "node_modules", ".git", ".claude", "tests", "benches", "examples", "fuzz", "locales"}
 
 RULES = [
     ("RCA-INT-4/5", re.compile(r"\b(saturating|wrapping|overflowing)_\w+")),
