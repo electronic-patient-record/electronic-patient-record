@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-27 - Another session's locale pages and an audit came in with the previous commit
+
+- **What happened:** commit `e3e07526` took in 515 untracked files of another session by mistake (`locales/*` translated pages, `docs/audits/gpt-6-2-astra-high.md`); the user chose to keep them committed. The audit's three links were absolute paths on one machine, so the docs job failed; they are relative now.
+- **Clinical risk:** none. **Not verified:** the locale pages are machine-written and unreviewed, as before; nothing else in them was checked.
+
 ## 2026-11-27 - A doubted refusal of treatment can give a clinician a task (TL-3, RF-7; the rule is a draft)
 
 - **Clinical risk:** yes, H-077: a doubted refusal was shown, but nothing asked anyone to settle it. H-077's controls, evidence and residual updated; severity and likelihood unchanged.
