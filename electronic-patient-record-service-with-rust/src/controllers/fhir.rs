@@ -230,7 +230,8 @@ fn refuse_unknown(params: &HashMap<String, String>, known: &[&str]) -> Result<()
 /// FHIR search parameters as the store's criteria. An unknown parameter is refused, not ignored
 /// (`refuse_unknown`). A date prefix other than `eq` is refused rather than treated as exact.
 fn search_from(params: &HashMap<String, String>) -> Result<Search, String> {
-    refuse_unknown(params, &["family", "birthdate", "identifier"])?;
+    // `cursor` is this server's own: the next page of a search, from the `next` link it gave.
+    refuse_unknown(params, &["family", "birthdate", "identifier", "cursor"])?;
     let birth_date = match params.get("birthdate") {
         None => None,
         Some(v) => {
@@ -250,10 +251,19 @@ fn search_from(params: &HashMap<String, String>) -> Result<Search, String> {
     })
 }
 
-/// A `searchset` bundle of the patients.
+/// The path in a `Link: <path>; rel="next"` that `CursorPage` wrote, for `Bundle.link`.
+fn next_url(link: &axum::http::HeaderValue) -> Option<String> {
+    let text = link.to_str().ok()?;
+    let path = text.strip_prefix('<')?.split_once('>')?.0;
+    path.starts_with("/fhir/").then(|| path.to_string())
+}
+
+/// A `searchset` bundle of the patients. `next` is the URL of the next page, when more may follow; `total` is given only
+/// for a whole list on one page (`complete`), as a later page, or one that may be followed, does not know it.
 fn bundle(
     found: &[Stored],
-    limit: i64,
+    next: Option<&str>,
+    complete: bool,
     deaths: &HashMap<String, Answer>,
 ) -> Result<serde_json::Value, String> {
     let entries = found
@@ -275,8 +285,13 @@ fn bundle(
         "type": "searchset",
         "entry": entries,
     });
-    // At the limit there may be more: do not claim a total.
-    if i64::try_from(found.len()).is_ok_and(|n| n < limit) {
+    if let Some(url) = next {
+        crate::json::set(
+            &mut b,
+            "link",
+            serde_json::json!([{ "relation": "next", "url": url }]),
+        );
+    } else if complete {
         crate::json::set(&mut b, "total", serde_json::json!(found.len()));
     }
     Ok(b)
@@ -392,10 +407,10 @@ pub(super) async fn search_patients(
         Ok(s) => s,
         Err(m) => return outcome(StatusCode::BAD_REQUEST, "not-supported", &m),
     };
-    // One page, filled past what a refusal of disclosure hides; the Bundle has no next link yet.
-    let found =
+    // One page, filled past what a refusal of disclosure hides, with the next page as `Bundle.link`.
+    let (found, next) =
         match patients::search_service(&ctx, &agent, &subject, &headers, &search, &uri).await {
-            Ok((found, _next)) => found,
+            Ok((found, next)) => (found, next.as_ref().and_then(next_url)),
             Err(e) => return refusal(&e, false),
         };
     let mut deaths = HashMap::new();
@@ -408,7 +423,12 @@ pub(super) async fn search_patients(
             Err(e) => return internal(&e),
         }
     }
-    match bundle(&found, crate::patients_store::SEARCH_LIMIT, &deaths) {
+    match bundle(
+        &found,
+        next.as_deref(),
+        !params.contains_key("cursor"),
+        &deaths,
+    ) {
         Ok(b) => fhir(StatusCode::OK, &b, None),
         Err(e) => internal(&e),
     }
@@ -1058,6 +1078,7 @@ const NOTED_TYPES: [&str; 5] = [
 fn resource_notes(kind: &str) -> serde_json::Value {
     match kind {
         "Patient" => serde_json::json!({
+            "documentation": "A search answers a page of up to 50, filled past patients whose refusal of disclosure hides them from the caller. When more may follow, Bundle.link next carries a cursor that holds only for the same caller and purpose of use; total is given only for a whole list on one page.",
             "versioning": "versioned",
             "updateCreate": false,
             "conditionalCreate": false,
@@ -1438,7 +1459,7 @@ mod tests {
     #[tokio::test]
     async fn a_bundle_counts_only_when_it_may_be_complete() {
         let found = vec![stored("11111111-1111-4111-8111-111111111111", "Smith")];
-        let b = bundle(&found, 50, &HashMap::new()).unwrap();
+        let b = bundle(&found, None, true, &HashMap::new()).unwrap();
         assert_eq!(b["type"], "searchset");
         assert_eq!(b["total"], 1);
         assert_eq!(b["entry"][0]["resource"]["resourceType"], "Patient");
@@ -1446,13 +1467,39 @@ mod tests {
             b["entry"][0]["fullUrl"],
             "/fhir/R4/Patient/11111111-1111-4111-8111-111111111111"
         );
+        // More may follow: a next link, and no total.
+        let more = bundle(
+            &found,
+            Some("/fhir/R4/Patient?family=S&cursor=c1"),
+            true,
+            &HashMap::new(),
+        )
+        .unwrap();
+        assert!(more.get("total").is_none(), "more may follow");
+        assert_eq!(more["link"][0]["relation"], "next");
+        assert_eq!(
+            more["link"][0]["url"],
+            "/fhir/R4/Patient?family=S&cursor=c1"
+        );
+        // A later page does not know the total either.
         assert!(
-            bundle(&found, 1, &HashMap::new())
+            bundle(&found, None, false, &HashMap::new())
                 .unwrap()
                 .get("total")
                 .is_none(),
-            "at the limit there may be more"
+            "a later page does not know the total"
         );
+        // Only a path under /fhir/ is a next URL.
+        let link = |s: &str| axum::http::HeaderValue::from_str(s).unwrap();
+        assert_eq!(
+            next_url(&link("</fhir/R4/Patient?cursor=c1>; rel=\"next\"")).as_deref(),
+            Some("/fhir/R4/Patient?cursor=c1")
+        );
+        assert_eq!(
+            next_url(&link("</api/patients?cursor=c1>; rel=\"next\"")),
+            None
+        );
+        assert_eq!(next_url(&link("nonsense")), None);
     }
 
     #[tokio::test]

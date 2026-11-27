@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-27 - FHIR Patient search pages with Bundle.link next (R4 and R5)
+
+- **Clinical risk:** yes, small, H-006: an outside system reading FHIR can now reach patients past the first 50, a page at a time, filled past those a refusal of disclosure hides. No hazard row changes.
+- **Changed:** `GET /fhir/R4/Patient` and `/fhir/R5/Patient` accept `cursor`, this server's own parameter, and put the next page in `Bundle.link` (`relation: next`); `total` is given only for a whole list on one page, where before it was given for any page under 50. The R5 conversion lifts the links out before converting (the converter reports `Bundle.link.relation` as lossy, which would have answered 500 for any paged R5 search) and puts back `self` first, then `next`. The CapabilityStatement says how paging works.
+- **Verified:** unit tests (the bundle's next link and total, the R5 self and next links) and the database test (51 patients over two pages in R4 and R5, a carried cursor refused); every service and database test; `ci-local.sh --fast` (the one failure is the old worktree under `.claude/worktrees/fold`). **Not done / not verified:** no `_count`; the Java FHIR validator was not run on a paged bundle.
+
 ## 2026-11-27 - axa 0.24.1 and axa-test 0.15.1 (AX-19)
 
 - **Dependency:** `axa` 0.23.0 to 0.24.1 and `axa-test` 0.14.0 to 0.15.1, **inside the two-day cooldown, by the maintainer's exception (2026-11-27)**. Only those two lock entries moved. axa 0.24.1 asks for `axa-cursor-pagination` 0.1.4, already taken.

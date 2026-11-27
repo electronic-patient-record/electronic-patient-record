@@ -35,6 +35,15 @@ pub struct Lossy(pub String);
 pub fn to_r5(body: &serde_json::Value, request: &str) -> Result<serde_json::Value, Lossy> {
     let mut body = body.clone();
     retype(&mut body);
+    let searchset = crate::json::str_is(&body, "resourceType", "Bundle")
+        && crate::json::str_is(&body, "type", "searchset");
+    // A search set's links (`next`) are this server's own, written as R4 strings; R5 binds `relation` to a code list the
+    // converter will not map, so they are taken out, and put back as R5 below.
+    let paging = if searchset {
+        body.as_object_mut().and_then(|o| o.remove("link"))
+    } else {
+        None
+    };
     let converted = convert::between::<R4, R5>(&body);
     let tolerant = crate::json::str_is(&body, "resourceType", "OperationOutcome");
     if !tolerant && !converted.report.is_lossless() {
@@ -47,16 +56,19 @@ pub fn to_r5(body: &serde_json::Value, request: &str) -> Result<serde_json::Valu
     }
     let mut value = converted.value;
     rebase(&mut value);
-    // R5 requires a self link on a search set (bdl-18); R4 did not, so the R4 body has none.
-    if crate::json::str_is(&value, "resourceType", "Bundle")
-        && crate::json::str_is(&value, "type", "searchset")
-        && value.get("link").is_none()
-    {
-        crate::json::set(
-            &mut value,
-            "link",
-            serde_json::json!([{ "relation": "self", "url": request }]),
-        );
+    // R5 requires a self link on a search set (bdl-18); R4 did not, so the R4 body has none. The paging links follow it.
+    if searchset {
+        let mut links = vec![serde_json::json!({ "relation": "self", "url": request })];
+        if let Some(serde_json::Value::Array(old)) = paging {
+            links.extend(
+                old.into_iter().filter(|l| {
+                    !crate::json::str_is(l, "relation", "self") && l.get("url").is_some()
+                }),
+            );
+        }
+        let mut links = serde_json::Value::Array(links);
+        rebase(&mut links);
+        crate::json::set(&mut value, "link", links);
     }
     Ok(value)
 }
@@ -433,6 +445,17 @@ mod tests {
         let r5 = to_r5(&set, "/fhir/R5/Patient?family=Smith").unwrap();
         assert_eq!(r5["link"][0]["relation"], "self");
         assert_eq!(r5["link"][0]["url"], "/fhir/R5/Patient?family=Smith");
+        // A page with a next link still gets its self link, first, and keeps the next one.
+        let paged = json!({ "resourceType": "Bundle", "type": "searchset", "entry": [],
+            "link": [{ "relation": "next", "url": "/fhir/R5/Patient?family=Smith&cursor=c1" }] });
+        let r5 = to_r5(&paged, "/fhir/R5/Patient?family=Smith").unwrap();
+        assert_eq!(r5["link"][0]["relation"], "self");
+        assert_eq!(r5["link"][1]["relation"], "next");
+        assert_eq!(
+            r5["link"][1]["url"],
+            "/fhir/R5/Patient?family=Smith&cursor=c1"
+        );
+        assert_eq!(r5["link"].as_array().unwrap().len(), 2);
         let one = json!({ "resourceType": "Patient", "id": "p1" });
         assert!(
             to_r5(&one, "/fhir/R5/Patient/p1")

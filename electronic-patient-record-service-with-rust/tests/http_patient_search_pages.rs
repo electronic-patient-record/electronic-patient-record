@@ -125,6 +125,56 @@ async fn a_search_page_is_filled_past_who_is_hidden_and_its_next_link_is_the_cal
         let big = call(&doctor, format!("/api/patients?family={base}&limit=51"), None).await;
         assert_eq!(big.status_code(), StatusCode::BAD_REQUEST);
 
+        // FHIR R4 and R5: the same filled page, with the next page as Bundle.link, and no total until the end.
+        for (release, size) in [("R4", 3), ("R5", 3)] {
+            let first = call(&doctor, format!("/fhir/{release}/Patient?family={base}"), None).await;
+            assert_eq!(first.status_code(), StatusCode::OK, "{}", first.text());
+            let body = first.json::<Value>();
+            assert_eq!(body["entry"].as_array().unwrap().len(), size, "{release}");
+            assert_eq!(body["total"], size, "{release}: one whole page knows its total");
+            assert!(
+                !body["link"].as_array().into_iter().flatten().any(|l| l["relation"] == "next"),
+                "{release}: no next link at the end"
+            );
+            // A cursor carried from the REST list is refused: it was signed for another path.
+            let carried = call(&doctor, format!("/fhir/{release}/Patient?family={base}&cursor=AAAA"), None).await;
+            assert_eq!(carried.status_code(), StatusCode::BAD_REQUEST, "{release}");
+        }
+
+        // Fifty-one patients a page of fifty cannot hold: R4 and R5 give the first fifty and the next page as Bundle.link,
+        // and the next page has the last, no next link and no total.
+        let many = format!("sq{}", letters());
+        for i in 0..51 {
+            let made = call(&admin, "/api/patients".into(), Some(json!({
+                "patient": { "names": [{ "family": format!("{many}{i:02}"), "given": ["M"] }], "birth_date": "1961-01-01" },
+                "override_reason": "test setup"
+            }))).await;
+            assert_eq!(made.status_code(), StatusCode::CREATED, "{}", made.text());
+        }
+        for release in ["R4", "R5"] {
+            let first = call(&doctor, format!("/fhir/{release}/Patient?family={many}"), None).await;
+            assert_eq!(first.status_code(), StatusCode::OK, "{release}: {}", first.text());
+            let body = first.json::<Value>();
+            assert_eq!(body["entry"].as_array().unwrap().len(), 50, "{release}");
+            assert!(body.get("total").is_none(), "{release}: more follow, so no total");
+            let links = body["link"].as_array().unwrap();
+            let next = links.iter().find(|l| l["relation"] == "next").expect("a next link");
+            let url = next["url"].as_str().unwrap().to_string();
+            assert!(url.starts_with(&format!("/fhir/{release}/Patient?family={many}&cursor=")), "{url}");
+            if release == "R5" {
+                assert_eq!(links[0]["relation"], "self", "R5 keeps its self link first");
+            }
+            let second = call(&doctor, url, None).await;
+            assert_eq!(second.status_code(), StatusCode::OK, "{release}: {}", second.text());
+            let body = second.json::<Value>();
+            assert_eq!(body["entry"].as_array().unwrap().len(), 1, "{release}");
+            assert!(body.get("total").is_none(), "{release}: a later page does not know the total");
+            assert!(
+                !body["link"].as_array().into_iter().flatten().any(|l| l["relation"] == "next"),
+                "{release}: the list ended"
+            );
+        }
+
         // A page of the full size holds every patient the caller may see, and says no more follow. The refusal is for
         // treatment, so it hides the two from every caller searching for treatment, the administrator too.
         for who in [&doctor, &admin] {
