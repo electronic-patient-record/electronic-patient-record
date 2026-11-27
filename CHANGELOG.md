@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-27 - Asking now, and leaving against advice, on the patient page (RF-10, unreviewed)
+
+- **Clinical risk:** yes, H-081. The record of asking now (RF-10, with EC-6) gets a screen. A role the API lets read these records sees, on the patient page, each record with what was offered, refused and accepted, when and by whom, whether the person left against advice, and whether it is on a merged record. It also sees how many records say the person left against advice. "None recorded here" is shown for an empty list, and a list that could not be read says so in bold. The form asks every yes-or-no with "not known" as an answer and names the unanswered ones before anything is sent; one button marks the rest not known. A record is never changed; "Entered in error" asks why, and the API lets only a clinician do it. H-081's evidence and residual updated: that button makes "not known" by habit quicker, as on the refusal form.
+- **Verified:** UI lint, type checks, vitest, Playwright (278, 1 new: nothing sent with a question unanswered, the exact body, the count, axe, entered in error with the version and why), `ci-local.sh --fast`. **Not done:** the place's pack is not read, so nothing says what its form still needs (RF-3); no self-discharge flow (EC-6); no clinician has used it; the Welsh is machine-written.
+
 ## 2026-11-27 - The merge-stopped browser test asserts the one status, not any of three
 
 - **Fixed:** the test "a merge stopped for refusals of treatment…" ended on `getByText(…).or(getByRole("status"))`, which could match three elements and failed in CI in strict mode. It now waits for the merge section's own status to read "Merged.". **Clinical risk:** none; a test. Verified with 5 repeats of each refusal-of-treatment browser test on both themes.

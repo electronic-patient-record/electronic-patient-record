@@ -2926,6 +2926,91 @@ test("a record merged away says so everywhere and cannot be edited; the survivin
   await axe(page);
 });
 
+test("asking now is recorded with every question answered or not known, listed, and marked entered in error with why", async ({
+  page,
+}) => {
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, ANN),
+  );
+  const posts: { url: string; body: Json }[] = [];
+  let records: Record<string, unknown>[] = [];
+  await page.route("**/api/proxy/api/patients/*/asking-now**", (route) => {
+    const req = route.request();
+    if (req.method() === "POST") {
+      posts.push({ url: req.url(), body: req.postDataJSON() });
+      if (req.url().endsWith("/entered-in-error")) {
+        records = [{ ...records[0], version: 2, state: "entered-in-error" }];
+        return json(route, 200, records[0]);
+      }
+      records = [
+        {
+          id: "a1",
+          version: 1,
+          state: "recorded",
+          asked: req.postDataJSON().asked,
+          from_merged_record: false,
+        },
+      ];
+      return json(route, 201, records[0]);
+    }
+    return json(route, 200, {
+      records,
+      left_against_advice: records.filter((r) => r.state === "recorded").length,
+    });
+  });
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  const section = page.getByRole("region", {
+    name: "Asked now, or leaving against advice",
+  });
+  await expect(section).toContainText("None recorded here.");
+  await section
+    .getByLabel("What was offered")
+    .fill("admission for IV antibiotics");
+  await section.getByLabel("Refused", { exact: true }).fill("admission");
+  await section.getByLabel("Left, or leaving, against advice").check();
+  await section.getByLabel("When").fill("2026-11-27T10:30");
+  await section.getByLabel(/^Who asked/).fill("Dr A, registrar");
+  await section.getByRole("button", { name: "Record it" }).click();
+  // Nothing is sent with a question unanswered, and the unanswered are named.
+  await expect(section.getByRole("status")).toContainText("Risks explained");
+  expect(posts).toHaveLength(0);
+  await section.getByLabel("Risks explained").selectOption("yes");
+  await section.getByRole("button", { name: /^Mark every question/ }).click();
+  await section.getByRole("button", { name: "Record it" }).click();
+  await expect(section.getByRole("status")).toHaveText("Recorded.");
+  expect(posts[0].body).toEqual({
+    asked: {
+      offered: "admission for IV antibiotics",
+      explained: {
+        risks: "yes",
+        benefits: "not-known",
+        alternatives: "not-known",
+      },
+      refused: "admission",
+      told_may_change_mind: "not-known",
+      in_private: "not-known",
+      leaving_against_advice: true,
+      written: "not-known",
+      signed: "not-known",
+      witnessed: "not-known",
+      at: new Date("2026-11-27T10:30").toISOString(),
+      by: "Dr A, registrar",
+    },
+  });
+  await expect(section).toContainText("1 record(s) say the person left");
+  await axe(page);
+  await section.getByRole("button", { name: "Entered in error" }).click();
+  await section
+    .getByLabel(/^Why it was entered in error/)
+    .fill("wrong patient");
+  await section.getByRole("button", { name: "Save the change" }).click();
+  await expect(section.getByRole("listitem")).toContainText("entered in error");
+  expect(posts[1]).toEqual({
+    url: expect.stringContaining("/asking-now/a1/entered-in-error"),
+    body: { expected_version: 1, reason: "wrong patient" },
+  });
+});
+
 test("a merge stopped for refusals of treatment says how many, and goes on only once a clinician has looked at each", async ({
   page,
 }) => {
