@@ -6,6 +6,7 @@
   import AllergySection from "#lib/AllergySection.svelte";
   import ReferralsSection from "#lib/ReferralsSection.svelte";
   import WatchListSection from "#lib/WatchListSection.svelte";
+  import RefusalSection from "#lib/RefusalSection.svelte";
   import BreakGlassSection from "#lib/BreakGlassSection.svelte";
   import { siteWhenText } from "#lib/access-log.js";
   import { loadAllergies, type AllergyLoad } from "#lib/allergies.js";
@@ -421,6 +422,9 @@
           siteWhenText(glassUntil, stored.site_time_zone),
         )}
       </p>
+    {/if}
+    {#if refusals?.status === 200}
+      <RefusalSection patientId={stored.id} onchange={reloadRefusals} />
     {/if}
     {#if allergies?.status === 200 && allergies.data}
       <AllergySection

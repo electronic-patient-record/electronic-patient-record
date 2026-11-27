@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-27 - Recording a refusal of treatment from the patient page (RF-7, unreviewed)
+
+- **Clinical risk:** yes: a clinician records what a person refuses. H-076 and H-078 are what it serves; no row changes. **The wording is the author's and unreviewed**, and the form says so.
+- **Added:** `RefusalSection.svelte` on the patient page, shown to a role that may read refusals. It starts with what is refused in the person's words, then what they accept and when it applies; what kind, who said it (and a power seen, for a representative or a parent), even if life is at risk, the form and where the paper is, made and confirmed, and whether it may be another person's. Every yes-or-no has not known. **"Mark every question not yet answered as not known"** fills only what is still empty; the kind is never guessed, and who said it becomes "someone else, or not known". Nothing is sent while a question is unanswered, and the form names each. An idempotency key per refusal. The banner reloads after.
+- **Verified:** UI lint, type checks, vitest, Playwright (268, 1 new: the unanswered named and nothing sent, not known for the rest, the API's 422 shown, the exact body, the banner after, axe), `ci-local.sh --fast`. **Not done / not verified:** doubting or withdrawing one from the screen; one question at a time; finishing later; the pack's form gaps (no pack is read); no clinician has used it.
+
 ## 2026-11-27 - The emergency sheet for refusals of treatment (RF-7, unreviewed)
 
 - **Clinical risk:** yes: a page a clinician reads in an emergency. It serves H-075 to H-078; no row changes. **The wording is the author's and unreviewed**, and the page says so at the top.

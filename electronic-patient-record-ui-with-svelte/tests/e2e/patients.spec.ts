@@ -391,6 +391,112 @@ test("the emergency sheet shows each refusal of treatment in full, says none rec
   ).toHaveAttribute("href", `/en-001/patients/${ANN.id}/emergency`);
 });
 
+test("a refusal of treatment is recorded from the person's words, with not known for the rest and nothing guessed", async ({
+  page,
+}) => {
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, ANN),
+  );
+  let recorded = false;
+  const sent: Json[] = [];
+  await page.route(
+    "**/api/proxy/api/patients/*/treatment-refusals",
+    (route) => {
+      if (route.request().method() === "POST") {
+        sent.push(route.request().postDataJSON());
+        if (sent.length === 1)
+          return json(route, 422, {
+            errors: ["made_on must be YYYY, YYYY-MM or YYYY-MM-DD"],
+          });
+        recorded = true;
+        return json(route, 201, { id: "r1", version: 1 });
+      }
+      return json(
+        route,
+        200,
+        recorded
+          ? {
+              summary: { state: "recorded" },
+              refusals: [
+                {
+                  id: "r1",
+                  from_merged_record: false,
+                  refusal: {
+                    treatment: "blood products",
+                    state: "stands",
+                    identity: "certain",
+                  },
+                },
+              ],
+            }
+          : { refusals: [], summary: { state: "none-recorded" } },
+      );
+    },
+  );
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  const section = page.getByRole("region", {
+    name: "Record a refusal of treatment",
+  });
+  await expect(section).toBeVisible();
+  await axe(page);
+
+  // Nothing is sent while a question is unanswered, and the screen names each.
+  await section
+    .getByLabel(/What is refused, in their words/)
+    .fill("blood products");
+  await section.getByRole("button", { name: "Record the refusal" }).click();
+  await expect(section.getByRole("status")).toContainText(
+    "Answer, or mark as not known:",
+  );
+  await expect(section.getByRole("status")).toContainText(
+    "What kind of refusal",
+  );
+  expect(sent).toHaveLength(0);
+
+  // Not known for the rest fills only what is unanswered; the kind is never guessed.
+  await section.getByLabel(/^Who said it/).selectOption("patient");
+  await section
+    .getByRole("button", {
+      name: /Mark every question not yet answered as not known/,
+    })
+    .click();
+  await section.getByRole("button", { name: "Record the refusal" }).click();
+  await expect(section.getByRole("status")).toContainText(
+    "What kind of refusal",
+  );
+  expect(sent).toHaveLength(0);
+  await section.getByLabel(/^What kind of refusal/).selectOption("spoken-now");
+  await section.getByLabel(/^Made on/).fill("last spring");
+  await section.getByRole("button", { name: "Record the refusal" }).click();
+  // The API's reason is shown as it says it.
+  await expect(section.getByRole("status")).toHaveText(
+    "made_on must be YYYY, YYYY-MM or YYYY-MM-DD",
+  );
+  await section.getByLabel(/^Made on/).fill("");
+  await section.getByRole("button", { name: "Record the refusal" }).click();
+  await expect(section.getByRole("status")).toHaveText("Recorded.");
+  expect(sent[1]).toEqual({
+    refusal: {
+      kind: "spoken-now",
+      treatment: "blood products",
+      if_life_at_risk: "not-stated",
+      form: {
+        written: "not-known",
+        signed: "not-known",
+        witnessed: "not-known",
+        seen: "not-seen",
+      },
+      said_by: "patient",
+      identity: "certain",
+      state: "stands",
+    },
+  });
+  // The banner follows.
+  await expect(
+    page.getByRole("region", { name: "Patient banner" }).locator(".refusals"),
+  ).toContainText("blood products");
+});
+
 test("a search with no match says so; a refusal is announced", async ({
   page,
 }) => {

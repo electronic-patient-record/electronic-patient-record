@@ -1117,6 +1117,22 @@ export const CY: Strings = {
   photoPick: "Dewiswch ffeil yn gyntaf.",
   photoTooBig: "Mae'r ffeil honno'n fwy na 512 KiB.",
   photoWrongType: "Rhaid i'r llun fod yn PNG neu'n JPEG.",
+  rfTitle: "Cofnodi gwrthod triniaeth",
+  rfIntro:
+    "Geiriad heb ei adolygu. Dechreuwch gyda geiriau'r person ei hun. Dewiswch ddim yn hysbys lle nad yw'n hysbys; ni chaiff byth ei ddyfalu. Mae hyn yn cofnodi'r hyn a ddywedwyd, nid a yw'r gwrthodiad yn berthnasol.",
+  rfWhat: "Beth a wrthodir, yn eu geiriau (angenrheidiol)",
+  rfKind: "Pa fath o wrthodiad (angenrheidiol)",
+  rfSaidBy: "Pwy a'i dywedodd (angenrheidiol)",
+  rfChoose: "Dewiswch…",
+  rfMadeOn:
+    "Wedi'i wneud ar (BBBB, BBBB-MM neu BBBB-MM-DD; gadewch yn wag os nad yw'n hysbys)",
+  rfConfirmedOn: "Cadarnhawyd ddiwethaf ar (gadewch yn wag os nad yw'n hysbys)",
+  rfUncertain:
+    "Gall fod yn eiddo i berson arall (cerdyn a ganfuwyd gyda rhywun, hunaniaeth dros dro)",
+  rfNotKnownRest: "Marcio pob cwestiwn heb ei ateb fel ddim yn hysbys",
+  rfRecord: "Cofnodi'r gwrthodiad",
+  rfUnanswered: "Atebwch, neu marciwch fel ddim yn hysbys: {fields}.",
+  rfSaved: "Wedi'i gofnodi.",
   emOpen: "Agor y daflen argyfwng (gwrthod triniaeth)",
   emTitle: "Taflen argyfwng: gwrthod triniaeth",
   emUnreviewed:

@@ -1062,6 +1062,21 @@ export const STRINGS = {
   photoPick: "Choose a file first.",
   photoTooBig: "That file is larger than 512 KiB.",
   photoWrongType: "The photo must be a PNG or a JPEG.",
+  rfTitle: "Record a refusal of treatment",
+  rfIntro:
+    "Unreviewed wording. Start with the person's own words. Choose not known wherever it is not known; it is never guessed. This records what was said, not whether the refusal applies.",
+  rfWhat: "What is refused, in their words (required)",
+  rfKind: "What kind of refusal (required)",
+  rfSaidBy: "Who said it (required)",
+  rfChoose: "Choose…",
+  rfMadeOn: "Made on (YYYY, YYYY-MM or YYYY-MM-DD; leave empty if not known)",
+  rfConfirmedOn: "Last confirmed on (leave empty if not known)",
+  rfUncertain:
+    "It may be another person's (a card found with someone, a temporary identity)",
+  rfNotKnownRest: "Mark every question not yet answered as not known",
+  rfRecord: "Record the refusal",
+  rfUnanswered: "Answer, or mark as not known: {fields}.",
+  rfSaved: "Recorded.",
   emOpen: "Open the emergency sheet (refusals of treatment)",
   emTitle: "Emergency sheet: refusals of treatment",
   emUnreviewed:
