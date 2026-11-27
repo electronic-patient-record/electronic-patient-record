@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-27 - axa-cursor-pagination 0.1.4: patient search fills its page past who is hidden
+
+- **Dependency:** `axa-cursor-pagination` 0.1.3 to 0.1.4 (through `axa` 0.23), **inside the two-day cooldown, by the maintainer's exception (2026-11-27)**. Only its lock entry changed: `cargo update -p` also moved `windows-sys` from 0.61.2 to 0.52.0 in four places, which was not taken (the lock with only this entry changed passes `--locked`).
+- **Clinical risk:** yes, small, H-006. Patient search fetched 50 and dropped those whose refusal of disclosure hides them from the caller, so a short page said that someone was hidden. It now fills its page past them (`CursorPage::fill`, up to 500 rows read a request) and gives `Link: rel="next"`; a page that spent the budget may still be short, which says only that rows were skipped, and a page that skipped many answers more slowly, which a careful caller could notice. No hazard row changes.
+- **Added:** `cursor.rs` (`EPR_CURSOR_KEY`, hex, at least 32 bytes, checked at start; without it a random key per process, so a cursor is refused after a restart or by another replica); `limit` (1 to 50) and `cursor` on `GET /api/patients`; a cursor holds only for the caller and purpose of use. The body is unchanged; the audit row adds `next`, and `hidden_by_consent` now counts hidden rows read, which a next page may read again. The FHIR R4 and R5 searches fill their one page the same way and have no next link yet.
+- **Verified:** fmt, clippy, docs, every service and domain test and every database test on a throwaway Postgres 18, with a new one (`http_patient_search_pages`: a page of two is two who may be seen; the next link is the caller's; a forged cursor, another caller's and a page over 50 are 400). **Not done / not verified:** the UI does not follow the link yet (it shows the first 50, as before); no FHIR `Bundle.link` next; the other lists that drop rows (entries with labels) are not paginated and were left as they are; nothing measures the timing difference.
+
 ## 2026-11-26 - A declined refusal of disclosure, as a library (DR-10)
 
 - **Clinical risk:** none yet: nothing stores or shows one, and no hazard row changes.

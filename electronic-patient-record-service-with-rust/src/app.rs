@@ -281,6 +281,7 @@ impl App {
         // The break-glass review deadline and the late-entry limit: a wrong value stops the service (RCA-IN-4).
         crate::break_glass::check_settings().map_err(Error::Message)?;
         crate::disclosure_pack::check_settings().map_err(Error::Message)?;
+        crate::cursor::check_settings().map_err(Error::Message)?;
         crate::observations_store::check_settings().map_err(Error::Message)?;
         // The MLLP listener for HL7 v2 ADT feeds is off unless `EPR_MLLP_BIND` is set. A bad
         // setting, or a port that cannot be opened, stops the service starting: a feed that was

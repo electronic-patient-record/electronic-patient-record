@@ -199,7 +199,15 @@ async fn search_patients(
         return refused;
     }
     derive(
-        r4::search_patients(state, agent, subject, headers, params).await,
+        r4::search_patients(
+            state,
+            agent,
+            subject,
+            headers,
+            OriginalUri(uri.clone()),
+            params,
+        )
+        .await,
         &request_of(&uri),
     )
     .await

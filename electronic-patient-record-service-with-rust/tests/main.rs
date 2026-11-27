@@ -125,6 +125,8 @@ mod http_lockout;
 mod http_observations;
 #[path = "http_overdue_reviews.rs"]
 mod http_overdue_reviews;
+#[path = "http_patient_search_pages.rs"]
+mod http_patient_search_pages;
 #[path = "http_patients.rs"]
 mod http_patients;
 #[path = "http_permission_basis.rs"]

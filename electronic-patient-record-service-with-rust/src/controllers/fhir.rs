@@ -385,16 +385,19 @@ pub(super) async fn search_patients(
     Extension(agent): Extension<Agent>,
     Extension(subject): Extension<Subject>,
     headers: HeaderMap,
+    axum::extract::OriginalUri(uri): axum::extract::OriginalUri,
     Query(params): Query<HashMap<String, String>>,
 ) -> Response {
     let search = match search_from(&params) {
         Ok(s) => s,
         Err(m) => return outcome(StatusCode::BAD_REQUEST, "not-supported", &m),
     };
-    let found = match patients::search_service(&ctx, &agent, &subject, &headers, &search).await {
-        Ok(found) => found,
-        Err(e) => return refusal(&e, false),
-    };
+    // One page, filled past what a refusal of disclosure hides; the Bundle has no next link yet.
+    let found =
+        match patients::search_service(&ctx, &agent, &subject, &headers, &search, &uri).await {
+            Ok((found, _next)) => found,
+            Err(e) => return refusal(&e, false),
+        };
     let mut deaths = HashMap::new();
     for s in &found {
         match death_of(&ctx, &subject, &s.id).await {

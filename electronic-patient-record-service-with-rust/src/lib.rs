@@ -31,6 +31,7 @@ pub use electronic_patient_record_domain::clock;
 pub use electronic_patient_record_domain::coding;
 pub use electronic_patient_record_domain::consent;
 pub mod consents_store;
+pub mod cursor;
 pub use electronic_patient_record_domain::treatment_refusal;
 pub mod controllers;
 pub mod treatment_refusals_store;

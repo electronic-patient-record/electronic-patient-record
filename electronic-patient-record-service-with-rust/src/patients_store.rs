@@ -529,6 +529,21 @@ fn like_prefix(s: &str) -> String {
 ///
 /// [`StoreError::Db`] on a database failure, or when `identifier` is not `system|value`.
 pub async fn search(db: &PgPool, q: &Search) -> Result<Vec<Stored>, StoreError> {
+    search_page(db, q, SEARCH_LIMIT, 0).await
+}
+
+/// [`search`], `limit` rows from `offset` in the same order (family name, then id, which is unique, so the order is
+/// stable), for [`crate::cursor`]'s pages.
+///
+/// # Errors
+///
+/// As [`search`].
+pub async fn search_page(
+    db: &PgPool,
+    q: &Search,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<Stored>, StoreError> {
     let family = q.family.as_deref().map(str::trim).filter(|s| !s.is_empty());
     let birth = q
         .birth_date
@@ -560,12 +575,14 @@ pub async fn search(db: &PgPool, q: &Search) -> Result<Vec<Stored>, StoreError> 
                    AND drill = $4
                    AND {NOT_MERGED_AWAY}
                  ORDER BY lower(body->'names'->0->>'family'), patient_id
-                 LIMIT {SEARCH_LIMIT}"
+                 LIMIT $5 OFFSET $6"
     )))
     .bind(family.map(like_prefix))
     .bind(birth.map(str::to_string))
     .bind(identifier)
     .bind(q.drill)
+    .bind(limit)
+    .bind(offset)
     .fetch_all(db)
     .await
     .map_err(db_err)?;

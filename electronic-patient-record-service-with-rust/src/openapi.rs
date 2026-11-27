@@ -187,6 +187,7 @@ fn identity_schemas() -> Value {
         },
         "PatientSearchResults": {
             "type": "object", "required": ["results", "limit"],
+            "description": "One page, filled past patients whose refusal of disclosure hides them from the caller, so that a short page does not say how many were hidden. limit (1 to 50) and cursor are query parameters; Link: rel=\"next\" names the next page when more may follow, holds only for the same caller and purpose of use, and a cursor from anywhere else is a 400. There is no total.",
             "properties": {
                 "results": {"type": "array", "items": {"$ref": "#/components/schemas/Stored"}},
                 "limit": {"type": "integer", "description": "The most results returned."}
@@ -2923,7 +2924,14 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
         "GET",
         "/api/patients",
         "PatientSearchResults",
-        &["family", "birth_date", "identifier", "drill"],
+        &[
+            "family",
+            "birth_date",
+            "identifier",
+            "drill",
+            "limit",
+            "cursor",
+        ],
     ),
 ];
 

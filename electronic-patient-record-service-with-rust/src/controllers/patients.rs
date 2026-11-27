@@ -545,21 +545,25 @@ pub(super) async fn update(
     }
 }
 
-/// The search behind `GET /api/patients`, shared with the FHIR route: authorise the search, run it, drop what a
-/// patient's consent refuses this subject, and audit which criteria were used and how many matched, not their values.
-/// A result hidden by consent is not counted in the response; the audit row says how many there were.
+/// The search behind `GET /api/patients`, shared with the FHIR route: authorise the search, then fill a page of up to
+/// the search limit with what a patient's refusal of disclosure lets this subject see, reading on in batches past what it
+/// hides (`CursorPage::fill`, up to [`crate::cursor::SEARCH_MAX_SCAN`] rows), so that a short page does not say how
+/// many were hidden. Audit which criteria were used, how many were returned and how many hidden ones were read, not
+/// their values. `uri` is the request's, for the page's `limit` and `cursor` and its next link, which holds only for
+/// this subject and purpose.
 ///
 /// # Errors
 ///
-/// An `ApiError`: 403 for a refused decision, 400 for a search with none of `family`, `birth_date` or `identifier`, or
-/// 500 for a failed audit write.
+/// An `ApiError`: 403 for a refused decision, 400 for a search with none of `family`, `birth_date` or `identifier`, or a
+/// bad `limit` or `cursor`, or 500 for a failed audit write.
 pub(super) async fn search_service(
     ctx: &AppContext,
     agent: &Agent,
     subject: &Subject,
     headers: &HeaderMap,
     query: &Search,
-) -> Result<Vec<store::Stored>, ApiError> {
+    uri: &axum::http::Uri,
+) -> Result<(Vec<store::Stored>, Option<axum::http::HeaderValue>), ApiError> {
     let purpose = match purpose_of(headers) {
         Ok(p) => p,
         Err(r) => return Err(r),
@@ -580,72 +584,97 @@ pub(super) async fn search_service(
             "give at least one of family, birth_date, identifier",
         ));
     }
-    match store::search(&ctx.pool(), query).await {
-        Ok(mut found) => {
-            // Drop what the patient's consent refuses this subject. A hidden result is not
-            // counted in the response; the audit row says how many there were.
-            let ids: Vec<String> = found.iter().map(|s| s.id.clone()).collect();
-            let verdicts = match consent_verdicts(
-                &ctx.pool(),
-                subject,
-                purpose,
-                Resource::PatientIdentity,
-                &ids,
-            )
+    let key = crate::cursor::key().map_err(|e| {
+        tracing::error!(error = %e, "the cursor key is wrong");
+        ApiError::internal()
+    })?;
+    let page = axa::cursor_pagination::CursorPage::new_in(
+        &key,
+        crate::cursor::SEARCH_LIMITS,
+        uri,
+        &crate::cursor::context(&agent.0, purpose),
+    )
+    .map_err(|e| ApiError::bad_request(e.to_string()))?;
+    let pool = ctx.pool();
+    let hidden = std::sync::atomic::AtomicUsize::new(0);
+    // Each batch with whether the patient's refusal of disclosure hides them from this subject.
+    let fetch = async |limit: i64, offset: i64| -> Result<Vec<(store::Stored, bool)>, ApiError> {
+        let rows = store::search_page(&pool, query, limit, offset)
             .await
-            {
-                Ok(v) => v,
-                Err(r) => return Err(r),
-            };
-            let before = found.len();
-            found.retain(|s| {
-                verdicts
-                    .get(&s.id.to_lowercase())
-                    .is_none_or(|v| v.consent != Consent::Deny)
-            });
-            let hidden_by_consent = before.abs_diff(found.len()); // only `retain`ed away, so never more than `before`
-            // The criteria are demographics, so only which kinds were used and how many matched.
-            let used: Vec<&str> = [
-                ("family", &query.family),
-                ("birth_date", &query.birth_date),
-                ("identifier", &query.identifier),
-            ]
+            .map_err(|e| ApiError::from(&e))?;
+        let ids: Vec<String> = rows.iter().map(|s| s.id.clone()).collect();
+        let verdicts =
+            consent_verdicts(&pool, subject, purpose, Resource::PatientIdentity, &ids).await?;
+        Ok(rows
             .into_iter()
-            .filter(|(_, v)| v.as_deref().is_some_and(|s| !s.trim().is_empty()))
-            .map(|(k, _)| k)
-            .collect();
-            audit_access(
-                &ctx.pool(),
-                agent,
-                Action::Read,
-                0,
-                purpose,
-                None,
-                serde_json::json!({
-                    "search": used,
-                    "results": found.len(),
-                    "hidden_by_consent": hidden_by_consent,
-                }),
-            )
-            .await?;
-            Ok(found)
-        }
-        Err(e) => Err(ApiError::from(&e)),
-    }
+            .map(|s| {
+                let refused = verdicts
+                    .get(&s.id.to_lowercase())
+                    .is_some_and(|v| v.consent == Consent::Deny);
+                (s, refused)
+            })
+            .collect())
+    };
+    let filled = page
+        .fill(crate::cursor::SEARCH_MAX_SCAN, fetch, |(_, refused)| {
+            if *refused {
+                hidden.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            }
+            !refused
+        })
+        .await?;
+    let found: Vec<store::Stored> = filled.rows.into_iter().map(|(s, _)| s).collect();
+    // The criteria are demographics, so only which kinds were used and how many matched.
+    let used: Vec<&str> = [
+        ("family", &query.family),
+        ("birth_date", &query.birth_date),
+        ("identifier", &query.identifier),
+    ]
+    .into_iter()
+    .filter(|(_, v)| v.as_deref().is_some_and(|s| !s.trim().is_empty()))
+    .map(|(k, _)| k)
+    .collect();
+    audit_access(
+        &pool,
+        agent,
+        Action::Read,
+        0,
+        purpose,
+        None,
+        serde_json::json!({
+            "search": used,
+            "results": found.len(),
+            // Hidden rows this request read, some perhaps read again by the next page: a count of reads, not of people.
+            "hidden_by_consent": hidden.load(std::sync::atomic::Ordering::Relaxed),
+            "next": filled.next.is_some(),
+        }),
+    )
+    .await?;
+    Ok((found, filled.next))
 }
 
-/// `GET /api/patients`: search current versions by `family`, `birth_date` or `identifier`, up to the search limit. See
-/// [`search_service`].
+/// `GET /api/patients`: search current versions by `family`, `birth_date` or `identifier`, a page at a time of up to
+/// the search limit (`limit`, `cursor`), with `Link: rel="next"` when more may follow. See [`search_service`].
 pub(super) async fn search(
     State(ctx): State<AppContext>,
     Extension(agent): Extension<Agent>,
     Extension(subject): Extension<Subject>,
     headers: HeaderMap,
+    axum::extract::OriginalUri(uri): axum::extract::OriginalUri,
     Query(query): Query<Search>,
 ) -> Response {
-    match search_service(&ctx, &agent, &subject, &headers, &query).await {
-        Ok(found) => Json(serde_json::json!({"results": found, "limit": store::SEARCH_LIMIT}))
-            .into_response(),
+    match search_service(&ctx, &agent, &subject, &headers, &query, &uri).await {
+        Ok((found, next)) => {
+            let mut response =
+                Json(serde_json::json!({"results": found, "limit": store::SEARCH_LIMIT}))
+                    .into_response();
+            if let Some(link) = next {
+                response
+                    .headers_mut()
+                    .insert(axum::http::header::LINK, link);
+            }
+            response
+        }
         Err(e) => e.into_response(),
     }
 }

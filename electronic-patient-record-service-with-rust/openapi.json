@@ -3697,6 +3697,7 @@
         "type": "object"
       },
       "PatientSearchResults": {
+        "description": "One page, filled past patients whose refusal of disclosure hides them from the caller, so that a short page does not say how many were hidden. limit (1 to 50) and cursor are query parameters; Link: rel=\"next\" names the next page when more may follow, holds only for the same caller and purpose of use, and a cursor from anywhere else is a 400. There is no total.",
         "properties": {
           "limit": {
             "description": "The most results returned.",
@@ -10042,6 +10043,22 @@
             "required": false,
             "schema": {
               "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
             }
           }
         ],
