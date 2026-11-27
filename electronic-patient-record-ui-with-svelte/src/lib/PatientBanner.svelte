@@ -17,6 +17,7 @@
   import { fetchBlob } from "./api.js";
   import { bannerDeath, type DeathLoad } from "./death.js";
   import { bannerAdjustments, type AdjustmentLoad } from "./adjustments.js";
+  import { bannerRefusals, type RefusalLoad } from "./treatment-refusals.js";
   import { TEXT } from "./i18n.js";
 
   // `purpose` is the purpose of use the photo is fetched under: "my record" passes
@@ -28,6 +29,7 @@
     allergies = null,
     death = null,
     adjustments = null,
+    refusals = null,
   }: {
     stored: Stored;
     today?: Date;
@@ -39,7 +41,10 @@
     death?: DeathLoad | null;
     // What the adjustment call returned. Staff pages pass it; a patient's own view does not ask.
     adjustments?: AdjustmentLoad | null;
+    // What the refusal-of-treatment call returned (RF-7). Staff pages pass it; a patient's own view does not ask.
+    refusals?: RefusalLoad | null;
   } = $props();
+  const refusalLine = $derived(bannerRefusals(refusals));
   const deathLine = $derived(bannerDeath(death));
   const needsLine = $derived(bannerAdjustments(adjustments));
   const allergyLine = $derived(
@@ -80,6 +85,8 @@
   const firstSentence = (text: string) => text.split(/[.。।]\s/)[0] ?? text;
   const strip = $derived({
     allergies: stripAllergies(allergies, stored.site_time_zone),
+    // A refusal stays in sight, as allergies do; so does a list that could not be read.
+    refusals: refusalLine.show && refusalLine.loud ? refusalLine : null,
     flags: [
       ...(stored.drill ? [firstSentence(TEXT.bannerDrill)] : []),
       ...(deathLine.kind === "asserted" ? [deathLine.head] : []),
@@ -174,6 +181,11 @@
   <p class="allergies" class:high={allergyLine.high}>
     {TEXT.bannerAllergies}: {allergyLine.text}
   </p>
+  {#if refusalLine.show}
+    <p class="refusals" class:high={refusalLine.loud}>
+      {TEXT.bannerRefusals}: {refusalLine.text}
+    </p>
+  {/if}
 </section>
 
 <div class="banner-strip" aria-hidden="true" bind:offsetHeight={stripHeight}>
@@ -192,4 +204,9 @@
   <p class="allergies" class:high={strip.allergies.high}>
     {TEXT.bannerAllergies}: {strip.allergies.text}
   </p>
+  {#if strip.refusals}
+    <p class="refusals high">
+      {TEXT.bannerRefusals}: {strip.refusals.text}
+    </p>
+  {/if}
 </div>

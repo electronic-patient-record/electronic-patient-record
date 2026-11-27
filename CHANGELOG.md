@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-27 - The patient banner names a refusal of treatment (RF-7, first slice, unreviewed)
+
+- **Clinical risk:** yes: what a clinician sees on every patient page. H-076's controls and evidence updated; no new row. **The wording is the author's and unreviewed**, and says so on the banner.
+- **Added:** the banner and the summary page read `/api/patients/{id}/treatment-refusals` once (with the wrong-patient guard) and say "Refusal of treatment recorded (wording unreviewed): …" with each refusal that stands, then each doubted, in the record's words, marked doubted, may be another person's, or on a merged record. None recorded is "none recorded here. This does not mean there are none."; all withdrawn says so; a list that could not be read is louder than an empty one ("Treat refusals as not known, not as none."). A refusal, or an unreadable list, stays in the small-screen strip; none recorded does not. A role that may not read refusals (403) is shown no line. English and Welsh; the Welsh is machine-written.
+- **Verified:** UI lint, type checks, vitest (3 new), Playwright (264, 1 new; the small-screen test now answers the call as the API would for a record with none), `ci-local.sh --fast`. **Not done / not verified:** no emergency sheet, printing or downtime extract; no clinician has seen or timed it; a screen reader and 400% zoom were checked only by the existing automated tests; the strip with a long refusal on a small screen is not measured.
+
 ## 2026-11-27 - Who speaks for a person is stored and served (RF-9)
 
 - **Clinical risk:** yes. New hazard H-083 (someone taken to speak when they may not, or someone who may missed), `open`, severity and likelihood the author's proposal.

@@ -1062,6 +1062,15 @@ export const STRINGS = {
   photoPick: "Choose a file first.",
   photoTooBig: "That file is larger than 512 KiB.",
   photoWrongType: "The photo must be a PNG or a JPEG.",
+  bannerRefusals: "Refusal of treatment recorded (wording unreviewed)",
+  refusalChecking: "checking…",
+  refusalLoadFailed:
+    "could not be read. Treat refusals as not known, not as none.",
+  refusalNoneRecorded: "none recorded here. This does not mean there are none.",
+  refusalAllWithdrawn: "all withdrawn",
+  refusalDoubted: "doubted",
+  refusalIdentityUncertain: "may be another person's",
+  refusalFromMerged: "on a merged record",
   bannerAllergies: "Allergies",
   bannerAllergiesUnknown:
     "Not recorded in this system. This does not mean there are none.",

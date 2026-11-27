@@ -11,6 +11,7 @@
   } from "#lib/allergies.js";
   import { loadDeath, type DeathLoad } from "#lib/death.js";
   import { loadAdjustments, type AdjustmentLoad } from "#lib/adjustments.js";
+  import { loadRefusals, type RefusalLoad } from "#lib/treatment-refusals.js";
   import PatientBanner from "#lib/PatientBanner.svelte";
   import type { Stored } from "#lib/patient.js";
   import { latestReadings } from "#lib/summary.js";
@@ -33,6 +34,7 @@
   let vitals = $state<VitalsLoad | null>(null);
   let death = $state<DeathLoad | null>(null);
   let adjustments = $state<AdjustmentLoad | null>(null);
+  let refusals = $state<RefusalLoad | null>(null);
   let loading = $state(true);
   let message = $state<string | null>(null);
 
@@ -48,6 +50,7 @@
     vitals = null;
     death = null;
     adjustments = null;
+    refusals = null;
     message = null;
     loading = true;
     const res = await call<Stored>("GET", `/api/patients/${forId}`);
@@ -59,17 +62,19 @@
     else if (res.status !== 200) message = TEXT.error;
     else {
       stored = res.body;
-      const [a, v, d, n] = await Promise.all([
+      const [a, v, d, n, r] = await Promise.all([
         loadAllergies(forId),
         loadObservations(forId),
         loadDeath(forId),
         loadAdjustments(forId),
+        loadRefusals(forId),
       ]);
       if (mine !== ticket) return;
       allergies = a;
       vitals = v;
       death = d;
       adjustments = n;
+      refusals = r;
     }
   }
 
@@ -99,7 +104,7 @@
 {/if}
 
 {#if stored}
-  <PatientBanner {stored} {allergies} {death} {adjustments} />
+  <PatientBanner {stored} {allergies} {death} {adjustments} {refusals} />
 
   <section aria-labelledby="sum-allergies-h">
     <h2 id="sum-allergies-h">{TEXT.summaryAllergies}</h2>

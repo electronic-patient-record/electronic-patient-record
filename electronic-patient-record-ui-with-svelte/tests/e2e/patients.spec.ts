@@ -196,6 +196,87 @@ test("a search follows the API's next link with Show more, and stops when there 
   expect(asked).toEqual(["?family=Smi", "?family=Smi&cursor=c1"]);
 });
 
+test("the banner names a refusal of treatment in its words, says none recorded and never none, and is loud when it cannot read", async ({
+  page,
+}) => {
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, ANN),
+  );
+  await stubAllergies(page, {
+    allergies: [],
+    statement: null,
+    summary: { state: "none" },
+  });
+  const answers: Array<[number, unknown]> = [
+    [
+      200,
+      {
+        summary: { state: "recorded" },
+        refusals: [
+          {
+            id: "r1",
+            from_merged_record: false,
+            refusal: {
+              treatment: "blood products",
+              state: "stands",
+              identity: "certain",
+            },
+          },
+          {
+            id: "r2",
+            from_merged_record: true,
+            refusal: {
+              treatment: "ventilation",
+              state: "doubted",
+              identity: "certain",
+            },
+          },
+        ],
+      },
+    ],
+    [200, { refusals: [], summary: { state: "none-recorded" } }],
+    [500, {}],
+    [403, { detail: "forbidden" }],
+  ];
+  let answer = 0;
+  await page.route(
+    "**/api/proxy/api/patients/*/treatment-refusals",
+    (route) => {
+      const [status, body] = answers[answer]!;
+      return json(route, status, body);
+    },
+  );
+  const banner = page.getByRole("region", { name: "Patient banner" });
+  const line = banner.locator(".refusals");
+
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  await expect(line).toHaveText(
+    "Refusal of treatment recorded (wording unreviewed): blood products; ventilation (doubted, on a merged record)",
+  );
+  await expect(line).toHaveClass(/high/);
+  await axe(page);
+
+  answer = 1;
+  await page.reload();
+  await expect(line).toContainText(
+    "none recorded here. This does not mean there are none.",
+  );
+  await expect(line).not.toHaveClass(/high/);
+
+  answer = 2;
+  await page.reload();
+  await expect(line).toContainText(
+    "could not be read. Treat refusals as not known, not as none.",
+  );
+  await expect(line).toHaveClass(/high/);
+
+  // A role that may not read refusals is shown no line, rather than a line that reads as none.
+  answer = 3;
+  await page.reload();
+  await expect(banner).toContainText("Allergies");
+  await expect(line).toHaveCount(0);
+});
+
 test("a search with no match says so; a refusal is announced", async ({
   page,
 }) => {
@@ -5506,6 +5587,12 @@ for (const [what, record, items, most] of [
       statement: null,
       summary: { state: "active", items },
     });
+    // As the API answers for a record with none: the line says so in the banner and stays out of the strip.
+    await page.route(
+      "**/api/proxy/api/patients/*/treatment-refusals",
+      (route) =>
+        json(route, 200, { refusals: [], summary: { state: "none-recorded" } }),
+    );
     const banner = page.getByRole("region", { name: "Patient banner" });
     const strip = page.locator(".banner-strip");
     // A phone, an iPhone SE, a phone on its side; the share of the height the strip may take.

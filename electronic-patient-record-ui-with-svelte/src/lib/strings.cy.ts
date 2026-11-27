@@ -1117,6 +1117,16 @@ export const CY: Strings = {
   photoPick: "Dewiswch ffeil yn gyntaf.",
   photoTooBig: "Mae'r ffeil honno'n fwy na 512 KiB.",
   photoWrongType: "Rhaid i'r llun fod yn PNG neu'n JPEG.",
+  bannerRefusals: "Gwrthod triniaeth wedi'i gofnodi (geiriad heb ei adolygu)",
+  refusalChecking: "yn gwirio…",
+  refusalLoadFailed:
+    "ni ellid ei ddarllen. Trinwch wrthod fel rhywbeth nad yw'n hysbys, nid fel dim.",
+  refusalNoneRecorded:
+    "dim wedi'i gofnodi yma. Nid yw hyn yn golygu nad oes dim.",
+  refusalAllWithdrawn: "pob un wedi'i dynnu'n ôl",
+  refusalDoubted: "dan amheuaeth",
+  refusalIdentityUncertain: "gall fod yn eiddo i berson arall",
+  refusalFromMerged: "ar gofnod a gyfunwyd",
   bannerAllergies: "Alergeddau",
   bannerAllergiesUnknown:
     "Heb ei gofnodi yn y system hon. Nid yw hyn yn golygu nad oes rhai.",

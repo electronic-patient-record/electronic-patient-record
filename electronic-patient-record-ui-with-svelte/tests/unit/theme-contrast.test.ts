@@ -132,6 +132,9 @@ describe("theme contrast", () => {
       "a drill, a death or a temporary identity, in words (role=alert)",
     ".banner .allergies.high":
       "each high-risk allergy says '(high risk)' in words",
+    ".banner .refusals.high":
+      "'Refusal of treatment recorded' with each refusal, or 'could not be read', in words",
+    ".banner-strip .refusals.high": "the same words, in the strip",
     ".banner-strip .allergies.high,\n  .banner-strip .flag":
       "the same words, and a drill, a death, a temporary identity or a merge in words",
   };

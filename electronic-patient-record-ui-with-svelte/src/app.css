@@ -235,6 +235,15 @@ small {
 .banner .allergies {
   font-weight: 600;
 }
+/* A refusal of treatment, or a list of them that could not be read (RF-7): its words say which. */
+.banner .refusals.high {
+  padding-inline-start: 0.5rem;
+  border-inline-start: 4px solid var(--warn-border);
+  background: var(--warn-bg);
+}
+.banner .refusals {
+  font-weight: 600;
+}
 
 /* The strip that stays when the banner does not (XP-3, H-070). Its words wrap and are never cut. */
 .banner-strip {
@@ -261,8 +270,14 @@ small {
   .banner-strip p {
     margin: 0;
   }
-  .banner-strip .allergies {
+  .banner-strip .allergies,
+  .banner-strip .refusals {
     font-weight: 600;
+  }
+  .banner-strip .refusals.high {
+    padding-inline-start: 0.5rem;
+    border-inline-start: 4px solid var(--warn-border);
+    background: var(--warn-bg);
   }
   .banner-strip .allergies.high,
   .banner-strip .flag {

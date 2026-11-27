@@ -9,6 +9,7 @@
   import BreakGlassSection from "#lib/BreakGlassSection.svelte";
   import { siteWhenText } from "#lib/access-log.js";
   import { loadAllergies, type AllergyLoad } from "#lib/allergies.js";
+  import { loadRefusals, type RefusalLoad } from "#lib/treatment-refusals.js";
   import { loadDeath, type DeathLoad } from "#lib/death.js";
   import DeathSection from "#lib/DeathSection.svelte";
   import { loadAdjustments, type AdjustmentLoad } from "#lib/adjustments.js";
@@ -49,6 +50,9 @@
   // What this person needs, read once for the banner and the section.
   let adjustments = $state<AdjustmentLoad | null>(null);
   let adjustmentsTicket = 0;
+  // The refusals of treatment the banner names (RF-7), read once for the patient on screen.
+  let refusals = $state<RefusalLoad | null>(null);
+  let refusalsTicket = 0;
   // When emergency access opened on this page ends, kept after the form has gone.
   let glassUntil = $state<string | null>(null);
 
@@ -80,16 +84,25 @@
     if (current(forId) && ticket === adjustmentsTicket) adjustments = res;
   }
 
+  async function reloadRefusals() {
+    const forId = id;
+    const ticket = ++refusalsTicket;
+    const res = await loadRefusals(forId ?? "");
+    if (current(forId) && ticket === refusalsTicket) refusals = res;
+  }
+
   async function load() {
     const forId = id;
     const ticket = ++loadTicket;
     void reloadDeath();
     void reloadAdjustments();
+    void reloadRefusals();
     if (stored?.id !== forId) {
       stored = null;
       allergies = null;
       death = null;
       adjustments = null;
+      refusals = null;
       form = emptyForm();
       reason = "";
       glassUntil = null;
@@ -339,7 +352,13 @@
 {/if}
 
 {#if stored}
-  <PatientBanner stored={latest ?? stored} {allergies} {death} {adjustments} />
+  <PatientBanner
+    stored={latest ?? stored}
+    {allergies}
+    {death}
+    {adjustments}
+    {refusals}
+  />
   {#if age}
     {#if age.stale}
       <p role="alert">{TEXT.dataMayBeOld.replace("{time}", age.readAt)}</p>
