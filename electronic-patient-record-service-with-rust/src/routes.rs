@@ -89,6 +89,24 @@ pub const TABLE: &[(&str, &str, Resource, Action)] = &[
     ),
     (
         "POST",
+        "/api/patients/{id}/speakers",
+        Resource::Speakers,
+        Action::Create,
+    ),
+    (
+        "GET",
+        "/api/patients/{id}/speakers",
+        Resource::Speakers,
+        Action::Read,
+    ),
+    (
+        "PUT",
+        "/api/patients/{id}/speakers/{speaker_id}",
+        Resource::Speakers,
+        Action::Update,
+    ),
+    (
+        "POST",
         "/api/patients/{id}/declined-refusals",
         Resource::DeclinedRefusal,
         Action::Create,

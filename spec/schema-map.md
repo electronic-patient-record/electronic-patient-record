@@ -4,7 +4,7 @@ Every table and view the service's migrations create. **Generated** by [`scripts
 
 Not listed: tables made by a statement built at run time (the monthly `audit_events` partitions), and what a column means (the migrations carry few comments, so only the name and SQL type are shown). The clinical tables are append-only: a change is a new row, and triggers refuse `UPDATE`, `DELETE` and `TRUNCATE`.
 
-53 tables, 28 views.
+54 tables, 29 views.
 
 ## Tables
 
@@ -57,6 +57,7 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `relative_history_versions` | `20261124000043_relative_history` | `entry_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `status` TEXT, `body` JSONB |
 | `result_signoffs` | `20261109000029_results` | `signoff_id` UUID, `result_id` UUID, `result_version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `signed_by` TEXT |
 | `result_versions` | `20261109000029_results` | `result_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `status` TEXT, `reason` TEXT, `body` JSONB |
+| `speaker_versions` | `20261127000053_speakers` | `speaker_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `state` TEXT, `role` TEXT, `body` JSONB |
 | `task_reminder_decisions` | `20261117000040_tasks` | `task_id` UUID, `remind_on` DATE, `decision` TEXT, `reason` TEXT, `recorded_at` TIMESTAMPTZ |
 | `task_reminder_runs` | `20261117000040_tasks` | `ran_on` DATE, `recorded_at` TIMESTAMPTZ |
 | `task_versions` | `20261117000040_tasks` | `task_id` UUID, `version` INTEGER, `patient_id` UUID, `rule_id` TEXT, `rule_version` INTEGER, `team` TEXT, `recorded_at` TIMESTAMPTZ, `author` TEXT, `status` TEXT, `due_on` DATE, `body` JSONB |
@@ -92,6 +93,7 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `relationship_current` | `20261021000004_relationship_versions`, `20261021000011_current_views_seek` |
 | `relative_history_current` | `20261124000043_relative_history` |
 | `result_current` | `20261109000029_results` |
+| `speaker_current` | `20261127000053_speakers` |
 | `task_current` | `20261117000040_tasks` |
 | `treatment_refusal_current` | `20261126000048_treatment_refusals` |
 | `typing_current` | `20261125000044_compatibility_typing` |

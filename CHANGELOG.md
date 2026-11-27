@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-27 - Who speaks for a person is stored and served (RF-9)
+
+- **Clinical risk:** yes. New hazard H-083 (someone taken to speak when they may not, or someone who may missed), `open`, severity and likelihood the author's proposal.
+- **Added:** migration `20261127000053` (`speaker_versions`, append-only, and `speaker_current`); `speakers_store.rs`; `POST`/`GET /api/patients/{id}/speakers` and `PUT …/{speaker_id}`. One entry per person; a change (a view that moved, paper seen later) is a new version, a stale one 409; entered in error is a clinician's act with a reason and ends changes. The list carries a summary by id: powers seen, claimed and not seen (not a power), without power, nobody recorded, nobody beside a speaker, and the decisions on which powers that were seen disagree. A `Speakers` resource: clinician all; nurse and allied health no entered-in-error; pharmacist reads. Audit rows hold ids, version, role and state.
+- **Verified:** fmt, clippy (and the arithmetic gate), docs, every service and domain test and every database test on a throwaway Postgres 18 (2 new), the censuses, `ci-local.sh --fast`. **Not done / not verified:** no screen; what a power covers is not checked against the decision; no place's order of who may speak; nobody has reviewed the roles.
+
 ## 2026-11-27 - A declined refusal of disclosure is stored and served (DR-10)
 
 - **Clinical risk:** yes. New hazard H-082 (declined where it may not be, or the patient not told), `open`, severity and likelihood the author's proposal. **What a clinician sees does not change**: a declined refusal still withholds.

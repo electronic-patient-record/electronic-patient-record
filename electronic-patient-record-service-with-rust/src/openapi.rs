@@ -1359,6 +1359,61 @@ fn treatment_refusal_schemas() -> Value {
     })
 }
 
+/// The schemas for who speaks for a person (RF-9).
+fn speaker_schemas() -> Value {
+    json!({
+        "Speaker": {
+            "type": "object", "required": ["role"],
+            "description": "One person who speaks for someone who cannot, or the record that nobody does. A power nobody saw is not a power. Nothing here decides who wins.",
+            "properties": {
+                "role": {"enum": ["attorney", "guardian", "court", "parent", "relative", "nobody"], "description": "Each parent is an entry; a relative has no power."},
+                "name": {"type": ["string", "null"], "maxLength": 500, "description": "Required, except for nobody, who has none."},
+                "paper": {"enum": ["original", "copy", "register", "not-seen", null], "description": "Required for a role that can hold a power (not-seen is an answer), and refused otherwise."},
+                "seen_by": {"type": ["string", "null"], "maxLength": 500, "description": "Who saw the paper and when; required when it was seen, and only then."},
+                "covers": {"type": ["string", "null"], "maxLength": 500, "description": "What the power covers, as seen paper says."},
+                "views": {"type": "array", "maxItems": 100, "items": {"type": "object", "required": ["about", "says"], "properties": {
+                    "about": {"type": "string", "maxLength": 500}, "says": {"enum": ["agrees", "refuses", "undecided"]}}},
+                    "description": "One view per decision."}
+            }
+        },
+        "StoredSpeaker": {
+            "type": "object", "required": ["id", "patient_id", "version", "author", "state", "reason", "speaker"],
+            "properties": {
+                "id": {"type": "string"}, "patient_id": {"type": "string"}, "version": {"type": "integer"},
+                "author": {"type": "string"}, "state": {"enum": ["stands", "entered-in-error"]},
+                "reason": {"type": ["string", "null"]}, "speaker": {"$ref": "#/components/schemas/Speaker"}
+            }
+        },
+        "CreateSpeaker": {
+            "type": "object", "required": ["speaker"],
+            "properties": {"speaker": {"$ref": "#/components/schemas/Speaker"}, "reason": {"type": ["string", "null"]}}
+        },
+        "UpdateSpeaker": {
+            "type": "object", "required": ["speaker", "expected_version"],
+            "properties": {"speaker": {"$ref": "#/components/schemas/Speaker"}, "expected_version": {"type": "integer"},
+                "state": {"enum": ["stands", "entered-in-error"], "description": "entered-in-error is a clinician's act, with a reason, and ends changes."},
+                "reason": {"type": ["string", "null"]}}
+        },
+        "SpeakerList": {
+            "type": "object", "required": ["speakers", "summary"],
+            "properties": {
+                "speakers": {"type": "array", "items": {"allOf": [{"$ref": "#/components/schemas/StoredSpeaker"}],
+                    "required": ["from_merged_record"], "properties": {"from_merged_record": {"type": "boolean"}}}},
+                "summary": {"type": "object",
+                    "required": ["powers_seen", "claimed_not_seen", "without_power", "nobody_recorded", "contradicts", "powers_disagree"],
+                    "description": "What the entries that stand amount to, by id. Nothing in it says who decides.",
+                    "properties": {
+                        "powers_seen": {"type": "array", "items": {"type": "string"}},
+                        "claimed_not_seen": {"type": "array", "items": {"type": "string"}, "description": "Not a power."},
+                        "without_power": {"type": "array", "items": {"type": "string"}},
+                        "nobody_recorded": {"type": "boolean"},
+                        "contradicts": {"type": "boolean", "description": "Nobody is recorded beside someone who speaks."},
+                        "powers_disagree": {"type": "array", "items": {"type": "string"}, "description": "Decisions on which powers that were seen disagree."}}}
+            }
+        }
+    })
+}
+
 /// The schemas for a declined refusal of disclosure (DR-10).
 fn declined_refusal_schemas() -> Value {
     json!({
@@ -2312,6 +2367,7 @@ fn patient_schemas() -> Value {
         decision_ability_schemas(),
         asking_now_schemas(),
         declined_refusal_schemas(),
+        speaker_schemas(),
         relationship_schemas(),
     ] {
         all.extend(
@@ -2580,6 +2636,22 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
         "UpdateConsent",
         "200",
         "StoredConsent",
+        "VersionConflict",
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/speakers",
+        "CreateSpeaker",
+        "201",
+        "StoredSpeaker",
+        "",
+    ),
+    (
+        "PUT",
+        "/api/patients/{id}/speakers/{speaker_id}",
+        "UpdateSpeaker",
+        "200",
+        "StoredSpeaker",
         "VersionConflict",
     ),
     (
@@ -2944,6 +3016,7 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
         "DeclineList",
         &[],
     ),
+    ("GET", "/api/patients/{id}/speakers", "SpeakerList", &[]),
     ("GET", "/api/patients/{id}/amendments", "AmendmentList", &[]),
     (
         "GET",

@@ -935,6 +935,38 @@ async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_r
         )
         .await;
 
+        // Who speaks, and a change to it (RF-9).
+        let speaker = json!({ "role": "relative", "name": "their sister", "views": [] });
+        refused_then_accepted(db, "POST /api/patients/{id}/speakers", || async {
+            let r = server
+                .post(&format!("/api/patients/{id}/speakers"))
+                .json(&json!({ "speaker": speaker }))
+                .await;
+            (r.status_code(), r.text())
+        })
+        .await;
+        let speakers = server
+            .get(&format!("/api/patients/{id}/speakers"))
+            .await
+            .json::<Value>();
+        let speaker_id = speakers["speakers"][0]["id"]
+            .as_str()
+            .expect("a speaker id")
+            .to_string();
+        refused_then_accepted(
+            db,
+            "PUT /api/patients/{id}/speakers/{speaker_id}",
+            || async {
+                let r = server
+                    .put(&format!("/api/patients/{id}/speakers/{speaker_id}"))
+                    .json(&json!({ "speaker": { "role": "relative", "name": "their sister",
+                        "views": [{ "about": "blood", "says": "refuses" }] }, "expected_version": 1 }))
+                    .await;
+                (r.status_code(), r.text())
+            },
+        )
+        .await;
+
         // Relationship create and update.
         let rel = json!({ "subject": "nurse-1", "kind": "care-team", "status": "active" });
         refused_then_accepted(db, "POST /api/patients/{id}/relationships", || async {

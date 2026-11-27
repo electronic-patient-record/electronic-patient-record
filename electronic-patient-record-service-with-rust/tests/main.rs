@@ -151,6 +151,8 @@ mod http_results;
 mod http_role_views;
 #[path = "http_roles.rs"]
 mod http_roles;
+#[path = "http_speakers.rs"]
+mod http_speakers;
 #[path = "http_suspicions.rs"]
 mod http_suspicions;
 #[path = "http_tasks.rs"]

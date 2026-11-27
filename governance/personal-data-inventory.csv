@@ -658,3 +658,21 @@ declined_refusal_current,state,none,Recorded or entered in error,record
 declined_refusal_current,ground,preference,The ground on which a refusal of disclosure was declined,record
 declined_refusal_current,pack_version,none,The version of the tenant's disclosure pack that allowed it,record
 declined_refusal_current,body,preference,Who declined a refusal of disclosure and why; when and how the patient was told; how to complain,record
+speaker_versions,speaker_id,none,Random record id,record
+speaker_versions,version,none,Version counter,record
+speaker_versions,patient_id,identifier,Links a record to the patient,record
+speaker_versions,recorded_at,none,When the version was written,record
+speaker_versions,author,staff-identifier,Who wrote the version,record
+speaker_versions,reason,free-text,Why the version was written as typed,record
+speaker_versions,state,none,Stands or entered in error,record
+speaker_versions,role,none,What the person is to the patient: attorney or guardian or court or parent or relative or nobody,record
+speaker_versions,body,health,Who speaks for the patient: a name; what paper was seen and by whom; what it covers; their views on decisions,record
+speaker_current,speaker_id,none,Random record id,record
+speaker_current,version,none,Version counter,record
+speaker_current,patient_id,identifier,Links a record to the patient,record
+speaker_current,recorded_at,none,When the version was written,record
+speaker_current,author,staff-identifier,Who wrote the version,record
+speaker_current,reason,free-text,Why the version was written as typed,record
+speaker_current,state,none,Stands or entered in error,record
+speaker_current,role,none,What the person is to the patient: attorney or guardian or court or parent or relative or nobody,record
+speaker_current,body,health,Who speaks for the patient: a name; what paper was seen and by whom; what it covers; their views on decisions,record

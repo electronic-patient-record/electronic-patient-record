@@ -29,6 +29,7 @@ pub mod referral_worklist;
 pub mod referrals;
 pub mod relationships;
 pub mod results;
+pub mod speakers;
 pub mod suspicions;
 pub mod tasks;
 pub mod treatment_refusals;

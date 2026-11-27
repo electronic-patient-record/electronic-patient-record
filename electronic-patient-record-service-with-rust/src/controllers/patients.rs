@@ -887,6 +887,9 @@ pub fn routes() -> Routes {
             "/{id}/declined-refusals/{decline_id}/entered-in-error",
             post(super::declined_refusals::entered_in_error),
         )
+        .add("/{id}/speakers", post(super::speakers::create))
+        .add("/{id}/speakers", get(super::speakers::list))
+        .add("/{id}/speakers/{speaker_id}", put(super::speakers::update))
         .add("/{id}/asking-now", post(super::asking_now::create))
         .add("/{id}/asking-now", get(super::asking_now::list))
         .add(

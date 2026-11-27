@@ -101,6 +101,8 @@ pub use electronic_patient_record_domain::role_views;
 pub mod routes;
 pub mod schema_match;
 pub mod site;
+pub mod speakers_store;
+pub use electronic_patient_record_domain::who_speaks;
 pub mod store;
 pub use electronic_patient_record_domain::suspicion;
 pub use electronic_patient_record_domain::task_rules;

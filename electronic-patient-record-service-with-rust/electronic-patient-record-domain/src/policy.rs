@@ -183,6 +183,8 @@ pub enum Resource {
     /// A refusal of disclosure that the organisation declined (DR-10, `declined_refusals_store.rs`). Not clinical, as
     /// `Consent` is not: who declined it, why, and how the patient was told.
     DeclinedRefusal,
+    /// Who speaks for a person who cannot, for a decision (RF-9, `speakers_store.rs`). Clinical: whose word counts in care.
+    Speakers,
     /// FHIR `Observation`.
     Observation,
     /// A laboratory or imaging result and its sign-off (`results_store.rs`, OR-4 first slice, WL-1).
@@ -255,7 +257,7 @@ pub enum Resource {
 
 impl Resource {
     /// Every resource kind, in a fixed order.
-    pub const ALL: [Resource; 34] = [
+    pub const ALL: [Resource; 35] = [
         Resource::PatientIdentity,
         Resource::Encounter,
         Resource::Condition,
@@ -265,6 +267,7 @@ impl Resource {
         Resource::DecisionAbility,
         Resource::AskingNow,
         Resource::DeclinedRefusal,
+        Resource::Speakers,
         Resource::Observation,
         Resource::DiagnosticReport,
         Resource::QuestionnaireResponse,
@@ -305,6 +308,7 @@ impl Resource {
             Resource::DecisionAbility => "DecisionAbility",
             Resource::AskingNow => "AskingNow",
             Resource::DeclinedRefusal => "DeclinedRefusal",
+            Resource::Speakers => "Speakers",
             Resource::Observation => "Observation",
             Resource::DiagnosticReport => "DiagnosticReport",
             Resource::QuestionnaireResponse => "QuestionnaireResponse",
@@ -710,7 +714,7 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         MedicationRequest as Meds, Observation, OverdueReviews as Overdue,
         OwnWatchList as OwnWatch, PatientIdentity as Identity, PatientLink as Link,
         QuestionnaireResponse as Assess, Referral, ReferralQueue as RefQueue,
-        ReferralWorklist as Worklist, RelativeHistory as Relatives, Tasks,
+        ReferralWorklist as Worklist, RelativeHistory as Relatives, Speakers, Tasks,
         TreatmentRefusal as Refusal, WatchList as Watch,
     };
     match (role, resource) {
@@ -748,6 +752,11 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         // and marks one entered in error; the patient reads their own, as they must be told; a clinician reads.
         (Role::ClinicalAdmin, Declined) => &[Read, Search, Create, Eie],
         (Role::Patient | Role::Clinician, Declined) => &[Read, Search],
+        // Who speaks for a person (RF-9, unreviewed): those who treat record and change entries; only a clinician marks one
+        // entered in error; a pharmacist reads.
+        (Role::Clinician, Speakers) => &[Read, Search, Create, Update, Eie],
+        (Role::Nurse | Role::AlliedHealth, Speakers) => &[Read, Search, Create, Update],
+        (Role::Pharmacist, Speakers) => &[Read, Search],
         // Results (OR-4 first slice, WL-1, unreviewed): a clinician files, corrects and signs off (a
         // sign-off is an `Update`); a nurse, pharmacist or allied professional reads. No feed files them
         // yet (an integration has no care relationship), and a patient or proxy reads none until release
@@ -1711,8 +1720,8 @@ mod tests {
                 }
             }
         }
-        // 17 roles × 34 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
-        assert_eq!(cells, 17 * 34 * 6 * 8 * 5 * 3 * 7 * 2);
+        // 17 roles × 35 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
+        assert_eq!(cells, 17 * 35 * 6 * 8 * 5 * 3 * 7 * 2);
         assert!(allows > 0);
     }
 

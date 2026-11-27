@@ -41,6 +41,31 @@ impl Role {
     }
 }
 
+impl Role {
+    /// Every role (the stored words are checked against the database, PR-3).
+    pub const ALL: [Role; 6] = [
+        Role::Attorney,
+        Role::Guardian,
+        Role::Court,
+        Role::Parent,
+        Role::Relative,
+        Role::Nobody,
+    ];
+
+    /// The stored word, as serde writes it.
+    #[must_use]
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Role::Attorney => "attorney",
+            Role::Guardian => "guardian",
+            Role::Court => "court",
+            Role::Parent => "parent",
+            Role::Relative => "relative",
+            Role::Nobody => "nobody",
+        }
+    }
+}
+
 /// What of the paper that gives the power was seen, and by whom.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
