@@ -1158,7 +1158,7 @@ dependencies = [
  "criterion",
  "electronic-patient-record-domain",
  "electronic-patient-record-matcher",
- "er7",
+ "er7 0.3.0",
  "fhir",
  "hl7",
  "integrity-mac",
@@ -1264,6 +1264,12 @@ name = "er7"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2495dc0a44dfebe8595757972ab221be465f7aeab0d31f2c82102af612816d5"
+
+[[package]]
+name = "er7"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce2c35ec0abb27edded4b89389652602336101e0cd61182456472f4a95ab542b"
 
 [[package]]
 name = "erased-serde"
@@ -1676,7 +1682,7 @@ version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4bca60a18ef99ab6c86ba210b8fbd8f8bb2b197efa4222930467ebc47e8845a4"
 dependencies = [
- "er7",
+ "er7 0.2.2",
 ]
 
 [[package]]
