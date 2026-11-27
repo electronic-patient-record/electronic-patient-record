@@ -616,6 +616,88 @@ test("a refusal on record is doubted, a withdrawal heard is kept as doubted, and
   ).toBe("entered-in-error");
 });
 
+test("a doubted refusal can stand again with why, and one with a withdrawal heard cannot", async ({
+  page,
+}) => {
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, ANN),
+  );
+  const base = {
+    kind: "spoken-now",
+    if_life_at_risk: "not-stated",
+    form: { written: "no", signed: "no", witnessed: "no", seen: "not-seen" },
+    said_by: "patient",
+    identity: "certain",
+    state: "doubted",
+  };
+  const puts: Json[] = [];
+  await page.route(
+    "**/api/proxy/api/patients/*/treatment-refusals**",
+    (route) => {
+      if (route.request().method() === "PUT") {
+        puts.push(route.request().postDataJSON());
+        return json(route, 200, { id: "r1", version: 3 });
+      }
+      return json(route, 200, {
+        summary: { state: "recorded" },
+        refusals: [
+          {
+            id: "r1",
+            version: 2,
+            from_merged_record: false,
+            refusal: {
+              ...base,
+              treatment: "blood products",
+              doubt: "said in pain",
+            },
+          },
+          {
+            id: "r2",
+            version: 2,
+            from_merged_record: false,
+            refusal: {
+              ...base,
+              treatment: "ventilation",
+              doubt: "heard",
+              withdrawal: {
+                how: "spoken",
+                noticed_by: "a nurse",
+                at: "2026-11-26T10:00:00Z",
+              },
+            },
+          },
+        ],
+      });
+    },
+  );
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  const section = page.getByRole("region", {
+    name: "Record a refusal of treatment",
+  });
+  const doubted = section
+    .getByRole("listitem")
+    .filter({ hasText: "blood products" });
+  const heard = section
+    .getByRole("listitem")
+    .filter({ hasText: "ventilation" });
+  await expect(heard).toContainText("it cannot stand again");
+  await expect(
+    heard.getByRole("button", { name: "It stands after all" }),
+  ).toHaveCount(0);
+  await doubted.getByRole("button", { name: "It stands after all" }).click();
+  await doubted
+    .getByLabel(/^Why the doubt is resolved/)
+    .fill("asked again, calm, the same answer");
+  await doubted.getByRole("button", { name: "Save the change" }).click();
+  await expect(section.getByRole("status")).toHaveText("Recorded.");
+  // The doubt leaves the record and stays in the history, with why.
+  expect(puts[0]).toEqual({
+    refusal: { ...base, treatment: "blood products", state: "stands" },
+    expected_version: 2,
+    reason: "asked again, calm, the same answer",
+  });
+});
+
 test("a search with no match says so; a refusal is announced", async ({
   page,
 }) => {

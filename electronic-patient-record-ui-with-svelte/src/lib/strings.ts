@@ -1063,6 +1063,10 @@ export const STRINGS = {
   photoTooBig: "That file is larger than 512 KiB.",
   photoWrongType: "The photo must be a PNG or a JPEG.",
   rfOnRecord: "On record",
+  rfStands: "It stands after all",
+  rfStandsWhy: "Why the doubt is resolved (required)",
+  rfHeardNote:
+    "A withdrawal was heard: it cannot stand again. If they make it again, record a new one.",
   rfNew: "A new one",
   rfDoubt: "Doubt it",
   rfHeard: "A withdrawal was heard",

@@ -76,7 +76,7 @@
     ),
   );
   let changing = $state<string | null>(null);
-  let action = $state<"doubt" | "withdrawal" | "error">("doubt");
+  let action = $state<"doubt" | "withdrawal" | "error" | "stands">("doubt");
   let why = $state("");
   let how = $state<"spoken" | "written" | "conduct">("spoken");
   let noticedBy = $state("");
@@ -118,6 +118,10 @@
         doubt: why.trim(),
         withdrawal: { how, noticed_by: noticedBy.trim(), at: at.toISOString() },
       };
+    } else if (action === "stands") {
+      // The doubt is resolved: it stands as recorded, and the doubt is kept in the history, not on the record.
+      next = { ...base, state: "stands" };
+      delete next.doubt;
     } else {
       next = { ...base, state: "entered-in-error" };
     }
@@ -244,6 +248,13 @@
           <button type="button" onclick={() => startChange(r, "withdrawal")}>
             {TEXT.rfHeard}
           </button>
+          {#if r.refusal.state === "doubted" && !r.refusal.withdrawal}
+            <button type="button" onclick={() => startChange(r, "stands")}>
+              {TEXT.rfStands}
+            </button>
+          {:else if r.refusal.state === "doubted"}
+            <span>{TEXT.rfHeardNote}</span>
+          {/if}
           <button type="button" onclick={() => startChange(r, "error")}>
             {TEXT.rfError}
           </button>
@@ -268,7 +279,11 @@
                 <input id="rf-at" type="datetime-local" bind:value={heardAt} />
               {/if}
               <label for="rf-why">
-                {action === "error" ? TEXT.rfErrorWhy : TEXT.rfDoubtWhy}
+                {action === "error"
+                  ? TEXT.rfErrorWhy
+                  : action === "stands"
+                    ? TEXT.rfStandsWhy
+                    : TEXT.rfDoubtWhy}
               </label>
               <input id="rf-why" bind:value={why} autocomplete="off" />
               <button type="submit" disabled={busy.on}>

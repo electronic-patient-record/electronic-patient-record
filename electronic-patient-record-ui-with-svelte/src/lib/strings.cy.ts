@@ -1118,6 +1118,10 @@ export const CY: Strings = {
   photoTooBig: "Mae'r ffeil honno'n fwy na 512 KiB.",
   photoWrongType: "Rhaid i'r llun fod yn PNG neu'n JPEG.",
   rfOnRecord: "Ar gofnod",
+  rfStands: "Mae'n sefyll wedi'r cyfan",
+  rfStandsWhy: "Pam y datryswyd yr amheuaeth (angenrheidiol)",
+  rfHeardNote:
+    "Clywyd tynnu'n ôl: ni all sefyll eto. Os ydynt yn ei wneud eto, cofnodwch un newydd.",
   rfNew: "Un newydd",
   rfDoubt: "Ei amau",
   rfHeard: "Clywyd tynnu'n ôl",

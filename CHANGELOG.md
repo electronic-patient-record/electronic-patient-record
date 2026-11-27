@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-27 - A doubted refusal of treatment can stand again (RF-7, unreviewed)
+
+- **Clinical risk:** yes, small: a refusal back from doubt reads as standing on the banner and the sheet. No row changes.
+- **Added:** "It stands after all" on a doubted refusal with no withdrawal heard: why is required and kept with the version; the doubt leaves the record and stays in its history. One with a withdrawal heard cannot stand again (the API refuses it), and the screen says to record a new one if the person makes it again.
+- **Verified:** UI lint, type checks, vitest, Playwright (272, 1 new: the exact body, and no button where a withdrawal was heard), `ci-local.sh --fast`. **Not done:** no clinician has used it.
+
 ## 2026-11-27 - Doubting a refusal of treatment, and a withdrawal heard, from the patient page (RF-7, unreviewed)
 
 - **Clinical risk:** yes, H-077 (a withdrawal lost, or taken to end a refusal with no rule): the screen now records a withdrawal that was heard, kept as heard and as doubted, never as ending the refusal. No row changes.
