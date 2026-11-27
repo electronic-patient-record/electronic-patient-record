@@ -17,6 +17,7 @@ clinician,clinical,CompatibilityTyping,create entered-in-error read search updat
 clinician,clinical,TreatmentRefusal,create entered-in-error read search update
 clinician,clinical,DecisionAbility,create entered-in-error read search
 clinician,clinical,AskingNow,create entered-in-error read search
+clinician,resource,DeclinedRefusal,read search
 clinician,clinical,Observation,create entered-in-error read search update
 clinician,clinical,DiagnosticReport,create entered-in-error read search update
 clinician,clinical,QuestionnaireResponse,create read search
@@ -121,6 +122,7 @@ receptionist,resource,Tasks,search update
 clinical-admin,purpose,treatment,yes
 clinical-admin,purpose,operations,yes
 clinical-admin,resource,PatientIdentity,create read search update
+clinical-admin,resource,DeclinedRefusal,create entered-in-error read search
 clinical-admin,resource,Adjustment,create read search update
 clinical-admin,resource,DeathAssertion,create read
 clinical-admin,resource,DeathReports,search
@@ -141,6 +143,7 @@ patient,label,ETH,unmasked
 patient,resource,PatientIdentity,read
 patient,clinical,Encounter,read search
 patient,clinical,Condition,read search
+patient,resource,DeclinedRefusal,read search
 patient,clinical,Observation,read search
 patient,clinical,MedicationRequest,read search
 patient,clinical,Amendment,create read search update

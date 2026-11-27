@@ -41,6 +41,8 @@ pub use electronic_patient_record_domain::dates;
 pub use electronic_patient_record_domain::death;
 pub use electronic_patient_record_domain::decision_ability;
 pub mod decision_ability_store;
+pub use electronic_patient_record_domain::declined_refusal;
+pub mod declined_refusals_store;
 pub use electronic_patient_record_domain::emergency;
 pub mod death_store;
 pub mod dependencies;

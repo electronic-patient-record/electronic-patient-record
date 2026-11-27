@@ -12,6 +12,7 @@ mod common;
 pub mod consents;
 pub mod deaths;
 pub mod decision_ability;
+pub mod declined_refusals;
 pub mod entries;
 pub mod feed;
 pub mod fhir;

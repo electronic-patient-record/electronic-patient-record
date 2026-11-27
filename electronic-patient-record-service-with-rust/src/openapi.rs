@@ -1359,6 +1359,53 @@ fn treatment_refusal_schemas() -> Value {
     })
 }
 
+/// The schemas for a declined refusal of disclosure (DR-10).
+fn declined_refusal_schemas() -> Value {
+    json!({
+        "Declined": {
+            "type": "object", "required": ["by", "ground", "because", "told_at", "told_how", "complain_to"],
+            "description": "A refusal of disclosure that the organisation declined. Possible only where the tenant's pack allows it: never under strength binds (the default) and never with no pack (422). It decides nothing yet: the refusal still applies.",
+            "properties": {
+                "by": {"type": "string", "maxLength": 500, "description": "Who declined it, by name and role."},
+                "ground": {"enum": ["law", "risk-to-another", "cannot-be-done-safely"]},
+                "because": {"type": "string", "maxLength": 500, "description": "Why, in the words the patient was given."},
+                "told_at": {"type": "string", "description": "When the patient was told (RFC 3339), not in the future."},
+                "told_how": {"type": "string", "maxLength": 500},
+                "complain_to": {"type": "string", "maxLength": 500, "description": "How they may complain, and to whom, as they were told."}
+            }
+        },
+        "StoredDecline": {
+            "type": "object", "required": ["id", "patient_id", "consent_id", "version", "author", "state", "reason", "pack_version", "declined"],
+            "properties": {
+                "id": {"type": "string"}, "patient_id": {"type": "string"},
+                "consent_id": {"type": "string", "description": "The consent whose refusal was declined."},
+                "version": {"type": "integer", "description": "1 when recorded; 2 when marked entered in error."},
+                "author": {"type": "string"},
+                "state": {"enum": ["recorded", "entered-in-error"]},
+                "reason": {"type": ["string", "null"], "description": "Why it was marked entered in error."},
+                "pack_version": {"type": "string", "description": "The version of the tenant's pack that allowed it."},
+                "declined": {"$ref": "#/components/schemas/Declined"}
+            }
+        },
+        "CreateDecline": {
+            "type": "object", "required": ["consent_id", "declined"],
+            "properties": {"consent_id": {"type": "string"}, "declined": {"$ref": "#/components/schemas/Declined"}}
+        },
+        "MarkDeclineInError": {
+            "type": "object", "required": ["expected_version", "reason"],
+            "properties": {"expected_version": {"type": "integer"}, "reason": {"type": "string", "maxLength": 500}}
+        },
+        "DeclineList": {
+            "type": "object", "required": ["declines"],
+            "properties": {
+                "declines": {"type": "array", "items": {"allOf": [{"$ref": "#/components/schemas/StoredDecline"}],
+                    "required": ["from_merged_record"],
+                    "properties": {"from_merged_record": {"type": "boolean"}}}}
+            }
+        }
+    })
+}
+
 /// The schemas for records of asking a person now, and of leaving against advice (RF-10).
 fn asking_now_schemas() -> Value {
     let known = json!({"enum": ["yes", "no", "not-known"]});
@@ -2264,6 +2311,7 @@ fn patient_schemas() -> Value {
         treatment_refusal_schemas(),
         decision_ability_schemas(),
         asking_now_schemas(),
+        declined_refusal_schemas(),
         relationship_schemas(),
     ] {
         all.extend(
@@ -2532,6 +2580,22 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
         "UpdateConsent",
         "200",
         "StoredConsent",
+        "VersionConflict",
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/declined-refusals",
+        "CreateDecline",
+        "201",
+        "StoredDecline",
+        "",
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/declined-refusals/{decline_id}/entered-in-error",
+        "MarkDeclineInError",
+        "200",
+        "StoredDecline",
         "VersionConflict",
     ),
     (
@@ -2874,6 +2938,12 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
         &[],
     ),
     ("GET", "/api/patients/{id}/asking-now", "AskedList", &[]),
+    (
+        "GET",
+        "/api/patients/{id}/declined-refusals",
+        "DeclineList",
+        &[],
+    ),
     ("GET", "/api/patients/{id}/amendments", "AmendmentList", &[]),
     (
         "GET",

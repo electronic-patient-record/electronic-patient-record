@@ -77,7 +77,22 @@ fn settings() -> Vec<(&'static str, &'static str)> {
             .expect("DB_URL must be set for --ignored tests")
             .into_boxed_str(),
     );
-    vec![("DB_URL", url), ("EPR_REQUIRE_AUTH", "false")]
+    // A disclosure pack that lets a refusal be declined (DR-10), so that route can be driven.
+    let pack = std::env::temp_dir().join(format!(
+        "epr-audit-refusal-pack-{}.toml",
+        std::process::id()
+    ));
+    std::fs::write(
+        &pack,
+        "[pack]\nid = \"t\"\nplace = \"Test\"\nlaw_as_of = \"2026-11-27\"\n[[rule]]\nkey = \"strength\"\nvalue = \"considered\"\nsource = \"test\"\n",
+    )
+    .unwrap();
+    let pack: &'static str = Box::leak(pack.to_string_lossy().into_owned().into_boxed_str());
+    vec![
+        ("DB_URL", url),
+        ("EPR_REQUIRE_AUTH", "false"),
+        ("EPR_DISCLOSURE_RULES_FILE", pack),
+    ]
 }
 
 #[tokio::test]
@@ -874,6 +889,46 @@ async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_r
                 let r = server
                     .post(&format!("/api/patients/{id}/asking-now/{record_id}/entered-in-error"))
                     .json(&json!({ "expected_version": 1, "reason": "wrong patient" }))
+                    .await;
+                (r.status_code(), r.text())
+            },
+        )
+        .await;
+
+        // A declined refusal of disclosure, and marking it entered in error (DR-10). The consent above was withdrawn, so a
+        // refusal of its own is recorded first.
+        let refusing = server
+            .post(&format!("/api/patients/{id}/consents"))
+            .json(&json!({ "consent": { "kind": "general", "status": "active",
+                "provisions": [{ "effect": "deny", "purposes": ["research"] }] } }))
+            .await;
+        assert_eq!(refusing.status_code(), StatusCode::CREATED, "{}", refusing.text());
+        let refusing_id = refusing.json::<Value>()["id"].as_str().unwrap().to_string();
+        let declined = json!({ "by": "Dr F, Caldicott guardian", "ground": "law", "because": "a court order",
+            "told_at": "2026-01-01T10:00:00Z", "told_how": "in person", "complain_to": "the privacy officer" });
+        refused_then_accepted(db, "POST /api/patients/{id}/declined-refusals", || async {
+            let r = server
+                .post(&format!("/api/patients/{id}/declined-refusals"))
+                .json(&json!({ "consent_id": refusing_id, "declined": declined }))
+                .await;
+            (r.status_code(), r.text())
+        })
+        .await;
+        let declines = server
+            .get(&format!("/api/patients/{id}/declined-refusals"))
+            .await
+            .json::<Value>();
+        let decline_id = declines["declines"][0]["id"]
+            .as_str()
+            .expect("a decline id")
+            .to_string();
+        refused_then_accepted(
+            db,
+            "POST /api/patients/{id}/declined-refusals/{decline_id}/entered-in-error",
+            || async {
+                let r = server
+                    .post(&format!("/api/patients/{id}/declined-refusals/{decline_id}/entered-in-error"))
+                    .json(&json!({ "expected_version": 1, "reason": "wrong consent" }))
                     .await;
                 (r.status_code(), r.text())
             },

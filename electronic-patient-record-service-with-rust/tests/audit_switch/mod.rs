@@ -9,7 +9,7 @@ use sqlx::{AssertSqlSafe, PgPool};
 use std::future::Future;
 
 /// The write routes driven with login off (`http_audit_refusal.rs`), spelled as in `routes::TABLE`.
-pub const LOGIN_OFF: [&str; 58] = [
+pub const LOGIN_OFF: [&str; 60] = [
     "POST /api/patients",
     "PUT /api/patients/{id}",
     "POST /fhir/R4/Patient",
@@ -61,6 +61,8 @@ pub const LOGIN_OFF: [&str; 58] = [
     "POST /api/patients/{id}/decision-ability/{judgement_id}/entered-in-error",
     "POST /api/patients/{id}/asking-now",
     "POST /api/patients/{id}/asking-now/{record_id}/entered-in-error",
+    "POST /api/patients/{id}/declined-refusals",
+    "POST /api/patients/{id}/declined-refusals/{decline_id}/entered-in-error",
     "POST /api/patients/{id}/relationships",
     "PUT /api/patients/{id}/relationships/{relationship_id}",
     "POST /api/patients/{id}/merge",
@@ -82,7 +84,7 @@ pub const LOGIN_ON: [&str; 4] = [
 pub static DRIVEN: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
 
 /// Every table a write route changes.
-pub const STORES: [&str; 32] = [
+pub const STORES: [&str; 36] = [
     "patient_versions",
     "consent_versions",
     "relationship_versions",
@@ -115,6 +117,10 @@ pub const STORES: [&str; 32] = [
     "task_versions",
     "api_tokens",
     "api_token_versions",
+    "treatment_refusal_versions",
+    "decision_ability_versions",
+    "asking_now_versions",
+    "declined_refusal_versions",
 ];
 
 pub async fn sql(db: &PgPool, text: &str) {

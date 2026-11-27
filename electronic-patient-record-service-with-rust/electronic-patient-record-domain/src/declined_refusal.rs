@@ -21,6 +21,25 @@ pub enum Ground {
     CannotBeDoneSafely,
 }
 
+impl Ground {
+    /// Every ground (the stored words are checked against the database, PR-3).
+    pub const ALL: [Ground; 3] = [
+        Ground::Law,
+        Ground::RiskToAnother,
+        Ground::CannotBeDoneSafely,
+    ];
+
+    /// The stored word, as serde writes it.
+    #[must_use]
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Ground::Law => "law",
+            Ground::RiskToAnother => "risk-to-another",
+            Ground::CannotBeDoneSafely => "cannot-be-done-safely",
+        }
+    }
+}
+
 /// A declined refusal.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

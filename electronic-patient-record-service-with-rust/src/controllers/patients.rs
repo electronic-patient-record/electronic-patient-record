@@ -875,6 +875,18 @@ pub fn routes() -> Routes {
             post(super::decision_ability::create),
         )
         .add("/{id}/decision-ability", get(super::decision_ability::list))
+        .add(
+            "/{id}/declined-refusals",
+            post(super::declined_refusals::create),
+        )
+        .add(
+            "/{id}/declined-refusals",
+            get(super::declined_refusals::list),
+        )
+        .add(
+            "/{id}/declined-refusals/{decline_id}/entered-in-error",
+            post(super::declined_refusals::entered_in_error),
+        )
         .add("/{id}/asking-now", post(super::asking_now::create))
         .add("/{id}/asking-now", get(super::asking_now::list))
         .add(

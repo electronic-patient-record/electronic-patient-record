@@ -16,8 +16,8 @@ use sqlx::{PgPool, Row};
 use std::collections::BTreeSet;
 
 use electronic_patient_record::{
-    adjustments, allergies, consent, death, decision_ability, emergency, problem, referral,
-    relative_history, results, suspicion, treatment_refusal, typing, watch_list,
+    adjustments, allergies, consent, death, decision_ability, declined_refusal, emergency, problem,
+    referral, relative_history, results, suspicion, treatment_refusal, typing, watch_list,
 };
 
 async fn db() -> PgPool {
@@ -216,6 +216,14 @@ fn columns() -> Vec<(&'static str, Words)> {
             Code(words!(epr::labelling::Basis: Clinical, PatientAsked, Custody)),
         ),
         ("entry_labels.kind", Literal("entries_store.rs")),
+        (
+            "declined_refusal_versions.state",
+            Code(words!(decision_ability::State: Recorded, EnteredInError)),
+        ),
+        (
+            "declined_refusal_versions.ground",
+            Code(words!(declined_refusal::Ground: Law, RiskToAnother, CannotBeDoneSafely)),
+        ),
         (
             "asking_now_versions.state",
             Code(words!(decision_ability::State: Recorded, EnteredInError)),

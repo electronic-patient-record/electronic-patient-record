@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-27 - A declined refusal of disclosure is stored and served (DR-10)
+
+- **Clinical risk:** yes. New hazard H-082 (declined where it may not be, or the patient not told), `open`, severity and likelihood the author's proposal. **What a clinician sees does not change**: a declined refusal still withholds.
+- **Added:** migration `20261127000052` (`declined_refusal_versions`, append-only, with `consent_id`, `ground` and `pack_version`); `declined_refusals_store.rs`; `POST`/`GET /api/patients/{id}/declined-refusals` and `POST …/{decline_id}/entered-in-error`. A decline is written only where the tenant's pack (`EPR_DISCLOSURE_RULES_FILE`) allows it, never with no pack and never under `binds`, only for an active refusal of the patient's, and it names the pack's version. A `DeclinedRefusal` resource, not clinical, like `Consent`: the clinical administrator records and marks entered in error; the patient reads their own; a clinician reads.
+- **Also fixed:** the audit-failure test's list of tables it counts did not have `treatment_refusal_versions`, `decision_ability_versions` or `asking_now_versions`, so a refused write to them that left a row would not have been seen; they are in it now, with this one.
+- **Verified:** fmt, clippy, docs, every service and domain test and every database test on a throwaway Postgres 18 (3 new), the censuses, `ci-local.sh --fast`. **Not done / not verified:** no screen or notice tells the patient; what declining should change is undecided; nobody has reviewed the grounds or the roles.
+
 ## 2026-11-27 - Records of asking now, and of leaving against advice, are stored and served (RF-10)
 
 - **Clinical risk:** yes. New hazard H-081 (a record says more or less than happened), `open`, severity and likelihood the author's proposal.

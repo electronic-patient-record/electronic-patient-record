@@ -180,6 +180,9 @@ pub enum Resource {
     /// Records of asking a person now, and of leaving against advice (RF-10, `asking_now_store.rs`). Clinical: what was
     /// offered, explained, refused and accepted.
     AskingNow,
+    /// A refusal of disclosure that the organisation declined (DR-10, `declined_refusals_store.rs`). Not clinical, as
+    /// `Consent` is not: who declined it, why, and how the patient was told.
+    DeclinedRefusal,
     /// FHIR `Observation`.
     Observation,
     /// A laboratory or imaging result and its sign-off (`results_store.rs`, OR-4 first slice, WL-1).
@@ -252,7 +255,7 @@ pub enum Resource {
 
 impl Resource {
     /// Every resource kind, in a fixed order.
-    pub const ALL: [Resource; 33] = [
+    pub const ALL: [Resource; 34] = [
         Resource::PatientIdentity,
         Resource::Encounter,
         Resource::Condition,
@@ -261,6 +264,7 @@ impl Resource {
         Resource::TreatmentRefusal,
         Resource::DecisionAbility,
         Resource::AskingNow,
+        Resource::DeclinedRefusal,
         Resource::Observation,
         Resource::DiagnosticReport,
         Resource::QuestionnaireResponse,
@@ -300,6 +304,7 @@ impl Resource {
             Resource::TreatmentRefusal => "TreatmentRefusal",
             Resource::DecisionAbility => "DecisionAbility",
             Resource::AskingNow => "AskingNow",
+            Resource::DeclinedRefusal => "DeclinedRefusal",
             Resource::Observation => "Observation",
             Resource::DiagnosticReport => "DiagnosticReport",
             Resource::QuestionnaireResponse => "QuestionnaireResponse",
@@ -345,6 +350,7 @@ impl Resource {
                 | Resource::DeathReports
                 | Resource::OverdueReviews
                 | Resource::Consent
+                | Resource::DeclinedRefusal
                 | Resource::AuditLog
                 | Resource::CareRelationship
                 | Resource::PatientLink
@@ -699,10 +705,11 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         Adjustment as Adjust, AllergyIntolerance as Allergy, Amendment, ApiToken as Tokens,
         AskingNow as Asking, AuditLog, BreakGlass as Glass, CareRelationship as Rel,
         CompatibilityTyping as Typing, Condition, Consent as Cons, DeathAssertion as Death,
-        DeathReports as Deaths, DecisionAbility as Ability, DiagnosticReport as Results, Document,
-        Encounter, FeedQueue as Queue, Hazard, MedicationRequest as Meds, Observation,
-        OverdueReviews as Overdue, OwnWatchList as OwnWatch, PatientIdentity as Identity,
-        PatientLink as Link, QuestionnaireResponse as Assess, Referral, ReferralQueue as RefQueue,
+        DeathReports as Deaths, DecisionAbility as Ability, DeclinedRefusal as Declined,
+        DiagnosticReport as Results, Document, Encounter, FeedQueue as Queue, Hazard,
+        MedicationRequest as Meds, Observation, OverdueReviews as Overdue,
+        OwnWatchList as OwnWatch, PatientIdentity as Identity, PatientLink as Link,
+        QuestionnaireResponse as Assess, Referral, ReferralQueue as RefQueue,
         ReferralWorklist as Worklist, RelativeHistory as Relatives, Tasks,
         TreatmentRefusal as Refusal, WatchList as Watch,
     };
@@ -737,6 +744,10 @@ fn permitted(role: Role, resource: Resource) -> &'static [Action] {
         (Role::Clinician, Asking) => &[Read, Search, Create, Eie],
         (Role::Nurse | Role::AlliedHealth, Asking) => &[Read, Search, Create],
         (Role::Pharmacist, Asking) => &[Read, Search],
+        // A declined refusal of disclosure (DR-10, unreviewed): the clinical administrator, who keeps consents, records one
+        // and marks one entered in error; the patient reads their own, as they must be told; a clinician reads.
+        (Role::ClinicalAdmin, Declined) => &[Read, Search, Create, Eie],
+        (Role::Patient | Role::Clinician, Declined) => &[Read, Search],
         // Results (OR-4 first slice, WL-1, unreviewed): a clinician files, corrects and signs off (a
         // sign-off is an `Update`); a nurse, pharmacist or allied professional reads. No feed files them
         // yet (an integration has no care relationship), and a patient or proxy reads none until release
@@ -1700,8 +1711,8 @@ mod tests {
                 }
             }
         }
-        // 17 roles × 33 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
-        assert_eq!(cells, 17 * 33 * 6 * 8 * 5 * 3 * 7 * 2);
+        // 17 roles × 34 resources × 6 × 8 × 5 × 3 × 7 × 2: guard against the loops silently shrinking.
+        assert_eq!(cells, 17 * 34 * 6 * 8 * 5 * 3 * 7 * 2);
         assert!(allows > 0);
     }
 

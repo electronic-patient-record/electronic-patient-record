@@ -109,6 +109,8 @@ mod http_death_reports;
 mod http_deaths;
 #[path = "http_decision_ability.rs"]
 mod http_decision_ability;
+#[path = "http_declined_refusals.rs"]
+mod http_declined_refusals;
 #[path = "http_entries.rs"]
 mod http_entries;
 #[path = "http_entry_labels.rs"]

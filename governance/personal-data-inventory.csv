@@ -636,3 +636,25 @@ asking_now_current,reason,free-text,Why it was marked entered in error as typed,
 asking_now_current,state,none,Recorded or entered in error,record
 asking_now_current,leaving_against_advice,health,Whether the person left or is leaving against advice,record
 asking_now_current,body,health,What was offered and explained and how; what was refused and accepted; who was there; who asked,record
+declined_refusal_versions,decline_id,none,Random record id,record
+declined_refusal_versions,version,none,Version counter,record
+declined_refusal_versions,patient_id,identifier,Links a record to the patient,record
+declined_refusal_versions,consent_id,none,The consent whose refusal was declined,record
+declined_refusal_versions,recorded_at,none,When the version was written,record
+declined_refusal_versions,author,staff-identifier,Who wrote the version,record
+declined_refusal_versions,reason,free-text,Why it was marked entered in error as typed,record
+declined_refusal_versions,state,none,Recorded or entered in error,record
+declined_refusal_versions,ground,preference,The ground on which a refusal of disclosure was declined,record
+declined_refusal_versions,pack_version,none,The version of the tenant's disclosure pack that allowed it,record
+declined_refusal_versions,body,preference,Who declined a refusal of disclosure and why; when and how the patient was told; how to complain,record
+declined_refusal_current,decline_id,none,Random record id,record
+declined_refusal_current,version,none,Version counter,record
+declined_refusal_current,patient_id,identifier,Links a record to the patient,record
+declined_refusal_current,consent_id,none,The consent whose refusal was declined,record
+declined_refusal_current,recorded_at,none,When the version was written,record
+declined_refusal_current,author,staff-identifier,Who wrote the version,record
+declined_refusal_current,reason,free-text,Why it was marked entered in error as typed,record
+declined_refusal_current,state,none,Recorded or entered in error,record
+declined_refusal_current,ground,preference,The ground on which a refusal of disclosure was declined,record
+declined_refusal_current,pack_version,none,The version of the tenant's disclosure pack that allowed it,record
+declined_refusal_current,body,preference,Who declined a refusal of disclosure and why; when and how the patient was told; how to complain,record
