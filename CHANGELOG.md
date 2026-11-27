@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-27 - axa 0.24.1 and axa-test 0.15.1 (AX-19)
+
+- **Dependency:** `axa` 0.23.0 to 0.24.1 and `axa-test` 0.14.0 to 0.15.1, **inside the two-day cooldown, by the maintainer's exception (2026-11-27)**. Only those two lock entries moved. axa 0.24.1 asks for `axa-cursor-pagination` 0.1.4, already taken.
+- **Clinical risk:** none: what the service does is unchanged.
+- **Changed:** `App::run` uses `Cli::environment`, `axa::cli::answer` (`check` and `health` before anything connects) and `Cli::config` (the `start` flags applied by axa), in place of the same steps written by hand. Not taken: `Tasks::run_or_list` (no tasks) and `Settings::retired`/`refuse` (no renamed setting).
+- **Verified:** fmt, clippy, docs, every service and domain test and every database test on a throwaway Postgres 18; `electronic-patient-record check` with the database down. **Not done / not verified:** the image was not built; `health` against a running server was not tried by hand.
+
 ## 2026-11-27 - The patient search screen follows the next page (UI)
 
 - **Clinical risk:** yes, small, H-006: a clinician now sees more than the first 50 matches, a page at a time, where the screen said "only the first 50 are shown". No hazard row changes.

@@ -1712,6 +1712,16 @@ command (`--config 'registry.global-min-publish-age="0 days"'`); the settings ar
   `to_zoned_datetime`). **Not done:** jiff 0.2 stays in the tree through `serde_with` (used by `fhir` and
   `axum-keycloak-auth`); `pg_time.rs` could give way to `jiff-sqlx`.
 
+## Dependency 2026-11-27 — axa 0.24.1
+
+axa 0.24.1 and axa-test 0.15.1 (both 2026-11-27) are inside the two-day cooldown; **the maintainer approved the exception
+on 2026-11-27.**
+
+- [x] **AX-19 (S) — Upgrade to axa 0.24.1.** **Done 2026-11-27:** `axa` 0.24.1 and `axa-test` 0.15.1 (0.15 is the one for
+  axa 0.24); only those two lock entries moved. `App::run` uses the new `Cli::environment`, `axa::cli::answer` and
+  `Cli::config` in place of the dispatch written by hand. **Not taken:** `Tasks::run_or_list`, as the service registers no
+  tasks; `Settings::retired` and `refuse`, as the service renames no setting.
+
 ## Dependency 2026-11-17 — axa 0.20
 
 axa 0.20.0 and axa-test 0.11.0 (both 2026-11-17) are inside the two-day cooldown; **the maintainer approved the

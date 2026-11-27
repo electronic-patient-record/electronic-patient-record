@@ -10,7 +10,7 @@ Entry point for AI coding agents at the repository root. Five projects live here
 | iOS app (Swift, SwiftUI, Lily Design System for Swift; a scaffold) | `electronic-patient-record-mobile-app-with-swift` | [AGENTS.md](electronic-patient-record-mobile-app-with-swift/AGENTS.md) |
 | Android app (Kotlin, Jetpack Compose, Lily Design System for Kotlin; a scaffold) | `electronic-patient-record-mobile-app-with-kotlin` | [AGENTS.md](electronic-patient-record-mobile-app-with-kotlin/AGENTS.md) |
 
-Version 0.1.0. Rust 1.100.0 (pinned in `rust-toolchain.toml`; minimum supported 1.98 for the service, which axa 0.21 needs, and the matcher), Node 26, pnpm, Podman.
+Version 0.1.0. Rust 1.100.0 (pinned in `rust-toolchain.toml`; minimum supported 1.98 for the service, which axa 0.24 needs, and the matcher), Node 26, pnpm, Podman.
 **NOT FOR CLINICAL USE.** This is a scaffold (milestone M0): no clinical record exists yet.
 
 ## How work is done here

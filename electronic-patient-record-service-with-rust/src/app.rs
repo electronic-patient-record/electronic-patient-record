@@ -180,27 +180,14 @@ impl App {
     ///
     /// When the configuration is refused, or the command fails.
     pub async fn run(cli: Cli) -> Result<()> {
-        let environment = cli
-            .environment
-            .as_deref()
-            .map_or_else(Environment::from_env, Environment::parse);
-        // Before anything connects: this checks settings, and must work with the database down.
-        if matches!(cli.command, Command::Check) {
-            return axa::cli::check(&environment, &defaults());
+        let environment = cli.environment();
+        // `check` and `health` are answered before anything connects (axa 0.24): `check` reads the settings and must
+        // work with the database down, and `health` asks the running server on this machine, for an image with no `curl`.
+        if let Some(answered) = axa::cli::answer(&cli, &environment, &defaults()).await {
+            return answered;
         }
-        // Asks the running server on this machine for its health, for an image with no `curl` (axa 0.16).
-        if let Command::Health { ready, port } = cli.command {
-            return axa::cli::health(&environment, &defaults(), ready, port).await;
-        }
-        let mut config = Config::from_env(&environment, &defaults())?;
-        if let Command::Start { binding, port, .. } = &cli.command {
-            if let Some(binding) = binding {
-                config.server.binding.clone_from(binding);
-            }
-            if let Some(port) = port {
-                config.server.port = *port;
-            }
-        }
+        // The `start` flags (`--binding`, `--port`) are applied by axa (`Config::apply_cli`).
+        let config = cli.config(&environment, &defaults())?;
         let ctx = Self::context(environment, config).await?;
         axa::logger::init(env!("CARGO_CRATE_NAME"), &ctx.config.logger);
         if ctx.config.database.auto_migrate && !matches!(cli.command, Command::Db { .. }) {
