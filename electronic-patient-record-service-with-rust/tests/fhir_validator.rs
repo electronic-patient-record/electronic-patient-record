@@ -219,6 +219,13 @@ fn resources() -> Vec<(&'static str, Value)> {
         "total": 1,
         "entry": [{ "fullUrl": format!("urn:uuid:{PATIENT}"), "resource": p.clone(), "search": { "mode": "match" } }],
     });
+    // A page that more may follow: the next page as Bundle.link, and no total (`fhir.rs` `bundle`).
+    let paged = json!({
+        "resourceType": "Bundle",
+        "type": "searchset",
+        "link": [{ "relation": "next", "url": "/fhir/R4/Patient?family=Smith&limit=20&cursor=AQAAAAAAAAAU" }],
+        "entry": [{ "fullUrl": format!("urn:uuid:{PATIENT}"), "resource": p.clone(), "search": { "mode": "match" } }],
+    });
     vec![
         ("patient", p),
         ("patient-drill", drill),
@@ -241,6 +248,7 @@ fn resources() -> Vec<(&'static str, Value)> {
         ("allergy-retracted", allergy_retracted),
         ("observation-retracted", vital_retracted),
         ("patient-searchset", bundle),
+        ("patient-searchset-paged", paged),
     ]
 }
 

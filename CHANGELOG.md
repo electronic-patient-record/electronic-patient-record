@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-27 - The FHIR validator checks a paged search set
+
+- **Clinical risk:** none; a test.
+- **Added:** `patient-searchset-paged` in `tests/fhir_validator.rs`: a page with `Bundle.link` next and no `total`, checked by the HL7 validator (7.0.3) against base R4, and through the R5 conversion (with its `self` link first) against base R5. Both pass.
+- **Not done:** the validator checks structure and invariants with no terminology server (`-tx n/a`), as for the other resources; it does not follow the link.
+
 ## 2026-11-27 - FHIR Patient search reads _count
 
 - **Clinical risk:** none: the same patients, in pages of the size asked.
