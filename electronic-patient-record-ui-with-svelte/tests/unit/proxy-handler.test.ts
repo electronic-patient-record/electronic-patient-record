@@ -75,6 +75,29 @@ describe("proxy handler answers", () => {
   });
 });
 
+describe("proxy handler, a list's next page", () => {
+  it("passes on a next link under /api/ and drops one that points elsewhere", async () => {
+    const answer = (link: string) =>
+      setup({
+        fetchFn: (async () =>
+          new Response("{}", {
+            status: 200,
+            headers: { link },
+          })) as unknown as typeof fetch,
+      });
+    const ok = await answer(
+      '</api/patients?family=S&cursor=c1>; rel="next"',
+    ).call("api/patients?family=S");
+    expect(ok.headers.get("link")).toBe(
+      '</api/patients?family=S&cursor=c1>; rel="next"',
+    );
+    const away = await answer('<https://evil.example/api/x>; rel="next"').call(
+      "api/patients?family=S",
+    );
+    expect(away.headers.get("link")).toBeNull();
+  });
+});
+
 describe("proxy handler", () => {
   it("forwards the token, a known purpose and the API version header", async () => {
     const t = setup({});

@@ -65,6 +65,29 @@ describe("call", () => {
   });
 });
 
+describe("call and a list's next page", () => {
+  it("returns the next page's path when the API names one, and none otherwise", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response('{"results":[]}', {
+            status: 200,
+            headers: { link: '</api/patients?cursor=c1>; rel="next"' },
+          }),
+      ),
+    );
+    expect((await call("GET", "/api/patients?family=S")).next).toBe(
+      "/api/patients?cursor=c1",
+    );
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response('{"results":[]}', { status: 200 })),
+    );
+    expect("next" in (await call("GET", "/api/patients?family=S"))).toBe(false);
+  });
+});
+
 describe("fetchBlob and sendBytes", () => {
   it("fetchBlob returns the bytes and the next cursor, a null body on refusal, and status 0 on failure", async () => {
     vi.stubGlobal(

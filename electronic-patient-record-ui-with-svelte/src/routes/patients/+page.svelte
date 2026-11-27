@@ -15,7 +15,9 @@
   const locale = $derived(page.data.locale ?? DEFAULT_LOCALE);
   let form = $state(emptyForm());
   let found = $state<Stored[] | null>(null);
-  let limit = $state(50);
+  // The next page, when the API says more may follow (`Link: rel="next"`). The API fills each page past patients whose
+  // refusal of disclosure hides them, so a short page says nothing about who is hidden.
+  let next = $state<string | null>(null);
   let message = $state<string | null>(null);
 
   const busy = new Busy();
@@ -27,6 +29,7 @@
 
   async function searchNow() {
     message = null;
+    next = null;
     const query = searchQuery(form);
     if (!query) {
       found = null;
@@ -43,11 +46,28 @@
       message = TEXT[problem];
     } else if (res.status === 200) {
       found = res.body.results;
-      limit = res.body.limit;
+      next = res.next ?? null;
     } else {
       found = null;
       message = TEXT.error;
     }
+  }
+
+  async function more() {
+    await busy.run(moreNow);
+  }
+
+  // The next page is added below the ones shown. A failure leaves them, and says so.
+  async function moreNow() {
+    if (!next || !found) return;
+    const res = await call<{ results: Stored[]; limit: number }>("GET", next);
+    const problem = commonProblem(res.status);
+    if (problem) message = TEXT[problem];
+    else if (res.status === 200) {
+      const shown = new Set(found.map((s) => s.id));
+      found = [...found, ...res.body.results.filter((s) => !shown.has(s.id))];
+      next = res.next ?? null;
+    } else message = TEXT.error;
   }
 
   const label = (s: Stored) => {
@@ -122,8 +142,11 @@
           {/each}
         </tbody>
       </table>
-      {#if found.length >= limit}
-        <p>{TEXT.resultsCapped.replace("{n}", String(limit))}</p>
+      {#if next}
+        <p>{TEXT.resultsCapped}</p>
+        <button type="button" onclick={more} disabled={busy.on}>
+          {TEXT.searchMore}
+        </button>
       {/if}
     {/if}
   </section>

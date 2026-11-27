@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-27 - The patient search screen follows the next page (UI)
+
+- **Clinical risk:** yes, small, H-006: a clinician now sees more than the first 50 matches, a page at a time, where the screen said "only the first 50 are shown". No hazard row changes.
+- **Changed:** the BFF proxy passes on the API's `Link: rel="next"`, only as a path under `/api/` (`next-link.ts`: a host, a scheme, `//`, `..` or a backslash is dropped, so a header cannot send the proxy or the browser elsewhere). `call()` returns it as `next`. The search screen shows "More may match than are shown. Show more, or narrow the search." and a **Show more results** button while there is a next page, and adds each page below the last. The "only the first {n}" wording is gone: the API says when more follow, and an older API that says nothing shows no button.
+- **Verified:** UI lint, type checks, vitest (4 new: the link reader, the proxy, `call`), Playwright (1 new: two pages, the button gone at the end, axe), `ci-local.sh --fast`. **Not done / not verified:** the Welsh words are machine-written and not reviewed; the FHIR searches have no next link; nothing tests the screen against the real API (the Keycloak suite was not run).
+
 ## 2026-11-27 - axa-cursor-pagination 0.1.4: patient search fills its page past who is hidden
 
 - **Dependency:** `axa-cursor-pagination` 0.1.3 to 0.1.4 (through `axa` 0.23), **inside the two-day cooldown, by the maintainer's exception (2026-11-27)**. Only its lock entry changed: `cargo update -p` also moved `windows-sys` from 0.61.2 to 0.52.0 in four places, which was not taken (the lock with only this entry changed passes `--locked`).

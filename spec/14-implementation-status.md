@@ -24,8 +24,8 @@ no network, database or compilation; counts are source lines, not test runs):
 | Route registrations | 133 | `.add(` calls in `src/controllers/*.rs` |
 | Service tests | 1100, plus 284 `#[ignore]`d (database gated) | `#[test]` and `#[tokio::test]` lines; `#[ignore]` lines |
 | Matcher tests | 136, plus 0 `#[ignore]`d | the same patterns in the matcher |
-| Front-end unit tests (vitest) | 400 | `it(` / `test(` lines in `tests/unit` |
-| Front-end end-to-end tests (Playwright) | 124 | `test(` lines in `tests/e2e` |
+| Front-end unit tests (vitest) | 404 | `it(` / `test(` lines in `tests/unit` |
+| Front-end end-to-end tests (Playwright) | 125 | `test(` lines in `tests/e2e` |
 | Hazards | 80, of which 59 open and 0 accepted or closed; 49 name a test | `scripts/check-hazard-log.py --counts` |
 | Locales | 10 | entries of `LOCALES` in `src/lib/locales.ts` |
 

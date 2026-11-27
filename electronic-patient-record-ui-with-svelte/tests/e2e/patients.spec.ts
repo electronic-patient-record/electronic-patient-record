@@ -152,6 +152,50 @@ test("a search lists matches and links to each record", async ({ page }) => {
   );
 });
 
+test("a search follows the API's next link with Show more, and stops when there is none", async ({
+  page,
+}) => {
+  const BOB = {
+    ...ANN,
+    id: "00000000-0000-4000-8000-0000000000b2",
+    patient: { ...ANN.patient, names: [{ family: "Smith", given: ["Bob"] }] },
+  };
+  const asked: string[] = [];
+  await page.route("**/api/proxy/api/patients?**", (route) => {
+    const url = new URL(route.request().url());
+    asked.push(url.search);
+    if (url.searchParams.get("cursor") === "c1")
+      return json(route, 200, { results: [BOB], limit: 50 });
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      headers: { link: '</api/patients?family=Smi&cursor=c1>; rel="next"' },
+      body: JSON.stringify({ results: [ANN], limit: 50 }),
+    });
+  });
+  await page.goto("/en-001/patients");
+  await page.getByLabel("Family name").fill("Smi");
+  await page.getByRole("button", { name: "Search" }).click();
+  await expect(
+    page.getByRole("cell", { name: "Smith, Ann", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText(/More may match than are shown/)).toBeVisible();
+  await axe(page);
+  await page.getByRole("button", { name: "Show more results" }).click();
+  // The next page is added below; the first stays.
+  await expect(
+    page.getByRole("cell", { name: "Smith, Bob", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("cell", { name: "Smith, Ann", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Show more results" }),
+  ).toHaveCount(0);
+  await expect(page.getByText(/More may match than are shown/)).toHaveCount(0);
+  expect(asked).toEqual(["?family=Smi", "?family=Smi&cursor=c1"]);
+});
+
 test("a search with no match says so; a refusal is announced", async ({
   page,
 }) => {

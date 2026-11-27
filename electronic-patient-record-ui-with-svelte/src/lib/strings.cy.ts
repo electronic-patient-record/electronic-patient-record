@@ -228,7 +228,8 @@ export const CY: Strings = {
   searchNothing: "Rhowch o leiaf un term chwilio.",
   noResults: "Nid oes claf yn cyfateb.",
   resultsCapped:
-    "Dim ond y {n} cyntaf sy'n cael eu dangos. Culhewch y chwiliad.",
+    "Efallai bod mwy yn cyfateb nag a ddangosir. Dangoswch fwy, neu culhewch y chwiliad.",
+  searchMore: "Dangos mwy o ganlyniadau",
   results: "Canlyniadau",
   open: "Agor",
   registerLink: "Cofrestru claf newydd",

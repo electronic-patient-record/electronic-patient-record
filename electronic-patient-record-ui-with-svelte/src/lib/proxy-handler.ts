@@ -11,6 +11,7 @@ import {
   purposeHeader,
   versionHeader,
 } from "./proxy.js";
+import { nextPath } from "./next-link.js";
 import { isHttps } from "./security-headers.js";
 
 /** How long the API may take to answer before the proxy gives up with a 504. */
@@ -125,9 +126,12 @@ export function createProxyHandler(deps: ProxyDeps): RequestHandler {
         { status: timedOut ? 504 : 502 },
       );
     }
+    // A list's next page (patient search), passed on only as a path under /api/.
+    const next = nextPath(upstream.headers.get("link"));
     return new Response(upstream.body, {
       status: upstream.status,
       headers: {
+        ...(next ? { link: `<${next}>; rel="next"` } : {}),
         "content-type":
           upstream.headers.get("content-type") ?? "application/json",
         // What an image response needs to stay private and unsniffed.

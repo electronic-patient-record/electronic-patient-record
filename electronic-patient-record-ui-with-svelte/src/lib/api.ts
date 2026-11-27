@@ -1,4 +1,5 @@
 import { noteActivity } from "./idle.js";
+import { nextPath } from "./next-link.js";
 
 // One place the pages call the API through the backend-for-frontend proxy. A network failure is
 // status 0, so a page handles "could not reach the server" the same way as any other refusal.
@@ -6,6 +7,8 @@ import { noteActivity } from "./idle.js";
 export interface ApiResult<T = unknown> {
   status: number;
   body: T;
+  /** The next page of a list, as a path to call again (`Link: rel="next"`), when more may follow. */
+  next?: string;
 }
 
 // The purpose of use sent when a call names none: the staff member's current choice (see
@@ -49,7 +52,8 @@ export async function call<T = unknown>(
     } catch {
       parsed = null;
     }
-    return { status: res.status, body: parsed as T };
+    const next = nextPath(res.headers.get("link"));
+    return { status: res.status, body: parsed as T, ...(next ? { next } : {}) };
   } catch {
     return { status: 0, body: null as T };
   }

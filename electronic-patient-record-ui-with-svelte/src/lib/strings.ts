@@ -195,7 +195,9 @@ export const STRINGS = {
   search: "Search",
   searchNothing: "Enter at least one search term.",
   noResults: "No patient matches.",
-  resultsCapped: "Only the first {n} are shown. Narrow the search.",
+  resultsCapped:
+    "More may match than are shown. Show more, or narrow the search.",
+  searchMore: "Show more results",
   results: "Results",
   open: "Open",
   registerLink: "Register a new patient",
