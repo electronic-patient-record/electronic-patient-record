@@ -2,6 +2,11 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-27 - The unmerge through the refusal stop has its own browser test
+
+- **Clinical risk:** none; a test.
+- **Added:** a Playwright test: an unmerge stopped for a refusal of treatment recorded since the merge says so, holds the button until a clinician is said to have looked, and sends exactly the id the API named.
+
 ## 2026-11-27 - The merge screen asks about refusals of treatment (RF-5 in the UI)
 
 - **Fixed:** since RF-5 the API stops a merge for each refusal of treatment on the record merged away, and an unmerge for each recorded since, until `refusals_seen` names them; the merge screen never sent it, so such a merge was stuck in the UI with the API's raw words.

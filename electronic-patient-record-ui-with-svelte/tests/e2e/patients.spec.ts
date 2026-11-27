@@ -2976,6 +2976,55 @@ test("a merge stopped for refusals of treatment says how many, and goes on only 
   });
 });
 
+test("an unmerge stopped for refusals of treatment recorded since says so, and goes on once a clinician has looked", async ({
+  page,
+}) => {
+  const OLD = "44444444-4444-4444-8444-444444444444";
+  const sent: Json[] = [];
+  let replaces = [OLD];
+  await stubAllergies(page);
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, { ...ANN, replaced_by: null, replaces }),
+  );
+  await page.route(`**/api/proxy/api/patients/${ANN.id}/unmerge`, (route) => {
+    const body = route.request().postDataJSON();
+    sent.push(body);
+    if (!body.refusals_seen) {
+      return json(route, 422, {
+        errors: ["a refusal of treatment has not been looked at"],
+        refusal: "refusals_not_seen",
+        refusals_unseen: ["r-9"],
+      });
+    }
+    replaces = [];
+    return json(route, 200, { id: "l1", version: 2, status: "reversed" });
+  });
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  await page
+    .getByLabel(/^Why are these the same person/)
+    .fill("two people, registered as one");
+  await page.getByRole("button", { name: "Undo this merge" }).click();
+  const stop = page
+    .getByRole("alert")
+    .filter({ hasText: "refusal(s) of treatment" });
+  await expect(stop).toContainText(
+    "1 refusal(s) of treatment were recorded on this record since the merge",
+  );
+  const again = stop.getByRole("button", { name: "Undo this merge" });
+  await expect(again).toBeDisabled();
+  await stop.getByLabel("A clinician has looked at each of them").check();
+  await again.click();
+  await expect(stop).toHaveCount(0);
+  expect(sent).toEqual([
+    { source: OLD, reason: "two people, registered as one" },
+    {
+      source: OLD,
+      reason: "two people, registered as one",
+      refusals_seen: ["r-9"],
+    },
+  ]);
+});
+
 test("merging and unmerging send the reason, show the server's refusal, and reload", async ({
   page,
 }) => {
