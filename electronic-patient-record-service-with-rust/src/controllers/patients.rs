@@ -875,6 +875,12 @@ pub fn routes() -> Routes {
             post(super::decision_ability::create),
         )
         .add("/{id}/decision-ability", get(super::decision_ability::list))
+        .add("/{id}/asking-now", post(super::asking_now::create))
+        .add("/{id}/asking-now", get(super::asking_now::list))
+        .add(
+            "/{id}/asking-now/{record_id}/entered-in-error",
+            post(super::asking_now::entered_in_error),
+        )
         .add(
             "/{id}/decision-ability/{judgement_id}/entered-in-error",
             post(super::decision_ability::entered_in_error),

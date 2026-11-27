@@ -217,6 +217,10 @@ fn columns() -> Vec<(&'static str, Words)> {
         ),
         ("entry_labels.kind", Literal("entries_store.rs")),
         (
+            "asking_now_versions.state",
+            Code(words!(decision_ability::State: Recorded, EnteredInError)),
+        ),
+        (
             "decision_ability_versions.state",
             Code(words!(decision_ability::State: Recorded, EnteredInError)),
         ),

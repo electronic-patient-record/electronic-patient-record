@@ -847,6 +847,39 @@ async fn a_write_whose_audit_row_cannot_be_written_is_refused_on_every_covered_r
         )
         .await;
 
+        // Asking now, and marking it entered in error (RF-10).
+        let asked = json!({ "offered": "admission", "explained": { "risks": "yes", "benefits": "yes", "alternatives": "not-known" },
+            "refused": "to stay", "told_may_change_mind": "yes", "in_private": "yes", "written": "no", "signed": "no",
+            "witnessed": "no", "at": "2026-01-01T10:00:00Z", "by": "Dr A" });
+        refused_then_accepted(db, "POST /api/patients/{id}/asking-now", || async {
+            let r = server
+                .post(&format!("/api/patients/{id}/asking-now"))
+                .json(&json!({ "asked": asked }))
+                .await;
+            (r.status_code(), r.text())
+        })
+        .await;
+        let asked_list = server
+            .get(&format!("/api/patients/{id}/asking-now"))
+            .await
+            .json::<Value>();
+        let record_id = asked_list["records"][0]["id"]
+            .as_str()
+            .expect("a record id")
+            .to_string();
+        refused_then_accepted(
+            db,
+            "POST /api/patients/{id}/asking-now/{record_id}/entered-in-error",
+            || async {
+                let r = server
+                    .post(&format!("/api/patients/{id}/asking-now/{record_id}/entered-in-error"))
+                    .json(&json!({ "expected_version": 1, "reason": "wrong patient" }))
+                    .await;
+                (r.status_code(), r.text())
+            },
+        )
+        .await;
+
         // Relationship create and update.
         let rel = json!({ "subject": "nurse-1", "kind": "care-team", "status": "active" });
         refused_then_accepted(db, "POST /api/patients/{id}/relationships", || async {

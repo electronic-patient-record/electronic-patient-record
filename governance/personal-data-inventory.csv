@@ -618,3 +618,21 @@ decision_ability_current,reason,free-text,Why it was marked entered in error as 
 decision_ability_current,state,none,Recorded or entered in error,record
 decision_ability_current,decides,health,What the judge concluded about one decision,record
 decision_ability_current,body,health,A judgement of whether the person could make one decision: how they communicated; the help given; the reasons; who judged,record
+asking_now_versions,record_id,none,Random record id,record
+asking_now_versions,version,none,Version counter,record
+asking_now_versions,patient_id,identifier,Links a record to the patient,record
+asking_now_versions,recorded_at,none,When the version was written,record
+asking_now_versions,author,staff-identifier,Who wrote the version,record
+asking_now_versions,reason,free-text,Why it was marked entered in error as typed,record
+asking_now_versions,state,none,Recorded or entered in error,record
+asking_now_versions,leaving_against_advice,health,Whether the person left or is leaving against advice,record
+asking_now_versions,body,health,What was offered and explained and how; what was refused and accepted; who was there; who asked,record
+asking_now_current,record_id,none,Random record id,record
+asking_now_current,version,none,Version counter,record
+asking_now_current,patient_id,identifier,Links a record to the patient,record
+asking_now_current,recorded_at,none,When the version was written,record
+asking_now_current,author,staff-identifier,Who wrote the version,record
+asking_now_current,reason,free-text,Why it was marked entered in error as typed,record
+asking_now_current,state,none,Recorded or entered in error,record
+asking_now_current,leaving_against_advice,health,Whether the person left or is leaving against advice,record
+asking_now_current,body,health,What was offered and explained and how; what was refused and accepted; who was there; who asked,record

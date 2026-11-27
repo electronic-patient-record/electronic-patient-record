@@ -9,7 +9,7 @@ use sqlx::{AssertSqlSafe, PgPool};
 use std::future::Future;
 
 /// The write routes driven with login off (`http_audit_refusal.rs`), spelled as in `routes::TABLE`.
-pub const LOGIN_OFF: [&str; 56] = [
+pub const LOGIN_OFF: [&str; 58] = [
     "POST /api/patients",
     "PUT /api/patients/{id}",
     "POST /fhir/R4/Patient",
@@ -59,6 +59,8 @@ pub const LOGIN_OFF: [&str; 56] = [
     "PUT /api/patients/{id}/treatment-refusals/{refusal_id}",
     "POST /api/patients/{id}/decision-ability",
     "POST /api/patients/{id}/decision-ability/{judgement_id}/entered-in-error",
+    "POST /api/patients/{id}/asking-now",
+    "POST /api/patients/{id}/asking-now/{record_id}/entered-in-error",
     "POST /api/patients/{id}/relationships",
     "PUT /api/patients/{id}/relationships/{relationship_id}",
     "POST /api/patients/{id}/merge",

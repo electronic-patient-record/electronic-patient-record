@@ -4,6 +4,7 @@ pub mod adjustments;
 pub mod allergies;
 pub mod amendments;
 pub mod api_tokens;
+pub mod asking_now;
 pub mod assessments;
 pub mod audit;
 pub mod break_glass;

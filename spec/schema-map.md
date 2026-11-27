@@ -4,7 +4,7 @@ Every table and view the service's migrations create. **Generated** by [`scripts
 
 Not listed: tables made by a statement built at run time (the monthly `audit_events` partitions), and what a column means (the migrations carry few comments, so only the name and SQL type are shown). The clinical tables are append-only: a change is a new row, and triggers refuse `UPDATE`, `DELETE` and `TRUNCATE`.
 
-51 tables, 26 views.
+52 tables, 27 views.
 
 ## Tables
 
@@ -17,6 +17,7 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `api_token_uses` | `20261118000041_api_tokens` | `token_id` UUID, `last_used_at` TIMESTAMPTZ |
 | `api_token_versions` | `20261118000041_api_tokens` | `token_id` UUID, `version` INTEGER, `description` TEXT, `revoked` BOOLEAN, `reason` TEXT, `author` TEXT, `recorded_at` TIMESTAMPTZ |
 | `api_tokens` | `20261118000041_api_tokens` | `token_id` UUID, `name` TEXT, `hash` TEXT, `scopes` TEXT[], `expires_at` TIMESTAMPTZ, `created_by` TEXT, `created_at` TIMESTAMPTZ |
+| `asking_now_versions` | `20261127000051_asking_now` | `record_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `reason` TEXT, `state` TEXT, `leaving_against_advice` BOOLEAN, `body` JSONB |
 | `assessment_versions` | `20261109000030_assessments` | `assessment_id` UUID, `version` INTEGER, `patient_id` UUID, `recorded_at` TIMESTAMPTZ, `author` TEXT, `form_id` TEXT, `form_version` INTEGER, `body` JSONB |
 | `audit_archive_anchors` | `20261031000018_audit_partitions` | `partition` TEXT, `first_id` BIGINT, `last_id` BIGINT, `row_count` BIGINT, `first_prev_digest` TEXT, `last_digest` TEXT, `archived_at` TIMESTAMPTZ |
 | `audit_events` | `20261020000001_audit_events`, `20261031000018_audit_partitions` | `id` BIGSERIAL, `recorded_at` TIMESTAMPTZ, `action` CHAR(1), `outcome` SMALLINT, `agent` TEXT, `patient_ref` TEXT, `resource_ref` TEXT, `purpose_of_use` TEXT, `break_glass` BOOLEAN, `network_address` TEXT, `detail` JSONB, `prev_digest` TEXT, `digest` TEXT |
@@ -71,6 +72,7 @@ Not listed: tables made by a statement built at run time (the monthly `audit_eve
 | `allergy_current` | `20261021000007_allergies`, `20261021000011_current_views_seek` |
 | `amendment_current` | `20261027000015_amendments` |
 | `api_token_current` | `20261118000041_api_tokens` |
+| `asking_now_current` | `20261127000051_asking_now` |
 | `assessment_current` | `20261109000030_assessments` |
 | `audit_events_all` | `20261031000019_audit_archive_view` |
 | `consent_current` | `20261021000003_consent_versions`, `20261021000011_current_views_seek` |

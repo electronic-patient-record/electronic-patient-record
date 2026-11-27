@@ -713,6 +713,177 @@
         ],
         "type": "object"
       },
+      "Asked": {
+        "description": "One time of asking a person now, or of their leaving against advice: what was offered and explained, how, what they refused and accepted. Never changed; not known is a value and never counts as done. Nothing here decides whether a refusal stands.",
+        "properties": {
+          "accepted": {
+            "maxLength": 500,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "at": {
+            "description": "RFC 3339, not in the future.",
+            "type": "string"
+          },
+          "by": {
+            "description": "Who asked, in words: a name and a role.",
+            "maxLength": 500,
+            "type": "string"
+          },
+          "explained": {
+            "properties": {
+              "alternatives": {
+                "enum": [
+                  "yes",
+                  "no",
+                  "not-known"
+                ]
+              },
+              "benefits": {
+                "enum": [
+                  "yes",
+                  "no",
+                  "not-known"
+                ]
+              },
+              "helped_by": {
+                "description": "Who helped: an interpreter, a supporter, by role.",
+                "maxLength": 500,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "language": {
+                "maxLength": 500,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "risks": {
+                "enum": [
+                  "yes",
+                  "no",
+                  "not-known"
+                ]
+              }
+            },
+            "required": [
+              "risks",
+              "benefits",
+              "alternatives"
+            ],
+            "type": "object"
+          },
+          "in_private": {
+            "enum": [
+              "yes",
+              "no",
+              "not-known"
+            ]
+          },
+          "leaving_against_advice": {
+            "description": "They left, or are leaving, against advice (EC-6).",
+            "type": "boolean"
+          },
+          "offered": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "refused": {
+            "description": "What they refused; required with leaving_against_advice. One of refused and accepted is required.",
+            "maxLength": 500,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "signed": {
+            "enum": [
+              "yes",
+              "no",
+              "not-known"
+            ]
+          },
+          "told_may_change_mind": {
+            "enum": [
+              "yes",
+              "no",
+              "not-known"
+            ]
+          },
+          "with_whom": {
+            "description": "Who else was there, by role, when it was not in private.",
+            "maxLength": 500,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "witnessed": {
+            "enum": [
+              "yes",
+              "no",
+              "not-known"
+            ]
+          },
+          "written": {
+            "enum": [
+              "yes",
+              "no",
+              "not-known"
+            ]
+          }
+        },
+        "required": [
+          "offered",
+          "explained",
+          "told_may_change_mind",
+          "in_private",
+          "written",
+          "signed",
+          "witnessed",
+          "at",
+          "by"
+        ],
+        "type": "object"
+      },
+      "AskedList": {
+        "description": "Every record on the patient record and on records merged into it, newest first, as made.",
+        "properties": {
+          "left_against_advice": {
+            "description": "How many that stand say the person left against advice.",
+            "type": "integer"
+          },
+          "records": {
+            "items": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/StoredAsked"
+                }
+              ],
+              "properties": {
+                "from_merged_record": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "from_merged_record"
+              ]
+            },
+            "maxItems": 1000,
+            "type": "array"
+          }
+        },
+        "required": [
+          "records",
+          "left_against_advice"
+        ],
+        "type": "object"
+      },
       "AssessmentForm": {
         "description": "One version of a form, from the form catalogue (`assessment_forms.toml`). Empty approver and day mean a draft.",
         "properties": {
@@ -1563,6 +1734,17 @@
           "target_id",
           "version",
           "text"
+        ],
+        "type": "object"
+      },
+      "CreateAsked": {
+        "properties": {
+          "asked": {
+            "$ref": "#/components/schemas/Asked"
+          }
+        },
+        "required": [
+          "asked"
         ],
         "type": "object"
       },
@@ -3020,6 +3202,22 @@
         },
         "required": [
           "source",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "MarkAskedInError": {
+        "properties": {
+          "expected_version": {
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 500,
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_version",
           "reason"
         ],
         "type": "object"
@@ -5316,6 +5514,49 @@
           "author",
           "recorded_at",
           "allergy"
+        ],
+        "type": "object"
+      },
+      "StoredAsked": {
+        "properties": {
+          "asked": {
+            "$ref": "#/components/schemas/Asked"
+          },
+          "author": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "reason": {
+            "description": "Why it was marked entered in error.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "state": {
+            "enum": [
+              "recorded",
+              "entered-in-error"
+            ]
+          },
+          "version": {
+            "description": "1 when recorded; 2 when marked entered in error.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "patient_id",
+          "version",
+          "author",
+          "state",
+          "reason",
+          "asked"
         ],
         "type": "object"
       },
@@ -11329,6 +11570,269 @@
         ],
         "x-epr-action": "Update",
         "x-epr-resource": "Amendment"
+      }
+    },
+    "/api/patients/{id}/asking-now": {
+      "get": {
+        "operationId": "getApiPatientsIdAsking-now",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskedList"
+                }
+              }
+            },
+            "description": "OK."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "GET /api/patients/{id}/asking-now",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Read",
+        "x-epr-resource": "AskingNow"
+      },
+      "post": {
+        "operationId": "postApiPatientsIdAsking-now",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "1 to 128 letters, digits or . _ : -. A retry with the same key and the same request returns the first answer (header `Idempotent-Replayed: true`) and writes nothing; the same key for a different request is a 422; a key whose first request is unfinished is a 409. Only a success is kept; keys expire after 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAsked"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredAsked"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/patients/{id}/asking-now",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "Create",
+        "x-epr-resource": "AskingNow"
+      }
+    },
+    "/api/patients/{id}/asking-now/{record_id}/entered-in-error": {
+      "post": {
+        "operationId": "postApiPatientsIdAsking-nowRecord_idEntered-in-error",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "record_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "1 to 128 letters, digits or . _ : -. A retry with the same key and the same request returns the first answer (header `Idempotent-Replayed: true`) and writes nothing; the same key for a different request is a 422; a key whose first request is unfinished is a 409. Only a success is kept; keys expire after 24 hours.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkAskedInError"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredAsked"
+                }
+              }
+            },
+            "description": "The stored record."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No valid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The policy engine refused the request; the refusal is audited."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionConflict"
+                }
+              }
+            },
+            "description": "A likely duplicate or a stale expected_version."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorList"
+                }
+              }
+            },
+            "description": "The record was refused, one line per reason."
+          },
+          "default": {
+            "description": "Bodies are not described in this document; see spec/09-api-surface.md."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "POST /api/patients/{id}/asking-now/{record_id}/entered-in-error",
+        "tags": [
+          "patients"
+        ],
+        "x-epr-action": "MarkEnteredInError",
+        "x-epr-resource": "AskingNow"
       }
     },
     "/api/patients/{id}/assessments": {

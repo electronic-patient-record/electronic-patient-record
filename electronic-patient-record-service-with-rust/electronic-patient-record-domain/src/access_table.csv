@@ -16,6 +16,7 @@ clinician,clinical,RelativeHistory,create entered-in-error read search update
 clinician,clinical,CompatibilityTyping,create entered-in-error read search update
 clinician,clinical,TreatmentRefusal,create entered-in-error read search update
 clinician,clinical,DecisionAbility,create entered-in-error read search
+clinician,clinical,AskingNow,create entered-in-error read search
 clinician,clinical,Observation,create entered-in-error read search update
 clinician,clinical,DiagnosticReport,create entered-in-error read search update
 clinician,clinical,QuestionnaireResponse,create read search
@@ -49,6 +50,7 @@ nurse,clinical,RelativeHistory,create read search update
 nurse,clinical,CompatibilityTyping,read search
 nurse,clinical,TreatmentRefusal,create read search update
 nurse,clinical,DecisionAbility,create read search
+nurse,clinical,AskingNow,create read search
 nurse,clinical,Observation,create read search update
 nurse,clinical,DiagnosticReport,read search
 nurse,clinical,QuestionnaireResponse,create read search
@@ -75,6 +77,7 @@ pharmacist,resource,PatientIdentity,read search
 pharmacist,clinical,Condition,read search
 pharmacist,clinical,TreatmentRefusal,read search
 pharmacist,clinical,DecisionAbility,read search
+pharmacist,clinical,AskingNow,read search
 pharmacist,clinical,Observation,read search
 pharmacist,clinical,DiagnosticReport,read search
 pharmacist,clinical,QuestionnaireResponse,read search
@@ -96,6 +99,7 @@ allied-health,clinical,Condition,create read search update
 allied-health,clinical,RelativeHistory,create read search update
 allied-health,clinical,TreatmentRefusal,create read search update
 allied-health,clinical,DecisionAbility,create read search
+allied-health,clinical,AskingNow,create read search
 allied-health,clinical,Observation,create read search update
 allied-health,clinical,DiagnosticReport,read search
 allied-health,clinical,QuestionnaireResponse,create read search

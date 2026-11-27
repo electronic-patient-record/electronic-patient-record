@@ -20,6 +20,8 @@ pub mod amendments_store;
 pub mod api_error;
 pub mod api_tokens_store;
 pub mod app;
+pub use electronic_patient_record_domain::asking_now;
+pub mod asking_now_store;
 pub use electronic_patient_record_domain::assessments;
 pub mod assessments_store;
 pub mod audit;

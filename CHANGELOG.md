@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-27 - Records of asking now, and of leaving against advice, are stored and served (RF-10)
+
+- **Clinical risk:** yes. New hazard H-081 (a record says more or less than happened), `open`, severity and likelihood the author's proposal.
+- **Added:** migration `20261127000051` (`asking_now_versions`, append-only, and `asking_now_current`); `asking_now_store.rs`; `POST`/`GET /api/patients/{id}/asking-now` and `POST …/{record_id}/entered-in-error`, as for RF-8: never changed, no `PUT`; entered in error needs a reason and the current version, and the record stays. The list is newest first, each with `from_merged_record`, and `left_against_advice` counts those that stand. An `AskingNow` resource: clinician records, reads and marks entered in error; nurse and allied health record and read; pharmacist reads; a patient, a proxy and an administrator read none. Audit rows hold ids, version and state only.
+- **Verified:** fmt, clippy, docs, every service and domain test and every database test on a throwaway Postgres 18 (2 new: the flow and the roles through login), and the route, label, audit-failure, stored-word, inventory and OpenAPI censuses; `ci-local.sh --fast`. **Not done / not verified:** no screen; no gaps against the place's pack, which is not read yet; a merge does not ask about these records; nobody has reviewed the fields or the permission table.
+
 ## 2026-11-27 - The FHIR validator checks a paged search set
 
 - **Clinical risk:** none; a test.

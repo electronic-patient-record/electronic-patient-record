@@ -1359,6 +1359,63 @@ fn treatment_refusal_schemas() -> Value {
     })
 }
 
+/// The schemas for records of asking a person now, and of leaving against advice (RF-10).
+fn asking_now_schemas() -> Value {
+    let known = json!({"enum": ["yes", "no", "not-known"]});
+    json!({
+        "Asked": {
+            "type": "object",
+            "required": ["offered", "explained", "told_may_change_mind", "in_private", "written", "signed", "witnessed", "at", "by"],
+            "description": "One time of asking a person now, or of their leaving against advice: what was offered and explained, how, what they refused and accepted. Never changed; not known is a value and never counts as done. Nothing here decides whether a refusal stands.",
+            "properties": {
+                "offered": {"type": "string", "maxLength": 500},
+                "explained": {"type": "object", "required": ["risks", "benefits", "alternatives"], "properties": {
+                    "risks": known, "benefits": known, "alternatives": known,
+                    "language": {"type": ["string", "null"], "maxLength": 500},
+                    "helped_by": {"type": ["string", "null"], "maxLength": 500, "description": "Who helped: an interpreter, a supporter, by role."}}},
+                "refused": {"type": ["string", "null"], "maxLength": 500, "description": "What they refused; required with leaving_against_advice. One of refused and accepted is required."},
+                "accepted": {"type": ["string", "null"], "maxLength": 500},
+                "told_may_change_mind": known,
+                "in_private": known,
+                "with_whom": {"type": ["string", "null"], "maxLength": 500, "description": "Who else was there, by role, when it was not in private."},
+                "leaving_against_advice": {"type": "boolean", "description": "They left, or are leaving, against advice (EC-6)."},
+                "written": known, "signed": known, "witnessed": known,
+                "at": {"type": "string", "description": "RFC 3339, not in the future."},
+                "by": {"type": "string", "maxLength": 500, "description": "Who asked, in words: a name and a role."}
+            }
+        },
+        "StoredAsked": {
+            "type": "object", "required": ["id", "patient_id", "version", "author", "state", "reason", "asked"],
+            "properties": {
+                "id": {"type": "string"}, "patient_id": {"type": "string"},
+                "version": {"type": "integer", "description": "1 when recorded; 2 when marked entered in error."},
+                "author": {"type": "string"},
+                "state": {"enum": ["recorded", "entered-in-error"]},
+                "reason": {"type": ["string", "null"], "description": "Why it was marked entered in error."},
+                "asked": {"$ref": "#/components/schemas/Asked"}
+            }
+        },
+        "CreateAsked": {
+            "type": "object", "required": ["asked"],
+            "properties": {"asked": {"$ref": "#/components/schemas/Asked"}}
+        },
+        "MarkAskedInError": {
+            "type": "object", "required": ["expected_version", "reason"],
+            "properties": {"expected_version": {"type": "integer"}, "reason": {"type": "string", "maxLength": 500}}
+        },
+        "AskedList": {
+            "type": "object", "required": ["records", "left_against_advice"],
+            "description": "Every record on the patient record and on records merged into it, newest first, as made.",
+            "properties": {
+                "records": {"type": "array", "items": {"allOf": [{"$ref": "#/components/schemas/StoredAsked"}],
+                    "required": ["from_merged_record"],
+                    "properties": {"from_merged_record": {"type": "boolean"}}}},
+                "left_against_advice": {"type": "integer", "description": "How many that stand say the person left against advice."}
+            }
+        }
+    })
+}
+
 /// The schemas for judgements of whether a person can make one decision now (RF-8): the judgement, the stored version,
 /// the bodies and the list.
 fn decision_ability_schemas() -> Value {
@@ -2206,6 +2263,7 @@ fn patient_schemas() -> Value {
         consent_schemas(),
         treatment_refusal_schemas(),
         decision_ability_schemas(),
+        asking_now_schemas(),
         relationship_schemas(),
     ] {
         all.extend(
@@ -2474,6 +2532,22 @@ const BODIES: &[(&str, &str, &str, &str, &str, &str)] = &[
         "UpdateConsent",
         "200",
         "StoredConsent",
+        "VersionConflict",
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/asking-now",
+        "CreateAsked",
+        "201",
+        "StoredAsked",
+        "",
+    ),
+    (
+        "POST",
+        "/api/patients/{id}/asking-now/{record_id}/entered-in-error",
+        "MarkAskedInError",
+        "200",
+        "StoredAsked",
         "VersionConflict",
     ),
     (
@@ -2799,6 +2873,7 @@ const READS: &[(&str, &str, &str, &[&str])] = &[
         "JudgementList",
         &[],
     ),
+    ("GET", "/api/patients/{id}/asking-now", "AskedList", &[]),
     ("GET", "/api/patients/{id}/amendments", "AmendmentList", &[]),
     (
         "GET",
