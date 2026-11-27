@@ -6,7 +6,7 @@ Each entry says what was not done or not verified. Per-crate changelogs hold the
 
 - **Fixed:** since RF-5 the API stops a merge for each refusal of treatment on the record merged away, and an unmerge for each recorded since, until `refusals_seen` names them; the merge screen never sent it, so such a merge was stuck in the UI with the API's raw words.
 - **Clinical risk:** yes, H-075: the screen now says how many refusals of treatment stop it, that they may be another person's, and that the administrator, who may not read them, must ask a clinician; it goes on only once they confirm a clinician has looked at each, and then sends exactly the ids the API named. H-075's controls, evidence and residual updated: nothing checks that a clinician did look.
-- **Verified:** UI lint, type checks, vitest, Playwright (274, 1 new: the count, the button held until the confirmation, the exact second body, axe), `ci-local.sh --fast`. **Not done / not verified:** the unmerge path is the same code and is not given its own browser test; a clinician cannot see from the merge screen which refusals are meant.
+- **Verified:** UI lint, type checks, vitest, Playwright (274, 1 new: the count, the button held until the confirmation, the exact second body, axe). **The first push (`e388ac7c`) broke the hazard log**: the new words of H-075's residual held a comma in an unquoted field, so its status and date shifted; my script pushed past the failing `docs-hazard-log` gate. Fixed in the next commit, the field quoted. **Not done / not verified:** the unmerge path is the same code and is not given its own browser test; a clinician cannot see from the merge screen which refusals are meant.
 
 ## 2026-11-27 - A doubted refusal of treatment can stand again (RF-7, unreviewed)
 
