@@ -338,6 +338,11 @@
   </a>
 </p>
 <p>
+  <a href={localizePath(`/patients/${id}/emergency`, locale)}>
+    {TEXT.emOpen}
+  </a>
+</p>
+<p>
   <a href={localizePath(`/patients/${id}/access`, locale)}>
     {TEXT.accessManage}
   </a>

@@ -13,8 +13,49 @@ export interface ListedRefusal {
     treatment: string;
     state: "stands" | "doubted" | "withdrawn" | "entered-in-error";
     identity: "certain" | "uncertain";
+    // What the emergency sheet shows; the banner needs none of it.
+    kind?: Kind;
+    accepts?: string;
+    circumstances?: string;
+    if_life_at_risk?: "yes" | "no" | "not-stated";
+    form?: {
+      written: Known;
+      signed: Known;
+      witnessed: Known;
+      witnesses?: number;
+      seen: "original" | "copy" | "not-seen";
+      kept?: string;
+    };
+    made_on?: string;
+    confirmed_on?: string;
+    said_by?: SaidBy;
+    power_seen?: Known;
+    doubt?: string;
+    withdrawal?: {
+      how: "spoken" | "written" | "conduct";
+      noticed_by: string;
+      at: string;
+    };
   };
 }
+
+export type Known = "yes" | "no" | "not-known";
+export type Kind =
+  | "spoken-now"
+  | "advance"
+  | "order"
+  | "representative"
+  | "parent"
+  | "carried"
+  | "reported";
+export type SaidBy =
+  | "patient"
+  | "attorney"
+  | "guardian"
+  | "parent"
+  | "relative"
+  | "clinician"
+  | "other";
 
 export interface RefusalData {
   refusals: ListedRefusal[];

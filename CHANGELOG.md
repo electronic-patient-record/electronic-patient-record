@@ -2,6 +2,12 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-27 - The emergency sheet for refusals of treatment (RF-7, unreviewed)
+
+- **Clinical risk:** yes: a page a clinician reads in an emergency. It serves H-075 to H-078; no row changes. **The wording is the author's and unreviewed**, and the page says so at the top.
+- **Added:** `/patients/{id}/emergency`, linked from the record ("Open the emergency sheet"): who the person is (a temporary identity said loudly), then each refusal that stands, is doubted or was withdrawn (none entered in error), in large type: the treatment, its state and kind (an order is "not the person's own refusal"), what is accepted, when it applies, even if life is at risk, who said it and whether a power was seen, made and last confirmed (absent is "not known"), its form and where the paper is, why it is doubted, and a withdrawal that was heard. None recorded says "ask, and look for a card or a document"; an unreadable list is an alert; a role that may not read is told so. A print layout hides the navigation and keeps each refusal on one page. English and Welsh; the Welsh is machine-written.
+- **Verified:** UI lint, type checks, vitest (the colour census lists the sheet's loud parts), Playwright (1 new: every field, the four states, axe, the link), `ci-local.sh --fast`. **Not done / not verified:** no offline copy in a downtime extract; nothing says whom to call (no pack's contacts); printing was not tried on paper; no clinician has seen or timed it.
+
 ## 2026-11-27 - The patient banner names a refusal of treatment (RF-7, first slice, unreviewed)
 
 - **Clinical risk:** yes: what a clinician sees on every patient page. H-076's controls and evidence updated; no new row. **The wording is the author's and unreviewed**, and says so on the banner.

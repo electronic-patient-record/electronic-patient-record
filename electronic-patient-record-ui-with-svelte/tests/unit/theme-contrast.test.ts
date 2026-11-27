@@ -135,6 +135,8 @@ describe("theme contrast", () => {
     ".banner .refusals.high":
       "'Refusal of treatment recorded' with each refusal, or 'could not be read', in words",
     ".banner-strip .refusals.high": "the same words, in the strip",
+    ".emergency .loud":
+      "each refusal says 'Stands' or 'Doubted', and a list that could not be read says so, in words",
     ".banner-strip .allergies.high,\n  .banner-strip .flag":
       "the same words, and a drill, a death, a temporary identity or a merge in words",
   };

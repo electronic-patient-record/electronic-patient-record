@@ -277,6 +277,120 @@ test("the banner names a refusal of treatment in its words, says none recorded a
   await expect(line).toHaveCount(0);
 });
 
+test("the emergency sheet shows each refusal of treatment in full, says none recorded and never none, and is loud when it cannot read", async ({
+  page,
+}) => {
+  await page.route(`**/api/proxy/api/patients/${ANN.id}`, (route) =>
+    json(route, 200, ANN),
+  );
+  const full = {
+    id: "r1",
+    from_merged_record: false,
+    refusal: {
+      kind: "advance",
+      treatment: "blood products",
+      accepts: "albumin",
+      circumstances: "any surgery",
+      if_life_at_risk: "yes",
+      form: {
+        written: "yes",
+        signed: "yes",
+        witnessed: "yes",
+        witnesses: 2,
+        seen: "copy",
+        kept: "with the patient's daughter",
+      },
+      made_on: "2024-05",
+      confirmed_on: "2026-01-10",
+      said_by: "patient",
+      identity: "certain",
+      state: "stands",
+    },
+  };
+  const answers: Array<[number, unknown]> = [
+    [
+      200,
+      {
+        summary: { state: "recorded" },
+        refusals: [
+          full,
+          {
+            id: "r2",
+            from_merged_record: false,
+            refusal: {
+              treatment: "dialysis",
+              state: "entered-in-error",
+              identity: "certain",
+            },
+          },
+        ],
+      },
+    ],
+    [200, { refusals: [], summary: { state: "none-recorded" } }],
+    [500, {}],
+    [403, { detail: "forbidden" }],
+  ];
+  let answer = 0;
+  await page.route(
+    "**/api/proxy/api/patients/*/treatment-refusals",
+    (route) => {
+      const [status, body] = answers[answer]!;
+      return json(route, status, body);
+    },
+  );
+  await page.goto(`/en-001/patients/${ANN.id}/emergency`);
+  await expect(
+    page.getByRole("heading", {
+      name: "Emergency sheet: refusals of treatment",
+    }),
+  ).toBeVisible();
+  await expect(page.getByText(/^Unreviewed: this sheet/)).toBeVisible();
+  const card = page.getByRole("article");
+  await expect(card).toHaveCount(1);
+  await expect(
+    card.getByRole("heading", { name: "blood products" }),
+  ).toBeVisible();
+  for (const words of [
+    "Stands",
+    "made in advance",
+    "albumin",
+    "any surgery",
+    "it says so",
+    "the person",
+    "2024-05",
+    "2026-01-10",
+    "witnessed: yes (2)",
+    "a copy",
+    "with the patient's daughter",
+  ]) {
+    await expect(card).toContainText(words);
+  }
+  await expect(page.getByRole("button", { name: "Print" })).toBeVisible();
+  await axe(page);
+
+  answer = 1;
+  await page.reload();
+  await expect(
+    page.getByText(/None recorded here. This does not mean there are none/),
+  ).toBeVisible();
+  answer = 2;
+  await page.reload();
+  await expect(page.getByRole("alert")).toContainText(
+    "could not be read. Treat refusals as not known, not as none.",
+  );
+  answer = 3;
+  await page.reload();
+  await expect(
+    page.getByText("Your role does not show refusals of treatment."),
+  ).toBeVisible();
+
+  // One link from the record.
+  await page.goto(`/en-001/patients/${ANN.id}`);
+  await expect(
+    page.getByRole("link", { name: /emergency sheet/ }),
+  ).toHaveAttribute("href", `/en-001/patients/${ANN.id}/emergency`);
+});
+
 test("a search with no match says so; a refusal is announced", async ({
   page,
 }) => {
