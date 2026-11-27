@@ -1,0 +1,30 @@
+Willkommen bei den Diskussionen zur elektronischen Patientenakte
+
+Die Diskussionen sind jetzt für Electronic Patient Record geöffnet, eine Open-Source-Software für eine sichere, nur ergänzbare und protokollierte Patientenakte, mit FHIR R4 als Datenmodell und als API sowie nachvollziehbarem Abgleich von Patientenidentitäten. Hier können Sie Fragen stellen, Ideen vorschlagen und teilen, was Sie bauen – öffentlich und an einem Ort.
+
+> **Nicht für den klinischen Einsatz. Geben Sie keine echten Patientendaten ein.** Das Projekt ist ein Gerüst vor der Veröffentlichung. Was ein Produktivbetrieb bedeuten würde und was zuvor getan werden muss, steht im [Weg zum Produktivbetrieb](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/governance/production-readiness.md).
+
+## Was es heute gibt
+
+- Eine Rust-Bibliothek, die zwei Patientenidentitätsdatensätze vergleicht und das Ergebnis Feld für Feld erklärt.
+- Einen Rust-Dienst mit REST- und FHIR-API, PostgreSQL-Speicherung und einem Audit-Protokoll, das sich nicht bearbeiten lässt.
+- Eine SvelteKit-Oberfläche für Klinikpersonal, die über einen eigenen Proxy mit dem Dienst spricht.
+- Eine Spezifikation, ein Backlog und ein Gefährdungsprotokoll, alles zusammen mit dem Code. Der [Umsetzungsstand](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/14-implementation-status.md) sagt genau, was gebaut und getestet ist.
+
+## Wohin wofür
+
+- **Fragen** zum Ausführen, Testen oder Verstehen des Codes: Q&A.
+- **Vorschläge** für Funktionen oder Änderungen: Ideas.
+- **Etwas, das Sie gebaut haben**, mit oder rund um das Projekt: Show and tell.
+- **Abstimmungen** über offene Projektfragen: Polls.
+- **Alles andere**, auch Vorstellungen: General.
+- **Fehler**: Eröffnen Sie ein [Issue](https://github.com/electronic-patient-record/electronic-patient-record/issues) mit dem, was Sie getan haben, was Sie erwartet haben und was geschehen ist.
+- **Sicherheitsprobleme**: Melden Sie sie privat, wie [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) erklärt, nie in einer Diskussion.
+
+## Wie wir arbeiten
+
+Bitte beachten Sie den [Verhaltenskodex](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md). Änderungen beginnen bei der Spezifikation, wie der [Leitfaden zum Mitwirken](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CONTRIBUTING.md) erklärt. Das Projekt hat nur einen Betreuer, daher können Antworten einige Tage dauern. Ein großer Teil der Arbeit wird mit einem KI-Assistenten unter Anleitung des Betreuers geschrieben, wie die [KI-Erklärung](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AI_STATEMENT.md) erklärt, und nichts wurde bisher klinisch begutachtet.
+
+## Was als Nächstes zu tun ist
+
+Lesen Sie die sechs Fragen in [RFC.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/RFC.md) und beantworten Sie die, die Sie am besten kennen, in einer neuen Diskussion in General oder in einer Antwort hier.

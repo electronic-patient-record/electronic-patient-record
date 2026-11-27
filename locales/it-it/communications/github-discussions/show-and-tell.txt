@@ -1,0 +1,56 @@
+Condividete ciò che avete costruito: ecco il matcher che spiega una cartella che non collegherebbe
+
+Questa categoria è per le cose che avete fatto con Electronic Patient Record o intorno ad esso: integrazioni, script, dimostrazioni, guide ed esperimenti. Per mostrare il formato, ecco una piccola cosa che il progetto fa già.
+
+## Che cos’è
+
+Il matcher è una libreria Rust che confronta due record di identità di pazienti e dice, campo per campo, perché li collegherebbe o no.
+
+## Perché esiste
+
+Collegare due cartelle di persone diverse mescola le loro storie mediche, e questo può danneggiarle entrambe. Per questo il matcher non decide mai in silenzio. Un campo mancante è segnalato come mancante, mai contato come corrispondenza, e alcune lacune bloccano del tutto un collegamento automatico.
+
+## Provatelo
+
+Due cartelle inventate: stesso cognome e stessa data di nascita, ma la seconda non ha il nome.
+
+```sh
+git clone https://github.com/electronic-patient-record/electronic-patient-record.git
+cd electronic-patient-record/electronic-patient-record-matcher-with-rust
+echo '{"names":[{"family":"Rivera","given":["Alex"]}],"birth_date":"1980-04-12","sex":"female"}' > a.json
+echo '{"names":[{"family":"Rivera","given":[]}],"birth_date":"1980-04-12"}' > b.json
+cargo run -- a.json b.json
+```
+
+Parte dell’output:
+
+```json
+{
+  "score": 1.0,
+  "decision": "review",
+  "fields": [
+    { "field": "family_name", "similarity": 1.0, "weight": 0.25, "note": "similarity 1.00" },
+    { "field": "given_name", "similarity": null, "weight": 0.2, "note": "no given name on one or both records" },
+    { "field": "birth_date", "similarity": 1.0, "weight": 0.3, "note": "similarity 1.00" }
+  ],
+  "conflicts": [ "given name not available to confirm the link" ]
+}
+```
+
+## Che cosa mi ha sorpreso
+
+Ogni campo che le due cartelle hanno in comune concorda, quindi il punteggio è 1.0, e il matcher rifiuta comunque di collegarle. Le manda a una persona, perché un nome mancante non può mai confermare un collegamento. Un punteggio alto da solo non basta.
+
+Le soglie non sono validate, e il software non è per uso clinico.
+
+## Condividete il vostro
+
+Pubblicate ciò che avete fatto in una nuova discussione qui, con:
+
+- che cos’è, in una frase;
+- perché l’avete fatto;
+- qualcosa da guardare: un frammento, uno screenshot o un link;
+- come può provarlo qualcun altro;
+- il tipo di riscontro che volete.
+
+Usate solo cartelle inventate, mai dati reali di pazienti. E se vi basate sul lavoro di qualcun altro, citatelo.

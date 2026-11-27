@@ -1,0 +1,30 @@
+Välkommen till diskussionerna om den elektroniska patientjournalen
+
+Diskussionerna är nu öppna för Electronic Patient Record, programvara med öppen källkod för en säker patientjournal där det bara går att lägga till och som granskas, med FHIR R4 som både datamodell och API, och förklarbar matchning av patientidentitet. Här kan du ställa frågor, föreslå idéer och dela vad du bygger, offentligt och på ett ställe.
+
+> **Inte för klinisk användning. Ange inga verkliga patientuppgifter.** Projektet är en stomme före lansering. Vad produktion skulle innebära och vad som måste göras först finns i [vägen till produktion](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/governance/production-readiness.md).
+
+## Vad som finns i dag
+
+- Ett Rust-bibliotek som jämför två identitetsposter för patienter och förklarar resultatet, fält för fält.
+- En Rust-tjänst med REST- och FHIR-API, PostgreSQL-lagring och ett granskningsspår som inte kan redigeras.
+- Ett SvelteKit-gränssnitt för kliniker som talar med tjänsten via sin egen proxy.
+- En specifikation, en backlogg och en risklogg, allt förvarat tillsammans med koden. [Implementeringsstatusen](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/14-implementation-status.md) anger exakt vad som är byggt och testat.
+
+## Vart du går för vad
+
+- **Frågor** om att köra, testa eller förstå koden: Q&A.
+- **Förslag** på funktioner eller ändringar: Ideas.
+- **Något du har byggt** med eller kring projektet: Show and tell.
+- **Omröstningar** om öppna projektfrågor: Polls.
+- **Allt annat**, även presentationer: General.
+- **Buggar**: öppna ett [ärende](https://github.com/electronic-patient-record/electronic-patient-record/issues) med vad du gjorde, vad du förväntade dig och vad som hände.
+- **Säkerhetsproblem**: rapportera privat, som [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) förklarar, aldrig i en diskussion.
+
+## Hur vi arbetar
+
+Följ [uppförandekoden](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md). Ändringar utgår från specifikationen, som [bidragsguiden](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CONTRIBUTING.md) förklarar. Projektet har en enda ansvarig, så svar kan ta några dagar. Mycket av arbetet skrivs med en AI-assistent under den ansvariges ledning, som [AI-redogörelsen](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AI_STATEMENT.md) förklarar, och inget har ännu granskats kliniskt.
+
+## Vad du kan göra härnäst
+
+Läs de sex frågorna i [RFC.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/RFC.md) och svara på den du kan mest om, i en ny diskussion i General eller i ett svar här.

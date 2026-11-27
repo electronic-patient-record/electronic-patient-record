@@ -31,7 +31,7 @@ pub const TEAM_LIMIT: i64 = 200;
 /// The record a task came from: the subject a cancelling event must share.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Source {
-    /// What it is (`result`, `observation`, `referral`).
+    /// What it is (`result`, `observation`, `referral`, `treatment-refusal`).
     pub kind: String,
     /// Its id.
     pub id: String,

@@ -1,0 +1,33 @@
+如何提出能得到好回答的問題
+
+本版塊用於有答案的問題：如何執行、測試、設定或理解 Electronic Patient Record。當某條回覆解決了你的問題時，請把它標記為答案，這样有同样問題的下一個人就能很快找到。
+
+提問之前，請查看 [README](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/README.md)、[AGENTS.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AGENTS.md)（其中列出了容易忽略的陷阱，例如端口、Podman 和時钟漂移），以及說明哪些已構建、哪些未構建的[實現狀態](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/14-implementation-status.md)。
+
+## 提問檢查清單
+
+用問題作為標題，例如“如何在其他端口上執行資料庫測試？”，而不是“求助”。每個讨论只問一個問題。然後包括：
+
+- **目標：** 你想做什麼，一句话。
+- **我尝試了什麼：** 步驟或命令，按順序。
+- **期望：** 你認為會發生什麼。
+- **實際：** 發生了什麼，用程式碼塊給出完整的錯誤文本，不要用截圖。
+- **環境：** 提交或版本；子專案（matcher、service 或 UI）；你的作業系統；以及適用的 Rust、Node、pnpm、Podman 和 PostgreSQL 版本。
+- **最小範例：** 仍能重現問題的最少命令或程式碼。
+
+把文本粘贴到帶圍栏的程式碼塊中：
+
+```text
+the exact error message goes here
+```
+
+## 請不要粘贴
+
+- **真實病人資料。** 本軟體不得用於臨床。請使用虛構記錄並說明。
+- **機密資訊**，例如權杖、密钥、密碼，或帶密碼的 `DB_URL`。請用占位符替換。
+
+## 還可以去哪裡
+
+- 如果你發現了缺陷，請開一個[議題](https://github.com/electronic-patient-record/electronic-patient-record/issues)。
+- 如果你想要某個功能，請發布到 Ideas。
+- 如果是安全問題，請按 [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) 的說明私下報告。

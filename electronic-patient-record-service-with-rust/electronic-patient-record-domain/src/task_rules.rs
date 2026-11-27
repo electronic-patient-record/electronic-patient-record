@@ -62,11 +62,15 @@ pub enum Event {
     ReferralStepped,
     /// A referral was closed (completed, declined, cancelled).
     ReferralClosed,
+    /// A refusal of treatment came to be doubted (RF-7): someone must look at it.
+    TreatmentRefusalDoubted,
+    /// A doubted refusal of treatment stopped being doubted: it stands again, was withdrawn, or was entered in error.
+    TreatmentRefusalResolved,
 }
 
 impl Event {
     /// Every event, in order.
-    pub const ALL: [Event; 7] = [
+    pub const ALL: [Event; 9] = [
         Event::ResultFiled,
         Event::ResultSignedOff,
         Event::ResultEnteredInError,
@@ -74,6 +78,8 @@ impl Event {
         Event::ObservationEnteredInError,
         Event::ReferralStepped,
         Event::ReferralClosed,
+        Event::TreatmentRefusalDoubted,
+        Event::TreatmentRefusalResolved,
     ];
 
     /// The facts an event carries, which a condition may name. A condition on any other fact is refused when the
@@ -87,6 +93,8 @@ impl Event {
             Event::ObservationOutOfRange | Event::ObservationEnteredInError => &["code", "flag"],
             Event::ReferralStepped => &["state", "priority"],
             Event::ReferralClosed => &["state"],
+            Event::TreatmentRefusalDoubted => &["kind", "withdrawal_heard"],
+            Event::TreatmentRefusalResolved => &["kind", "state"],
         }
     }
 
@@ -101,6 +109,8 @@ impl Event {
             Event::ObservationEnteredInError => "observation-entered-in-error",
             Event::ReferralStepped => "referral-stepped",
             Event::ReferralClosed => "referral-closed",
+            Event::TreatmentRefusalDoubted => "treatment-refusal-doubted",
+            Event::TreatmentRefusalResolved => "treatment-refusal-resolved",
         }
     }
 }

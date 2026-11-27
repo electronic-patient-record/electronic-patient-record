@@ -11,7 +11,8 @@
 # - approved_by and approved_on are both given (a YYYY-MM-DD day) or both empty;
 # - a condition names a fact its event carries (result-filed: abnormal, critical,
 #   after_sign_off, test; observation-out-of-range: code, flag;
-#   referral-stepped: state, priority; ...) and at least one value;
+#   referral-stepped: state, priority; treatment-refusal-doubted: kind, withdrawal_heard;
+#   treatment-refusal-resolved: kind, state; ...) and at least one value;
 # - due_working_days is 0 to 60 working days on the site calendar (no weekends, no site holidays);
 # - reminders are distinct working days before the due day, at most five, none beyond the due period;
 # - late_reminder says what a reminder whose day passed while reminders were not running does: send-once or skip;
@@ -36,4 +37,22 @@ team = "clinician"
 title = "Review the abnormal result"
 due_working_days = 2
 remind_working_days_before = [1]
+late_reminder = "send-once"
+
+# A doubted refusal of treatment (RF-7) is shown with the others, but nothing asks anyone to settle it. This draft gives a
+# clinician a task when one comes to be doubted, a withdrawal heard included, and the task is cancelled when it stands
+# again, is withdrawn or is entered in error. The task names the rule's words and the refusal's id, never what is refused.
+[[rule]]
+id = "doubted-refusal-review"
+version = 1
+title = "A doubted refusal of treatment needs a clinician to look at it"
+approved_by = ""
+approved_on = ""
+event = "treatment-refusal-doubted"
+cancel_on = ["treatment-refusal-resolved"]
+
+[rule.task]
+team = "clinician"
+title = "Look at the doubted refusal of treatment"
+due_working_days = 1
 late_reminder = "send-once"

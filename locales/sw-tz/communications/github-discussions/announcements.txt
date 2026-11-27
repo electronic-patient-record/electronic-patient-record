@@ -1,0 +1,30 @@
+Karibu kwenye majadiliano ya rekodi ya kielektroniki ya mgonjwa
+
+Majadiliano sasa yako wazi kwa Electronic Patient Record, programu ya chanzo huria kwa rekodi ya mgonjwa iliyo salama, inayoongezewa tu na inayokaguliwa, ikitumia FHIR R4 kama modeli ya data na kama API, na ulinganishaji wa utambulisho wa wagonjwa unaoweza kuelezwa. Hapa ni mahali pa kuuliza maswali, kupendekeza mawazo na kushiriki mnachojenga, hadharani na mahali pamoja.
+
+> **Si kwa matumizi ya kliniki. Usiweke data halisi za wagonjwa.** Mradi ni mfumo wa msingi kabla ya kutolewa. Maana ya kuingia kwenye uzalishaji, na kinachopaswa kufanywa kwanza, vimo kwenye [njia ya kuelekea uzalishaji](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/governance/production-readiness.md).
+
+## Kilichopo leo
+
+- Maktaba ya Rust inayolinganisha rekodi mbili za utambulisho wa mgonjwa na kueleza matokeo, sehemu kwa sehemu.
+- Huduma ya Rust yenye API ya REST na FHIR, uhifadhi wa PostgreSQL na mkondo wa ukaguzi usioweza kuhaririwa.
+- Kiolesura cha SvelteKit cha wataalamu wa kliniki kinachozungumza na huduma kupitia proksi yake yenyewe.
+- Vipimo, orodha ya kazi na kumbukumbu ya hatari, vyote vimehifadhiwa pamoja na msimbo. [Hali ya utekelezaji](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/14-implementation-status.md) inasema hasa kilichojengwa na kujaribiwa.
+
+## Wapi pa kwenda kwa kila jambo
+
+- **Maswali** kuhusu kuendesha, kujaribu au kuelewa msimbo: Q&A.
+- **Mapendekezo** ya vipengele au mabadiliko: Ideas.
+- **Kitu ulichojenga** kwa mradi au kuuzunguka: Show and tell.
+- **Kura** kuhusu maswali yaliyo wazi ya mradi: Polls.
+- **Kila kitu kingine**, ikiwemo utambulisho: General.
+- **Hitilafu**: fungua [suala](https://github.com/electronic-patient-record/electronic-patient-record/issues) lenye ulichofanya, ulichotarajia na kilichotokea.
+- **Matatizo ya usalama**: ripoti kwa faragha, kama [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) inavyoeleza, kamwe si kwenye majadiliano.
+
+## Jinsi tunavyofanya kazi
+
+Tafadhali fuata [kanuni za maadili](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md). Mabadiliko huanza kwenye vipimo, kama [mwongozo wa kuchangia](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CONTRIBUTING.md) unavyoeleza. Mradi una mtunzaji mmoja, kwa hiyo majibu yanaweza kuchukua siku chache. Sehemu kubwa ya kazi inaandikwa na msaidizi wa AI chini ya uelekezi wa mtunzaji, kama [taarifa ya AI](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AI_STATEMENT.md) inavyoeleza, na hakuna kilichopitiwa kikliniki bado.
+
+## Cha kufanya baadaye
+
+Soma maswali sita katika [RFC.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/RFC.md) na ujibu lile unalolijua zaidi, katika majadiliano mapya ndani ya General au katika jibu hapa.

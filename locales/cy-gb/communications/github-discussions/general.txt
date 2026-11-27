@@ -1,0 +1,17 @@
+Dywedwch helô: beth sy’n eich denu at gofnod claf ffynhonnell agored?
+
+Croeso i General, y lle i sgyrsiau nad ydyn nhw’n ffitio yn unman arall: cyflwyniadau, achosion defnydd, barn a chwestiynau am ble mae’r prosiect yn mynd.
+
+Fi sy’n dechrau. Joel ydw i, cynhaliwr y prosiect. Nod Electronic Patient Record yw bod yn gofnod claf sy’n ddiogel o ran dyluniad: mae’r cofnod clinigol yn ychwanegu’n unig, felly nid oes dim yn cael ei drosysgrifo; caiff mynediad ei archwilio; a phan fydd y meddalwedd yn cymharu dau gofnod claf, mae’n egluro ei ateb. Sgerbwd cynnar ydyw ac nid at ddefnydd clinigol, felly mae hwn yn amser da i’w lunio.
+
+**Fy un cwestiwn i chi:** beth ddaeth â chi yma, a beth yw eich cysylltiad â chofnodion cleifion? Efallai eich bod yn glinigydd, yn ddatblygwr, yn integreiddiwr, yn glaf, yn swyddog diogelwch neu breifatrwydd, neu’n chwilfrydig yn unig. Mae brawddeg neu ddwy yn ddigon.
+
+## I ble mae pynciau eraill yn mynd
+
+- Cwestiynau am redeg neu ddeall y cod: Q&A.
+- Awgrymiadau nodweddion: Ideas.
+- Rhywbeth rydych chi wedi’i adeiladu: Show and tell.
+- Namau: [Issues](https://github.com/electronic-patient-record/electronic-patient-record/issues).
+- Problemau diogelwch: yn breifat, fel y mae [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) yn egluro.
+
+Dilynwch y [cod ymddygiad](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md). Diolch am alw heibio. Fi fydd yn ateb y sylwadau cyntaf.

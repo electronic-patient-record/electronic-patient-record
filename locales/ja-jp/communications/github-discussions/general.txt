@@ -1,0 +1,17 @@
+ごあいさつ: オープンソースの患者記録に関心を持ったきっかけは何ですか?
+
+General へようこそ。ここは、ほかのどこにも当てはまらない会話のための場所です。自己紹介、ユースケース、意見、プロジェクトの方向性についての質問などです。
+
+最初に私から。私は Joel、このプロジェクトのメンテナーです。Electronic Patient Record は、設計の段階から安全な患者記録を目指しています。臨床記録は追記のみなので、何も上書きされません。アクセスは監査されます。そして、ソフトウェアが 2 つの患者記録を比較するときは、その答えを説明します。これは初期の骨組みで、臨床では使用できません。だからこそ、今が形づくる良い機会です。
+
+**あなたへの質問は 1 つだけです。** ここに来たきっかけと、患者記録とのかかわりを教えてください。臨床医、開発者、インテグレーター、患者、安全やプライバシーの担当者、あるいは単に興味をお持ちの方かもしれません。1、2 文で十分です。
+
+## 別の話題はこちらへ
+
+- コードの実行や理解についての質問: Q&A。
+- 機能の提案: Ideas。
+- 作ったもの: Show and tell。
+- バグ: [Issues](https://github.com/electronic-patient-record/electronic-patient-record/issues)。
+- セキュリティ上の問題: [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) の説明どおり、非公開で。
+
+[行動規範](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md)に従ってください。お立ち寄りいただきありがとうございます。最初のコメントには私自身が返信します。

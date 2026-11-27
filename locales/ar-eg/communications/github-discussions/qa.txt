@@ -1,0 +1,33 @@
+كيف تطرحون سؤالًا يحصل على جواب جيد
+
+هذه الفئة للأسئلة التي لها أجوبة: كيف تشغّلون Electronic Patient Record أو تختبرونه أو تهيئونه أو تفهمونه. حين يحل رد سؤالكم، يُرجى وضع علامة عليه بوصفه الجواب، ليجده سريعًا من يطرح السؤال نفسه بعدكم.
+
+قبل أن تسألوا، راجعوا [README](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/README.md) و[AGENTS.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AGENTS.md) (الذي يسرد الفخاخ التي يسهل تفويتها، مثل المنافذ وPodman وانحراف الساعة) و[حالة التنفيذ](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/14-implementation-status.md) التي تذكر ما بُني وما لم يُبنَ.
+
+## قائمة تحقق لسؤالكم
+
+اجعلوا عنوان السؤال هو المشكلة، مثل «كيف أشغّل اختبارات قاعدة البيانات على منفذ مختلف؟»، لا «مساعدة». اطرحوا سؤالًا واحدًا لكل مناقشة. ثم أدرجوا:
+
+- **الهدف:** ما تحاولون فعله، في جملة واحدة.
+- **ما جرّبته:** الخطوات أو الأوامر بالترتيب.
+- **المتوقع:** ما ظننتم أنه سيحدث.
+- **الفعلي:** ما حدث، مع نص الخطأ بحروفه في كتلة شيفرة لا في لقطة شاشة.
+- **البيئة:** الإيداع (commit) أو الإصدار؛ والمشروع الفرعي (matcher أو service أو UI)؛ ونظام التشغيل؛ وإصدارات Rust وNode وpnpm وPodman وPostgreSQL بحسب الحال.
+- **مثال أدنى:** أصغر مجموعة من الأوامر أو الشيفرة لا تزال تُظهر المشكلة.
+
+الصقوا النص داخل كتل شيفرة محاطة بأسوار:
+
+```text
+the exact error message goes here
+```
+
+## يُرجى عدم لصق
+
+- **بيانات مرضى حقيقية.** البرنامج ليس للاستخدام السريري. استخدموا سجلات مختلقة وقولوا ذلك.
+- **الأسرار**، مثل الرموز المميزة والمفاتيح وكلمات المرور أو `DB_URL` يحتوي على كلمة مرور. استبدلوها بعنصر نائب.
+
+## أين أيضًا
+
+- إن وجدتم خطأً فافتحوا [بلاغًا](https://github.com/electronic-patient-record/electronic-patient-record/issues).
+- إن أردتم ميزة فانشروها في Ideas.
+- إن كانت مشكلة أمان فأبلغوا عنها سرًّا كما يشرح [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md).

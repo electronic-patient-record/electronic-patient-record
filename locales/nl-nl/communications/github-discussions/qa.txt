@@ -1,0 +1,33 @@
+Hoe u een vraag stelt die een goed antwoord krijgt
+
+Deze categorie is voor vragen met antwoorden: hoe u Electronic Patient Record draait, test, configureert of begrijpt. Wanneer een reactie uw vraag oplost, markeer haar dan als antwoord, zodat de volgende met dezelfde vraag het snel vindt.
+
+Bekijk voordat u vraagt [de README](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/README.md), [AGENTS.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AGENTS.md) (dat de gemakkelijk te missen valkuilen opsomt, zoals poorten, Podman en klokafwijking) en [de implementatiestatus](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/14-implementation-status.md), die zegt wat is gebouwd en wat niet.
+
+## Checklist voor uw vraag
+
+Geef uw vraag het probleem als titel, zoals „Hoe draai ik de databasetests op een andere poort?”, niet „Hulp”. Stel één vraag per discussie. Neem dan op:
+
+- **Doel:** wat u probeert te doen, in één zin.
+- **Wat ik probeerde:** de stappen of opdrachten, op volgorde.
+- **Verwacht:** wat u dacht dat zou gebeuren.
+- **Werkelijk:** wat er gebeurde, met de exacte foutmelding in een codeblok, niet in een schermafbeelding.
+- **Omgeving:** de commit of versie; het subproject (matcher, service of UI); uw besturingssysteem; en de versies van Rust, Node, pnpm, Podman en PostgreSQL, voor zover van toepassing.
+- **Minimaal voorbeeld:** de kleinste set opdrachten of code die het probleem nog laat zien.
+
+Plak tekst in omheinde codeblokken:
+
+```text
+the exact error message goes here
+```
+
+## Plak alstublieft niet
+
+- **Echte patiëntgegevens.** De software is niet voor klinisch gebruik. Gebruik verzonnen dossiers en zeg dat.
+- **Geheimen**, zoals tokens, sleutels, wachtwoorden of een `DB_URL` met een wachtwoord. Vervang ze door een plaatsvervanger.
+
+## Waar u verder terechtkunt
+
+- Als u een bug hebt gevonden, open een [issue](https://github.com/electronic-patient-record/electronic-patient-record/issues).
+- Als u een functie wilt, plaats het in Ideas.
+- Als het een beveiligingsprobleem is, meld het privé, zoals [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) uitlegt.

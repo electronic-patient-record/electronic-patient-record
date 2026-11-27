@@ -1,0 +1,24 @@
+Phiên bản đầu tiên nên đáp ứng tiêu chuẩn của nước nào trước: Vương quốc Anh hay Hoa Kỳ?
+
+Dự án dự định đáp ứng cả tiêu chuẩn quốc gia của Vương quốc Anh lẫn của Hoa Kỳ cho hồ sơ bệnh nhân. Công việc phải bắt đầu từ đâu đó, và thứ tự sẽ thay đổi điều được xây dựng trước. Đây là câu hỏi 2 trong [RFC.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/RFC.md), và cuộc bình chọn này là cách nhanh để trả lời.
+
+**Mỗi lựa chọn có nghĩa là gì:**
+
+- **Anh trước:** các hồ sơ FHIR UK Core, Personal Demographics Service (PDS) và tiêu chuẩn an toàn lâm sàng DCB0129 cùng đánh giá DTAC.
+- **Mỹ trước:** các hồ sơ FHIR US Core và quy tắc chứng nhận của ONC.
+
+**Kết quả sẽ được dùng thế nào:** bình chọn mang tính tham khảo. Người duy trì đưa ra quyết định, ghi vào [plan.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/plan.md) và giải thích trong chuỗi này. Kết quả sẽ được cân nhắc cùng các lý do trong bình luận, không chỉ đếm riêng. Chưa đặt ngày đóng.
+
+**Hãy nói lý do trong một bình luận**, nhất là nếu bạn làm việc với một trong hai bộ tiêu chuẩn. Một phiếu cho thấy mọi người ưa thích điều gì, còn một bình luận cho thấy lý do.
+
+Dự án là một bộ khung trước khi phát hành và không dùng cho lâm sàng. Không lựa chọn nào là lời hứa về thời điểm.
+
+---
+
+Câu hỏi bình chọn: Phiên bản đầu tiên nên đáp ứng tiêu chuẩn của nước nào trước?
+
+Các lựa chọn:
+1. Của Vương quốc Anh (UK Core, PDS, DCB0129 và DTAC)
+2. Của Hoa Kỳ (US Core và chứng nhận ONC)
+3. Chưa chọn: hoàn thành lõi dùng chung trước
+4. Điều khác (hãy giải thích trong một bình luận)

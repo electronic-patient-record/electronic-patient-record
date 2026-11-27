@@ -1,0 +1,37 @@
+Electronic Patient Record에 아이디어를 제안하는 방법
+
+이 카테고리는 누군가 코드를 작성하기 전에 변경이나 기능을 제안하는 곳입니다. 좋은 아이디어는 그것이 해결하는 문제에서 시작합니다. 첫 번째 해결책이 맞지 않더라도 문제는 평가할 수 있기 때문입니다.
+
+이것은 환자 기록이므로, 아이디어가 임상의가 보는 것, 결정하는 것, 서명하는 것을 바꿀 수 있습니다. 그런 제안도 괜찮지만, 그래서 여기서의 아이디어에는 문제, 이유, 그리고 무엇이 잘못될 수 있는지에 대한 신중한 검토가 필요합니다.
+
+## 아이디어를 제안하는 방법
+
+Ideas에서 새 토론을 시작하세요. 토론 하나에 아이디어 하나입니다. 제목은 해결책이 아니라 문제나 결과로 하세요. 예를 들어 "결과가 마지막으로 검토된 시점 표시"처럼요. 다음 제목들을 본문에 복사하세요.
+
+### 문제
+
+오늘 무엇이, 누구에게, 언제 문제인가요? 한두 문장으로.
+
+### 제안
+
+무엇을 바꾸겠는지 쉬운 말로. 여러 부분이 있다면 짧은 목록도 좋습니다.
+
+### 대안
+
+임시방편과 아무것도 하지 않는 것을 포함한 다른 해결 방법.
+
+### 비용과 위험
+
+무엇이 더 어려워지는가: 복잡성, 호환성, 유지 관리, 개인정보 또는 환자 안전. 임상의에게 잘못된 것을 보여 주거나 필요한 것을 숨길 수 있다면 그렇게 쓰세요.
+
+### 열린 질문
+
+확신하지 못하는 부분과, 독자들이 가장 답해 주었으면 하는 한 가지.
+
+## 그다음에는
+
+채택된 아이디어는 [기여 가이드](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CONTRIBUTING.md)의 설명대로, 코드를 작성하기 전에 [tasks.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/tasks.md)의 항목과 [명세](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/index.md)의 변경이 됩니다. 제안이 구축을 약속하는 것은 아니며, 관리자가 한 명이라 답변은 며칠 걸릴 수 있습니다.
+
+버그는 [Issues](https://github.com/electronic-patient-record/electronic-patient-record/issues)로, 보안 문제는 [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md)의 설명대로 비공개 신고로 보내세요.
+
+**시작하려면:** 지금 아이디어가 있다면 위의 제목들로 게시하세요. 문제가 실제인지 확신이 서지 않으면 먼저 General에서 물어보세요.

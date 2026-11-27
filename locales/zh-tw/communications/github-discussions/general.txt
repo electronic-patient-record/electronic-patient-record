@@ -1,0 +1,17 @@
+打個招呼：是什麼讓你關注開放原始碼病人記錄？
+
+欢迎來到 General，這裡用於不適合其他版塊的交流：自我介绍、使用場景、意見，以及關於專案走向的問題。
+
+我先來。我是 Joel，本專案的維護者。Electronic Patient Record 的目標是從設計上就安全的病人記錄：臨床記錄只可追加，因此不會覆蓋任何内容；存取會被稽核；軟體比較兩條病人記錄時，會解釋它的結论。它目前只是早期框架，不得用於臨床，所以現在正適合參與塑造。
+
+**我只想問你一個問題：** 是什麼讓你來到這裡，你與病人記錄有什麼關系？你可能是臨床醫生、開發者、集成人員、病人、安全或隱私負責人，也可能只是好奇。一兩句话就夠了。
+
+## 其他话題去哪裡
+
+- 關於執行或理解程式碼的問題：Q&A。
+- 功能建議：Ideas。
+- 你做的东西：Show and tell。
+- 缺陷：[Issues](https://github.com/electronic-patient-record/electronic-patient-record/issues)。
+- 安全問題：請按 [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) 的說明私下報告。
+
+請遵守[行為準則](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md)。感谢你的到來。最初的評论我會親自回覆。

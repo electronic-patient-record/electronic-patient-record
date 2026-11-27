@@ -1,0 +1,17 @@
+Sapa kami: apa yang membawa Anda ke rekam medis sumber terbuka?
+
+Selamat datang di General, tempat untuk percakapan yang tidak cocok di tempat lain: perkenalan, kasus penggunaan, pendapat, dan pertanyaan tentang arah proyek.
+
+Saya mulai dulu. Saya Joel, pemelihara proyek ini. Electronic Patient Record bertujuan menjadi rekam medis yang aman sejak desain: rekam klinis hanya bisa ditambah, jadi tidak ada yang ditimpa; akses diaudit; dan ketika perangkat lunak membandingkan dua rekam pasien, ia menjelaskan jawabannya. Ini kerangka awal dan tidak untuk penggunaan klinis, jadi ini waktu yang baik untuk membentuknya.
+
+**Satu pertanyaan saya untuk Anda:** apa yang membawa Anda ke sini, dan apa kaitan Anda dengan rekam medis? Anda mungkin klinisi, pengembang, integrator, pasien, petugas keselamatan atau privasi, atau sekadar penasaran. Satu atau dua kalimat sudah cukup.
+
+## Tempat topik lain
+
+- Pertanyaan tentang menjalankan atau memahami kode: Q&A.
+- Saran fitur: Ideas.
+- Sesuatu yang Anda buat: Show and tell.
+- Bug: [Issues](https://github.com/electronic-patient-record/electronic-patient-record/issues).
+- Masalah keamanan: secara pribadi, seperti dijelaskan [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md).
+
+Ikuti [kode etik](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md). Terima kasih sudah mampir. Saya akan membalas komentar pertama sendiri.

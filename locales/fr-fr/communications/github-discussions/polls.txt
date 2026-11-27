@@ -1,0 +1,24 @@
+Les normes de quel pays la première version doit-elle respecter en premier : celles du Royaume-Uni ou des États-Unis ?
+
+Le projet prévoit de respecter à la fois les normes nationales du Royaume-Uni et celles des États-Unis pour les dossiers patient. Il faut bien commencer quelque part, et l’ordre change ce qui est construit en premier. C’est la question 2 de [RFC.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/RFC.md), et ce sondage est un moyen rapide d’y répondre.
+
+**Ce que signifie chaque choix :**
+
+- **Royaume-Uni d’abord :** les profils FHIR UK Core, le Personal Demographics Service (PDS) et la norme de sécurité clinique DCB0129 avec l’évaluation DTAC.
+- **États-Unis d’abord :** les profils FHIR US Core et les règles de certification de l’ONC.
+
+**Comment le résultat sera utilisé :** le vote est consultatif. Le responsable prend la décision, la consigne dans [plan.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/plan.md) et l’explique dans ce fil. Le résultat sera pesé avec les raisons données dans les commentaires, et non compté seul. Aucune date de clôture n’est encore fixée.
+
+**Dites pourquoi dans un commentaire**, surtout si vous travaillez avec l’un ou l’autre de ces ensembles de normes. Un vote montre ce que les gens préfèrent, et un commentaire montre les raisons.
+
+Le projet est un squelette en préversion et ne convient pas à un usage clinique. Aucun des choix n’est une promesse de date.
+
+---
+
+Question du sondage : Les normes de quel pays la première version doit-elle respecter en premier ?
+
+Options :
+1. Celles du Royaume-Uni (UK Core, PDS, DCB0129 et DTAC)
+2. Celles des États-Unis (US Core et certification de l’ONC)
+3. Aucune pour l’instant : terminer d’abord le noyau commun
+4. Autre chose (à expliquer dans un commentaire)

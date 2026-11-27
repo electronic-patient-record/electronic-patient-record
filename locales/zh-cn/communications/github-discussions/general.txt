@@ -1,0 +1,17 @@
+打个招呼：是什么让你关注开源患者记录？
+
+欢迎来到 General，这里用于不适合其他版块的交流：自我介绍、使用场景、意见，以及关于项目走向的问题。
+
+我先来。我是 Joel，本项目的维护者。Electronic Patient Record 的目标是从设计上就安全的患者记录：临床记录只可追加，因此不会覆盖任何内容；访问会被审计；软件比较两条患者记录时，会解释它的结论。它目前只是早期框架，不得用于临床，所以现在正适合参与塑造。
+
+**我只想问你一个问题：** 是什么让你来到这里，你与患者记录有什么关系？你可能是临床医生、开发者、集成人员、患者、安全或隐私负责人，也可能只是好奇。一两句话就够了。
+
+## 其他话题去哪里
+
+- 关于运行或理解代码的问题：Q&A。
+- 功能建议：Ideas。
+- 你做的东西：Show and tell。
+- 缺陷：[Issues](https://github.com/electronic-patient-record/electronic-patient-record/issues)。
+- 安全问题：请按 [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) 的说明私下报告。
+
+请遵守[行为准则](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md)。感谢你的到来。最初的评论我会亲自回复。

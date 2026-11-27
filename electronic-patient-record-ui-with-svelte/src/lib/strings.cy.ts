@@ -69,6 +69,7 @@ export const CY: Strings = {
     result: "O ganlyniad",
     observation: "O arsylwad",
     referral: "O atgyfeiriad",
+    "treatment-refusal": "O wrthodiad triniaeth",
   },
   tkOpen: "Agor y claf",
   tkCloseLegend: "Cau'r dasg hon",

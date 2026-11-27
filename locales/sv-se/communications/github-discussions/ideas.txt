@@ -1,0 +1,37 @@
+Så föreslår du en idé för Electronic Patient Record
+
+Den här kategorin är till för att föreslå en ändring eller funktion innan någon skriver kod. En bra idé börjar med problemet den löser, eftersom ett problem kan bedömas även när den första lösningen inte är rätt.
+
+Det här är en patientjournal, så en idé kan ändra vad en kliniker ser, beslutar eller undertecknar. Det är fritt att föreslå, och därför behöver en idé här ett problem, ett skäl och en noggrann titt på vad som kan gå fel.
+
+## Så föreslår du en idé
+
+Starta en ny diskussion i Ideas, en idé per diskussion. Ge den problemet eller resultatet som titel, till exempel ”Visa när ett svar senast granskades”, inte lösningen. Kopiera de här rubrikerna till texten:
+
+### Problem
+
+Vad gör ont i dag, för vem och när? En eller två meningar.
+
+### Förslag
+
+Vad du skulle ändra, med enkla ord. En kort lista går bra om den har delar.
+
+### Alternativ
+
+Andra sätt att lösa det, inklusive provisoriska lösningar och att inte göra något.
+
+### Kostnader och risker
+
+Vad det skulle göra svårare: komplexitet, kompatibilitet, underhåll, integritet eller patientsäkerhet. Om det kan visa en kliniker något fel, eller dölja något hen behöver, säg det.
+
+### Öppna frågor
+
+Vad du är osäker på, och det du helst vill att läsarna svarar på.
+
+## Vad som händer sedan
+
+En idé som tas upp blir en post i [tasks.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/tasks.md) och en ändring av [specifikationen](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/index.md) innan någon kod skrivs, som [bidragsguiden](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CONTRIBUTING.md) förklarar. Ett förslag är inget löfte om att det byggs, och med en enda ansvarig kan ett svar ta några dagar.
+
+Buggar hör hemma i [Issues](https://github.com/electronic-patient-record/electronic-patient-record/issues), och säkerhetsproblem i en privat rapport, som [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) förklarar.
+
+**För att börja:** om du har en idé nu, posta den med rubrikerna ovan. Om du inte är säker på att problemet är verkligt, fråga först i General.

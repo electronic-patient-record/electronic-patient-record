@@ -1,0 +1,24 @@
+第一個版本應當先满足哪個國家的標準：英國的還是美國的？
+
+本專案計劃同時满足英國和美國關於病人記錄的國家標準。工作總要有個開始，而順序會改變先構建什麼。這是 [RFC.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/RFC.md) 中的問題 2，這次投票是回答它的一種快捷方式。
+
+**每個選項的含義：**
+
+- **英國優先：** UK Core FHIR 設定檔案、Personal Demographics Service (PDS)，以及臨床安全標準 DCB0129 和 DTAC 評估。
+- **美國優先：** US Core FHIR 設定檔案和 ONC 認證規則。
+
+**結果將如何使用：** 投票僅供參考。維護者做出決定，記錄在 [plan.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/plan.md) 中，並在本帖中說明。結果會與評论中的理由一並權衡，而不是單獨計票。目前尚未設定截止日期。
+
+**請在評论中說明原因**，尤其是如果你使用其中任何一套標準。投票顯示人們的偏好，評论顯示理由。
+
+本專案是預發布框架，不得用於臨床。兩個選項都不是對日期的承諾。
+
+---
+
+投票問題：第一個版本應當先满足哪個國家的標準？
+
+選項：
+1. 英國的（UK Core、PDS、DCB0129 和 DTAC）
+2. 美國的（US Core 和 ONC 認證）
+3. 暫時都不先：先完成共用核心
+4. 其他（請在評论中說明）

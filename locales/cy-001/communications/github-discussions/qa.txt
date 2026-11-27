@@ -1,0 +1,33 @@
+Sut i ofyn cwestiwn sy’n cael ateb da
+
+Mae’r categori hwn ar gyfer cwestiynau ag atebion: sut i redeg, profi, ffurfweddu neu ddeall Electronic Patient Record. Pan fydd ateb yn datrys eich cwestiwn, nodwch ef fel yr ateb, fel y bydd y person nesaf â’r un cwestiwn yn dod o hyd iddo’n gyflym.
+
+Cyn gofyn, edrychwch ar [y README](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/README.md), [AGENTS.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AGENTS.md) (sy’n rhestru’r maglau hawdd eu colli, fel porthladdoedd, Podman a gwyriad cloc) a [statws y gweithredu](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/14-implementation-status.md), sy’n dweud beth sydd wedi’i adeiladu a beth nad yw.
+
+## Rhestr wirio ar gyfer eich cwestiwn
+
+Rhowch y broblem yn deitl i’ch cwestiwn, fel "Sut ydw i’n rhedeg y profion cronfa ddata ar borthladd gwahanol?", nid "Help". Gofynnwch un cwestiwn i bob trafodaeth. Yna cynhwyswch:
+
+- **Nod:** beth rydych chi’n ceisio’i wneud, mewn un frawddeg.
+- **Beth wnes i ei roi ar brawf:** y camau neu’r gorchmynion, yn eu trefn.
+- **Disgwyliedig:** beth roeddech chi’n meddwl fyddai’n digwydd.
+- **Gwirioneddol:** beth ddigwyddodd, gyda’r union destun gwall mewn bloc cod, nid sgrinlun.
+- **Amgylchedd:** y commit neu’r fersiwn; yr is-brosiect (matcher, service neu UI); eich system weithredu; a fersiynau Rust, Node, pnpm, Podman a PostgreSQL, fel y bo’n briodol.
+- **Enghraifft leiaf:** y set leiaf o orchmynion neu god sy’n dal i ddangos y broblem.
+
+Gludwch destun y tu mewn i flociau cod wedi’u ffensio:
+
+```text
+the exact error message goes here
+```
+
+## Peidiwch â gludo, os gwelwch yn dda
+
+- **Data cleifion go iawn.** Nid yw’r meddalwedd at ddefnydd clinigol. Defnyddiwch gofnodion dychmygol a dywedwch hynny.
+- **Cyfrinachau**, fel tocynnau, allweddi, cyfrineiriau neu `DB_URL` â chyfrinair ynddo. Rhowch ddalfan yn eu lle.
+
+## I ble arall i fynd
+
+- Os daethoch o hyd i nam, agorwch [fater](https://github.com/electronic-patient-record/electronic-patient-record/issues).
+- Os ydych eisiau nodwedd, postiwch yn Ideas.
+- Os yw’n broblem diogelwch, rhowch wybod yn breifat, fel y mae [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) yn egluro.

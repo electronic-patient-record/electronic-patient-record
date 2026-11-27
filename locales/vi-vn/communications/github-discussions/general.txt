@@ -1,0 +1,17 @@
+Xin chào: điều gì đưa bạn đến một hồ sơ bệnh nhân mã nguồn mở?
+
+Chào mừng đến với General, nơi dành cho các cuộc trò chuyện không hợp ở đâu khác: giới thiệu bản thân, các trường hợp sử dụng, ý kiến và câu hỏi về hướng đi của dự án.
+
+Tôi xin bắt đầu. Tôi là Joel, người duy trì dự án. Electronic Patient Record hướng tới một hồ sơ bệnh nhân an toàn từ thiết kế: hồ sơ lâm sàng chỉ được bổ sung nên không có gì bị ghi đè; truy cập được kiểm toán; và khi phần mềm so sánh hai hồ sơ bệnh nhân, nó giải thích câu trả lời của mình. Đây là bộ khung ban đầu và không dùng cho lâm sàng, nên đây là lúc tốt để định hình nó.
+
+**Câu hỏi duy nhất của tôi cho bạn:** điều gì đưa bạn đến đây, và bạn có mối liên hệ gì với hồ sơ bệnh nhân? Bạn có thể là bác sĩ lâm sàng, nhà phát triển, người tích hợp, bệnh nhân, cán bộ an toàn hay quyền riêng tư, hoặc chỉ là tò mò. Một hai câu là đủ.
+
+## Các chủ đề khác thuộc về đâu
+
+- Câu hỏi về chạy hoặc hiểu mã: Q&A.
+- Gợi ý tính năng: Ideas.
+- Thứ bạn đã xây dựng: Show and tell.
+- Lỗi: [Issues](https://github.com/electronic-patient-record/electronic-patient-record/issues).
+- Vấn đề bảo mật: riêng tư, như [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) giải thích.
+
+Hãy tuân theo [quy tắc ứng xử](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md). Cảm ơn bạn đã ghé qua. Tôi sẽ tự trả lời những bình luận đầu tiên.

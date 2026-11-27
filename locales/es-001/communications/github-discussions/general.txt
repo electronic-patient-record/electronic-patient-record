@@ -1,0 +1,17 @@
+Preséntate: ¿qué te trae a una historia clínica de código abierto?
+
+Te damos la bienvenida a General, el lugar para las conversaciones que no encajan en ningún otro sitio: presentaciones, casos de uso, opiniones y preguntas sobre hacia dónde va el proyecto.
+
+Empiezo yo. Soy Joel, el responsable del proyecto. Electronic Patient Record aspira a ser una historia clínica segura por diseño: el registro clínico es de solo adición, así que nada se sobrescribe; el acceso se audita; y cuando el software compara dos historias de pacientes, explica su respuesta. Es un esqueleto inicial y no es apto para uso clínico, así que es un buen momento para darle forma.
+
+**Mi única pregunta para ti:** ¿qué te trajo aquí y cuál es tu relación con las historias clínicas? Puedes ser clínico, desarrollador, integrador, paciente, responsable de seguridad o privacidad, o simplemente tener curiosidad. Con una o dos frases basta.
+
+## Dónde van otros temas
+
+- Preguntas sobre cómo ejecutar o entender el código: Q&A.
+- Sugerencias de funciones: Ideas.
+- Algo que construiste: Show and tell.
+- Errores: [Issues](https://github.com/electronic-patient-record/electronic-patient-record/issues).
+- Problemas de seguridad: de forma privada, como explica [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md).
+
+Sigue el [código de conducta](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md). Gracias por pasar por aquí. Responderé yo mismo a los primeros comentarios.

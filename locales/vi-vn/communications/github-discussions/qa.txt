@@ -1,0 +1,33 @@
+Cách đặt câu hỏi để nhận được câu trả lời tốt
+
+Danh mục này dành cho những câu hỏi có câu trả lời: cách chạy, kiểm thử, cấu hình hoặc hiểu Electronic Patient Record. Khi một phản hồi giải quyết được câu hỏi của bạn, hãy đánh dấu nó là câu trả lời, để người tiếp theo có cùng câu hỏi tìm thấy nhanh.
+
+Trước khi hỏi, hãy xem [README](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/README.md), [AGENTS.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AGENTS.md) (liệt kê các cạm bẫy dễ bỏ sót, như cổng, Podman và lệch đồng hồ) và [tình trạng triển khai](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/14-implementation-status.md), cho biết điều gì đã được xây dựng và điều gì chưa.
+
+## Danh sách kiểm tra cho câu hỏi của bạn
+
+Đặt tiêu đề câu hỏi bằng vấn đề, như "Làm sao chạy kiểm thử cơ sở dữ liệu trên một cổng khác?", không phải "Giúp với". Mỗi thảo luận một câu hỏi. Sau đó nêu:
+
+- **Mục tiêu:** điều bạn đang cố làm, trong một câu.
+- **Điều tôi đã thử:** các bước hoặc lệnh, theo thứ tự.
+- **Mong đợi:** điều bạn nghĩ sẽ xảy ra.
+- **Thực tế:** điều đã xảy ra, kèm đúng nội dung lỗi trong một khối mã, không phải ảnh chụp màn hình.
+- **Môi trường:** commit hoặc phiên bản; dự án con (matcher, service hoặc UI); hệ điều hành của bạn; và các phiên bản Rust, Node, pnpm, Podman và PostgreSQL, nếu có.
+- **Ví dụ tối thiểu:** tập lệnh hoặc mã nhỏ nhất vẫn cho thấy vấn đề.
+
+Dán văn bản vào các khối mã có rào:
+
+```text
+the exact error message goes here
+```
+
+## Xin đừng dán
+
+- **Dữ liệu bệnh nhân thật.** Phần mềm không dùng cho lâm sàng. Hãy dùng hồ sơ bịa và nói rõ điều đó.
+- **Bí mật**, như token, khóa, mật khẩu hoặc một `DB_URL` có mật khẩu. Hãy thay bằng chỗ giữ chỗ.
+
+## Còn đi đâu nữa
+
+- Nếu bạn tìm thấy lỗi, hãy mở một [issue](https://github.com/electronic-patient-record/electronic-patient-record/issues).
+- Nếu bạn muốn một tính năng, hãy đăng trong Ideas.
+- Nếu đó là vấn đề bảo mật, hãy báo cáo riêng tư, như [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) giải thích.

@@ -1,0 +1,30 @@
+ইলেকট্রনিক রোগী রেকর্ডের আলোচনায় স্বাগতম
+
+Electronic Patient Record-এর জন্য আলোচনা এখন খোলা। এটি একটি নিরাপদ, শুধু সংযোজনযোগ্য ও নিরীক্ষিত রোগী রেকর্ডের ওপেন-সোর্স সফটওয়্যার, যেখানে FHIR R4 ডেটা মডেল ও API দুটোই, এবং রোগীর পরিচয় মেলানো ব্যাখ্যা করা যায়। এখানে প্রশ্ন করা, ধারণা প্রস্তাব করা এবং আপনি যা বানান তা ভাগ করা যায়, প্রকাশ্যে ও এক জায়গায়।
+
+> **ক্লিনিক্যাল ব্যবহারের জন্য নয়। প্রকৃত রোগীর তথ্য দেবেন না।** প্রকল্পটি প্রকাশের আগের একটি কাঠামো। উৎপাদনে যাওয়ার অর্থ কী এবং তার আগে কী করতে হবে, তা [উৎপাদনের পথ](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/governance/production-readiness.md)-এ আছে।
+
+## আজ যা আছে
+
+- একটি Rust লাইব্রেরি, যা দুটি রোগীর পরিচয় রেকর্ড তুলনা করে এবং ফলাফল ক্ষেত্র ধরে ধরে ব্যাখ্যা করে।
+- REST ও FHIR API, PostgreSQL সংরক্ষণ এবং সম্পাদনা-অযোগ্য নিরীক্ষা-পথসহ একটি Rust সেবা।
+- একটি SvelteKit ক্লিনিশিয়ান ইন্টারফেস, যা নিজস্ব প্রক্সির মাধ্যমে সেবার সঙ্গে কথা বলে।
+- একটি স্পেসিফিকেশন, একটি ব্যাকলগ ও একটি ঝুঁকির লগ, সবই কোডের সঙ্গে রাখা। কী তৈরি ও পরীক্ষিত তা [বাস্তবায়নের অবস্থা](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/14-implementation-status.md)-য় ঠিকঠিক বলা আছে।
+
+## কোন কাজে কোথায় যাবেন
+
+- **প্রশ্ন**, কোড চালানো, পরীক্ষা বা বোঝা নিয়ে: Q&A।
+- **পরামর্শ**, বৈশিষ্ট্য বা পরিবর্তনের জন্য: Ideas।
+- **আপনার বানানো কিছু**, প্রকল্পের সঙ্গে বা তার চারপাশে: Show and tell।
+- **ভোট**, প্রকল্পের খোলা প্রশ্নে: Polls।
+- **বাকি সবকিছু**, পরিচিতিসহ: General।
+- **বাগ**: আপনি কী করেছেন, কী আশা করেছেন ও কী ঘটেছে তা দিয়ে একটি [ইস্যু](https://github.com/electronic-patient-record/electronic-patient-record/issues) খুলুন।
+- **নিরাপত্তার সমস্যা**: [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) যেমন বলে, ব্যক্তিগতভাবে জানান, কখনও আলোচনায় নয়।
+
+## আমরা কীভাবে কাজ করি
+
+অনুগ্রহ করে [আচরণবিধি](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md) মানুন। [অবদানের নির্দেশিকা](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CONTRIBUTING.md) যেমন বলে, পরিবর্তন শুরু হয় স্পেসিফিকেশন থেকে। প্রকল্পের একজনই রক্ষণাবেক্ষক, তাই উত্তর আসতে কয়েক দিন লাগতে পারে। কাজের বড় অংশ রক্ষণাবেক্ষকের নির্দেশনায় একটি AI সহকারী দিয়ে লেখা, [AI বিবৃতি](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AI_STATEMENT.md) যেমন বলে, এবং কিছুই এখনও ক্লিনিক্যালভাবে পর্যালোচিত হয়নি।
+
+## পরবর্তী করণীয়
+
+[RFC.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/RFC.md)-এর ছয়টি প্রশ্ন পড়ুন এবং আপনি যেটি সবচেয়ে ভালো জানেন তার উত্তর দিন, General-এ একটি নতুন আলোচনায় বা এখানে একটি উত্তরে।

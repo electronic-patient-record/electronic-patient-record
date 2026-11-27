@@ -7489,7 +7489,8 @@
                 "enum": [
                   "result",
                   "observation",
-                  "referral"
+                  "referral",
+                  "treatment-refusal"
                 ]
               },
               "version": {
@@ -7557,7 +7558,9 @@
               "observation-out-of-range",
               "observation-entered-in-error",
               "referral-stepped",
-              "referral-closed"
+              "referral-closed",
+              "treatment-refusal-doubted",
+              "treatment-refusal-resolved"
             ]
           },
           "facts": {
@@ -7565,7 +7568,7 @@
               "maxLength": 200,
               "type": "string"
             },
-            "description": "Only facts the event carries: result events (filed, signed off, entered in error) `abnormal`, `test`; observation events `code`, `flag`; `referral-stepped` `state`, `priority`; `referral-closed` `state`.",
+            "description": "Only facts the event carries: result events (filed, signed off, entered in error) `abnormal`, `test`; observation events `code`, `flag`; `referral-stepped` `state`, `priority`; `referral-closed` `state`; `treatment-refusal-doubted` `kind`, `withdrawal_heard`; `treatment-refusal-resolved` `kind`, `state`.",
             "type": "object"
           }
         },
@@ -7588,7 +7591,9 @@
               "observation-out-of-range",
               "observation-entered-in-error",
               "referral-stepped",
-              "referral-closed"
+              "referral-closed",
+              "treatment-refusal-doubted",
+              "treatment-refusal-resolved"
             ]
           },
           "planned": {
@@ -7606,7 +7611,9 @@
                       "observation-out-of-range",
                       "observation-entered-in-error",
                       "referral-stepped",
-                      "referral-closed"
+                      "referral-closed",
+                      "treatment-refusal-doubted",
+                      "treatment-refusal-resolved"
                     ]
                   },
                   "maxItems": 1000,
@@ -7776,7 +7783,8 @@
                 "enum": [
                   "result",
                   "observation",
-                  "referral"
+                  "referral",
+                  "treatment-refusal"
                 ]
               },
               "version": {

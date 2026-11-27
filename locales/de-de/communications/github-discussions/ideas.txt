@@ -1,0 +1,37 @@
+So schlagen Sie eine Idee für Electronic Patient Record vor
+
+Diese Kategorie dient dazu, eine Änderung oder Funktion vorzuschlagen, bevor jemand Code schreibt. Eine gute Idee beginnt mit dem Problem, das sie löst, denn ein Problem lässt sich beurteilen, auch wenn die erste Lösung nicht die richtige ist.
+
+Dies ist eine Patientenakte, daher kann eine Idee verändern, was Klinikpersonal sieht, entscheidet oder unterschreibt. Das darf vorgeschlagen werden, und deshalb braucht eine Idee hier ein Problem, einen Grund und einen sorgfältigen Blick darauf, was schiefgehen könnte.
+
+## So schlagen Sie eine Idee vor
+
+Eröffnen Sie eine neue Diskussion in Ideas, eine Idee pro Diskussion. Geben Sie ihr als Titel das Problem oder das Ergebnis, etwa „Anzeigen, wann ein Befund zuletzt geprüft wurde“, nicht die Lösung. Kopieren Sie diese Überschriften in den Text:
+
+### Problem
+
+Was tut heute weh, für wen und wann? Ein bis zwei Sätze.
+
+### Vorschlag
+
+Was Sie ändern würden, in einfachen Worten. Eine kurze Liste ist in Ordnung, wenn es Teile gibt.
+
+### Alternativen
+
+Andere Wege, es zu lösen, einschließlich Behelfslösungen und Nichtstun.
+
+### Kosten und Risiken
+
+Was es erschweren würde: Komplexität, Kompatibilität, Wartung, Datenschutz oder Patientensicherheit. Wenn es Klinikpersonal etwas Falsches zeigen oder etwas Nötiges verbergen könnte, sagen Sie es.
+
+### Offene Fragen
+
+Wobei Sie unsicher sind und was die Lesenden am meisten beantworten sollen.
+
+## Was danach geschieht
+
+Eine aufgegriffene Idee wird zu einem Eintrag in [tasks.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/tasks.md) und zu einer Änderung der [Spezifikation](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/index.md), bevor Code geschrieben wird, wie der [Leitfaden zum Mitwirken](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CONTRIBUTING.md) erklärt. Ein Vorschlag ist kein Versprechen, dass er gebaut wird, und mit nur einem Betreuer kann eine Antwort einige Tage dauern.
+
+Fehler gehören in [Issues](https://github.com/electronic-patient-record/electronic-patient-record/issues), und Sicherheitsprobleme in eine private Meldung, wie [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) erklärt.
+
+**Zum Einstieg:** Wenn Sie jetzt eine Idee haben, veröffentlichen Sie sie mit den obigen Überschriften. Wenn Sie nicht sicher sind, ob das Problem real ist, fragen Sie zuerst in General.

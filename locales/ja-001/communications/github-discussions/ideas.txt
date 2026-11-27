@@ -1,0 +1,37 @@
+Electronic Patient Record へのアイデアの提案方法
+
+このカテゴリは、誰かがコードを書く前に、変更や機能を提案するためのものです。良いアイデアは、それが解決する問題から始まります。最初の解決策が正しくなくても、問題そのものは評価できるからです。
+
+これは患者記録なので、アイデアによっては、臨床医が見るもの、判断すること、署名することが変わる可能性があります。そうした提案は歓迎ですが、だからこそここでのアイデアには、問題、理由、そして何が問題になりうるかの慎重な検討が必要です。
+
+## アイデアの提案方法
+
+Ideas で新しいディスカッションを開始してください。1 つのディスカッションにつき 1 つのアイデアです。タイトルは、解決策ではなく、問題や結果にしてください。たとえば「結果が最後にレビューされた日時を表示する」のようにします。次の見出しを本文にコピーしてください。
+
+### 問題
+
+今日、何が、誰にとって、いつ困っていますか? 1、2 文で。
+
+### 提案
+
+何を変えるのかを、平易な言葉で。いくつかの部分があるなら、短い箇条書きでかまいません。
+
+### 代替案
+
+回避策や何もしないことを含め、ほかの解決方法。
+
+### コストとリスク
+
+何が難しくなるか。複雑さ、互換性、保守、プライバシー、患者の安全。臨床医に誤ったものを見せたり、必要なものを隠したりする可能性があるなら、そう書いてください。
+
+### 未解決の問い
+
+自信のない点と、読者に最も答えてほしいこと。
+
+## その後の流れ
+
+採用されたアイデアは、[貢献ガイド](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CONTRIBUTING.md)の説明どおり、コードが書かれる前に [tasks.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/tasks.md) の項目と[仕様](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/index.md)の変更になります。提案は構築の約束ではなく、メンテナーが 1 人のため、返信には数日かかることがあります。
+
+バグは [Issues](https://github.com/electronic-patient-record/electronic-patient-record/issues) へ、セキュリティ上の問題は [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) の説明どおり、非公開の報告にしてください。
+
+**まずは:** 今アイデアがあるなら、上の見出しを使って投稿してください。問題が実際にあるか確信がない場合は、まず General で尋ねてください。

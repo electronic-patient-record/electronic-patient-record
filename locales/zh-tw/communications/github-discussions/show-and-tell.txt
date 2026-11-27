@@ -1,0 +1,56 @@
+分享你做的东西：這裡是比對器解釋一條它不會關聯的記錄
+
+本版塊用於你用 Electronic Patient Record 或圍绕它做的东西：集成、指令碼、演示、教學和實驗。為了展示格式，這裡是專案已經能做到的一件小事。
+
+## 它是什麼
+
+比對器（matcher）是一個 Rust 庫，比較兩條病人身份記錄，並逐字段說明它為什麼會或不會把它們關聯起來。
+
+## 為什麼有它
+
+把兩個不同人的記錄關聯起來，會混淆他們的病史，可能傷害雙方。因此比對器從不悄悄做決定。缺失的字段會被報告為缺失，絕不算作一致，而且有些缺口會直接阻止自動關聯。
+
+## 試一試
+
+兩條虛構記錄：姓氏和出生日期相同，但第二條沒有名字。
+
+```sh
+git clone https://github.com/electronic-patient-record/electronic-patient-record.git
+cd electronic-patient-record/electronic-patient-record-matcher-with-rust
+echo '{"names":[{"family":"Rivera","given":["Alex"]}],"birth_date":"1980-04-12","sex":"female"}' > a.json
+echo '{"names":[{"family":"Rivera","given":[]}],"birth_date":"1980-04-12"}' > b.json
+cargo run -- a.json b.json
+```
+
+輸出的一部分：
+
+```json
+{
+  "score": 1.0,
+  "decision": "review",
+  "fields": [
+    { "field": "family_name", "similarity": 1.0, "weight": 0.25, "note": "similarity 1.00" },
+    { "field": "given_name", "similarity": null, "weight": 0.2, "note": "no given name on one or both records" },
+    { "field": "birth_date", "similarity": 1.0, "weight": 0.3, "note": "similarity 1.00" }
+  ],
+  "conflicts": [ "given name not available to confirm the link" ]
+}
+```
+
+## 讓我意外的地方
+
+兩條記錄共有的每個字段都一致，所以得分是 1.0，比對器仍然拒絕關聯它們。它把它們交給人處理，因為缺失的名字永远無法確認一次關聯。僅有高分是不夠的。
+
+閾值尚未驗證，本軟體不得用於臨床。
+
+## 分享你的作品
+
+請在這裡新建一個讨论，發布你做的东西，並包含：
+
+- 它是什麼，一句话；
+- 你為什麼做它；
+- 可以看的东西：程式碼片段、截圖或連結；
+- 别人如何試用；
+- 你想要什麼样的反馈。
+
+只使用虛構記錄，絕不要使用真實病人資料。如果你的作品基於别人的成果，請注明出處。

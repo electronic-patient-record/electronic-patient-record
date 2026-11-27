@@ -1,0 +1,30 @@
+Welcome to Electronic Patient Record Discussions
+
+Discussions are now open for Electronic Patient Record, open-source software for a safe, append-only, audited patient record, with FHIR R4 as both its data model and its API, and explainable patient identity matching. This is the place to ask questions, suggest ideas, and share what you build, in public and in one place.
+
+> **Not for clinical use. Do not enter real patient data.** The project is a pre-release scaffold. What production would mean, and what must be done first, is in [the path to production](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/governance/production-readiness.md).
+
+## What exists today
+
+- A Rust library that compares two patient identity records and explains the result, field by field.
+- A Rust service with a REST and FHIR API, PostgreSQL storage, and an audit trail that cannot be edited.
+- A SvelteKit clinician UI that talks to the service through its own proxy.
+- A specification, a backlog, and a hazard log, all kept with the code. [The implementation status](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/14-implementation-status.md) says exactly what is built and tested.
+
+## Where to go for what
+
+- **Questions** about running, testing, or understanding the code: Q&A.
+- **Suggestions** for features or changes: Ideas.
+- **Something you built** with or around the project: Show and tell.
+- **Votes** on open project questions: Polls.
+- **Anything else**, including introductions: General.
+- **Bugs**: open an [issue](https://github.com/electronic-patient-record/electronic-patient-record/issues) with what you did, what you expected, and what happened.
+- **Security problems**: report privately, as [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) explains, never in a discussion.
+
+## How we work
+
+Please follow the [code of conduct](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md). Changes start from the specification, as the [contributing guide](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CONTRIBUTING.md) explains. The project has one maintainer, so replies may take a few days. Much of the work is written with an AI assistant under the maintainer's direction, as the [AI statement](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AI_STATEMENT.md) explains, and nothing has had clinical review yet.
+
+## What to do next
+
+Read the six questions in [RFC.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/RFC.md) and answer the one you know most about, in a new discussion in General or in a reply here.

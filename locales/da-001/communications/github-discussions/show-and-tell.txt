@@ -1,0 +1,56 @@
+Del det, du har bygget: her forklarer matcheren en journal, den ikke ville koble sammen
+
+Denne kategori er til ting, du har lavet med eller omkring Electronic Patient Record: integrationer, scripts, demoer, vejledninger og eksperimenter. For at vise formatet kommer her noget lille, som projektet allerede gør.
+
+## Hvad det er
+
+Matcheren er et Rust-bibliotek, der sammenligner to identitetsposter for patienter og siger, felt for felt, hvorfor den ville eller ikke ville koble dem sammen.
+
+## Hvorfor den findes
+
+At koble to journaler for forskellige personer sammen blander deres sygehistorier, og det kan skade begge. Derfor beslutter matcheren aldrig i stilhed. Et manglende felt rapporteres som manglende, tælles aldrig som overensstemmelse, og nogle huller blokerer helt for en automatisk kobling.
+
+## Prøv det
+
+To opdigtede journaler: samme efternavn og fødselsdato, men den anden har intet fornavn.
+
+```sh
+git clone https://github.com/electronic-patient-record/electronic-patient-record.git
+cd electronic-patient-record/electronic-patient-record-matcher-with-rust
+echo '{"names":[{"family":"Rivera","given":["Alex"]}],"birth_date":"1980-04-12","sex":"female"}' > a.json
+echo '{"names":[{"family":"Rivera","given":[]}],"birth_date":"1980-04-12"}' > b.json
+cargo run -- a.json b.json
+```
+
+En del af uddata:
+
+```json
+{
+  "score": 1.0,
+  "decision": "review",
+  "fields": [
+    { "field": "family_name", "similarity": 1.0, "weight": 0.25, "note": "similarity 1.00" },
+    { "field": "given_name", "similarity": null, "weight": 0.2, "note": "no given name on one or both records" },
+    { "field": "birth_date", "similarity": 1.0, "weight": 0.3, "note": "similarity 1.00" }
+  ],
+  "conflicts": [ "given name not available to confirm the link" ]
+}
+```
+
+## Hvad der overraskede mig
+
+Hvert felt, de to journaler har til fælles, stemmer overens, så scoren er 1.0, og matcheren nægter alligevel at koble dem sammen. Den sender dem til et menneske, fordi et manglende fornavn aldrig kan bekræfte en kobling. En høj score er ikke nok alene.
+
+Tærsklerne er ikke valideret, og softwaren er ikke til klinisk brug.
+
+## Del din
+
+Post det, du lavede, i en ny diskussion her, med:
+
+- hvad det er, i én sætning;
+- hvorfor du lavede det;
+- noget at se på: et uddrag, et skærmbillede eller et link;
+- hvordan en anden kan prøve det;
+- hvilken slags feedback du vil have.
+
+Brug kun opdigtede journaler, aldrig rigtige patientdata. Og hvis du bygger videre på en andens arbejde, så nævn vedkommende.

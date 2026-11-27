@@ -464,6 +464,41 @@ pub fn summarise<'a>(records: impl IntoIterator<Item = &'a RefusalRecord>) -> Su
     }
 }
 
+/// The task event a change of state raises (TL-3, RF-7), with its facts, or none: `treatment-refusal-doubted` when a
+/// refusal comes to be doubted (`kind`; `withdrawal_heard`, `true` or `false`), `treatment-refusal-resolved` when a
+/// doubted one stops being doubted (`kind`; `state`, the state reached). `before` is `None` for a new refusal. A
+/// doubted refusal changed but still doubted raises nothing: its task, if any, is still open. The facts never carry what
+/// is refused: a task names its rule's words, and its source.
+#[must_use]
+pub fn task_event(
+    before: Option<State>,
+    after: &RefusalRecord,
+) -> Option<(
+    crate::task_rules::Event,
+    std::collections::BTreeMap<String, String>,
+)> {
+    let was_doubted = before == Some(State::Doubted);
+    let is_doubted = after.state == State::Doubted;
+    let mut facts =
+        std::collections::BTreeMap::from([("kind".to_string(), after.kind.as_str().to_string())]);
+    match (was_doubted, is_doubted) {
+        (false, true) => {
+            let heard = if after.withdrawal.is_some() {
+                "true"
+            } else {
+                "false"
+            };
+            facts.insert("withdrawal_heard".to_string(), heard.to_string());
+            Some((crate::task_rules::Event::TreatmentRefusalDoubted, facts))
+        }
+        (true, false) => {
+            facts.insert("state".to_string(), after.state.as_str().to_string());
+            Some((crate::task_rules::Event::TreatmentRefusalResolved, facts))
+        }
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -501,6 +536,46 @@ mod tests {
             state: State::Stands,
             doubt: None,
             withdrawal: None,
+        }
+    }
+
+    #[test]
+    fn coming_to_be_doubted_raises_its_event_and_leaving_doubt_raises_the_other() {
+        use crate::task_rules::Event;
+        let of = |state| RefusalRecord { state, ..advance() };
+        let (event, facts) = task_event(Some(State::Stands), &of(State::Doubted)).unwrap();
+        assert_eq!(event, Event::TreatmentRefusalDoubted);
+        assert_eq!(facts["kind"], "advance");
+        assert_eq!(facts["withdrawal_heard"], "false");
+        let with = RefusalRecord {
+            withdrawal: Some(heard(How::Spoken)),
+            ..of(State::Doubted)
+        };
+        assert_eq!(
+            task_event(None, &with).unwrap().1["withdrawal_heard"],
+            "true"
+        );
+        for to in [State::Stands, State::Withdrawn, State::EnteredInError] {
+            let (event, facts) = task_event(Some(State::Doubted), &of(to)).unwrap();
+            assert_eq!(event, Event::TreatmentRefusalResolved);
+            assert_eq!(facts["state"], to.as_str());
+        }
+        // Still doubted, or never doubted: nothing, and a new refusal that stands raises nothing.
+        assert_eq!(task_event(Some(State::Doubted), &with), None);
+        assert_eq!(
+            task_event(Some(State::Stands), &of(State::EnteredInError)),
+            None
+        );
+        assert_eq!(task_event(None, &of(State::Stands)), None);
+        // Only facts the event declares, so a rule on them reads.
+        for (event, facts) in [
+            task_event(None, &with).unwrap(),
+            task_event(Some(State::Doubted), &of(State::Stands)).unwrap(),
+        ] {
+            assert!(
+                facts.keys().all(|k| event.facts().contains(&k.as_str())),
+                "{facts:?}"
+            );
         }
     }
 

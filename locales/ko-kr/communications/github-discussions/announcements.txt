@@ -1,0 +1,30 @@
+전자 환자 기록 토론에 오신 것을 환영합니다
+
+Electronic Patient Record 토론이 열렸습니다. 이 프로젝트는 안전하고, 추가만 가능하며, 감사되는 환자 기록을 위한 오픈 소스 소프트웨어로, FHIR R4를 데이터 모델과 API로 모두 사용하고, 설명 가능한 환자 신원 매칭을 제공합니다. 질문하고, 아이디어를 제안하고, 만든 것을 공유하는 곳이며, 공개적으로 한곳에서 이루어집니다.
+
+> **임상 용도로 사용할 수 없습니다. 실제 환자 데이터를 입력하지 마세요.** 이 프로젝트는 출시 전의 뼈대입니다. 운영 환경이 무엇을 뜻하는지, 그 전에 무엇을 해야 하는지는 [운영으로 가는 길](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/governance/production-readiness.md)에 있습니다.
+
+## 오늘 있는 것
+
+- 두 환자 신원 기록을 비교하고 결과를 필드별로 설명하는 Rust 라이브러리.
+- REST 및 FHIR API, PostgreSQL 저장소, 편집할 수 없는 감사 추적을 갖춘 Rust 서비스.
+- 자체 프록시를 통해 서비스와 통신하는 임상의용 SvelteKit 인터페이스.
+- 코드와 함께 보관되는 명세, 백로그, 위험 기록부. 무엇이 구축되고 테스트되었는지는 [구현 현황](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/14-implementation-status.md)에 정확히 나와 있습니다.
+
+## 용도별 안내
+
+- **질문**(코드를 실행, 테스트, 이해하는 방법): Q&A.
+- **제안**(기능이나 변경): Ideas.
+- **만든 것**(프로젝트를 사용했거나 관련된 것): Show and tell.
+- **투표**(프로젝트의 열린 질문): Polls.
+- **그 밖의 모든 것**(소개 포함): General.
+- **버그**: 한 일, 기대한 것, 일어난 일을 적어 [이슈](https://github.com/electronic-patient-record/electronic-patient-record/issues)를 여세요.
+- **보안 문제**: [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md)의 설명대로 비공개로 신고하고, 토론에는 절대 올리지 마세요.
+
+## 일하는 방식
+
+[행동 강령](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md)을 따라 주세요. 변경은 [기여 가이드](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CONTRIBUTING.md)의 설명대로 명세에서 시작합니다. 이 프로젝트의 관리자는 한 명이라 답변이 며칠 걸릴 수 있습니다. 작업의 상당 부분은 관리자의 지시 아래 AI 어시스턴트와 함께 작성되며, [AI 성명](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AI_STATEMENT.md)에 설명되어 있고, 아직 어떤 것도 임상 검토를 받지 않았습니다.
+
+## 다음에 할 일
+
+[RFC.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/RFC.md)의 여섯 가지 질문을 읽고, 가장 잘 아는 질문에 General의 새 토론이나 여기 답글로 답해 주세요.

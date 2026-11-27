@@ -1,0 +1,33 @@
+良い答えが得られる質問のしかた
+
+このカテゴリは、答えのある質問のためのものです。Electronic Patient Record の実行、テスト、設定、理解の方法などです。返信があなたの質問を解決したら、それを回答としてマークしてください。そうすれば、同じ質問を持つ次の人がすぐに見つけられます。
+
+質問する前に、[README](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/README.md)、[AGENTS.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AGENTS.md)(ポート、Podman、時計のずれなど、見落としやすい落とし穴が載っています)、そして何が構築済みで何が未構築かを示す[実装状況](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/14-implementation-status.md)を確認してください。
+
+## 質問のチェックリスト
+
+質問のタイトルは「助けて」ではなく、「データベーステストを別のポートで実行するには?」のように問題を書いてください。1 つのディスカッションにつき 1 つの質問にしてください。そのうえで、次を含めてください。
+
+- **目標:** やろうとしていること。1 文で。
+- **試したこと:** 手順やコマンドを順番に。
+- **期待したこと:** 何が起こると思ったか。
+- **実際:** 何が起きたか。エラーの正確なテキストを、スクリーンショットではなくコードブロックで。
+- **環境:** コミットまたはバージョン、サブプロジェクト(matcher、service、UI)、OS、そして該当する場合は Rust、Node、pnpm、Podman、PostgreSQL のバージョン。
+- **最小限の例:** 問題を再現できる、最小のコマンドまたはコードの組。
+
+テキストはフェンス付きコードブロックに貼り付けてください。
+
+```text
+the exact error message goes here
+```
+
+## 貼り付けないでください
+
+- **実在の患者データ。** このソフトウェアは臨床では使用できません。架空の記録を使い、そう明記してください。
+- **秘密情報。** トークン、鍵、パスワード、パスワード入りの `DB_URL` など。プレースホルダーに置き換えてください。
+
+## ほかの相談先
+
+- バグを見つけたら、[Issue](https://github.com/electronic-patient-record/electronic-patient-record/issues) を開いてください。
+- 機能がほしい場合は、Ideas に投稿してください。
+- セキュリティ上の問題なら、[SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) の説明どおり、非公開で報告してください。

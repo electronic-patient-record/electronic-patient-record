@@ -1,0 +1,33 @@
+Jinsi ya kuuliza swali linalopata jibu zuri
+
+Kategoria hii ni ya maswali yenye majibu: jinsi ya kuendesha, kujaribu, kusanidi au kuelewa Electronic Patient Record. Jibu linapotatua swali lako, tafadhali liweke alama kuwa jibu, ili mtu anayefuata mwenye swali hilohilo alipate haraka.
+
+Kabla ya kuuliza, angalia [README](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/README.md), [AGENTS.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AGENTS.md) (inayoorodhesha mitego rahisi kupuuzwa, kama milango, Podman na kuyumba kwa saa) na [hali ya utekelezaji](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/14-implementation-status.md), inayosema kilichojengwa na kisichojengwa.
+
+## Orodha ya ukaguzi kwa swali lako
+
+Lipe swali jina la tatizo, kama "Naendeshaje majaribio ya hifadhidata kwenye mlango tofauti?", si "Msaada". Uliza swali moja kwa kila majadiliano. Kisha jumuisha:
+
+- **Lengo:** unachojaribu kufanya, kwa sentensi moja.
+- **Nilichojaribu:** hatua au amri, kwa mpangilio.
+- **Kilichotarajiwa:** ulichodhani kingetokea.
+- **Kilichotokea:** kilichotokea, pamoja na maandishi kamili ya hitilafu ndani ya kizuizi cha msimbo, si picha ya skrini.
+- **Mazingira:** commit au toleo; mradi mdogo (matcher, service au UI); mfumo wako wa uendeshaji; na matoleo ya Rust, Node, pnpm, Podman na PostgreSQL, kadiri inavyofaa.
+- **Mfano mdogo kabisa:** seti ndogo zaidi ya amri au msimbo inayoendelea kuonyesha tatizo.
+
+Bandika maandishi ndani ya vizuizi vya msimbo vilivyozungushiwa uzio:
+
+```text
+the exact error message goes here
+```
+
+## Tafadhali usibandike
+
+- **Data halisi za wagonjwa.** Programu si kwa matumizi ya kliniki. Tumia rekodi za kubuni na useme hivyo.
+- **Siri**, kama tokeni, funguo, nenosiri au `DB_URL` yenye nenosiri. Zibadilishe kwa kishikilia nafasi.
+
+## Wapi pengine pa kwenda
+
+- Ukipata hitilafu, fungua [suala](https://github.com/electronic-patient-record/electronic-patient-record/issues).
+- Ukitaka kipengele, weka katika Ideas.
+- Ikiwa ni tatizo la usalama, liripoti kwa faragha, kama [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) inavyoeleza.

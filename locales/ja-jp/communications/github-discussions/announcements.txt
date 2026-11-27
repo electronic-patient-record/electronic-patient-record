@@ -1,0 +1,30 @@
+電子カルテのディスカッションへようこそ
+
+Electronic Patient Record のディスカッションを開始しました。これは、安全で、追記のみで、監査される患者記録のためのオープンソースソフトウェアで、FHIR R4 をデータモデルと API の両方に使い、説明可能な患者の本人照合を備えています。ここは、質問をしたり、アイデアを提案したり、作ったものを共有したりする場所で、公開され、1 か所にまとまっています。
+
+> **臨床では使用できません。実在の患者データは入力しないでください。** このプロジェクトはプレリリース段階の骨組みです。本番運用が何を意味するのか、その前に何をしなければならないのかは、[本番運用への道筋](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/governance/production-readiness.md)に書かれています。
+
+## 現在あるもの
+
+- 2 つの患者本人確認記録を比較し、結果をフィールドごとに説明する Rust ライブラリ。
+- REST と FHIR の API、PostgreSQL ストレージ、編集できない監査証跡を備えた Rust サービス。
+- 専用のプロキシ経由でサービスと通信する、臨床医向けの SvelteKit インターフェース。
+- コードと一緒に管理されている仕様、バックログ、ハザードログ。何が構築・テスト済みかは、[実装状況](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/14-implementation-status.md)に正確に書かれています。
+
+## 用途別の案内先
+
+- **質問**(コードの実行、テスト、理解について): Q&A。
+- **提案**(機能や変更について): Ideas。
+- **作ったもの**(プロジェクトを使った、または関連するもの): Show and tell。
+- **投票**(プロジェクトの未解決の問いについて): Polls。
+- **その他すべて**(自己紹介を含む): General。
+- **バグ**: 行ったこと、期待したこと、起きたことを添えて、[Issue](https://github.com/electronic-patient-record/electronic-patient-record/issues) を開いてください。
+- **セキュリティ上の問題**: [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) の説明どおり、非公開で報告してください。ディスカッションには決して書かないでください。
+
+## 進め方
+
+[行動規範](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md)に従ってください。変更は、[貢献ガイド](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CONTRIBUTING.md)の説明どおり、仕様から始まります。このプロジェクトのメンテナーは 1 人のため、返信には数日かかることがあります。作業の多くは、メンテナーの指示のもとで AI アシスタントを使って書かれており、[AI に関する声明](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AI_STATEMENT.md)に説明がありますが、臨床的なレビューはまだ受けていません。
+
+## 次にすること
+
+[RFC.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/RFC.md) の 6 つの問いを読み、いちばん詳しいものに、General の新しいディスカッションか、ここへの返信で答えてください。

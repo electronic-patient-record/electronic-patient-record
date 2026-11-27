@@ -1,0 +1,17 @@
+Présentez-vous : qu’est-ce qui vous amène à un dossier patient open source ?
+
+Bienvenue dans General, l’endroit pour les conversations qui ne rentrent nulle part ailleurs : présentations, cas d’usage, opinions et questions sur l’orientation du projet.
+
+Je commence. Je suis Joel, le responsable du projet. Electronic Patient Record vise à être un dossier patient sûr par conception : le dossier clinique est en ajout seul, donc rien n’est écrasé ; les accès sont audités ; et quand le logiciel compare deux dossiers de patients, il explique sa réponse. C’est un squelette de départ qui ne convient pas à un usage clinique, donc c’est le bon moment pour le façonner.
+
+**Ma seule question pour vous :** qu’est-ce qui vous a amené ici, et quel est votre lien avec les dossiers patient ? Vous êtes peut-être clinicien, développeur, intégrateur, patient, responsable de la sécurité ou de la vie privée, ou simplement curieux. Une phrase ou deux suffisent.
+
+## Où vont les autres sujets
+
+- Questions sur l’exécution ou la compréhension du code : Q&A.
+- Suggestions de fonctionnalités : Ideas.
+- Quelque chose que vous avez construit : Show and tell.
+- Bogues : [Issues](https://github.com/electronic-patient-record/electronic-patient-record/issues).
+- Problèmes de sécurité : en privé, comme l’explique [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md).
+
+Merci de respecter le [code de conduite](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md). Merci de votre visite. Je répondrai moi-même aux premiers commentaires.

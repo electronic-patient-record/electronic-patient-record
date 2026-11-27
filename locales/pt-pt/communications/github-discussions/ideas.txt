@@ -1,0 +1,37 @@
+Como sugerir uma ideia para o Electronic Patient Record
+
+Esta categoria serve para propor uma mudança ou uma funcionalidade antes que alguém escreva código. Uma boa ideia começa pelo problema que ela resolve, porque um problema pode ser avaliado mesmo quando a primeira solução não é a certa.
+
+Isto é um registo do paciente, então uma ideia pode mudar o que um clínico vê, decide ou assina. Não há problema em propor isso, e é por isso que uma ideia aqui precisa de um problema, de uma razão e de um olhar cuidadoso sobre o que pode dar errado.
+
+## Como sugerir uma ideia
+
+Abra uma nova discussão em Ideas, uma ideia por discussão. Dê como título o problema ou o resultado, como «Mostrar quando um resultado foi revisado pela última vez», e não a solução. Copie estes títulos para o corpo:
+
+### Problema
+
+O que dói hoje, para quem e quando? Uma ou duas frases.
+
+### Proposta
+
+O que você mudaria, em palavras simples. Uma lista curta serve se houver partes.
+
+### Alternativas
+
+Outras formas de resolver, incluindo paliativos e não fazer nada.
+
+### Custos e riscos
+
+O que isso tornaria mais difícil: complexidade, compatibilidade, manutenção, privacidade ou segurança do paciente. Se puder mostrar a um clínico algo errado, ou esconder algo de que ele precisa, diga.
+
+### Perguntas em aberto
+
+Do que você não tem certeza, e a única coisa que você mais quer que os leitores respondam.
+
+## O que acontece depois
+
+Uma ideia acolhida vira uma entrada em [tasks.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/tasks.md) e uma mudança na [especificação](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/index.md) antes de qualquer código ser escrito, como explica o [guia de contribuição](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CONTRIBUTING.md). Uma sugestão não é uma promessa de que será construída e, com um único responsável, a resposta pode levar alguns dias.
+
+Bugs vão em [Issues](https://github.com/electronic-patient-record/electronic-patient-record/issues), e problemas de segurança vão num relato privado, como explica o [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md).
+
+**Para começar:** se você tem uma ideia agora, publique-a com os títulos acima. Se não tiver certeza de que o problema é real, pergunte antes em General.

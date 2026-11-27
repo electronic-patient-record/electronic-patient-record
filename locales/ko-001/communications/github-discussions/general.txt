@@ -1,0 +1,17 @@
+인사해 주세요: 오픈 소스 환자 기록에 어떻게 관심을 갖게 되셨나요?
+
+General에 오신 것을 환영합니다. 다른 곳에 맞지 않는 대화를 위한 곳입니다. 소개, 사용 사례, 의견, 프로젝트가 나아갈 방향에 대한 질문 등이 해당됩니다.
+
+제가 먼저 하겠습니다. 저는 이 프로젝트의 관리자 Joel입니다. Electronic Patient Record는 설계부터 안전한 환자 기록을 목표로 합니다. 임상 기록은 추가만 가능하므로 아무것도 덮어쓰이지 않고, 접근은 감사되며, 소프트웨어가 두 환자 기록을 비교할 때는 그 답을 설명합니다. 이것은 초기 뼈대이며 임상 용도로 사용할 수 없으므로, 지금이 형태를 잡을 좋은 시기입니다.
+
+**여러분께 드리는 질문은 하나입니다.** 여기에 오게 된 계기와 환자 기록과의 관계는 무엇인가요? 임상의, 개발자, 통합 담당자, 환자, 안전 또는 개인정보 담당자일 수도 있고, 그저 궁금해서 오셨을 수도 있습니다. 한두 문장이면 충분합니다.
+
+## 다른 주제는 어디로
+
+- 코드를 실행하거나 이해하는 것에 대한 질문: Q&A.
+- 기능 제안: Ideas.
+- 만든 것: Show and tell.
+- 버그: [Issues](https://github.com/electronic-patient-record/electronic-patient-record/issues).
+- 보안 문제: [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md)의 설명대로 비공개로.
+
+[행동 강령](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md)을 따라 주세요. 들러 주셔서 감사합니다. 첫 댓글에는 제가 직접 답하겠습니다.

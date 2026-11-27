@@ -1,0 +1,17 @@
+Salimia: ni nini kinachokuleta kwenye rekodi ya mgonjwa yenye chanzo huria?
+
+Karibu General, mahali pa mazungumzo yasiyofaa popote pengine: utambulisho, matumizi, maoni na maswali kuhusu mwelekeo wa mradi.
+
+Nitaanza mimi. Mimi ni Joel, mtunzaji wa mradi. Electronic Patient Record inalenga kuwa rekodi ya mgonjwa iliyo salama kwa usanifu: rekodi ya kliniki inaongezewa tu, kwa hiyo hakuna kinachoandikwa juu; ufikiaji unakaguliwa; na programu inapolinganisha rekodi mbili za wagonjwa, inaeleza jibu lake. Ni mfumo wa msingi wa awali na si kwa matumizi ya kliniki, kwa hiyo huu ni wakati mzuri wa kuuunda.
+
+**Swali langu moja kwako:** ni nini kilikuleta hapa, na una uhusiano gani na rekodi za wagonjwa? Unaweza kuwa mtaalamu wa kliniki, msanidi programu, mjumuishaji, mgonjwa, afisa wa usalama au faragha, au una hamu tu. Sentensi moja au mbili zinatosha.
+
+## Mada nyingine zinaenda wapi
+
+- Maswali kuhusu kuendesha au kuelewa msimbo: Q&A.
+- Mapendekezo ya vipengele: Ideas.
+- Kitu ulichojenga: Show and tell.
+- Hitilafu: [Issues](https://github.com/electronic-patient-record/electronic-patient-record/issues).
+- Matatizo ya usalama: kwa faragha, kama [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) inavyoeleza.
+
+Tafadhali fuata [kanuni za maadili](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md). Asante kwa kupita. Nitajibu maoni ya kwanza mwenyewe.

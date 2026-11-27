@@ -9,10 +9,16 @@
 //! every one that a person looked at, and a refusal the person did not name is a refusal that was not asked about. The
 //! refusals of a record merged away are shown with the survivor ([`list_with_merged`]), as what they are: another
 //! record's.
+//!
+//! **A doubt raises a task event** (TL-3, RF-7): a refusal coming to be doubted raises `treatment-refusal-doubted`, and a
+//! doubted one leaving doubt raises `treatment-refusal-resolved` ([`treatment_refusal::task_event`]), in the writer's
+//! transaction, with the refusal as the task's source. Only an approved rule makes a task from it.
 
 use crate::ids;
 use crate::patients_store::{self, StoreError};
 use crate::pool::Db;
+use crate::task_rules::Rule;
+use crate::tasks_store::{self, Source};
 use crate::treatment_refusal::{self, RefusalRecord, State};
 use serde::Serialize;
 use sqlx::postgres::PgRow;
@@ -77,6 +83,31 @@ pub async fn create(
     reason: Option<&str>,
     record: &RefusalRecord,
 ) -> Result<StoredRefusal, StoreError> {
+    create_with_rules(
+        db,
+        patient_id,
+        author,
+        reason,
+        record,
+        &tasks_store::rules()?,
+    )
+    .await
+}
+
+/// [`create`] with the task rules given, which a test sets. One recorded as doubted to begin with raises
+/// `treatment-refusal-doubted`.
+///
+/// # Errors
+///
+/// As [`create`].
+pub async fn create_with_rules(
+    db: impl Into<Db<'_>>,
+    patient_id: &str,
+    author: &str,
+    reason: Option<&str>,
+    record: &RefusalRecord,
+    rules: &[Rule],
+) -> Result<StoredRefusal, StoreError> {
     check_withdrawal(record)?;
     if record.state == State::EnteredInError {
         return Err(StoreError::BadQuery(
@@ -106,8 +137,28 @@ pub async fn create(
     .map_err(db_err)?
     .ok_or_else(|| StoreError::Db("insert returned no row".into()))?;
     let stored = row_to_stored(&row)?;
+    raise(&mut tx, rules, None, &stored).await?;
     tx.commit().await.map_err(db_err)?;
     Ok(stored)
+}
+
+/// Raise the task event a change from `before` to `stored` makes, if any ([`treatment_refusal::task_event`]), on the
+/// writer's connection.
+async fn raise(
+    conn: &mut sqlx::PgConnection,
+    rules: &[Rule],
+    before: Option<State>,
+    stored: &StoredRefusal,
+) -> Result<(), StoreError> {
+    if let Some((event, facts)) = treatment_refusal::task_event(before, &stored.refusal) {
+        let source = Source {
+            kind: "treatment-refusal".into(),
+            id: stored.id.clone(),
+            version: None,
+        };
+        tasks_store::raise(conn, rules, event, &facts, &stored.patient_id, &source).await?;
+    }
+    Ok(())
 }
 
 /// The current version of every refusal recorded on a patient record, those entered in error and withdrawn included,
@@ -205,6 +256,53 @@ pub async fn update(
     reason: Option<&str>,
     record: &RefusalRecord,
 ) -> Result<StoredRefusal, StoreError> {
+    let edit = Edit {
+        patient_id,
+        refusal_id,
+        expected_version,
+        author,
+        reason,
+        record,
+    };
+    update_with_rules(db, &edit, &tasks_store::rules()?).await
+}
+
+/// One change to a refusal, as [`update`] takes it.
+#[derive(Debug, Clone, Copy)]
+pub struct Edit<'a> {
+    /// The patient record it is on.
+    pub patient_id: &'a str,
+    /// The refusal.
+    pub refusal_id: &'a str,
+    /// The version the change was made from.
+    pub expected_version: i32,
+    /// Who.
+    pub author: &'a str,
+    /// Why, for the version history.
+    pub reason: Option<&'a str>,
+    /// The whole new record.
+    pub record: &'a RefusalRecord,
+}
+
+/// [`update`] with the task rules given, which a test sets: a change into doubt raises `treatment-refusal-doubted`, and
+/// out of it `treatment-refusal-resolved`.
+///
+/// # Errors
+///
+/// As [`update`].
+pub async fn update_with_rules(
+    db: impl Into<Db<'_>>,
+    edit: &Edit<'_>,
+    rules: &[Rule],
+) -> Result<StoredRefusal, StoreError> {
+    let Edit {
+        patient_id,
+        refusal_id,
+        expected_version,
+        author,
+        reason,
+        record,
+    } = *edit;
     check_withdrawal(record)?;
     let mut conn = db.into().acquire().await.map_err(db_err)?;
     let mut tx = conn.begin().await.map_err(db_err)?;
@@ -247,6 +345,7 @@ pub async fn update(
         }
     };
     let stored = row_to_stored(&row)?;
+    raise(&mut *db, rules, Some(now.refusal.state), &stored).await?;
     tx.commit().await.map_err(db_err)?;
     Ok(stored)
 }

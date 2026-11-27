@@ -1,0 +1,56 @@
+Chia sẻ điều bạn đã xây dựng: đây là matcher giải thích một hồ sơ mà nó sẽ không liên kết
+
+Danh mục này dành cho những thứ bạn làm với hoặc xung quanh Electronic Patient Record: tích hợp, tập lệnh, bản demo, hướng dẫn và thử nghiệm. Để cho thấy định dạng, đây là một thứ nhỏ mà dự án đã làm được.
+
+## Đó là gì
+
+Matcher là một thư viện Rust so sánh hai bản ghi danh tính bệnh nhân và nói, theo từng trường, vì sao nó sẽ hoặc sẽ không liên kết chúng.
+
+## Vì sao nó tồn tại
+
+Liên kết hai hồ sơ của hai người khác nhau sẽ trộn lẫn bệnh sử của họ, và điều đó có thể gây hại cho cả hai. Vì vậy matcher không bao giờ quyết định âm thầm. Một trường bị thiếu được báo là thiếu, không bao giờ được tính là khớp, và một số khoảng trống chặn hẳn việc liên kết tự động.
+
+## Hãy thử
+
+Hai hồ sơ bịa: cùng họ và cùng ngày sinh, nhưng hồ sơ thứ hai không có tên.
+
+```sh
+git clone https://github.com/electronic-patient-record/electronic-patient-record.git
+cd electronic-patient-record/electronic-patient-record-matcher-with-rust
+echo '{"names":[{"family":"Rivera","given":["Alex"]}],"birth_date":"1980-04-12","sex":"female"}' > a.json
+echo '{"names":[{"family":"Rivera","given":[]}],"birth_date":"1980-04-12"}' > b.json
+cargo run -- a.json b.json
+```
+
+Một phần của đầu ra:
+
+```json
+{
+  "score": 1.0,
+  "decision": "review",
+  "fields": [
+    { "field": "family_name", "similarity": 1.0, "weight": 0.25, "note": "similarity 1.00" },
+    { "field": "given_name", "similarity": null, "weight": 0.2, "note": "no given name on one or both records" },
+    { "field": "birth_date", "similarity": 1.0, "weight": 0.3, "note": "similarity 1.00" }
+  ],
+  "conflicts": [ "given name not available to confirm the link" ]
+}
+```
+
+## Điều làm tôi ngạc nhiên
+
+Mọi trường mà hai hồ sơ có chung đều khớp, nên điểm là 1.0, vậy mà matcher vẫn từ chối liên kết chúng. Nó chuyển chúng cho một con người, vì thiếu tên không bao giờ có thể xác nhận một liên kết. Điểm cao thôi thì chưa đủ.
+
+Các ngưỡng chưa được xác nhận, và phần mềm không dùng cho lâm sàng.
+
+## Chia sẻ của bạn
+
+Hãy đăng những gì bạn làm trong một thảo luận mới tại đây, kèm:
+
+- nó là gì, trong một câu;
+- vì sao bạn làm ra nó;
+- thứ để xem: một đoạn mã, ảnh chụp màn hình hoặc liên kết;
+- cách người khác có thể thử;
+- loại phản hồi bạn muốn.
+
+Chỉ dùng hồ sơ bịa, không bao giờ dùng dữ liệu bệnh nhân thật. Và nếu bạn xây dựng trên công việc của người khác, hãy ghi công họ.

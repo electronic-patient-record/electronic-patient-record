@@ -1,0 +1,33 @@
+Cómo hacer una pregunta que reciba una buena respuesta
+
+Esta categoría es para preguntas con respuesta: cómo ejecutar, probar, configurar o entender Electronic Patient Record. Cuando una respuesta resuelva tu duda, márcala como respuesta, para que la próxima persona con la misma pregunta la encuentre rápido.
+
+Antes de preguntar, consulta [el README](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/README.md), [AGENTS.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AGENTS.md) (que enumera las trampas fáciles de pasar por alto, como los puertos, Podman y el desfase del reloj) y [el estado de implementación](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/14-implementation-status.md), que dice qué está construido y qué no.
+
+## Lista de comprobación para tu pregunta
+
+Titula tu pregunta con el problema, como «¿Cómo ejecuto las pruebas de la base de datos en otro puerto?», y no «Ayuda». Haz una pregunta por debate. Después incluye:
+
+- **Objetivo:** lo que intentas hacer, en una frase.
+- **Qué probé:** los pasos o comandos, en orden.
+- **Esperado:** lo que pensabas que ocurriría.
+- **Real:** lo que ocurrió, con el texto exacto del error en un bloque de código, no en una captura de pantalla.
+- **Entorno:** el commit o la versión; el subproyecto (matcher, service o UI); tu sistema operativo; y las versiones de Rust, Node, pnpm, Podman y PostgreSQL, según corresponda.
+- **Ejemplo mínimo:** el menor conjunto de comandos o de código que siga mostrando el problema.
+
+Pega el texto dentro de bloques de código delimitados:
+
+```text
+the exact error message goes here
+```
+
+## Por favor, no pegues
+
+- **Datos reales de pacientes.** El software no es apto para uso clínico. Usa registros inventados y dilo.
+- **Secretos**, como tokens, claves, contraseñas o un `DB_URL` con una contraseña. Sustitúyelos por un marcador.
+
+## Otros sitios adonde ir
+
+- Si encontraste un error, abre una [incidencia](https://github.com/electronic-patient-record/electronic-patient-record/issues).
+- Si quieres una función, publícala en Ideas.
+- Si es un problema de seguridad, infórmalo de forma privada, como explica [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md).

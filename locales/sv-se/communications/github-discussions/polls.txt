@@ -1,0 +1,24 @@
+Vilket lands standarder ska den första versionen uppfylla först: Storbritanniens eller USA:s?
+
+Projektet planerar att uppfylla både Storbritanniens och USA:s nationella standarder för patientjournaler. Arbetet måste börja någonstans, och ordningen ändrar vad som byggs först. Det här är fråga 2 i [RFC.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/RFC.md), och den här omröstningen är ett snabbt sätt att svara.
+
+**Vad varje val betyder:**
+
+- **Storbritannien först:** FHIR-profilerna UK Core, Personal Demographics Service (PDS) och den kliniska säkerhetsstandarden DCB0129 med DTAC-bedömningen.
+- **USA först:** FHIR-profilerna US Core och ONC:s certifieringsregler.
+
+**Hur resultatet används:** omröstningen är rådgivande. Den ansvarige fattar beslutet, noterar det i [plan.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/plan.md) och förklarar det i den här tråden. Resultatet vägs tillsammans med skälen i kommentarerna, det räknas inte ensamt. Inget slutdatum är satt ännu.
+
+**Säg varför i en kommentar**, särskilt om du arbetar med någon av standarduppsättningarna. En röst visar vad folk föredrar, och en kommentar visar skälen.
+
+Projektet är en stomme före lansering och inte för klinisk användning. Inget av valen är ett löfte om ett datum.
+
+---
+
+Omröstningsfråga: Vilket lands standarder ska den första versionen uppfylla först?
+
+Alternativ:
+1. Storbritanniens (UK Core, PDS, DCB0129 och DTAC)
+2. USA:s (US Core och ONC-certifiering)
+3. Ingetdera ännu: slutför den delade kärnan först
+4. Något annat (förklara i en kommentar)

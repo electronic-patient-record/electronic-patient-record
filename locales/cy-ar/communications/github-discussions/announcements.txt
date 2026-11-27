@@ -1,0 +1,30 @@
+Croeso i drafodaethau’r cofnod cleifion electronig
+
+Mae trafodaethau bellach ar agor ar gyfer Electronic Patient Record, meddalwedd ffynhonnell agored ar gyfer cofnod claf diogel, sy’n ychwanegu’n unig ac wedi’i archwilio, gyda FHIR R4 yn fodel data ac yn API, a chyfateb hunaniaeth cleifion y gellir ei egluro. Dyma’r lle i ofyn cwestiynau, awgrymu syniadau a rhannu’r hyn rydych chi’n ei adeiladu, yn gyhoeddus ac mewn un lle.
+
+> **Nid at ddefnydd clinigol. Peidiwch â rhoi data cleifion go iawn.** Mae’r prosiect yn sgerbwd cyn-ryddhau. Mae’r hyn y byddai cynhyrchu yn ei olygu, a’r hyn sy’n rhaid ei wneud yn gyntaf, yn [y llwybr at gynhyrchu](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/governance/production-readiness.md).
+
+## Beth sy’n bodoli heddiw
+
+- Llyfrgell Rust sy’n cymharu dau gofnod hunaniaeth claf ac yn egluro’r canlyniad, maes wrth faes.
+- Gwasanaeth Rust ag API REST a FHIR, storfa PostgreSQL a llwybr archwilio na ellir ei olygu.
+- Rhyngwyneb clinigwyr SvelteKit sy’n siarad â’r gwasanaeth drwy ei ddirprwy ei hun.
+- Manyleb, rhestr waith a log peryglon, i gyd yn cael eu cadw gyda’r cod. Mae [statws y gweithredu](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/14-implementation-status.md) yn dweud yn union beth sydd wedi’i adeiladu a’i brofi.
+
+## I ble i fynd am beth
+
+- **Cwestiynau** am redeg, profi neu ddeall y cod: Q&A.
+- **Awgrymiadau** ar gyfer nodweddion neu newidiadau: Ideas.
+- **Rhywbeth rydych chi wedi’i adeiladu** gyda’r prosiect neu o’i gwmpas: Show and tell.
+- **Pleidleisiau** ar gwestiynau agored y prosiect: Polls.
+- **Popeth arall**, gan gynnwys cyflwyniadau: General.
+- **Namau**: agorwch [fater](https://github.com/electronic-patient-record/electronic-patient-record/issues) gyda’r hyn a wnaethoch, yr hyn a ddisgwyliwch a’r hyn a ddigwyddodd.
+- **Problemau diogelwch**: rhowch wybod yn breifat, fel y mae [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) yn egluro, byth mewn trafodaeth.
+
+## Sut rydyn ni’n gweithio
+
+Dilynwch y [cod ymddygiad](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md). Mae newidiadau’n dechrau o’r fanyleb, fel y mae’r [canllaw cyfrannu](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CONTRIBUTING.md) yn egluro. Un cynhaliwr sydd gan y prosiect, felly gall ymatebion gymryd ychydig ddyddiau. Mae llawer o’r gwaith yn cael ei ysgrifennu gyda chynorthwyydd deallusrwydd artiffisial dan gyfarwyddyd y cynhaliwr, fel y mae’r [datganiad AI](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AI_STATEMENT.md) yn egluro, ac nid oes dim wedi cael adolygiad clinigol eto.
+
+## Beth i’w wneud nesaf
+
+Darllenwch y chwe chwestiwn yn [RFC.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/RFC.md) ac atebwch yr un rydych chi’n ei wybod orau, mewn trafodaeth newydd yn General neu mewn ateb yma.

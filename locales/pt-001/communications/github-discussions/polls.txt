@@ -1,0 +1,24 @@
+Os padrões de qual país a primeira versão deve cumprir primeiro: os do Reino Unido ou os dos Estados Unidos?
+
+O projeto pretende cumprir tanto os padrões nacionais do Reino Unido quanto os dos Estados Unidos para registros de pacientes. O trabalho precisa começar em algum lugar, e a ordem muda o que é construído primeiro. Esta é a pergunta 2 do [RFC.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/RFC.md), e esta enquete é uma forma rápida de respondê-la.
+
+**O que cada opção significa:**
+
+- **Reino Unido primeiro:** os perfis FHIR UK Core, o Personal Demographics Service (PDS) e o padrão de segurança clínica DCB0129 com a avaliação DTAC.
+- **Estados Unidos primeiro:** os perfis FHIR US Core e as regras de certificação da ONC.
+
+**Como o resultado será usado:** o voto é consultivo. O responsável toma a decisão, registra-a em [plan.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/plan.md) e a explica neste tópico. O resultado será ponderado junto com as razões dadas nos comentários, não contado sozinho. Ainda não há data de encerramento.
+
+**Diga por quê em um comentário**, especialmente se você trabalha com um dos dois conjuntos de padrões. Um voto mostra o que as pessoas preferem, e um comentário mostra as razões.
+
+O projeto é um esqueleto em pré-lançamento e não é para uso clínico. Nenhuma das opções é uma promessa de data.
+
+---
+
+Pergunta da enquete: Os padrões de qual país a primeira versão deve cumprir primeiro?
+
+Opções:
+1. Os do Reino Unido (UK Core, PDS, DCB0129 e DTAC)
+2. Os dos Estados Unidos (US Core e certificação da ONC)
+3. Nenhum ainda: terminar primeiro o núcleo compartilhado
+4. Outra coisa (explique em um comentário)

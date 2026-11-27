@@ -1,0 +1,30 @@
+Boas-vindas às discussões do registo eletrônico do paciente
+
+As discussões estão abertas para o Electronic Patient Record, um software de código aberto para um registo do paciente seguro, somente de acréscimo e auditado, com FHIR R4 como modelo de dados e como API, e com correspondência de identidade de pacientes que pode ser explicada. Este é o lugar para fazer perguntas, sugerir ideias e partilhar o que você constrói, em público e num só lugar.
+
+> **Não para uso clínico. Não insira dados reais de pacientes.** O projeto é um esqueleto em pré-lançamento. O que significaria entrar em produção, e o que precisa ser feito antes, está no [caminho até a produção](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/governance/production-readiness.md).
+
+## O que existe hoje
+
+- Uma biblioteca Rust que compara dois registos de identidade de pacientes e explica o resultado, campo por campo.
+- Um serviço Rust com API REST e FHIR, armazenamento em PostgreSQL e uma trilha de auditoria que não pode ser editada.
+- Uma interface para clínicos em SvelteKit que fala com o serviço por meio do seu próprio proxy.
+- Uma especificação, um backlog e um registo de perigos, tudo mantido junto com o código. [O estado da implementação](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/14-implementation-status.md) diz exatamente o que está construído e testado.
+
+## Aonde ir para cada coisa
+
+- **Perguntas** sobre executar, testar ou entender o código: Q&A.
+- **Sugestões** de funcionalidades ou mudanças: Ideas.
+- **Algo que você construiu** com o projeto ou em torno dele: Show and tell.
+- **Votações** sobre questões em aberto do projeto: Polls.
+- **Qualquer outra coisa**, inclusive apresentações: General.
+- **Bugs**: abra uma [issue](https://github.com/electronic-patient-record/electronic-patient-record/issues) com o que você fez, o que esperava e o que aconteceu.
+- **Problemas de segurança**: relate em particular, como explica o [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md), nunca numa discussão.
+
+## Como trabalhamos
+
+Siga o [código de conduta](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md). As mudanças partem da especificação, como explica o [guia de contribuição](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CONTRIBUTING.md). O projeto tem um único responsável, então as respostas podem levar alguns dias. Boa parte do trabalho é escrita com um assistente de IA sob a direção do responsável, como explica a [declaração sobre IA](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AI_STATEMENT.md), e nada passou ainda por revisão clínica.
+
+## O que fazer em seguida
+
+Leia as seis perguntas do [RFC.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/RFC.md) e responda à que você conhece melhor, numa nova discussão em General ou numa resposta aqui.

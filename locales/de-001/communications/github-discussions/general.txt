@@ -1,0 +1,17 @@
+Sagen Sie Hallo: Was führt Sie zu einer Open-Source-Patientenakte?
+
+Willkommen in General, dem Ort für Gespräche, die sonst nirgends hinpassen: Vorstellungen, Anwendungsfälle, Meinungen und Fragen dazu, wohin sich das Projekt entwickelt.
+
+Ich fange an. Ich bin Joel, der Betreuer des Projekts. Electronic Patient Record soll eine Patientenakte sein, die von Grund auf sicher ist: Die klinische Akte ist nur ergänzbar, sodass nichts überschrieben wird; Zugriffe werden protokolliert; und wenn die Software zwei Patientenakten vergleicht, erklärt sie ihre Antwort. Es ist ein frühes Gerüst und nicht für den klinischen Einsatz, daher ist jetzt ein guter Zeitpunkt, es mitzugestalten.
+
+**Meine einzige Frage an Sie:** Was hat Sie hierhergeführt, und was verbindet Sie mit Patientenakten? Vielleicht sind Sie Kliniker, Entwickler, Integrator, Patient, Sicherheits- oder Datenschutzbeauftragter oder einfach neugierig. Ein oder zwei Sätze genügen.
+
+## Wohin andere Themen gehören
+
+- Fragen zum Ausführen oder Verstehen des Codes: Q&A.
+- Funktionsvorschläge: Ideas.
+- Etwas, das Sie gebaut haben: Show and tell.
+- Fehler: [Issues](https://github.com/electronic-patient-record/electronic-patient-record/issues).
+- Sicherheitsprobleme: privat, wie [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) erklärt.
+
+Bitte beachten Sie den [Verhaltenskodex](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md). Danke für Ihren Besuch. Die ersten Kommentare beantworte ich selbst.

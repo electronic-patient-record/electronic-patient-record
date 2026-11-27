@@ -1,0 +1,24 @@
+¿Qué normas nacionales debe cumplir primero la primera versión: las del Reino Unido o las de Estados Unidos?
+
+El proyecto planea cumplir tanto las normas nacionales del Reino Unido como las de Estados Unidos para las historias clínicas de pacientes. Hay que empezar por algún sitio, y el orden cambia lo que se construye primero. Es la pregunta 2 de [RFC.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/RFC.md), y esta votación es una forma rápida de responderla.
+
+**Qué significa cada opción:**
+
+- **Primero el Reino Unido:** los perfiles FHIR UK Core, el Personal Demographics Service (PDS) y la norma de seguridad clínica DCB0129 con la evaluación DTAC.
+- **Primero Estados Unidos:** los perfiles FHIR US Core y las normas de certificación de la ONC.
+
+**Cómo se usará el resultado:** la votación es consultiva. El responsable toma la decisión, la registra en [plan.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/plan.md) y la explica en este hilo. El resultado se sopesará junto con las razones de los comentarios, no se contará por sí solo. Todavía no hay fecha de cierre.
+
+**Explica el porqué en un comentario**, sobre todo si trabajas con alguno de los dos conjuntos de normas. Una votación muestra lo que prefiere la gente, y un comentario muestra las razones.
+
+El proyecto es un esqueleto previo a su publicación y no es apto para uso clínico. Ninguna de las opciones es una promesa de fecha.
+
+---
+
+Pregunta de la votación: ¿Qué normas nacionales debe cumplir primero la primera versión?
+
+Opciones:
+1. Las del Reino Unido (UK Core, PDS, DCB0129 y DTAC)
+2. Las de Estados Unidos (US Core y la certificación de la ONC)
+3. Ninguna todavía: terminar primero el núcleo compartido
+4. Otra cosa (explícala en un comentario)

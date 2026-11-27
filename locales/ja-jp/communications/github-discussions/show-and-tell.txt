@@ -1,0 +1,56 @@
+作ったものを共有しましょう: 照合機能が、結び付けなかった記録を説明します
+
+このカテゴリは、Electronic Patient Record を使って、またはその周辺で作ったもののためのものです。連携、スクリプト、デモ、チュートリアル、実験などです。形式を示すために、プロジェクトがすでに行っている小さな例を紹介します。
+
+## これは何か
+
+照合機能(matcher)は、2 つの患者本人確認記録を比較し、それらを結び付ける、または結び付けない理由を、フィールドごとに示す Rust ライブラリです。
+
+## なぜ存在するのか
+
+別人の 2 つの記録を結び付けると、両者の病歴が混ざり、双方に害が及ぶことがあります。そのため、照合機能は黙って決定することはありません。欠けているフィールドは欠けているものとして報告され、一致とは数えられず、一部の欠落は自動的な結び付けそのものを止めます。
+
+## 試してみる
+
+架空の 2 つの記録です。姓と生年月日は同じですが、2 つ目には名がありません。
+
+```sh
+git clone https://github.com/electronic-patient-record/electronic-patient-record.git
+cd electronic-patient-record/electronic-patient-record-matcher-with-rust
+echo '{"names":[{"family":"Rivera","given":["Alex"]}],"birth_date":"1980-04-12","sex":"female"}' > a.json
+echo '{"names":[{"family":"Rivera","given":[]}],"birth_date":"1980-04-12"}' > b.json
+cargo run -- a.json b.json
+```
+
+出力の一部:
+
+```json
+{
+  "score": 1.0,
+  "decision": "review",
+  "fields": [
+    { "field": "family_name", "similarity": 1.0, "weight": 0.25, "note": "similarity 1.00" },
+    { "field": "given_name", "similarity": null, "weight": 0.2, "note": "no given name on one or both records" },
+    { "field": "birth_date", "similarity": 1.0, "weight": 0.3, "note": "similarity 1.00" }
+  ],
+  "conflicts": [ "given name not available to confirm the link" ]
+}
+```
+
+## 驚いたこと
+
+2 つの記録が共有するフィールドはすべて一致しているので、スコアは 1.0 ですが、照合機能はそれでも結び付けようとしません。名の欠落は結び付けの裏付けにならないため、人に回します。高いスコアだけでは足りないのです。
+
+しきい値は検証されておらず、このソフトウェアは臨床では使用できません。
+
+## あなたのものも共有してください
+
+作ったものを、ここで新しいディスカッションとして投稿してください。次の内容を添えてください。
+
+- それが何か。1 文で。
+- なぜ作ったのか。
+- 見てもらえるもの: スニペット、スクリーンショット、リンク。
+- ほかの人が試す方法。
+- どんなフィードバックがほしいか。
+
+実在の患者データは決して使わず、架空の記録だけを使ってください。また、他の人の成果を土台にした場合は、その人の功績を明記してください。

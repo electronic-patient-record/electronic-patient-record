@@ -1,0 +1,37 @@
+Cara mengusulkan ide untuk Electronic Patient Record
+
+Kategori ini untuk mengusulkan perubahan atau fitur sebelum ada yang menulis kode. Ide yang baik dimulai dari masalah yang dipecahkannya, karena sebuah masalah dapat dinilai meskipun solusi pertamanya bukan yang tepat.
+
+Ini adalah rekam medis pasien, jadi sebuah ide dapat mengubah apa yang dilihat, diputuskan, atau ditandatangani klinisi. Itu boleh diusulkan, dan karena itulah sebuah ide di sini memerlukan masalah, alasan, dan pemeriksaan cermat atas apa yang bisa salah.
+
+## Cara mengusulkan ide
+
+Mulai diskusi baru di Ideas, satu ide per diskusi. Beri judul berupa masalah atau hasilnya, seperti "Tampilkan kapan hasil terakhir ditinjau", bukan solusinya. Salin judul bagian ini ke isi:
+
+### Masalah
+
+Apa yang bermasalah hari ini, bagi siapa, dan kapan? Satu atau dua kalimat.
+
+### Usulan
+
+Apa yang akan Anda ubah, dengan kata-kata sederhana. Daftar singkat boleh jika ada beberapa bagian.
+
+### Alternatif
+
+Cara lain untuk menyelesaikannya, termasuk solusi sementara dan tidak berbuat apa-apa.
+
+### Biaya dan risiko
+
+Apa yang akan menjadi lebih sulit: kompleksitas, kompatibilitas, pemeliharaan, privasi, atau keselamatan pasien. Jika ide itu dapat menunjukkan sesuatu yang salah kepada klinisi, atau menyembunyikan sesuatu yang mereka perlukan, katakan.
+
+### Pertanyaan terbuka
+
+Apa yang belum Anda yakini, dan satu hal yang paling ingin Anda minta dijawab pembaca.
+
+## Apa yang terjadi berikutnya
+
+Ide yang diambil menjadi entri di [tasks.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/tasks.md) dan perubahan pada [spesifikasi](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/index.md) sebelum kode ditulis, seperti dijelaskan [panduan kontribusi](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CONTRIBUTING.md). Saran bukanlah janji akan dibuat, dan dengan satu pemelihara, balasan bisa memakan beberapa hari.
+
+Bug ditaruh di [Issues](https://github.com/electronic-patient-record/electronic-patient-record/issues), dan masalah keamanan dalam laporan pribadi, seperti dijelaskan [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md).
+
+**Untuk memulai:** jika Anda punya ide sekarang, kirimkan dengan judul bagian di atas. Jika Anda tidak yakin masalahnya nyata, tanyakan dulu di General.

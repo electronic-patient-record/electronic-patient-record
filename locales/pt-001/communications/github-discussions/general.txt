@@ -1,0 +1,17 @@
+Diga olá: o que traz você a um registro do paciente de código aberto?
+
+Boas-vindas a General, o lugar para as conversas que não cabem em nenhum outro: apresentações, casos de uso, opiniões e perguntas sobre os rumos do projeto.
+
+Começo eu. Sou o Joel, o responsável pelo projeto. O Electronic Patient Record quer ser um registro do paciente seguro por projeto: o registro clínico é somente de acréscimo, então nada é sobrescrito; os acessos são auditados; e quando o software compara dois registros de pacientes, ele explica a sua resposta. É um esqueleto inicial e não é para uso clínico, então este é um bom momento para dar forma a ele.
+
+**Minha única pergunta para você:** o que trouxe você aqui, e qual é a sua ligação com registros de pacientes? Você pode ser clínico, desenvolvedor, integrador, paciente, responsável por segurança ou privacidade, ou apenas curioso. Uma ou duas frases bastam.
+
+## Onde ficam os outros assuntos
+
+- Perguntas sobre executar ou entender o código: Q&A.
+- Sugestões de funcionalidades: Ideas.
+- Algo que você construiu: Show and tell.
+- Bugs: [Issues](https://github.com/electronic-patient-record/electronic-patient-record/issues).
+- Problemas de segurança: em particular, como explica o [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md).
+
+Siga o [código de conduta](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md). Obrigado por passar por aqui. Eu mesmo responderei aos primeiros comentários.

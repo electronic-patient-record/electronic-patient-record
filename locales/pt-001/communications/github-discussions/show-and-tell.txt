@@ -1,0 +1,56 @@
+Compartilhe o que você construiu: aqui o matcher explica um registro que ele não ligaria
+
+Esta categoria é para coisas que você fez com o Electronic Patient Record ou em torno dele: integrações, scripts, demonstrações, tutoriais e experimentos. Para mostrar o formato, aqui vai uma coisa pequena que o projeto já faz.
+
+## O que é
+
+O matcher é uma biblioteca Rust que compara dois registros de identidade de pacientes e diz, campo por campo, por que os ligaria ou não.
+
+## Por que existe
+
+Ligar dois registros de pessoas diferentes mistura os seus históricos médicos, e isso pode prejudicar as duas. Por isso o matcher nunca decide em silêncio. Um campo ausente é informado como ausente, nunca contado como concordância, e algumas lacunas bloqueiam de vez uma ligação automática.
+
+## Experimente
+
+Dois registros inventados: o mesmo sobrenome e a mesma data de nascimento, mas o segundo não tem nome.
+
+```sh
+git clone https://github.com/electronic-patient-record/electronic-patient-record.git
+cd electronic-patient-record/electronic-patient-record-matcher-with-rust
+echo '{"names":[{"family":"Rivera","given":["Alex"]}],"birth_date":"1980-04-12","sex":"female"}' > a.json
+echo '{"names":[{"family":"Rivera","given":[]}],"birth_date":"1980-04-12"}' > b.json
+cargo run -- a.json b.json
+```
+
+Parte da saída:
+
+```json
+{
+  "score": 1.0,
+  "decision": "review",
+  "fields": [
+    { "field": "family_name", "similarity": 1.0, "weight": 0.25, "note": "similarity 1.00" },
+    { "field": "given_name", "similarity": null, "weight": 0.2, "note": "no given name on one or both records" },
+    { "field": "birth_date", "similarity": 1.0, "weight": 0.3, "note": "similarity 1.00" }
+  ],
+  "conflicts": [ "given name not available to confirm the link" ]
+}
+```
+
+## O que me surpreendeu
+
+Todos os campos que os dois registros têm em comum concordam, então a pontuação é 1.0, e mesmo assim o matcher se recusa a ligá-los. Ele os envia a uma pessoa, porque a falta de um nome nunca pode confirmar uma ligação. Uma pontuação alta não basta por si só.
+
+Os limiares não são validados, e o software não é para uso clínico.
+
+## Compartilhe o seu
+
+Publique o que você fez em uma nova discussão aqui, com:
+
+- o que é, em uma frase;
+- por que você fez;
+- algo para ver: um trecho, uma captura de tela ou um link;
+- como outra pessoa pode experimentar;
+- o tipo de retorno que você quer.
+
+Use apenas registros inventados, nunca dados reais de pacientes. E se você se baseia no trabalho de outra pessoa, dê o crédito.

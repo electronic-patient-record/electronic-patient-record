@@ -3,7 +3,7 @@
 //! closes a task with a reason at the version read; the tables refuse change; each reminder is decided once, and a
 //! late one follows its rule. Filing a result raises its event in the same transaction, and signing it off cancels
 //! its task; an observation out of range makes one, and entered in error cancels it; an urgent referral makes one, and closing
-//! the referral cancels it.
+//! the referral cancels it; a refusal of treatment coming to be doubted makes one, and standing again cancels it.
 
 use electronic_patient_record::observations::Range;
 use electronic_patient_record::observations_store::{
@@ -17,6 +17,8 @@ use electronic_patient_record::results_store;
 use electronic_patient_record::task_reminders;
 use electronic_patient_record::task_rules::{self, Event, ReminderNow};
 use electronic_patient_record::tasks_store::{self as store, Source, Status};
+use electronic_patient_record::treatment_refusal::RefusalRecord;
+use electronic_patient_record::treatment_refusals_store::{self as refusals, Edit};
 use electronic_patient_record_matcher::{HumanName, Patient};
 use jiff::civil::Date;
 use sqlx::{Connection, PgPool, Row};
@@ -924,6 +926,89 @@ async fn an_urgent_referral_makes_its_task_and_closing_the_referral_cancels_it()
     assert_eq!(
         (task.status, task.cancelled_by.as_deref()),
         (Status::Cancelled, Some("event:referral-closed"))
+    );
+}
+
+fn refusal(state: &str) -> RefusalRecord {
+    serde_json::from_value(serde_json::json!({
+        "kind": "spoken-now",
+        "treatment": "blood products",
+        "if_life_at_risk": "not-stated",
+        "form": {"written": "no", "signed": "no", "witnessed": "no", "seen": "not-seen"},
+        "said_by": "patient",
+        "identity": "certain",
+        "state": state,
+        "doubt": if state == "doubted" { Some("said in pain") } else { None },
+    }))
+    .unwrap()
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
+async fn a_refusal_coming_to_be_doubted_makes_its_task_and_standing_again_cancels_it() {
+    let db = db().await;
+    let team = format!("team-{}", stamp());
+    // The built-in draft, approved here and given a team of its own.
+    let text = include_str!("../electronic-patient-record-domain/src/task_rules.toml")
+        .replace(
+            "approved_by = \"\"\napproved_on = \"\"\nevent = \"treatment-refusal-doubted\"",
+            "approved_by = \"A Clinician\"\napproved_on = \"2026-11-27\"\nevent = \"treatment-refusal-doubted\"",
+        )
+        .replace(
+            "team = \"clinician\"\ntitle = \"Look at",
+            &format!("team = \"{team}\"\ntitle = \"Look at"),
+        );
+    let rules: Vec<_> = task_rules::parse(&text, "test")
+        .unwrap()
+        .into_iter()
+        .filter(|r| r.id == "doubted-refusal-review")
+        .collect();
+    assert!(rules[0].approved());
+    let p = patient(&db).await;
+    let open = || async { store::for_team(&db, &team).await.unwrap().0 };
+
+    // Recorded as standing: nothing. Doubted: one task, from the refusal, with the rule's words only.
+    let (doubted, stands) = (refusal("doubted"), refusal("stands"));
+    let r = refusals::create_with_rules(&db, &p, "dr-1", None, &stands, &rules)
+        .await
+        .unwrap();
+    assert!(open().await.is_empty());
+    let edit = |v, record, why| Edit {
+        patient_id: &p,
+        refusal_id: &r.id,
+        expected_version: v,
+        author: "dr-1",
+        reason: Some(why),
+        record,
+    };
+    refusals::update_with_rules(&db, &edit(1, &doubted, "said in pain"), &rules)
+        .await
+        .unwrap();
+    let tasks = open().await;
+    assert_eq!(tasks.len(), 1);
+    assert_eq!(
+        (tasks[0].source.kind.as_str(), tasks[0].source.id.as_str()),
+        ("treatment-refusal", r.id.as_str())
+    );
+    assert!(
+        !tasks[0].title.contains("blood"),
+        "never what is refused: {}",
+        tasks[0].title
+    );
+    // Still doubted, changed again: no second task.
+    refusals::update_with_rules(&db, &edit(2, &doubted, "asked again"), &rules)
+        .await
+        .unwrap();
+    assert_eq!(open().await.len(), 1);
+    // It stands after all: the task is cancelled, naming the event.
+    refusals::update_with_rules(&db, &edit(3, &stands, "asked again, calm"), &rules)
+        .await
+        .unwrap();
+    assert!(open().await.is_empty());
+    let task = store::one(&db, &tasks[0].id).await.unwrap();
+    assert_eq!(
+        (task.status, task.cancelled_by.as_deref()),
+        (Status::Cancelled, Some("event:treatment-refusal-resolved"))
     );
 }
 

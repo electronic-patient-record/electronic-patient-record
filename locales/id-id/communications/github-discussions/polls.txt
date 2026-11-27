@@ -1,0 +1,24 @@
+Standar negara mana yang sebaiknya dipenuhi lebih dulu oleh rilis pertama: Inggris Raya atau Amerika Serikat?
+
+Proyek ini berencana memenuhi standar nasional Inggris Raya maupun Amerika Serikat untuk rekam medis pasien. Pekerjaan harus dimulai dari suatu tempat, dan urutannya mengubah apa yang dibuat lebih dulu. Ini pertanyaan 2 di [RFC.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/RFC.md), dan jajak pendapat ini adalah cara cepat untuk menjawabnya.
+
+**Arti setiap pilihan:**
+
+- **Inggris dulu:** profil FHIR UK Core, Personal Demographics Service (PDS), dan standar keselamatan klinis DCB0129 dengan penilaian DTAC.
+- **AS dulu:** profil FHIR US Core dan aturan sertifikasi ONC.
+
+**Bagaimana hasilnya digunakan:** pemungutan suara bersifat penasihat. Pemelihara membuat keputusan, mencatatnya di [plan.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/plan.md), dan menjelaskannya di utas ini. Hasilnya akan ditimbang bersama alasan di komentar, tidak dihitung sendirian. Belum ada tanggal penutupan.
+
+**Tolong jelaskan alasannya di komentar**, terutama jika Anda bekerja dengan salah satu kumpulan standar itu. Suara menunjukkan apa yang disukai orang, dan komentar menunjukkan alasannya.
+
+Proyek ini adalah kerangka pra-rilis dan tidak untuk penggunaan klinis. Tidak ada pilihan yang merupakan janji tanggal.
+
+---
+
+Pertanyaan jajak pendapat: Standar negara mana yang sebaiknya dipenuhi lebih dulu oleh rilis pertama?
+
+Pilihan:
+1. Inggris Raya (UK Core, PDS, DCB0129, dan DTAC)
+2. Amerika Serikat (US Core dan sertifikasi ONC)
+3. Belum keduanya: selesaikan inti bersama lebih dulu
+4. Lainnya (jelaskan di komentar)

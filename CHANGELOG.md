@@ -2,6 +2,13 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-27 - A doubted refusal of treatment can give a clinician a task (TL-3, RF-7; the rule is a draft)
+
+- **Clinical risk:** yes, H-077: a doubted refusal was shown, but nothing asked anyone to settle it. H-077's controls, evidence and residual updated; severity and likelihood unchanged.
+- **Added:** two task events. `treatment-refusal-doubted` is raised when a refusal comes to be doubted, whether recorded doubted or changed into doubt (facts `kind`, `withdrawal_heard`). `treatment-refusal-resolved` is raised when a doubted one stands again, is withdrawn or is entered in error (facts `kind`, `state`). Both are raised in the writer's transaction, with the refusal as the task's source and never what is refused. One draft rule, `doubted-refusal-review`, gives the clinician team a task due in one working day, cancelled by the second event. The tasks page says "From a refusal of treatment" and opens the patient's refusal section.
+- **API:** `Task.source.kind` may be `treatment-refusal`, and the dry run's `event` takes the two new words. The OpenAPI census reads new values a caller may get back as a break, so it was blessed with `EPR_BLESS=break`; a caller that rejects unknown words must learn them.
+- **Verified:** the domain tests (330, 1 new); the full workspace run against a local Postgres 18 (402 database tests, 1 new: doubting makes the task, a second doubt makes no second task, standing again cancels it naming the event); UI lint, type checks, vitest (1 new assertion); `ci-local.sh --fast`. **Not done:** the rule is a draft, so no deployment makes such a task until someone approves it (OQ-TL1); no clinician has said whether one working day is right; the Welsh is machine-written.
+
 ## 2026-11-27 - The unmerge through the refusal stop has its own browser test
 
 - **Clinical risk:** none; a test.

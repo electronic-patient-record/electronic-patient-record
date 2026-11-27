@@ -1,0 +1,37 @@
+Cách đề xuất một ý tưởng cho Electronic Patient Record
+
+Danh mục này dành để đề xuất một thay đổi hoặc tính năng trước khi ai đó viết mã. Một ý tưởng tốt bắt đầu từ vấn đề nó giải quyết, vì một vấn đề có thể được đánh giá ngay cả khi giải pháp đầu tiên không đúng.
+
+Đây là hồ sơ bệnh nhân, nên một ý tưởng có thể thay đổi những gì bác sĩ lâm sàng thấy, quyết định hoặc ký. Đề xuất như vậy là được, và đó là lý do một ý tưởng ở đây cần có vấn đề, lý do và một cái nhìn cẩn thận về những gì có thể đi sai.
+
+## Cách đề xuất một ý tưởng
+
+Bắt đầu một thảo luận mới trong Ideas, mỗi thảo luận một ý tưởng. Đặt tiêu đề là vấn đề hoặc kết quả, như "Hiển thị lần gần nhất một kết quả được xem xét", không phải giải pháp. Sao chép các đề mục này vào nội dung:
+
+### Vấn đề
+
+Hôm nay điều gì gây khó khăn, cho ai, và khi nào? Một hoặc hai câu.
+
+### Đề xuất
+
+Bạn sẽ thay đổi điều gì, bằng lời đơn giản. Một danh sách ngắn cũng được nếu có nhiều phần.
+
+### Phương án thay thế
+
+Các cách khác để giải quyết, bao gồm giải pháp tạm thời và việc không làm gì.
+
+### Chi phí và rủi ro
+
+Điều gì sẽ khó hơn: độ phức tạp, khả năng tương thích, bảo trì, quyền riêng tư hoặc an toàn bệnh nhân. Nếu nó có thể cho bác sĩ lâm sàng thấy điều sai, hoặc che điều họ cần, hãy nói rõ.
+
+### Câu hỏi còn mở
+
+Điều bạn chưa chắc, và điều duy nhất bạn muốn người đọc trả lời nhất.
+
+## Điều xảy ra tiếp theo
+
+Một ý tưởng được tiếp nhận sẽ trở thành một mục trong [tasks.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/tasks.md) và một thay đổi đối với [đặc tả](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/index.md) trước khi viết mã, như [hướng dẫn đóng góp](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CONTRIBUTING.md) giải thích. Một gợi ý không phải lời hứa sẽ được xây dựng, và với một người duy trì, phản hồi có thể mất vài ngày.
+
+Lỗi thuộc về [Issues](https://github.com/electronic-patient-record/electronic-patient-record/issues), và vấn đề bảo mật thuộc về một báo cáo riêng tư, như [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) giải thích.
+
+**Để bắt đầu:** nếu bạn có ý tưởng ngay bây giờ, hãy đăng nó với các đề mục trên. Nếu bạn chưa chắc vấn đề có thật, hãy hỏi trước ở General.

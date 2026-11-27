@@ -14,6 +14,7 @@ describe("tasks", () => {
   it("links an observation and a referral to their sections, and a result to the record", () => {
     expect(sourceAnchor("observation")).toBe("#vitals-h");
     expect(sourceAnchor("referral")).toBe("#referrals-h");
+    expect(sourceAnchor("treatment-refusal")).toBe("#refusals-h");
     expect(sourceAnchor("result")).toBe("");
   });
 

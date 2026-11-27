@@ -1,0 +1,33 @@
+Comment poser une question qui obtient une bonne réponse
+
+Cette catégorie est pour les questions qui ont une réponse : comment exécuter, tester, configurer ou comprendre Electronic Patient Record. Quand une réponse résout votre question, merci de la marquer comme réponse, pour que la prochaine personne ayant la même question la trouve vite.
+
+Avant de demander, consultez [le README](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/README.md), [AGENTS.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AGENTS.md) (qui liste les pièges faciles à manquer, comme les ports, Podman et la dérive d’horloge) et [l’état de l’implémentation](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/14-implementation-status.md), qui dit ce qui est construit et ce qui ne l’est pas.
+
+## Liste de contrôle pour votre question
+
+Donnez à votre question un titre qui décrit le problème, par exemple « Comment exécuter les tests de base de données sur un autre port ? », et non « Aide ». Posez une question par discussion. Puis indiquez :
+
+- **Objectif :** ce que vous essayez de faire, en une phrase.
+- **Ce que j’ai essayé :** les étapes ou commandes, dans l’ordre.
+- **Attendu :** ce que vous pensiez voir se produire.
+- **Obtenu :** ce qui s’est passé, avec le texte exact de l’erreur dans un bloc de code, pas dans une capture d’écran.
+- **Environnement :** le commit ou la version ; le sous-projet (matcher, service ou UI) ; votre système d’exploitation ; et les versions de Rust, Node, pnpm, Podman et PostgreSQL, selon le cas.
+- **Exemple minimal :** le plus petit ensemble de commandes ou de code qui montre encore le problème.
+
+Collez le texte dans des blocs de code délimités :
+
+```text
+the exact error message goes here
+```
+
+## Merci de ne pas coller
+
+- **De données réelles de patients.** Le logiciel ne convient pas à un usage clinique. Utilisez des dossiers fictifs et dites-le.
+- **De secrets**, comme des jetons, clés, mots de passe ou un `DB_URL` contenant un mot de passe. Remplacez-les par un espace réservé.
+
+## Où aller d’autre
+
+- Si vous avez trouvé un bogue, ouvrez un [ticket](https://github.com/electronic-patient-record/electronic-patient-record/issues).
+- Si vous voulez une fonctionnalité, publiez dans Ideas.
+- S’il s’agit d’un problème de sécurité, signalez-le en privé, comme l’explique [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md).

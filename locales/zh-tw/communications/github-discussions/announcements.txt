@@ -1,0 +1,30 @@
+欢迎來到電子病歷讨论區
+
+Electronic Patient Record 的讨论區現已開放。這是一款開放原始碼軟體，用於建立安全、只可追加且經過稽核的病人記錄，以 FHIR R4 同時作為資料模型和 API，並提供可解釋的病人身份比對。你可以在這裡提問、提出想法，並分享你做的东西，公開且集中在一處。
+
+> **不得用於臨床。請勿輸入真實病人資料。** 本專案是預發布框架。投入生產意味着什麼，以及此前必須做什麼，見[通往生產之路](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/governance/production-readiness.md)。
+
+## 目前已有的内容
+
+- 一個 Rust 庫，比較兩條病人身份記錄，並逐字段解釋結果。
+- 一個 Rust 服務，提供 REST 和 FHIR API、PostgreSQL 存儲，以及無法編辑的稽核軌跡。
+- 一個 SvelteKit 臨床醫生介面，透過自己的代理與服務通信。
+- 規範、待办事項和危險日志，都與程式碼放在一起。[實現狀態](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/14-implementation-status.md)準確說明了哪些已構建並測試。
+
+## 什麼問題去哪裡
+
+- **提問**，關於執行、測試或理解程式碼：Q&A。
+- **建議**，關於功能或變更：Ideas。
+- **你做的东西**，與本專案有關的：Show and tell。
+- **投票**，關於專案尚未解決的問題：Polls。
+- **其他一切**，包括自我介绍：General。
+- **缺陷**：請開一個[議題](https://github.com/electronic-patient-record/electronic-patient-record/issues)，說明你做了什麼、期望什麼、實際發生了什麼。
+- **安全問題**：請按 [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) 的說明私下報告，切勿在讨论中發布。
+
+## 我們的工作方式
+
+請遵守[行為準則](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md)。變更從規範開始，詳見[貢獻指南](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CONTRIBUTING.md)。本專案只有一位維護者，因此回覆可能需要几天。大部分工作是在維護者的指導下借助 AI 助手完成的，詳見 [AI 聲明](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AI_STATEMENT.md)，並且尚未經過任何臨床審查。
+
+## 接下來做什麼
+
+閱讀 [RFC.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/RFC.md) 中的六個問題，並回答你最熟悉的那一個，可以在 General 中新建讨论，也可以在這裡回覆。

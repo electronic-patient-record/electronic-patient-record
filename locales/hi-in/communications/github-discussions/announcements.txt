@@ -1,0 +1,30 @@
+इलेक्ट्रॉनिक रोगी रिकॉर्ड की चर्चाओं में स्वागत है
+
+Electronic Patient Record के लिए चर्चाएँ अब खुली हैं। यह एक सुरक्षित, केवल जोड़े जा सकने वाले और ऑडिट किए जाने वाले रोगी रिकॉर्ड का ओपन-सोर्स सॉफ़्टवेयर है, जिसमें FHIR R4 डेटा मॉडल और API दोनों है, और रोगी की पहचान का मिलान समझाया जा सकता है। यहाँ प्रश्न पूछें, विचार सुझाएँ और जो बनाएँ उसे साझा करें, सार्वजनिक रूप से और एक ही जगह।
+
+> **नैदानिक उपयोग के लिए नहीं। वास्तविक रोगी डेटा दर्ज न करें।** परियोजना जारी होने से पहले का एक ढाँचा है। उत्पादन में जाने का क्या अर्थ होगा, और पहले क्या करना होगा, यह [उत्पादन तक का मार्ग](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/governance/production-readiness.md) में है।
+
+## आज क्या मौजूद है
+
+- एक Rust लाइब्रेरी जो रोगी की पहचान के दो रिकॉर्ड की तुलना करती है और परिणाम को फ़ील्ड-दर-फ़ील्ड समझाती है।
+- REST और FHIR API, PostgreSQL संग्रहण और ऐसे ऑडिट ट्रेल वाली एक Rust सेवा जिसे संपादित नहीं किया जा सकता।
+- एक SvelteKit चिकित्सक इंटरफ़ेस जो अपने प्रॉक्सी के ज़रिए सेवा से बात करता है।
+- एक विनिर्देश, एक बैकलॉग और एक जोखिम लॉग, सब कोड के साथ रखे गए। क्या बना और परखा गया है, यह [कार्यान्वयन की स्थिति](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/14-implementation-status.md) ठीक-ठीक बताती है।
+
+## किस काम के लिए कहाँ जाएँ
+
+- **प्रश्न**, कोड चलाने, परखने या समझने के बारे में: Q&A।
+- **सुझाव**, सुविधाओं या बदलावों के लिए: Ideas।
+- **आपकी बनाई कोई चीज़**, परियोजना के साथ या उसके आसपास: Show and tell।
+- **मतदान**, परियोजना के खुले प्रश्नों पर: Polls।
+- **बाकी सब कुछ**, परिचय सहित: General।
+- **बग**: आपने क्या किया, क्या अपेक्षा की और क्या हुआ, इसके साथ एक [इश्यू](https://github.com/electronic-patient-record/electronic-patient-record/issues) खोलें।
+- **सुरक्षा समस्याएँ**: [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) के अनुसार निजी तौर पर बताएँ, चर्चा में कभी नहीं।
+
+## हम कैसे काम करते हैं
+
+कृपया [आचार संहिता](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md) का पालन करें। [योगदान मार्गदर्शिका](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CONTRIBUTING.md) के अनुसार बदलाव विनिर्देश से शुरू होते हैं। परियोजना का एक ही अनुरक्षक है, इसलिए उत्तर में कुछ दिन लग सकते हैं। काम का बड़ा हिस्सा अनुरक्षक के निर्देशन में एक AI सहायक के साथ लिखा जाता है, जैसा [AI वक्तव्य](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AI_STATEMENT.md) बताता है, और अभी किसी चीज़ की नैदानिक समीक्षा नहीं हुई है।
+
+## आगे क्या करें
+
+[RFC.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/RFC.md) के छह प्रश्न पढ़ें और जिसके बारे में आप सबसे ज़्यादा जानते हैं उसका उत्तर General में नई चर्चा में या यहाँ एक उत्तर में दें।

@@ -1,0 +1,56 @@
+Teilen Sie, was Sie gebaut haben: hier erklärt der Abgleich einen Datensatz, den er nicht verknüpfen würde
+
+Diese Kategorie ist für Dinge, die Sie mit oder rund um Electronic Patient Record gemacht haben: Integrationen, Skripte, Demos, Anleitungen und Experimente. Um das Format zu zeigen, hier eine kleine Sache, die das Projekt schon kann.
+
+## Was es ist
+
+Der Abgleich (Matcher) ist eine Rust-Bibliothek, die zwei Patientenidentitätsdatensätze vergleicht und Feld für Feld sagt, warum er sie verknüpfen würde oder nicht.
+
+## Warum es ihn gibt
+
+Wer zwei Datensätze verschiedener Personen verknüpft, vermischt deren Krankengeschichten, und das kann beiden schaden. Deshalb entscheidet der Abgleich nie stillschweigend. Ein fehlendes Feld wird als fehlend gemeldet, nie als Übereinstimmung gezählt, und manche Lücken verhindern eine automatische Verknüpfung ganz.
+
+## Probieren Sie es aus
+
+Zwei erfundene Datensätze: derselbe Familienname und dasselbe Geburtsdatum, aber der zweite hat keinen Vornamen.
+
+```sh
+git clone https://github.com/electronic-patient-record/electronic-patient-record.git
+cd electronic-patient-record/electronic-patient-record-matcher-with-rust
+echo '{"names":[{"family":"Rivera","given":["Alex"]}],"birth_date":"1980-04-12","sex":"female"}' > a.json
+echo '{"names":[{"family":"Rivera","given":[]}],"birth_date":"1980-04-12"}' > b.json
+cargo run -- a.json b.json
+```
+
+Teil der Ausgabe:
+
+```json
+{
+  "score": 1.0,
+  "decision": "review",
+  "fields": [
+    { "field": "family_name", "similarity": 1.0, "weight": 0.25, "note": "similarity 1.00" },
+    { "field": "given_name", "similarity": null, "weight": 0.2, "note": "no given name on one or both records" },
+    { "field": "birth_date", "similarity": 1.0, "weight": 0.3, "note": "similarity 1.00" }
+  ],
+  "conflicts": [ "given name not available to confirm the link" ]
+}
+```
+
+## Was mich überrascht hat
+
+Jedes Feld, das die beiden Datensätze gemeinsam haben, stimmt überein, also ist die Bewertung 1.0, und der Abgleich weigert sich trotzdem, sie zu verknüpfen. Er schickt sie zu einem Menschen, weil ein fehlender Vorname eine Verknüpfung nie bestätigen kann. Eine hohe Bewertung allein genügt nicht.
+
+Die Schwellenwerte sind nicht validiert, und die Software ist nicht für den klinischen Einsatz.
+
+## Teilen Sie Ihres
+
+Veröffentlichen Sie, was Sie gemacht haben, in einer neuen Diskussion hier, mit:
+
+- was es ist, in einem Satz;
+- warum Sie es gemacht haben;
+- etwas zum Ansehen: ein Ausschnitt, ein Screenshot oder ein Link;
+- wie andere es ausprobieren können;
+- welche Art von Rückmeldung Sie sich wünschen.
+
+Verwenden Sie nur erfundene Datensätze, nie echte Patientendaten. Und wenn Sie auf der Arbeit anderer aufbauen, nennen Sie sie.

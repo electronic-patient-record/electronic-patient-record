@@ -1,0 +1,37 @@
+Hoe u een idee voorstelt voor Electronic Patient Record
+
+Deze categorie is voor het voorstellen van een wijziging of functie voordat iemand code schrijft. Een goed idee begint met het probleem dat het oplost, omdat een probleem te beoordelen is, ook als de eerste oplossing niet de juiste is.
+
+Dit is een patiëntendossier, dus een idee kan veranderen wat een clinicus ziet, beslist of ondertekent. Dat mag worden voorgesteld, en daarom heeft een idee hier een probleem, een reden en een zorgvuldige blik op wat er mis kan gaan nodig.
+
+## Hoe u een idee voorstelt
+
+Start een nieuwe discussie in Ideas, één idee per discussie. Geef het als titel het probleem of de uitkomst, zoals „Laten zien wanneer een uitslag voor het laatst is beoordeeld”, niet de oplossing. Kopieer deze koppen naar de tekst:
+
+### Probleem
+
+Wat doet vandaag pijn, voor wie en wanneer? Een of twee zinnen.
+
+### Voorstel
+
+Wat u zou veranderen, in gewone woorden. Een korte lijst is prima als er onderdelen zijn.
+
+### Alternatieven
+
+Andere manieren om het op te lossen, inclusief noodoplossingen en niets doen.
+
+### Kosten en risico’s
+
+Wat het lastiger zou maken: complexiteit, compatibiliteit, onderhoud, privacy of patiëntveiligheid. Als het een clinicus iets verkeerds kan tonen, of iets wat hij nodig heeft kan verbergen, zeg dat dan.
+
+### Openstaande vragen
+
+Waar u niet zeker van bent, en het ene wat u het liefst door lezers beantwoord ziet.
+
+## Wat er daarna gebeurt
+
+Een idee dat wordt opgepakt, wordt een item in [tasks.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/tasks.md) en een wijziging van [de specificatie](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/index.md) voordat er code wordt geschreven, zoals de [bijdragegids](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CONTRIBUTING.md) uitlegt. Een suggestie is geen belofte dat het wordt gebouwd, en met één beheerder kan een antwoord een paar dagen duren.
+
+Bugs horen in [Issues](https://github.com/electronic-patient-record/electronic-patient-record/issues), en beveiligingsproblemen in een privémelding, zoals [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) uitlegt.
+
+**Om te beginnen:** als u nu een idee hebt, plaats het met de bovenstaande koppen. Als u niet zeker weet of het probleem echt is, vraag het dan eerst in General.

@@ -1,0 +1,33 @@
+Come fare una domanda che riceva una buona risposta
+
+Questa categoria è per domande con risposta: come eseguire, testare, configurare o capire Electronic Patient Record. Quando una risposta risolve la vostra domanda, contrassegnatela come risposta, così la prossima persona con la stessa domanda la trova subito.
+
+Prima di chiedere, controllate [il README](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/README.md), [AGENTS.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AGENTS.md) (che elenca le trappole facili da perdere, come porte, Podman e deriva dell’orologio) e [lo stato di implementazione](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/14-implementation-status.md), che dice che cosa è costruito e che cosa no.
+
+## Lista di controllo per la vostra domanda
+
+Date alla domanda un titolo che descriva il problema, come «Come eseguo i test del database su un’altra porta?», non «Aiuto». Fate una domanda per discussione. Poi includete:
+
+- **Obiettivo:** che cosa state cercando di fare, in una frase.
+- **Che cosa ho provato:** i passaggi o i comandi, in ordine.
+- **Atteso:** che cosa pensavate sarebbe successo.
+- **Effettivo:** che cosa è successo, con il testo esatto dell’errore in un blocco di codice, non in uno screenshot.
+- **Ambiente:** il commit o la versione; il sottoprogetto (matcher, service o UI); il sistema operativo; e le versioni di Rust, Node, pnpm, Podman e PostgreSQL, secondo il caso.
+- **Esempio minimo:** il più piccolo insieme di comandi o di codice che mostri ancora il problema.
+
+Incollate il testo dentro blocchi di codice delimitati:
+
+```text
+the exact error message goes here
+```
+
+## Per favore non incollate
+
+- **Dati reali di pazienti.** Il software non è per uso clinico. Usate cartelle inventate e dichiaratelo.
+- **Segreti**, come token, chiavi, password o un `DB_URL` con una password. Sostituiteli con un segnaposto.
+
+## Dove altro andare
+
+- Se avete trovato un bug, aprite una [segnalazione](https://github.com/electronic-patient-record/electronic-patient-record/issues).
+- Se volete una funzionalità, scrivete in Ideas.
+- Se è un problema di sicurezza, segnalatelo in privato, come spiega [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md).

@@ -1,0 +1,56 @@
+Shiriki ulichojenga: hapa kilinganishi kinaeleza rekodi ambayo hakingeiunganisha
+
+Kategoria hii ni ya vitu ulivyotengeneza kwa Electronic Patient Record au kuuzunguka: miunganisho, hati, maonyesho, miongozo na majaribio. Ili kuonyesha muundo, hapa kuna kitu kidogo ambacho mradi tayari unakifanya.
+
+## Ni nini
+
+Kilinganishi (matcher) ni maktaba ya Rust inayolinganisha rekodi mbili za utambulisho wa mgonjwa na kusema, sehemu kwa sehemu, kwa nini ingeziunganisha au isingeziunganisha.
+
+## Kwa nini kipo
+
+Kuunganisha rekodi mbili za watu tofauti kunachanganya historia zao za matibabu, na hilo linaweza kuwadhuru wote wawili. Kwa hiyo kilinganishi hakiamui kamwe kimyakimya. Sehemu inayokosekana huripotiwa kama inakosekana, haihesabiwi kamwe kama mlingano, na mapengo mengine huzuia kabisa uunganishaji wa kiotomatiki.
+
+## Jaribu
+
+Rekodi mbili za kubuni: jina la ukoo na tarehe ya kuzaliwa vilevile, lakini ya pili haina jina la kwanza.
+
+```sh
+git clone https://github.com/electronic-patient-record/electronic-patient-record.git
+cd electronic-patient-record/electronic-patient-record-matcher-with-rust
+echo '{"names":[{"family":"Rivera","given":["Alex"]}],"birth_date":"1980-04-12","sex":"female"}' > a.json
+echo '{"names":[{"family":"Rivera","given":[]}],"birth_date":"1980-04-12"}' > b.json
+cargo run -- a.json b.json
+```
+
+Sehemu ya towe:
+
+```json
+{
+  "score": 1.0,
+  "decision": "review",
+  "fields": [
+    { "field": "family_name", "similarity": 1.0, "weight": 0.25, "note": "similarity 1.00" },
+    { "field": "given_name", "similarity": null, "weight": 0.2, "note": "no given name on one or both records" },
+    { "field": "birth_date", "similarity": 1.0, "weight": 0.3, "note": "similarity 1.00" }
+  ],
+  "conflicts": [ "given name not available to confirm the link" ]
+}
+```
+
+## Kilichonishangaza
+
+Kila sehemu ambayo rekodi hizo mbili zinashiriki inalingana, kwa hiyo alama ni 1.0, na kilinganishi bado kinakataa kuziunganisha. Kinazipeleka kwa mtu, kwa sababu jina la kwanza linalokosekana hawezi kamwe kuthibitisha uunganisho. Alama ya juu peke yake haitoshi.
+
+Vizingiti havijathibitishwa, na programu si kwa matumizi ya kliniki.
+
+## Shiriki chako
+
+Chapisha ulichotengeneza katika majadiliano mapya hapa, pamoja na:
+
+- ni nini, kwa sentensi moja;
+- kwa nini ulikitengeneza;
+- kitu cha kutazama: kijisehemu, picha ya skrini au kiungo;
+- jinsi mtu mwingine anavyoweza kukijaribu;
+- aina ya maoni unayotaka.
+
+Tumia rekodi za kubuni tu, kamwe data halisi za wagonjwa. Na ukijenga juu ya kazi ya mtu mwingine, mpe sifa.

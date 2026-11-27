@@ -1,0 +1,30 @@
+Chào mừng đến với các thảo luận về hồ sơ bệnh nhân điện tử
+
+Các thảo luận đã mở cho Electronic Patient Record, phần mềm mã nguồn mở cho hồ sơ bệnh nhân an toàn, chỉ được bổ sung và được kiểm toán, dùng FHIR R4 vừa làm mô hình dữ liệu vừa làm API, và có khả năng đối chiếu danh tính bệnh nhân có thể giải thích. Đây là nơi để đặt câu hỏi, đề xuất ý tưởng và chia sẻ những gì bạn xây dựng, công khai và ở một chỗ.
+
+> **Không dùng cho lâm sàng. Đừng nhập dữ liệu bệnh nhân thật.** Dự án là một bộ khung trước khi phát hành. Việc đưa vào vận hành thật nghĩa là gì, và cần làm gì trước, nằm trong [con đường đến vận hành](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/governance/production-readiness.md).
+
+## Hiện có gì
+
+- Một thư viện Rust so sánh hai bản ghi danh tính bệnh nhân và giải thích kết quả theo từng trường.
+- Một dịch vụ Rust với API REST và FHIR, lưu trữ PostgreSQL và một dấu vết kiểm toán không thể chỉnh sửa.
+- Một giao diện SvelteKit cho bác sĩ lâm sàng, trao đổi với dịch vụ qua proxy riêng.
+- Một đặc tả, một backlog và một nhật ký nguy cơ, tất cả được lưu cùng mã. [Tình trạng triển khai](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/14-implementation-status.md) nói chính xác những gì đã được xây dựng và kiểm thử.
+
+## Đến đâu để làm gì
+
+- **Câu hỏi** về chạy, kiểm thử hoặc hiểu mã: Q&A.
+- **Gợi ý** về tính năng hoặc thay đổi: Ideas.
+- **Thứ bạn đã xây dựng** với hoặc xung quanh dự án: Show and tell.
+- **Bình chọn** về các câu hỏi còn mở của dự án: Polls.
+- **Mọi thứ khác**, kể cả giới thiệu bản thân: General.
+- **Lỗi**: mở một [issue](https://github.com/electronic-patient-record/electronic-patient-record/issues) nêu điều bạn đã làm, điều bạn mong đợi và điều đã xảy ra.
+- **Vấn đề bảo mật**: báo cáo riêng tư, như [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) giải thích, không bao giờ trong một thảo luận.
+
+## Cách chúng tôi làm việc
+
+Hãy tuân theo [quy tắc ứng xử](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md). Các thay đổi bắt đầu từ đặc tả, như [hướng dẫn đóng góp](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CONTRIBUTING.md) giải thích. Dự án chỉ có một người duy trì, nên phản hồi có thể mất vài ngày. Phần lớn công việc được viết cùng một trợ lý AI dưới sự chỉ đạo của người duy trì, như [tuyên bố về AI](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AI_STATEMENT.md) giải thích, và chưa có gì được xem xét lâm sàng.
+
+## Việc nên làm tiếp theo
+
+Hãy đọc sáu câu hỏi trong [RFC.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/RFC.md) và trả lời câu bạn rành nhất, trong một thảo luận mới ở General hoặc trong một phản hồi tại đây.

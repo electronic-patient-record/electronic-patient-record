@@ -1,0 +1,37 @@
+Jinsi ya kupendekeza wazo kwa Electronic Patient Record
+
+Kategoria hii ni ya kupendekeza badiliko au kipengele kabla mtu yeyote hajaandika msimbo. Wazo zuri huanza na tatizo linalotatua, kwa sababu tatizo linaweza kutathminiwa hata pale suluhisho la kwanza si sahihi.
+
+Hii ni rekodi ya mgonjwa, kwa hiyo wazo linaweza kubadilisha kile mtaalamu wa kliniki anachokiona, kuamua au kusaini. Ni sawa kupendekeza hilo, na ndiyo sababu wazo hapa linahitaji tatizo, sababu na uangalizi makini wa kinachoweza kwenda vibaya.
+
+## Jinsi ya kupendekeza wazo
+
+Anzisha majadiliano mapya katika Ideas, wazo moja kwa kila majadiliano. Lipe jina kwa tatizo au matokeo, kama "Onyesha matokeo yalipokaguliwa mara ya mwisho", si suluhisho. Nakili vichwa hivi kwenye mwili:
+
+### Tatizo
+
+Nini kinauma leo, kwa nani na lini? Sentensi moja au mbili.
+
+### Pendekezo
+
+Ungebadilisha nini, kwa maneno rahisi. Orodha fupi inafaa ikiwa ina sehemu.
+
+### Mbadala
+
+Njia nyingine za kulitatua, ikiwemo suluhisho za muda na kutofanya chochote.
+
+### Gharama na hatari
+
+Kitakachokuwa kigumu zaidi: utata, ulinganifu, utunzaji, faragha au usalama wa mgonjwa. Ikiwa linaweza kumwonyesha mtaalamu wa kliniki kitu kibaya, au kumficha anachohitaji, sema.
+
+### Maswali yaliyo wazi
+
+Usichokuwa na uhakika nacho, na jambo moja unalotaka wasomaji walijibu zaidi.
+
+## Kinachotokea baadaye
+
+Wazo linalokubaliwa hugeuka kuwa ingizo katika [tasks.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/tasks.md) na badiliko la [vipimo](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/index.md) kabla ya msimbo wowote kuandikwa, kama [mwongozo wa kuchangia](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CONTRIBUTING.md) unavyoeleza. Pendekezo si ahadi kwamba litajengwa, na kwa mtunzaji mmoja, jibu linaweza kuchukua siku chache.
+
+Hitilafu zinaenda [Issues](https://github.com/electronic-patient-record/electronic-patient-record/issues), na matatizo ya usalama kwenye ripoti ya faragha, kama [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) inavyoeleza.
+
+**Kuanza:** ikiwa una wazo sasa, liweke kwa vichwa hapo juu. Ikiwa huna uhakika tatizo ni halisi, uliza kwanza katika General.

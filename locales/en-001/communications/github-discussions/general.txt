@@ -1,0 +1,17 @@
+Say hello: what brings you to an open-source patient record?
+
+Welcome to General, the place for conversation that does not fit anywhere else: introductions, use cases, opinions, and questions about where the project is going.
+
+I'll go first. I'm Joel, the project's maintainer. Electronic Patient Record aims to be a patient record that is safe by design: the clinical record is append-only, so nothing is overwritten; access is audited; and when the software compares two patient records, it explains its answer. It is an early scaffold and not for clinical use, so this is a good time to shape it.
+
+**My one question for you:** what brought you here, and what is your connection to patient records? You might be a clinician, a developer, an integrator, a patient, a safety or privacy officer, or just curious. A sentence or two is plenty.
+
+## Where other topics belong
+
+- Questions about running or understanding the code: Q&A.
+- Feature suggestions: Ideas.
+- Something you built: Show and tell.
+- Bugs: [Issues](https://github.com/electronic-patient-record/electronic-patient-record/issues).
+- Security problems: privately, as [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) explains.
+
+Please follow the [code of conduct](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md). Thank you for stopping by. I'll reply to the first comments myself.

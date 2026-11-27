@@ -39,6 +39,7 @@ export const STRINGS = {
     result: "From a result",
     observation: "From an observation",
     referral: "From a referral",
+    "treatment-refusal": "From a refusal of treatment",
   },
   tkOpen: "Open the patient",
   tkCloseLegend: "Close this task",

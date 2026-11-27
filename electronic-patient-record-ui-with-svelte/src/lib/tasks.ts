@@ -5,7 +5,7 @@ import { calendarDay } from "./patient.js";
 
 /** The record a task came from. */
 export interface TaskSource {
-  kind: "result" | "observation" | "referral";
+  kind: "result" | "observation" | "referral" | "treatment-refusal";
   id: string;
 }
 
@@ -57,6 +57,8 @@ export function sourceAnchor(kind: TaskSource["kind"]): string {
       return "#vitals-h";
     case "referral":
       return "#referrals-h";
+    case "treatment-refusal":
+      return "#refusals-h";
     default:
       return "";
   }

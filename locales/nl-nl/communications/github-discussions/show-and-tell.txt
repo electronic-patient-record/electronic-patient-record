@@ -1,0 +1,56 @@
+Deel wat u hebt gebouwd: hier verklaart de matcher een dossier dat hij niet zou koppelen
+
+Deze categorie is voor dingen die u hebt gemaakt met of rond Electronic Patient Record: integraties, scripts, demo’s, handleidingen en experimenten. Om het formaat te laten zien, hier iets kleins wat het project al doet.
+
+## Wat het is
+
+De matcher is een Rust-bibliotheek die twee identiteitsrecords van patiënten vergelijkt en veld voor veld zegt waarom hij ze wel of niet zou koppelen.
+
+## Waarom het bestaat
+
+Twee dossiers van verschillende mensen koppelen vermengt hun medische geschiedenis, en dat kan beiden schaden. Daarom beslist de matcher nooit stilzwijgend. Een ontbrekend veld wordt als ontbrekend gemeld, nooit als overeenkomst geteld, en sommige lacunes blokkeren een automatische koppeling helemaal.
+
+## Probeer het
+
+Twee verzonnen dossiers: dezelfde achternaam en geboortedatum, maar het tweede heeft geen voornaam.
+
+```sh
+git clone https://github.com/electronic-patient-record/electronic-patient-record.git
+cd electronic-patient-record/electronic-patient-record-matcher-with-rust
+echo '{"names":[{"family":"Rivera","given":["Alex"]}],"birth_date":"1980-04-12","sex":"female"}' > a.json
+echo '{"names":[{"family":"Rivera","given":[]}],"birth_date":"1980-04-12"}' > b.json
+cargo run -- a.json b.json
+```
+
+Een deel van de uitvoer:
+
+```json
+{
+  "score": 1.0,
+  "decision": "review",
+  "fields": [
+    { "field": "family_name", "similarity": 1.0, "weight": 0.25, "note": "similarity 1.00" },
+    { "field": "given_name", "similarity": null, "weight": 0.2, "note": "no given name on one or both records" },
+    { "field": "birth_date", "similarity": 1.0, "weight": 0.3, "note": "similarity 1.00" }
+  ],
+  "conflicts": [ "given name not available to confirm the link" ]
+}
+```
+
+## Wat mij verraste
+
+Elk veld dat de twee dossiers delen komt overeen, dus de score is 1.0, en de matcher weigert ze toch te koppelen. Hij stuurt ze naar een mens, omdat een ontbrekende voornaam een koppeling nooit kan bevestigen. Een hoge score alleen is niet genoeg.
+
+De drempels zijn niet gevalideerd, en de software is niet voor klinisch gebruik.
+
+## Deel de uwe
+
+Plaats wat u hebt gemaakt in een nieuwe discussie hier, met:
+
+- wat het is, in één zin;
+- waarom u het maakte;
+- iets om naar te kijken: een fragment, een schermafbeelding of een link;
+- hoe iemand anders het kan proberen;
+- het soort feedback dat u wilt.
+
+Gebruik alleen verzonnen dossiers, nooit echte patiëntgegevens. En als u voortbouwt op het werk van iemand anders, vermeld hem of haar dan.

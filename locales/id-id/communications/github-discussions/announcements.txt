@@ -1,0 +1,30 @@
+Selamat datang di diskusi rekam medis elektronik
+
+Diskusi kini terbuka untuk Electronic Patient Record, perangkat lunak sumber terbuka untuk rekam medis pasien yang aman, hanya bisa ditambah, dan diaudit, dengan FHIR R4 sebagai model data sekaligus API, serta pencocokan identitas pasien yang dapat dijelaskan. Ini tempat untuk bertanya, mengusulkan ide, dan membagikan apa yang Anda buat, secara terbuka dan di satu tempat.
+
+> **Tidak untuk penggunaan klinis. Jangan memasukkan data pasien yang sebenarnya.** Proyek ini adalah kerangka pra-rilis. Apa arti produksi, dan apa yang harus dilakukan lebih dulu, ada di [jalan menuju produksi](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/governance/production-readiness.md).
+
+## Apa yang ada hari ini
+
+- Pustaka Rust yang membandingkan dua rekam identitas pasien dan menjelaskan hasilnya, bidang demi bidang.
+- Layanan Rust dengan API REST dan FHIR, penyimpanan PostgreSQL, dan jejak audit yang tidak dapat diedit.
+- Antarmuka klinisi SvelteKit yang berbicara dengan layanan melalui proksinya sendiri.
+- Spesifikasi, backlog, dan log bahaya, semuanya disimpan bersama kode. [Status implementasi](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/14-implementation-status.md) menyebutkan dengan tepat apa yang sudah dibuat dan diuji.
+
+## Ke mana untuk apa
+
+- **Pertanyaan** tentang menjalankan, menguji, atau memahami kode: Q&A.
+- **Saran** untuk fitur atau perubahan: Ideas.
+- **Sesuatu yang Anda buat** dengan atau di sekitar proyek: Show and tell.
+- **Pemungutan suara** tentang pertanyaan terbuka proyek: Polls.
+- **Hal lainnya**, termasuk perkenalan: General.
+- **Bug**: buka sebuah [isu](https://github.com/electronic-patient-record/electronic-patient-record/issues) berisi apa yang Anda lakukan, apa yang Anda harapkan, dan apa yang terjadi.
+- **Masalah keamanan**: laporkan secara pribadi, seperti dijelaskan [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md), jangan pernah dalam diskusi.
+
+## Cara kami bekerja
+
+Ikuti [kode etik](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md). Perubahan dimulai dari spesifikasi, seperti dijelaskan [panduan kontribusi](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CONTRIBUTING.md). Proyek ini memiliki satu pemelihara, jadi balasan bisa memakan beberapa hari. Sebagian besar pekerjaan ditulis dengan asisten AI di bawah arahan pemelihara, seperti dijelaskan [pernyataan AI](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AI_STATEMENT.md), dan belum ada yang ditinjau secara klinis.
+
+## Apa yang dilakukan selanjutnya
+
+Baca enam pertanyaan di [RFC.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/RFC.md) dan jawab yang paling Anda kuasai, dalam diskusi baru di General atau dalam balasan di sini.

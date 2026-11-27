@@ -1,0 +1,37 @@
+Sådan foreslår du en idé til Electronic Patient Record
+
+Denne kategori er til at foreslå en ændring eller funktion, før nogen skriver kode. En god idé begynder med det problem, den løser, for et problem kan vurderes, også når den første løsning ikke er den rigtige.
+
+Dette er en patientjournal, så en idé kan ændre, hvad en kliniker ser, beslutter eller underskriver. Det er fint at foreslå, og derfor har en idé her brug for et problem, en grund og et omhyggeligt blik på, hvad der kan gå galt.
+
+## Sådan foreslår du en idé
+
+Start en ny diskussion i Ideas, én idé pr. diskussion. Giv den problemet eller resultatet som titel, f.eks. „Vis, hvornår et svar sidst blev gennemgået”, ikke løsningen. Kopiér disse overskrifter ind i teksten:
+
+### Problem
+
+Hvad gør ondt i dag, for hvem og hvornår? En eller to sætninger.
+
+### Forslag
+
+Hvad du ville ændre, med enkle ord. En kort liste er fint, hvis der er dele.
+
+### Alternativer
+
+Andre måder at løse det på, herunder midlertidige løsninger og ikke at gøre noget.
+
+### Omkostninger og risici
+
+Hvad det ville gøre sværere: kompleksitet, kompatibilitet, vedligeholdelse, privatliv eller patientsikkerhed. Hvis det kan vise en kliniker noget forkert eller skjule noget, vedkommende har brug for, så sig det.
+
+### Åbne spørgsmål
+
+Hvad du er usikker på, og det, du helst vil have læserne til at svare på.
+
+## Hvad der sker bagefter
+
+En idé, der tages op, bliver en post i [tasks.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/tasks.md) og en ændring af [specifikationen](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/index.md), før der skrives kode, som [bidragsguiden](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CONTRIBUTING.md) forklarer. Et forslag er ikke et løfte om, at det bliver bygget, og med kun én ansvarlig kan et svar tage nogle dage.
+
+Fejl hører hjemme i [Issues](https://github.com/electronic-patient-record/electronic-patient-record/issues), og sikkerhedsproblemer i en privat rapport, som [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) forklarer.
+
+**For at begynde:** hvis du har en idé nu, så post den med overskrifterne ovenfor. Hvis du ikke er sikker på, at problemet er reelt, så spørg først i General.

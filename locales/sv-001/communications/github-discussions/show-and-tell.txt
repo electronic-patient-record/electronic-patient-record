@@ -1,0 +1,56 @@
+Dela det du har byggt: här förklarar matcharen en journal den inte skulle koppla ihop
+
+Den här kategorin är för saker du har gjort med eller kring Electronic Patient Record: integrationer, skript, demonstrationer, handledningar och experiment. För att visa formatet följer något litet som projektet redan gör.
+
+## Vad det är
+
+Matcharen är ett Rust-bibliotek som jämför två identitetsposter för patienter och säger, fält för fält, varför den skulle eller inte skulle koppla ihop dem.
+
+## Varför den finns
+
+Att koppla ihop två journaler för olika personer blandar deras sjukdomshistorik, och det kan skada båda. Därför beslutar matcharen aldrig i tysthet. Ett saknat fält rapporteras som saknat, räknas aldrig som överensstämmelse, och vissa luckor blockerar helt en automatisk koppling.
+
+## Prova
+
+Två påhittade journaler: samma efternamn och födelsedatum, men den andra saknar förnamn.
+
+```sh
+git clone https://github.com/electronic-patient-record/electronic-patient-record.git
+cd electronic-patient-record/electronic-patient-record-matcher-with-rust
+echo '{"names":[{"family":"Rivera","given":["Alex"]}],"birth_date":"1980-04-12","sex":"female"}' > a.json
+echo '{"names":[{"family":"Rivera","given":[]}],"birth_date":"1980-04-12"}' > b.json
+cargo run -- a.json b.json
+```
+
+En del av utskriften:
+
+```json
+{
+  "score": 1.0,
+  "decision": "review",
+  "fields": [
+    { "field": "family_name", "similarity": 1.0, "weight": 0.25, "note": "similarity 1.00" },
+    { "field": "given_name", "similarity": null, "weight": 0.2, "note": "no given name on one or both records" },
+    { "field": "birth_date", "similarity": 1.0, "weight": 0.3, "note": "similarity 1.00" }
+  ],
+  "conflicts": [ "given name not available to confirm the link" ]
+}
+```
+
+## Vad som förvånade mig
+
+Varje fält som de två journalerna delar stämmer överens, så poängen är 1.0, och matcharen vägrar ändå koppla ihop dem. Den skickar dem till en människa, eftersom ett saknat förnamn aldrig kan bekräfta en koppling. En hög poäng räcker inte ensam.
+
+Tröskelvärdena är inte validerade, och programvaran är inte för klinisk användning.
+
+## Dela din
+
+Posta det du gjorde i en ny diskussion här, med:
+
+- vad det är, i en mening;
+- varför du gjorde det;
+- något att titta på: ett utdrag, en skärmbild eller en länk;
+- hur någon annan kan prova det;
+- vilken sorts återkoppling du vill ha.
+
+Använd bara påhittade journaler, aldrig verkliga patientuppgifter. Och om du bygger vidare på någon annans arbete, ange vem.

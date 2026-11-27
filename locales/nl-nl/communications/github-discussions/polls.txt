@@ -1,0 +1,24 @@
+De standaarden van welk land moet de eerste release als eerste halen: die van het Verenigd Koninkrijk of die van de VS?
+
+Het project is van plan zowel de nationale standaarden van het Verenigd Koninkrijk als die van de VS voor patiëntendossiers te halen. Het werk moet ergens beginnen, en de volgorde verandert wat eerst wordt gebouwd. Dit is vraag 2 in [RFC.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/RFC.md), en deze peiling is een snelle manier om haar te beantwoorden.
+
+**Wat elke keuze betekent:**
+
+- **Eerst VK:** de UK Core FHIR-profielen, de Personal Demographics Service (PDS) en de klinische veiligheidsstandaard DCB0129 met de DTAC-beoordeling.
+- **Eerst VS:** de US Core FHIR-profielen en de ONC-certificeringsregels.
+
+**Hoe de uitkomst wordt gebruikt:** de stemming is adviserend. De beheerder neemt de beslissing, legt haar vast in [plan.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/plan.md) en licht haar toe in deze thread. De uitkomst wordt gewogen samen met de redenen in de reacties, niet alleen geteld. Er is nog geen sluitingsdatum.
+
+**Zeg in een reactie waarom**, vooral als u met een van beide sets standaarden werkt. Een stem toont wat mensen verkiezen, en een reactie toont de redenen.
+
+Het project is een geraamte vóór de release en niet voor klinisch gebruik. Geen van beide keuzes is een belofte van een datum.
+
+---
+
+Peilingvraag: De standaarden van welk land moet de eerste release als eerste halen?
+
+Opties:
+1. Die van het VK (UK Core, PDS, DCB0129 en DTAC)
+2. Die van de VS (US Core en ONC-certificering)
+3. Nog geen van beide: eerst de gedeelde kern afmaken
+4. Iets anders (licht toe in een reactie)

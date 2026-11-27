@@ -1,0 +1,56 @@
+分享你做的东西：这里是匹配器解释一条它不会关联的记录
+
+本版块用于你用 Electronic Patient Record 或围绕它做的东西：集成、脚本、演示、教程和实验。为了展示格式，这里是项目已经能做到的一件小事。
+
+## 它是什么
+
+匹配器（matcher）是一个 Rust 库，比较两条患者身份记录，并逐字段说明它为什么会或不会把它们关联起来。
+
+## 为什么有它
+
+把两个不同人的记录关联起来，会混淆他们的病史，可能伤害双方。因此匹配器从不悄悄做决定。缺失的字段会被报告为缺失，绝不算作一致，而且有些缺口会直接阻止自动关联。
+
+## 试一试
+
+两条虚构记录：姓氏和出生日期相同，但第二条没有名字。
+
+```sh
+git clone https://github.com/electronic-patient-record/electronic-patient-record.git
+cd electronic-patient-record/electronic-patient-record-matcher-with-rust
+echo '{"names":[{"family":"Rivera","given":["Alex"]}],"birth_date":"1980-04-12","sex":"female"}' > a.json
+echo '{"names":[{"family":"Rivera","given":[]}],"birth_date":"1980-04-12"}' > b.json
+cargo run -- a.json b.json
+```
+
+输出的一部分：
+
+```json
+{
+  "score": 1.0,
+  "decision": "review",
+  "fields": [
+    { "field": "family_name", "similarity": 1.0, "weight": 0.25, "note": "similarity 1.00" },
+    { "field": "given_name", "similarity": null, "weight": 0.2, "note": "no given name on one or both records" },
+    { "field": "birth_date", "similarity": 1.0, "weight": 0.3, "note": "similarity 1.00" }
+  ],
+  "conflicts": [ "given name not available to confirm the link" ]
+}
+```
+
+## 让我意外的地方
+
+两条记录共有的每个字段都一致，所以得分是 1.0，匹配器仍然拒绝关联它们。它把它们交给人处理，因为缺失的名字永远无法确认一次关联。仅有高分是不够的。
+
+阈值尚未验证，本软件不得用于临床。
+
+## 分享你的作品
+
+请在这里新建一个讨论，发布你做的东西，并包含：
+
+- 它是什么，一句话；
+- 你为什么做它；
+- 可以看的东西：代码片段、截图或链接；
+- 别人如何试用；
+- 你想要什么样的反馈。
+
+只使用虚构记录，绝不要使用真实患者数据。如果你的作品基于别人的成果，请注明出处。

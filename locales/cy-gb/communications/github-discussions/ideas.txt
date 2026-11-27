@@ -1,0 +1,37 @@
+Sut i awgrymu syniad ar gyfer Electronic Patient Record
+
+Mae’r categori hwn ar gyfer cynnig newid neu nodwedd cyn i neb ysgrifennu cod. Mae syniad da yn dechrau gyda’r broblem y mae’n ei datrys, oherwydd gellir barnu problem hyd yn oed pan nad yw’r ateb cyntaf yn iawn.
+
+Cofnod claf yw hwn, felly gall syniad newid yr hyn y mae clinigydd yn ei weld, yn ei benderfynu neu’n ei lofnodi. Mae’n iawn cynnig hynny, a dyna pam mae syniad yma angen problem, rheswm ac archwiliad gofalus o’r hyn a allai fynd o’i le.
+
+## Sut i awgrymu syniad
+
+Dechreuwch drafodaeth newydd yn Ideas, un syniad i bob trafodaeth. Rhowch y broblem neu’r canlyniad yn deitl, fel "Dangos pryd yr adolygwyd canlyniad ddiwethaf", nid yr ateb. Copïwch y penawdau hyn i’r corff:
+
+### Problem
+
+Beth sy’n brifo heddiw, i bwy, a phryd? Brawddeg neu ddwy.
+
+### Cynnig
+
+Beth fyddech chi’n ei newid, mewn geiriau plaen. Mae rhestr fer yn iawn os oes rhannau.
+
+### Dewisiadau amgen
+
+Ffyrdd eraill o’i ddatrys, gan gynnwys datrysiadau dros dro a gwneud dim.
+
+### Costau a risgiau
+
+Beth fyddai’n ei wneud yn anoddach: cymhlethdod, cydnawsedd, cynnal a chadw, preifatrwydd neu ddiogelwch cleifion. Os gallai ddangos rhywbeth anghywir i glinigydd, neu guddio rhywbeth sydd ei angen arno, dywedwch.
+
+### Cwestiynau agored
+
+Beth nad ydych yn siŵr ohono, a’r un peth rydych chi eisiau i ddarllenwyr ei ateb fwyaf.
+
+## Beth sy’n digwydd nesaf
+
+Mae syniad a gymerir yn dod yn gofnod yn [tasks.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/tasks.md) ac yn newid i’r [fanyleb](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/index.md) cyn ysgrifennu unrhyw god, fel y mae’r [canllaw cyfrannu](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CONTRIBUTING.md) yn egluro. Nid yw awgrym yn addewid y caiff ei adeiladu, ac ag un cynhaliwr, gall ateb gymryd ychydig ddyddiau.
+
+Mae namau’n perthyn yn [Issues](https://github.com/electronic-patient-record/electronic-patient-record/issues), a phroblemau diogelwch mewn adroddiad preifat, fel y mae [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) yn egluro.
+
+**I ddechrau:** os oes gennych syniad nawr, postiwch ef gyda’r penawdau uchod. Os nad ydych yn siŵr bod y broblem yn real, gofynnwch yn General yn gyntaf.

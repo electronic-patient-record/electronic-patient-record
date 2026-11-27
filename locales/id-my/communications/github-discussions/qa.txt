@@ -1,0 +1,33 @@
+Cara mengajukan pertanyaan yang mendapat jawaban bagus
+
+Kategori ini untuk pertanyaan yang memiliki jawaban: cara menjalankan, menguji, mengonfigurasi, atau memahami Electronic Patient Record. Ketika sebuah balasan menyelesaikan pertanyaan Anda, tandai sebagai jawaban, agar orang berikutnya dengan pertanyaan yang sama menemukannya dengan cepat.
+
+Sebelum bertanya, periksa [README](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/README.md), [AGENTS.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AGENTS.md) (yang mendaftar jebakan yang mudah terlewat, seperti port, Podman, dan penyimpangan jam), dan [status implementasi](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/14-implementation-status.md), yang menyebutkan apa yang sudah dibuat dan apa yang belum.
+
+## Daftar periksa untuk pertanyaan Anda
+
+Beri judul pertanyaan dengan masalahnya, seperti "Bagaimana menjalankan pengujian pangkalan data di port lain?", bukan "Tolong". Ajukan satu pertanyaan per diskusi. Lalu sertakan:
+
+- **Tujuan:** apa yang ingin Anda lakukan, dalam satu kalimat.
+- **Yang saya coba:** langkah atau perintah, berurutan.
+- **Yang diharapkan:** apa yang Anda kira akan terjadi.
+- **Yang sebenarnya:** apa yang terjadi, dengan teks kesalahan persis dalam blok kode, bukan tangkap layar.
+- **Lingkungan:** commit atau versinya; subproyeknya (matcher, service, atau UI); sistem operasi Anda; dan versi Rust, Node, pnpm, Podman, dan PostgreSQL, jika relevan.
+- **Contoh minimal:** kumpulan perintah atau kode terkecil yang masih menunjukkan masalah.
+
+Tempelkan teks di dalam blok kode berpagar:
+
+```text
+the exact error message goes here
+```
+
+## Mohon jangan menempelkan
+
+- **Data pasien yang sebenarnya.** Perisian ini tidak untuk penggunaan klinis. Gunakan rekam rekaan dan katakan demikian.
+- **Rahasia**, seperti token, kunci, kata sandi, atau `DB_URL` yang berisi kata sandi. Gantilah dengan penanda.
+
+## Ke mana lagi
+
+- Jika Anda menemukan bug, buka sebuah [isu](https://github.com/electronic-patient-record/electronic-patient-record/issues).
+- Jika Anda menginginkan fitur, kirim di Ideas.
+- Jika itu masalah keamanan, laporkan secara pribadi, seperti dijelaskan [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md).

@@ -1,0 +1,56 @@
+Partagez ce que vous avez construit : voici le matcher qui explique un dossier qu’il ne rapprocherait pas
+
+Cette catégorie est pour ce que vous avez fait avec Electronic Patient Record ou autour : intégrations, scripts, démonstrations, tutoriels et expériences. Pour montrer le format, voici une petite chose que le projet fait déjà.
+
+## De quoi il s’agit
+
+Le matcher est une bibliothèque Rust qui compare deux dossiers d’identité de patients et dit, champ par champ, pourquoi il les rapprocherait ou non.
+
+## Pourquoi il existe
+
+Rapprocher deux dossiers de personnes différentes mélange leurs antécédents médicaux, ce qui peut nuire aux deux. Le matcher ne décide donc jamais en silence. Un champ manquant est signalé comme manquant, jamais compté comme une concordance, et certaines lacunes bloquent carrément un rapprochement automatique.
+
+## Essayez
+
+Deux dossiers fictifs : même nom de famille et même date de naissance, mais le second n’a pas de prénom.
+
+```sh
+git clone https://github.com/electronic-patient-record/electronic-patient-record.git
+cd electronic-patient-record/electronic-patient-record-matcher-with-rust
+echo '{"names":[{"family":"Rivera","given":["Alex"]}],"birth_date":"1980-04-12","sex":"female"}' > a.json
+echo '{"names":[{"family":"Rivera","given":[]}],"birth_date":"1980-04-12"}' > b.json
+cargo run -- a.json b.json
+```
+
+Extrait de la sortie :
+
+```json
+{
+  "score": 1.0,
+  "decision": "review",
+  "fields": [
+    { "field": "family_name", "similarity": 1.0, "weight": 0.25, "note": "similarity 1.00" },
+    { "field": "given_name", "similarity": null, "weight": 0.2, "note": "no given name on one or both records" },
+    { "field": "birth_date", "similarity": 1.0, "weight": 0.3, "note": "similarity 1.00" }
+  ],
+  "conflicts": [ "given name not available to confirm the link" ]
+}
+```
+
+## Ce qui m’a surpris
+
+Tous les champs que les deux dossiers ont en commun concordent, donc le score est de 1.0, et pourtant le matcher refuse de les rapprocher. Il les envoie à une personne, parce qu’un prénom manquant ne peut jamais confirmer un rapprochement. Un score élevé ne suffit pas à lui seul.
+
+Les seuils ne sont pas validés, et le logiciel ne convient pas à un usage clinique.
+
+## Partagez le vôtre
+
+Publiez ce que vous avez fait dans une nouvelle discussion ici, avec :
+
+- ce que c’est, en une phrase ;
+- pourquoi vous l’avez fait ;
+- quelque chose à regarder : un extrait, une capture d’écran ou un lien ;
+- comment quelqu’un d’autre peut l’essayer ;
+- le type de retours que vous souhaitez.
+
+N’utilisez que des dossiers fictifs, jamais de données réelles de patients. Et si vous vous appuyez sur le travail de quelqu’un d’autre, citez-le.

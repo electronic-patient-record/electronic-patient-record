@@ -1054,7 +1054,7 @@ fn task_schema_list(event: &Value) -> Value {
                 "reminders": {"type": "array", "items": {"type": "string"}},
                 "late_reminder": {"enum": ["send-once", "skip"]},
                 "source": {"type": "object", "required": ["kind", "id"], "properties": {
-                    "kind": {"enum": ["result", "observation", "referral"]}, "id": {"type": "string"},
+                    "kind": {"enum": ["result", "observation", "referral", "treatment-refusal"]}, "id": {"type": "string"},
                     "version": {"type": "integer", "description": "A result's version that raised the event. A signature of an earlier version does not meet this task. Absent for the others, and on a task made before this was kept."}}},
                 "author": {"type": "string", "description": "rule:<id>@<version>, or the person who closed it."},
                 "recorded_at": {"type": "string", "description": "UTC."},
@@ -1086,7 +1086,7 @@ fn task_schema_list(event: &Value) -> Value {
             "properties": {
                 "event": event,
                 "facts": {"type": "object", "additionalProperties": {"type": "string", "maxLength": 200},
-                    "description": "Only facts the event carries: result events (filed, signed off, entered in error) `abnormal`, `test`; observation events `code`, `flag`; `referral-stepped` `state`, `priority`; `referral-closed` `state`."},
+                    "description": "Only facts the event carries: result events (filed, signed off, entered in error) `abnormal`, `test`; observation events `code`, `flag`; `referral-stepped` `state`, `priority`; `referral-closed` `state`; `treatment-refusal-doubted` `kind`, `withdrawal_heard`; `treatment-refusal-resolved` `kind`, `state`."},
                 "day": {"type": "string", "description": "YYYY-MM-DD; today at the site when absent."}
             }
         },

@@ -56,6 +56,8 @@ then too, so a rules file that does not load stops the service rather than the f
 | `observation-entered-in-error` | `observations_store::update`, the version that marks it entered in error | `code` and `flag` as they were before, so the tasks the value made can be cancelled | `observation` |
 | `referral-stepped` | `referrals_store::request` (a step into `requested`) and `advance`, every step that does not end the referral | `state` (the state reached); `priority` (`routine`, `urgent`, `asap`, `stat`) | `referral`, its id |
 | `referral-closed` | `referrals_store::advance`, a step into an end state (`declined`, `completed`, `cancelled`, `redirected`) | `state` | `referral` |
+| `treatment-refusal-doubted` | `treatment_refusals_store::create` and `update`, a refusal that comes to be doubted (recorded doubted, or changed into doubt; a doubted one changed and still doubted raises nothing) (RF-7) | `kind`; `withdrawal_heard` (`true` when a withdrawal was heard, else `false`); never what is refused | `treatment-refusal`, its id |
+| `treatment-refusal-resolved` | `treatment_refusals_store::update`, a doubted refusal that stands again, is withdrawn or is entered in error | `kind`; `state` (the state reached) | `treatment-refusal` |
 
 Raising an event (`tasks_store::raise`) first cancels the source's open tasks that the event cancels, then makes what
 the approved rules call for, so a new event replaces what an older one asked and never cancels a task it has just made.

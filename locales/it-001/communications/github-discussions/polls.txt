@@ -1,0 +1,24 @@
+Gli standard di quale paese dovrebbe rispettare per primo il primo rilascio: quelli del Regno Unito o quelli degli Stati Uniti?
+
+Il progetto prevede di rispettare sia gli standard nazionali del Regno Unito sia quelli degli Stati Uniti per le cartelle cliniche dei pazienti. Il lavoro deve cominciare da qualche parte, e l’ordine cambia che cosa viene costruito per primo. Questa è la domanda 2 in [RFC.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/RFC.md), e questo sondaggio è un modo rapido per rispondere.
+
+**Che cosa significa ogni scelta:**
+
+- **Prima il Regno Unito:** i profili FHIR UK Core, il Personal Demographics Service (PDS) e lo standard di sicurezza clinica DCB0129 con la valutazione DTAC.
+- **Prima gli Stati Uniti:** i profili FHIR US Core e le regole di certificazione ONC.
+
+**Come sarà usato il risultato:** il voto è consultivo. Il responsabile prende la decisione, la registra in [plan.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/plan.md) e la spiega in questo thread. Il risultato sarà valutato insieme alle ragioni nei commenti, non contato da solo. Non è ancora fissata una data di chiusura.
+
+**Spiegate il perché in un commento**, soprattutto se lavorate con uno dei due insiemi di standard. Un voto mostra che cosa preferiscono le persone, e un commento mostra le ragioni.
+
+Il progetto è una struttura di base in pre-rilascio e non è per uso clinico. Nessuna delle due scelte è una promessa di data.
+
+---
+
+Domanda del sondaggio: Gli standard di quale paese dovrebbe rispettare per primo il primo rilascio?
+
+Opzioni:
+1. Quelli del Regno Unito (UK Core, PDS, DCB0129 e DTAC)
+2. Quelli degli Stati Uniti (US Core e certificazione ONC)
+3. Nessuno per ora: finire prima il nucleo condiviso
+4. Altro (spiegatelo in un commento)

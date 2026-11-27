@@ -1,0 +1,17 @@
+Zeg hallo: wat brengt u bij een open-sourcepatiëntendossier?
+
+Welkom bij General, de plek voor gesprekken die nergens anders passen: voorstellen, toepassingen, meningen en vragen over waar het project heen gaat.
+
+Ik begin. Ik ben Joel, de beheerder van het project. Electronic Patient Record wil een patiëntendossier zijn dat veilig is door ontwerp: het klinisch dossier is alleen aanvulbaar, dus niets wordt overschreven; toegang wordt geaudit; en wanneer de software twee patiëntendossiers vergelijkt, verklaart ze haar antwoord. Het is een vroeg geraamte en niet voor klinisch gebruik, dus dit is een goed moment om het vorm te geven.
+
+**Mijn ene vraag aan u:** wat bracht u hier, en wat is uw band met patiëntendossiers? U bent misschien clinicus, ontwikkelaar, integrator, patiënt, veiligheids- of privacyfunctionaris, of gewoon nieuwsgierig. Een zin of twee is genoeg.
+
+## Waar andere onderwerpen thuishoren
+
+- Vragen over het draaien of begrijpen van de code: Q&A.
+- Functiesuggesties: Ideas.
+- Iets wat u hebt gebouwd: Show and tell.
+- Bugs: [Issues](https://github.com/electronic-patient-record/electronic-patient-record/issues).
+- Beveiligingsproblemen: privé, zoals [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) uitlegt.
+
+Volg de [gedragscode](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md). Bedankt voor uw bezoek. Ik beantwoord de eerste reacties zelf.

@@ -1,0 +1,56 @@
+Bagikan apa yang Anda buat: ini matcher menjelaskan rekam yang tidak akan ditautkannya
+
+Kategori ini untuk hal-hal yang Anda buat dengan atau di sekitar Electronic Patient Record: integrasi, skrip, demo, tutorial, dan eksperimen. Untuk menunjukkan formatnya, berikut hal kecil yang sudah dilakukan proyek ini.
+
+## Apa itu
+
+Matcher adalah pustaka Rust yang membandingkan dua rekam identitas pasien dan menyatakan, bidang demi bidang, mengapa ia akan atau tidak akan menautkannya.
+
+## Mengapa ada
+
+Menautkan dua rekam dari orang yang berbeda mencampur riwayat medis mereka, dan itu dapat membahayakan keduanya. Karena itu matcher tidak pernah memutuskan secara diam-diam. Bidang yang hilang dilaporkan sebagai hilang, tidak pernah dihitung sebagai kecocokan, dan beberapa kekosongan langsung menghalangi penautan otomatis.
+
+## Cobalah
+
+Dua rekam rekaan: nama keluarga dan tanggal lahir yang sama, tetapi yang kedua tidak punya nama depan.
+
+```sh
+git clone https://github.com/electronic-patient-record/electronic-patient-record.git
+cd electronic-patient-record/electronic-patient-record-matcher-with-rust
+echo '{"names":[{"family":"Rivera","given":["Alex"]}],"birth_date":"1980-04-12","sex":"female"}' > a.json
+echo '{"names":[{"family":"Rivera","given":[]}],"birth_date":"1980-04-12"}' > b.json
+cargo run -- a.json b.json
+```
+
+Sebagian keluaran:
+
+```json
+{
+  "score": 1.0,
+  "decision": "review",
+  "fields": [
+    { "field": "family_name", "similarity": 1.0, "weight": 0.25, "note": "similarity 1.00" },
+    { "field": "given_name", "similarity": null, "weight": 0.2, "note": "no given name on one or both records" },
+    { "field": "birth_date", "similarity": 1.0, "weight": 0.3, "note": "similarity 1.00" }
+  ],
+  "conflicts": [ "given name not available to confirm the link" ]
+}
+```
+
+## Yang mengejutkan saya
+
+Setiap bidang yang dimiliki bersama oleh kedua rekam cocok, sehingga skornya 1.0, dan matcher tetap menolak menautkannya. Ia mengirimnya ke manusia, karena nama depan yang hilang tidak pernah dapat mengonfirmasi sebuah tautan. Skor tinggi saja tidak cukup.
+
+Ambang batasnya belum divalidasi, dan perangkat lunak ini tidak untuk penggunaan klinis.
+
+## Bagikan milik Anda
+
+Kirimkan apa yang Anda buat dalam diskusi baru di sini, dengan:
+
+- apa itu, dalam satu kalimat;
+- mengapa Anda membuatnya;
+- sesuatu untuk dilihat: cuplikan, tangkapan layar, atau tautan;
+- bagaimana orang lain dapat mencobanya;
+- jenis umpan balik yang Anda inginkan.
+
+Gunakan hanya rekam rekaan, jangan pernah data pasien yang sebenarnya. Dan jika Anda membangun di atas karya orang lain, berikan kredit kepada mereka.

@@ -1,0 +1,17 @@
+Presentatevi: che cosa vi porta a una cartella clinica open source?
+
+Benvenuti in General, il luogo per le conversazioni che non trovano posto altrove: presentazioni, casi d’uso, opinioni e domande su dove sta andando il progetto.
+
+Comincio io. Sono Joel, il responsabile del progetto. Electronic Patient Record punta a essere una cartella clinica sicura fin dalla progettazione: la cartella clinica è in sola aggiunta, quindi nulla viene sovrascritto; gli accessi sono sottoposti ad audit; e quando il software confronta due cartelle di pazienti, spiega la sua risposta. È una struttura di base iniziale e non è per uso clinico, quindi questo è un buon momento per darle forma.
+
+**La mia unica domanda per voi:** che cosa vi ha portato qui, e che rapporto avete con le cartelle cliniche? Potreste essere clinici, sviluppatori, integratori, pazienti, responsabili della sicurezza o della privacy, o semplicemente curiosi. Una o due frasi bastano.
+
+## Dove vanno gli altri argomenti
+
+- Domande su come eseguire o capire il codice: Q&A.
+- Suggerimenti di funzionalità: Ideas.
+- Qualcosa che avete costruito: Show and tell.
+- Bug: [Issues](https://github.com/electronic-patient-record/electronic-patient-record/issues).
+- Problemi di sicurezza: in privato, come spiega [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md).
+
+Seguite il [codice di condotta](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md). Grazie per essere passati. Risponderò io stesso ai primi commenti.

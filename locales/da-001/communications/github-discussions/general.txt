@@ -1,0 +1,17 @@
+Sig hej: hvad bringer dig til en patientjournal med åben kildekode?
+
+Velkommen til General, stedet for samtaler, der ikke passer andre steder: præsentationer, brugssituationer, meninger og spørgsmål om, hvor projektet er på vej hen.
+
+Jeg begynder. Jeg er Joel, projektets ansvarlige. Electronic Patient Record sigter mod at være en patientjournal, der er sikker fra grunden: den kliniske journal kan kun tilføjes til, så intet overskrives; adgang auditeres; og når softwaren sammenligner to patientjournaler, forklarer den sit svar. Det er et tidligt skelet og ikke til klinisk brug, så nu er et godt tidspunkt at forme det.
+
+**Mit ene spørgsmål til dig:** hvad bragte dig hertil, og hvad er din forbindelse til patientjournaler? Du kan være kliniker, udvikler, integrator, patient, sikkerheds- eller privatlivsansvarlig eller bare nysgerrig. En sætning eller to er rigeligt.
+
+## Hvor andre emner hører hjemme
+
+- Spørgsmål om at køre eller forstå koden: Q&A.
+- Funktionsforslag: Ideas.
+- Noget, du har bygget: Show and tell.
+- Fejl: [Issues](https://github.com/electronic-patient-record/electronic-patient-record/issues).
+- Sikkerhedsproblemer: privat, som [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) forklarer.
+
+Følg [adfærdskodekset](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md). Tak, fordi du kiggede forbi. Jeg svarer selv på de første kommentarer.

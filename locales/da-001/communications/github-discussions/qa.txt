@@ -1,0 +1,33 @@
+Sådan stiller du et spørgsmål, der får et godt svar
+
+Denne kategori er til spørgsmål med svar: hvordan man kører, tester, konfigurerer eller forstår Electronic Patient Record. Når et svar løser dit spørgsmål, så markér det som svaret, så den næste med samme spørgsmål hurtigt finder det.
+
+Før du spørger, så tjek [README](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/README.md), [AGENTS.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AGENTS.md) (som oplister fælder, der er lette at overse, såsom porte, Podman og urdrift) og [implementeringsstatus](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/14-implementation-status.md), som siger, hvad der er bygget, og hvad der ikke er.
+
+## Tjekliste til dit spørgsmål
+
+Giv spørgsmålet problemet som titel, f.eks. „Hvordan kører jeg databasetestene på en anden port?”, ikke „Hjælp”. Stil ét spørgsmål pr. diskussion. Medtag derefter:
+
+- **Mål:** hvad du forsøger at gøre, i én sætning.
+- **Hvad jeg prøvede:** trinnene eller kommandoerne, i rækkefølge.
+- **Forventet:** hvad du troede ville ske.
+- **Faktisk:** hvad der skete, med den præcise fejltekst i en kodeblok, ikke et skærmbillede.
+- **Miljø:** committen eller versionen; delprojektet (matcher, service eller UI); dit operativsystem; og versionerne af Rust, Node, pnpm, Podman og PostgreSQL, hvor det er relevant.
+- **Minimalt eksempel:** det mindste sæt kommandoer eller kode, der stadig viser problemet.
+
+Indsæt tekst i indrammede kodeblokke:
+
+```text
+the exact error message goes here
+```
+
+## Indsæt venligst ikke
+
+- **Rigtige patientdata.** Softwaren er ikke til klinisk brug. Brug opdigtede journaler, og sig det.
+- **Hemmeligheder**, såsom tokens, nøgler, adgangskoder eller en `DB_URL` med en adgangskode. Erstat dem med en pladsholder.
+
+## Hvor du ellers kan gå hen
+
+- Hvis du fandt en fejl, så åbn en [sag](https://github.com/electronic-patient-record/electronic-patient-record/issues).
+- Hvis du vil have en funktion, så post i Ideas.
+- Hvis det er et sikkerhedsproblem, så rapportér det privat, som [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) forklarer.

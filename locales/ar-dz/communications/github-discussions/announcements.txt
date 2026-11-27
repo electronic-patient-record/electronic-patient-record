@@ -1,0 +1,30 @@
+مرحبًا بكم في مناقشات السجل الإلكتروني للمريض
+
+فُتحت المناقشات الآن لمشروع Electronic Patient Record، وهو برنامج مفتوح المصدر لسجل مريض آمن لا يُضاف إليه إلا بالإلحاق ويخضع للتدقيق، ويستخدم FHIR R4 نموذجًا للبيانات وواجهة برمجية في آنٍ واحد، ومع مطابقة لهوية المرضى يمكن تفسيرها. هذا هو المكان لطرح الأسئلة واقتراح الأفكار ومشاركة ما تبنونه، علنًا وفي مكان واحد.
+
+> **ليس للاستخدام السريري. لا تُدخلوا بيانات مرضى حقيقية.** المشروع هيكل أولي قبل الإصدار. ما الذي يعنيه الانتقال إلى الإنتاج، وما الذي يجب فعله قبله، موضَّح في [الطريق إلى الإنتاج](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/governance/production-readiness.md).
+
+## ما الموجود اليوم
+
+- مكتبة Rust تقارن سجلَّي هوية مريضين وتشرح النتيجة حقلًا بحقل.
+- خدمة Rust بواجهتي REST وFHIR وتخزين PostgreSQL ومسار تدقيق لا يمكن تعديله.
+- واجهة SvelteKit للأطباء تتحدث إلى الخدمة عبر وسيطها الخاص.
+- مواصفات وقائمة مهام وسجل مخاطر، كلها محفوظة مع الشيفرة. [حالة التنفيذ](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/14-implementation-status.md) تذكر بدقة ما بُني واختُبر.
+
+## إلى أين تذهبون ولأي غرض
+
+- **الأسئلة** عن تشغيل الشيفرة أو اختبارها أو فهمها: Q&A.
+- **الاقتراحات** للميزات أو التغييرات: Ideas.
+- **شيء بنيتموه** مع المشروع أو حوله: Show and tell.
+- **التصويتات** على الأسئلة المفتوحة للمشروع: Polls.
+- **كل شيء آخر**، بما في ذلك التعريف بأنفسكم: General.
+- **الأخطاء**: افتحوا [بلاغًا](https://github.com/electronic-patient-record/electronic-patient-record/issues) يتضمن ما فعلتموه وما توقعتموه وما حدث.
+- **مشكلات الأمان**: أبلغوا عنها سرًّا كما يشرح [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md)، وليس في مناقشة أبدًا.
+
+## كيف نعمل
+
+يُرجى اتباع [مدونة السلوك](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md). تبدأ التغييرات من المواصفات، كما يشرح [دليل المساهمة](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CONTRIBUTING.md). للمشروع مشرف واحد، لذا قد تستغرق الردود أيامًا. يُكتب جزء كبير من العمل بمساعدة مساعد ذكاء اصطناعي بتوجيه من المشرف، كما يشرح [بيان الذكاء الاصطناعي](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AI_STATEMENT.md)، ولم يخضع أي شيء بعدُ لمراجعة سريرية.
+
+## ما العمل بعد ذلك
+
+اقرؤوا الأسئلة الستة في [RFC.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/RFC.md) وأجيبوا عن السؤال الذي تعرفونه أكثر، في مناقشة جديدة ضمن General أو في رد هنا.

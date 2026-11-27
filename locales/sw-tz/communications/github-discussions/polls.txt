@@ -1,0 +1,24 @@
+Viwango vya nchi gani toleo la kwanza lizitimize kwanza: vya Uingereza au vya Marekani?
+
+Mradi unapanga kutimiza viwango vya kitaifa vya Uingereza na vya Marekani kwa rekodi za wagonjwa. Kazi lazima ianzie mahali fulani, na mpangilio hubadilisha kinachojengwa kwanza. Hili ni swali la 2 katika [RFC.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/RFC.md), na kura hii ni njia ya haraka ya kulijibu.
+
+**Maana ya kila chaguo:**
+
+- **Uingereza kwanza:** wasifu wa FHIR wa UK Core, Personal Demographics Service (PDS) na kiwango cha usalama wa kliniki DCB0129 pamoja na tathmini ya DTAC.
+- **Marekani kwanza:** wasifu wa FHIR wa US Core na kanuni za uidhinishaji za ONC.
+
+**Jinsi matokeo yatakavyotumika:** kura ni ya ushauri. Mtunzaji hufanya uamuzi, huurekodi katika [plan.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/plan.md) na kuueleza katika uzi huu. Matokeo yatapimwa pamoja na sababu zilizo kwenye maoni, si kuhesabiwa peke yake. Hakuna tarehe ya kufunga iliyowekwa bado.
+
+**Tafadhali eleza sababu katika maoni**, hasa ikiwa unafanya kazi na mojawapo ya seti hizo za viwango. Kura inaonyesha watu wanachopendelea, na maoni yanaonyesha sababu.
+
+Mradi ni mfumo wa msingi kabla ya kutolewa na si kwa matumizi ya kliniki. Hakuna chaguo lililo ahadi ya tarehe.
+
+---
+
+Swali la kura: Viwango vya nchi gani toleo la kwanza lizitimize kwanza?
+
+Chaguo:
+1. Vya Uingereza (UK Core, PDS, DCB0129 na DTAC)
+2. Vya Marekani (US Core na uidhinishaji wa ONC)
+3. Bado hakuna: kamilisha kiini cha pamoja kwanza
+4. Kitu kingine (eleza katika maoni)

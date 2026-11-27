@@ -1,0 +1,30 @@
+Welkom bij de discussies over het elektronisch patiëntendossier
+
+De discussies zijn nu open voor Electronic Patient Record, open-sourcesoftware voor een veilig, alleen aanvulbaar en geaudit patiëntendossier, met FHIR R4 als datamodel en als API, en verklaarbare identiteitsmatching van patiënten. Dit is de plek om vragen te stellen, ideeën voor te stellen en te delen wat u bouwt, openbaar en op één plek.
+
+> **Niet voor klinisch gebruik. Voer geen echte patiëntgegevens in.** Het project is een geraamte vóór de release. Wat productie zou betekenen en wat er eerst moet gebeuren, staat in [de weg naar productie](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/governance/production-readiness.md).
+
+## Wat er vandaag is
+
+- Een Rust-bibliotheek die twee identiteitsrecords van patiënten vergelijkt en het resultaat veld voor veld verklaart.
+- Een Rust-service met een REST- en FHIR-API, PostgreSQL-opslag en een auditspoor dat niet kan worden bewerkt.
+- Een SvelteKit-clinicusinterface die via een eigen proxy met de service praat.
+- Een specificatie, een backlog en een gevarenlogboek, allemaal bij de code bewaard. [De implementatiestatus](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/14-implementation-status.md) zegt precies wat is gebouwd en getest.
+
+## Waar u voor wat terechtkunt
+
+- **Vragen** over het draaien, testen of begrijpen van de code: Q&A.
+- **Suggesties** voor functies of wijzigingen: Ideas.
+- **Iets wat u hebt gebouwd** met of rond het project: Show and tell.
+- **Stemmingen** over openstaande projectvragen: Polls.
+- **Al het andere**, ook voorstellen: General.
+- **Bugs**: open een [issue](https://github.com/electronic-patient-record/electronic-patient-record/issues) met wat u deed, wat u verwachtte en wat er gebeurde.
+- **Beveiligingsproblemen**: meld ze privé, zoals [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) uitlegt, nooit in een discussie.
+
+## Hoe we werken
+
+Volg de [gedragscode](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CODE_OF_CONDUCT.md). Wijzigingen beginnen bij de specificatie, zoals de [bijdragegids](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CONTRIBUTING.md) uitlegt. Het project heeft één beheerder, dus antwoorden kunnen een paar dagen duren. Een groot deel van het werk wordt geschreven met een AI-assistent onder leiding van de beheerder, zoals de [AI-verklaring](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/AI_STATEMENT.md) uitlegt, en niets is al klinisch beoordeeld.
+
+## Wat u nu kunt doen
+
+Lees de zes vragen in [RFC.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/RFC.md) en beantwoord de vraag die u het best kent, in een nieuwe discussie in General of in een reactie hier.

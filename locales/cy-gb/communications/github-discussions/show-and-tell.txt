@@ -1,0 +1,56 @@
+Rhannwch yr hyn rydych chi wedi’i adeiladu: dyma’r matcher yn egluro cofnod na fyddai’n ei gysylltu
+
+Mae’r categori hwn ar gyfer pethau rydych chi wedi’u gwneud gydag Electronic Patient Record neu o’i gwmpas: integreiddiadau, sgriptiau, arddangosiadau, tiwtorialau ac arbrofion. I ddangos y fformat, dyma rywbeth bach y mae’r prosiect eisoes yn ei wneud.
+
+## Beth ydyw
+
+Llyfrgell Rust yw’r matcher sy’n cymharu dau gofnod hunaniaeth claf ac yn dweud, maes wrth faes, pam y byddai’n eu cysylltu neu ddim.
+
+## Pam mae’n bodoli
+
+Mae cysylltu dau gofnod o bobl wahanol yn cymysgu eu hanesion meddygol, a gall hynny niweidio’r ddau. Felly nid yw’r matcher byth yn penderfynu’n dawel. Caiff maes sydd ar goll ei adrodd fel un sydd ar goll, ni chaiff ei gyfrif byth fel cytundeb, ac mae rhai bylchau yn rhwystro cysylltiad awtomatig yn llwyr.
+
+## Rhowch gynnig arni
+
+Dau gofnod dychmygol: yr un cyfenw a’r un dyddiad geni, ond nid oes enw cyntaf gan yr ail.
+
+```sh
+git clone https://github.com/electronic-patient-record/electronic-patient-record.git
+cd electronic-patient-record/electronic-patient-record-matcher-with-rust
+echo '{"names":[{"family":"Rivera","given":["Alex"]}],"birth_date":"1980-04-12","sex":"female"}' > a.json
+echo '{"names":[{"family":"Rivera","given":[]}],"birth_date":"1980-04-12"}' > b.json
+cargo run -- a.json b.json
+```
+
+Rhan o’r allbwn:
+
+```json
+{
+  "score": 1.0,
+  "decision": "review",
+  "fields": [
+    { "field": "family_name", "similarity": 1.0, "weight": 0.25, "note": "similarity 1.00" },
+    { "field": "given_name", "similarity": null, "weight": 0.2, "note": "no given name on one or both records" },
+    { "field": "birth_date", "similarity": 1.0, "weight": 0.3, "note": "similarity 1.00" }
+  ],
+  "conflicts": [ "given name not available to confirm the link" ]
+}
+```
+
+## Beth a’m synnodd
+
+Mae pob maes y mae’r ddau gofnod yn ei rannu yn cytuno, felly’r sgôr yw 1.0, ac eto mae’r matcher yn gwrthod eu cysylltu. Mae’n eu hanfon at berson, oherwydd ni all enw cyntaf sydd ar goll byth gadarnhau cysylltiad. Nid yw sgôr uchel yn ddigon ar ei ben ei hun.
+
+Nid yw’r trothwyon wedi’u dilysu, ac nid yw’r meddalwedd at ddefnydd clinigol.
+
+## Rhannwch eich un chi
+
+Postiwch yr hyn a wnaethoch mewn trafodaeth newydd yma, gyda:
+
+- beth ydyw, mewn un frawddeg;
+- pam y gwnaethoch ef;
+- rhywbeth i edrych arno: darn o god, sgrinlun neu ddolen;
+- sut y gall rhywun arall roi cynnig arno;
+- y math o adborth rydych chi ei eisiau.
+
+Defnyddiwch gofnodion dychmygol yn unig, byth data cleifion go iawn. Ac os ydych yn adeiladu ar waith rhywun arall, rhowch glod iddynt.

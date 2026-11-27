@@ -1,0 +1,24 @@
+Safonau pa wlad ddylai’r datganiad cyntaf eu bodloni’n gyntaf: rhai’r Deyrnas Unedig neu rai’r Unol Daleithiau?
+
+Mae’r prosiect yn bwriadu bodloni safonau cenedlaethol y Deyrnas Unedig a’r Unol Daleithiau ar gyfer cofnodion cleifion. Rhaid i’r gwaith ddechrau yn rhywle, ac mae’r drefn yn newid yr hyn a adeiladir yn gyntaf. Dyma gwestiwn 2 yn [RFC.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/RFC.md), ac mae’r arolwg hwn yn ffordd gyflym o’i ateb.
+
+**Ystyr pob dewis:**
+
+- **DU yn gyntaf:** proffiliau FHIR UK Core, y Personal Demographics Service (PDS), a’r safon diogelwch clinigol DCB0129 gyda’r asesiad DTAC.
+- **UDA yn gyntaf:** proffiliau FHIR US Core a rheolau ardystio’r ONC.
+
+**Sut y defnyddir y canlyniad:** mae’r bleidlais yn gynghorol. Y cynhaliwr sy’n gwneud y penderfyniad, yn ei gofnodi yn [plan.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/plan.md) ac yn ei egluro yn y trywydd hwn. Caiff y canlyniad ei bwyso ynghyd â’r rhesymau yn y sylwadau, nid ei gyfrif ar ei ben ei hun. Nid oes dyddiad cau wedi’i bennu eto.
+
+**Dywedwch pam mewn sylw**, yn enwedig os ydych yn gweithio gydag un o’r ddwy set o safonau. Mae pleidlais yn dangos yr hyn y mae pobl yn ei ffafrio, ac mae sylw’n dangos y rhesymau.
+
+Sgerbwd cyn-ryddhau yw’r prosiect ac nid at ddefnydd clinigol. Nid yw’r un dewis yn addewid o ddyddiad.
+
+---
+
+Cwestiwn yr arolwg: Safonau pa wlad ddylai’r datganiad cyntaf eu bodloni’n gyntaf?
+
+Opsiynau:
+1. Rhai’r Deyrnas Unedig (UK Core, PDS, DCB0129 a DTAC)
+2. Rhai’r Unol Daleithiau (US Core ac ardystiad yr ONC)
+3. Yr un eto: gorffen y craidd a rennir yn gyntaf
+4. Rhywbeth arall (eglurwch mewn sylw)

@@ -1,0 +1,37 @@
+如何為 Electronic Patient Record 提出想法
+
+本版塊用於在有人編寫程式碼之前提出變更或功能。好的想法從它要解決的問題開始，因為即使第一個解決方案不對，問題本身也可以被評判。
+
+這是病人記錄，所以一個想法可能改變臨床醫生看到的、決定的或簽署的内容。提出這样的想法沒有問題，也正因如此，這裡的想法需要有問題、理由，並仔细審視可能出什麼錯。
+
+## 如何提出想法
+
+在 Ideas 中新建一個讨论，每個讨论一個想法。標題寫問題或結果，例如“顯示結果上次審閱的時間”，而不是解決方案。把下列標題複制到內文中：
+
+### 問題
+
+今天哪裡有困難，對谁，什麼時候？一兩句话。
+
+### 提議
+
+你會改變什麼，用平實的话說。如果有几個部分，簡短的列表也可以。
+
+### 替代方案
+
+解決問題的其他方式，包括變通办法和什麼都不做。
+
+### 成本和風險
+
+它會讓什麼變得更難：複雜性、兼容性、維護、隱私或病人安全。如果它可能向臨床醫生顯示錯誤的内容，或隱藏他們需要的内容，請說明。
+
+### 未決問題
+
+你不確定的地方，以及你最希望讀者回答的一件事。
+
+## 之後會怎样
+
+被採纳的想法會在編寫任何程式碼之前，成為 [tasks.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/tasks.md) 中的一個條目和[規範](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/spec/index.md)的一處變更，詳見[貢獻指南](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/CONTRIBUTING.md)。建議不等於承諾會實現，而且只有一位維護者，回覆可能需要几天。
+
+缺陷請提交到 [Issues](https://github.com/electronic-patient-record/electronic-patient-record/issues)，安全問題請按 [SECURITY.md](https://github.com/electronic-patient-record/electronic-patient-record/blob/main/SECURITY.md) 的說明私下報告。
+
+**開始：** 如果你現在有想法，請按上面的標題發布。如果不確定問題是否真實存在，請先在 General 中詢問。

@@ -1,0 +1,56 @@
+Comparte lo que construiste: aquí el matcher explica un registro que no vincularía
+
+Esta categoría es para cosas que hiciste con Electronic Patient Record o a su alrededor: integraciones, scripts, demostraciones, tutoriales y experimentos. Para mostrar el formato, aquí va algo pequeño que el proyecto ya hace.
+
+## Qué es
+
+El matcher es una biblioteca de Rust que compara dos registros de identidad de pacientes y dice, campo por campo, por qué los vincularía o no.
+
+## Por qué existe
+
+Vincular dos registros de personas distintas mezcla sus historiales médicos, y eso puede dañar a ambas. Por eso el matcher nunca decide en silencio. Un campo ausente se informa como ausente, nunca se cuenta como coincidencia, y algunas lagunas impiden por completo una vinculación automática.
+
+## Pruébalo
+
+Dos registros inventados: el mismo apellido y la misma fecha de nacimiento, pero el segundo no tiene nombre de pila.
+
+```sh
+git clone https://github.com/electronic-patient-record/electronic-patient-record.git
+cd electronic-patient-record/electronic-patient-record-matcher-with-rust
+echo '{"names":[{"family":"Rivera","given":["Alex"]}],"birth_date":"1980-04-12","sex":"female"}' > a.json
+echo '{"names":[{"family":"Rivera","given":[]}],"birth_date":"1980-04-12"}' > b.json
+cargo run -- a.json b.json
+```
+
+Parte de la salida:
+
+```json
+{
+  "score": 1.0,
+  "decision": "review",
+  "fields": [
+    { "field": "family_name", "similarity": 1.0, "weight": 0.25, "note": "similarity 1.00" },
+    { "field": "given_name", "similarity": null, "weight": 0.2, "note": "no given name on one or both records" },
+    { "field": "birth_date", "similarity": 1.0, "weight": 0.3, "note": "similarity 1.00" }
+  ],
+  "conflicts": [ "given name not available to confirm the link" ]
+}
+```
+
+## Lo que me sorprendió
+
+Todos los campos que comparten los dos registros coinciden, así que la puntuación es 1.0, y aun así el matcher se niega a vincularlos. Los envía a una persona, porque la falta de nombre de pila nunca puede confirmar una vinculación. Una puntuación alta no basta por sí sola.
+
+Los umbrales no están validados, y el software no es apto para uso clínico.
+
+## Comparte el tuyo
+
+Publica lo que hiciste en un nuevo debate aquí, con:
+
+- qué es, en una frase;
+- por qué lo hiciste;
+- algo que ver: un fragmento, una captura de pantalla o un enlace;
+- cómo puede probarlo otra persona;
+- el tipo de comentarios que quieres.
+
+Usa solo registros inventados, nunca datos reales de pacientes. Y si te basas en el trabajo de otra persona, dale el crédito.
