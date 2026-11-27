@@ -2,6 +2,10 @@
 
 Each entry says what was not done or not verified. Per-crate changelogs hold the detail.
 
+## 2026-11-27 - The merge-stopped browser test asserts the one status, not any of three
+
+- **Fixed:** the test "a merge stopped for refusals of treatment…" ended on `getByText(…).or(getByRole("status"))`, which could match three elements and failed in CI in strict mode. It now waits for the merge section's own status to read "Merged.". **Clinical risk:** none; a test. Verified with 5 repeats of each refusal-of-treatment browser test on both themes.
+
 ## 2026-11-27 - Another session's locale pages and an audit came in with the previous commit
 
 - **What happened:** commit `e3e07526` took in 515 untracked files of another session by mistake (`locales/*` translated pages, `docs/audits/gpt-6-2-astra-high.md`); the user chose to keep them committed. The audit's three links were absolute paths on one machine, so the docs job failed; they are relative now.

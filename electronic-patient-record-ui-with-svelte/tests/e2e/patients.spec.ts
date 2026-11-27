@@ -2967,8 +2967,8 @@ test("a merge stopped for refusals of treatment says how many, and goes on only 
   await stop.getByLabel("A clinician has looked at each of them").check();
   await again.click();
   await expect(
-    page.getByText("Records merged into this one").or(page.getByRole("status")),
-  ).toBeVisible();
+    page.getByRole("region", { name: "Merge records" }).getByRole("status"),
+  ).toHaveText("Merged.");
   expect(sent[1]).toEqual({
     source: OLD,
     reason: "duplicate registration",
