@@ -1510,9 +1510,17 @@ fn asking_now_schemas() -> Value {
             "description": "Every record on the patient record and on records merged into it, newest first, as made.",
             "properties": {
                 "records": {"type": "array", "items": {"allOf": [{"$ref": "#/components/schemas/StoredAsked"}],
-                    "required": ["from_merged_record"],
-                    "properties": {"from_merged_record": {"type": "boolean"}}}},
-                "left_against_advice": {"type": "integer", "description": "How many that stand say the person left against advice."}
+                    "required": ["from_merged_record", "pack_gaps"],
+                    "properties": {"from_merged_record": {"type": "boolean"},
+                        "pack_gaps": {"type": ["array", "null"], "items": {"type": "string"},
+                            "description": "What the pack's `refusal-record` rule asks for that this record does not show as done, in the pack's words. Null with no pack in force; empty when nothing is missing or the pack has no such rule."}}}},
+                "left_against_advice": {"type": "integer", "description": "How many that stand say the person left against advice."},
+                "pack": {"type": ["object", "null"],
+                    "description": "The place's pack of refusal rules in force (RF-3, `EPR_REFUSAL_RULES_FILE`): its place, the day the law was read, who reviewed it and whether that review stands. Null when no pack is in force: no file is no rule.",
+                    "required": ["id", "place", "law_as_of", "review"],
+                    "properties": {"id": {"type": "string"}, "place": {"type": "string"}, "law_as_of": {"type": "string"},
+                        "lawyer": {"type": "string"}, "clinician": {"type": "string"}, "reviewed_on": {"type": "string"},
+                        "review_due": {"type": "string"}, "review": {"enum": ["unreviewed", "lapsed", "current"]}}}
             }
         }
     })

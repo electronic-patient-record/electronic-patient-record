@@ -52,6 +52,64 @@ fn asked(at: &str, leaving: bool) -> Value {
 
 #[tokio::test]
 #[ignore = "needs Postgres: set DB_URL"]
+async fn with_a_pack_in_force_each_record_says_what_the_place_asks_for_and_without_one_nothing_is_said()
+ {
+    let url: &'static str = Box::leak(
+        std::env::var("DB_URL")
+            .expect("DB_URL must be set for --ignored tests")
+            .into_boxed_str(),
+    );
+    // The shipped pack for England and Wales has no `refusal-record` rule; this place's adds one.
+    let text = format!(
+        "{}\n[[rule]]\nkey = \"refusal-record\"\nvalue = [\"written\", \"signed\", \"alternatives-explained\", \"in-private\"]\nsource = \"a test place\"\n",
+        electronic_patient_record::refusal_rules::ENGLAND_WALES
+    );
+    let path = std::env::temp_dir().join(format!("epr-rf3-http-{}.toml", std::process::id()));
+    std::fs::write(&path, text).unwrap();
+    let file: &'static str = Box::leak(path.to_string_lossy().into_owned().into_boxed_str());
+    for with_pack in [true, false] {
+        let mut settings = vec![("DB_URL", url), ("EPR_REQUIRE_AUTH", "false")];
+        if with_pack {
+            settings.push(("EPR_REFUSAL_RULES_FILE", file));
+        }
+        request_with::<App, _, _>(&settings, |server, _ctx| async move {
+            let made = server
+                .post("/api/patients")
+                .json(&json!({ "patient": person(), "override_reason": "test setup" }))
+                .await;
+            assert_eq!(made.status_code(), StatusCode::CREATED, "{}", made.text());
+            let pid = made.json::<Value>()["id"].as_str().unwrap().to_string();
+            let list = format!("/api/patients/{pid}/asking-now");
+            let r = server
+                .post(&list)
+                .json(&json!({ "asked": asked("2026-11-26T09:00:00Z", false) }))
+                .await;
+            assert_eq!(r.status_code(), StatusCode::CREATED, "{}", r.text());
+            let shown = server.get(&list).await.json::<Value>();
+            if with_pack {
+                assert_eq!(shown["pack"]["place"], "England and Wales");
+                assert_eq!(
+                    shown["pack"]["review"], "unreviewed",
+                    "nobody is named in the shipped pack"
+                );
+                // Signed "no", alternatives "not known" (never done) and not in private: in the pack's order.
+                assert_eq!(
+                    shown["records"][0]["pack_gaps"],
+                    json!(["signed", "alternatives-explained", "in-private"])
+                );
+            } else {
+                // No file is no rule: nothing is said, which is not "nothing is missing".
+                assert_eq!(shown["pack"], Value::Null);
+                assert_eq!(shown["records"][0]["pack_gaps"], Value::Null);
+            }
+        })
+        .await;
+    }
+    let _ = std::fs::remove_file(path);
+}
+
+#[tokio::test]
+#[ignore = "needs Postgres: set DB_URL"]
 async fn a_record_of_asking_is_kept_as_made_and_marked_in_error_only_with_a_reason() {
     let url: &'static str = Box::leak(
         std::env::var("DB_URL")
@@ -69,7 +127,7 @@ async fn a_record_of_asking_is_kept_as_made_and_marked_in_error_only_with_a_reas
         let list = format!("/api/patients/{pid}/asking-now");
         assert_eq!(
             server.get(&list).await.json::<Value>(),
-            json!({ "records": [], "left_against_advice": 0 })
+            json!({ "records": [], "left_against_advice": 0, "pack": null })
         );
 
         let first = server.post(&list).json(&json!({ "asked": asked("2026-11-26T09:00:00Z", false) })).await;

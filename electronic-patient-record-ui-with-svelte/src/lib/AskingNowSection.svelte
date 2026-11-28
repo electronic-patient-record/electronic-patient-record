@@ -39,6 +39,17 @@
     reason?: string | null;
     asked: Asked;
     from_merged_record: boolean;
+    /** What the place's pack asks for that this record does not show as done; null with no pack in force. */
+    pack_gaps?: string[] | null;
+  }
+  interface InForce {
+    id: string;
+    place: string;
+    law_as_of: string;
+    lawyer?: string;
+    clinician?: string;
+    reviewed_on?: string;
+    review: "unreviewed" | "lapsed" | "current";
   }
 
   const busy = new Busy();
@@ -48,6 +59,7 @@
   let loaded = $state<{
     records: Listed[];
     left_against_advice: number;
+    pack?: InForce | null;
   } | null>(null);
   let loadProblem = $state<string | null>(null);
   let message = $state<string | null>(null);
@@ -75,10 +87,11 @@
   let why = $state("");
 
   async function load() {
-    const res = await call<{ records: Listed[]; left_against_advice: number }>(
-      "GET",
-      `/api/patients/${patientId}/asking-now`,
-    );
+    const res = await call<{
+      records: Listed[];
+      left_against_advice: number;
+      pack?: InForce | null;
+    }>("GET", `/api/patients/${patientId}/asking-now`);
     if (res.status === 200 && res.body) {
       loaded = res.body;
       loadProblem = null;
@@ -265,6 +278,16 @@
       <!-- Louder than "none recorded", but not an alert: the page keeps those for what the reader just did. -->
       <p><strong>{loadProblem}</strong></p>
     {:else if loaded}
+      {#if loaded.pack}
+        <p>
+          {TEXT.anPack
+            .replace("{place}", loaded.pack.place)
+            .replace("{day}", loaded.pack.law_as_of)}
+          {(TEXT.anPackReview as Record<string, string>)[loaded.pack.review]}
+        </p>
+      {:else}
+        <p>{TEXT.anNoPack}</p>
+      {/if}
       {#if loaded.left_against_advice > 0}
         <p>
           {TEXT.anLeftCount.replace("{n}", String(loaded.left_against_advice))}
@@ -282,6 +305,17 @@
               {#if r.asked.accepted}· {TEXT.anAccepted}: {r.asked.accepted}{/if}
               {#if r.asked.leaving_against_advice}· {TEXT.anLeaving}{/if}
               {#if r.from_merged_record}· {TEXT.refusalFromMerged}{/if}
+              {#if r.state !== "entered-in-error" && r.pack_gaps && r.pack_gaps.length > 0}
+                <p>
+                  {TEXT.anPackGaps}
+                  {r.pack_gaps
+                    .map(
+                      (g) =>
+                        (TEXT.anPackWords as Record<string, string>)[g] ?? g,
+                    )
+                    .join(", ")}
+                </p>
+              {/if}
               {#if r.state === "entered-in-error"}
                 · {TEXT.anEnteredInError}
               {:else}

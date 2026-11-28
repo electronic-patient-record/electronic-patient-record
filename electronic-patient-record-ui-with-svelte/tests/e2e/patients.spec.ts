@@ -3182,8 +3182,17 @@ test("asking now is recorded with every question answered or not known, listed, 
       return json(route, 201, records[0]);
     }
     return json(route, 200, {
-      records,
+      records: records.map((r) => ({
+        ...r,
+        pack_gaps: r.state === "recorded" ? ["signed", "in-private"] : null,
+      })),
       left_against_advice: records.filter((r) => r.state === "recorded").length,
+      pack: {
+        id: "england-wales",
+        place: "England and Wales",
+        law_as_of: "2026-11-25",
+        review: "unreviewed",
+      },
     });
   });
   await page.goto(`/en-001/patients/${ANN.id}`);
@@ -3226,6 +3235,12 @@ test("asking now is recorded with every question answered or not known, listed, 
     },
   });
   await expect(section).toContainText("1 record(s) say the person left");
+  await expect(section).toContainText(
+    "The place's rules in force: England and Wales, the law as read on 2026-11-25. Nobody has reviewed them.",
+  );
+  await expect(section.getByRole("listitem")).toContainText(
+    "The place's rules ask for, and this record does not show as done: signed, in private",
+  );
   await axe(page);
   await section.getByRole("button", { name: "Entered in error" }).click();
   await section

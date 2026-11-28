@@ -858,6 +858,49 @@
             "description": "How many that stand say the person left against advice.",
             "type": "integer"
           },
+          "pack": {
+            "description": "The place's pack of refusal rules in force (RF-3, `EPR_REFUSAL_RULES_FILE`): its place, the day the law was read, who reviewed it and whether that review stands. Null when no pack is in force: no file is no rule.",
+            "properties": {
+              "clinician": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "law_as_of": {
+                "type": "string"
+              },
+              "lawyer": {
+                "type": "string"
+              },
+              "place": {
+                "type": "string"
+              },
+              "review": {
+                "enum": [
+                  "unreviewed",
+                  "lapsed",
+                  "current"
+                ]
+              },
+              "review_due": {
+                "type": "string"
+              },
+              "reviewed_on": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "place",
+              "law_as_of",
+              "review"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "records": {
             "items": {
               "allOf": [
@@ -868,10 +911,22 @@
               "properties": {
                 "from_merged_record": {
                   "type": "boolean"
+                },
+                "pack_gaps": {
+                  "description": "What the pack's `refusal-record` rule asks for that this record does not show as done, in the pack's words. Null with no pack in force; empty when nothing is missing or the pack has no such rule.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 1000,
+                  "type": [
+                    "array",
+                    "null"
+                  ]
                 }
               },
               "required": [
-                "from_merged_record"
+                "from_merged_record",
+                "pack_gaps"
               ]
             },
             "maxItems": 1000,

@@ -49,6 +49,9 @@ pub struct Listed<'a> {
     pub stored: &'a store::StoredAsked,
     /// True when it is recorded on a record merged into this one.
     pub from_merged_record: bool,
+    /// What the place's pack says such a record should hold and this one does not show as done (RF-3), by the pack's
+    /// words; `None` when no pack is in force, which says nothing, and empty when the pack names nothing missing.
+    pub pack_gaps: Option<Vec<String>>,
 }
 
 fn invalid(problems: &[String]) -> Response {
@@ -153,6 +156,14 @@ pub(super) async fn list(
         Ok(p) => p,
         Err(e) => return refused(&ctx, &agent, purpose, Action::Read, &e).await,
     };
+    // Checked at start, so a failure here is a file changed since: a 500, never a list that says nothing is missing.
+    let pack = match crate::refusal_pack::load() {
+        Ok(p) => p,
+        Err(e) => {
+            tracing::error!(error = %e, "refusal rules pack");
+            return ApiError::internal().into_response();
+        }
+    };
     match store::list_with_merged(&ctx.pool(), &known.id).await {
         Ok(found) => {
             if let Err(r) = audit_resource(
@@ -176,13 +187,19 @@ pub(super) async fn list(
                 .map(|stored| Listed {
                     stored,
                     from_merged_record: stored.patient_id != known.id,
+                    pack_gaps: pack
+                        .as_ref()
+                        .map(|p| asking_now::pack_gaps(&stored.asked, p)),
                 })
                 .collect();
             let left = found
                 .iter()
                 .filter(|s| s.state == RecordState::Recorded && s.asked.leaving_against_advice)
                 .count();
-            Json(serde_json::json!({ "records": records, "left_against_advice": left }))
+            let in_force = pack.as_ref().map(|p| {
+                crate::refusal_pack::InForce::of(p, crate::clock::utc_date(jiff::Timestamp::now()))
+            });
+            Json(serde_json::json!({ "records": records, "left_against_advice": left, "pack": in_force }))
                 .into_response()
         }
         Err(e) => store_failure(&e),

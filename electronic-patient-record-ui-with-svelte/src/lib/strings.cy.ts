@@ -1212,6 +1212,28 @@ export const CY: Strings = {
   daGapNoAid:
     "Maent yn cyfathrebu drwy ffyrdd eraill ac ni chofnodir cymorth cyfathrebu.",
   daGapConscious: "Nid yw'n hysbys a oeddent yn ymwybodol.",
+  anPack:
+    "Rheolau'r lle sydd mewn grym: {place}, y gyfraith fel y'i darllenwyd ar {day}.",
+  anPackReview: {
+    unreviewed: "Nid oes neb wedi'u hadolygu.",
+    lapsed: "Mae eu hadolygiad wedi dod i ben.",
+    current: "Wedi'u hadolygu, a heb fod yn ddyledus eto.",
+  },
+  anNoPack:
+    "Nid oes rheolau lle mewn grym, felly nid oes dim yma'n dweud beth mae'r lle hwn yn gofyn i gofnod o'r fath ei gynnwys.",
+  anPackGaps:
+    "Mae rheolau'r lle'n gofyn am y canlynol, ac nid yw'r cofnod hwn yn eu dangos fel wedi'u gwneud:",
+  anPackWords: {
+    written: "wedi'i roi ar bapur",
+    signed: "wedi'i lofnodi",
+    witnessed: "gyda thyst",
+    described: "beth a wrthodwyd",
+    "risks-explained": "esboniwyd y risgiau",
+    "benefits-explained": "esboniwyd y manteision",
+    "alternatives-explained": "esboniwyd y dewisiadau eraill",
+    "may-change-mind": "dywedwyd y gallant newid eu meddwl",
+    "in-private": "yn breifat",
+  },
   anTitle: "Gofynnwyd nawr, neu'n gadael yn groes i gyngor",
   anIntro:
     "Beth a gynigiwyd ac a esboniwyd, a beth a wrthododd neu a dderbyniodd y person, fel y gofynnwyd iddynt nawr. Geiriad heb ei adolygu. Nid oes dim yma'n dweud a yw gwrthodiad yn sefyll; cofnodir gwrthodiad triniaeth i'w gadw uchod.",

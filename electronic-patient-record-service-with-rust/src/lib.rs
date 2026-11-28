@@ -48,6 +48,8 @@ pub mod death_store;
 pub mod dependencies;
 pub use electronic_patient_record_domain::disclosure_rules;
 pub mod disclosure_pack;
+pub mod refusal_pack;
+pub use electronic_patient_record_domain::refusal_rules;
 pub mod entries_store;
 pub mod entry_labels;
 pub mod feed_health;

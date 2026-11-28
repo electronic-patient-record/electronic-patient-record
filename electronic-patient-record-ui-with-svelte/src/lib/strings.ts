@@ -1152,6 +1152,27 @@ export const STRINGS = {
   daGapNoAid:
     "They communicate by other means and no communication aid is recorded.",
   daGapConscious: "Whether they were conscious is not known.",
+  anPack: "The place's rules in force: {place}, the law as read on {day}.",
+  anPackReview: {
+    unreviewed: "Nobody has reviewed them.",
+    lapsed: "Their review has lapsed.",
+    current: "Reviewed, and not yet due again.",
+  },
+  anNoPack:
+    "No place's rules are in force, so nothing here says what this place asks such a record to hold.",
+  anPackGaps:
+    "The place's rules ask for, and this record does not show as done:",
+  anPackWords: {
+    written: "put in writing",
+    signed: "signed",
+    witnessed: "witnessed",
+    described: "what was refused",
+    "risks-explained": "risks explained",
+    "benefits-explained": "benefits explained",
+    "alternatives-explained": "alternatives explained",
+    "may-change-mind": "told they may change their mind",
+    "in-private": "in private",
+  },
   anTitle: "Asked now, or leaving against advice",
   anIntro:
     "What was offered and explained, and what the person refused or accepted, as they were asked now. Unreviewed wording. Nothing here says whether a refusal stands; a refusal of treatment to keep is recorded above.",
